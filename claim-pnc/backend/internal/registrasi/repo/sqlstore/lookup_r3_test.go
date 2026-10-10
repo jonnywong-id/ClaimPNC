@@ -198,22 +198,26 @@ func TestAssignerLightestTechnician(t *testing.T) {
 		mock.ExpectExec(be4Q("rotasi_tim_tulis_kecil")).WithArgs(next).WillReturnResult(sqlmock.NewResult(0, 1))
 	}
 
-	// NONMBU < 1M, ASM leader: rotasi, tanpa saringan tim C, TANPA kenaikan beban (seperti Pega).
+	// NONMBU < 1M, ASM leader: rotasi, tanpa saringan tim C, lalu COUNTER_QUOTA petugas terpilih
+	// naik (AddTJobCounterPIC_SQL) supaya giliran berputar.
 	rotateSmall("A", "B")
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
 	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: fire}, "NIK1")
 	require.NoError(t, err)
 
-	// NONMBU > 1M, ASM member: tim C, diurutkan COUNTER_QUOTA2.
+	// NONMBU > 1M, ASM member: tim C, diurutkan dan dinaikkan COUNTER_QUOTA2 (AddTJobCounterPIC_SQL_22).
 	member := fire
 	member.Coinsurance.Role = "MEMBER"
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "Y").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban_besar")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
 	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: member, EstimateValue: registrasi.Rupiah(2_000_000_000)}, "NIK1")
 	require.NoError(t, err)
 
-	// Kandidat tetap per sumber bisnis: tanpa kueri dan tanpa kenaikan beban.
+	// Kandidat tetap per sumber bisnis: tanpa kueri daftar, tetapi bebannya tetap naik.
 	ibs := member
 	ibs.SourceOfBusiness = "10001551"
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs("YOSECHRISTOFER").WillReturnResult(sqlmock.NewResult(0, 1))
 	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: ibs}, "NIK1")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Assignee{Operator: "YOSECHRISTOFER"}, got)
@@ -243,6 +247,7 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnRows(sqlmock.NewRows([]string{"f"}))
 	mock.ExpectExec(be4Q("rotasi_tim_tulis_besar")).WithArgs("A").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban_besar")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
 	_, err = a.Assign(ctx, technical, big, "NIK1")
 	require.NoError(t, err)
 	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnError(be4Boom)

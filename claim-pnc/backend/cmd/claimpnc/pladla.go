@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	inboxpladlapredlanotif "claim-pnc/internal/inboxpladlapredla/notification"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/registrasi"
 
 	authhttp "claim-pnc/internal/auth/http"
 	portalhttp "claim-pnc/internal/portal/http"
@@ -247,6 +249,7 @@ func buildPLADLAServices(
 	// Preseden yang sama sudah ada: `TKAActive()` terpisah dari `Active()` karena
 	// alasan yang persis sama.
 	konfigurasiSurat := inboxpladlapredlanotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -265,9 +268,7 @@ func buildPLADLAServices(
 		// tidak dapat ditarik kembali. Baris log ini yang menjawab "sejak kapan" bila
 		// kelak ada surat yang dipersoalkan.
 		logger.Info("pengiriman surat PLA/DLA AKTIF",
-			slog.String("host", cfg.SMTP.Host),
-			slog.Int("port", cfg.SMTP.Port),
-			slog.String("pengirim", cfg.SMTP.From),
+			slog.String("akun", emailAccountLabel(cfg, store)),
 			slog.String("catatan",
 				"tombol SEND kini benar-benar mengirim surat ke reasuradur"))
 	} else {
@@ -381,4 +382,23 @@ func mountPLADLA(
 			FallbackErrorWriter: inboxpladlahttp.ErrorWriter(writeError),
 		})
 	inboxpladlahttp.Mount(protected, reinsurerHandler, portalDeps)
+}
+
+// plaEmailSender memenuhi registrasi.PLASender — tombol SEND ALL PLA dialog Print PLA — dengan
+// layanan kirim Inbox PLA/DLA/Pre-DLA: membaca T_PLALIST, mengirim surat ke EMAILPLA lewat akun
+// M_EMAIL_SERVER_PNC, lalu menandai ISKIRIM/TGLKIRIM. Satu jalur kirim untuk kedua layar.
+type plaEmailSender struct {
+	queue *inboxpladlapredlausecase.Service
+}
+
+func (s plaEmailSender) SendPLA(ctx context.Context, portal, login, claimID, number string, doc registrasi.PLAAttachment) error {
+	if s.queue == nil {
+		return errors.New("layanan kirim PLA tidak terpasang")
+	}
+	var extra []inboxpladlapredla.Attachment
+	if len(doc.Content) > 0 {
+		extra = []inboxpladlapredla.Attachment{{Name: doc.Name, MIMEType: "application/pdf", Content: doc.Content}}
+	}
+	_, err := s.queue.SendAdviceWith(ctx, portal, inboxpladlapredla.Caller{Login: login}, "pla", claimID, number, extra)
+	return err
 }

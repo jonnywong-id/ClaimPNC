@@ -224,7 +224,10 @@ export const EMPTY_DETAIL: ClaimReportDetail = {
  * menduplikasi sebuah angka.
  */
 export const FIELD_LIMIT = {
-  nama: 255,
+  /** Nama Pengirim/Pelapor dan Nama Kurir — kolom VARCHAR2(100) di T_CLAIM_RECIVEDCLAIM. */
+  nama: 100,
+  /** Nama Bisnis — tidak disimpan ke kolom 100 itu; batas server 255. */
+  bisnis: 255,
 
   /**
    * Nama Tertanggung (QQ) sengaja berbeda dari `nama`.
@@ -240,7 +243,8 @@ export const FIELD_LIMIT = {
   lokasi: 500,
   subjek: 1000,
   catatan: 1000,
-  narasi: 4000,
+  /** Kronologis dan Rincian Kerusakan — kolom VARCHAR2(1000). */
+  narasi: 1000,
   jumlahDokumen: 9999,
   sim: 25,
   sumber: 100,

@@ -28,6 +28,22 @@ type PLARowDTO struct {
 	Note      string `json:"catatan"`
 	Email     string `json:"email"`
 	Date      string `json:"tanggal"`
+	// Sent adalah T_PLALIST.ISKIRIM = '1' — PLA sudah dikirim lewat email.
+	Sent bool `json:"terkirim"`
+}
+
+// PLASendDTO adalah hasil SEND ALL PLA untuk satu PLA.
+type PLASendDTO struct {
+	Number  string `json:"nomor"`
+	Sent    bool   `json:"terkirim"`
+	Skipped bool   `json:"dilewati"`
+	Error   string `json:"galat,omitempty"`
+}
+
+// PLASendResponse adalah jawaban SEND ALL PLA beserta daftar PLA terbaru.
+type PLASendResponse struct {
+	Result []PLASendDTO    `json:"hasil"`
+	List   PLAListResponse `json:"daftar"`
 }
 
 // PLAListResponse adalah isi layar PrintPLA_dtl.
@@ -50,7 +66,7 @@ func plaListDTO(l usecase.PLAList) PLAListResponse {
 }
 
 func plaRowDTO(p registrasi.PLA) PLARowDTO {
-	return PLARowDTO{Number: p.Number, Recipient: p.Recipient, Type: p.Type, Note: p.Note, Email: p.Info.Email, Date: formatDate(p.Date)}
+	return PLARowDTO{Number: p.Number, Recipient: p.Recipient, Type: p.Type, Note: p.Note, Email: p.Info.Email, Date: formatDate(p.Date), Sent: p.Sent}
 }
 
 // ListPLA menangani POST …/pla/daftar — membuka layar PrintPLA_dtl (menerbitkan bila belum).
@@ -87,6 +103,34 @@ func (h *Handler) SavePLANotes(w http.ResponseWriter, r *http.Request, claimID s
 		return
 	}
 	h.writeResponse(w, r, http.StatusOK, plaListDTO(list))
+}
+
+// SendAllPLA menangani POST …/pla/kirim — tombol SEND ALL PLA. Jawabannya hasil per PLA dan
+// daftar PLA terbaru (status terkirim sudah berubah).
+func (h *Handler) SendAllPLA(w http.ResponseWriter, r *http.Request, claimID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body PLARequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	result, err := h.service.SendAllPLA(r.Context(), body.command(claimID), caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	list, err := h.service.ListPLA(r.Context(), body.command(claimID), caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	out := PLASendResponse{Result: make([]PLASendDTO, 0, len(result)), List: plaListDTO(list)}
+	for _, o := range result {
+		out.Result = append(out.Result, PLASendDTO{Number: o.Number, Sent: o.Sent, Skipped: o.Skipped, Error: o.Error})
+	}
+	h.writeResponse(w, r, http.StatusOK, out)
 }
 
 // PLA menangani POST …/pla — tombol Print PLA (satu nomor) dan Print All PLA. Jawabannya

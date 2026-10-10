@@ -39,6 +39,10 @@ export function ClaimReportFormPage() {
   const berkas = useClaimReport(id)
   const simpan = useSaveClaimReport(id)
   const daftar = useRegisterClaim()
+  // Register Klaim menyimpan berkas lebih dulu. Bila Simpan yang gagal, pesannya juga
+  // ditampilkan di dekat tombol Register — pesan Simpan di atas form tidak terlihat dari
+  // tombol yang ada di bawah (RCVN.26.115, 2026-10-10).
+  const [registerAttempt, setRegisterAttempt] = useState(false)
   const polis = useLookupPolicy()
 
   const [values, setValues] = useState<ClaimReportDetail>(withReceivedDefault(EMPTY_DETAIL))
@@ -316,7 +320,7 @@ export function ClaimReportFormPage() {
             label="Nama Bisnis"
             value={values.nama_bisnis}
             onChange={(e) => set('nama_bisnis', e.target.value)}
-            maxLength={FIELD_LIMIT.nama}
+            maxLength={FIELD_LIMIT.bisnis}
             error={violation['nama_bisnis']}
             disabled={!editable}
           />
@@ -473,15 +477,23 @@ export function ClaimReportFormPage() {
               // berkas yang TERSIMPAN — antara lain Kronologis Kejadian menjadi Deskripsi
               // Laporan (CreateRegisterKlaimPNC_act langkah 14). Tanpa itu, kronologis yang
               // baru diketik tetapi belum di-Simpan tidak ikut ke klaim.
-              onClick={() =>
+              onClick={() => {
+                setRegisterAttempt(true)
+                daftar.reset()
                 simpan.mutate(values, {
                   onSuccess: () =>
                     daftar.mutate(
                       { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
-                      { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
+                      {
+                        onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`),
+                        // Berkas dimuat ulang: bila ternyata sudah menjadi klaim (layar
+                        // lama yang belum dimuat ulang), tombolnya hilang dengan sendirinya.
+                        onError: () => void berkas.refetch(),
+                      },
                     ),
+                  onError: () => void berkas.refetch(),
                 })
-              }
+              }}
             >
               {simpan.isPending || daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
             </Button>
@@ -496,6 +508,15 @@ export function ClaimReportFormPage() {
           </Button>
         </div>
 
+        {registerAttempt && simpan.isError && (
+          <div className="mt-3">
+            <ErrorMessage
+              title="Klaim tidak didaftarkan: berkas tidak dapat disimpan"
+              description={messageOf(simpan.error)}
+              tone={toneOf(simpan.error)}
+            />
+          </div>
+        )}
         {daftar.isError && (
           <div className="mt-3">
             <ErrorMessage

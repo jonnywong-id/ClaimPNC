@@ -29,6 +29,11 @@ type CompletionResult struct {
 
 	// NotificationSent bernilai true hanya bila surelnya benar-benar terkirim.
 	NotificationSent bool
+
+	// NotificationError adalah sebab pemberitahuan gagal dikirim — ditampilkan di layar
+	// supaya dapat dilampirkan ke IT Support (Work Owner 2026-10-10). Kosong bila terkirim
+	// atau tidak dicoba.
+	NotificationError string
 }
 
 // Complete mengisi tanggal kelengkapan dokumen satu klaim TKA.
@@ -122,6 +127,7 @@ func (s *Service) Complete(
 			slog.String("nomor_klaim", saved.ClaimNumber),
 			slog.String("galat", err.Error()),
 		)
+		result.NotificationError = err.Error()
 		return result, nil
 	}
 

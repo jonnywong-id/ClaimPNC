@@ -39,6 +39,7 @@ const (
 	CodeInternalError        = "galat_internal"
 	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
 	CodeCashierUnavailable   = "kasir_tidak_terhubung"
+	CodePLASendUnavailable   = "kirim_pla_tidak_tersedia"
 	CodeCashierNoReply       = "kasir_tidak_menjawab"
 	CodeCashierRejected      = "kasir_menolak"
 )
@@ -237,6 +238,12 @@ func mapError(err error) (int, ErrorResponse) {
 			Code: CodeCashierNoReply,
 			Message: "The cashier system did not reply in time. The transfer may already have been received by the cashier — " +
 				"check it in the cashier system before trying again, so the payment is not sent twice.",
+		}
+
+	case errors.Is(err, usecase.ErrPLASendUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodePLASendUnavailable,
+			Message: "PLA email sending is not configured on this server. Report it to the administrator.",
 		}
 
 	case errors.Is(err, usecase.ErrCashierUnavailable):

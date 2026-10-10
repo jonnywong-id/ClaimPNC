@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -126,6 +127,65 @@ func (l *Service) issuedOrNew(ctx context.Context, sc plaScope, by Caller) ([]re
 	}
 	list, err = l.issuePLA(ctx, sc.claim, sc.object, sc.coverage, sc.seq, sc.revision, sc.names, sc.ids, by)
 	return list, len(list), err
+}
+
+// ErrPLASendUnavailable berarti pengirim email PLA tidak dipasang di server ini.
+var ErrPLASendUnavailable = errors.New("PLA email sending is not configured on this server")
+
+// PLASendOutcome adalah hasil SEND ALL PLA untuk satu PLA.
+type PLASendOutcome struct {
+	Number  string
+	Sent    bool   // terkirim pada tekanan tombol ini
+	Skipped bool   // sudah terkirim sebelumnya (ISKIRIM = '1'), tidak dikirim ulang
+	Error   string // sebab gagal, untuk dilampirkan ke IT Support
+}
+
+// SendAllPLA adalah tombol SEND ALL PLA — `DownloadAllDocumentPLA` dengan SendPrint "2": setiap
+// PLA revisi CFS terakhir jaminan ini yang belum terkirim (`.IsKirim == ""`) dikirim lewat email
+// ke alamat di kolom Email-nya (UpdateDetailPLA2), lalu ditandai terkirim
+// (UpdatesetstatusdantanggalKirimPLA). PLA yang sudah terkirim dilewati.
+//
+// Satu PLA yang gagal tidak menghentikan PLA lain, sama seperti loop Pega; hasilnya dilaporkan
+// per nomor supaya kegagalannya dapat dilampirkan ke IT Support (Work Owner 2026-10-10).
+func (l *Service) SendAllPLA(ctx context.Context, p PLACommand, by Caller) ([]PLASendOutcome, error) {
+	if l.plaSender == nil {
+		return nil, ErrPLASendUnavailable
+	}
+	sc, err := l.plaScopeOf(ctx, p, by)
+	if err != nil {
+		return nil, err
+	}
+	list, _, err := l.issuedOrNew(ctx, sc, by)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PLASendOutcome, 0, len(list))
+	for _, pla := range list {
+		o := PLASendOutcome{Number: pla.Number}
+		switch {
+		case pla.Sent:
+			o.Skipped = true
+		default:
+			// PDF PLA-nya dibuat ulang dan dilampirkan, seperti Print PLA per baris. Cabang
+			// kirim `DownloadAllDocumentPLA` tidak memeriksa REMARKS, jadi di sini pun tidak.
+			docs, err := l.plaDocuments(ctx, sc.claim, sc.object, sc.coverage, sc.names, []registrasi.PLA{pla})
+			if err != nil {
+				o.Error = "membuat PDF PLA: " + err.Error()
+				break
+			}
+			doc := registrasi.PLAAttachment{}
+			if len(docs) > 0 {
+				doc = registrasi.PLAAttachment{Name: docs[0].name, Content: docs[0].content}
+			}
+			if err := l.plaSender.SendPLA(ctx, sc.claim.Portal, by.Identity, sc.claim.ID, pla.Number, doc); err != nil {
+				o.Error = err.Error()
+			} else {
+				o.Sent = true
+			}
+		}
+		out = append(out, o)
+	}
+	return out, nil
 }
 
 // SavePLANotes menyimpan isian REMARKS PLA yang sudah terbit, dikunci nomor PLA.

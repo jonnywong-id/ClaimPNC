@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -286,4 +287,59 @@ func TestPLABPPDAN(t *testing.T) {
 	printed, err := l.service.PrintPLA(ctx, printPLA(task), l.caller)
 	require.NoError(t, err)
 	require.Equal(t, "PLABPPDAN"+p.Number+".pdf", printed.FileName)
+}
+
+// fakePLASender merekam PLA yang dikirim tombol SEND ALL PLA; nomor di failing ditolak.
+type fakePLASender struct {
+	sent    []string
+	docs    []registrasi.PLAAttachment
+	failing map[string]bool
+}
+
+func (f *fakePLASender) SendPLA(_ context.Context, portal, login, claimID, number string, doc registrasi.PLAAttachment) error {
+	if f.failing[number] {
+		return errors.New("server surel menolak sertifikat")
+	}
+	f.sent = append(f.sent, claimID+"/"+number)
+	f.docs = append(f.docs, doc)
+	return nil
+}
+
+// SEND ALL PLA (`DownloadAllDocumentPLA` SendPrint "2") mengirim setiap PLA revisi CFS terakhir;
+// satu PLA yang gagal tidak menghentikan yang lain dan sebabnya dilaporkan per nomor.
+func TestSendAllPLA(t *testing.T) {
+	sender := &fakePLASender{failing: map[string]bool{}}
+	l := setupWith(t, func(o *usecase.Options) { o.PLASender = sender })
+	coinsLeader(l)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+	_, err := l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(50_000_000), 1), l.caller)
+	require.NoError(t, err)
+	_, err = l.service.DownloadFaceSheet(ctx, faceSheet(task), l.caller)
+	require.NoError(t, err)
+
+	list, err := l.service.ListPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, list.PLA, 2)
+	sender.failing[list.PLA[1].Number] = true
+
+	out, err := l.service.SendAllPLA(ctx, printPLA(task), l.caller)
+	require.NoError(t, err)
+	require.Len(t, out, 2)
+	require.True(t, out[0].Sent)
+	require.Empty(t, out[0].Error)
+	require.False(t, out[1].Sent)
+	require.Contains(t, out[1].Error, "sertifikat")
+	require.Equal(t, []string{task.ClaimID + "/" + list.PLA[0].Number}, sender.sent)
+	// PDF PLA-nya ikut dilampirkan.
+	require.Len(t, sender.docs, 1)
+	require.True(t, strings.HasSuffix(sender.docs[0].Name, ".pdf"), sender.docs[0].Name)
+	require.True(t, bytes.HasPrefix(sender.docs[0].Content, []byte("%PDF")))
+
+	// Tanpa pengirim terpasang, tombolnya menjawab galat yang jelas.
+	plain := setup(t)
+	coinsLeader(plain)
+	_, task2 := plain.upToInputEstimate(t)
+	_, err = plain.service.SendAllPLA(ctx, printPLA(task2), plain.caller)
+	require.ErrorIs(t, err, usecase.ErrPLASendUnavailable)
 }

@@ -31,6 +31,7 @@ import {
   type FaceSheetRequest,
   type PLARequest,
   type PLAListResponse,
+  type PLASendResponse,
   type DLARequest,
   type DLAListResponse,
   type CashierRequest,
@@ -781,6 +782,22 @@ export function useSavePLANotes(claimID: string) {
   return useMutation({
     mutationFn: (content: PLARequest) =>
       callAPI<PLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/catatan`, {
+        metode: 'POST',
+        body: content,
+        token,
+        portal,
+      }),
+  })
+}
+
+/** SEND ALL PLA — mengirim PLA yang belum terkirim lewat email; hasil per PLA dan daftar terbaru. */
+export function useSendAllPLA(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (content: PLARequest) =>
+      callAPI<PLASendResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/kirim`, {
         metode: 'POST',
         body: content,
         token,

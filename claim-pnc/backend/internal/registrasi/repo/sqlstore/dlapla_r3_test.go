@@ -399,20 +399,22 @@ func TestPLASaveAndIssuedRoundTrip(t *testing.T) {
 
 	mock.ExpectQuery(be4Q("pla_terbit")).WithArgs("K1", "O", "1", "0", registrasi.PLATypeCoins, registrasi.PLATypeFacOut,
 		registrasi.PLATypeBPPDAN, registrasi.PLATypeEQPool).
-		WillReturnRows(sqlmock.NewRows(be4Cols(9)).
-			AddRow(" P1 ", " B ", " C1 ", at, "n", " IDR ", body, " e@x ", "COINS").
-			AddRow("P2", "C", "C2", at, "", "IDR", nil, nil, "COINS"))
+		WillReturnRows(sqlmock.NewRows(be4Cols(10)).
+			AddRow(" P1 ", " B ", " C1 ", at, "n", " IDR ", body, " e@x ", "COINS", "1").
+			AddRow("P2", "C", "C2", at, "", "IDR", nil, nil, "COINS", "0"))
 	got, err := s.Issued(ctx, "K1", "O", 1, 0)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, "P1", got[0].Number)
 	require.Equal(t, "e@x", got[0].Info.Email)
+	require.True(t, got[0].Sent)
+	require.False(t, got[1].Sent)
 	require.Len(t, got[0].Amount, 1)
 	require.Equal(t, p.Amount[0].Result, got[0].Amount[0].Result)
 	require.Equal(t, p.Amount[0].Share, got[0].Amount[0].Share)
 	require.Empty(t, got[1].Amount)
 
-	r3RowFailures(t, mock, "pla_terbit", 9, func() error {
+	r3RowFailures(t, mock, "pla_terbit", 10, func() error {
 		_, err := s.Issued(ctx, "K1", "O", 1, 0)
 		return err
 	})
@@ -554,7 +556,7 @@ func TestPLAFacOutSaveAndIssuedRoundTrip(t *testing.T) {
 	require.Equal(t, "2550500.00", doc.EstimasiList[0].ResultPLA)
 
 	mock.ExpectQuery(be4Q("pla_terbit")).
-		WillReturnRows(sqlmock.NewRows(be4Cols(9)).AddRow("H1", "REAS", "R1", at, "", "IDR", body, nil, "FACOUT"))
+		WillReturnRows(sqlmock.NewRows(be4Cols(10)).AddRow("H1", "REAS", "R1", at, "", "IDR", body, nil, "FACOUT", "0"))
 	got, err := s.Issued(ctx, "K1", "O", 1, 0)
 	require.NoError(t, err)
 	require.Equal(t, registrasi.PLATypeFacOut, got[0].Type)

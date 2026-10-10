@@ -380,6 +380,23 @@ func TestSendAdviceWithoutABodyComposerSendsAnEmptyBody(t *testing.T) {
 	require.Contains(t, log.String(), "surat PLA/DLA terkirim")
 }
 
+// SEND ALL PLA melampirkan PDF PLA-nya di depan lampiran klaim.
+func TestSendAdviceWithPutsTheExtraAttachmentFirst(t *testing.T) {
+	notifier := &notifierPalsu{}
+	repo := sendableFake()
+	repo.attachments = []inboxpladlapredla.Attachment{{Name: "a.pdf", Content: []byte("x")}}
+	svc, _ := layananPalsu(t, repo, notifier, nil)
+
+	pdf := inboxpladlapredla.Attachment{Name: "PLA.pdf", MIMEType: "application/pdf", Content: []byte("%PDF")}
+	hasil, err := svc.SendAdviceWith(
+		context.Background(), "ASM", pemanggil(), "pla", "k", "PLA/1", []inboxpladlapredla.Attachment{pdf})
+	require.NoError(t, err)
+	require.Equal(t, 2, hasil.Attachments)
+	require.Len(t, notifier.surat, 1)
+	require.Equal(t, "PLA.pdf", notifier.surat[0].Attachments[0].Name)
+	require.Equal(t, "a.pdf", notifier.surat[0].Attachments[1].Name)
+}
+
 // Pengirim yang belum siap diteruskan apa adanya, bukan dibungkus "surat tidak terkirim".
 func TestSendAdviceKeepsNotifierUnavailableAsIs(t *testing.T) {
 	notifier := &notifierPalsu{

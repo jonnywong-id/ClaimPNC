@@ -374,8 +374,9 @@ describe('form Input Receive Document', () => {
     const field = await screen.findByLabelText('Nama Tertanggung')
     expect(field).toHaveAttribute('maxLength', '2000')
 
-    // Isian nama LAIN tetap 255: ketiganya diketik petugas dan kolomnya memang 255.
+    // Nama Bisnis 255; Nama Pengirim/Pelapor mengikuti kolom NAMAPELAPOR VARCHAR2(100).
     expect(screen.getByLabelText('Nama Bisnis')).toHaveAttribute('maxLength', '255')
+    expect(screen.getByLabelText(/Nama Pengirim/)).toHaveAttribute('maxLength', '100')
   })
 
   it('kegagalan memuat berkas ditampilkan, bukan form kosong yang menyesatkan', async () => {
@@ -469,6 +470,27 @@ describe('tombol Register Klaim', () => {
     expect(save).toBeGreaterThanOrEqual(0)
     expect(save).toBeLessThan(register)
     expect(calls[save]?.body).toMatchObject({ kronologis: 'Kebocoran atap gudang' })
+  })
+
+  // Simpan yang gagal (mis. berkas ternyata sudah menjadi klaim di layar lain) membatalkan
+  // pendaftaran — pesannya tampil di dekat tombol Register, bukan hanya di atas form, dan
+  // berkasnya dimuat ulang (RCVN.26.115, 2026-10-10).
+  it('menampilkan galat Simpan di dekat tombol Register Klaim', async () => {
+    installFetch((call) =>
+      call.method === 'PUT'
+        ? {
+            status: 409,
+            body: { kode: 'hanya_baca', pesan: 'This Receive Document is already registered as a claim and can no longer be changed.' },
+          }
+        : { body: berkas({ isian: { ...ISIAN_KOSONG, nomor_polis: '01.002.2026.00001' } }) },
+    )
+    show()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register Klaim' }))
+
+    expect(await screen.findByText('Klaim tidak didaftarkan: berkas tidak dapat disimpan')).toBeInTheDocument()
+    expect(calls.some((c) => c.url.includes('/api/registrasi/klaim'))).toBe(false)
+    await waitFor(() => expect(calls.filter((c) => c.method === 'GET').length).toBeGreaterThan(1))
   })
 
   // Setelah klaim terbit, petugas dibawa ke klaimnya — bukan ditinggalkan di form laporan

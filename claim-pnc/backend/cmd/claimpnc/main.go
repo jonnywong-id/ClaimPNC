@@ -94,6 +94,7 @@ import (
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/platform/emailserver"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/random"
@@ -3051,6 +3052,11 @@ type assembly struct {
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type storage struct {
+	// emailServer membaca akun surel POOLDATA.M_EMAIL_SERVER_PNC dari portal utama — sumber
+	// host, port, alamat, dan sandi seluruh pengirim surel. Nil pada mode tanpa Oracle:
+	// pengirim lalu memakai SMTP_* dari .env.
+	emailServer *emailserver.Store
+
 	user    auth.UserRepo
 	session auth.SessionRepo
 	portal  portal.Repo
@@ -3787,7 +3793,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	receiveTKAService, err := inboxreceivetkausecase.NewService(
 		inboxreceivetkausecase.Options{
 			RepoSelector: store.receiveTKASelector,
-			Notifier:     buildReceiveTKANotifier(cfg, logger),
+			Notifier:     buildReceiveTKANotifier(cfg, store, logger),
 			Logger:       logger,
 		})
 	if err != nil {
@@ -3905,7 +3911,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	xolService, err := masterxolusecase.NewService(masterxolusecase.Options{
 		RepoSelector: store.xolSelector,
-		Notifier:     buildXOLNotifier(cfg, logger),
+		Notifier:     buildXOLNotifier(cfg, store, logger),
 		Logger:       logger,
 	})
 	if err != nil {
@@ -4575,7 +4581,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee, cfg.PATechnicalPIC)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee, cfg.PATechnicalPIC, plaEmailSender{queue: pladlaService.queue})
 		if err != nil {
 			store.close()
 			return assembly{}, err
@@ -4792,18 +4798,11 @@ func (konversiBelumDikonfigurasi) Convert(context.Context, []byte) ([]byte, erro
 
 func buildReceiveTKANotifier(
 	cfg config.Config,
+	store storage,
 	logger *slog.Logger,
 ) inboxreceivetka.Notifier {
-	if !cfg.SMTP.TKAActive() {
-		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
-			slog.String("akibat",
-				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
-			slog.String("perbaikan",
-				"isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_TKA"))
-		return nil
-	}
-
-	return inboxreceivetkanotif.NewSender(inboxreceivetkanotif.Config{
+	smtpConfig := inboxreceivetkanotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -4811,7 +4810,24 @@ func buildReceiveTKANotifier(
 		From:     cfg.SMTP.From,
 		To:       cfg.SMTP.TKARecipients,
 		Timeout:  cfg.SMTP.Timeout,
-	})
+	}
+	if !smtpConfig.Complete() {
+		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
+			slog.String("akibat",
+				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
+			slog.String("perbaikan", "isi SMTP_PENERIMA_TKA"))
+		return nil
+	}
+	return inboxreceivetkanotif.NewSender(smtpConfig)
+}
+
+// emailAccountSource adalah sumber akun surel POOLDATA.M_EMAIL_SERVER_PNC untuk seluruh
+// pengirim surel, atau nil pada mode tanpa Oracle (pengirim memakai SMTP_* dari .env).
+func emailAccountSource(store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.Account
 }
 
 // buildMasterRekening menyusun modul Master Rekening di balik seam-nya.
@@ -4838,21 +4854,23 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 		notifier      masterrekening.Notifier
 	)
 
-	if cfg.SMTP.Active() {
-		notifier = masterrekeningnotif.NewSender(masterrekeningnotif.Config{
-			Host:     cfg.SMTP.Host,
-			Port:     cfg.SMTP.Port,
-			User:     cfg.SMTP.User,
-			Password: cfg.SMTP.Password,
-			From:     cfg.SMTP.From,
-			To:       cfg.SMTP.AlertRecipients,
-			Timeout:  cfg.SMTP.Timeout,
-		})
+	alertConfig := masterrekeningnotif.Config{
+		Account:  emailAccountSource(store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.AlertRecipients,
+		Timeout:  cfg.SMTP.Timeout,
+	}
+	if alertConfig.Complete() {
+		notifier = masterrekeningnotif.NewSender(alertConfig)
 	} else {
 		notifier = &masterrekeningnotif.Fake{}
 		logger.Warn("pengirim surel tiruan dipakai",
 			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Cashier gagal"),
-			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_PERINGATAN"))
+			slog.String("perbaikan", "isi SMTP_PENERIMA_PERINGATAN"))
 	}
 
 	switch {
@@ -4995,6 +5013,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				"kolom laporan yang bersumber dari sana akan dikosongkan (R-03)")
 		}
 		primary := pool.Primary()
+		store.emailServer = emailserver.NewStore(primary, cfg.SMTP.EmailAccount)
 		store.legacy = sqlstore.NewLegacy(primary)
 		store.portal = portalsql.NewRepo(primary)
 		store.accountSelector = func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error) {
@@ -7286,8 +7305,9 @@ func claimStatusSelectorMemory(primaryAlias string) masterstatus.RepoSelector {
 //
 // Tempat yang benar bagi daftar ini kelak adalah master Penerima Notifikasi (`F-4`), yang
 // belum dibangun.
-func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier {
+func buildXOLNotifier(cfg config.Config, store storage, logger *slog.Logger) masterxol.Notifier {
 	smtpConfig := masterxolnotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -7302,7 +7322,7 @@ func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier
 
 	logger.Warn("pemberitahuan komite Master XOL tidak dikirim: SMTP atau penerimanya belum lengkap",
 		slog.String("modul", "masterxol"),
-		slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan XOL_PENERIMA_KOMITE"))
+		slog.String("perbaikan", "isi XOL_PENERIMA_KOMITE"))
 	return masterxolnotif.NewFake()
 }
 
@@ -8543,4 +8563,12 @@ func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxauto
 		panic(err)
 	}
 	return checker
+}
+
+// emailAccountLabel menyebut sumber akun surel untuk log, tanpa sandi.
+func emailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 }

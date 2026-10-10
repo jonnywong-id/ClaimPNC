@@ -39,7 +39,7 @@ SELECT d.NOPLA, d.TGLPLA
 -- PLA yang diterbitkan layar Print PLA: koasuransi (COINS), fakultatif keluar (FACOUT), dan
 -- BPPDAN / EQ POOL (GeneratePLAList).
 SELECT d.NOPLA, d.PLAREINSURER, d.REINSCODE, d.TGLPLA, d.NOTES, d.CURRENCYPOLIS, d.JSON_PLA, d.EMAILPLA,
-       d.TIPEPLA
+       d.TIPEPLA, COALESCE(d.ISKIRIM, '0')
   FROM POOLDATA.T_PLALIST d
  WHERE d.CLAIMID = :1 AND d.OBJECTID = :2 AND d.OBJECTCOVERAGEID = :3 AND d.REVISI = :4
    AND d.TIPEPLA IN (:5, :6, :7, :8)

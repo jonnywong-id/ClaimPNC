@@ -257,12 +257,17 @@ SELECT OPERATOR_ID
 
 -- name: pic_teknik_naikkan_beban
 --
--- Langkah UPDATE pada akhir `GETDATA_PICTEKNIK` — hanya cabang prosedur PA/Travel.
---
--- Jalur NONMBU tidak memakainya: `AddTJobCounterPIC_SQL` di Pega berada pada step 15.9–15.10
--- yang tidak pernah tercapai. Beban NONMBU dinaikkan `cfs_tambah_beban_pic` (facesheet.sql).
+-- Langkah UPDATE pada akhir `GETDATA_PICTEKNIK` (PA/Travel), dan `AddTJobCounterPIC_SQL` jalur
+-- NONMBU estimasi < Rp 1 miliar. Lihat Assigner.chooseTechnicalPIC.
 UPDATE POOLDATA.MST_USER_TEKNIK
-   SET COUNTER_QUOTA = COUNTER_QUOTA + 1
+   SET COUNTER_QUOTA = COALESCE(COUNTER_QUOTA, 0) + 1
+ WHERE OPERATOR_ID = :1
+
+-- name: pic_teknik_naikkan_beban_besar
+--
+-- `AddTJobCounterPIC_SQL_22` — jalur NONMBU estimasi > Rp 1 miliar.
+UPDATE POOLDATA.MST_USER_TEKNIK
+   SET COUNTER_QUOTA2 = COALESCE(COUNTER_QUOTA2, 0) + 1
  WHERE OPERATOR_ID = :1
 
 

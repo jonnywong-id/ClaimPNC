@@ -452,6 +452,12 @@ func (d DocumentStorage) ConverterActive() bool {
 // dari jaringan tepercaya tanpa autentikasi. Bila keduanya diisi, kredensialnya HANYA
 // dikirim setelah STARTTLS berhasil — penolakannya ada di kode, bukan di konfigurasi.
 type SMTP struct {
+	// EmailAccount adalah EMAIL_ACCOUNT di POOLDATA.M_EMAIL_SERVER_PNC yang dipakai seluruh
+	// modul pengirim surel (EMAIL_ACCOUNT, bawaan ClaimPNC — Work Owner 2026-10-10). Bila
+	// basis data portal utama tersedia, host, port, alamat, dan sandi dibaca dari tabel itu;
+	// Host sampai From di bawah hanya dipakai pada mode tanpa Oracle.
+	EmailAccount string
+
 	Host     string
 	Port     int
 	User     string
@@ -783,6 +789,7 @@ func Load() (Config, error) {
 			Timeout:        documentStorageTimeout,
 		},
 		SMTP: SMTP{
+			EmailAccount:    get("EMAIL_ACCOUNT", "ClaimPNC"),
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),

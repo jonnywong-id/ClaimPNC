@@ -180,9 +180,9 @@ func (s *PLAStore) Issued(ctx context.Context, claimID, objectID string, coverag
 	defer func() { _ = rows.Close() }()
 	var out []registrasi.PLA
 	for rows.Next() {
-		var number, recipient, code, note, currency, body, email, kind sql.NullString
+		var number, recipient, code, note, currency, body, email, kind, sent sql.NullString
 		var date sql.NullTime
-		if err := rows.Scan(&number, &recipient, &code, &date, &note, &currency, &body, &email, &kind); err != nil {
+		if err := rows.Scan(&number, &recipient, &code, &date, &note, &currency, &body, &email, &kind, &sent); err != nil {
 			return nil, fmt.Errorf("registrasi/sqlstore: membaca baris PLA: %w", err)
 		}
 		p := registrasi.PLA{
@@ -190,6 +190,7 @@ func (s *PLAStore) Issued(ctx context.Context, claimID, objectID string, coverag
 			Number: trimmed(number), Type: trimmed(kind), Recipient: trimmed(recipient),
 			RecipientCode: trimmed(code), Date: wallWIB(date.Time), Note: note.String, PolicyCurrency: trimmed(currency),
 			Info: registrasi.PLARecipientInfo{Email: trimmed(email)},
+			Sent: trimmed(sent) == "1",
 		}
 		var doc plaJSON
 		if body.Valid && json.Unmarshal([]byte(body.String), &doc) == nil {

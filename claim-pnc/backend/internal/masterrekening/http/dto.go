@@ -50,6 +50,10 @@ type AccountDTO struct {
 	CashierAccountID string `json:"id_rekening_kasir"`
 	CashierResponse  string `json:"respons_kasir"`
 
+	// NotificationError adalah sebab surel peringatan Kasir gagal dikirim pada keputusan
+	// ini, untuk dilampirkan ke IT Support. Hanya pada jawaban keputusan; tidak disimpan.
+	NotificationError string `json:"pemberitahuan_galat,omitempty"`
+
 	// Usable menjawab pertanyaan yang sesungguhnya ditanyakan layar: boleh
 	// tidak rekening ini menerima pembayaran klaim. Ia dihitung di server supaya
 	// dua syaratnya — disetujui DAN aktif — tidak perlu diulang di setiap layar.
@@ -59,30 +63,31 @@ type AccountDTO struct {
 // FromAccount mengubah rekening domain menjadi DTO.
 func FromAccount(r masterrekening.Account) AccountDTO {
 	return AccountDTO{
-		Number:           r.Number,
-		OwnerName:        r.OwnerName,
-		BankName:         r.BankName,
-		BankBranch:       r.BankBranch,
-		BankAddress:      r.BankAddress,
-		BankCode:         r.BankCode,
-		AccountType:      r.AccountType,
-		Active:           r.Active,
-		Email:            r.Email,
-		Phone:            r.Phone,
-		NIK:              r.NIK,
-		SubmitterEmail:   r.SubmitterEmail,
-		Note:             r.Note,
-		Document:         r.DocumentID,
-		CreatedBy:        r.CreatedBy,
-		Status:           string(r.Status),
-		StatusLabel:      r.Status.Label(),
-		Committee:        r.CommitteeApproval,
-		CreatedAt:        r.CreatedAt,
-		DecidedAt:        r.DecidedAt,
-		ServiceStatus:    r.ServiceStatus,
-		CashierAccountID: r.CashierAccountID,
-		CashierResponse:  r.CashierResponse,
-		Usable:           r.Usable(),
+		Number:            r.Number,
+		OwnerName:         r.OwnerName,
+		BankName:          r.BankName,
+		BankBranch:        r.BankBranch,
+		BankAddress:       r.BankAddress,
+		BankCode:          r.BankCode,
+		AccountType:       r.AccountType,
+		Active:            r.Active,
+		Email:             r.Email,
+		Phone:             r.Phone,
+		NIK:               r.NIK,
+		SubmitterEmail:    r.SubmitterEmail,
+		Note:              r.Note,
+		Document:          r.DocumentID,
+		CreatedBy:         r.CreatedBy,
+		Status:            string(r.Status),
+		StatusLabel:       r.Status.Label(),
+		Committee:         r.CommitteeApproval,
+		CreatedAt:         r.CreatedAt,
+		DecidedAt:         r.DecidedAt,
+		ServiceStatus:     r.ServiceStatus,
+		CashierAccountID:  r.CashierAccountID,
+		CashierResponse:   r.CashierResponse,
+		NotificationError: r.NotificationError,
+		Usable:            r.Usable(),
 	}
 }
 

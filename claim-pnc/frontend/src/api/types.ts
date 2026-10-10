@@ -1454,6 +1454,8 @@ export type Account = {
   status_layanan: string
   id_rekening_kasir: string
   respons_kasir: string
+  /** Sebab surel peringatan Kasir gagal dikirim pada keputusan ini — untuk IT Support. */
+  pemberitahuan_galat?: string
 
   /**
    * Boleh tidak rekening ini menerima pembayaran klaim.
@@ -4653,6 +4655,8 @@ export type ReceiveTKACompleteResponse = {
    * peringatan yang selalu muncul berhenti dibaca.
    */
   pemberitahuan_dicoba: boolean
+  /** Sebab pemberitahuan gagal dikirim — untuk dilampirkan ke IT Support. */
+  pemberitahuan_galat?: string
   /**
    * Bernilai `true` hanya bila surelnya benar-benar terkirim.
    *

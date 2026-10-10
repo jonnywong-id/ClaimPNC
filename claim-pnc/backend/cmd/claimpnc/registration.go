@@ -64,6 +64,7 @@ func assembleRegistration(
 	attendance config.AttendancePIC,
 	acceptanceCommittee string,
 	paTechnicalPIC string,
+	plaSender registrasi.PLASender,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
@@ -79,6 +80,7 @@ func assembleRegistration(
 
 		AcceptanceMultiLevelCommittee: acceptanceCommittee,
 		DefaultPATechnicalPIC:         paTechnicalPIC,
+		PLASender:                     plaSender,
 	}
 
 	if db != nil {

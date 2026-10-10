@@ -92,6 +92,25 @@ type PLA struct {
 	PolicyCurrency string
 	Amount         []PLAAmount
 	Info           PLARecipientInfo
+
+	// Sent adalah T_PLALIST.ISKIRIM = '1': PLA ini sudah dikirim lewat email (`.IsKirim`).
+	Sent bool
+}
+
+// PLASender mengirim satu PLA yang sudah terbit lewat email kepada penerimanya
+// (T_PLALIST.EMAILPLA), lalu menandainya terkirim (ISKIRIM, TGLKIRIM) — padanan
+// `UpdateDetailPLA2` + `UpdatesetstatusdantanggalKirimPLA` yang dijalankan tombol SEND ALL PLA
+// (`DownloadAllDocumentPLA` SendPrint "2"). Galat berarti PLA itu tidak terkirim, atau
+// terkirim tetapi penandaannya gagal — pesannya menyebut yang mana.
+type PLASender interface {
+	SendPLA(ctx context.Context, portal, login, claimID, number string, document PLAAttachment) error
+}
+
+// PLAAttachment adalah PDF satu PLA yang dilampirkan pada suratnya — padanan berkas kategori PLA
+// hasil `AttachAsPDFC` yang dilampirkan `UpdateDetailPLA2`.
+type PLAAttachment struct {
+	Name    string
+	Content []byte
 }
 
 // PLAPrevious adalah PLA terakhir kepada seorang penerima pada klaim yang sama.

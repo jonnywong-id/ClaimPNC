@@ -725,12 +725,28 @@ export type PLARow = {
   catatan: string
   email: string
   tanggal: string
+  /** T_PLALIST.ISKIRIM = '1' — sudah dikirim lewat email (SEND ALL PLA). */
+  terkirim?: boolean
 }
 
 export type PLAListResponse = {
   revisi_cfs: number
   baru_terbit: number
   pla: PLARow[]
+}
+
+/** Hasil SEND ALL PLA untuk satu PLA. */
+export type PLASendOutcome = {
+  nomor: string
+  terkirim: boolean
+  dilewati: boolean
+  /** Sebab gagal — untuk dilampirkan ke IT Support. */
+  galat?: string
+}
+
+export type PLASendResponse = {
+  hasil: PLASendOutcome[]
+  daftar: PLAListResponse
 }
 
 /**

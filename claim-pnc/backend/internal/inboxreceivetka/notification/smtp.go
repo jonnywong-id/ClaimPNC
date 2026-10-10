@@ -40,6 +40,7 @@ package notification
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"html"
@@ -49,10 +50,17 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxreceivetka"
+	"claim-pnc/internal/platform/emailserver"
 )
 
 // Config adalah parameter sambungan SMTP.
 type Config struct {
+	// Account membaca akun server surel dari POOLDATA.M_EMAIL_SERVER_PNC (EMAIL_ACCOUNT)
+	// setiap kali surel dikirim — pengganti Email Account Pega (Work Owner 2026-10-10).
+	// Bila terisi, Host, Port, User, Password, dan From diambil dari akun itu; User dan From
+	// sama-sama EMAIL_ADDRESS. Nil: isian di atas yang dipakai (mode tanpa Oracle).
+	Account func(ctx context.Context) (emailserver.Account, error)
+
 	Host string
 	Port int
 
@@ -82,9 +90,8 @@ type Config struct {
 
 // Complete menyatakan konfigurasi ini cukup untuk mengirim surel.
 func (k Config) Complete() bool {
-	return strings.TrimSpace(k.Host) != "" &&
-		k.Port > 0 &&
-		strings.TrimSpace(k.From) != "" &&
+	return (k.Account != nil ||
+		strings.TrimSpace(k.Host) != "" && k.Port > 0 && strings.TrimSpace(k.From) != "") &&
 		len(k.to()) > 0
 }
 
@@ -109,11 +116,31 @@ type Sender struct {
 // NewSender membentuk pengirim SMTP.
 func NewSender(k Config) *Sender { return &Sender{cfg: k} }
 
+// withAccount mengembalikan pengirim berkonfigurasi akun M_EMAIL_SERVER_PNC terbaru, atau
+// pengirim itu sendiri bila Account tidak dipasang.
+func (p *Sender) withAccount(ctx context.Context) (*Sender, error) {
+	if p.cfg.Account == nil {
+		return p, nil
+	}
+	account, err := p.cfg.Account(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("inboxreceivetka/notification: akun surel: %w", err)
+	}
+	c := p.cfg
+	c.Host, c.Port = account.Host, account.Port
+	c.User, c.Password, c.From = account.Address, account.Password, account.Address
+	return &Sender{cfg: c}, nil
+}
+
 // NotifyDocumentCompleted mengirim satu surel pemberitahuan kelengkapan dokumen.
 func (p *Sender) NotifyDocumentCompleted(
 	ctx context.Context,
 	notice inboxreceivetka.Notice,
 ) error {
+	p, err := p.withAccount(ctx)
+	if err != nil {
+		return err
+	}
 	if !p.cfg.Complete() {
 		return errors.New("inboxreceivetka/notification: SMTP belum dikonfigurasi")
 	}
@@ -154,7 +181,7 @@ func (p *Sender) send(ctx context.Context, to []string, message []byte) error {
 	// Itu tidak ditiru: menyalin kelemahan keamanan bukan kesetaraan perilaku.
 	secured := false
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(nil); err != nil {
+		if err := client.StartTLS(&tls.Config{ServerName: p.cfg.Host}); err != nil {
 			return fmt.Errorf("inboxreceivetka/notification: menegakkan TLS: %w", err)
 		}
 		secured = true

@@ -64,6 +64,7 @@ type Service struct {
 	cashierAccountCheck    bool
 	acceptanceMultiLevel   string
 	defaultPATechnicalPIC  string
+	plaSender              registrasi.PLASender
 	cashier                registrasi.CashierStore
 	cashierGateway         registrasi.CashierGateway
 	lodRenderer            registrasi.LODRenderer
@@ -145,6 +146,10 @@ type Options struct {
 	// ke Analyst (PreClaimComitee_OC langkah 21). Kosong: router memilih PIC PA dengan beban
 	// paling sedikit.
 	DefaultPATechnicalPIC string
+
+	// PLASender mengirim PLA lewat email — tombol SEND ALL PLA. Nil: tombolnya menjawab
+	// ErrPLASendUnavailable.
+	PLASender registrasi.PLASender
 	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
 	// mengirim pembayaran ke sistem Kasir.
 	Cashier        registrasi.CashierStore
@@ -302,6 +307,7 @@ func NewService(o Options) (*Service, error) {
 		cashierAccountCheck:    o.CashierAccountCheck,
 		acceptanceMultiLevel:   o.AcceptanceMultiLevelCommittee,
 		defaultPATechnicalPIC:  o.DefaultPATechnicalPIC,
+		plaSender:              o.PLASender,
 		cashier:                o.Cashier,
 		cashierGateway:         o.CashierGateway,
 		lodRenderer:            o.LODRenderer,

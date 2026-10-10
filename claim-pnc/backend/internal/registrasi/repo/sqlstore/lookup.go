@@ -558,10 +558,19 @@ func (a *Assigner) Assign(
 //
 // # Beban petugas
 //
-// Mengikuti Pega apa adanya. Prosedur PA/Travel menaikkan MST_USER_TEKNIK.COUNTER_QUOTA.
-// Jalur NONMBU TIDAK menaikkan beban apa pun saat memilih; bebannya dinaikkan
-// `AddTJobCQuota_SQL` saat Claim Face Sheet pertama — di MST_USER_TEKNIS, bukan di
-// MST_USER_TEKNIK yang dipakai mengurutkan kandidat (lihat usecase/facesheet.go).
+// Petugas yang dipilih dinaikkan bebannya di MST_USER_TEKNIK — kolom yang dipakai
+// mengurutkan kandidat — sehingga giliran berputar merata:
+//
+//   - prosedur PA/Travel: COUNTER_QUOTA (UPDATE di akhir GETDATA_PICTEKNIK);
+//   - NONMBU estimasi < Rp 1 miliar: COUNTER_QUOTA (`AddTJobCounterPIC_SQL`);
+//   - NONMBU estimasi > Rp 1 miliar: COUNTER_QUOTA2 (`AddTJobCounterPIC_SQL_22`).
+//
+// Export menunjukkan langkah 15.9–15.10 `getRandomTeam_act` dilompati, tetapi data LIVE
+// membuktikan pencacahnya naik setiap kali PIC dipilih: COUNTER_QUOTA petugas NONMBU aktif
+// hampir sama rata (1467–1468, 2026-10-10) dan bergerak dari salinan sebelumnya. Tanpa
+// penambahan ini kandidat yang sama terpilih terus (PNCN.26.79, .80 → petugas yang sama).
+// AddTJobCQuota_SQL saat Claim Face Sheet tetap berjalan terpisah di MST_USER_TEKNIS
+// (lihat usecase/facesheet.go).
 func (a *Assigner) chooseTechnicalPIC(ctx context.Context, claim registrasi.Claim, caller string) (string, error) {
 	estimate, err := a.estimateIDR(ctx, claim)
 	if err != nil {
@@ -600,13 +609,13 @@ func (a *Assigner) chooseTechnicalPIC(ctx context.Context, claim registrasi.Clai
 		return "", nil
 	}
 
-	// Hanya cabang prosedur yang menaikkan beban MST_USER_TEKNIK (UPDATE di akhir
-	// GETDATA_PICTEKNIK). Jalur NONMBU tidak: di Pega step 15.8 keluar ke EX sebelum step
-	// 15.9–15.10, sehingga pencacahnya tidak pernah jalan.
-	if plan.Pool == registrasi.PoolProcedure {
-		if _, err := exec.ExecContext(ctx, loadQuery("pic_teknik_naikkan_beban"), operator); err != nil {
-			return "", fmt.Errorf("registrasi/sqlstore: menaikkan beban petugas %q: %w", operator, err)
-		}
+	// Beban petugas terpilih dinaikkan — lihat catatan "Beban petugas" di atas.
+	counter := "pic_teknik_naikkan_beban"
+	if plan.Pool == registrasi.PoolNonMBU && plan.Large {
+		counter = "pic_teknik_naikkan_beban_besar"
+	}
+	if _, err := exec.ExecContext(ctx, loadQuery(counter), operator); err != nil {
+		return "", fmt.Errorf("registrasi/sqlstore: menaikkan beban petugas %q: %w", operator, err)
 	}
 	return strings.TrimSpace(operator), nil
 }

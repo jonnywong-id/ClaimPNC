@@ -77,6 +77,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/pla/daftar", func(w http.ResponseWriter, r *http.Request) {
 			h.ListPLA(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol SEND ALL PLA: mengirim PLA yang belum terkirim lewat email.
+		sub.Post("/klaim/{klaimID}/pla/kirim", func(w http.ResponseWriter, r *http.Request) {
+			h.SendAllPLA(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/pla/catatan", func(w http.ResponseWriter, r *http.Request) {
 			h.SavePLANotes(w, r, chi.URLParam(r, "klaimID"))
 		})
