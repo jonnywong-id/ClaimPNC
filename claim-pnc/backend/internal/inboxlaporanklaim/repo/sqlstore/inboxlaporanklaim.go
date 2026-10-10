@@ -400,7 +400,7 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		if tooLong := valueTooLarge(err); tooLong != nil {
 			return tooLong
 		}
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q: %w", report.ID, ownTable(err))
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q ke POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", report.ID, ownTable(err))
 	}
 
 	// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
@@ -462,7 +462,7 @@ func upsertClaimRow(ctx context.Context, tx *sql.Tx, report inboxlaporanklaim.Cl
 		return tooLong
 	}
 	if err != nil {
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: memperbarui baris %q di T_CLAIM_PNC: %w", report.ID, err)
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: memperbarui baris %q di POOLDATA.T_CLAIM_PNC: %w", report.ID, err)
 	}
 	if affected, err := result.RowsAffected(); err == nil && affected > 0 {
 		return nil
@@ -471,7 +471,7 @@ func upsertClaimRow(ctx context.Context, tx *sql.Tx, report inboxlaporanklaim.Cl
 		if tooLong := valueTooLarge(err); tooLong != nil {
 			return tooLong
 		}
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan baris %q di T_CLAIM_PNC: %w", report.ID, err)
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan baris %q di POOLDATA.T_CLAIM_PNC: %w", report.ID, err)
 	}
 	return nil
 }
@@ -559,7 +559,7 @@ func (r *Repo) insertOnce(
 		saved.ID, saved.CreatedAt, saved.BranchCode,
 		saved.CreatedBy, emptyToNil(saved.ReporterName),
 	); err != nil {
-		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan %q: %w", saved.ID, ownTable(err))
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan %q ke POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", saved.ID, ownTable(err))
 	}
 
 	// Barisnya di T_CLAIM_PNC lahir bersama berkasnya, di transaksi yang sama. Bila

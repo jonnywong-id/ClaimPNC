@@ -38,7 +38,7 @@ func (r *TaskStore) Save(ctx context.Context, t registrasi.Task) error {
 		t.Owner,
 	)
 	if err != nil {
-		return fmt.Errorf("registrasi/sqlstore: memperbarui tugas: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: memperbarui tugas di CPNC_TUGAS: %w", err)
 	}
 	row, err := result.RowsAffected()
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *TaskStore) Save(ctx context.Context, t registrasi.Task) error {
 		emptyTextAsNil(t.Workbasket),
 		t.CreatedAt.UTC(),
 	); err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menyisipkan tugas: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: menyisipkan tugas ke CPNC_TUGAS: %w", err)
 	}
 	return nil
 }

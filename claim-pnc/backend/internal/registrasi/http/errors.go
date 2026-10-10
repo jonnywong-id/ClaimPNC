@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/oraerror"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -37,11 +38,14 @@ const (
 	CodeDocumentDelete       = "hapus_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
-	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
-	CodeCashierUnavailable   = "kasir_tidak_terhubung"
-	CodePLASendUnavailable   = "kirim_pla_tidak_tersedia"
-	CodeCashierNoReply       = "kasir_tidak_menjawab"
-	CodeCashierRejected      = "kasir_menolak"
+	// CodeDatabaseError: penyimpanan/pembacaan tabel ditolak Oracle; pesannya memuat galat
+	// Oracle apa adanya (Work Owner 2026-10-10).
+	CodeDatabaseError      = "galat_basis_data"
+	CodePremiumUnavailable = "status_premi_tidak_terbaca"
+	CodeCashierUnavailable = "kasir_tidak_terhubung"
+	CodePLASendUnavailable = "kirim_pla_tidak_tersedia"
+	CodeCashierNoReply     = "kasir_tidak_menjawab"
+	CodeCashierRejected    = "kasir_menolak"
 )
 
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
@@ -275,6 +279,11 @@ func mapError(err error) (int, ErrorResponse) {
 		}
 
 	default:
+		// Galat Oracle ditampilkan apa adanya beserta tabelnya, bukan pesan umum — supaya
+		// petugas dapat melaporkannya (Work Owner 2026-10-10). Lihat platform/oraerror.
+		if message, ok := oraerror.Describe(err); ok {
+			return http.StatusInternalServerError, ErrorResponse{Code: CodeDatabaseError, Message: message}
+		}
 		return http.StatusInternalServerError, ErrorResponse{
 			Code:    CodeInternalError,
 			Message: "Terjadi kesalahan pada sistem.",

@@ -132,7 +132,7 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 
 	result, err := exec.ExecContext(ctx, loadQuery("klaim_perbarui"), args...)
 	if err != nil {
-		return fmt.Errorf("registrasi/sqlstore: memperbarui klaim: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: memperbarui klaim di POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	row, err := result.RowsAffected()
 	if err != nil {
@@ -146,7 +146,7 @@ func (r *ClaimStore) saveHeader(ctx context.Context, exec executor, k registrasi
 	// WIB seperti baris Pega — bukan UTC, yang menyimpannya tujuh jam lebih awal.
 	args = append(args, k.CreatedBy, registerMoment(k.CreatedAt))
 	if _, err := exec.ExecContext(ctx, loadQuery("klaim_sisip"), args...); err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menyisipkan klaim: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: menyisipkan klaim ke POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	return nil
 }
@@ -170,7 +170,7 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 			"objek_perbarui", []any{o.ID, o.Name, o.Location, k.ID, itemSeq},
 			"objek_sisip", []any{o.ID, o.Name, o.Location, k.ID, itemSeq},
 		); err != nil {
-			return fmt.Errorf("registrasi/sqlstore: menyimpan objek %d: %w", itemSeq, err)
+			return fmt.Errorf("registrasi/sqlstore: menyimpan objek %d ke POOLDATA.T_CLAIM_OBJECTLIST: %w", itemSeq, err)
 		}
 
 		for j, c := range o.Coverage {
@@ -187,11 +187,11 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 					c.ID, c.CauseOfLoss, int64(c.TSI), o.ID, coverageSeq, now,
 					k.ID, itemSeq, coverageSeq, emptyTextAsNil(c.Name)},
 			); err != nil {
-				return fmt.Errorf("registrasi/sqlstore: menyimpan coverage %d.%d: %w", itemSeq, coverageSeq, err)
+				return fmt.Errorf("registrasi/sqlstore: menyimpan coverage %d.%d ke POOLDATA.T_CLAIM_OBJECTCOVERAGE: %w", itemSeq, coverageSeq, err)
 			}
 
 			if err := r.saveSpreading(ctx, exec, k.ID, o.ID, coverageSeq, c.Spreading); err != nil {
-				return fmt.Errorf("registrasi/sqlstore: menyimpan spreading %d.%d: %w",
+				return fmt.Errorf("registrasi/sqlstore: menyimpan spreading %d.%d ke POOLDATA.T_CLAIM_SPREADING: %w",
 					itemSeq, coverageSeq, err)
 			}
 			if err := r.saveItems(ctx, exec, k, o.ID, coverageSeq, c.Item, now); err != nil {
@@ -199,7 +199,7 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 					itemSeq, coverageSeq, err)
 			}
 			if err := r.saveSettlement(ctx, exec, k.ID, o.ID, coverageSeq, c.Settlement); err != nil {
-				return fmt.Errorf("registrasi/sqlstore: menyimpan adjustment %d.%d: %w",
+				return fmt.Errorf("registrasi/sqlstore: menyimpan adjustment %d.%d ke POOLDATA.T_CLAIM_ADJUSTMENT: %w",
 					itemSeq, coverageSeq, err)
 			}
 		}
@@ -207,7 +207,7 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 
 	if _, err := exec.ExecContext(ctx, loadQuery("objek_tandai_sisa"),
 		now, k.ID, len(k.InsuredItem)); err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menandai sisa objek: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: menandai sisa objek di POOLDATA.T_CLAIM_OBJECTLIST: %w", err)
 	}
 	return nil
 }
