@@ -224,8 +224,17 @@ func (s *Store) List(
 
 // Summarize mengembalikan kedua pencacah.
 //
-// Ia memakai countsAsAnswered, BUKAN answered — kedua penyaring itu berbeda satu kolom di
-// sistem lama, dan perbedaan itulah yang sedang ditiru.
+// # Ia menghitung POPULASI YANG SAMA dengan grid, dan itu berubah pada 2026-10-09
+//
+// Sampai tanggal itu ia memakai countsAsAnswered/countsAsNotAnswered — penyaring pencacah
+// Pega, yang memeriksa `REPLYFROM` dan tidak memeriksa pengirim maupun pesan. Akibatnya
+// angkanya dapat berbeda dari jumlah baris gridnya, dan itu terlihat di layar yang
+// berjalan: baris "Not Answered 1" yang dapat diklik membuka grid bertuliskan
+// `Total Data : 0`.
+//
+// Sekarang ia memakai matchesGrid — penyaring yang SAMA PERSIS dengan kedua kueri grid —
+// ditambah `answered()`, satu-satunya hal yang membedakan kedua pencacah. Dengan begitu
+// angka pada tabel ringkas adalah janji yang pasti ditepati gridnya.
 func (s *Store) Summarize(
 	_ context.Context,
 	filter inboxkomunikasicabang.BranchFilter,
@@ -236,22 +245,17 @@ func (s *Store) Summarize(
 	summary := inboxkomunikasicabang.Summary{}
 
 	for _, row := range s.rows {
-		// Pencacah TIDAK menyaring pengirim dan pesan.
-		//
-		// Kedua kueri pencacah hanya memeriksa kanal, batas cabang, dan kolom balasan —
-		// tidak ada `SENDER IS NOT NULL` maupun `MESSAGE IS NOT NULL` di sana, padahal
-		// kedua kueri grid memilikinya. Selisih itu dibawa apa adanya.
-		if !matchesChannel(row) || !matchesBranch(row, filter) {
+		// matchesGrid, BUKAN matchesChannel+matchesBranch saja: pengirim dan pesan kosong
+		// disaring di sini persis seperti di gridnya.
+		if !matchesGrid(row, filter) {
 			continue
 		}
 
-		if row.countsAsAnswered() {
+		if row.answered() {
 			summary.Answered++
 			continue
 		}
-		if row.countsAsNotAnswered() {
-			summary.NotAnswered++
-		}
+		summary.NotAnswered++
 	}
 
 	return summary, nil
@@ -346,32 +350,14 @@ func (r Row) answered() bool {
 	return strings.TrimSpace(r.ReplyMessage) != ""
 }
 
-// countsAsAnswered menyatakan penyaring PENCACAH "Answered".
+// CATATAN. countsAsAnswered dan countsAsNotAnswered DIHAPUS pada 2026-10-09.
 //
-// Dari `GetCountKomunikasiCabangAnswered`:
+// Keduanya meniru penyaring pencacah Pega — `REPLYFROM` diperiksa, pengirim dan pesan
+// tidak — sehingga angka pencacah menghitung populasi yang berbeda dari gridnya. Work Owner
+// memutuskan keduanya diselaraskan; lihat Summarize dan kueri `count_*` di sqlstore.
 //
-//	AND REPLYFROM IS NOT NULL
-//	AND REPLYMESSAGE IS NOT NULL
-//
-// DUA kolom, bukan satu. Percakapan yang dibalas tanpa penjawab tercatat muncul di tabel
-// tetapi TIDAK terhitung di pencacah — dan itu perilaku sistem lama apa adanya.
-func (r Row) countsAsAnswered() bool {
-	return strings.TrimSpace(r.ReplyFrom) != "" && strings.TrimSpace(r.ReplyMessage) != ""
-}
-
-// countsAsNotAnswered menyatakan penyaring PENCACAH "Not Answered".
-//
-// Dari `GetCountKomunikasiCabangNotAnswered`:
-//
-//	AND REPLYFROM IS NULL
-//	AND REPLYMESSAGE IS NULL
-//
-// Perhatikan keduanya BUKAN saling melengkapi: percakapan yang salah satu kolomnya terisi
-// sendirian tidak terhitung di mana pun, sehingga jumlah kedua pencacah dapat KURANG dari
-// jumlah seluruh percakapan. Itu dibawa apa adanya dan dinyatakan lewat PlannedDifferences.
-func (r Row) countsAsNotAnswered() bool {
-	return strings.TrimSpace(r.ReplyFrom) == "" && strings.TrimSpace(r.ReplyMessage) == ""
-}
+// `Row.ReplyFrom` TIDAK ikut dihapus: ia kolom sungguhan yang diisi saat sebuah percakapan
+// dibalas, dan ia yang membuktikan balasan tersimpan beserta penjawabnya.
 
 // toConversation menyusun baris layar dari baris penyimpanan.
 //

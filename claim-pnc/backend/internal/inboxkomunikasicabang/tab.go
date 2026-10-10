@@ -439,11 +439,13 @@ var PlannedDifferences = []string{
 		"adalah kemampuan baru. Ketiga kolom tambahan diambil dari kueri lama yang memang " +
 		"sudah mengambilnya lalu membuangnya di layar.",
 
-	"Kedua pencacah di atas tabel menghitung dengan penyaring yang SEDIKIT BERBEDA dari " +
-		"tabelnya sendiri: pencacah memeriksa dua kolom balasan, tabel hanya memeriksa " +
-		"satu. Akibatnya jumlah pada pencacah dapat tidak sama persis dengan jumlah baris " +
-		"di tabel bila ada percakapan yang salah satu kolom balasannya terisi sendirian. " +
-		"Keduanya dibawa apa adanya karena keduanya memang begitu di layar lama.",
+	"Kedua pencacah di atas tabel menghitung POPULASI YANG SAMA dengan tabelnya. Kueri " +
+		"pencacah di layar lama menyaring berbeda dari kueri tabelnya sendiri — ia " +
+		"memeriksa kolom penjawab yang tidak diperiksa tabel, dan tidak memeriksa " +
+		"pengirim maupun isi pesan yang justru diperiksa tabel. Akibatnya angka pada " +
+		"tabel ringkas dapat menyebut satu percakapan yang gridnya menyatakan kosong. " +
+		"Angka yang dapat diklik adalah janji tentang apa yang akan terbuka, sehingga " +
+		"keduanya diselaraskan di sini.",
 
 	"Daftar dipotong per halaman di basis data. Grid Pega menarik seluruh barisnya lebih " +
 		"dulu lalu menomori halamannya di memori; di sini halamannya dipotong sebelum " +
