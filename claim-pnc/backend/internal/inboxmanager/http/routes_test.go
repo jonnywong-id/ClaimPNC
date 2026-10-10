@@ -158,7 +158,7 @@ func TestMetadataPerCaller(t *testing.T) {
 	require.Equal(t, inboxmanager.LineNonMBU, body["lini_bisnis_anda"])
 	require.Equal(t, inboxmanager.DefaultTab, body["tab_bawaan"])
 	require.Len(t, body["tab"], 13)
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 
 	first := body["tab"].([]any)[0].(map[string]any)
 	require.Equal(t, "dashboard", first["jenis"])

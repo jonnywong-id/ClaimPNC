@@ -43,6 +43,10 @@ const CATALOG = {
     },
   ],
   lini_bisnis: [{ nilai: '002', nama: 'Personal Accident' }],
+
+  // Ketiganya saja, mengikuti ComplianceStatusOptions di peladen. Nilai "3"
+  // ("Lain-Lain") ADA di data tetapi sengaja TIDAK ditawarkan penyaring ini, sehingga
+  // fixture yang memuatnya akan menguji alamat yang tidak mungkin dihasilkan layar.
   status_compliance: [
     { nilai: '0', nama: 'Fraud / ditolak' },
     { nilai: '1', nama: 'Valid / Bayar' },

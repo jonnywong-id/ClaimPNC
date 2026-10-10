@@ -99,9 +99,6 @@ const DETAIL: DetailResponse = {
       ],
     },
   ],
-  selisih_terencana: [
-    'Submit belum menulis ke basis data selama tabelnya masih dimiliki Pega.',
-  ],
   portal: 'ASM',
 }
 
@@ -365,12 +362,14 @@ describe('tabel', () => {
 })
 
 describe('selisih terencana', () => {
-  it('ditampilkan apa adanya dari server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi digambar di layar', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(
-      await screen.findByText(/Submit belum menulis ke basis data/),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Submit belum menulis ke basis data/)).not.toBeInTheDocument()
   })
 })

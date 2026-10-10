@@ -35,7 +35,6 @@ const METADATA: MetadataResponse = {
   semua_tab: [TAB],
   lini_bisnis_yang_diharapkan: ['NONMBU'],
   lini_bisnis_anda: 'NONMBU',
-  selisih_terencana: [],
   portal: 'ASM',
 }
 

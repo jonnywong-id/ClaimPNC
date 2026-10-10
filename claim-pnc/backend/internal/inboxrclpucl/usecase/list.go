@@ -494,9 +494,16 @@ func (s *Service) PerformAction(
 	// hidup di `TC_PNC_PUCL` — tabel milik aplikasi ini. Klaimnya kembali kepada PIC Teknik
 	// yang SUDAH memegang baris penugasannya; lihat Repo.ReturnToAnalyst.
 	//
-	// Ketiga tindakan lain tetap menempuh Pega, dan bukan karena kehati-hatian melainkan
-	// karena isinya: "Download Dokumen" membuat PDF dan mengirim email berlampiran, "Tolak
-	// Klaim" dan "Save" menyentuh isian yang tidak dibaca layar ini.
+	// SEJAK 2026-10-06 tidak ada satu pun tombol layar ini yang menempuh layanan Pega.
+	// "Tolak Klaim" adalah yang terakhir berpindah; lihat Repo.RejectClaim untuk sebabnya —
+	// ketiga tulisannya seluruhnya pada tabel milik aplikasi ini, sehingga alasan yang
+	// menahan kedua tombol Kirim dahulu tidak berlaku padanya.
+	//
+	// Jalur `s.actions.Perform` di kaki fungsi ini karena itu TIDAK LAGI TERJANGKAU oleh
+	// tindakan mana pun yang dikenali. Ia sengaja dipertahankan: `ClaimActionKind` masih
+	// dapat bertambah, dan menghapusnya berarti tindakan baru jatuh diam-diam ke `nil, nil`
+	// alih-alih ditolak.
+	//
 	// "Save" ditangani SENDIRI pula, dan ia menyimpan apa yang DIKETIK petugas.
 	//
 	// Di layar lama tombolnya menempuh `SaveInputRegisterDetail2`, yang berakhir pada
@@ -552,44 +559,95 @@ func (s *Service) PerformAction(
 		return doc, nil
 	}
 
-	// KEDUA tombol Kirim menempuh TIGA langkah, dan urutannya bagian dari kebenarannya.
+	// "Tolak Klaim" — MENUTUP klaim sebagai ditolak.
 	//
-	// # 1. Isian disimpan LEBIH DULU, dan kegagalannya membatalkan seluruhnya
+	// # Ia activity yang SAMA dengan kedua tombol Kirim, hanya `Status` berbeda
+	//
+	// Ketiganya memanggil `PUCLPost`. `Status = "1"` melepas ticket `SendtoAnalysator`
+	// (langkah 17) sehingga klaim DITERUSKAN; `Status = "0"` tidak melepas satu pun ticket
+	// dan justru memanggil `ASMForceCaseClose(Resolved-Rejected)` (langkah 42 dan 43),
+	// sehingga kasusnya DITUTUP. Peta lengkapnya ada di seam Repo.RejectClaim.
+	//
+	// # Urutannya: tutup dulu, catat kemudian
+	//
+	// Alasannya sama dengan kedua tombol Kirim: yang dapat MENOLAK dikerjakan lebih dulu,
+	// supaya penolakan tidak meninggalkan jejak separuh jalan. Di sini penutupannya sendiri
+	// satu transaksi, sehingga yang tersisa sesudahnya hanyalah pelengkap — riwayat dan surat.
+	//
+	// Keduanya TIDAK membatalkan penolakan bila gagal. Klaimnya sudah tertutup, dan
+	// mengembalikan galat hanya akan membuat petugas menekan tombolnya lagi tanpa akibat.
+	if kind == inboxrclpucl.ActionRejectClaim {
+		if err := repo.RejectClaim(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menolak klaim %s: %w", key, err)
+		}
+
+		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)
+		s.recordHistory(ctx, repo, portalAlias, detail, kind, cleanCaller.Login)
+
+		// Suratnya tetap terbit — `AttachAsPDFC` berprekondisi `1==1`, sehingga ia berjalan
+		// berapa pun `param.Status`. Pada jalur RCL namanya `RCL.pdf`, yaitu surat penolakan
+		// yang memang menjadi keluaran tombol ini.
+		doc, err := s.issueLetter(ctx, repo, detail, cleanCaller.Login)
+		if err != nil {
+			s.logLetterFailure(portalAlias, cleanCaller.Login, detail.ClaimNumber, err)
+			return nil, nil
+		}
+		return doc, nil
+	}
+
+	// KEDUA tombol Kirim menempuh TIGA langkah, dan URUTANNYA bagian dari kebenarannya.
+	//
+	// # Urutannya DIBALIK pada 2026-10-05, dan ini sebabnya
+	//
+	// Sampai saat itu urutannya: simpan isian → tandai selesai di PUCL → pindahkan tahap.
+	// Ketiganya pernyataan TERPISAH, masing-masing menutup transaksinya sendiri — dan
+	// langkah ketiga dapat MENOLAK. Ketika ia menolak, dua langkah pertama sudah terlanjur
+	// tersimpan, sehingga klaimnya:
+	//
+	//	TC_PNC_PUCL.PUCL_APPROVE = '1'   -> keluar dari SELURUH tab RCL/PUCL
+	//	tidak ada tugas Send To Analis   -> belum menjadi pekerjaan siapa pun
+	//
+	// Klaimnya HILANG DARI SETIAP LAYAR — tepat kegagalan yang dikhawatirkan catatan pada
+	// Repo.MoveToSendToAnalyst, hanya saja lubangnya bukan di dalam fungsi itu melainkan di
+	// ANTARA ketiga pemanggilan ini. Itu benar-benar terjadi pada klaim `PNCN.26.31`, yang
+	// PIC Tekniknya belum ditetapkan sehingga perpindahannya ditolak.
+	//
+	// Sekarang yang DAPAT MENOLAK dikerjakan lebih dulu:
+	//
+	//	1. validasi isian   — tanpa menulis apa pun
+	//	2. pindahkan tahap  — satu-satunya langkah yang dapat menolak karena keadaan klaim
+	//	3. tandai PUCL selesai
+	//	4. simpan isian
+	//
+	// Penolakan pada langkah 2 kini tidak meninggalkan satu pun tulisan, dan klaimnya tetap
+	// berada di antrean RCL/PUCL tempat petugas dapat menemukannya kembali.
+	//
+	// # Yang BELUM dijamin, dan dinyatakan di sini supaya tidak terbaca sebagai jaminan
+	//
+	// Keempatnya masih pernyataan terpisah. Kegagalan BASIS DATA pada langkah 3 atau 4 —
+	// bukan penolakan, melainkan sambungan putus — tetap meninggalkan klaim yang sudah
+	// berpindah tetapi penandanya belum dicabut. Akibatnya klaim tergambar di DUA tempat
+	// sekaligus, dan itu dipilih dengan sadar: terlihat dua kali dapat diperbaiki, hilang
+	// sama sekali tidak. Menutupnya sepenuhnya menuntut keempatnya berada dalam SATU
+	// transaksi, dan itu menuntut Repo meneruskan transaksi antar-pemanggilan — perubahan
+	// yang menyentuh seluruh antarmukanya.
+	//
+	// # Kenapa isian tetap disimpan oleh tombol Kirim, bukan hanya oleh "Save"
 	//
 	// `PUCLPost` langkah 10 menulis `KomentarPUCL` ke baris `AdjustmentList` bersamaan dengan
 	// penandaan "Setuju" — artinya catatan yang diketik petugas memang ikut tersimpan oleh
-	// tombol Kirim, bukan hanya oleh "Save". Dan keduanya `pyRequired` di section, sehingga
-	// Finish Assignment di Pega MENOLAK form yang salah satunya kosong.
+	// tombol Kirim. Dan keduanya `pyRequired` di section, sehingga Finish Assignment di Pega
+	// MENOLAK form yang salah satunya kosong.
 	//
-	// Sampai 2026-10-02 modul ini membuang isian itu: badan permintaan hanya dibaca untuk
-	// "save". Petugas yang mengetik catatan lalu langsung menekan Kirim kehilangan catatannya
-	// tanpa satu pun galat — dan Analyst menerima klaim tanpa tahu apa yang berubah, persis
-	// akibat yang disebut ReceiptInput.Note.
-	//
-	// Validasinya tidak ditulis ulang di sini: Repo.SaveReceipt sudah memanggil
-	// ReceiptInput.Validate, sehingga aturan wajibnya hidup di SATU tempat untuk kedua jalur.
-	//
-	// # 2. Penandaan, lalu 3. penerbitan surat
-	//
-	// Urutan yang sama dengan "Download Dokumen", dan alasannya sama: bila penerbitan gagal,
-	// klaimnya tetap berpindah dan petugas tidak terhalang.
+	// Validasinya dipanggil DI SINI, bukan hanya di dalam Repo.SaveReceipt, justru supaya ia
+	// berjalan sebelum satu pun tulisan terjadi. Aturannya tetap hidup di satu tempat —
+	// ReceiptInput.Validate — dan SaveReceipt tetap memanggilnya untuk pemanggil lain.
 	if kind == inboxrclpucl.ActionSendToAnalyst || kind == inboxrclpucl.ActionSendToPICTeknik {
-		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
-			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-				return nil, err
-			}
-			var invalid *inboxrclpucl.ValidationError
-			if errors.As(err, &invalid) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("menyimpan isian klaim %s sebelum %s: %w", key, kind, err)
-		}
-
-		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
-			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		if _, err := input.Validate(); err != nil {
+			return nil, err
 		}
 
 		// Perpindahan tahap — langkah yang BENAR-BENAR memindahkan klaim.
@@ -603,12 +661,36 @@ func (s *Service) PerformAction(
 		// yang ini tujuan tombolnya. Melaporkan berhasil sementara klaimnya tidak bergerak
 		// adalah kegagalan senyap yang sudah pernah terjadi di layar ini.
 		if err := repo.MoveToSendToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			// ErrAlreadyWithAnalyst ikut diteruskan APA ADANYA: ia keadaan yang dapat
+			// dijelaskan ke petugas, bukan kegagalan teknis. Membungkusnya akan
+			// menguburnya menjadi 500 dan menghilangkan sebabnya.
 			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) ||
-				errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown) {
+				errors.Is(err, inboxrclpucl.ErrTechnicalPICUnknown) ||
+				errors.Is(err, inboxrclpucl.ErrAlreadyWithAnalyst) {
 				return nil, err
 			}
 			return nil, fmt.Errorf(
 				"memindahkan klaim %s ke tahap Send To Analis: %w", key, err)
+		}
+
+		// Klaimnya SUDAH berpindah. Kedua penulisan berikut melepaskannya dari antrean
+		// RCL/PUCL dan menyimpan isian petugas — keduanya menyusul, bukan mendahului.
+		if err := repo.ReturnToAnalyst(ctx, key, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menjalankan tindakan %s pada klaim %s: %w", kind, key, err)
+		}
+
+		if err := repo.SaveReceipt(ctx, key, input, cleanCaller.Login); err != nil {
+			if errors.Is(err, inboxrclpucl.ErrClaimNotFound) {
+				return nil, err
+			}
+			var invalid *inboxrclpucl.ValidationError
+			if errors.As(err, &invalid) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("menyimpan isian klaim %s sesudah %s: %w", key, kind, err)
 		}
 
 		s.logAction(portalAlias, cleanCaller.Login, detail.ClaimNumber, kind)

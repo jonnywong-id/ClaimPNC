@@ -30,8 +30,9 @@ type Props = {
  *
  * Dan itu berbeda dari layar lama. Di sana pencacah dan daftarnya menghitung populasi yang
  * berbeda — kolom yang disyaratkan bahkan berada di tabel yang berlainan — sehingga angkanya
- * tidak pernah cocok. Perbaikan itu disetujui Work Owner 2026-09-29 dan dinyatakan lewat
- * `selisih_terencana`, yang digambar halaman ini di bawah tabel.
+ * tidak pernah cocok. Perbaikan itu disetujui Work Owner 2026-09-29. Ia TIDAK lagi
+ * dinyatakan di layar — panel selisih terencana dihapus atas keputusan Work Owner
+ * 2026-10-06 — tetapi tetap tercatat di kode Go untuk uji kesetaraan gerbang 1 (`D-54`).
  */
 export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
   if (isLoading) {

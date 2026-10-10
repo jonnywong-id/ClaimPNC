@@ -103,10 +103,6 @@ export type ListResponse = {
 
   /** Ambang umur yang membuat baris merah, dipakai menjelaskan pewarnaannya. */
   ambang_aging: number
-
-  /** Selisih terhadap layar Pega yang sudah diputuskan (`D-54`). */
-  selisih_terencana: string[]
-
   portal: string
 }
 
@@ -204,9 +200,5 @@ export type DetailResponse = {
   riwayat_progres: DetailProgress[]
   komunikasi_adjuster: DetailMessage[]
   cabang: Branch
-
-  /** Selisih POPUP terhadap Pega — daftar yang berbeda dari milik layar daftar. */
-  selisih_terencana: string[]
-
   portal: string
 }

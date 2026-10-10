@@ -43,7 +43,6 @@ type ColumnDTO struct {
 type MetadataResponse struct {
 	Portal           string      `json:"portal"`
 	Kolom            []ColumnDTO `json:"kolom"`
-	SelisihTerencana []string    `json:"selisih_terencana"`
 	Keterbatasan     []string    `json:"keterbatasan"`
 	UkuranHalaman    int         `json:"ukuran_halaman"`
 }
@@ -104,7 +103,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	return MetadataResponse{
 		Portal:           portalAlias,
 		Kolom:            columns,
-		SelisihTerencana: meta.PlannedDifferences,
 		Keterbatasan:     meta.Limitations,
 		UkuranHalaman:    meta.PageSize,
 	}

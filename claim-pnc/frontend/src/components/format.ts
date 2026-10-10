@@ -89,6 +89,69 @@ export function formatDateTimeWIB(iso: string | undefined): string {
 }
 
 /**
+ * formatPegaDateTime menulis waktu menjadi `dd/MM/yy HH:mm` — bentuk kolom tanggal pada
+ * GRID Pega, mis. `28/09/26 16:58`.
+ *
+ * # Kenapa bentuknya berbeda dari formatDateTimeWIB di atas
+ *
+ * Keduanya memang berbeda di layar lama. Isian baca saja pada form menulis tahun empat
+ * digit dan jam tanpa nol di depan (`30/09/2026 7:59`), sedangkan sel grid menulis tahun
+ * DUA digit dan jam ber-nol (`28/09/26 16:58`). Menyatukannya akan membuat salah satu
+ * layar berbeda dari acuannya, dan `D-13` menuntut keduanya mengikuti layarnya
+ * masing-masing.
+ *
+ * # Zona waktu: hanya digeser bila sumbernya MENYEBUTKAN zona
+ *
+ * Nilai dari basis data datang sebagai RFC3339 lengkap dengan offset
+ * (`2026-09-28T16:58:56+07:00`), dan itu sebuah TITIK WAKTU yang harus diterjemahkan ke
+ * WIB. Nilai tanpa zona (`2026-09-28 16:58`) BUKAN titik waktu — ia sudah waktu dinding,
+ * dan menggesernya tujuh jam akan menggeser angkanya menjadi salah.
+ *
+ * Kelas kesalahan itu persis yang melahirkan ratusan penyesuaian tujuh jam di sistem lama.
+ * Ia tidak akan lahir kembali di sini: yang menentukan digeser atau tidak adalah ADA
+ * TIDAKNYA zona pada teksnya, bukan tebakan.
+ *
+ * Teks yang tidak dapat dibaca dikembalikan APA ADANYA, bukan menjadi tanda pisah — nilai
+ * mentah yang terbaca aneh masih dapat ditelusuri, sedangkan `—` menghapus jejaknya.
+ */
+export function formatPegaDateTime(value: string): string {
+  const text = value.trim()
+  if (text === '') return ''
+
+  // Dipecah sendiri, bukan lewat `new Date(...)`, supaya nilai tanpa zona tidak ikut
+  // ditafsirkan peramban sebagai waktu lokal atau UTC — dua tafsir yang berbeda tujuh jam.
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
+      text,
+    )
+  if (!parts) return text
+
+  const [, year, month, day, hour, minute, zone] = parts
+
+  // Tanpa jam, yang ada hanyalah tanggalnya. Menambahkan "00:00" akan mengarang ketelitian
+  // yang tidak ada di sumbernya.
+  if (hour === undefined || minute === undefined) {
+    return `${day}/${month}/${year?.slice(2)}`
+  }
+
+  if (zone === undefined) {
+    return `${day}/${month}/${year?.slice(2)} ${hour}:${minute}`
+  }
+
+  const instant = new Date(text)
+  if (Number.isNaN(instant.getTime())) return text
+
+  const wib = new Date(instant.getTime() + 7 * 60 * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  return (
+    `${pad(wib.getUTCDate())}/${pad(wib.getUTCMonth() + 1)}/` +
+    `${String(wib.getUTCFullYear()).slice(2)} ` +
+    `${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}`
+  )
+}
+
+/**
  * rupiahToCents membaca angka yang diketik pengguna menjadi sen.
  *
  * Pemisah ribuan titik dan desimal koma diterima, karena itu yang diketik orang di

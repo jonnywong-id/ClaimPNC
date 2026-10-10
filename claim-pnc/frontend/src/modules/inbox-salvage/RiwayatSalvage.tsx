@@ -60,7 +60,7 @@ export function RiwayatSalvage({ rows }: { rows: HistoryRow[] }) {
         columns={HISTORY_COLUMNS}
         rows={rows}
         rowKey={(row) => row.id_salvage}
-        emptyMessage="Klaim ini belum pernah diajukan salvage."
+        emptyMessage="Data Tidak Ada"
         hideSearch
       />
     </section>

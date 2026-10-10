@@ -105,17 +105,26 @@ type Tab struct {
 
 	// Name adalah judul tab yang dibaca pengguna.
 	//
-	// # Kenapa judulnya TIDAK diambil dari layar lama
+	// # Kenapa judulnya TIDAK diambil dari judul grid layar lama
 	//
 	// Karena layar lama TIDAK punya judul tab. Kedua grid-nya digambar bertumpuk di satu
 	// halaman tanpa kontainer tab sama sekali — yang membedakannya hanya urutan dan jumlah
 	// kolomnya. `Harness/InboxKomunikasiCabang-Harness.xml` hanya memuat satu judul,
 	// "Inbox Komunikasi".
 	//
-	// Judul di bawah karena itu DIBUAT, dan diambil dari kata yang sudah dipakai sistem
-	// lama pada pencacahnya sendiri — "Answered" dan "Not Answered" pada
-	// `PNCCountKomunikasiCabang_Act` langkah 10 dan 13 — diterjemahkan ke bahasa yang
-	// dipakai seluruh layar ini.
+	// Judul di bawah karena itu diambil dari satu-satunya tempat sistem lama MENAMAI kedua
+	// daftar ini: pencacahnya sendiri. `PNCCountKomunikasiCabang_Act` langkah 10 menulis
+	// `"Answered"` dan langkah 13 `"Not Answered"` sebagai label baris ringkas, dan kedua
+	// kata itulah yang tampil di tabel "Status Register" pada layar lama.
+	//
+	// # Kenapa ia TIDAK diterjemahkan
+	//
+	// Sampai 2026-10-09 keduanya ditulis "Sudah Dijawab" dan "Belum Dijawab". Keputusan
+	// Work Owner pada tanggal itu mengembalikannya ke bentuk aslinya: tabel ringkas dan
+	// bilah tab menyebut daftar yang SAMA, dan menamainya berbeda dari layar lama membuat
+	// petugas yang terbiasa membaca "Answered" harus menerjemahkannya sendiri setiap kali.
+	// `D-13` — teks yang dilihat pengguna mengikuti layar lama apa adanya — berlaku di sini
+	// seperti pada judul kolom.
 	Name string
 
 	// Description menjelaskan isi partisinya dalam satu kalimat.
@@ -184,22 +193,33 @@ func answeredColumns() []Column {
 
 // Kedua kolom TOMBOL, IDENTIK di kedua tab.
 //
-// # Judulnya memang "Button", dan itu bukan kelalaian penyalinan
+// # Judulnya KOSONG, meski XML-nya menuliskan "Button"
 //
-// Kedua kolom menuliskan `pyCaption Button` sebagai judulnya — terbaca pada offset 424.608
-// dan 439.774 (grid Sudah Dijawab), 567.606 dan 583.351 (grid Belum Dijawab). Dua kolom
-// berjudul sama di satu tabel memang tidak membantu, tetapi `D-13` menetapkan teks yang
-// dilihat pengguna mengikuti layar lama apa adanya.
+// Kedua kolom memang menuliskan `pyCaption Button` — terbaca pada offset 424.608 dan
+// 439.774 (grid Sudah Dijawab), 567.606 dan 583.351 (grid Belum Dijawab). Versi pertama
+// modul ini membawanya apa adanya dengan alasan `D-13`, sehingga kedua kolomnya berjudul
+// "BUTTON" di layar.
 //
-// Yang DITAMBAHKAN di sistem baru bukan judulnya melainkan nama yang dibaca pembaca layar:
-// setiap tombol membawa label lengkap beserta nomor percakapannya, sehingga kedua kolom
-// tetap dapat dibedakan tanpa melihat.
+// Tangkapan layar Pega yang berjalan (Work Owner, 2026-10-09) membuktikan itu KELIRU:
+// kedua sel judulnya KOSONG. `pyCaption Button` rupanya nama kontrol di perancang Pega,
+// bukan teks yang dirender. `D-13` menuntut teks yang DILIHAT pengguna mengikuti layar
+// lama — dan yang dilihat pengguna di sana adalah dua kolom tanpa judul.
+//
+// Ini pembetulan terhadap pembacaan export, bukan selisih yang direncanakan: tidak ada
+// keputusan yang berubah, hanya bacaan yang diperbaiki oleh bukti yang lebih kuat.
+//
+// # Pembaca layar tidak kehilangan apa pun karenanya
+//
+// Judul kolom yang kosong tidak menjelaskan selnya, tetapi di sini selnya menjelaskan
+// dirinya sendiri: setiap tombol membawa nama lengkap beserta nomor percakapannya
+// ("Detail Komunikasi percakapan KOM-9001"). Judul "Button" pun tidak pernah menjelaskan
+// apa-apa — dua kolom bernama sama tidak dapat dibedakan.
 //
 // Urutannya mengikuti urutan di section: Detail lebih dulu, Selesai sesudahnya.
 func actionColumns() []Column {
 	return []Column{
-		{Key: FieldActionDetail, Title: "Button"},
-		{Key: FieldActionFinish, Title: "Button"},
+		{Key: FieldActionDetail, Title: ""},
+		{Key: FieldActionFinish, Title: ""},
 	}
 }
 
@@ -226,7 +246,7 @@ func IsAction(key string) bool {
 var tabs = []Tab{
 	{
 		Code: TabNotAnswered,
-		Name: "Belum Dijawab",
+		Name: "Not Answered",
 
 		Description: "Percakapan yang pesannya belum dibalas sama sekali. Diurutkan dari " +
 			"yang PALING LAMA menunggu, sehingga baris teratas adalah yang paling perlu " +
@@ -237,7 +257,7 @@ var tabs = []Tab{
 	},
 	{
 		Code: TabAnswered,
-		Name: "Sudah Dijawab",
+		Name: "Answered",
 
 		Description: "Percakapan yang sudah dibalas. Diurutkan dari balasan TERBARU, " +
 			"berlawanan dengan tab sebelah — dan itu perilaku layar lama apa adanya.",

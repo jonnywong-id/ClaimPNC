@@ -893,6 +893,8 @@ func faultySetup(t *testing.T) (environment, *faults) {
 		Committees:             fCommittees{memory.NewCommittees(), f},
 		Documents:              fUploader{uploader, f},
 		Attachments:            rec,
+		PUCLLetters:            memory.NewPUCL(),
+		PUCLOptions:            memory.NewPUCL(),
 		Closures:               rec,
 		IDGenerator:            memory.IDGenerator{},
 		UnitOfWork:             fUnit{store, f},

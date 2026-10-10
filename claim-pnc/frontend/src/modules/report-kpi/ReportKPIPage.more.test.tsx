@@ -103,12 +103,10 @@ const METADATA = {
     { kode: 'ekstra', judul: 'EKSTRA', kolom: 'EKSTRA' },
   ],
   tipe_report: [{ kode: 'FINAL', judul: 'FINAL' }],
-  selisih_terencana: [],
   kelompok_admin: [
     { kode: 'NONMBU', judul: 'NON MBU' },
     { kode: 'PA', judul: 'PA', keterangan: 'Kelompok PA mengukur dua tahap.' },
   ],
-  selisih_terencana_admin: [],
   lini_bisnis: [{ kode: 'PA', judul: 'PA' }],
   data_kpi: [
     { kode: '1', judul: 'Export KPI Progress' },
@@ -117,7 +115,6 @@ const METADATA = {
     { kode: '4', judul: 'Export KPI Analisis' },
   ],
   komponen_pic: [{ kode: 'analisa_klaim', judul: 'Analisa Klaim' }],
-  selisih_terencana_pic: [],
   pic_dikecualikan_sla: [],
   periode_kpi: [
     { kode: '202602', judul: '202602' },

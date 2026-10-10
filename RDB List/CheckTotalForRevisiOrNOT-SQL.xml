@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyMethodStatus/>
+<pyWorkKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyJavaStream/>
+<pyDeleteSQL/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!CHECKTOTALFORREVISIORNOT</pxInsName>
+<pxInstanceLockedDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceDateProp/>
+<pyLabelOld>Check Total For Revisi Or NOT</pyLabelOld>
+<pxMoveFromSystem/>
+<pyRelativePath/>
+<pyLabel>Check Total For Revisi Or NOT</pyLabel>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pzChecksum>1028357476</pzChecksum>
+<pxInstanceLockedKey/>
+<pyCircumstanceDate/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateOpName/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInstanceLockedBy/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyIsFromManageChangeLP/>
+<pySpecialtyComponentData/>
+<pxHostId>jboss10402</pxHostId>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyCircumstanceDefinition/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleStarts/>
+<pxInstanceLockedRuleSet/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyShowJavaWindowName>GeneratedJava20261008T013837.667 GMT</pyShowJavaWindowName>
+<pyRequestType>CheckTotalForRevisiOrNOT</pyRequestType>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySaveSQL>{ASIS:QUERYTEMPXOL.AlasanKlaim}</pySaveSQL>
+<pxSiblingCount/>
+<pyRuleFormStatusTime>20261008T013837.641 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedRuleSetVersion/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!CHECKTOTALFORREVISIORNOT #20221014T122304.860 GMT</pzDocumentKey>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalRuleSet/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!CHECKTOTALFORREVISIORNOT</pxInsId>
+<pyDescription/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyStatus/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyOpenSQL/>
+<pyDocumentTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceProp/>
+<pyUsage/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyWindowTitle/>
+<pyRuleParamsStreamName/>
+<pxCreateDateTime>20221014T122304.860 GMT</pxCreateDateTime>
+<pyDeletedObject/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM CheckTotalForRevisiOrNOT</pxTabLabel>
+<pyInterface/>
+<pyHandlerFlow/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY_PLA #20221014T032008.827 GMT</pzOriginalInstanceKey>
+<pyFormPost/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateDateTime>20221109T082119.902 GMT</pxUpdateDateTime>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceType/>
+<pyCircumstanceTemplate/>
+<pyMemo>done</pyMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!CHECKTOTALFORREVISIORNOT #20221014T122304.860 GMT</pzInsKey>
+<pxSaveDateTime>20221109T082120.015 GMT</pxSaveDateTime>
+<pyStreamName/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSetVersion>01-02-01</pyRuleSetVersion>
+<pyBrowseSQL>select  REVISI as "Country",LIMIT_XOL as "Currency" {ASIS:TempXOL.NoteKasir}</pyBrowseSQL>
+<pyTemplate/>
+<pxMoveImportDateTime>20220922T043548.678 GMT</pxMoveImportDateTime>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyHistoryObject>false</pyHistoryObject>
+<pyCircumstanceVal/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM CheckTotalForRevisiOrNOT</pyRuleName>
+<pxCommitDateTime>20221109T082120.000 GMT</pxCommitDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleEnds/>
+<pxOriginalCreateSystemID/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>false</pyRun>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pySave>false</pySave>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pyLabel>01-02-01 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!CHECKTOTALFORREVISIORNOT #20221014T122304.860 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

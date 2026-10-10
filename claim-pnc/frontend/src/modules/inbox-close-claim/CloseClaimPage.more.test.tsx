@@ -49,7 +49,6 @@ function daftar(partial: Partial<DaftarResponse> = {}): DaftarResponse {
     permintaan_terbaca: true,
     boleh_mengajukan: true,
     pelaksana_belum_ada: false,
-    selisih_terencana: [],
     ...partial,
   }
 }

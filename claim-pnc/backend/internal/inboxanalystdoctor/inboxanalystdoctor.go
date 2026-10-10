@@ -89,6 +89,33 @@ const (
 	TransferAnalystDoctor = "2"
 )
 
+// TaskLabelAnalystDoctor adalah nilai `PC_ASSIGN_WORKLIST.PXTASKLABEL` yang menandai sebuah
+// tugas berada di tahap penilaian medis — dan sejak 2026-10-09 ia PENYARING UTAMA layar ini.
+//
+// # Kenapa ia menggantikan TransferAnalystDoctor sebagai penyaring
+//
+// Karena penanda yang lama tidak punya kolom. `.ClaimData.isComplianceTransfer` ditandai
+// Pega sendiri sebagai `unexposed`, sehingga ia hidup di dalam blob dan bukan sebagai kolom
+// SQL. Nama `ISCOMPLIANCETRANSFER_1` yang dipakai sebelumnya adalah TEBAKAN yang mengikuti
+// konvensi `_1`, dan tebakan itu sudah diuji ke katalog Oracle: kolomnya memang TIDAK ADA.
+// Akibatnya kueri daftar gagal ORA-00904 pada setiap permintaan, dan layar menjawab
+// "Antrean tidak dapat dimuat".
+//
+// # Kenapa nilainya persis ini, dan kenapa ia dapat dipercaya
+//
+// `Flow/Register_Flow.xml` `Assignment13` memberi nama tahap itu `pyMOName = Analyst Doctor`,
+// dan Pega menyimpan `pyMOName` sebuah assignment sebagai `PXTASKLABEL` pada baris
+// worklist-nya. Kesepadanan itu terbaca dari data: setiap label `Register_Flow` yang ada di
+// basis data sama persis dengan `pyMOName` salah satu assignment di flow itu — Input
+// Register, Input Estimasi, Estimation, Choose Surveyor, View Polis, Send To Analis,
+// RCLDokter.
+//
+// Dari keenam flow di export, HANYA `Register_Flow` yang memuat assignment bernama ini,
+// sehingga tidak ada flow lain yang dapat menghasilkan label yang sama.
+//
+// Pola yang sama sudah dipakai `inboxadmin`, yang menyaring tiga label sekaligus.
+const TaskLabelAnalystDoctor = "Analyst Doctor"
+
 // StatusKerjaSelesai adalah nilai `PYSTATUSWORK` yang MENGELUARKAN tugas dari antrean ini.
 //
 // Penyaringnya `!=`, bukan `=`. Satu tanda yang salah di sini membalik seluruh isi layar:

@@ -103,10 +103,6 @@ export type MetadataResponse = {
    * "kolomnya belum diisi" dari "diisi dengan nilai yang tidak dikenal".
    */
   lini_bisnis_anda: string
-
-  /** Selisih terhadap layar lama yang sudah diputuskan. */
-  selisih_terencana: string[]
-
   portal: string
 }
 

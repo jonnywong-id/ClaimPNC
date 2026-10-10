@@ -229,8 +229,10 @@ import (
 	inboxreceivetkasql "claim-pnc/internal/inboxreceivetka/repo/sqlstore"
 	inboxreceivetkausecase "claim-pnc/internal/inboxreceivetka/usecase"
 	inboxsalvagehttp "claim-pnc/internal/inboxsalvage/http"
+	inboxsalvagenotif "claim-pnc/internal/inboxsalvage/notification"
 	inboxsalvagememory "claim-pnc/internal/inboxsalvage/repo/memory"
 	inboxsalvagesql "claim-pnc/internal/inboxsalvage/repo/sqlstore"
+	"claim-pnc/internal/inboxsalvage/simasbid"
 	inboxsalvageusecase "claim-pnc/internal/inboxsalvage/usecase"
 	inboxservicecenterhttp "claim-pnc/internal/inboxservicecenter/http"
 	inboxservicecentermemory "claim-pnc/internal/inboxservicecenter/repo/memory"
@@ -4363,6 +4365,12 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			// mencegahnya, sehingga jejak inilah satu-satunya kontrol pengimbang yang
 			// tersisa.
 			Logger: logger,
+
+			// Keduanya BOLEH nil, dan nil berarti belum dikonfigurasi di lingkungan ini
+			// — bukan gagal. Penyimpanan pengajuan tetap berjalan; yang berubah adalah
+			// kalimat yang dibaca petugas sesudah Submit.
+			Notifier: buildSalvageNotifier(cfg, logger),
+			Auction:  buildAuctionHouse(cfg, logger),
 		})
 	if err != nil {
 		store.close()
@@ -4766,6 +4774,69 @@ func (konversiBelumDikonfigurasi) Convert(context.Context, []byte) ([]byte, erro
 	return nil, fmt.Errorf(
 		"%w: alamat layanan konversi belum dikonfigurasi (KONVERSI_GAMBAR_ALAMAT)",
 		dokumenpenunjang.ErrKonversiGagal)
+}
+
+// buildSalvageNotifier membentuk pengirim pemberitahuan pengajuan salvage.
+//
+// # Nil BUKAN kegagalan
+//
+// Aplikasi melayani puluhan layar lain, dan satu server surel yang belum dikonfigurasi
+// tidak boleh mematikan semuanya. Yang terjadi sebagai gantinya: Submit tetap menyimpan,
+// dan kalimat yang dibaca petugas menyebut bahwa tidak ada surel yang terkirim — sehingga
+// ia tahu masih perlu mengabari orang lain sendiri.
+//
+// Peringatan ditulis SEKALI saat start, bukan setiap permintaan: satu baris yang terbaca
+// saat aplikasi naik jauh lebih berguna daripada ribuan baris yang sama di tengah trafik.
+func buildSalvageNotifier(cfg config.Config, logger *slog.Logger) inboxsalvage.Notifier {
+	if !cfg.SMTP.SalvageActive() {
+		logger.Warn("pemberitahuan pengajuan salvage tidak aktif",
+			slog.String("akibat",
+				"pengajuan tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
+			slog.String("perbaikan",
+				"isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_SALVAGE"))
+		return nil
+	}
+
+	return inboxsalvagenotif.NewSender(inboxsalvagenotif.Config{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.SalvageRecipients,
+		Timeout:  cfg.SMTP.Timeout,
+	})
+}
+
+// buildAuctionHouse membentuk klien balai lelang SimasBid.
+//
+// # Kenapa ia TIDAK punya alamat bawaan, berbeda dari buildDocumentStorage
+//
+// Karena satu-satunya alamat yang terbaca dari export menunjuk host SANDBOX di dalam
+// ruleset produksi (`R-18`). Memberinya nilai bawaan berarti satu lingkungan yang lupa
+// mengisinya akan diam-diam mengirim pengajuan salvage nyata ke lingkungan uji pihak lain
+// — kegagalan yang tidak menghasilkan satu pun galat dan tidak terlihat sampai ada yang
+// menanyakan barangnya.
+//
+// Yang dikembalikan saat alamatnya kosong adalah nil, BUKAN penolak bernama seperti pada
+// buildDocumentStorage. Perbedaannya disengaja: di sana penolak ada supaya modulnya tetap
+// dapat dibentuk, sementara di sini seam-nya memang boleh kosong — dan nil itulah yang
+// membuat layar dapat membedakan "belum dikonfigurasi" dari "dicoba lalu ditolak".
+func buildAuctionHouse(cfg config.Config, logger *slog.Logger) inboxsalvage.AuctionHouse {
+	if !cfg.AuctionHouse.Active() {
+		logger.Warn("pengiriman salvage ke balai lelang tidak aktif",
+			slog.String("akibat",
+				"pengajuan tetap tersimpan, tetapi tidak sampai ke SimasBid"),
+			slog.String("perbaikan", "isi SIMASBID_ALAMAT"))
+		return nil
+	}
+
+	return simasbid.NewClient(simasbid.Config{
+		URL:      cfg.AuctionHouse.URL,
+		User:     cfg.AuctionHouse.User,
+		Password: cfg.AuctionHouse.Password,
+		Timeout:  cfg.AuctionHouse.Timeout,
+	})
 }
 
 func buildReceiveTKANotifier(

@@ -97,14 +97,13 @@ type MetadataResponse struct {
 	// ReportTypes adalah isi dropdown "Pilih Tipe Report".
 	ReportTypes []ReportTypeDTO `json:"tipe_report"`
 
-	// PlannedDifferences adalah selisih terencana tab KPI Adjuster.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// AdminGroups adalah isi dropdown "Pilih Data KPI" pada tab KPI Admin.
 	AdminGroups []AdminGroupDTO `json:"kelompok_admin"`
 
-	// AdminPlannedDifferences adalah selisih terencana tab KPI Admin.
-	AdminPlannedDifferences []string `json:"selisih_terencana_admin"`
+	// Keterangan selisih terencana TIDAK dikirim ke layar — keputusan Work Owner
+	// 2026-10-06. Daftarnya tetap hidup di `reportkpi` dan `usecase.Metadata` karena
+	// `D-54` menuntutnya sebagai pemetaan selisih ke butir `P-5` pada uji kesetaraan
+	// gerbang 1; ia artefak pengembang, bukan isi layar.
 
 	// BusinessLines adalah isi dropdown lini bisnis pada tab KPI PIC Teknik.
 	BusinessLines []BusinessLineDTO `json:"lini_bisnis"`
@@ -119,9 +118,6 @@ type MetadataResponse struct {
 	// yang diunduh. Menuliskannya dua kali berarti layar dan peladen dapat berbeda
 	// pendapat tentang pilihan yang sama.
 	PICExportKinds []PICExportKindDTO `json:"data_kpi"`
-
-	// PICTeknikPlannedDifferences adalah selisih terencana tab KPI PIC Teknik.
-	PICTeknikPlannedDifferences []string `json:"selisih_terencana_pic"`
 
 	// SLAExcludedPICs adalah petugas yang dikecualikan dari penilaian SLA di sistem lama.
 	SLAExcludedPICs []string `json:"pic_dikecualikan_sla"`
@@ -295,9 +291,6 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 		})
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
-
 	adminGroups := make([]AdminGroupDTO, 0, len(meta.AdminGroups))
 	for _, g := range meta.AdminGroups {
 		adminGroups = append(adminGroups, AdminGroupDTO{
@@ -305,25 +298,16 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 		})
 	}
 
-	adminDifferences := make([]string, 0, len(meta.AdminPlannedDifferences))
-	adminDifferences = append(adminDifferences, meta.AdminPlannedDifferences...)
-
 	return MetadataResponse{
-		Tabs:                    tabs,
-		DefaultTab:              meta.DefaultTab,
-		Components:              componentList,
-		ReportTypes:             typeList,
-		PlannedDifferences:      differences,
-		AdminGroups:             adminGroups,
-		AdminPlannedDifferences: adminDifferences,
+		Tabs:        tabs,
+		DefaultTab:  meta.DefaultTab,
+		Components:  componentList,
+		ReportTypes: typeList,
+		AdminGroups: adminGroups,
 
-		BusinessLines: toBusinessLines(meta.BusinessLines),
+		BusinessLines:  toBusinessLines(meta.BusinessLines),
 		PICComponents:  toPICComponents(meta.PICComponents),
 		PICExportKinds: toPICExportKinds(reportkpi.PICExportOptions()),
-		PICTeknikPlannedDifferences: append(
-			make([]string, 0, len(meta.PICTeknikPlannedDifferences)),
-			meta.PICTeknikPlannedDifferences...,
-		),
 		SLAExcludedPICs: append(
 			make([]string, 0, len(meta.SLAExcludedPICs)),
 			meta.SLAExcludedPICs...,
@@ -417,7 +401,6 @@ func toPaginationDTO(page reportkpi.Pagination, total int) PaginationDTO {
 		TotalPages: totalPages,
 	}
 }
-
 
 // PICExportKindDTO adalah satu pilihan dropdown "Pilih Data KPI".
 type PICExportKindDTO struct {

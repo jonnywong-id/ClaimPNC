@@ -163,7 +163,6 @@ func TestMetadataDescribesTheOfferedTabsAndThePortal(t *testing.T) {
 	require.Equal(t, inboxsalvage.DefaultTab, body.DefaultTab)
 	require.Equal(t, portalASM, body.Portal)
 	require.NotEmpty(t, body.StatusOptions)
-	require.Equal(t, inboxsalvage.PlannedDifferences, body.PlannedDifferences)
 	require.Contains(t, body.UploadColumns, "item")
 
 	// Kunci rincian diturunkan dari keluarga kueri tiap daftar.
@@ -330,7 +329,16 @@ func TestCreateAnswered201WithTheIssuedIDAndWhatDidNotHappen(t *testing.T) {
 	require.NotEmpty(t, body.SalvageID)
 	require.Equal(t, 1, body.ItemCount, "baris kosong dibuang")
 	require.Equal(t, portalASM, body.Portal)
-	require.Contains(t, body.Message, "tidak dikirim ke balai lelang")
+
+	// Server uji ini TIDAK memasang seam balai lelang maupun seam surel, dan itu keadaan
+	// yang sah — lihat usecase.Create. Yang diperiksa di sini adalah jawabannya
+	// MEMBEDAKAN "belum dikonfigurasi" dari "dicoba lalu gagal": keduanya menuntut
+	// tindakan dari orang yang berbeda, dan jawaban yang menyamakannya membuat petugas
+	// menunggu perbaikan yang bukan miliknya.
+	require.False(t, body.Auction.Attempted, "seam balai lelang memang tidak dipasang")
+	require.False(t, body.Auction.Accepted)
+	require.False(t, body.Notification.Attempted, "seam surel memang tidak dipasang")
+	require.Contains(t, body.Message, "belum aktif di lingkungan ini")
 
 	// Pengajuannya benar-benar tersimpan dan dapat dibuka.
 	detail := get(t, server, "/api/inbox-salvage/pengajuan/"+body.SalvageID)
@@ -650,8 +658,29 @@ func (brokenRepo) DetailByClaim(context.Context, string) (inboxsalvage.Detail, e
 	return inboxsalvage.Detail{}, errBoom
 }
 
+// Currencies gagal seperti sisanya.
+//
+// Kegagalannya SENGAJA tidak membuat layar tertutup — Repo.Currencies menyatakan
+// pemanggil memperlakukannya sebagai keadaan yang dapat ditoleransi. Ganda ini karena
+// itu sekaligus menguji jalur toleransi itu, bukan hanya jalur 500.
+func (brokenRepo) Currencies(context.Context) ([]inboxsalvage.CurrencyOption, error) {
+	return nil, errBoom
+}
+
+func (brokenRepo) AttachDocument(
+	context.Context, inboxsalvage.DocumentUpload,
+) (inboxsalvage.AttachedDocument, error) {
+	return inboxsalvage.AttachedDocument{}, errBoom
+}
+
 func (brokenRepo) Create(context.Context, inboxsalvage.Form) (string, error) {
 	return "", errBoom
+}
+
+func (brokenRepo) MarkSentToAuction(
+	context.Context, string, inboxsalvage.AuctionReceipt,
+) error {
+	return errBoom
 }
 
 // pagedRepo menghasilkan baris klaim bernomor urut sebanyak total, halaman demi halaman.

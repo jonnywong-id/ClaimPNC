@@ -126,14 +126,14 @@ func claimPlan(
 	case q.Tab.BuybackFilter:
 		return "list_claim_buyback", []any{page.Offset(), page.Size}
 
-	case q.Tab.SalvageStatusIsNull && searching:
+	case q.Tab.OutstandingSalvage && searching:
 		return "list_claim_search", []any{
 			inboxsalvage.ClosedWorkStatuses[0],
 			inboxsalvage.ClosedWorkStatuses[1],
 			pattern, page.Offset(), page.Size,
 		}
 
-	case q.Tab.SalvageStatusIsNull:
+	case q.Tab.OutstandingSalvage:
 		return "list_claim", []any{
 			inboxsalvage.ClosedWorkStatuses[0],
 			inboxsalvage.ClosedWorkStatuses[1],
@@ -1099,6 +1099,17 @@ func (r *Repo) countOne(
 			definition.SalvageStatuses[0],
 			lastOrFirst(definition.SalvageStatuses),
 		}
+
+		// Baris Outstanding mencacah POPULASI YANG SAMA dengan daftarnya: penanda
+		// salvage yang sama, DITAMBAH penyaring status kerja. Lihat
+		// inboxsalvage.CountRow.ExcludesClosedWork.
+		if definition.ExcludesClosedWork {
+			name = "count_claim_outstanding"
+			args = append(args,
+				inboxsalvage.ClosedWorkStatuses[0],
+				inboxsalvage.ClosedWorkStatuses[1],
+			)
+		}
 	}
 
 	var total int
@@ -1414,4 +1425,40 @@ func (r *Repo) Ready(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("inboxsalvage/sqlstore: check_salvage_columns: %w", err)
 	}
 	return found, nil
+}
+
+// MarkSentToAuction mencatat jawaban balai lelang pada baris pengajuan.
+//
+// # Nilai kosong dikirim sebagai NULL, bukan sebagai teks kosong
+//
+// `COALESCE(:2, IDSIMASBID)` pada kuerinya hanya bekerja bila yang sampai ke basis data
+// benar-benar NULL. Mengirim string kosong akan menimpa nomor SimasBid yang sudah ada
+// dengan teks kosong — persis kelas cacat `IDSALVAGE` yang sudah diperbaiki sekali di
+// modul ini (`D-49` #9), dan tidak boleh lahir kembali di kolom sebelahnya.
+func (r *Repo) MarkSentToAuction(
+	ctx context.Context, salvageID string, receipt inboxsalvage.AuctionReceipt,
+) error {
+	id := strings.TrimSpace(salvageID)
+	if id == "" {
+		return inboxsalvage.ErrRowNotFound
+	}
+
+	var auctionID any
+	if nomor := strings.TrimSpace(receipt.AuctionID); nomor != "" {
+		auctionID = nomor
+	}
+
+	result, err := r.db.ExecContext(
+		ctx, query("mark_sent_to_auction"), receipt.TransferStatus(), auctionID, id)
+	if err != nil {
+		return fmt.Errorf("inboxsalvage/sqlstore: mark_sent_to_auction: %w", err)
+	}
+
+	// Pembaruan yang tidak menyentuh satu baris pun berarti pengajuannya tidak ada.
+	// Membiarkannya lolos akan melaporkan "terkirim dan tercatat" untuk pencatatan yang
+	// tidak terjadi.
+	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
+		return inboxsalvage.ErrRowNotFound
+	}
+	return nil
 }

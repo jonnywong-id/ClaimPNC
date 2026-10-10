@@ -42,6 +42,10 @@ type Record struct {
 
 	// TechnicalPIC adalah T_CLAIM_PNC.PICTEKNIK — pemilik tugas Send To Analis.
 	TechnicalPIC string
+
+	// ClaimAdmin adalah T_CLAIM_PNC.ADMINKLAIM — pemilik `ASSIGNED_OPERATOR_ID` sesudah
+	// dokter MENYETUJUI (Work Owner, 2026-10-07).
+	ClaimAdmin string
 }
 
 // Decision adalah satu keputusan yang tercatat — padanan tulisan ke TC_PNC_PUCL, CPNC_TUGAS,
@@ -99,8 +103,19 @@ func (s *Store) Decide(_ context.Context, cmd inboxrcl.DecisionCommand) (inboxrc
 			return inboxrcl.Outcome{}, err
 		}
 
-		assignee := inboxrcl.WorkbasketRCLPUCL
+		// Rantai cadangan yang SAMA dengan adapter Oracle-nya: admin klaim, lalu PIC
+		// Teknik, lalu nama antrean. Adapter memori yang memakai aturan lain membuat uji
+		// lulus pada keadaan yang di Oracle menghasilkan pemilik berbeda — dan pemilik
+		// itulah yang menentukan di inbox siapa klaimnya muncul.
+		assignee := strings.TrimSpace(record.ClaimAdmin)
+		if assignee == "" {
+			assignee = strings.TrimSpace(record.TechnicalPIC)
+		}
+		if assignee == "" {
+			assignee = inboxrcl.WorkbasketRCLPUCL
+		}
 		if out.NextQueue == inboxrcl.QueueWorklist {
+			// Jalur kembali ke analis menuntut PIC Teknik — admin tidak menggantikannya.
 			assignee = strings.TrimSpace(record.TechnicalPIC)
 			if assignee == "" {
 				return inboxrcl.Outcome{}, inboxrcl.ErrTechnicalPICUnknown

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -396,6 +397,89 @@ func (h *Handler) SendToInputor(w http.ResponseWriter, r *http.Request, taskID s
 	if result.NextTask != nil {
 		t := taskDTO(*result.NextTask, h.service.Flow())
 		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// SendToRCLPUCL menangani POST /api/registrasi/tugas/{taskID}/kirim-rclpucl — tombol
+// Kirim pada modal "Kirim ke RCL/PUCL".
+func (h *Handler) SendToRCLPUCL(w http.ResponseWriter, r *http.Request, taskID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+
+	var body SendToRCLPUCLRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+
+	result, err := h.service.SendToRCLPUCL(r.Context(), usecase.SendToRCLPUCLCommand{
+		TaskID:      taskID,
+		Track:       body.Track,
+		AnalystNote: body.Note,
+		Subject:     body.Subject,
+		OpeningNote: body.OpeningNote,
+		BodyNote:    body.BodyNote,
+		ClosingNote: body.ClosingNote,
+		DoctorName:  body.DoctorName,
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := ClaimResponse{Claim: claimDTO(result.Claim)}
+	if result.NextTask != nil {
+		t := taskDTO(*result.NextTask, h.service.Flow())
+		response.Task = &t
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLSubjects menangani GET /api/registrasi/rclpucl/perihal?jalur=N.
+func (h *Handler) PUCLSubjects(w http.ResponseWriter, r *http.Request) {
+	track, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("jalur")))
+
+	options, err := h.service.PUCLSubjectOptions(r.Context(), track)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLSubjectResponse{Pilihan: make([]PUCLSubjectDTO, 0, len(options))}
+	for _, o := range options {
+		response.Pilihan = append(response.Pilihan, PUCLSubjectDTO{ID: o.ID, Nama: o.Name})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// PUCLReasons menangani GET /api/registrasi/rclpucl/alasan?cari=…&batas=N.
+func (h *Handler) PUCLReasons(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("batas")))
+
+	reasons, err := h.service.PUCLRejectReasons(r.Context(), r.URL.Query().Get("cari"), limit)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+
+	response := PUCLReasonResponse{Pilihan: make([]PUCLReasonDTO, 0, len(reasons))}
+	for _, o := range reasons {
+		response.Pilihan = append(response.Pilihan, PUCLReasonDTO{ID: o.ID, Nama: o.Name, Deskripsi: o.Description})
+	}
+	h.writeResponse(w, r, http.StatusOK, response)
+}
+
+// RCLDoctors menangani GET /api/registrasi/rclpucl/dokter.
+//
+// Tidak dapat gagal: isinya daftar tetap pada property `NamaDokterRCL`, bukan kueri.
+func (h *Handler) RCLDoctors(w http.ResponseWriter, r *http.Request) {
+	doctors := h.service.RCLDoctorOptions()
+
+	response := RCLDoctorResponse{Pilihan: make([]RCLDoctorDTO, 0, len(doctors))}
+	for _, o := range doctors {
+		response.Pilihan = append(response.Pilihan, RCLDoctorDTO{ID: o.ID, Nama: o.Label})
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
 }

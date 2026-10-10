@@ -194,7 +194,6 @@ export function ClaimTreatyNonPropPage() {
         </>
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -518,30 +517,6 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, checkbox TBA
- * yang kini berdiri sendiri dan kolom "Status" yang menyatakan antrean akan dilaporkan
- * berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar berdampingan.
- */
-function PlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

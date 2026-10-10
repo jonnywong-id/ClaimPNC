@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pySpecialtyComponentData/>
+<pxInstanceLockedCreateDateTime/>
+<pyMemo>dones</pyMemo>
+<pyCircumstanceDateProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxSiblingCount/>
+<pyTemplate/>
+<pyCheckInRuleSet/>
+<pyJavaStream/>
+<pyDeletedObject/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsFromManageChangeLP/>
+<pyLabel>XOL_all _currency</pyLabel>
+<pyRequestType>XOL_all_currency</pyRequestType>
+<pyOpenSQL/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyInterface/>
+<pyCircumstanceProp/>
+<pxOriginalCreateSystemID/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20220930T072116.876 GMT</pzOriginalInstanceKey>
+<pyRuleFormStatusTime>20261008T014024.447 GMT</pyRuleFormStatusTime>
+<pxUpdateDateTime>20240901T081533.801 GMT</pxUpdateDateTime>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM XOL_all_currency</pyRuleName>
+<pyWindowTitle/>
+<pzChecksum>-1378655064</pzChecksum>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!XOL_ALL_CURRENCY</pxInsId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pyTemporaryObject/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM XOL_all_currency</pxTabLabel>
+<pyStatus/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyRuleEnds/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyDeleteSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBrowseSQL>SELECT DISTINCT ("Currency") AS "Currency"
+  FROM (  SELECT currency AS "Currency"
+            FROM POOLDATA.XOL_TABLE_ALL_KLAIM x
+           WHERE     X.AKSEPVALUE != 0 and X.GROUPBUSINESS in ({ASIS:TempXOL.OccupationCode})
+                 AND TO_CHAR(TO_DATE (X.DOL, 'dd/mm/yyyy'),'dd/mm/yyyy')= {TempXOL.YearofQuartal}
+                 AND X.CAUSEOFLOSS ={TempXOL.CauseOfLoss} 
+        GROUP BY X.CURRENCY
+        UNION ALL
+          SELECT A.CURRENCYID
+            FROM POOLDATA.T_CLAIM_INWARD_XOL a
+           WHERE     TO_CHAR (TO_DATE (a.dateofloss, 'dd/mm/yyyy'), 'dd/mm/yyyy') = {TempXOL.YearofQuartal}
+                 AND A.CAUSEOFLOSS = {TempXOL.CauseOfLoss}
+        GROUP BY CURRENCYID)</pyBrowseSQL>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY #20240901T080002.228 GMT</pzInsKey>
+<pxInstanceLockedDateTime/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyValueChanged>false</pyValueChanged>
+<pyLabelOld>XOL_all _currency</pyLabelOld>
+<pxSaveDateTime>20240901T081533.812 GMT</pxSaveDateTime>
+<pyFormPost/>
+<pyRuleStarts/>
+<pyUsage/>
+<pyShowJavaWindowName>GeneratedJava20261008T014024.465 GMT</pyShowJavaWindowName>
+<pxOriginalCreateOperator/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySaveSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY #20240901T080002.228 GMT</pzDocumentKey>
+<pyCircumstanceType/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!XOL_ALL_CURRENCY</pxInsName>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyMethodStatus/>
+<pxHostId>jboss10372</pxHostId>
+<pxInstanceLockedBy/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyCircumstanceDate/>
+<pxMergeSynchronized>20221207T025835.526 GMT</pxMergeSynchronized>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedRuleSet/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxInstanceLockedKey/>
+<pyDescription/>
+<pyCircumstanceVal/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRelativePath/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleParamsStreamName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyDocumentTitle/>
+<pyStreamName/>
+<pyBaseRule>false</pyBaseRule>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyTemplateInputBox/>
+<pxMoveImportDateTime>20241223T123621.857 GMT</pxMoveImportDateTime>
+<pyCircumstanceTemplate/>
+<pxCreateDateTime>20240901T080002.228 GMT</pxCreateDateTime>
+<pxOriginalCreateOpName/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyHandlerFlow/>
+<pxInstanceLockedRuleSetVersion/>
+<pyCircumstanceDefinition/>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyPreview>false</pyPreview>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyRun>false</pyRun>
+<pyFavorites>true</pyFavorites>
+<pyDelete>false</pyDelete>
+<pySaveAs>true</pySaveAs>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRestore>false</pyRestore>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY #20240901T080002.228 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-10 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY #20221125T060935.764 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-01 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!XOL_ALL_CURRENCY #20221006T105841.346 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

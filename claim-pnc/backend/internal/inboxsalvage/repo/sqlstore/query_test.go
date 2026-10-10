@@ -22,7 +22,7 @@ func TestEveryQueryNamedInTheCodeExists(t *testing.T) {
 		"list_claim_object", "list_claim_object_search",
 		"list_claim_buyback", "list_claim_buyback_search",
 		"list_salvage",
-		"count_claim_status", "count_claim_buyback",
+		"count_claim_status", "count_claim_outstanding", "count_claim_buyback",
 		"count_salvage_status", "count_salvage_detail_unsold",
 		"next_salvage_id", "insert_salvage", "update_salvage",
 		"count_salvage_detail_for", "insert_salvage_detail",
@@ -533,7 +533,6 @@ func TestClaimChoiceQueriesOrderByTheNameThatIsRead(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("claim_coverages")), "ORDER BY C.COVERAGENAME")
 }
 
-
 // ============================================================================
 // UNGGAHAN DOKUMEN
 // ============================================================================
@@ -606,4 +605,31 @@ func TestLegacyMisspellingsAreCarriedUnchanged(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("attachment_sequence_of_claim")),
 		"SALAVAGEDOCUMENT")
 	require.Contains(t, strings.ToUpper(query("attachment_history")), "CATRGORY")
+}
+
+// Penanda salvage daftar Outstanding di SQL WAJIB sama dengan yang dipakai pencacahnya.
+//
+// # Kenapa penjaganya perlu ada
+//
+// Keduanya ditulis di tempat berbeda dan dengan bentuk berbeda: daftar menuliskannya
+// sebagai nilai TETAP di dalam teks SQL, pencacah mengikatnya dari
+// `inboxsalvage.OutstandingSalvageStatuses`. Dua sumber kebenaran untuk satu aturan — dan
+// persis kelas cacat yang menghabiskan 2026-10-08: angka ringkasan dan jumlah baris
+// daftarnya berasal dari predikat yang berbeda, tanpa satu pun uji yang menolaknya.
+//
+// Nilainya tetap ditulis TETAP di SQL, dengan alasan yang sama seperti `GROUPPANEL` dan
+// `BUSINESSCODE`: ia domain tertutup milik aturan bisnis, bukan masukan pengguna. Yang
+// ditambahkan di sini bukan bind, melainkan penjaga yang menolak keduanya bergeser.
+func TestOutstandingListFiltersTheSameSalvageMarksAsItsCounter(t *testing.T) {
+	for _, name := range []string{"list_claim", "list_claim_search"} {
+		text := query(name)
+
+		require.Contains(t, text, "c.STSSALVAGE IN (",
+			"kueri %q tidak lagi menyaring STSSALVAGE sama sekali", name)
+
+		for _, status := range inboxsalvage.OutstandingSalvageStatuses {
+			require.Contains(t, text, "'"+status+"'",
+				"kueri %q tidak memuat penanda %q yang dipakai pencacahnya", name, status)
+		}
+	}
 }

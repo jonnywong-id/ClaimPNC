@@ -64,7 +64,7 @@ const PRE = {
   label_aksi_baris: 'Print Pre DLA',
 }
 
-const METADATA = { daftar: [PLA, PRE], daftar_bawaan: 'pla', selisih_terencana: [], portal: 'ASM' }
+const METADATA = { daftar: [PLA, PRE], daftar_bawaan: 'pla', portal: 'ASM' }
 
 const BARIS = {
   kunci_klaim: 'ASM-FW-GCNMFW-WORK PNC-2001',

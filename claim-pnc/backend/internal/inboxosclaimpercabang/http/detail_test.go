@@ -26,7 +26,7 @@ func TestDetailReturnsTheFourSections(t *testing.T) {
 	require.Len(t, body["komunikasi_adjuster"], 2)
 
 	require.Equal(t, "100099", body["cabang"].(map[string]any)["kode"])
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 func TestDetailSendsMoneyAsTextNotNumber(t *testing.T) {

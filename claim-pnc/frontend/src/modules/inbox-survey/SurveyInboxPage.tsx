@@ -221,10 +221,6 @@ export function SurveyInboxPage() {
         />
       )}
 
-      <Catatan
-        judul="Perbedaan yang disengaja terhadap layar lama"
-        baris={keterangan.data?.selisih_terencana ?? []}
-      />
       <Catatan judul="Yang perlu diketahui" baris={keterangan.data?.keterbatasan ?? []} />
     </PageFrame>
   )

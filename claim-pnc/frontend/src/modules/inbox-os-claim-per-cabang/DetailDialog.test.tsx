@@ -69,7 +69,6 @@ function listResponse(rows: WorkItem[]): ListResponse {
     cabang: { kode: '100099', nama: 'CILEGON' },
     paginasi: { halaman: 1, ukuran: 25, total: rows.length, total_halaman: 1 },
     ambang_aging: 180,
-    selisih_terencana: ['Daftar dibagi per halaman di server.'],
     portal: 'ASM',
   }
 }
@@ -121,9 +120,6 @@ const DETAIL_ANEKA: DetailResponse = {
     },
   ],
   cabang: { kode: '100099', nama: 'CILEGON' },
-  selisih_terencana: [
-    'Nilai "Total Sum Insured" adalah TSI objek terakhir pada klaim, bukan jumlah seluruh objek.',
-  ],
   portal: 'ASM',
 }
 
@@ -360,21 +356,23 @@ it('menutup popup lewat tombol Escape', async () => {
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-it('menyatakan selisih terencana milik POPUP, bukan milik daftar', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar,
+// termasuk dari popup rincian ini.
+//
+// Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+// adalah ia berhenti menjadi isi layar.
+it('tidak lagi menggambar panel selisih terencana di popup', async () => {
   stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
 
   const dialog = await openDetail('PNC-9001')
   const box = within(dialog)
 
-  const catatan = await box.findByText('Perbedaan yang disengaja terhadap layar lama')
+  // Ditunggu sampai isi popupnya benar-benar tergambar — tanpa itu, panel yang belum
+  // sempat muncul akan lolos uji ini tanpa membuktikan apa pun.
+  await box.findByText('Occupation :')
 
-  // Dicari DI DALAM blok catatannya, bukan di seluruh dialog: "Total Sum Insured" juga
-  // muncul sebagai label ringkasan di atas, dan pencarian global akan cocok dengan yang itu
-  // meski daftar selisihnya kosong.
-  const blok = catatan.closest('details')
-  expect(blok).not.toBeNull()
-  expect(blok?.textContent).toContain('TSI objek terakhir')
-
-  // Selisih milik DAFTAR tidak boleh ikut tampil di popup.
-  expect(dialog.textContent).not.toContain('Daftar dibagi per halaman di server.')
+  expect(
+    box.queryByText('Perbedaan yang disengaja terhadap layar lama'),
+  ).not.toBeInTheDocument()
+  expect(dialog.textContent).not.toContain('TSI objek terakhir')
 })

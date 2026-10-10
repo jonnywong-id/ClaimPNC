@@ -98,6 +98,31 @@ type Props<T> = {
   emptyMessage?: string
 
   /**
+   * Kalimat kekosongan saat PENCARIAN sedang terisi.
+   *
+   * # Kenapa ia isian tersendiri, bukan `emptyMessage` saja
+   *
+   * Karena tabel ini menangani dua kekosongan yang berbeda: "daftarnya memang belum ada
+   * isinya" dan "ada isinya, tetapi tidak ada yang cocok dengan yang diketik". Keduanya
+   * menuntut kalimat yang berbeda, dan sampai 2026-10-08 yang kedua SELALU memakai
+   * kalimat bawaan — `emptyMessage` yang dikirim pemanggil diabaikan diam-diam begitu
+   * kotak pencarian terisi.
+   *
+   * Itu menjadikan penjelasan yang disusun pemanggil untuk keadaan "tidak ada yang cocok"
+   * menjadi kode mati, justru pada satu-satunya keadaan yang menjadi alasan ia ditulis.
+   * Ketahuan di Inbox Salvage, yang menjelaskan mengapa pencarian COCOK PERSIS tidak
+   * menerima separuh nomor klaim — dan penjelasan itu tidak pernah sampai ke layar.
+   *
+   * # Kosong berarti perilaku LAMA, bagi keempat belas layar yang sudah ada
+   *
+   * Yang tidak mengisinya tetap menerima kalimat bawaan apa adanya. Hanya layar yang
+   * benar-benar punya penjelasan sendiri yang menyalakannya.
+   *
+   * Saran "coba kata kunci yang lebih pendek" IKUT PADAM saat isian ini diisi: pada
+   * daftar yang mencocokkan persis, kata kunci yang lebih pendek justru yang salah.
+   */
+  searchEmptyMessage?: string
+  /**
    * Kotak pencarian ditampilkan.
    *
    * Bawaannya `true` supaya layar yang sudah ada tidak berubah. Dimatikan oleh layar
@@ -215,6 +240,18 @@ type Props<T> = {
    * panel lain — Inbox Auto Claim adalah yang pertama (permintaan Work Owner 2026-09-29).
    */
   dense?: boolean
+
+  /**
+   * Garis pemisah ANTARKOLOM pada tampilan meja — grid berkotak, bukan berbaris.
+   *
+   * Opt-in, sama alasannya dengan `dense`: layar yang sudah ada tidak berubah. Dipakai grid
+   * yang harus terbaca sama dengan grid Pega, yang menggambar kotak penuh — Inbox Komunikasi
+   * Cabang adalah yang pertama (permintaan Work Owner 2026-10-09).
+   *
+   * Hanya berlaku pada tampilan meja. Di tampilan kartu setiap sel sudah menjadi barisnya
+   * sendiri, dan garis vertikal di sana memisahkan sesuatu yang tidak bersebelahan.
+   */
+  gridLines?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -311,6 +348,7 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  searchEmptyMessage,
   searchable = true,
   serverSearch,
   hideSearch = false,
@@ -319,6 +357,7 @@ export function DataTable<T>({
   showHeaderWhenEmpty = false,
   expandedRow,
   dense = false,
+  gridLines = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -374,6 +413,24 @@ export function DataTable<T>({
   }
 
   const hasSearch = query.trim() !== ''
+
+  /*
+    Kalimat kekosongan, dan saran yang menyertainya.
+
+    Keduanya dihitung SEKALI di sini, bukan dirangkai ulang di dua tempat penggambaran di
+    bawah. Sebelumnya memang dirangkai dua kali, dan keduanya wajib tetap sama — bentuk
+    yang selalu berakhir berbeda begitu salah satunya disunting.
+  */
+  const emptyText = hasSearch
+    ? (searchEmptyMessage ?? `Tidak ada baris yang cocok dengan “${query.trim()}”.`)
+    : emptyMessage
+
+  // Saran bawaan padam begitu pemanggil memberi kalimatnya sendiri — lihat
+  // searchEmptyMessage.
+  const emptyHint =
+    hasSearch && searchEmptyMessage === undefined
+      ? 'Coba kata kunci yang lebih pendek.'
+      : undefined
 
   /*
     Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
@@ -457,10 +514,7 @@ export function DataTable<T>({
       ) : isLoading ? (
         <LoadingState />
       ) : visible.length === 0 && !showHeaderWhenEmpty ? (
-        <EmptyState
-          pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
-          saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-        />
+        <EmptyState pesan={emptyText} saran={emptyHint} />
       ) : (
         <div className="md:overflow-x-auto">
           <table aria-label={label} className="block w-full border-collapse text-sm md:table">
@@ -482,6 +536,7 @@ export function DataTable<T>({
                       dense ? 'px-3 py-2.5' : 'px-5 py-3',
                       'text-xs font-semibold uppercase tracking-wide text-slate-600',
                       k.alignRight ? 'text-right' : '',
+                      gridLines ? 'md:border-r md:border-slate-200 md:last:border-r-0' : '',
                     ].join(' ')}
                   >
                     {/*
@@ -527,14 +582,7 @@ export function DataTable<T>({
               {visible.length === 0 ? (
                 <tr className="block md:table-row">
                   <td className="block md:table-cell" colSpan={columns.length}>
-                    <EmptyState
-                      pesan={
-                        hasSearch
-                          ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
-                          : emptyMessage
-                      }
-                      saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-                    />
+                    <EmptyState pesan={emptyText} saran={emptyHint} />
                   </td>
                 </tr>
               ) : null}
@@ -579,6 +627,9 @@ export function DataTable<T>({
                             'flex items-baseline gap-3 px-5 py-1.5',
                             'md:table-cell md:py-3.5 md:align-middle',
                             k.alignRight ? 'md:text-right' : '',
+                            gridLines
+                              ? 'md:border-r md:border-slate-200 md:last:border-r-0'
+                              : '',
                           ].join(' ')}
                         >
                           {/*

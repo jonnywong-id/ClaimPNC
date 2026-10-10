@@ -37,12 +37,55 @@ func (r *Repo) Decide(ctx context.Context, cmd inboxrcl.DecisionCommand) (inboxr
 		return inboxrcl.Outcome{}, err
 	}
 
-	// Pemilik tahap berikutnya.
-	assignee, owner, workbasket := inboxrcl.WorkbasketRCLPUCL, "", inboxrcl.WorkbasketRCLPUCL
+	// PIC Teknik klaim — dibaca untuk KEDUA jalur sejak 2026-10-07, bukan hanya jalur yang
+	// kembali ke analis.
+	//
+	// `ASSIGNED_OPERATOR_ID` kini SELALU berisi user teknis (keputusan Work Owner), termasuk
+	// sesudah dokter menyetujui. Yang mengeluarkan klaim dari antrean dokter bukan lagi kolom
+	// itu melainkan **tahap tugasnya** — penyaring E pada `inboxrcl.sql`. Tanpa penyaring itu
+	// perubahan ini akan membuat klaim menetap di Inbox RCL selamanya.
+	//
+	// `WORKBASKET` tugasnya tetap `RCLPUCL`: klaim memang berpindah ke antrean bersama, dan
+	// itu dinyatakan oleh tugasnya — bukan lagi dengan menitipkan nama antrean ke kolom
+	// pemilik.
+	pic, picErr := technicalPIC(ctx, tx, storedNumber, userTeknis)
+	if picErr != nil && !errors.Is(picErr, inboxrcl.ErrTechnicalPICUnknown) {
+		return inboxrcl.Outcome{}, picErr
+	}
+
+	// SESUDAH DOKTER MENYETUJUI, `ASSIGNED_OPERATOR_ID` berisi ADMIN KLAIM — bukan nama
+	// antrean `RCLPUCL`, dan bukan pula PIC Teknik (Work Owner, 2026-10-07).
+	//
+	// Klaimnya memang berpindah ke antrean bersama RCL/PUCL; yang menyatakan itu adalah
+	// **tugasnya** (`WORKBASKET` di bawah tetap `RCLPUCL`), bukan kolom pemilik. Menitipkan
+	// nama antrean ke kolom pemilik membuat baris itu tidak dapat dicocokkan dengan satu
+	// orang pun — dan itulah yang sudah terbukti mengosongkan ketiga tab Inbox RCL/PUCL
+	// ketika kuerinya menyaring literal `'RCLPUCL'` (`inboxrclpucl.sql` butir 1: kolomnya
+	// pada data nyata berisi NAMA ORANG).
+	//
+	// Yang mengeluarkan klaim dari antrean dokter bukan kolom ini melainkan penyaring E —
+	// tahap tugasnya sudah bukan `rcl-dokter` lagi.
+	admin, adminErr := claimAdmin(ctx, tx, storedNumber)
+	if adminErr != nil {
+		return inboxrcl.Outcome{}, adminErr
+	}
+
+	// Urutan cadangan, dan tidak satu pun boleh kosong: baris ber-`ASSIGNED_OPERATOR_ID`
+	// kosong tidak terbaca penyaring A mana pun, sehingga klaimnya hilang dari SETIAP layar
+	// tanpa satu pun galat. Admin klaim lebih dulu; bila tidak ada — baris lama atau klaim
+	// yang lahir di Pega — PIC Teknik; bila itu pun tidak ada, nama antrean seperti dulu.
+	assignee, owner, workbasket := admin, "", inboxrcl.WorkbasketRCLPUCL
+	if assignee == "" {
+		assignee = pic
+	}
+	if assignee == "" {
+		assignee = inboxrcl.WorkbasketRCLPUCL
+	}
 	if out.NextQueue == inboxrcl.QueueWorklist {
-		pic, err := technicalPIC(ctx, tx, storedNumber, userTeknis)
-		if err != nil {
-			return inboxrcl.Outcome{}, err
+		// Jalur kembali ke analis MENUNTUT orangnya: tugas worklist tanpa pemilik mandek
+		// tanpa ada yang tahu.
+		if picErr != nil {
+			return inboxrcl.Outcome{}, picErr
 		}
 		assignee, owner, workbasket = pic, pic, ""
 	}
@@ -151,6 +194,21 @@ func technicalPIC(ctx context.Context, tx *sql.Tx, number, userTeknis string) (s
 		return value, nil
 	}
 	return "", inboxrcl.ErrTechnicalPICUnknown
+}
+
+// claimAdmin membaca admin klaim dari `T_CLAIM_PNC.ADMINKLAIM` — pemilik
+// `ASSIGNED_OPERATOR_ID` sesudah dokter menyetujui.
+//
+// Kosong BUKAN galat, berbeda dengan `technicalPIC`: jalur Setuju punya rantai cadangan
+// (PIC Teknik, lalu nama antrean), sehingga menolak keputusannya hanya karena satu kolom
+// lama tidak terisi akan memacetkan klaim yang hari ini berjalan normal.
+func claimAdmin(ctx context.Context, tx *sql.Tx, number string) (string, error) {
+	var admin sql.NullString
+	if err := tx.QueryRowContext(ctx, query("decision_claim_admin"), number).Scan(&admin); err != nil &&
+		!errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("membaca admin klaim %s: %w", number, err)
+	}
+	return strings.TrimSpace(admin.String), nil
 }
 
 // moveTask menutup tugas terbuka klaim dan membuka tugas tahap berikutnya.

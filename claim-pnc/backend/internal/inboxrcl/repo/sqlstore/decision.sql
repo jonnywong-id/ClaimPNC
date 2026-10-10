@@ -56,6 +56,25 @@ SELECT MAX(TRIM(c.PICTEKNIK)) AS TECHNICAL_PIC
   FROM POOLDATA.T_CLAIM_PNC c
  WHERE TRIM(c.CLAIMNO) = TRIM(:1)
 
+-- name: decision_claim_admin
+-- Admin klaim — pemilik `ASSIGNED_OPERATOR_ID` sesudah dokter MENYETUJUI (Work Owner,
+-- 2026-10-07: "saat klik setuju ASSIGNED_OPERATOR_ID operator UserAdmin, bukan RCL/PUCL").
+--
+-- Sumbernya `T_CLAIM_PNC.ADMINKLAIM`, kolom yang sama yang diisi modul Registrasi saat klaim
+-- dibuat (`claim.sql`), dan padanan `ClaimData.UserAdmin` yang dipakai `PNCAdminRouter`.
+--
+-- KENAPA BUKAN `TC_PNC_PUCL.OPERATOR_ID`, yang DDL-nya pun berlabel "Nama Admin". Kolom itu
+-- dipetakan dari `.pyOrigUserID` — pembuat objek kerja — tetapi `registrasi.SaveLetter`
+-- menulisinya dengan identitas ANALIS yang menekan Kirim, bukan admin klaim. Memakainya di
+-- sini akan mengembalikan klaim ke analis, bukan ke admin.
+--
+-- MAX atas himpunan kosong mengembalikan satu baris NULL, bukan nol baris.
+--
+-- Bind: :1 nomor klaim
+SELECT MAX(TRIM(c.ADMINKLAIM)) AS CLAIM_ADMIN
+  FROM POOLDATA.T_CLAIM_PNC c
+ WHERE TRIM(c.CLAIMNO) = TRIM(:1)
+
 -- name: decision_claim_key
 -- KLAIM_ID tugas klaim ini — disalin dari tugasnya sendiri, tugas terbuka lebih dulu, supaya
 -- tugas baru tertaut ke klaim dengan kunci yang SAMA dengan yang ditulis modul alur.

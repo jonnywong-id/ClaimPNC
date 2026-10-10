@@ -15,10 +15,11 @@ import (
 	"claim-pnc/internal/inboxrcl"
 )
 
-// decisionQueries adalah ketujuh kueri decision.sql beserta jumlah penanda bind-nya.
+// decisionQueries adalah seluruh kueri decision.sql beserta jumlah penanda bind-nya.
 var decisionQueries = map[string]int{
 	"decision_lock":            5,
 	"decision_technical_pic":   1,
+	"decision_claim_admin":     1,
 	"decision_claim_key":       1,
 	"decision_update_pucl":     11,
 	"decision_update_worklist": 5,
@@ -87,9 +88,17 @@ func TestSetujuMenulisSeluruhnyaDalamSatuTransaksi(t *testing.T) {
 		WithArgs("PNCN.26.31", "JONNY", inboxrcl.StatusKerjaSelesai, "1", "3").
 		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}).
 			AddRow("PNCN.26.31", "1", "0", "1", "1151", nil, loss, at, nil, "JONNY"))
+	// PIC Teknik dibaca untuk KEDUA jalur sejak 2026-10-07 — `ASSIGNED_OPERATOR_ID` tidak
+	// pernah lagi berisi nama antrean.
+	mock.ExpectQuery(exactQ("decision_technical_pic")).WithArgs("PNCN.26.31").
+		WillReturnRows(sqlmock.NewRows([]string{"pic"}).AddRow("TEKNIK01"))
+	mock.ExpectQuery(exactQ("decision_claim_admin")).WithArgs("PNCN.26.31").
+		WillReturnRows(sqlmock.NewRows([]string{"admin"}).AddRow("ADMINKLAIM01"))
+	// ADMIN KLAIM yang menang, bukan PIC Teknik (Work Owner 2026-10-07). PIC-nya sengaja
+	// diisi di atas supaya uji ini benar-benar membedakan keduanya.
 	mock.ExpectExec(exactQ("decision_update_pucl")).
 		WithArgs(inboxrcl.StatusClaimRCL, inboxrcl.StatusKlaimActive, "0", nil, nil,
-			at, at, at, nil, inboxrcl.WorkbasketRCLPUCL, "PNCN.26.31").
+			at, at, at, nil, "ADMINKLAIM01", "PNCN.26.31").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(exactQ("decision_update_worklist")).
 		WithArgs(inboxrcl.StatusClaimRCL, at, nil, inboxrcl.StageNameRCLPUCL, "PNCN.26.31").
@@ -116,6 +125,93 @@ func TestSetujuMenulisSeluruhnyaDalamSatuTransaksi(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// TestSetujuTanpaAdminJatuhKePICTeknik — rantai cadangan tingkat pertama.
+//
+// Klaim lama kerap punya PIC Teknik tetapi tidak punya `ADMINKLAIM`. Jatuh ke PIC Teknik
+// jauh lebih baik daripada jatuh ke nama antrean: ia masih orang yang dapat dicocokkan
+// penyaring A.
+func TestSetujuTanpaAdminJatuhKePICTeknik(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	at := time.Date(2026, 10, 5, 3, 0, 0, 0, time.UTC)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(exactQ("decision_lock")).
+		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}).
+			AddRow("PNC-2067", "1", "0", nil, nil, nil, nil, nil, nil, ""))
+	mock.ExpectQuery(exactQ("decision_technical_pic")).WithArgs("PNC-2067").
+		WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow("TEKNIK01"))
+	mock.ExpectQuery(exactQ("decision_claim_admin")).WithArgs("PNC-2067").
+		WillReturnRows(sqlmock.NewRows([]string{"admin"}))
+	mock.ExpectExec(exactQ("decision_update_pucl")).
+		WithArgs(inboxrcl.StatusClaimRCL, inboxrcl.StatusKlaimActive, "0", nil, nil,
+			at, at, at, nil, "TEKNIK01", "PNC-2067").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(exactQ("decision_update_worklist")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(exactQ("decision_claim_key")).
+		WillReturnRows(sqlmock.NewRows([]string{"k"}))
+	mock.ExpectExec(exactQ("decision_close_tasks")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(exactQ("decision_open_task")).
+		WithArgs(sqlmock.AnyArg(), "ASM-FW-GCNMFW-WORK PNC-2067", "PNC-2067", inboxrcl.StageRCLPUCL,
+			inboxrcl.QueueWorkbasket, inboxrcl.WorkbasketRCLPUCL, nil, anyTime{}, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(exactQ("decision_insert_history")).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	_, err = NewRepo(db).Decide(context.Background(), inboxrcl.DecisionCommand{
+		Operator: "JONNY", ClaimNumber: "PNC-2067", Decision: inboxrcl.DecisionApprove, At: at,
+	})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestSetujuTanpaPICTeknikJatuhKeNamaAntrean — rantai cadangan tingkat terakhir.
+//
+// Klaim yang tidak punya admin MAUPUN PIC Teknik (baris lama, atau klaim yang lahir di
+// Pega) tetap mendapat pemilik. Mengosongkan `ASSIGNED_OPERATOR_ID` akan membuat barisnya
+// tidak terbaca penyaring A mana pun, dan klaimnya hilang dari setiap layar tanpa satu pun
+// galat. Keputusan Setuju karena itu TIDAK boleh gagal hanya karena keduanya tidak
+// diketahui — berbeda dari jalur Tidak Setuju, yang tugas worklist-nya memang menuntut
+// orangnya.
+func TestSetujuTanpaPICTeknikJatuhKeNamaAntrean(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
+	require.NoError(t, err)
+	defer db.Close()
+
+	at := time.Date(2026, 10, 5, 3, 0, 0, 0, time.UTC)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(exactQ("decision_lock")).
+		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}).
+			AddRow("PNC-2067", "1", "0", nil, nil, nil, nil, nil, nil, ""))
+	mock.ExpectQuery(exactQ("decision_technical_pic")).WithArgs("PNC-2067").
+		WillReturnRows(sqlmock.NewRows([]string{"p"}))
+	mock.ExpectQuery(exactQ("decision_claim_admin")).WithArgs("PNC-2067").
+		WillReturnRows(sqlmock.NewRows([]string{"admin"}))
+	mock.ExpectExec(exactQ("decision_update_pucl")).
+		WithArgs(inboxrcl.StatusClaimRCL, inboxrcl.StatusKlaimActive, "0", nil, nil,
+			at, at, at, nil, inboxrcl.WorkbasketRCLPUCL, "PNC-2067").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(exactQ("decision_update_worklist")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(exactQ("decision_claim_key")).
+		WillReturnRows(sqlmock.NewRows([]string{"k"}))
+	mock.ExpectExec(exactQ("decision_close_tasks")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(exactQ("decision_open_task")).
+		WithArgs(sqlmock.AnyArg(), "ASM-FW-GCNMFW-WORK PNC-2067", "PNC-2067", inboxrcl.StageRCLPUCL,
+			inboxrcl.QueueWorkbasket, inboxrcl.WorkbasketRCLPUCL, nil, anyTime{}, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(exactQ("decision_insert_history")).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	_, err = NewRepo(db).Decide(context.Background(), inboxrcl.DecisionCommand{
+		Operator: "JONNY", ClaimNumber: "PNC-2067", Decision: inboxrcl.DecisionApprove, At: at,
+	})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 // TestTidakSetujuKembaliKePICTeknik — tugas worklist bertuan PIC Teknik, riwayat dua baris.
 func TestTidakSetujuKembaliKePICTeknik(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
@@ -130,9 +226,18 @@ func TestTidakSetujuKembaliKePICTeknik(t *testing.T) {
 			AddRow("PNC-2067", "1", "0", "0", "AKTIF", nil, nil, nil, nil, ""))
 	mock.ExpectQuery(exactQ("decision_technical_pic")).WithArgs("PNC-2067").
 		WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow("PICTEKNIK01"))
+	// Admin klaim ADA, dan jalur ini tetap TIDAK memakainya: Tidak Setuju mengembalikan
+	// klaim ke PIC Teknik, bukan ke admin. Diisi di sini justru supaya uji ini gagal bila
+	// aturan Setuju kelak ikut diterapkan ke jalur ini.
+	mock.ExpectQuery(exactQ("decision_claim_admin")).WithArgs("PNC-2067").
+		WillReturnRows(sqlmock.NewRows([]string{"admin"}).AddRow("ADMINKLAIM01"))
+	// Argumen ke-6 (`TGL_KIRIM_PUCL`) WAJIB nil, dan bentuk lamanya `at` mengunci cacat
+	// yang dilaporkan Work Owner: kolom itu penyaring C Inbox RCL, sehingga selama ia
+	// terisi klaimnya tetap di antrean dokter walau pemiliknya sudah berpindah. Argumen
+	// ke-7 (`TGL_ANALYST_SEND_RCL`) juga nil — tidak dibaca penyaring mana pun.
 	mock.ExpectExec(exactQ("decision_update_pucl")).
 		WithArgs(inboxrcl.StatusClaimAnalyst, inboxrcl.StatusKlaimActive, nil, "0", nil,
-			at, nil, nil, "Diagnosa dijamin.", "PICTEKNIK01", "PNC-2067").
+			nil, nil, nil, "Diagnosa dijamin.", "PICTEKNIK01", "PNC-2067").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(exactQ("decision_update_worklist")).
 		WithArgs(inboxrcl.StatusClaimAnalyst, nil, "PICTEKNIK01", inboxrcl.StageNameSendToAnalyst, "PNC-2067").
@@ -191,6 +296,11 @@ func TestPICTeknikKosongMenolak(t *testing.T) {
 			AddRow("PNCN.26.40", "3", "0", nil, nil, nil, nil, nil, nil, nil))
 	mock.ExpectQuery(exactQ("decision_technical_pic")).
 		WillReturnRows(sqlmock.NewRows([]string{"p"}).AddRow(nil))
+	// Admin klaim tetap dibaca — ia dipakai jalur Setuju, dan dibaca sebelum jalur mana pun
+	// bercabang. Bahkan terisi, ia TIDAK menyelamatkan jalur Back: tugas worklist menuntut
+	// PIC Teknik, bukan admin.
+	mock.ExpectQuery(exactQ("decision_claim_admin")).
+		WillReturnRows(sqlmock.NewRows([]string{"admin"}).AddRow("ADMINKLAIM01"))
 	mock.ExpectRollback()
 
 	_, err = NewRepo(db).Decide(context.Background(), inboxrcl.DecisionCommand{

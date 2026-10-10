@@ -51,17 +51,21 @@ const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
  * ARAH: layar ini menampilkan dokumen yang belum dikirim, layar itu menampilkan dokumen
  * yang sudah dikirim — dan yang membacanya reasuradur, bukan petugas internal.
  *
- * # Layar BACA-SAJA, dan itu keputusan Work Owner 2026-09-26
+ * # Tiga tombol sudah MENULIS; dua belum dibangun
  *
- * Tombol yang MENULIS belum dibangun — "Send", "Upload File Penunjang", "Kirim Pre DLA",
- * dan unduh lampiran. "Send" di Pega mengirim surat beserta lampirannya lewat email LALU
- * menandai dokumennya terkirim; mengerjakan penandaan tanpa pengirimannya akan membuat
- * barisnya hilang dari antrean padahal tidak satu pun surat sampai.
+ * Yang sudah bekerja: **"Send"** mengirim surat PLA/DLA beserta lampirannya ke reasuradur
+ * lalu menandai dokumennya terkirim · **"Kirim Pre DLA"** menandai satu Pre-DLA terkirim ·
+ * **"Print Pre DLA"** membuka panelnya.
  *
- * "Print Pre DLA" TIDAK termasuk: ia MEMBUKA panel, dan panelnya sudah dibangun. Yang
- * belum dibangun adalah dua tombol di dalamnya.
+ * Yang belum: **"Upload File Penunjang"** dan **unduh lampiran**, keduanya menunggu
+ * penyimpanan dokumen (`D-16`). Menekannya menjawab alasannya, bukan "halaman tidak
+ * ditemukan".
  *
- * Ketiadaannya digambar di kaki layar sebagai selisih terencana, bukan disamarkan.
+ * # Tombol "Send" TIDAK digambar pada setiap baris
+ *
+ * Syarat tampilnya dibawa dari Pega dan dihitung peladen — lihat `DocumentPanel`. Baris
+ * yang dokumennya sudah terkirim tidak bertombol, sehingga surat kedua ke reasuradur yang
+ * sama tidak dapat dipicu dari layar ini.
  *
  * # Susunan layar
  *
@@ -370,7 +374,6 @@ export function InboxPLADLAPreDLAPage() {
         />
       )}
 
-      <SelisihTerencana butir={meta.data?.selisih_terencana ?? []} />
     </Bingkai>
   )
 }
@@ -538,33 +541,3 @@ function pesanKosong(penyaring: FormPencarian): string {
   return 'Tidak ada pemberitahuan yang menunggu dikirim pada daftar ini.'
 }
 
-/**
- * SelisihTerencana menggambar selisih terhadap layar Pega di kaki halaman.
- *
- * # Kenapa ia digambar, bukan sekadar dicatat di kode
- *
- * Karena petugas yang membandingkan layar ini dengan Pega berdampingan AKAN menemukan
- * selisihnya — dan selisih yang tidak dinyatakan akan dilaporkan sebagai kerusakan, lalu
- * ditelusuri ulang oleh orang yang tidak tahu bahwa ia disengaja.
- */
-function SelisihTerencana({ butir }: { butir: string[] }) {
-  if (butir.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Perbedaan yang disengaja terhadap layar Pega ({butir.length})
-      </summary>
-      <ul className="mt-3 space-y-2 text-sm text-slate-600">
-        {butir.map((isi) => (
-          <li key={isi} className="flex gap-2">
-            <span aria-hidden className="text-slate-400">
-              •
-            </span>
-            <span>{isi}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  )
-}

@@ -143,7 +143,7 @@ func TestListReturnsTheBranchRowsAndItsTitle(t *testing.T) {
 	require.Equal(t, testPortal, body["portal"],
 		"layar memakai ini untuk memastikan jawabannya milik portal yang sedang dipilih")
 	require.Equal(t, float64(inboxosclaimpercabang.AgingThreshold), body["ambang_aging"])
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 func TestListMarksTheRowsThatNeedAttention(t *testing.T) {

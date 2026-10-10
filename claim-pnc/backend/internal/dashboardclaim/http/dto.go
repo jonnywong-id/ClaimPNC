@@ -51,13 +51,6 @@ type summaryResponse struct {
 	// hukum yang keliru tidak terlihat salah dengan cara lain apa pun (`R-20`).
 	Portal string `json:"portal"`
 
-	// SelisihTerencana menyebutkan perbedaan yang DISENGAJA terhadap sistem lama.
-	//
-	// Ia dikirim ke layar, bukan hanya ditulis di komentar kode, supaya penguji gerbang 1
-	// membacanya saat membandingkan angka — bukan menemukannya sebagai kejutan lalu
-	// melaporkannya sebagai cacat (`D-54`).
-	SelisihTerencana []string `json:"selisih_terencana"`
-
 	// CatatanWarisan menyebutkan perilaku yang SAMA dengan sistem lama tetapi mudah dibaca
 	// sebagai cacat.
 	//

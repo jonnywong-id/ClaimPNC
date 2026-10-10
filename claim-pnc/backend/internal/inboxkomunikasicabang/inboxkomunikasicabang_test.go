@@ -159,17 +159,37 @@ func TestBothTabsDrawTheTwoActionButtonColumns(t *testing.T) {
 	}
 }
 
-func TestActionColumnsKeepTheLiteralPegaHeading(t *testing.T) {
-	// `pyCaption Button` pada keempat kolomnya. Dua kolom berjudul sama memang tidak
-	// membantu, tetapi `D-13` menetapkan teks layar mengikuti Pega apa adanya — yang
-	// ditambahkan adalah nama yang dibaca pembaca layar, bukan judul kolomnya.
-	tab, _ := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabNotAnswered)
-
-	for _, column := range tab.Columns {
-		if inboxkomunikasicabang.IsAction(column.Key) {
-			require.Equal(t, "Button", column.Title)
+func TestActionColumnsHaveNoHeading(t *testing.T) {
+	// `pyCaption Button` memang tertulis di export, dan versi pertama modul ini membawanya
+	// apa adanya dengan alasan `D-13`. Tangkapan layar Pega yang berjalan (2026-10-09)
+	// membuktikan kedua sel judulnya KOSONG — `pyCaption` itu nama kontrol di perancang,
+	// bukan teks yang dirender.
+	//
+	// Uji ini menjaga pembetulan tersebut: `D-13` menyangkut teks yang DILIHAT pengguna.
+	for _, tab := range inboxkomunikasicabang.Tabs() {
+		for _, column := range tab.Columns {
+			if inboxkomunikasicabang.IsAction(column.Key) {
+				require.Emptyf(t, column.Title,
+					"kolom tombol %q pada tab %q tidak boleh berjudul", column.Key, tab.Name)
+			}
 		}
 	}
+}
+
+func TestTabsUseThePegaWording(t *testing.T) {
+	// Kedua nama datang dari `PNCCountKomunikasiCabang_Act` langkah 10 dan 13, dan kedua
+	// kata itulah yang tampil di tabel "Status Register" layar lama.
+	//
+	// Sampai 2026-10-09 keduanya diterjemahkan menjadi "Sudah Dijawab" dan "Belum
+	// Dijawab"; keputusan Work Owner pada tanggal itu mengembalikannya. Uji ini yang
+	// menjaganya, karena terjemahan terasa alami untuk ditulis kembali.
+	answered, ok := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabAnswered)
+	require.True(t, ok)
+	require.Equal(t, "Answered", answered.Name)
+
+	notAnswered, ok := inboxkomunikasicabang.FindTab(inboxkomunikasicabang.TabNotAnswered)
+	require.True(t, ok)
+	require.Equal(t, "Not Answered", notAnswered.Name)
 }
 
 // dataColumns menyaring kolom yang benar-benar menggambar isian baris.

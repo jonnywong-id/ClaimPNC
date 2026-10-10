@@ -138,7 +138,6 @@ export type KeteranganResponse = {
   tab_bawaan: string;
   jenis_kpi: string[];
   ukuran_halaman: number;
-  selisih_terencana: string[];
   keterbatasan: string[];
 };
 

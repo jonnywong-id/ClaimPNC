@@ -120,17 +120,12 @@ export type MetadataResponse = {
   tab_bawaan: string
   komponen: Component[]
   tipe_report: ReportTypeOption[]
-  selisih_terencana: string[]
-
   kelompok_admin: AdminGroupOption[]
-  selisih_terencana_admin: string[]
-
   lini_bisnis: BusinessLineOption[]
   komponen_pic: PICComponent[]
 
   /** Isi dropdown "Pilih Data KPI" — dikirim peladen, bukan ditulis di layar. */
   data_kpi: PICExportKind[]
-  selisih_terencana_pic: string[]
 
   /**
    * Petugas yang DIKECUALIKAN dari penilaian SLA di sistem lama.

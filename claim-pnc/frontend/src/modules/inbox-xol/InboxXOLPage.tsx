@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { useSelectedPortal } from '@/app/portal'
+import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 
 import { AdvicePanel } from './AdvicePanel'
@@ -15,25 +16,41 @@ import { ClaimPanel } from './ClaimPanel'
  * ia mengakumulasi klaim satu tahun perjanjian, lalu memperlihatkan pemberitahuan PLA/DLA
  * yang sudah diterbitkan kepada para reasuradur beserta status persetujuannya.
  *
- * # Dua tab, bukan empat
+ * # Layar dibuka KOSONG, dan itu memang perilaku aslinya
  *
- * `Section/InboxClaimXOL-Section.xml` memuat dua tab teratas, masing-masing dengan
- * kondisi tampil yang membaca access group:
+ * Ketiga judul yang tampak seperti tab — "Generated DLA PLA XOL", "Cari Data DLA PLA XOL",
+ * dan "Approval XOL" — adalah TOMBOL; ketiganya terdaftar sebagai `pyButtonLabel` di
+ * `Section/InboxClaimXOL-Section.xml`. Menekan salah satunya memanggil
+ * `Activity/ToFlaggingDataXOLByRequest` yang mengisi satu properti penanda —
+ * `FlagDataForSerachingXOL.source := Param.ParFlags` — lalu menyegarkan section.
  *
- *	Inbox XOL        GCNMFW:PncPICTeknik
- *	Inbox XOL Komite GCNMFW:CaseManager
+ * Isi layar bergantung penuh pada penanda itu. Ketiga wadah isi memakai
+ * `pyContainerVisibleWhen` atasnya:
  *
- * Tiga judul yang tampak seperti tab — "Generated DLA PLA XOL", "Cari Data DLA PLA XOL",
- * dan "INSERT DOL DAN COL" — sebenarnya TOMBOL di dalam tab pertama; ketiganya terdaftar
- * sebagai `pyButtonLabel`. Dua yang pertama menjadi panel PLA/DLA di bawah; yang ketiga
- * menulis data dan karena itu belum dipindahkan.
+ *	:3858	source=='1'	PncPICTeknik  → PILIH MASTER XOL · DATA XOL BASED ON DOL AND COL · PLA/DLA
+ *	:21730	source=='2'	siapa saja    → Sec_Detail_claim_XOL (cari + hasilnya)
+ *	:23129	source=='1'	CaseManager   → Approval XOL · DATA MASTER XOL
  *
- * # Kedua tab terlihat oleh SETIAP pengguna hari ini
+ * Sebelum satu tombol ditekan, `source` masih kosong dan **tidak satu pun wadah tampil** —
+ * yang terlihat hanya deretan tombolnya. Itulah tampilan awal yang ditiru di sini, dan
+ * itu pula sebabnya tidak ada permintaan yang berangkat saat layar baru dibuka.
  *
- * Pemisahan peran belum dapat ditegakkan: tabel peran adalah `TKT-F3-004`, yang dapat
- * dibangun tetapi belum dapat diisi karena penugasan operator ke peran tidak ada di basis
- * data maupun di export (`11-SECURITY.md` §3.1). Selama modul ini MEMBACA SAJA,
- * taruhannya terbatas — antrean komite yang terlihat bukan antrean yang dapat disetujui.
+ * # "Generated DLA PLA XOL" dan "Approval XOL" membuka hal yang SAMA
+ *
+ * Keduanya mengirim `ParFlags = 1`. Yang memisahkan isinya di Pega bukan tombolnya
+ * melainkan access group pembacanya — dan kedua wadah `source=='1'` sama-sama
+ * memperbolehkan `GCNMFW:Administrators`. Akun yang memegangnya melihat KEEMPAT blok
+ * sekaligus saat salah satu tombol ditekan: INSERT DOL DAN COL, DATA XOL BASED ON DOL AND
+ * COL, DATA XOL KLAIM, dan DATA MASTER XOL.
+ *
+ * Itulah keadaan yang berlaku di sini, dan bukan karena dipilih: peran belum dapat
+ * ditegakkan — tabel peran adalah `TKT-F3-004`, yang dapat dibangun tetapi belum dapat
+ * diisi karena penugasan operator ke peran tidak ada di basis data maupun di export
+ * (`11-SECURITY.md` §3.1). Setiap pengguna karena itu berkelakuan seperti akun
+ * ber-access-group lengkap.
+ *
+ * Dua tombol yang berbuat sama memang terasa ganjil, dan ganjil itu MILIK layar aslinya.
+ * Menjadikannya dua isi yang berbeda akan mengarang pembedaan yang tidak ada di sumbernya.
  *
  * # Layar ini tidak mengubah apa pun
  *
@@ -43,7 +60,7 @@ import { ClaimPanel } from './ClaimPanel'
  * tempatnya, bukan disembunyikan.
  */
 export function InboxXOLPage() {
-  const [tab, setTab] = useState<TabKey>('inbox')
+  const [view, setView] = useState<ViewKey | null>(null)
   const portal = useSelectedPortal((state) => state.alias)
 
   if (portal === null) {
@@ -63,81 +80,149 @@ export function InboxXOLPage() {
 
   return (
     <PageFrame>
-      <Tabs active={tab} onSelect={setTab} />
+      <ActionBand
+        label="Inbox XOL"
+        leadLabel="Generated DLA PLA XOL"
+        active={view}
+        onSelect={setView}
+      />
 
-      {tab === 'inbox' ? (
-        <>
-          <ClaimPanel />
-          <AdvicePanel />
-          <InsertNotice />
-        </>
-      ) : (
-        <ApprovalPanel active={tab === 'komite'} />
-      )}
+      <ActionBand
+        label="Inbox XOL Komite"
+        leadLabel="Approval XOL"
+        active={view}
+        onSelect={setView}
+      />
+
+      <ContentBand view={view} />
     </PageFrame>
   )
 }
 
-type TabKey = 'inbox' | 'komite'
+/**
+ * ViewKey menggantikan `FlagDataForSerachingXOL.source`, nilai demi nilai.
+ *
+ *	'data'	↔ ParFlags 1	"Generated DLA PLA XOL" · "Approval XOL"
+ *	'cari'	↔ ParFlags 2	"Cari Data DLA PLA XOL"
+ *
+ * `null` adalah keadaan awal — padanan `source` yang masih kosong, yakni layar yang baru
+ * dibuka dan belum menampilkan apa pun.
+ */
+type ViewKey = 'data' | 'cari'
 
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'inbox', label: 'Inbox XOL' },
-  { key: 'komite', label: 'Inbox XOL Komite' },
-]
+type BandProps = {
+  label: string
+  leadLabel: string
+  active: ViewKey | null
+  onSelect: (key: ViewKey) => void
+}
 
 /**
- * Tabs menggambar kedua tab beserta keadaannya.
+ * ActionBand menggambar satu deret tombol, meniru satu baris di layar lama.
  *
- * Tab yang tidak aktif TIDAK dibongkar isinya dari DOM oleh komponen ini — yang
- * mengendalikan pemuatan adalah `enabled` pada hook masing-masing panel. Dengan begitu,
- * membuka layar tidak menembak permintaan tab yang belum dilihat siapa pun.
+ * Tiap deret berisi tombol khasnya sendiri ditambah "Cari Data DLA PLA XOL" yang BERULANG
+ * di kedua deret. Pengulangan itu bukan kekeliruan salinan: section lama benar-benar
+ * memuat tombol itu dua kali (`:1940` dan `:3052`), keduanya mengirim `ParFlags = 2`, dan
+ * keduanya membuka wadah yang sama. Ia ada dua kali karena tiap peran hanya melihat satu
+ * deret, dan keduanya butuh jalan ke panel pencarian.
+ *
+ * Deret dibungkus `<section>` berlabel supaya kedua tombol "Cari Data DLA PLA XOL" tetap
+ * dapat dibedakan — oleh pembaca layar maupun oleh pengujian — tanpa mengubah teks yang
+ * dilihat pengguna.
  */
-function Tabs({ active, onSelect }: { active: TabKey; onSelect: (key: TabKey) => void }) {
+function ActionBand({ label, leadLabel, active, onSelect }: BandProps) {
   return (
-    <div className="mt-4 overflow-x-auto" role="tablist" aria-label="Bagian Inbox XOL">
-      <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
-        {TABS.map((entry) => {
-          const selected = entry.key === active
-          return (
-            <button
-              key={entry.key}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => onSelect(entry.key)}
-              className={
-                'rounded-t-kontrol px-4 py-2 text-sm font-medium transition ' +
-                (selected
-                  ? 'border-b-2 border-blue-600 bg-white text-blue-700'
-                  : 'border-b-2 border-transparent text-slate-600 hover:text-slate-900')
-              }
-            >
-              {entry.label}
-            </button>
-          )
-        })}
+    <section
+      aria-label={label}
+      className="mt-4 rounded-kartu border border-slate-200 bg-white p-3 shadow-lembut"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <BandButton tone="utama" pressed={active === 'data'} onClick={() => onSelect('data')}>
+          {leadLabel}
+        </BandButton>
+
+        <BandButton
+          tone="kedua"
+          pressed={active === 'cari'}
+          onClick={() => onSelect('cari')}
+        >
+          Cari Data DLA PLA XOL
+        </BandButton>
       </div>
-    </div>
+    </section>
   )
 }
 
 /**
- * InsertNotice menjelaskan ketiadaan tombol "INSERT DOL DAN COL".
+ * BandButton menambahkan satu hal yang TIDAK ada di layar lama: tanda tombol mana yang
+ * sedang terbuka.
  *
- * Tombol itu MENULIS ke `POOLDATA.XOL_TABLE_ALL_KLAIM` — menghapus lalu menyisipkan ulang
- * baris untuk satu tanggal dan penyebab kerugian. Selama masa paralel tabel itu masih
- * dimiliki Pega (`P-1`).
+ * Di Pega warna tombol tetap — ia gaya yang dipatok (`Strong` dan `Dashboard`), bukan
+ * keadaan. Akibatnya tidak ada petunjuk sama sekali tentang isi yang sedang tampil milik
+ * tombol yang mana, dan dengan dua tombol "Cari Data DLA PLA XOL" yang serupa persis itu
+ * benar-benar menyesatkan.
  *
- * Keterangannya ditulis di tempat tombolnya dulu berada, bukan di kaki halaman: pengguna
- * yang mencari tombol mencarinya di sini.
+ * `aria-pressed` ditambahkan karena ketiga tombol ini memang berkelakuan seperti sakelar
+ * yang saling meniadakan, bukan seperti perintah sekali jalan.
  */
-function InsertNotice() {
+function BandButton({
+  tone,
+  pressed,
+  onClick,
+  children,
+}: {
+  tone: 'utama' | 'kedua'
+  pressed: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
   return (
-    <p className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      Menambah data DOL dan Cause Of Loss belum tersedia di aplikasi baru. Selama masa
-      paralel, penambahannya masih dilakukan lewat aplikasi Pega; layar ini menampilkan
-      hasilnya.
-    </p>
+    <Button
+      tone={tone}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={pressed ? 'ring-2 ring-blue-500/40 ring-offset-1' : undefined}
+    >
+      {children}
+    </Button>
+  )
+}
+
+/**
+ * ContentBand menggambar wadah isi — satu saja, mengikuti penanda yang sedang berlaku.
+ *
+ * Panel yang tidak tampil TIDAK dirakit sama sekali, bukan sekadar disembunyikan. Itu yang
+ * menjaga janji tampilan awal: hook di tiap panel baru menembak permintaannya saat panel
+ * itu benar-benar dipasang, sehingga membuka layar ini tidak memanggil satu pun rute.
+ */
+function ContentBand({ view }: { view: ViewKey | null }) {
+  if (view === null) {
+    return (
+      <section
+        aria-label="Isi Inbox XOL"
+        className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600 shadow-lembut"
+      >
+        Pilih salah satu tombol di atas untuk menampilkan datanya.
+      </section>
+    )
+  }
+
+  return (
+    <section aria-label="Isi Inbox XOL">
+      {view === 'data' ? (
+        <>
+          {/*
+            Urutannya mengikuti urutan wadahnya di section lama, bukan selera:
+            INSERT DOL DAN COL + DATA XOL BASED ON DOL AND COL (`:3858`), lalu
+            DATA XOL KLAIM + DATA MASTER XOL (`:23129`).
+          */}
+          <ClaimPanel />
+          <ApprovalPanel active />
+        </>
+      ) : (
+        <AdvicePanel />
+      )}
+    </section>
   )
 }
 

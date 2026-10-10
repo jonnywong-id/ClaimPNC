@@ -306,6 +306,117 @@ export function useSendToInputor(claimID: string) {
   })
 }
 
+/**
+ * Pilihan "Perihal" modal Kirim ke RCL/PUCL — `POOLDATA.M_PERIHAL_RCLPUCL`, disaring
+ * menurut jalur yang sedang dipilih. Jalur 0 (belum dipilih) tidak memanggil apa pun.
+ */
+export function usePUCLSubjects(jalur: number) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'rclpucl', 'perihal', jalur, token],
+    enabled: jalur > 0,
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<{ pilihan: { id: number; nama: string }[] }>(
+        `/api/registrasi/rclpucl/perihal?jalur=${jalur}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Grid alasan penolakan — `POOLDATA.M_REASON_REJECT_REPRO`, 2.116 baris.
+ *
+ * Pencariannya dikirim ke server, bukan disaring di layar: menarik seluruh tabel ke
+ * browser lalu menyaringnya di sana adalah persis cacat yang `NFR-12` larang.
+ */
+export function usePUCLReasons(cari: string, aktif: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'rclpucl', 'alasan', cari, token],
+    // Grid ini tidak tampil pada jalur Notification maupun di luar lini PA; tanpa
+    // sakelar ini layar tetap menarik 200 baris yang tidak pernah digambar.
+    enabled: aktif,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      callAPI<{ pilihan: { id: string; nama: string; deskripsi: string }[] }>(
+        `/api/registrasi/rclpucl/alasan?cari=${encodeURIComponent(cari)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/**
+ * Pilihan dropdown "Nama Dokter" — `pyPromptTableList` property `NamaDokterRCL`.
+ *
+ * Daftar TETAP dua baris pada property-nya sendiri, bukan kueri. Sebelumnya layar ini
+ * menarik identitas lama dari `POOLDATA.T_ACCESS_GROUP_PNC` — turunan dari penyaring
+ * Inbox RCL, karena rule sumbernya tidak ada di export (`R-16`). Property yang diserahkan
+ * Work Owner pada 2026-10-06 membuktikan turunan itu salah, dan itulah sebab dropdown-nya
+ * tampil kosong: kuerinya mencari himpunan yang tidak pernah menjadi isinya.
+ *
+ * `id` adalah yang dikirim balik (`pyStandardValue`), `nama` yang digambar
+ * (`pyLocalizedValue`). Keduanya berbeda pada baris kedua, jadi tidak boleh tertukar.
+ */
+export function useRCLDoctors(aktif: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['registrasi', 'rclpucl', 'dokter', token],
+    // Isiannya hanya tampil pada jalur RCL atau Notification lini PA; tanpa sakelar ini
+    // layar menarik daftarnya pada setiap modal yang tidak pernah menggambarnya.
+    enabled: aktif,
+    staleTime: 10 * 60 * 1000,
+    queryFn: () =>
+      callAPI<{ pilihan: { id: string; nama: string }[] }>('/api/registrasi/rclpucl/dokter', {
+        token,
+        portal,
+      }),
+  })
+}
+
+/** Isi modal "Kirim ke RCL/PUCL" — `Section/SectionPUCL-sect.xml`. */
+export type SendToRCLPUCLContent = {
+  taskID: string
+  jalur: number
+  catatan: string
+  perihal: string
+  keterangan_pembuka: string
+  keterangan_isi: string
+  keterangan_penutup: string
+  nama_dokter: string
+}
+
+/**
+ * Tombol Kirim pada modal "Kirim ke RCL/PUCL": menyimpan suratnya, menutup tugas
+ * berjalan, dan melompatkan klaim ke RCL/PUCL (jalur 2) atau RCLDokter (jalur 1).
+ */
+export function useSendToRCLPUCL(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ taskID, ...body }: SendToRCLPUCLContent) =>
+      callAPI<ClaimResponse>(`/api/registrasi/tugas/${taskID}/kirim-rclpucl`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+    },
+  })
+}
+
 /** Isian dialog "Prevent Close Claim" yang dikirim ke server. */
 export interface CloseClaimBody {
   catatan_tutup: string

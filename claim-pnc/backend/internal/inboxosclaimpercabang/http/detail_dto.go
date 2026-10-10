@@ -31,9 +31,6 @@ type DetailResponse struct {
 	// cabang yang sedang ditampilkan daftarnya.
 	Branch BranchDTO `json:"cabang"`
 
-	// PlannedDifferences adalah selisih POPUP terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim dengan alasan yang sama seperti pada daftar — memastikan jawabannya
 	// bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -172,7 +169,6 @@ func toDetailResponse(detailed usecase.Detailed, portalAlias string) DetailRespo
 		ProgressHistory:    progress,
 		AdjusterMessages:   messages,
 		Branch:             BranchDTO{Code: detailed.Query.Branch.Code, Name: detailed.Query.Branch.Name},
-		PlannedDifferences: detailed.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

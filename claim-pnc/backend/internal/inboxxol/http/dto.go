@@ -26,6 +26,16 @@ type MasterDTO struct {
 	// tidak dapat diperiksa siapa pun.
 	ExchangeRate float64 `json:"kurs"`
 
+	// MinLimit dan MinLimitIDR mengisi kolom "Min Limit" dan "Min Limit IDR" pada grid
+	// layar rincian. Yang kedua adalah yang pertama dikali kurs — perkalian yang di
+	// sistem lama dirangkai di dalam SQL (`min(limit)*A.KURSVALUE`).
+	//
+	// Keduanya dikirim, bukan hanya hasil kalinya: kolomnya memang dua, dan layar tidak
+	// boleh membagi kembali untuk memperoleh yang pertama — pembagian dengan kurs nol
+	// menghasilkan angka tak hingga yang tampil sebagai nilai biasa.
+	MinLimit    float64 `json:"min_limit"`
+	MinLimitIDR float64 `json:"min_limit_idr"`
+
 	Type string `json:"tipe"`
 
 	// BusinessGroups adalah nama group business yang sudah dirangkai, persis seperti
@@ -53,6 +63,8 @@ func toMasterDTO(master inboxxol.MasterXOL) MasterDTO {
 		Name:               master.Name,
 		Year:               master.Year,
 		ExchangeRate:       master.ExchangeRate,
+		MinLimit:           master.MinLimit,
+		MinLimitIDR:        master.MinLimit * master.ExchangeRate,
 		Type:               master.Type,
 		BusinessGroups:     master.BusinessGroupNames(),
 		BusinessGroupCount: len(master.BusinessGroups),
@@ -80,7 +92,12 @@ type MasterListResponse struct {
 }
 
 // ClaimSummaryDTO adalah satu baris grid "DATA XOL BASED ON DOL AND COL".
+//
+// `id_master` ikut dikirim karena grid menggabungkan hasil SELURUH perjanjian. Tanpa
+// penanda per baris, layar tidak dapat membuka rincian di baliknya — rincian itu butuh
+// tahun, kurs, dan group business perjanjian ASAL baris tersebut.
 type ClaimSummaryDTO struct {
+	MasterID         string  `json:"id_master"`
 	LossDate         string  `json:"tanggal_kejadian"`
 	CauseOfLoss      string  `json:"sebab_kerugian"`
 	BusinessGroup    string  `json:"group_business"`
@@ -98,6 +115,7 @@ func toClaimSummaryResponse(overview usecase.ClaimOverview) ClaimSummaryResponse
 	rows := make([]ClaimSummaryDTO, 0, len(overview.Rows))
 	for _, row := range overview.Rows {
 		rows = append(rows, ClaimSummaryDTO{
+			MasterID:         row.MasterID,
 			LossDate:         row.LossDate,
 			CauseOfLoss:      row.CauseOfLoss,
 			BusinessGroup:    row.BusinessGroup,
@@ -293,4 +311,130 @@ type ErrorResponse struct {
 	Code    string         `json:"kode"`
 	Message string         `json:"pesan"`
 	Details []ViolationDTO `json:"detail,omitempty"`
+}
+
+// SummaryBusinessDTO adalah satu baris grid "Summary Data XOL".
+type SummaryBusinessDTO struct {
+	BusinessGroupID   string `json:"kode_group_business"`
+	BusinessGroupName string `json:"group_business"`
+}
+
+// SummaryBusinessResponse membungkus grid "Summary Data XOL".
+type SummaryBusinessResponse struct {
+	Rows []SummaryBusinessDTO `json:"baris"`
+}
+
+func toSummaryBusinessResponse(rows []inboxxol.SummaryBusiness) SummaryBusinessResponse {
+	// Senarai KOSONG, bukan nil — alasannya sama dengan toMasterDTOs.
+	result := make([]SummaryBusinessDTO, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, SummaryBusinessDTO{
+			BusinessGroupID:   row.BusinessGroupID,
+			BusinessGroupName: row.BusinessGroupName,
+		})
+	}
+	return SummaryBusinessResponse{Rows: result}
+}
+
+// ClaimListItemDTO adalah satu baris grid "No Klaim" pada layar rincian.
+type ClaimListItemDTO struct {
+	ClaimNo      string `json:"no_klaim"`
+	CurrencyName string `json:"mata_uang"`
+	Source       string `json:"sumber"`
+
+	OutstandingValue float64 `json:"nilai_outstanding"`
+	AcceptedValue    float64 `json:"nilai_akseptasi"`
+
+	// RateMissing menandai baris yang kursnya tidak ditemukan. Layar menolak menggambar
+	// angkanya, bukan menggambar nol (`D-48`).
+	RateMissing bool `json:"kurs_tidak_tersedia"`
+}
+
+// ClaimListResponse membungkus grid "No Klaim".
+type ClaimListResponse struct {
+	Rows []ClaimListItemDTO `json:"baris"`
+}
+
+func toClaimListResponse(rows []inboxxol.ClaimListItem) ClaimListResponse {
+	result := make([]ClaimListItemDTO, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, ClaimListItemDTO{
+			ClaimNo:          row.ClaimNo,
+			CurrencyName:     row.CurrencyName,
+			Source:           string(row.Source),
+			OutstandingValue: row.OutstandingValue,
+			AcceptedValue:    row.AcceptedValue,
+			RateMissing:      row.RateMissing,
+		})
+	}
+	return ClaimListResponse{Rows: result}
+}
+
+// UploadResultResponse adalah jawaban "Upload MBU Salvage".
+type UploadResultResponse struct {
+	JumlahBaris     int                 `json:"jumlah_baris"`
+	JumlahTersimpan int                 `json:"jumlah_tersimpan"`
+	Ditolak         []UploadRejectedDTO `json:"ditolak"`
+}
+
+// UploadRejectedDTO adalah satu baris berkas yang tidak tersimpan.
+//
+// Nomor barisnya ikut karena yang diperbaiki pengguna adalah BERKASNYA. Pada berkas
+// ratusan baris, "ada yang gagal" saja tidak dapat ditindaklanjuti.
+type UploadRejectedDTO struct {
+	Baris   int    `json:"baris"`
+	NoKlaim string `json:"no_klaim"`
+	Alasan  string `json:"alasan"`
+}
+
+// uploadResultDTO mengubah hasil domain menjadi bentuk kontrak.
+func uploadResultDTO(result inboxxol.SalvageUploadResult) UploadResultResponse {
+	rejected := make([]UploadRejectedDTO, 0, len(result.Rejected))
+	for _, row := range result.Rejected {
+		rejected = append(rejected, UploadRejectedDTO{
+			Baris:   row.LineNumber,
+			NoKlaim: row.ClaimNo,
+			Alasan:  row.Message,
+		})
+	}
+	return UploadResultResponse{
+		JumlahBaris:     result.Rows,
+		JumlahTersimpan: result.Inserted,
+		Ditolak:         rejected,
+	}
+}
+
+// InsertDolColRequest adalah badan permintaan `POST /inbox-xol/dol-col`.
+//
+// Nama fieldnya SAMA dengan nama field yang sudah dipakai modul ini di tempat lain —
+// `id_master`, `tanggal_kejadian`, `sebab_kerugian` — dan itu bukan kebetulan: nilainya
+// pun berarti hal yang sama, termasuk bentuk tanggalnya (`DD/MM/YYYY`, bentuk kolom
+// `DOL`). Satu nama yang berarti dua hal berbeda di satu modul adalah persis cacat yang
+// `D-19` perintahkan tidak dibawa.
+//
+// Nilainya WAJIB cocok dengan konstanta Field* di `internal/inboxxol/errors.go`; bila
+// tidak, pesan validasinya tetap sampai ke layar tetapi tidak menempel pada isian mana
+// pun.
+type InsertDolColRequest struct {
+	MasterID    string `json:"id_master"`
+	LossDate    string `json:"tanggal_kejadian"`
+	CauseOfLoss string `json:"sebab_kerugian"`
+}
+
+// toDomain mengubah badan permintaan menjadi bentuk domain.
+func (r InsertDolColRequest) toDomain() inboxxol.DolColRequest {
+	return inboxxol.DolColRequest{
+		MasterID:    r.MasterID,
+		LossDate:    r.LossDate,
+		CauseOfLoss: r.CauseOfLoss,
+	}
+}
+
+// InsertDolColResponse adalah jawaban simpan yang berhasil.
+//
+// Ia membawa JUMLAH BARIS, bukan sekadar status: satu simpan menghasilkan satu baris per
+// group business perjanjian, dan angka itulah satu-satunya cara pengguna mengetahui
+// berapa banyak yang benar-benar ditulis atas namanya.
+type InsertDolColResponse struct {
+	JumlahBaris int `json:"jumlah_baris"`
 }

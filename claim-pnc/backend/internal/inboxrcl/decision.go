@@ -114,6 +114,17 @@ const (
 	StageRCLPUCL       = "rcl-pucl"     // Assignment6 "RCL/PUCL", antrean bersama
 	StageSendToAnalyst = "kirim-analis" // Assignment5 "Send To Analis", worklist PIC Teknik
 
+	// StageRCLDoctor adalah tahap yang DILAYANI layar ini — Assignment12, tempat klaim
+	// menunggu keputusan dokter RCL. Ia penyaring E (`inboxrcl.sql`): sejak
+	// `ASSIGNED_OPERATOR_ID` selalu berisi user teknis (Work Owner 2026-10-07), kolom itu
+	// tidak lagi dapat menjawab "klaim ini masih di tangan dokter" — tahap tugasnya yang
+	// menjawabnya.
+	//
+	// Nilainya WAJIB sama dengan `registrasi.StageRCLDoctor`; keduanya menulis dan membaca
+	// kolom `CPNC_TUGAS.TAHAP` yang sama. Tidak diimpor supaya kedua modul tetap berdiri
+	// sendiri — yang menjaganya uji, bukan kompilator.
+	StageRCLDoctor = "rcl-dokter"
+
 	StageNameRCLPUCL       = "RCL/PUCL"
 	StageNameSendToAnalyst = "Send To Analis"
 
@@ -228,8 +239,30 @@ func Plan(state PUCLState, d Decision, doctorReason string, now time.Time) (Outc
 
 	// Langkah 16 — Tidak Setuju / Back: kembali ke analis. Alasan Dokter diisi layar
 	// sendToAnalystTolakRCL_sect sebelum activity dijalankan.
+	//
+	// # Kenapa DUA tanggal yang dikosongkan, bukan satu
+	//
+	// Langkah 16 mengosongkan `TanggalAnalystSendRCL`, dan itu bukan sekadar membersihkan
+	// catatan: properti itulah penyaring C layar Inbox RCL (`IS NOT NULL`). Mengosongkannya
+	// yang MENGELUARKAN klaim dari antrean dokter — terlepas dari siapa pemilik berikutnya.
+	//
+	// Di sini properti itu tinggal di kolom `TGL_KIRIM_PUCL` (lihat pemetaan penyaring C
+	// pada `inboxrcl.sql`), yang diisi `AnalystSentAt`-nya `SentToPUCLAt` — bukan di kolom
+	// `TGL_ANALYST_SEND_RCL` yang namanya mirip tetapi TIDAK dibaca penyaring mana pun.
+	// Mengosongkan `AnalystSentAt` saja karena itu tidak menyentuh penyaringnya sama
+	// sekali.
+	//
+	// Akibatnya terukur dan dilaporkan Work Owner (2026-10-06): sesudah Tidak Setuju,
+	// klaimnya TETAP di Inbox RCL. Yang tersisa sebagai pengeluar hanyalah penyaring A
+	// (`ASSIGNED_OPERATOR_ID` berpindah ke PIC Teknik) — dan itu gagal persis ketika
+	// pemilik berikutnya adalah orang yang sama dengan yang sedang melihat layarnya, hal
+	// yang lumrah di lingkungan uji dan mungkin di cabang kecil.
+	//
+	// Pega punya DUA pengaman di sini; replikasi ini hanya punya satu. Mengosongkan
+	// keduanya memulihkan pengaman yang hilang.
 	if d.ReturnsToAnalyst() {
 		out.AnalystSentAt = time.Time{}
+		out.SentToPUCLAt = time.Time{}
 		out.StatusCase = ""
 		out.StatusClaim = StatusClaimAnalyst
 		out.DoctorReason = strings.TrimSpace(doctorReason)

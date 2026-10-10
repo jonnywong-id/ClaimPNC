@@ -179,12 +179,76 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusCreated, CreateResponse{
 		SalvageID: created.SalvageID,
 		ItemCount: created.ItemCount,
-		Message: "Pengajuan salvage tersimpan dan masuk antrean Checker. " +
-			"Yang BELUM terjadi: pengajuan ini tidak dikirim ke balai lelang, tidak ada " +
-			"email yang terkirim, dan berkas lampiran belum tersimpan. Ketiganya belum " +
-			"dibangun di sistem baru.",
+		Message:   createMessage(created),
+		Auction: AuctionResultDTO{
+			Attempted: created.Auction.Attempted,
+			Accepted:  created.Auction.Accepted,
+			AuctionID: created.Auction.AuctionID,
+			Message:   created.Auction.Message,
+		},
+		Notification: NotificationResultDTO{
+			Attempted: created.Notification.Attempted,
+			Sent:      created.Notification.Sent,
+		},
 		Portal: active.Alias,
 	})
+}
+
+// createMessage menyusun kalimat yang dibaca pengguna sesudah Submit.
+//
+// # Kenapa ia DISUSUN, bukan kalimat tetap
+//
+// Sampai 2026-10-08 kalimatnya tetap, dan isinya menyatakan tiga hal tidak terjadi:
+// pengajuan tidak dikirim ke balai lelang, tidak ada surel yang terkirim, dan berkas
+// lampiran belum tersimpan. Ketiganya kini SUDAH dibangun, sehingga kalimat tetap itu
+// bukan lagi keterangan melainkan kekeliruan — dan kekeliruan yang berbahaya, karena ia
+// membuat petugas mengirim ulang pengajuan yang sudah sampai.
+//
+// Yang menggantikannya adalah kalimat yang menyebut APA YANG BENAR-BENAR TERJADI pada
+// permintaan ini. Keduanya dapat berbeda antarpermintaan: balai lelang dapat menolak,
+// server surel dapat mati, dan salah satunya dapat belum dikonfigurasi di lingkungan ini.
+//
+// # Lampiran TIDAK disebut lagi
+//
+// Ia punya tombolnya sendiri — modal "Upload file", yang menyimpan lewat
+// Handler.AttachDocuments dan menjawab sendiri berapa dokumen yang tersimpan. Menyebutnya
+// di sini berarti menjawab pertanyaan yang tidak diajukan permintaan ini.
+func createMessage(created usecase.Created) string {
+	parts := []string{"Pengajuan salvage tersimpan dan masuk antrean Checker."}
+
+	switch {
+	case !created.Auction.Attempted:
+		parts = append(parts,
+			"Pengiriman ke balai lelang belum aktif di lingkungan ini, sehingga "+
+				"pengajuan ini BELUM sampai ke SimasBid — hubungi Tim Infra.")
+	case created.Auction.Accepted:
+		sentence := "Pengajuan sudah dikirim ke balai lelang dan diterima"
+		if created.Auction.AuctionID != "" {
+			sentence += " dengan nomor " + created.Auction.AuctionID
+		}
+		parts = append(parts, sentence+".")
+	default:
+		sentence := "Pengajuan sudah dikirim ke balai lelang tetapi BELUM diterima"
+		if keterangan := strings.TrimSpace(created.Auction.Message); keterangan != "" {
+			sentence += " — " + keterangan
+		}
+		parts = append(parts, sentence+". Kirim ulang setelah diperiksa.")
+	}
+
+	switch {
+	case !created.Notification.Attempted:
+		parts = append(parts,
+			"Pemberitahuan surel belum aktif di lingkungan ini, sehingga tidak ada "+
+				"surel yang terkirim.")
+	case created.Notification.Sent:
+		parts = append(parts, "Surel pemberitahuan sudah terkirim.")
+	default:
+		parts = append(parts,
+			"Surel pemberitahuan GAGAL terkirim — pengajuannya tetap tersimpan, "+
+				"tetapi penerimanya perlu dikabari secara terpisah.")
+	}
+
+	return strings.Join(parts, " ")
 }
 
 // maxUploadBody membatasi ukuran berkas "Upload Detail Salvage".

@@ -1244,3 +1244,86 @@ describe('klaim berstatus Notification', () => {
     expect(await screen.findByText(/hanya memiliki\s+Lampiran Surat/)).toBeInTheDocument()
   })
 })
+
+/**
+ * Penolakan `422` HARUS menandai isiannya, bukan hanya menyuruh memperbaiki.
+ *
+ * Work Owner melaporkannya dengan tangkapan layar 2026-10-04: menekan "Kirim Ke Analyst"
+ * menjawab "Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi." — sementara
+ * tidak ada satu pun isian yang ditandai. Kalimat itu menyuruh petugas mencari sesuatu
+ * yang tidak ada.
+ *
+ * Peladen sudah mengirim pelanggarannya per isian sejak awal (`detail: [{field, pesan}]`);
+ * yang hilang hanya langkah terakhir — menggambarkannya.
+ */
+describe('penolakan validasi menandai isiannya', () => {
+  /** stubFetch menerima `init` bertipe unknown; penyempitannya di sini, sekali. */
+  const metodeDari = (init?: unknown) => (init as RequestInit | undefined)?.method
+
+  const PENOLAKAN = {
+    kode: 'validasi_gagal',
+    pesan: 'Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi.',
+    detail: [
+      { field: 'catatan_untuk_analyst', pesan: 'Catatan untuk Analyst wajib diisi.' },
+      { field: 'tanggal_kelengkapan_dokumen', pesan: 'Tanggal Kelengkapan Dokumen wajib diisi.' },
+    ],
+  }
+
+  it('menandai kedua isian wajib dan menyebut keduanya sekaligus', async () => {
+    stubFetch((url, init) => {
+      if (url.includes('/kategori-dokumen')) return jsonResponse(200, KATEGORI)
+      if (metodeDari(init) === 'POST') return jsonResponse(422, PENOLAKAN)
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    // Kedua isian ditandai di tempatnya — inilah yang dijanjikan kalimat peladen.
+    const catatan = await screen.findByLabelText(/Catatan untuk Analyst/)
+    expect(catatan).toHaveAttribute('aria-invalid', 'true')
+    const tanggal = screen.getByLabelText(/Tanggal Kelengkapan Dokumen/)
+    expect(tanggal).toHaveAttribute('aria-invalid', 'true')
+
+    // Dan keduanya disebut SEKALIGUS, bukan satu lalu satu lagi (`P-5`).
+    expect(screen.getAllByText('Catatan untuk Analyst wajib diisi.').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText('Tanggal Kelengkapan Dokumen wajib diisi.').length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('membersihkan tanda lama saat tindakan diulang', async () => {
+    let tolak = true
+    stubFetch((url, init) => {
+      if (url.includes('/kategori-dokumen')) return jsonResponse(200, KATEGORI)
+      if (metodeDari(init) === 'POST') {
+        return tolak
+          ? jsonResponse(422, PENOLAKAN)
+          : jsonResponse(200, { pesan: 'Isian disimpan.' })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'Penerimaan Dokumen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByLabelText(/Catatan untuk Analyst/)).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+
+    // Isian diperbaiki, lalu dicoba lagi: tandanya tidak boleh tertinggal.
+    tolak = false
+    await userEvent.type(screen.getByLabelText(/Catatan untuk Analyst/), 'Sudah lengkap.')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Catatan untuk Analyst/)).not.toHaveAttribute('aria-invalid'),
+    )
+  })
+})

@@ -6,11 +6,12 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { formatPegaDateTime } from '@/components/format'
 
 import { ConversationDetail } from './ConversationDetail'
 import { KomunikasiCabangTabs } from './KomunikasiCabangTabs'
 import { NewMessageForm } from './NewMessageForm'
+import { StatusRegisterSummary } from './StatusRegisterSummary'
 import {
   useExportKomunikasiCabang,
   useKomunikasiCabangFinish,
@@ -183,6 +184,20 @@ export function KomunikasiCabangPage() {
       }}
       adding={false}
     >
+      {/*
+        Grafik dan tabel "Status Register" digambar DI ATAS bilah tab, persis seperti di
+        layar lama — keduanya menjawab pertanyaan yang dibawa orang saat membuka layar ini
+        ("berapa yang menunggu dijawab"), dan jawaban itu harus terbaca sebelum ia memilih
+        daftar mana yang dibuka.
+      */}
+      <StatusRegisterSummary
+        tabs={tabs}
+        summary={list.data?.ringkasan}
+        active={active}
+        onSelect={selectTab}
+        isLoading={list.isPending}
+      />
+
       <div className="mt-4">
         <KomunikasiCabangTabs
           tabs={tabs}
@@ -259,15 +274,20 @@ export function KomunikasiCabangPage() {
 
           <div className="mt-4">
             <DataTable<Conversation>
-              columns={columnsFor(tab, {
+              columns={columnsFor(tab, list.data?.baris ?? [], {
                 onOpen: openConversation,
                 onFinish: (row) => setConfirming(row),
                 finishing: finish.isPending,
               })}
               rows={list.data?.baris ?? []}
-              rowKey={(row) => `${row.komunikasi}|${row.tanggal}`}
-              title={tab.nama}
+              rowKey={rowKeyOf}
+              // Tanpa judul di atas tabel, seperti di Pega — dan bukan hanya karena di sana
+              // tidak ada: bilah tab tepat di atasnya sudah menyebut daftar mana yang
+              // terbuka, dan judul yang mengulanginya membuat nama yang sama terbaca dua
+              // kali bertumpuk. Namanya tetap dibawa `label` untuk pembaca layar.
               label={`Percakapan ${tab.nama}`}
+              // Garis antarkolom, supaya gridnya terbaca berkotak seperti grid Pega.
+              gridLines
               // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman yang
               // sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada" untuk baris
               // yang sebenarnya ada di halaman berikutnya.
@@ -303,7 +323,6 @@ export function KomunikasiCabangPage() {
         <ConversationDetail id={opened} onClose={closeConversation} />
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -686,29 +705,9 @@ function FinishConfirmation({
   )
 }
 
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, beberapa hal
- * akan dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan — terutama pemisahan menjadi tab, urutan kedua tab yang berlawanan, dan
- * angka pencacah yang tidak sama dengan jumlah baris tabel.
- */
-function PlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
-  )
+/** rowKeyOf menyusun kunci baris — dipakai `DataTable` dan penomoran baris. */
+function rowKeyOf(row: Conversation): string {
+  return `${row.komunikasi}|${row.tanggal}`
 }
 
 /**
@@ -717,16 +716,44 @@ function PlannedDifferences({ lines }: { lines: string[] }) {
  * `value` tetap mengembalikan TEKS polos meski selnya digambar sebagai tautan. Keduanya
  * dipisah dengan sengaja oleh `DataTable`: yang dicari dan diurutkan adalah teksnya, yang
  * dilihat pengguna adalah gambarnya.
+ *
+ * # Dua hal yang ditambahkan supaya gridnya terbaca seperti grid Pega
+ *
+ * **Kolom nomor baris di paling kiri.** Ia ada di setiap grid Pega dan dipakai orang saat
+ * membicarakan satu baris dengan rekannya ("yang nomor tiga"). Nomornya diturunkan dari
+ * URUTAN baris yang dikirim server, bukan dari isian pada barisnya — tidak ada isian
+ * seperti itu.
+ *
+ * **Seluruh kolom `noSort`.** Grid Pega tidak dapat diurutkan, dan panah urut di sini akan
+ * menjanjikan sesuatu yang menyesatkan: pengurutannya hanya berlaku pada HALAMAN yang
+ * sedang terbuka, sehingga "yang paling lama menunggu" setelah diurut bukan yang paling
+ * lama menunggu di antreannya. Urutan antrean itu sendiri sudah ditetapkan server dan
+ * merupakan inti kedua tab.
  */
 function columnsFor(
   tab: Tab,
+  rows: Conversation[],
   actions: {
     onOpen: (row: Conversation) => void
     onFinish: (row: Conversation) => void
     finishing: boolean
   },
 ): Column<Conversation>[] {
-  return tab.kolom.map((column) => {
+  // Peta kunci → nomor, disusun sekali. Mencari posisi baris satu per satu saat menggambar
+  // berarti menelusuri seluruh daftar untuk setiap sel nomor.
+  const numbers = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+
+  const numberColumn: Column<Conversation> = {
+    key: 'nomor',
+    // Tanpa judul, seperti di Pega. Pembaca layar membaca nomornya apa adanya, dan nomor
+    // urut tidak menuntut penjelasan.
+    title: '',
+    width: '3rem',
+    noSort: true,
+    value: (row) => String(numbers.get(rowKeyOf(row)) ?? ''),
+  }
+
+  const dataColumns: Column<Conversation>[] = tab.kolom.map((column) => {
     // Kolom TOMBOL tidak punya isian pada baris. `value` dibiarkan kosong dengan sengaja —
     // itulah yang dicari dan diurutkan `DataTable`, dan mengurutkan menurut markup tombol
     // tidak berarti apa pun.
@@ -754,21 +781,31 @@ function columnsFor(
     return {
       key: column.kunci,
       title: column.judul,
+      noSort: true,
       value: (row) => cellText(row, column),
     }
   })
+
+  return [numberColumn, ...dataColumns]
 }
 
 /**
  * cellText menyusun teks satu sel.
  *
- * Dua perlakuan, dan masing-masing punya alasannya:
+ * # Tanggal diformat menurut KOLOMNYA, bukan menurut bentuk nilainya
  *
- *  - Tanggal diformat HANYA bila bentuknya memang `YYYY-MM-DD`. Kolom tanggal di layar ini
- *    dibaca dari kolom yang bentuknya tidak dapat diperiksa tanpa DDL (`R-08`). Memaksa
- *    pemformatan akan mengubah nilai yang tidak dikenali menjadi teks yang salah.
- *  - Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari kolom
- *    yang gagal dimuat.
+ * Sampai 2026-10-09 ia memformat hanya bila nilainya berbentuk persis `YYYY-MM-DD`,
+ * dengan alasan bentuk kolomnya tidak dapat diperiksa tanpa DDL (`R-08`). Akibatnya
+ * terlihat di layar yang berjalan: basis data mengirim `2026-09-28T16:58:56+07:00`, bentuk
+ * itu tidak cocok, dan sel "Tanggal" menampilkan cap waktu mentah lengkap dengan `T` dan
+ * offset zona — sementara Pega di sebelahnya menulis `28/09/26 16:58`.
+ *
+ * Penjagaannya dipindahkan ke `formatPegaDateTime`, yang mengembalikan teks APA ADANYA bila
+ * tidak dapat dibaca. Dengan begitu kolom yang bentuknya tak terduga tetap aman tanpa
+ * membuat bentuk yang WAJAR ikut lolos tanpa diformat.
+ *
+ * Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari kolom
+ * yang gagal dimuat.
  */
 function cellText(row: Conversation, column: TabColumn): string {
   // Kolom tombol tidak pernah sampai ke sini; columnsFor menanganinya lebih dulu.
@@ -779,12 +816,17 @@ function cellText(row: Conversation, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  return isDateField(column.kunci) ? formatPegaDateTime(text) : text
 }
 
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+/**
+ * isDateField menyatakan sebuah kolom memuat waktu.
+ *
+ * Dibaca dari NAMA isiannya, bukan dari isinya — `tanggal` dan `tanggal_jawaban` adalah
+ * satu-satunya dua isian waktu pada baris, dan keduanya ditetapkan kontrak API.
+ */
+function isDateField(key: string): boolean {
+  return key === 'tanggal' || key === 'tanggal_jawaban'
 }
 
 /**
@@ -812,14 +854,14 @@ function emptyMessageFor(tab: Tab, branch: BranchScope | undefined): string {
 
   if (showsReply) {
     return (
-      `Belum ada percakapan yang sudah dibalas${scope}. Lihat tab "Belum Dijawab" — ` +
+      `Belum ada percakapan yang sudah dibalas${scope}. Lihat tab "Not Answered" — ` +
       `pesan yang menunggu jawaban ada di sana.${unresolved}`
     )
   }
 
   return (
     `Tidak ada pesan yang menunggu dijawab${scope}. Percakapan yang sudah dibalas ada di ` +
-    `tab "Sudah Dijawab", dan yang sudah ditutup tidak lagi tampil di layar ini.${unresolved}`
+    `tab "Answered", dan yang sudah ditutup tidak lagi tampil di layar ini.${unresolved}`
   )
 }
 

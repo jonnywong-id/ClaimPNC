@@ -42,7 +42,6 @@ const KETERANGAN: KeteranganResponse = {
     // Kunci yang tidak dikenal dilewati, bukan digambar kosong.
     { kunci: 'kolom_baru', judul: 'Kolom Baru' },
   ],
-  selisih_terencana: [],
   keterbatasan: [],
   ukuran_halaman: 25,
 }

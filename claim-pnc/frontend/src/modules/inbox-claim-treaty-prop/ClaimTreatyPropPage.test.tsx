@@ -88,10 +88,6 @@ const TAB_KOMITE: Tab = {
 const METADATA: MetadataResponse = {
   tab: [TAB_WORKLIST, TAB_TEKNIK, TAB_KOMITE],
   tab_bawaan: '1',
-  selisih_terencana: [
-    'Kolom "Date Of Loss" pada tab Work Teknik Treatyin kini TERISI.',
-    'Tombol "Create Claim Treaty Prop" belum membuat klaim.',
-  ],
   portal: 'ASM',
 }
 
@@ -305,14 +301,17 @@ describe('bentuk layar', () => {
     }
   })
 
-  it('menampilkan selisih terencana supaya tidak dilaporkan sebagai kerusakan', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      await screen.findByText(/Yang berbeda dari layar lama, dan itu disengaja/),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/Date Of Loss.*kini TERISI/)).toBeInTheDocument()
+      screen.queryByText(/Yang berbeda dari layar lama, dan itu disengaja/),
+    ).not.toBeInTheDocument()
   })
 })
 

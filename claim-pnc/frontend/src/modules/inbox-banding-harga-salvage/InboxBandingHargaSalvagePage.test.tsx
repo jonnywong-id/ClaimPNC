@@ -95,7 +95,6 @@ const METADATA: MetadataResponse = {
   tab_bawaan: 'request-banding-harga',
   label_cari: 'Cari No Klaim',
   petunjuk_cari: 'Contoh : PNC-1234',
-  selisih_terencana: ['Kolom Aging diurutkan sebagai ANGKA hari, bukan sebagai teks.'],
   keterbatasan: [
     'Keputusan Approve dan Reject TERSIMPAN, tetapi BELUM DIKIRIM ke balai lelang.',
   ],
@@ -463,14 +462,19 @@ describe('antrean siapa yang dibaca', () => {
 describe('catatan bawah', () => {
   // Selisih yang tidak dinyatakan akan dilaporkan berulang kali sebagai kerusakan, dan pada
   // uji kesetaraan gerbang 1 ia akan diperlakukan sebagai bug (`D-54`).
-  it('menggambar selisih terencana dan keterbatasan dari server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Panel "Yang belum tersedia" TIDAK ikut dihapus: ia menjawab "mengapa tombolnya tidak
+  // ada", pertanyaan yang muncul saat layarnya dipakai. Daftar selisihnya tetap hidup di
+  // kode Go untuk uji kesetaraan gerbang 1 (`D-54`).
+  it('menggambar keterbatasan, tanpa panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
+    expect(await screen.findByText(/BELUM DIKIRIM ke balai lelang/)).toBeInTheDocument()
     expect(
-      await screen.findByText(/Kolom Aging diurutkan sebagai ANGKA hari/),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/BELUM DIKIRIM ke balai lelang/)).toBeInTheDocument()
+      screen.queryByText(/Kolom Aging diurutkan sebagai ANGKA hari/),
+    ).not.toBeInTheDocument()
   })
 })
 

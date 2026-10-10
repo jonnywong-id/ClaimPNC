@@ -66,7 +66,6 @@ const TAB_BLOCKED: Tab = {
 const META: MetadataResponse = {
   tab: [TAB_MINE, TAB_SHARED, TAB_BLOCKED],
   tab_bawaan: '1',
-  selisih_terencana: [],
   portal: 'ASM',
 }
 

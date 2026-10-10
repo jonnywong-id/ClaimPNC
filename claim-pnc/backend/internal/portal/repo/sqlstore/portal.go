@@ -67,6 +67,13 @@ func (r *Repo) List(ctx context.Context) ([]portal.Portal, error) {
 // kepala berkas yang tidak perlu dikirim ke basis data.
 func contentAfterMarker(content string) string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 	var body []string
 	started := false
 	for _, line := range strings.Split(content, "\n") {

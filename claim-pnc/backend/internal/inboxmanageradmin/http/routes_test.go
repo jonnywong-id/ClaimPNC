@@ -198,7 +198,7 @@ func TestMetadataListsOnlyTheCallersTab(t *testing.T) {
 	require.Len(t, content["tab"], 1)
 	require.Len(t, content["semua_tab"], 3)
 	require.Len(t, content["lini_bisnis_yang_diharapkan"], 3)
-	require.NotEmpty(t, content["selisih_terencana"])
+	require.NotContains(t, content, "selisih_terencana")
 
 	tab := content["tab"].([]any)[0].(map[string]any)
 	require.Equal(t, inboxmanageradmin.OrgUnitPA, tab["unit_organisasi"])

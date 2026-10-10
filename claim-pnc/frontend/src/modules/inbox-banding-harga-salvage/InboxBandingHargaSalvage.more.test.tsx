@@ -40,7 +40,6 @@ const META: MetadataResponse = {
   tab_bawaan: 'request-banding-harga',
   label_cari: 'Cari No Klaim',
   petunjuk_cari: '',
-  selisih_terencana: [],
   keterbatasan: [],
   kolom_rincian: [],
   portal: 'ASM',

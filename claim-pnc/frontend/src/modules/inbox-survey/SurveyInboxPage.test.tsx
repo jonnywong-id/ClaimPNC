@@ -149,7 +149,6 @@ const keteranganResponse: KeteranganResponse = {
   tab_bawaan: 'belum-dijawab',
   jenis_kpi: ['outstanding', 'final', 'kuartal'],
   ukuran_halaman: 25,
-  selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
   keterbatasan: ['Empat kueri tab layar lama hilang dari export.'],
 }
 
@@ -627,13 +626,18 @@ it('mengganti judul kolom kelompok pada ringkasan per tahun', async () => {
  * Keduanya harus hilang dengan sendirinya begitu penghalangnya hilang — tanpa menyentuh satu
  * baris pun di layar.
  */
-it('menampilkan selisih terencana dan keterbatasan dari server', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+//
+// Panel "Yang perlu diketahui" TIDAK ikut dihapus: ia menjawab pertanyaan yang muncul saat
+// layarnya dipakai, bukan saat dibandingkan dengan Pega. Daftar selisihnya tetap hidup di
+// kode Go untuk uji kesetaraan gerbang 1 (`D-54`).
+it('menampilkan keterbatasan, tanpa panel selisih terencana', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
 
-  expect(screen.getByText(/Tab Close memakai status adjuster/)).toBeInTheDocument()
+  expect(screen.queryByText(/Tab Close memakai status adjuster/)).not.toBeInTheDocument()
   expect(screen.getByText(/Empat kueri tab layar lama hilang/)).toBeInTheDocument()
 })
 

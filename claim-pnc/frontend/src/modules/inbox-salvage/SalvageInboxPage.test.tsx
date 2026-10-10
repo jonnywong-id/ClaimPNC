@@ -53,9 +53,6 @@ const TAB_OUTSTANDING: Tab = {
   ],
   label_pencarian: 'CARI NO KLAIM',
   pencarian_cocok_persis: false,
-  catatan_daftar:
-    'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah baris di sini.',
-
   // Barisnya KLAIM — rincian dibuka dengan NOMOR KLAIM.
   kunci_rincian: 'klaim',
   membuka_form_sunting: false,
@@ -77,8 +74,6 @@ const TAB_CHECKER: Tab = {
   ],
   label_pencarian: 'CARI NO KLAIM ATAU PIC',
   pencarian_cocok_persis: true,
-  catatan_daftar: 'Pencarian di daftar ini COCOK PERSIS, bukan mengandung.',
-
   // Barisnya PENGAJUAN — rincian dibuka dengan ID PENGAJUAN.
   kunci_rincian: 'pengajuan',
   membuka_form_sunting: false,
@@ -113,10 +108,6 @@ const METADATA: MetadataResponse = {
     { kode: 'USD', label: 'USD' },
   ],
   kolom_berkas_unggahan: ['item', 'quantity', 'satuan', 'remarks'],
-  selisih_terencana: [
-    'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah barisnya.',
-    'Kolom "Catatan" SELALU KOSONG.',
-  ],
   portal: 'ASM',
 }
 
@@ -127,8 +118,9 @@ const METADATA: MetadataResponse = {
  * punya tab. Uji di bawah memastikan ia digambar sebagai teks biasa — bukan tombol yang
  * tidak melakukan apa-apa.
  *
- * Angka baris "Outstanding" sengaja BERBEDA dari jumlah baris daftarnya, karena begitulah
- * keadaannya di Pega.
+ * Angka baris "Outstanding" di sini tidak dimaksudkan sepadan dengan jumlah baris mana pun:
+ * data contoh ini hanya menguji penggambaran tabel ringkas. Hubungan angka dengan daftarnya
+ * dijaga di backend — lihat `TestOutstandingCounterMatchesItsOwnList`.
  */
 const COUNTS: CountsResponse = {
   baris: [
@@ -344,16 +336,38 @@ function renderPage() {
 }
 
 /**
- * renderLoaded menggambar layar lalu MENUNGGU bentuknya tiba.
+ * renderRingkas menggambar layar lalu MENUNGGU ringkasannya tiba — dan berhenti di situ.
  *
  * Penantiannya pada tabel ringkas, bukan pada judul layar: judulnya sudah ada sejak
  * penggambaran pertama, sementara tabel ringkas baru tiba bersama jawaban `/ringkas`.
+ *
+ * Inilah keadaan yang dilihat petugas saat membuka layar: ringkasan saja, tanpa daftar.
+ * Uji yang memang menguji keadaan itu memakai helper ini.
  */
-async function renderLoaded() {
+async function renderRingkas() {
   renderPage()
   await screen.findByRole('table', {
     name: 'Ringkasan jumlah pengajuan per status salvage',
   })
+}
+
+/**
+ * renderLoaded menggambar layar DAN membuka satu daftar.
+ *
+ * # Kenapa ia membuka daftar, padahal layar tidak lagi membukanya sendiri
+ *
+ * Karena sejak 2026-10-08 daftar baru digambar setelah sebuah status diklik, sementara
+ * sebagian besar uji di berkas ini menguji ISI DAFTAR — bukan keadaan sebelum ada daftar.
+ * Tanpa langkah ini setiap uji itu harus mengulang klik yang sama, dan yang diuji tidak
+ * bertambah satu pun.
+ *
+ * Daftar yang dibuka adalah "Outstanding" — baris pertama tabel ringkas, dan `daftar_bawaan`
+ * pada metadata contoh. Uji yang membutuhkan daftar lain memanggil pilihDaftar sesudahnya,
+ * persis seperti petugas berpindah daftar.
+ */
+async function renderLoaded() {
+  await renderRingkas()
+  await pilihDaftar('Outstanding')
 }
 
 /**
@@ -418,9 +432,126 @@ it('berpindah daftar mengganti susunan kolomnya', async () => {
   expect(screen.queryByRole('columnheader', { name: 'COB' })).not.toBeInTheDocument()
 })
 
+// ── Daftar baru keluar setelah status diklik (2026-10-08) ───────────────────────────
+
+/**
+ * Keadaan yang dilihat petugas saat membuka layar: ringkasan saja.
+ *
+ * Yang diperiksa bukan hanya gridnya tidak tergambar, melainkan daftarnya TIDAK DITEMBAK
+ * sama sekali. Keduanya berbeda: grid yang disembunyikan sementara permintaannya tetap
+ * berjalan membebani basis data untuk jawaban yang tidak pernah dilihat siapa pun — dan
+ * kueri modul ini menyentuh puluhan juta baris.
+ */
+it('membuka layar TANPA daftar, dan tanpa menembak daftar apa pun', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  expect(screen.queryByRole('table', { name: /^Daftar / })).not.toBeInTheDocument()
+  expect(lastListCall()).toBeUndefined()
+
+  // Ringkasannya sendiri tetap tergambar, dan kalimat ajakannya ada.
+  expect(
+    screen.getByRole('table', { name: 'Ringkasan jumlah pengajuan per status salvage' }),
+  ).toBeInTheDocument()
+  expect(screen.getByText(/Pilih salah satu/)).toBeInTheDocument()
+})
+
+/** Barisnya menyatakan dirinya DAPAT DIBUKA, dan menyatakan sedang terbuka atau belum. */
+it('baris ringkas menyatakan keadaan terbukanya lewat aria-expanded', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  const ringkas = screen.getByRole('table', {
+    name: 'Ringkasan jumlah pengajuan per status salvage',
+  })
+  const baris = within(ringkas).getByRole('button', { name: 'Checker' })
+  expect(baris).toHaveAttribute('aria-expanded', 'false')
+
+  await userEvent.click(baris)
+  expect(
+    within(ringkas).getByRole('button', { name: 'Checker' }),
+  ).toHaveAttribute('aria-expanded', 'true')
+})
+
+/**
+ * Tambah dan Refresh harus dapat ditekan SEBELUM ada daftar yang dibuka.
+ *
+ * Keduanya dulu hidup di dalam toolbar grid. Sejak grid tidak lagi digambar lebih dulu,
+ * membiarkannya di sana berarti layar yang baru dibuka tidak punya satu pun tombol —
+ * termasuk satu-satunya jalan membuat pengajuan baru.
+ */
+it('Tambah dan Refresh tetap ada sebelum satu daftar pun dibuka', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  expect(screen.getByRole('button', { name: 'Tambah' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+  expect(
+    await screen.findByRole('form', { name: 'Menambahkan Data Salvage' }),
+  ).toBeInTheDocument()
+})
+
+/**
+ * Ringkasan yang KOSONG tidak boleh menjadi layar tanpa pintu.
+ *
+ * Sejak tabel ringkas menjadi satu-satunya navigasi, ringkasan yang tidak tergambar berarti
+ * tidak ada yang dapat diklik — dan kalimat "pilih salah satu Status Salvage" menunjuk ke
+ * tempat kosong. Layar jatuh ke `daftar_bawaan` supaya tetap dapat dipakai.
+ */
+/**
+ * Peladen tiruan yang ringkasannya TIDAK dapat dipakai sebagai navigasi.
+ *
+ * `ringkas` menjawab apa yang diminta pemanggil — baris kosong, atau galat — sementara
+ * metadata dan daftarnya tetap sehat. Itu memisahkan kegagalan ringkasan dari kegagalan
+ * layar, dan hanya yang pertama yang diuji di sini.
+ */
+function stubRingkasTidakTerpakai(ringkas: Response) {
+  stubFetch((url) => {
+    if (url === META_PATH) return jsonResponse(200, METADATA)
+    if (url === COUNTS_PATH) return ringkas
+
+    return jsonResponse(200, {
+      daftar: TAB_OUTSTANDING,
+      baris: [BARIS],
+      paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+      cari: '',
+      portal: 'ASM',
+    })
+  })
+}
+
+/**
+ * Ringkasan yang KOSONG tidak boleh menjadi layar tanpa pintu.
+ *
+ * Sejak tabel ringkas menjadi satu-satunya navigasi, ringkasan yang tidak tergambar berarti
+ * tidak ada yang dapat diklik — dan kalimat "pilih salah satu Status Salvage" menunjuk ke
+ * tempat kosong. Layar jatuh ke `daftar_bawaan` supaya tetap dapat dipakai.
+ */
+it('ringkasan kosong membuat layar jatuh ke daftar bawaan, bukan menjadi jalan buntu', async () => {
+  stubRingkasTidakTerpakai(jsonResponse(200, { baris: [], portal: 'ASM' }))
+  renderPage()
+
+  // `daftar_bawaan` pada metadata contoh adalah Salvage Outstanding.
+  expect(
+    await screen.findByRole('table', { name: 'Daftar Salvage Outstanding' }),
+  ).toBeInTheDocument()
+})
+
+/** Ringkasan yang GAGAL dimuat diperlakukan sama — layar tetap dapat dipakai. */
+it('ringkasan yang gagal dimuat juga jatuh ke daftar bawaan', async () => {
+  stubRingkasTidakTerpakai(jsonResponse(500, { kode: 'x', pesan: 'Gagal.' }))
+  renderPage()
+
+  expect(
+    await screen.findByRole('table', { name: 'Daftar Salvage Outstanding' }),
+  ).toBeInTheDocument()
+})
+
 it('mengklik baris tabel ringkas membuka daftarnya', async () => {
   stubDefaultFetch()
-  await renderLoaded()
+  await renderRingkas()
 
   const ringkas = await screen.findByRole('table', {
     name: /Ringkasan jumlah pengajuan/,
@@ -524,14 +655,18 @@ it('menggambar sel kosong sebagai tanda pisah', async () => {
   expect(within(sel as HTMLElement).getAllByText('—').length).toBeGreaterThan(0)
 })
 
-it('menyatakan selisih terencana kepada pengguna', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+//
+// Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+// adalah ia berhenti menjadi isi layar.
+it('tidak lagi menggambar panel selisih terencana', async () => {
   stubDefaultFetch()
   await renderLoaded()
 
   expect(
-    await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega/),
-  ).toBeInTheDocument()
-  expect(screen.getByText(/Kolom "Catatan" SELALU KOSONG/)).toBeInTheDocument()
+    screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(/Kolom "Catatan" SELALU KOSONG/)).not.toBeInTheDocument()
 })
 
 it('berpindah daftar mengosongkan kata kunci pencarian', async () => {
@@ -614,7 +749,7 @@ it('menandai isian yang ditolak server pada isiannya masing-masing', async () =>
   await userEvent.selectOptions(within(form).getByLabelText(/Status Salvage/), '2')
 
   await userEvent.click(
-    within(form).getByRole('button', { name: 'Submit' }),
+    within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }),
   )
 
   // KEDUA pesan tampil sekaligus, bukan satu lalu satu lagi (`P-5`).
@@ -707,11 +842,9 @@ it('klaim yang belum punya pengajuan membuka form Tambah, bukan panel rincian', 
   expect(within(form).getByLabelText(/Nama Object/)).toHaveValue('Gudang Blok C')
 
   // Grid riwayat tetap digambar meski kosong — kekosongannya adalah keterangan.
-  // Grid riwayat TIDAK digambar pada klaim yang belum pernah diajukan salvage — di layar
-  // lama pun ia tidak muncul pada pengajuan baru.
-  expect(
-    within(form).queryByRole('region', { name: 'Detail History Salvage' }),
-  ).not.toBeInTheDocument()
+  // Menyembunyikannya membuat keadaan itu tidak dapat dibedakan dari grid yang gagal dimuat.
+  const riwayat = within(form).getByRole('region', { name: 'Detail History Salvage' })
+  expect(within(riwayat).getByText('Data Tidak Ada')).toBeInTheDocument()
 })
 
 it('grid Detail History Salvage menggambar pengajuan sebelumnya milik klaim itu', async () => {
@@ -883,20 +1016,29 @@ const KLAIM_DENGAN_PILIHAN: DetailResponse = {
 }
 
 /**
- * optionsOf membaca isi `<datalist>` milik sebuah autocomplete.
+ * optionsOf MEMBUKA daftar pilihan sebuah autocomplete, lalu membaca isinya.
  *
- * Isi datalist tidak muncul sebagai teks di layar, sehingga ia tidak dapat dicari lewat
- * `getByText`. Yang dibacanya adalah daftar yang DITAWARKAN kolomnya â€” persis hal yang
- * diperiksa uji di bawah.
+ * Ia harus membukanya lebih dulu, dan itu perbedaan yang menentukan dari bentuk
+ * sebelumnya: dulu kolomnya memakai `<datalist>` yang isinya selalu ada di DOM meski
+ * tidak pernah terlihat, sehingga uji dapat membacanya tanpa menyentuh kolomnya sama
+ * sekali â€” dan uji itu lulus bahkan seandainya daftarnya tidak pernah dapat dibuka
+ * pengguna. Sekarang yang dibaca adalah daftar yang BENAR-BENAR tergambar.
+ *
+ * Nama diambil dari simpul teks pertama tiap baris; penunjuk di sebelahnya tergambar
+ * sebagai `<span>` tersendiri dan sengaja tidak ikut terbaca.
  */
-function optionsOf(input: HTMLElement): string[] {
-  const listID = input.getAttribute('list')
+async function optionsOf(input: HTMLElement): Promise<string[]> {
+  await userEvent.click(input)
+
+  const listID = input.getAttribute('aria-controls')
   if (listID === null) return []
 
   const list = document.getElementById(listID)
   if (list === null) return []
 
-  return [...list.querySelectorAll('option')].map((option) => option.value)
+  return [...list.querySelectorAll('[role="option"]')].map(
+    (option) => option.childNodes[0]?.textContent?.trim() ?? '',
+  )
 }
 
 /** Peladen tiruan untuk jalur tombol "Tambah": pencarian klaim menjawab pilihan. */
@@ -958,7 +1100,7 @@ it('mengetik Nomor Klaim memuat pilihan objek dan coverage klaim itu', async () 
 
   // Sebelum nomor klaim diketik, kedua kolom belum menawarkan apa pun â€” belum ada klaim
   // yang menjadi acuannya.
-  expect(optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([])
+  expect(await optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([])
 
   await userEvent.type(within(form).getByLabelText(/Nomor Klaim/), 'PNC-700071')
 
@@ -967,7 +1109,7 @@ it('mengetik Nomor Klaim memuat pilihan objek dan coverage klaim itu', async () 
   await userEvent.tab()
 
   expect(await screen.findByText(/ditemukan\./)).toBeInTheDocument()
-  expect(optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([
+  expect(await optionsOf(within(form).getByLabelText(/Nama Object/))).toEqual([
     'Gudang Blok C',
     'Isi Gudang',
   ])
@@ -1004,12 +1146,12 @@ it('memilih objek TIDAK mempersempit daftar coverage', async () => {
   const coverage = within(form).getByLabelText(/Nama Coverage/)
   const semua = ['Gempa Bumi', 'Kebakaran', 'Pencurian']
 
-  expect(optionsOf(coverage)).toEqual(semua)
+  expect(await optionsOf(coverage)).toEqual(semua)
 
   await userEvent.type(within(form).getByLabelText(/Nama Object/), 'Isi Gudang')
 
   // Tetap ketiganya. Mempersempitnya akan menyembunyikan pilihan yang di Pega tersedia.
-  expect(optionsOf(coverage)).toEqual(semua)
+  expect(await optionsOf(coverage)).toEqual(semua)
 })
 
 it('mengganti objek TIDAK membuang coverage yang sudah dipilih', async () => {
@@ -1126,7 +1268,7 @@ it('form dari baris klaim TIDAK mengunci Nama Object dan Nama Coverage', async (
   // tidak pernah dapat disimpan, sementara keduanya wajib diisi di server.
   const objek = within(form).getByLabelText(/Nama Object/)
   expect(objek).not.toHaveAttribute('readonly')
-  expect(optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
+  expect(await optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
 
   await userEvent.type(objek, 'Gudang Blok C')
   expect(objek).toHaveValue('Gudang Blok C')
@@ -1161,7 +1303,7 @@ it('pilihan pada jalur baris klaim diambil dari jawaban yang SUDAH di tangan', a
 })
 
 
-it('coverage kembar ditawarkan SEKALI', async () => {
+it('coverage kembar ditawarkan DUA KALI, sebanyak barisnya', async () => {
   stubLookupFetch(() =>
     jsonResponse(200, {
       ...KLAIM_DENGAN_PILIHAN,
@@ -1183,7 +1325,17 @@ it('coverage kembar ditawarkan SEKALI', async () => {
 
   // Dua baris yang terbaca sama persis tidak menambah satu pun keterangan — selain
   // membuat React menandai kunci ganda pada datalist-nya.
-  expect(optionsOf(within(form).getByLabelText(/Nama Coverage/))).toEqual(['Kebakaran'])
+  // Keduanya digambar APA ADANYA, dan itu kebalikan dari perilaku sebelumnya.
+  //
+  // Dulu nama yang berulang dibuang supaya `<datalist>` tidak memuat dua pilihan
+  // bernilai sama. Yang hilang bukan hanya barisnya: pada objek, dua baris bernama sama
+  // membawa PENUNJUK yang berbeda, dan membuang salah satunya membuat objek itu tidak
+  // pernah dapat dipilih. Daftar sekarang memilih barisnya, bukan namanya, sehingga
+  // keduanya berdiri sendiri.
+  expect(await optionsOf(within(form).getByLabelText(/Nama Coverage/))).toEqual([
+    'Kebakaran',
+    'Kebakaran',
+  ])
 })
 
 
@@ -1265,7 +1417,7 @@ it('baris yang diketik di grid IKUT TERKIRIM saat disimpan', async () => {
   await userEvent.type(within(grid).getByLabelText('Jumlah Item baris 1'), '12')
 
   await userEvent.click(
-    within(form).getByRole('button', { name: 'Submit' }),
+    within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }),
   )
 
   const simpan = calls.find((call) => call.url === PATH && call.init?.method === 'POST')
@@ -1306,7 +1458,7 @@ it('tautan Hapus membuang baris terakhir', async () => {
   expect(within(grid).queryByLabelText('Nama Item baris 2')).not.toBeInTheDocument()
 })
 
-it('grid hanya punya TIGA kolom, sama seperti layar lama', async () => {
+it('grid punya LIMA kolom, dua di antaranya mati', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
@@ -1317,7 +1469,31 @@ it('grid hanya punya TIGA kolom, sama seperti layar lama', async () => {
 
   // Persis ketiganya. "Satuan" ADA di berkas CSV tetapi tidak digambar — begitu pula di
   // layar lama, dan menambah kolom di sini berarti menyimpang darinya.
-  expect(judul).toEqual(['Nama Item', 'Jumlah Item / Qty', 'Remark'])
+  // "Harga Total" dan "Upload file" ADA di layar yang berjalan, dan karena itu digambar.
+  //
+  // Keduanya tetap MATI: `INSERT_SALVAGE_DETAILS` tidak punya satu pun parameter untuk
+  // keduanya. Menghilangkannya membuat ketiadaannya tidak terlihat; membuatnya aktif
+  // membuat orang mengetik nilai yang diam-diam hilang saat disimpan.
+  //
+  // "Satuan" tetap tidak digambar: ia ada di berkas CSV, tetapi tidak di layar mana pun.
+  expect(judul).toEqual([
+    'Nama Item',
+    'Jumlah Item',
+    'Remark',
+    'Harga Total',
+    'Upload file',
+  ])
+})
+
+it('kedua kolom mati tidak dapat diisi', async () => {
+  stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
+  const form = await openTambah()
+
+  const grid = within(form).getByRole('table', { name: 'Detail Item Salvage' })
+  await userEvent.click(within(form).getByRole('button', { name: '+ Tambah' }))
+
+  expect(within(grid).getByLabelText('Harga Total baris 1')).toBeDisabled()
+  expect(within(grid).getByRole('button', { name: 'Upload file' })).toBeDisabled()
 })
 
 // ============================================================================
@@ -1334,7 +1510,7 @@ it('tombol Upload file membuka modal beserta kedua batas unggahannya', async () 
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
 
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
@@ -1356,7 +1532,7 @@ it('Cancel menutup modal unggahan tanpa menyentuh form', async () => {
   const form = await openTambah()
 
   await userEvent.type(within(form).getByLabelText(/Jenis Salvage/), 'Besi Tua')
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
 
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
   await userEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
@@ -1371,7 +1547,7 @@ it('modal unggahan menolak berkas yang melewati 1 MB', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   // Berkas 2 MB. Menolaknya DI LAYAR menghemat perjalanan kirim yang sudah pasti ditolak
@@ -1393,7 +1569,7 @@ it('modal unggahan menolak lebih dari lima dokumen', async () => {
   stubLookupFetch(() => jsonResponse(200, KLAIM_DENGAN_PILIHAN))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const enam = Array.from(
@@ -1435,7 +1611,7 @@ it('Submit pada modal unggahan MENGIRIM berkasnya sebagai satu permintaan', asyn
   await userEvent.tab()
   await screen.findByText(/ditemukan\./)
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1478,7 +1654,7 @@ it('unggahan yang DITOLAK server tetap membuka modal beserta berkasnya', async (
   await userEvent.tab()
   await screen.findByText(/ditemukan\./)
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1500,7 +1676,7 @@ it('Submit pada modal unggahan mati selama Nomor Klaim kosong', async () => {
   stubUnggahanDokumen(() => jsonResponse(200, { dokumen: [], pesan: '', portal: 'ASM' }))
   const form = await openTambah()
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Upload file' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Upload File Pendukung Lain' }))
   const modal = await screen.findByRole('dialog', { name: 'UploadDocument_Salvage' })
 
   const pemilih = modal.querySelector('input[type="file"]') as HTMLInputElement
@@ -1604,7 +1780,21 @@ function stubRejectedFetch(onPost?: (body: string) => Response) {
         daftar_bawaan: TAB_REJECTED.kode,
       })
     }
-    if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+    // Ringkasan di sini membawa BARIS SENDIRI yang menuju daftar Rejected Checker.
+    //
+    // Tanpa baris itu daftar tersebut tidak dapat dibuka siapa pun: sejak 2026-10-08
+    // tabel ringkas adalah satu-satunya pintu masuknya, dan `daftar_bawaan` tidak lagi
+    // membukanya sendiri. Keadaan "daftar ada tetapi tidak ada barisnya" persis yang
+    // `TestEveryVisibleListIsReachableFromACounterRow` tolak di sisi server.
+    if (url === COUNTS_PATH) {
+      return jsonResponse(200, {
+        ...COUNTS,
+        baris: [
+          ...COUNTS.baris,
+          { status_salvage: 'Rejected Checker', jumlah: 1, daftar: TAB_REJECTED.kode },
+        ],
+      })
+    }
 
     if (url === PATH && init?.method === 'POST' && onPost !== undefined) {
       return onPost(String(init.body))
@@ -1622,10 +1812,15 @@ function stubRejectedFetch(onPost?: (body: string) => Response) {
   })
 }
 
-/** openRejected membuka baris pertama daftar Rejected Checker. */
+/**
+ * openRejected membuka daftar Rejected Checker lalu baris pertamanya.
+ *
+ * Dua langkah, bukan satu, karena begitulah jalan penggunanya sejak 2026-10-08: pilih
+ * statusnya di tabel ringkas, baru barisnya muncul.
+ */
 async function openRejected(): Promise<HTMLElement> {
-  renderPage()
-  await screen.findByRole('table', { name: 'Ringkasan jumlah pengajuan per status salvage' })
+  await renderRingkas()
+  await pilihDaftar('Rejected Checker')
   await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
   return screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
 }
@@ -1639,7 +1834,7 @@ it('baris Rejected Checker membuka FORM, bukan panel rincian', async () => {
   // Isian pengajuannya sudah terisi â€” itu yang membedakannya dari form pengajuan baru.
   expect(within(form).getByLabelText(/Nomor Klaim/)).toHaveValue('PNC-700071')
   expect(within(form).getByLabelText(/Jenis Salvage/)).toHaveValue('Besi Tua')
-  expect(within(form).getByLabelText(/Minimum Salvage/)).toHaveValue('1800000')
+  expect(within(form).getByLabelText(/Total Nilai Salvage/)).toHaveValue('1800000')
 })
 
 it('Nama Object dan Nama Coverage TERISI beserta daftar pilihannya', async () => {
@@ -1654,8 +1849,8 @@ it('Nama Object dan Nama Coverage TERISI beserta daftar pilihannya', async () =>
   expect(objek).toHaveValue('Gudang Blok C')
   expect(coverage).toHaveValue('Kebakaran')
 
-  expect(optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
-  expect(optionsOf(coverage)).toEqual(['Kebakaran', 'Gempa Bumi'])
+  expect(await optionsOf(objek)).toEqual(['Gudang Blok C', 'Isi Gudang'])
+  expect(await optionsOf(coverage)).toEqual(['Kebakaran', 'Gempa Bumi'])
 })
 
 it('grid Detail Item Salvage terisi barang yang sudah tersimpan', async () => {
@@ -1691,7 +1886,7 @@ it('menyimpan dari Rejected Checker memakai mode ubah beserta ID pengajuannya', 
   expect(within(form).getByLabelText(/Status Salvage/)).toHaveValue('')
   await userEvent.selectOptions(within(form).getByLabelText(/Status Salvage/), '2')
 
-  await userEvent.click(within(form).getByRole('button', { name: 'Submit' }))
+  await userEvent.click(within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }))
 
   await vi.waitFor(() => expect(dikirim).not.toBe(''))
 

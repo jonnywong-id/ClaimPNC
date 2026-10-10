@@ -151,7 +151,6 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		},
 		LiniBisnis:       string(result.Filter.Business),
 		Portal:           active.Alias,
-		SelisihTerencana: plannedDifferences(),
 		CatatanWarisan:   inheritedNotes(),
 	})
 }

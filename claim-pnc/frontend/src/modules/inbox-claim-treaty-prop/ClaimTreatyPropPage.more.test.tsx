@@ -41,7 +41,7 @@ const TAB_HALANG: Tab = {
   alasan_terhalang: 'Sumbernya belum ada.',
 }
 
-const METADATA = { tab: [TAB_SAYA, TAB_HALANG], tab_bawaan: '4', selisih_terencana: [], portal: 'ASM' }
+const METADATA = { tab: [TAB_SAYA, TAB_HALANG], tab_bawaan: '4', portal: 'ASM' }
 
 function row(claim: string): WorkItem {
   return {

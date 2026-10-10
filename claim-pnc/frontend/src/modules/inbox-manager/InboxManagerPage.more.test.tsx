@@ -90,7 +90,7 @@ const TAB_TANPA_ALASAN: Tab = {
 }
 
 function metadata(tabs: Tab[], bawaan: string): MetadataResponse {
-  return { tab: tabs, tab_bawaan: bawaan, lini_bisnis_anda: 'NONMBU', selisih_terencana: [] }
+  return { tab: tabs, tab_bawaan: bawaan, lini_bisnis_anda: 'NONMBU' }
 }
 
 const ROWS = [

@@ -87,16 +87,6 @@ const METADATA: MetadataResponse = {
     { kunci: 'no_case', judul: 'Nomor Case' },
     { kunci: 'status_klaim', judul: 'Status Klaim' },
   ],
-  selisih_terencana: [
-    {
-      ringkas: 'Tab "Klaim MSIG" nyaris selalu kosong, dan itu normal.',
-      rincian: 'Penandanya hanya terisi pada segelintir klaim.',
-    },
-    {
-      ringkas: 'Kedua isian tanggal tidak menyaring tabel di bawahnya.',
-      rincian: 'Keduanya hanya dipakai tombol unduh — perilaku layar lama apa adanya.',
-    },
-  ],
   portal: 'ASM',
 }
 
@@ -307,41 +297,22 @@ describe('bentuk layar', () => {
     expect(screen.getByText(/antrean bersama/i)).toBeInTheDocument()
   })
 
-  it('menampilkan selisih terencana dari server', async () => {
-    // Panel ini sempat dihapus pada 2026-09-30 dan DIKEMBALIKAN pada hari yang sama atas
-    // ralat Work Owner. Judul panelnya ikut dituntut di sini, bukan hanya isinya: yang
-    // sempat dihapus adalah panelnya, dan uji yang hanya memeriksa satu butir akan tetap
-    // lulus meski judulnya hilang.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
+    // Panel ini sempat dihapus pada 2026-09-30 lalu DIKEMBALIKAN pada hari yang sama atas
+    // ralat Work Owner. Penghapusan kali ini menempuh keputusan tersendiri — Work Owner,
+    // 2026-10-06, berlaku untuk SELURUH layar — bukan diulang atas nama merapikan layar
+    // yang panjang.
+    //
+    // Daftarnya tetap hidup di kode Go: `D-54` masih menuntutnya sebagai pemetaan selisih
+    // ke butir `P-5` pada uji kesetaraan gerbang 1. Yang berubah adalah ia berhenti
+    // menjadi isi layar.
     stubDefaultFetch()
     await renderLoaded()
 
+    expect(screen.queryByText(/Yang berbeda dari layar lama/)).not.toBeInTheDocument()
     expect(
-      await screen.findByText(/Yang berbeda dari layar lama/),
-    ).toBeInTheDocument()
-    expect(
-      await screen.findByText(/Tab "Klaim MSIG" nyaris selalu kosong/),
-    ).toBeInTheDocument()
-  })
-
-  it('menggambar ringkasan selisih, dan rinciannya menyusul di baliknya', async () => {
-    // Panel ini pernah berisi 1.114 kata dan karena itu tidak dibaca siapa pun. Yang
-    // digambar sekarang ringkasannya; rinciannya tetap ada di halaman — `details` bawaan
-    // peramban, sehingga Ctrl+F dan pembaca layar tetap menemukannya — tetapi tidak
-    // menghalangi pembacaan.
-    stubDefaultFetch()
-    await renderLoaded()
-
-    const ringkas = await screen.findByText(/Tab "Klaim MSIG" nyaris selalu kosong/)
-    const rincian = screen.getByText(/Penandanya hanya terisi pada segelintir klaim/)
-
-    expect(ringkas).toBeInTheDocument()
-    expect(rincian).toBeInTheDocument()
-
-    // Rinciannya berada DI DALAM butir yang diringkasnya, bukan sebagai butir tersendiri.
-    // Tanpa ini, daftar yang menggambar keduanya berdampingan tetap lulus — dan itu
-    // persis keadaan yang sedang diperbaiki.
-    expect(ringkas.closest('details')).toBe(rincian.closest('details'))
-    expect(ringkas.closest('details')).not.toBeNull()
+      screen.queryByText(/Tab "Klaim MSIG" nyaris selalu kosong/),
+    ).not.toBeInTheDocument()
   })
 
   it('menyatakan kedua tindakan yang dikerjakan lewat Pega', async () => {

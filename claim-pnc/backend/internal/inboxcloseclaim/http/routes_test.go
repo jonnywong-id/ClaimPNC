@@ -171,18 +171,16 @@ func TestDaftarDikembalikanBesertaTotal(t *testing.T) {
 	require.Equal(t, true, body["permintaan_terbaca"])
 }
 
-// TestSelisihTerencanaDinyatakanDiLayar menjaga `D-54`.
+// TestSelisihTerencanaTidakLagiDikirim mengunci keputusan Work Owner 2026-10-06.
 //
-// Selisih terhadap Pega dinyatakan kepada pengguna, bukan disembunyikan sebagai detail
-// teknis. Ketiganya sudah diputuskan Work Owner 2026-09-23, dan menyatakannya di layar
-// itulah yang membuat keputusan itu terlihat oleh orang yang memakai layarnya.
-func TestSelisihTerencanaDinyatakanDiLayar(t *testing.T) {
+// Panel "Perbedaan yang disengaja" dihapus dari seluruh layar, dan medannya tidak lagi ikut
+// dalam respons. Ketiga selisih itu tetap tercatat di kode Go untuk uji kesetaraan gerbang 1
+// (`D-54`) — yang berubah adalah ia berhenti menjadi isi layar.
+func TestSelisihTerencanaTidakLagiDikirim(t *testing.T) {
 	server, _ := testServer(t, "BUDI")
 
 	body := decode(t, get(t, server, "/api/inbox-close-claim"))
-	selisih, ok := body["selisih_terencana"].([]any)
-	require.True(t, ok)
-	require.Len(t, selisih, 3)
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 // TestKolomLamaWaktuKlaimBerisiAngkaHari menjaga selisih terencana yang paling terlihat.

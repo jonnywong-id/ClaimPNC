@@ -109,9 +109,6 @@ type ListResponse struct {
 	// hari" — tanpa menuliskan angkanya sendiri di dua tempat.
 	AgingThreshold int `json:"ambang_aging"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal yang
 	// sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -143,7 +140,6 @@ func toListResponse(listed usecase.Listed, portalAlias string) ListResponse {
 			TotalPages: listed.Page.TotalPages(),
 		},
 		AgingThreshold:     inboxosclaimpercabang.AgingThreshold,
-		PlannedDifferences: listed.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

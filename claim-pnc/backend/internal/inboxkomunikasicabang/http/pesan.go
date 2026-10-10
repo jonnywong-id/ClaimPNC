@@ -136,7 +136,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, r, http.StatusCreated, ActionResponse{
 		ID: id,
-		Message: "Pesan terkirim. Ia muncul di tab \"Belum Dijawab\" milik " +
+		Message: "Pesan terkirim. Ia muncul di tab \"Not Answered\" milik " +
 			recipientLabel(body.Destination) + " sampai dibalas.",
 		Portal: active.Alias,
 	})

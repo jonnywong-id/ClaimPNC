@@ -134,6 +134,99 @@ func adaDiAntrean(t *testing.T, s *usecase.Service, reference string) bool {
 	return false
 }
 
+// klaimTolakDiAntrean mencari klaim di tab Kelengkapan Dokumen yang tombol "Tolak Klaim"-nya
+// muncul — yaitu klaim jalur RCL (`RCL_PUCL = 1`).
+//
+// Dicari dari DAFTARNYA, sama alasannya dengan klaimDiAntrean: yang hendak dibuktikan adalah
+// klaim KELUAR dari antrean, dan klaim yang tidak pernah ada di antrean tidak membuktikan
+// apa pun tentang itu.
+func klaimTolakDiAntrean(
+	t *testing.T,
+	s *usecase.Service,
+	store *memory.Store,
+) inboxrclpucl.ClaimDetail {
+	t.Helper()
+
+	listed, err := s.List(context.Background(), "asm",
+		inboxrclpucl.Caller{Login: "petugascontoh"},
+		inboxrclpucl.QueryInput{Tab: inboxrclpucl.TabKelengkapanDokumen},
+		inboxrclpucl.Pagination{})
+	require.NoError(t, err)
+
+	for _, item := range listed.Page.Items {
+		detail, err := store.Detail(context.Background(), item.Reference)
+		if err != nil {
+			continue
+		}
+		if detail.Allows(inboxrclpucl.ActionRejectClaim) {
+			return detail
+		}
+	}
+	t.Fatal(`tidak ada klaim di tab Kelengkapan Dokumen yang tombol "Tolak Klaim"-nya muncul`)
+	return inboxrclpucl.ClaimDetail{}
+}
+
+func TestTolakKlaimMENUTUPKlaimDanMengeluarkannyaDariAntrean(t *testing.T) {
+	// Yang dibuktikan di sini AKIBATNYA, bukan pemanggilannya:
+	//
+	//   1. klaimnya benar-benar hilang dari antrean RCL/PUCL;
+	//   2. status kerjanya menjadi `Resolved-Rejected` — padanan ASMForceCaseClose;
+	//   3. TIDAK ada tahap tujuan, berbeda dari kedua tombol Kirim.
+	//
+	// Butir 3 adalah pembeda pokoknya terhadap "Kirim Ke Analyst", dan ia yang paling mudah
+	// hilang bila kelak kedua jalur disatukan menjadi satu fungsi berparameter.
+	store := memory.NewSampleStore()
+	s := layanan(t, store, &pegaPalsu{})
+
+	detail := klaimTolakDiAntrean(t, s, store)
+	require.True(t, adaDiAntrean(t, s, detail.Reference),
+		"prasyarat: klaimnya memang ada di antrean sebelum tombolnya ditekan")
+
+	_, err := aksi(t, s, detail.Reference, inboxrclpucl.ActionRejectClaim)
+	require.NoError(t, err)
+
+	require.False(t, adaDiAntrean(t, s, detail.Reference),
+		"klaim yang sudah ditolak TIDAK boleh tersisa di antrean RCL/PUCL")
+
+	_, dipindahkan := store.MovedTaskOf(detail.Reference)
+	require.False(t, dipindahkan,
+		`"Tolak Klaim" menutup kasusnya; ia tidak memindahkan klaim ke tahap mana pun`)
+
+	riwayat := store.History(detail.Reference)
+	require.Len(t, riwayat, 1)
+	require.Equal(t, inboxrclpucl.HistoryNoteRejectClaim, riwayat[0].Note)
+	require.Equal(t, "petugascontoh", riwayat[0].Caller)
+}
+
+func TestTolakKlaimTIDAKMenungguLayananPega(t *testing.T) {
+	// Sebelum 2026-10-06 tombol ini menjawab 503 "dikerjakan di Pega". Ketiga tulisannya
+	// seluruhnya pada tabel milik aplikasi ini, sehingga tidak ada satu pun yang dibutuhkan
+	// dari Pega — lihat Repo.RejectClaim.
+	store := memory.NewSampleStore()
+	pega := &pegaPalsu{}
+	s := layanan(t, store, pega)
+
+	detail := klaimTolakDiAntrean(t, s, store)
+
+	_, err := aksi(t, s, detail.Reference, inboxrclpucl.ActionRejectClaim)
+	require.NoError(t, err)
+	require.Empty(t, pega.diterima,
+		`"Tolak Klaim" tidak boleh diteruskan ke layanan Pega`)
+}
+
+func TestTolakKlaimBERHASILTanpaLayananPegaSamaSekali(t *testing.T) {
+	// `Actions` nil adalah keadaan yang SAH — layanan Pega belum dibangun. Tombol ini harus
+	// tetap bekerja di sana, bukan menjawab ErrPegaServiceUnavailable.
+	store := memory.NewSampleStore()
+	s := layanan(t, store, nil)
+
+	detail := klaimTolakDiAntrean(t, s, store)
+
+	_, err := aksi(t, s, detail.Reference, inboxrclpucl.ActionRejectClaim)
+	require.NoError(t, err)
+	require.False(t, adaDiAntrean(t, s, detail.Reference))
+}
+
 func TestKirimKeAnalystMengeluarkanKlaimDariAntreanPUCL(t *testing.T) {
 	// Inilah yang diminta Work Owner berkali-kali: klaimnya BENAR-BENAR pindah, bukan sekadar
 	// menjawab "berhasil". Yang dibuktikan di sini bukan pemanggilan melainkan AKIBATNYA —
@@ -369,8 +462,17 @@ func TestTeksRiwayatDisalinAPAADANYADariPega(t *testing.T) {
 		inboxrclpucl.HistoryNoteFor(inboxrclpucl.ActionSendToPICTeknik),
 		"huruf kecil pada send — berbeda dari di atas, dan itu memang begitu di Pega")
 
-	// Dua tindakan TIDAK menulis riwayat, dan kosong di sini yang menyatakannya.
-	require.Empty(t, inboxrclpucl.HistoryNoteFor(inboxrclpucl.ActionRejectClaim))
+	// "Tolak Klaim" MENULIS riwayat sejak 2026-10-06, dan teksnya pun disalin apa adanya —
+	// `<statusNote>` `PUCLPost` langkah 36.
+	//
+	// Di Pega langkah itu berprekondisi `local.isCFS=="1"`, sehingga klaim yang ditolak
+	// sebelum pernah diakseptasi tidak meninggalkan jejak apa pun. Di sini ia ditulis
+	// SELALU — selisih yang disengaja, dinyatakan pada HistoryNoteRejectClaim.
+	require.Equal(t, "RCL and Close Claim",
+		inboxrclpucl.HistoryNoteFor(inboxrclpucl.ActionRejectClaim))
+
+	// Satu tindakan TIDAK menulis riwayat, dan kosong di sini yang menyatakannya: "Save"
+	// tidak memanggil `PUCLPost` sama sekali.
 	require.Empty(t, inboxrclpucl.HistoryNoteFor(inboxrclpucl.ActionSave))
 }
 

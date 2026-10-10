@@ -13,7 +13,6 @@ import { RCLPUCLTabs } from './RCLPUCLTabs'
 import { useExportRCLPUCL, useRCLPUCLList, useRCLPUCLMetadata } from './api'
 import type {
   DateRange,
-  PlannedDifference,
   ReportColumn,
   Tab,
   TabColumn,
@@ -204,7 +203,6 @@ export function RCLPUCLPage() {
         </>
       )}
 
-      <PlannedDifferences lines={meta.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -510,66 +508,6 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
 }
 
 
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, tiga hal akan
- * dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan kedua layar
- * berdampingan: tab "Klaim MSIG" yang nyaris kosong, isian tanggal yang tidak menyaring
- * tabel, dan berkas ekspor yang isinya berbeda dari tabel.
- *
- * # Panel ini sempat dihapus pada 2026-09-30, lalu DIKEMBALIKAN pada hari yang sama
- *
- * Work Owner meminta menghapusnya, lalu meralatnya sebelum perubahannya dipakai. Ia karena
- * itu tetap digambar apa adanya. Dicatat di sini supaya penghapusan berikutnya menempuh
- * keputusan, bukan diulang atas nama merapikan layar yang panjang —
- * `keputusan-implementasi.md` §80.9.
- */
-function PlannedDifferences({ lines }: { lines: PlannedDifference[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-
-      <ul className="mt-2 space-y-2 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line.ringkas}>
-            {/*
-              `details` bawaan peramban, bukan buka-tutup yang ditulis sendiri.
-              Isinya tetap ada di halaman saat tertutup, sehingga pencarian peramban
-              (Ctrl+F) dan pembaca layar tetap menemukannya — dan tidak ada state yang
-              dapat menyimpang antara apa yang tergambar dan apa yang dikirim server.
-            */}
-            <details className="group">
-              <summary
-                className={[
-                  'flex cursor-pointer list-none items-start gap-2',
-                  'rounded-kontrol text-slate-700 marker:content-none',
-                  'hover:text-slate-900',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                ].join(' ')}
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-px shrink-0 text-slate-400 transition-transform duration-150 ease-halus group-open:rotate-90"
-                >
-                  ›
-                </span>
-                <span>{line.ringkas}</span>
-              </summary>
-
-              <p className="mt-1 pl-5 text-slate-500">{line.rincian}</p>
-            </details>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
 
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.

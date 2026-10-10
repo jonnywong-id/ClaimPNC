@@ -161,7 +161,6 @@ export function InboxManagerPage() {
         />
       ) : null}
 
-      <PlannedDifferences items={metadata.data?.selisih_terencana ?? []} />
     </PageFrame>
   )
 }
@@ -498,30 +497,6 @@ function PeriodFilter({
         )}
       </p>
     </div>
-  )
-}
-
-/**
- * Daftar selisih terhadap sistem lama yang sudah diputuskan.
- *
- * Ia ditampilkan kepada pengguna, bukan hanya dicatat di komentar: selisih yang tidak
- * dinyatakan akan dilaporkan berulang kali sebagai kerusakan oleh orang yang membandingkan
- * layar ini dengan Pega berdampingan (`D-54`).
- */
-function PlannedDifferences({ items }: { items: string[] }) {
-  if (items.length === 0) return null
-
-  return (
-    <details className="rounded-kontrol border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-700">
-        Yang berbeda dari layar lama ({items.length})
-      </summary>
-      <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-600">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </details>
   )
 }
 

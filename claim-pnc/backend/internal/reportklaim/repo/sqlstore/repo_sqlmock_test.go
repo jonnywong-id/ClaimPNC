@@ -307,3 +307,88 @@ func TestCheckSourceReadsHolidayCalendar(t *testing.T) {
 	require.ErrorIs(t, state.HolidayError, errDB)
 	require.NoError(t, anekaMock.ExpectationsWereMet())
 }
+
+// ── Penyaring baris laporan Mitra ───────────────────────────────────────────────
+
+// Ketiga jalur penolakan mitraKeep diperiksa satu per satu.
+//
+// Laporan ini satu-satunya yang menyaring BARIS lewat koneksi kedua, dan kehilangan
+// penyaringnya tidak membuatnya kehilangan kolom — ia berubah ISI: berkas yang terbit
+// memuat SELURUH petugas, bukan petugas mitra. Kegagalan seperti itu tidak terlihat
+// sebagai galat oleh siapa pun yang menerima berkasnya.
+func TestMitraKeepRefusesRatherThanWidenTheReport(t *testing.T) {
+	ctx := context.Background()
+	filter := reportklaim.Filter{From: from, To: to}
+
+	// Tidak ada jalan SAMA SEKALI — bukan sekadar koneksi kedua yang kosong.
+	//
+	// Sejak jalur cadangan DB Link diterima Work Owner 2026-10-09, `aneka` nil saja TIDAK
+	// lagi menolak: ia jatuh ke koneksi portal dengan kueri bercadang `@ASMD` (lihat
+	// koneksiKedua, dan cadangan_dblink_test.go yang mengujinya). Penolakan ber-"ANEKA_"
+	// hanya terjadi ketika kedua jalan itu sama-sama tidak ada.
+	t.Run("tidak ada jalan sama sekali", func(t *testing.T) {
+		_, err := mitraKeep(ctx, NewRepo(nil, nil), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "ANEKA_")
+	})
+
+	t.Run("pembacaan gagal", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).WillReturnError(errDB)
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Daftar KOSONG secara teknis sah, dan justru itu yang membuatnya berbahaya: ia
+	// menghasilkan berkas tanpa satu baris pun, yang tidak dapat dibedakan dari "memang
+	// tidak ada penugasan pada periode itu".
+	t.Run("daftar kosong", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "kosong")
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Baris yang isinya hanya spasi tidak boleh terhitung sebagai login: ia akan
+	// meloloskan setiap baris laporan yang kolom QQNAME-nya juga kosong.
+	t.Run("baris berisi spasi saja tidak dihitung", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow("   ").AddRow(nil))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+}
+
+// Pencocokan login DINORMALKAN huruf besar dan spasinya.
+//
+// Kedua kolom yang dibandingkan — `userassign` di laporan dan `login_aplikasi` di daftar
+// mitra — berada di DUA basis data yang berbeda, dan tidak ada apa pun yang menjamin
+// keseragaman penulisannya.
+func TestMitraKeepMatchesLoginsCaseAndSpaceInsensitively(t *testing.T) {
+	db, _ := newDB(t)
+	aneka, anekaMock := newDB(t)
+	anekaMock.ExpectQuery(q("report_mitra_logins")).
+		WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow(" budi "))
+
+	keep, err := mitraKeep(context.Background(), NewRepo(db, aneka), reportklaim.Filter{})
+	require.NoError(t, err)
+
+	require.True(t, keep(reportklaim.Row{"QQNAME": "BUDI"}))
+	require.True(t, keep(reportklaim.Row{"QQNAME": "  Budi  "}))
+	require.False(t, keep(reportklaim.Row{"QQNAME": "SITI"}), "bukan mitra, dibuang")
+	require.False(t, keep(reportklaim.Row{"QQNAME": ""}), "kosong bukan mitra")
+	require.False(t, keep(reportklaim.Row{}), "tanpa kolom QQNAME pun bukan mitra")
+	require.NoError(t, anekaMock.ExpectationsWereMet())
+}

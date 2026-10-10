@@ -319,6 +319,30 @@ var (
 // adanya.
 var ClosedWorkStatuses = []string{"Resolved-Completed", "Resolved-Rejected"}
 
+// Penanda salvage yang DIMUAT daftar Salvage Outstanding.
+//
+// # Kenapa nilainya diambil dari layar Pega, bukan dari export
+//
+// Export membaca sebaliknya: `Activity/GCNMInboxSalvage_act-Act.xml` menyusun penyaring
+// `(3 atau 5)` pada satu langkah, lalu MENIMPANYA dengan `STSSALVAGE IS NULL` pada langkah
+// berikutnya — keduanya berprasyarat sama — sebelum kuerinya dijalankan. Dibaca apa adanya,
+// daftar ini memuat klaim yang BELUM ditandai sama sekali.
+//
+// Pengukuran terhadap layar Pega sungguhan pada 2026-10-08 membantahnya:
+//
+//	daftar Outstanding di Pega           145 baris
+//	"3 atau 5" + masih terbuka           145 baris   <- cocok
+//	"belum ditandai" + masih terbuka     465 baris
+//
+// Work Owner memastikannya sekali lagi dari arah yang berbeda: satu klaim yang tampil di
+// daftar Outstanding Pega juga tampil di daftar TBA — dan TBA menyaring `STSSALVAGE='5'`.
+// Klaim ber-penanda tidak akan pernah lolos penyaring "belum ditandai".
+//
+// Kesimpulannya export untuk layar ini SUDAH BASI — persis yang diperingatkan `R-09`:
+// 124 activity berubah pada 2026 dan rule-nya terus bergerak selama migrasi berjalan.
+// Yang dipegang adalah perilaku sistem berjalan, bukan berkas XML-nya.
+var OutstandingSalvageStatuses = []string{"3", "5"}
+
 // Pagination adalah permintaan satu halaman.
 type Pagination struct {
 	// Page dimulai dari 1.
@@ -1024,6 +1048,26 @@ type Repo interface {
 	// kontrak yang `D-68` nyatakan tidak dibawa. Di sini keduanya dipisah: ID pada nilai
 	// balik, kegagalan pada galat.
 	Create(ctx context.Context, form Form) (string, error)
+
+	// MarkSentToAuction mencatat JAWABAN balai lelang pada baris pengajuan.
+	//
+	// Dua kolom yang ditulisnya: `STSTRANSFER` — yang menentukan di daftar mana baris ini
+	// muncul — dan `IDSIMASBID`, nomor pengajuan di sisi balai lelang.
+	//
+	// # Kenapa ia TERPISAH dari Create, bukan satu transaksi
+	//
+	// Karena `09-API-STRATEGY.md` §8.2 melarang pemanggilan sistem luar berada di dalam
+	// transaksi basis data: kegagalan jaringan tidak boleh menahan kunci baris. Urutannya
+	// karena itu simpan dulu, kirim kemudian, lalu catat jawabannya.
+	//
+	// Akibat yang diterima secara sadar: pengiriman yang berhasil tetapi pencatatannya
+	// gagal meninggalkan baris yang `STSTRANSFER`-nya menyatakan "belum dikirim" padahal
+	// balai lelang sudah menerimanya. Itu lebih baik daripada kebalikannya — baris yang
+	// mengaku terkirim padahal tidak — karena yang pertama membuat petugas mengirim ulang,
+	// sementara yang kedua membuatnya menunggu lelang yang tidak pernah terjadi.
+	//
+	// ID yang tidak ditemukan menghasilkan ErrRowNotFound.
+	MarkSentToAuction(ctx context.Context, salvageID string, receipt AuctionReceipt) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

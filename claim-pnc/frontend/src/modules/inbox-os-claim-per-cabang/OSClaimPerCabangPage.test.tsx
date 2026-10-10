@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -108,10 +108,6 @@ function listResponse(rows: WorkItem[], total = rows.length): ListResponse {
     cabang: { kode: '100099', nama: 'CILEGON' },
     paginasi: { halaman: 1, ukuran: 25, total, total_halaman: Math.max(1, Math.ceil(total / 25)) },
     ambang_aging: 180,
-    selisih_terencana: [
-      'Daftar dibagi per halaman di server.',
-      'Umur klaim dihitung terhadap tanggal WIB.',
-    ],
     portal: 'ASM',
   }
 }
@@ -408,13 +404,19 @@ describe('cabang yang tidak diketahui', () => {
 })
 
 describe('selisih terencana', () => {
-  it('ditampilkan ke pengguna, bukan disimpan sebagai komentar kode', async () => {
+  // Keputusan Work Owner 2026-10-06: panelnya DIHAPUS dari seluruh layar. Daftarnya tetap
+  // hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah adalah ia
+  // berhenti menjadi isi layar.
+  it('tidak lagi digambar di layar', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    const section = screen.getByRole('heading', { name: /Yang berbeda dari layar lama/ })
-      .parentElement as HTMLElement
-    expect(within(section).getByText(/Daftar dibagi per halaman di server/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /Yang berbeda dari layar lama/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Daftar dibagi per halaman di server/),
+    ).not.toBeInTheDocument()
   })
 })
 

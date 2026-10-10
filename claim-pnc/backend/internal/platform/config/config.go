@@ -101,6 +101,11 @@ type Config struct {
 	SMTP                SMTP
 	DocumentStorage     DocumentStorage
 
+	// AuctionHouse memuat alamat layanan balai lelang SimasBid.
+	//
+	// Ia TIDAK punya nilai bawaan — lihat AuctionHouse.
+	AuctionHouse AuctionHouse
+
 	// PrimaryPortal adalah alias portal yang basis datanya melayani hal-hal yang
 	// dibutuhkan SEBELUM pengguna memilih portal: daftar portal (M_PORTAL_PNC),
 	// alamat layanan HCQ (GCNM_CONNECT_REST), login non-karyawan (M_LOGIN_PNC), dan
@@ -401,6 +406,47 @@ func (d DocumentStorage) ConverterActive() bool {
 	return strings.TrimSpace(d.ConverterURL) != ""
 }
 
+// AuctionHouse memuat alamat dan kredensial balai lelang SimasBid.
+//
+// # Kenapa TIDAK ada nilai bawaan, berbeda dari DocumentStorage di atas
+//
+// Karena satu-satunya alamat yang terbaca dari export menunjuk host **sandbox** di dalam
+// ruleset produksi, dengan `pyUseAuthentication=false` — keadaan yang `R-18` catat.
+// Menjadikannya nilai bawaan berarti satu lingkungan yang lupa mengisinya akan diam-diam
+// mengirim pengajuan salvage NYATA ke lingkungan uji pihak lain.
+//
+// DocumentStorage boleh punya nilai bawaan karena alamatnya memang alamat produksi milik
+// Sinarmas sendiri. Yang ini tidak.
+//
+// Nilai alamatnya tidak direproduksi di berkas mana pun yang di-commit (`D-69`); ia
+// diserahkan lewat konfigurasi lingkungan.
+type AuctionHouse struct {
+	// URL adalah alamat lengkap layanan penyisip salvage (SIMASBID_ALAMAT).
+	//
+	// Kosong berarti pengiriman TIDAK aktif: pengajuan tetap tersimpan, dan layar
+	// menyatakan pengajuannya belum sampai ke SimasBid.
+	URL string
+
+	// User dan Password (SIMASBID_PENGGUNA, SIMASBID_SANDI) boleh kosong.
+	//
+	// Rule lama tidak memakai autentikasi sama sekali. Itu tidak dijadikan keharusan di
+	// sini — yang disediakan adalah kemampuan memakainya bila kelak disepakati.
+	User     string
+	Password string
+
+	// Timeout membatasi satu pengiriman (SIMASBID_BATAS_WAKTU). Kosong berarti 30 detik.
+	//
+	// Rule lama menetapkan `pyResponseTimeout=0`, yang berarti menunggu tanpa batas.
+	// `09-API-STRATEGY.md` §8.2 mewajibkan batas waktu di setiap pemanggilan keluar, dan
+	// ketiadaannya tidak dibawa.
+	Timeout time.Duration
+}
+
+// Active menyatakan konfigurasi ini cukup untuk mengirim ke balai lelang.
+func (a AuctionHouse) Active() bool {
+	return strings.TrimSpace(a.URL) != ""
+}
+
 // SMTP memuat parameter server surel keluar.
 //
 // Dipakai modul Master Rekening untuk memberi tahu komite bila rekening yang baru
@@ -447,6 +493,28 @@ type SMTP struct {
 	// adalah tempat terdekat yang memenuhi `D-15` — nilainya tidak berada di dalam kode.
 	TKARecipients []string
 
+	// SalvageRecipients adalah mailbox penerima pemberitahuan pengajuan salvage.
+	// Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_SALVAGE.
+	//
+	// # Ia menggantikan dua alamat yang di-hardcode di dalam rule
+	//
+	// `Activity/SetStsSalvagePNC_act-Act.xml:1757-1760` memasang dua alamat tetap sebagai
+	// penerima, dan yang kedua adalah akun surel PRIBADI di jalur produksi. Pola itu
+	// persis yang `D-15` larang dibawa, dan `D-67` menegaskan tidak ada akun pribadi yang
+	// ikut ke sistem baru.
+	//
+	// # Kenapa daftarnya TERPISAH dari TKARecipients
+	//
+	// Dengan alasan yang sama seperti pemisahan TKARecipients dari AlertRecipients:
+	// pembacanya berbeda. Yang satu menerima kabar bahwa dokumen klaim TKA sudah lengkap,
+	// yang lain menerima kabar bahwa ada barang sisa yang hendak dilelang. Menyatukannya
+	// mengirimi kedua pihak surel yang bukan urusannya, dan surel semacam itu adalah hal
+	// pertama yang orang berhenti baca.
+	//
+	// Kelak ia pindah ke master Penerima Notifikasi (`F-4`). Sampai master itu ada,
+	// variabel lingkungan adalah tempat terdekat yang memenuhi `D-15`.
+	SalvageRecipients []string
+
 	// XOLCommitteeRecipients adalah mailbox komite yang menerima pemberitahuan pengajuan
 	// Master XOL. Ditulis sebagai daftar dipisah koma di XOL_PENERIMA_KOMITE.
 	//
@@ -467,6 +535,20 @@ type SMTP struct {
 	XOLCommitteeRecipients []string
 
 	Timeout time.Duration
+}
+
+// SalvageActive menyatakan pemberitahuan pengajuan salvage dapat dikirim.
+//
+// Terpisah dari TKAActive dengan alasan yang sama seperti pemisahan daftar penerimanya:
+// satu lingkungan dapat memasang penerima TKA tanpa memasang penerima salvage. Satu
+// penanda untuk keduanya membuat modul yang penerimanya belum diisi tetap mencoba
+// mengirim ke daftar kosong — dan surel yang tidak sampai ke siapa pun terlapor sebagai
+// surel yang terkirim.
+func (s SMTP) SalvageActive() bool {
+	return strings.TrimSpace(s.Host) != "" &&
+		s.Port > 0 &&
+		strings.TrimSpace(s.From) != "" &&
+		len(s.SalvageRecipients) > 0
 }
 
 // TKAActive menyatakan pemberitahuan kelengkapan dokumen TKA dapat dikirim.
@@ -602,6 +684,16 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// 30 detik — batas yang sama dengan pemanggilan keluar lain.
+	//
+	// Rule lama menetapkan `pyResponseTimeout=0` pada Connect REST SimasBid, yang berarti
+	// menunggu tanpa batas. `09-API-STRATEGY.md` §8.2 mewajibkan batas waktu di setiap
+	// pemanggilan keluar, karena satu sistem yang menggantung akan menghabiskan seluruh
+	// koneksi kita — ketiadaan batas itu tidak dibawa.
+	auctionHouseTimeout, err := getDuration("SIMASBID_BATAS_WAKTU", 30*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	portSMTP, err := getInt("SMTP_PORT", 0)
 	if err != nil {
 		issues = append(issues, err)
@@ -716,6 +808,13 @@ func Load() (Config, error) {
 			AccessCode:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_KODE_AKSES")),
 			Timeout:        documentStorageTimeout,
 		},
+		AuctionHouse: AuctionHouse{
+			// TIDAK memakai `get(...)` dengan nilai bawaan. Lihat AuctionHouse.
+			URL:      strings.TrimSpace(os.Getenv("SIMASBID_ALAMAT")),
+			User:     strings.TrimSpace(os.Getenv("SIMASBID_PENGGUNA")),
+			Password: os.Getenv("SIMASBID_SANDI"),
+			Timeout:  auctionHouseTimeout,
+		},
 		SMTP: SMTP{
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
@@ -724,6 +823,8 @@ func Load() (Config, error) {
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
 			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
+
+			SalvageRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_SALVAGE")),
 
 			XOLCommitteeRecipients: splitAddress(os.Getenv("XOL_PENERIMA_KOMITE")),
 
