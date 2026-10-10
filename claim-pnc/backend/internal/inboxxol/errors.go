@@ -30,11 +30,12 @@ var (
 // Nilainya SAMA PERSIS dengan nama parameter pada dto. Bila keduanya berbeda, pesannya
 // tetap sampai ke layar tetapi tidak menempel pada isian mana pun.
 const (
-	FieldMasterID    = "id_master"
-	FieldYear        = "tahun"
-	FieldLossDate    = "tanggal_kejadian"
-	FieldCauseOfLoss = "sebab_kerugian"
-	FieldAdviceType  = "tipe"
+	FieldMasterID      = "id_master"
+	FieldYear          = "tahun"
+	FieldLossDate      = "tanggal_kejadian"
+	FieldBusinessGroup = "kode_group_business"
+	FieldCauseOfLoss   = "sebab_kerugian"
+	FieldAdviceType    = "tipe"
 )
 
 // Violation adalah satu aturan yang dilanggar, beserta isian yang melanggarnya.

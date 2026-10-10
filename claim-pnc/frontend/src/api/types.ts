@@ -96,7 +96,7 @@ export type MenuListResponse = {
   menu: MenuItem[]
 }
 
-// ── Master Status Progres 1 ──────────────────────────────────────────────────────
+// ── Master Status Progress 1 ─────────────────────────────────────────────────────
 //
 // Cerminan dto di internal/masterstatusprogres/http. Menggantikan layar Pega
 // `Harness/StatusProgress-Harness.xml` atas tabel POOLDATA.GCNM_MST_PROGRESS_KLAIM.
@@ -2906,6 +2906,15 @@ export type WorkshopListResponse = {
   bengkel: Workshop[]
   status: string
   portal: string
+
+  /**
+   * Apakah jalur unggah dokumen siap dipakai.
+   *
+   * Dititipkan pada jawaban daftar — bukan endpoint tersendiri — karena layarnya memang
+   * memuat daftar lebih dulu, dan satu permintaan tambahan hanya untuk satu boolean adalah
+   * biaya yang tidak perlu.
+   */
+  unggah_tersedia: boolean
 }
 
 export type WorkshopResponse = {
@@ -2916,16 +2925,20 @@ export type WorkshopResponse = {
 /**
  * Metadata satu dokumen lampiran bengkel — satu baris `POOLDATA.DATA_ATTACHFILE`.
  *
- * `berisi` membedakan dokumen yang benar-benar tersimpan dari dokumen WARISAN Pega yang
- * hanya punya keterangan. Jalur unggah sistem lama tidak pernah menulis isi berkasnya,
- * sehingga baris lama menunjuk ke isi kosong — dan layar harus dapat mengatakannya alih-alih
- * menawarkan unduhan yang menghasilkan berkas nol byte.
+ * `berisi` membedakan dokumen yang berkasnya benar-benar ada dari dokumen WARISAN Pega yang
+ * hanya punya keterangan. Jalur unggah sistem lama tidak pernah mengisi `IMAGEID`, sehingga
+ * baris lama menunjuk ke berkas yang tidak pernah terkirim ke mana pun — dan layar harus
+ * dapat mengatakannya alih-alih menawarkan dokumen yang tidak dapat dibuka.
+ *
+ * Ukuran berkas TIDAK ada di sini: isinya tidak tinggal di aplikasi ini, sehingga satu-satunya
+ * cara mengetahuinya adalah menanyakannya ke layanan penyimpanan — dan itu permintaan jaringan
+ * untuk satu angka yang tidak dipakai mengambil keputusan apa pun.
  */
 export type WorkshopDocument = {
   id_dokumen: string
+  image_id: string
   nama_berkas: string
   tipe_media: string
-  ukuran_byte: number
   berisi: boolean
   diunggah_oleh: string
   diunggah_pada: string
@@ -3123,6 +3136,74 @@ export type PanelDecisionResponse = {
 export type PanelOptionsResponse = {
   lokasi_panel: string[]
   sisi_panel: { nilai: string; label: string }[]
+
+  /**
+   * Menyatakan jalur unggah dokumen siap dipakai.
+   *
+   * Layar memakainya untuk memutuskan apakah tombol "Upload Document" digambar hidup atau
+   * mati beserta sebabnya. Tanpa ini tombolnya akan selalu tampak hidup dan baru gagal
+   * SESUDAH pengguna memilih berkas.
+   */
+  unggah_tersedia: boolean
+}
+
+/**
+ * Satu dokumen panel.
+ *
+ * Satu panel memegang SATU dokumen, bukan daftar — `PANEL_HE.DOKUMENID` adalah kolom pada
+ * baris panelnya sendiri (`RDB List/GetIDDokumenPanel-SQL.xml`). Unggahan berikutnya
+ * mengganti yang sebelumnya.
+ *
+ * # Yang sengaja TIDAK ada di sini
+ *
+ * URL berkasnya. Ia dimiliki modul dokumen penunjang beserta masa berlakunya, dan dibaca
+ * dari sana saat dokumen benar-benar dibuka. Menyalinnya ke sini akan membuat layar
+ * memegang tautan yang masa berlakunya sudah lewat tanpa ada yang tahu.
+ */
+export type PanelDocument = {
+  data_id: string
+  image_id: string
+  nama_berkas: string
+  tipe_media: string
+  catatan: string
+  diunggah_oleh: string
+  diunggah_pada: string
+  id_panel: string
+}
+
+export type PanelDocumentResponse = {
+  data: PanelDocument
+}
+
+/** Hasil satu baris unggahan CSV Master Panel. */
+export type PanelImportRow = {
+  baris: number
+  nama_panel: string
+  id_panel: string
+  hasil: 'baru' | 'diperbarui' | 'gagal'
+  pesan: string
+}
+
+/**
+ * Ringkasan satu unggahan CSV.
+ *
+ * `baris` memuat SELURUH baris, bukan yang gagal saja: pengguna yang mengunggah 300 baris
+ * perlu dapat memastikan ketiga ratusnya terbaca.
+ *
+ * Bentuknya SAMA dengan Master Sparepart, dan itu disengaja — kedua layar memakai panel
+ * unggah yang bentuknya sama, dan dua bentuk laporan berbeda hanya memaksa pengguna
+ * membaca ulang layar yang sudah dikenalnya.
+ */
+export type PanelImportReport = {
+  total: number
+  baru: number
+  diperbarui: number
+  gagal: number
+  baris: PanelImportRow[]
+}
+
+export type PanelImportResponse = {
+  data: PanelImportReport
 }
 
 /**
@@ -3547,6 +3628,15 @@ export type SparepartOptionsResponse = {
   kategori: SparepartCategory[]
   tipe: SparepartType[]
   portal: string
+
+  /**
+   * Jalur unggah dokumen siap dipakai.
+   *
+   * Form menanyakannya SEBELUM menggambar isian berkas. Tanpa ini isiannya akan selalu
+   * tampak hidup dan baru gagal setelah pengguna memilih berkas — kegagalan paling
+   * menjengkelkan, karena ia terjadi sesudah pekerjaan, bukan sebelumnya.
+   */
+  unggah_tersedia: boolean
 }
 
 /**
@@ -3730,11 +3820,16 @@ export type PartTypeStatus = (typeof PartTypeStatus)[keyof typeof PartTypeStatus
  *
  * Pasangannya `PartCategory`, yang menamai hal yang setara pada tabel kategori.
  *
- * # Enam field untuk tabel berkolom empat
+ * # Lima field: keempat kolom tabel, ditambah label status
  *
- * `nama_kategori_sparepart` bukan kolom tabel ini — ia milik tabel kategori dan dibaca lewat
- * JOIN. `status_label` diturunkan dari `status`. Tidak ada pencatat pelaku maupun stempel
- * waktu: tabelnya tidak punya kolomnya.
+ * `status_label` diturunkan dari `status`.
+ *
+ * TIDAK ada `nama_kategori_sparepart`. Grid Pega menggambar tiga kolom — ID Tipe, Nama
+ * Tipe, dan **ID** Kategori — dan nama kategorinya tidak ada di salah satunya (koreksi Work
+ * Owner 2026-10-04). Caption "Kategori Sparepart" yang sempat terbaca sebagai judul kolom
+ * ternyata label FORM untuk dropdown-nya.
+ *
+ * Tidak ada pula pencatat pelaku maupun stempel waktu: tabelnya tidak punya kolomnya.
  */
 export type PartType = {
   /** Kolom PART_SECTION_ID. Teks, meski isinya angka berurut. */
@@ -3743,14 +3838,6 @@ export type PartType = {
   nama_tipe_sparepart: string
   /** Kolom PART_CATEGORY_ID — kategori induk tipe ini. */
   id_kategori_sparepart: string
-  /**
-   * Kolom PART_CATEGORY_NAME milik tabel kategori, dibaca lewat JOIN.
-   *
-   * Dapat KOSONG, dan itu bukan galat: kuerinya memakai LEFT JOIN, sehingga tipe yang
-   * menunjuk kategori yang tidak ada tetap terkirim. Di Pega baris seperti itu justru
-   * HILANG dari daftar. Layar menampilkannya sebagai "—" beserta keterangan.
-   */
-  nama_kategori_sparepart: string
   /** Kolom APPROVAL: "0", "1", atau "2". */
   status: string
   /** Sebutan status yang dibaca pengguna: "Waiting Approval", "Approve", "Reject". */
@@ -4511,6 +4598,17 @@ export type InvestigatorTask = {
    * ISO 8601 UTC. Null bila klaimnya belum punya baris survei.
    */
   tanggal_survey: string | null
+  /**
+   * Kode lini bisnis klaim — `GROUPPANEL`.
+   *
+   * Dikirim tetapi **tidak digambar sebagai kolom**; layar lama pun tidak menggambarnya.
+   * Tab Unggah Dokumen memakainya untuk menyembunyikan kategori yang tidak berlaku bagi
+   * lini itu — Travel menyembunyikan kategori umum, Personal Accident menyembunyikan
+   * SALVAGE.
+   *
+   * Kosong berarti tidak ada yang disembunyikan, bukan semuanya disembunyikan.
+   */
+  lini_bisnis: string
 }
 
 export type InvestigatorInboxResponse = {
@@ -5386,6 +5484,12 @@ export const KomiteInboxErrorCode = {
 export type KomiteInboxErrorCode =
   (typeof KomiteInboxErrorCode)[keyof typeof KomiteInboxErrorCode]
 
+/** Jawaban PUT /api/master/reas. */
+export type ReasMemberResponse = {
+  member_reas: ReasMember
+  portal: string
+}
+
 /** Satu pilihan pada dropdown "Negara" formulir surveyor (Report Definition BrowseCountry_RD). */
 export type SurveyorCountry = {
   kode: string
@@ -5395,6 +5499,78 @@ export type SurveyorCountry = {
 export type CountryListResponse = {
   negara: SurveyorCountry[]
   portal: string
+}
+
+/**
+ * Badan permintaan ubah surel member reas.
+ *
+ * Ketiga kolom kunci dikirim untuk MENUNJUK baris, bukan untuk diubah; hanya `email` yang
+ * berubah. `login`, `negara`, dan `cadangan` dikirim KELUAR pada setiap jawaban tetapi tidak
+ * dapat dikirim MASUK — server memasang `DisallowUnknownFields`, sehingga mengirimnya
+ * DITOLAK sebagai permintaan cacat alih-alih diabaikan diam-diam.
+ */
+export type ReasMemberSaveInput = Pick<
+  ReasMember,
+  'kode_reas' | 'nama_reas' | 'tipe' | 'email'
+>
+
+/**
+ * Satu dokumen Master Sparepart.
+ *
+ * Bentuknya kembar dengan PanelDocument, dan itu disengaja: kedua modul memakai rantai
+ * penyimpanan yang sama (`Flow Action/UploadDocument-FA.xml` berkelas `@baseclass`),
+ * sehingga satu komponen layar dapat melayani keduanya.
+ *
+ * Seperti PanelDocument, ia TIDAK memuat URL berkasnya. URL itu dimiliki modul dokumen
+ * penunjang beserta masa berlakunya, dan dibaca dari sana saat dokumen benar-benar dibuka —
+ * menyalinnya ke sini akan membuat layar memegang tautan yang masa berlakunya sudah lewat
+ * tanpa ada yang tahu.
+ */
+export type SparepartDocument = {
+  data_id: string
+  image_id: string
+  nama_berkas: string
+  tipe_media: string
+  catatan: string
+  diunggah_oleh: string
+  diunggah_pada: string
+  id_sparepart: string
+}
+
+export type SparepartDocumentResponse = {
+  data: SparepartDocument
+}
+
+/**
+ * Hasil satu baris berkas CSV master sparepart.
+ *
+ * `baris` mengikuti nomor baris di BERKAS, dengan header sebagai baris 1 — supaya angkanya
+ * cocok dengan yang dilihat pengguna di penyunting teksnya.
+ */
+export type SparepartImportRow = {
+  baris: number
+  nomor_sparepart: string
+  id_sparepart: string
+  hasil: 'baru' | 'diperbarui' | 'gagal'
+  pesan: string
+}
+
+/**
+ * Ringkasan satu unggahan CSV.
+ *
+ * `baris` memuat SELURUH baris, bukan yang gagal saja: pengguna yang mengunggah 300 baris
+ * perlu dapat memastikan ketiga ratusnya terbaca.
+ */
+export type SparepartImportReport = {
+  total: number
+  baru: number
+  diperbarui: number
+  gagal: number
+  baris: SparepartImportRow[]
+}
+
+export type SparepartImportResponse = {
+  data: SparepartImportReport
 }
 
 /**

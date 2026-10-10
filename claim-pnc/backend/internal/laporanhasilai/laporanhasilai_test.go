@@ -40,40 +40,6 @@ func TestCommitteeLabelIgnoresPadding(t *testing.T) {
 	require.Equal(t, "DITERIMA", laporanhasilai.CommitteeLabel("  1 "))
 }
 
-// TestTotalExcludesPending mengunci arti kolom "Total" pada grid ringkasan.
-//
-// Ia `Local.terima + Local.tolak`, BUKAN jumlah baris. Baris yang menunggu tidak ikut, dan
-// itu ditiru apa adanya dari `Activity/SearchDataLaporanAI-Act.xml`.
-func TestTotalExcludesPending(t *testing.T) {
-	tally := laporanhasilai.Tally{
-		Subject:  laporanhasilai.SubjectAI,
-		Accepted: 30,
-		Rejected: 12,
-		Pending:  5,
-	}
-
-	require.Equal(t, 42, tally.Total(), "Total seharusnya Diterima + Ditolak")
-	require.Equal(t, 47, tally.Rows(), "jumlah baris seharusnya menyertakan yang menunggu")
-	require.NotEqual(t, tally.Rows(), tally.Total(),
-		"selisih inilah yang membuat kolom Menunggu dibutuhkan")
-}
-
-// TestSummaryOrderPutsCommitteeFirst membuktikan urutan baris ringkasan tidak berubah.
-//
-// Activity lama menambahkan "Komite" lebih dulu lewat `<APPEND>`, baru "AI". Mengubahnya
-// berarti layar baru berbeda dari layar yang sudah dihafal penggunanya (`D-13`).
-func TestSummaryOrderPutsCommitteeFirst(t *testing.T) {
-	summary := laporanhasilai.Summary{
-		Committee: laporanhasilai.Tally{Subject: laporanhasilai.SubjectCommittee},
-		AI:        laporanhasilai.Tally{Subject: laporanhasilai.SubjectAI},
-	}
-
-	tallies := summary.Tallies()
-	require.Len(t, tallies, 2)
-	require.Equal(t, "Komite", tallies[0].Subject)
-	require.Equal(t, "AI", tallies[1].Subject)
-}
-
 // TestBothDatesAreRequired membuktikan kedua isian wajib, dan keduanya dilaporkan SEKALIGUS.
 //
 // Layar lama tidak dapat berjalan tanpanya — isian kosong menghasilkan

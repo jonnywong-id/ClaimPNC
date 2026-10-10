@@ -130,25 +130,26 @@ func (h *Handler) Counts(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, r, http.StatusOK, toCountsResponse(counts, active.Alias))
 }
 
-// XOL menangani GET /api/inbox-pla-dla/xol.
+// ListCounts menangani GET /api/inbox-pla-dla/ringkas-daftar.
 //
-// Rute TERSENDIRI, bukan bagian jawaban daftar, karena gridnya tidak disaring tab maupun
-// kata kunci — isinya sama berapa pun tab yang sedang dibuka. Menggabungkannya akan
-// menjalankan gabungan dua tabel XOL setiap kali pengguna berpindah tab atau mengetik satu
-// huruf di kotak pencarian.
-func (h *Handler) XOL(w http.ResponseWriter, r *http.Request) {
+// Inilah tabel "Status / Jumlah" yang benar-benar digambar Pega, dan di layar lama ia
+// satu-satunya navigasi: angkanya tautan yang mengganti isi grid di sebelahnya.
+//
+// Kata kunci pencarian ikut dibaca, kode tabnya TIDAK — tabelnya menyebut seluruh daftar,
+// bukan daftar yang sedang terbuka.
+func (h *Handler) ListCounts(w http.ResponseWriter, r *http.Request) {
 	active, caller, ready := h.prepare(w, r)
 	if !ready {
 		return
 	}
 
-	rows, err := h.service.XOL(r.Context(), active.Alias, caller)
+	counts, err := h.service.ListCounts(r.Context(), active.Alias, caller, readFilter(r))
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toXOLResponse(rows, active.Alias))
+	h.writeJSON(w, r, http.StatusOK, toListCountsResponse(counts, active.Alias))
 }
 
 // RejectWrite menjawab tombol yang belum tersedia.

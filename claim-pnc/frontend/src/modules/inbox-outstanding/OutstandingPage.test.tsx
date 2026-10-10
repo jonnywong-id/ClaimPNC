@@ -73,6 +73,10 @@ function summaryResponse(
     // seperti yang dikirim backend. Uji yang hanya memuat dua tab yang terhitung akan
     // lulus tanpa pernah menyentuh perilaku "tab tanpa lencana".
     status: [
+      // Urutannya disalin dari `statusOrder` di backend — "ALL Case" PALING DEPAN.
+      // Stub yang urutannya dikarang sendiri akan membuat uji urutan di bawah lulus
+      // terhadap dirinya sendiri, bukan terhadap yang benar-benar dikirim server.
+      { kode: 'semua', judul: 'ALL Case', jumlah: 1, dapat_dipilih: true },
       { kode: 'lengkap', judul: 'Complete documents', jumlah: 0, dapat_dipilih: true },
       { kode: 'belum-lengkap', judul: 'Documents not complete', jumlah: 1, dapat_dipilih: true },
       { kode: 'temporary-close', judul: 'Temporary Close', jumlah: null, dapat_dipilih: false },
@@ -89,7 +93,6 @@ function summaryResponse(
         jumlah: null,
         dapat_dipilih: false,
       },
-      { kode: 'semua', judul: 'ALL Case', jumlah: 1, dapat_dipilih: true },
       { kode: 'komunikasi', judul: 'Communication', jumlah: null, dapat_dipilih: false },
       { kode: 'tka', judul: 'TKA', jumlah: null, dapat_dipilih: false },
     ],
@@ -445,30 +448,32 @@ it('menyembunyikan paginasi ketika tidak ada klaim', async () => {
 })
 
 /**
- * Panel ringkasan menampilkan jumlah per status dokumen.
+ * Kesembilan tab digambar APA ADANYA sesuai urutan yang diterima dari server.
  *
- * Donutnya sendiri `aria-hidden` — deret tab di atasnya yang menjadi sumber resminya, dan
- * itulah yang diperiksa di sini. Memeriksa SVG-nya akan menguji Recharts, bukan modul ini.
+ * Urutannya ditentukan `statusOrder` di backend — satu tempat, bukan dua. Bila frontend
+ * ikut menata ulang, dua tempat menentukan hal yang sama dan keduanya bisa menyimpang
+ * tanpa satu pun galat.
  */
-it('menampilkan kesembilan tab status dokumen dalam urutan layar Pega', async () => {
+it('menggambar kesembilan tab sesuai urutan dari server', async () => {
   stubFetch(() => jsonResponse(200, listResponse()))
   renderPage()
 
-  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
   const judul = within(tabs)
-    .getAllByRole('button')
+    .getAllByRole('tab')
     .map((b) => b.textContent?.replace(/\d+$/, '').trim())
 
-  // Urutannya dibaca dari label tebal `Section/InboxRegister_Section-Section.xml`.
-  // Menata ulangnya akan memindahkan tab yang sudah dihafal petugas.
+  // "ALL Case" PALING DEPAN — keputusan Work Owner 2026-10-05. Kedelapan sisanya tetap
+  // berurutan seperti label tebal `Section/InboxRegister_Section-Section.xml`, supaya
+  // yang sudah dihafal petugas tetap berdampingan.
   expect(judul).toEqual([
+    'ALL Case',
     'Complete documents',
     'Documents not complete',
     'Temporary Close',
     'Deadline To Temporary Close',
     'Loss Adjuster',
     'Internal Surveyor',
-    'ALL Case',
     'Communication',
     'TKA',
   ])
@@ -486,17 +491,17 @@ it('tidak memberi lencana pada tab yang belum dapat dihitung', async () => {
   stubFetch(() => jsonResponse(200, listResponse()))
   renderPage()
 
-  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
   const utils = within(tabs)
 
-  const lossAdjuster = utils.getByRole('button', { name: 'Loss Adjuster, belum tersedia' })
+  const lossAdjuster = utils.getByRole('tab', { name: 'Loss Adjuster, belum tersedia' })
   expect(lossAdjuster).toBeDisabled()
   // Tidak ada angka menempel pada judulnya.
   expect(lossAdjuster.textContent).toBe('Loss Adjuster')
 
   // Yang terhitung justru punya angkanya.
   expect(
-    utils.getByRole('button', { name: 'Documents not complete, 1 klaim' }),
+    utils.getByRole('tab', { name: 'Documents not complete, 1 klaim' }),
   ).toBeInTheDocument()
 })
 
@@ -536,9 +541,14 @@ it('tetap menampilkan panel ringkasan ketika inbox kosong', async () => {
 
   renderPage()
 
-  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
-  expect(within(tabs).getByRole('button', { name: 'ALL Case, 0 klaim' })).toBeInTheDocument()
-  expect(screen.getByText('Tidak ada klaim berjalan untuk diringkas.')).toBeInTheDocument()
+  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+
+  // Tabnya TETAP digambar, lengkap dengan lencana bernilai nol.
+  //
+  // Nol di sini BERARTI nol — ia dihitung, berbeda dari tab yang tidak punya lencana sama
+  // sekali karena sumber datanya belum ada.
+  expect(within(tabs).getByRole('tab', { name: 'ALL Case, 0 klaim' })).toBeInTheDocument()
+  expect(within(tabs).getByRole('tab', { name: 'Complete documents, 0 klaim' })).toBeInTheDocument()
 })
 
 /** Mengeklik satu status menyaring grid lewat parameter `status_dokumen`. */
@@ -546,9 +556,9 @@ it('menyaring daftar saat satu status dokumen dipilih', async () => {
   stubFetch(() => jsonResponse(200, listResponse()))
   renderPage()
 
-  const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
   await userEvent.click(
-    within(tabs).getByRole('button', { name: 'Documents not complete, 1 klaim' }),
+    within(tabs).getByRole('tab', { name: 'Documents not complete, 1 klaim' }),
   )
 
   await waitFor(() => {

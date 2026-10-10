@@ -81,6 +81,19 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// `P-1` melarang menulisnya, tidak melarang membacanya.
 		protection.Get("/klaim/{nomor}", h.FindClaim)
 
+		// Isi panel "Detail Perubahan Cause Of Loss".
+		//
+		// Keduanya bersarang di bawah klaim karena keduanya MILIK klaim itu — bukan daftar
+		// umum yang kebetulan disaring. Yang kedua khususnya: lini bisnis penyaringnya
+		// diturunkan dari klaimnya di server, dan tidak pernah diterima dari pemanggil.
+		// Menjadikannya `/penyebab-kerugian?bisnis=...` akan membuka jalan meminta daftar
+		// milik lini lain.
+		//
+		// Hanya GET, dan hanya MEMBACA: ketiga tabel yang disentuh — coverage klaim, master
+		// penyebab kerugian, dan tabel lini bisnisnya — dimiliki sistem lama (`P-1`).
+		protection.Get("/klaim/{nomor}/coverage", h.ListCoverages)
+		protection.Get("/klaim/{nomor}/penyebab-kerugian", h.ListCauseOfLoss)
+
 		// Nomor proteksi dipakai sebagai kunci jalur, bukan ID teknis.
 		//
 		// Ia yang dilihat dan disebut pengguna, dan ia pula yang muncul di tautan yang

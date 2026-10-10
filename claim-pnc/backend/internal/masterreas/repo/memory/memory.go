@@ -102,6 +102,41 @@ func (r *Repo) List(
 	return result, nil
 }
 
+// Update mengubah surel baris yang kuncinya cocok.
+//
+// Meniru adapter SQL pada dua hal yang menentukan, dan keduanya mudah terlewat:
+//
+//   - Pembandingnya memangkas spasi di KEDUA sisi, sama seperti `COALESCE(TRIM(...), ”)`.
+//   - Baris yang tidak ada menghasilkan ErrNotFound, bukan diam-diam tidak melakukan apa pun.
+//
+// Seluruh baris yang cocok diubah, bukan hanya yang pertama — kunci alaminya tidak dijamin
+// unik (`R-08`), dan adapter SQL pun menyentuh seluruhnya.
+func (r *Repo) Update(_ context.Context, key masterreas.Key, email string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if r.failure != nil {
+		return r.failure
+	}
+
+	clean := key.Clean()
+	changed := false
+	for i, one := range r.rows {
+		if strings.TrimSpace(one.ReinsurerID) != clean.ReinsurerID ||
+			strings.TrimSpace(one.ReinsurerName) != clean.ReinsurerName ||
+			strings.TrimSpace(one.Type) != clean.Type {
+			continue
+		}
+		r.rows[i].Email = strings.TrimSpace(email)
+		changed = true
+	}
+
+	if !changed {
+		return masterreas.ErrNotFound
+	}
+	return nil
+}
+
 // matches meniru klausa LIKE pada reas_list_search.
 //
 // Perbandingannya TANPA memandang huruf besar-kecil, sama seperti `UPPER(...) LIKE ...` di

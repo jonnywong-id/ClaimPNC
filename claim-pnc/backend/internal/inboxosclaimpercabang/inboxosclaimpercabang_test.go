@@ -207,11 +207,21 @@ func TestCallerWithoutBranchKeepsAnEmptyCode(t *testing.T) {
 }
 
 func TestPlannedDifferencesAreStated(t *testing.T) {
-	// `D-54` menuntut setiap selisih terhadap Pega terpetakan dan dinyatakan. Daftar kosong
-	// berarti selisihnya tidak pernah sampai ke pengguna yang membandingkan kedua layar.
-	require.NotEmpty(t, inboxosclaimpercabang.PlannedDifferences)
+	// Uji ini sempat menuntut `NotEmpty`, dengan alasan `D-54` menuntut setiap selisih
+	// dinyatakan. Alasan itu KELIRU dan sempat lolos berbulan-bulan: `D-54` menuntut selisih
+	// **diklasifikasikan pada uji kesetaraan** terhadap 13 butir `P-5` — bukan ditampilkan
+	// kepada pengguna di layar. Menampilkannya kebiasaan proyek ini, bukan kewajiban.
+	//
+	// Seluruh butirnya dicabut Work Owner pada 2026-10-10, sehingga senarainya kini kosong
+	// dengan sengaja. Uji yang menuntut isinya akan memaksa orang berikutnya menambahkan
+	// butir karangan hanya supaya ujinya hijau — dan daftar yang berisi butir karangan
+	// justru membuat butir sungguhan ikut diabaikan.
+	//
+	// Yang tetap dijaga ada dua, dan keduanya tentang BENTUK:
+	require.NotNil(t, inboxosclaimpercabang.PlannedDifferences,
+		"senarai tidak boleh nil — JSON `null` menjatuhkan layar yang memetakannya")
 
 	for _, difference := range inboxosclaimpercabang.PlannedDifferences {
-		require.NotEmpty(t, difference)
+		require.NotEmpty(t, difference, "butir kosong menggambar titik tanpa teks di layar")
 	}
 }

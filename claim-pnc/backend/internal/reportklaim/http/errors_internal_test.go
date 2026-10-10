@@ -109,3 +109,51 @@ func TestRantaiGalatMemuatKeduanya(t *testing.T) {
 	require.True(t, strings.Contains(err.Error(), "report_tat"),
 		"nama kuerinya harus ikut, supaya log menunjuk kueri yang tepat")
 }
+
+// Laporan Mitra yang kehilangan penyaringnya dijawab dengan kodenya sendiri, dan
+// pesannya menyebut SIAPA yang dapat memperbaikinya.
+//
+// # Kenapa uji ini ada
+//
+// Work Owner melaporkannya pada 2026-10-09: *"yang data mitra belum bisa di unduh"*.
+// Penolakannya benar — daftar login mitra adalah PENYARING BARIS, dan menerbitkan
+// laporannya tanpa penyaring menghasilkan berkas berisi SELURUH petugas yang tetap
+// wajar dilihat.
+//
+// Yang salah hanya pesannya: galat itu belum dipetakan, sehingga jatuh ke penulis galat
+// umum dan sampai sebagai "Terjadi kesalahan pada sistem". Pengguna karena itu tidak
+// punya cara membedakan laporan yang rusak dari konfigurasi yang belum diisi — dan yang
+// kurang di sini justru konfigurasi, yang bahkan tidak meninggalkan jejak di log.
+func TestLaporanMitraTanpaKoneksiKeduaMenyebutSebabnya(t *testing.T) {
+	h := &Handler{
+		logger: slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil)),
+		writeResponse: func(w http.ResponseWriter, _ *http.Request, status int, body any) {
+			w.WriteHeader(status)
+			_ = json.NewEncoder(w).Encode(body)
+		},
+	}
+
+	err := fmt.Errorf("%w: koneksi kedua belum dikonfigurasi (ANEKA_<PORTAL_ALIAS>_*)",
+		reportklaimsql.ErrMitraListUnavailable)
+
+	rec := httptest.NewRecorder()
+	h.writeModuleError(rec, httptest.NewRequest(http.MethodGet, "/report-klaim/mitra/ekspor", nil), err)
+
+	// 409, bukan 500: tidak ada yang rusak.
+	require.Equal(t, http.StatusConflict, rec.Code)
+
+	var body struct {
+		Kode  string `json:"kode"`
+		Pesan string `json:"pesan"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.Equal(t, CodeMitraListUnavailable, body.Kode)
+
+	// Pesannya harus menyebut APA yang kurang dan SIAPA yang mengisinya. Tanpa keduanya
+	// ia kembali menjadi kalimat yang tidak mengarahkan ke mana pun.
+	require.Contains(t, body.Pesan, "ANEKA_")
+	require.Contains(t, body.Pesan, "Infra")
+
+	// Dan ia TIDAK boleh menyarankan mengulang — mengulang tidak akan mengubah apa pun.
+	require.NotContains(t, strings.ToLower(body.Pesan), "coba lagi")
+}

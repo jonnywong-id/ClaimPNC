@@ -266,7 +266,12 @@ func (r *Repo) Insert(
 			"detailpenyebab/sqlstore: menyusun dokumen: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, getQuery("detail_insert"), fresh.ID, string(payload)); err != nil {
+	// Kolom asli DAN JSONDATA ditulis bersamaan — baca komentar pada kueri detail_insert
+	// untuk alasannya. Urutan argumennya mengikuti daftar kolom di sana.
+	if _, err := tx.ExecContext(ctx, getQuery("detail_insert"),
+		fresh.ID, fresh.LegacyID, fresh.MasterID, fresh.Description, fresh.LossCode,
+		fresh.Active, string(payload),
+	); err != nil {
 		return detailpenyebab.CauseOfLossDetail{}, fmt.Errorf(
 			"detailpenyebab/sqlstore: menyisipkan baris: %w", err)
 	}
@@ -326,7 +331,10 @@ func (r *Repo) Update(
 		return detailpenyebab.CauseOfLossDetail{}, err
 	}
 
-	outcome, err := tx.ExecContext(ctx, getQuery("detail_update"), payload, key)
+	outcome, err := tx.ExecContext(ctx, getQuery("detail_update"),
+		saved.LegacyID, saved.MasterID, saved.Description, saved.LossCode, saved.Active,
+		payload, key,
+	)
 	if err != nil {
 		return detailpenyebab.CauseOfLossDetail{}, fmt.Errorf(
 			"detailpenyebab/sqlstore: memperbarui baris: %w", err)
@@ -456,6 +464,39 @@ func (r *Repo) CheckTables(ctx context.Context) map[string]error {
 		rows.Close()
 	}
 	return result
+}
+
+// CheckWritePath memeriksa kedua prasyarat yang HANYA dipakai saat menyimpan.
+//
+// # Kenapa terpisah dari CheckTables, dan kenapa ia penting
+//
+// CheckTables membuktikan kelima objeknya dapat DIBACA. Itu tidak membuktikan apa pun
+// tentang menyimpan — dan menyimpan menuntut dua hal yang tidak disentuh satu pun jalur
+// baca:
+//
+//	D_CAUSE_SEQ                 sequence penerbit nomor urut
+//	M_SITE_DATABASE             baris ber-CURRENT_SITE='1', bagian pertama setiap D_COL_ID
+//
+// Tanpa pemeriksaan ini, layar tampil penuh berisi ratusan baris dan baru gagal ketika
+// petugas menekan Simpan — dengan galat Oracle mentah yang tidak menyebut apa yang kurang.
+//
+// Itu persis yang terjadi pada laporan Work Owner 2026-10-05.
+func (r *Repo) CheckWritePath(ctx context.Context) (sequence error, site error) {
+	var next int64
+	if err := r.db.QueryRowContext(ctx, getQuery("detail_next_sequence")).Scan(&next); err != nil {
+		sequence = err
+	}
+
+	var code sql.NullString
+	switch err := r.db.QueryRowContext(ctx, getQuery("detail_site")).Scan(&code); {
+	case errors.Is(err, sql.ErrNoRows):
+		site = errors.New("tidak ada baris ber-CURRENT_SITE '1'")
+	case err != nil:
+		site = err
+	case strings.TrimSpace(code.String) == "":
+		site = errors.New("kode situsnya kosong")
+	}
+	return sequence, site
 }
 
 // scanRow adalah apa yang dibutuhkan scanDetail — *sql.Rows memenuhinya.

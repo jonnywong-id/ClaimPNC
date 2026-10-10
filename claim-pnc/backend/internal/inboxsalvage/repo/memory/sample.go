@@ -135,14 +135,19 @@ func sampleClaims() []Claim {
 			WorkStatus:   "Pending-Survey",
 		},
 		{
-			// Sudah selesai — TIDAK boleh muncul di daftar Salvage Outstanding, karena
-			// hanya daftar itu yang menyaring status kerja.
-			ClaimNo:      "PNC-2043",
-			PIC:          SampleCallerPIC,
-			BusinessName: "Aneka",
-			LossDate:     "2026-07-02",
-			ObjectName:   "Mesin Pendingin",
-			WorkStatus:   "Resolved-Completed",
+			// Ditandai TBA, tetapi pekerjaannya SUDAH SELESAI.
+			//
+			// Inilah satu-satunya baris contoh yang membedakan daftar Salvage Outstanding
+			// dari daftar TBA: penandanya lolos keduanya, status kerjanya hanya lolos TBA.
+			// Tanpa baris ini, penyaring status kerja dapat dicabut tanpa satu pun uji
+			// yang gagal.
+			ClaimNo:       "PNC-2043",
+			PIC:           SampleCallerPIC,
+			BusinessName:  "Aneka",
+			LossDate:      "2026-07-02",
+			ObjectName:    "Mesin Pendingin",
+			SalvageStatus: "5",
+			WorkStatus:    "Resolved-Completed",
 		},
 		{
 			ClaimNo:       "PNC-2044",

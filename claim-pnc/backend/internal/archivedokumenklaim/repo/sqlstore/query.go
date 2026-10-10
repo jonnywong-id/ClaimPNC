@@ -62,8 +62,7 @@ const resultColumns = `ARCHIVE_ID, CLAIM_NUMBER, POLICY_NUMBER, INSURED_NAME, LO
 // menghitung `:n` dari teks kuerinya — membuat kesalahan terbaca saat kompilasi berupa
 // nama yang tidak terdaftar, alih-alih berupa galat bind saat dijalankan.
 var listQueryParams = map[string]int{
-	"search_keyword":      3,
-	"search_input_date":   2,
+	"search_archive":      10,
 	"pending_all":         0,
 	"pending_exclude_one": 1,
 	"pending_exclude_two": 2,
@@ -145,6 +144,13 @@ func loadQueries() map[string]string {
 // supaya yang dikirim ke basis data hanyalah SQL-nya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""

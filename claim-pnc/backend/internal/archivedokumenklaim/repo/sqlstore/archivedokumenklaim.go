@@ -56,24 +56,46 @@ func (r *Repo) PendingBranch(
 	return r.listPage(ctx, name, args, page)
 }
 
-// searchQuery memilih kueri dan menyusun parameternya menurut mode pencarian.
+// searchQuery menyusun kesepuluh parameter penyaring grid ARCHIVE FILE KLAIM.
 //
-// Kata kunci yang sama diisikan ke TIGA penanda berbeda — bukan karena nilainya berbeda,
-// melainkan karena satu penanda yang dipakai berulang berperilaku berbeda antar driver.
+// Penyaring yang tidak dipakai dikirim sebagai NULL, dan kuerinya mematikan klausanya
+// sendiri lewat `:n IS NULL`. Lihat kueri `search_archive`.
+//
+// Kata kunci dikirim ke SATU kolom saja — kolom yang dipilih dropdown "Tipe Pencarian
+// Archive". Kueri lama meng-OR ketiganya sekaligus; di sana dropdown-nya karena itu tidak
+// benar-benar mempersempit apa pun. Yang dipakai di sini adalah arti dropdown-nya, bukan
+// kueri yang mengabaikannya.
 func searchQuery(criteria archivedokumenklaim.Criteria) (string, []any) {
-	if criteria.Mode == archivedokumenklaim.ModeInputDate {
-		from := *criteria.From
+	var claimNumber, boxName, insuredName any
+
+	if criteria.HasKeyword() {
+		switch criteria.Column {
+		case archivedokumenklaim.ColumnClaimNumber:
+			claimNumber = criteria.Keyword
+		case archivedokumenklaim.ColumnBoxName:
+			boxName = criteria.Keyword
+		case archivedokumenklaim.ColumnInsuredName:
+			insuredName = criteria.Keyword
+		}
+	}
+
+	var from, until any
+	if criteria.HasDateRange() {
+		from = *criteria.From
 
 		// Batas atas digeser satu hari dan dibuat eksklusif, sehingga berkas yang diinput
 		// pukul berapa pun pada tanggal akhir tetap ikut — persis `trunc(TGLINPUT) <=`
-		// pada kueri lama, tetapi tanpa mematikan index. Lihat archivedokumenklaim.sql.
-		until := criteria.To.AddDate(0, 0, 1)
-
-		return "search_input_date", []any{from, until}
+		// pada kueri lama, tetapi tanpa mematikan index.
+		until = criteria.To.AddDate(0, 0, 1)
 	}
 
-	keyword := criteria.Keyword
-	return "search_keyword", []any{keyword, keyword, keyword}
+	return "search_archive", []any{
+		claimNumber, claimNumber,
+		boxName, boxName,
+		insuredName, insuredName,
+		from, from,
+		until, until,
+	}
 }
 
 // pendingQuery memilih kueri daftar kirim ke cabang menurut cakupan lini bisnis.

@@ -218,11 +218,12 @@ export function AppRoute() {
         ketiganya satu layar dan satu butir menu di Pega (MENU_ID 28). Ketiganya hanya
         berbeda saringan atas tabel yang sama.
 
-        Tombol Approve dan Reject ada DI DALAM layar ini, padahal di Pega keduanya ada di
-        Inbox Manager (`Section/ApprovalMasterBengkelHE`). Inbox Manager belum dibangun,
-        dan menunda keputusannya berarti setiap bengkel yang ditambah tertahan tanpa satu
-        pun cara menyelesaikannya. Bentuk keputusannya sama persis — centang beberapa
-        baris, satu tombol untuk seluruh pilihan.
+        Approve dan Reject TIDAK ada di layar ini, sama seperti Pega: keputusannya
+        dijalankan dari Inbox Manager (`Section/ApprovalMasterBengkelHE`), yang kini sudah
+        dibangun beserta tab Master Bengkel-nya.
+
+        Bilah keputusan yang sempat dipasang di sini dicabut pada 2026-10-03, setelah
+        alasannya — "Inbox Manager belum dibangun" — tidak lagi berlaku.
       */}
       <Route
         path="/master/bengkel"
@@ -1595,9 +1596,15 @@ export function AppRoute() {
         Inbox PLA, DLA, Pre DLA (`MENU_ID 44`), pengganti harness `InboxPLA_harness`.
 
         Antrean pemberitahuan reasuransi yang sudah terbit tetapi BELUM dikirim, untuk
-        petugas internal. Tiga tab — PLA, DLA, Pre DLA — dan ketiganya BACA-SAJA: tombol
-        "Send", "Upload File Penunjang", dan "Print Pre DLA" belum dibangun (keputusan
-        Work Owner 2026-09-26).
+        petugas internal. Tiga tab — PLA, DLA, Pre DLA.
+
+        Layar ini MENULIS, dan satu tombolnya menyentuh dunia di luar perusahaan: "Send"
+        mengirim surat PLA/DLA beserta lampirannya ke reasuradur, lalu menandai dokumennya
+        terkirim. Syarat tampil tombol itu dibawa dari section Pega — baris yang sudah
+        terkirim tidak bertombol.
+
+        Yang belum dibangun tinggal dua, keduanya menunggu penyimpanan dokumen (`D-16`):
+        "Upload File Penunjang" dan unduh lampiran.
       */}
       <Route
         path="/inbox-pla-dla-pre-dla"

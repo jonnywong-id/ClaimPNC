@@ -119,18 +119,28 @@ afterEach(() => {
 })
 
 describe('daftar master status progres 1', () => {
-  it('menampilkan judul dan ketiga kolom seperti layar lama', async () => {
+  // Judul kolomnya LITERAL dari `Section/BrowseStatusProgress-Section.xml`, termasuk
+  // ejaan "Progress" yang bukan ejaan Indonesia. Uji ini yang menjaga agar istilah yang
+  // terasa lebih benar — "ID", "Status Progres", "Aksi" — tidak menyelinap masuk lagi.
+  it('menampilkan judul dan kolom dengan tulisan persis seperti layar lama', async () => {
     installFetch(defaultReply())
     show()
 
-    expect(screen.getByRole('heading', { name: 'Master Status Progres 1' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Master Status Progress 1' })).toBeInTheDocument()
 
     const table = await screen.findByRole('table')
-    expect(within(table).getByRole('columnheader', { name: 'ID' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'No' })).toBeInTheDocument()
     expect(
-      within(table).getByRole('columnheader', { name: 'Status Progres' }),
+      within(table).getByRole('columnheader', { name: 'Status Progress 1' }),
     ).toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: 'Posisi' })).toBeInTheDocument()
+
+    // Kolom tombol berjudul "Aksi" — satu-satunya judul yang TIDAK menyalin Pega
+    // (`pyCellId 21` kosong). Ketetapan Work Owner 2026-10-03, berlaku seluruh aplikasi.
+    expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+
+    // "ID" adalah istilah yang dulu saya pilih sendiri; ia tidak boleh kembali.
+    expect(within(table).queryByRole('columnheader', { name: 'ID' })).not.toBeInTheDocument()
   })
 
   it('menampilkan baris beserta label posisinya', async () => {
@@ -223,7 +233,7 @@ describe('penambahan', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
 
-    await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
+    await user.type(screen.getByLabelText('Status Progress 1'), 'MENUNGGU BERKAS')
     await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -258,7 +268,7 @@ describe('penambahan', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    await user.type(screen.getByLabelText('Status Progres'), 'APA SAJA')
+    await user.type(screen.getByLabelText('Status Progress 1'), 'APA SAJA')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Posisi klaim wajib dipilih.')).toBeInTheDocument()
@@ -285,7 +295,7 @@ describe('penambahan', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    await user.type(screen.getByLabelText('Status Progres'), 'X')
+    await user.type(screen.getByLabelText('Status Progress 1'), 'X')
     await user.selectOptions(screen.getByLabelText('Posisi'), 'REGISTER')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
@@ -306,12 +316,12 @@ describe('penambahan', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
+    await user.type(screen.getByLabelText('Status Progress 1'), 'MENUNGGU BERKAS')
     await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Terjadi kesalahan pada sistem')).toBeInTheDocument()
-    expect(screen.getByLabelText('Status Progres')).toHaveValue('MENUNGGU BERKAS')
+    expect(screen.getByLabelText('Status Progress 1')).toHaveValue('MENUNGGU BERKAS')
   })
 
   it('menutup form setelah penyimpanan berhasil', async () => {
@@ -320,11 +330,11 @@ describe('penambahan', () => {
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    await user.type(screen.getByLabelText('Status Progres'), 'MENUNGGU BERKAS')
+    await user.type(screen.getByLabelText('Status Progress 1'), 'MENUNGGU BERKAS')
     await user.selectOptions(screen.getByLabelText('Posisi'), 'SURVEY')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
 
-    await waitFor(() => expect(screen.queryByLabelText('Status Progres')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByLabelText('Status Progress 1')).not.toBeInTheDocument())
   })
 })
 
@@ -334,9 +344,9 @@ describe('penyuntingan', () => {
     show()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Ubah DOKUMEN DITERIMA' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit DOKUMEN DITERIMA' }))
 
-    expect(screen.getByLabelText('Status Progres')).toHaveValue('DOKUMEN DITERIMA')
+    expect(screen.getByLabelText('Status Progress 1')).toHaveValue('DOKUMEN DITERIMA')
     expect(screen.getByLabelText('Posisi')).toHaveValue('REGISTER')
     expect(screen.getByText('(tidak dapat diubah)')).toBeInTheDocument()
     // ID tidak muncul sebagai isian yang dapat disunting.
@@ -360,11 +370,12 @@ describe('penyuntingan', () => {
     show()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Ubah DOKUMEN DITERIMA' }))
-    await user.clear(screen.getByLabelText('Status Progres'))
-    await user.type(screen.getByLabelText('Status Progres'), 'DOKUMEN LENGKAP')
+    await user.click(await screen.findByRole('button', { name: 'Edit DOKUMEN DITERIMA' }))
+    await user.clear(screen.getByLabelText('Status Progress 1'))
+    await user.type(screen.getByLabelText('Status Progress 1'), 'DOKUMEN LENGKAP')
     await user.selectOptions(screen.getByLabelText('Posisi'), 'KOMITE')
-    await user.click(screen.getByRole('button', { name: 'Simpan' }))
+    // Pada mode ubah tombolnya bertuliskan "Update", bukan "Simpan".
+    await user.click(screen.getByRole('button', { name: 'Update' }))
 
     await waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true))
 
@@ -379,10 +390,10 @@ describe('penyuntingan', () => {
     show()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Ubah DOKUMEN DITERIMA' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit DOKUMEN DITERIMA' }))
     await user.click(screen.getByRole('button', { name: 'Batal' }))
 
-    expect(screen.queryByLabelText('Status Progres')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Status Progress 1')).not.toBeInTheDocument()
     expect(calls.some((call) => call.method === 'PUT' || call.method === 'POST')).toBe(false)
   })
 })
@@ -391,6 +402,55 @@ describe('penyuntingan', () => {
 // `pyGridPaginator` dengan `pyPageSize = Other` dan `pyPageSizeOther = 15`. Versi
 // pertama layar ini menggambar seluruh baris sekaligus, dan Work Owner menemukannya pada
 // 2026-09-20. Uji ini yang menjaga paginasinya tidak hilang lagi diam-diam.
+// Bentuk pop-up-nya diselaraskan dengan Pega pada 2026-10-03: urutan isian, judul yang
+// tetap, dan tulisan tombol yang berganti menurut mode. Ketiganya sebelumnya saya pilih
+// sendiri, dan ketiganya berbeda dari layar lama.
+describe('bentuk pop-up', () => {
+  it('menyusun isian dengan urutan Posisi lalu Status Progress 1', async () => {
+    installFetch(defaultReply())
+    show()
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+
+    const form = screen.getByRole('form', { name: 'Memperbaharui Data' })
+    const fields = within(form).getAllByLabelText(/Posisi|Status Progress 1/)
+
+    // Urutan dibaca dari DOM, bukan dari daftar yang ditulis ulang di uji ini —
+    // itulah yang membuatnya gagal bila urutannya tertukar lagi.
+    expect(fields[0]).toBe(within(form).getByLabelText('Posisi'))
+    expect(fields[1]).toBe(within(form).getByLabelText('Status Progress 1'))
+  })
+
+  it('memakai judul yang sama pada mode tambah maupun ubah', async () => {
+    installFetch(defaultReply())
+    show()
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+    expect(screen.getByRole('form', { name: 'Memperbaharui Data' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Batal' }))
+    await user.click(screen.getByRole('button', { name: 'Edit DOKUMEN DITERIMA' }))
+    expect(screen.getByRole('form', { name: 'Memperbaharui Data' })).toBeInTheDocument()
+  })
+
+  it('mengganti tulisan tombol simpan menurut modenya', async () => {
+    installFetch(defaultReply())
+    show()
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+    expect(screen.getByRole('button', { name: 'Simpan' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Batal' }))
+    await user.click(screen.getByRole('button', { name: 'Edit DOKUMEN DITERIMA' }))
+    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Simpan' })).not.toBeInTheDocument()
+  })
+})
+
 describe('paginasi', () => {
   it('menyalakan paginasi tabel', async () => {
     installFetch(defaultReply())

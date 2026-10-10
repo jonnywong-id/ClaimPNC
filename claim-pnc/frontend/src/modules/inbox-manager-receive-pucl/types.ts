@@ -101,6 +101,16 @@ export type WorkItem = {
   lama_klaim: string
 
   status_kadaluarsa: string
+
+  /**
+   * Layar kerja di balik nomor case baris ini dapat dibuka.
+   *
+   * Pada tab RCL/PUCL ia tidak selalu benar: daftar dibaca dari antrean Pega, sedangkan
+   * layar tujuannya dibaca dari tabel datar milik aplikasi yang pengisiannya belum tentu
+   * mencakup seluruh klaim di antrean itu. Nomor case yang belum punya pasangan digambar
+   * sebagai teks biasa — tautan yang pasti gagal lebih buruk daripada tidak ada tautan.
+   */
+  layar_klaim_siap: boolean
 }
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
@@ -130,11 +140,18 @@ export type Tab = {
   /**
    * Nomor case pada tab ini adalah TAUTAN yang membuka layar kerja penerimaan dokumen.
    *
-   * Hanya tab Receive begitu — di layar lama pun perilaku klik hanya dipasang pada kedua
-   * grid Receive. Ia datang dari SERVER, bukan disimpulkan layar dari kode tab, supaya
-   * perilaku klik ditetapkan di tempat buktinya dibaca.
+   * Hanya tab Receive begitu. Ia datang dari SERVER, bukan disimpulkan layar dari kode tab,
+   * supaya perilaku klik ditetapkan di tempat buktinya dibaca.
    */
   buka_layar_kerja: boolean
+
+  /**
+   * Nomor case pada tab ini adalah TAUTAN yang membuka layar kerja klaim RCL/PUCL.
+   *
+   * Hanya tab RCL/PUCL begitu. Keduanya tidak pernah benar bersamaan: satu sel membuka tepat
+   * satu layar, dan kelas objek kerjanyalah yang menentukan layar mana.
+   */
+  buka_layar_klaim: boolean
 
   /**
    * Tab digambar tetapi belum dapat diisi.
@@ -159,10 +176,6 @@ export type PageInfo = {
 export type MetadataResponse = {
   tab: Tab[]
   tab_bawaan: string
-
-  /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: string[]
-
   portal: string
 }
 
@@ -178,7 +191,7 @@ export type ListResponse = {
  * Satu isian pada layar kerja penerimaan dokumen — flow action `InputReceiveDocument`.
  *
  * Judulnya datang dari SERVER, bukan ditulis di sini, karena ia hasil pembacaan
- * `Section/InputReceiveDocument_sect.xml` dan tempat pembacaan itu tercatat adalah di
+ * `Section/InputReceiveDocument-Section.xml` dan tempat pembacaan itu tercatat adalah di
  * backend. Menyalin 36 judul ke sini berarti daftar yang sama hidup di dua tempat.
  */
 export type DocumentField = {
@@ -216,6 +229,13 @@ export type DocumentAction = {
   label: string
   activity_pega: string
   pemilik: string
+
+  /**
+   * Tombol ini digambar DI ATAS isian, seperti di layar lama.
+   *
+   * Datang dari server karena letaknya dibaca dari section Pega — di sanalah buktinya.
+   */
+  di_atas: boolean
 }
 
 /** Jawaban GET /api/inbox-manager-receive-pucl/dokumen/{referensi}. */

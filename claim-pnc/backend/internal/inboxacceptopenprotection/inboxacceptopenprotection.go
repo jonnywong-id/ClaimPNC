@@ -227,6 +227,27 @@ type ChangeDetail struct {
 	// bersyarat yang sama.
 	ObjectName string
 	BranchName string
+
+	// ObjectID dan ObjectCoverageID menunjuk BARIS COVERAGE yang Penyebab Kerugiannya hendak
+	// diubah. Terisi hanya bagi TypeChangeCauseOfLoss.
+	//
+	// # Kenapa sepasang, dan kenapa bukan nama
+	//
+	// Satu klaim punya banyak objek, dan tiap objek banyak coverage. Pada klaim `PNC-1452`,
+	// kueri coverage mengembalikan `JackHugh / Resiko A` sebanyak TIGA KALI dengan Penyebab
+	// Kerugian berbeda-beda. Nama karena itu tidak menunjuk baris mana pun.
+	//
+	// Pasangan inilah kunci barisnya di `POOLDATA.T_CLAIM_OBJECTCOVERAGE` — bentuk yang sama
+	// dipakai `T_CLAIM_SPREADING`.
+	//
+	// # Kosong pada seluruh baris warisan Pega
+	//
+	// Keduanya kolom BARU pada `T_CLAIM_OPENPROTECTION`, ditambahkan 2026-10-05. Baris
+	// warisan menyimpan sasarannya di dalam blob properti work object dan tidak pernah
+	// punya kolom ini. Menyetujui baris warisan tipe '8' karena itu tidak dapat menerapkan
+	// apa pun — lihat CauseOfLossToApply.
+	ObjectID         string
+	ObjectCoverageID string
 }
 
 // Empty menyatakan tidak ada satu pun detail perubahan yang terisi.
@@ -239,7 +260,9 @@ func (d ChangeDetail) Empty() bool {
 		strings.TrimSpace(d.CauseOfLossBefore) == "" &&
 		strings.TrimSpace(d.CauseOfLossAfter) == "" &&
 		strings.TrimSpace(d.ObjectName) == "" &&
-		strings.TrimSpace(d.BranchName) == ""
+		strings.TrimSpace(d.BranchName) == "" &&
+		strings.TrimSpace(d.ObjectID) == "" &&
+		strings.TrimSpace(d.ObjectCoverageID) == ""
 }
 
 // ShowsChangeDetail menyatakan tipe proteksi ini memunculkan panel "Detail Perubahan".

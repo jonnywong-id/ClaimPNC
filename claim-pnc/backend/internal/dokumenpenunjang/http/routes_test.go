@@ -284,3 +284,42 @@ func TestTheDefaultLocationIsJakarta(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.True(t, strings.Contains(recorder.Body.String(), "01/09/2026 10:00"), recorder.Body.String())
 }
+
+// TestGalatHuluTercatatBesertaSebabnya menjaga sebab asli kegagalan SAMPAI KE LOG.
+//
+// # Cacat yang ini jaga
+//
+// Keempat cabang hulu `return` sebelum baris pencatatan di akhir WriteError, sehingga galat
+// yang dibungkus dibuang seluruhnya: pengguna melihat pesan umum, dan server tidak mencatat
+// apa pun. Satu-satunya keterangan yang membedakan "tidak terjangkau" dari "menolak berkas"
+// hilang justru ketika ia paling dibutuhkan.
+func TestGalatHuluTercatatBesertaSebabnya(t *testing.T) {
+	kasus := map[string]error{
+		"penyimpanan": fmt.Errorf("%w: layanan menjawab 503", dokumenpenunjang.ErrUnggahGagal),
+		"konversi":    fmt.Errorf("%w: dial tcp timeout", dokumenpenunjang.ErrKonversiGagal),
+		"db link":     fmt.Errorf("%w: ORA-12541", dokumenpenunjang.ErrLinkTakTerjangkau),
+		"metadata":    fmt.Errorf("%w: ORA-00001", dokumenpenunjang.ErrMetadataGagal),
+	}
+
+	for nama, galat := range kasus {
+		t.Run(nama, func(t *testing.T) {
+			f := newFixture(t, &stubService{err: galat}, "BUDI", false)
+
+			body, tipe := multipartBody(t, "berkas", "a.txt", []byte("isi"), "")
+			req := httptest.NewRequest(http.MethodPost, "/api/klaim/PNC-1/dokumen-penunjang", body)
+			req.Header.Set("Content-Type", tipe)
+			req.Header.Set("X-Portal", "ASM")
+			rec := httptest.NewRecorder()
+			f.router.ServeHTTP(rec, req)
+
+			// Sebab aslinya ada di LOG — itulah yang membuat penelusurannya mungkin.
+			require.Contains(t, f.logs.String(), galat.Error())
+
+			// Dan TIDAK ada di badan respons: pesan hulu dapat memuat gema muatan kita
+			// sendiri, yang berisi berkas nasabah.
+			require.NotContains(t, rec.Body.String(), "503")
+			require.NotContains(t, rec.Body.String(), "ORA-")
+			require.NotContains(t, rec.Body.String(), "dial tcp")
+		})
+	}
+}

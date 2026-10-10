@@ -54,7 +54,12 @@ func TestNewHandlerRejectsIncompleteOptions(t *testing.T) {
 	require.EqualError(t, err, "dashboardclaim/http: WriteError wajib diisi")
 }
 
-// Tanpa zona waktu, handler memakai WIB: 2026-09-01 20:00 UTC tampil sebagai 2 September.
+// Tanpa zona waktu, handler memakai WIB: 2026-09-01 20:00 UTC tampil sebagai 2 September 03:00.
+//
+// JAMNYA ikut diperiksa, bukan hanya tanggalnya. Sejak 2026-10-07 kolom ini membawa jam —
+// layar Pega menggambarnya (`24 Jan 20 14:54:24`) — dan jam itulah yang membuktikan
+// pergeseran +7 benar-benar terjadi. Memeriksa tanggalnya saja meloloskan konversi yang
+// meleset beberapa jam selama ia tidak menyeberangi tengah malam.
 func TestNewHandlerDefaultsToJakartaTime(t *testing.T) {
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: func(string) (dashboardclaim.Repo, error) {
@@ -77,7 +82,7 @@ func TestNewHandlerDefaultsToJakartaTime(t *testing.T) {
 	recorder := serveDirect(handler, "/api/dashboard-claim/outstanding")
 	require.Equal(t, http.StatusOK, recorder.Code)
 	first := decode(t, recorder)["klaim"].([]any)[0].(map[string]any)
-	require.Equal(t, "2026-09-02", first["tanggal_pendaftaran"])
+	require.Equal(t, "2026-09-02 03:00:00", first["tanggal_pendaftaran"])
 	require.Equal(t, "", first["tanggal_kejadian"], "tanggal kejadian kosong tidak menjadi tahun satu")
 }
 

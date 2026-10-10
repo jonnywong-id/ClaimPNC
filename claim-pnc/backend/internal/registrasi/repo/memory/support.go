@@ -324,9 +324,12 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim regis
 		return registrasi.Assignee{Operator: caller}, nil
 	}
 
-	// Sama seperti pengisi SQL: RouterRCLDokter diparkir di ServicePNC selama dokter RCL
-	// belum dapat dipilih.
+	// Sama seperti pengisi SQL: RouterRCLDokter menugaskan ke PIC Teknik klaim (keputusan
+	// Work Owner 2026-10-07), dan jatuh ke ServicePNC bila klaim belum punya PIC.
 	if stage.Router == registrasi.RouterRCLDoctor {
+		if pic := strings.TrimSpace(claim.TechnicalPIC); pic != "" {
+			return registrasi.Assignee{Operator: pic}, nil
+		}
 		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
 	}
 

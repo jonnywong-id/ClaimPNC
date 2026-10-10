@@ -77,6 +77,7 @@ type Store struct {
 	records   []Record
 	surveyors []SurveyorRecord
 	kpi       []KPIRecord
+	readiness inboxsurvey.Readiness
 }
 
 // KPIRecord adalah satu baris `POOLDATA.DETAIL_KPI_ADJUSTER`.
@@ -92,6 +93,12 @@ type KPIRecord struct {
 
 	// Year adalah `to_char(TANGGAL,'yyyy')`.
 	Year string
+
+	// Quarter adalah `to_char(TANGGAL,'Q')` — "1" sampai "4".
+	//
+	// Disimpan terpisah dari Year, bukan dihitung darinya, karena sumbernya satu kolom
+	// tanggal yang di penyimpanan di memori ini memang tidak ada.
+	Quarter string
 }
 
 // NewStore membentuk pembaca dari baris yang diberikan.
@@ -156,11 +163,12 @@ func (s *Store) List(
 	_ context.Context,
 	identity inboxsurvey.SurveyorIdentity,
 	f inboxsurvey.Filter,
+	ready inboxsurvey.Readiness,
 ) (inboxsurvey.Page, error) {
 	clean := f.Normalize()
 
 	// Tab yang belum dapat dihitung dicegat di sini, sama seperti sqlstore.Repo.List.
-	if !clean.Tab.Available() {
+	if !ready.TabAvailable(clean.Tab) {
 		return inboxsurvey.Page{Tasks: []inboxsurvey.SurveyTask{}}, nil
 	}
 
@@ -204,6 +212,31 @@ func (s *Store) List(
 	return page, nil
 }
 
+// KPIYears mengambil tahun yang ada pada baris milik cakupan pemanggil.
+func (s *Store) KPIYears(
+	_ context.Context,
+	identity inboxsurvey.SurveyorIdentity,
+) ([]string, error) {
+	seen := map[string]bool{}
+	result := []string{}
+
+	for _, entry := range s.kpi {
+		if !nameInScope(entry.Adjuster, identity.Scope) {
+			continue
+		}
+		year := strings.TrimSpace(entry.Year)
+		if year == "" || seen[year] {
+			continue
+		}
+		seen[year] = true
+		result = append(result, year)
+	}
+
+	// MENURUN, sama dengan kuerinya — tahun terbaru lebih dulu.
+	sort.Sort(sort.Reverse(sort.StringSlice(result)))
+	return result, nil
+}
+
 // Counts menghitung isi tab yang DAPAT dihitung, sekaligus.
 //
 // Tab yang belum tersedia TIDAK dikembalikan sama sekali — sama seperti sqlstore.Repo.Counts.
@@ -212,12 +245,13 @@ func (s *Store) List(
 func (s *Store) Counts(
 	_ context.Context,
 	identity inboxsurvey.SurveyorIdentity,
+	ready inboxsurvey.Readiness,
 ) ([]inboxsurvey.TabCount, error) {
 	tabs := inboxsurvey.Tabs()
 	result := make([]inboxsurvey.TabCount, 0, len(tabs))
 
 	for _, tab := range tabs {
-		if !tab.Available() {
+		if !ready.TabAvailable(tab) {
 			continue
 		}
 
@@ -245,10 +279,7 @@ func (s *Store) KPI(
 ) ([]inboxsurvey.KPIRow, error) {
 	clean := f.Normalize()
 
-	category := clean.Category
-	if clean.Kind != inboxsurvey.KPIOutstanding {
-		category = inboxsurvey.KPITypeFinal
-	}
+	category := clean.CategoryValue()
 
 	sums := map[string]*inboxsurvey.KPIRow{}
 	counts := map[string]int{}
@@ -264,9 +295,16 @@ func (s *Store) KPI(
 		if clean.Year != "" && entry.Year != clean.Year {
 			continue
 		}
+		if clean.Quarter != "" && entry.Quarter != clean.Quarter {
+			continue
+		}
 
+		// Kunci kelompoknya mengikuti BENTUK hasil, sama seperti di sqlstore. Penyimpanan di
+		// memori ini dipakai pengujian dan mode contoh; bentuk yang berbeda dari sqlstore akan
+		// membuat uji lulus atas susunan yang tidak pernah dikirim basis data.
 		key := entry.Adjuster
-		if clean.Kind == inboxsurvey.KPIQuarterly {
+		switch clean.Shape() {
+		case inboxsurvey.ShapePerYear, inboxsurvey.ShapePerQuarterYear:
 			key = entry.Year
 		}
 
@@ -280,7 +318,8 @@ func (s *Store) KPI(
 	}
 
 	sort.Strings(order)
-	if clean.Kind == inboxsurvey.KPIQuarterly {
+	if clean.Shape() == inboxsurvey.ShapePerYear ||
+		clean.Shape() == inboxsurvey.ShapePerQuarterYear {
 		// Ringkasan per tahun diurutkan MENURUN, sama dengan kuerinya — tahun terbaru lebih
 		// dulu.
 		sort.Sort(sort.Reverse(sort.StringSlice(order)))
@@ -415,3 +454,18 @@ func average(row inboxsurvey.KPIRow, count int) inboxsurvey.KPIRow {
 func round2(value float64) float64 {
 	return float64(int64(value*100+0.5)) / 100
 }
+
+// Readiness melaporkan kolom mana yang dapat dipakai pada data contoh.
+//
+// # Kenapa ia menirukan keadaan PRODUKSI, bukan keadaan paling lengkap
+//
+// Data contoh ini dipakai uji dan pengembangan lokal. Menyatakan kelima kolom siap akan membuat
+// seluruh uji berjalan di jalur yang BELUM dipakai satu portal pun di dunia nyata — dan jalur
+// yang sebenarnya dipakai hari ini justru tidak teruji.
+//
+// Yang dikembalikan karena itu Readiness kosong: tab ditahan, kolom memakai pengganti. Uji yang
+// perlu menguji jalur penuh menyetelnya sendiri lewat SetReadiness.
+func (s *Store) Readiness(context.Context) inboxsurvey.Readiness { return s.readiness }
+
+// SetReadiness menyetel kesiapan yang dilaporkan Store, untuk uji jalur penuh.
+func (s *Store) SetReadiness(r inboxsurvey.Readiness) { s.readiness = r }

@@ -133,9 +133,6 @@ type MetadataResponse struct {
 	// setelah berkasnya dibuka.
 	ReportColumns []ColumnDTO `json:"kolom_laporan"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []DifferenceDTO `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal
 	// yang sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -409,19 +406,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-	differences := make([]DifferenceDTO, 0, len(meta.PlannedDifferences))
-	for _, difference := range meta.PlannedDifferences {
-		differences = append(differences, DifferenceDTO{
-			Summary: difference.Summary,
-			Detail:  difference.Detail,
-		})
-	}
-
 	return MetadataResponse{
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
 		ReportColumns:      toColumnListDTO(meta.ReportColumns),
-		PlannedDifferences: differences,
 		Portal:             portalAlias,
 	}
 }

@@ -4,6 +4,8 @@ import { callAPI } from '@/api/client'
 import type {
   SparepartDecisionInput,
   SparepartDecisionResponse,
+  SparepartDocumentResponse,
+  SparepartImportResponse,
   SparepartInput,
   SparepartListResponse,
   SparepartOptionsResponse,
@@ -142,7 +144,15 @@ export function useSaveSparepart() {
 }
 
 /**
- * Hook keputusan borongan.
+ * Hook keputusan borongan — **belum dipakai layar mana pun**.
+ *
+ * Ia menunggu **Inbox Manager**, layar yang di Pega memang memiliki persetujuan borongan
+ * (`Section/ApprovalMasterSparepartHE`). Layar Master Sparepart sempat memakainya, lalu
+ * dicabut pada 2026-10-03 karena ketiga tabnya di Pega hanya punya tombol SIMPAN dan Ubah —
+ * nol checkbox, nol `pySelected`.
+ *
+ * Dibiarkan hidup dengan sengaja: endpoint-nya ada, teruji, dan kontraknya cocok. Menghapus
+ * keduanya berarti menulis ulang hal yang sudah terbukti benar saat Inbox Manager tiba.
  *
  * SATU permintaan untuk seluruh baris yang dicentang, bukan satu per baris. Bentuknya
  * mengikuti `Activity/SetApprovalAllMaster` beserta layarnya
@@ -164,6 +174,119 @@ export function useDecideSparepart() {
         token,
         portal,
       }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+    },
+  })
+}
+
+/**
+ * documentKey menyertakan portal, token, dan ID sparepart-nya.
+ *
+ * Portal ikut dengan alasan yang sama seperti daftar: dokumen sebuah sparepart hidup di
+ * basis data entitasnya, dan cache yang tidak membedakannya akan menampilkan dokumen badan
+ * hukum lain tanpa satu pun tanda di layar (`R-20`).
+ */
+function documentKey(portal: string | null, token: string | null, id: string) {
+  return ['master-sparepart-dokumen', portal, token, id] as const
+}
+
+/**
+ * Hook pembaca dokumen satu sparepart.
+ *
+ * 404 adalah jawaban yang WAJAR di sini — sparepart yang belum punya dokumen menjawab
+ * `dokumen_belum_ada` — sehingga kegagalannya tidak diperlakukan sebagai galat layar, dan
+ * tidak diulang. Mengulanginya tiga kali hanya memperlambat form tanpa mengubah jawabannya.
+ */
+export function useSparepartDocument(id: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: documentKey(portal, token, id ?? ''),
+    queryFn: () =>
+      callAPI<SparepartDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id ?? '')}/dokumen`,
+        { token, portal },
+      ),
+    enabled: token !== null && portal !== null && id !== null && id !== '',
+    retry: false,
+  })
+}
+
+/**
+ * Hook unggah dokumen sparepart.
+ *
+ * Badannya `FormData`, bukan JSON base64 — base64 membengkakkan muatan sekitar sepertiga,
+ * dan `callAPI` sudah menangani FormData termasuk membiarkan peramban yang menulis
+ * `Content-Type` beserta boundary-nya.
+ *
+ * Yang dibuang dari cache SESUDAH berhasil ada dua, dan keduanya perlu:
+ *
+ *   dokumen sparepart itu  karena isinya memang berganti
+ *   seluruh daftar         karena `DOKUMENID` adalah kolom pada baris sparepart-nya
+ *                          sendiri, sehingga baris di daftar pun sudah basi
+ *
+ * Yang TIDAK terjadi: baris itu tidak berpindah ke tab Waiting Approval. Mengunggah dokumen
+ * hanya menyentuh kolom `DOKUMENID`, berbeda dari menyimpan lewat form yang menyetel
+ * `APPROVAL := "0"`.
+ */
+export function useUploadSparepartDocument() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, file, note }: { id: string; file: File; note: string }) => {
+      const body = new FormData()
+      body.append('berkas', file)
+      if (note.trim() !== '') body.append('catatan', note.trim())
+      return callAPI<SparepartDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/dokumen`,
+        { metode: 'POST', body, token, portal },
+      )
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['master-sparepart-dokumen'] })
+      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+    },
+  })
+}
+
+const ROUTE_IMPORT = '/api/master/sparepart/unggah-csv'
+
+/**
+ * Hook unggah CSV master sparepart.
+ *
+ * Badannya `FormData`, sama seperti unggah dokumen, dan karena alasan yang sama: base64
+ * membengkakkan muatan sekitar sepertiga.
+ *
+ * # Jawabannya 200 bahkan saat sebagian baris gagal
+ *
+ * Yang gagal adalah barisnya, bukan permintaannya — dan sebagian datanya SUDAH masuk.
+ * Memperlakukannya sebagai galat akan membuat pengguna mengunggah ulang dan menimpa baris
+ * yang sudah benar. Layar karena itu membaca `data.gagal`, bukan menunggu `onError`.
+ *
+ * Seluruh daftar dibuang dari cache setelah berhasil: baris hasil unggah mendarat di tab
+ * Waiting Approval — tab yang justru TIDAK sedang dilihat pengguna saat ia mengunggah dari
+ * tab Approve.
+ */
+export function useImportSparepartCSV() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('berkas', file)
+      return callAPI<SparepartImportResponse>(ROUTE_IMPORT, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      })
+    },
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['master-sparepart'] })
     },

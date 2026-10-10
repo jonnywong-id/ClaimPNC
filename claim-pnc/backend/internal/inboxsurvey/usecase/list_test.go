@@ -25,16 +25,24 @@ func (s stubDirectory) ResolveSurveyor(context.Context, string) (inboxsurvey.Sur
 // failingRepo selalu gagal.
 type failingRepo struct{ err error }
 
-func (f failingRepo) List(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Filter) (inboxsurvey.Page, error) {
+func (f failingRepo) List(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Filter, inboxsurvey.Readiness) (inboxsurvey.Page, error) {
 	return inboxsurvey.Page{}, f.err
 }
 
-func (f failingRepo) Counts(context.Context, inboxsurvey.SurveyorIdentity) ([]inboxsurvey.TabCount, error) {
+func (f failingRepo) Counts(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Readiness) ([]inboxsurvey.TabCount, error) {
 	return nil, f.err
 }
 
 func (f failingRepo) KPI(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.KPIFilter) ([]inboxsurvey.KPIRow, error) {
 	return nil, f.err
+}
+
+func (f failingRepo) KPIYears(context.Context, inboxsurvey.SurveyorIdentity) ([]string, error) {
+	return nil, f.err
+}
+
+func (f failingRepo) Readiness(context.Context) inboxsurvey.Readiness {
+	return inboxsurvey.Readiness{}
 }
 
 func sampleService(t *testing.T) *usecase.Service {
@@ -81,7 +89,7 @@ func TestNewServiceRequiresBothSelectors(t *testing.T) {
 }
 
 func TestMetadataDescribesTabsColumnsAndDefaults(t *testing.T) {
-	meta := sampleService(t).Metadata()
+	meta := sampleService(t).Metadata(context.Background(), "ASM")
 
 	require.Len(t, meta.Columns, 13)
 
@@ -95,18 +103,18 @@ func TestMetadataDescribesTabsColumnsAndDefaults(t *testing.T) {
 	require.False(t, meta.Columns[1].Available)
 	require.Len(t, meta.Tabs, len(inboxsurvey.Tabs()))
 	for _, tab := range meta.Tabs {
-		require.Equal(t, tab.Key.Available(), tab.Available)
-		require.Equal(t, inboxsurvey.UnavailableReason(tab.Key), tab.UnavailableReason)
+		require.Equal(t, (inboxsurvey.Readiness{}).TabAvailable(tab.Key), tab.Available)
+		require.Equal(t, (inboxsurvey.Readiness{}).UnavailableReason(tab.Key), tab.UnavailableReason)
 	}
 	require.Len(t, meta.KPIColumns, 9)
-	require.Equal(t, inboxsurvey.DefaultAvailableTab(), meta.DefaultTab)
+	require.Equal(t, (inboxsurvey.Readiness{}).DefaultAvailableTab(), meta.DefaultTab)
 	require.Equal(t, inboxsurvey.DefaultLimit, meta.PageSize)
 	require.Len(t, meta.PlannedDifferences, 6)
 	require.Len(t, meta.Limitations, 10)
 
-	cols := usecase.Columns()
+	cols := usecase.Columns(inboxsurvey.Readiness{})
 	cols[0].Key = "rusak"
-	require.Equal(t, "appointment_no", usecase.Columns()[0].Key)
+	require.Equal(t, "appointment_no", usecase.Columns(inboxsurvey.Readiness{})[0].Key)
 	kpi := usecase.KPIColumns()
 	kpi[0].Key = "rusak"
 	require.Equal(t, "penjadwalan_survey", usecase.KPIColumns()[0].Key)
@@ -129,9 +137,34 @@ func TestCountsAndKPIReturnIdentity(t *testing.T) {
 	require.Equal(t, memory.SampleLeaderLogin, counted.Identity.Login)
 	require.NotEmpty(t, counted.Counts)
 
-	scored, err := svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{Kind: "?"})
+	scored, err := svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{
+		Status: inboxsurvey.SurveyStatusFinal, Report: inboxsurvey.ReportSummary,
+	})
 	require.NoError(t, err)
-	require.Equal(t, inboxsurvey.KPIOutstanding, scored.Filter.Kind)
+	require.Equal(t, memory.SampleLeaderLogin, scored.Identity.Login)
+	require.Equal(t, inboxsurvey.SurveyStatusFinal, scored.Filter.Status)
+}
+
+// TestKPIMenolakIsianKosongSetelahIdentitasDiperiksa mengunci URUTAN pemeriksaannya.
+//
+// Pemanggil yang bukan surveyor harus mendapat jawaban itu LEBIH DULU. Memberi tahu "Status
+// Survey belum dipilih" kepada orang yang memang tidak berhak membuka layar ini akan
+// membuatnya memilih, menekan Cari, lalu baru ditolak.
+func TestKPIMenolakIsianKosongSetelahIdentitasDiperiksa(t *testing.T) {
+	svc := sampleService(t)
+
+	_, err := svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{})
+	require.ErrorIs(t, err, inboxsurvey.ErrKPIFilterIncomplete)
+
+	_, err = svc.KPI(context.Background(), "ASM", inboxsurvey.Caller{}, inboxsurvey.KPIFilter{})
+	require.ErrorIs(t, err, inboxsurvey.ErrCallerUnknown)
+
+	// DATA DETAIL kini DAPAT dijalankan — rule-nya diterima 2026-10-07.
+	scored, err := svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{
+		Status: inboxsurvey.SurveyStatusAll, Report: inboxsurvey.ReportDetail,
+	})
+	require.NoError(t, err)
+	require.Equal(t, inboxsurvey.ShapeDetail, scored.Filter.Shape())
 }
 
 func TestPrepareRejectsUnknownCallerAndOutsider(t *testing.T) {
@@ -179,7 +212,11 @@ func TestRepoFailuresAreWrapped(t *testing.T) {
 	_, err = svc.Counts(context.Background(), "ASM", leader)
 	require.ErrorContains(t, err, "menghitung isi tab antrean survei")
 
-	_, err = svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{})
+	// Isiannya WAJIB diisi agar sampai ke repo — tanpa itu yang muncul adalah penolakan
+	// isian, bukan kegagalan repo, dan ujinya akan lulus karena alasan yang salah.
+	_, err = svc.KPI(context.Background(), "ASM", leader, inboxsurvey.KPIFilter{
+		Status: inboxsurvey.SurveyStatusAll, Report: inboxsurvey.ReportSummary,
+	})
 	require.ErrorContains(t, err, "mengambil ringkasan KPI adjuster")
 }
 
@@ -205,7 +242,7 @@ func TestKolomPenggantiDitandai(t *testing.T) {
 		"location":          true, // Pega: RescheduleLocation_1 · di sini: LOCATION_SURVEY
 	}
 
-	for _, c := range usecase.Columns() {
+	for _, c := range usecase.Columns(inboxsurvey.Readiness{}) {
 		if pengganti[c.Key] {
 			require.Truef(t, c.Substitute, "kolom %s menggambar pengganti tetapi tidak ditandai", c.Key)
 			require.Truef(t, c.Available, "kolom %s terisi, jadi harus tetap tersedia", c.Key)

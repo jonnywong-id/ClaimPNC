@@ -25,9 +25,10 @@
 //	Report Definition/InboxRegisterCompliance_RD-RD.xml  20 kolom, 2 penyaring, MaxRecords
 //	When/IsInvestigator-When.xml                    kewenangan membuka menu
 //	RDB List/ExportDatainvestigator-SQL.xml         INVESTIGATOR_TF_DATE, rentang tanggal
+//	Activity/ExportDataInvestigator-Act.xml         8 langkah ekspor, 13 judul kolom, syarat
 //	RDB List/CountKlaimPUCL-SQL.xml                 bentuk gabungan work + workbasket
 //	RDB List/ReminderPUCL-SQL.xml                   nama kolom fisik PC_ASM_FW_GCNMFW_WORK
-//	Database/INSERT_SURVEYORLIST.prc                kolom T_SURVEYORLIST, INDEX_SURVEY
+//	Database/PEGA_CONVERT_JSONKLAIM_PNC.prc         jalur JSON klaim, bentuk waktu Pega
 //	Database/m_menu_aplikasi_pnc.csv                MENU_ID 48 "Inbox Investigator"
 //
 // # Tiga hal dari layar lama yang TIDAK dibawa
@@ -38,17 +39,11 @@
 //
 //  2. **Batas `pyMaxRecords = 500` yang senyap**. Lihat MaxRows.
 //
-//  3. **Export Data Investigation** beserta ketiga kendalinya — dropdown "Pilih
-//     Investigation", isian "Dari" dan "Sampai". **Dihapus atas keputusan Work Owner
-//     2026-09-24.**
-//
-//     Keempatnya ada dan terlihat di layar lama (`pyVisible = ALWAYS`). Yang menghalangi
-//     bukan lingkup melainkan pemetaan: berkas CSV-nya disusun dari 13 kolom milik 12
-//     properti `SurveyList(1).*`, dan tiga di antaranya tidak dapat ditelusuri ke kolom
-//     basis data mana pun — terutama `NoRekapMedis`, yang tidak punya kolom sama sekali di
-//     `POOLDATA.INVESTIGATIONREPORT`.
-//
-//     Analisis lengkapnya disimpan di `docs/permintaan-artefak-pega.md` §2.
+//  3. **Langkah Report Definition pada activity ekspor**. `ExportDataInvestigator`
+//     menjalankan `pxRetrieveReportData` berparameter `Operator = "InvestigatorPNC"` pada
+//     langkah 2, lalu TIDAK PERNAH memakai hasilnya — berkas disusun dari halaman
+//     `TempDataExport` milik RDB-List di langkah 5. Langkah yang tidak dipakai tidak
+//     ditiru.
 //
 // # Yang DILARANG masuk ke paket ini
 //
@@ -74,6 +69,8 @@ package inboxinvestigator
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -244,9 +241,233 @@ type Task struct {
 	// itu, persis sistem lama (`P-5`). Nama field di sini mengikuti ISI, bukan caption,
 	// supaya pembaca kode berikutnya tidak menduga ada durasi yang harus dihitung.
 	//
-	// Nil bila klaimnya belum punya baris survei.
+	// # Asalnya dokumen JSON klaim, dan versi pertama modul ini salah
+	//
+	// Nilainya dibaca dari `POOLDATA.JSON_KLAIM` jalur `$.SurveyResults[0].SurveyDate` —
+	// jalur yang SAMA dengan properti Pega di atas. Versi pertama membacanya dari
+	// `POOLDATA.T_SURVEYORLIST`, dan akibatnya kolom ini kosong di layar sementara Pega
+	// menampilkan isinya. Pengukurannya ada di kepala inboxinvestigator.sql.
+	//
+	// Nil bila klaimnya belum punya tanggal survei.
 	SurveyDate *time.Time
+
+	// BusinessLine adalah kode lini bisnis klaim — `GROUPPANEL` pada `T_CLAIM_PNC`.
+	//
+	// Ia TIDAK digambar sebagai kolom grid; layar lama pun tidak menggambarnya. Ia dikirim
+	// karena tab **Unggah Dokumen** pada formulir kerja memakainya untuk menyembunyikan
+	// kategori yang tidak berlaku bagi lini itu — Travel menyembunyikan seluruh kategori
+	// umum, dan Personal Accident menyembunyikan SALVAGE.
+	//
+	// Tanpa nilai ini, tab itu akan menggambar kategori yang di Pega tidak muncul.
+	//
+	// Kosong bila klaimnya tidak punya baris di `T_CLAIM_PNC`. Kosong berarti **tidak ada
+	// yang disembunyikan**, bukan semuanya disembunyikan: kehilangan satu kode lini tidak
+	// boleh membuat petugas kehilangan seluruh daftar dokumennya.
+	BusinessLine string
 }
+
+// ExportRow adalah satu baris berkas **Export Data Investigation**.
+//
+// # Ia BUKAN baris inbox, dan itu bukan kelalaian penamaan
+//
+// Barisnya datang dari sumber yang sama sekali berbeda. Inbox membaca antrean workbasket;
+// ekspor membaca `POOLDATA.T_CLAIM_PNC` menurut rentang `INVESTIGATOR_TF_DATE`, sehingga ia
+// memuat klaim yang pernah ditransfer ke investigator — termasuk yang sudah selesai dan
+// tidak lagi ada di antrean. Rinciannya di kepala kueri `investigator_export`.
+//
+// # Kesebelas nilai teks dikirim APA ADANYA
+//
+// `CheckBox*` bernilai `"true"`/`"false"`, `PasienTerdaftar` dan `KonfirmasiModelKwitansi`
+// bernilai `"1"`/`"0"`, dan ketiganya ditulis ke berkas tanpa diterjemahkan — persis
+// sistem lama, yang menyalin properti ke halaman ekspor tanpa satu pun transformasi
+// (`P-5`). Satu-satunya yang diterjemahkan adalah HospitalKind; lihat field-nya.
+type ExportRow struct {
+	// InvestigatedAt adalah kolom "Tanggal Investigasi" — `T_CLAIM_PNC.INVESTIGATOR_TF_DATE`,
+	// tanggal klaim dipindahkan ke investigator.
+	//
+	// Ia satu-satunya kolom berkas ini yang TIDAK berasal dari dokumen JSON: kueri sumber
+	// `RDB List/ExportDatainvestigator-SQL.xml` mengambilnya langsung sebagai
+	// `ASMBasTerritory`, dan karena ia kolom pertama halaman ekspor, ia menjadi kolom
+	// pertama berkasnya.
+	InvestigatedAt *time.Time
+
+	// HospitalAddress — "Alamat RS Klinik", `SurveyList[0].AlamatRSKlinik`.
+	HospitalAddress string
+
+	// PaidByOtherInsurer — "Asuransi Lain", `SurveyList[0].CheckBoxAsuransiLain`.
+	PaidByOtherInsurer string
+
+	// PaidByPatient — "Pasien", `SurveyList[0].CheckBoxPasien`.
+	PaidByPatient string
+
+	// PaidByCompany — "Perusahaan", `SurveyList[0].CheckBoxPerusahaan`.
+	PaidByCompany string
+
+	// NoPayment — "Tidak ada pembayaran", `SurveyList[0].CheckBoxTidakadapembayaran`.
+	//
+	// Keempat field di atas adalah satu kelompok pilihan "siapa yang membayar" pada
+	// formulir investigasi, bukan empat pertanyaan yang berdiri sendiri.
+	NoPayment string
+
+	// Investigated — "IsInvestigated", `SurveyList[0].IsInvestigated`.
+	//
+	// Nilainya `"1"` atau `"0"`, dan ia SEKALIGUS penyaring berkas ini; lihat
+	// ExportFilter.Investigated.
+	Investigated string
+
+	// ReceiptConfirmation — "Konfirmasi Model Kwitansi",
+	// `SurveyList[0].KonfirmasiModelKwitansi`.
+	ReceiptConfirmation string
+
+	// MedicalRecordNumber — "NoRekap Medis", `SurveyList[0].NoRekapMedis`.
+	//
+	// Ia nomor rekam medis, dan berkas yang memuatnya adalah berkas berisi DATA MEDIS.
+	// `FR-R2` membatasi akses data medis pada peran Analyst Doctor dan RCL Dokter; tombol
+	// ekspor ini berada di layar Investigator, dan pembatasannya ditegakkan middleware menu
+	// yang sama dengan layarnya (`D-59`).
+	MedicalRecordNumber string
+
+	// PhoneCalled — "NoTelp DiHubungi", `SurveyList[0].NoTelpDiHubungi`.
+	PhoneCalled string
+
+	// PatientRegistered — "Pasien Terdaftar", `SurveyList[0].PasienTerdaftar`.
+	PatientRegistered string
+
+	// Remarks — "Remaks", `SurveyList[0].Remaks`.
+	//
+	// Ejaan "Remaks" dipertahankan karena itulah judul kolom yang dibaca pengguna di berkas
+	// lama (`Activity/ExportDataInvestigator-Act.xml:2332`), dan pengguna mencocokkan berkas
+	// baru dengan berkas lama kolom per kolom. Yang diperbaiki adalah nama field di kode
+	// ini, bukan judul yang dilihat orang.
+	Remarks string
+
+	// HospitalKindCode adalah `SurveyList[0].SelectRS` APA ADANYA — `"1"`, `"0"`, atau
+	// kosong.
+	//
+	// Kolom "Jenis Rumah Sakit" pada berkas TIDAK menuliskan kode ini melainkan hasil
+	// terjemahannya; lihat HospitalKindLabel. Kodenya yang disimpan di sini, bukan
+	// labelnya, supaya satu-satunya tempat terjemahan itu hidup adalah method di bawah.
+	HospitalKindCode string
+}
+
+// HospitalKindLabel menerjemahkan kode jenis rumah sakit menjadi teks berkas.
+//
+// SATU-SATUNYA kolom ekspor yang diterjemahkan, dan terjemahannya ditulis apa adanya di
+// activity lama (`Activity/ExportDataInvestigator-Act.xml:2089`):
+//
+//	@if(SelectRS == "1", "Rumah Sakit", "NON Rumah Sakit")
+//
+// Perhatikan bentuknya: nilai apa pun selain `"1"` — termasuk KOSONG — menghasilkan
+// "NON Rumah Sakit". Itu direplikasi apa adanya (`P-5`), meski artinya klaim yang
+// pertanyaannya belum dijawab tampil seolah sudah dijawab "bukan rumah sakit".
+//
+// Ia method domain, bukan baris di lapisan transport: ia aturan yang diwarisi dari sistem
+// lama, dan aturan yang hidup di satu tempat adalah inti alasan migrasi ini dikerjakan
+// (`04-FUTURE-ARCHITECTURE.md` §2).
+//
+// # "NON Rumah Sakit" di sini, "Non Rumah Sakit" di formulir — KEDUANYA benar
+//
+// Teks di sini disalin dari `@if` pada activity ekspor. Teks pada radio "Tempat Kejadian"
+// di formulir disalin dari caption rule `Property/SelectRS-property.xml`, yang mengejanya
+// **"Non Rumah Sakit"**.
+//
+// Keduanya memang berbeda di Pega, dan perbedaannya dipertahankan: berkas ekspor dibanding
+// kolom per kolom dengan berkas lama (`P-5`), sedangkan layar dibandingkan dengan layar
+// lama (`D-13`). Menyeragamkannya akan merusak salah satu perbandingan itu.
+func (r ExportRow) HospitalKindLabel() string {
+	if r.HospitalKindCode == "1" {
+		return "Rumah Sakit"
+	}
+	return "NON Rumah Sakit"
+}
+
+// ExportFilter adalah ketiga kendali di kepala layar lama yang memang milik tombol ekspor.
+//
+// Ketiganya `pyVisible = ALWAYS` di section, dan ketiganya BUKAN penyaring grid — kueri
+// yang memakainya adalah kueri ekspor, bukan kueri daftar. Lihat Filter.
+type ExportFilter struct {
+	// From adalah isian "Dari" — `TempInvestigate.DateOfLoss`.
+	//
+	// Namanya di sistem lama menyesatkan: property-nya bernama DateOfLoss, tetapi yang
+	// disaringnya `INVESTIGATOR_TF_DATE`. Alias menyesatkan yang sama dengan
+	// `03-CURRENT-ARCHITECTURE.md` §4.2; di sini namanya mengikuti ARTINYA.
+	From time.Time
+
+	// To adalah isian "Sampai" — `TempInvestigate.DateReceived`, hari terakhir yang IKUT.
+	//
+	// Kueri lama memakai `trunc(kolom) <= to_date(…)`, sehingga hari yang diketik ikut
+	// terbawa seluruhnya. Perilaku itu dipertahankan; cara mencapainya berubah, lihat
+	// kepala kueri `investigator_export`.
+	To time.Time
+
+	// Investigated adalah dropdown "Pilih Investigation" —
+	// `TempInvestigateChose.IsInvestigated`, bernilai `"1"` atau `"0"`.
+	//
+	// # Ia WAJIB, dan itu perilaku sistem lama
+	//
+	// Langkah penyalinan di activity lama bersyarat
+	// `SurveyList(1).IsInvestigated == TempInvestigateChose.IsInvestigated`. Tanpa pilihan,
+	// syarat itu membandingkan dengan teks kosong dan berkasnya terbit tanpa satu baris pun
+	// terisi. Di sini ketiadaan pilihan ditolak sebagai galat yang terbaca, bukan dijawab
+	// dengan berkas kosong tanpa keterangan.
+	//
+	// Daftar pilihannya tidak ada di export — rule Property `IsInvestigated` termasuk ±242
+	// rule yang hilang (`R-16`). Kedua nilainya terbaca dari data: `"1"` dan `"0"`.
+	Investigated string
+}
+
+// InvestigatedYes dan InvestigatedNo adalah kedua nilai sah ExportFilter.Investigated.
+const (
+	InvestigatedYes = "1"
+	InvestigatedNo  = "0"
+)
+
+// ErrExportFilterInvalid menandai permintaan ekspor yang penyaringnya tidak dapat dipakai.
+//
+// Ia galat KLIEN, bukan galat server: yang salah adalah apa yang diminta, bukan kemampuan
+// menjawabnya. Lapisan transport memetakannya menjadi 400, dan pesannya ditulis supaya
+// terbaca pengguna — bukan supaya terbaca pengembang.
+var ErrExportFilterInvalid = errors.New("penyaring ekspor tidak sah")
+
+// Validate memastikan ketiga kendali ekspor dapat dipakai.
+//
+// # Ketiganya diperiksa, bukan dibiarkan jatuh ke kueri
+//
+// Rentang terbalik menghasilkan berkas kosong tanpa satu pun keterangan, dan pilihan
+// investigasi yang kosong menghasilkan hal yang sama — keduanya persis perilaku sistem lama
+// yang membuat pengguna menyimpulkan datanya tidak ada. Memeriksanya di sini mengubah
+// kebingungan menjadi kalimat.
+func (f ExportFilter) Validate() error {
+	if f.From.IsZero() {
+		return fmt.Errorf("%w: tanggal \"Dari\" wajib diisi", ErrExportFilterInvalid)
+	}
+	if f.To.IsZero() {
+		return fmt.Errorf("%w: tanggal \"Sampai\" wajib diisi", ErrExportFilterInvalid)
+	}
+	if f.To.Before(f.From) {
+		return fmt.Errorf(
+			"%w: tanggal \"Sampai\" lebih awal daripada \"Dari\"", ErrExportFilterInvalid)
+	}
+	switch f.Investigated {
+	case InvestigatedYes, InvestigatedNo:
+	default:
+		return fmt.Errorf(
+			"%w: pilihan \"Pilih Investigation\" wajib diisi", ErrExportFilterInvalid)
+	}
+	return nil
+}
+
+// MaxExportRows membatasi banyaknya baris pada satu berkas ekspor.
+//
+// Sistem lama tidak punya batas di sini — `ExportDatainvestigator-SQL` tidak memuat
+// `pyMaxRecords` maupun ROWNUM, sehingga rentang tanggal yang lebar menarik seluruh klaim
+// yang pernah ditransfer ke investigator sekaligus.
+//
+// Angka ini karena itu bukan aturan bisnis melainkan penjaga, dan nilainya disamakan dengan
+// modul ekspor lain supaya aplikasi ini tidak punya dua batas berbeda tanpa alasan. Berkas
+// yang menyentuhnya diberi tanda di baris terakhir — bukan dipotong dalam diam, yang persis
+// cacat `pyMaxRecords = 500` yang modul ini hindari di tempat lain.
+const MaxExportRows = 50_000
 
 // Filter mempersempit daftar yang dibaca layar.
 //
@@ -305,16 +526,25 @@ type Page struct {
 // kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut entitas,
 // dan memang tidak boleh ada.
 //
-// # Hanya List, dan tidak ada satu pun yang menulis
+// # Seam INI hanya membaca — yang menulis seam tersendiri
 //
-// Layar ini tidak mengubah apa pun. Mengambil pekerjaan dari antrean, mencatat hasil
-// investigasi, dan memindahkan klaim ke Analyst seluruhnya terjadi di layar kerja yang
-// belum dibangun — lihat banner paket. Operasi yang tidak tersedia di seam ini tidak dapat
-// dipakai kode yang ditulis kemudian tanpa keputusan sadar.
+// Repo tidak punya satu pun method yang menulis, dan itu disengaja. Mencatat hasil
+// investigasi beserta perpindahan klaim ke Analyst hidup di `InvestigationRepo`, seam
+// terpisah dengan penyimpanannya sendiri (`POOLDATA.TC_PNC_INVESTIGASI`).
+//
+// Memisahkannya menjaga satu hal: daftar antrean tetap dapat dibaca meski penyimpanan hasil
+// investigasi belum tersedia di sebuah entitas — persis keadaan tiga portal yang tabelnya
+// belum dibuat. Mengambil pekerjaan dari antrean tetap milik modul Penugasan, bukan di sini.
 type Repo interface {
 	// List mengembalikan pekerjaan yang menunggu di workbasket Investigator, terpotong
 	// pada MaxRows.
 	List(ctx context.Context, filter Filter) (Page, error)
+
+	// Export mengembalikan baris berkas Export Data Investigation, terpotong pada
+	// MaxExportRows.
+	//
+	// Ia TETAP sebuah pembacaan — menerbitkan berkas tidak mengubah satu baris pun.
+	Export(ctx context.Context, filter ExportFilter) ([]ExportRow, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

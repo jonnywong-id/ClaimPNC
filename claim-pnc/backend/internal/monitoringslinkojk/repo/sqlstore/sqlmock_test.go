@@ -41,14 +41,14 @@ func marchFilter() monitoringslinkojk.Filter {
 	}
 }
 
-func TestSearchD01SendsFilterArgsAndMapsRows(t *testing.T) {
+func TestSearchF06SendsFilterArgsAndMapsRows(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewRepo(db)
 
 	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	filterArgs := []any{from, from, to, to, scopeExclude, scopeExclude,
-		monitoringslinkojk.CreditInsuranceBusinessType, scopeExclude, monitoringslinkojk.CreditInsuranceBusinessType}
+		creditInsuranceNamePattern, scopeExclude, creditInsuranceNamePattern}
 
 	mock.ExpectQuery(q("d01_count")).WithArgs(toDriver(filterArgs)...).
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(int64(11)))
@@ -56,7 +56,7 @@ func TestSearchD01SendsFilterArgsAndMapsRows(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"no_klaim", "CONTRACT_NO", "TANGGAL_MACET", "TUNGGAKAN", "SUKU_BUNGA", "KETERANGAN"}).
 			AddRow(" PNCN.26.0207 ", "KTR-1", time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC), int64(45000000), 12.5, nil))
 
-	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentD01, marchFilter())
+	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentF06, marchFilter())
 	require.NoError(t, err)
 	require.Equal(t, 11, page.Total)
 	require.Len(t, page.Rows, 1)
@@ -84,7 +84,7 @@ func toDriver(args []any) []driver.Value {
 	return out
 }
 
-func TestSearchF06SendsBranchCodeAndNoBusinessScope(t *testing.T) {
+func TestSearchD01SendsBranchCodeAndNoBusinessScope(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := NewRepoWithBranchCode(db, "007")
 
@@ -94,7 +94,7 @@ func TestSearchF06SendsBranchCodeAndNoBusinessScope(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"NO_KLAIM", "CONTRACT_NO", "NO_CIF_DEBITUR", "JENIS_KELAMIN", "KODE_KANTOR_CABANG"}).
 			AddRow("PNCN.26.0001", "K1", []byte("CIF9"), "P", "007"))
 
-	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentF06,
+	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentD01,
 		monitoringslinkojk.Filter{BusinessScope: monitoringslinkojk.ScopeCreditInsurance}.Normalize())
 	require.NoError(t, err)
 	require.Equal(t, 1, page.Total)
@@ -110,7 +110,7 @@ func TestSearchEmptyOrOutOfRangeSkipsRowsQuery(t *testing.T) {
 
 	// Hitungan NULL dibaca nol.
 	mock.ExpectQuery(q("d01_count")).WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(nil))
-	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{}.Normalize())
+	page, err := repo.Search(context.Background(), monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{}.Normalize())
 	require.NoError(t, err)
 	require.Zero(t, page.Total)
 	require.NotNil(t, page.Rows)
@@ -118,7 +118,7 @@ func TestSearchEmptyOrOutOfRangeSkipsRowsQuery(t *testing.T) {
 
 	// Halaman di luar jangkauan: total tetap, tanpa kueri baris.
 	mock.ExpectQuery(q("d01_count")).WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(int64(3)))
-	page, err = repo.Search(context.Background(), monitoringslinkojk.SegmentD01,
+	page, err = repo.Search(context.Background(), monitoringslinkojk.SegmentF06,
 		monitoringslinkojk.Filter{Page: 5, Size: 10}.Normalize())
 	require.NoError(t, err)
 	require.Equal(t, 3, page.Total)
@@ -140,7 +140,7 @@ func TestSearchErrors(t *testing.T) {
 	t.Run("count", func(t *testing.T) {
 		db, mock := newMockDB(t)
 		mock.ExpectQuery(q("d01_count")).WillReturnError(errDB)
-		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentD01, filter)
+		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentF06, filter)
 		require.ErrorIs(t, err, errDB)
 		require.Contains(t, err.Error(), "d01_count")
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -150,7 +150,7 @@ func TestSearchErrors(t *testing.T) {
 		db, mock := newMockDB(t)
 		mock.ExpectQuery(q("d01_count")).WillReturnRows(sqlmock.NewRows([]string{"T"}).AddRow(int64(1)))
 		mock.ExpectQuery(q("d01_rows")).WillReturnError(errDB)
-		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentD01, filter)
+		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentF06, filter)
 		require.ErrorIs(t, err, errDB)
 		require.Contains(t, err.Error(), "d01_rows")
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -161,7 +161,7 @@ func TestSearchErrors(t *testing.T) {
 		mock.ExpectQuery(q("d01_count")).WillReturnRows(sqlmock.NewRows([]string{"T"}).AddRow(int64(1)))
 		mock.ExpectQuery(q("d01_rows")).WillReturnRows(sqlmock.NewRows([]string{"NO_KLAIM"}).
 			AddRow("A").RowError(0, errDB))
-		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentD01, filter)
+		_, err := NewRepo(db).Search(ctx, monitoringslinkojk.SegmentF06, filter)
 		require.ErrorIs(t, err, errDB)
 		require.Contains(t, err.Error(), "d01_rows")
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -178,7 +178,7 @@ func TestStreamEmitsAllRowsAndStopsOnEmitError(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(cols).AddRow("A", "1").AddRow("B", "2"))
 
 	var got []string
-	err := repo.Stream(ctx, monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{},
+	err := repo.Stream(ctx, monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{},
 		func(row monitoringslinkojk.Row) error {
 			got = append(got, row.Get(monitoringslinkojk.RowKeyColumn))
 			return nil
@@ -191,7 +191,7 @@ func TestStreamEmitsAllRowsAndStopsOnEmitError(t *testing.T) {
 	mock.ExpectQuery(q("d01_export")).
 		WillReturnRows(sqlmock.NewRows(cols).AddRow("A", "1").AddRow("B", "2"))
 	calls := 0
-	err = repo.Stream(ctx, monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{},
+	err = repo.Stream(ctx, monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{},
 		func(monitoringslinkojk.Row) error {
 			calls++
 			return errStop
@@ -210,7 +210,7 @@ func TestStreamErrors(t *testing.T) {
 		monitoringslinkojk.ErrUnknownSegment)
 
 	mock.ExpectQuery(q("d01_export")).WillReturnError(errDB)
-	err := repo.Stream(context.Background(), monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{}, emit)
+	err := repo.Stream(context.Background(), monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{}, emit)
 	require.ErrorIs(t, err, errDB)
 	require.Contains(t, err.Error(), "d01_export")
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -296,8 +296,8 @@ func TestStreamSourceMapsEntries(t *testing.T) {
 
 	mock.ExpectQuery(q("source_rows")).
 		WithArgs(DefaultBranchCode, nil, nil, nil, nil,
-			scopeInclude, scopeInclude, monitoringslinkojk.CreditInsuranceBusinessType,
-			scopeInclude, monitoringslinkojk.CreditInsuranceBusinessType).
+			scopeInclude, scopeInclude, creditInsuranceNamePattern,
+			scopeInclude, creditInsuranceNamePattern).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"CLAIM_ID", "CONTRACT_NO", "NOREK_FASILITAS", "KODE_VALUTA", "JUMLAH_KEWAJIBAN",
 			"TANGGAL_MACET", "KODE_KANTOR_CABANG", "NO_POLIS",

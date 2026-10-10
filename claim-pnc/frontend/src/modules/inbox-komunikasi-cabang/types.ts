@@ -207,10 +207,6 @@ export type MetadataResponse = {
    * yang tidak ada di tabel mana pun.
    */
   kolom_ekspor: ExportColumn[]
-
-  /** Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel. */
-  selisih_terencana: string[]
-
   portal: string
 }
 

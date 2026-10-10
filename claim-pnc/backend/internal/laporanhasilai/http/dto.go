@@ -83,22 +83,6 @@ type RowDTO struct {
 	ChronologyCategory string `json:"kategori_kronologi"`
 }
 
-// TallyDTO adalah satu baris grid ringkasan.
-type TallyDTO struct {
-	// Subject adalah isi kolom "Keputusan" — "Komite" atau "AI".
-	Subject string `json:"keputusan"`
-
-	// Total adalah Diterima + Ditolak, BUKAN jumlah baris. Lihat doc `Tally.Total`.
-	Total int `json:"total"`
-
-	Accepted int `json:"diterima"`
-	Rejected int `json:"ditolak"`
-
-	// Pending TIDAK ADA di layar lama — penambahan yang diputuskan Work Owner pada
-	// 2026-09-26 supaya selisih antara Total dan jumlah baris dapat dibaca.
-	Pending int `json:"menunggu"`
-}
-
 // PaginationDTO adalah keterangan halaman yang menyertai daftar.
 type PaginationDTO struct {
 	Page  int `json:"halaman"`
@@ -121,9 +105,6 @@ type FilterDTO struct {
 
 // SearchResponse adalah jawaban GET /api/laporan-hasil-ai.
 type SearchResponse struct {
-	// Summary selalu memuat DUA baris, pada urutan yang tergambar: Komite lalu AI.
-	Summary []TallyDTO `json:"ringkasan"`
-
 	Rows       []RowDTO      `json:"baris"`
 	Pagination PaginationDTO `json:"paginasi"`
 	Filter     FilterDTO     `json:"filter"`
@@ -170,22 +151,6 @@ func toRowListDTO(list []laporanhasilai.Row) []RowDTO {
 	result := make([]RowDTO, 0, len(list))
 	for _, one := range list {
 		result = append(result, toRowDTO(one))
-	}
-	return result
-}
-
-// toSummaryDTO menyusun kedua baris ringkasan pada urutan yang tergambar.
-func toSummaryDTO(summary laporanhasilai.Summary) []TallyDTO {
-	tallies := summary.Tallies()
-	result := make([]TallyDTO, 0, len(tallies))
-	for _, one := range tallies {
-		result = append(result, TallyDTO{
-			Subject:  one.Subject,
-			Total:    one.Total(),
-			Accepted: one.Accepted,
-			Rejected: one.Rejected,
-			Pending:  one.Pending,
-		})
 	}
 	return result
 }

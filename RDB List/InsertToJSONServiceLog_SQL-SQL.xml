@@ -1,0 +1,313 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxUpdateOperator>GERARDOADRIAN</pxUpdateOperator>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyPreviousApplicationName>SalesAuto:SysAdmin</pyPreviousApplicationName>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20240125T024830.190 GMT</pzDocumentKey>
+<pyRuleFormStatusTime>20261008T075153.329 GMT</pyRuleFormStatusTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSetVersion>01-04-50</pyRuleSetVersion>
+<pyDeleteMemo>change cari3 &amp; cari16</pyDeleteMemo>
+<pyIsFromManageChangeLP/>
+<pyDocumentTitle/>
+<pyLabelOld>InsertToJSONServiceLog_SQL</pyLabelOld>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20240125T024830.190 GMT</pzInsKey>
+<pxSiblingCount/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyStreamName/>
+<pyJavaStream/>
+<pxMoveImportDateTime>20240127T121823.169 GMT</pxMoveImportDateTime>
+<pxMoveFromSystem/>
+<pyMemo>{ASIS:InputData.CARI30}</pyMemo>
+<pyMethodStatus/>
+<pyBrowseSQL/>
+<pyTemplateInputBox/>
+<pySpecialtyComponentData/>
+<pyFormPost/>
+<pyDeletedObject/>
+<pyTempText/>
+<pyInterface/>
+<pxInstanceLockedRuleSet/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedCreateDateTime/>
+<pyCheckInRuleSet/>
+<pxCreateOpName>Gerardo Adrian</pxCreateOpName>
+<pzRuleSetVersionPatch>50</pzRuleSetVersionPatch>
+<pxUpdateOpName>Gerardo Adrian</pxUpdateOpName>
+<pxSaveDateTime>20240125T024846.021 GMT</pxSaveDateTime>
+<pyRuleEnds/>
+<pxCreateOperator>GERARDOADRIAN</pxCreateOperator>
+<pxInsName>ASM-FW-GISFW-INT-POLICYJSON!ASM!INSERTTOJSONSERVICELOG_SQL</pxInsName>
+<pxInsId>ASM-FW-GISFW-INT-POLICYJSON!ASM!INSERTTOJSONSERVICELOG_SQL</pxInsId>
+<pxOriginalCreateOpName/>
+<pyShowJavaWindowName>GeneratedJava20261008T075153.350 GMT</pyShowJavaWindowName>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStatus/>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceDefinition/>
+<pxInstanceLockedDateTime/>
+<pyTemplate/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyWorkKey/>
+<pySaveSQL>DECLARE
+   v_DATA_JSONBLOB blob;
+    v_RESPONSEMESSAGEBLOB blob;
+    v_ORIGINALJSONBLOB blob;
+BEGIN
+
+v_DATA_JSONBLOB := pooldata.clobtoblob({InputData.CARI3});
+v_RESPONSEMESSAGEBLOB := pooldata.clobtoblob({InputData.CARI16});
+v_ORIGINALJSONBLOB := pooldata.clobtoblob({InputData.CARI17});
+
+INSERT INTO POOLDATA.JSON_SERVICELOG{ASIS:InputData.CARI30} (
+                                      NOPOLIS,
+                                      ERRMSG,
+                                      TGL_INPUT,
+                                      DATA_JSONBLOB,
+                                      GROUPPANEL,
+                                      IDPEGA,
+                                      SOURCEOFBUSINESS,
+                                      SOBNAME,
+                                      ACCESSCODE,
+                                      COVERNO,
+                                      TYPE,
+                                      REFNO,
+                                      IDTRANSACTION,
+                                      RESPONSEMESSAGEBLOB,
+                                      HTTPCODE,
+                                      STATUSPENERBITAN,
+                                      PREMIUM,
+                                      ORIGINALJSONBLOB,
+                                      LINKSOURCE,
+                                      NOEDM,
+                                      URLSCHEDULE
+)
+     VALUES (
+        {InputData.CARI1}, 
+        {InputData.CARI2}, 
+        sysdate, 
+        v_DATA_JSONBLOB , 
+        {InputData.CARI4}, 
+        {InputData.CARI5}, 
+        {InputData.CARI6}, 
+        {InputData.CARI7},  
+        {InputData.CARI8}, 
+        {InputData.CARI15},
+        {InputData.CARI11}, 
+        {InputData.CARI9}, 
+        {InputData.CARI10},
+        v_RESPONSEMESSAGEBLOB ,
+        {InputData.CARI12},
+        {InputData.CARI13},
+        {InputData.CARI14},
+        v_ORIGINALJSONBLOB ,
+        {InputData.CARI18},
+        {InputData.CARI19},
+        {InputData.CARI21}
+        );
+commit;
+ end ;</pySaveSQL>
+<pyCircumstanceProp/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyRequestType>InsertToJSONServiceLog_SQL</pyRequestType>
+<pxOriginalCreateDateTime/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pyCircumstanceDate/>
+<pyClassName>ASM-FW-GISFW-Int-policyjson</pyClassName>
+<pyRWAccess>ASM</pyRWAccess>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDateProp/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateDateTime>20240125T024830.190 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleStarts/>
+<pyLabel>InsertToJSONServiceLog_SQL</pyLabel>
+<pyRelativePath/>
+<pyOpenSQL/>
+<pxUpdateDateTime>20240125T024846.013 GMT</pxUpdateDateTime>
+<pxInstanceLockedBy/>
+<pxHostId>jboss1089-3</pxHostId>
+<pxInstanceLockedKey/>
+<pyCircumstanceType/>
+<pyDeleteSQL/>
+<pyRuleName>ASM-FW-GISFW-Int-policyjson ASM InsertToJSONServiceLog_SQL</pyRuleName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxOriginalCreateOperator/>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleParamsStreamName/>
+<pyCircumstanceVal/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyUsage/>
+<pyTaskID/>
+<pyDescription/>
+<pyWindowTitle/>
+<pyValueChanged>false</pyValueChanged>
+<pzChecksum>-1605748397</pzChecksum>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyHandlerFlow/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxTabLabel>ASM-FW-GISFW-Int-policyjson ASM InsertToJSONServiceLog_SQL</pxTabLabel>
+<pxCommitDateTime>20240127T121823.000 GMT</pxCommitDateTime>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20230502T040219.569 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>GERARDOADRIAN@</pySPRuleSetName>
+<pxOriginalCreateSystemID/>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleData>true</pyRuleData>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pyBack>true</pyBack>
+<pyCheckIn>false</pyCheckIn>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20240125T024830.190 GMT</pzInsKey>
+<pyLabel>01-04-50 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-03-89 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20230502T040219.569 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyValue>3</pyValue>
+<pyLabel>01-03-88 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20230417T090036.868 GMT</pzInsKey>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20230317T065413.525 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-87 (Available)</pyLabel>
+<pxListSubscript>4</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-77 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20230127T055704.478 GMT</pzInsKey>
+<pxListSubscript>5</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyValue>3</pyValue>
+<pxListSubscript>6</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20200901T082859.491 GMT</pzInsKey>
+<pyLabel>01-02-70 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20190425T022435.050 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-02-02 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>8</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20190412T080122.823 GMT</pzInsKey>
+<pyLabel>01-01-97 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxListSubscript>9</pxListSubscript>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20190327T033759.908 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20190314T033217.107 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyLabel>01-01-93 (Available)</pyLabel>
+<pxListSubscript>10</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-87 (Available)</pyLabel>
+<pxListSubscript>11</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-POLICYJSON ASM!INSERTTOJSONSERVICELOG_SQL #20190104T084334.388 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

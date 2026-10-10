@@ -58,6 +58,35 @@ const (
 	FieldCaseID       = "no_case"
 	FieldType         = "tipe"
 	FieldScoredOn     = "tanggal"
+	FieldCategory     = "kategori"
+
+	// FieldClaimNumberAdjuster dan FieldSurveyStatus adalah dua kolom grid Detail yang
+	// SELALU KOSONG, dan kekosongannya ditiru dengan sadar.
+	//
+	// Keduanya terikat properti `.ClaimNo` dan `.StatusWork` di grid layar lama, sementara
+	// `POOLDATA.DETAIL_KPI_ADJUSTER` — satu-satunya sumber grid itu — tidak punya kolom
+	// nomor klaim maupun status survei (diperiksa terhadap katalog, 2026-10-09).
+	//
+	// Jadi kolomnya kosong di Pega juga. Ia dibawa karena `D-13` menetapkan layar mengikuti
+	// layar lama, dan menghapusnya akan membuat jumlah kolom berbeda — hal pertama yang
+	// dihitung orang saat membandingkan dua layar.
+	FieldClaimNumberAdjuster = "no_klaim"
+	FieldSurveyStatus        = "status_survey"
+)
+
+// Nama field JSON pada kolom identitas grid "Data KPI" tab KPI Admin.
+//
+// Perhatikan pasangan yang mudah tertukar: kolom berjudul **UNIT KERJA** diisi
+// `Identity.Category` ("KLAIM NON MBU"), sedangkan kolom berjudul **BUSINESS** diisi
+// `Identity.WorkUnit` ("ALL (NON HEALTH DAN NON MBU)"). Penamaan internal kami memang
+// bersilangan dengan judul layar lama, dan urutan SELECT kueri Pega yang memutuskannya.
+const (
+	FieldAdminWorkUnit    = "unit_kerja"
+	FieldAdminCoordinator = "nama_koordinator"
+	FieldAdminBusiness    = "business"
+	FieldAdminNIK         = "nik"
+	FieldAdminEffectiveOn = "tanggal_efektif"
+	FieldAdminNote        = "note"
 )
 
 // Nama field JSON pada satu baris rincian tab KPI Admin.
@@ -136,6 +165,13 @@ type Grid struct {
 	// sini berarti dua daftar yang harus dijaga kesamaannya. Layar merakit kolom tetap ini
 	// lebih dulu, lalu menambahkan kesembilan komponen di belakangnya.
 	Columns []Column
+
+	// TrailingColumns adalah kolom tetap yang digambar SESUDAH kesembilan komponen.
+	//
+	// Hanya KATEGORI yang ada di sini, dan ia memang berada di ujung kanan grid layar lama.
+	// Memaksakannya masuk `Columns` akan menggambarnya di depan komponen — satu kolom
+	// bergeser, dan sembilan kolom angka di sebelahnya ikut terbaca salah.
+	TrailingColumns []Column
 }
 
 // ColumnsFor mengembalikan kolom tetap yang benar-benar digambar pada sebuah tipe report.
@@ -222,13 +258,17 @@ var tabs = []Tab{
 			{
 				Code:  GridPICScorecard,
 				Title: "Data KPI PIC Teknik",
+				// Judulnya APA ADANYA seperti grid layar lama, termasuk "(%)" pada kolom
+				// keempat. Sebelumnya ditulis "KPI", "Total", "Tercapai", "Persentase",
+				// "Nilai" — terjemahan yang lebih rapi tetapi bukan yang dibaca pengguna
+				// selama ini (`D-13`).
 				Columns: []Column{
 					{Key: FieldPICName, Title: "PIC"},
-					{Key: FieldPICMetric, Title: "KPI"},
-					{Key: FieldPICTotal, Title: "Total"},
-					{Key: FieldPICAchieved, Title: "Tercapai"},
-					{Key: FieldPICPercent, Title: "Persentase"},
-					{Key: FieldPICValue, Title: "Nilai"},
+					{Key: FieldPICMetric, Title: "KATEGORI"},
+					{Key: FieldPICTotal, Title: "TOTAL DATA"},
+					{Key: FieldPICAchieved, Title: "JUMLAH TERCAPAI"},
+					{Key: FieldPICPercent, Title: "TERCAPAI (%)"},
+					{Key: FieldPICValue, Title: "NILAI"},
 				},
 			},
 		},
@@ -240,15 +280,23 @@ var tabs = []Tab{
 			{
 				Code:  GridSummary,
 				Title: "Summary KPI Adjuster",
+				// Kedua kolom ini mengapit kesembilan komponen: ADJUSTER dan Status di
+				// depan, KATEGORI di belakang. Urutannya dibaca dari grid layar lama.
 				Columns: []Column{
 					{Key: FieldAdjusterName, Title: "ADJUSTER"},
-					// Hanya pada tipe ALL — lihat Column.OnlyOnCombinedType.
+
+					// Status SELALU digambar, meski hanya terisi pada tipe ALL.
 					//
-					// Judulnya "TIPE", bukan alias Pega-nya. Di sana kolom literal itu
-					// dialiaskan `StatusWork`, dan alias itu menyesatkan: isinya bukan
-					// status kerja klaim melainkan kelompok mana barisnya berasal
-					// (`D-19`).
-					{Key: FieldType, Title: "TIPE", OnlyOnCombinedType: true},
+					// Sebelumnya ia bertanda OnlyOnCombinedType — disembunyikan pada tipe
+					// tunggal. Grid layar lama tidak menyembunyikannya: kolomnya ada dan
+					// kosong, karena kueri tipe tunggal memang tidak mengembalikan literal
+					// `'OUTSTANDING'`/`'FINAL'`.
+					//
+					// Judulnya pun "Status", bukan "TIPE" — itu yang tertulis di gridnya.
+					{Key: FieldType, Title: "Status"},
+				},
+				TrailingColumns: []Column{
+					{Key: FieldCategory, Title: "KATEGORI"},
 				},
 			},
 			{
@@ -257,8 +305,13 @@ var tabs = []Tab{
 				Columns: []Column{
 					{Key: FieldAdjusterName, Title: "ADJUSTER"},
 					{Key: FieldCaseID, Title: "NO CASE"},
-					{Key: FieldType, Title: "TIPE"},
-					{Key: FieldScoredOn, Title: "TANGGAL"},
+
+					// Kedua kolom berikut selalu kosong — lihat FieldClaimNumberAdjuster.
+					{Key: FieldClaimNumberAdjuster, Title: "NO KLAIM"},
+					{Key: FieldSurveyStatus, Title: "STATUS SURVEY"},
+				},
+				TrailingColumns: []Column{
+					{Key: FieldCategory, Title: "KATEGORI"},
 				},
 			},
 		},
@@ -270,9 +323,29 @@ var tabs = []Tab{
 			{
 				Code:  GridScorecard,
 				Title: "Data KPI",
-				// Kartu skor TIDAK punya kolom tetap: ia bukan tabel berbaris-baris
-				// melainkan satu kartu berisi metrik berurutan, dan metriknya berbeda
-				// antar kelompok. Yang menyusunnya adalah BuildScorecard.
+
+				// Kelima kolom identitas, digambar SEBELUM metrik.
+				//
+				// Metriknya sendiri tidak ditulis di sini melainkan datang dari
+				// BuildScorecard, karena ia berbeda antar kelompok dan sebagiannya
+				// bergantung pada angka yang baru diketahui saat permintaan dijawab.
+				//
+				// Koreksi 2026-10-09: grid ini sempat digambar sebagai KARTU, dengan alasan
+				// tabel satu baris berkolom belasan memaksa gulir menyamping. Alasannya
+				// masuk akal, hasilnya tidak — layar Pega menggambarnya sebagai TABEL
+				// berkolom 21, dan `D-13` menetapkan tampilan mengikuti layar lama.
+				Columns: []Column{
+					{Key: FieldAdminWorkUnit, Title: "UNIT KERJA"},
+					{Key: FieldAdminCoordinator, Title: "NAMA KOORDINATOR"},
+					{Key: FieldAdminBusiness, Title: "BUSINESS"},
+					{Key: FieldAdminNIK, Title: "NIK"},
+					{Key: FieldAdminEffectiveOn, Title: "TANGGAL EFEKTIF"},
+				},
+
+				// NOTE adalah kolom terakhir — isinya kesimpulan tercapai atau tidak.
+				TrailingColumns: []Column{
+					{Key: FieldAdminNote, Title: "NOTE"},
+				},
 			},
 			{
 				Code:  GridAdminDetail,

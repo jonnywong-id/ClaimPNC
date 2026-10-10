@@ -31,7 +31,11 @@ func newMockRepo(t *testing.T) (*Repo, sqlmock.Sqlmock) {
 		require.NoError(t, mock.ExpectationsWereMet())
 		_ = db.Close()
 	})
-	return NewRepo(db), mock
+	// Koneksi yang SAMA dipasang sebagai keduanya, supaya uji yang tidak mempersoalkan
+	// pembagian koneksi tidak perlu memasang dua mock. Pembagiannya sendiri diuji
+	// tersendiri oleh TestHolidaysDibacaDiKoneksiKedua, yang memakai DUA mock berbeda —
+	// dan di situlah ia benar-benar terbukti.
+	return NewRepo(db, db), mock
 }
 
 // sqlOf mengubah teks kueri bernama menjadi pola regexp yang persis.
@@ -78,7 +82,7 @@ func TestSummaryMapsRowsAndBindsFilter(t *testing.T) {
 	rows := sqlmock.NewRows(summaryColumns).
 		AddRow("PT A", "FINAL", 1.0, 2.0, nil, 4.0, 5.0, 1.5, 2.5, 3.5, 4.5)
 	mock.ExpectQuery(sqlOf("summary")).
-		WithArgs("FINAL", "PT A", "2026-03-01", "2026-03-31").
+		WithArgs("FINAL", "FINAL", "PT A", "PT A", "2026-03-01", "2026-03-31").
 		WillReturnRows(rows)
 
 	result, err := repo.Summary(context.Background(), adjusterQuery(reportkpi.TypeFinal, "PT A"))
@@ -97,7 +101,7 @@ func TestSummaryBindsAllTypeAndEmptyAdjusterAsNull(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	mock.ExpectQuery(sqlOf("summary")).
-		WithArgs(nil, nil, "2026-03-01", "2026-03-31").
+		WithArgs(nil, nil, nil, nil, "2026-03-01", "2026-03-31").
 		WillReturnRows(sqlmock.NewRows(summaryColumns))
 
 	result, err := repo.Summary(context.Background(), adjusterQuery(reportkpi.TypeAll, ""))
@@ -141,7 +145,7 @@ func TestDetailMapsRowsAndPaginates(t *testing.T) {
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, int64(7))
 	// Halaman 2 berukuran 3 → offset 3.
 	mock.ExpectQuery(sqlOf("detail")).
-		WithArgs("OUTSTANDING", nil, "2026-03-01", "2026-03-31", 3, 3).
+		WithArgs("OUTSTANDING", "OUTSTANDING", nil, nil, "2026-03-01", "2026-03-31", 3, 3).
 		WillReturnRows(rows)
 
 	page, err := repo.Detail(context.Background(),
@@ -160,7 +164,7 @@ func TestDetailMapsRowsAndPaginates(t *testing.T) {
 func TestDetailEmptyPageHasEmptyRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	mock.ExpectQuery(sqlOf("detail")).
-		WithArgs("FINAL", "PT B", "2026-03-01", "2026-03-31", 0, reportkpi.DefaultPageSize).
+		WithArgs("FINAL", "FINAL", "PT B", "PT B", "2026-03-01", "2026-03-31", 0, reportkpi.DefaultPageSize).
 		WillReturnRows(sqlmock.NewRows(detailColumns))
 
 	page, err := repo.Detail(context.Background(),
@@ -196,39 +200,42 @@ func TestDetailErrorPaths(t *testing.T) {
 	})
 }
 
-// Nama kosong dan NULL tidak masuk dropdown.
+// Nama kosong dan NULL tidak masuk dropdown, dan kuerinya TIDAK diberi parameter.
+//
+// `WithArgs()` tanpa argumen itu bagian dari yang diuji: rule Pega pengisinya tidak punya
+// parameter satu pun, dan menambahkan penyaring di sini adalah kekeliruan yang pernah
+// membuat dropdown kosong pada periode tanpa penilaian.
 func TestAdjustersSkipsEmptyNames(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	mock.ExpectQuery(sqlOf("adjusters")).
-		WithArgs(nil, "2026-03-01", "2026-03-31").
+		WithArgs().
 		WillReturnRows(sqlmock.NewRows([]string{"ADJUSTER"}).
 			AddRow("PT A").AddRow(nil).AddRow("").AddRow("PT B"))
 
-	names, err := repo.Adjusters(context.Background(), adjusterQuery(reportkpi.TypeAll, "PT A"))
+	names, err := repo.Adjusters(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, []string{"PT A", "PT B"}, names)
 }
 
 func TestAdjustersErrorPaths(t *testing.T) {
-	q := adjusterQuery(reportkpi.TypeFinal, "")
 	t.Run("query", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
 		mock.ExpectQuery(sqlOf("adjusters")).WillReturnError(errBoom)
-		_, err := repo.Adjusters(context.Background(), q)
+		_, err := repo.Adjusters(context.Background())
 		require.ErrorIs(t, err, errBoom)
 	})
 	t.Run("scan", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
 		mock.ExpectQuery(sqlOf("adjusters")).WillReturnRows(
 			sqlmock.NewRows([]string{"A", "B"}).AddRow("x", "y"))
-		_, err := repo.Adjusters(context.Background(), q)
+		_, err := repo.Adjusters(context.Background())
 		require.ErrorContains(t, err, "memindai adjuster")
 	})
 	t.Run("rows", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
 		mock.ExpectQuery(sqlOf("adjusters")).WillReturnRows(
 			sqlmock.NewRows([]string{"ADJUSTER"}).AddRow("PT A").RowError(0, errBoom))
-		_, err := repo.Adjusters(context.Background(), q)
+		_, err := repo.Adjusters(context.Background())
 		require.ErrorIs(t, err, errBoom)
 	})
 }
@@ -297,77 +304,170 @@ func TestToScoresStopsAtShorterInput(t *testing.T) {
 }
 
 // --- Tab KPI Admin ---
+//
+// Sejak 2026-10-09 kueri tab ini mengembalikan BARIS, bukan angka jadi. Pencacahan,
+// tangga nilai, dan selisih hari kerja dikerjakan Go — sehingga tiruan di bawah menyiapkan
+// baris mentah beserta kalender liburnya, bukan hasil hitungan.
+//
+// Kalender libur ikut ditiru: `Holidays` dipanggil setiap kali selisih hari kerja dihitung,
+// dan tanpa tiruannya kueri itu tidak terjawab.
 
-func TestAdminTotalsNonMBUMapsTwelveColumns(t *testing.T) {
+// liburKosong menyiapkan jawaban kalender libur yang tidak memuat satu tanggal pun.
+func liburKosong(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(sqlOf("holidays")).
+		WillReturnRows(sqlmock.NewRows([]string{"TANGGAL"}))
+}
+
+// Kartu skor NON-MBU dihitung dari baris, dan leader dibedakan dari member.
+func TestAdminTotalsNonMBUMenghitungDariBaris(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	cols := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"}
-	mock.ExpectQuery(sqlOf("admin_scorecard_nonmbu")).
+
+	// Senin 2026-03-02 sebagai awal; selisih hari kerjanya ditentukan tanggal akhir.
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	hariSama := senin                    // 0 hari kerja -> TIDAK melanggar
+	duaHari := senin.AddDate(0, 0, 2)    // Rabu, 2 hari kerja -> melanggar (> 1)
+	sehari := senin.AddDate(0, 0, 1)     // Selasa, 1 hari kerja -> TIDAK melanggar
+
+	mock.ExpectQuery(sqlOf("admin_rows_nonmbu")).
 		WithArgs("2026-03-01", "2026-03-31").
-		WillReturnRows(sqlmock.NewRows(cols).
-			AddRow(1.0, 4.0, 25.0, 0.0, 3.0, 0.0, 2.0, 5.0, 18.0, 40.0, 58.0, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"REINSURER", "AWAL", "AKHIR"}).
+			AddRow("1", senin, duaHari).  // leader, melanggar
+			AddRow("1", senin, sehari).   // leader, tidak
+			AddRow("2", senin, duaHari).  // member, melanggar
+			AddRow("2", senin, hariSama)) // member, tidak
+	liburKosong(mock)
 
 	totals, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupNonMBU))
 	require.NoError(t, err)
+
 	require.Equal(t, reportkpi.NewScore(1), totals.LeaderOverSLA)
-	require.Equal(t, reportkpi.NewScore(4), totals.LeaderTotal)
-	require.Equal(t, reportkpi.NewScore(25), totals.LeaderPercent)
-	require.Equal(t, reportkpi.NewScore(0), totals.MemberOverSLA)
-	require.Equal(t, reportkpi.NewScore(3), totals.MemberTotal)
-	require.Equal(t, reportkpi.NewScore(0), totals.MemberPercent)
-	require.Equal(t, reportkpi.NewScore(2), totals.LeaderScore)
-	require.Equal(t, reportkpi.NewScore(5), totals.MemberScore)
-	require.Equal(t, reportkpi.NewScore(18), totals.LeaderSubtotal)
-	require.Equal(t, reportkpi.NewScore(40), totals.MemberSubtotal)
-	require.Equal(t, reportkpi.NewScore(58), totals.QuantitativeTotal)
-	require.Equal(t, reportkpi.EmptyScore(), totals.AchievementRatio, "NULL bukan nol")
+	require.Equal(t, reportkpi.NewScore(2), totals.LeaderTotal)
+	require.Equal(t, reportkpi.NewScore(1), totals.MemberOverSLA)
+	require.Equal(t, reportkpi.NewScore(2), totals.MemberTotal)
+
+	// 1 dari 2 = 50% -> di atas 2% -> nilai 0 pada kedua kelompok.
+	require.Equal(t, reportkpi.NewScore(0), totals.LeaderScore)
+	require.Equal(t, reportkpi.NewScore(0), totals.MemberScore)
+
 	// Isian PA tidak tersentuh.
 	require.False(t, totals.RegisterTotal.Present)
 }
 
-func TestAdminTotalsPABindsPeriodThreeTimes(t *testing.T) {
+// Hari libur MENGURANGI selisih, sehingga klaim yang tadinya melanggar menjadi tidak.
+//
+// Inilah alasan kalender libur tetap dibaca dari basis data meski hitungannya pindah ke Go.
+func TestAdminTotalsNonMBUMemperhitungkanHariLibur(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	mock.ExpectQuery(sqlOf("admin_scorecard_pa")).
-		WithArgs("2026-03-01", "2026-03-31", "2026-03-01", "2026-03-31",
-			"2026-03-01", "2026-03-31").
-		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f"}).
-			AddRow(2.0, 1.0, 4.0, 2.0, 0.0, 1.0))
+
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	rabu := senin.AddDate(0, 0, 2)
+	selasa := senin.AddDate(0, 0, 1)
+
+	mock.ExpectQuery(sqlOf("admin_rows_nonmbu")).
+		WillReturnRows(sqlmock.NewRows([]string{"REINSURER", "AWAL", "AKHIR"}).
+			AddRow("1", senin, rabu))
+	mock.ExpectQuery(sqlOf("holidays")).
+		WillReturnRows(sqlmock.NewRows([]string{"TANGGAL"}).AddRow(selasa))
+
+	totals, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupNonMBU))
+	require.NoError(t, err)
+
+	// Dua hari kerja dikurangi satu hari libur = satu -> tidak lagi melewati ambang.
+	require.Equal(t, reportkpi.NewScore(0), totals.LeaderOverSLA)
+	require.Equal(t, reportkpi.NewScore(1), totals.LeaderTotal)
+}
+
+// Kartu skor PA membaca TIGA kueri, dan yang ketiga tanpa parameter.
+func TestAdminTotalsPAMembacaTigaKueri(t *testing.T) {
+	repo, mock := newMockRepo(t)
+
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	selasa := senin.AddDate(0, 0, 1)
+
+	mock.ExpectQuery(sqlOf("admin_rows_pa_register")).
+		WithArgs("2026-03-01", "2026-03-31").
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}).
+			AddRow("K1", senin, selasa). // 1 hari kerja -> melanggar (> 0)
+			AddRow("K2", senin, senin))  // 0 hari kerja -> tidak
+	mock.ExpectQuery(sqlOf("admin_rows_pa_payment")).
+		WithArgs("2026-03-01", "2026-03-31").
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}).
+			AddRow("K1", senin, selasa).
+			AddRow("K1", senin, selasa)) // klaim yang SAMA, dihitung sekali
+	mock.ExpectQuery(sqlOf("admin_rows_pa_payment_total")).
+		WithArgs().
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}).
+			AddRow("K9", senin, selasa))
+	liburKosong(mock)
 
 	totals, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupPA))
 	require.NoError(t, err)
-	require.Equal(t, reportkpi.NewScore(2), totals.RegisterOverSLA)
-	require.Equal(t, reportkpi.NewScore(1), totals.PaymentOverSLA)
-	require.Equal(t, reportkpi.NewScore(4), totals.RegisterTotal)
-	require.Equal(t, reportkpi.NewScore(2), totals.PaymentTotal)
-	require.Equal(t, reportkpi.NewScore(0), totals.RegisterScore)
-	require.Equal(t, reportkpi.NewScore(1), totals.PaymentScore)
+
+	require.Equal(t, reportkpi.NewScore(1), totals.RegisterOverSLA)
+	require.Equal(t, reportkpi.NewScore(2), totals.RegisterTotal)
+	require.Equal(t, reportkpi.NewScore(1), totals.PaymentOverSLA,
+		"dua baris milik satu klaim dihitung SEKALI")
+	require.Equal(t, reportkpi.NewScore(1), totals.PaymentTotal)
 	require.False(t, totals.LeaderTotal.Present)
+}
+
+// Tanggal terima LOD yang kosong jatuh ke tanggal akseptasi, sehingga umurnya NOL.
+func TestAdminTotalsPALODKosongJatuhKeAkseptasi(t *testing.T) {
+	repo, mock := newMockRepo(t)
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+
+	mock.ExpectQuery(sqlOf("admin_rows_pa_register")).
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}))
+	mock.ExpectQuery(sqlOf("admin_rows_pa_payment")).
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}).
+			AddRow("K1", nil, senin)) // LOD kosong
+	mock.ExpectQuery(sqlOf("admin_rows_pa_payment_total")).
+		WillReturnRows(sqlmock.NewRows([]string{"CLAIM", "AWAL", "AKHIR"}))
+	liburKosong(mock)
+
+	totals, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupPA))
+	require.NoError(t, err)
+	require.Equal(t, reportkpi.NewScore(0), totals.PaymentOverSLA,
+		"umur nol tidak pernah terhitung melanggar")
 }
 
 func TestAdminTotalsErrors(t *testing.T) {
 	t.Run("nonmbu", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
-		mock.ExpectQuery(sqlOf("admin_scorecard_nonmbu")).WillReturnError(errBoom)
+		mock.ExpectQuery(sqlOf("admin_rows_nonmbu")).WillReturnError(errBoom)
 		_, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupNonMBU))
 		require.ErrorIs(t, err, errBoom)
-		require.ErrorContains(t, err, "NON-MBU")
+		require.ErrorContains(t, err, "admin_rows_nonmbu")
 	})
 	t.Run("pa", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
-		mock.ExpectQuery(sqlOf("admin_scorecard_pa")).WillReturnError(errBoom)
+		mock.ExpectQuery(sqlOf("admin_rows_pa_register")).WillReturnError(errBoom)
 		_, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupPA))
 		require.ErrorIs(t, err, errBoom)
-		require.ErrorContains(t, err, "PA")
+		require.ErrorContains(t, err, "admin_rows_pa_register")
+	})
+	t.Run("kalender libur", func(t *testing.T) {
+		repo, mock := newMockRepo(t)
+		senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+		mock.ExpectQuery(sqlOf("admin_rows_nonmbu")).
+			WillReturnRows(sqlmock.NewRows([]string{"REINSURER", "AWAL", "AKHIR"}).
+				AddRow("1", senin, senin))
+		mock.ExpectQuery(sqlOf("holidays")).WillReturnError(errBoom)
+		_, err := repo.AdminTotals(context.Background(), adminQuery(reportkpi.AdminGroupNonMBU))
+		require.Error(t, err)
 	})
 }
 
 func TestAdminDetailNonMBUMapsRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	day := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
-	cols := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	rabu := senin.AddDate(0, 0, 2)
+
 	mock.ExpectQuery(sqlOf("admin_detail_nonmbu")).
 		WithArgs("2026-03-01", "2026-03-31", 0, 2).
-		WillReturnRows(sqlmock.NewRows(cols).
-			AddRow("K1", "P1", "BIS", day, nil, "leader", 1.5, int64(9)))
+		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e", "f", "g"}).
+			AddRow("K1", "P1", "BIS", senin, rabu, "leader", int64(9)))
+	liburKosong(mock)
 
 	page, err := repo.AdminDetail(context.Background(),
 		adminQuery(reportkpi.AdminGroupNonMBU), reportkpi.Pagination{Page: 1, Size: 2})
@@ -375,32 +475,42 @@ func TestAdminDetailNonMBUMapsRows(t *testing.T) {
 	require.Equal(t, 9, page.Total)
 	require.Equal(t, reportkpi.AdminDetailRow{
 		ClaimNumber: "K1", PolicyNumber: "P1", BusinessName: "BIS",
-		RegisterDate: "2026-03-02", TransferDate: "", TeamFlag: "leader",
-		RegisterAging: reportkpi.NewScore(1.5),
+		RegisterDate: "2026-03-02", TransferDate: "2026-03-04", TeamFlag: "leader",
+		RegisterAging: reportkpi.NewScore(2),
 	}, page.Rows[0])
 }
 
 func TestAdminDetailPAMapsRows(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	day := time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC)
-	cols := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"}
+	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	rabu := senin.AddDate(0, 0, 2)
+
 	mock.ExpectQuery(sqlOf("admin_detail_pa")).
 		WithArgs("2026-03-01", "2026-03-31", 0, reportkpi.DefaultPageSize).
-		WillReturnRows(sqlmock.NewRows(cols).
-			AddRow("K2", "P2", day, day, "ADM", day, day, nil, day,
-				0.5, nil, "SLA", "TIDAK SLA", "Close", int64(1)))
+		WillReturnRows(sqlmock.NewRows(
+			[]string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}).
+			AddRow("K2", "P2", senin, senin, "ADM", senin, rabu, nil, rabu,
+				"Close", int64(1)))
+	liburKosong(mock)
 
 	page, err := repo.AdminDetail(context.Background(),
 		adminQuery(reportkpi.AdminGroupPA), reportkpi.Pagination{})
 	require.NoError(t, err)
 	require.Equal(t, 1, page.Total)
-	require.Equal(t, reportkpi.AdminDetailRow{
-		ClaimNumber: "K2", PolicyNumber: "P2", AdminName: "ADM",
-		ReceiveDate: "2026-03-04", RegisterDate: "2026-03-04",
-		LODReceiveDate: "", AcceptanceDate: "2026-03-04",
-		RegisterAging: reportkpi.NewScore(0.5), PaymentAging: reportkpi.EmptyScore(),
-		RegisterSLA: "SLA", PaymentSLA: "TIDAK SLA", ClaimStatus: "Close",
-	}, page.Rows[0])
+
+	baris := page.Rows[0]
+	require.Equal(t, "K2", baris.ClaimNumber)
+	require.Equal(t, "ADM", baris.AdminName)
+
+	// Terima LOD kosong -> ditampilkan sebagai tanggal akseptasi, dan umurnya nol.
+	require.Equal(t, "2026-03-04", baris.LODReceiveDate)
+	require.Equal(t, reportkpi.NewScore(0), baris.PaymentAging)
+	require.Equal(t, "SLA", baris.PaymentSLA)
+
+	// Dua hari kerja -> melewati ambang grid (> 1).
+	require.Equal(t, reportkpi.NewScore(2), baris.RegisterAging)
+	require.Equal(t, "TIDAK SLA", baris.RegisterSLA)
+	require.Equal(t, "Close", baris.ClaimStatus)
 }
 
 func TestAdminDetailErrorPaths(t *testing.T) {
@@ -409,8 +519,8 @@ func TestAdminDetailErrorPaths(t *testing.T) {
 		name  string
 		cols  int
 	}{
-		{reportkpi.AdminGroupNonMBU, "admin_detail_nonmbu", 8},
-		{reportkpi.AdminGroupPA, "admin_detail_pa", 15},
+		{reportkpi.AdminGroupNonMBU, "admin_detail_nonmbu", 7},
+		{reportkpi.AdminGroupPA, "admin_detail_pa", 11},
 	} {
 		t.Run(string(tc.group)+" query", func(t *testing.T) {
 			repo, mock := newMockRepo(t)
@@ -463,7 +573,7 @@ func TestPICsMapsLeaderFlagAndSkipsBlankOperator(t *testing.T) {
 func TestBandsMapsRowsAndBindsNote(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	mock.ExpectQuery(sqlOf("bands")).
-		WithArgs(reportkpi.JobSLA, reportkpi.TeamLeader).
+		WithArgs(reportkpi.JobSLA, reportkpi.TeamLeader, reportkpi.TeamLeader).
 		WillReturnRows(sqlmock.NewRows([]string{"JOB", "VALUE", "BOTTOM", "TOP", "NOTE"}).
 			AddRow(" SLA KLAIM ", 5.0, 0.0, 20.0, " LEADER "))
 
@@ -477,8 +587,9 @@ func TestBandsMapsRowsAndBindsNote(t *testing.T) {
 func TestThresholdDaysBranches(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		repo, mock := newMockRepo(t)
+		// Catatan dikirim dua kali — lihat TestTidakAdaPenandaBindBerulang.
 		mock.ExpectQuery(sqlOf("threshold_days")).
-			WithArgs(reportkpi.JobAnalysis, nil).
+			WithArgs(reportkpi.JobAnalysis, nil, nil).
 			WillReturnRows(sqlmock.NewRows([]string{"DAY"}).AddRow(10.0))
 		days, err := repo.ThresholdDays(context.Background(), reportkpi.JobAnalysis, "")
 		require.NoError(t, err)
@@ -541,7 +652,7 @@ func TestAnalysisSpansMapsDates(t *testing.T) {
 	span := picSpan()
 	start := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
-	mock.ExpectQuery(picSQLOf("analysis_spans", reportkpi.LineNonMBU)).
+	mock.ExpectQuery(sqlOf("analysis_spans")).
 		WithArgs(span.From, span.To).
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "S", "E"}).AddRow("PICSATU", start, end))
 
@@ -556,7 +667,7 @@ func TestAcceptanceSpansMapsDates(t *testing.T) {
 	lod := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
 	committee := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
 	accepted := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
-	mock.ExpectQuery(picSQLOf("acceptance_spans", reportkpi.LineNonMBU)).
+	mock.ExpectQuery(sqlOf("acceptance_spans")).
 		WithArgs(span.From, span.To).
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TEAM", "L", "C", "A"}).
 			AddRow("PICSATU", " LEADER ", lod, committee, accepted))
@@ -574,7 +685,7 @@ func TestClosureSpansMapsDates(t *testing.T) {
 	span := picSpan()
 	registered := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
 	closed := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
-	mock.ExpectQuery(picSQLOf("closure_spans", reportkpi.LineNonMBU)).
+	mock.ExpectQuery(sqlOf("closure_spans")).
 		WithArgs(span.From, span.To).
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TEAM", "R", "C"}).
 			AddRow("PICDUA", "MEMBER", registered, closed))
@@ -611,15 +722,15 @@ func TestPICReadersPropagateErrors(t *testing.T) {
 		{"progress_counts", picSQLOf("progress_counts", span.Line),
 			func() *sqlmock.Rows { return sqlmock.NewRows([]string{"A", "B", "C"}).AddRow("P", 1.0, 1.0) },
 			func(r *Repo) error { _, err := r.ProgressCounts(context.Background(), span); return err }},
-		{"analysis_spans", picSQLOf("analysis_spans", span.Line),
+		{"analysis_spans", sqlOf("analysis_spans"),
 			func() *sqlmock.Rows { return sqlmock.NewRows([]string{"A", "B", "C"}).AddRow("P", day, day) },
 			func(r *Repo) error { _, err := r.AnalysisSpans(context.Background(), span); return err }},
-		{"acceptance_spans", picSQLOf("acceptance_spans", span.Line),
+		{"acceptance_spans", sqlOf("acceptance_spans"),
 			func() *sqlmock.Rows {
 				return sqlmock.NewRows([]string{"A", "B", "C", "D", "E"}).AddRow("P", "T", day, day, day)
 			},
 			func(r *Repo) error { _, err := r.AcceptanceSpans(context.Background(), span); return err }},
-		{"closure_spans", picSQLOf("closure_spans", span.Line),
+		{"closure_spans", sqlOf("closure_spans"),
 			func() *sqlmock.Rows { return sqlmock.NewRows([]string{"A", "B", "C", "D"}).AddRow("P", "T", day, day) },
 			func(r *Repo) error { _, err := r.ClosureSpans(context.Background(), span); return err }},
 	}
@@ -649,8 +760,10 @@ func TestPICReadersPropagateErrors(t *testing.T) {
 
 func TestCheckBandsDetectsDirectionGapsAndOverlaps(t *testing.T) {
 	repo, mock := newMockRepo(t)
+	// Catatan dikirim DUA KALI: kuerinya memakai dua penanda untuk satu nilai, karena
+	// driver mengikat menurut urutan kemunculan. Lihat TestTidakAdaPenandaBindBerulang.
 	mock.ExpectQuery(sqlOf("bands")).
-		WithArgs(reportkpi.JobProgress, nil).
+		WithArgs(reportkpi.JobProgress, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"JOB", "VALUE", "BOTTOM", "TOP", "NOTE"}).
 			AddRow("P", 5.0, 0.0, 20.0, nil).
 			AddRow("P", 4.0, 20.0, 25.0, nil).  // bersambung

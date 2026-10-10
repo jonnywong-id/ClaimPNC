@@ -110,7 +110,15 @@ var tabs = []Tab{
 			{Key: FieldBranchName, Title: "Nama Cabang"},
 			{Key: FieldAdminName, Title: "Nama Admin"},
 			{Key: FieldComplianceSentDate, Title: "Tanggal Kirim Compliance"},
-			{Key: FieldAging, Title: "Aging"},
+			// "Lama Waktu Klaim", bukan "Aging".
+			//
+			// Judulnya dikoreksi 2026-10-07 setelah layar Pega dibandingkan berdampingan:
+			// di sana kolom kedelapan berjudul **Lama Waktu Klaim**. "Aging" adalah nama
+			// yang dipakai di dalam kode kita — bukan yang dibaca pengguna — dan `D-13`
+			// menetapkan judul layar ditiru apa adanya.
+			//
+			// Kuncinya tetap `aging`, karena ia nama internal dan bukan kontrak layar.
+			{Key: FieldAging, Title: "Lama Waktu Klaim"},
 		},
 		Available: true,
 	},

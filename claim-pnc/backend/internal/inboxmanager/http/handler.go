@@ -262,6 +262,11 @@ func readQuery(r *http.Request) inboxmanager.QueryInput {
 			Page: atoiOrZero(query.Get("halaman")),
 			Size: atoiOrZero(query.Get("ukuran")),
 		},
+
+		// Kedua penyaring grid ketiga tab Outstanding. Kosong berarti "All", sama seperti
+		// pilihan bawaan di layar lama.
+		Reinsurer:  strings.TrimSpace(query.Get("reinsurer")),
+		CategoryOS: strings.TrimSpace(query.Get("kategori_os")),
 	}
 
 	return input

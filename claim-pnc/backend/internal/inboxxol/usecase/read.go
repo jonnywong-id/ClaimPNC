@@ -82,10 +82,35 @@ type ClaimOverview struct {
 	Rows   []inboxxol.ClaimSummary
 }
 
-// SummarizeClaims merakit grid "DATA XOL BASED ON DOL AND COL" untuk satu perjanjian.
+// SummarizeClaims merakit grid "DATA XOL BASED ON DOL AND COL".
 //
-// Urutannya mengikuti `GetClaimXOL`: daftar master lebih dulu, lalu akumulasi klaim
-// perjanjian yang dipilih, lalu nilainya dibagi kurs perjanjian itu.
+// # Tanpa masterID, ia mengakumulasi SELURUH perjanjian
+//
+// Itulah perilaku sistem lama, dan ia terbaca langsung dari struktur
+// `Activity/GetClaimXOL-Act.xml`:
+//
+//	step 3		RDB-List ke page `MstXOL`		seluruh perjanjian XOL
+//	step 4		loop `MstXOL.pxResults`			tanpa batas awal maupun akhir
+//	step 4.2	TempMst.* := perjanjian putaran ini	tahun · kurs · group business
+//	step 4.3	RDB-List GetDataXOL_Calulation		akumulasi perjanjian itu
+//	step 4.4	AdjustmentList(<APPEND>)		hasilnya DITAMBAHKAN, bukan diganti
+//
+// Jadi grid itu GABUNGAN seluruh perjanjian, masing-masing dibagi kursnya sendiri
+// (`local.kurs := .AcceptedNo`, diambil ulang tiap putaran). Tidak ada perjanjian
+// "terpilih" sama sekali — dan itu sebabnya layar lama tidak punya pemilih perjanjian,
+// serta gridnya sudah terisi begitu dibuka.
+//
+// # Baris kembar TIDAK digabung
+//
+// Dua perjanjian yang menanggung group business sama pada tahun sama menghasilkan dua
+// baris ber-Tanggal Kejadian dan Penyebab Kerugian sama. Sistem lama membiarkannya, dan
+// itu benar: nilainya dibagi kurs yang berbeda, sehingga menjumlahkannya berarti
+// menjumlahkan dua mata uang.
+//
+// # Dengan masterID, ia menyaring satu perjanjian
+//
+// Jalur itu dipertahankan untuk rincian di balik satu baris, yang memang perlu tahu
+// perjanjian asalnya.
 func (s *Service) SummarizeClaims(
 	ctx context.Context,
 	portalAlias string,
@@ -95,20 +120,54 @@ func (s *Service) SummarizeClaims(
 	if strings.TrimSpace(caller.Login) == "" {
 		return ClaimOverview{}, inboxxol.ErrCallerUnknown
 	}
-	if violation := requireValue(inboxxol.FieldMasterID, masterID, "Perjanjian XOL wajib dipilih."); violation != nil {
-		return ClaimOverview{}, violation
-	}
 
 	repo, err := s.repoFor(portalAlias)
 	if err != nil {
 		return ClaimOverview{}, err
 	}
 
-	master, err := findMaster(ctx, repo, masterID)
+	wanted := strings.TrimSpace(masterID)
+
+	masters, err := repo.ListMasterXOL(ctx)
 	if err != nil {
-		return ClaimOverview{}, err
+		return ClaimOverview{}, fmt.Errorf("inboxxol/usecase: daftar perjanjian XOL: %w", err)
 	}
 
+	if wanted != "" {
+		master, found := pickMaster(masters, wanted)
+		if !found {
+			return ClaimOverview{}, inboxxol.ErrMasterNotFound
+		}
+		rows, err := s.rowsOf(ctx, repo, master)
+		if err != nil {
+			return ClaimOverview{}, err
+		}
+		return ClaimOverview{Master: master, Rows: rows}, nil
+	}
+
+	// Kapasitas tidak dipesan di muka. Berapa baris yang dihasilkan tiap perjanjian tidak
+	// dapat ditebak dari jumlah perjanjian, dan menebaknya hanya memindahkan alokasi,
+	// bukan menghapusnya.
+	all := make([]inboxxol.ClaimSummary, 0)
+	for _, master := range masters {
+		rows, err := s.rowsOf(ctx, repo, master)
+		if err != nil {
+			return ClaimOverview{}, err
+		}
+		all = append(all, rows...)
+	}
+
+	return ClaimOverview{Rows: all}, nil
+}
+
+// rowsOf mengakumulasi klaim SATU perjanjian, sudah dibagi kurs perjanjian itu.
+//
+// Ia padanan satu putaran step 4 pada `GetClaimXOL`.
+func (s *Service) rowsOf(
+	ctx context.Context,
+	repo inboxxol.Repo,
+	master inboxxol.MasterXOL,
+) ([]inboxxol.ClaimSummary, error) {
 	filter := inboxxol.ClaimFilter{
 		Year:             master.Year,
 		BusinessGroupIDs: master.BusinessGroupIDs(),
@@ -118,24 +177,34 @@ func (s *Service) SummarizeClaims(
 	// dijawab daftar kosong, BUKAN galat: master seperti itu memang ada — ia baru
 	// dibuat dan belum diisi — dan menolaknya akan membuat layar tampak rusak.
 	if filter.Empty() {
-		return ClaimOverview{Master: master}, nil
+		return nil, nil
 	}
 
 	rows, err := repo.SummarizeClaims(ctx, filter)
 	if err != nil {
-		return ClaimOverview{}, fmt.Errorf("inboxxol/usecase: akumulasi klaim: %w", err)
+		return nil, fmt.Errorf("inboxxol/usecase: akumulasi klaim: %w", err)
 	}
 
 	businessGroupNames := master.BusinessGroupNames()
 	for i := range rows {
 		// Nama group business TIDAK datang dari kueri akumulasi — sistem lama mengisinya
-		// dari master yang sedang dipilih, sehingga seluruh baris bernilai sama.
+		// dari `TempMst.Currency`, yaitu nama group business perjanjian putaran itu.
+		rows[i].MasterID = master.ID
 		rows[i].BusinessGroup = businessGroupNames
 		rows[i].OutstandingValue = convert(rows[i].OutstandingValue, master.ExchangeRate)
 		rows[i].AcceptedValue = convert(rows[i].AcceptedValue, master.ExchangeRate)
 	}
+	return rows, nil
+}
 
-	return ClaimOverview{Master: master, Rows: rows}, nil
+// pickMaster mencari satu perjanjian di dalam daftar yang sudah dimuat.
+func pickMaster(masters []inboxxol.MasterXOL, masterID string) (inboxxol.MasterXOL, bool) {
+	for _, master := range masters {
+		if strings.TrimSpace(master.ID) == masterID {
+			return master, true
+		}
+	}
+	return inboxxol.MasterXOL{}, false
 }
 
 // Breakdown mengembalikan rincian di balik satu baris grid utama.
@@ -355,4 +424,211 @@ func appendRequired(violations []inboxxol.Violation, field, value, message strin
 		return append(violations, inboxxol.Violation{Field: field, Message: message})
 	}
 	return violations
+}
+
+// SummarizeBusiness merakit grid "Summary Data XOL" pada layar rincian.
+//
+// Penyaringnya hanya Tanggal Kejadian dan Penyebab Kerugian — keduanya milik baris yang
+// sedang dibuka, bukan milik perjanjian XOL. Grid ini justru yang menyebutkan group
+// business mana saja yang terlibat, sehingga menyaringnya dengan group business akan
+// menghapus satu-satunya hal yang ia sampaikan.
+func (s *Service) SummarizeBusiness(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxxol.Caller,
+	lossDate string,
+	causeOfLoss string,
+) ([]inboxxol.SummaryBusiness, error) {
+	if strings.TrimSpace(caller.Login) == "" {
+		return nil, inboxxol.ErrCallerUnknown
+	}
+
+	var violations []inboxxol.Violation
+	violations = appendRequired(violations, inboxxol.FieldLossDate, lossDate,
+		"Tanggal Kejadian wajib diisi.")
+	violations = appendRequired(violations, inboxxol.FieldCauseOfLoss, causeOfLoss,
+		"Penyebab Kerugian wajib diisi.")
+	if len(violations) > 0 {
+		return nil, inboxxol.NewValidationError(violations)
+	}
+
+	repo, err := s.repoFor(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := repo.SummarizeBusiness(ctx, inboxxol.SummaryFilter{
+		LossDate:    lossDate,
+		CauseOfLoss: causeOfLoss,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("inboxxol/usecase: summary data XOL: %w", err)
+	}
+	return rows, nil
+}
+
+// ListClaims merakit grid "No Klaim" pada layar rincian.
+//
+// Di sistem lama ia diisi `ShowDataKlaimXOLKlaimBeforeGenerated`, activity di balik DUA
+// tombol sekaligus: "Pilih" pada grid Master tahun XOL, dan "Show All Data". Keduanya
+// memuat daftar yang SAMA — penyaringnya hanya Tanggal Kejadian dan Penyebab Kerugian,
+// bukan perjanjian yang dipilih.
+func (s *Service) ListClaims(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxxol.Caller,
+	lossDate string,
+	causeOfLoss string,
+) ([]inboxxol.ClaimListItem, error) {
+	if strings.TrimSpace(caller.Login) == "" {
+		return nil, inboxxol.ErrCallerUnknown
+	}
+
+	var violations []inboxxol.Violation
+	violations = appendRequired(violations, inboxxol.FieldLossDate, lossDate,
+		"Tanggal Kejadian wajib diisi.")
+	violations = appendRequired(violations, inboxxol.FieldCauseOfLoss, causeOfLoss,
+		"Penyebab Kerugian wajib diisi.")
+	if len(violations) > 0 {
+		return nil, inboxxol.NewValidationError(violations)
+	}
+
+	repo, err := s.repoFor(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := repo.ListClaims(ctx, inboxxol.ClaimListFilter{
+		LossDate:    lossDate,
+		CauseOfLoss: causeOfLoss,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("inboxxol/usecase: daftar klaim XOL: %w", err)
+	}
+	return rows, nil
+}
+
+// ExportClaimDetail merakit isi berkas "Export to Excel" pada layar rincian.
+//
+// Group business menentukan KUERI MANA yang dipakai — lihat inboxxol.ExportFilter. Ia
+// wajib diisi; tanpa itu tidak ada cabang yang dapat dipilih.
+func (s *Service) ExportClaimDetail(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxxol.Caller,
+	filter inboxxol.ExportFilter,
+) (inboxxol.ExportTable, error) {
+	if strings.TrimSpace(caller.Login) == "" {
+		return inboxxol.ExportTable{}, inboxxol.ErrCallerUnknown
+	}
+
+	var violations []inboxxol.Violation
+	violations = appendRequired(violations, inboxxol.FieldLossDate, filter.LossDate,
+		"Tanggal Kejadian wajib diisi.")
+	violations = appendRequired(violations, inboxxol.FieldCauseOfLoss, filter.CauseOfLoss,
+		"Penyebab Kerugian wajib diisi.")
+	violations = appendRequired(violations, inboxxol.FieldBusinessGroup, filter.BusinessGroupID,
+		"Group business wajib diisi.")
+	if len(violations) > 0 {
+		return inboxxol.ExportTable{}, inboxxol.NewValidationError(violations)
+	}
+
+	repo, err := s.repoFor(portalAlias)
+	if err != nil {
+		return inboxxol.ExportTable{}, err
+	}
+
+	table, err := repo.ExportClaimDetail(ctx, filter)
+	if err != nil {
+		return inboxxol.ExportTable{}, fmt.Errorf("inboxxol/usecase: export rincian: %w", err)
+	}
+	return table, nil
+}
+
+// UploadSalvageMBU menyimpan berkas unggahan "Upload MBU Salvage".
+//
+// # Urutan pemeriksaannya, dan kenapa begitu
+//
+// Baris diperiksa SATU PER SATU dan yang gagal dilewati, bukan menggugurkan berkas. Itu
+// perilaku sistem lama: `Activity/ConvertDataCsvSalvageMBUToPage-Act.xml:905` melewati
+// baris tanpa Cause Of Loss atau Date Of Loss, lalu melanjutkan ke baris berikutnya.
+//
+// Yang menggugurkan berkas hanyalah kegagalan BENTUK — judul kolom tidak lengkap, berkas
+// bukan CSV, berkas kosong — dan itu ditangani ParseSalvageUpload sebelum sampai ke sini.
+func (s *Service) UploadSalvageMBU(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxxol.Caller,
+	rows []inboxxol.SalvageUploadRow,
+) (inboxxol.SalvageUploadResult, error) {
+	if strings.TrimSpace(caller.Login) == "" {
+		return inboxxol.SalvageUploadResult{}, inboxxol.ErrCallerUnknown
+	}
+
+	repo, err := s.repoFor(portalAlias)
+	if err != nil {
+		return inboxxol.SalvageUploadResult{}, err
+	}
+
+	result := inboxxol.SalvageUploadResult{Rows: len(rows)}
+	insert := make([]inboxxol.SalvageInsert, 0, len(rows))
+
+	// Mata uang yang sama berulang di hampir setiap baris; hasilnya diingat supaya berkas
+	// 500 baris tidak menembak 500 kueri yang jawabannya sama.
+	currencyID := map[string]string{}
+
+	for _, row := range rows {
+		if reason := row.ShapeViolation(); reason != "" {
+			result.Rejected = append(result.Rejected, row.Reject(reason))
+			continue
+		}
+
+		outstanding, accepted, convErr := row.Amounts()
+		if convErr != nil {
+			result.Rejected = append(result.Rejected, row.Reject(convErr.Error()))
+			continue
+		}
+
+		key := strings.ToUpper(strings.TrimSpace(row.Currency))
+		id, cached := currencyID[key]
+		if !cached {
+			id, err = repo.CurrencyIDByName(ctx, row.Currency)
+			if err != nil {
+				return inboxxol.SalvageUploadResult{},
+					fmt.Errorf("inboxxol/usecase: unggah MBU salvage: %w", err)
+			}
+			currencyID[key] = id
+		}
+		if id == "" {
+			result.Rejected = append(result.Rejected,
+				row.Reject(fmt.Sprintf("Mata uang tidak dikenal: %q.", row.Currency)))
+			continue
+		}
+
+		insert = append(insert, inboxxol.SalvageInsert{
+			ClaimNo:      row.ClaimNo,
+			DateOfLoss:   row.DateOfLoss,
+			CurrencyID:   id,
+			SalvageOS:    outstanding,
+			SalvageAksep: accepted,
+			CauseOfLoss:  row.CauseOfLoss,
+			// Selalu MBU; sistem lama pun menuliskannya sebagai literal, bukan membacanya
+			// dari berkas.
+			BusinessGroupID: inboxxol.ExportBusinessGroupMBU,
+		})
+	}
+
+	// Berkas yang SELURUH barisnya ditolak dijawab hasilnya, bukan galat. Pengguna perlu
+	// melihat sebab tiap barisnya untuk memperbaiki berkasnya — galat tunggal tidak
+	// memberi tahu baris mana yang salah.
+	if len(insert) == 0 {
+		return result, nil
+	}
+
+	if err := repo.UploadSalvageMBU(ctx, insert); err != nil {
+		return inboxxol.SalvageUploadResult{},
+			fmt.Errorf("inboxxol/usecase: unggah MBU salvage: %w", err)
+	}
+	result.Inserted = len(insert)
+	return result, nil
 }

@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { callAPI } from '@/api/client'
 import type {
-  PanelDecisionInput,
-  PanelDecisionResponse,
+  PanelDocumentResponse,
+  PanelImportResponse,
   PanelInput,
   PanelListResponse,
   PanelOptionsResponse,
@@ -13,7 +13,6 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 const ROUTE = '/api/master/panel'
-const ROUTE_DECISION = '/api/master/panel/keputusan'
 const ROUTE_OPTIONS = '/api/master/panel/pilihan'
 
 /**
@@ -140,30 +139,168 @@ export function useSavePanel() {
   })
 }
 
+
 /**
- * Hook keputusan borongan.
+ * documentKey menyertakan portal, token, dan ID panelnya.
  *
- * SATU permintaan untuk seluruh baris yang dicentang, bukan satu per baris. Bentuknya
- * mengikuti `Activity/SetApprovalAllMaster` beserta layarnya
- * `Section/ApprovalMasterPanelHE-Section.xml`, yang menyediakan satu isian Catatan untuk
- * seluruh pilihan — memecahnya menjadi sederet permintaan akan mengubah operasi yang di
- * Pega utuh menjadi sesuatu yang dapat gagal separuh jalan.
+ * Portal ikut dengan alasan yang sama seperti daftar: dokumen sebuah panel hidup di basis
+ * data entitasnya, dan cache yang tidak membedakannya akan menampilkan dokumen badan hukum
+ * lain tanpa satu pun tanda di layar (R-20).
  */
-export function useDecidePanel() {
+function documentKey(portal: string | null, token: string | null, id: string) {
+  return ['master-panel-dokumen', portal, token, id] as const
+}
+
+/**
+ * Hook pembaca dokumen satu panel.
+ *
+ * 404 adalah jawaban yang WAJAR di sini — panel yang belum punya dokumen menjawab
+ * `dokumen_belum_ada` — sehingga kegagalannya tidak diperlakukan sebagai galat layar
+ * melainkan sebagai "belum ada". Karena itu pula ia tidak dicoba ulang: mengulangi tiga
+ * kali hanya memperlambat panel tanpa mengubah jawabannya.
+ */
+export function usePanelDocument(id: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: documentKey(portal, token, id ?? ''),
+    queryFn: () =>
+      callAPI<PanelDocumentResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}/dokumen`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && id !== null && id !== '',
+    retry: false,
+  })
+}
+
+/**
+ * Hook unggah dokumen panel — jalurnya berujung di GCS.
+ *
+ * Backend meneruskannya ke modul `dokumenpenunjang` lewat adapter
+ * `masterpanel/repo/dokumenlink`: konversi gambar, izin akses, lalu
+ * `POST /api/v1/upload` ke layanan penyimpanan internal. Yang tersimpan di basis data kita
+ * hanya metadata beserta `IMAGEID` (`D-16`).
+ *
+ * Badannya `FormData`, bukan JSON base64 — base64 membengkakkan muatan sekitar sepertiga,
+ * dan `callAPI` sudah menangani FormData termasuk membiarkan peramban yang menulis
+ * `Content-Type` beserta boundary-nya.
+ *
+ * Dua kunci cache dibuang sesudah berhasil, dan keduanya perlu: dokumen panel itu karena
+ * isinya memang berganti, dan seluruh daftar karena `DOKUMENID` adalah kolom pada baris
+ * panelnya sendiri.
+ */
+export function useUploadPanelDocument() {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
   const client = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: PanelDecisionInput) =>
-      callAPI<PanelDecisionResponse>(ROUTE_DECISION, {
+    mutationFn: ({ id, file, note }: { id: string; file: File; note: string }) => {
+      const body = new FormData()
+      body.append('berkas', file)
+      if (note.trim() !== '') body.append('catatan', note.trim())
+      return callAPI<PanelDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
         metode: 'POST',
-        body: input,
+        body,
         token,
         portal,
-      }),
+      })
+    },
     onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['master-panel-dokumen'] })
       client.invalidateQueries({ queryKey: ['master-panel'] })
     },
   })
 }
+/**
+ * Hook unggah CSV master panel — padanan `Activity/PNCUploadMasterPanel_Act`.
+ *
+ * Kuncinya NAMA (`upper(trim(name))` pada `ValidationMasterPanel`), dan setiap baris
+ * menentukan sendiri apakah ia menambah atau memperbarui. Baris hasil unggah masuk antrean
+ * persetujuan — `TempPanel.APPROVAL := "0"` tanpa syarat.
+ *
+ * Berkasnya DIKIRIM SEKETIKA, berbeda dari unggah dokumen yang menunggu Simpan: ia membawa
+ * kuncinya sendiri, dan tidak ada satu panel pun yang sedang disunting saat berkas berisi
+ * tiga ratus baris diunggah.
+ */
+export function useImportPanelCSV() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('berkas', file)
+      return callAPI<PanelImportResponse>(`${ROUTE}/unggah-csv`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      // SELURUH daftar dibuang, bukan tab yang sedang dibuka saja: baris hasil unggah masuk
+      // antrean persetujuan, sehingga yang berubah justru tab Waiting Approval — tab yang
+      // TIDAK sedang dilihat pengguna saat ia mengunggah dari tab Approve.
+      client.invalidateQueries({ queryKey: ['master-panel'] })
+    },
+  })
+}
+
+/**
+ * Hook unggah CSV lokasi panel — padanan `Activity/PNCUploadLokasiSisiPanel_Act`.
+ *
+ * Ia MENAMBAH lokasi, tidak mengganti: Pega memakai `LOKASI(<APPEND>)` dan menyalin seluruh
+ * isian induk dari panel yang ditemukan, sehingga lokasi lama tetap utuh. Tautan dokumennya
+ * pun dipertahankan (`CoverID` disalin), berbeda dari jalur master.
+ */
+export function useImportLocationCSV() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append('berkas', file)
+      return callAPI<PanelImportResponse>(`${ROUTE}/unggah-csv-lokasi`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      })
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ['master-panel-dokumen'] })
+    },
+  })
+}
+/*
+  Ketiga unggahan layar Pega kini lengkap di sini: dokumen, master panel, dan lokasi panel.
+
+  Aturan ketiganya diturunkan dari activity yang ADA di export — `UploadDocument`,
+  `PNCUploadMasterPanel_Act`, dan `PNCUploadLokasiSisiPanel_Act` — bukan dari Flow Action
+  pemanggilnya, yang memang hilang tetapi hanya memuat pemilih berkas.
+
+  Satu perilaku Pega SENGAJA tidak ditiru, dan itu keputusan terbuka: unggah CSV master
+  menautkan berkas CSV-nya sendiri sebagai dokumen ke SETIAP baris yang disentuhnya
+  (`TempPanel.CoverID := tempDocumentPanel.CaseID`), sehingga baris yang sudah punya dokumen
+  kehilangan tautannya. Jalur lokasi justru MEMPERTAHANKAN tautan itu. Asimetrinya dicatat
+  di docs/keputusan-implementasi.md; Work Owner yang memutuskan apakah ia ditiru.
+*/
+
+/*
+  TIDAK ADA hook keputusan di sini, dan itu disengaja.
+
+  Layar Master Panel di Pega tidak punya persetujuan sama sekali: ketiga tabnya hanya
+  punya Simpan, Ubah, dan Upload Document, serta nol `pySelected`. Approve dan Reject ada
+  di `Section/ApprovalMasterPanelHE`, yang dimuat layar Inbox Manager.
+
+  Endpoint `POST /api/master/panel/keputusan` TETAP ADA di backend — ia padanan
+  `Activity/SetApprovalAllMaster` dengan `Param.TIPE2 = "M_PANEL_HE"`, dan Inbox Manager
+  akan memakainya begitu dibangun. Yang dihapus hanyalah pemanggilnya dari layar ini.
+*/

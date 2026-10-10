@@ -11,7 +11,6 @@ import { BandingHargaTabs } from './BandingHargaTabs'
 import { DecisionConfirm } from './DecisionConfirm'
 import { DecisionPanel } from './DecisionPanel'
 import { DocumentPanel } from './DocumentPanel'
-import { StatusSummary } from './StatusSummary'
 import {
   useBandingHargaSalvageList,
   useBandingHargaSalvageMetadata,
@@ -71,7 +70,8 @@ type PendingDecision = { row: AppealRow; approve: boolean }
  * menyatakannya lewat `antrean.catatan_perwakilan` dan `antrean.catatan_giliran`.
  *
  * KETIGA — angka pada tabel ringkas SAMA dengan jumlah baris gridnya. Di layar lama keduanya
- * berbeda, dan perbaikan itu dinyatakan lewat `selisih_terencana`.
+ * berbeda; perbaikannya tercatat di `PlannedDifferences()` pada backend, dan TIDAK lagi
+ * digambar di layar (lihat catatan pengembangan §84.9).
  *
  * KEEMPAT, dan yang paling mahal bila terlewat — menekan Approve **tidak selalu mengubah
  * harga barang**, dan **tidak pernah** memberi tahu balai lelang. Yang pertama perilaku layar
@@ -83,15 +83,6 @@ type PendingDecision = { row: AppealRow; approve: boolean }
 export function InboxBandingHargaSalvagePage() {
   const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
   const [page, setPage] = useState(1)
-
-  /**
-   * Nomor klaim yang panel riwayatnya sedang terbuka. Kosong berarti tertutup.
-   *
-   * Disimpan di layar, bukan di alamat: panel ini dibuka dan ditutup berulang kali sambil
-   * menelusuri satu halaman, dan menaruhnya di alamat akan membuat tombol kembali menempuh
-   * setiap pembukaan itu satu per satu.
-   */
-  const [riwayatKlaim, setRiwayatKlaim] = useState('')
 
   /** Baris yang sedang ditegaskan keputusannya, dan hasil keputusan terakhir. */
   const [pending, setPending] = useState<PendingDecision | null>(null)
@@ -117,7 +108,6 @@ export function InboxBandingHargaSalvagePage() {
     const timer = setTimeout(() => {
       setFilter((previous) => ({ ...previous, cari: draft }))
       setPage(1)
-      setRiwayatKlaim('')
     }, 350)
     return () => clearTimeout(timer)
   }, [draft, filter.cari])
@@ -141,10 +131,6 @@ export function InboxBandingHargaSalvagePage() {
     setFilter({ ...EMPTY_FILTER, tab: code })
     setDraft('')
     setPage(1)
-
-    // Panel riwayat ikut ditutup. Ia milik satu klaim pada satu daftar; membiarkannya
-    // terbuka setelah berpindah tab menampilkan rincian baris yang tidak lagi terlihat.
-    setRiwayatKlaim('')
 
     // Kotak penegasan ikut ditutup, karena barisnya tidak lagi terlihat. Pesan hasil TIDAK
     // ikut dibuang: pengguna yang baru saja menyetujui sesuatu lalu berpindah ke History
@@ -195,28 +181,53 @@ export function InboxBandingHargaSalvagePage() {
   const info = list.data?.paginasi
   const queue = list.data?.antrean ?? summary.data?.antrean
 
+  const sedangMemuat = list.isFetching || summary.isFetching
+
   return (
-    <PageFrame>
+    <PageFrame
+      actions={
+        <Button tone="kedua" onClick={refreshAll} disabled={sedangMemuat}>
+          {sedangMemuat ? 'Memuat…' : 'Refresh'}
+        </Button>
+      }
+    >
       <QueueNotices queue={queue} />
       <DecisionResultNotice message={hasil} onDismiss={() => setHasil('')} />
 
+      {/*
+        Tabel ringkas "Status Salvage / Jumlah" TIDAK digambar lagi (Work Owner, 2026-10-05).
+
+        Ia berdiri tepat di atas bilah tab dengan kedua barisnya dapat diklik untuk berpindah
+        antrean — dua kendali berlabel sama persis, berurutan, untuk satu sakelar yang sama.
+
+        Pemeriksaan ke Pega membenarkan pembuangannya dua kali: `Section/InboxReqSalvageASM`
+        memuat NOL "Jumlah" (tabel itu milik layar Inbox Salvage, `MENU_ID 71`), dan
+        `Activity/GCNMCountRequestSalvage_act` yang memasok angkanya tidak dipanggil harness
+        maupun section mana pun.
+
+        Angkanya tidak hilang — ia menjadi lencana pada tabnya.
+      */}
       <div className="mt-4">
-        <StatusSummary
-          rows={summary.data?.baris ?? []}
+        <BandingHargaTabs
+          tabs={tabs}
           active={active}
           onSelect={selectTab}
-          isLoading={summary.isPending}
+          counts={summary.data?.baris ?? []}
         />
-      </div>
-
-      <div className="mt-4">
-        <BandingHargaTabs tabs={tabs} active={active} onSelect={selectTab} />
       </div>
 
       {tab && (
         <>
-          <p className="mt-3 text-sm text-slate-600">{tab.keterangan}</p>
+          {/*
+            Keterangan tab TIDAK digambar (Work Owner, 2026-10-05).
 
+            Isinya menjelaskan apa yang sudah dinyatakan nama tabnya sendiri — "Request
+            Banding Harga" dan "History Cheker" — lalu menambahkan rincian model data
+            ("Barisnya PENGAJUAN, bukan barang") yang hanya berarti bagi yang membangunnya.
+
+            Datanya tetap dikirim server (`tab.keterangan`); yang berubah hanya siapa yang
+            melihatnya, sama seperti kedua blok catatan di bawah tabel.
+          */}
           <SearchBar
             label={meta.data?.label_cari ?? 'Cari No Klaim'}
             placeholder={meta.data?.petunjuk_cari ?? ''}
@@ -226,7 +237,7 @@ export function InboxBandingHargaSalvagePage() {
 
           <div className="mt-4">
             <DataTable<AppealRow>
-              columns={columnsFor(tab, setRiwayatKlaim, setDokumen, (row, approve) => {
+              columns={columnsFor(tab, setDokumen, (row, approve) => {
                 setPending({ row, approve })
 
                 // Pesan hasil sebelumnya dibuang saat keputusan BARU dimulai. Membiarkannya
@@ -238,19 +249,53 @@ export function InboxBandingHargaSalvagePage() {
               rowKey={rowKeyFor(tab)}
               title={tab.nama}
               label={`Daftar ${tab.nama}`}
-              actions={
-                <Button
-                  tone="kedua"
-                  onClick={refreshAll}
-                  disabled={list.isFetching || summary.isFetching}
-                >
-                  Refresh
-                </Button>
-              }
               // Kotak cari bawaan disembunyikan: layar ini punya kotaknya sendiri di atas,
               // dan yang kedua hanya akan menyaring halaman yang sedang terbuka — hasilnya
               // menyesatkan pada data berhalaman.
+              // Kolom tetap tergambar meski antreannya kosong, sama seperti Pega: di
+              // sana grid selalu menampilkan kepalanya, dan pesan "tidak ada baris"
+              // muncul DI DALAM tabel. Tanpa ini, antrean kosong menyembunyikan pula
+              // kolom mana saja yang ada — dan pengguna kehilangan satu-satunya petunjuk
+              // bahwa ia sedang melihat tab yang benar.
+              showHeaderWhenEmpty
               hideSearch
+              /*
+                Jarak sel dirapatkan.
+
+                Grid Request memuat SEPULUH kolom — sembilan kolom data ditambah kolom aksi —
+                dan dengan jarak baku `px-5` keduanya memakan 2,5rem per kolom, yakni 25rem
+                hanya untuk ruang kosong di kiri-kanan isinya. Akibatnya setiap judul pecah
+                dua baris ("Tanggal / Request", "Harga / Barang", …) pada layar biasa.
+
+                Mode rapat memangkasnya menjadi `px-3`, membebaskan sekitar 10rem. Ia memang
+                dibuat untuk ini — "grid yang harus muat SATU LAYAR tanpa gulir menyamping"
+                (permintaan Work Owner 2026-09-29, mula-mula untuk Inbox Auto Claim yang
+                berkolom tujuh).
+              */
+              dense
+              /*
+                Rincian keputusan mengembang DI DALAM barisnya, dan hanya pada grid History.
+
+                Begitulah Pega membukanya: grid itu berkonfigurasi `pyEditingMode = expandPane`
+                dengan `pyEditAction = DetailHistoryRequestSalvage`, dan ia TIDAK punya kolom
+                aksi sama sekali. `DataTable.expandedRow` menirukannya persis — barisnya
+                menjadi `role="button"`, dapat dibuka Enter maupun Spasi, dan ber-`aria-expanded`.
+
+                Grid Request tidak diberi ini. Pega pun punya `expandPane` di sana
+                (`ShowDetailSalvageInboxOSClose`), tetapi rule-nya TIDAK ADA di export — lihat
+                `permintaan-artefak-pega.md`. Memberinya panel yang isinya ditebak akan
+                menampilkan rincian yang tidak pernah ada di layar lama.
+              */
+              {...(tab && isHistoryTab(tab)
+                ? {
+                    expandedRow: (row: AppealRow) => (
+                      <DecisionPanel
+                        claimNo={row.no_klaim}
+                        columns={meta.data?.kolom_rincian ?? []}
+                      />
+                    ),
+                  }
+                : {})}
               isLoading={list.isPending}
               error={
                 list.isError ? (
@@ -285,33 +330,55 @@ export function InboxBandingHargaSalvagePage() {
                 setHasil(message)
               }}
             />
-            <DecisionPanel
-              claimNo={riwayatKlaim}
-              columns={meta.data?.kolom_rincian ?? []}
-              onClose={() => setRiwayatKlaim('')}
-            />
           </div>
         </>
       )}
 
-      <Notes
-        title="Yang sengaja berbeda dari layar lama"
-        lines={meta.data?.selisih_terencana ?? []}
-      />
-      <Notes title="Yang belum tersedia" lines={meta.data?.keterbatasan ?? []} />
+      {/*
+        Kedua blok catatan di bawah tabel DICABUT dari layar (Work Owner, 2026-10-05) —
+        termasuk "Yang belum tersedia". Isinya menyebut nama rule Pega, nama kolom Oracle, dan
+        nomor keputusan: tulisan untuk pengembang, bukan untuk petugas klaim.
+
+        `keterbatasan` TETAP dikirim server dan tetap dipakai uji kesetaraan gerbang 1
+        (`D-54`); yang dicabut hanya penggambarannya.
+      */}
     </PageFrame>
   )
 }
 
-function PageFrame({ children }: { children: ReactNode }) {
+/**
+ * Kerangka halaman — judul, keterangan, dan tempat tombol di sebelah kanannya.
+ *
+ * # Kenapa tombol Refresh ada DI SINI, bukan di dalam tabel
+ *
+ * Karena begitulah mayoritas layar aplikasi ini menempatkannya. Pindaian seluruh modul
+ * (2026-10-05) menemukan dua pola hidup berdampingan, dan yang satu jauh lebih banyak:
+ *
+ *	di header halaman, berlabel "Refresh"       28
+ *	di dalam tabel (`actions=`), "Muat ulang"   11
+ *	di dalam tabel, "Refresh"                    8
+ *	di header halaman, "Muat ulang"              2
+ *
+ * Layar ini semula memakai pola kedua. Dipindahkan ke pola pertama atas permintaan Work
+ * Owner (2026-10-05), dan labelnya tidak berubah karena "Refresh" memang pasangan lazim
+ * penempatan ini.
+ *
+ * Catatan: "Refresh" BUKAN literal Pega di sini — harness-nya hanya memuat `pyRefresh` dan
+ * `pyRefreshWhen`, yakni nama elemen, bukan label tombol. Karena tidak ada literal yang
+ * disalin, yang berlaku konvensi aplikasi (lihat label tombol pada kolom Aksi).
+ */
+function PageFrame({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Banding Harga Salvage</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Banding harga dari balai lelang atas barang salvage: yang menunggu keputusan Anda,
-          dan yang sudah Anda putuskan.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Inbox Banding Harga Salvage</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Banding harga dari balai lelang atas barang salvage: yang menunggu keputusan Anda,
+            dan yang sudah Anda putuskan.
+          </p>
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </header>
       {children}
     </div>
@@ -351,9 +418,19 @@ function QueueNotices({ queue }: { queue: QueueInfo | undefined }) {
 /**
  * Kotak "Cari No Klaim" di atas tabel.
  *
- * Jangkauannya dinyatakan tepat di bawah kotaknya, bukan hanya di catatan bawah. Alasannya
- * konkret: pencariannya COCOK PERSIS, sehingga mengetik separuh nomor klaim menghasilkan nol
- * baris. Tanpa keterangan itu, pengguna akan menyimpulkan antreannya kosong.
+ * # Keterangan di bawahnya dipangkas, bukan dibuang
+ *
+ * Semula berbunyi: *"Harus nomor klaim UTUH — pencarian di layar ini cocok persis, sama
+ * seperti di layar lama. Separuh nomor tidak menghasilkan baris."*
+ *
+ * Work Owner memangkasnya menjadi kalimat pertamanya saja (2026-10-05). Yang tersisa adalah
+ * **aturannya**; yang dibuang adalah **penjelasan mengapa** — bahwa pencariannya cocok
+ * persis, dan bahwa layar lama pun begitu.
+ *
+ * Pembedaan itu yang membuatnya tepat: orang yang sedang mengetik butuh tahu APA yang harus
+ * ia ketik, bukan riwayat perilaku pencarian. Penjelasannya tetap ada di tempat yang hanya
+ * muncul ketika benar-benar ditanyakan — pesan kosong saat sebuah pencarian tidak
+ * menghasilkan apa pun (lihat emptyMessageFor).
  */
 function SearchBar({
   label,
@@ -391,34 +468,8 @@ function SearchBar({
           'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
         ].join(' ')}
       />
-      <p className="mt-1 text-xs text-slate-500">
-        Harus nomor klaim UTUH — pencarian di layar ini cocok persis, sama seperti di layar
-        lama. Separuh nomor tidak menghasilkan baris.
-      </p>
+      <p className="mt-1 text-xs text-slate-500">Harus nomor klaim UTUH.</p>
     </div>
-  )
-}
-
-/**
- * Catatan di bawah tabel.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya
- * begitu penghalangnya hilang. Tanpa catatan ini, angka ringkas yang berbeda dari Pega dan
- * keputusan yang tidak sampai ke balai lelang akan dilaporkan berulang kali sebagai
- * kerusakan — atau, yang lebih buruk, tidak dilaporkan sama sekali.
- */
-function Notes({ title, lines }: { title: string; lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">{title}</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 
@@ -430,13 +481,11 @@ function Notes({ title, lines }: { title: string; lines: string[] }) {
  *   Request        Approve dan Reject (`Section/ButtonApproveRejectedRequest`)
  *   History Cheker rincian keputusan (`Flow Action/DetailHistoryRequestSalvage`)
  *
- * Tombol "Lihat File" milik layar lama belum ada di sini; ia membuka `DokumenBandingSalvage`,
- * satu-satunya artefak layar ini yang masih kurang. Ketiadaannya dinyatakan lewat
- * `keterbatasan`, bukan lewat tombol yang menolak.
+ * Tombol "Lihat File" SUDAH dibangun — ia membuka `DokumenBandingSalvage`. Keterangan
+ * sebelumnya yang menyebutnya belum ada sudah usang sejak artefaknya diterima 2026-09-30.
  */
 function columnsFor(
   tab: Tab,
-  onOpenHistory: (claimNo: string) => void,
   onOpenDocuments: (scope: DocumentScope) => void,
   onDecide: (row: AppealRow, approve: boolean) => void,
 ): Column<AppealRow>[] {
@@ -448,27 +497,36 @@ function columnsFor(
     alignRight: column.angka,
   }))
 
+  // Grid History TIDAK punya kolom aksi, dan itu mengikuti Pega apa adanya: di
+  // `Section/InboxReqSalvageASM` grid itu berkonfigurasi `pyEditingMode = expandPane` dengan
+  // `pyEditAction = DetailHistoryRequestSalvage` — yang diklik barisnya, bukan tombol.
+  //
+  // Rinciannya digambar lewat `DataTable.expandedRow`, yang menirukan `expandPane` persis
+  // beserta jalur papan ketiknya. Lihat DecisionPanel.
   if (isHistoryTab(tab)) {
-    columns.push({
-      key: 'aksi',
-      title: '',
-      width: '10rem',
-      noSort: true,
-      alignRight: true,
-      value: () => '',
-      render: (row) => (
-        <Button tone="kedua" onClick={() => onOpenHistory(row.no_klaim)}>
-          Lihat Riwayat
-        </Button>
-      ),
-    })
     return columns
   }
 
   columns.push({
     key: 'aksi',
-    title: 'Action',
-    width: '19rem',
+    title: 'Aksi',
+
+    /*
+      TANPA lebar tetap, dan itu disengaja.
+
+      Semula `19rem` — selebar ketiga tombolnya berjajar satu baris. Pada grid ber-9 kolom
+      data, lebar itu merebut terlalu banyak: judul kolom lain terpaksa pecah dua baris
+      ("Tanggal / Request", "Harga / Barang", …) sementara kolom ini justru melompong saat
+      antreannya kosong.
+
+      Dibiarkan menyesuaikan isinya, peramban yang membagi ruangnya: saat antrean kosong
+      kolom ini menyusut selebar kata "Aksi", dan saat berisi ia melebar sampai ketiga
+      tombolnya muat — lalu MENYUSUT LAGI bila kolom data membutuhkannya, karena
+      pembungkusnya `flex-wrap` sehingga tombolnya boleh turun baris.
+
+      Lebar tetap di sini akan menjadi lebar yang sama di layar 13 inci maupun 27 inci, dan
+      hanya salah satunya yang benar.
+    */
     noSort: true,
     alignRight: true,
     value: () => '',

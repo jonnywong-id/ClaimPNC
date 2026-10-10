@@ -124,7 +124,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		active.Alias,
 		archivedokumenklaim.CriteriaInput{
-			Mode:    query.Get("mode"),
+			Column:  query.Get("tipe_pencarian"),
 			Keyword: query.Get("kata_kunci"),
 			From:    from,
 			To:      until,

@@ -20,6 +20,26 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
    * membuat pengguna menyimpan nilai yang tidak pernah ia pilih.
    */
   emptyText?: string
+
+  /**
+   * Apakah pilihan kosong di puncak daftar ikut digambar. Bawaannya **true**.
+   *
+   * # Kapan ia dimatikan, dan kenapa itu jarang
+   *
+   * Hanya ketika layar Pega yang digantikan memang TIDAK punya pilihan kosong, dan
+   * nilainya SELALU terisi. Dropdown tanpa pilihan kosong akan menampilkan pilihan
+   * pertama sebagai terpilih untuk nilai apa pun yang tidak dikenalnya — termasuk nilai
+   * kosong — sehingga baris lama yang kolomnya belum pernah diisi akan **berubah diam-diam**
+   * begitu pengguna menekan Simpan.
+   *
+   * Pemanggil yang mematikannya karena itu wajib memastikan sendiri bahwa nilai kosong
+   * tidak mungkin sampai ke sini, atau menyalakannya kembali khusus untuk baris semacam itu
+   * (lihat `detail-penyebab-kerugian/DetailForm.tsx`).
+   *
+   * Bawaannya `true` supaya penambahan prop ini tidak mengubah satu pun dari 43 layar yang
+   * sudah memakai SelectField.
+   */
+  includeEmpty?: boolean
 }
 
 /**
@@ -36,7 +56,7 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
  * form tidak terlihat seperti dirakit dari dua aplikasi berbeda.
  */
 export const SelectField = forwardRef<HTMLSelectElement, Props>(function SelectField(
-  { id, label, options, error, emptyText = '— pilih —', className, ...rest },
+  { id, label, options, error, emptyText = '— pilih —', includeEmpty = true, className, ...rest },
   ref,
 ) {
   const baseClass =
@@ -60,7 +80,7 @@ export const SelectField = forwardRef<HTMLSelectElement, Props>(function SelectF
         className={className ? `${baseClass} ${className}` : baseClass}
         {...rest}
       >
-        <option value="">{emptyText}</option>
+        {includeEmpty && <option value="">{emptyText}</option>}
         {/*
           Kunci memakai POSISI, bukan nilainya.
 

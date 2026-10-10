@@ -19,12 +19,42 @@
 --   Keterangan Penutup          .ClaimData.PUCLStatus.Keterangan3            KETERANGAN3
 --   Nama Dokter                 .ClaimData.NamaDokterRCL                     — (lihat di bawah)
 --
+-- DUA KOLOM PEMILIK, DAN KEDUANYA BERBEDA ARTI:
+--
+--   OPERATOR_ID           analis yang menekan Kirim — catatan "siapa mengirim"
+--   ASSIGNED_OPERATOR_ID  PIC Teknik klaim          — penyaring "siapa menerima"
+--
+-- Yang kedua adalah satu-satunya penyaring kepemilikan layar Inbox RCL
+-- (`inboxrcl/repo/sqlstore/inboxrcl.sql`, penyaring A). Mengisinya dengan analis — bentuk
+-- yang berlaku sampai 2026-10-06 — menaruh klaim berjalur RCL di Inbox RCL analis sendiri.
+-- Work Owner menetapkan user teknis sebagai pemiliknya (2026-10-07); aturan lengkapnya di
+-- `registrasi.PUCLLetter.AssignedOperator`, termasuk kenapa analis tetap menjadi cadangan
+-- ketika klaim belum punya PIC Teknik.
+--
 -- Sempat dikira keempat isian surat hidup hanya di blob objek kerja Pega. Modul
 -- `inboxrclpucl` membuktikan sebaliknya pada 2026-10-01: kolomnya ada dan TERISI, dan
 -- isinya cocok kata demi kata dengan layar Pega.
 --
 -- ============================================================================
--- SATU ISIAN YANG MEMANG TIDAK PUNYA KOLOM DI SINI: NAMA DOKTER
+-- NAMA DOKTER — SEJAK 2026-10-07 DITULIS KE TABEL INI JUGA
+-- ============================================================================
+--
+-- Work Owner melaporkan `NAMA_DOKTER_RCL` belum terisi di `TC_PNC_PUCL` pada jalur RCL dan
+-- Notification. Kolomnya kini ikut ditulis `surat_rclpucl_perbarui`/`_sisip` (`:25`).
+--
+-- Catatan di bawah ditulis ketika tabel ini BELUM punya kolomnya, dan dipertahankan karena
+-- ia menjelaskan kenapa `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` masih ikut ditulis — bukan
+-- karena masih dibaca, melainkan karena belum ada keputusan mencabutnya.
+--
+-- YANG BERUBAH DI ANTARANYA: Inbox RCL tidak lagi membaca `T_CLAIMLIST_ADMIN` sama sekali
+-- (Work Owner 2026-10-05; modul itu kini membaca `TC_PNC_PUCL`). Sejak saat itu
+-- `NAMADOKTERRCL_1` **tidak dibaca satu kueri pun** di aplikasi ini — dicek dengan
+-- pencarian menyeluruh pada seluruh berkas `.sql`. Menulis ke sana saja karena itu berarti
+-- menyimpan nama dokter ke tempat yang tidak pernah dilihat siapa pun, dan itulah gejala
+-- yang dilaporkan.
+--
+-- ============================================================================
+-- CATATAN LAMA: KETIKA TABEL INI BELUM PUNYA KOLOM NAMA DOKTER
 -- ============================================================================
 --
 -- `TC_PNC_PUCL` tidak punya kolom untuknya. Penampungnya
@@ -126,9 +156,10 @@ UPDATE POOLDATA.TC_PNC_PUCL
        ID_OBJECT            = :22,
        ID_COVERAGE          = :23,
        ID_ADJUSTMENT        = :24,
+       NAMA_DOKTER_RCL      = :25,
        PUCL_APPROVE           = NULL,
        TGL_CETAK_DOKUMEN_PUCL = NULL
- WHERE CLAIMID = :25
+ WHERE CLAIMID = :26
 
 -- name: surat_rclpucl_sisip
 -- Surat klaim yang belum pernah dikirim ke RCL/PUCL. Dijalankan hanya bila UPDATE di
@@ -185,13 +216,13 @@ INSERT INTO POOLDATA.TC_PNC_PUCL (
        KOMENTAR_ANALISATOR, PERIHAL, KETERANGAN1, KETERANGAN2, KETERANGAN3,
        POLICY_NO, QQ_NAME, BUSINESS_NAME, BRANCH_NAME, SOB_NAME,
        GROUPPANEL, USER_TEKNIS, STATUS_KLAIM, DATE_OF_LOSS, TGL_KIRIM_PUCL,
-       ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT)
+       ID_OBJECT, ID_COVERAGE, ID_ADJUSTMENT, NAMA_DOKTER_RCL)
 VALUES (:1, :2, :3, :4,
         :5, :6, :7,
         :8, :9, :10, :11, :12,
         :13, :14, :15, :16, :17,
         :18, :19, :20, :21, :22,
-        :23, :24, :25)
+        :23, :24, :25, :26)
 
 -- name: surat_rclpucl_dokter
 -- Kedua penyaring layar Inbox RCL, beserta kolom "Deskripsi Analyst" yang digambar di sana.
@@ -272,41 +303,20 @@ SELECT r.REASON_ID,
  ORDER BY r.REASON_ID
  FETCH NEXT :4 ROWS ONLY
 
--- name: dokter_rcl
--- Pilihan dropdown "Nama Dokter" — `POOLDATA.T_ACCESS_GROUP_PNC`.
+-- Kueri `dokter_rcl` DIHAPUS pada 2026-10-06, dan alasannya layak dibaca sebelum ada yang
+-- menulisnya kembali.
 --
--- Padanan dropdown sel ke-7 `Section/SectionPUCL-sect.xml`, yang sumber pilihannya TIDAK
--- ADA di export (`R-16`). Yang terbaca hanyalah bahwa ia `pxDropdown`; isinya diturunkan
--- dari SATU-SATUNYA tempat nilainya dipakai kembali.
+-- Ia menarik identitas lama pada ketiga grup akses `POOLDATA.T_ACCESS_GROUP_PNC` sebagai
+-- isi dropdown "Nama Dokter" (sel ke-7 `Section/SectionPUCL-sect.xml`). Sumber pilihan
+-- sel itu tidak ada di export (`R-16`), sehingga isinya DITURUNKAN dari satu-satunya
+-- tempat nilainya dipakai kembali: penyaring D `InboxRCLDokter_RD` mencocokkan
+-- `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` dengan identitas lama pemanggil, jadi daftarnya
+-- "pasti" himpunan identitas itu.
 --
--- KENAPA TABEL INI, BUKAN MASTER DOKTER.
+-- Property `NamaDokterRCL` yang diserahkan Work Owner membuktikan sebaliknya: dropdown-nya
+-- `pyTableOption = PromptList` dengan `pyPromptTableList` berisi TEPAT DUA baris pada
+-- property itu sendiri — tanpa kueri, tanpa tabel. Daftarnya kini ada di Go sebagai
+-- `registrasi.RCLDoctorOptions`, bukan di sini.
 --
--- Nilai yang dipilih di sini disimpan ke `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`, dan layar
--- Inbox RCL menyaring antreannya dengan kolom itu — penyaring D `InboxRCLDokter_RD`:
---
---     UPPER(TRIM(k.NAMADOKTERRCL_1)) = UPPER(<identitas lama pemanggil>)
---
--- Identitas lama itu sendiri dibaca `RDB List/GetOperatorID-SQL.xml` dari tabel ini,
--- dengan penyaring yang sama persis seperti di bawah. Jadi daftar pilihan ini adalah
--- HIMPUNAN NILAI YANG DAPAT DICOCOKKAN — tidak lebih luas, tidak lebih sempit. Satu nilai
--- di luar himpunan itu membuat klaimnya tidak muncul di inbox siapa pun, tanpa galat.
---
--- `DISTINCT` karena satu orang punya satu baris per grup akses: seseorang yang memegang
--- Administrators sekaligus PNCKomite akan muncul dua kali tanpanya.
---
--- `UPPER(TRIM(...))` menyamakan bentuknya dengan sisi pembanding di Inbox RCL, sehingga
--- yang tersimpan tidak perlu dinormalkan lagi saat dicocokkan.
---
--- Bind:
---   :1  'GCNMFW:Administrators'
---   :2  'GCNMFW:PNCKomite'
---   :3  'GCNMFW:CaseManager'
---   :4  'GCNMFW:ViewClaimPNC'
-SELECT DISTINCT UPPER(TRIM(g.OLD_OPERATOR_ID)) AS DOCTOR
-  FROM POOLDATA.T_ACCESS_GROUP_PNC g
- WHERE g.STS_AKTIF = '1'
-   AND g.ACCESS_GROUP IN (:1, :2, :3)
-   AND g.ACCESS_GROUP <> :4
-   AND g.OLD_OPERATOR_ID IS NOT NULL
-   AND TRIM(g.OLD_OPERATOR_ID) <> ''
- ORDER BY 1
+-- Penyaring D Inbox RCL tidak ikut berubah; yang gugur hanya anggapan bahwa isi dropdown
+-- seluas himpunan yang dapat dicocokkannya. Pega membatasinya pada dua orang.

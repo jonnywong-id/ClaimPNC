@@ -66,6 +66,7 @@ func newEnv(t *testing.T, o options) *env {
 					Protections: repo,
 					Types:       memory.NewTypeRepoWithSamples(),
 					Claims:      memory.NewClaimRepoWithSamples(),
+					Causes:      memory.NewCauseRepoWithSamples(),
 				}, nil
 			},
 			Now:      func() time.Time { return fixedAt },
@@ -286,14 +287,22 @@ func TestUpdateFlowAndConflicts(t *testing.T) {
 		inputreqprotection.Protection{Number: "OPCN.26.0051", ClaimNumber: "PNCN.26.0001"},
 		inputreqprotection.Protection{Number: "OPCN.26.0052", AcceptStatus: inputreqprotection.AcceptApproved},
 	)
+	// Tipe '8' WAJIB menyebut baris coverage yang hendak diubah — satu klaim dapat punya
+	// banyak coverage, dan tanpa keduanya permintaannya tersimpan tanpa sasaran.
 	payload := `{"nomor_klaim":"PNCN.26.0008","tipe_proteksi":"8","keterangan":"ubah COL",
-	  "detail_perubahan":{"penyebab_kerugian_baru":"COL-2"}}`
+	  "detail_perubahan":{"penyebab_kerugian_baru":"COL-2","id_objek":"1","id_coverage":"3"}}`
 
 	rec, body := e.do(t, http.MethodPut, base+"/OPCN.26.0050", payload, true)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	require.Equal(t, "PEMBUAT", body["user_create"])
 	detail := body["detail_perubahan"].(map[string]any)
-	require.Equal(t, "Banjir", detail["penyebab_kerugian"])
+	// Nilai "sebelum" adalah KODE penyebab kerugian baris yang DIPILIH — `12003` milik
+	// coverage ke-3 pada contoh — bukan deskripsi `Banjir` milik klaim.
+	//
+	// Keputusan Work Owner 2026-10-05: "old data new data simpan idcol aja". Keduanya karena
+	// itu sebentuk, sehingga perbandingan "dari apa menjadi apa" tidak pernah bergantung pada
+	// teks yang dapat berubah di master.
+	require.Equal(t, "12003", detail["penyebab_kerugian"])
 	require.Equal(t, "COL-2", detail["penyebab_kerugian_master"])
 
 	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.0051", payload, true)
@@ -348,6 +357,12 @@ func (s stubService) ListTypes(context.Context, string) ([]inputreqprotection.Pr
 }
 func (s stubService) FindClaim(context.Context, string, string) (inputreqprotection.Claim, error) {
 	return inputreqprotection.Claim{}, s.err
+}
+func (s stubService) ListCoverages(context.Context, string, string) ([]inputreqprotection.CoverageRow, error) {
+	return nil, s.err
+}
+func (s stubService) ListCauseOfLoss(context.Context, string, string) ([]inputreqprotection.CauseOfLossOption, error) {
+	return nil, s.err
 }
 func (s stubService) Get(context.Context, string, string) (inputreqprotection.Protection, error) {
 	return inputreqprotection.Protection{}, s.err
@@ -445,4 +460,79 @@ func TestNilLocationDefaultsToJakarta(t *testing.T) {
 	h.List(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"tanggal_proteksi":"2026-09-23"`)
+}
+
+// Panel "Detail Perubahan Cause Of Loss" menampilkan SELURUH coverage klaim, bukan satu.
+//
+// Data contohnya meniru bentuk nyata: `Resiko A` muncul TIGA kali dengan Penyebab Kerugian
+// berbeda. Yang membedakan ketiganya hanya `id_coverage` — dan itulah yang dikirim balik
+// saat pemohon menekan Pilih.
+func TestListCoveragesReturnsEveryRowIncludingRepeatedNames(t *testing.T) {
+	e := newEnv(t, options{})
+	rec, body := e.do(t, http.MethodGet, base+"/klaim/PNCN.26.0008/coverage", "", true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	rows := body["coverage"].([]any)
+	require.Len(t, rows, 4)
+
+	first := rows[0].(map[string]any)
+	require.Equal(t, "1", first["id_objek"])
+	require.Equal(t, "1", first["id_coverage"])
+	require.Equal(t, "Resiko A", first["nama_coverage"])
+	require.Equal(t, "ILLNESS", first["penyebab_kerugian"])
+	// Kode ikut dikirim: akseptasi mengubah CAUSEOFLOSS beserta CAUSEOFLOSSID, dan layar
+	// harus dapat menunjukkan keduanya.
+	require.Equal(t, "12001", first["penyebab_kerugian_id"])
+
+	// Ketiga baris bernama `Resiko A` tetap terpisah.
+	var berulang []string
+	for _, r := range rows {
+		row := r.(map[string]any)
+		if row["nama_coverage"] == "Resiko A" {
+			berulang = append(berulang, row["id_coverage"].(string))
+		}
+	}
+	require.Equal(t, []string{"1", "2", "4"}, berulang)
+}
+
+// Nomor klaim yang tidak menunjuk klaim mana pun dijawab 404 — BUKAN daftar kosong.
+//
+// Keduanya keadaan yang sangat berbeda: "klaim ini tidak punya coverage" dapat diperbaiki
+// dengan melengkapi klaimnya, "klaimnya tidak ada" tidak.
+func TestListCoveragesUnknownClaimIsNotFound(t *testing.T) {
+	e := newEnv(t, options{})
+	rec, _ := e.do(t, http.MethodGet, base+"/klaim/PNCN.26.9999/coverage", "", true)
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// Dropdown "Next Cause Of Loss" disaring lini bisnis KLAIM, dan lini itu diturunkan di
+// server — tidak pernah diterima dari pemanggil.
+func TestListCauseOfLossReturnsOptions(t *testing.T) {
+	e := newEnv(t, options{})
+	rec, body := e.do(t, http.MethodGet, base+"/klaim/PNCN.26.0008/penyebab-kerugian", "", true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	daftar := body["penyebab_kerugian"].([]any)
+	require.NotEmpty(t, daftar)
+	first := daftar[0].(map[string]any)
+	require.NotEmpty(t, first["kode"])
+	require.NotEmpty(t, first["nama"])
+}
+
+// Permintaan tipe '8' yang menunjuk baris coverage BUKAN milik klaimnya ditolak 422.
+//
+// Layar memang hanya menawarkan baris yang sah, tetapi layar bukan penjaga: badan permintaan
+// yang dirakit tangan dapat menyebut pasangan apa pun. Tanpa pemeriksaan ini, akseptasi akan
+// menulis Penyebab Kerugian ke baris milik klaim lain — tanpa satu pun gejala.
+func TestCreateRejectsCoverageRowFromAnotherClaim(t *testing.T) {
+	e := newEnv(t, options{})
+	rec, body := e.do(t, http.MethodPost, base+"/",
+		`{"nomor_klaim":"PNCN.26.0008","tipe_proteksi":"8","keterangan":"ubah COL",
+		  "detail_perubahan":{"penyebab_kerugian_baru":"12002","id_objek":"9","id_coverage":"9"}}`,
+		true)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+
+	detail := body["detail"].([]any)
+	require.Len(t, detail, 1)
+	require.Equal(t, "baris_coverage", detail[0].(map[string]any)["field"])
 }

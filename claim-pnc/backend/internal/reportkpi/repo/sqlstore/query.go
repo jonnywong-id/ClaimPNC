@@ -52,7 +52,7 @@ func query(name string) string {
 // yang menandakannya.
 var scoreColumns = []string{
 	"SURVEY", "IMMEDIATE_ADVICE", "PRELIMINARY_ADVICE", "INTERIM_REPORT",
-	"PROGRESS", "COMMUNICATION", "PROPOSE", "FINAL_REPORT", "TOTAL_SCORE",
+	"PROGRESS", "PROPOSE", "COMMUNICATION", "FINAL_REPORT", "TOTAL_SCORE",
 }
 
 // summaryColumns adalah ke-11 alias yang dikembalikan kueri Summary.
@@ -107,6 +107,13 @@ func loadQueries() map[string]string {
 // supaya yang dikirim ke basis data hanyalah SQL-nya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""

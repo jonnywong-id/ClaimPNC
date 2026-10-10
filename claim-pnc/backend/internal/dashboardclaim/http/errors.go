@@ -71,8 +71,25 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			return
 		}
 
-		if errors.Is(err, dashboardclaim.ErrTransferUnavailable) {
-			writeTransferUnavailable(writeJSON, w, r)
+		if errors.Is(err, dashboardclaim.ErrAssignmentUnavailable) {
+			// 503, bukan 500: sistemnya tidak rusak — satu hak basis data sedang ditunggu
+			// (`D-63`), dan permintaan yang sama akan berhasil begitu DBA memberikannya.
+			// Pesannya menyebutkan itu, supaya pengguna tidak melaporkannya sebagai kerusakan.
+			writeJSON(w, r, http.StatusServiceUnavailable, ErrorResponse{
+				Code: CodeTransferUnavailable,
+				Message: "Pemindahan PIC Teknik belum dapat dijalankan. " +
+					"Hak UPDATE pada kolom PIC Teknik sedang diminta ke DBA.",
+			})
+			return
+		}
+
+		if errors.Is(err, dashboardclaim.ErrClaimNotFound) {
+			// 404, bukan 500: barisnya sudah tidak ada — biasanya karena halaman yang dibuka
+			// sudah usang, dan pengguna cukup memuat ulang.
+			writeJSON(w, r, http.StatusNotFound, ErrorResponse{
+				Code:    CodeBadRequest,
+				Message: "Klaim tidak ditemukan. Muat ulang daftarnya, lalu coba lagi.",
+			})
 			return
 		}
 
@@ -102,17 +119,4 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			Message: "Terjadi kesalahan pada sistem.",
 		})
 	}
-}
-
-// writeTransferUnavailable menjawab permintaan transfer yang belum dapat dilayani.
-//
-// 503, bukan 500: sistemnya tidak rusak — satu perubahan skema sedang ditunggu (`D-63`), dan
-// permintaan yang sama akan berhasil begitu DBA menjalankannya. Pesannya menyebutkan itu,
-// supaya pengguna tidak melaporkannya sebagai kerusakan.
-func writeTransferUnavailable(writeJSON JSONWriter, w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, r, http.StatusServiceUnavailable, ErrorResponse{
-		Code: CodeTransferUnavailable,
-		Message: "Pencatatan permintaan transfer belum aktif. " +
-			"Tabelnya menunggu dijalankan DBA; pemindahan tugas sementara ini dikerjakan di Pega.",
-	})
 }

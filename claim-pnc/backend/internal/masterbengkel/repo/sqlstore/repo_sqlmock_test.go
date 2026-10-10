@@ -460,12 +460,13 @@ func TestNextDocumentIDUsesTheClockYear(t *testing.T) {
 func TestSaveDocument(t *testing.T) {
 	ctx := context.Background()
 	document := masterbengkel.Document{ID: " 26001 ", UploadedBy: " penguji ", Name: " a.pdf ",
-		Note: " catatan ", MimeType: " application/pdf ", Content: []byte("isi")}
+		Note: " catatan ", MimeType: " application/pdf ", ImageID: " img-1 "}
 
 	repo, mock := newMock(t)
 	mock.ExpectBegin()
 	mock.ExpectExec(q("bengkel_insert_document")).
-		WithArgs("26001", "penguji", "a.pdf", "catatan", "application/pdf", []byte("isi")).
+		WithArgs("26001", "penguji", "a.pdf", "catatan", "application/pdf", "img-1",
+			"010000000001").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(q("bengkel_set_document")).WithArgs("26001", "010000000001").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -520,12 +521,12 @@ func TestFindDocument(t *testing.T) {
 	uploaded := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 
 	mock.ExpectQuery(q("bengkel_get_document")).WithArgs("26001").
-		WillReturnRows(sqlmock.NewRows([]string{"ID", "N", "NOTE", "M", "OP", "AT", "C"}).
-			AddRow(" 26001 ", " a.pdf ", nil, " application/pdf ", " penguji ", uploaded, []byte("isi")))
+		WillReturnRows(sqlmock.NewRows([]string{"ID", "N", "NOTE", "M", "OP", "AT", "IMG"}).
+			AddRow(" 26001 ", " a.pdf ", nil, " application/pdf ", " penguji ", uploaded, " img-1 "))
 	document, err := repo.FindDocument(ctx, " 26001 ")
 	require.NoError(t, err)
 	require.Equal(t, masterbengkel.Document{
-		ID: "26001", Name: "a.pdf", MimeType: "application/pdf", Content: []byte("isi"),
+		ID: "26001", Name: "a.pdf", MimeType: "application/pdf", ImageID: "img-1",
 		UploadedBy: "penguji", UploadedAt: uploaded,
 	}, document)
 

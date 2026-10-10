@@ -47,10 +47,19 @@ func query(name string) string {
 // kolomnya tetap tergambar di layar sebagai isian yang belum terbawa — lihat kepala
 // inboxsurvey.sql bagian C.
 var taskColumns = []string{
-	"SURVEY_ID", "CLAIM_ID", "SURVEY_INDEX",
+	"SURVEY_ID", "CLAIM_ID", "SURVEY_INDEX", "REFERENCE_NUMBER",
 	"CLAIM_NUMBER", "POLICY_NUMBER", "INSURED_NAME", "CLASS_OF_BUSINESS", "CAUSE_OF_LOSS",
 	"LOCATION", "TECHNICAL_PIC", "ADJUSTER_PIC", "DATE_OF_LOSS", "CREATED_AT",
 	"ASM_STATUS", "SURVEYOR_TYPE", "TOTAL_ROWS",
+}
+
+// countColumnsFull adalah alias `count_tabs_full`, dalam urutan tampil KETUJUH tab.
+//
+// Urutannya WAJIB sama dengan inboxsurvey.Tabs(). Satu kolom yang bergeser akan menukar jumlah
+// tab Invoice dengan tab Close — dua angka yang sama-sama masuk akal.
+var countColumnsFull = []string{
+	"COUNT_OUTSTANDING", "COUNT_INVOICE", "COUNT_CLOSE", "COUNT_ALL",
+	"COUNT_NOT_ANSWERED", "COUNT_NOT_REPLIED", "COUNT_REPLIED",
 }
 
 // countColumns adalah alias kueri penghitung tab, dalam urutan tampil tab.
@@ -70,8 +79,14 @@ var countColumns = []string{
 //
 // Kesembilan angkanya berpasangan satu-satu dengan judul kapital pada
 // `Section/InboxSurvey_section-Section.xml`; urutannya mengikuti urutan kolom di sana.
+// kpiKeyColumns adalah kelima kolom KUNCI di depan setiap kueri KPI.
+//
+// Kolom yang tidak berlaku pada sebuah bentuk diisi NULL di SQL, bukan dihilangkan — kelima
+// kueri karena itu berbentuk sama dan dibaca scanKPI yang satu.
+var kpiKeyColumns = []string{"GROUP_KEY", "STATUS_KEY", "QUARTER_KEY", "MONTH_KEY", "CASE_KEY"}
+
 var kpiColumns = []string{
-	"GROUP_KEY", "SURVEY_SCHEDULING", "IMMEDIATE_ADVICE", "PRELIMINARY_ADVICE",
+	"GROUP_KEY", "STATUS_KEY", "QUARTER_KEY", "MONTH_KEY", "CASE_KEY", "SURVEY_SCHEDULING", "IMMEDIATE_ADVICE", "PRELIMINARY_ADVICE",
 	"INTERIM_REPORT", "PROGRESS_UPDATE", "COMMUNICATION_RESPONSE", "PROPOSE_ADJUSTMENT",
 	"FINAL_REPORT", "VALUE_SCORE",
 }

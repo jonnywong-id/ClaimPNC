@@ -19,10 +19,6 @@ var listColumns = []string{
 	"OBJECTID", "COVERAGEID", "RESULTAI", "TGLAI",
 }
 
-var summaryColumns = []string{
-	"AI_ACCEPTED", "AI_REJECTED", "COMMITTEE_ACCEPTED", "COMMITTEE_REJECTED", "ROW_COUNT",
-}
-
 func newMock(t *testing.T) (*Repo, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp))
@@ -137,65 +133,6 @@ func TestListWrapsRowsError(t *testing.T) {
 	require.ErrorIs(t, err, boom)
 	require.ErrorContains(t, err, "menelusuri daftar")
 	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestSummarizeComputesPendingAsRemainder(t *testing.T) {
-	repo, mock := newMock(t)
-	mock.ExpectQuery(sql_("report_summary")).WithArgs(wantFrom, wantTo).
-		WillReturnRows(sqlmock.NewRows(summaryColumns).AddRow(4, 3, 6, 1, 10))
-
-	summary, err := repo.Summarize(context.Background(), filter)
-	require.NoError(t, err)
-
-	require.Equal(t, laporanhasilai.Tally{
-		Subject: laporanhasilai.SubjectCommittee, Accepted: 6, Rejected: 1, Pending: 3,
-	}, summary.Committee)
-	require.Equal(t, laporanhasilai.Tally{
-		Subject: laporanhasilai.SubjectAI, Accepted: 4, Rejected: 3, Pending: 3,
-	}, summary.AI)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestSummarizeReadsNullSumsAsZero(t *testing.T) {
-	// Rentang kosong: SUM menghasilkan NULL, COUNT menghasilkan 0.
-	repo, mock := newMock(t)
-	mock.ExpectQuery(sql_("report_summary")).
-		WillReturnRows(sqlmock.NewRows(summaryColumns).AddRow(nil, nil, nil, nil, 0))
-
-	summary, err := repo.Summarize(context.Background(), filter)
-	require.NoError(t, err)
-	require.Equal(t, 0, summary.Committee.Rows())
-	require.Equal(t, 0, summary.AI.Rows())
-	require.Equal(t, laporanhasilai.SubjectAI, summary.AI.Subject)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestSummarizeNoRowsIsAnEmptySummary(t *testing.T) {
-	repo, mock := newMock(t)
-	mock.ExpectQuery(sql_("report_summary")).WillReturnRows(sqlmock.NewRows(summaryColumns))
-
-	summary, err := repo.Summarize(context.Background(), filter)
-	require.NoError(t, err)
-	require.Equal(t, laporanhasilai.Summary{
-		Committee: laporanhasilai.Tally{Subject: laporanhasilai.SubjectCommittee},
-		AI:        laporanhasilai.Tally{Subject: laporanhasilai.SubjectAI},
-	}, summary)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestSummarizeWrapsError(t *testing.T) {
-	repo, mock := newMock(t)
-	boom := errors.New("ORA-00904")
-	mock.ExpectQuery(sql_("report_summary")).WillReturnError(boom)
-
-	_, err := repo.Summarize(context.Background(), filter)
-	require.ErrorIs(t, err, boom)
-	require.ErrorContains(t, err, "membaca ringkasan")
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestTallyNeverGoesNegative(t *testing.T) {
-	require.Equal(t, 0, tallyOf(laporanhasilai.SubjectAI, 5, 5, 3).Pending)
 }
 
 func TestCountAllUsesTheCountQuery(t *testing.T) {

@@ -279,13 +279,16 @@ func TestListRejectsUnknownStatus(t *testing.T) {
 }
 
 // Setiap baris membawa nama kategori induknya — inilah yang di Pega datang dari JOIN.
-func TestListCarriesCategoryName(t *testing.T) {
+func TestListCarriesCategoryIDOnly(t *testing.T) {
 	p := newTestServer(t)
 
 	_, content := p.call(t, http.MethodGet, route+"?status=0", "ASM", "")
 	for _, item := range rows(t, content) {
 		row := item.(map[string]any)
-		require.Equal(t, "UNDERCARRIAGE", row["nama_kategori_sparepart"])
+		require.Equal(t, "3", row["id_kategori_sparepart"])
+		_, ada := row["nama_kategori_sparepart"]
+		require.False(t, ada,
+			"nama kategori tidak ada di grid Pega, sehingga tidak boleh dikirim")
 	}
 }
 
@@ -293,7 +296,7 @@ func TestListCarriesCategoryName(t *testing.T) {
 //
 // Di Pega baris ini HILANG dari daftar karena inner join-nya. Selisih perilaku ini
 // disengaja; lihat banner pada berkas .sql.
-func TestListKeepsOrphanRowWithEmptyCategoryName(t *testing.T) {
+func TestListKeepsOrphanRow(t *testing.T) {
 	p := newTestServer(t)
 
 	_, content := p.call(t, http.MethodGet, route, "ASM", "")
@@ -306,7 +309,7 @@ func TestListKeepsOrphanRowWithEmptyCategoryName(t *testing.T) {
 		}
 	}
 	require.NotNil(t, orphan, "baris yatim wajib tetap terkirim")
-	require.Equal(t, "", orphan["nama_kategori_sparepart"])
+	require.Equal(t, "99", orphan["id_kategori_sparepart"])
 }
 
 // Satu entitas tidak pernah melihat data entitas lain (ADR-0030, R-20).
@@ -348,7 +351,7 @@ func TestGetReturnsSingleRow(t *testing.T) {
 	row := one(t, content)
 	require.Equal(t, approvedID, row["id_tipe_sparepart"])
 	require.Equal(t, "FUEL FILTER", row["nama_tipe_sparepart"])
-	require.Equal(t, "ENGINE", row["nama_kategori_sparepart"])
+	require.Equal(t, "1", row["id_kategori_sparepart"])
 	require.Equal(t, "Approve", row["status_label"])
 }
 
@@ -396,7 +399,6 @@ func TestCreateStoresPendingRow(t *testing.T) {
 	require.NotEmpty(t, row["id_tipe_sparepart"])
 	require.Equal(t, "SWING MOTOR", row["nama_tipe_sparepart"])
 	require.Equal(t, approvedCategory, row["id_kategori_sparepart"])
-	require.Equal(t, "HYDRAULIC", row["nama_kategori_sparepart"])
 	require.Equal(t, "0", row["status"])
 	require.Equal(t, "Waiting Approval", row["status_label"])
 }

@@ -205,13 +205,73 @@ modulnya dapat langsung dibangun.
 
 | | |
 |---|---|
-| **Keadaan** | **DIBATALKAN 2026-09-24** — Work Owner memutuskan fitur export **dihapus**, bukan ditunda |
-| **Bab ini disimpan** | sebagai catatan, supaya penelusurannya tidak perlu diulang bila fitur ini kelak dihidupkan |
-| **Tidak ada yang perlu dikirimkan** | permintaan di §2.5 dan §2.6 **tidak lagi berlaku** |
+| **Keadaan** | **DITUTUP 2026-10-05 — fitur DIBANGUN, tidak ada yang perlu diminta** |
+| **Bab ini disimpan** | sebagai rekaman penelusuran yang menempuh tiga kesimpulan keliru sebelum benar |
+| **Tidak ada yang perlu dikirimkan** | seluruh permintaan di bab ini **dicabut** |
+
+> **PENUTUP 2026-10-05 — penghalangnya tidak pernah ada. Saya mencari di tempat yang salah
+> tiga kali.**
+>
+> Fitur Export Data Investigation **sudah dibangun dan berjalan**, dengan tiga belas kolom
+> dan judul yang sama persis dengan berkas Pega.
+>
+> **Dari mana datanya.** `POOLDATA.JSON_KLAIM.DATA_JSONBLOB`, jalur
+> `$.SurveyResults[0].SurveyList[0].*`, dihubungkan lewat `IDPEGA = PZINSKEY`. Dibaca dengan
+> `JSON_VALUE(... FORMAT JSON, ...)` — didukung Oracle 12c+ dan PostgreSQL 17+ (`D-24`), dan
+> pola yang sama sudah dipakai modul Inbox Klaim Treaty Non-Prop.
+>
+> Keberadaannya terukur langsung terhadap basis data pengembangan:
+>
+> | Kunci JSON | Jumlah dokumen |
+> |---|---|
+> | `SurveyList` | 725 |
+> | `AlamatRSKlinik` | 33 |
+> | **`NoRekapMedis`** | **19** |
+> | `TanggalInvestigasi` | 134 |
+> | `IsInvestigated` | 9 |
+>
+> `NoRekapMedis` — yang §2.5 sebut tidak punya kolom di mana pun, dan yang menjadi alasan
+> utama fitur ini dihapus — ada pada 19 dokumen.
+>
+> **Kenapa koreksi 2026-09-30 juga belum tepat.** Ia benar menyatakan activity-nya membaca
+> objek kerja lewat `Obj-Open-By-Handle`, dan benar bahwa propertinya tidak ada sebagai kolom
+> `DATAPEGA`. Yang terlewat: **objek kerja bukan satu-satunya tempat data itu hidup.**
+> `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc` menyalin isi klaim ke `POOLDATA.JSON_KLAIM`, dan
+> dokumen itu memuat seluruh pohon `SurveyResults` beserta `SurveyList`-nya.
+>
+> Kueri katalog `ALL_TAB_COLUMNS` memang mengembalikan nol baris — dan itu tetap benar. Ia
+> hanya menjawab pertanyaan "apakah ini sebuah kolom", bukan "di mana nilainya berada".
+>
+> **Judul kolomnya pun tidak perlu diminta.**
+> `Activity/ExportDataInvestigator-Act.xml:2332` memuat ketiga belasnya sebagai satu teks
+> tetap.
+>
+> **Satu temuan yang mengubah bentuk fiturnya.** Baris berkasnya BUKAN dari antrean
+> workbasket melainkan dari `POOLDATA.T_CLAIM_PNC` menurut rentang `INVESTIGATOR_TF_DATE`
+> (langkah 5 activity). Hasil Report Definition di langkah 2 tidak pernah dipakai.
+>
+> Rinciannya di `catatan-pengembangan.md` dan `keputusan-implementasi.md`, keduanya
+> bertanggal 2026-10-05.
 
 > **Bab ini ditulis ulang pada 2026-09-24.** Bentuk sebelumnya meminta DBA meng-*expose*
 > sepuluh properti Pega menjadi kolom. **Permintaan itu DICABUT** — ternyata tidak perlu.
 > Lihat §2.3.
+
+> **KOREKSI 2026-09-30 — kesimpulan §2.2–§2.5 SALAH, permintaan §2.3 yang dicabut ternyata
+> BENAR.** Work Owner mengirim `Section/InputClaimInvestigasiDetail-Section.xml` (formulir
+> investigasi yang dirujuk `Flow Action/InputInvestigator-FA.xml`). Dua fakta darinya:
+>
+> 1. **Seluruh kolom CSV terpetakan ke isian formulir**, termasuk `NoRekapMedis` = "Nomor
+>    Rekam Medik" dan `IsInvestigated` = "Dapat Diinvestigasi" (`1` → status 6993, selain
+>    itu 6994 — `SetStatusInvestigator_Act`). Pertanyaan §2.5 gugur.
+> 2. **`ExportDataInvestigator` tidak membaca `POOLDATA.INVESTIGATIONREPORT`.** Ia membuka
+>    setiap case lewat `Obj-Open-By-Handle` dan membaca `SurveyResults(1).SurveyList(1).*`
+>    dari objek kerja — yaitu BLOB `pzPVStream` pada `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`.
+>
+> Kueri katalog DBA 2026-09-30 atas `ALL_TAB_COLUMNS` (`OWNER = 'DATAPEGA'`, 13 nama
+> properti) mengembalikan **nol baris**: tidak satu pun properti investigasi tersedia sebagai
+> kolom. Penghalang yang sebenarnya karena itu **bukan pemetaan, melainkan data yang hanya
+> ada di BLOB Pega** — dan hanya Tim Pega yang dapat mengeluarkannya menjadi kolom.
 
 ### 2.1 Apa yang belum dapat kami bangun
 
@@ -391,7 +451,7 @@ Ini diterima secara sadar dan dibuat **terlihat**, bukan disembunyikan:
 | Tempat | Yang dilakukan |
 |---|---|
 | `claimpnc -periksa` | mencacah selisihnya lewat `CountPegaOnly` |
-| kaki layar | menyebutkannya kepada pengguna |
+| ~~kaki layar~~ | **dicabut 2026-10-04** atas permintaan Work Owner |
 | `TestPegaWorkTableIsNeverWritten` | menggagalkan build bila ada yang menambahkan penulisannya |
 
 Yang kami minta ke Tim Pega hanyalah **konfirmasi bahwa selisih ini dapat diterima** selama
@@ -1225,6 +1285,36 @@ bukan tabel Pega. Permintaannya kini:
    tahap RCL Dokter (hari ini nol).
 3. **Tim Pega** — rule mana yang menulis `NamaDokterRCL` dan `TanggalAnalystSendRCL`
    (dugaan `RouterRCLDokter`, hilang dari export), supaya pengisi tahu kapan nilainya sah.
+
+**Pembaruan 2026-10-06 — property `NamaDokterRCL` diterima, satu pertanyaan tertutup.**
+Work Owner menyerahkan `Property/NamaDokterRCL`. Isinya menutup pertanyaan **dari mana
+dropdown "Nama Dokter" pada modal Kirim RCL/PUCL mengambil pilihannya**: ia
+`pyTableOption = PromptList` dengan `pyPromptTableList` berisi **tepat dua baris pada
+property itu sendiri** — `WAHYUKRISTANTI` dan `MARGARETHAROSAGUNAWAN` (label
+"MARGARETHA ROSA GUNAWAN") — bukan kueri ke tabel mana pun.
+
+Itu **membatalkan** dugaan sebelumnya bahwa daftarnya dibaca dari `T_ACCESS_GROUP_PNC`.
+Dugaan itu masuk akal — penyaring D Inbox RCL memang mencocokkan `NAMADOKTERRCL_1` dengan
+identitas lama pemanggil — tetapi keliru, dan akibatnya layar menampilkan dropdown kosong.
+
+**Yang masih diminta ke Tim Pega tidak berubah:** butir 3 di atas menanyakan **penulis**
+nilainya pada objek kerja, bukan isi dropdown-nya. Property ini tidak menjawabnya.
+
+**Satu pertanyaan baru, ke Work Owner — bukan ke Tim Pega.** Kedua nama itu hardcode
+di dalam rule, bagian dari 24 Operator ID yang `D-15` tetapkan menjadi master data
+(`F-4`). Yang perlu dipastikan: apakah kedua orang itu masih dokter RCL yang berlaku, dan
+siapa yang berwenang menambah atau menghapus daftarnya setelah `F-4` ada.
+
+> **Terjawab sebagian — Work Owner, 2026-10-06: "masih".** Kedua nama itu **masih dokter
+> RCL yang berlaku**. Daftarnya karena itu direplikasi sebagai perilaku yang **benar**,
+> bukan perilaku lama yang ditiru sambil menunggu koreksi. Pertanyaannya diajukan karena
+> property-nya dibuat 2018 dan terakhir disunting 2020 — cukup lama untuk orang berpindah
+> tugas.
+>
+> **Masih terbuka:** siapa yang berwenang menambah atau menghapus dokter setelah `F-4`
+> ada. Selama belum dijawab, menambah dokter RCL menempuh **perubahan kode dan rilis**,
+> bukan layar master. Itu konsekuensi yang perlu disebut saat `F-4` dirancang — bukan
+> ditemukan saat ada dokter baru yang harus segera menerima klaim.
 
 ### 6.13 Inbox Service Center — dua artefak, ke Tim Pega dan DBA
 
@@ -2821,6 +2911,227 @@ pada rancangan alurnya**, bukan akibat modul kami.
 
 Bila Tim Pega hendak sekalian membereskannya, yang dibutuhkan adalah menutup assignment
 `Assignment6` **sebelum** ticket dilepas — bukan sesudahnya.
+
+#### Tambahan 2026-10-05 — satu `pyEditAction` yang terlewat sejak awal
+
+Work Owner bertanya mengapa grid History punya kolom aksi, padahal Pega tidak punya. Ia benar,
+dan menelusuri jawabannya memunculkan **artefak kesembilan yang hilang** — satu yang tidak
+pernah masuk daftar permintaan mana pun karena tidak pernah disadari ada.
+
+`Section/InboxReqSalvageASM` mengatur **kedua** gridnya `pyEditingMode = expandPane`:
+
+| Grid | Baris | `pyEditAction` | Di export? |
+|---|---|---|---|
+| Request (`TempDataReq`) | 4099 | `ShowDetailSalvageInboxOSClose` (4229) | **TIDAK ADA** |
+| History (`TempDataHistory`) | 11857 | `DetailHistoryRequestSalvage` (13523) | ✅ |
+
+Artinya baris pada grid **Request** pun mengembang saat diklik di layar lama, menampilkan
+rincian pengajuan salvage — kemampuan yang **belum dibangun di sini**, dan tidak dapat
+dibangun karena isinya tidak diketahui.
+
+| Yang diminta | Kepada |
+|---|---|
+| `Flow Action/ShowDetailSalvageInboxOSClose` beserta section dan activity yang dirujuknya | **Tim Pega** |
+
+Mengingat tiga artefak layar ini sudah terbukti **cangkang** (harness, section tombol, flow
+action dokumen), permintaannya sejak awal menyebut **beserta rule yang dirujuknya secara
+berantai** — bukan satu berkas.
+
+**Kenapa ini terlewat.** Audit saya membaca `pyPageListProperty` (grid mana yang digambar) dan
+`pyContainerVisibleWhen`, tetapi **tidak `pyEditAction`**. Ketiga elemen pertama menjawab "apa
+yang digambar"; `pyEditAction` menjawab "apa yang terjadi saat barisnya diklik" — pertanyaan
+yang tidak pernah saya ajukan.
+
+#### Pencabutan 2026-10-05 — `ShowDetailSalvageInboxOSClose` TIDAK jadi diminta
+
+Permintaan pada tambahan sebelumnya **dicabut**. Rule itu bukan artefak yang kurang dari
+export; ia **rujukan menggantung di aplikasi Pega-nya sendiri**.
+
+Buktinya terkontrol — `Section/InboxSalvageASM-Section.xml` memakai **tiga** `pyEditAction`,
+dan hanya dua di antaranya terindeks:
+
+| `pyEditAction` | Terindeks `pxRuleReferences`? |
+|---|---|
+| `DetailRequestBalaiLelang` | ✅ `Rule-Obj-FlowAction` |
+| `DetailsSalvagePerObject` | ✅ `Rule-Obj-FlowAction` |
+| **`ShowDetailSalvageInboxOSClose`** | ❌ **tidak, di bawah tipe apa pun** |
+
+Section yang sama, elemen yang sama, indeks yang sama — dua resolve, satu tidak. Pega hanya
+mengindeks rule yang benar-benar dapat diresolusi, sehingga ketiadaannya di indeks berarti
+rule-nya tidak ada.
+
+Ia dirujuk **tiga** section (`InboxReqSalvageASM`, `InboxSalvageASM`, `InboxSalvageInsurtech`
+— lima kali pada dua yang terakhir), dan **nol** di antaranya mengindeksnya.
+
+**Artinya:** klik baris pada grid-grid itu tidak melakukan apa-apa di layar lama. Tidak ada
+kemampuan yang hilang di aplikasi baru, dan tidak ada yang perlu diminta ke Tim Pega.
+
+**Kenapa ini sempat salah dilaporkan.** "Tidak ada di export" dan "tidak ada di aplikasinya"
+terlihat sama bila yang diperiksa hanya keberadaan berkasnya. Yang membedakan keduanya adalah
+`pxRuleReferences`: rujukan yang resolve terindeks, yang menggantung tidak. Pemeriksaan itu
+**layak dijadikan langkah baku** sebelum menyatakan sebuah rule hilang.
+
+---
+
+## 15. Inbox Investigator — rantai penuh Flow Action `InputInvestigator` (2026-10-06)
+
+| | |
+|---|---|
+| **Pemicu** | pertanyaan Work Owner: *"apa saja rule yang kurang"* untuk modul ini |
+| **Cara memeriksa** | rantai panggil ditelusuri **sampai ujung** — bukan satu lapis — lalu setiap kandidat diuji dengan `pxRuleReferences` sesuai langkah baku §14 |
+| **Hasil** | dari empat kandidat, **hanya dua yang benar-benar hilang**; dua lainnya **tidak ada di Pega juga** |
+
+### 15.1 Rantai yang sebenarnya — lebih panjang daripada yang pernah kami catat
+
+Catatan kami sebelumnya menyebut `SetStatusInvestigator_Act` memanggil **dua** activity.
+Penelusuran penuh menunjukkan **empat**, dan dua di antaranya tidak pernah kami ketahui:
+
+```
+SetStatusInvestigator_Act
+├─ InsertHistoryClaimPNC
+├─ InsertJsonClaimNonMBU_act        ──► Connect-REST SendKlaimToASO      (ada)
+├─ InjectDataInvetigatorMitra       ──► Connect-REST ConnMitraNonBasClaim (HILANG)
+│   ├─ RDB-List GetDataMitraLoginInvest                                   (ada)
+│   ├─ Apply-DataTransform SetJSONPage_Mitra                              (ada)
+│   └─ InsertUpdateLogService ×2                                          (ada)
+└─ PNC_insertingDataFlatter
+```
+
+Seluruh langkah di atas berjalan **tanpa syarat** — tidak satu pun punya precondition —
+sehingga keduanya berjalan **setiap kali** tombol Simpan ditekan.
+
+### 15.2 Dua rule yang BENAR-BENAR hilang — ke **Tim Pega**
+
+Keduanya **terindeks** di `pxRuleReferences` pemanggilnya, yang berarti keduanya resolve di
+Pega dan memang tidak ikut terkirim:
+
+| # | Rule | Tipe | Dirujuk oleh | Akibat bagi aplikasi baru |
+|---|---|---|---|---|
+| 1 | **`ConnMitraNonBasClaim`** | Connect REST | `InjectDataInvetigatorMitra` | Simpan di aplikasi baru **tidak mengirim apa pun ke mitra** |
+| 2 | **`IsBack`** | When | `InputClaimInvestigasiDetail` | tombol kembali pada formulir tidak dapat ditiru syaratnya |
+
+**Yang nomor 1 bukan soal kecil.** Dari `pxRuleReferences` pemanggilnya terbaca bahwa muatan
+yang dikirim berisi `MitraActId`, `Login`, `LeaderLogin`, `StartDate`, `FinishDate`,
+`AmountSLA`, `AmountNONSLA`, `SLAPercentage`, `isSLA`, `Aging`, `PercentageProd`, `Unit`,
+dan `YYYYMM` — yaitu **catatan kinerja dan SLA mitra investigator**, bukan data klaim.
+
+Artinya selama rule ini belum ada, aplikasi baru menyimpan investigasinya dengan benar tetapi
+**berhenti melaporkan kinerja mitra**. Itu selisih perilaku terhadap `P-5` yang tidak terlihat
+di layar mana pun, dan baru akan ketahuan saat laporan kinerja mitra kosong.
+
+Yang diminta: **berkas rule `ConnMitraNonBasClaim`** beserta endpoint dan profil otentikasinya,
+dan **berkas rule `IsBack`**.
+
+Nilai kredensialnya **jangan dikirimkan lewat berkas ini maupun lewat repository** (`D-69`,
+`D-40`) — cukup kirimkan rule-nya, dan kredensial menempuh Tim Infra/Security.
+
+### 15.3 Dua yang TAMPAK hilang tetapi TIDAK ADA di Pega juga — tidak perlu dikirim
+
+Keduanya **tidak terindeks** di `pxRuleReferences`, persis pola §14:
+
+| Rule | Tipe | Kesimpulan |
+|---|---|---|
+| `BrowseDaftarHospital_RD` | Report Definition | rujukan menggantung — autocomplete "Nama Rumah Sakit" **tidak berfungsi di layar lama** |
+| `BackFromRegister` | Ticket | rujukan menggantung |
+
+**Untuk yang pertama ada bukti kedua yang berdiri sendiri.** Report Definition itu dinyatakan
+berjalan di atas kelas `ASM-FW-GISFW-Int-VJ_M_HOSPITAL_PROVIDER`, yaitu view
+`POOLDATA.VJ_M_HOSPITAL_PROVIDER`. View itu **ada di katalog tetapi tidak dapat dibaca**:
+
+```
+SELECT COUNT(*) FROM POOLDATA.VJ_M_HOSPITAL_PROVIDER
+  ORA-00904: "G"."LWI_ID": invalid identifier
+```
+
+Definisinya merujuk kolom yang sudah tidak ada. Jadi dua jalur bukti yang berbeda —
+indeks rule Pega dan katalog Oracle — **sepakat**: pencarian nama rumah sakit pada formulir
+investigasi sudah mati, bukan sekadar tidak terkirim.
+
+### 15.4 Jalur penggantinya sudah ada — untuk **Work Owner**
+
+Dibaca langsung dari katalog pada 2026-10-06. Hanya jumlah baris dan nama kolom yang dibaca;
+**tidak satu baris data pun** (`D-69`):
+
+| Objek | Keadaan | Baris |
+|---|---|---|
+| `VJ_M_HOSPITAL_PROVIDER` | **rusak** — dipakai Pega | — |
+| `V_M_HOSPITAL_PROVIDER` | terbaca | 6.547 |
+| `M_HOSPITAL_PROVIDER` | terbaca — tiga kolom, isinya CLOB JSON | 7.499 |
+| `V_HOSPITAL_SEARCH` | terbaca, penamaan kolom berbahasa Indonesia | 8.391 |
+| `M_CATEGORY_HOSPITAL` | terbaca | 13 |
+
+`V_M_HOSPITAL_PROVIDER` memuat `HOSPITAL_NAME`, `HOSPITAL_ADDRESS`, dan `CATEGORY_ID`, dan
+kategorinya bernama di `M_CATEGORY_HOSPITAL` — cukup untuk membangun pencarian nama rumah
+sakit **tanpa menunggu rule mana pun**.
+
+**Yang perlu diputuskan Work Owner, dan sengaja tidak kami putuskan sendiri:** membangunnya
+berarti aplikasi baru **melebihi** aplikasi lama pada titik ini, karena yang lama mati.
+Itu menyalahi `P-5` yang menuntut perilaku setara lebih dulu. Dua pilihannya:
+
+1. **Bangun sekarang** — pencarian berfungsi, dan selisihnya dicatat sebagai perbaikan
+   terencana seperti ketiga belas butir `P-5` yang sudah disetujui.
+2. **Biarkan berupa isian teks** seperti sekarang — setara dengan layar lama, dan petugas
+   tetap mengetik nama rumah sakit dengan tangan.
+
+Selisih jumlah baris antara `V_M_` (6.547) dan `M_` (7.499) menunjukkan view-nya menyaring
+sesuatu. Mana yang benar untuk pencarian ini perlu ikut dipastikan sebelum pilihan 1 diambil.
+
+### 15.5 Rule Property — bukan kekurangan modul ini
+
+Formulir memakai **30 properti** `SurveyList(1).*`; hanya **6** yang ada rule-nya — keenam yang
+Work Owner kirimkan pada 2026-10-06. Tetapi seluruh export hanya memuat **8 rule Property**,
+sehingga ini **kekosongan menyeluruh**, bukan kekurangan modul ini.
+
+Yang hilang bersamanya adalah **tipe data** dan **daftar pilihan** tiap properti. Untuk 24
+properti sisanya, lebar kolom pada usulan DDL
+[`permintaan-tabel-investigasi.md`](permintaan-tabel-investigasi.md) karena itu **masih dugaan**,
+dan akan dikoreksi bila rule-nya menyusul.
+
+Keenam yang sudah diterima **langsung mengoreksi empat label tebakan kami** — antara lain
+`FlagDOB` yang ternyata "Sesuai / Tidak Sesuai" (bukan Ya/Tidak) dan `KonfirmasiModelKwitansi`
+yang ternyata punya **tiga** pilihan, bukan dua. Itu ukuran nyata betapa mahalnya menebak di
+tempat ini.
+
+---
+
+## 16. Inbox Manager — kontrol HTML grid ketiga tab Outstanding (2026-10-07)
+
+### 16.1 Satu rule yang hilang — ke **Tim Pega**
+
+| Rule | Tipe | Dirujuk di |
+|---|---|---|
+| **`PNCSummaryDashboardOS`** | **`Rule-HTML-Property`** | `Section/PNCDashboardOS-Section.xml:25719` (indeks rujukan) dan `:355876` (dipasang sebagai `pyFormat` pada satu sel baca-saja) |
+
+Ia menggambar **grid ketiga tab Outstanding** — tabel silang "Kategori/DOL × Reinsurer ×
+tahun" yang terlihat di layar Pega yang berjalan.
+
+**Direktori `HTML/` sudah terkirim** dan memuat 30+ rule lain, tetapi rule ini tidak ada di
+dalamnya. Ini gap `R-16`.
+
+### 16.2 Kenapa ia tidak terlihat dari pencarian page list
+
+`Section/PNCDashboardOS` hanya mengikat **dua** `pyPageListProperty`. Grid ketiga **tidak
+diikat page list sama sekali** — ia kontrol HTML yang dipasang pada satu sel. Pencarian page
+list tidak akan pernah menemukannya, dan itulah sebab kami sempat menyimpulkan grid ketiga
+tidak ada.
+
+### 16.3 Apa yang TIDAK kami butuhkan dari rule itu
+
+Bentuk datanya **sudah dapat kami bangun tanpa rule ini**, karena ditentukan penuh oleh kedua
+kueri pemasoknya yang memang terkirim:
+
+| Bagian | Sumbernya |
+|---|---|
+| kolom tahun | `RDB List/GetYearDashboardOS-SQL.xml` |
+| isi sel | `RDB List/GetProgressAllYearDashboarOS-SQL.xml` |
+| baris | `sts_progress1` × reinsurer |
+
+Gridnya **sudah dibangun** dan berjalan. Yang kami minta rule itu untuk **mencocokkan
+tampilannya** — lebar kolom, perataan, penanda, dan apakah ada baris jumlah yang tidak
+terbaca dari kuerinya.
+
+**Tidak menghalangi pekerjaan.** Prioritasnya rendah dibanding permintaan pada bab-bab
+sebelumnya.
 
 ## 15. Tombol "Kirim ke Inputor" — local action `AnalystRemarks` (2026-10-03) — ke **Tim Pega**
 

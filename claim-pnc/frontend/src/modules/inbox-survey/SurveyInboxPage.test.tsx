@@ -147,9 +147,10 @@ const keteranganResponse: KeteranganResponse = {
   // Tab bawaan adalah tab TERSEDIA pertama, bukan Outstanding. Server yang memutuskannya
   // (`inboxsurvey.DefaultAvailableTab`), dan data uji meniru keputusannya.
   tab_bawaan: 'belum-dijawab',
-  jenis_kpi: ['outstanding', 'final', 'kuartal'],
+  status_survei: ["ALL", "OUTSTANDING", "FINAL"],
+  tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
+  kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
   keterbatasan: ['Empat kueri tab layar lama hilang dari export.'],
 }
 
@@ -183,12 +184,19 @@ function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
 const kpiResponse: KPIResponse = {
   portal: 'ASM',
   identitas: identitas(),
-  jenis: 'outstanding',
-  kategori: '',
+  status_survei: 'FINAL',
+  tipe_report: 'DATA SUMMARY',
+  kuartal: '',
   tahun: '',
+  bentuk: 'per-adjuster',
+  kolom_awal: [{ kunci: 'kelompok', judul: 'ADJUSTER', tersedia: true }],
   data: [
     {
       kelompok: 'BUDI',
+      status: '',
+      kuartal: '',
+      bulan: '',
+      case_id: '',
       penjadwalan_survey: 85,
       immediate_advice: 75,
       preliminary_advice: 80,
@@ -200,6 +208,12 @@ const kpiResponse: KPIResponse = {
       nilai: 81,
     },
   ],
+}
+
+/** Mengisi kedua dropdown wajib panel KPI. */
+async function pilihKPI(status = 'FINAL', tipe = 'DATA SUMMARY') {
+  await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), status)
+  await userEvent.selectOptions(screen.getByLabelText(/Tipe Report/), tipe)
 }
 
 type Call = { url: string; init: RequestInit | undefined }
@@ -234,8 +248,29 @@ function stubFetch(
     if (url.includes('/jumlah-tab')) {
       return Promise.resolve(jsonResponse(200, jumlahTabResponse))
     }
+    // Diperiksa SEBELUM /kpi — keduanya berawalan sama, dan membalik urutannya membuat
+    // dropdown tahun menerima jawaban ringkasan KPI.
+    if (url.includes('/kpi/tahun')) {
+      return Promise.resolve(jsonResponse(200, { portal: 'ASM', tahun: ['2026', '2025'] }))
+    }
     if (url.includes('/kpi')) {
-      return Promise.resolve(typeof kpi === 'function' ? kpi() : jsonResponse(200, kpi))
+      if (typeof kpi === 'function') return Promise.resolve(kpi())
+
+      // BENTUK jawabannya mengikuti isian, sama seperti server: begitu kuartal diminta,
+      // barisnya berarti TAHUN, bukan adjuster. Mengembalikan satu bentuk untuk setiap
+      // permintaan akan membuat uji judul kolom lulus tanpa menguji apa pun.
+      const berkuartal = url.includes('kuartal=')
+      return Promise.resolve(
+        jsonResponse(200, {
+          ...kpi,
+          bentuk: berkuartal ? 'per-tahun' : 'per-adjuster',
+          kolom_awal: [
+            berkuartal
+              ? { kunci: 'kelompok', judul: 'TAHUN', tersedia: true }
+              : { kunci: 'kelompok', judul: 'ADJUSTER', tersedia: true },
+          ],
+        }),
+      )
     }
     return Promise.resolve(typeof daftar === 'function' ? daftar() : jsonResponse(200, daftar))
   })
@@ -563,17 +598,73 @@ it('tidak menyebutkan cakupan tim bagi surveyor tanpa anggota', async () => {
  * memilikinya. Menembaknya saat pengguna masih di tab INBOX berarti satu galat yang tidak
  * pernah dilihat siapa pun — tetapi tetap tercatat di log.
  */
-it('tidak menembak KPI sebelum tabnya dibuka', async () => {
+it('tidak menembak KPI sampai tombol Cari ditekan', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
+  expect(calls.some((c) => c.url.includes('/kpi?'))).toBe(false)
 
-  expect(calls.some((c) => c.url.includes('/kpi'))).toBe(false)
+  // Membuka tabnya saja TIDAK cukup. Layar lama tidak memuat apa pun sampai Cari ditekan,
+  // dan memuat sendiri berarti menjalankan laporan yang belum diminta.
+  // Membuka tabnya menembak /kpi/tahun — dropdown Tahun Kuartal harus terisi SEBELUM
+  // pengguna memilih apa pun. Yang TIDAK boleh ditembak adalah ringkasannya sendiri.
+  await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
+  await screen.findByLabelText(/Status Survey/)
+  expect(calls.some((c) => c.url.includes('/kpi?'))).toBe(false)
+  await waitFor(() => expect(calls.some((c) => c.url.includes('/kpi/tahun'))).toBe(true))
 
+  await pilihKPI()
+  await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+
+  await waitFor(() => expect(calls.some((c) => c.url.includes('/kpi?'))).toBe(true))
+})
+
+/**
+ * Tombol Cari mati sampai KEDUA isian wajib terisi.
+ *
+ * Keduanya ditandai bintang merah di layar lama. Membiarkannya hidup akan membuat pengguna
+ * menekan Cari lalu menerima penolakan — satu perjalanan yang sudah dapat dicegah di layar.
+ */
+it('mematikan Cari dan Export Data sampai kedua isian wajib terisi', async () => {
+  stubFetch(daftarResponse())
+  renderPage()
+
+  await screen.findByText('PNCN.26.0101')
   await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
 
-  await waitFor(() => expect(calls.some((c) => c.url.includes('/kpi'))).toBe(true))
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Export Data' })).toBeDisabled()
+
+  await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), 'FINAL')
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeDisabled()
+
+  await userEvent.selectOptions(screen.getByLabelText(/Tipe Report/), 'DATA SUMMARY')
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Export Data' })).toBeEnabled()
+})
+
+/**
+ * Kuartal dan Tahun Kuartal hanya muncul pada Status Survey ALL atau FINAL.
+ *
+ * Meniru `pyVisibleWhen` panel KPI apa adanya — itu sebabnya tangkapan layar Pega hanya
+ * memperlihatkan DUA kendali ketika Status Survey masih `--Pilih--`.
+ */
+it('menampilkan Kuartal hanya pada Status Survey ALL atau FINAL', async () => {
+  stubFetch(daftarResponse())
+  renderPage()
+
+  await screen.findByText('PNCN.26.0101')
+  await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
+
+  expect(screen.queryByLabelText('Kuartal')).not.toBeInTheDocument()
+
+  await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), 'OUTSTANDING')
+  expect(screen.queryByLabelText('Kuartal')).not.toBeInTheDocument()
+
+  await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), 'FINAL')
+  expect(screen.getByLabelText('Kuartal')).toBeInTheDocument()
+  expect(screen.getByLabelText('Tahun Kuartal')).toBeInTheDocument()
 })
 
 it('menggambar kesembilan judul angka KPI dari keterangan server', async () => {
@@ -582,6 +673,8 @@ it('menggambar kesembilan judul angka KPI dari keterangan server', async () => {
 
   await screen.findByText('PNCN.26.0101')
   await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
+  await pilihKPI()
+  await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
 
   await screen.findByText('85.00')
 
@@ -601,40 +694,67 @@ it('menggambar kesembilan judul angka KPI dari keterangan server', async () => {
 })
 
 /**
- * Kolom pertama tabel KPI berganti ARTI menurut jenis ringkasannya.
+ * Kolom pertama tabel KPI berganti ARTI menurut ISIAN, bukan menurut tab.
  *
- * Nama adjuster pada dua yang pertama, TAHUN pada yang ketiga. Judul yang tidak ikut berganti
- * akan membuat kolom tahun terbaca sebagai nama orang yang kebetulan berupa angka.
+ * Begitu Kuartal atau Tahun Kuartal diisi, pengelompokan berpindah ke per TAHUN. Judul yang
+ * tidak ikut berganti akan membuat kolom berisi "2026" terbaca sebagai nama orang yang
+ * kebetulan berupa angka.
  */
-it('mengganti judul kolom kelompok pada ringkasan per tahun', async () => {
+it('mengganti judul kolom kelompok ketika dikelompokkan per tahun', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
   await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
 
+  await pilihKPI()
+  await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
   await screen.findByText('85.00')
   expect(screen.getAllByText('ADJUSTER').length).toBeGreaterThan(0)
 
-  await userEvent.click(screen.getByRole('tab', { name: 'Data Final per Tahun' }))
+  await userEvent.selectOptions(screen.getByLabelText('Kuartal'), '3')
+  await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
 
   await waitFor(() => expect(screen.getAllByText('TAHUN').length).toBeGreaterThan(0))
 })
 
 /**
- * Selisih terencana dan keterbatasan datang dari SERVER.
+ * Catatan migrasi TIDAK ditampilkan di layar (Work Owner, 2026-10-07).
  *
- * Keduanya harus hilang dengan sendirinya begitu penghalangnya hilang — tanpa menyentuh satu
- * baris pun di layar.
+ * Server masih mengirim `selisih_terencana` dan `keterbatasan` — bentuk jawabannya sengaja
+ * dibiarkan sama dengan ~30 layar lain — dan uji ini memastikan keduanya tetap TIDAK dirender
+ * meski datanya ada. Itu sebabnya respons tiruan di berkas ini tetap memuat keduanya: kalau
+ * datanya ikut dikosongkan, uji ini akan lulus karena alasan yang salah.
+ *
+ * Surveyor membuka layar ini untuk mengerjakan survei, bukan untuk membaca apa yang berbeda
+ * dari Pega. Isinya hidup di `docs/catatan-pengembangan.md`.
  */
-it('menampilkan selisih terencana dan keterbatasan dari server', async () => {
+it('tidak menampilkan catatan perbedaan terhadap Pega meski server mengirimnya', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
 
-  expect(screen.getByText(/Tab Close memakai status adjuster/)).toBeInTheDocument()
-  expect(screen.getByText(/Empat kueri tab layar lama hilang/)).toBeInTheDocument()
+  expect(screen.queryByText(/Tab Close memakai status adjuster/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Empat kueri tab layar lama hilang/)).not.toBeInTheDocument()
+  expect(screen.queryByText('Perbedaan yang disengaja terhadap layar lama')).not.toBeInTheDocument()
+  expect(screen.queryByText('Yang perlu diketahui')).not.toBeInTheDocument()
+})
+
+/**
+ * Keterangan OPERASIONAL tetap tampil, dan itu pembedanya.
+ *
+ * Yang dihapus adalah catatan MIGRASI. Sebab sebuah tab belum dapat dibuka bukan catatan
+ * migrasi melainkan jawaban atas pertanyaan pemakai — tanpa itu, tab yang mati terbaca sebagai
+ * kerusakan diam.
+ */
+it('tetap menyebut sebab sebuah tab belum dapat dibuka', async () => {
+  stubFetch(daftarResponse())
+  renderPage()
+
+  await screen.findByText('PNCN.26.0101')
+
+  expect(screen.getByRole('tab', { name: /Close \(belum tersedia\)/ })).toBeInTheDocument()
 })
 
 /**

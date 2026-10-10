@@ -157,6 +157,14 @@ type MasterXOL struct {
 	// Mengubahnya menjadi angka di sini berarti menebak tipe kolom yang belum terlihat.
 	Year string
 
+	// MinLimit adalah batas layer TERENDAH perjanjian ini — `MIN(LIMIT)` atas
+	// `POOLDATA.MST_XOL_LAYER`, dalam mata uang perjanjian.
+	//
+	// Ia kolom "Min Limit" pada grid layar rincian; dikalikan kurs ia menjadi
+	// "Min Limit IDR". Sumbernya `RDB List/GetDataMasterXOL-SQL.xml:11`, alias
+	// `AIDiterima` dan `ClaimAmount`.
+	MinLimit float64
+
 	// ExchangeRate — `KURSVALUE`, kurs yang dipakai mengubah nilai klaim rupiah menjadi
 	// mata uang perjanjian. Nilai grid "OS Value (USD)" adalah nilai rupiah DIBAGI angka
 	// ini (`Activity/GetClaimXOL-Act.xml`, `.Currency := @toDecimal(.Currency)/local.kurs`).
@@ -278,6 +286,18 @@ func (m MasterXOL) AwaitingCommittee() bool {
 // Satu baris = satu Tanggal Kejadian × satu Penyebab Kerugian, dengan nilai klaim
 // seluruh group business perjanjian itu sudah dijumlahkan.
 type ClaimSummary struct {
+	// MasterID adalah perjanjian XOL yang MELAHIRKAN baris ini.
+	//
+	// Ia perlu dibawa per baris karena grid menggabungkan hasil SELURUH perjanjian —
+	// `Activity/GetClaimXOL-Act.xml` step 4 me-loop `MstXOL.pxResults` dan meng-APPEND
+	// hasil tiap perjanjian ke satu daftar. Tanpa penanda ini, rincian di balik sebuah
+	// baris tidak tahu tahun, kurs, dan group business mana yang berlaku baginya.
+	//
+	// Sistem lama membawanya sebagai `CaseIDCashier` dan `Notes` pada baris yang
+	// di-append — nama yang tidak ada hubungannya dengan isinya. Di sini namanya
+	// dibetulkan; perannya tidak.
+	MasterID string
+
 	// LossDate adalah Tanggal Kejadian — kolom `DOL` pada
 	// `POOLDATA.XOL_TABLE_ALL_KLAIM`.
 	//
@@ -617,12 +637,26 @@ func (f AdviceFilter) Empty() bool {
 // tingkat kueri (`ADR-0030`). Tidak ada satu pun kueri di baliknya yang menyaring menurut
 // entitas, dan memang tidak boleh ada.
 //
-// # Tidak ada satu pun operasi yang menulis
+// # Dua operasi menulis, sisanya membaca
 //
-// Itu bukan kelalaian melainkan batas yang ditetapkan Work Owner 2026-09-20. Keempat
-// tabel yang ditulis sistem lama tetap dimiliki Pega selama masa paralel (`P-1`).
-// Operasi yang tidak tersedia di seam ini tidak dapat dipakai kode yang ditulis kemudian
-// tanpa keputusan sadar.
+// Batas yang ditetapkan Work Owner 2026-09-20 berbunyi "modul ini membaca saja", dan
+// alasannya — kepemilikan tabel masih di Pega selama masa paralel (`P-1`) — tetap berlaku
+// untuk tabel yang tidak disebut di sini. Dua tabel dikecualikan atas permintaan Work
+// Owner, masing-masing setelah seluruh rantai rule-nya ada di export:
+//
+//	T_SALVAGE_MBU         UploadSalvageMBU  unggahan "Upload MBU Salvage"
+//	XOL_TABLE_ALL_KLAIM   InsertDolCol      modal "INSERT DOL DAN COL"
+//
+// Pengecualiannya per OPERASI, bukan pencabutan larangan: operasi tulis berikutnya tetap
+// harus ditambahkan di sini secara sadar, dan uji di repo/sqlstore/query_test.go
+// menggagalkan kueri tulis yang tidak terdaftar.
+//
+// # Yang TETAP tidak ditulis, dan kenapa itu penting
+//
+// T_PLA_XOL, T_DLA_XOL, dan MST_XOL_PNC. Selama Pega masih menulis XOL_TABLE_ALL_KLAIM,
+// dua sistem kini menulis satu tabel — `P-1` dilanggar secara sadar, bukan tanpa sengaja.
+// Akibat yang harus disadari: baris yang sama dapat disisipkan dua kali bila aksi yang
+// sama dijalankan di kedua aplikasi, dan gridnya akan menjumlahkan keduanya.
 type Repo interface {
 	// ListMasterXOL mengembalikan seluruh perjanjian XOL beserta group business-nya,
 	// diurutkan menurut ID.
@@ -654,8 +688,39 @@ type Repo interface {
 	// perjanjian yang `STSKOMITE`-nya masih `'0'`.
 	ListPendingMasterApproval(ctx context.Context) ([]MasterXOL, error)
 
+	// SummarizeBusiness mengembalikan grid "Summary Data XOL" — group business yang
+	// menanggung klaim pada satu Tanggal Kejadian dan Penyebab Kerugian.
+	SummarizeBusiness(ctx context.Context, filter SummaryFilter) ([]SummaryBusiness, error)
+
+	// ListClaims mengembalikan grid "No Klaim" — satu baris per klaim pada satu Tanggal
+	// Kejadian dan Penyebab Kerugian, klaim sendiri dan treaty inward disatukan.
+	ListClaims(ctx context.Context, filter ClaimListFilter) ([]ClaimListItem, error)
+
+	// ExportClaimDetail mengembalikan isi berkas "Export to Excel" satu baris rincian.
+	ExportClaimDetail(ctx context.Context, filter ExportFilter) (ExportTable, error)
+
 	// ListCauseOfLoss mengembalikan daftar Penyebab Kerugian yang dapat dipilih.
 	ListCauseOfLoss(ctx context.Context) ([]CauseOfLoss, error)
+
+	// CurrencyIDByName mencari ID mata uang dari namanya, untuk unggahan MBU Salvage.
+	//
+	// Mata uang yang tidak dikenal dijawab teks kosong TANPA galat: barisnya ditolak
+	// beserta sebabnya, dan satu nama salah ketik tidak menggugurkan seluruh berkas.
+	CurrencyIDByName(ctx context.Context, name string) (string, error)
+
+	// UploadSalvageMBU menyisipkan baris hasil "Upload MBU Salvage".
+	//
+	// Ia satu-satunya operasi TULIS modul ini. Seluruh barisnya masuk dalam satu
+	// transaksi — berkas tersimpan seluruhnya, atau tidak sama sekali.
+	UploadSalvageMBU(ctx context.Context, rows []SalvageInsert) error
+
+	// InsertDolCol menyisipkan baris hasil modal "INSERT DOL DAN COL".
+	//
+	// Seluruh barisnya — satu per group business perjanjian — masuk dalam SATU transaksi.
+	// Sistem lama mengulang RDB-Save tanpa transaksi, sehingga kegagalan di group business
+	// ketiga meninggalkan dua baris tersimpan dan sisanya tidak, tanpa cara mengetahui di
+	// mana batasnya (`D-68`).
+	InsertDolCol(ctx context.Context, rows []DolColInsert) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.
@@ -668,3 +733,184 @@ type Repo interface {
 // nama reasuradur satu badan hukum dari basis data badan hukum lain tanpa satu pun pesan
 // galat (`R-20`).
 type RepoSelector func(portalAlias string) (Repo, error)
+
+// SummaryBusiness adalah satu baris grid "Summary Data XOL" pada layar rincian.
+//
+// Satu baris = satu group business yang menanggung klaim pada tanggal kejadian dan
+// penyebab kerugian yang sedang dibuka. Ia TIDAK membawa nilai uang: kueri lama
+// (`GetBusinessnameXOLForSummerry`) hanya mengembalikan kode dan namanya, dan grid di
+// layar lama pun hanya berkolom "Business Name".
+type SummaryBusiness struct {
+	// BusinessGroupID — `BUSINESSGROUPID` pada klaim sendiri, `BUSINESSID` pada treaty
+	// inward. Keduanya disatukan UNION oleh kuerinya.
+	BusinessGroupID string
+
+	// BusinessGroupName — nama dari `POOLDATA.BUSINESS`, atau teks tetap
+	// "Treaty Inward" untuk baris treaty.
+	BusinessGroupName string
+}
+
+// SummaryFilter menyaring grid "Summary Data XOL".
+//
+// Hanya dua kolom, dan keduanya berasal dari BARIS yang sedang dibuka di grid
+// "DATA XOL BASED ON DOL AND COL" — bukan dari perjanjian XOL. Group business TIDAK ikut
+// menyaring: grid ini justru yang menyebutkan group business mana saja yang terlibat.
+type SummaryFilter struct {
+	// LossDate — Tanggal Kejadian berformat `dd/mm/yyyy`.
+	LossDate string
+
+	// CauseOfLoss — DESKRIPSI penyebab kerugian, bukan kodenya.
+	CauseOfLoss string
+}
+
+// Empty menyatakan penyaring belum lengkap, sehingga kuerinya tidak perlu dijalankan.
+func (f SummaryFilter) Empty() bool {
+	return strings.TrimSpace(f.LossDate) == "" || strings.TrimSpace(f.CauseOfLoss) == ""
+}
+
+// ClaimListItem adalah satu baris grid "No Klaim" pada layar rincian.
+//
+// Sumbernya DUA: klaim milik sendiri dari `T_CLAIM_XOL`, dan klaim treaty inward dari
+// `T_CLAIM_INWARD_XOL` — disatukan UNION oleh `BrowserT_claim_xolDesc`.
+type ClaimListItem struct {
+	// ClaimNo — nomor klaim. Untuk baris treaty inward ia NAMA PERUSAHAAN, bukan nomor:
+	// klaim inward tidak punya nomor klaim ASM, dan kueri lama memang mengisinya dengan
+	// `COMPANYNAME`.
+	ClaimNo string
+
+	// CurrencyName — nama mata uang dari `POOLDATA.CURRENCY`, bukan kodenya.
+	CurrencyName string
+
+	// Source membedakan kedua asal baris, sama seperti pada BusinessBreakdown.
+	Source BreakdownSource
+
+	OutstandingValue float64
+	AcceptedValue    float64
+
+	// RateMissing menandai baris treaty inward yang kursnya tidak ditemukan. Nilainya
+	// TIDAK ditampilkan saat ini benar (`D-48`).
+	RateMissing bool
+}
+
+// ClaimListFilter menyaring grid "No Klaim".
+//
+// Hanya dua kolom, dan keduanya milik BARIS yang sedang dibuka. Group business TIDAK ikut
+// menyaring: grid ini memuat seluruh klaim pada tanggal dan penyebab kerugian itu, lintas
+// group business.
+//
+// Mata uang dasar konversi treaty inward TIDAK ada di sini — ia milik repo
+// (`DefaultBaseCurrencyID`), sama seperti pada BreakdownFilter.
+type ClaimListFilter struct {
+	// LossDate — Tanggal Kejadian berformat `dd/mm/yyyy`.
+	LossDate string
+
+	// CauseOfLoss — DESKRIPSI penyebab kerugian.
+	CauseOfLoss string
+}
+
+// Empty menyatakan penyaring belum lengkap, sehingga kuerinya tidak perlu dijalankan.
+func (f ClaimListFilter) Empty() bool {
+	return strings.TrimSpace(f.LossDate) == "" || strings.TrimSpace(f.CauseOfLoss) == ""
+}
+
+// ExportFilter menyaring isi "Export to Excel" pada layar rincian.
+//
+// BusinessGroupID menentukan KUERI MANA yang dipakai, bukan sekadar menyaring —
+// `GenerateDetailClaimBusinessXOL` bercabang atasnya:
+//
+//	'10004'		MBU		export_mbu
+//	'treaty'	treaty inward	export_treaty_inward
+//	selainnya	group biasa	export_per_business
+type ExportFilter struct {
+	// LossDate — Tanggal Kejadian berformat `dd/mm/yyyy`.
+	LossDate string
+
+	// CauseOfLoss — DESKRIPSI penyebab kerugian.
+	CauseOfLoss string
+
+	// BusinessGroupID — kode group business, atau teks `treaty` untuk baris inward.
+	BusinessGroupID string
+}
+
+// ExportBusinessGroupTreaty adalah nilai khusus BusinessGroupID untuk baris treaty
+// inward. Ia BUKAN kode group business — `GenerateDetailClaimBusinessXOL` memakainya
+// sebagai penanda cabang (`Param.grpbzid=="treaty"`).
+const ExportBusinessGroupTreaty = "treaty"
+
+// ExportBusinessGroupMBU adalah kode group business MBU, yang punya kuerinya sendiri.
+const ExportBusinessGroupMBU = "10004"
+
+// Empty menyatakan penyaring belum lengkap, sehingga kuerinya tidak perlu dijalankan.
+func (f ExportFilter) Empty() bool {
+	return strings.TrimSpace(f.LossDate) == "" ||
+		strings.TrimSpace(f.CauseOfLoss) == "" ||
+		strings.TrimSpace(f.BusinessGroupID) == ""
+}
+
+// ExportTable adalah isi berkas unduhan: satu baris judul, lalu barisnya.
+//
+// # Kenapa teks, bukan tipe bernama
+//
+// Karena ketiga varian export punya kolom yang BERBEDA — 42, 14, dan 13 — dan satu-satunya
+// pembacanya adalah penulis CSV. Menjadikannya tiga struct berarti 69 field yang tidak
+// pernah dibaca kode mana pun, dan tiga tempat baru yang bisa menyimpang dari daftar
+// kolom di activity.
+type ExportTable struct {
+	// Headers adalah judul kolom yang dibaca PENGGUNA, dari `CSVPropHeaders`.
+	Headers []string
+
+	// Rows sudah berurutan sesuai Headers.
+	Rows [][]string
+}
+
+// Jenis berkas contoh unggahan, sesuai `Param.jenis` tombol "Format ..." di layar lama
+// (`Section/DetailValueClaimXOL-Section.xml:7094` dan `:7480`).
+const (
+	UploadTemplateMBUSalvage = "1"
+	UploadTemplateInward     = "2"
+)
+
+// uploadTemplates memuat judul kolom kedua berkas contoh unggahan.
+//
+// Keduanya disalin apa adanya dari `CSVPropHeaders` di
+// `Activity/DownloadFormatForAllUploadingFile-Act.xml` — baris 301 untuk `jenis=1` dan
+// 499 untuk `jenis=2`.
+//
+// # Kenapa hanya judul kolom, tanpa satu pun baris
+//
+// Karena sistem lama pun demikian. Activity-nya memanggil `pxConvertResultsToCSV` atas
+// `Code-Pega-List` yang TIDAK pernah diisi, sehingga berkas yang turun berisi baris judul
+// saja. Ia memang berkas contoh untuk diisi pengguna, bukan ekspor data.
+//
+// `CSVProperties` di activity itu sengaja TIDAK disalin: isinya properti ber-alias yang
+// tidak mencerminkan kolomnya (`CaseID;NamaSurveyor` berulang tiga belas kali untuk
+// `jenis=2`), dan karena daftar barisnya kosong, properti itu tidak pernah terbaca.
+var uploadTemplates = map[string][]string{
+	UploadTemplateMBUSalvage: {
+		"ClaimNo", "DateOfLoss", "Currency", "SALVAGEOS", "SALVAGEAKSEP", "CauseOfLoss",
+	},
+	UploadTemplateInward: {
+		"pyCompany", "Currency", "IsReservedClaim", "OwnRiskValue", "QsTreaty",
+		"DeductibleValue", "ClaimAmount", "ASMShare", "ClaimAmountShareASM",
+		"PaidClaimAmountShare", "BalanceClaimASMShare", "DateOfLoss", "CauseOfLoss",
+	},
+}
+
+// uploadTemplateNames adalah nama berkasnya, dari elemen `FileName` di activity yang sama.
+var uploadTemplateNames = map[string]string{
+	UploadTemplateMBUSalvage: "Format Upload Salvage MBU",
+	UploadTemplateInward:     "Format Upload Inward",
+}
+
+// UploadTemplate mengembalikan berkas contoh unggahan beserta namanya.
+//
+// Jenis yang tidak dikenal ditolak, bukan dijawab berkas kosong: berkas contoh tanpa
+// judul kolom akan dibuka pengguna, diisi, lalu ditolak pembacanya — kegagalan yang
+// muncul jauh dari sebabnya.
+func UploadTemplate(kind string) (ExportTable, string, bool) {
+	headers, known := uploadTemplates[strings.TrimSpace(kind)]
+	if !known {
+		return ExportTable{}, "", false
+	}
+	return ExportTable{Headers: headers}, uploadTemplateNames[strings.TrimSpace(kind)], true
+}

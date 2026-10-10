@@ -26,10 +26,11 @@ import (
 	"claim-pnc/internal/inboxpladla"
 )
 
-// Claim adalah satu baris `POOLDATA.T_CLAIM_PNC` sejauh yang dibaca layar ini.
+// Claim adalah satu baris `POOLDATA.T_CLAIM_PNC` beserta kolom tabel kerja Pega yang
+// dibaca layar ini.
 //
-// SUMBER BARU (2026-10-08): kode status dan penanda tunggu-tutup dulu dibaca dari tabel
-// kerja Pega (`PZINSKEY = CLAIMID`); kini keduanya kolom `T_CLAIM_PNC` sendiri.
+// Kedua tabel digabung MENDATAR di sini karena hubungannya satu-ke-satu lewat
+// `PZINSKEY = CLAIMID`. Yang diuji adalah penyaringnya, bukan cara gabungannya disusun.
 type Claim struct {
 	// Key adalah `CLAIMID`, kunci objek kerja Pega.
 	Key string
@@ -49,18 +50,21 @@ type Claim struct {
 	// WorkStatus adalah `T_CLAIM_PNC.STATUSWORK`.
 	WorkStatus string
 
-	// StatusCode adalah `T_CLAIM_PNC.STATUSCLAIM`.
-	//
-	// SUMBER BARU (2026-10-08): dulu `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`; tabel kerja
-	// Pega sudah tidak dipakai.
+	// StatusCode adalah `PC_ASM_FW_GCNMFW_WORK.STATUSCLAIM_1`.
 	StatusCode string
 
-	// PendingClose adalah `T_CLAIM_PNC.ISPENDINGCLOSE = 'true'` (dulu kolom yang sama pada
-	// tabel kerja Pega).
+	// PendingClose adalah `PC_ASM_FW_GCNMFW_WORK.ISPENDINGCLOSE = 'true'`.
 	//
 	// Ia menentukan dua hal sekaligus pada tab DLA: apakah klaimnya ikut daftar meski
 	// sudah `Resolved-Completed`, dan apakah kode statusnya diganti `1139`.
 	PendingClose bool
+
+	// HasWorkRow menyatakan baris `PC_ASM_FW_GCNMFW_WORK`-nya ADA.
+	//
+	// Ia dibutuhkan karena ketiga kueri tidak sepakat: tab DLA memakai gabungan INNER —
+	// klaim tanpa baris kerja TIDAK muncul — sementara dua tab lain memakai sub-kueri,
+	// yang setara dengan LEFT JOIN. Tanpa isian ini, perbedaan itu tidak dapat diuji.
+	HasWorkRow bool
 }
 
 // Advice adalah satu baris `T_PLALIST` atau `T_DLALIST` sejauh yang dibaca layar ini.
@@ -108,18 +112,6 @@ type Reinsurer struct {
 	Login string
 }
 
-// XOL adalah satu baris `T_PLA_XOL` atau `T_DLA_XOL`.
-type XOL struct {
-	Kind        string
-	ReinsCode   string
-	Year        string
-	CauseOfLoss string
-
-	// Sent menyatakan `SENDDATE IS NOT NULL` — hanya yang sudah terkirim yang dihitung.
-	Sent       bool
-	InsertDate time.Time
-}
-
 // StatusLabel adalah satu baris `POOLDATA.M_STS_CLAIM`.
 type StatusLabel struct {
 	Code  string
@@ -132,7 +124,6 @@ type Store struct {
 	claims     []Claim
 	advices    []Advice
 	reinsurers []Reinsurer
-	xol        []XOL
 	labels     []StatusLabel
 
 	// messages dan documents melayani layar RINCIAN — lihat detail.go.
@@ -150,7 +141,6 @@ func NewStore() *Store {
 		claims:     []Claim{},
 		advices:    []Advice{},
 		reinsurers: []Reinsurer{},
-		xol:        []XOL{},
 		labels:     []StatusLabel{},
 		messages:   []Message{},
 		documents:  []Document{},
@@ -162,7 +152,6 @@ func (s *Store) Seed(
 	claims []Claim,
 	advices []Advice,
 	reinsurers []Reinsurer,
-	xol []XOL,
 	labels []StatusLabel,
 ) {
 	s.mu.Lock()
@@ -171,7 +160,6 @@ func (s *Store) Seed(
 	s.claims = append([]Claim{}, claims...)
 	s.advices = append([]Advice{}, advices...)
 	s.reinsurers = append([]Reinsurer{}, reinsurers...)
-	s.xol = append([]XOL{}, xol...)
 	s.labels = append([]StatusLabel{}, labels...)
 }
 
@@ -194,7 +182,7 @@ func (s *Store) ReinsurerCodes(
 // reinsurerCodesLocked mencari kode reasuradur milik satu login. Pemanggil sudah memegang
 // kunci baca.
 //
-// Ia dipisahkan dari ReinsurerCodes supaya XOL tidak mengambil kunci baca DUA KALI.
+// Ia dipisahkan dari ReinsurerCodes supaya pemanggil tidak mengambil kunci baca DUA KALI.
 // `sync.RWMutex` tidak menjamin pengambilan kunci baca bersarang aman: satu penulis yang
 // menunggu di antara keduanya membuat keduanya saling menunggu.
 func (s *Store) reinsurerCodesLocked(login string) []string {
@@ -256,53 +244,6 @@ func (s *Store) Counts(
 		})
 	}
 	return counts, nil
-}
-
-// XOL mengembalikan isi grid "DATA PLA DLA XOL KLAIM".
-func (s *Store) XOL(
-	_ context.Context,
-	login string,
-) ([]inboxpladla.XOLRow, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	codes := s.reinsurerCodesLocked(strings.TrimSpace(login))
-
-	type key struct{ kind, year, cause string }
-	latest := map[key]time.Time{}
-
-	for _, item := range s.xol {
-		if !item.Sent || !containsValue(codes, item.ReinsCode) {
-			continue
-		}
-		k := key{item.Kind, item.Year, item.CauseOfLoss}
-		if item.InsertDate.After(latest[k]) {
-			latest[k] = item.InsertDate
-		}
-	}
-
-	rows := []inboxpladla.XOLRow{}
-	for k, moment := range latest {
-		rows = append(rows, inboxpladla.XOLRow{
-			Year:           k.year,
-			CauseOfLoss:    k.cause,
-			Kind:           k.kind,
-			LastInsertDate: dateText(moment),
-		})
-	}
-
-	// `ORDER BY "Type","City" desc` pada kueri lama: jenis menaik, tahun menurun.
-	sort.SliceStable(rows, func(i, j int) bool {
-		if rows[i].Kind != rows[j].Kind {
-			return rows[i].Kind < rows[j].Kind
-		}
-		if rows[i].Year != rows[j].Year {
-			return rows[i].Year > rows[j].Year
-		}
-		return rows[i].CauseOfLoss < rows[j].CauseOfLoss
-	})
-
-	return rows, nil
 }
 
 // rowsFor menyusun SELURUH baris yang cocok, belum dipotong halaman.
@@ -380,8 +321,10 @@ func claimPassesTab(claim Claim, tab inboxpladla.Tab) bool {
 		return !containsValue(inboxpladla.ClosedWorkStatuses, claim.WorkStatus)
 
 	case inboxpladla.WorkOpenOrPendingClose:
-		// Gabungan INNER ke tabel kerja Pega sudah tidak ada (SUMBER BARU 2026-10-08):
-		// klaim tanpa baris kerja Pega kini ikut, sama seperti pada dua tab lain.
+		// Gabungan INNER pada kueri tab DLA: klaim tanpa baris tabel kerja TIDAK muncul.
+		if !claim.HasWorkRow {
+			return false
+		}
 		if !containsValue(inboxpladla.ClosedWorkStatuses, claim.WorkStatus) {
 			return true
 		}

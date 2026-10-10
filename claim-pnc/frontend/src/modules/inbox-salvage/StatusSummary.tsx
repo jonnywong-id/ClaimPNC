@@ -25,12 +25,18 @@ type Props = {
  *
  * # Angka di sini TIDAK selalu sama dengan jumlah baris daftarnya
  *
- * Dan itu bukan kerusakan. Tiga baris menghitung populasi yang BERBEDA dari daftar yang
- * dibukanya — "Outstanding", "Checker", dan "Histori Salvage" — karena begitulah kueri
- * pencacahnya di Pega. Keputusan Work Owner 2026-09-25: direplikasi, karena angkanya
- * berjalan dan dibaca orang setiap hari.
+ * Dan itu bukan kerusakan. Dua baris menghitung populasi yang BERBEDA dari daftar yang
+ * dibukanya — "Checker" dan "Histori Salvage" — karena begitulah kueri pencacahnya di Pega.
+ * Keputusan Work Owner 2026-09-25: direplikasi, karena angkanya berjalan dan dibaca orang
+ * setiap hari.
  *
- * Keterangannya ada di `selisih_terencana`, yang digambar halaman ini di bawah tabel.
+ * Baris "Outstanding" DULU termasuk, dan sejak 2026-10-08 tidak lagi: angkanya ternyata
+ * tidak sepadan dengan daftar Pega mana pun, dan Work Owner memutuskan ia mengikuti
+ * daftarnya. Lihat `inboxsalvage.OutstandingSalvageStatuses` di backend.
+ *
+ * Keterangannya TIDAK lagi digambar di layar: panel selisih terencana dihapus atas
+ * keputusan Work Owner 2026-10-06. Daftarnya tetap hidup di `inboxsalvage.PlannedDifferences`
+ * sebagai pemetaan ke butir `P-5` untuk uji kesetaraan gerbang 1 (`D-54`).
  *
  * # Grafik di kiri, tabel di kanan
  *
@@ -97,14 +103,45 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
                         type="button"
                         onClick={() => onSelect(row.daftar ?? '')}
                         aria-current={selected ? 'true' : undefined}
+
+                        // `aria-expanded` menyatakan baris ini MEMBUKA sesuatu, dan
+                        // apakah yang dibukanya sedang terbuka.
+                        //
+                        // Ia yang menyampaikan kepada pembaca layar hal yang bagi pembaca
+                        // awas disampaikan tanda panah di sebelah kiri: daftarnya belum
+                        // tergambar sampai baris ini ditekan.
+                        aria-expanded={selected}
                         className={[
-                          'rounded-kontrol px-1 text-left',
+                          'flex items-center gap-1.5 rounded-kontrol px-1 text-left',
                           'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
                           selected
                             ? 'font-semibold text-blue-700'
                             : 'text-blue-700 hover:underline',
                         ].join(' ')}
                       >
+                        {/*
+                          Tanda panah, dan ia BERPUTAR saat barisnya terbuka.
+
+                          Digambar sebagai SVG, bukan sebagai karakter `▶`. Sebabnya bukan
+                          selera: glif di dalam aliran teks ikut terbawa `textContent`,
+                          ikut tersalin saat orang menyalin nama statusnya, dan ikut
+                          muncul di setiap perbandingan teks. SVG tidak meninggalkan
+                          simpul teks sama sekali.
+
+                          `aria-hidden` karena artinya sudah dibawa `aria-expanded` di
+                          atas; membacakannya dua kali membuat setiap baris terdengar
+                          berulang.
+                        */}
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 8 10"
+                          className={[
+                            'h-2.5 w-2 shrink-0 transition-transform',
+                            selected ? 'rotate-90 text-blue-700' : 'text-slate-400',
+                          ].join(' ')}
+                        >
+                          <path d="M0 0l8 5-8 5z" fill="currentColor" />
+                        </svg>
                         {row.status_salvage}
                       </button>
                     ) : (

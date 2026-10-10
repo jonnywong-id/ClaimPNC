@@ -1,0 +1,323 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyClassName>ASM-FW-GCNMFW-Data-Survey</pyClassName>
+<pyRuleName>TagihanLunasBelumLunas</pyRuleName>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyIsReference>false</pyIsReference>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pxCreateDateTime>20180212T032514.609 GMT</pxCreateDateTime>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyEditValidate/>
+<pyIsManualReference/>
+<pyRefLocalizedValue/>
+<pyStringType>Text</pyStringType>
+<pyTableOption>PromptList</pyTableOption>
+<pyMaxLength/>
+<pyLocalize>false</pyLocalize>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyGatewayClass/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pySpecial>false</pySpecial>
+<pxInstanceLockedRuleSet/>
+<pyCircumstanceType/>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20171121T112158.705 GMT</pzOriginalInstanceKey>
+<pxUpdateOpName>YENI YENI</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pyWindowTitle/>
+<pyShowJavaWindowName>GeneratedJava20261006T014713.520 GMT</pyShowJavaWindowName>
+<pyValueChanged>false</pyValueChanged>
+<pxOriginalCreateOperator/>
+<pyTableProperty/>
+<pyDeletedObject/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyDescription/>
+<pyStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyPropertyMode>String</pyPropertyMode>
+<pyRuleFormStatusTime>20261006T014713.482 GMT</pyRuleFormStatusTime>
+<pyRuleStarts/>
+<pyLabel>Tagihan Lunas/Belum Lunas</pyLabel>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyUsage/>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzDocumentKey>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pxInstanceLockedKey/>
+<pyRuleAccessWhen/>
+<pyTableAggregate/>
+<pyCircumstanceDate/>
+<pyStreamName>pxTextInput</pyStreamName>
+<pxOriginalCreateOpName/>
+<pzEntryCode>stN</pzEntryCode>
+<pzRuleSetVersionPatch>20</pzRuleSetVersionPatch>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzInsKey>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyComparator/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyMethodStatus/>
+<pyTableClass/>
+<pyIsTransient/>
+<pxCommitDateTime>20200311T111321.000 GMT</pxCommitDateTime>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pxTabLabel>TagihanLunasBelumLunas</pxTabLabel>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateSystemID/>
+<pyOnObjChange/>
+<pySerializeJavaObject/>
+<pxInstanceLockedRuleSetVersion/>
+<pyIsJavaPage/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyFieldClass/>
+<pyJavaStream/>
+<pyDataRetrievalType/>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pxInsName>ASM-FW-GCNMFW-DATA-SURVEY!TAGIHANLUNASBELUMLUNAS</pxInsName>
+<pyFieldName/>
+<pyDataObject/>
+<pyRuleSetVersion>01-01-20</pyRuleSetVersion>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyCircumstanceProp/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxInstanceLockedDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20180212T032536.493 GMT</pxSaveDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyDocumentTitle/>
+<pyRelativePath/>
+<pxCreateOperator>YENIHULU2</pxCreateOperator>
+<pxUpdateDateTime>20180212T032536.439 GMT</pxUpdateDateTime>
+<pxInstanceLockedBy/>
+<pyTableSelector/>
+<pyPageClass/>
+<pxHostId>jboss2058</pxHostId>
+<pyColumnInclusion/>
+<pyJavaObjectClass/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pySpecialtyComponentData/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceVal/>
+<pyExpectedSize/>
+<pxOriginalCreateDateTime/>
+<pyRuleEnds/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleParamsStreamName/>
+<pzChecksum>-201777013</pzChecksum>
+<pyIsLightweight>false</pyIsLightweight>
+<pyIsGateway/>
+<pxCreateOpName>YENI YENI</pxCreateOpName>
+<pxUpdateOperator>YENIHULU2</pxUpdateOperator>
+<pyPropertyName>TagihanLunasBelumLunas</pyPropertyName>
+<pyMemo>toUppercase</pyMemo>
+<pyIsFromManageChangeLP/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pySPRuleSetName>YENIHULU2@</pySPRuleSetName>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyReflectStatus>true</pyReflectStatus>
+<pyTemplateInputBox/>
+<pzIndexCount>15</pzIndexCount>
+<pyColumnIndexed/>
+<pxInsId>!TAGIHANLUNASBELUMLUNAS</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyWorkKey/>
+<pxMoveImportDateTime>20191231T041902.103 GMT</pxMoveImportDateTime>
+<pyInterface/>
+<pyLabelOld>Tagihan Lunas/Belum Lunas</pyLabelOld>
+<pyOnInput/>
+<pyFormPost/>
+<pzStatus>valid</pzStatus>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleClassName/>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Survey</pxRuleClassName>
+<pyMethodStatus/>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-SURVEY</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Survey</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>pyCaption LUNAS</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleFamilyName>PYCAPTION!LUNAS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyRuleName>pyCaption BELUM LUNAS</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!BELUM LUNAS</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Survey</pxRuleClassName>
+<pyRuleName>none</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyForward>true</pyForward>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelete>false</pyDelete>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pyPreview>true</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+</pyToolBarSettings>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyValue/>
+<pyKeyCaption/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+</rowdata>
+</pyTableKeys>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pxSubscript>none</pxSubscript>
+<pyLabel/>
+</rowdata>
+</pyqualifierpagegroup>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-01-20 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20180212T032514.609 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-SURVEY TAGIHANLUNASBELUMLUNAS #20171121T112158.705 GMT</pzInsKey>
+<pyLabel>01-01-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStandardValue>0</pyStandardValue>
+<pyLocalizedValue>BELUM LUNAS</pyLocalizedValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyStandardValue>1</pyStandardValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyLocalizedValue>LUNAS</pyLocalizedValue>
+</rowdata>
+</pyPromptTableList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+</pagedata>

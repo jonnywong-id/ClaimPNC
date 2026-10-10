@@ -64,7 +64,7 @@ const PRE = {
   label_aksi_baris: 'Print Pre DLA',
 }
 
-const METADATA = { daftar: [PLA, PRE], daftar_bawaan: 'pla', selisih_terencana: [], portal: 'ASM' }
+const METADATA = { daftar: [PLA, PRE], daftar_bawaan: 'pla', portal: 'ASM' }
 
 const BARIS = {
   kunci_klaim: 'ASM-FW-GCNMFW-WORK PNC-2001',
@@ -141,17 +141,26 @@ afterEach(() => {
 })
 
 describe('pesan', () => {
-  it('formatTanggal menandai kosong, membiarkan teks yang bukan tanggal, dan memformat WIB', () => {
+  it('formatTanggal menulis bentuk grid Pega: dd/MM/yyyy, dengan jam hanya bila ada', () => {
     expect(formatTanggal('  ')).toBe('—')
     expect(formatTanggal('bukan tanggal')).toBe('bukan tanggal')
-    expect(formatTanggal('2026-01-10T00:00:00Z')).toBe(
-      new Date('2026-01-10T00:00:00Z').toLocaleDateString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      }),
-    )
+
+    // Tanpa jam di sumbernya, tanpa jam di layar. Menambahkan "0:00" akan mengarang
+    // ketelitian yang tidak pernah tercatat.
+    expect(formatTanggal('2026-01-10')).toBe('10/01/2026')
+
+    // Bertanda zona berarti sebuah TITIK WAKTU, dan diterjemahkan ke WIB: tengah malam
+    // UTC adalah pukul tujuh pagi WIB pada tanggal yang sama.
+    expect(formatTanggal('2026-01-10T00:00:00Z')).toBe('10/01/2026 7:00')
+
+    // Melewati tengah malam WIB, tanggalnya ikut maju — itu yang membuktikan yang
+    // digeser adalah titik waktunya, bukan hanya jamnya.
+    expect(formatTanggal('2026-01-10T20:30:00Z')).toBe('11/01/2026 3:30')
+
+    // TANPA zona, teksnya sudah waktu dinding. Menggesernya tujuh jam akan membuat
+    // angkanya salah — kelas kesalahan yang melahirkan ratusan penyesuaian 7 jam di
+    // sistem lama.
+    expect(formatTanggal('2026-01-10 08:05')).toBe('10/01/2026 8:05')
   })
 
   it('pesanGalat membedakan jaringan, galat API, dan galat lain', () => {

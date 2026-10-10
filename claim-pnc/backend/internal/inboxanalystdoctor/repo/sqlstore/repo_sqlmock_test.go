@@ -26,7 +26,7 @@ func newMock(t *testing.T) (*Repo, sqlmock.Sqlmock) {
 // q mengubah kueri bernama menjadi pola regexp literal.
 func q(name string) string { return "^" + regexp.QuoteMeta(query(name)) + "$" }
 
-var rowColumns = []string{"REF", "CASEID", "POLIS", "TERTANGGUNG", "CABANG", "ADMIN", "PIC", "CATATAN",
+var rowColumns = []string{"REF", "CASEID", "POLIS", "TERTANGGUNG", "CABANG", "ADMIN", "PIC",
 	"TGL", "STATUS", "OPERATOR", "TOTAL"}
 
 func TestListMapsRowsAndTotal(t *testing.T) {
@@ -34,11 +34,11 @@ func TestListMapsRowsAndTotal(t *testing.T) {
 	wib := time.FixedZone("WIB", 7*3600)
 	registered := time.Date(2026, 9, 20, 10, 0, 0, 0, wib)
 	mock.ExpectQuery(q("list_tasks")).
-		WithArgs("DOKTER1", inboxanalystdoctor.StatusKerjaSelesai,
-			"banjir", "banjir", "banjir", 50, inboxanalystdoctor.MaxLimit).
+		WithArgs(inboxanalystdoctor.TaskLabelAnalystDoctor, "DOKTER1", inboxanalystdoctor.StatusKerjaSelesai,
+			"banjir", "%BANJIR%", "%BANJIR%", 50, inboxanalystdoctor.MaxLimit).
 		WillReturnRows(sqlmock.NewRows(rowColumns).
-			AddRow("REF-1", "PNC-1", "POL", "PT", "Jakarta", "Admin", "PIC", "catatan", registered, "Pending", "DOKTER1", 42).
-			AddRow("REF-2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 42))
+			AddRow("REF-1", "PNC-1", "POL", "PT", "Jakarta", "Admin", "PIC", registered, "Pending", "DOKTER1", 42).
+			AddRow("REF-2", nil, nil, nil, nil, nil, nil, nil, nil, nil, 42))
 	page, err := repo.List(context.Background(), "DOKTER1",
 		inboxanalystdoctor.Filter{Search: " banjir ", Limit: 999, Offset: 50})
 	require.NoError(t, err)
@@ -47,7 +47,8 @@ func TestListMapsRowsAndTotal(t *testing.T) {
 	first := page.Tasks[0]
 	require.Equal(t, "REF-1", first.ClaimID)
 	require.Equal(t, "PNC-1", first.ClaimNumber)
-	require.Equal(t, "catatan", first.TechnicalPICNote)
+	require.Empty(t, first.TechnicalPICNote,
+		"kolom Komentar dari PIC Teknis tidak punya kolom SQL; ia sengaja kosong")
 	require.Equal(t, "DOKTER1", first.AssignedOperator)
 	require.Equal(t, time.UTC, first.RegisteredAt.Location())
 	require.True(t, registered.Equal(first.RegisteredAt))
@@ -58,8 +59,8 @@ func TestListMapsRowsAndTotal(t *testing.T) {
 func TestListEmptySearchSendsNullAndEmptySlice(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("list_tasks")).
-		WithArgs("D", inboxanalystdoctor.StatusKerjaSelesai,
-			nil, nil, nil, 0, inboxanalystdoctor.DefaultLimit).
+		WithArgs(inboxanalystdoctor.TaskLabelAnalystDoctor, "D", inboxanalystdoctor.StatusKerjaSelesai,
+			nil, "", "", 0, inboxanalystdoctor.DefaultLimit).
 		WillReturnRows(sqlmock.NewRows(rowColumns))
 	page, err := repo.List(context.Background(), "D", inboxanalystdoctor.Filter{})
 	require.NoError(t, err)
@@ -82,7 +83,7 @@ func TestListErrors(t *testing.T) {
 	require.ErrorContains(t, err, "membaca baris kueri list_tasks")
 
 	mock.ExpectQuery(q("list_tasks")).WillReturnRows(sqlmock.NewRows(rowColumns).
-		AddRow("R", "C", "P", "I", "B", "A", "T", "N", nil, "S", "O", 1).RowError(0, errDB))
+		AddRow("R", "C", "P", "I", "B", "A", "T", nil, "S", "O", 1).RowError(0, errDB))
 	_, err = repo.List(ctx, "D", inboxanalystdoctor.Filter{})
 	require.ErrorIs(t, err, errDB)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -99,11 +100,13 @@ func TestCheckTablesAndColumns(t *testing.T) {
 	require.ErrorIs(t, err, errDB)
 	require.ErrorContains(t, err, "tabel antrean Analyst Doctor")
 
-	mock.ExpectQuery(q("check_columns")).WillReturnRows(sqlmock.NewRows([]string{"A", "B"}).AddRow(1, 1))
+	mock.ExpectQuery(q("check_columns")).WillReturnRows(sqlmock.NewRows([]string{
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+	}).AddRow(1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
 	require.NoError(t, repo.CheckColumns(ctx))
 	mock.ExpectQuery(q("check_columns")).WillReturnError(errDB)
 	err = repo.CheckColumns(ctx)
 	require.ErrorIs(t, err, errDB)
-	require.ErrorContains(t, err, "ISCOMPLIANCETRANSFER_1")
+	require.ErrorContains(t, err, "kolom antrean Analyst Doctor tidak lengkap")
 	require.NoError(t, mock.ExpectationsWereMet())
 }

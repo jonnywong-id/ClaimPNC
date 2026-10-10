@@ -231,6 +231,23 @@ type WorkItem struct {
 	// (`ReminderPUCL-SQL.xml`) — nama yang terpotong oleh batas panjang alias Oracle dan
 	// tidak menyatakan apa pun; tidak dibawa (`D-19`).
 	ExpiryStatus string
+
+	// ClaimScreenReady menyatakan layar kerja di balik nomor case ini dapat dibuka.
+	//
+	// # Kenapa sebuah baris bisa TIDAK dapat dibuka
+	//
+	// Karena daftar ini dan layar tujuannya membaca tabel yang BERBEDA. Tab RCL/PUCL
+	// membaca antrean bersama milik Pega; layar kerja klaim membaca
+	// `POOLDATA.TC_PNC_PUCL`, tabel datar milik aplikasi yang pengisiannya belum tentu
+	// mencakup seluruh klaim di antrean itu.
+	//
+	// Tanpa penanda ini, nomor case pada baris yang belum punya pasangan digambar sebagai
+	// tautan yang pasti gagal — dengan pesan yang menyuruh petugas memeriksa pilihan portal
+	// padahal portalnya sudah benar.
+	//
+	// Tab Receive selalu bernilai benar: layar tujuannya dibaca dari tabel yang sama dengan
+	// daftarnya.
+	ClaimScreenReady bool
 }
 
 // Caller adalah identitas petugas yang mengirim permintaan.
@@ -346,6 +363,13 @@ const (
 const (
 	// GroupPanelPA adalah Personal Accident.
 	GroupPanelPA = "002"
+
+	// GroupPanelTravel adalah Travel (`CONTEXT.md`).
+	//
+	// Ia TIDAK dipakai menurunkan Jenis Klaim — di sana hanya `002` yang dibedakan. Ia
+	// dipakai syarat tampil isian "Polis Leader" dan "No Ref Broker", yang di layar lama
+	// mengecualikan Personal Accident DAN Travel sekaligus.
+	GroupPanelTravel = "005"
 )
 
 // ClaimTypeOf menerjemahkan Group Panel menjadi Jenis Klaim yang digambar grid.

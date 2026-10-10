@@ -71,7 +71,7 @@ func TestStreamStopsOnEmitErrorAndRespectsContext(t *testing.T) {
 	errStop := errors.New("berhenti")
 
 	var seen int
-	err := repo.Stream(context.Background(), monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{},
+	err := repo.Stream(context.Background(), monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{},
 		func(row monitoringslinkojk.Row) error {
 			seen++
 			require.Equal(t, "L", row.Get("jenis_kelamin"))

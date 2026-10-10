@@ -108,19 +108,37 @@
 -- cadangan, dan tanggal pembaruan progres terakhir.
 --
 -- ============================================================================
--- SATU SELISIH YANG MENYANGKUT UANG — SENGAJA DIPERTAHANKAN
+-- SATU SELISIH YANG MENYANGKUT UANG — DIPERBAIKI ATAS KEPUTUSAN WORK OWNER
 -- ============================================================================
 --
--- Kolom yang digambar grid berjudul "Reserve Claim ASM Share", tetapi kedua kueri lama
+-- Kolom yang digambar grid berjudul "Reserve Claim ASM Share", tetapi kedua kueri LAMA
 -- menghitungnya BERBEDA untuk klaim yang sama:
 --
---   list          SUM(estimationvalue)                              tanpa kurs, tanpa share
---   list_export   SUM(estimationvalue * kursvalue) * SHAREASM/100   dengan keduanya
+--   GetDataOutstandingperCabang         SUM(estimationvalue)
+--                                         -> tanpa kurs, tanpa porsi ASM
+--   GetDataOutstandingperCabangExport   SUM(estimationvalue * kursvalue) * SHAREASM/100
+--                                         -> dengan keduanya
 --
--- Jadi angka di layar bukan porsi ASM sama sekali, dan berkas ekspor menampilkan angka yang
--- berbeda dari layarnya. Keduanya dibawa apa adanya (`P-5`) dan dinyatakan kepada pengguna
--- lewat inboxosclaimpercabang.PlannedDifferences — bukan dibetulkan diam-diam. Bila Work
--- Owner memutuskan menyamakannya, yang berubah satu ekspresi di berkas ini.
+-- Jadi angka di layar lama BUKAN porsi ASM sama sekali, padahal judulnya mengatakan begitu,
+-- dan berkas ekspornya menampilkan angka lain untuk klaim yang sama.
+--
+-- Ukurannya bukan teoretis. Diukur pada 1.141 klaim outstanding (2026-10-10):
+--   74 klaim  nilainya bukan rupiah           (ada baris estimasi berkurs <> 1)
+--   305 klaim nilainya memuat porsi koasuransi (SHAREASM <> 100)
+--
+-- Work Owner memutuskan 2026-10-10: **layar disamakan dengan ekspor**. Kolom grid dan panel
+-- ringkasan kini memakai ekspresi yang sama persis dengan `list_export`:
+--
+--   ROUND(SUM(estimationvalue * COALESCE(kursvalue,1)) * (c.shareasm/100) * 100)
+--
+-- Ini SELISIH TERHADAP PEGA yang disengaja — sejenis dengan 13 butir `D-49` — dan karena itu
+-- dinyatakan di inboxosclaimpercabang.PlannedDifferences, bukan diperbaiki diam-diam.
+--
+-- DUA tempat lain yang sengaja TIDAK ikut diubah, karena keduanya elemen yang berbeda dan
+-- tidak diminta:
+--   detail_header     "Total Reserve" pada popup Detail
+--   summary_treaty_or kartu porsi treaty OR (sudah tidak digambar di layar)
+-- Keduanya tetap `SUM(estimationvalue)` apa adanya seperti Pega.
 --
 -- ============================================================================
 -- EMPAT BENTUK ORACLE YANG DIGANTI, DAN KENAPA
@@ -156,6 +174,22 @@
 -- sehingga `ORDER BY c.registerdate ASC` menghasilkan urutan yang identik dengan
 -- `ORDER BY "AgingKlaim" DESC` milik kueri lama — tanpa perlu menghitung umurnya.
 --
+-- Kedua kueri Pega memang berakhir demikian:
+--   RDB List/GetDataOutstandingperCabang-SQL.xml       ORDER BY "AgingKlaim" DESC
+--   RDB List/GetDataOutstandingperCabangExport-SQL.xml ORDER BY "AgingKlaim" DESC
+-- dengan "AgingKlaim" = TRUNC(SYSDATE) - TRUNC(c.registerdate). Keduanya memakai TRUNC dan
+-- SYSDATE, yang terlarang di sini (`D-20`); menulisnya sebagai tanggal registrasi menaik
+-- memberi urutan yang sama tanpa keduanya.
+--
+-- DIUKUR, bukan hanya disimpulkan (2026-10-10): pada cabang berbaris terbanyak — 108 klaim
+-- outstanding — kedua urutan dibandingkan nomor per nomor terhadap Oracle, dan **0 posisi
+-- berbeda**.
+--
+-- `c.claimno ASC` adalah pemisah tambahan yang TIDAK dimiliki kueri lama. Tanpa ia, dua klaim
+-- bertanggal registrasi sama dapat berpindah posisi antar permintaan, sehingga satu baris
+-- muncul di dua halaman sekaligus sementara baris lain tidak muncul sama sekali. Kueri lama
+-- tidak terkena karena ia tidak memaginasi.
+--
 -- ============================================================================
 -- PROGRESS_STALLED — penanda baris merah, ditulis ulang set-based
 -- ============================================================================
@@ -174,27 +208,59 @@
 -- `COUNT(kolom)` mengabaikan NULL, dan itu yang meniru perilaku lama: pada PIVOT, `r1 = r2`
 -- bernilai UNKNOWN begitu salah satunya NULL, sehingga klaim itu tidak pernah ditandai.
 --
--- ### Selisih yang terukur, dan kenapa ia tidak dapat dihapus
+-- ### Pemisah saat dua catatan berwaktu sama — `ID_UPDATE`, bukan `rowid`
 --
 -- Kueri lama mengurutkan `ORDER BY tgl_input DESC, rowid DESC`. `rowid` adalah alamat
 -- penyimpanan FISIK baris — bukan fakta bisnis, tidak ada padanannya di PostgreSQL, dan tidak
--- dapat direproduksi setelah data dipindahkan.
+-- dapat direproduksi setelah data dipindahkan. Ia karena itu tidak dapat dibawa.
 --
--- Pemisah itu benar-benar terpakai: 1.057 pasangan (klaim, tgl_input) kembar ada di data hari
--- ini. Diukur langsung terhadap basis data dev:
+-- Pemisah itu benar-benar terpakai: **271 klaim** punya dua catatan progres atau lebih yang
+-- `tgl_input`-nya sama persis (diukur 2026-10-10).
 --
---   versi PIVOT lama (dengan rowid)   103 klaim ditandai
---   versi di sini                     123 klaim ditandai
---   hanya di versi ini                 23
---   hanya di versi lama                 3
+-- #### Koreksi atas catatan serahan sebelumnya
 --
--- Selisih DUA ARAH itu sendiri membuktikan hasil lama tidak stabil — bila rowid hanyalah
--- pemisah yang konsisten, selisihnya akan satu arah. `ID_UPDATE` diperiksa sebagai pengganti
--- portabel dan TIDAK memenuhi: 1.374 nilai berbeda untuk 20.615 baris, jadi ia bukan
--- pengenal baris.
+-- Serahan sebelumnya MENOLAK `ID_UPDATE` sebagai pengganti dengan alasan *"1.374 nilai
+-- berbeda untuk 20.615 baris, jadi ia bukan pengenal baris"*. **Alasan itu keliru** — ia
+-- menguji keunikan di SELURUH TABEL, padahal pemisah ini hanya perlu unik **di dalam satu
+-- klaim**, karena jendelanya `PARTITION BY pnccaseid`.
 --
--- Selisih ini dinyatakan lewat PlannedDifferences. Ia menunggu keputusan Work Owner, bukan
--- disembunyikan.
+-- Diuji ulang dengan pertanyaan yang benar: pasangan `(pnccaseid, ID_UPDATE)` yang kembar
+-- berjumlah **0**. Ia memang pencacah per klaim, bukan pengenal global — dan itu persis yang
+-- dibutuhkan.
+--
+-- #### Hasil pengukuran terhadap Oracle (2026-10-10)
+--
+--   urutan                              ditandai   hanya-Pega   hanya-kita
+--   tgl_input DESC            (lama)       129          3           23
+--   tgl_input DESC, ID_UPDATE DESC         107          2            0
+--   tgl_input DESC, POSISIID  DESC         131          1           23
+--   tgl_input DESC, ID_UPDATE ASC          131          1           23
+--   versi Pega (rowid DESC)                109          —            —
+--
+-- `ID_UPDATE DESC` karena itu dipakai: **nol** klaim yang ditandai merah padahal Pega tidak,
+-- turun dari 23. Yang tersisa dua klaim yang Pega tandai dan kita tidak — di situ urutan
+-- fisik barisnya memang berbeda dari urutan `ID_UPDATE`-nya, dan itu tidak dapat ditiru
+-- tanpa `rowid`.
+--
+-- #### Akibat kedua klaim itu di layar: NOL
+--
+-- Keduanya diperiksa terhadap populasi layar: **kedua-duanya tampil**, dan **kedua-duanya
+-- sudah digambar merah karena umurnya melewati ambang**. Baris merah punya DUA syarat —
+-- umur atau progres mandek — dan syarat pertama sudah terpenuhi pada keduanya.
+--
+-- Jadi tidak ada satu baris pun yang warnanya berbeda dari layar lama. Yang berbeda hanya
+-- keterangan pada `title` barisnya, yang di layar lama memang tidak ada sama sekali.
+--
+-- #### Pada kedua klaim itu, pilihan di sini justru LEBIH TEPAT
+--
+-- `ROWID` adalah alamat penyimpanan fisik: ia dapat berpindah ketika Oracle merapikan tabel,
+-- dan tidak punya arti bisnis apa pun. `ID_UPDATE` adalah nomor urut pencatatan per klaim.
+-- Aturannya berbunyi "tiga catatan progres TERAKHIR" — itu urutan pencatatan, bukan urutan
+-- penyimpanan. Jadi pada dua klaim yang berbeda itu, yang memilih tiga catatan yang benar
+-- adalah kueri ini, bukan kueri lama.
+--
+-- Karena akibatnya di layar nol dan mekanismenya lebih tepat, butirnya DICABUT dari
+-- PlannedDifferences (Work Owner, 2026-10-10). Angka pengukurannya tinggal di sini.
 --
 -- ============================================================================
 -- SETIAP NILAI UANG DIKEMBALIKAN DALAM SATUAN TERKECIL
@@ -269,7 +335,22 @@ SELECT a.id         AS BRANCH_CODE,
 -- Isi grid untuk satu cabang.
 -- — RDB List/GetDataOutstandingperCabang-SQL.xml
 --
--- Bind: :1 kode cabang · :2 offset · :3 jumlah baris
+-- ### Pencarian nomor klaim dan nomor polis
+--
+-- KEMAMPUAN BARU; layar lama tidak punya kotak cari sama sekali. Ia disaring DI SINI, bukan
+-- di peramban, karena daftarnya sudah dibagi per halaman di server — menyaring halaman yang
+-- sedang tampil akan melewatkan baris pada halaman lain dan gagalnya DIAM: pengguna diberi
+-- tabel kosong lalu menyimpulkan klaimnya tidak ada.
+--
+-- `COUNT(*) OVER ()` ikut tersaring dengan sendirinya, sehingga jumlah baris yang dilaporkan
+-- adalah jumlah yang COCOK — bukan jumlah seluruh cabang.
+--
+-- Kedua sisi perbandingan di-UPPER supaya huruf kecil ikut cocok. Karakter khusus LIKE
+-- di-escape di sisi Go, dan `ESCAPE` dinyatakan di sini — tanpa itu, mencari polis berisi
+-- `%` akan berubah menjadi pola yang mencocokkan apa saja.
+--
+-- Bind: :1 kode cabang · :2 ada-pencarian (NULL = tampilkan semua) · :3 pola nomor klaim ·
+--       :4 pola nomor polis · :5 offset · :6 jumlah baris
 SELECT c.branchname                                   AS BRANCH_NAME,
        c.branchcode                                   AS BRANCH_CODE,
        c.sobname                                      AS BUSINESS_SOURCE,
@@ -291,7 +372,8 @@ SELECT c.branchname                                   AS BRANCH_NAME,
        c.registerdate                                 AS REGISTER_DATE,
        c.dateofloss                                   AS LOSS_DATE,
        c.remarkrecomendation                          AS REMARK_RECOMMENDATION,
-       ROUND(COALESCE(e.reserves, 0) * 100)           AS ESTIMATION_VALUE,
+       ROUND(COALESCE(e.reserves, 0) * (c.shareasm / 100) * 100)
+                                                      AS ESTIMATION_VALUE,
        p.tgl_input                                    AS LAST_PROGRESS_AT,
        m1.sts_progress1                               AS PROGRESS_STATUS_1,
        m2.sts_progress2                               AS PROGRESS_STATUS_2,
@@ -328,7 +410,8 @@ SELECT c.branchname                                   AS BRANCH_NAME,
                       FROM POOLDATA.GCNM_MST_PROGRESS
                   GROUP BY id_mst) m2
             ON m2.id_mst = p.status_progress2
-       LEFT JOIN (  SELECT claimid, SUM(estimationvalue) AS reserves
+       LEFT JOIN (  SELECT claimid,
+                           SUM(estimationvalue * COALESCE(kursvalue, 1)) AS reserves
                       FROM POOLDATA.T_CLAIM_ESTIMASI
                   GROUP BY claimid) e
             ON e.claimid = c.claimid
@@ -349,7 +432,8 @@ SELECT c.branchname                                   AS BRANCH_NAME,
                       FROM (SELECT g.pnccaseid,
                                    g.status_progress1,
                                    ROW_NUMBER() OVER (PARTITION BY g.pnccaseid
-                                                          ORDER BY g.tgl_input DESC) rn
+                                                          ORDER BY g.tgl_input DESC,
+                                                                   g.id_update DESC) rn
                               FROM POOLDATA.GCNM_PROGRESS_CLAIM g)
                      WHERE rn <= 3
                   GROUP BY pnccaseid
@@ -358,8 +442,11 @@ SELECT c.branchname                                   AS BRANCH_NAME,
             ON stalled.pnccaseid = c.claimno
  WHERE c.registerdate IS NOT NULL
    AND c.branchcode = :1
+   AND (:2 IS NULL
+        OR UPPER(c.claimno) LIKE :3 ESCAPE '\'
+        OR UPPER(c.nopolis) LIKE :4 ESCAPE '\')
  ORDER BY c.registerdate ASC, c.claimno ASC
-OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
+OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 
 -- name: list_export
 -- Isi berkas ekspor untuk satu cabang.
@@ -513,7 +600,8 @@ SELECT c.branchname                                   AS BRANCH_NAME,
                       FROM (SELECT g.pnccaseid,
                                    g.status_progress1,
                                    ROW_NUMBER() OVER (PARTITION BY g.pnccaseid
-                                                          ORDER BY g.tgl_input DESC) rn
+                                                          ORDER BY g.tgl_input DESC,
+                                                                   g.id_update DESC) rn
                               FROM POOLDATA.GCNM_PROGRESS_CLAIM g)
                      WHERE rn <= 3
                   GROUP BY pnccaseid
@@ -785,7 +873,8 @@ SELECT c.claimno                                AS CLAIM_NUMBER,
 -- detail_header.
 --
 -- Bind: :1 kunci internal klaim (CLAIMID)
-SELECT o.objectname              AS OBJECT_NAME,
+SELECT o.objectid                AS OBJECT_ID,
+       o.objectname              AS OBJECT_NAME,
        o.lokasi                  AS OBJECT_LOCATION,
        o.objectjob               AS OBJECT_JOB,
        o.dateofbirth             AS OBJECT_DATE_OF_BIRTH,
@@ -794,6 +883,241 @@ SELECT o.objectname              AS OBJECT_NAME,
   FROM POOLDATA.T_CLAIM_OBJECTLIST o
  WHERE o.claimid = :1
  ORDER BY o.objectid ASC
+
+-- name: detail_object_coverages
+-- Isi panel yang terbuka ketika sebuah baris objek dibuka.
+--
+-- # Grid objek di Pega MEMANG dapat dibuka
+--
+-- Mekanismenya master-detail, bukan `pyExpandable` — dan itu sempat terlewat pada pembacaan
+-- pertama, yang keliru menyimpulkan layar lama tidak punya kemampuan ini:
+--
+--   Section/DetailKlaimCabang_Sect-Section.xml
+--     pyRowEditing = masterDetail    pada ketiga varian grid objek (:5616, :7193, :9798)
+--     pyEditAction = ViewObjectItem                               (:5625, :7179, :9815)
+--
+-- `Flow Action/ViewObjectItem-FlowAction.xml` merender
+-- `Section/ViewObjectCoverage-Section.xml`, yang menggambar `.ObjectCoverageList` dengan
+-- **tiga** properti: `.Currency`, `.SumTSI`, `.CoverageNote`. Hanya ketiganya yang diambil —
+-- menambah kolom di luar itu adalah penambahan, bukan penyamaan (`P-5`).
+--
+-- `COVERAGENAME`, bukan `REMARKS`. Properti Pega bernama `.CoverageNote`, tetapi kolom yang
+-- digambarnya berjudul **"Coverage"** dan berisi NAMA jaminan, bukan catatan. Namanya
+-- menyesatkan — pola yang sama dengan `.ObjectLocation` yang tersimpan di `LOKASI`.
+--
+-- Diukur, bukan ditebak: nilai contoh dari layar lama (`FLEXAS`) muncul pada **358 baris
+-- `COVERAGENAME` dan NOL baris `REMARKS`**. `COVERAGENAME` juga terisi pada 9.534 dari 9.704
+-- baris, sedangkan `REMARKS` hanya 249 — kolom yang hampir selalu kosong tidak mungkin yang
+-- digambar sebagai kolom pertama.
+--
+-- `DIHAPUS_PADA IS NULL` menjaga penghapusan lunak (`D-66`), sejalan dengan modul lain yang
+-- membaca tabel ini. Coverage yang sudah dibuang tidak boleh muncul kembali hanya karena
+-- barisnya masih ada.
+--
+-- SELURUH coverage satu klaim diambil dalam SATU kueri, lalu dikelompokkan di Go menurut
+-- OBJECT_ID. Satu kueri per baris yang dibuka akan menghasilkan N+1 permintaan pada layar
+-- yang justru dirancang untuk dibuka-tutup berkali-kali.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+-- # Mata uang adalah KODE, dan harus diterjemahkan
+--
+-- `T_CLAIM_OBJECTCOVERAGE.CURRENCY` menyimpan kode internal (`10026`), bukan simbol. Layar
+-- lama menampilkan `IDR`, sehingga menggambar kolom itu apa adanya memunculkan angka yang
+-- tidak berarti bagi siapa pun — dan itu benar-benar terjadi pada serahan pertama.
+--
+-- Masternya `POOLDATA.CURRENCY`, bukan `M_CURRENCY`: yang kedua memang ada dan ber-ID sama,
+-- tetapi kolom simbolnya KOSONG pada seluruh 35 barisnya. Diukur: `CURRENCY.ID = '10026'`
+-- menghasilkan `IDR`, `'10001'` menghasilkan `USD`, dan dari 9.704 baris coverage hanya
+-- **satu** yang kodenya tidak cocok (7.217 lainnya memang NULL sejak awal).
+--
+-- LEFT JOIN: kode yang kosong atau tidak dikenal tetap menampilkan barisnya, dengan mata
+-- uang kosong — bukan menghilangkan coverage-nya.
+SELECT v.objectid         AS OBJECT_ID,
+       v.objectcoverageid AS OBJECT_COVERAGE_ID,
+       v.coveragename     AS COVERAGE_NAME,
+       k.isosymbol        AS COVERAGE_CURRENCY,
+       ROUND(COALESCE(v.sumtsi, 0) * 100) AS COVERAGE_SUM_TSI
+  FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE v
+       LEFT JOIN POOLDATA.CURRENCY k ON TRIM(k.id) = TRIM(v.currency)
+ WHERE v.claimid = :1
+   AND v.dihapus_pada IS NULL
+ ORDER BY v.objectid ASC, v.urutan ASC, v.objectcoverageid ASC
+
+-- name: detail_object_items
+-- Grid "Object Item" — tingkat ketiga, yang terbuka saat baris coverage dibuka.
+--
+-- # Barisnya datang dari ESTIMASI, bukan dari tabel item
+--
+-- Ini kesimpulan yang menyelamatkan grid ini dari selalu kosong, dan ia diukur:
+--
+--	POOLDATA.T_CLAIM_OBJECTITEMLIST   **1 baris di seluruh tabel**
+--	POOLDATA.T_CLAIM_ESTIMASI         51.532 baris, OBJECTITEMID terisi SELURUHNYA (0 NULL)
+--	klaim ber-estimasi                22.004; yang juga punya baris item: **1**
+--
+-- Jadi menarik grid ini dari tabel item akan menghasilkan nol baris untuk hampir setiap
+-- klaim — padahal layar lama MENAMPILKAN barisnya. Yang ditampilkan Pega adalah satu baris
+-- per `OBJECTITEMID` yang muncul di estimasi, dengan sel nama dan deskripsi KOSONG karena
+-- tabel itu memang tidak memuatnya. Contoh PA dari Work Owner memperlihatkan persis itu:
+-- baris ada, selnya kosong.
+--
+-- `OBJECTITEMID` adalah NOMOR URUT item di dalam satu coverage, bukan kode jenis: 51.370
+-- dari 51.532 baris bernilai `1`.
+--
+-- Nama dan deskripsi tetap di-LEFT JOIN ke tabel item, sehingga satu baris yang memang ada
+-- akan tampil namanya — bukan dibuang hanya karena tetangganya kosong.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT e.objectid         AS OBJECT_ID,
+       e.objectcoverageid AS OBJECT_COVERAGE_ID,
+       e.objectitemid     AS OBJECT_ITEM_ID,
+       MAX(i.objectname)       AS ITEM_NAME,
+       MAX(i.deskripsiobject)  AS ITEM_DESCRIPTION
+  FROM POOLDATA.T_CLAIM_ESTIMASI e
+       LEFT JOIN POOLDATA.T_CLAIM_OBJECTITEMLIST i
+              ON i.claimid = e.claimid
+             AND TRIM(i.objectid) = TRIM(e.objectid)
+             AND TRIM(i.objectitemid) = TRIM(e.objectitemid)
+ WHERE e.claimid = :1
+ GROUP BY e.objectid, e.objectcoverageid, e.objectitemid
+ ORDER BY e.objectid ASC, e.objectcoverageid ASC, e.objectitemid ASC
+
+-- name: detail_estimations
+-- Grid "Estimasi" — tingkat keempat, yang terbuka saat baris Object Item dibuka.
+--
+-- Keenam kolomnya diambil dari layar lama apa adanya (`D-13`):
+--
+--	Estimasi Ke        <- ESTIMASIID, nomor urut estimasi pada item itu
+--	Tanggal Estimasi   <- COALESCE(ESTIMATIONDATE, coverage.CREATEDATETIME)
+--	Tipe Estimasi      <- ESTIMATIONTYPE  (kerap kosong; contoh PA memperlihatkannya kosong)
+--
+-- # Tanggal estimasi menempuh DUA sumber, dan urutannya penting
+--
+-- Dua serahan sebelumnya keduanya salah, dan keduanya ketahuan dari layar:
+--
+--	ESTIMATIONDATE saja   -> kolomnya KOSONG; ia terisi pada 32 dari 51.535 baris
+--	INSERTDATE            -> kolomnya terisi TANGGAL HARI INI, bukan tanggal estimasi
+--
+-- `INSERTDATE` yang paling berbahaya: ia terisi seluruhnya, sehingga tampak benar — padahal
+-- isinya kapan baris itu ditulis ulang job konversi. Pada klaim contoh Work Owner nilainya
+-- hari pemeriksaan, sementara layar lama menuliskan `08/05/23 11:45`.
+--
+-- Sumber yang benar dicari dengan memindai **121 kolom tanggal** milik seluruh tabel POOLDATA
+-- yang berkunci `CLAIMID`, lalu memeriksa mana yang memuat menit itu untuk klaim tersebut.
+-- Hasilnya tepat satu: **`T_CLAIM_OBJECTCOVERAGE.CREATEDATETIME`**.
+--
+-- Tetapi ia tidak cukup sendirian: contoh Fire dari Work Owner memperlihatkan LIMA waktu
+-- berbeda pada satu coverage, sedangkan `CREATEDATETIME` tentu sama untuk semuanya. Diukur
+-- pada coverage yang estimasinya banyak — saat `ESTIMATIONDATE` terisi, ia memang berbeda per
+-- baris (`09:00` versus `19:00`) sementara `CREATEDATETIME` keduanya sama.
+--
+-- Karena itu: `ESTIMATIONDATE` bila ada, `CREATEDATETIME` bila tidak. Keterisian
+-- `CREATEDATETIME` **9.750 dari 9.750** — ia tidak pernah kosong, sehingga kolom ini tidak
+-- akan pernah kosong lagi.
+--
+-- `ESTIMATIONTYPE` terisi pada 8.490 dari 51.535 baris; kolom yang kosong pada contoh PA
+-- karena itu BENAR, bukan cacat.
+--	Mata Uang          <- KURSID, diterjemahkan lewat POOLDATA.CURRENCY
+--	Nilai Kurs (IDR)   <- KURSVALUE
+--	Nilai Estimasi     <- ESTIMATIONVALUE
+--
+-- Nilai negatif memang terjadi dan WAJIB dibawa apa adanya: contoh Fire dari Work Owner
+-- memuat pasangan `100 / -100 / 200 / -200 / 100`, yakni koreksi yang saling meniadakan.
+-- Menyaring yang negatif akan membuat jumlahnya tidak pernah cocok dengan layar lama.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT e.objectid         AS OBJECT_ID,
+       e.objectcoverageid AS OBJECT_COVERAGE_ID,
+       e.objectitemid     AS OBJECT_ITEM_ID,
+       e.estimasiid       AS ESTIMATION_SEQUENCE,
+       COALESCE(e.estimationdate, v.createdatetime) AS ESTIMATION_DATE,
+       e.estimationtype   AS ESTIMATION_TYPE,
+       k.isosymbol        AS ESTIMATION_CURRENCY,
+       ROUND(COALESCE(e.kursvalue, 0) * 100)       AS ESTIMATION_RATE,
+       ROUND(COALESCE(e.estimationvalue, 0) * 100) AS ESTIMATION_VALUE
+  FROM POOLDATA.T_CLAIM_ESTIMASI e
+       LEFT JOIN POOLDATA.CURRENCY k ON TRIM(k.id) = TRIM(e.kursid)
+       LEFT JOIN POOLDATA.T_CLAIM_OBJECTCOVERAGE v
+              ON v.claimid = e.claimid
+             AND TRIM(v.objectid) = TRIM(e.objectid)
+             AND TRIM(v.objectcoverageid) = TRIM(e.objectcoverageid)
+ WHERE e.claimid = :1
+ ORDER BY e.objectid ASC, e.objectcoverageid ASC, e.objectitemid ASC,
+          e.estimasiid ASC
+
+-- name: detail_coverage_spreading
+-- Grid "List Spreading" — melekat pada COVERAGE, bukan pada adjustment.
+--
+-- # Kenapa coverage, dan bukan adjustment
+--
+-- Sempat disimpulkan sebaliknya dari `Activity/CalculatedSpredingForClaimKomite-Act.xml`,
+-- yang memang menghitung per `AdjustmentList(Param.idadjustment)`. **Activity itu milik layar
+-- Komite, dan popup ini tidak memanggilnya.** Yang mengisi popup adalah
+-- `Activity/GetObjectFromTable-Act.xml`, dan di sana daftarnya melekat pada coverage:
+-- `ObjectCoverageList(<LAST>).SpreadingList`. Kunci tabelnya pun sejalan —
+-- `CLAIMID + OBJECTID + OBJECTCOVERAGEID`, tanpa adjustment.
+--
+-- # Dua kolom uangnya DIHITUNG, karena memang tidak tersimpan
+--
+-- `TSISPREADED` dan `PREMIUMSPREADED` **NULL pada seluruh 7.115 baris** tabel ini. Jadi
+-- "Estimasi Value" dan "Result Value" tidak mungkin dibaca dari sini; keduanya dihitung di Go
+-- setelah estimasi coverage terkumpul:
+--
+--	Estimasi Value = jumlah estimasi coverage itu
+--	Result Value   = Estimasi Value x SHAREPERCENTAGE / 100
+--
+-- Dicocokkan ke contoh Fire dari Work Owner: estimasi `100 / -100 / 200 / -200 / 100`
+-- berjumlah **100**, dan layar lama menuliskan Estimasi Value `100,00` serta Result Value
+-- `100,00` pada share `100,0000%`. Keduanya cocok persis.
+--
+-- `TREATYNAME`, bukan `TREATYTYPE`, untuk kolom "Tipe Treaty": isinya `ORS`, `QS`, `FAC-OUT`,
+-- `FSPL`, `OR` — dan `FAC-OUT` itulah yang tertulis di contoh Work Owner. `TREATYTYPE`
+-- berisi kode (`10007`).
+--
+-- SHARE dikembalikan sebagai BILANGAN BULAT berskala 10.000 (`100%` -> `1000000`), supaya
+-- perkalian persentase terhadap nilai uang tidak pernah menempuh float (`I-12`). Diukur:
+-- `SHAREPERCENTAGE` per coverage berjumlah tepat 100 pada 7.108 dari 7.112 kelompok.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT s.objectid         AS OBJECT_ID,
+       s.objectcoverageid AS OBJECT_COVERAGE_ID,
+       s.treatyname       AS TREATY_NAME,
+       ROUND(COALESCE(s.sharepercentage, 0) * 10000) AS SHARE_SCALED
+  FROM POOLDATA.T_CLAIM_SPREADING s
+ WHERE s.claimid = :1
+ ORDER BY s.objectid ASC, s.objectcoverageid ASC, s.urutan ASC
+
+-- name: detail_coverage_comember
+-- Grid "CO MEMBER" — daftar koasuransi.
+--
+-- # Ia berkunci POLIS, bukan klaim
+--
+-- `T_COINSLIST` berkunci `NOPOLIS + PRODKE`, sehingga satu daftar berlaku untuk SELURUH
+-- coverage pada klaim itu. Yang berbeda per coverage hanyalah nilai uangnya, karena ia
+-- dihitung dari estimasi coverage masing-masing.
+--
+-- Nomor polis diambil dari klaimnya sendiri, bukan diterima dari pemanggil: menerimanya dari
+-- luar berarti daftar koasuransi dapat ditukar dengan milik polis lain lewat satu parameter.
+--
+-- Dua kolom uangnya dihitung di Go, pola yang sama dengan Spreading:
+--
+--	Estimasi Value = jumlah estimasi coverage itu
+--	Result Value   = Estimasi Value x PERCENT_SHARE / 100
+--
+-- Bentuk itu sama persis dengan rumus pada jalur Komite
+-- (`TSIShare = .PercentShare * Local.grossvalue / 100`), hanya basisnya berbeda.
+--
+-- `FLAGDELETE` disaring: baris yang sudah dibuang tidak boleh muncul kembali.
+--
+-- Bind: :1 kunci internal klaim (CLAIMID)
+SELECT k.coinsname AS COINS_NAME,
+       ROUND(COALESCE(k.percent_share, 0) * 10000) AS SHARE_SCALED
+  FROM POOLDATA.T_COINSLIST k
+       JOIN POOLDATA.T_CLAIM_PNC c
+            ON TRIM(c.nopolis) = TRIM(k.nopolis)
+           AND TRIM(c.prodke) = TRIM(k.prodke)
+ WHERE c.claimid = :1
+   AND COALESCE(k.flagdelete, '0') <> '1'
+ ORDER BY k.leader DESC, k.coinsname ASC
 
 -- name: detail_progress
 -- Isi grid riwayat progres klaim.
@@ -907,3 +1231,123 @@ SELECT COUNT(*) AS READABLE
        LEFT JOIN POOLDATA.M_KOMUNIKASI_PNC k ON k.caseid = o.claimid
        LEFT JOIN POOLDATA.MST_USER_TEKNIK u ON u.operator_id = k.sender
  WHERE 1 = 0
+
+-- ============================================================================
+-- RINGKASAN MONITORING — dua kueri
+-- ============================================================================
+--
+-- Melayani panel ringkasan di atas grid: kartu angka, sebaran umur, rincian per COB, dan
+-- rincian per sumber bisnis.
+--
+-- ### Ia TIDAK ada di Pega
+--
+-- Layar lama hanya punya judul, tombol ekspor, dan grid. Panel ini diminta Work Owner
+-- (2026-10-08) dan karena itu **tidak punya pembanding untuk uji kesetaraan** — sama halnya
+-- dengan `F-3` dan `S-5` (`D-56`). Yang dapat diuji hanyalah bahwa angkanya konsisten dengan
+-- grid di bawahnya, dan itulah yang dijaga query_test.go.
+--
+-- ### Kenapa baris mentah, bukan GROUP BY di basis data
+--
+-- Pengelompokan umur menuntut pemotongan tanggal, dan `CAST(x AS DATE)` **tidak memangkas jam
+-- di Oracle** — alasan yang sama yang membuat kolom Aging dihitung di Go (lihat catatan Aging
+-- di kepala berkas ini). Mengelompokkan di SQL berarti menulis aturan umur untuk KEDUA kalinya,
+-- dengan bentuk yang tidak dapat dibuat sama persis.
+--
+-- Biayanya terukur dan kecil: outstanding per cabang paling banyak **83 baris**, rerata **9,2**
+-- (diukur atas 50 cabang, 469 klaim). Yang diambil hanya lima kolom sempit per baris.
+--
+-- ### Dua kueri, dan kenapa dipisah
+--
+-- `summary_rows` tidak menyentuh DB Link sama sekali. `summary_treaty_or` menyentuhnya, dan
+-- itu satu-satunya alasan ia terpisah: `@asmd` yang sedang padam harus membuat SATU kartu
+-- angka kosong, bukan seluruh panel hilang.
+
+-- name: summary_rows
+-- Satu baris sempit per klaim outstanding cabang, untuk diringkas pemanggil.
+--
+-- Penyaringnya SAMA PERSIS dengan kueri `list` — cabang, `registerdate IS NOT NULL`, dan
+-- penyaring outstanding. Bila berbeda, kartu angka di atas tidak akan cocok dengan jumlah
+-- baris grid di bawahnya, dan pengguna tidak punya cara menjelaskan selisihnya.
+--
+-- Nilai uangnya WAJIB dihitung sama persis dengan kolom grid — `SUM(estimationvalue *
+-- kursvalue) * SHAREASM/100` sejak keputusan Work Owner 2026-10-10. Panel ini menyatakan
+-- dirinya "Dijumlahkan dari kolom Reserve Claim ASM Share di bawah"; bila rumusnya berbeda,
+-- kalimat itu menjadi bohong dan tidak ada cara pengguna menjelaskan selisihnya.
+--
+-- TIDAK dipaginasi, dan itu disengaja: ringkasan atas sebagian baris adalah ringkasan yang
+-- salah.
+--
+-- Bind: :1 kode cabang
+SELECT c.registerdate                        AS REGISTER_DATE,
+       CASE
+          WHEN c.grouppanel = '002' THEN 'PA'
+          WHEN c.grouppanel = '003' THEN 'Aneka'
+          WHEN c.grouppanel = '004' THEN 'Marine Cargo'
+          WHEN c.grouppanel = '005' THEN 'Travel'
+          WHEN c.grouppanel = '006' THEN 'Fire'
+          ELSE c.grouppanel
+       END                                   AS BUSINESS_NAME,
+       c.sobname                             AS BUSINESS_SOURCE,
+       ROUND(COALESCE(e.reserves, 0) * (c.shareasm / 100) * 100)
+                                             AS ESTIMATION_VALUE
+  FROM POOLDATA.T_CLAIM_PNC c
+       JOIN POOLDATA.T_CLAIMLIST_ADMIN w
+            ON c.claimid = w.pzinskey
+           AND w.pystatuswork NOT IN ('Resolved-Rejected', 'Resolved-Completed')
+           AND w.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+       LEFT JOIN (  SELECT claimid,
+                           SUM(estimationvalue * COALESCE(kursvalue, 1)) AS reserves
+                      FROM POOLDATA.T_CLAIM_ESTIMASI
+                  GROUP BY claimid) e
+            ON e.claimid = c.claimid
+ WHERE c.registerdate IS NOT NULL
+   AND c.branchcode = :1
+ ORDER BY c.registerdate ASC
+
+-- name: summary_treaty_or
+-- Total porsi treaty OR seluruh klaim outstanding cabang, dalam satuan terkecil.
+--
+-- ### Rumus dan penyaringnya disalin PERSIS dari kueri ekspor Pega
+--
+-- Termasuk `no_klaim LIKE 'PNC-%'` dan pemilihan satu baris per klaim menurut `no_spk`
+-- terbesar — keduanya ada di `RDB List/GetDataOutstandingperCabangExport-SQL.xml`, bukan
+-- karangan di sini. Dengan begitu angka kartu sama dengan jumlah kolom OR pada berkas ekspor.
+--
+-- ### Hasilnya akan NOL di hampir semua cabang, dan itu bukan cacat
+--
+-- `treaty_loss@asmd` memuat 10.152 baris, tetapi hanya **19** berawalan `PNC-` (17 klaim, 12
+-- ber-OR bukan nol); sisanya `CLM-` 7.611, `KC72` 2.017, dan seterusnya. Dari 469 klaim
+-- outstanding, hanya **satu cabang** yang total OR-nya bukan nol.
+--
+-- Pega menghitungnya dengan cara yang sama persis, sehingga kolom OR pada berkas ekspornya pun
+-- sudah nol selama ini. Angkanya dibawa apa adanya (`P-5`) dan kekosongannya dinyatakan di
+-- layar — bukan disamarkan menjadi tanda hubung.
+--
+-- ### Satu-satunya kueri modul ini yang menyentuh DB Link saat layar dibuka
+--
+-- Terpisah supaya `@asmd` yang padam mengosongkan SATU kartu, bukan seluruh panel.
+--
+-- Bind: :1 kode cabang
+SELECT ROUND(COALESCE(SUM(COALESCE(e.reserves, 0)
+                          * (c.shareasm / 100)
+                          * COALESCE(tl.claim_or, 0)), 0) * 100) AS TREATY_OR
+  FROM POOLDATA.T_CLAIM_PNC c
+       JOIN POOLDATA.T_CLAIMLIST_ADMIN w
+            ON c.claimid = w.pzinskey
+           AND w.pystatuswork NOT IN ('Resolved-Rejected', 'Resolved-Completed')
+           AND w.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
+       LEFT JOIN (  SELECT claimid, SUM(estimationvalue) AS reserves
+                      FROM POOLDATA.T_CLAIM_ESTIMASI
+                  GROUP BY claimid) e
+            ON e.claimid = c.claimid
+       LEFT JOIN (SELECT no_klaim, claim_or
+                    FROM (SELECT tr.no_klaim,
+                                 tr.claim_or,
+                                 ROW_NUMBER() OVER (PARTITION BY tr.no_klaim
+                                                        ORDER BY tr.no_spk DESC) rn
+                            FROM treaty_loss@asmd.sinarmas.co.id tr
+                           WHERE tr.no_klaim LIKE 'PNC-%')
+                   WHERE rn = 1) tl
+            ON tl.no_klaim = c.claimno
+ WHERE c.registerdate IS NOT NULL
+   AND c.branchcode = :1

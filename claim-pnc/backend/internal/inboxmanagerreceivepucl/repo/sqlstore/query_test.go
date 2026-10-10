@@ -129,11 +129,10 @@ func TestEveryQueryFiltersItsOwnWorkClass(t *testing.T) {
 			"kueri %s menyaring kelas klaim; ia tidak seharusnya", name)
 	}
 
-	// Tab RCL/PUCL membaca POOLDATA.TC_PNC_PUCL, yang TIDAK punya kolom PXOBJCLASS: tabel
-	// itu hanya berisi klaim, dan pemisahan kelasnya menjadi tanggung jawab proses pengisinya
-	// (docs/ddl/tc_pnc_pucl.sql §3b). Yang tetap dijaga: ia tidak menyaring kelas berkas
-	// penerimaan dokumen.
 	upper := strings.ToUpper(query("list_rclpucl"))
+	require.Contains(t, upper,
+		strings.ToUpper(inboxmanagerreceivepucl.WorkClassClaim),
+		"kueri RCL/PUCL tidak menyaring kelas klaim")
 	require.NotContains(t, upper,
 		strings.ToUpper(inboxmanagerreceivepucl.WorkClassReceiveDocument),
 		"kueri RCL/PUCL menyaring kelas berkas penerimaan dokumen")
@@ -151,15 +150,9 @@ func TestReceiveQueriesReadTheAssignmentTableOfTheirOwn(t *testing.T) {
 			"kueri %s menggabung antrean bersama; ia tidak seharusnya", name)
 	}
 
-	// Tab RCL/PUCL membaca tabel datar TC_PNC_PUCL, yang membawa nama antreannya sendiri
-	// (ASSIGNED_OPERATOR_ID) — sehingga ia tidak menggabung tabel penugasan Pega mana pun.
 	upper := strings.ToUpper(query("list_rclpucl"))
-	require.Contains(t, upper, "POOLDATA.TC_PNC_PUCL",
-		"kueri RCL/PUCL tidak membaca tabel datar antrean RCL/PUCL")
-	require.Contains(t, upper, "P.ASSIGNED_OPERATOR_ID = :2",
-		"kueri RCL/PUCL tidak menyaring nama antrean bersama")
-	require.NotContains(t, upper, "PC_ASM_FW_GCNMFW_WORK",
-		"kueri RCL/PUCL masih membaca objek kerja Pega")
+	require.Contains(t, upper, "DATAPEGA.PC_ASSIGN_WORKBASKET",
+		"kueri RCL/PUCL tidak menggabung antrean bersama")
 	require.NotContains(t, upper, "DATAPEGA.PC_ASSIGN_WORKLIST",
 		"kueri RCL/PUCL menggabung penugasan per orang")
 }
@@ -189,17 +182,12 @@ func TestReceiveQueryKeepsTheUnionOfBothPegaGrids(t *testing.T) {
 	//   * penyaringnya DIBIARKAN membandingkan nilai -> separuh isi tab hilang tanpa jejak.
 	text := strings.ToUpper(query("list_receive"))
 
-	// SUMBER BARU (2026-10-08): Group Panel kini diambil berlapis dari T_CLAIMLIST_ADMIN,
-	// tabel cermin, lalu klaim tertaut — penyaringnya tetap gabungan kedua grid.
-	groupPanel := "COALESCE(K.GROUPPANEL_1, R.GROUPPANEL, C.GROUPPANEL)"
-	require.Contains(t, text, groupPanel+" IS NOT NULL",
+	require.Contains(t, text, "W.GROUPPANEL_1 IS NOT NULL",
 		"kueri Receive tidak lagi menyaring Group Panel sebagai gabungan kedua grid Pega")
-	require.NotContains(t, text, groupPanel+" =",
+	require.NotContains(t, text, "W.GROUPPANEL_1 =",
 		"kueri Receive masih menyaring satu lini bisnis saja")
-	require.NotContains(t, text, groupPanel+" <>",
+	require.NotContains(t, text, "W.GROUPPANEL_1 <>",
 		"kueri Receive masih mengecualikan satu lini bisnis")
-	require.NotContains(t, text, "PC_ASM_FW_GCNMFW_WORK",
-		"tabel objek kerja Pega tidak dipakai lagi (keputusan Work Owner 2026-10-08)")
 }
 
 func TestReceiveQueryBindsNothingButPagination(t *testing.T) {
@@ -378,14 +366,18 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 	// yang ditambahkan kemudian dapat menarik data dari tabel yang belum pernah ditinjau
 	// kepemilikannya (`P-1`) maupun kewenangan bacanya.
 	allowed := []string{
-		// DATAPEGA.PC_ASM_FW_GCNMFW_WORK SENGAJA TIDAK ADA: tabel objek kerja Pega tidak
-		// dipakai lagi (keputusan Work Owner 2026-10-08).
+		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
 		"DATAPEGA.PC_ASSIGN_WORKLIST",
-		"POOLDATA.T_CLAIMLIST_ADMIN",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 		"POOLDATA.T_CLAIM_RECIVEDCLAIM",
+
+		// Dibaca HANYA di dalam `EXISTS`, dan hanya untuk menjawab apakah layar kerja klaim
+		// dapat dibuka untuk sebuah baris. Tidak satu pun kolomnya dibawa ke hasil.
+		//
+		// Ia tabel milik aplikasi ini, bukan milik Pega, sehingga membacanya tidak
+		// menyentuh `P-1`. Ditambahkan 2026-10-10 setelah tautan tab RCL/PUCL mendarat di
+		// "klaim tidak ditemukan" untuk klaim yang belum punya baris di sana.
 		"POOLDATA.TC_PNC_PUCL",
-		"POOLDATA.T_CLAIM_PNC",
 	}
 
 	table := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+([A-Z_]+\.[A-Z_]+)`)
@@ -453,15 +445,8 @@ func TestDocumentQueryFiltersTheWorkClassAndJoinsTheMirrorTableLoosely(t *testin
 	require.Contains(t, text,
 		strings.ToUpper(inboxmanagerreceivepucl.WorkClassReceiveDocument),
 		"kueri layar kerja tidak menyaring kelas objek kerja")
-	// SUMBER BARU (2026-10-08): tabel cermin kini MENGGERAKKAN kueri ini, karena objek kerja
-	// Pega tidak dipakai lagi. Yang dijaga sekarang: tabel lain yang memperkaya berkas
-	// digabung LONGGAR, sehingga berkas yang tidak punya pasangan di sana tetap terbuka.
-	require.Contains(t, text, "FROM POOLDATA.T_CLAIM_RECIVEDCLAIM R",
-		"kueri layar kerja tidak digerakkan tabel cermin")
-	require.Contains(t, text, "LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN",
-		"kueri layar kerja tidak menggabung T_CLAIMLIST_ADMIN secara longgar")
-	require.NotContains(t, text, "INNER JOIN",
-		"gabungan dalam akan menyatakan berkas yang ada sebagai tidak ada")
+	require.Contains(t, text, "LEFT JOIN POOLDATA.T_CLAIM_RECIVEDCLAIM",
+		"kueri layar kerja tidak menggabung tabel cermin secara longgar")
 	require.NotContains(t, text, "PC_ASSIGN_WORKLIST",
 		"kueri layar kerja menggabung tabel penugasan; berkas yang penugasannya sudah "+
 			"selesai akan gagal dibuka di tengah pengerjaan")
@@ -473,6 +458,6 @@ func TestDocumentQueryBindsItsKeyInsteadOfWritingIt(t *testing.T) {
 	// `08-TECHNICAL-STRATEGY.md` §4.3.
 	text := query("detail_receive_document")
 
-	require.Contains(t, text, "r.CLAIMID = :1",
+	require.Contains(t, text, "w.PZINSKEY = :1",
 		"kueri layar kerja tidak mengikat kunci berkas sebagai parameter")
 }

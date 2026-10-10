@@ -14,7 +14,21 @@ export type Column<T> = {
   key: string
   title: string
   value: (rows: T) => string
-  render?: (rows: T) => ReactNode
+
+  /**
+   * Menggambar isi sel.
+   *
+   * Argumen kedua, `nomor`, adalah **nomor urut baris pada hasil yang sedang ditampilkan** —
+   * dihitung setelah pencarian dan pengurutan, dan **berlanjut antarhalaman**: baris pertama
+   * halaman kedua pada `pageSize = 10` bernomor 11, bukan 1.
+   *
+   * Ia ditambahkan untuk kolom "No" yang menuntut nomor urut sungguhan. Menghitungnya di
+   * pemanggil TIDAK mungkin: pemanggil hanya memegang senarai sumber, sedangkan yang
+   * dinomori adalah hasil setelah komponen ini menyaring, mengurutkan, dan memaginasi.
+   *
+   * Opsional dan diabaikan bila tidak dipakai, sehingga seluruh pemanggil lama tetap sah.
+   */
+  render?: (rows: T, nomor: number) => ReactNode
 
   /** Lebar kolom pada tampilan meja. Diabaikan pada tampilan kartu. */
   width?: string
@@ -24,6 +38,18 @@ export type Column<T> = {
 
   /** Ratakan isi sel ke kanan pada tampilan meja. Dipakai kolom aksi. */
   alignRight?: boolean
+
+  /**
+   * Ratakan isi sel ke tengah pada tampilan meja.
+   *
+   * Opt-in, sama alasannya dengan `showHeaderWhenEmpty` dan `pageSize`: menjadikannya
+   * bawaan akan mengubah tampilan puluhan layar yang sudah selesai sekaligus, dan tidak
+   * satu pun memintanya.
+   *
+   * Diabaikan bila `alignRight` juga diisi — satu sel hanya punya satu perataan, dan
+   * mengizinkan keduanya berarti hasilnya bergantung pada urutan kelas CSS.
+   */
+  alignCenter?: boolean
 }
 
 /**
@@ -97,6 +123,31 @@ type Props<T> = {
   searchLabel?: string
   emptyMessage?: string
 
+  /**
+   * Kalimat kekosongan saat PENCARIAN sedang terisi.
+   *
+   * # Kenapa ia isian tersendiri, bukan `emptyMessage` saja
+   *
+   * Karena tabel ini menangani dua kekosongan yang berbeda: "daftarnya memang belum ada
+   * isinya" dan "ada isinya, tetapi tidak ada yang cocok dengan yang diketik". Keduanya
+   * menuntut kalimat yang berbeda, dan sampai 2026-10-08 yang kedua SELALU memakai
+   * kalimat bawaan — `emptyMessage` yang dikirim pemanggil diabaikan diam-diam begitu
+   * kotak pencarian terisi.
+   *
+   * Itu menjadikan penjelasan yang disusun pemanggil untuk keadaan "tidak ada yang cocok"
+   * menjadi kode mati, justru pada satu-satunya keadaan yang menjadi alasan ia ditulis.
+   * Ketahuan di Inbox Salvage, yang menjelaskan mengapa pencarian COCOK PERSIS tidak
+   * menerima separuh nomor klaim — dan penjelasan itu tidak pernah sampai ke layar.
+   *
+   * # Kosong berarti perilaku LAMA, bagi keempat belas layar yang sudah ada
+   *
+   * Yang tidak mengisinya tetap menerima kalimat bawaan apa adanya. Hanya layar yang
+   * benar-benar punya penjelasan sendiri yang menyalakannya.
+   *
+   * Saran "coba kata kunci yang lebih pendek" IKUT PADAM saat isian ini diisi: pada
+   * daftar yang mencocokkan persis, kata kunci yang lebih pendek justru yang salah.
+   */
+  searchEmptyMessage?: string
   /**
    * Kotak pencarian ditampilkan.
    *
@@ -219,9 +270,54 @@ type Props<T> = {
    * menuntut gulir menyamping (Inbox Admin, 2026-10-07).
    */
   dense?: boolean
+
+  /**
+   * Garis pemisah ANTARKOLOM pada tampilan meja — grid berkotak, bukan berbaris.
+   *
+   * Opt-in, sama alasannya dengan `dense`: layar yang sudah ada tidak berubah. Dipakai grid
+   * yang harus terbaca sama dengan grid Pega, yang menggambar kotak penuh — Inbox Komunikasi
+   * Cabang adalah yang pertama (permintaan Work Owner 2026-10-09).
+   *
+   * Hanya berlaku pada tampilan meja. Di tampilan kartu setiap sel sudah menjadi barisnya
+   * sendiri, dan garis vertikal di sana memisahkan sesuatu yang tidak bersebelahan.
+   */
+  gridLines?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
+
+/**
+ * Judul kolom aksi, dan satu-satunya judul yang komponen ini kenali namanya.
+ *
+ * # Kenapa satu nama literal, bukan prop baru
+ *
+ * `"Aksi"` adalah **satu-satunya judul kolom yang sengaja tidak menyalin Pega**, dan ia
+ * dipakai seragam di seluruh modul — tiga puluhan layar menuliskannya persis begini.
+ * Karena ia sudah menjadi kesepakatan yang berlaku menyeluruh, perlakuannya pun milik
+ * komponen ini, bukan sesuatu yang tiap layar sebutkan ulang.
+ *
+ * Pilihan lainnya adalah menambah prop `headerCenter` dan menyalakannya satu per satu di
+ * tiga puluhan berkas. Itu menyebar satu kesepakatan ke tiga puluh tempat yang dapat
+ * berbeda — dan layar ketiga puluh satu akan lupa menyalakannya.
+ */
+const ACTION_COLUMN_TITLE = 'Aksi'
+
+/**
+ * headerAlign memilih perataan **judul** kolom pada tampilan meja.
+ *
+ * Judul kolom aksi **selalu di tengah**, apa pun perataan selnya (ketetapan Work Owner
+ * 2026-10-03). Kolom itu sempit dan isinya tombol, bukan angka — judul yang menempel ke
+ * salah satu tepi terbaca seolah milik kolom di sebelahnya.
+ *
+ * Kolom lain tidak berubah: angka tetap rata kanan mengikuti `alignRight`, karena di sana
+ * judul yang sebaris dengan deret angkanya justru yang membuat kolomnya terbaca.
+ */
+function headerAlign<T>(column: Column<T>): string {
+  if (column.title === ACTION_COLUMN_TITLE) return 'text-center'
+  if (column.alignRight) return 'text-right'
+  if (column.alignCenter) return 'text-center'
+  return ''
+}
 
 /**
  * pageWindow memilih nomor halaman mana yang digambar sebagai tombol.
@@ -315,6 +411,7 @@ export function DataTable<T>({
   error,
   searchLabel = 'Cari',
   emptyMessage = 'Belum ada data.',
+  searchEmptyMessage,
   searchable = true,
   serverSearch,
   hideSearch = false,
@@ -323,6 +420,7 @@ export function DataTable<T>({
   showHeaderWhenEmpty = false,
   expandedRow,
   dense = false,
+  gridLines = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -378,6 +476,24 @@ export function DataTable<T>({
   }
 
   const hasSearch = query.trim() !== ''
+
+  /*
+    Kalimat kekosongan, dan saran yang menyertainya.
+
+    Keduanya dihitung SEKALI di sini, bukan dirangkai ulang di dua tempat penggambaran di
+    bawah. Sebelumnya memang dirangkai dua kali, dan keduanya wajib tetap sama — bentuk
+    yang selalu berakhir berbeda begitu salah satunya disunting.
+  */
+  const emptyText = hasSearch
+    ? (searchEmptyMessage ?? `Tidak ada baris yang cocok dengan “${query.trim()}”.`)
+    : emptyMessage
+
+  // Saran bawaan padam begitu pemanggil memberi kalimatnya sendiri — lihat
+  // searchEmptyMessage.
+  const emptyHint =
+    hasSearch && searchEmptyMessage === undefined
+      ? 'Coba kata kunci yang lebih pendek.'
+      : undefined
 
   /*
     Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
@@ -461,10 +577,7 @@ export function DataTable<T>({
       ) : isLoading ? (
         <LoadingState />
       ) : visible.length === 0 && !showHeaderWhenEmpty ? (
-        <EmptyState
-          pesan={hasSearch ? `Tidak ada baris yang cocok dengan “${query.trim()}”.` : emptyMessage}
-          saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-        />
+        <EmptyState pesan={emptyText} saran={emptyHint} />
       ) : (
         <div className="md:overflow-x-auto">
           <table
@@ -485,10 +598,26 @@ export function DataTable<T>({
                           : 'descending'
                         : 'none'
                     }
+                    /*
+                      Judul kolom digambar APA ADANYA — kelas `uppercase` sengaja
+                      dilepas (ketetapan Work Owner 2026-10-03: *"karakternya bukan
+                      huruf besar semua tapi 'Aksi' bukan 'AKSI'"*).
+
+                      Selama kelas itu terpasang, teks di DOM dan teks yang dilihat
+                      pengguna adalah DUA HAL BERBEDA: judul yang ditulis 'Aksi' tetap
+                      tampil "AKSI". Akibatnya setiap pembicaraan tentang tulisan judul
+                      kolom harus menyebut yang mana yang dimaksud — dan itu persis
+                      kebingungan yang menghasilkan ketetapan ini.
+
+                      Sekarang keduanya satu: judul yang disalin dari literal Pega yang
+                      memang kapital (`<b>INISIAL<b>` pada Master Auto Claim) tetap
+                      tampil kapital karena teksnya memang kapital, bukan karena CSS.
+                    */
                     className={[
                       dense ? 'px-3 py-2.5' : 'px-5 py-3',
-                      'text-xs font-semibold uppercase tracking-wide text-slate-600',
-                      k.alignRight ? 'text-right' : '',
+                      'text-xs font-semibold tracking-wide text-slate-600',
+                      headerAlign(k),
+                      gridLines ? 'md:border-r md:border-slate-200 md:last:border-r-0' : '',
                     ].join(' ')}
                   >
                     {/*
@@ -534,18 +663,16 @@ export function DataTable<T>({
               {visible.length === 0 ? (
                 <tr className="block md:table-row">
                   <td className="block md:table-cell" colSpan={columns.length}>
-                    <EmptyState
-                      pesan={
-                        hasSearch
-                          ? `Tidak ada baris yang cocok dengan “${query.trim()}”.`
-                          : emptyMessage
-                      }
-                      saran={hasSearch ? 'Coba kata kunci yang lebih pendek.' : undefined}
-                    />
+                    <EmptyState pesan={emptyText} saran={emptyHint} />
                   </td>
                 </tr>
               ) : null}
-              {shown.map((b) => {
+              {shown.map((b, urutDiHalaman) => {
+                // Nomor urut BERLANJUT antarhalaman: `firstIndex` adalah posisi baris
+                // pertama halaman ini di dalam hasil yang sudah disaring dan diurutkan.
+                // Tanpa itu, setiap halaman akan mengulang dari 1 dan dua baris berbeda
+                // akan bernomor sama.
+                const nomorUrut = firstIndex + urutDiHalaman + 1
                 const kunci = rowKey(b)
                 const isi = expandedRow?.(b) ?? null
                 const bisaDibuka = isi != null && isi !== false
@@ -584,23 +711,34 @@ export function DataTable<T>({
                           key={k.key}
                           className={[
                             'flex items-baseline gap-3 px-5 py-1.5',
-                            dense ? 'md:table-cell md:px-3 md:py-2 md:align-middle' : 'md:table-cell md:py-3.5 md:align-middle',
-                            k.alignRight ? 'md:text-right' : '',
+                            dense
+                              ? 'md:table-cell md:px-3 md:py-2 md:align-middle'
+                              : 'md:table-cell md:py-3.5 md:align-middle',
+                            k.alignRight ? 'md:text-right' : k.alignCenter ? 'md:text-center' : '',
+                            gridLines
+                              ? 'md:border-r md:border-slate-200 md:last:border-r-0'
+                              : '',
                           ].join(' ')}
                         >
                           {/*
                             Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
                             aria-hidden karena <th scope="col"> sudah menjelaskan sel ini —
                             tanpa itu pembaca layar menyebut nama kolom dua kali.
+
+                            Kelas `uppercase` ikut dilepas bersama yang di <th>: label
+                            kartu dan kepala kolom menampilkan judul yang sama, dan
+                            membiarkan salah satunya mengapitalkan berarti satu layar
+                            menulis judul yang sama dengan dua cara, bergantung lebar
+                            layar.
                           */}
                           <span
                             aria-hidden="true"
-                            className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-500 md:hidden"
+                            className="w-28 shrink-0 text-xs font-medium tracking-wide text-slate-500 md:hidden"
                           >
                             {k.title}
                           </span>
                           <span className="min-w-0 flex-1 break-words text-slate-900">
-                            {k.render ? k.render(b) : k.value(b) || '—'}
+                            {k.render ? k.render(b, nomorUrut) : k.value(b) || '—'}
                           </span>
                         </td>
                       ))}

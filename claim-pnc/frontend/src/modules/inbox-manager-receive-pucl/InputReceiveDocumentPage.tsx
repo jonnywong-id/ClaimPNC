@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { formatPegaFormDate } from '@/components/format'
 
 import { useReceiveDocument, useReceiveDocumentAction } from './api'
 import type { DocumentAction, DocumentField, DocumentResponse } from './types'
@@ -36,7 +37,7 @@ import type { DocumentAction, DocumentField, DocumentResponse } from './types'
  * # Bentuk layarnya datang dari SERVER
  *
  * Ke-36 judul isian, pengelompokannya, dan tanda terhalangnya dibaca backend dari
- * `Section/InputReceiveDocument_sect.xml`. Menyalinnya ke sini berarti daftar yang sama
+ * `Section/InputReceiveDocument-Section.xml`. Menyalinnya ke sini berarti daftar yang sama
  * hidup di dua tempat, dan yang satu akan tertinggal saat yang lain diperbaiki — lihat
  * `DocumentFieldGroups` di backend.
  *
@@ -211,9 +212,20 @@ function StateNotice({
 function WorkScreen({ detail }: { detail: DocumentResponse | null }) {
   const groups = detail?.kelompok ?? []
   const values = detail?.nilai ?? {}
+  const actions = detail?.tindakan ?? []
+  const berkas = detail?.referensi ?? ''
+
+  // Letak tombol datang dari SERVER, bukan disimpulkan dari kodenya di sini. Di layar lama,
+  // tombol unggah dan lihat dokumen berada di puncak blok sebelum isian pertama; tombol
+  // simpan, transfer, dan register berada sesudah seluruh isian. Membalik keduanya membuat
+  // petugas yang membandingkan kedua layar berdampingan mencari tombol di tempat yang salah.
+  const atas = actions.filter((action) => action.di_atas)
+  const bawah = actions.filter((action) => !action.di_atas)
 
   return (
     <div className="mt-6 space-y-6">
+      <WriteActionBar actions={atas} berkas="" />
+
       {groups.map((group) => (
         <FieldGroup
           key={group.judul}
@@ -223,7 +235,7 @@ function WorkScreen({ detail }: { detail: DocumentResponse | null }) {
         />
       ))}
 
-      <WriteActionBar actions={detail?.tindakan ?? []} berkas={detail?.referensi ?? ''} />
+      <WriteActionBar actions={bawah} berkas={berkas} />
 
       <ClipboardNotice groups={groups} />
     </div>
@@ -275,6 +287,11 @@ function FieldGroup({
 function FieldRow({ field, value }: { field: DocumentField; value: string }) {
   const span = field.bertingkat ? 'sm:col-span-2' : ''
 
+  // Tanggal ditulis seperti isian form Pega — `29/01/2020`, `29/01/2020 11:58`. Nilai yang
+  // bukan tanggal lolos apa adanya, sehingga pembantu ini aman dipakai untuk SELURUH isian
+  // dan tidak perlu daftar "mana yang tanggal" yang akan tertinggal saat isian bertambah.
+  const text = formatPegaFormDate(value)
+
   return (
     <div className={span}>
       <dt className="text-xs font-medium text-slate-500">{field.judul}</dt>
@@ -282,9 +299,9 @@ function FieldRow({ field, value }: { field: DocumentField; value: string }) {
         {field.terhalang ? (
           <BlockedValue field={field} />
         ) : field.bertingkat ? (
-          <span className="block whitespace-pre-wrap">{value || '—'}</span>
+          <span className="block whitespace-pre-wrap">{text || '—'}</span>
         ) : (
-          value || '—'
+          text || '—'
         )}
       </dd>
     </div>
@@ -294,9 +311,22 @@ function FieldRow({ field, value }: { field: DocumentField; value: string }) {
 /**
  * Isian yang digambar tetapi belum dapat diisi.
  *
- * Alasannya datang dari SERVER dan ditaruh di `title`, bukan digambar penuh di layar: enam
- * belas alasan yang seluruhnya tergambar akan menenggelamkan isian yang benar-benar berisi.
- * Yang terlihat langsung adalah TANDA-nya; alasannya terbaca saat ditunjuk.
+ * # Digambar SAMA dengan isian kosong di Pega
+ *
+ * Yaitu sebagai tanda pisah. Versi sebelumnya menggambarnya sebagai lencana oranye
+ * bertuliskan "belum terbawa", dan enam belas lencana itu membuat layar ini terlihat jauh
+ * berbeda dari acuannya — dilaporkan Work Owner 2026-10-10 dan dicabut, karena `D-13`
+ * menetapkan tampilan mengikuti Pega.
+ *
+ * # Keterangannya TIDAK hilang, ia pindah
+ *
+ * Alasan dan pemiliknya tetap datang dari server dan tetap terbaca saat isiannya ditunjuk.
+ * Yang hilang hanyalah penandanya di layar.
+ *
+ * Konsekuensinya disadari dan diterima: isian yang TIDAK AKAN PERNAH terisi kini terlihat
+ * sama dengan isian yang kebetulan kosong. Pembedaan itulah alasan lencananya dibuat.
+ * Bila kelak pembedaan itu dibutuhkan kembali, bentuknya harus yang tidak menyimpang dari
+ * Pega — misalnya penanda halus pada judulnya, bukan lencana berwarna di tempat nilainya.
  */
 function BlockedValue({ field }: { field: DocumentField }) {
   const reason = [field.alasan_terhalang, field.pemilik_penghalang && `Menunggu: ${field.pemilik_penghalang}`]
@@ -304,11 +334,8 @@ function BlockedValue({ field }: { field: DocumentField }) {
     .join('\n\n')
 
   return (
-    <span
-      className="inline-flex items-center gap-1 rounded-kontrol bg-amber-50 px-1.5 py-0.5 text-xs text-amber-900"
-      title={reason}
-    >
-      belum terbawa
+    <span className="cursor-help text-slate-400" title={reason}>
+      —
     </span>
   )
 }
@@ -344,13 +371,17 @@ function WriteActionBar({
   if (actions.length === 0) return null
 
   return (
-    <section className="rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-medium text-amber-900">Tindakan</h2>
-      <p className="mt-1 text-xs text-slate-700">
-        Kedelapan tombol ini ada di layar lama dan{' '}
+    <section className="rounded-kartu border border-slate-200 px-4 py-4">
+      {/*
+        Tanpa judul "Tindakan" — layar lama tidak punya judul apa pun di atas tombolnya;
+        tombolnya berdiri langsung di tempatnya. Keterangan di bawah tetap ada karena tidak
+        satu pun tombol dapat dijalankan, dan tombol yang diam tanpa penjelasan dilaporkan
+        sebagai kerusakan.
+      */}
+      <p className="text-xs text-slate-600">
+        Tombol ini ada di layar lama dan{' '}
         <span className="font-medium">belum satu pun dapat dijalankan di sini</span>. Tekan
-        salah satunya untuk membaca alasannya; kerjakan tindakannya lewat Pega dengan kunci
-        berkas di bawah.
+        salah satunya untuk membaca alasannya, lalu kerjakan tindakannya lewat Pega.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">

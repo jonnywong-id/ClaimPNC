@@ -121,6 +121,54 @@ CREATE TABLE POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE (
     -- dengan waktu yang sama.
     TGL_KIRIM_POST_AUDIT  TIMESTAMP(6),
 
+    -- ------------------------------------------------------------------------------
+    -- Grid komentar — `.ClaimData.ComplianceList`, satu kolom JSON
+    -- ------------------------------------------------------------------------------
+    --
+    -- Bentuknya senarai objek, dengan nomor baris, tanggal, dan isinya:
+    --
+    --     [{"urutan":1,"tanggal":"2026-10-07T09:00:00Z","komentar":"…"}, …]
+    --
+    -- # Kenapa SATU KOLOM, bukan tabel kedua
+    --
+    -- Rancangan pertama memakai tabel tersendiri `CPNC_KOMENTAR_COMPLIANCE`, karena grid
+    -- ini memang berulang. Work Owner menanyakan apakah bisa satu tabel saja (2026-10-07),
+    -- dan jawabannya bukan sekadar bisa — ia **lebih benar**:
+    --
+    --   1. **Atomisitas.** Dengan dua tabel, penyimpanan menempuh dua perintah terpisah
+    --      yang BUKAN satu transaksi, karena seam Repo modul ini belum punya kepemilikan
+    --      transaksi (`08-TECHNICAL-STRATEGY.md` §4.5). Bila yang kedua gagal, keputusan
+    --      tersimpan tanpa komentarnya. Satu kolom menghapus kelas kegagalan itu — form
+    --      menyimpan keduanya dalam satu tombol, dan kini juga dalam satu pernyataan.
+    --   2. Tidak ada laporan maupun layar yang mencari komentar LINTAS klaim. Ia selalu
+    --      dibaca bersama keputusannya, tidak pernah sendirian.
+    --
+    -- # Yang hilang, dan dinyatakan di muka
+    --
+    -- Komentar tidak dapat dicari maupun di-index satu per satu. Hari ini tidak ada yang
+    -- melakukannya; bila kelak ada laporan atas komentar, ia menuntut migrasi — bukan
+    -- sekadar kueri baru.
+    --
+    -- Nomor baris juga tidak lagi dijaga constraint basis data. Itu ringan: Go menomori
+    -- ulang 1..n setiap kali menyimpan, setelah membuang baris kosong.
+    --
+    -- # Kenapa Go yang mengurainya, bukan JSON_TABLE
+    --
+    -- Supaya kuerinya tetap SQL biasa dan portabel apa adanya ke PostgreSQL (`D-20`).
+    -- Basis data hanya menyimpan dan memvalidasi bentuknya; penguraian ada di Go, tempat
+    -- aturan bisnis memang tinggal.
+    --
+    -- Lebar isi tiap komentar dibatasi **512** di aplikasi — `pyMaxLength` pada properti
+    -- `Compliance`. CLOB dipilih karena 200 baris × 512 melampaui batas VARCHAR2.
+    KOMENTAR_JSON         CLOB,
+
+    -- Bentuknya dijaga basis data, bukan hanya kode.
+    --
+    -- Tanpa ini, satu cacat pembuat JSON di Go akan menyimpan teks rusak yang baru
+    -- ketahuan saat dibaca — mungkin berbulan-bulan kemudian, pada klaim yang sudah
+    -- diputuskan.
+    CONSTRAINT CK_CPNC_KEPUTUSAN_KOMENTAR CHECK (KOMENTAR_JSON IS JSON),
+
     -- Primary key pada NO_KLAIM, dan ini SENGAJA berbeda dari `T_CLAIM_COMPLIANCE_H`.
     --
     -- Tabel itu tidak punya primary key sama sekali, dan ketiadaannya tercatat sebagai
@@ -137,4 +185,31 @@ CREATE TABLE POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE (
 -- tidak dibuang.
 --
 -- Ganti `APP_CLAIM_PNC` dengan nama akun aplikasi yang sebenarnya di tiap entitas.
-GRANT SELECT, INSERT, UPDATE ON POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE TO APP_CLAIM_PNC;
+-- ============================================================================
+-- GRANT DI BAWAH SENGAJA DIKOMENTARI — JANGAN DIAKTIFKAN TANPA MEMBACA INI
+-- ============================================================================
+--
+-- Menurut `claim-pnc/backend/.env` baris 60, aplikasi menyambung sebagai
+-- POOLDATA_ASM_PENGGUNA=POOLDATA — yakni PEMILIK SKEMA-nya sendiri.
+--
+-- Dua akibatnya:
+--
+--   1. GRANT TIDAK DIBUTUHKAN. Pemilik skema selalu punya hak penuh atas objek yang ia
+--      miliki; tidak ada hak yang perlu diberikan kepada dirinya sendiri.
+--   2. Menjalankannya JUSTRU GAGAL. `APP_CLAIM_PNC` tidak ada di basis data ini, sehingga
+--      Oracle melempar `ORA-01917: user or role 'APP_CLAIM_PNC' does not exist` — dan satu
+--      pernyataan gagal dapat menghentikan skrip DBA di tengah jalan, meninggalkan
+--      sebagian objek terbuat dan sebagian tidak.
+--
+-- AKTIFKAN baris di bawah HANYA bila aplikasi kelak memakai akun terpisah dari POOLDATA,
+-- lalu ganti APP_CLAIM_PNC dengan nama akun itu.
+--
+-- # Satu pengaman yang TIDAK berlaku selama aplikasi menyambung sebagai POOLDATA
+--
+-- Ketiadaan `DELETE` pada GRANT dimaksudkan menegakkan `D-66` — soft delete — lewat hak
+-- akses basis data, bukan lewat disiplin kode. Pengaman itu **tidak bekerja** pada pemilik
+-- skema: POOLDATA dapat menghapus barisnya sendiri apa pun yang tertulis di sini.
+--
+-- Jadi selama konfigurasi ini berlaku, `D-66` ditegakkan HANYA oleh kode dan oleh review.
+-- Itu kelemahan nyata, dan ia hilang begitu akun aplikasi terpisah dibuat.
+-- GRANT SELECT, INSERT, UPDATE ON POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE TO APP_CLAIM_PNC;

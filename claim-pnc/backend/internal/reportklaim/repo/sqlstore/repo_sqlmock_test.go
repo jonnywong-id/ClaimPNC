@@ -65,10 +65,27 @@ func TestStreamRunsEveryPlanWithItsArguments(t *testing.T) {
 		code := reportklaim.Code(raw)
 		t.Run(raw, func(t *testing.T) {
 			db, mock := newDB(t)
-			repo := NewRepo(db, nil)
+
+			// Koneksi kedua dipasang untuk SELURUH laporan, bukan hanya yang
+			// membutuhkannya. Laporan Mitra menyaring barisnya lewat daftar login mitra
+			// yang hidup di koneksi itu, dan tanpa koneksinya ia MENOLAK permintaan —
+			// bukan mengembalikan nol baris. Lihat mitraKeep.
+			kedua, mockKedua := newDB(t)
+			repo := NewRepo(db, kedua)
 			p := plans[code]
+
+			// Baris contohnya dibuat LOLOS penyaring, bukan penyaringnya yang dimatikan.
+			// Mematikannya akan membuat laporan ber-keep diuji pada jalur yang tidak
+			// pernah dilaluinya di produksi — dan jalur itulah yang justru paling mudah
+			// salah, karena ia menyentuh dua koneksi sekaligus.
+			baris := sqlmock.NewRows([]string{"KOLOM"}).AddRow("isi")
+			if p.keep != nil {
+				mockKedua.ExpectQuery(q("report_mitra_logins")).WillReturnRows(
+					sqlmock.NewRows([]string{"LOGIN"}).AddRow("MITRA01"))
+				baris = sqlmock.NewRows([]string{"KOLOM", "QQNAME"}).AddRow("isi", "mitra01")
+			}
 			mock.ExpectQuery(q(p.query(filter))).WithArgs(toDriver(p.args(filter))...).
-				WillReturnRows(sqlmock.NewRows([]string{"KOLOM"}).AddRow("isi"))
+				WillReturnRows(baris)
 			var rows []reportklaim.Row
 			require.NoError(t, repo.Stream(context.Background(), reportklaim.Report{Code: code}, filter, collect(&rows)))
 			require.Len(t, rows, 1)
@@ -86,8 +103,13 @@ func TestStreamArgumentShapes(t *testing.T) {
 	require.Equal(t, []any{"002"}, lineOnly(filter))
 	require.Nil(t, noArgs(filter))
 	require.Equal(t, []any{"B01"}, businessCodeArgs(filter))
-	require.Equal(t, []any{from, to, "2"}, komiteNonMBUArgs(filter))
-	require.Equal(t, []any{from, to, "true"}, closeNonMBUArgs("true")(filter))
+	// Kedua yang berikut TIDAK mengikuti pola "dari, sampai, lalu sisanya", dan itu
+	// disengaja: urutannya mengikuti URUTAN KEMUNCULAN placeholder di kuerinya, karena
+	// driver Oracle mengabaikan nomor `:n`. Lihat TestNomorBindMengikutiUrutanKemunculan.
+	require.Equal(t, []any{"2", from, to}, komiteNonMBUArgs(filter),
+		"statusapprove muncul paling awal di report_komite_nonmbu")
+	require.Equal(t, []any{"true", "true", from, to}, closeNonMBUArgs("true")(filter),
+		"penandanya dibandingkan dua kali, jadi dikirim dua kali")
 }
 
 func TestStreamCloseNonMBUReadsMastersOnce(t *testing.T) {
@@ -101,7 +123,7 @@ func TestStreamCloseNonMBUReadsMastersOnce(t *testing.T) {
 		sqlmock.NewRows([]string{"ID", "NAMA"}).AddRow("1", "Register").AddRow(nil, "x"))
 	mock.ExpectQuery(q("report_dominant_factors")).WithArgs(from, to).WillReturnRows(
 		sqlmock.NewRows([]string{"KLAIM", "NAMA"}).AddRow("C1", "Banjir"))
-	mock.ExpectQuery(q("report_close_klaim_nonmbu")).WithArgs(from, to, "false").WillReturnRows(
+	mock.ExpectQuery(q("report_close_klaim_nonmbu")).WithArgs("false", "false", from, to).WillReturnRows(
 		sqlmock.NewRows([]string{"StatusWork"}).AddRow("15/03/2026"))
 
 	var rows []reportklaim.Row
@@ -122,7 +144,7 @@ func TestStreamKomiteNonMBUReadsHolidayFromSecondConnection(t *testing.T) {
 	anekaMock.ExpectQuery(q("report_holiday_calendar")).WithArgs(from, to).WillReturnRows(
 		sqlmock.NewRows([]string{"TGL"}).AddRow(time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC)).AddRow(nil))
 	mock.ExpectQuery(q("report_progress_names")).WillReturnRows(sqlmock.NewRows([]string{"ID", "NAMA"}))
-	mock.ExpectQuery(q("report_komite_nonmbu")).WithArgs(from, to, "1").WillReturnRows(
+	mock.ExpectQuery(q("report_komite_nonmbu")).WithArgs("1", from, to).WillReturnRows(
 		sqlmock.NewRows([]string{"CountryID"}).AddRow("01/02/2026"))
 
 	var rows []reportklaim.Row
@@ -146,7 +168,12 @@ func TestStreamFailures(t *testing.T) {
 	mock.ExpectQuery(q("report_klaim_harian")).WillReturnError(errDB)
 	err = repo.Stream(ctx, report, filter, collect(new([]reportklaim.Row)))
 	require.ErrorIs(t, err, errDB)
-	require.ErrorContains(t, err, "menjalankan laporan")
+	// Diperiksa lewat PENANDANYA, bukan lewat kata-katanya. Kalimat galat boleh
+	// diperbaiki kapan saja; yang menjadi kontrak adalah ErrQueryFailed, karena itulah
+	// yang dibaca lapisan transport untuk menjawab dengan kode dan ID permintaan.
+	require.ErrorIs(t, err, ErrQueryFailed)
+	require.ErrorContains(t, err, "report_klaim_harian",
+		"nama kuerinya harus ikut — satu laporan dapat memakai kueri berbeda per lini")
 
 	stop := errors.New("berhenti")
 	mock.ExpectQuery(q("report_klaim_harian")).WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("1").AddRow("2"))
@@ -278,5 +305,90 @@ func TestCheckSourceReadsHolidayCalendar(t *testing.T) {
 	state = repo.CheckSource(ctx)
 	require.False(t, state.HolidayReadable)
 	require.ErrorIs(t, state.HolidayError, errDB)
+	require.NoError(t, anekaMock.ExpectationsWereMet())
+}
+
+// ── Penyaring baris laporan Mitra ───────────────────────────────────────────────
+
+// Ketiga jalur penolakan mitraKeep diperiksa satu per satu.
+//
+// Laporan ini satu-satunya yang menyaring BARIS lewat koneksi kedua, dan kehilangan
+// penyaringnya tidak membuatnya kehilangan kolom — ia berubah ISI: berkas yang terbit
+// memuat SELURUH petugas, bukan petugas mitra. Kegagalan seperti itu tidak terlihat
+// sebagai galat oleh siapa pun yang menerima berkasnya.
+func TestMitraKeepRefusesRatherThanWidenTheReport(t *testing.T) {
+	ctx := context.Background()
+	filter := reportklaim.Filter{From: from, To: to}
+
+	// Tidak ada jalan SAMA SEKALI — bukan sekadar koneksi kedua yang kosong.
+	//
+	// Sejak jalur cadangan DB Link diterima Work Owner 2026-10-09, `aneka` nil saja TIDAK
+	// lagi menolak: ia jatuh ke koneksi portal dengan kueri bercadang `@ASMD` (lihat
+	// koneksiKedua, dan cadangan_dblink_test.go yang mengujinya). Penolakan ber-"ANEKA_"
+	// hanya terjadi ketika kedua jalan itu sama-sama tidak ada.
+	t.Run("tidak ada jalan sama sekali", func(t *testing.T) {
+		_, err := mitraKeep(ctx, NewRepo(nil, nil), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "ANEKA_")
+	})
+
+	t.Run("pembacaan gagal", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).WillReturnError(errDB)
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Daftar KOSONG secara teknis sah, dan justru itu yang membuatnya berbahaya: ia
+	// menghasilkan berkas tanpa satu baris pun, yang tidak dapat dibedakan dari "memang
+	// tidak ada penugasan pada periode itu".
+	t.Run("daftar kosong", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "kosong")
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Baris yang isinya hanya spasi tidak boleh terhitung sebagai login: ia akan
+	// meloloskan setiap baris laporan yang kolom QQNAME-nya juga kosong.
+	t.Run("baris berisi spasi saja tidak dihitung", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow("   ").AddRow(nil))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+}
+
+// Pencocokan login DINORMALKAN huruf besar dan spasinya.
+//
+// Kedua kolom yang dibandingkan — `userassign` di laporan dan `login_aplikasi` di daftar
+// mitra — berada di DUA basis data yang berbeda, dan tidak ada apa pun yang menjamin
+// keseragaman penulisannya.
+func TestMitraKeepMatchesLoginsCaseAndSpaceInsensitively(t *testing.T) {
+	db, _ := newDB(t)
+	aneka, anekaMock := newDB(t)
+	anekaMock.ExpectQuery(q("report_mitra_logins")).
+		WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow(" budi "))
+
+	keep, err := mitraKeep(context.Background(), NewRepo(db, aneka), reportklaim.Filter{})
+	require.NoError(t, err)
+
+	require.True(t, keep(reportklaim.Row{"QQNAME": "BUDI"}))
+	require.True(t, keep(reportklaim.Row{"QQNAME": "  Budi  "}))
+	require.False(t, keep(reportklaim.Row{"QQNAME": "SITI"}), "bukan mitra, dibuang")
+	require.False(t, keep(reportklaim.Row{"QQNAME": ""}), "kosong bukan mitra")
+	require.False(t, keep(reportklaim.Row{}), "tanpa kolom QQNAME pun bukan mitra")
 	require.NoError(t, anekaMock.ExpectationsWereMet())
 }

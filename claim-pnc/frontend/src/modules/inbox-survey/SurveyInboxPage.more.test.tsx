@@ -79,9 +79,10 @@ const KETERANGAN: KeteranganResponse = {
   ],
   kolom_kpi: KPI_KOLOM,
   tab_bawaan: 'aktif',
-  jenis_kpi: ['outstanding', 'lain'],
+  status_survei: ["ALL", "OUTSTANDING", "FINAL"],
+  tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
+  kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: [],
   keterbatasan: [],
 }
 
@@ -126,14 +127,29 @@ function installFetch(answer: (url: string) => Answer = () => undefined) {
     if (url.includes('/jumlah-tab')) {
       return Promise.resolve(json(200, { portal: 'ASM', identitas: IDENTITAS, tab: [] }))
     }
+    // Diperiksa SEBELUM /kpi — keduanya berawalan sama.
+    if (url.includes('/kpi/tahun')) {
+      return Promise.resolve(json(200, { portal: 'ASM', tahun: ['2026', '2025'] }))
+    }
     if (url.includes('/kpi')) {
+      // Bentuk jawabannya mengikuti isian, sama seperti server. Mengembalikan satu bentuk
+      // untuk setiap permintaan akan membuat uji judul kolom lulus tanpa menguji apa pun.
+      const berkuartal = url.includes('kuartal=')
+
       return Promise.resolve(
         json(200, {
           portal: 'ASM',
           identitas: IDENTITAS,
-          jenis: 'outstanding',
-          kategori: '',
-          tahun: '',
+          status_survei: 'FINAL',
+          tipe_report: 'DATA SUMMARY',
+          kuartal: berkuartal ? '3' : '',
+          tahun: berkuartal ? '2026' : '',
+          bentuk: berkuartal ? 'per-tahun' : 'per-adjuster',
+          kolom_awal: [
+            berkuartal
+              ? { kunci: 'kelompok', judul: 'TAHUN', tersedia: true }
+              : { kunci: 'kelompok', judul: 'ADJUSTER', tersedia: true },
+          ],
           data: [kpiRow('BUDI', 81), kpiRow('', 70)],
         }),
       )
@@ -268,14 +284,25 @@ describe('KPI', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
   }
 
-  it('mengirim tahun, mengurutkan, dan menandai kelompok kosong', async () => {
+  /** Mengisi kedua dropdown wajib lalu menekan Cari. */
+  async function cari(status = 'FINAL', tipe = 'DATA SUMMARY') {
+    await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), status)
+    await userEvent.selectOptions(screen.getByLabelText(/Tipe Report/), tipe)
+    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+  }
+
+  it('mengurutkan, menandai kelompok kosong, dan mengirim isian ke server', async () => {
     installFetch()
     await openKPI()
+    await cari()
+
     const table = await screen.findByRole('table', { name: 'Ringkasan KPI adjuster' })
 
     expect(within(table).getAllByText('81.00').length).toBeGreaterThan(0)
     expect(within(table).getByText('—')).toBeInTheDocument()
-    expect(within(table).queryByRole('columnheader', { name: /TIDAK_DIKENAL/ })).not.toBeInTheDocument()
+    expect(
+      within(table).queryByRole('columnheader', { name: /TIDAK_DIKENAL/ }),
+    ).not.toBeInTheDocument()
 
     for (const header of within(table).getAllByRole('columnheader')) {
       await userEvent.click(within(header).getByRole('button'))
@@ -285,21 +312,34 @@ describe('KPI', () => {
     // NILAI sudah urut naik dari putaran di atas; klik kedua membaliknya menjadi turun.
     expect(within(table).getAllByRole('row')[1]).toHaveTextContent('BUDI')
 
-    await userEvent.type(screen.getByLabelText('Tahun'), '2026')
-    await waitFor(() => expect(urls).toContain(`${PATH}/kpi?jenis=outstanding&tahun=2026`))
+    await waitFor(() =>
+      expect(urls).toContain(`${PATH}/kpi?status_survei=FINAL&tipe_report=DATA+SUMMARY`),
+    )
   })
 
-  it('memakai kode jenis apa adanya bila judulnya tidak dikenal, lalu memuat ulang', async () => {
+  /**
+   * Kuartal dan Tahun Kuartal ikut terkirim, dan HANYA setelah Cari ditekan.
+   *
+   * Mengubah dropdown tanpa menekan Cari tidak boleh menembak apa pun — itu perbedaan nyata
+   * dari versi sebelumnya layar ini, yang memuat ulang pada setiap perubahan.
+   */
+  it('mengirim kuartal dan tahun hanya setelah Cari ditekan', async () => {
     installFetch()
     await openKPI()
+    await cari()
+    await screen.findByRole('table', { name: 'Ringkasan KPI adjuster' })
 
-    await userEvent.click(await screen.findByRole('tab', { name: 'lain' }))
-    expect(await screen.findByText('Ringkasan KPI Adjuster')).toBeInTheDocument()
-    await waitFor(() => expect(urls).toContain(`${PATH}/kpi?jenis=lain`))
+    const sebelum = urls.filter((u) => u.includes('/kpi?')).length
+    await userEvent.selectOptions(screen.getByLabelText('Kuartal'), '3')
+    await userEvent.selectOptions(screen.getByLabelText('Tahun Kuartal'), '2026')
+    expect(urls.filter((u) => u.includes('/kpi?')).length).toBe(sebelum)
 
-    const before = urls.filter((u) => u.includes('/kpi')).length
-    await userEvent.click(screen.getByRole('button', { name: /Muat ulang/ }))
-    await waitFor(() => expect(urls.filter((u) => u.includes('/kpi')).length).toBe(before + 1))
+    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+    await waitFor(() =>
+      expect(urls).toContain(
+        `${PATH}/kpi?status_survei=FINAL&tipe_report=DATA+SUMMARY&kuartal=3&tahun=2026`,
+      ),
+    )
   })
 
   it('menampilkan galat dan keadaan kosong ringkasan', async () => {
@@ -307,16 +347,27 @@ describe('KPI', () => {
     installFetch((url) => {
       if (!url.includes('/kpi')) return undefined
       if (fail) return json(500, { kode: 'galat_internal', pesan: 'KPI gagal.' })
-      return json(200, { portal: 'ASM', identitas: IDENTITAS, jenis: 'outstanding', kategori: '', tahun: '', data: [] })
+      return json(200, {
+        portal: 'ASM',
+        identitas: IDENTITAS,
+        status_survei: 'FINAL',
+        tipe_report: 'DATA SUMMARY',
+        kuartal: '',
+        tahun: '',
+        data: [],
+      })
     })
     await openKPI()
+    await cari()
 
     expect(await screen.findByText('Ringkasan KPI tidak dapat dimuat')).toBeInTheDocument()
     expect(screen.getByText('KPI gagal.')).toBeInTheDocument()
 
     fail = false
     await userEvent.click(screen.getByRole('button', { name: /Muat ulang/ }))
-    expect(await screen.findByText('Belum ada penilaian KPI untuk cakupan Anda.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Belum ada penilaian KPI untuk pilihan Anda.'),
+    ).toBeInTheDocument()
   })
 })
 

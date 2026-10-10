@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { APIError, NetworkError } from '@/api/client'
 import { ErrorCode, type InvestigatorTask } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
@@ -5,6 +7,8 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
+import { ExportPanel } from './ExportPanel'
+import { InvestigationDialog } from './InvestigationDialog'
 import { useInvestigatorInbox } from './api'
 
 /**
@@ -102,39 +106,56 @@ function formatDate(value: string | null): string {
  * dikerjakan, "hanya yang jadi tanggung jawab saya" adalah aturan kewenangan, dan barisnya
  * punya tenggat. Itu yang membedakannya dari layar master dan dari View History Claim.
  *
- * # Layar BACA-SAJA, dan itu keputusan berdasar lingkup
+ * # Layar ini MENYIMPAN satu hal
  *
- * Work Owner memilih lingkup "layar inbox saja" pada 2026-09-23. Mengambil pekerjaan dari
- * antrean dan mencatat hasil investigasi — `SetStatusInvestigator_Act`, yang menyetel
- * `SurveyStatus = 5`, `StatusClaim = 1151`, dan menulis kronologi TAT — ada di layar kerja
- * yang **tidak digambar harness ini** dan belum dibangun.
+ * Lingkup awalnya "layar inbox saja" (2026-09-23), dan formulir kerja Investigator
+ * ditambahkan 2026-10-05 setelah Work Owner menunjukkan bahwa Nomor Case di Pega
+ * menjalankan Flow Action `InputInvestigator` — bukan membuka tampilan.
+ *
+ * Yang MASIH belum ada: mengambil pekerjaan dari antrean (`openAssignment`). Itu bagian
+ * dari modul Penugasan, bukan dari layar ini.
  *
  * # Susunan layar, dan asal setiap bagiannya
  *
  *	Judul + tombol Refresh
  *	Spanduk terpotong    hanya bila server menyatakan antreannya terpotong
  *	Grid 9 kolom         paginasi 50 baris, mengikuti pyPageSize grid lamanya
+ *	Panel ekspor         "Dari", "Sampai", "Pilih Investigation", dan tombolnya
  *	Keterangan kaki      tiga keterbatasan yang tidak terlihat dari layar
  *
- * # Dua hal dari layar lama yang TIDAK dibawa
+ * # Satu hal dari layar lama yang TIDAK dibawa
  *
- *  1. **Grid kedua.** Section lama memuat DUA grid dengan kolom dan parameter identik —
- *     sisa Save-As dari inbox Compliance; yang kedua bahkan mengeja "Nama Bisinis".
+ * **Grid kedua.** Section lama memuat DUA grid dengan kolom dan parameter identik — sisa
+ * Save-As dari inbox Compliance; yang kedua bahkan mengeja "Nama Bisinis".
  *
- *  2. **Export Data Investigation** beserta ketiga kendalinya ("Pilih Investigation",
- *     "Dari", "Sampai"). **Dihapus atas keputusan Work Owner 2026-09-24.**
+ * # Dua selisih tata letak yang disengaja
  *
- *     Keempatnya ada dan terlihat di layar lama. Yang menghalangi pembangunannya bukan
- *     lingkup melainkan pemetaan: berkas CSV-nya disusun dari 13 kolom milik 12 properti,
- *     dan tiga di antaranya tidak dapat ditelusuri ke kolom basis data mana pun —
- *     terutama **Nomor Rekap Medis**, yang tidak punya kolom sama sekali di
- *     `POOLDATA.INVESTIGATIONREPORT`.
+ *  1. **Panel ekspor ada di BAWAH daftar**, sementara di Pega ketiga kendalinya berada di
+ *     kepala layar berdampingan dengan penyaring grid. Alasannya di ExportPanel: keduanya
+ *     menyaring hal yang berbeda, dan kedekatan posisi membuat pengguna menduga sebaliknya.
  *
- *     Analisis lengkapnya disimpan di `docs/permintaan-artefak-pega.md` §2, supaya tidak
- *     perlu ditelusuri ulang bila kelak fitur ini dihidupkan.
+ *  2. **Panel ekspor dan formulir investigasi berbagi satu halaman.** Di Pega keduanya
+ *     terpisah: kendali ekspor di kepala layar, formulir sebagai modal. Di sini modalnya
+ *     tetap modal; yang berpindah hanya panel ekspornya.
+ *
+ * # Yang MENYIMPAN di layar ini
+ *
+ * Satu: formulir kerja Investigator, dibuka dengan menekan Nomor Case. Menyimpannya
+ * memindahkan klaim ke Analyst dan menghilangkan barisnya dari antrean. Selebihnya —
+ * daftar, pencarian, ekspor — hanya membaca.
  */
 export function InvestigatorInboxPage() {
   const portal = useSelectedPortal((state) => state.alias)
+
+  /*
+    Pekerjaan yang formulirnya sedang dibuka, atau null bila dialognya tertutup.
+
+    Barisnya DISIMPAN UTUH, bukan hanya referensinya: dialog menampilkan Nomor Case, Nama
+    Tertanggung, dan Nama Peserta sebagai keterangan baca-saja — ketiganya sudah ada di
+    tangan, dan mengambilnya ulang dari server hanya menambah satu permintaan untuk data
+    yang tidak berubah.
+  */
+  const [workingOn, setWorkingOn] = useState<InvestigatorTask | null>(null)
 
   const inbox = useInvestigatorInbox()
   const rows = inbox.data?.tugas ?? []
@@ -150,11 +171,43 @@ export function InvestigatorInboxPage() {
   */
   const columns: Column<InvestigatorTask>[] = [
     {
+      /*
+        Nomor case adalah TAUTAN — sel-nya di Pega ber-`pyFormat = pxLink` atas `.pyID`.
+
+        # Apa yang dibukanya
+
+        Flow Action `InputInvestigator`, yaitu FORMULIR KERJA yang menyimpan:
+
+          Flow Action/InputInvestigator-FA.xml:128   pra-proses  PresetInvestigation
+          Flow Action/InputInvestigator-FA.xml:49    formulir    InputClaimInvestigasiDetail
+          Flow Action/InputInvestigator-FA.xml:144   simpan      SetStatusInvestigator_Act
+
+        Ia MODAL di sana (80 × 82), dan modal pula di sini — sehingga tidak ada rute baru
+        dan daftar di belakangnya tetap pada tempatnya.
+
+        # Ia BUKAN halaman rincian klaim
+
+        Sempat ditautkan ke sana dan DICABUT. Dua sebabnya, masing-masing cukup sendirian:
+        halaman itu menampilkan sedangkan yang ini mengerjakan, dan halaman itu gagal untuk
+        klaim warisan — `T_CLAIM_OBJECTLIST.URUTAN` tidak pernah diisi Pega.
+      */
       key: 'nomor_case',
       title: 'Nomor Case',
       width: '11rem',
       value: (row) => row.nomor_case,
-      render: (row) => <span className="font-medium text-slate-800">{row.nomor_case}</span>,
+      render: (row) =>
+        row.nomor_case ? (
+          <button
+            type="button"
+            className="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+            title={`Input Investigator untuk ${row.nomor_case}`}
+            onClick={() => setWorkingOn(row)}
+          >
+            {row.nomor_case}
+          </button>
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
     },
     {
       key: 'nomor_polis',
@@ -277,6 +330,9 @@ export function InvestigatorInboxPage() {
         </p>
       )}
 
+      {/* Panel ekspor berada DI ATAS daftar, mengikuti letaknya di layar lama. */}
+      {portal !== null && <ExportPanel />}
+
       <section className="mt-6">
         {portal === null ? (
           <ErrorMessage
@@ -316,26 +372,11 @@ export function InvestigatorInboxPage() {
         )}
       </section>
 
-      {/* Tiga keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan
-          pengguna sendiri. Ketiganya tidak terlihat dari layar bila tidak disebutkan. */}
-      <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
-        <p>
-          <strong className="text-slate-700">Layar ini hanya menampilkan.</strong> Mengambil
-          pekerjaan dari antrean dan mencatat hasil investigasi dilakukan di layar kerja
-          Investigator, yang belum tersedia di aplikasi baru.
-        </p>
-        <p>
-          <strong className="text-slate-700">Kolom “Lama Masuk Inbox” berisi Tanggal Survey.</strong>{' '}
-          Judul dan isinya memang tidak cocok, dan itu dibawa apa adanya dari aplikasi lama:
-          sel kolom itu di sana pun terikat pada tanggal survei. Bertanda hubung berarti
-          klaimnya belum punya data survei.
-        </p>
-        <p>
-          <strong className="text-slate-700">Daftar tidak menyegarkan dirinya sendiri.</strong>{' '}
-          Antrean bersama berubah tanpa tindakan Anda — orang lain mengambil pekerjaan, dan
-          proses terjadwal menambahkannya. Tekan Refresh untuk melihat keadaan terbaru.
-        </p>
-      </footer>
+      {/* Formulir kerja Investigator — padanan Flow Action `InputInvestigator`, yang di
+          Pega pun terbuka sebagai modal (80 × 82), bukan sebagai halaman. */}
+      {workingOn !== null && (
+        <InvestigationDialog task={workingOn} onClose={() => setWorkingOn(null)} />
+      )}
     </main>
   )
 }

@@ -187,6 +187,7 @@ func (r *Repo) Create(
 	ctx context.Context,
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -214,7 +215,7 @@ func (r *Repo) Create(
 		AcceptStatus:   inputreqprotection.AcceptPending,
 		CreatedBy:      by,
 		CreatedAt:      at,
-		ChangeDetail:   deriveChangeDetail(draft, claim),
+		ChangeDetail:   deriveChangeDetail(draft, claim, selected),
 	}
 	r.protections = append(r.protections, p)
 
@@ -231,6 +232,7 @@ func (r *Repo) Update(
 	number string,
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -264,7 +266,7 @@ func (r *Repo) Update(
 	existing.ClaimReference = draft.ClaimNumber
 	existing.Type = draft.Type
 	existing.Note = draft.Note
-	existing.ChangeDetail = deriveChangeDetail(draft, claim)
+	existing.ChangeDetail = deriveChangeDetail(draft, claim, selected)
 
 	r.protections[index] = existing
 	return existing, nil
@@ -325,26 +327,72 @@ func normalize(s string) string {
 func deriveChangeDetail(
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 ) inputreqprotection.ChangeDetail {
+	// Lihat adapter Oracle untuk alasan kedua nilai ini diambil dari BARIS YANG DIPILIH:
+	// klaim tidak punya penyebab kerugian tunggal, dan OLD_DATA menyimpan KODE sejak
+	// 2026-10-05.
+	namaObjek := claim.ObjectName
+	if strings.TrimSpace(selected.ObjectName) != "" {
+		namaObjek = selected.ObjectName
+	}
+
 	return inputreqprotection.ChangeDetail{
 		LossDateBefore:      claim.LossDate,
-		CauseOfLossID:       claim.CauseOfLoss,
-		ObjectName:          claim.ObjectName,
+		CauseOfLossID:       selected.CauseOfLossID,
+		ObjectName:          namaObjek,
 		BranchName:          claim.BranchName,
 		LossDateAfter:       draft.Change.LossDateAfter,
 		CauseOfLossMasterID: draft.Change.CauseOfLossAfter,
+		ObjectID:            draft.Change.ObjectID,
+		ObjectCoverageID:    draft.Change.ObjectCoverageID,
 	}
 }
 
 // ClaimRepo memenuhi seam inputreqprotection.ClaimRepo di dalam proses.
 type ClaimRepo struct {
-	mu     sync.Mutex
-	claims map[string]inputreqprotection.Claim
+	mu        sync.Mutex
+	claims    map[string]inputreqprotection.Claim
+	coverages map[string][]inputreqprotection.CoverageRow
 }
 
 // NewClaimRepo membentuk repo klaim kosong.
 func NewClaimRepo() *ClaimRepo {
-	return &ClaimRepo{claims: map[string]inputreqprotection.Claim{}}
+	return &ClaimRepo{
+		claims:    map[string]inputreqprotection.Claim{},
+		coverages: map[string][]inputreqprotection.CoverageRow{},
+	}
+}
+
+// AddCoverages mendaftarkan coverage sebuah klaim. Dipakai pengujian dan mode memori.
+func (r *ClaimRepo) AddCoverages(number string, rows ...inputreqprotection.CoverageRow) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	kunci := strings.ToUpper(strings.TrimSpace(number))
+	r.coverages[kunci] = append(r.coverages[kunci], rows...)
+}
+
+// ListCoverages mengembalikan coverage klaim, atau daftar kosong bila tidak ada.
+//
+// Klaim tanpa coverage BUKAN galat — lihat alasannya pada seam di paket domain. Salinan
+// yang dikembalikan sengaja baru, supaya pemanggil tidak dapat mengubah isi penyimpanan
+// lewat slice yang ia terima.
+func (r *ClaimRepo) ListCoverages(
+	ctx context.Context,
+	number string,
+) ([]inputreqprotection.CoverageRow, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	tersimpan := r.coverages[strings.ToUpper(strings.TrimSpace(number))]
+	if len(tersimpan) == 0 {
+		return nil, nil
+	}
+	return append([]inputreqprotection.CoverageRow(nil), tersimpan...), nil
 }
 
 // Add mendaftarkan sebuah klaim. Dipakai pengujian dan mode memori.
@@ -378,3 +426,59 @@ func (r *ClaimRepo) FindClaim(
 	}
 	return c, nil
 }
+
+// CauseRepo memenuhi seam inputreqprotection.CauseOfLossRepo di dalam proses.
+type CauseRepo struct {
+	mu      sync.Mutex
+	options map[string][]inputreqprotection.CauseOfLossOption
+	all     []inputreqprotection.CauseOfLossOption
+}
+
+// NewCauseRepo membentuk master penyebab kerugian kosong.
+func NewCauseRepo() *CauseRepo {
+	return &CauseRepo{options: map[string][]inputreqprotection.CauseOfLossOption{}}
+}
+
+// Add mendaftarkan pilihan untuk satu kode bisnis. Kode kosong berarti pilihan itu muncul
+// pada SETIAP lini — meniru baris master yang `$.BISNISID`-nya tidak menyebut lini mana pun.
+func (r *CauseRepo) Add(businessCode string, options ...inputreqprotection.CauseOfLossOption) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	kode := strings.ToUpper(strings.TrimSpace(businessCode))
+	if kode == "" {
+		r.all = append(r.all, options...)
+		return
+	}
+	r.options[kode] = append(r.options[kode], options...)
+}
+
+// ListCauseOfLoss mengembalikan pilihan yang berlaku bagi satu lini bisnis.
+//
+// Kode kosong TIDAK menyaring — ia mengembalikan seluruh pilihan, sama seperti kueri Oracle
+// yang melewati `JSON_EXISTS` ketika kode bisnisnya NULL.
+func (r *CauseRepo) ListCauseOfLoss(
+	ctx context.Context,
+	businessCode string,
+) ([]inputreqprotection.CauseOfLossOption, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	kode := strings.ToUpper(strings.TrimSpace(businessCode))
+	if kode == "" {
+		var semua []inputreqprotection.CauseOfLossOption
+		semua = append(semua, r.all...)
+		for _, daftar := range r.options {
+			semua = append(semua, daftar...)
+		}
+		return semua, nil
+	}
+
+	hasil := append([]inputreqprotection.CauseOfLossOption(nil), r.all...)
+	return append(hasil, r.options[kode]...), nil
+}
+
+var _ inputreqprotection.CauseOfLossRepo = (*CauseRepo)(nil)

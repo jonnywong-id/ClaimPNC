@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,7 +12,6 @@ import type { MetadataResponse, Tab, WorkItem } from './types'
 
 const PATH = '/api/inbox-manager-receive-pucl'
 const TAB_PATH = `${PATH}/tab`
-const EXPORT_PATH = `${PATH}/ekspor`
 
 const SAMPLE_PROFILE = {
   identitas: '90000003',
@@ -56,6 +55,7 @@ const TAB_RECEIVE: Tab = {
   kolom: KOLOM_RECEIVE,
   antrean_bersama: false,
   buka_layar_kerja: true,
+  buka_layar_klaim: false,
   terhalang: false,
 }
 
@@ -78,9 +78,10 @@ const TAB_RCLPUCL: Tab = {
   ],
   antrean_bersama: true,
 
-  // Nomor case di tab ini BUKAN tautan — di layar lama pun perilaku klik hanya dipasang
-  // pada kedua grid Receive.
+  // Nomor case di tab ini TAUTAN juga, tetapi membuka layar KLAIM — kelas objek kerjanya
+  // berbeda dari grid Receive.
   buka_layar_kerja: false,
+  buka_layar_klaim: true,
 
   terhalang: false,
 }
@@ -88,10 +89,6 @@ const TAB_RCLPUCL: Tab = {
 const METADATA: MetadataResponse = {
   tab: [TAB_RECEIVE, TAB_RCLPUCL],
   tab_bawaan: '1',
-  selisih_terencana: [
-    'Kolom "Jenis Klaim" diturunkan dari Group Panel, bukan dibaca dari isian aslinya.',
-    'Kolom "Jumlah Lembar Dokumen" selalu kosong.',
-  ],
   portal: 'ASM',
 }
 
@@ -121,6 +118,7 @@ const BARIS_RECEIVE: WorkItem = {
   tanggal_cetak_surat: '',
   lama_klaim: '',
   status_kadaluarsa: '',
+  layar_klaim_siap: true,
 }
 
 const BARIS_RCLPUCL: WorkItem = {
@@ -141,6 +139,7 @@ const BARIS_RCLPUCL: WorkItem = {
   tanggal_cetak_surat: '16/09/2026',
   lama_klaim: '8',
   status_kadaluarsa: 'Belum Kadaluarsa',
+  layar_klaim_siap: true,
 }
 
 type Call = { url: string; init: RequestInit | undefined }
@@ -190,26 +189,23 @@ const DOKUMEN_RINGKAS = {
 }
 
 /** Peladen tiruan yang menjawab bentuk layar dan satu baris antrean. */
-function stubDefaultFetch(rows: WorkItem[] = [BARIS_RECEIVE], tab: Tab = TAB_RECEIVE) {
+function stubDefaultFetch(
+  rows: WorkItem[] = [BARIS_RECEIVE],
+  tab: Tab = TAB_RECEIVE,
+  // Baris tab RCL/PUCL dapat diganti supaya penanda `layar_klaim_siap` dapat diuji kedua
+  // nilainya tanpa menyentuh baris tab Receive.
+  barisRCLPUCL: WorkItem = BARIS_RCLPUCL,
+) {
   stubFetch((url) => {
     if (url === TAB_PATH) return jsonResponse(200, METADATA)
     if (url.startsWith(`${PATH}/dokumen/`)) return jsonResponse(200, DOKUMEN_RINGKAS)
-    if (url.startsWith(EXPORT_PATH)) {
-      return new Response('CaseID\nRCV-900001\n', {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="receive.csv"',
-        },
-      })
-    }
 
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun.
     const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered = wanted === TAB_RCLPUCL.kode ? TAB_RCLPUCL : tab
 
-    const baris = answered.kode === TAB_RCLPUCL.kode ? [BARIS_RCLPUCL] : rows
+    const baris = answered.kode === TAB_RCLPUCL.kode ? [barisRCLPUCL] : rows
 
     return jsonResponse(200, {
       tab: answered,
@@ -308,13 +304,17 @@ describe('bentuk layar', () => {
     expect(screen.getByText(/seluruh/i)).toBeInTheDocument()
   })
 
-  it('menampilkan selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      await screen.findByText(/Jenis Klaim.*diturunkan dari Group Panel/),
-    ).toBeInTheDocument()
+      screen.queryByText(/Jenis Klaim.*diturunkan dari Group Panel/),
+    ).not.toBeInTheDocument()
   })
 })
 
@@ -389,33 +389,6 @@ describe('portal', () => {
   })
 })
 
-describe('ekspor', () => {
-  it('mengirim tab yang sedang dilihat ke endpoint ekspor', async () => {
-    // Kedua tab punya kolom yang berbeda, sehingga berkasnya pun berbeda susunannya.
-    // Ekspor yang mengabaikan tab akan mengeluarkan berkas yang tidak dapat dicocokkan
-    // dengan apa pun di layar.
-    stubDefaultFetch()
-    await renderLoaded()
-
-    await userEvent.click(screen.getByRole('tab', { name: 'RCL/PUCL' }))
-    await screen.findByRole('columnheader', { name: 'Deskripsi Analyst' })
-
-    await userEvent.click(screen.getByRole('button', { name: /Export Data/ }))
-
-    const ekspor = [...calls].reverse().find((c) => c.url.startsWith(EXPORT_PATH))
-    expect(ekspor?.url).toContain('tab=2')
-  })
-
-  it('mematikan tombol ekspor saat tidak ada yang dapat diekspor', async () => {
-    // Berkas kosong yang tetap terunduh adalah jawaban yang membingungkan: pengguna tidak
-    // dapat membedakannya dari ekspor yang gagal diam-diam.
-    stubDefaultFetch([])
-    await renderLoaded()
-
-    expect(await screen.findByRole('button', { name: /Export Data/ })).toBeDisabled()
-  })
-})
-
 describe('membuka layar kerja lewat nomor case', () => {
   it('menggambar nomor case tab Receive sebagai TAUTAN, bukan teks biasa', async () => {
     // Di Pega, sel nomor case pada grid Receive adalah `pyUIElement = link` yang menjalankan
@@ -441,17 +414,51 @@ describe('membuka layar kerja lewat nomor case', () => {
     expect(screen.getAllByRole('columnheader')).toHaveLength(TAB_RECEIVE.kolom.length)
   })
 
-  it('TIDAK menjadikan nomor case tab RCL/PUCL sebuah tautan', async () => {
-    // Di layar lama, perilaku klik hanya dipasang pada kedua grid Receive. Bila penandanya
-    // bocor ke tab ini, nomor case menjadi tautan yang membuka layar kerja PENERIMAAN
-    // DOKUMEN untuk sebuah KLAIM — dan kuerinya menyaring kelas objek kerja, sehingga
-    // jawabannya "tidak ditemukan" pada setiap baris.
+  it('menjadikan nomor case tab RCL/PUCL tautan ke LAYAR KLAIM, bukan layar dokumen', async () => {
+    // Di Pega, sel `.pyID` pada grid RCL/PUCL bertanda `pyUIElement = link` dan menjalankan
+    // `SetAssignmentInboxPUCL_act` pada kelas `ASM-FW-GCNMFW-Work-PNC` — kelas yang BERBEDA
+    // dari grid Receive. Dua hal yang dijaga uji ini sekaligus:
+    //
+    //   1. nomor case memang tautan — versi sebelumnya menggambarnya sebagai teks biasa;
+    //   2. tujuannya layar KLAIM, dan dialamatkan dengan NOMOR CASE. Layar itu membaca
+    //      `POOLDATA.TC_PNC_PUCL` yang kuncinya `CLAIMID`; mengirim `PZINSKEY` ke sana
+    //      menghasilkan "tidak ditemukan" pada setiap baris, tanpa satu pun galat.
     stubDefaultFetch()
     await renderLoaded()
 
     await userEvent.click(screen.getByRole('tab', { name: 'RCL/PUCL' }))
     await screen.findByRole('columnheader', { name: 'Deskripsi Analyst' })
 
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-800002' }))
+
+    const klaim = await waitFor(() => {
+      const found = [...calls]
+        .reverse()
+        .find((c) => c.url.startsWith('/api/inbox-rcl-pucl/klaim/'))
+      expect(found).toBeDefined()
+      return found
+    })
+
+    // NOMOR CASE, bukan `referensi` — yang kedua berisi `PZINSKEY` berspasi.
+    expect(klaim?.url).toBe('/api/inbox-rcl-pucl/klaim/PNC-800002')
+    expect(klaim?.url).not.toContain(encodeURIComponent(BARIS_RCLPUCL.referensi))
+  })
+
+  it('TIDAK menautkan nomor case yang layar klaimnya belum punya data', async () => {
+    // Daftar ini dibaca dari antrean Pega; layar kerja klaim dibaca dari
+    // `POOLDATA.TC_PNC_PUCL`. Keduanya tidak dijamin memuat klaim yang sama.
+    //
+    // Sebelum penanda ini ada, baris seperti ini tetap digambar sebagai tautan dan mendarat
+    // di "klaim tidak ditemukan pada entitas yang sedang dipilih" — pesan yang menyuruh
+    // petugas memeriksa pilihan portal padahal portalnya benar. Dilaporkan Work Owner
+    // 2026-10-10.
+    stubDefaultFetch(undefined, undefined, { ...BARIS_RCLPUCL, layar_klaim_siap: false })
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'RCL/PUCL' }))
+    await screen.findByRole('columnheader', { name: 'Deskripsi Analyst' })
+
+    // Nomornya tetap TERBACA — yang hilang hanya tautannya.
     expect(await screen.findByText('PNC-800002')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'PNC-800002' })).not.toBeInTheDocument()
   })

@@ -11,6 +11,8 @@ import type {
   ProtectionListResponse,
   ProtectionTypeListResponse,
   ClaimLookup,
+  CoverageListResponse,
+  CauseOfLossListResponse,
 } from './types'
 
 const PATH = '/api/input-req-protection'
@@ -50,6 +52,14 @@ const keys = {
 const claimKeys = {
   lookup: (portal: string | null, token: string | null, nomor: string) =>
     ["input-req-protection-klaim", portal, token, nomor] as const,
+
+  // Keduanya bersarang di bawah klaim, sama seperti rutenya: isinya MILIK klaim itu, bukan
+  // daftar umum yang kebetulan disaring. Kunci yang tidak menyertakan nomor klaim akan
+  // membuat panel menampilkan coverage milik klaim sebelumnya setelah nomornya diganti.
+  coverage: (portal: string | null, token: string | null, nomor: string) =>
+    ["input-req-protection-coverage", portal, token, nomor] as const,
+  causes: (portal: string | null, token: string | null, nomor: string) =>
+    ["input-req-protection-penyebab", portal, token, nomor] as const,
 }
 
 const typeKeys = {
@@ -230,6 +240,68 @@ export function useClaimLookup(claimNumber: string) {
 
     // Nomor klaim yang salah ketik menghasilkan 404, dan mencobanya ulang tidak akan
     // mengubah jawabannya — ia hanya menunda pesan yang perlu segera dilihat pengguna.
+    retry: false,
+  })
+}
+
+/**
+ * Daftar coverage sebuah klaim — isi panel "Detail Perubahan Cause Of Loss".
+ *
+ * # Hanya dipanggil untuk tipe yang membutuhkannya
+ *
+ * `enabled` menahannya sampai nomor klaim terisi DAN tipenya memang perubahan Cause of Loss.
+ * Memuatnya untuk setiap tipe berarti satu kueri ke tabel coverage pada setiap pembukaan
+ * form, termasuk form yang tidak akan pernah menampilkan panelnya.
+ *
+ * # Tidak di-cache lama
+ *
+ * Berbeda dari pencarian klaim, isi panel ini menentukan SASARAN perubahan. Coverage yang
+ * dibuang dari klaim di tengah pengisian harus hilang dari pilihan — bukan tetap tampil lalu
+ * ditolak server saat disimpan. Satu menit cukup untuk menahan pemanggilan berulang tanpa
+ * menyembunyikan perubahan yang benar-benar terjadi.
+ */
+export function useClaimCoverages(claimNumber: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const nomor = claimNumber.trim()
+
+  return useQuery({
+    queryKey: claimKeys.coverage(portal, token, nomor),
+    queryFn: () =>
+      callAPI<CoverageListResponse>(
+        `${PATH}/klaim/${encodeURIComponent(nomor)}/coverage`,
+        { token, portal },
+      ),
+    enabled: enabled && token !== null && portal !== null && nomor !== '',
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+}
+
+/**
+ * Pilihan dropdown "Next Cause Of Loss", disaring lini bisnis klaim.
+ *
+ * Lini bisnisnya TIDAK dikirim dari sini — server menurunkannya dari klaimnya sendiri. Kalau
+ * ia menjadi parameter, layar mana pun dapat meminta daftar milik lini lain, dan pemohon
+ * dapat memilih penyebab kerugian yang tidak berlaku bagi klaimnya tanpa satu pun galat.
+ */
+export function useCauseOfLossOptions(claimNumber: string, enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const nomor = claimNumber.trim()
+
+  return useQuery({
+    queryKey: claimKeys.causes(portal, token, nomor),
+    queryFn: () =>
+      callAPI<CauseOfLossListResponse>(
+        `${PATH}/klaim/${encodeURIComponent(nomor)}/penyebab-kerugian`,
+        { token, portal },
+      ),
+    enabled: enabled && token !== null && portal !== null && nomor !== '',
+
+    // Master jarang berubah selama satu sesi pengisian, dan isinya tidak menentukan sasaran
+    // perubahan — berbeda dari daftar coverage di atas.
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 }

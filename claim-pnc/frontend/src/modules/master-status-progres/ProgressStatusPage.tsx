@@ -65,16 +65,25 @@ function loadMessage(error: unknown): MessageContent {
 }
 
 /**
- * Layar Master Status Progres 1.
+ * Layar Master Status Progress 1.
  *
  * Pengganti `Harness/StatusProgress-Harness.xml` atas tabel
  * POOLDATA.GCNM_MST_PROGRESS_KLAIM. Judul, susunan kolom, dan kedua tombolnya mengikuti
  * layar lama (`D-13`: alur dan tata letak ditiru supaya pengguna tidak perlu belajar
  * ulang):
  *
- *   - Judul "Master Status Progres 1" — `Section/MasterStatusProgress-Section.xml`
- *   - Tombol "Tambah" dan "Refresh"  — section yang sama
- *   - Grid tiga kolom: ID, Status Progres, Posisi — `BrowseStatusProgress-Section.xml`
+ *   - Judul "Master Status Progress 1" — `Section/MasterStatusProgress-Section.xml`
+ *   - Tombol "Tambah" dan "Refresh"   — section yang sama
+ *   - Grid: No · Status Progress 1 · Posisi — `BrowseStatusProgress-Section.xml`
+ *   - Tombol baris "Edit"             — section yang sama
+ *
+ * Seluruh tulisan di atas adalah LITERAL dari export, termasuk ejaan "Progress" yang
+ * bukan ejaan Indonesia. Koreksi 2026-10-03: versi sebelumnya memakai "ID" dan "Status
+ * Progres" — keduanya istilah yang saya pilih sendiri dan tidak pernah ada di layar lama.
+ *
+ * SATU kolom sengaja tidak menyalin Pega: kolom tombol berjudul **"Aksi"**, sedangkan
+ * sel padanannya di Pega kosong. Itu ketetapan Work Owner 2026-10-03 yang berlaku untuk
+ * seluruh aplikasi — lihat keterangan di definisi kolomnya.
  *
  * Yang SENGAJA tidak ada: tombol hapus. Sistem lama tidak punya satu pun pernyataan
  * DELETE terhadap tabel ini — sudah diperiksa ke seluruh export — dan tabelnya pun tidak
@@ -128,8 +137,20 @@ export function ProgressStatusPage() {
   // adalah teks polos, yang dilihat pengguna boleh berisi markup. Menyatukannya akan
   // membuat pencarian ikut menelusuri kelas CSS.
   const columns: Column<ProgressStatus>[] = [
-    { key: 'id', title: 'ID', width: 'w-20', value: (row) => row.id },
-    { key: 'nama', title: 'Status Progres', value: (row) => row.nama },
+    // Judul kolom MENGIKUTI LITERAL PEGA, bukan istilah yang dianggap lebih tepat.
+    //
+    // Keempatnya dibaca dari `Section/BrowseStatusProgress-Section.xml`, dan pasangannya
+    // dengan kolom isi dipastikan lewat lebar sel yang cocok satu-satu:
+    //
+    //	pyCellId 18  "<b>No<b>"                 w55   <- .CaseID  w55
+    //	pyCellId 19  "<b>Status Progress 1<b>"   w260  <- .City    w260
+    //	pyCellId 20  "<b>Posisi<b>"              w100  <- .CityID  w100
+    //	pyCellId 21  (kosong)                    w97   <- tombol   w97
+    //
+    // "ID" dan "Status Progres" pada versi sebelumnya adalah istilah yang saya pilih
+    // sendiri. Keduanya tidak pernah ada di layar lama.
+    { key: 'id', title: 'No', width: 'w-20', value: (row) => row.id },
+    { key: 'nama', title: 'Status Progress 1', value: (row) => row.nama },
     {
       key: 'posisi',
       title: 'Posisi',
@@ -145,16 +166,34 @@ export function ProgressStatusPage() {
     },
     {
       key: 'aksi',
+      // "Aksi" — DITETAPKAN WORK OWNER 2026-10-03 sebagai judul baku kolom tombol di
+      // seluruh aplikasi, dan berlaku untuk modul berikutnya.
+      //
+      // Ini satu-satunya judul kolom di layar ini yang TIDAK menyalin Pega: sel
+      // `pyCellId 21` memang tidak bertuliskan apa pun. Penyimpangannya disengaja —
+      // kolom tanpa judul membuat pengguna papan ketik dan pembaca layar menemui kolom
+      // yang tidak dapat disebut namanya, dan 28 modul lain sudah memakai "Aksi".
       title: 'Aksi',
       width: 'w-24',
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
-      alignRight: true,
+      // Tombol ditaruh di TENGAH kolomnya, bukan menempel tepi kanan tabel — permintaan
+      // Work Owner 2026-10-03. Rata kanan membuat jarak tombol ke kolom di sebelahnya
+      // berubah-ubah mengikuti lebar layar, sehingga mata harus mencarinya setiap kali
+      // lebar jendela berganti.
+      //
+      // `alignRight` DIHAPUS, bukan sekadar ditambahi `alignCenter`: keduanya tidak
+      // dapat hidup bersama — `DataTable` mengabaikan `alignCenter` bila `alignRight`
+      // ikut terisi.
+      alignCenter: true,
       value: () => '',
       render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
-          Ubah
+        // Tombolnya bertuliskan "Edit", bukan "Ubah" — `pyLabel` pada sel tombol grid
+        // (`BrowseStatusProgress-Section.xml:112706`). aria-label menyebut baris yang
+        // dituju karena satu layar memuat belasan tombol dengan tulisan yang sama.
+        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Edit ${row.nama}`}>
+          Edit
         </Button>
       ),
     },
@@ -167,7 +206,11 @@ export function ProgressStatusPage() {
           pengguna menebak mana yang dimaksud. */}
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Status Progres 1</h1>
+          {/* "Progress", bukan "Progres" — literal `pyValue` pada
+              `Section/MasterStatusProgress-Section.xml`. Ejaan Indonesia yang benar
+              sengaja TIDAK dipakai di sini karena ini judul layar yang dikenal
+              pengguna, dan `D-13` menetapkan teks layar mengikuti Pega apa adanya. */}
+          <h1 className="text-xl font-semibold text-slate-900">Master Status Progress 1</h1>
           <p className="text-sm text-slate-600">
             Daftar status progres yang dapat dicatat petugas pada setiap posisi klaim.
           </p>

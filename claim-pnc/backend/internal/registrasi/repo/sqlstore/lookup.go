@@ -513,12 +513,23 @@ func (a *Assigner) Assign(
 	// membuka klaim yang baru saja dibuatnya sendiri.
 	//
 	// ADMINKLAIM di basis data adalah kolom yang sama dengan CreatedBy di sini.
-	// RouterRCLDokter menugaskan ke ClaimData.NamaDokterRCL. Tidak ada rule di export yang
-	// mengisinya (hanya laporan yang membacanya; Pega menyimpannya di
-	// T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1), dan layar pemilihan dokter RCL belum ada di aplikasi
-	// ini. Sampai itu ada, tugas diparkir di ServicePNC — antrean "belum ditugaskan" — bukan
-	// diberikan ke PIC Teknik yang bukan dokter.
+	// RouterRCLDokter di Pega menugaskan ke ClaimData.NamaDokterRCL. Nama itu tidak dapat
+	// dicocokkan ke `M_LOGIN_PNC.LOGIN_ID` (ruang nama berbeda, tidak pernah terbukti),
+	// sehingga tahap ini sempat diparkir di ServicePNC. Work Owner menutup pertanyaan itu
+	// pada 2026-10-07: **pemiliknya PIC Teknik klaim**, yang memang login sah di aplikasi
+	// ini. Alasan lengkapnya di `usecase.SendToRCLPUCL`.
+	//
+	// Nilainya WAJIB sama dengan `TC_PNC_PUCL.ASSIGNED_OPERATOR_ID`
+	// (`registrasi.PUCLLetter.AssignedOperator`), atau klaim terlihat di Inbox RCL tetapi
+	// hilang dari My Inbox — atau sebaliknya.
+	//
+	// ServicePNC tetap menjadi cadangan untuk klaim yang belum punya PIC Teknik: tugas yang
+	// tidak bertuan dibagikan ulang agent `TransferAllCaseNotAssigned`, sedangkan tugas
+	// tanpa pemilik sama sekali mandek tanpa ada yang tahu.
 	if stage.Router == registrasi.RouterRCLDoctor {
+		if pic := strings.TrimSpace(claim.TechnicalPIC); pic != "" {
+			return registrasi.Assignee{Operator: pic}, nil
+		}
 		return registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, nil
 	}
 

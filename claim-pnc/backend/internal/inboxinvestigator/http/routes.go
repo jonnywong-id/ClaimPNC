@@ -32,8 +32,12 @@ const MaxKeywordLength = 100
 // (`D-26`). Tidak ada satu baris pun yang diturunkan dari identitas pemanggil, dan tidak ada
 // perubahan yang perlu dicatat pelakunya.
 //
-// Itu berubah begitu layar kerjanya dibangun: mengambil pekerjaan dari antrean menuntut
-// identitas pengambilnya, dan modul itulah yang akan membutuhkannya — bukan modul ini.
+// Yang berubah begitu MENGAMBIL pekerjaan dari antrean dibangun: tindakan itu menuntut
+// identitas pengambilnya. Ia bagian modul Penugasan, bukan modul ini.
+//
+// Menyimpan hasil investigasi sudah ada di sini dan MEMANG menuntut identitas — pelakunya
+// masuk ke `DIBUAT_OLEH`/`DIUBAH_OLEH` — tetapi ia datang dari konteks permintaan, bukan
+// dari pembaca pemanggil pada daftar.
 //
 // Kewenangan membuka layar ini tetap ditegakkan — lewat middleware Autentikasi yang dipasang
 // cmd, dan kelak lewat pemeriksaan peran `TKT-F3-005` yang belum ada. Di sistem lama
@@ -155,26 +159,40 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 // butir. Menempatkan modul inbox pertama di bawah satu awalan membuat yang berikutnya punya
 // tempat yang sudah jelas, sama seperti `/master/...` yang sudah berlaku.
 //
-// # Yang TIDAK didaftarkan
+// # SATU rute yang mengubah keadaan, dan hanya satu
 //
-// **Tidak ada POST, PUT, maupun DELETE.** Layar ini tidak mengubah apa pun: mengambil
-// pekerjaan dari antrean dan mencatat hasil investigasi terjadi di layar kerja yang belum
-// dibangun. Lihat banner paket inboxinvestigator.
+// `POST /inbox/investigator/{referensi}/investigasi` — menyimpan hasil investigasi dan
+// memindahkan klaim ke Analyst. Padanannya `SetStatusInvestigator_Act`.
 //
-// **Tidak ada rute export.** Tombol "Export Data Investigation" beserta ketiga kendalinya
-// DIHAPUS atas keputusan Work Owner 2026-09-24.
+// **Tidak ada PUT maupun DELETE.** Hasil investigasi tidak pernah dihapus (`D-66`), dan
+// koreksinya menempuh POST yang sama — formulir yang dibuka ulang memperbarui barisnya.
 //
-// Yang menghalangi pembangunannya bukan lingkup melainkan pemetaan: berkas CSV-nya disusun
-// dari 13 kolom milik 12 properti `SurveyList(1).*`, dan tiga di antaranya tidak dapat
-// ditelusuri ke kolom basis data mana pun — terutama `NoRekapMedis`, yang tidak punya kolom
-// sama sekali di `POOLDATA.INVESTIGATIONREPORT`.
+// Mengambil pekerjaan dari antrean (`openAssignment`) TETAP tidak ada: antrean ini
+// workbasket, dan pengambilannya bagian dari modul Penugasan yang belum dibangun.
 //
-// Analisis lengkapnya disimpan di `docs/permintaan-artefak-pega.md` §2, supaya tidak perlu
-// ditelusuri ulang bila fitur ini kelak dihidupkan.
+// # Rute ekspor IKUT didaftarkan
+//
+// `GET /inbox/investigator/ekspor` — tombol "Export Data Investigation" beserta ketiga
+// kendalinya. Ia GET, sama seperti daftar, karena menerbitkan berkas tidak mengubah satu
+// baris pun.
+//
+// Ia dipasangi pemeriksaan portal yang SAMA. Berkasnya memuat alamat rumah sakit dan nomor
+// rekam medis — data medis milik satu badan hukum, dan justru kelompok yang `FR-R2` batasi
+// aksesnya. Mengecualikannya dari pemeriksaan portal akan menjadikan tombol unduh ini
+// jalur kebocoran yang paling tidak terlihat (`R-20`).
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
 		perPortal.Get("/inbox/investigator", h.List)
+		perPortal.Get("/inbox/investigator/ekspor", h.Export)
+
+		// Formulir kerja Investigator — padanan Flow Action `InputInvestigator`.
+		//
+		// Keduanya berada DI BAWAH awalan modul ini, bukan di bawah `/registrasi/...`.
+		// Itu disengaja: formulirnya milik layar ini, dan menaruhnya di modul lain akan
+		// membuat dua modul memiliki satu jalur tulis yang sama.
+		perPortal.Get("/inbox/investigator/{referensi}/investigasi", h.Investigation)
+		perPortal.Post("/inbox/investigator/{referensi}/investigasi", h.SubmitInvestigation)
 	})
 }

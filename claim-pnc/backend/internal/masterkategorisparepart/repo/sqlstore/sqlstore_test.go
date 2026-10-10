@@ -122,7 +122,8 @@ func TestInsertLocksChecksNameAndIssuesID(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(q("category_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(q("category_find_by_name")).WithArgs("BRAKE").WillReturnRows(sqlmock.NewRows(columns))
-	mock.ExpectQuery(q("category_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(7))
+	mock.ExpectQuery(q("category_all_ids")).WillReturnRows(
+		sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).AddRow("6").AddRow("2").AddRow("abc"))
 	mock.ExpectExec(q("category_insert")).WithArgs("7", "BRAKE", "0").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
@@ -162,21 +163,27 @@ func TestInsertErrors(t *testing.T) {
 			m.ExpectBegin()
 			m.ExpectExec(q("category_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
 			m.ExpectQuery(q("category_find_by_name")).WillReturnRows(sqlmock.NewRows(columns))
-			m.ExpectQuery(q("category_next_id")).WillReturnError(errDB)
+			m.ExpectQuery(q("category_all_ids")).WillReturnError(errDB)
 			m.ExpectRollback()
-		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "menerbitkan ID kategori") }},
-		{"next id not positive", func(m sqlmock.Sqlmock) {
+		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "membaca kunci kategori") }},
+		// Kunci berikutnya melampaui lebar PART_CATEGORY_ID yang VARCHAR2(10).
+		//
+		// Menggantikan kasus "next id not positive" yang tidak lagi mungkin: maksimum
+		// numerik tidak pernah negatif, sehingga berikutnya selalu >= 1.
+		{"next id too wide", func(m sqlmock.Sqlmock) {
 			m.ExpectBegin()
 			m.ExpectExec(q("category_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
 			m.ExpectQuery(q("category_find_by_name")).WillReturnRows(sqlmock.NewRows(columns))
-			m.ExpectQuery(q("category_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(0))
+			m.ExpectQuery(q("category_all_ids")).WillReturnRows(
+				sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).AddRow("9999999999"))
 			m.ExpectRollback()
-		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "tidak masuk akal: 0") }},
+		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "melebihi 10 karakter") }},
 		{"insert", func(m sqlmock.Sqlmock) {
 			m.ExpectBegin()
 			m.ExpectExec(q("category_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
 			m.ExpectQuery(q("category_find_by_name")).WillReturnRows(sqlmock.NewRows(columns))
-			m.ExpectQuery(q("category_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(2))
+			m.ExpectQuery(q("category_all_ids")).WillReturnRows(
+				sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).AddRow("1"))
 			m.ExpectExec(q("category_insert")).WillReturnError(errDB)
 			m.ExpectRollback()
 		}, func(t *testing.T, err error) { require.ErrorContains(t, err, `menyisipkan "BRAKE"`) }},
@@ -184,7 +191,8 @@ func TestInsertErrors(t *testing.T) {
 			m.ExpectBegin()
 			m.ExpectExec(q("category_lock_table")).WillReturnResult(sqlmock.NewResult(0, 0))
 			m.ExpectQuery(q("category_find_by_name")).WillReturnRows(sqlmock.NewRows(columns))
-			m.ExpectQuery(q("category_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(2))
+			m.ExpectQuery(q("category_all_ids")).WillReturnRows(
+				sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).AddRow("1"))
 			m.ExpectExec(q("category_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
 			m.ExpectCommit().WillReturnError(errDB)
 		}, func(t *testing.T, err error) { require.ErrorContains(t, err, "menutup transaksi sisip") }},
@@ -202,16 +210,52 @@ func TestInsertErrors(t *testing.T) {
 	}
 }
 
-func TestNextIDOutsideTransaction(t *testing.T) {
+// Penomoran memakai maksimum NUMERIK, bukan leksikografis.
+//
+// Kasusnya dipilih supaya keduanya BERBEDA: atas {"9","10","2"} maksimum leksikografisnya
+// "9" — yang akan menerbitkan 10 untuk kedua kalinya, persis cacat yang ada di Pega — dan
+// maksimum numeriknya 10, yang menerbitkan 11.
+//
+// Baris berkunci bukan angka dilewati, tidak menggagalkan penambahan.
+func TestNextIDUsesNumericMaximum(t *testing.T) {
 	db, mock := newMock(t)
-	mock.ExpectQuery(q("category_next_id")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(12))
+	mock.ExpectQuery(q("category_all_ids")).WillReturnRows(
+		sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).
+			AddRow("9").AddRow("10").AddRow("2").AddRow("bukan angka").AddRow(nil))
+
 	id, err := NewRepo(db).NextID(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, "12", id)
+	require.Equal(t, "11", id,
+		"maksimum leksikografis akan menghasilkan 10 — kunci yang sudah dipakai")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
 
-	mock.ExpectQuery(q("category_next_id")).WillReturnError(errDB)
+// Tabel kosong menerbitkan kunci pertama "1", sama seperti `nvl(max(...),0)+1` milik Pega.
+func TestNextIDOnEmptyTable(t *testing.T) {
+	db, mock := newMock(t)
+	mock.ExpectQuery(q("category_all_ids")).
+		WillReturnRows(sqlmock.NewRows([]string{"PART_CATEGORY_ID"}))
+
+	id, err := NewRepo(db).NextID(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "1", id)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestNextIDErrors(t *testing.T) {
+	db, mock := newMock(t)
+
+	mock.ExpectQuery(q("category_all_ids")).WillReturnError(errDB)
+	_, err := NewRepo(db).NextID(context.Background())
+	require.ErrorIs(t, err, errDB)
+
+	// Baris yang gagal dibaca di tengah penelusuran tidak boleh terbaca sebagai "tabel
+	// kosong"; tanpa pemeriksaan rows.Err() ia akan menerbitkan "1" atas tabel yang berisi.
+	mock.ExpectQuery(q("category_all_ids")).WillReturnRows(
+		sqlmock.NewRows([]string{"PART_CATEGORY_ID"}).AddRow("3").RowError(0, errDB))
 	_, err = NewRepo(db).NextID(context.Background())
 	require.ErrorIs(t, err, errDB)
+
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

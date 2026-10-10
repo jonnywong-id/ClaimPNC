@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxSiblingCount/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyFormPost/>
+<pyRuleParamsStreamName/>
+<pyRuleStarts/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyInterface/>
+<pyRelativePath/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyStreamName/>
+<pySaveSQL/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETBUSINESSNAMEXOLFORSUMMERRY #20240820T112400.879 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pyIsFromManageChangeLP/>
+<pyRequestType>GetBusinessnameXOLForSummerry</pyRequestType>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyLabel>GetBusinessnameXOLForSummerry</pyLabel>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxSaveDateTime>20240902T085437.798 GMT</pxSaveDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatusTime>20261007T105620.106 GMT</pyRuleFormStatusTime>
+<pyCircumstanceProp/>
+<pyValueChanged>false</pyValueChanged>
+<pyMemo>dones</pyMemo>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedCreateDateTime/>
+<pyTemplate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxHostId>jboss10372</pxHostId>
+<pyCircumstanceType/>
+<pyShowJavaWindowName>GeneratedJava20261007T105620.122 GMT</pyShowJavaWindowName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceVal/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyDeletedObject/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxMoveFromSystem/>
+<pxInstanceLockedRuleSetVersion/>
+<pyDeleteSQL/>
+<pyCircumstanceDefinition/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETBUSINESSNAMEXOLFORSUMMERRY #20240820T112400.879 GMT</pzOriginalInstanceKey>
+<pxMoveImportDateTime>20241223T123621.069 GMT</pxMoveImportDateTime>
+<pxInstanceLockedRuleSet/>
+<pyDescription>select BUSINESSGROUPID as "BusinessID",(select BUSINESSGROUPNAME from POOLDATA.BUSINESS b where X.BUSINESSGROUPID=B.BUSINESSGROUPID and rownum=1) as "BusinessName" from  Pooldata.T_CLAIM_XOL x 
+where col_desc={getDetailXOL.CauseOfLoss} and to_char(DATEOFLOSS,'dd/mm/yyyy')={getDetailXOL.NoKTP} group by BUSINESSGROUPID</pyDescription>
+<pyOpenSQL/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM GetBusinessnameXOLForSummerry</pyRuleName>
+<pyWorkKey/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateDateTime>20240820T112400.879 GMT</pxCreateDateTime>
+<pyLabelOld>GetBusinessnameXOLForSummerry</pyLabelOld>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxInstanceLockedBy/>
+<pyTemplateInputBox/>
+<pyUsage/>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyWindowTitle/>
+<pzChecksum>1256136863</pzChecksum>
+<pyRuleEnds/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyHistoryObject/>
+<pySpecialtyComponentData/>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pyCircumstanceDateProp/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETBUSINESSNAMEXOLFORSUMMERRY</pxInsName>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GETBUSINESSNAMEXOLFORSUMMERRY</pxInsId>
+<pyBrowseSQL>SELECT BUSINESSGROUPID AS "BusinessID",
+         (SELECT BUSINESSGROUPNAME
+            FROM POOLDATA.BUSINESS b
+           WHERE X.BUSINESSGROUPID = B.BUSINESSGROUPID AND ROWNUM = 1)
+            AS "BusinessName"
+    FROM Pooldata.T_CLAIM_XOL x
+   WHERE col_desc ={getDetailXOL.CauseOfLoss}  AND TO_CHAR (DATEOFLOSS, 'dd/mm/yyyy') = {getDetailXOL.NoKTP}
+GROUP BY BUSINESSGROUPID 
+union
+select BUSINESSID as "BusinessID",'Treaty Inward' as "BusinessName" FROM POOLDATA.T_CLAIM_INWARD_XOL a
+   WHERE     TO_CHAR (TO_DATE (a.dateofloss, 'dd/mm/yyyy'), 'dd/mm/yyyy') ={getDetailXOL.NoKTP}  AND A.CAUSEOFLOSS = {getDetailXOL.CauseOfLoss}
+GROUP BY BUSINESSID</pyBrowseSQL>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedDateTime/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxUpdateDateTime>20240902T085437.790 GMT</pxUpdateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM GetBusinessnameXOLForSummerry</pxTabLabel>
+<pxInstanceLockedKey/>
+<pyHandlerFlow/>
+<pyDocumentTitle/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETBUSINESSNAMEXOLFORSUMMERRY #20240820T112400.879 GMT</pzInsKey>
+<pyStatus/>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETBUSINESSNAMEXOLFORSUMMERRY #20240820T112400.879 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETBUSINESSNAMEXOLFORSUMMERRY #20240701T062449.005 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-02-09 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pyPreview>false</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleData>true</pyRuleData>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyLaunch>true</pyLaunch>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyFavorites>true</pyFavorites>
+<pyRefresh>true</pyRefresh>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyRestore>false</pyRestore>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckIn>false</pyCheckIn>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyForward>true</pyForward>
+<pyRecover>false</pyRecover>
+<pyDelete>false</pyDelete>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+</pagedata>

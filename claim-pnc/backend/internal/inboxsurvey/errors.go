@@ -41,4 +41,11 @@ var (
 	// pilihan "jatuhkan ke bawaan" terbaca sebagai keputusan, bukan sebagai satu-satunya
 	// perilaku yang mungkin.
 	ErrTabUnknown = errors.New("inboxsurvey: tab tidak dikenal")
+
+	// ErrKPIFilterIncomplete berarti Status Survey atau Tipe Report belum dipilih.
+	//
+	// Keduanya WAJIB di layar lama — ditandai bintang merah — dan tidak ada nilai bawaan yang
+	// dapat dipilihkan untuk pengguna. Memilihkan salah satunya berarti menjalankan laporan
+	// yang tidak diminta siapa pun, lalu menampilkan angkanya seolah itu yang dicari.
+	ErrKPIFilterIncomplete = errors.New("inboxsurvey: isian wajib panel KPI belum lengkap")
 )

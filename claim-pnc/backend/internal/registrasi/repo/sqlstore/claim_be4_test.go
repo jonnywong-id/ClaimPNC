@@ -300,10 +300,16 @@ func be4GetSteps() []be4Step {
 			{int64(1), "OBJ1 ", "Gudang", "Jakarta", " KARYAWAN ", "19890524",
 				" A1234 ", "1", " DUMP TRUCK ", "HINO", nil, " CH-9 "},
 		}},
-		{name: "coverage_daftar", cols: 18, rows: [][]driver.Value{
-			{int64(1), int64(1), "COV1", "C1", int64(1000), "Kebakaran", int64(1),
+		// Dua puluh kolom: OBJECTID, OBJECTCOVERAGEID, URUTAN_OBJEK, URUTAN, COVERAGEID,
+		// CAUSEOFLOSSID, SUMTSI, COVERAGENAME, ISANALISTRANSFER, sepuluh kolom catatan
+		// komite, lalu TANGGALCOMITEE. Dua yang pertama yang menjodohkan baris ke pohon
+		// klaim; URUTAN hanya jalur cadangan.
+		{name: "coverage_daftar", cols: 20, rows: [][]driver.Value{
+			{"OBJ1 ", "1", int64(1), int64(1), "COV1", "C1", int64(1000), "Kebakaran", int64(1),
 				"Kronologi", "Rugi", "Liab", "Remark", "Inv", "Diag", "D1", "Desc", "1", "ABC", created},
-			{int64(9), int64(1), "COVX", "C9", int64(5), "Yatim", nil, // objek induk sudah ditandai hapus
+			// Objek induk sudah ditandai hapus: OBJECTID-nya tidak ada di daftar objek,
+			// dan URUTAN_OBJEK-nya pun tidak.
+			{"OBJX", "1", int64(9), int64(1), "COVX", "C9", int64(5), "Yatim", nil,
 				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
 		}},
 		{name: "spreading_daftar", cols: 6, rows: [][]driver.Value{

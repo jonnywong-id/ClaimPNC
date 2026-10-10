@@ -1,6 +1,7 @@
 package inboxosclaimpercabanghttp
 
 import (
+	"fmt"
 	"time"
 
 	"claim-pnc/internal/inboxosclaimpercabang"
@@ -30,9 +31,6 @@ type DetailResponse struct {
 	// Branch ikut dikirim supaya layar dapat memastikan popup yang terbuka memang milik
 	// cabang yang sedang ditampilkan daftarnya.
 	Branch BranchDTO `json:"cabang"`
-
-	// PlannedDifferences adalah selisih POPUP terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
 
 	// Portal ikut dikirim dengan alasan yang sama seperti pada daftar — memastikan jawabannya
 	// bukan sisa cache portal sebelumnya (`R-20`).
@@ -77,12 +75,112 @@ type DetailHeaderDTO struct {
 // tidak ada di export (`R-16`), sehingga pemilihannya dikerjakan layar dari lini bisnis —
 // keputusan yang dapat diperbaiki tanpa menyentuh backend begitu keempatnya tiba.
 type DetailObjectDTO struct {
+	// ID adalah kunci baris. Ia tidak digambar, tetapi layar membutuhkannya untuk
+	// menandai baris MANA yang sedang terbuka — tanpa kunci yang stabil, panel yang
+	// terbuka berpindah ketika daftar diurutkan ulang.
+	ID string `json:"id"`
+
 	Name              string `json:"nama"`
 	Location          string `json:"lokasi"`
 	Job               string `json:"pekerjaan"`
 	DateOfBirth       string `json:"tanggal_lahir"`
 	IDCard            string `json:"ktp_paspor"`
 	ParticipantStatus string `json:"status_peserta"`
+
+	// Coverages adalah isi panel yang terbuka ketika baris ini dibuka.
+	//
+	// Dikirim bersama objeknya, bukan lewat permintaan terpisah per baris: layar ini
+	// dirancang untuk dibuka-tutup berkali-kali, dan satu permintaan per pembukaan akan
+	// terasa lambat tanpa alasan.
+	Coverages []DetailCoverageDTO `json:"coverage"`
+}
+
+// DetailCoverageDTO adalah satu baris coverage di bawah sebuah objek.
+//
+// Ketiga kolomnya persis yang digambar `Section/ViewObjectCoverage-Section.xml`, berjudul
+// "Coverage", "Mata Uang", dan "TSI". Tidak lebih: menambah kolom di luar itu adalah
+// penambahan, bukan penyamaan dengan sistem lama (`P-5`).
+type DetailCoverageDTO struct {
+	ID string `json:"id"`
+
+	// Name adalah isi kolom "Coverage" — nama jaminan, mis. "FLEXAS".
+	Name string `json:"coverage"`
+
+	Currency string `json:"mata_uang"`
+
+	// SumTSI dikirim sebagai TEKS desimal kanonik, sama seperti setiap nilai uang lain di
+	// modul ini. Angka JSON akan melewati float64 dan kehilangan ketepatan (`I-12`).
+	SumTSI string `json:"tsi"`
+
+	// Items adalah isi grid "Object Item" yang terbuka saat baris ini dibuka.
+	Items []DetailItemDTO `json:"object_item"`
+
+	// Spreadings dan CoMembers adalah kedua grid di bawah "Object Item".
+	Spreadings []DetailSpreadingDTO `json:"list_spreading"`
+	CoMembers  []DetailCoMemberDTO  `json:"co_member"`
+}
+
+// DetailSpreadingDTO adalah satu baris grid "List Spreading".
+type DetailSpreadingDTO struct {
+	// TreatyName adalah kolom "Tipe Treaty" — `ORS`, `QS`, `FAC-OUT`, dan seterusnya.
+	TreatyName string `json:"tipe_treaty"`
+	Currency   string `json:"currency"`
+
+	// EstimasiValue dan ResultValue teks desimal kanonik; keduanya DIHITUNG, bukan
+	// tersimpan. Lihat inboxosclaimpercabang.DetailSpreading.
+	EstimasiValue string `json:"estimasi_value"`
+
+	// SharePersen dikirim sebagai teks berdesimal EMPAT, mengikuti layar lama yang
+	// menuliskannya `100,0000%`.
+	SharePersen string `json:"pembagian_persentase"`
+	ResultValue string `json:"result_value"`
+}
+
+// DetailCoMemberDTO adalah satu baris grid "CO MEMBER".
+type DetailCoMemberDTO struct {
+	InsurerName   string `json:"asuransi"`
+	Currency      string `json:"currency"`
+	EstimasiValue string `json:"estimasi_value"`
+	SharePersen   string `json:"pembagian_persentase"`
+	ResultValue   string `json:"result_value"`
+}
+
+// persenEmpatDesimal memformat persentase berskala 10.000 menjadi teks berdesimal empat.
+//
+// `1000000` menjadi `"100.0000"`. Pembagiannya BILANGAN BULAT — menempuh float untuk sesuatu
+// yang sudah berupa bilangan bulat berskala hanya menambah kemungkinan galat pembulatan.
+func persenEmpatDesimal(scaled int64) string {
+	tanda := ""
+	if scaled < 0 {
+		tanda = "-"
+		scaled = -scaled
+	}
+	return fmt.Sprintf("%s%d.%04d", tanda, scaled/10000, scaled%10000)
+}
+
+// DetailItemDTO adalah satu baris grid "Object Item".
+//
+// Nama dan deskripsinya hampir selalu kosong, dan itu BUKAN cacat — sumbernya memang tidak
+// memuatnya. Lihat inboxosclaimpercabang.DetailItem.
+type DetailItemDTO struct {
+	ID          string `json:"id"`
+	Name        string `json:"object_item"`
+	Description string `json:"deskripsi_item"`
+
+	// Estimations adalah isi grid "Estimasi" yang terbuka saat baris ini dibuka.
+	Estimations []DetailEstimationDTO `json:"estimasi"`
+}
+
+// DetailEstimationDTO adalah satu baris grid "Estimasi" — tingkat terdalam.
+type DetailEstimationDTO struct {
+	Sequence   string `json:"estimasi_ke"`
+	RecordedAt string `json:"tanggal_estimasi"`
+	Type       string `json:"tipe_estimasi"`
+	Currency   string `json:"mata_uang"`
+
+	// Rate dan Value dikirim sebagai TEKS desimal kanonik. Value DAPAT negatif.
+	Rate  string `json:"nilai_kurs"`
+	Value string `json:"nilai_estimasi"`
 }
 
 // DetailProgressDTO adalah satu baris grid riwayat progres.
@@ -118,13 +216,73 @@ func toDetailResponse(detailed usecase.Detailed, portalAlias string) DetailRespo
 
 	objects := make([]DetailObjectDTO, 0, len(detail.Objects))
 	for _, o := range detail.Objects {
+		// Irisan kosong, bukan nil: ia diserialkan menjadi `[]` alih-alih `null`, sehingga
+		// layar tidak perlu membedakan "tidak punya coverage" dari "field tidak ada".
+		coverages := make([]DetailCoverageDTO, 0, len(o.Coverages))
+		for _, c := range o.Coverages {
+			items := make([]DetailItemDTO, 0, len(c.Items))
+			for _, it := range c.Items {
+				estimations := make([]DetailEstimationDTO, 0, len(it.Estimations))
+				for _, e := range it.Estimations {
+					estimations = append(estimations, DetailEstimationDTO{
+						Sequence:   e.Sequence,
+						RecordedAt: isoDateTime(e.RecordedAt),
+						Type:       e.Type,
+						Currency:   e.Currency,
+						Rate:       e.Rate.String(),
+						Value:      e.Value.String(),
+					})
+				}
+				items = append(items, DetailItemDTO{
+					ID:          it.ID,
+					Name:        it.Name,
+					Description: it.Description,
+					Estimations: estimations,
+				})
+			}
+
+			spreadings := make([]DetailSpreadingDTO, 0, len(c.Spreadings))
+			for _, s := range c.Spreadings {
+				spreadings = append(spreadings, DetailSpreadingDTO{
+					TreatyName:    s.TreatyName,
+					Currency:      s.Currency,
+					EstimasiValue: s.EstimationValue.String(),
+					SharePersen:   persenEmpatDesimal(s.SharePercentScaled),
+					ResultValue:   s.ResultValue.String(),
+				})
+			}
+
+			coMembers := make([]DetailCoMemberDTO, 0, len(c.CoMembers))
+			for _, m := range c.CoMembers {
+				coMembers = append(coMembers, DetailCoMemberDTO{
+					InsurerName:   m.InsurerName,
+					Currency:      m.Currency,
+					EstimasiValue: m.EstimationValue.String(),
+					SharePersen:   persenEmpatDesimal(m.SharePercentScaled),
+					ResultValue:   m.ResultValue.String(),
+				})
+			}
+
+			coverages = append(coverages, DetailCoverageDTO{
+				ID:         c.ID,
+				Name:       c.Name,
+				Currency:   c.Currency,
+				SumTSI:     c.SumTSI.String(),
+				Items:      items,
+				Spreadings: spreadings,
+				CoMembers:  coMembers,
+			})
+		}
+
 		objects = append(objects, DetailObjectDTO{
+			ID:                o.ID,
 			Name:              o.Name,
 			Location:          o.Location,
 			Job:               o.Job,
 			DateOfBirth:       isoDate(o.DateOfBirth),
 			IDCard:            o.IDCard,
 			ParticipantStatus: o.ParticipantStatus,
+			Coverages:         coverages,
 		})
 	}
 
@@ -172,7 +330,6 @@ func toDetailResponse(detailed usecase.Detailed, portalAlias string) DetailRespo
 		ProgressHistory:    progress,
 		AdjusterMessages:   messages,
 		Branch:             BranchDTO{Code: detailed.Query.Branch.Code, Name: detailed.Query.Branch.Name},
-		PlannedDifferences: detailed.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }

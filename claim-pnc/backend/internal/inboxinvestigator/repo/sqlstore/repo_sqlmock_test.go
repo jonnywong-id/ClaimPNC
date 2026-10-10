@@ -19,7 +19,7 @@ import (
 var (
 	taskColumns = []string{
 		"REFERENCE", "CASE_NUMBER", "POLICY_NUMBER", "INSURED", "PARTICIPANT",
-		"BUSINESS", "BRANCH", "ADMIN", "REGISTERED_AT", "SURVEY_DATE",
+		"BUSINESS", "BRANCH", "ADMIN", "REGISTERED_AT", "SURVEY_DATE", "BUSINESS_LINE",
 	}
 	errOracle = errors.New("oracle menolak")
 )
@@ -42,12 +42,14 @@ func TestListWithoutKeywordMapsEveryColumn(t *testing.T) {
 	registered := time.Date(2026, 9, 21, 2, 15, 0, 0, time.UTC)
 	survey := time.Date(2026, 9, 22, 1, 0, 0, 0, time.UTC)
 
+	// SURVEY_DATE kini datang sebagai TANGGAL: sumbernya kolom T_SURVEYORLIST.SURVEYDATE,
+	// bukan lagi teks hasil `JSON_VALUE` atas dokumen klaim.
 	mock.ExpectQuery(sqlNamed("investigator_inbox_list")).
 		WithArgs(basket(), inboxinvestigator.MaxRows+1).
 		WillReturnRows(sqlmock.NewRows(taskColumns).
 			AddRow(" REF-1 ", "PNC-1 ", "POL-1", "PT Satu", "Peserta", "PA", "Pusat",
-				"ADMIN1  ", registered, survey).
-			AddRow("REF-2", "PNC-2", nil, nil, nil, nil, nil, nil, nil, nil))
+				"ADMIN1  ", registered, survey, " 002 ").
+			AddRow("REF-2", "PNC-2", nil, nil, nil, nil, nil, nil, nil, nil, nil))
 
 	page, err := repo.List(context.Background(), inboxinvestigator.Filter{Keyword: "  "})
 	require.NoError(t, err)
@@ -57,7 +59,7 @@ func TestListWithoutKeywordMapsEveryColumn(t *testing.T) {
 			Reference: "REF-1", CaseNumber: "PNC-1", PolicyNumber: "POL-1",
 			InsuredName: "PT Satu", ParticipantName: "Peserta", BusinessName: "PA",
 			BranchName: "Pusat", AdminName: "ADMIN1", RegisteredAt: &registered,
-			SurveyDate: &survey,
+			SurveyDate: &survey, BusinessLine: "002",
 		},
 		{Reference: "REF-2", CaseNumber: "PNC-2"},
 	}, page.Tasks)
@@ -88,7 +90,7 @@ func TestListTruncatesTheExtraRow(t *testing.T) {
 	rows := sqlmock.NewRows(taskColumns)
 	for i := 0; i <= inboxinvestigator.MaxRows; i++ {
 		rows.AddRow("R"+strconv.Itoa(i), "PNC-"+strconv.Itoa(i), nil, nil, nil, nil, nil,
-			nil, nil, nil)
+			nil, nil, nil, nil)
 	}
 	mock.ExpectQuery(sqlNamed("investigator_inbox_list")).WillReturnRows(rows)
 
@@ -116,7 +118,7 @@ func TestListErrors(t *testing.T) {
 
 	mock.ExpectQuery(sqlNamed("investigator_inbox_list")).
 		WillReturnRows(sqlmock.NewRows(taskColumns).
-			AddRow("R", "C", nil, nil, nil, nil, nil, nil, nil, nil).RowError(0, errOracle))
+			AddRow("R", "C", nil, nil, nil, nil, nil, nil, nil, nil, nil).RowError(0, errOracle))
 	_, err = repo.List(ctx, inboxinvestigator.Filter{})
 	require.ErrorIs(t, err, errOracle)
 	require.ErrorContains(t, err, "menelusuri antrean")

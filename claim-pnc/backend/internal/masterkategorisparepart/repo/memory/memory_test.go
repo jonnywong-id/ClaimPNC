@@ -33,7 +33,35 @@ func TestListFiltersByStatusAndKeyword(t *testing.T) {
 	require.Equal(t, []string{"2"}, ids(found))
 }
 
-func TestListSortsNumericIDsBeforeText(t *testing.T) {
+// Urutannya NUMERIK untuk kunci yang memang angka — "9" sebelum "10", bukan sesudahnya.
+//
+// Itu yang menentukan, karena seluruh kunci pada tabel nyata adalah angka
+// (`PART_CATEGORY_ID` = VARCHAR2(10) berisi "1".."9" per 2026-10-04).
+func TestListSortsNumerically(t *testing.T) {
+	repo := NewRepo(Options{Rows: []masterkategorisparepart.PartCategory{
+		{ID: "10", Status: "1"},
+		{ID: "9", Status: "1"},
+		{ID: "100", Status: "1"},
+		{ID: "2", Status: "1"},
+	}})
+
+	rows, err := repo.List(context.Background(), masterkategorisparepart.Filter{Status: "1"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"2", "9", "10", "100"}, ids(rows))
+}
+
+// Kunci yang BUKAN angka terselip menurut lebarnya, bukan dikumpulkan di belakang.
+//
+// Versi sebelumnya mengharapkan "angka dulu, teks belakangan". Harapan itu dilepas pada
+// 2026-10-04 dengan sengaja: adapter SQL mengurutkan dengan
+// `ORDER BY LPAD(TRIM(PART_CATEGORY_ID), 10, '0')`, dan memisahkan teks dari angka di sana
+// menuntut ekspresi "apakah ini angka" yang tidak portabel antara Oracle dan PostgreSQL
+// (`D-20`).
+//
+// Yang dipilih adalah SATU aturan yang dapat dijalankan kedua adapter — dan uji ini
+// mengunci bentuknya supaya keduanya tidak diam-diam berbeda. Konsekuensinya tidak pernah
+// terlihat pada data nyata, yang seluruh kuncinya angka.
+func TestListPlacesNonNumericKeyByPaddedWidth(t *testing.T) {
 	repo := NewRepo(Options{Rows: []masterkategorisparepart.PartCategory{
 		{ID: "B", Status: "1"},
 		{ID: "10", Status: "1"},
@@ -43,7 +71,8 @@ func TestListSortsNumericIDsBeforeText(t *testing.T) {
 
 	rows, err := repo.List(context.Background(), masterkategorisparepart.Filter{Status: "1"})
 	require.NoError(t, err)
-	require.Equal(t, []string{"2", "10", "A", "B"}, ids(rows))
+	require.Equal(t, []string{"2", "A", "B", "10"}, ids(rows),
+		"urutannya mengikuti LPAD(...,10,'0'), sama seperti adapter SQL")
 }
 
 func TestGetAndFindByName(t *testing.T) {

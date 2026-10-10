@@ -212,7 +212,7 @@ describe('tab Penolakan Klaim', () => {
 describe('tab Penolakan Komite', () => {
   async function openCommitteeTab(user: ReturnType<typeof userEvent.setup>) {
     await screen.findByRole('table')
-    await user.click(screen.getByRole('tab', { name: 'Penolakan Komite' }))
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
     return screen.findByRole('columnheader', { name: /ID Master/ })
   }
 
@@ -224,7 +224,7 @@ describe('tab Penolakan Komite', () => {
     show()
 
     await screen.findByRole('table')
-    await user.click(screen.getByRole('tab', { name: 'Penolakan Komite' }))
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
     expect(await screen.findByText(title)).toBeInTheDocument()
   })
 

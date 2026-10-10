@@ -52,11 +52,14 @@ import (
 	"claim-pnc/internal/riwayatklaim"
 
 	authhttp "claim-pnc/internal/auth/http"
+	"claim-pnc/internal/dokumenpenunjang"
 	inboxadminhttp "claim-pnc/internal/inboxadmin/http"
 	inboxadminmemory "claim-pnc/internal/inboxadmin/repo/memory"
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
 	inboxadminusecase "claim-pnc/internal/inboxadmin/usecase"
+	inboxcompliancedocapi "claim-pnc/internal/inboxcompliance/adapter/docapi"
 	inboxcompliancehttp "claim-pnc/internal/inboxcompliance/http"
+	inboxcompliancerejectpdf "claim-pnc/internal/inboxcompliance/rejectpdf"
 	inboxcompliancememory "claim-pnc/internal/inboxcompliance/repo/memory"
 	inboxcompliancesql "claim-pnc/internal/inboxcompliance/repo/sqlstore"
 	inboxcomplianceusecase "claim-pnc/internal/inboxcompliance/usecase"
@@ -445,10 +448,27 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
+	penyimpanDokumenCompliance := buildComplianceDocStore(store)
+
 	if result.inboxCompliance, err = inboxcomplianceusecase.NewService(inboxcomplianceusecase.Options{
 		RepoSelector: store.extra.inboxCompliance,
 		Clock:        clock.System{},
 		Logger:       logger,
+
+		// Pembentuk Surat Penolakan. TIDAK bergantung portal: bentuk suratnya satu
+		// templat Pega untuk seluruh entitas, bukan data entitas.
+		RejectLetterRenderer: inboxcompliancerejectpdf.Renderer{},
+
+		// Satu Penyimpan memenuhi KEDUA seam — ia menerbitkan tautan sekaligus
+		// mengunggah dan menghapus. Keduanya tetap dipisah di sisi domain karena
+		// pemakainya berbeda: membuka dokumen bukan kewenangan yang sama dengan
+		// menghapusnya.
+		DocumentLinkerSelector: func(alias string) (inboxcompliance.DocumentLinker, error) {
+			return penyimpanDokumenCompliance(alias)
+		},
+		DocumentStoreSelector: func(alias string) (inboxcompliance.DocumentStore, error) {
+			return penyimpanDokumenCompliance(alias)
+		},
 	}); err != nil {
 		return extraServices{}, err
 	}
@@ -839,4 +859,71 @@ func mountExtra(
 // per permintaan, dan itu tidak terukur dibanding satu perjalanan ke basis data.
 func userOrgUnit() string {
 	return strings.TrimSpace(os.Getenv("UNIT_ORGANISASI_PENGGUNA"))
+}
+
+// buildComplianceDocStore menyerahkan penyimpan dokumen Inbox Compliance per portal.
+//
+// # Kenapa kredensialnya diselesaikan per permintaan, bukan saat start
+//
+// `DocAPI.App` bukan konstanta `"KLAIMPNC"` melainkan NAMA FOLDER-nya, yang dibaca dari
+// `general.T_FOLDER_STORAGE`. Kode aksesnya pun diterbitkan per unggahan lewat padanan
+// `GENERAL.GET_TOKEN_STORAGE`, kecuali `PENYIMPANAN_DOKUMEN_KODE_AKSES` diisi.
+//
+// Membacanya sekali saat start akan membuat perubahan baris itu tidak pernah terbawa
+// sampai aplikasi di-restart — dan karena layanan penyimpanan tidak memeriksa apa pun
+// (`pyUseAuthentication=false`), nilai basi tidak menghasilkan galat. Berkasnya hanya
+// mendarat di tempat yang salah.
+//
+// # Kegagalan di sini TIDAK mematikan modulnya
+//
+// Yang dikembalikan saat layanan belum dikonfigurasi adalah galat, dan transport
+// menjawabnya 503 dengan sebab yang disebutkan. Inbox Compliance tetap melayani daftar,
+// form, keputusan, dan pengiriman — yang tertutup hanya keempat kemampuan dokumen.
+func buildComplianceDocStore(store storage) func(string) (*inboxcompliancedocapi.Penyimpan, error) {
+	return func(alias string) (*inboxcompliancedocapi.Penyimpan, error) {
+		if store.dokumenPenunjangStorage == nil {
+			return nil, inboxcompliance.ErrDocumentServiceMissing
+		}
+
+		repo, err := store.dokumenPenunjangSelector(alias)
+		if err != nil {
+			return nil, err
+		}
+
+		kodeAksesTetap := store.dokumenPenunjangKodeAkses
+
+		return inboxcompliancedocapi.New(inboxcompliancedocapi.Config{
+			Klien: store.dokumenPenunjangStorage,
+
+			ResolveKredensial: func(
+				ctx context.Context, pengunggah string,
+			) (inboxcompliancedocapi.Kredensial, error) {
+				folder, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+				if err != nil {
+					return inboxcompliancedocapi.Kredensial{}, err
+				}
+
+				// Kode akses terdaftar MENANG atas token sekali pakai.
+				//
+				// Bukan pilihan gaya: layanan penyimpanan menolak token sekali pakai
+				// dengan "invalid kodestring data" pada folder yang kodenya sudah
+				// didaftarkan pemiliknya. Urutan ini sama dengan dokumenpenunjang.
+				if kodeAksesTetap != "" {
+					return inboxcompliancedocapi.Kredensial{
+						NamaAplikasi: folder,
+						KodeAkses:    kodeAksesTetap,
+					}, nil
+				}
+
+				kode, err := repo.CatatAksesUnggah(ctx, folder, pengunggah)
+				if err != nil {
+					return inboxcompliancedocapi.Kredensial{}, err
+				}
+				return inboxcompliancedocapi.Kredensial{
+					NamaAplikasi: folder,
+					KodeAkses:    kode,
+				}, nil
+			},
+		})
+	}
 }

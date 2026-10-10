@@ -118,6 +118,24 @@ function violationsOf(error: unknown): Record<string, string> {
  * ke modal yang sama lalu menandainya "Update" (`TempDcol.pyLabel`). Isian yang
  * dibandingkan pengguna karena itu berada di tempat yang sama pada kedua mode.
  *
+ * # Yang diselaraskan dengan Pega pada 2026-10-03
+ *
+ *	Urutan isian   Posisi · ID · Status Progress 1   (sebelumnya Status Progres dulu)
+ *	Label isian    "Status Progress 1"               (sebelumnya "Status Progres")
+ *	Judul          "Memperbaharui Data", tetap       (sebelumnya berganti menurut mode)
+ *	Tombol simpan  "Simpan" / "Update"               (sebelumnya selalu "Simpan")
+ *
+ * # Tiga hal yang SENGAJA tidak disamakan, beserta alasannya
+ *
+ *  1. Tombol "Batal" dipertahankan — Pega tidak punya, karena modalnya ditutup lewat
+ *     silang di pojok. Lihat keterangan di tombolnya.
+ *  2. ID tetap hanya-baca — Pega membolehkannya diketik, dan itu jalur kegagalan senyap.
+ *     Lihat keterangan di isiannya.
+ *  3. Pemeriksaan isian dipertahankan. Ketiga sel di Pega ber-`pyRequired = false` dan
+ *     kedua activity-nya TIDAK memuat satu pun langkah validasi — nama kosong akan
+ *     tersimpan apa adanya sebagai baris master tanpa keterangan. Menirunya berarti
+ *     membiarkan master terisi baris yang tidak berarti apa-apa.
+ *
  * ID tidak dapat disunting. Di Pega pun begitu: `UpdateStatusProgress1_sql` memakai
  * ID_PROGRESS hanya sebagai penyaring `WHERE`, tidak pernah sebagai kolom yang di-SET —
  * ia dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS1` dan `GCNM_MST_PROGRESS.ID_PROGRESS`.
@@ -164,7 +182,18 @@ export function ProgressStatusForm({
   }, [error, setError])
 
   const message = messageFor(error)
-  const title = editMode ? 'Ubah Status Progres' : 'Tambah Status Progres'
+
+  // Judulnya TETAP, tidak berubah menurut mode. `pyTitle` pada
+  // `Section/BrowseStatusProgress-Section.xml` hanya memuat satu nilai —
+  // "Memperbaharui Data" — dan dipakai baik saat menambah maupun saat menyunting.
+  // Versi sebelumnya mengarang dua judul yang berganti ("Tambah …"/"Ubah …").
+  const title = 'Memperbaharui Data'
+
+  // Yang berganti menurut mode adalah TULISAN TOMBOLNYA, bukan judulnya:
+  //
+  //	pyLabel "Simpan"  bila TempDcol.pyLabel = 'Insert'
+  //	pyLabel "Update"  bila TempDcol.pyLabel = 'Update'
+  const submitLabel = editMode ? 'Update' : 'Simpan'
 
   return (
     <form
@@ -179,8 +208,39 @@ export function ProgressStatusForm({
         <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
       )}
 
+      {/*
+        URUTAN ISIAN MENGIKUTI PEGA: Posisi · ID · Status Progress 1.
+
+        Urutannya terbaca dari letak sel di `BrowseStatusProgress-Section.xml`:
+
+        	pyCellId 41  TempInputStatus.CityID  label "Posisi"
+        	pyCellId 42  TempInputStatus.CaseID  label "ID"
+        	pyCellId 43  TempInputStatus.City    label "Status Progress 1"
+
+        Versi sebelumnya menaruh Status Progres lebih dulu dan Posisi di bawahnya —
+        urutan yang saya pilih sendiri, bukan urutan layar lama.
+      */}
+      <SelectField
+        id="kode_posisi"
+        label="Posisi"
+        // Fokus awal ikut pindah ke isian pertama. Membiarkannya di isian ketiga akan
+        // membuat pengguna papan ketik melompat ke tengah form lalu harus naik lagi.
+        autoFocus
+        options={positions.map((p) => ({ value: p.kode, label: p.nama }))}
+        error={errors.kode_posisi?.message}
+        {...register('kode_posisi')}
+      />
+
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan
-          ia belum ada — nomornya diterbitkan server dari isi tabel. */}
+          ia belum ada — nomornya diterbitkan server dari isi tabel.
+
+          PENYIMPANGAN YANG DISENGAJA, dan satu-satunya di layar ini. Sel ID di Pega
+          ber-`pyReadOnly = false` dan `pyEditOptions = Editable`, jadi di sana ia DAPAT
+          diketik. Tetapi `UpdateStatusProgress1_sql` memakai nilai itu sebagai penyaring
+          `WHERE ID_PROGRESS = {TempInputStatus.CaseID}` — mengetiknya berarti menyimpan
+          ke baris yang tidak ada, dan UPDATE mengenai nol baris TANPA pesan apa pun.
+          Pengguna melihat penyimpanan yang seolah berhasil padahal tidak terjadi.
+          Dibiarkan hanya-baca sampai Work Owner menghendaki sebaliknya. */}
       {editMode && (
         <div>
           <span className="block text-sm font-medium text-slate-700">ID</span>
@@ -193,28 +253,23 @@ export function ProgressStatusForm({
 
       <Field
         id="nama"
-        label="Status Progres"
+        label="Status Progress 1"
         type="text"
-        autoFocus
         maxLength={MAX_NAME_LENGTH}
         error={errors.nama?.message}
         {...register('nama')}
       />
 
-      <SelectField
-        id="kode_posisi"
-        label="Posisi"
-        options={positions.map((p) => ({ value: p.kode, label: p.nama }))}
-        error={errors.kode_posisi?.message}
-        {...register('kode_posisi')}
-      />
-
       <div className="flex flex-wrap justify-end gap-2 pt-2">
+        {/* "Batal" TIDAK ADA di Pega — dicari ke seluruh section, nol kemunculan. Di
+            sana form ini sebuah modal yang ditutup lewat silang di pojoknya; di sini ia
+            panel yang menempel di halaman dan tidak punya silang, sehingga tanpa tombol
+            ini pengguna yang terlanjur menekan Tambah tidak punya jalan keluar. */}
         <Button tone="halus" onClick={onCancel} disabled={isSaving}>
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? 'Menyimpan…' : submitLabel}
         </Button>
       </div>
     </form>

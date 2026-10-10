@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxosclaimpercabang"
+	"claim-pnc/internal/platform/money"
 )
 
 // Berkas ini melayani popup Detail. Ia terpisah dari inboxosclaimpercabang.go karena isinya
@@ -124,24 +125,349 @@ func (r *Repo) detailObjects(
 	// perlu membedakan "tidak ada objek" dari "gagal dibaca".
 	result := []inboxosclaimpercabang.DetailObject{}
 	for rows.Next() {
-		var name, location, job, idCard, status sql.NullString
+		var id, name, location, job, idCard, status sql.NullString
 		var birth sql.NullTime
 
-		if err := rows.Scan(&name, &location, &job, &birth, &idCard, &status); err != nil {
+		if err := rows.Scan(&id, &name, &location, &job, &birth, &idCard, &status); err != nil {
 			return nil, fmt.Errorf("membaca baris kueri detail_objects: %w", err)
 		}
 
 		result = append(result, inboxosclaimpercabang.DetailObject{
+			ID:                strings.TrimSpace(id.String),
 			Name:              name.String,
 			Location:          location.String,
 			Job:               job.String,
 			DateOfBirth:       nullableTime(birth),
 			IDCard:            idCard.String,
 			ParticipantStatus: status.String,
+			// Irisan kosong, bukan nil — alasannya sama dengan `result` di atas.
+			Coverages: []inboxosclaimpercabang.DetailCoverage{},
 		})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("menelusuri hasil kueri detail_objects: %w", err)
+	}
+
+	coverages, err := r.detailObjectCoverages(ctx, claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := r.detailObjectItems(ctx, claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	estimations, err := r.detailEstimations(ctx, claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Perangkaian dari dalam ke luar: estimasi ke item, item ke coverage, coverage ke objek.
+	//
+	// Keempatnya dibaca dengan EMPAT kueri, bukan satu kueri bersarang per baris. Pohon ini
+	// dapat memuat puluhan baris estimasi pada satu klaim, dan membacanya per baris yang
+	// dibuka akan menjadi N+1 berlapis — tidak terlihat sampai sebuah klaim benar-benar besar.
+	for coverageKey, daftarItem := range items {
+		for i := range daftarItem {
+			kunci := itemKey{
+				object:   daftarItem[i].ObjectID,
+				coverage: daftarItem[i].CoverageID,
+				item:     daftarItem[i].ID,
+			}
+			if milik, ada := estimations[kunci]; ada {
+				daftarItem[i].Estimations = milik
+			}
+		}
+		items[coverageKey] = daftarItem
+	}
+
+	spreadings, err := r.detailSpreading(ctx, claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	coMembers, err := r.detailCoMembers(ctx, claimKey)
+	if err != nil {
+		return nil, err
+	}
+
+	for objectID := range coverages {
+		daftarCoverage := coverages[objectID]
+		for i := range daftarCoverage {
+			kunci := coverageKey{
+				object:   daftarCoverage[i].ObjectID,
+				coverage: daftarCoverage[i].ID,
+			}
+			if milik, ada := items[kunci]; ada {
+				daftarCoverage[i].Items = milik
+			}
+
+			// Nilai uang kedua grid di bawah ini DIHITUNG dari jumlah estimasi coverage
+			// ini, karena kolom tersimpannya NULL pada seluruh baris. Jumlahnya dihitung
+			// sekali di sini, bukan di dalam kedua perulangan.
+			jumlahEstimasi := money.Zero
+			for _, item := range daftarCoverage[i].Items {
+				for _, e := range item.Estimations {
+					jumlahEstimasi += e.Value
+				}
+			}
+
+			daftarCoverage[i].Spreadings = []inboxosclaimpercabang.DetailSpreading{}
+			for _, s := range spreadings[kunci] {
+				s.Currency = daftarCoverage[i].Currency
+				s.EstimationValue = jumlahEstimasi
+				s.ResultValue = inboxosclaimpercabang.ShareOf(
+					jumlahEstimasi, s.SharePercentScaled)
+				daftarCoverage[i].Spreadings = append(daftarCoverage[i].Spreadings, s)
+			}
+
+			// Daftar koasuransi berkunci POLIS, sehingga daftarnya SAMA untuk setiap
+			// coverage. Yang berbeda hanya nilai uangnya, karena basisnya estimasi
+			// coverage masing-masing.
+			daftarCoverage[i].CoMembers = []inboxosclaimpercabang.DetailCoMember{}
+			for _, m := range coMembers {
+				m.ObjectID = daftarCoverage[i].ObjectID
+				m.CoverageID = daftarCoverage[i].ID
+				m.Currency = daftarCoverage[i].Currency
+				m.EstimationValue = jumlahEstimasi
+				m.ResultValue = inboxosclaimpercabang.ShareOf(
+					jumlahEstimasi, m.SharePercentScaled)
+				daftarCoverage[i].CoMembers = append(daftarCoverage[i].CoMembers, m)
+			}
+		}
+		coverages[objectID] = daftarCoverage
+	}
+
+	for i := range result {
+		if milik, ada := coverages[result[i].ID]; ada {
+			result[i].Coverages = milik
+		}
+	}
+
+	return result, nil
+}
+
+// coverageKey dan itemKey adalah kunci gabungan untuk mengelompokkan baris anak.
+//
+// Kunci gabungan, bukan satu kolom: `OBJECTCOVERAGEID` dan `OBJECTITEMID` hanya unik DI DALAM
+// induknya — `OBJECTITEMID` bahkan bernilai `1` pada 51.370 dari 51.532 baris. Memakai salah
+// satunya sendirian akan menempelkan estimasi milik coverage lain ke item yang kebetulan
+// bernomor sama.
+type coverageKey struct{ object, coverage string }
+
+type itemKey struct{ object, coverage, item string }
+
+// detailObjectCoverages membaca SELURUH coverage satu klaim sekaligus, dikelompokkan menurut
+// objeknya.
+//
+// Satu kueri untuk seluruh klaim, bukan satu kueri per baris yang dibuka: layar ini memang
+// dirancang untuk dibuka-tutup berkali-kali, dan pembacaan per baris akan menjadi N+1
+// permintaan yang tidak terlihat sampai sebuah klaim punya banyak objek.
+func (r *Repo) detailObjectCoverages(
+	ctx context.Context,
+	claimKey string,
+) (map[string][]inboxosclaimpercabang.DetailCoverage, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_object_coverages"), claimKey)
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri detail_object_coverages: %w", err)
+	}
+	defer rows.Close()
+
+	result := map[string][]inboxosclaimpercabang.DetailCoverage{}
+	for rows.Next() {
+		var objectID, coverageID, name, currency sql.NullString
+		var sumTSI any
+
+		if err := rows.Scan(&objectID, &coverageID, &name, &currency, &sumTSI); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri detail_object_coverages: %w", err)
+		}
+
+		// minorUnits, BUKAN money.FromSQLValue: kuerinya sudah mengembalikan satuan
+		// terkecil lewat `ROUND(... * 100)`, dan FromSQLValue akan mengalikannya seratus
+		// sekali lagi — diam-diam, tanpa satu pun galat. Lihat catatan pada minorUnits.
+		nilai, err := minorUnits(sumTSI)
+		if err != nil {
+			return nil, fmt.Errorf("membaca COVERAGE_SUM_TSI: %w", err)
+		}
+
+		kunci := strings.TrimSpace(objectID.String)
+		result[kunci] = append(result[kunci], inboxosclaimpercabang.DetailCoverage{
+			ObjectID: kunci,
+			ID:       strings.TrimSpace(coverageID.String),
+			Name:     strings.TrimSpace(name.String),
+			Currency: strings.TrimSpace(currency.String),
+			SumTSI:   nilai,
+			// Irisan kosong, bukan nil — alasannya sama dengan di tingkat atasnya.
+			Items: []inboxosclaimpercabang.DetailItem{},
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri detail_object_coverages: %w", err)
+	}
+
+	return result, nil
+}
+
+// detailObjectItems membaca grid "Object Item", dikelompokkan menurut coverage-nya.
+func (r *Repo) detailObjectItems(
+	ctx context.Context,
+	claimKey string,
+) (map[coverageKey][]inboxosclaimpercabang.DetailItem, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_object_items"), claimKey)
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri detail_object_items: %w", err)
+	}
+	defer rows.Close()
+
+	result := map[coverageKey][]inboxosclaimpercabang.DetailItem{}
+	for rows.Next() {
+		var objectID, coverageID, itemID, name, description sql.NullString
+
+		if err := rows.Scan(&objectID, &coverageID, &itemID, &name, &description); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri detail_object_items: %w", err)
+		}
+
+		item := inboxosclaimpercabang.DetailItem{
+			ObjectID:    strings.TrimSpace(objectID.String),
+			CoverageID:  strings.TrimSpace(coverageID.String),
+			ID:          strings.TrimSpace(itemID.String),
+			Name:        strings.TrimSpace(name.String),
+			Description: strings.TrimSpace(description.String),
+			Estimations: []inboxosclaimpercabang.DetailEstimation{},
+		}
+		kunci := coverageKey{object: item.ObjectID, coverage: item.CoverageID}
+		result[kunci] = append(result[kunci], item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri detail_object_items: %w", err)
+	}
+
+	return result, nil
+}
+
+// detailSpreading membaca grid "List Spreading", dikelompokkan menurut coverage-nya.
+//
+// Nilai uangnya TIDAK diisi di sini — ia dihitung pemanggil dari jumlah estimasi coverage,
+// karena kolom tersimpannya NULL pada seluruh baris tabel.
+func (r *Repo) detailSpreading(
+	ctx context.Context,
+	claimKey string,
+) (map[coverageKey][]inboxosclaimpercabang.DetailSpreading, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_coverage_spreading"), claimKey)
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri detail_coverage_spreading: %w", err)
+	}
+	defer rows.Close()
+
+	result := map[coverageKey][]inboxosclaimpercabang.DetailSpreading{}
+	for rows.Next() {
+		var objectID, coverageID, treaty sql.NullString
+		var share sql.NullInt64
+
+		if err := rows.Scan(&objectID, &coverageID, &treaty, &share); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri detail_coverage_spreading: %w", err)
+		}
+
+		row := inboxosclaimpercabang.DetailSpreading{
+			ObjectID:           strings.TrimSpace(objectID.String),
+			CoverageID:         strings.TrimSpace(coverageID.String),
+			TreatyName:         strings.TrimSpace(treaty.String),
+			SharePercentScaled: share.Int64,
+		}
+		kunci := coverageKey{object: row.ObjectID, coverage: row.CoverageID}
+		result[kunci] = append(result[kunci], row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri detail_coverage_spreading: %w", err)
+	}
+
+	return result, nil
+}
+
+// detailCoMembers membaca grid "CO MEMBER".
+//
+// Hasilnya satu daftar, bukan peta: tabelnya berkunci POLIS, sehingga daftar yang sama berlaku
+// untuk seluruh coverage pada klaim itu.
+func (r *Repo) detailCoMembers(
+	ctx context.Context,
+	claimKey string,
+) ([]inboxosclaimpercabang.DetailCoMember, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_coverage_comember"), claimKey)
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri detail_coverage_comember: %w", err)
+	}
+	defer rows.Close()
+
+	result := []inboxosclaimpercabang.DetailCoMember{}
+	for rows.Next() {
+		var name sql.NullString
+		var share sql.NullInt64
+
+		if err := rows.Scan(&name, &share); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri detail_coverage_comember: %w", err)
+		}
+
+		result = append(result, inboxosclaimpercabang.DetailCoMember{
+			InsurerName:        strings.TrimSpace(name.String),
+			SharePercentScaled: share.Int64,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri detail_coverage_comember: %w", err)
+	}
+
+	return result, nil
+}
+
+// detailEstimations membaca grid "Estimasi", dikelompokkan menurut itemnya.
+func (r *Repo) detailEstimations(
+	ctx context.Context,
+	claimKey string,
+) (map[itemKey][]inboxosclaimpercabang.DetailEstimation, error) {
+	rows, err := r.db.QueryContext(ctx, query("detail_estimations"), claimKey)
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri detail_estimations: %w", err)
+	}
+	defer rows.Close()
+
+	result := map[itemKey][]inboxosclaimpercabang.DetailEstimation{}
+	for rows.Next() {
+		var objectID, coverageID, itemID, sequence, jenis, currency sql.NullString
+		var recordedAt sql.NullTime
+		var rate, value any
+
+		if err := rows.Scan(&objectID, &coverageID, &itemID, &sequence,
+			&recordedAt, &jenis, &currency, &rate, &value); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri detail_estimations: %w", err)
+		}
+
+		// minorUnits, BUKAN money.FromSQLValue — lihat catatan pada minorUnits.
+		nilaiKurs, err := minorUnits(rate)
+		if err != nil {
+			return nil, fmt.Errorf("membaca ESTIMATION_RATE: %w", err)
+		}
+		nilai, err := minorUnits(value)
+		if err != nil {
+			return nil, fmt.Errorf("membaca ESTIMATION_VALUE: %w", err)
+		}
+
+		row := inboxosclaimpercabang.DetailEstimation{
+			ObjectID:   strings.TrimSpace(objectID.String),
+			CoverageID: strings.TrimSpace(coverageID.String),
+			ItemID:     strings.TrimSpace(itemID.String),
+			Sequence:   strings.TrimSpace(sequence.String),
+			RecordedAt: nullableTime(recordedAt),
+			Type:       strings.TrimSpace(jenis.String),
+			Currency:   strings.TrimSpace(currency.String),
+			Rate:       nilaiKurs,
+			Value:      nilai,
+		}
+		kunci := itemKey{object: row.ObjectID, coverage: row.CoverageID, item: row.ItemID}
+		result[kunci] = append(result[kunci], row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri detail_estimations: %w", err)
 	}
 
 	return result, nil

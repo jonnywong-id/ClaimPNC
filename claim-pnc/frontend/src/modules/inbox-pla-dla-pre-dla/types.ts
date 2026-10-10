@@ -111,6 +111,21 @@ export type Dokumen = {
   email: string
   /** Hanya terisi pada DLA. */
   no_akseptasi: string
+
+  /**
+   * Menyatakan baris ini digambar bertombol **"Send"**.
+   *
+   * Dihitung PELADEN, dan itu bukan kerapian: syaratnya berbeda antara kedua tab —
+   * `.MARKETING != '1'` pada PLA, `.MARKETING == ''` pada DLA — dan keduanya hasil
+   * pembacaan section Pega. Layar yang menyimpulkannya sendiri dari `terkirim` akan
+   * menyamakan keduanya tanpa satu pun galat.
+   *
+   * OPSIONAL, dan alasannya sama dengan `label_aksi_baris`: peladen yang berjalan bisa
+   * lebih tua daripada berkas layar. Tanpa cadangan, SELURUH tombol Send lenyap pada
+   * peladen lama — kegagalan yang tidak menghasilkan galat apa pun, hanya tombol yang
+   * tidak ada. Lihat `bolehKirim`.
+   */
+  dapat_dikirim?: boolean
 }
 
 /** Satu baris panel "Print Pre DLA". */
@@ -148,7 +163,6 @@ export type Penyaring = {
 export type MetadataResponse = {
   daftar: Daftar[]
   daftar_bawaan: string
-  selisih_terencana: string[]
   portal: string
 }
 

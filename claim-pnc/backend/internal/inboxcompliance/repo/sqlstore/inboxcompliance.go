@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxcompliance"
@@ -171,10 +172,21 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 				"dan POOLDATA.T_CLAIMLIST_ADMIN: %w", err)
 	}
 
-	if err := r.db.QueryRowContext(
-		ctx, query("check_table_post_audit"),
-	).Scan(&ignored); err != nil {
-		return fmt.Errorf("membaca POOLDATA.T_CLAIM_COMPLIANCE_H: %w", err)
+	// ExecContext, BUKAN QueryRow().Scan().
+	//
+	// Kueri pemeriksanya menyebut keenam kolom dan ber-`WHERE 1 = 0`, sehingga ia
+	// mengembalikan NOL BARIS. `QueryRow().Scan()` atas nol baris memulangkan
+	// `sql.ErrNoRows` — dan itu akan dilaporkan sebagai kegagalan padahal pemeriksaannya
+	// justru BERHASIL: pernyataannya ter-parse, yang berarti tabel dan keenam kolomnya ada.
+	//
+	// Yang diuji di sini adalah PARSING, bukan isi. Oracle memvalidasi seluruh nama kolom
+	// saat mem-parse, sehingga kolom yang salah nama gagal di sini — jauh sebelum petugas
+	// membuka layarnya.
+	if _, err := r.db.ExecContext(ctx, query("check_table_post_audit")); err != nil {
+		return fmt.Errorf(
+			"membaca POOLDATA.T_CLAIM_COMPLIANCE_H beserta keenam kolom yang dipakai "+
+				"(CASEID, NO_KLAIM, NAMA_TERTANGGUNG, NO_POLIS, REMARKS, "+
+				"TGL_KIRIM_POST_AUDIT): %w", storeMissing(err))
 	}
 
 	return nil
@@ -235,25 +247,32 @@ func scanComplianceItem(row scanner) (inboxcompliance.WorkItem, error) {
 	var (
 		caseID, reference, policyNumber, insuredName sql.NullString
 		businessName, branchName, adminName          sql.NullString
+		groupPanel, technician                       sql.NullString
 		complianceSentDate                           sql.NullTime
 	)
 
 	err := row.Scan(
 		&caseID, &reference, &policyNumber, &insuredName,
-		&businessName, &branchName, &adminName, &complianceSentDate,
+		&businessName, &branchName, &adminName, &groupPanel, &technician,
+		&complianceSentDate,
 	)
 	if err != nil {
 		return inboxcompliance.WorkItem{}, err
 	}
 
 	return inboxcompliance.WorkItem{
-		CaseID:             caseID.String,
-		Reference:          reference.String,
-		PolicyNumber:       policyNumber.String,
-		InsuredName:        insuredName.String,
-		BusinessName:       businessName.String,
-		BranchName:         branchName.String,
-		AdminName:          adminName.String,
+		CaseID:       caseID.String,
+		Reference:    reference.String,
+		PolicyNumber: policyNumber.String,
+		InsuredName:  insuredName.String,
+		BusinessName: businessName.String,
+		BranchName:   branchName.String,
+		AdminName:    adminName.String,
+		// NULL menjadi teks kosong, dan itu AMAN: ActionsFor memperlakukan lini bisnis
+		// kosong sebagai bukan-Travel dan bukan-PA — sama dengan hasil
+		// `compareTwoValues("", "=", "005")` di Pega.
+		GroupPanel:         groupPanel.String,
+		TechnicianID:       technician.String,
 		ComplianceSentDate: timeOrNil(complianceSentDate),
 	}, nil
 }
@@ -364,10 +383,12 @@ func (r *Repo) CreatePostAudit(
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var sequence int64
+	// Nomornya diterbitkan BASIS DATA secara utuh — `CPL.26.1`, bukan angkanya saja.
+	// Sintaksnya ditetapkan Work Owner; lihat number.go dan kueri yang dipanggil di sini.
+	var caseID string
 	if err := tx.QueryRowContext(
 		ctx, query("post_audit_next_sequence"),
-	).Scan(&sequence); err != nil {
+	).Scan(&caseID); err != nil {
 		// Penyebab paling mungkin bukan cacat kode melainkan migrasi 0011 yang belum
 		// dijalankan DBA, dan Oracle melaporkan keduanya dengan pesan yang sama
 		// ("sequence does not exist") baik objeknya memang tidak ada maupun haknya belum
@@ -375,14 +396,14 @@ func (r *Repo) CreatePostAudit(
 		// ditindaklanjuti tanpa menebak — lihat juga CheckPostAuditWritable, yang
 		// menemukannya saat start sehingga seharusnya tidak pernah sampai ke sini.
 		return inboxcompliance.PostAuditEntry{}, fmt.Errorf(
-			"mengambil nomor urut Post Audit dari %s.%s "+
+			"menerbitkan nomor Post Audit dari %s.%s "+
 				"(bila sequence-nya belum ada, jalankan "+
 				"migrations/0011_post_audit_compliance.up.sql): %w",
 			sequenceOwner, sequenceName, err)
 	}
 
 	saved := entry
-	saved.CaseID = BuildCaseID(sequence)
+	saved.CaseID = caseID
 
 	if _, err := tx.ExecContext(
 		ctx, query("insert_post_audit"),
@@ -437,15 +458,17 @@ func (r *Repo) FindDecision(
 		decidedAt sql.NullTime
 		validated sql.NullTime
 		sent      sql.NullTime
+		comments  sql.NullString
 	)
 
-	err := row.Scan(&choice, &note, &remarks, &decidedBy, &decidedAt, &validated, &sent)
+	err := row.Scan(
+		&choice, &note, &remarks, &decidedBy, &decidedAt, &validated, &sent, &comments)
 	if errors.Is(err, sql.ErrNoRows) {
 		return inboxcompliance.Decision{}, false, nil
 	}
 	if err != nil {
 		return inboxcompliance.Decision{}, false, fmt.Errorf(
-			"menjalankan kueri find_compliance_decision: %w", err)
+			"menjalankan kueri find_compliance_decision: %w", storeMissing(err))
 	}
 
 	decision := inboxcompliance.Decision{
@@ -472,6 +495,15 @@ func (r *Repo) FindDecision(
 		decision.SentToPostAuditAt = &at
 	}
 
+	// Komentarnya datang dari kolom yang SAMA, bukan dari tabel kedua — grid itu bagian
+	// dari keputusan yang sama, dan form menyimpan keduanya dalam satu tombol.
+	parsed, err := decodeComments(comments.String)
+	if err != nil {
+		return inboxcompliance.Decision{}, false, fmt.Errorf(
+			"membaca grid komentar klaim %s: %w", reference, err)
+	}
+	decision.Comments = parsed
+
 	return decision, true, nil
 }
 
@@ -489,6 +521,13 @@ func (r *Repo) FindDecision(
 func (r *Repo) SaveDecision(
 	ctx context.Context, decision inboxcompliance.Decision,
 ) error {
+	// Grid komentar dirakit menjadi satu kolom JSON, sehingga keputusan dan komentarnya
+	// tersimpan dalam SATU pernyataan. Lihat comments_json.go.
+	comments, err := encodeComments(decision.Comments)
+	if err != nil {
+		return err
+	}
+
 	if _, err := r.db.ExecContext(
 		ctx, query("upsert_compliance_decision"),
 		decision.Reference,
@@ -499,6 +538,7 @@ func (r *Repo) SaveDecision(
 		decision.DecidedAt,
 		nullableTime(decision.ValidatedAt),
 		nullableTime(decision.SentToPostAuditAt),
+		comments,
 	); err != nil {
 		// Sama seperti pada CreatePostAudit, penyebab paling mungkin adalah migrasinya
 		// yang belum dijalankan DBA — bukan cacat kode. Menyebut berkasnya membuat galat
@@ -508,6 +548,16 @@ func (r *Repo) SaveDecision(
 				"(bila tabelnya belum ada, jalankan "+
 				"migrations/0012_keputusan_compliance.up.sql): %w", err)
 	}
+
+	// Komentarnya disimpan SESUDAH keputusannya, dan keduanya TIDAK dalam satu transaksi.
+	//
+	// Urutannya disengaja, sama alasannya dengan urutan keputusan→Post Audit pada
+	// usecase.SubmitDecision: bila yang kedua gagal, yang tersimpan adalah keputusan tanpa
+	// komentar — keadaan yang terlihat petugas dan dapat diulang karena form masih
+	// terbuka. Kebalikannya lebih buruk: komentar tanpa keputusan yang menaunginya.
+	//
+	// Membungkus keduanya menuntut kepemilikan transaksi di lapisan aplikasi
+	// (`08-TECHNICAL-STRATEGY.md` §4.5), yang seam Repo modul ini belum punya.
 	return nil
 }
 
@@ -537,4 +587,36 @@ func nullableTime(value *time.Time) any {
 		return nil
 	}
 	return *value
+}
+
+// storeMissing menandai "tabel tidak ada" sebagai ErrDecisionStoreMissing, tanpa membuang
+// galat aslinya — yang tetap masuk log beserta nama tabelnya.
+//
+// # Kenapa pencocokan teks, bukan tipe galat
+//
+// Karena `database/sql` tidak membawa kode galat basis data, dan menariknya dari tipe
+// khusus godror akan mengikat berkas ini pada satu driver — padahal `D-20` menetapkan satu
+// set SQL yang berjalan di Oracle maupun PostgreSQL. Pola yang sama sudah dipakai
+// `dokumenpenunjang/repo/sqlstore.linkError` untuk galat Oracle Net.
+//
+// Kedua kode di bawah berarti hal yang sama bagi pengguna, tetapi berbeda sebabnya:
+//
+//	ORA-00942  tabel/view tidak ada — ATAU ada tetapi akun aplikasi tidak punya hak
+//	           SELECT atasnya. Oracle sengaja tidak membedakan keduanya, supaya
+//	           keberadaan sebuah tabel tidak bocor ke akun yang tidak berhak.
+//	ORA-00904  kolomnya tidak dikenal — tabelnya ada tetapi lebih tua daripada kueri ini
+//
+// Keduanya diselesaikan tindakan yang sama: jalankan migrasinya beserta GRANT di dalamnya.
+func storeMissing(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	message := strings.ToUpper(err.Error())
+	for _, code := range []string{"ORA-00942", "ORA-00904"} {
+		if strings.Contains(message, code) {
+			return fmt.Errorf("%w: %w", inboxcompliance.ErrDecisionStoreMissing, err)
+		}
+	}
+	return err
 }

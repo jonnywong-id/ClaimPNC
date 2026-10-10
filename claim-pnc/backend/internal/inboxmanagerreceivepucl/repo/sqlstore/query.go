@@ -39,7 +39,7 @@ func query(name string) string {
 	return text
 }
 
-// resultColumns adalah ke-18 alias yang dikembalikan SETIAP kueri daftar.
+// resultColumns adalah ke-19 alias yang dikembalikan SETIAP kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxmanagerreceivepucl.sql dan dengan urutan
 // pemindai scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat
@@ -49,6 +49,7 @@ var resultColumns = []string{
 	"LOSS_DATE", "GROUP_PANEL", "SENDER_NAME", "DOCUMENT_RECEIVED_DATE",
 	"DOCUMENT_SHEET_COUNT", "INBOX_ENTRY_AT", "ANALYST_NOTE",
 	"TRACK", "TRACK_STATUS", "LETTER_PRINTED_AT", "CLAIM_AGE", "EXPIRY_STATUS",
+	"CLAIM_SCREEN_READY",
 	"TOTAL_ROWS",
 }
 
@@ -114,6 +115,13 @@ func loadQueries() map[string]string {
 // supaya yang dikirim ke basis data hanyalah SQL-nya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""

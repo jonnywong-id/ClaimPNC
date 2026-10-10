@@ -143,6 +143,7 @@ func (r *Repo) Create(
 	ctx context.Context,
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
@@ -162,7 +163,7 @@ func (r *Repo) Create(
 	}
 
 	nomor := inputreqprotection.FormatNumber(at.Year(), urut)
-	detail := deriveChangeDetail(draft, claim)
+	detail := deriveChangeDetail(draft, claim, selected)
 	lama, baru := encodeChangeDetail(draft.Type, detail)
 
 	if _, err := tx.ExecContext(ctx, query("protection_insert"),
@@ -189,6 +190,10 @@ func (r *Repo) Create(
 		baru,
 		nullIfEmpty(detail.ObjectName),
 		nullIfEmpty(detail.BranchName),
+		// Sasaran perubahan Cause of Loss. NULL untuk tipe lain — deriveChangeDetail yang
+		// memastikannya, supaya aturan "tipe mana yang punya sasaran" hidup di satu tempat.
+		nullIfEmpty(detail.ObjectID),
+		nullIfEmpty(detail.ObjectCoverageID),
 	); err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf(
 			"inputreqprotection/sqlstore: menyimpan permintaan proteksi: %w", err)
@@ -225,10 +230,11 @@ func (r *Repo) Update(
 	number string,
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 	by string,
 	at time.Time,
 ) (inputreqprotection.Protection, error) {
-	detail := deriveChangeDetail(draft, claim)
+	detail := deriveChangeDetail(draft, claim, selected)
 	lama, baru := encodeChangeDetail(draft.Type, detail)
 
 	hasil, err := r.db.ExecContext(ctx, query("protection_update"),
@@ -253,6 +259,9 @@ func (r *Repo) Update(
 		baru,
 		nullIfEmpty(detail.ObjectName),
 		nullIfEmpty(detail.BranchName),
+		// Ikut ditulis ulang — termasuk menjadi NULL ketika tipenya berubah dari '8'.
+		nullIfEmpty(detail.ObjectID),
+		nullIfEmpty(detail.ObjectCoverageID),
 		kunci(number),
 	)
 	if err != nil {
@@ -301,6 +310,7 @@ func scanProtection(row pemindai) (inputreqprotection.Protection, error) {
 		dibuatPada                        sql.NullTime
 		notes, status, dibuatOleh         sql.NullString
 		lama, baru, namaObjek, namaCabang sql.NullString
+		idObjek, idCoverage               sql.NullString
 	)
 
 	// namaTipe datang dari LEFT JOIN ke master, sehingga ia NULL untuk dua keadaan yang
@@ -309,7 +319,8 @@ func scanProtection(row pemindai) (inputreqprotection.Protection, error) {
 	// yang menampilkan kode apa adanya saat namanya tidak ada.
 	if err := row.Scan(&id, &nopolis, &noklaim, &idpega, &tipe, &namaTipe,
 		&dibuatPada, &notes, &status, &dibuatOleh,
-		&lama, &baru, &namaObjek, &namaCabang); err != nil {
+		&lama, &baru, &namaObjek, &namaCabang,
+		&idObjek, &idCoverage); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return inputreqprotection.Protection{}, err
 		}
@@ -335,6 +346,12 @@ func scanProtection(row pemindai) (inputreqprotection.Protection, error) {
 	p.ChangeDetail = decodeChangeDetail(p.Type, teks(lama), teks(baru))
 	p.ChangeDetail.ObjectName = teks(namaObjek)
 	p.ChangeDetail.BranchName = teks(namaCabang)
+
+	// Sasaran perubahan Cause of Loss. Dibaca APA ADANYA — termasuk untuk tipe selain '8',
+	// yang seharusnya kosong. Mengosongkannya di sini akan menyembunyikan baris yang
+	// terlanjur salah terisi, dan baris semacam itu justru yang perlu terlihat.
+	p.ChangeDetail.ObjectID = teks(idObjek)
+	p.ChangeDetail.ObjectCoverageID = teks(idCoverage)
 
 	return p, nil
 }
@@ -563,11 +580,12 @@ func (r *ClaimRepo) FindClaim(
 		dol                sql.NullTime
 		penyebab           sql.NullString
 		cabang, namaObjek  sql.NullString
+		kodeBisnis         sql.NullString
 	)
 
 	nomor := kunci(number)
 	err := r.db.QueryRowContext(ctx, query("claim_find"), nomor, prefixKunciKlaimPega+nomor).
-		Scan(&claimID, &polis, &tertanggung, &dol, &penyebab, &cabang, &namaObjek)
+		Scan(&claimID, &polis, &tertanggung, &dol, &penyebab, &cabang, &namaObjek, &kodeBisnis)
 	if errors.Is(err, sql.ErrNoRows) {
 		return inputreqprotection.Claim{}, inputreqprotection.ErrClaimNotFound
 	}
@@ -589,12 +607,61 @@ func (r *ClaimRepo) FindClaim(
 		CauseOfLoss:  teks(penyebab),
 		BranchName:   teks(cabang),
 		ObjectName:   teks(namaObjek),
+		BusinessCode: teks(kodeBisnis),
 	}
 	if dol.Valid {
 		waktu := dol.Time
 		klaim.LossDate = &waktu
 	}
 	return klaim, nil
+}
+
+// ListCoverages membaca seluruh coverage klaim beserta kunci barisnya.
+//
+// Kedua penanda kunci dikirim sama seperti FindClaim — nomor apa adanya dan nomor
+// berawalan kunci Pega — supaya klaim warisan dan klaim sistem baru sama-sama ketemu.
+//
+// # Daftar kosong dikembalikan sebagai daftar kosong
+//
+// Bukan sebagai galat. Klaim yang belum punya coverage adalah keadaan biasa, dan panel yang
+// menyatakan "tidak ada coverage" jauh lebih jujur daripada galat yang menyuruh pengguna
+// mencari sebab di tempat yang salah.
+func (r *ClaimRepo) ListCoverages(
+	ctx context.Context,
+	number string,
+) ([]inputreqprotection.CoverageRow, error) {
+	nomor := kunci(number)
+	rows, err := r.db.QueryContext(ctx, query("claim_coverages"), nomor, prefixKunciKlaimPega+nomor)
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca coverage klaim: %w", err)
+	}
+	defer rows.Close()
+
+	var hasil []inputreqprotection.CoverageRow
+	for rows.Next() {
+		var (
+			objectID, coverageID   sql.NullString
+			namaObjek, namaCover   sql.NullString
+			penyebab, penyebabKode sql.NullString
+		)
+		if err := rows.Scan(
+			&objectID, &coverageID, &namaObjek, &namaCover, &penyebab, &penyebabKode,
+		); err != nil {
+			return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca baris coverage: %w", err)
+		}
+		hasil = append(hasil, inputreqprotection.CoverageRow{
+			ObjectID:         teks(objectID),
+			ObjectCoverageID: teks(coverageID),
+			ObjectName:       teks(namaObjek),
+			CoverageName:     teks(namaCover),
+			CauseOfLoss:      teks(penyebab),
+			CauseOfLossID:    teks(penyebabKode),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca coverage klaim: %w", err)
+	}
+	return hasil, nil
 }
 
 // nomorKlaimDari memotong awalan kunci Pega, bila ada.
@@ -635,16 +702,98 @@ func nomorKlaimDari(claimID string) string {
 func deriveChangeDetail(
 	draft inputreqprotection.Draft,
 	claim inputreqprotection.Claim,
+	selected inputreqprotection.CoverageRow,
 ) inputreqprotection.ChangeDetail {
+	// Nama objek diambil dari BARIS YANG DIPILIH bila ada, baru jatuh ke klaim.
+	//
+	// Klaim menyimpan nama objek PERTAMA; pada klaim bercoverage banyak itu belum tentu objek
+	// yang diubah. Nilai dari baris pilihan lebih tepat, dan hanya dipakai bila terisi supaya
+	// tipe '7' — yang tidak punya pilihan — tetap memakai nama dari klaim seperti sebelumnya.
+	namaObjek := claim.ObjectName
+	if strings.TrimSpace(selected.ObjectName) != "" {
+		namaObjek = selected.ObjectName
+	}
+
 	return inputreqprotection.ChangeDetail{
 		// Sisi KLAIM.
 		LossDateBefore: claim.LossDate,
-		CauseOfLossID:  claim.CauseOfLoss,
-		ObjectName:     claim.ObjectName,
-		BranchName:     claim.BranchName,
+		// CauseOfLossID adalah isi OLD_DATA, dan sejak 2026-10-05 ia KODE penyebab kerugian —
+		// bukan deskripsinya (keputusan Work Owner: "old data new data simpan idcol aja").
+		//
+		// Diambil dari BARIS YANG DIPILIH, bukan dari klaim. Klaim tidak punya penyebab
+		// kerugian tunggal: kueri terhadap `PNC-1452` mengembalikan empat baris dengan empat
+		// penyebab berbeda, dan `Claim.CauseOfLoss` hanyalah yang pertama di antaranya.
+		//
+		// Menyimpan kode, bukan deskripsi, membuat OLD_DATA dan NEW_DATA sebentuk — keduanya
+		// `D_COL_ID` — sehingga perbandingan "dari apa menjadi apa" tidak pernah bergantung
+		// pada teks yang dapat berubah di master.
+		CauseOfLossID: selected.CauseOfLossID,
+		ObjectName:    namaObjek,
+		BranchName:    claim.BranchName,
 
 		// Sisi PENGGUNA.
 		LossDateAfter:       draft.Change.LossDateAfter,
 		CauseOfLossMasterID: draft.Change.CauseOfLossAfter,
+
+		// Sasaran perubahan Cause of Loss — baris coverage yang DIPILIH pemohon.
+		//
+		// Datang dari pengguna, bukan diturunkan dari klaim: klaim punya banyak coverage, dan
+		// yang menentukan mana di antaranya adalah tombol Pilih yang ditekan pemohon.
+		// Validasi sudah menolak permintaan tipe '8' yang tidak menyebutnya.
+		ObjectID:         draft.Change.ObjectID,
+		ObjectCoverageID: draft.Change.ObjectCoverageID,
 	}
 }
+
+// CauseRepo membaca master penyebab kerugian dari `POOLDATA.D_CAUSE_OF_LOSS`.
+//
+// KOLOM biasa — bukan `JSONDATA`, dan bukan view. Lini bisnisnya dari tabel anak
+// `POOLDATA.D_CAUSE_OF_LOSS_BUSINESS`. Ditetapkan Work Owner 2026-10-05; alasannya beserta
+// akibatnya ada di kepala kueri `cause_of_loss_options`.
+type CauseRepo struct{ db *sql.DB }
+
+// NewCauseRepo membentuk pembaca master penyebab kerugian.
+func NewCauseRepo(db *sql.DB) *CauseRepo { return &CauseRepo{db: db} }
+
+// ListCauseOfLoss mengembalikan pilihan dropdown "Next Cause Of Loss".
+//
+// Kode bisnis dikirim DUA KALI karena penandanya muncul dua kali di dalam kueri — sekali
+// pada pemeriksaan NULL, sekali pada `JSON_EXISTS`. Driver mengikat argumen menurut urutan
+// kemunculan, bukan menurut nomornya; mengirimnya sekali menghasilkan
+// **ORA-01008: not all variables bound**.
+func (r *CauseRepo) ListCauseOfLoss(
+	ctx context.Context,
+	businessCode string,
+) ([]inputreqprotection.CauseOfLossOption, error) {
+	kode := nullIfEmpty(strings.TrimSpace(businessCode))
+
+	rows, err := r.db.QueryContext(ctx, query("cause_of_loss_options"), kode, kode)
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca master penyebab kerugian: %w", err)
+	}
+	defer rows.Close()
+
+	var hasil []inputreqprotection.CauseOfLossOption
+	for rows.Next() {
+		var id, deskripsi, kodeRugi sql.NullString
+		if err := rows.Scan(&id, &deskripsi, &kodeRugi); err != nil {
+			return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca baris penyebab kerugian: %w", err)
+		}
+		// Baris tanpa D_COL_ID dilewati: ia tidak dapat disimpan sebagai pilihan, dan
+		// menampilkannya berarti menawarkan sesuatu yang gagal saat dipilih.
+		if strings.TrimSpace(teks(id)) == "" {
+			continue
+		}
+		hasil = append(hasil, inputreqprotection.CauseOfLossOption{
+			ID:          teks(id),
+			Description: teks(deskripsi),
+			LossCode:    teks(kodeRugi),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("inputreqprotection/sqlstore: membaca master penyebab kerugian: %w", err)
+	}
+	return hasil, nil
+}
+
+var _ inputreqprotection.CauseOfLossRepo = (*CauseRepo)(nil)

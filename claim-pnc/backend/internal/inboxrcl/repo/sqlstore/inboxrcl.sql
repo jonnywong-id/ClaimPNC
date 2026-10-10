@@ -22,12 +22,39 @@
 --   B  pyStatusWork != Resolved-Completed   p.STATUS_WORK <> :2
 --   C  TanggalAnalystSendRCL IS NOT NULL    p.TGL_KIRIM_PUCL IS NOT NULL
 --   D  NamaDokterRCL = assign               TRIM(p.RCL_PUCL) IN (:3, :4)  -- '1' RCL, '3' MSIG
+--   E  (penugasan masih di tahap itu)       lihat "PENYARING E" di bawah
 --
 -- C: `Activity/SendToPUCL-Act.xml` langkah 8 mengisi TanggalAnalystSendRCL dan
 --    PUCLStatus.TanggalKirimPUCL pada langkah yang sama.
 -- D: tidak ada kolom nama dokter. `RouterRCLDokter` menugaskan ke NamaDokterRCL, sehingga
 --    dokter = pemilik penugasan (A). Yang tersisa dari D: klaimnya melewati dokter — RCL dan
 --    MSIG saja; PUCL ('2') tidak.
+--
+-- ============================================================================
+-- PENYARING E — TAHAP PENUGASAN, DAN KENAPA IA HARUS ADA (2026-10-07)
+-- ============================================================================
+--
+-- Di Pega, penyaring A membaca `pxAssignedOperatorID` sebuah **penugasan**, dan penugasan
+-- itu LENYAP begitu tahapnya selesai. Jadi "klaim ini masih di tangan dokter" terjawab oleh
+-- keberadaan barisnya, bukan oleh isinya.
+--
+-- `TC_PNC_PUCL` menyimpan **satu baris per klaim** yang tidak pernah lenyap, sehingga satu-
+-- satunya cara mengeluarkan klaim dari antrean dokter adalah MENIMPA kolomnya. Itulah
+-- sebabnya keputusan dokter dulu menulis literal `RCLPUCL` ke sana: bukan karena nama antrean
+-- memang miliknya, melainkan karena nilai itu tidak cocok dengan login siapa pun.
+--
+-- Akibatnya kolom itu memikul DUA arti sekaligus — "siapa pemilik klaim" dan "klaim ini masih
+-- di tahap dokter" — dan arti kedua merusak arti pertama. Work Owner menetapkan 2026-10-07
+-- kolom itu **selalu berisi user teknis**, sehingga arti kedua harus pindah ke tempat lain.
+-- Tempatnya `CPNC_TUGAS`: tahap yang selesai menutup barisnya, persis seperti penugasan Pega.
+--
+-- KLAIM YANG LAHIR DI PEGA TIDAK PUNYA BARIS DI `CPNC_TUGAS` SAMA SEKALI.
+--
+-- Menyaring dengan `EXISTS` saja akan menghapus SELURUH klaim Pega dari layar ini — 7.722
+-- baris, seluruh antrean yang berjalan hari ini. Karena itu penyaringnya dua cabang: klaim
+-- yang punya tugas di aplikasi ini dinilai dari tugasnya, klaim yang tidak punya dinilai
+-- seperti sebelumnya — yaitu oleh penyaring A saja, yang bagi mereka memang masih bekerja
+-- (`RCLPUCL` tidak pernah cocok dengan login siapa pun).
 --
 -- Urutan `.pxCreateDateTime DESC, .pyID DESC` -> TGL_CREATE_PUCL DESC, CLAIMID DESC.
 --
@@ -77,11 +104,12 @@ SELECT MAX(UPPER(TRIM(l.LOGIN_ID)))
 --   :2  status kerja yang DIKECUALIKAN — "Resolved-Completed"
 --   :3  '1' (RCL)  — penyaring D
 --   :4  '3' (MSIG) — penyaring D
---   :5  kata kunci, atau NULL bila kotak carinya kosong
---   :6  pola LIKE untuk CLAIMID   ('%KATA%', huruf besar, karakter khusus di-escape)
---   :7  pola LIKE untuk POLICY_NO (sama dengan :6)
---   :8  offset
---   :9  jumlah baris
+--   :5  tahap RCL Dokter ("rcl-dokter") — penyaring E
+--   :6  kata kunci, atau NULL bila kotak carinya kosong
+--   :7  pola LIKE untuk CLAIMID   ('%KATA%', huruf besar, karakter khusus di-escape)
+--   :8  pola LIKE untuk POLICY_NO (sama dengan :7)
+--   :9  offset
+--   :10 jumlah baris
 SELECT p.CLAIMID                     AS CASE_ID,
        p.POLICY_NO                   AS POLICY_NUMBER,
        p.QQ_NAME                     AS INSURED_NAME,
@@ -97,11 +125,19 @@ SELECT p.CLAIMID                     AS CASE_ID,
    AND p.STATUS_WORK <> :2
    AND p.TGL_KIRIM_PUCL IS NOT NULL
    AND TRIM(p.RCL_PUCL) IN (:3, :4)
-   AND (:5 IS NULL
-        OR UPPER(p.CLAIMID) LIKE :6 ESCAPE '\'
-        OR UPPER(p.POLICY_NO) LIKE :7 ESCAPE '\')
+   AND (EXISTS (SELECT 1
+                  FROM CPNC_TUGAS t
+                 WHERE TRIM(t.NOMOR_KLAIM) = TRIM(p.CLAIMID)
+                   AND t.SELESAI_PADA IS NULL
+                   AND TRIM(t.TAHAP) = :5)
+        OR NOT EXISTS (SELECT 1
+                         FROM CPNC_TUGAS t2
+                        WHERE TRIM(t2.NOMOR_KLAIM) = TRIM(p.CLAIMID)))
+   AND (:6 IS NULL
+        OR UPPER(p.CLAIMID) LIKE :7 ESCAPE '\'
+        OR UPPER(p.POLICY_NO) LIKE :8 ESCAPE '\')
  ORDER BY p.TGL_CREATE_PUCL DESC, p.CLAIMID DESC
-OFFSET :8 ROWS FETCH NEXT :9 ROWS ONLY
+OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: claim_detail
 -- Isi layar kerja `RCLDokter` untuk satu klaim — HANYA bila klaim itu ada di antrean
@@ -113,6 +149,7 @@ OFFSET :8 ROWS FETCH NEXT :9 ROWS ONLY
 --   :3  status kerja yang DIKECUALIKAN — "Resolved-Completed"
 --   :4  '1' (RCL)
 --   :5  '3' (MSIG)
+--   :6  tahap RCL Dokter ("rcl-dokter") — penyaring E
 SELECT p.CLAIMID                     AS CASE_ID,
        p.POLICY_NO                   AS POLICY_NUMBER,
        p.QQ_NAME                     AS INSURED_NAME,
@@ -130,6 +167,14 @@ SELECT p.CLAIMID                     AS CASE_ID,
    AND p.STATUS_WORK <> :3
    AND p.TGL_KIRIM_PUCL IS NOT NULL
    AND TRIM(p.RCL_PUCL) IN (:4, :5)
+   AND (EXISTS (SELECT 1
+                  FROM CPNC_TUGAS t
+                 WHERE TRIM(t.NOMOR_KLAIM) = TRIM(p.CLAIMID)
+                   AND t.SELESAI_PADA IS NULL
+                   AND TRIM(t.TAHAP) = :6)
+        OR NOT EXISTS (SELECT 1
+                         FROM CPNC_TUGAS t2
+                        WHERE TRIM(t2.NOMOR_KLAIM) = TRIM(p.CLAIMID)))
 
 -- name: check_tables
 -- Dipakai `-periksa`: memastikan KEDUA tabel terbaca. `WHERE 1 = 0` — hak baca, bukan isi.
@@ -139,7 +184,16 @@ SELECT COUNT(*) AS PROBE
  WHERE 1 = 0
 
 -- name: check_columns
--- Dipakai `-periksa`: memastikan kolom yang ditambahkan 2026-10-05 memang ada.
-SELECT COUNT(p.ALASAN_DOKTER_REJECT_RCL) AS PROBE_DOCTOR_REASON
+-- Dipakai `-periksa`: memastikan kedua kolom tambahan memang ada.
+--
+--   ALASAN_DOKTER_REJECT_RCL  ditambahkan 2026-10-05 — Alasan Dokter, layar kerja RCLDokter
+--   NAMA_DOKTER_RCL           ditambahkan 2026-10-07 — ditulis `registrasi` saat Kirim
+--
+-- Yang kedua diperiksa dari sini, bukan dari modul `registrasi`, karena modul inilah yang
+-- punya mekanisme `-periksa` atas tabel ini. Tanpa pemeriksaan itu, kolom yang belum dibuat
+-- baru ketahuan sebagai ORA-00904 pada klaim pertama yang dikirim di produksi — dan
+-- kegagalannya menimpa SELURUH tombol Kirim ke RCL/PUCL, bukan hanya nama dokternya.
+SELECT COUNT(p.ALASAN_DOKTER_REJECT_RCL) AS PROBE_DOCTOR_REASON,
+       COUNT(p.NAMA_DOKTER_RCL)          AS PROBE_DOCTOR_NAME
   FROM POOLDATA.TC_PNC_PUCL p
  WHERE 1 = 0

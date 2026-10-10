@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,6 +28,7 @@ const TAB_RECEIVE: Tab = {
   ] as Tab['kolom'],
   antrean_bersama: false,
   buka_layar_kerja: true,
+  buka_layar_klaim: false,
   terhalang: false,
 }
 
@@ -42,7 +43,6 @@ const TAB_BLOCKED: Tab = {
 const META: MetadataResponse = {
   tab: [TAB_RECEIVE, TAB_BLOCKED, { ...TAB_BLOCKED, kode: '4', nama: 'Tanpa Pemilik' }],
   tab_bawaan: '1',
-  selisih_terencana: [],
   portal: 'ASM',
 }
 // Tab terhalang pertama menyebut pemiliknya; yang kedua tidak.
@@ -67,6 +67,7 @@ function item(over: Partial<WorkItem> = {}): WorkItem {
     tanggal_cetak_surat: '',
     lama_klaim: '',
     status_kadaluarsa: '',
+    layar_klaim_siap: true,
     ...over,
   }
 }
@@ -212,58 +213,11 @@ describe('ManagerReceivePUCLPage', () => {
     expect(screen.queryByText('Menunggu:')).not.toBeInTheDocument()
   })
 
-  it.each([
-    [
-      new Response(JSON.stringify({ pesan: 'Ekspor ditolak.' }), { status: 403 }),
-      'Ekspor ditolak.',
-    ],
-    [new Response('bukan json', { status: 500 }), 'Berkas ekspor tidak dapat diambil.'],
-    [
-      { fail: 'empty' as const },
-      'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.',
-    ],
-  ])('menyatakan ekspor yang gagal %#', async (reply, text) => {
-    stub((url) => (url.startsWith(`${PATH}/ekspor`) ? reply : null))
-    const user = userEvent.setup()
-    renderAt('/inbox-manager-receive-pucl')
-
-    await screen.findByRole('table', { name: 'Antrean Receive' })
-    await user.click(screen.getByRole('button', { name: 'Export Data' }))
-    expect(await screen.findByText(text)).toHaveAttribute('role', 'alert')
-    expect(clicked).toEqual([])
-  })
-
-  it('memakai nama cadangan saat server tidak menyebut nama berkas ekspor', async () => {
-    stub((url) =>
-      url.startsWith(`${PATH}/ekspor`)
-        ? new Response('x', { status: 200, headers: { 'Content-Disposition': 'attachment' } })
-        : null,
-    )
-    const user = userEvent.setup()
-    renderAt('/inbox-manager-receive-pucl')
-
-    await screen.findByRole('table', { name: 'Antrean Receive' })
-    await user.click(screen.getByRole('button', { name: 'Export Data' }))
-    await waitFor(() => expect(clicked).toEqual(['inbox-manager-receive-pucl.csv']))
-  })
-
-  it('memakai nama cadangan tanpa Content-Disposition', async () => {
-    stub((url) => (url.startsWith(`${PATH}/ekspor`) ? new Response('x', { status: 200 }) : null))
-    const user = userEvent.setup()
-    renderAt('/inbox-manager-receive-pucl')
-
-    await screen.findByRole('table', { name: 'Antrean Receive' })
-    await user.click(screen.getByRole('button', { name: 'Export Data' }))
-    await waitFor(() => expect(clicked).toEqual(['inbox-manager-receive-pucl.csv']))
-    expect(calls).toContain(`${PATH}/ekspor?tab=1`)
-  })
-
-  it('mematikan ekspor dan tidak menggambar tabel saat tab bawaan tidak diketahui', async () => {
+  it('tidak menggambar tabel saat tab bawaan tidak diketahui', async () => {
     stub((url) => (url === `${PATH}/tab` ? { body: { ...META, tab_bawaan: '' } } : null))
     renderAt('/inbox-manager-receive-pucl')
 
     await screen.findByRole('tab', { name: /^Receive$/ })
-    expect(screen.getByRole('button', { name: 'Export Data' })).toBeDisabled()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 })

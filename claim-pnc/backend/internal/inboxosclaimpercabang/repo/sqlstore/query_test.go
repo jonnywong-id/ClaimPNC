@@ -2,6 +2,8 @@ package sqlstore
 
 import (
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -108,15 +110,30 @@ func TestQueriesNeverInterpolateValues(t *testing.T) {
 func TestQueriesNeverWrite(t *testing.T) {
 	// SELURUH tabel yang dibaca modul ini milik sistem lama. Menulis satu saja melanggar
 	// `P-1`, dan akibatnya bukan galat melainkan dua sistem yang saling menimpa.
-	writing := []string{"INSERT ", "UPDATE ", "DELETE ", "MERGE ", "TRUNCATE "}
+	//
+	// Dicocokkan sebagai KATA UTUH, bukan sebagai potongan teks. Pencocokan potongan sempat
+	// menolak kueri yang sah: kolom `GCNM_PROGRESS_CLAIM.ID_UPDATE` memuat "UPDATE", dan
+	// penjaganya membaca itu sebagai perintah menulis. Penjaga yang berteriak pada kueri
+	// yang benar akan dimatikan orang, dan penjaga yang dimatikan tidak menjaga apa pun.
+	//
+	// `\b` tidak menyentuh `ID_UPDATE` karena garis bawah termasuk karakter kata, sehingga
+	// tidak ada batas kata sebelum huruf U-nya.
+	writing := regexp.MustCompile(`\b(INSERT|UPDATE|DELETE|MERGE|TRUNCATE)\b`)
+
+	// Penjaganya membuktikan dirinya sendiri lebih dulu. Melonggarkan pola demi satu positif
+	// palsu mudah dilakukan sampai polanya tidak menangkap apa pun lagi, dan tidak ada yang
+	// menyadarinya karena ujinya tetap hijau.
+	require.NotEmpty(t, writing.FindString("UPDATE POOLDATA.T_CLAIM_PNC SET X = 1"),
+		"penjaga harus menangkap perintah menulis yang sesungguhnya")
+	require.NotEmpty(t, writing.FindString("DELETE FROM POOLDATA.T_CLAIM_PNC"),
+		"penjaga harus menangkap DELETE")
+	require.Empty(t, writing.FindString("ORDER BY G.TGL_INPUT DESC, G.ID_UPDATE DESC"),
+		"nama kolom yang memuat UPDATE bukan perintah menulis")
 
 	for name, text := range queries {
-		upper := strings.ToUpper(text)
-		for _, verb := range writing {
-			require.NotContainsf(t, upper, verb,
-				"kueri %s tampak menulis (%s); modul ini hanya membaca",
-				name, strings.TrimSpace(verb))
-		}
+		found := writing.FindString(strings.ToUpper(text))
+		require.Emptyf(t, found,
+			"kueri %s tampak menulis (%s); modul ini hanya membaca", name, found)
 	}
 }
 
@@ -130,6 +147,66 @@ func TestListQueriesPaginateOrderAndCount(t *testing.T) {
 		require.Containsf(t, upper, "ORDER BY", "kueri %s tidak menetapkan urutan", name)
 		require.Containsf(t, upper, "COUNT(*) OVER ()",
 			"kueri %s tidak membawa jumlah seluruh baris", name)
+	}
+}
+
+// bindNumbers mengambil nomor bind yang muncul di sebuah kueri, berurut menaik dan tanpa
+// pengulangan.
+func bindNumbers(sqlText string) []int {
+	pola := regexp.MustCompile(`:(\d+)`)
+
+	ada := map[int]bool{}
+	for _, m := range pola.FindAllStringSubmatch(sqlText, -1) {
+		n, err := strconv.Atoi(m[1])
+		if err != nil {
+			continue
+		}
+		ada[n] = true
+	}
+
+	result := make([]int, 0, len(ada))
+	for n := range ada {
+		result = append(result, n)
+	}
+	sort.Ints(result)
+	return result
+}
+
+// TestEveryQueryBindsExactlyTheNumbersItsCallerPasses mengunci JUMLAH bind tiap kueri.
+//
+// # Kenapa uji ini ada, dan kenapa sqlmock tidak dapat menggantikannya
+//
+// Pernah terjadi (2026-10-09): penyaring pencarian disunting ke dalam kueri `list_export`,
+// bukan `list`, karena teks kedua kueri itu berakhir IDENTIK dan penanda yang dipakai untuk
+// membedakannya justru menunjuk yang kedua. Akibatnya `List` mengirim enam argumen ke
+// pernyataan berbind tiga, dan Oracle menjawab `ORA-01006: bind variable does not exist` —
+// layar kosong dengan pesan "Terjadi kesalahan pada sistem".
+//
+// Seluruh uji sqlmock LOLOS saat itu, dan tidak mungkin tidak: ia menyusun harapannya dari
+// `query(name)` yang sama, lalu membandingkan daftar argumen dengan daftar yang ditulis
+// tangan di ujinya sendiri. Tidak ada satu pun pihak di sana yang pernah membaca berapa bind
+// yang benar-benar ada di dalam teks SQL-nya.
+//
+// Uji ini membaca teks SQL-nya langsung. Ia juga menolak nomor yang MELOMPAT — menambah bind
+// di tengah tanpa menggeser yang sesudahnya adalah cara paling mudah merusak kueri ini.
+func TestEveryQueryBindsExactlyTheNumbersItsCallerPasses(t *testing.T) {
+	// Angkanya WAJIB sama dengan jumlah argumen yang dikirim pemanggilnya di
+	// inboxosclaimpercabang.go, detail.go, dan summary.go.
+	expected := map[string]int{
+		"list":        6, // cabang · ada-pencarian · pola klaim · pola polis · offset · ukuran
+		"list_export": 3, // cabang · offset · ukuran — ekspor TIDAK mengikuti kotak cari
+	}
+
+	for name, want := range expected {
+		binds := bindNumbers(query(name))
+		require.Lenf(t, binds, want,
+			"kueri %s memakai %d bind, bukan %d — periksa apakah suntingan masuk ke kueri "+
+				"yang benar", name, len(binds), want)
+
+		for i, n := range binds {
+			require.Equalf(t, i+1, n,
+				"kueri %s melompati nomor bind di posisi %d", name, i+1)
+		}
 	}
 }
 
@@ -238,19 +315,44 @@ func TestTreatyValuesFollowTheAliasOrder(t *testing.T) {
 	}
 }
 
-func TestOnlyExportTouchesTheDatabaseLink(t *testing.T) {
+func TestOnlyIsolatedQueriesTouchTheDatabaseLink(t *testing.T) {
 	// DB Link `@asmd` adalah ketergantungan ke basis data lain, dan `D-25` menetapkan ia
-	// kelak diganti API. Selama itu belum tiba, ia hanya boleh disentuh EKSPOR — layar tidak
-	// boleh berhenti bekerja karena link yang sedang padam.
-	allowed := map[string]bool{"list_export": true, "check_export_tables": true}
+	// kelak diganti API. Selama itu belum tiba, aturannya BUKAN "hanya ekspor", melainkan:
+	// kueri yang menyentuhnya harus dapat gagal SENDIRIAN tanpa mengosongkan layar.
+	//
+	// Ketiganya memenuhi syarat itu, masing-masing dengan cara yang berbeda:
+	//
+	//   list_export, check_export_tables — ekspor adalah tindakan tersendiri; kegagalannya
+	//     memunculkan pesan pada tombolnya dan tidak menyentuh grid.
+	//   summary_treaty_or — dibaca TERPISAH dari `summary_rows`, dan usecase menelan
+	//     galatnya menjadi `ReserveORAvailable = false`, sehingga satu kartu angka kosong
+	//     sementara seluruh panel dan grid tetap utuh.
+	//
+	// Yang DILARANG adalah kueri yang menyentuh link di jalur utama — `list`, `detail_*`,
+	// `summary_rows` — karena link padam di sana berarti layar padam.
+	isolated := map[string]bool{
+		"list_export":         true,
+		"check_export_tables": true,
+		"summary_treaty_or":   true,
+	}
 
 	for name, text := range queries {
-		if allowed[name] {
+		if isolated[name] {
 			continue
 		}
 		require.NotContainsf(t, strings.ToLower(text), "@asmd",
-			"kueri %s menyentuh DB Link; hanya ekspor yang boleh", name)
+			"kueri %s menyentuh DB Link di jalur utama; link padam akan memadamkan layar", name)
 	}
+}
+
+func TestTreatyORIsReadApartFromTheRestOfTheSummary(t *testing.T) {
+	// Pemisahan inilah yang membuat pengecualian di atas sah. Bila porsi treaty kelak
+	// digabungkan ke `summary_rows` demi menghemat satu perjalanan, seluruh panel akan ikut
+	// padam saat DB Link terganggu — dan pengecualiannya tidak lagi punya dasar.
+	require.NotContains(t, strings.ToLower(queries["summary_rows"]), "treaty_loss",
+		"summary_rows ikut membaca treaty; panel akan padam bersama DB Link")
+	require.Contains(t, strings.ToLower(queries["summary_treaty_or"]), "treaty_loss",
+		"summary_treaty_or tidak lagi membaca treaty")
 }
 
 func TestStalledMarkerAsksForThreeIdenticalProgressEntries(t *testing.T) {
@@ -301,11 +403,14 @@ func TestDetailHeaderKeepsTheSameBoundariesAsTheList(t *testing.T) {
 }
 
 func TestDetailChildQueriesAreKeyedNotBrowsable(t *testing.T) {
-	// Keempat kueri anak menerima kunci klaim, bukan kode cabang, karena batas cabangnya
+	// Kesembilan kueri anak menerima kunci klaim, bukan kode cabang, karena batas cabangnya
 	// sudah ditegakkan detail_header. Yang WAJIB dijaga: tak satu pun boleh berjalan tanpa
 	// kunci — kueri tanpa WHERE akan mengembalikan isi seluruh tabel.
 	for _, name := range []string{
-		"detail_objects", "detail_progress", "detail_messages", "detail_dominant_factors",
+		"detail_objects", "detail_object_coverages", "detail_object_items",
+		"detail_estimations", "detail_coverage_spreading", "detail_coverage_comember",
+		"detail_progress", "detail_messages",
+		"detail_dominant_factors",
 	} {
 		require.Containsf(t, strings.ToUpper(query(name)), "WHERE",
 			"kueri %s tidak punya penyaring sama sekali", name)

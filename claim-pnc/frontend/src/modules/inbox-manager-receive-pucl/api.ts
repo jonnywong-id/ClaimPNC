@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
+import { callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -154,62 +154,8 @@ export function useReceiveDocumentAction() {
 }
 
 /**
- * Hook tombol ekspor.
- *
- * # Kenapa berkasnya diambil dengan fetch, bukan dengan tautan unduh biasa
- *
- * Karena `<a href>` dan `window.open` TIDAK membawa header — dan endpoint ini menuntut dua:
- * `Authorization` dan `X-Portal`. Satu-satunya cara memakai tautan biasa adalah menaruh
- * token di dalam alamat, dan itu ditolak dengan alasan yang sudah dicatat di
- * `api/client.ts`: nilai di URL ikut tercatat di riwayat peramban, log proxy, dan header
- * Referer. Berkas ini memuat nomor polis dan nama tertanggung; jejaknya tidak boleh
- * tertinggal di sana.
- *
- * # Isinya mengikuti TAB yang sedang terbuka
- *
- * Ketiga tab punya kolom yang berbeda, sehingga berkasnya pun berbeda susunannya. Tab yang
- * sedang dilihat dikirim ke endpoint ekspor persis seperti ke endpoint daftar — berkas yang
- * isinya tidak dapat dicocokkan dengan layar adalah berkas yang menyesatkan.
- *
- * # Biaya yang disadari
- *
- * Peladen MENGALIRKAN berkasnya potong demi potong, tetapi peramban menampungnya utuh
- * sebagai Blob sebelum menyimpannya. Manfaat pengaliran karena itu tinggal di sisi peladen —
- * memorinya tetap datar — sedangkan memori peramban tumbuh sebesar berkasnya. Pada batas
- * 50.000 baris itu beberapa megabita, dan dapat diterima.
- */
-export function useExportManagerReceivePUCL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
-  return useMutation({
-    mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
-
-      const params = tabParams(tab).toString()
-      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
-
-      const response = await fetch(address, { headers: header })
-      if (!response.ok) {
-        // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
-        // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
-      }
-
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-manager-receive-pucl.csv')
-    },
-  })
-}
-
-/**
  * tabParams menyusun satu-satunya isian penyaring layar ini.
  *
- * Ia dipakai daftar DAN ekspor, supaya keduanya tidak dapat membaca tab dengan cara yang
- * berbeda.
  *
  * Tab yang kosong TIDAK dikirim, bukan dikirim sebagai teks kosong: server membedakan
  * "tidak dikirim" dari "dikirim kosong", dan yang pertama berarti tab bawaan.
@@ -227,30 +173,4 @@ function buildPath(tab: string, page: number): string {
 
   const query = params.toString()
   return query ? `${PATH}?${query}` : PATH
-}
-
-/** filenameOf membaca nama berkas dari header Content-Disposition. */
-function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
-}
-
-/**
- * downloadBlob menyimpan berkas lewat tautan sementara.
- *
- * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban sampai
- * tab ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor menumpuk memori
- * yang tidak pernah dilepas.
- */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }

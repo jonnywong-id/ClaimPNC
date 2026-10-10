@@ -61,7 +61,26 @@ FROM POOLDATA.M_KPI_PNC
 WHERE TIPE = 'PIC'
   AND JOB = :1
   AND NILAI IS NOT NULL
-  AND (:2 IS NULL OR NOTE = :2)
+  AND (:2 IS NULL OR NOTE = :3)
+ORDER BY ID
+
+-- name: adjuster_categories
+-- Pita KATEGORI adjuster — kolom terakhir grid Summary dan Detail KPI Adjuster.
+--
+-- Di Pega kolom ini diisi section `KategoriKPI`, yang mencari pita dengan cara yang sama
+-- seperti `GetNilaiKPIPIC`: `BOTTOM <= nilai AND TOP >= nilai`. Pencariannya dikerjakan Go
+-- (lihat reportkpi.CategoryFor); yang dilakukan di sini hanya membaca pitanya.
+--
+-- `TIPE` di sini ADJUSTER, bukan PIC — dan itulah satu-satunya sebab kueri ini tidak dapat
+-- memakai ulang kueri `bands`.
+SELECT
+    BOTTOM,
+    TOP,
+    NOTE
+FROM POOLDATA.M_KPI_PNC
+WHERE TIPE = 'ADJUSTER'
+  AND JOB = :1
+  AND NOTE IS NOT NULL
 ORDER BY ID
 
 -- name: threshold_days
@@ -71,24 +90,9 @@ FROM POOLDATA.M_KPI_PNC
 WHERE TIPE = 'PIC'
   AND JOB = :1
   AND DAY IS NOT NULL
-  AND (:2 IS NULL OR NOTE = :2)
+  AND (:2 IS NULL OR NOTE = :3)
 ORDER BY ID
 FETCH FIRST 1 ROW ONLY
-
--- name: holidays
--- Hari libur pada satu rentang, DI LUAR akhir pekan. Meniru `CheckHoliday_SQL`.
---
--- Akhir pekan dikecualikan di sini, bukan di Go, dan itu disengaja: begitulah kueri lama
--- melakukannya, sehingga libur yang jatuh pada Sabtu atau Minggu tidak terpotong dua kali.
---
--- Nama harinya dibandingkan dalam dua bahasa karena `TO_CHAR(...,'DAY')` mengikuti setelan
--- bahasa sesi basis data — dan setelan itu tidak dijamin sama antar lingkungan.
-SELECT TANGGAL
-FROM GENERAL.HRD_LBR
-WHERE TANGGAL >= :1
-  AND TANGGAL < :2 + INTERVAL '1' DAY
-  AND TRIM(TO_CHAR(TANGGAL, 'DAY')) NOT IN ('SABTU', 'MINGGU', 'SATURDAY', 'SUNDAY')
-ORDER BY TANGGAL
 
 -- name: progress_counts
 -- Cacah pembaruan progres per PIC. Meniru `GetProgressForKPIPIC`.
@@ -160,7 +164,6 @@ WHERE b.ADJUSTMENTID = (
   AND a.PICTEKNIK IS NOT NULL
   AND a.REGISTERDATE >= :1
   AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
-  /*LINE_FILTER*/
 
 -- name: acceptance_spans
 -- Pasangan tanggal penilaian Akseptasi Klaim. Meniru `DataAkseptasiPIC`.
@@ -179,7 +182,6 @@ WHERE b.NOAKSEPTASI IS NOT NULL
   AND a.PICTEKNIK IS NOT NULL
   AND b.TGLAKSEPTASI >= :1
   AND b.TGLAKSEPTASI < :2 + INTERVAL '1' DAY
-  /*LINE_FILTER*/
 
 -- name: closure_spans
 -- Pasangan tanggal penilaian SLA Klaim. Meniru `GetDataClosePIC`.
@@ -194,4 +196,85 @@ WHERE a.STATUSWORK = 'Resolved-Completed'
   AND a.PICTEKNIK IS NOT NULL
   AND a.REGISTERDATE >= :1
   AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
-  /*LINE_FILTER*/
+
+-- # Probe `-periksa`
+--
+-- Satu probe per objek yang dibaca tab ini. Masing-masing menyebut KOLOM yang benar-benar
+-- dipakai, bukan sekadar `SELECT 1` — karena kolom yang hilang (`ORA-00904`) sama sering
+-- terjadi dengan tabel yang hilang (`ORA-00942`), dan keduanya menghentikan tab ini.
+--
+-- `WHERE 1 = 0` membuat probe tidak membaca satu baris pun: yang diperiksa keberadaan
+-- objek, hak SELECT, dan nama kolomnya — bukan isinya.
+
+-- name: probe_pic
+SELECT OPERATOR_ID, STS_LEADER, TYPE_BUSINESS
+FROM POOLDATA.MST_USER_TEKNIK
+WHERE 1 = 0
+
+-- name: probe_tangga_nilai
+SELECT ID, TIPE, JOB, NILAI, BOTTOM, TOP, NOTE, DAY
+FROM POOLDATA.M_KPI_PNC
+WHERE 1 = 0
+
+-- name: probe_progres
+SELECT PNCCASEID, ID_UPDATE, TGL_INPUT, KETERANGAN, USER_INPUT, NEXT_FOLLOWUP
+FROM POOLDATA.GCNM_PROGRESS_CLAIM
+WHERE 1 = 0
+
+-- name: probe_dashboard
+SELECT NOKLAIM, STSKLAIM, PIC
+FROM POOLDATA.PEGA_DASHBOARDPNC
+WHERE 1 = 0
+
+-- name: probe_klaim
+SELECT CLAIMID, PICTEKNIK, LEADER_MEMBER, REGISTERDATE, CLOSECLAIMDATE, STATUSWORK, TGLDOKLENGKAP
+FROM POOLDATA.T_CLAIM_PNC
+WHERE 1 = 0
+
+-- name: probe_adjustment
+SELECT CLAIMID, ADJUSTMENTID, NOAKSEPTASI, TGLAKSEPTASI, RECEIVEDATELOD, ACCEPTANCE_DATECOMITEE, ANALYST_TFKOMITEDATE
+FROM POOLDATA.T_CLAIM_ADJUSTMENT
+WHERE 1 = 0
+
+-- name: probe_followup_aritmetika
+-- Membuktikan NEXT_FOLLOWUP dapat DIHITUNG sebagai tanggal, bukan sekadar ada.
+--
+-- Ia dipakai sebagai `c.NEXT_FOLLOWUP + INTERVAL '1' DAY` di `progress_counts`. Bila
+-- kolomnya bertipe teks, objek dan kolomnya tetap terbaca oleh probe di atas, tetapi
+-- kuerinya tetap gagal dengan `ORA-00932`. Probe ini yang membedakan keduanya — tipenya
+-- belum pernah dipastikan (`R-08`: DDL belum ada).
+SELECT NEXT_FOLLOWUP + INTERVAL '1' DAY AS BESOK
+FROM POOLDATA.GCNM_PROGRESS_CLAIM
+WHERE 1 = 0
+
+-- name: holidays_dblink
+-- Kalender hari libur lewat DB LINK — jalur CADANGAN, dijalankan di koneksi POOLDATA.
+--
+-- # Kenapa ada dua jalur untuk satu kalender
+--
+-- Jalur utamanya `holidays` di `reportkpi_aneka.sql`, yang memakai koneksi kedua portal
+-- sesuai `D-25`/`R-03`. Jalur ini dipakai HANYA bila koneksi kedua itu belum terpasang.
+--
+-- Ia bukan jalan pintas, melainkan PERSIS yang dilakukan sistem lama:
+-- `RDB List/CheckHoliday_SQL-SQL.xml` membaca objek yang sama lewat DB Link yang sama.
+-- Jadi memakainya berarti mengikuti Pega apa adanya (`P-5`), bukan menyimpang darinya.
+--
+-- # Kenapa ia tetap CADANGAN, bukan jalur utama
+--
+-- `D-25` menetapkan DB Link diganti, dan alasannya tidak hilang karena ia kebetulan masih
+-- hidup hari ini: DB Link tidak ada di PostgreSQL, sehingga kueri ini TIDAK PORTABEL dan
+-- akan mati pada perpindahan basis data (`D-01`, `D-24`). Ia jembatan selama masa paralel
+-- — pemakaiannya dicatat sebagai peringatan di log supaya tidak diam-diam menjadi
+-- permanen.
+SELECT TANGGAL
+FROM GENERAL.HRD_LBR@ASMD.SINARMAS.CO.ID
+WHERE TANGGAL >= :1
+  AND TANGGAL < :2 + INTERVAL '1' DAY
+  AND TRIM(TO_CHAR(TANGGAL, 'DAY')) NOT IN ('SABTU', 'MINGGU', 'SATURDAY', 'SUNDAY')
+ORDER BY TANGGAL
+
+-- name: probe_hari_libur_dblink
+-- Probe `-periksa` untuk jalur CADANGAN: kalender libur lewat DB Link.
+SELECT TANGGAL
+FROM GENERAL.HRD_LBR@ASMD.SINARMAS.CO.ID
+WHERE 1 = 0

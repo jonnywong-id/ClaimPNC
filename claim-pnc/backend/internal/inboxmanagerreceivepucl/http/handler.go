@@ -179,7 +179,7 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 
 // prepare memeriksa portal dan identitas pemanggil sekaligus.
 //
-// Ia dikumpulkan karena List dan Export menuntut keduanya dengan urutan yang sama, dan
+// Ia dikumpulkan sebagai fungsi tersendiri supaya pembacaan parameternya berada di satu tempat, dan
 // urutan itu penting: portal diperiksa LEBIH DULU, supaya permintaan tanpa portal dijawab
 // sebagai permintaan tanpa portal — bukan sebagai sesi yang tidak lengkap (`R-20`).
 func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
@@ -205,7 +205,7 @@ func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (
 // Hanya satu: tab mana yang diminta. Layar lama tidak punya satu pun kotak cari maupun
 // checkbox — lihat catatan di inboxmanagerreceivepucl.Query.
 //
-// Ia tetap dikumpulkan sebagai fungsi tersendiri supaya daftar dan ekspor membaca parameter
+// Ia tetap dikumpulkan sebagai fungsi tersendiri supaya pembacaan parameter daftar
 // yang SAMA PERSIS. Ekspor yang membaca tab dengan cara berbeda akan menghasilkan berkas
 // yang isinya tidak dapat dicocokkan dengan apa pun di layar.
 func readFilter(query map[string][]string) inboxmanagerreceivepucl.QueryInput {

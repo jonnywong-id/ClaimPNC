@@ -53,9 +53,6 @@ const TAB_OUTSTANDING: Tab = {
   ],
   label_pencarian: 'CARI NO KLAIM',
   pencarian_cocok_persis: false,
-  catatan_daftar:
-    'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah baris di sini.',
-
   // Barisnya KLAIM — rincian dibuka dengan NOMOR KLAIM.
   kunci_rincian: 'klaim',
   membuka_form_sunting: false,
@@ -77,8 +74,6 @@ const TAB_CHECKER: Tab = {
   ],
   label_pencarian: 'CARI NO KLAIM ATAU PIC',
   pencarian_cocok_persis: true,
-  catatan_daftar: 'Pencarian di daftar ini COCOK PERSIS, bukan mengandung.',
-
   // Barisnya PENGAJUAN — rincian dibuka dengan ID PENGAJUAN.
   kunci_rincian: 'pengajuan',
   membuka_form_sunting: false,
@@ -113,10 +108,6 @@ const METADATA: MetadataResponse = {
     { kode: 'USD', label: 'USD' },
   ],
   kolom_berkas_unggahan: ['item', 'quantity', 'satuan', 'remarks'],
-  selisih_terencana: [
-    'Angka pada baris "Outstanding" di tabel ringkas TIDAK sama dengan jumlah barisnya.',
-    'Kolom "Catatan" SELALU KOSONG.',
-  ],
   portal: 'ASM',
 }
 
@@ -127,8 +118,9 @@ const METADATA: MetadataResponse = {
  * punya tab. Uji di bawah memastikan ia digambar sebagai teks biasa — bukan tombol yang
  * tidak melakukan apa-apa.
  *
- * Angka baris "Outstanding" sengaja BERBEDA dari jumlah baris daftarnya, karena begitulah
- * keadaannya di Pega.
+ * Angka baris "Outstanding" di sini tidak dimaksudkan sepadan dengan jumlah baris mana pun:
+ * data contoh ini hanya menguji penggambaran tabel ringkas. Hubungan angka dengan daftarnya
+ * dijaga di backend — lihat `TestOutstandingCounterMatchesItsOwnList`.
  */
 const COUNTS: CountsResponse = {
   baris: [
@@ -344,16 +336,38 @@ function renderPage() {
 }
 
 /**
- * renderLoaded menggambar layar lalu MENUNGGU bentuknya tiba.
+ * renderRingkas menggambar layar lalu MENUNGGU ringkasannya tiba — dan berhenti di situ.
  *
  * Penantiannya pada tabel ringkas, bukan pada judul layar: judulnya sudah ada sejak
  * penggambaran pertama, sementara tabel ringkas baru tiba bersama jawaban `/ringkas`.
+ *
+ * Inilah keadaan yang dilihat petugas saat membuka layar: ringkasan saja, tanpa daftar.
+ * Uji yang memang menguji keadaan itu memakai helper ini.
  */
-async function renderLoaded() {
+async function renderRingkas() {
   renderPage()
   await screen.findByRole('table', {
     name: 'Ringkasan jumlah pengajuan per status salvage',
   })
+}
+
+/**
+ * renderLoaded menggambar layar DAN membuka satu daftar.
+ *
+ * # Kenapa ia membuka daftar, padahal layar tidak lagi membukanya sendiri
+ *
+ * Karena sejak 2026-10-08 daftar baru digambar setelah sebuah status diklik, sementara
+ * sebagian besar uji di berkas ini menguji ISI DAFTAR — bukan keadaan sebelum ada daftar.
+ * Tanpa langkah ini setiap uji itu harus mengulang klik yang sama, dan yang diuji tidak
+ * bertambah satu pun.
+ *
+ * Daftar yang dibuka adalah "Outstanding" — baris pertama tabel ringkas, dan `daftar_bawaan`
+ * pada metadata contoh. Uji yang membutuhkan daftar lain memanggil pilihDaftar sesudahnya,
+ * persis seperti petugas berpindah daftar.
+ */
+async function renderLoaded() {
+  await renderRingkas()
+  await pilihDaftar('Outstanding')
 }
 
 /**
@@ -418,9 +432,126 @@ it('berpindah daftar mengganti susunan kolomnya', async () => {
   expect(screen.queryByRole('columnheader', { name: 'COB' })).not.toBeInTheDocument()
 })
 
+// ── Daftar baru keluar setelah status diklik (2026-10-08) ───────────────────────────
+
+/**
+ * Keadaan yang dilihat petugas saat membuka layar: ringkasan saja.
+ *
+ * Yang diperiksa bukan hanya gridnya tidak tergambar, melainkan daftarnya TIDAK DITEMBAK
+ * sama sekali. Keduanya berbeda: grid yang disembunyikan sementara permintaannya tetap
+ * berjalan membebani basis data untuk jawaban yang tidak pernah dilihat siapa pun — dan
+ * kueri modul ini menyentuh puluhan juta baris.
+ */
+it('membuka layar TANPA daftar, dan tanpa menembak daftar apa pun', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  expect(screen.queryByRole('table', { name: /^Daftar / })).not.toBeInTheDocument()
+  expect(lastListCall()).toBeUndefined()
+
+  // Ringkasannya sendiri tetap tergambar, dan kalimat ajakannya ada.
+  expect(
+    screen.getByRole('table', { name: 'Ringkasan jumlah pengajuan per status salvage' }),
+  ).toBeInTheDocument()
+  expect(screen.getByText(/Pilih salah satu/)).toBeInTheDocument()
+})
+
+/** Barisnya menyatakan dirinya DAPAT DIBUKA, dan menyatakan sedang terbuka atau belum. */
+it('baris ringkas menyatakan keadaan terbukanya lewat aria-expanded', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  const ringkas = screen.getByRole('table', {
+    name: 'Ringkasan jumlah pengajuan per status salvage',
+  })
+  const baris = within(ringkas).getByRole('button', { name: 'Checker' })
+  expect(baris).toHaveAttribute('aria-expanded', 'false')
+
+  await userEvent.click(baris)
+  expect(
+    within(ringkas).getByRole('button', { name: 'Checker' }),
+  ).toHaveAttribute('aria-expanded', 'true')
+})
+
+/**
+ * Tambah dan Refresh harus dapat ditekan SEBELUM ada daftar yang dibuka.
+ *
+ * Keduanya dulu hidup di dalam toolbar grid. Sejak grid tidak lagi digambar lebih dulu,
+ * membiarkannya di sana berarti layar yang baru dibuka tidak punya satu pun tombol —
+ * termasuk satu-satunya jalan membuat pengajuan baru.
+ */
+it('Tambah dan Refresh tetap ada sebelum satu daftar pun dibuka', async () => {
+  stubDefaultFetch()
+  await renderRingkas()
+
+  expect(screen.getByRole('button', { name: 'Tambah' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+  expect(
+    await screen.findByRole('form', { name: 'Menambahkan Data Salvage' }),
+  ).toBeInTheDocument()
+})
+
+/**
+ * Ringkasan yang KOSONG tidak boleh menjadi layar tanpa pintu.
+ *
+ * Sejak tabel ringkas menjadi satu-satunya navigasi, ringkasan yang tidak tergambar berarti
+ * tidak ada yang dapat diklik — dan kalimat "pilih salah satu Status Salvage" menunjuk ke
+ * tempat kosong. Layar jatuh ke `daftar_bawaan` supaya tetap dapat dipakai.
+ */
+/**
+ * Peladen tiruan yang ringkasannya TIDAK dapat dipakai sebagai navigasi.
+ *
+ * `ringkas` menjawab apa yang diminta pemanggil — baris kosong, atau galat — sementara
+ * metadata dan daftarnya tetap sehat. Itu memisahkan kegagalan ringkasan dari kegagalan
+ * layar, dan hanya yang pertama yang diuji di sini.
+ */
+function stubRingkasTidakTerpakai(ringkas: Response) {
+  stubFetch((url) => {
+    if (url === META_PATH) return jsonResponse(200, METADATA)
+    if (url === COUNTS_PATH) return ringkas
+
+    return jsonResponse(200, {
+      daftar: TAB_OUTSTANDING,
+      baris: [BARIS],
+      paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+      cari: '',
+      portal: 'ASM',
+    })
+  })
+}
+
+/**
+ * Ringkasan yang KOSONG tidak boleh menjadi layar tanpa pintu.
+ *
+ * Sejak tabel ringkas menjadi satu-satunya navigasi, ringkasan yang tidak tergambar berarti
+ * tidak ada yang dapat diklik — dan kalimat "pilih salah satu Status Salvage" menunjuk ke
+ * tempat kosong. Layar jatuh ke `daftar_bawaan` supaya tetap dapat dipakai.
+ */
+it('ringkasan kosong membuat layar jatuh ke daftar bawaan, bukan menjadi jalan buntu', async () => {
+  stubRingkasTidakTerpakai(jsonResponse(200, { baris: [], portal: 'ASM' }))
+  renderPage()
+
+  // `daftar_bawaan` pada metadata contoh adalah Salvage Outstanding.
+  expect(
+    await screen.findByRole('table', { name: 'Daftar Salvage Outstanding' }),
+  ).toBeInTheDocument()
+})
+
+/** Ringkasan yang GAGAL dimuat diperlakukan sama — layar tetap dapat dipakai. */
+it('ringkasan yang gagal dimuat juga jatuh ke daftar bawaan', async () => {
+  stubRingkasTidakTerpakai(jsonResponse(500, { kode: 'x', pesan: 'Gagal.' }))
+  renderPage()
+
+  expect(
+    await screen.findByRole('table', { name: 'Daftar Salvage Outstanding' }),
+  ).toBeInTheDocument()
+})
+
 it('mengklik baris tabel ringkas membuka daftarnya', async () => {
   stubDefaultFetch()
-  await renderLoaded()
+  await renderRingkas()
 
   const ringkas = await screen.findByRole('table', {
     name: /Ringkasan jumlah pengajuan/,
@@ -524,14 +655,18 @@ it('menggambar sel kosong sebagai tanda pisah', async () => {
   expect(within(sel as HTMLElement).getAllByText('—').length).toBeGreaterThan(0)
 })
 
-it('menyatakan selisih terencana kepada pengguna', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+//
+// Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+// adalah ia berhenti menjadi isi layar.
+it('tidak lagi menggambar panel selisih terencana', async () => {
   stubDefaultFetch()
   await renderLoaded()
 
   expect(
-    await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega/),
-  ).toBeInTheDocument()
-  expect(screen.getByText(/Kolom "Catatan" SELALU KOSONG/)).toBeInTheDocument()
+    screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(/Kolom "Catatan" SELALU KOSONG/)).not.toBeInTheDocument()
 })
 
 it('berpindah daftar mengosongkan kata kunci pencarian', async () => {
@@ -1645,7 +1780,21 @@ function stubRejectedFetch(onPost?: (body: string) => Response) {
         daftar_bawaan: TAB_REJECTED.kode,
       })
     }
-    if (url === COUNTS_PATH) return jsonResponse(200, COUNTS)
+    // Ringkasan di sini membawa BARIS SENDIRI yang menuju daftar Rejected Checker.
+    //
+    // Tanpa baris itu daftar tersebut tidak dapat dibuka siapa pun: sejak 2026-10-08
+    // tabel ringkas adalah satu-satunya pintu masuknya, dan `daftar_bawaan` tidak lagi
+    // membukanya sendiri. Keadaan "daftar ada tetapi tidak ada barisnya" persis yang
+    // `TestEveryVisibleListIsReachableFromACounterRow` tolak di sisi server.
+    if (url === COUNTS_PATH) {
+      return jsonResponse(200, {
+        ...COUNTS,
+        baris: [
+          ...COUNTS.baris,
+          { status_salvage: 'Rejected Checker', jumlah: 1, daftar: TAB_REJECTED.kode },
+        ],
+      })
+    }
 
     if (url === PATH && init?.method === 'POST' && onPost !== undefined) {
       return onPost(String(init.body))
@@ -1663,10 +1812,15 @@ function stubRejectedFetch(onPost?: (body: string) => Response) {
   })
 }
 
-/** openRejected membuka baris pertama daftar Rejected Checker. */
+/**
+ * openRejected membuka daftar Rejected Checker lalu baris pertamanya.
+ *
+ * Dua langkah, bukan satu, karena begitulah jalan penggunanya sejak 2026-10-08: pilih
+ * statusnya di tabel ringkas, baru barisnya muncul.
+ */
 async function openRejected(): Promise<HTMLElement> {
-  renderPage()
-  await screen.findByRole('table', { name: 'Ringkasan jumlah pengajuan per status salvage' })
+  await renderRingkas()
+  await pilihDaftar('Rejected Checker')
   await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
   return screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
 }

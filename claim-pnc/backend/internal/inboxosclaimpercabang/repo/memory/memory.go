@@ -90,14 +90,32 @@ func (s *Store) List(
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	matched := s.matching(query)
-
-	items := make([]inboxosclaimpercabang.WorkItem, 0, len(matched))
-	for _, r := range matched {
+	// Pencarian disaring DI SINI, bukan di `matching`. `matching` dipakai bersama
+	// ListForExport, dan berkas ekspor sengaja TIDAK mengikuti kotak cari — menaruhnya di
+	// sana akan diam-diam mengubah isi berkas.
+	items := make([]inboxosclaimpercabang.WorkItem, 0, len(s.rows))
+	for _, r := range s.matching(query) {
+		if !cocok(r.item.WorkItem, query.Search) {
+			continue
+		}
 		items = append(items, r.item.WorkItem)
 	}
 
 	return inboxosclaimpercabang.Slice(items, page), nil
+}
+
+// cocok memutuskan apakah satu baris lolos kotak cari.
+//
+// Dicocokkan ke NOMOR KLAIM dan NOMOR POLIS, tanpa membedakan besar kecil huruf — sama
+// dengan `UPPER(...) LIKE '%...%'` pada pengisi SQL. Kecocokan sebagian, bukan sama persis:
+// penyelia mengetik beberapa angka terakhir nomor polis, bukan seluruhnya.
+func cocok(item inboxosclaimpercabang.WorkItem, search string) bool {
+	needle := strings.ToUpper(strings.TrimSpace(search))
+	if needle == "" {
+		return true
+	}
+	return strings.Contains(strings.ToUpper(item.ClaimNumber), needle) ||
+		strings.Contains(strings.ToUpper(item.PolicyNumber), needle)
 }
 
 // ListForExport mengembalikan satu halaman baris berkas ekspor.

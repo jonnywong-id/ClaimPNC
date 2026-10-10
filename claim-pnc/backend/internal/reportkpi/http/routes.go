@@ -92,6 +92,8 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		//
 		// Tidak ada rute rincian terpisah, dan itu bukan kekurangan: rinciannya adalah
 		// keempat baris di dalam kartu itu sendiri.
+		// DUA ekspor, seperti Pega: yang satu penilaiannya, yang lain data klaim mentah.
+		perPortal.Get("/report-kpi/pic-teknik/ekspor-laporan", h.PICTeknikLaporanExport)
 		perPortal.Get("/report-kpi/pic-teknik/ekspor", h.PICTeknikExport)
 		perPortal.Get("/report-kpi/pic-teknik", h.PICTeknik)
 

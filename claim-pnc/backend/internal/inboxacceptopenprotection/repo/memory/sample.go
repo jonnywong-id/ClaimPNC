@@ -108,6 +108,12 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 				CauseOfLossAfter:  "12002",
 				ObjectName:        "Objek Contoh",
 				BranchName:        "Cabang Contoh",
+
+				// Sasarannya ikut terisi: tanpa keduanya, menyetujui baris ini tidak akan
+				// mengubah coverage mana pun — dan pengembangan lokal akan memperlihatkan
+				// jalur yang TIDAK dipakai di produksi.
+				ObjectID:         "1",
+				ObjectCoverageID: "2",
 			},
 		},
 		{

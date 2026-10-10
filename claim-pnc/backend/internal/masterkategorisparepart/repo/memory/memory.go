@@ -13,7 +13,6 @@ package memory
 import (
 	"context"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -91,29 +90,20 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// sortByID mengurutkan seperti `ORDER BY PART_CATEGORY_ID` pada kolom bertipe ANGKA.
+// sortByID mengurutkan dengan aturan yang SAMA PERSIS dengan adapter SQL.
 //
-// Bukan pengurutan teks — dan itu berbeda dari Master Sparepart, yang ID-nya memang teks
-// sehingga "10" berada sebelum "9" di sana. Di sini kolomnya angka (lihat banner berkas
-// .sql), jadi 9 mendahului 10.
+// Keduanya memakai masterkategorisparepart.SortKey, yang di sisi SQL berbentuk
+// `LPAD(TRIM(PART_CATEGORY_ID), 10, '0')`. Kolomnya `VARCHAR2(10)`, sehingga
+// `ORDER BY PART_CATEGORY_ID` apa adanya akan menaruh "10" sebelum "9" — dan kalau adapter
+// memori mengurutkan secara numerik sementara SQL mengurutkan secara teks, uji yang lulus
+// di sini tidak membuktikan apa pun tentang yang berjalan di produksi.
 //
-// Kunci yang tidak dapat dibaca sebagai angka ditaruh di BELAKANG seluruh yang dapat, lalu
-// diurutkan sebagai teks di antara sesamanya. Ia keadaan yang tidak seharusnya ada, dan
-// menaruhnya di belakang membuatnya terlihat alih-alih tersebar di tengah daftar.
+// Kunci yang bentuknya janggal terurut paling belakang pada kedua adapter, karena huruf
+// berada di atas angka pada perbandingan teks.
 func sortByID(list []masterkategorisparepart.PartCategory) {
 	sort.SliceStable(list, func(i, j int) bool {
-		left, leftErr := strconv.ParseInt(strings.TrimSpace(list[i].ID), 10, 64)
-		right, rightErr := strconv.ParseInt(strings.TrimSpace(list[j].ID), 10, 64)
-		switch {
-		case leftErr == nil && rightErr == nil:
-			return left < right
-		case leftErr == nil:
-			return true
-		case rightErr == nil:
-			return false
-		default:
-			return list[i].ID < list[j].ID
-		}
+		return masterkategorisparepart.SortKey(list[i].ID) <
+			masterkategorisparepart.SortKey(list[j].ID)
 	})
 }
 
@@ -192,8 +182,13 @@ func (r *Repo) Insert(
 		}
 	}
 
+	id, err := r.nextID()
+	if err != nil {
+		return masterkategorisparepart.PartCategory{}, err
+	}
+
 	fresh := masterkategorisparepart.PartCategory{
-		ID:     r.nextID(),
+		ID:     id,
 		Name:   c.Name,
 		Status: c.Status,
 	}
@@ -201,19 +196,18 @@ func (r *Repo) Insert(
 	return fresh, nil
 }
 
-// nextID meniru `COALESCE(MAX(PART_CATEGORY_ID), 0) + 1`.
+// nextID menerbitkan kunci berikutnya lewat aturan domain yang sama dengan adapter SQL.
 //
-// Kunci yang tidak dapat dibaca sebagai angka DILEWATI, bukan membuat penerbitan gagal —
-// sama seperti `MAX` pada basis data yang mengabaikan nilai yang tidak ikut terhitung.
-func (r *Repo) nextID() string {
-	var highest int64
+// Perhitungannya TIDAK disalin ke sini: masterkategorisparepart.NextKey yang memilikinya,
+// sehingga maksimum numerik, pelewatan kunci janggal, dan batas lebar kolom berperilaku
+// identik pada kedua adapter. Lihat catatan pada NextKey untuk alasan ia tidak meniru
+// `nvl(max(...),0)+1` milik Pega.
+func (r *Repo) nextID() (string, error) {
+	existing := make([]string, 0, len(r.rows))
 	for _, c := range r.rows {
-		number, err := strconv.ParseInt(strings.TrimSpace(c.ID), 10, 64)
-		if err == nil && number > highest {
-			highest = number
-		}
+		existing = append(existing, c.ID)
 	}
-	return strconv.FormatInt(highest+1, 10)
+	return masterkategorisparepart.NextKey(existing)
 }
 
 // NextID menerbitkan ID berikutnya tanpa menyisipkan apa pun.
@@ -225,7 +219,7 @@ func (r *Repo) NextID(_ context.Context) (string, error) {
 	if r.failure != nil {
 		return "", r.failure
 	}
-	return r.nextID(), nil
+	return r.nextID()
 }
 
 // Update menyimpan perubahan pada baris yang sudah ada.

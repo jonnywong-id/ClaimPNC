@@ -117,8 +117,21 @@
 -- tidak muncul. Yang tidak muncul itu adalah kelompok TANPA DATA — bukan kelompok
 -- bernilai nol.
 --
--- Bind: :1 tipe (NULL = seluruh tipe) · :2 adjuster (NULL = seluruh adjuster)
---       :3 periode dari · :4 periode sampai
+-- Bind: :1 dan :2 tipe · :3 dan :4 adjuster · :5 periode dari · :6 periode sampai
+--
+-- # Kenapa satu nilai memakai DUA penanda (2026-10-09)
+--
+-- Driver mengikat menurut **urutan kemunculan**, bukan menurut nomor penanda. Bentuk
+-- sebelumnya menulis `(:1 IS NULL OR k.TIPE = :1)` — satu nomor, dua kemunculan — dan itu
+-- memakan DUA nilai. Dengan empat nilai yang dikirim untuk enam kemunculan, Oracle
+-- menolak dengan `ORA-01008: not all variables bound`, dan layar hanya menampilkan
+-- "Terjadi kesalahan pada sistem".
+--
+-- Kegagalannya TIDAK terlihat di uji sqlmock: tiruan itu tidak menirukan cara driver
+-- menghitung penanda. Ia hanya muncul terhadap Oracle sungguhan.
+--
+-- Karena itu tiap kemunculan diberi nomornya sendiri, dan nilainya dikirim dua kali.
+-- Penjaganya `TestTidakAdaPenandaBindBerulang`.
 SELECT k.ADJUSTER                                 AS ADJUSTER,
        k.TIPE                                     AS REPORT_TYPE,
        ROUND(AVG(TO_NUMBER(k.SURVEYLAP)), 2)         AS SURVEY,
@@ -126,15 +139,15 @@ SELECT k.ADJUSTER                                 AS ADJUSTER,
        ROUND(AVG(TO_NUMBER(k.PRELIMINARYADVICE)), 2) AS PRELIMINARY_ADVICE,
        ROUND(AVG(TO_NUMBER(k.INTERIM)), 2)           AS INTERIM_REPORT,
        ROUND(AVG(TO_NUMBER(k.PROGRESS)), 2)          AS PROGRESS,
-       ROUND(AVG(TO_NUMBER(k.KOMUNIKASI)), 2)        AS COMMUNICATION,
        ROUND(AVG(TO_NUMBER(k.PROPOSE)), 2)           AS PROPOSE,
+       ROUND(AVG(TO_NUMBER(k.KOMUNIKASI)), 2)        AS COMMUNICATION,
        ROUND(AVG(TO_NUMBER(k.FINALREPORT)), 2)       AS FINAL_REPORT,
        ROUND(AVG(TO_NUMBER(k.NILAI)), 2)             AS TOTAL_SCORE
   FROM POOLDATA.DETAIL_KPI_ADJUSTER k
- WHERE (:1 IS NULL OR k.TIPE = :1)
-   AND (:2 IS NULL OR k.ADJUSTER = :2)
-   AND k.TANGGAL >= TO_DATE(:3, 'YYYY-MM-DD')
-   AND k.TANGGAL < TO_DATE(:4, 'YYYY-MM-DD') + INTERVAL '1' DAY
+ WHERE (:1 IS NULL OR k.TIPE = :2)
+   AND (:3 IS NULL OR k.ADJUSTER = :4)
+   AND k.TANGGAL >= TO_DATE(:5, 'YYYY-MM-DD')
+   AND k.TANGGAL < TO_DATE(:6, 'YYYY-MM-DD') + INTERVAL '1' DAY
  GROUP BY k.ADJUSTER, k.TIPE
  ORDER BY k.ADJUSTER, k.TIPE
 
@@ -156,8 +169,13 @@ SELECT k.ADJUSTER                                 AS ADJUSTER,
 -- pengurutan menjadi pengurutan teks, dan itu persis cacat yang `D-20` hapus dengan
 -- membuang 411 pemakaian `TO_CHAR` dari SQL.
 --
--- Bind: :1 tipe (NULL = seluruh tipe) · :2 adjuster (NULL = seluruh adjuster)
---       :3 periode dari · :4 periode sampai · :5 offset · :6 jumlah baris
+-- Bind: :1 dan :2 tipe · :3 dan :4 adjuster · :5 periode dari · :6 periode sampai
+--       :7 offset · :8 jumlah baris
+--
+-- Tipe dan adjuster masing-masing memakai DUA penanda untuk satu nilai yang sama, dan
+-- nilainya dikirim dua kali. Itu bukan kecerobohan: driver mengikat menurut URUTAN
+-- KEMUNCULAN, bukan menurut nomor penanda — :1 yang ditulis dua kali memakan dua nilai.
+-- Lihat catatan pada kueri `summary`.
 SELECT k.ADJUSTER                    AS ADJUSTER,
        k.CASEID                      AS CASE_ID,
        k.TIPE                        AS REPORT_TYPE,
@@ -167,37 +185,42 @@ SELECT k.ADJUSTER                    AS ADJUSTER,
        TO_NUMBER(k.PRELIMINARYADVICE) AS PRELIMINARY_ADVICE,
        TO_NUMBER(k.INTERIM)           AS INTERIM_REPORT,
        TO_NUMBER(k.PROGRESS)          AS PROGRESS,
-       TO_NUMBER(k.KOMUNIKASI)        AS COMMUNICATION,
        TO_NUMBER(k.PROPOSE)           AS PROPOSE,
+       TO_NUMBER(k.KOMUNIKASI)        AS COMMUNICATION,
        TO_NUMBER(k.FINALREPORT)       AS FINAL_REPORT,
        TO_NUMBER(k.NILAI)             AS TOTAL_SCORE,
        COUNT(*) OVER ()              AS TOTAL_ROWS
   FROM POOLDATA.DETAIL_KPI_ADJUSTER k
- WHERE (:1 IS NULL OR k.TIPE = :1)
-   AND (:2 IS NULL OR k.ADJUSTER = :2)
-   AND k.TANGGAL >= TO_DATE(:3, 'YYYY-MM-DD')
-   AND k.TANGGAL < TO_DATE(:4, 'YYYY-MM-DD') + INTERVAL '1' DAY
+ WHERE (:1 IS NULL OR k.TIPE = :2)
+   AND (:3 IS NULL OR k.ADJUSTER = :4)
+   AND k.TANGGAL >= TO_DATE(:5, 'YYYY-MM-DD')
+   AND k.TANGGAL < TO_DATE(:6, 'YYYY-MM-DD') + INTERVAL '1' DAY
  ORDER BY k.ADJUSTER, k.TANGGAL DESC, k.CASEID
-OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 
 -- name: adjusters
--- Isi dropdown "Pilih Adjuster".
+-- Isi dropdown "Pilih Adjuster" — MASTER adjuster eksternal, bukan turunan hasil KPI.
 --
--- Diambil dari kolom yang SAMA dengan yang disaring, bukan dari master surveyor — lihat
--- catatan pada reportkpi.Repo.Adjusters. Rule Pega pengisinya (`BrowseAdjsuterExternal`)
--- tidak ada di export (`R-16`).
+-- # Koreksi 2026-10-09
 --
--- Baris tanpa nama adjuster dibuang: ia tidak dapat dipilih, dan menampilkannya sebagai
--- pilihan kosong hanya menambah satu baris yang tidak berarti di puncak dropdown.
+-- Versi sebelumnya membaca `DISTINCT ADJUSTER` dari `POOLDATA.DETAIL_KPI_ADJUSTER` dan
+-- menyaringnya dengan tipe report serta periode yang sedang dipilih. Dasarnya keliru:
+-- komentar lama menyatakan rule Pega pengisinya **tidak ada di export**, padahal ia ADA —
+-- `RDB List/BrowseAdjsuterExternal-SQL.xml`, dirujuk `Activity/GetFilterKPI-Act.xml`
+-- lewat `RequestType=BrowseAdjsuterExternal` ke halaman `TempNamaAdjuster`.
 --
--- Bind: :1 tipe (NULL = seluruh tipe) · :2 periode dari · :3 periode sampai
-SELECT DISTINCT k.ADJUSTER AS ADJUSTER
-  FROM POOLDATA.DETAIL_KPI_ADJUSTER k
- WHERE (:1 IS NULL OR k.TIPE = :1)
-   AND k.ADJUSTER IS NOT NULL
-   AND k.TANGGAL >= TO_DATE(:2, 'YYYY-MM-DD')
-   AND k.TANGGAL < TO_DATE(:3, 'YYYY-MM-DD') + INTERVAL '1' DAY
- ORDER BY k.ADJUSTER
+-- Akibat kekeliruan itu nyata di layar: pada periode yang belum punya baris penilaian,
+-- dropdown kosong sama sekali — sementara Pega tetap menampilkan seluruh adjuster.
+--
+-- Kueri di bawah adalah rule Pega itu APA ADANYA. Dua penyesuaian, keduanya bentuk:
+-- nama skema dieksplisitkan, dan kolom yang tidak dipakai dropdown tidak ikut diambil
+-- (`D-20` melarang `SELECT *`, dan ketiga kolom lain tidak dibaca siapa pun di sini).
+--
+-- Tidak ada bind: daftarnya TIDAK bergantung pada penyaring layar, persis seperti Pega.
+SELECT s.NAME AS ADJUSTER
+  FROM POOLDATA.V_D_SURVEYORS s
+ WHERE s.M_SURVEY_ID IN ('1004', '1002')
+ ORDER BY s.NAME
 
 -- name: check_source
 -- Dipakai `-periksa`: menjawab "tabelnya ada dan terbaca?" tanpa menarik satu baris pun.

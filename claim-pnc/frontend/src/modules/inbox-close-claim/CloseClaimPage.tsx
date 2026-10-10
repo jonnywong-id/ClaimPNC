@@ -54,8 +54,9 @@ import type { JenisPermintaan, KlaimTutup, PenyaringKlaimTutup } from './types'
  * | Penyaring dirangkai ke SQL | `{ASIS:…}` dari properti | parameter, disaring server |
  * | Layar sempit | grid digulir menyamping | berubah menjadi kartu (`D-12`) |
  *
- * Ketiganya yang pertama dinyatakan di layar lewat `selisih_terencana`, bukan disembunyikan
- * sebagai detail teknis (`D-54`).
+ * Ketiganya yang pertama TIDAK lagi dinyatakan di layar: panel selisih terencana dihapus
+ * atas keputusan Work Owner 2026-10-06. Daftarnya tetap hidup di kode Go sebagai pemetaan
+ * ke butir `P-5` untuk uji kesetaraan gerbang 1 (`D-54`).
  */
 export function CloseClaimPage() {
   const [cari, setCari] = useState('')
@@ -275,7 +276,6 @@ export function CloseClaimPage() {
         </p>
       </header>
 
-      {daftar.data && <SelisihTerencana butir={daftar.data.selisih_terencana} />}
 
       {/*
         Dua keterangan yang SALING MENIADAKAN, dan urutannya disengaja.
@@ -436,30 +436,6 @@ export function CloseClaimPage() {
         />
       )}
     </div>
-  )
-}
-
-/**
- * Menyatakan perbedaan yang disengaja terhadap layar Pega.
- *
- * Ini bukan hiasan. `D-54` menetapkan selisih di luar 13 butir `P-5` menuntut persetujuan
- * Work Owner tertulis — dan menyatakannya di layar itulah yang membuat keputusan itu
- * terlihat oleh orang yang memakai layarnya, bukan hanya oleh yang membaca dokumen.
- */
-function SelisihTerencana({ butir }: { butir: string[] }) {
-  if (butir.length === 0) return null
-
-  return (
-    <details className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 p-4">
-      <summary className="cursor-pointer text-sm font-medium text-slate-800">
-        Tiga hal yang berbeda dari layar lama
-      </summary>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-        {butir.map((teks) => (
-          <li key={teks}>{teks}</li>
-        ))}
-      </ul>
-    </details>
   )
 }
 

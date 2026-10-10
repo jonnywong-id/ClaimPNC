@@ -246,16 +246,21 @@ export function DetailPage() {
       width: '9rem',
     },
     {
-      key: 'deskripsi_kerugian',
-      title: 'Deskripsi Kerugian',
-      value: (row) => row.deskripsi_kerugian,
-    },
-    {
       key: 'nama_master',
-      title: 'Master Kerugian',
-      // Kolom ini TIDAK ada di grid Pega. Ia ditambahkan karena tanpa sebutan induknya,
-      // sebuah detail tidak dapat dibedakan dari detail lain yang deskripsinya mirip —
-      // dan di Pega petugas harus membuka barisnya untuk mengetahuinya.
+      // Judulnya "ID Master Kerugian" — dibaca dari sel header grid
+      // (`Section/BrowseDetailCauseOfLoss-Section.xml:8414`), BUKAN dari label form.
+      //
+      // # Judulnya menyebut ID, tetapi ISINYA sebutan master
+      //
+      // Sel datanya terikat `.pyNote` (`:9291`), dan `.pyNote` diisi sub-kueri pada
+      // `RDB List/BrowseCOLByBisnis_Sql-SQL.xml:64`:
+      //
+      //   (select col_desc from v_m_cause_of_loss where m_col_id = a.m_col_id) as "pyNote"
+      //
+      // Jadi yang tampil adalah COL_DESC induknya, bukan kode M_COL_ID. Judul dan isi yang
+      // tidak sejalan seperti ini lazim di layar lama, dan judulnya tetap disalin apa
+      // adanya (`D-13`).
+      title: 'ID Master Kerugian',
       value: (row) => row.nama_master,
       render: (row) =>
         row.nama_master === '' ? (
@@ -265,6 +270,11 @@ export function DetailPage() {
         ) : (
           row.nama_master
         ),
+    },
+    {
+      key: 'deskripsi_kerugian',
+      title: 'Deskripsi Kerugian',
+      value: (row) => row.deskripsi_kerugian,
     },
     {
       key: 'status_aktif',
@@ -294,7 +304,14 @@ export function DetailPage() {
     },
     {
       key: 'aksi',
-      title: '',
+      // "Aksi", bukan disalin dari Pega. Ini SATU-SATUNYA judul kolom yang sengaja tidak
+      // menyalin literal Pega: di sana sel judulnya berbunyi "Button" — sisa pengembang,
+      // bukan istilah bisnis — dan kolom tanpa judul yang bermakna tampak TIDAK ADA bagi
+      // pengguna yang membaca kepala tabel.
+      //
+      // Ditetapkan Work Owner 2026-10-03 dan berlaku seluruh modul; mengosongkannya sudah
+      // dicoba pada Master Login 2026-10-04 dan ditolak pada hari yang sama.
+      title: 'Aksi',
       value: () => '',
       noSort: true,
       alignRight: true,
@@ -310,49 +327,104 @@ export function DetailPage() {
   const loadError = list.error === null ? null : loadMessage(list.error)
   const formMessage = saveError == null ? null : saveMessage(saveError)
 
-  return (
-    <div className="space-y-4">
-      <DataTable
-        title="Detail Penyebab Kerugian"
-        description={
-          'Rincian di bawah Master Penyebab Kerugian — butir yang dipilih petugas saat ' +
-          'klaim diregistrasi. Baris yang tidak lagi dipakai ditandai lewat Status Aktif, ' +
-          'bukan dihapus.'
-        }
-        columns={columns}
-        rows={list.data?.detail ?? []}
-        rowKey={(row) => row.id}
-        isLoading={list.isLoading}
-        pageSize={PAGE_SIZE}
-        searchLabel="Cari detail penyebab kerugian"
-        emptyMessage={
-          portal === null
-            ? 'Pilih portal entitas lebih dulu.'
-            : 'Belum ada detail penyebab kerugian pada entitas ini.'
-        }
-        error={
-          loadError === null ? undefined : (
+  /**
+   * Panel form, diangkat menjadi variabel supaya urutannya di layar terbaca dalam satu
+   * baris pada JSX di bawah alih-alih tersembunyi di balik puluhan baris markup.
+   */
+  const formPanel =
+    editingID === null ? null : (
+      <section className="rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut">
+        <h2 className="text-base font-semibold text-slate-900">
+          {editingID === '' ? 'Tambah Detail Penyebab Kerugian' : 'Memperbaharui Data'}
+        </h2>
+
+        {formMessage !== null && (
+          <div className="mt-3">
             <ErrorMessage
-              title={loadError.title}
-              description={loadError.description}
-              tone={loadError.tone}
+              title={formMessage.title}
+              description={formMessage.description}
+              tone={formMessage.tone}
             />
-          )
-        }
-        actions={
+          </div>
+        )}
+
+        <div className="mt-4">
+          {editingID !== '' && loaded.isLoading ? (
+            <p className="text-sm text-slate-500">Memuat baris…</p>
+          ) : editingID !== '' && loaded.error !== null ? (
+            <ErrorMessage
+              title="Baris ini tidak dapat dimuat"
+              description="Tutup form ini dan muat ulang daftarnya."
+              tone="gangguan"
+            />
+          ) : (
+            <DetailForm
+              // key memaksa form lahir ulang saat berpindah baris. Tanpa itu, nilai
+              // awalnya tidak ikut berganti — `useState` hanya membaca nilai awal sekali.
+              key={editingID === '' ? 'baru' : editingID}
+              existing={editingID === '' ? null : (loaded.data?.detail ?? null)}
+              options={options.data?.status_aktif ?? []}
+              fieldError={fieldError}
+              busy={busy}
+              onSubmit={submit}
+              onCancel={closeForm}
+            />
+          )}
+        </div>
+      </section>
+    )
+
+  return (
+    // PEMBUNGKUS HALAMAN — `mx-auto max-w-6xl px-4 py-8 sm:px-6`, sama dengan layar master
+    // lain. Tanpa ini isinya menempel ke sidebar; dilaporkan Work Owner 2026-10-05.
+    //
+    // `<div>`, BUKAN `<main>` seperti kebanyakan layar master: `src/app/PageShell.tsx:144`
+    // sudah merender `<main>` mengelilingi setiap halaman, dan landmark `main` bersarang
+    // tidak sah menurut HTML. Bentuk `<div>` berkelas sama sudah dipakai Master Status
+    // Klaim, Home, Dashboard Klaim, dan Ambang Komite.
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      {/*
+        KEPALA HALAMAN DI LUAR KANVAS TABEL.
+
+        Judul, keterangan, dan kedua tombol sempat diserahkan ke prop `title`,
+        `description`, dan `actions` milik `DataTable` — sehingga semuanya tergambar DI
+        DALAM kartu yang sama dengan tabelnya. Dilaporkan Work Owner 2026-10-05.
+
+        Ia menyimpang sendirian: dari 90 berkas pemakai `DataTable`, hanya DUA lagi yang
+        memberinya `title`, dan keduanya tabel TERSEMAT di dalam lembar kasus Inbox Komite
+        (`ClaimSheet`, `CommitteeBottom`) — bukan halaman. Seluruh halaman lain menggambar
+        kepalanya sendiri di atas kartu, persis seperti di sini.
+      */}
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          {/* Judulnya dibaca dari MENU_DESC pada m_menu_aplikasi_pnc.csv:33 (D-13). */}
+          <h1 className="text-xl font-semibold text-slate-900">Detail Penyebab Kerugian</h1>
+          {/*
+            SATU kalimat saja, dan panjangnya disengaja.
+
+            Keterangan ini sempat dua kalimat (±180 aksara). Pada `<header>` ber-`flex-wrap`,
+            lebar max-content sebuah paragraf panjang mendorong kelompok tombol TURUN ke
+            baris berikutnya — sehingga Tambah dan Refresh tidak lagi sejajar judul di
+            kanan. Dilaporkan Work Owner 2026-10-05.
+
+            Panjangnya kini sebanding dengan layar master lain (Master Login Surveyor
+            ±85 aksara), sehingga tata letaknya berperilaku sama tanpa menambah kelas
+            penahan apa pun.
+
+            Kalimat keduanya sempat dipindah ke `<footer>`; kaki halaman itu DICABUT atas
+            permintaan Work Owner 2026-10-05.
+          */}
+          <p className="text-sm text-slate-600">
+            Rincian di bawah Master Penyebab Kerugian — butir yang dipilih petugas saat
+            klaim diregistrasi.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             tone="utama"
-            // Digerbangi HANYA oleh form yang sedang terbuka, sama seperti seluruh layar
-            // master lain.
-            //
-            // Portal yang belum dipilih SENGAJA tidak ikut menggerbanginya. Sempat
-            // demikian, dan itu membuat layar ini satu-satunya yang tombol Tambah-nya
-            // kelabu pada sesi baru — perilaku yang tidak dapat dijelaskan pengguna,
-            // karena 17 layar tetangganya tidak begitu.
-            //
-            // Portal tetap ditegakkan, tetapi di tempat yang benar: server menolak
-            // permintaan tanpa portal (TKT-F6-002), dan penolakannya diterjemahkan
-            // saveMessage menjadi pesan yang menyebut apa yang harus dilakukan.
+            // Digerbangi HANYA oleh form yang sedang terbuka, sama seperti layar master
+            // lain. Portal yang belum dipilih sengaja TIDAK ikut menggerbanginya — server
+            // yang menolaknya (TKT-F6-002), dan penolakannya diterjemahkan saveMessage.
             disabled={editingID !== null}
             onClick={() => {
               create.reset()
@@ -362,50 +434,79 @@ export function DetailPage() {
           >
             Tambah
           </Button>
-        }
-      />
+          {/*
+            Refresh. Layar Pega tidak punya tombol ini — keempat tombolnya hanya Simpan,
+            Ubah, Cari Data, dan Clear Pencarian — tetapi di sana grid memuat ulang sendiri
+            setiap kali form disimpan. Di aplikasi ini daftarnya di-cache TanStack Query,
+            sehingga tanpa tombol ini tidak ada cara menarik perubahan petugas LAIN tanpa
+            memuat ulang seluruh halaman.
+          */}
+          <Button
+            tone="kedua"
+            onClick={() => void list.refetch()}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          </Button>
+        </div>
+      </header>
 
-      {editingID !== null && (
-        <section className="rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut">
-          <h2 className="text-base font-semibold text-slate-900">
-            {editingID === '' ? 'Tambah Detail Penyebab Kerugian' : 'Memperbaharui Data'}
-          </h2>
+      {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani empat
+          badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
+          diandaikan pengguna (ADR-0030, R-20).
 
-          {formMessage !== null && (
-            <div className="mt-3">
-              <ErrorMessage
-                title={formMessage.title}
-                description={formMessage.description}
-                tone={formMessage.tone}
-              />
-            </div>
-          )}
+          Pada layar ini ia berarti: sebab kerugian yang dapat dipilih menentukan bagaimana
+          klaim dinilai pada badan hukum itu. */}
+      <p className="mt-3 text-xs text-slate-500">
+        Daftar ini memuat seluruh detail penyebab kerugian pada entitas yang sedang dibuka.
+        <span className="ml-1">
+          Portal entitas:{' '}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? '—'}
+          </span>
+        </span>
+      </p>
 
-          <div className="mt-4">
-            {editingID !== '' && loaded.isLoading ? (
-              <p className="text-sm text-slate-500">Memuat baris…</p>
-            ) : editingID !== '' && loaded.error !== null ? (
-              <ErrorMessage
-                title="Baris ini tidak dapat dimuat"
-                description="Tutup form ini dan muat ulang daftarnya."
-                tone="gangguan"
-              />
-            ) : (
-              <DetailForm
-                // key memaksa form lahir ulang saat berpindah baris. Tanpa itu, nilai
-                // awalnya tidak ikut berganti — `useState` hanya membaca nilai awal sekali.
-                key={editingID === '' ? 'baru' : editingID}
-                existing={editingID === '' ? null : (loaded.data?.detail ?? null)}
-                options={options.data?.status_aktif ?? []}
-                fieldError={fieldError}
-                busy={busy}
-                onSubmit={submit}
-                onCancel={closeForm}
-              />
-            )}
-          </div>
-        </section>
-      )}
+      {/*
+        PANEL FORM DI ATAS TABEL.
+
+        Sebelumnya di bawah, sehingga menekan Tambah atau Ubah membuka form di luar layar
+        dan pengguna harus menggulir — dilaporkan Work Owner 2026-10-05.
+
+        Posisi ini JUGA yang benar terhadap layar lama: pada
+        `Section/BrowseDetailCauseOfLoss-Section.xml`, panel "Memperbaharui Data" ada di
+        baris ~1165 sedangkan gridnya baru di ~7923.
+      */}
+      {formPanel !== null && <section className="mt-5">{formPanel}</section>}
+
+      <section className="mt-6">
+        {portal === null ? (
+          <ErrorMessage
+            title="Portal entitas belum dipilih"
+            description="Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
+            tone="penolakan"
+          />
+        ) : list.isPending ? (
+          <p className="text-sm text-slate-500">Memuat daftar detail penyebab kerugian…</p>
+        ) : loadError !== null ? (
+          <ErrorMessage
+            title={loadError.title}
+            description={loadError.description}
+            tone={loadError.tone}
+          />
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={list.data?.detail ?? []}
+            rowKey={(row) => row.id}
+            description="Sumber: POOLDATA.V_D_CAUSE_OF_LOSS"
+            searchLabel="Cari detail penyebab kerugian"
+            pageSize={PAGE_SIZE}
+            emptyMessage="Belum ada detail penyebab kerugian pada entitas ini."
+          />
+        )}
+      </section>
+
     </div>
   )
 }

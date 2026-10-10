@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceTemplate/>
+<pyTemplateInputBox/>
+<pyJavaStream/>
+<pyCircumstanceVal/>
+<pyRuleSetVersion>01-03-20</pyRuleSetVersion>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedKey/>
+<pxOriginalCreateOperator/>
+<pyIsFromManageChangeLP/>
+<pyRequestType>GetOCRData</pyRequestType>
+<pxCreateDateTime>20261009T114203.585 GMT</pxCreateDateTime>
+<pyHistoryObject>false</pyHistoryObject>
+<pyDocumentTitle/>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDeleteSQL/>
+<pyInterface/>
+<pyDescription/>
+<pyCircumstanceType/>
+<pxOriginalCreateSystemID/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzRuleSetVersionPatch>20</pzRuleSetVersionPatch>
+<pyCircumstanceDefinition/>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyLabelOld>GetOCRData</pyLabelOld>
+<pyRuleName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM GetOCRData</pyRuleName>
+<pyCircumstanceDate/>
+<pyMemo>save to RS20</pyMemo>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRelativePath/>
+<pyBrowseSQL>select a.DATA_AI.KTP AS CARI1 from json_form_klaim a</pyBrowseSQL>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETOCRDATA #20261009T114203.585 GMT</pzDocumentKey>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETOCRDATA #20261009T114203.585 GMT</pzInsKey>
+<pyStatus/>
+<pyCircumstanceProp/>
+<pyWorkKey/>
+<pyOpenSQL/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyHandlerFlow/>
+<pyDeleteMemo>save</pyDeleteMemo>
+<pxTabLabel>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM GetOCRData</pxTabLabel>
+<pxInstanceLockedCreateDateTime/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETOCRDATA #20250616T090926.496 GMT</pzOriginalInstanceKey>
+<pyLabel>GetOCRData</pyLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxSiblingCount/>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pxOriginalCreateOpName/>
+<pyRuleFormStatusTime>20261010T060402.477 GMT</pyRuleFormStatusTime>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pzChecksum>162527883</pzChecksum>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pySpecialtyComponentData/>
+<pxUpdateDateTime>20261009T114211.115 GMT</pxUpdateDateTime>
+<pyStreamName/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCircumstanceDateProp/>
+<pyClassName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE</pyClassName>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pxInsId>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!GETOCRDATA</pxInsId>
+<pyShowJavaWindowName>GeneratedJava20261010T060402.495 GMT</pyShowJavaWindowName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxSaveDateTime>20261009T114211.131 GMT</pxSaveDateTime>
+<pyRuleEnds/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDeletedObject/>
+<pyRuleStarts/>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedBy/>
+<pxCommitDateTime>20261010T025102.000 GMT</pxCommitDateTime>
+<pxOriginalCreateDateTime/>
+<pyMethodStatus/>
+<pxInstanceLockedDateTime/>
+<pyUsage/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxMoveFromSystem/>
+<pxMoveImportDateTime>20261010T025102.046 GMT</pxMoveImportDateTime>
+<pySaveSQL/>
+<pyTemplate/>
+<pzIsPrivateCheckOut/>
+<pxInsName>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!GETOCRDATA</pxInsName>
+<pyWindowTitle/>
+<pxHostId>jboss10372</pxHostId>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyFormPost/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyValueChanged>false</pyValueChanged>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyPreview>false</pyPreview>
+<pyPropertyPane>false</pyPropertyPane>
+<pyAvailability>false</pyAvailability>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyVersionSecure>false</pyVersionSecure>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyCheckIn>false</pyCheckIn>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRuleData>true</pyRuleData>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyDelete>true</pyDelete>
+<pyRun>false</pyRun>
+<pyShowJava>false</pyShowJava>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-20 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETOCRDATA #20261009T114203.585 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!GETOCRDATA #20250616T090926.496 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pyLabel>01-03-12 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+</pagedata>

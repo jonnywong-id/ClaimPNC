@@ -113,9 +113,6 @@ export type Penyaring = {
   segmen: KodeSegmen
   business_name: string
 
-  /** Isian "Tipe Generate" — segmen D01 saja. Lihat catatan pada TipeGenerate. */
-  tipe_generate: string
-
   /** Isian "Dari" — batas bawah tanggal registrasi, berbentuk `YYYY-MM-DD`. */
   date_of_loss: string
 
@@ -127,7 +124,6 @@ export type Penyaring = {
 export const penyaringKosong: Penyaring = {
   segmen: 'D01',
   business_name: '',
-  tipe_generate: '',
   date_of_loss: '',
   date_of_request_document: '',
 }

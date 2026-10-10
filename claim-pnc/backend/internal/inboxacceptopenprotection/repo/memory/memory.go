@@ -31,6 +31,25 @@ type Repo struct {
 	// Dikunci CLAIMID (ID_CLAIM pada proteksi), bukan nomor klaim — sama dengan kuerinya.
 	// Klaim yang tidak terdaftar berperilaku seperti klaim yang tidak punya baris di sana.
 	claims map[string]time.Time
+
+	// coverages meniru `POOLDATA.T_CLAIM_OBJECTCOVERAGE` sejauh yang disentuh modul ini.
+	//
+	// Dikunci CLAIMID + OBJECTID + OBJECTCOVERAGEID, persis kunci kuerinya. Baris yang tidak
+	// terdaftar berperilaku seperti coverage yang sudah dibuang dari klaim.
+	coverages map[kunciCoverage]string
+
+	// causes meniru `POOLDATA.D_CAUSE_OF_LOSS`: `D_COL_ID` -> `DESCRIPTION`.
+	//
+	// Kode yang tidak terdaftar menghasilkan ErrUnknownCauseOfLoss, sama dengan adapter
+	// Oracle. Tanpa ini, uji atas jalur itu akan menguji perilaku yang tidak pernah terjadi.
+	causes map[string]string
+}
+
+// kunciCoverage adalah kunci satu baris coverage.
+type kunciCoverage struct {
+	ClaimID          string
+	ObjectID         string
+	ObjectCoverageID string
 }
 
 // NewRepo membentuk repo kosong.
@@ -57,6 +76,19 @@ func NewRepoWithSamples() *Repo {
 	} {
 		r.AddClaim(claimID, time.Date(2026, time.August, 3, 0, 0, 0, 0, wib))
 	}
+
+	// Coverage contoh bagi proteksi tipe '8' `OPCN.26.0005`, yang menunjuk objek 1 coverage 2
+	// pada klaim `PNCN.26.0010`.
+	//
+	// Satu baris LAIN pada objek yang sama sengaja ikut didaftarkan: itulah yang membuat
+	// "hanya baris yang dipilih yang berubah" dapat benar-benar terlihat saat pengembangan
+	// lokal, bukan hanya di uji.
+	r.AddCoverage("PNCN.26.0010", "1", "1", "12001 BANJIR")
+	r.AddCoverage("PNCN.26.0010", "1", "2", "12001 BANJIR")
+
+	// Master penyebab kerugian contoh. Kodenya mengikuti isian `OPCN.26.0005`.
+	r.AddCauseOfLoss("12001", "BANJIR")
+	r.AddCauseOfLoss("12002", "KEBAKARAN")
 
 	return r
 }
@@ -200,8 +232,86 @@ func (r *Repo) Decide(
 		r.claims[normalize(existing.ClaimReference)] = tanggal
 	}
 
+	if perubahan, perlu := inboxacceptopenprotection.CauseOfLossToApply(existing, d); perlu {
+		if err := r.applyCauseOfLoss(existing.ClaimReference, perubahan); err != nil {
+			return inboxacceptopenprotection.Protection{}, err
+		}
+	}
+
 	r.protections[index] = existing
 	return existing, nil
+}
+
+// applyCauseOfLoss menuliskan Penyebab Kerugian baru ke satu baris coverage.
+//
+// Urutannya mengikuti adapter Oracle: deskripsinya dicari LEBIH DULU, sehingga kode yang
+// tidak dikenal master membatalkan keputusan sebelum satu baris pun berubah.
+func (r *Repo) applyCauseOfLoss(
+	claimReference string,
+	perubahan inboxacceptopenprotection.CauseOfLossChange,
+) error {
+	deskripsi, dikenal := r.causes[normalize(perubahan.CauseOfLossID)]
+	if !dikenal || strings.TrimSpace(deskripsi) == "" {
+		return inboxacceptopenprotection.ErrUnknownCauseOfLoss
+	}
+
+	kunci := kunciCoverage{
+		ClaimID:          normalize(claimReference),
+		ObjectID:         strings.TrimSpace(perubahan.ObjectID),
+		ObjectCoverageID: strings.TrimSpace(perubahan.ObjectCoverageID),
+	}
+	if _, ada := r.coverages[kunci]; !ada {
+		return inboxacceptopenprotection.ErrClaimNotSynced
+	}
+
+	// Yang disimpan adalah PASANGANNYA, sebagaimana kedua kolom di basis data berubah
+	// bersamaan.
+	r.coverages[kunci] = perubahan.CauseOfLossID + " " + deskripsi
+	return nil
+}
+
+// AddCoverage mendaftarkan satu baris coverage beserta Penyebab Kerugiannya, meniru satu
+// baris `POOLDATA.T_CLAIM_OBJECTCOVERAGE`.
+//
+// Coverage yang TIDAK didaftarkan berperilaku seperti baris yang sudah dibuang dari klaim:
+// keputusan atasnya ditolak `ErrClaimNotSynced`.
+func (r *Repo) AddCoverage(claimID, objectID, coverageID, causeOfLoss string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.coverages == nil {
+		r.coverages = map[kunciCoverage]string{}
+	}
+	r.coverages[kunciCoverage{
+		ClaimID:          normalize(claimID),
+		ObjectID:         strings.TrimSpace(objectID),
+		ObjectCoverageID: strings.TrimSpace(coverageID),
+	}] = causeOfLoss
+}
+
+// AddCauseOfLoss mendaftarkan satu penyebab kerugian, meniru satu baris
+// `POOLDATA.D_CAUSE_OF_LOSS`.
+func (r *Repo) AddCauseOfLoss(code, description string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.causes == nil {
+		r.causes = map[string]string{}
+	}
+	r.causes[normalize(code)] = description
+}
+
+// CoverageOf membaca Penyebab Kerugian sebuah baris coverage. Dipakai pengujian.
+func (r *Repo) CoverageOf(claimID, objectID, coverageID string) (string, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	nilai, ada := r.coverages[kunciCoverage{
+		ClaimID:          normalize(claimID),
+		ObjectID:         strings.TrimSpace(objectID),
+		ObjectCoverageID: strings.TrimSpace(coverageID),
+	}]
+	return nilai, ada
 }
 
 // AddClaim mendaftarkan klaim beserta Tanggal Kejadiannya, meniru satu baris

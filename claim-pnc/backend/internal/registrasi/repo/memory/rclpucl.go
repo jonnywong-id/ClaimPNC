@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"sort"
 	"strings"
 	"sync"
 
@@ -19,10 +18,12 @@ type PUCL struct {
 	// untuk memeriksa apa yang benar-benar ditulis.
 	Letter []registrasi.PUCLLetter
 
-	// Subject, Reason, dan Doctor adalah data contoh ketiga daftar pilihan.
+	// Subject dan Reason adalah data contoh kedua daftar pilihan.
+	//
+	// "Nama Dokter" tidak ada di sini: sejak sumbernya terbaca (property `NamaDokterRCL`,
+	// `pyPromptTableList` dua baris) ia daftar tetap di `registrasi`, bukan seam.
 	Subject []registrasi.PUCLSubjectOption
 	Reason  []registrasi.PUCLRejectReason
-	Doctor  []registrasi.RCLDoctorOption
 }
 
 var (
@@ -44,12 +45,6 @@ func NewPUCL() *PUCL {
 		Reason: []registrasi.PUCLRejectReason{
 			{ID: "001", Name: "Dikecualikan polis", Description: "Perawatan yang Anda ajukan dikecualikan dalam polis."},
 			{ID: "002", Name: "Masa tunggu belum terlampaui", Description: "Pengajuan berada di dalam masa tunggu polis."},
-		},
-		// Dua identitas lama contoh — bentuknya meniru `OLD_OPERATOR_ID` yang
-		// sebenarnya (huruf besar, boleh berspasi). Data KARANGAN (`D-69`).
-		Doctor: []registrasi.RCLDoctorOption{
-			{ID: "DOKTERCONTOHSATU"},
-			{ID: "DOKTER CONTOH DUA"},
 		},
 	}
 }
@@ -89,21 +84,6 @@ func (p *PUCL) SubjectOptions(_ context.Context, track int) ([]registrasi.PUCLSu
 			result = append(result, option)
 		}
 	}
-	return result, nil
-}
-
-// RCLDoctors menyerahkan salinan pilihan "Nama Dokter", terurut menaik.
-//
-// Terurut, bukan apa adanya: adapter Oracle-nya mengurutkan di basis data, dan adapter
-// memori yang mengembalikan urutan sisip membuat uji lulus pada urutan yang tidak pernah
-// terjadi di produksi.
-func (p *PUCL) RCLDoctors(_ context.Context) ([]registrasi.RCLDoctorOption, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	result := make([]registrasi.RCLDoctorOption, len(p.Doctor))
-	copy(result, p.Doctor)
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
 }
 

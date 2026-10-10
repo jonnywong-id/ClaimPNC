@@ -15,6 +15,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"claim-pnc/internal/masterreas"
 )
@@ -59,6 +60,86 @@ func (l *Service) List(
 		return nil, err
 	}
 	return repo.List(ctx, masterreas.Filter{Keyword: keyword}.Clean())
+}
+
+// Actor adalah pengguna yang sedang melakukan sesuatu.
+//
+// Ia dipakai HANYA untuk mengisi log. `POOLDATA.T_REINSURER` tidak punya satu pun kolom
+// pencatat pelaku maupun stempel waktu, sehingga log adalah satu-satunya tempat "siapa yang
+// mengubah surel ini" terekam.
+//
+// Itu BUKAN pengganti jejak audit `S-5`, dan tidak diklaim demikian. Pada tabel yang
+// menentukan ke mana pemberitahuan klaim dikirim, ketiadaan jejak audit adalah keterbatasan
+// yang dicatat — bukan yang ditutupi.
+type Actor struct {
+	Login string
+}
+
+// Save mengubah surel satu member reas.
+//
+// # Hanya SURAT ELEKTRONIK yang berubah
+//
+// Alasannya ada pada doc comment masterreas.Input dan masterreas.Repo.Update: `UPDATEREAS`
+// pada baris yang sudah ada hanya menyentuh kolom `EMAIl`. Ketiga kolom kunci beserta
+// `LOGIN` dan `COUNTRY` tidak dapat dikirim klien sama sekali.
+//
+// # Baris yang tidak ada DITOLAK, bukan disisipkan
+//
+// Berbeda dari `UPDATEREAS`, yang menyisipkan baris baru bila kuncinya tidak ditemukan.
+// Perbedaannya disengaja: penyisipan itu milik alur PLA/DLA, yang memang sedang menerbitkan
+// dokumen untuk reasuransi yang belum terdaftar. Petugas yang menekan Simpan di layar master
+// sedang mengubah baris yang dilihatnya — bila baris itu sudah tidak ada, yang benar adalah
+// mengatakannya, bukan diam-diam membuat baris baru.
+func (l *Service) Save(
+	ctx context.Context,
+	portalAlias string,
+	key masterreas.Key,
+	input masterreas.Input,
+	by Actor,
+	logger *slog.Logger,
+) error {
+	repo, err := l.repoSelector(portalAlias)
+	if err != nil {
+		return err
+	}
+
+	clean := key.Clean()
+	if clean.IsEmpty() {
+		return masterreas.ErrNotFound
+	}
+
+	value := input.Clean()
+	if err := value.Check(); err != nil {
+		return err
+	}
+
+	if err := repo.Update(ctx, clean, value.Email); err != nil {
+		return err
+	}
+
+	noteSaved(logger, portalAlias, clean, by)
+	return nil
+}
+
+// noteSaved mencatat perubahan surel.
+//
+// Alamat surelnya TIDAK ikut dicatat (`D-69`): yang direkam adalah peristiwanya beserta
+// baris mana yang disentuh, bukan isinya.
+func noteSaved(
+	logger *slog.Logger,
+	portalAlias string,
+	key masterreas.Key,
+	by Actor,
+) {
+	if logger == nil {
+		return
+	}
+	logger.Info("surel member reas diubah",
+		slog.String("portal", portalAlias),
+		slog.String("kode_reas", key.ReinsurerID),
+		slog.String("nama_reas", key.ReinsurerName),
+		slog.String("tipe", key.Type),
+		slog.String("oleh", by.Login))
 }
 
 // EnsurePortalReady memeriksa portal dapat dilayani tanpa menyentuh satu baris pun.

@@ -61,27 +61,35 @@ func TestBuildSummaryKeepsTheLegacyOrderAndLeavesUncountableTabsWithoutACount(t 
 	for _, item := range summary.Status {
 		codes = append(codes, item.Status)
 	}
+	// "ALL Case" di DEPAN, sisanya urutan Pega — keputusan Work Owner 2026-10-05.
+	// Lihat catatan pada statusOrder; di export ia berada di urutan ketujuh.
 	require.Equal(t, []inboxoutstanding.DocumentStatus{
+		inboxoutstanding.StatusAll,
 		inboxoutstanding.StatusComplete,
 		inboxoutstanding.StatusIncomplete,
 		inboxoutstanding.StatusTemporaryClose,
 		inboxoutstanding.StatusDeadlineTemporaryClose,
 		inboxoutstanding.StatusLossAdjuster,
 		inboxoutstanding.StatusInternalSurveyor,
-		inboxoutstanding.StatusAll,
 		inboxoutstanding.StatusCommunication,
 		inboxoutstanding.StatusTKA,
 	}, codes)
 
-	require.Equal(t, "Complete documents", summary.Status[0].Label)
+	require.Equal(t, "ALL Case", summary.Status[0].Label)
 	require.NotNil(t, summary.Status[0].Count)
-	require.Equal(t, 3, *summary.Status[0].Count)
+	require.Equal(t, 5, *summary.Status[0].Count)
+
+	require.Equal(t, "Complete documents", summary.Status[1].Label)
+	require.NotNil(t, summary.Status[1].Count)
+	require.Equal(t, 3, *summary.Status[1].Count)
 
 	// Dapat dihitung tetapi tidak diserahkan penyimpanan: tetap tanpa jumlah.
-	require.Nil(t, summary.Status[1].Count)
-	// Tidak dapat dihitung meski angkanya diserahkan.
-	require.Nil(t, summary.Status[4].Count)
-	require.Equal(t, 5, *summary.Status[6].Count)
+	require.Equal(t, inboxoutstanding.StatusIncomplete, summary.Status[2].Status)
+	require.Nil(t, summary.Status[2].Count)
+
+	// Tidak dapat dihitung meski angkanya diserahkan: angkanya DIABAIKAN, bukan dipakai.
+	require.Equal(t, inboxoutstanding.StatusLossAdjuster, summary.Status[5].Status)
+	require.Nil(t, summary.Status[5].Count)
 }
 
 func TestNormalizeLineBusinessRecognisesTheFourLines(t *testing.T) {

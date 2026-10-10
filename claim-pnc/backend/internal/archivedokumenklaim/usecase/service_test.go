@@ -80,7 +80,7 @@ func TestPencarianKataKunciCocokPersis(t *testing.T) {
 
 	found, err := service.Search(context.Background(), portalAlias,
 		archivedokumenklaim.CriteriaInput{
-			Mode:    string(archivedokumenklaim.ModeKeyword),
+			Column:  string(archivedokumenklaim.ColumnBoxName),
 			Keyword: "BOX-A-01",
 		},
 		archivedokumenklaim.Pagination{},
@@ -90,7 +90,7 @@ func TestPencarianKataKunciCocokPersis(t *testing.T) {
 
 	sebagian, err := service.Search(context.Background(), portalAlias,
 		archivedokumenklaim.CriteriaInput{
-			Mode:    string(archivedokumenklaim.ModeKeyword),
+			Column:  string(archivedokumenklaim.ColumnBoxName),
 			Keyword: "BOX-A",
 		},
 		archivedokumenklaim.Pagination{},
@@ -107,7 +107,7 @@ func TestNamaDokumenKosongSaatKodeTidakAdaDiMaster(t *testing.T) {
 
 	found, err := service.Search(context.Background(), portalAlias,
 		archivedokumenklaim.CriteriaInput{
-			Mode:    string(archivedokumenklaim.ModeKeyword),
+			Column:  string(archivedokumenklaim.ColumnClaimNumber),
 			Keyword: "PNCN.26.0001",
 		},
 		archivedokumenklaim.Pagination{},

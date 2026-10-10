@@ -52,13 +52,6 @@ func (f failingRepo) Counts(
 	return f.Repo.Counts(ctx, q)
 }
 
-func (f failingRepo) XOL(ctx context.Context, login string) ([]inboxpladla.XOLRow, error) {
-	if f.fail("xol") {
-		return nil, errBoom
-	}
-	return f.Repo.XOL(ctx, login)
-}
-
 func (f failingRepo) ClaimHeader(
 	ctx context.Context, s inboxpladla.DetailScope,
 ) (inboxpladla.ClaimHeader, error) {
@@ -124,12 +117,11 @@ func TestNewServiceRequiresARepoSelector(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestMetadataListsTheTabsAndTheXOLColumns(t *testing.T) {
+func TestMetadataListsTheTabs(t *testing.T) {
 	meta := newService(t, memory.NewSampleStore(), nil).Metadata()
 
 	require.Equal(t, inboxpladla.DefaultTab, meta.DefaultTab)
 	require.Equal(t, inboxpladla.Tabs(), meta.Tabs)
-	require.Equal(t, inboxpladla.XOLColumns(), meta.XOLColumns)
 	require.Equal(t, inboxpladla.PlannedDifferences, meta.PlannedDifferences)
 }
 
@@ -156,16 +148,21 @@ func TestListWithoutLoggerStillWorks(t *testing.T) {
 	require.NotEmpty(t, listed.Page.Items)
 }
 
+// "xol" ditolak sebagai tab TAK DIKENAL, bukan sebagai "bukan daftar klaim".
+//
+// Tampilan itu dicabut 2026-10-09: wadahnya di Pega bersyarat `TempView.CityID==7`,
+// dan nilai itu tidak pernah dapat tercapai. Lihat TestTheXOLViewIsNotOfferedAtAll.
 func TestListRefusesTheXOLView(t *testing.T) {
 	service := newService(t, memory.NewSampleStore(), nil)
 
 	_, err := service.List(context.Background(), "ASM", sampleCaller,
-		inboxpladla.QueryInput{Tab: inboxpladla.TabXOL}, inboxpladla.Pagination{})
-	require.ErrorIs(t, err, inboxpladla.ErrNotAClaimList)
+		inboxpladla.QueryInput{Tab: "xol"}, inboxpladla.Pagination{})
+	var validation *inboxpladla.ValidationError
+	require.ErrorAs(t, err, &validation)
 
 	_, err = service.Counts(context.Background(), "ASM", sampleCaller,
-		inboxpladla.QueryInput{Tab: inboxpladla.TabXOL})
-	require.ErrorIs(t, err, inboxpladla.ErrNotAClaimList)
+		inboxpladla.QueryInput{Tab: "xol"})
+	require.ErrorAs(t, err, &validation)
 }
 
 func TestListRejectsAnUnknownTab(t *testing.T) {
@@ -185,19 +182,22 @@ func TestTheCallerMustBeKnownAndARegisteredReinsurer(t *testing.T) {
 		inboxpladla.QueryInput{}, inboxpladla.Pagination{})
 	require.ErrorIs(t, err, inboxpladla.ErrCallerUnknown)
 
-	_, err = service.XOL(context.Background(), "ASM", inboxpladla.Caller{Login: "PEGAWAI"})
+	_, err = service.List(context.Background(), "ASM", inboxpladla.Caller{Login: "PEGAWAI"},
+		inboxpladla.QueryInput{}, inboxpladla.Pagination{})
 	require.ErrorIs(t, err, inboxpladla.ErrCallerNotAReinsurer)
 	require.Contains(t, logs.String(), "pemanggil bukan reasuradur terdaftar")
 
 	// Tanpa pencatat, penolakannya tetap sama.
-	_, err = newService(t, memory.NewSampleStore(), nil).
-		XOL(context.Background(), "ASM", inboxpladla.Caller{Login: "PEGAWAI"})
+	_, err = newService(t, memory.NewSampleStore(), nil).List(
+		context.Background(), "ASM", inboxpladla.Caller{Login: "PEGAWAI"},
+		inboxpladla.QueryInput{}, inboxpladla.Pagination{})
 	require.ErrorIs(t, err, inboxpladla.ErrCallerNotAReinsurer)
 }
 
 func TestAPortalThatIsNotReadyIsReportedAsIs(t *testing.T) {
-	_, err := newService(t, memory.NewSampleStore(), nil).
-		XOL(context.Background(), "ASI", sampleCaller)
+	_, err := newService(t, memory.NewSampleStore(), nil).List(
+		context.Background(), "ASI", sampleCaller,
+		inboxpladla.QueryInput{}, inboxpladla.Pagination{})
 	require.EqualError(t, err, "portal tidak siap")
 }
 
@@ -209,7 +209,8 @@ func TestStorageFailuresAreWrappedWithTheirContext(t *testing.T) {
 		prefix string
 	}{
 		{"codes", func(s *usecase.Service) error {
-			_, err := s.XOL(ctx, "ASM", sampleCaller)
+			_, err := s.List(ctx, "ASM", sampleCaller,
+				inboxpladla.QueryInput{}, inboxpladla.Pagination{})
 			return err
 		}, "mencari kode reasuradur pemanggil"},
 		{"list", func(s *usecase.Service) error {
@@ -222,10 +223,6 @@ func TestStorageFailuresAreWrappedWithTheirContext(t *testing.T) {
 				inboxpladla.QueryInput{Tab: inboxpladla.TabPLA})
 			return err
 		}, "mengambil tabel ringkas pla"},
-		{"xol", func(s *usecase.Service) error {
-			_, err := s.XOL(ctx, "ASM", sampleCaller)
-			return err
-		}, "mengambil ringkasan XOL"},
 		{"header", func(s *usecase.Service) error {
 			_, err := s.Detail(ctx, "ASM", sampleCaller, sampleKey)
 			return err
@@ -269,13 +266,6 @@ func TestCountsFollowTheList(t *testing.T) {
 	_, err = newService(t, memory.NewSampleStore(), nil).Counts(
 		context.Background(), "ASM", inboxpladla.Caller{}, inboxpladla.QueryInput{})
 	require.ErrorIs(t, err, inboxpladla.ErrCallerUnknown)
-}
-
-func TestXOLReturnsTheCallersRows(t *testing.T) {
-	rows, err := newService(t, memory.NewSampleStore(), nil).
-		XOL(context.Background(), "ASM", sampleCaller)
-	require.NoError(t, err)
-	require.NotEmpty(t, rows)
 }
 
 func TestDetailReturnsAllFourPartsAndTheirColumns(t *testing.T) {
@@ -405,4 +395,91 @@ func TestRejectActionNamesTheButton(t *testing.T) {
 	require.ErrorAs(t, err, &notAvailable)
 	require.ErrorIs(t, err, inboxpladla.ErrWriteNotAvailable)
 	require.NotEmpty(t, notAvailable.Reason())
+}
+
+// ── Tabel "Status / Jumlah" — satu baris per DAFTAR ─────────────────────────────
+
+// Tabelnya menyebut KEENAM daftar, berapa pun isinya — termasuk yang kosong.
+//
+// Pega menggambar keenam barisnya meski seluruh angkanya nol (tangkapan layar Work Owner
+// 2026-10-09 memperlihatkan persis itu), dan tabel yang menghilangkan barisnya saat nol
+// membuat pengguna menyimpulkan daftarnya tidak ada — bukan bahwa daftarnya kosong.
+func TestListCountsNamesEverySixListsEvenTheEmptyOnes(t *testing.T) {
+	counts, err := newService(t, memory.NewSampleStore(), nil).ListCounts(
+		context.Background(), "ASM", sampleCaller, inboxpladla.QueryInput{})
+	require.NoError(t, err)
+
+	wanted := []string{}
+	for _, tab := range inboxpladla.Tabs() {
+		wanted = append(wanted, tab.Code)
+	}
+	require.Len(t, wanted, 6, "layar ini punya enam daftar klaim")
+
+	got := []string{}
+	for _, row := range counts {
+		got = append(got, row.Code)
+		require.NotEmpty(t, row.Name, "nama daftar dipakai sebagai label kolom Status")
+		require.GreaterOrEqual(t, row.Total, 0)
+	}
+	require.Equal(t, wanted, got, "urutannya mengikuti urutan daftar, bukan besar angkanya")
+}
+
+// Angka di tabel WAJIB sama dengan jumlah baris daftarnya.
+//
+// Inilah satu-satunya pernyataan yang menjaga janji di ListCounts: keduanya memakai
+// pernyataan yang sama, sehingga selisih di antaranya berarti ada yang menempuh jalan
+// lain. Selisih seperti itu tidak terlihat sebagai galat — hanya sebagai angka yang tidak
+// cocok dengan tabel di sebelahnya.
+func TestListCountsAgreeWithTheListItself(t *testing.T) {
+	service := newService(t, memory.NewSampleStore(), nil)
+
+	counts, err := service.ListCounts(
+		context.Background(), "ASM", sampleCaller, inboxpladla.QueryInput{})
+	require.NoError(t, err)
+
+	for _, row := range counts {
+		listed, err := service.List(
+			context.Background(), "ASM", sampleCaller,
+			inboxpladla.QueryInput{Tab: row.Code}, inboxpladla.Pagination{})
+		require.NoError(t, err, "daftar %s", row.Code)
+		require.Equal(t, listed.Page.Total, row.Total, "daftar %s", row.Code)
+	}
+}
+
+// Pencarian IKUT dibawa ke setiap daftar.
+//
+// Tanpa ini, angka di samping daftar menyatakan populasi yang berbeda dari tabel yang
+// sedang dilihat pengguna.
+func TestListCountsCarryTheSearchIntoEveryList(t *testing.T) {
+	service := newService(t, memory.NewSampleStore(), nil)
+
+	semua, err := service.ListCounts(
+		context.Background(), "ASM", sampleCaller, inboxpladla.QueryInput{})
+	require.NoError(t, err)
+
+	totalSemua := 0
+	for _, row := range semua {
+		totalSemua += row.Total
+	}
+	require.Positive(t, totalSemua, "premis: data contoh harus berisi sesuatu")
+
+	tanpaHasil, err := service.ListCounts(
+		context.Background(), "ASM", sampleCaller,
+		inboxpladla.QueryInput{Search: "TIDAK-ADA-KLAIM-BERNOMOR-INI"})
+	require.NoError(t, err)
+	require.Len(t, tanpaHasil, len(semua), "barisnya tetap enam meski tak satu pun cocok")
+
+	for _, row := range tanpaHasil {
+		require.Zero(t, row.Total, "daftar %s", row.Code)
+	}
+}
+
+// Pemanggil yang bukan mitra terdaftar DITOLAK, bukan menerima enam angka nol.
+//
+// Enam nol tidak dapat dibedakan dari "mitra ini memang belum punya klaim", dan layar
+// akan menggambar tabel yang rapi untuk orang yang semestinya tidak melihat layar itu.
+func TestListCountsRejectAnUnknownCaller(t *testing.T) {
+	_, err := newService(t, memory.NewSampleStore(), nil).ListCounts(
+		context.Background(), "ASM", inboxpladla.Caller{}, inboxpladla.QueryInput{})
+	require.ErrorIs(t, err, inboxpladla.ErrCallerUnknown)
 }

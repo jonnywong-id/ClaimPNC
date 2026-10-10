@@ -1,0 +1,491 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!EXPORTDETAILXOLPERBIZ</pxInsName>
+<pyJavaStream/>
+<pyStreamName/>
+<pxCreateDateTime>20241105T071145.690 GMT</pxCreateDateTime>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pyCircumstanceTemplate/>
+<pyDescription/>
+<pyWorkKey/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxOriginalCreateDateTime/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyMethodStatus/>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pyOpenSQL/>
+<pyStatus/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceVal/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20221107T092850.755 GMT</pzOriginalInstanceKey>
+<pyWindowTitle/>
+<pyTemplateInputBox/>
+<pyValueChanged>false</pyValueChanged>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20241105T071145.690 GMT</pzInsKey>
+<pyCircumstanceDefinition/>
+<pySpecialtyComponentData/>
+<pyIsFromManageChangeLP/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxSaveDateTime>20241105T071155.852 GMT</pxSaveDateTime>
+<pyMemo>done</pyMemo>
+<pyBrowseSQL>SELECT a.picteknik AS "UserTeknis",
+       a.claimno AS "ClaimNo",
+       qqname AS "AlasanKlaim",
+       b.risk_loc_klaim AS "Location",
+       a.nopolis AS "PolicyNo",
+       TO_CHAR (a.dateofloss, 'dd/mm/yyyy') AS "AnalystDoctorRemaks",
+       a.coinsname AS "AllBusinessFlag",
+       (SELECT currency
+          FROM pooldata.currency
+         WHERE id = z.currency)
+          AS "Currency",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.ACCEPTED ELSE z.RESERVE END
+          AS "Keyword",
+       z.ACCEPTED AS "CauseOfLossID",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN z.ASM_SHARE
+          ELSE z.ASM_SHARE_OS
+       END
+          AS "ClaimAmount",
+       z.ASM_SHARE_PRSN_OS AS "ASMShare",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.OR_AKSEP ELSE z.OR_OS END
+          AS "BranchID",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.BPPDAN ELSE z.BPPDAN_OS END
+          AS "BranchName",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.FACOUT ELSE z.FACOUT_OS END
+          AS "BusinessID",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.FSPL ELSE z.FSPL_OS END
+          AS "BusinessName",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.PSPL ELSE z.PSPL_OS END
+          AS "CASEDB",
+       CASE WHEN A.STATUSCLAIM = '1143' THEN z.AKSEP_QS ELSE z.OS_QS END
+          AS "CaseID",
+       z.ASM_SHARE AS "SIM",
+       z.OR_AKSEP AS "City",
+       z.BPPDAN AS "CityID",
+       z.FACOUT AS "ClaimEstimate",
+       z.FSPL AS "ClaimID",
+       z.PSPL AS "ClaimNoSRB",
+       z.AKSEP_QS AS "ClientID",
+       z.SALVAGE AS "District",
+       a.LEADER_MEMBER AS "EmailTertanggung",
+       a.SOBNAME AS "FlagASO",
+       b.OCCUPATION AS "IsPLA",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE z.RESERVE - z.ACCEPTED
+       END
+          AS "ClientName",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.CLAIM_OR
+       END
+          AS "CloseClaimNote",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.BPPDAN_PRSN
+       END
+          AS "ConsultantID",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.FACOUT_PRSN
+       END
+          AS "ConsultantName",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.FSPL_PRSN
+       END
+          AS "Conveyance",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.PSPL_PRSN
+       END
+          AS "ContractNo",
+       CASE
+          WHEN A.STATUSCLAIM = '1143' THEN 0
+          ELSE (z.RESERVE - z.ACCEPTED) * z.QSRI_PRSN
+       END
+          AS "Country",
+       z.ADJUSTER AS "Email",
+       (SELECT SURVEYOR_NAME
+          FROM pooldata.t_surveyorlist
+         WHERE pnccaseid = a.claimid AND ROWNUM = 1)
+          AS "IDMaster",
+       CASE
+          when (select ISPENDINGCLOSE from DATAPEGA.PC_ASM_FW_GCNMFW_WORK where pyid=A.CLAIMNO)='true' then
+          (REPLACE (
+                (SELECT G.KETERANGAN
+                   FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+                  WHERE     G.PNCCASEID = a.claimno
+                        AND ID_UPDATE = (SELECT MAX (ID_UPDATE)
+                                           FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                                          WHERE PNCCASEID = a.claimno)),
+                '\\n',
+                ''))
+          WHEN A.STATUSCLAIM = '1143'
+          THEN
+             'Closed'
+          ELSE
+             REPLACE (
+                (SELECT G.KETERANGAN
+                   FROM POOLDATA.GCNM_PROGRESS_CLAIM G
+                  WHERE     G.PNCCASEID = a.claimno
+                        AND ID_UPDATE = (SELECT MAX (ID_UPDATE)
+                                           FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                                          WHERE PNCCASEID = a.claimno)
+                        AND STATUS_PROGRESS2 NOT IN ('2', '24', '60', '59')),
+                '\\n',
+                '')
+       END
+          AS "Remark",
+       CASE
+        when (select X.PYSTATUSWORK from DATAPEGA.PC_ASM_FW_GCNMFW_WORK x where pyid=A.CLAIMNO) in ('New','Open') then
+          'Outstanding'
+          WHEN A.STATUSCLAIM = '1143'
+          THEN
+             'Closed'
+          ELSE
+             (SELECT I.STS_PROGRESS1
+                FROM POOLDATA.GCNM_PROGRESS_CLAIM G,
+                     POOLDATA.GCNM_MST_PROGRESS_KLAIM I
+               WHERE     G.STATUS_PROGRESS1 = I.ID_PROGRESS
+                     AND G.PNCCASEID = a.claimno
+                     AND ID_UPDATE =
+                            (SELECT MAX (ID_UPDATE)
+                               FROM POOLDATA.GCNM_PROGRESS_CLAIM
+                              WHERE     PNCCASEID = a.claimno
+                                    AND STATUS_PROGRESS2 NOT IN
+                                           ('2', '24', '60', '59')))
+       END
+          AS "ReporterName"
+  FROM pooldata.t_claim_pnc a,
+       pooldata.pega_dashboardpnc b,
+       (  SELECT claimno,
+                 currency,
+                 MAX (claim_or) AS CLAIM_OR,
+                 MAX (bppdan) AS BPPDAN_PRSN,
+                 MAX (facout) AS FACOUT_PRSN,
+                 MAX (fspl) AS FSPL_PRSN,
+                 MAX (pspl) AS PSPL_PRSN,
+                 MAX (qsri) AS QSRI_PRSN,
+                 MAX (claim_share_asm) * 100 AS ASM_SHARE_PRSN_OS,
+                 SUM (
+                    CASE
+                       WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                       ELSE os_value
+                    END)
+                    AS RESERVE,
+                 SUM (
+                    CASE
+                       WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                       ELSE aksep_value
+                    END)
+                    AS ACCEPTED,
+                   MAX (claim_share_asm)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS ASM_SHARE_OS,
+                   MAX (claim_share_asm)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS ASM_SHARE,
+                   MAX (claim_or)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype != '3' AND paymenttype != '4' THEN os_value
+                         ELSE 0
+                      END)
+                    AS OR_OS,
+                   MAX (bppdan)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS BPPDAN_OS,
+                   MAX (facout)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS FACOUT_OS,
+                   MAX (fspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS FSPL_OS,
+                   MAX (pspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS PSPL_OS,
+                   MAX (qsri)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE os_value
+                      END)
+                    AS OS_QS,
+                   MAX (claim_or)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS OR_AKSEP,
+                   MAX (bppdan)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS BPPDAN,
+                   MAX (facout)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS FACOUT,
+                   MAX (fspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS FSPL,
+                   MAX (pspl)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS PSPL,
+                   MAX (qsri)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' OR paymenttype = '4' THEN 0
+                         ELSE aksep_value
+                      END)
+                    AS AKSEP_QS,
+                   MAX (claim_or)/100
+                 * SUM (
+                      CASE
+                         WHEN paymenttype = '3' THEN aksep_value * -1
+                         ELSE 0
+                      END)
+                    AS SALVAGE,
+                   MAX (claim_or)
+                 * MAX (CLAIM_SHARE_ASM)
+                 * SUM (
+                      CASE WHEN paymenttype = '4' THEN aksep_value ELSE 0 END)
+                    AS ADJUSTER
+            FROM pooldata.t_claim_xol
+        GROUP BY claimno, currency) z
+ WHERE     a.claimno = b.noklaim
+       AND a.claimno = z.claimno
+       AND EXISTS (select * from pooldata.t_claim_xol where claimno=a.claimno and businessgroupid={TempExport.BranchID} and to_char(dateofloss,'dd/mm/yyyy')={TempExport.CaseID} and col_desc={TempExport.CauseOfLoss})</pyBrowseSQL>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxMergeSynchronized>20240301T061945.568 GMT</pxMergeSynchronized>
+<pyHistoryObject>false</pyHistoryObject>
+<pxUpdateDateTime>20241105T071155.758 GMT</pxUpdateDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>jboss10116</pxHostId>
+<pyCircumstanceDate/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyLabel>Export Detail XOL Per Biz</pyLabel>
+<pyRuleFormStatusTime>20261007T104306.889 GMT</pyRuleFormStatusTime>
+<pyDeleteSQL/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRelativePath/>
+<pxOriginalCreateSystemID/>
+<pyDocumentTitle/>
+<pxOriginalCreateOpName/>
+<pyCircumstanceType/>
+<pyCircumstanceProp/>
+<pyRequestType>ExportDetailXOLPerBiz</pyRequestType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!EXPORTDETAILXOLPERBIZ</pxInsId>
+<pyUsage/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxInstanceLockedRuleSet/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCheckInRuleSet/>
+<pySaveSQL/>
+<pyTemplate/>
+<pzChecksum>-1123116881</pzChecksum>
+<pyRuleParamsStreamName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20241105T071145.690 GMT</pzDocumentKey>
+<pyDeletedObject/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedDateTime/>
+<pyHandlerFlow/>
+<pyRuleStarts/>
+<pxMoveImportDateTime>20230112T100629.140 GMT</pxMoveImportDateTime>
+<pyTemporaryObject/>
+<pxInstanceLockedCreateDateTime/>
+<pyLabelOld>Export Detail XOL Per Biz</pyLabelOld>
+<pyShowJavaWindowName>GeneratedJava20261007T104306.913 GMT</pyShowJavaWindowName>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM ExportDetailXOLPerBiz</pyRuleName>
+<pyCircumstanceDateProp/>
+<pxInstanceLockedBy/>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteMemo>add doll</pyDeleteMemo>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pyFormPost/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxCommitDateTime>20241105T071155.000 GMT</pxCommitDateTime>
+<pxSiblingCount/>
+<pxInstanceLockedRuleSetVersion/>
+<pyRuleEnds/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveFromSystem/>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM ExportDetailXOLPerBiz</pxTabLabel>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20241105T071145.690 GMT</pzInsKey>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-01 (Available)</pyLabel>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20240301T061928.550 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-02-09 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20240201T043543.119 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20231204T070119.979 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-02-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20221208T082246.649 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!EXPORTDETAILXOLPERBIZ #20221107T092850.755 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>6</pxListSubscript>
+<pyLabel>01-02-01 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pyForward>true</pyForward>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRecover>false</pyRecover>
+<pySiblings>true</pySiblings>
+<pyNew>true</pyNew>
+<pyCheckOut>true</pyCheckOut>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyBack>true</pyBack>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pyDelete>false</pyDelete>
+<pyRun>false</pyRun>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pyShowJava>false</pyShowJava>
+<pyCompareVersion/>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

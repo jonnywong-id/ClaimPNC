@@ -201,48 +201,6 @@ func (r *Repo) Counts(
 	return counts, nil
 }
 
-// XOL mengembalikan isi grid "DATA PLA DLA XOL KLAIM".
-func (r *Repo) XOL(
-	ctx context.Context,
-	login string,
-) ([]inboxpladla.XOLRow, error) {
-	clean := strings.TrimSpace(login)
-
-	// Login yang sama diikat DUA KALI: satu untuk bagian DLA, satu untuk bagian PLA.
-	// Penanda yang dipakai ulang dengan satu nomor berperilaku berbeda antar driver.
-	rows, err := r.db.QueryContext(ctx, query("xol_summary"), clean, clean)
-	if err != nil {
-		return nil, fmt.Errorf("inboxpladla/sqlstore: xol_summary: %w", err)
-	}
-	defer rows.Close()
-
-	items := []inboxpladla.XOLRow{}
-	for rows.Next() {
-		var (
-			year, cause, kind sql.NullString
-			lastInsert        sql.NullTime
-		)
-		if err := rows.Scan(&year, &cause, &kind, &lastInsert); err != nil {
-			return nil, fmt.Errorf(
-				"inboxpladla/sqlstore: xol_summary: memindai baris: %w", err)
-		}
-
-		items = append(items, inboxpladla.XOLRow{
-			Year:           strings.TrimSpace(year.String),
-			CauseOfLoss:    strings.TrimSpace(cause.String),
-			Kind:           strings.TrimSpace(kind.String),
-			LastInsertDate: dateText(lastInsert),
-		})
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf(
-			"inboxpladla/sqlstore: xol_summary: membaca hasil: %w", err)
-	}
-
-	return items, nil
-}
-
 // searchArgs menyusun kedua bind pencarian.
 //
 // Keduanya NULL ketika tidak ada kata kunci, dan penandanya BERTIPE TEKS — tidak pernah

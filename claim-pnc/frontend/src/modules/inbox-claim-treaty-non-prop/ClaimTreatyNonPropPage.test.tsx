@@ -118,10 +118,6 @@ const TAB_KOMITE: Tab = {
 const METADATA: MetadataResponse = {
   tab: [TAB_ADMIN, TAB_TEKNIK, TAB_KOMITE],
   tab_bawaan: '1',
-  selisih_terencana: [
-    'Checkbox "See TBA Claim" kini BERDIRI SENDIRI.',
-    'Kolom "Status" pada antrean Teknik berisi WAKTU objek kerja dibuat.',
-  ],
   portal: 'ASM',
 }
 
@@ -557,11 +553,15 @@ describe('penggambaran sel', () => {
     expect(within(baris as HTMLElement).getByText('0')).toBeInTheDocument()
   })
 
-  it('menampilkan selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(await screen.findByText(/See TBA Claim" kini BERDIRI SENDIRI/)).toBeInTheDocument()
+    expect(screen.queryByText(/See TBA Claim" kini BERDIRI SENDIRI/)).not.toBeInTheDocument()
   })
 })
 

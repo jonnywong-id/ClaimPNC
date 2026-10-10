@@ -22,10 +22,10 @@ func sampleRepo() *memory.Repo {
 	return memory.NewRepo(
 		memory.Row{CommitteeID: "K2", CommitteeStep: "2", ObjectID: "O1", CoverageID: "C1",
 			ClaimNumber: "PNC-2", ApproveCode: "2", CommitteeDate: day(5),
-			AIResult: laporanhasilai.AIRejected, AIDate: day(4), CaseResolved: true},
+			AIResult: "DITOLAK", AIDate: day(4), CaseResolved: true},
 		memory.Row{CommitteeID: "K1", CommitteeStep: " 1 ", ObjectID: "O1", CoverageID: "C1",
 			ClaimNumber: "PNC-1", ApproveCode: "1", CommitteeDate: day(3),
-			AIResult: laporanhasilai.AIAccepted, AIDate: day(2), CaseResolved: true},
+			AIResult: "DITERIMA", AIDate: day(2), CaseResolved: true},
 		memory.Row{CommitteeID: "K3", CommitteeStep: "1", ObjectID: "O1", CoverageID: "C1",
 			ClaimNumber: "PNC-3", ApproveCode: "0", CommitteeDate: day(30),
 			AIResult: "", CaseResolved: true},
@@ -57,7 +57,7 @@ func TestListFiltersSortsAndMapsRows(t *testing.T) {
 	require.Equal(t, laporanhasilai.LabelAccepted, first.CommitteeStatus)
 	require.Equal(t, "1", first.CommitteeStatusCode)
 	require.Equal(t, day(3), first.CommitteeDate)
-	require.Equal(t, laporanhasilai.AIAccepted, first.AIStatus)
+	require.Equal(t, "DITERIMA", first.AIStatus)
 	require.Equal(t, day(2), first.AIDate)
 
 	// Nomor klaim hanya pada komite ke-1.
@@ -81,28 +81,6 @@ func TestListBeyondLastPageIsEmpty(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, page.Total)
 	require.Empty(t, page.Rows)
-}
-
-func TestSummarizeCountsEveryDecision(t *testing.T) {
-	summary, err := sampleRepo().Summarize(context.Background(), september)
-	require.NoError(t, err)
-
-	require.Equal(t, laporanhasilai.Tally{
-		Subject: laporanhasilai.SubjectCommittee, Accepted: 1, Rejected: 1, Pending: 1,
-	}, summary.Committee)
-	require.Equal(t, laporanhasilai.Tally{
-		Subject: laporanhasilai.SubjectAI, Accepted: 1, Rejected: 1, Pending: 1,
-	}, summary.AI)
-}
-
-func TestSummarizeEmptyRangeIsAllZero(t *testing.T) {
-	summary, err := sampleRepo().Summarize(context.Background(), laporanhasilai.Filter{
-		From: time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
-		To:   time.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC),
-	})
-	require.NoError(t, err)
-	require.Equal(t, 0, summary.AI.Rows())
-	require.Equal(t, 0, summary.Committee.Rows())
 }
 
 func TestSampleRowsDropTheRowsThatMustDisappear(t *testing.T) {

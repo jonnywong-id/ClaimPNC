@@ -5,51 +5,90 @@ import (
 	"time"
 )
 
-// SearchMode adalah salah satu dari dua cara mencari berkas arsip.
+// SearchColumn adalah kolom yang dicari dropdown "Tipe Pencarian Archive".
 //
-// Keduanya dibaca dari `Activity/SearchDataArchiveFilling-Act.xml`, yang menyusun klausa
-// WHERE-nya sendiri sebagai teks lalu menempelkannya ke kueri:
+// # Dari mana ketiganya, dan kenapa tidak dapat dibaca dari export
 //
-//	langkah 2   WHERE UPPER(NOKLAIM)='<kata kunci>' or NAMABOX='<kata kunci>'
-//	                                                 or TERTANGGUNG='<kata kunci>'
-//	langkah 10  WHERE trunc(TGLINPUT) >= <awal> and trunc(TGLINPUT) <= <akhir>
+// Dropdown-nya terikat properti ber-`pyListSource=associated`, yang berarti daftar
+// pilihannya tersimpan di DEFINISI PROPERTI — dan definisi properti tidak ikut terekspor.
+// Propertinya sendiri (`FlagNOLL`) dipakai ulang sembilan layar lain untuk hal yang sama
+// sekali berbeda, sehingga menelusurinya pun tidak menolong.
 //
-// Keduanya SALING MENGGANTIKAN, bukan saling melengkapi: klausa yang kedua menimpa yang
-// pertama, bukan menambahinya. Bentuk itu ditiru persis, dan itulah sebabnya mode
-// dinyatakan sebagai pilihan tunggal alih-alih empat isian yang boleh diisi bersamaan.
-type SearchMode string
+// Ketiganya karena itu disebutkan Work Owner langsung dari layar Pega (2026-10-03), dan
+// ketiganya cocok dengan ketiga kolom yang dirangkai kueri lama:
+//
+//	WHERE UPPER(NOKLAIM)='<kata kunci>' or NAMABOX='<kata kunci>'
+//	                                    or TERTANGGUNG='<kata kunci>'
+type SearchColumn string
 
 const (
-	// ModeKeyword adalah "Tipe Pencarian Archive" dengan satu isian Keyword.
-	ModeKeyword SearchMode = "kata_kunci"
-
-	// ModeInputDate adalah pencarian rentang Tgl Input Dari–Sampai.
-	ModeInputDate SearchMode = "tanggal_input"
+	ColumnClaimNumber SearchColumn = "no_klaim"
+	ColumnBoxName     SearchColumn = "nama_box"
+	ColumnInsuredName SearchColumn = "tertanggung"
 )
+
+// SearchColumnOption adalah satu pilihan pada dropdown "Tipe Pencarian Archive".
+type SearchColumnOption struct {
+	Code  SearchColumn
+	Label string
+}
+
+// SearchColumns adalah ketiga pilihan, dalam urutan kolom pada kueri lama.
+func SearchColumns() []SearchColumnOption {
+	return []SearchColumnOption{
+		{Code: ColumnClaimNumber, Label: "No Klaim"},
+		{Code: ColumnBoxName, Label: "Nama BOX"},
+		{Code: ColumnInsuredName, Label: "Tertanggung"},
+	}
+}
 
 // Criteria adalah isi formulir pencarian arsip yang sudah sah.
 //
+// # Dua penyaring yang berdiri sendiri, bukan dua mode
+//
+// Ini koreksi atas rancangan pertama saya, yang menjadikan keduanya satu dropdown mode
+// yang saling menggantikan. Bentuk itu tidak pernah ada di Pega.
+//
+// `Section/SecArchiveDokumen-Section.xml` memberi KEDUA blok ini
+// `pyContainerVisibleWhen` yang sama — `FalgArchiveData.FlagASO==2`:
+//
+//	posisi 164179   "Tipe Pencarian Archive" + "Keyword"
+//	posisi 707930   "Tgl Input Dari" + "Tgl Input Sampai"
+//
+// Keduanya karena itu TAMPIL BERSAMAAN di tab Archive File Klaim, masing-masing dengan
+// isiannya sendiri.
+//
 // Ia hanya dibentuk lewat NewCriteria, sehingga kode yang menerimanya tidak perlu
-// memeriksa ulang apakah modenya dikenal atau isiannya terisi.
+// memeriksa ulang apakah isiannya terisi.
 type Criteria struct {
-	Mode SearchMode
+	// Column adalah kolom yang dicari. Berarti hanya bila Keyword terisi.
+	Column SearchColumn
 
 	// Keyword adalah kata kunci, sudah dipangkas dan DIBESARKAN hurufnya.
 	//
 	// Sistem lama membandingkannya dengan `UPPER(NOKLAIM)` tetapi TIDAK membesarkan
 	// huruf nilai yang diketik, sehingga pencarian nomor klaim berhuruf kecil tidak
-	// pernah cocok. Yang dibesarkan di sini adalah nilainya, dan itu perbaikan yang
-	// disebut terang di docs/keputusan-implementasi.md — bukan diam-diam.
+	// pernah cocok. Yang dibesarkan di sini adalah nilainya — perbaikan yang disebut
+	// terang di docs/keputusan-implementasi.md.
+	//
+	// Kosong berarti penyaring kata kunci tidak dipakai.
 	Keyword string
 
 	// From dan To adalah rentang Tgl Input, keduanya tanggal kalender inklusif.
+	// Nil berarti penyaring tanggal tidak dipakai.
 	From *time.Time
 	To   *time.Time
 }
 
+// HasKeyword menyatakan penyaring kata kunci dipakai.
+func (c Criteria) HasKeyword() bool { return c.Keyword != "" }
+
+// HasDateRange menyatakan penyaring rentang Tgl Input dipakai.
+func (c Criteria) HasDateRange() bool { return c.From != nil && c.To != nil }
+
 // CriteriaInput adalah isian mentah dari lapisan transport, sebelum divalidasi.
 type CriteriaInput struct {
-	Mode    string
+	Column  string
 	Keyword string
 	From    *time.Time
 	To      *time.Time
@@ -59,65 +98,76 @@ type CriteriaInput struct {
 //
 // Seluruh pelanggaran dikumpulkan sekaligus, tidak berhenti pada yang pertama
 // (`11-CROSSCUTTING.md` §1.2).
+//
+// # Satu aturan yang TIDAK ada di sistem lama
+//
+// Setidaknya satu penyaring wajib terisi. Pega tidak memeriksanya: menekan Cari dengan
+// seluruh isian kosong merangkai `WHERE UPPER(NOKLAIM)=” or NAMABOX=”` — yang tidak
+// mengembalikan baris, tetapi tetap memindai seluruh tabel arsip lebih dulu.
 func NewCriteria(input CriteriaInput) (Criteria, error) {
-	mode := SearchMode(strings.TrimSpace(input.Mode))
-	if mode == "" {
-		mode = ModeKeyword
-	}
-
-	if mode != ModeKeyword && mode != ModeInputDate {
-		return Criteria{}, NewValidationError([]Violation{{
-			Field:   FieldSearchMode,
-			Message: "Tipe pencarian tidak dikenal. Pilih Keyword atau Tgl Input.",
-		}})
-	}
-
 	var violations []Violation
 
 	keyword := strings.ToUpper(strings.TrimSpace(input.Keyword))
+	column := SearchColumn(strings.TrimSpace(input.Column))
+
+	if keyword != "" {
+		known := false
+		for _, option := range SearchColumns() {
+			if option.Code == column {
+				known = true
+				break
+			}
+		}
+		if !known {
+			violations = append(violations, Violation{
+				Field:   FieldSearchColumn,
+				Message: "Pilih Tipe Pencarian Archive lebih dulu.",
+			})
+		}
+	}
+
 	from := calendarDate(input.From)
 	to := calendarDate(input.To)
 
-	switch mode {
-	case ModeKeyword:
-		if keyword == "" {
-			violations = append(violations, Violation{
-				Field:   FieldKeyword,
-				Message: "Isi Keyword yang dicari — No Klaim, Nama BOX, atau Nama Tertanggung.",
-			})
-		}
-		// Isian yang tidak berlaku bagi mode ini dibuang, tidak dibawa diam-diam. Nilai
-		// sisa dari mode sebelumnya yang ikut masuk kueri adalah kelas cacat yang tidak
-		// ada di sistem lama, karena di sana tiap isian punya propertinya sendiri.
-		from, to = nil, nil
+	// Rentang setengah terisi DITOLAK, bukan dilengkapi sendiri. Menebak ujung yang
+	// kosong — "sampai hari ini", misalnya — menghasilkan hasil yang tidak diminta
+	// pengguna dan tidak terbaca dari layar.
+	switch {
+	case from != nil && to == nil:
+		violations = append(violations, Violation{
+			Field:   FieldTo,
+			Message: "Isi juga Tgl Input Sampai.",
+		})
+	case from == nil && to != nil:
+		violations = append(violations, Violation{
+			Field:   FieldFrom,
+			Message: "Isi juga Tgl Input Dari.",
+		})
+	case from != nil && to != nil && to.Before(*from):
+		violations = append(violations, Violation{
+			Field:   FieldTo,
+			Message: "Tgl Input Sampai tidak boleh lebih awal dari Tgl Input Dari.",
+		})
+	}
 
-	case ModeInputDate:
-		if from == nil {
-			violations = append(violations, Violation{
-				Field:   FieldFrom,
-				Message: "Pilih Tgl Input Dari.",
-			})
-		}
-		if to == nil {
-			violations = append(violations, Violation{
-				Field:   FieldTo,
-				Message: "Pilih Tgl Input Sampai.",
-			})
-		}
-		if from != nil && to != nil && to.Before(*from) {
-			violations = append(violations, Violation{
-				Field:   FieldTo,
-				Message: "Tgl Input Sampai tidak boleh lebih awal dari Tgl Input Dari.",
-			})
-		}
-		keyword = ""
+	if keyword == "" && from == nil && to == nil {
+		violations = append(violations, Violation{
+			Field:   FieldKeyword,
+			Message: "Isi Keyword atau rentang Tgl Input lebih dulu.",
+		})
 	}
 
 	if err := NewValidationError(violations); err != nil {
 		return Criteria{}, err
 	}
 
-	return Criteria{Mode: mode, Keyword: keyword, From: from, To: to}, nil
+	if keyword == "" {
+		// Kolom yang tidak dipakai dibuang, supaya kueri tidak menerima kolom terpilih
+		// tanpa nilai yang dicari.
+		column = ""
+	}
+
+	return Criteria{Column: column, Keyword: keyword, From: from, To: to}, nil
 }
 
 // ClaimSearchType adalah salah satu dari tiga pilihan "Tipe Input Archive".

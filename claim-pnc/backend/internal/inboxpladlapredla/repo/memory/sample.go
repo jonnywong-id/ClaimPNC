@@ -310,6 +310,19 @@ func sampleAdvices() []Advice {
 			Revision: "1", Date: day(2026, time.February, 17),
 			Sent: "0", ReinsCode: "R006",
 		},
+		// DLA ber-ISKIRIM='0' — pasangan sengaja bagi kedua baris PLA di atasnya.
+		//
+		// Ia ada supaya SATU perbedaan yang paling mudah dikira kerusakan terlihat di
+		// lingkungan pengembangan: baris PLA ber-`'0'` DIGAMBAR bertombol "SEND",
+		// baris DLA ber-`'0'` TIDAK. Syarat tampilnya memang berbeda di kedua section
+		// Pega — lihat inboxpladlapredla.SendWhenSentFlagEmpty.
+		{
+			ClaimKey: workKey("PNC-1008"), Kind: dla,
+			No: "DLA/2026/0008", Reinsurer: "Reasuransi Contoh F", Type: "OR",
+			Date: day(2026, time.February, 17), Sent: "0",
+			AcceptanceNo: "AKS-2026-0008", ReinsCode: "R006",
+			Email: "reas-f@contoh.example",
+		},
 
 		// PNC-1009 — Pre-DLA sudah ber-Nomor Akseptasi, sehingga keluar dari antrean.
 		{

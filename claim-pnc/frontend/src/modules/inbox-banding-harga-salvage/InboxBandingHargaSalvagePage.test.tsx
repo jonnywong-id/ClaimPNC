@@ -95,7 +95,6 @@ const METADATA: MetadataResponse = {
   tab_bawaan: 'request-banding-harga',
   label_cari: 'Cari No Klaim',
   petunjuk_cari: 'Contoh : PNC-1234',
-  selisih_terencana: ['Kolom Aging diurutkan sebagai ANGKA hari, bukan sebagai teks.'],
   keterbatasan: [
     'Keputusan Approve dan Reject TERSIMPAN, tetapi BELUM DIKIRIM ke balai lelang.',
   ],
@@ -248,7 +247,17 @@ function renderPage() {
  */
 async function renderLoaded() {
   renderPage()
-  await screen.findByRole('tab', { name: 'Request Banding Harga' })
+  await screen.findByRole('tab', { name: /Request Banding Harga/ })
+}
+
+/**
+ * bukaBarisHistory menyerahkan BARIS grid History sebagai elemen yang dapat diklik.
+ *
+ * Grid itu memakai `expandedRow`, yang menjadikan tiap `<tr>` ber-`role="button"` — tiruan
+ * `pyEditingMode = expandPane` di Pega. Tidak ada tombol untuk ditekan; yang ditekan barisnya.
+ */
+async function bukaBarisHistory() {
+  return await screen.findByRole('button', { name: /PNCN\.26\.0440/ })
 }
 
 function lastListCall(): Call | undefined {
@@ -276,7 +285,7 @@ describe('bentuk layar', () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(screen.getByRole('tab', { name: 'Request Banding Harga' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /Request Banding Harga/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -309,8 +318,8 @@ describe('bentuk layar', () => {
     stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
     renderPage()
 
-    await screen.findByRole('tab', { name: 'History Cheker' })
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
 
     expect(
       await screen.findByRole('columnheader', { name: 'Object Name' }),
@@ -347,32 +356,62 @@ describe('isi sel', () => {
   })
 })
 
-describe('tabel ringkas', () => {
-  it('menggambar kedua baris beserta jumlahnya', async () => {
+describe('jumlah antrean', () => {
+  /*
+    Tabel ringkas "Status Salvage / Jumlah" DIBUANG, dan angkanya pindah ke tabnya.
+
+    Ia berdiri tepat di atas bilah tab dengan kedua barisnya dapat diklik untuk berpindah
+    antrean — dua kendali berlabel sama persis, berurutan, untuk satu sakelar yang sama
+    (Work Owner, 2026-10-05).
+
+    Pemeriksaan ke Pega membenarkannya dua kali: `Section/InboxReqSalvageASM` memuat NOL
+    "Jumlah" — tabel itu milik layar Inbox Salvage (`MENU_ID 71`) — dan
+    `Activity/GCNMCountRequestSalvage_act` yang memasok angkanya tidak dipanggil harness
+    maupun section mana pun.
+  */
+  it('tidak menggambar tabel ringkas tersendiri', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(screen.queryByRole('columnheader', { name: 'Status Salvage' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Jumlah' })).not.toBeInTheDocument()
+  })
+
+  // Angkanya tetap terbaca — ia menjadi bagian NAMA tabnya, sehingga pembaca layar pun
+  // menyebutkannya.
+  it('menggambar jumlahnya sebagai lencana pada tabnya', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      await screen.findByRole('button', { name: 'History Cheker' }),
+      await screen.findByRole('tab', { name: 'Request Banding Harga 1' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Status Salvage' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Jumlah' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'History Cheker 4' })).toBeInTheDocument()
   })
 
-  // Di layar lama, tabel ringkas inilah cara berpindah daftar. Menggambarnya sebagai angka
-  // mati akan menghilangkan satu cara berpindah yang sudah ada.
-  it('membuka tab ketika barisnya diklik', async () => {
-    stubDefaultFetch()
+  /*
+    Lencananya TIDAK digambar selama angkanya belum tiba.
+
+    Menggambar "0" saat belum dimuat membuat antrean yang sebenarnya berisi tampak kosong —
+    kelas cacat yang sama dengan `GETSELISIHJAM` (`D-49` butir 10): nol yang tidak dapat
+    dibedakan dari kegagalan membaca.
+  */
+  it('tidak menggambar lencana sebelum angkanya tiba', async () => {
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url === RINGKAS_PATH) return jsonResponse(500, { kode: 'galat_internal', pesan: 'x' })
+      return jsonResponse(200, {
+        tab: TAB_REQUEST,
+        baris: [BARIS],
+        paginasi: PAGINASI,
+        penyaring: { cari: '' },
+        antrean: ANTREAN_SENDIRI,
+        portal: 'ASM',
+      })
+    })
     await renderLoaded()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'History Cheker' }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'History Cheker' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      )
-    })
+    expect(screen.getByRole('tab', { name: /Request Banding Harga/ })).toBeInTheDocument()
   })
 })
 
@@ -412,7 +451,7 @@ describe('pencarian', () => {
     await userEvent.type(kotak, 'PNCN.26.0451')
     await waitFor(() => expect(lastListCall()?.url).toContain('cari='))
 
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
 
     await waitFor(() => expect(kotak).toHaveValue(''))
     await waitFor(() => expect(lastListCall()?.url).not.toContain('cari='))
@@ -461,16 +500,43 @@ describe('antrean siapa yang dibaca', () => {
 })
 
 describe('catatan bawah', () => {
-  // Selisih yang tidak dinyatakan akan dilaporkan berulang kali sebagai kerusakan, dan pada
-  // uji kesetaraan gerbang 1 ia akan diperlakukan sebagai bug (`D-54`).
-  it('menggambar selisih terencana dan keterbatasan dari server', async () => {
+  /*
+    Kedua blok catatan di bawah tabel DIHAPUS dari layar (Work Owner, 2026-10-05): isinya
+    menyebut nama rule Pega, nama kolom Oracle, dan nomor keputusan — untuk pengembang, bukan
+    untuk petugas klaim.
+
+    Uji ini menjaga keputusan itu. Tanpanya bloknya mudah kembali: ia pernah ada, dan pola
+    yang sama masih dipakai modul lain sehingga menyalinnya kembali terasa seperti
+    menyeragamkan.
+  */
+  it('tidak menggambar catatan apa pun di bawah tabel', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+
+    for (const judul of ['Yang sengaja berbeda dari layar lama', 'Yang belum tersedia']) {
+      expect(screen.queryByText(judul)).not.toBeInTheDocument()
+    }
+
+    // Isi yang dikirim server pun tidak boleh bocor ke layar lewat jalan lain.
+    expect(
+      screen.queryByText(/Kolom Aging diurutkan sebagai ANGKA hari/),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/BELUM DIKIRIM ke balai lelang/)).not.toBeInTheDocument()
+  })
+
+  /*
+    Server TETAP mengirim keterbatasan, dan itu disengaja: `Limitations()` adalah catatan
+    resmi yang dipakai uji kesetaraan gerbang 1. Yang dihapus hanya tampilannya, bukan
+    datanya — uji ini menjaga agar penghapusan di layar tidak merembet ke backend.
+  */
+  it('tetap menerima keterbatasan dari server meski tidak digambar', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(
-      await screen.findByText(/Kolom Aging diurutkan sebagai ANGKA hari/),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/BELUM DIKIRIM ke balai lelang/)).toBeInTheDocument()
+    const metaCall = [...calls].find((c) => c.url === TAB_PATH)
+    expect(metaCall).toBeDefined()
+    expect(METADATA.keterbatasan.length).toBeGreaterThan(0)
   })
 })
 
@@ -493,17 +559,18 @@ describe('panel riwayat keputusan', () => {
     await renderLoaded()
 
     await screen.findByText('Mesin Genset Bekas')
-    expect(screen.queryByRole('button', { name: 'Lihat Riwayat' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Detail' })).not.toBeInTheDocument()
   })
 
   it('membuka panel keputusan dari baris History', async () => {
     stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
     renderPage()
 
-    await screen.findByRole('tab', { name: 'History Cheker' })
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Lihat Riwayat' }))
+    // BARISNYA yang diklik, bukan tombol — grid History di Pega tidak punya kolom aksi.
+    await userEvent.click(await bukaBarisHistory())
 
     expect(await screen.findByText('Riwayat Keputusan Banding')).toBeInTheDocument()
     expect(await screen.findByText('Forklift Rusak')).toBeInTheDocument()
@@ -514,9 +581,9 @@ describe('panel riwayat keputusan', () => {
     stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
     renderPage()
 
-    await screen.findByRole('tab', { name: 'History Cheker' })
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Lihat Riwayat' }))
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
+    await userEvent.click(await bukaBarisHistory())
 
     await screen.findByText('Riwayat Keputusan Banding')
     for (const judul of ['Tgl Approve', 'Jawaban Checker', 'Nama Checker']) {
@@ -524,20 +591,47 @@ describe('panel riwayat keputusan', () => {
     }
   })
 
-  it('menutup panel ketika tombol Tutup ditekan', async () => {
+  // Ditutup dengan menekan barisnya LAGI — sama seperti membukanya, dan sama seperti
+  // `expandPane` di Pega. Tidak ada tombol "Tutup", karena tidak ada kolom aksi.
+  it('menutup panel ketika barisnya ditekan lagi', async () => {
     stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
     renderPage()
 
-    await screen.findByRole('tab', { name: 'History Cheker' })
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Lihat Riwayat' }))
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
+    await userEvent.click(await bukaBarisHistory())
     await screen.findByText('Riwayat Keputusan Banding')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Tutup riwayat keputusan' }))
+    await userEvent.click(await bukaBarisHistory())
 
     await waitFor(() => {
       expect(screen.queryByText('Riwayat Keputusan Banding')).not.toBeInTheDocument()
     })
+  })
+
+  /*
+    Grid History TIDAK punya kolom aksi, dan itu mengikuti Pega apa adanya.
+
+    `Section/InboxReqSalvageASM` mengatur grid itu `pyEditingMode = expandPane` dengan
+    `pyEditAction = DetailHistoryRequestSalvage`: yang diklik barisnya. Kolom aksi di sana
+    tidak ada sama sekali — Work Owner menunjukkannya 2026-10-05, dan tombol "Detail" yang
+    sempat dibangun di sini dibuang.
+
+    Uji ini menjaga ketiadaannya. Tanpa uji, kolom itu mudah kembali: grid Request di
+    sebelahnya PUNYA kolom aksi, sehingga menyamakan keduanya terasa seperti merapikan.
+  */
+  it('tidak punya kolom aksi maupun tombol pembuka', async () => {
+    stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
+    renderPage()
+
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
+    await screen.findByText('Alat Berat')
+
+    expect(screen.queryByRole('columnheader', { name: 'Aksi' })).not.toBeInTheDocument()
+    for (const label of ['Detail', 'Lihat Riwayat', 'Lihat Detail Klaim']) {
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
+    }
   })
 })
 
@@ -603,8 +697,8 @@ describe('tombol Approve dan Reject', () => {
     stubDefaultFetch([BARIS_HISTORY], TAB_HISTORY)
     renderPage()
 
-    await screen.findByRole('tab', { name: 'History Cheker' })
-    await userEvent.click(screen.getByRole('tab', { name: 'History Cheker' }))
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
     await screen.findByText('Alat Berat')
 
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
@@ -996,5 +1090,264 @@ describe('dialog Lihat File', () => {
     await bukaDokumen()
 
     expect(await screen.findByText('Dokumen tidak dapat dimuat')).toBeInTheDocument()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kepala kolom saat datanya belum ada
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('kolom tetap tergambar meski datanya kosong', () => {
+  /*
+    Di Pega, grid SELALU menampilkan kepalanya — pesan "tidak ada baris" muncul DI DALAM
+    tabel, bukan menggantikannya (`D-13`).
+
+    Tanpa ini, antrean kosong ikut menyembunyikan kolom mana saja yang ada, dan pengguna
+    kehilangan satu-satunya petunjuk bahwa ia sedang melihat tab yang benar. Ketiga uji di
+    bawah menjaga ketiga tabel modul ini tetap begitu.
+  */
+  it('grid Request menggambar kesembilan kolomnya meski antreannya kosong', async () => {
+    stubDefaultFetch([])
+    await renderLoaded()
+
+    for (const judul of ['Tanggal Request', 'No Klaim', 'Detail Object', 'Harga Request']) {
+      expect(await screen.findByRole('columnheader', { name: judul })).toBeInTheDocument()
+    }
+
+    // Pesannya tetap muncul — ia menemani kepalanya, bukan menggantikannya.
+    expect(screen.getByText(/Tidak ada banding harga pada antrean/)).toBeInTheDocument()
+  })
+
+  it('grid History menggambar keempat kolomnya meski antreannya kosong', async () => {
+    stubDefaultFetch([], TAB_HISTORY)
+    renderPage()
+
+    await screen.findByRole('tab', { name: /History Cheker/ })
+    await userEvent.click(screen.getByRole('tab', { name: /History Cheker/ }))
+
+    for (const judul of ['No Klaim', 'Object Name', 'Lokasi Salvage', 'PIC']) {
+      expect(await screen.findByRole('columnheader', { name: judul })).toBeInTheDocument()
+    }
+  })
+
+  it('dialog Lihat File menggambar ketiga kolomnya meski tanpa dokumen', async () => {
+    stubDocumentFetch([])
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+    await userEvent.click(screen.getByRole('button', { name: 'Lihat File' }))
+
+    await screen.findByText(/Dokumen Banding Harga/)
+    for (const judul of ['Kategori', 'Nama', 'Tanggal']) {
+      expect(await screen.findByRole('columnheader', { name: judul })).toBeInTheDocument()
+    }
+  })
+})
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Judul kolom aksi
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('judul kolom aksi', () => {
+  /*
+    Kolom tombol SELALU berjudul "Aksi" — ketetapan Work Owner 2026-10-03, berlaku seluruh
+    modul, dan satu-satunya judul kolom yang sengaja TIDAK menyalin Pega.
+
+    Mengosongkannya sudah dicoba dan DITOLAK (`master-login`, 2026-10-04): kolom tanpa judul
+    tampak *tidak ada* bagi pengguna yang membaca kepala tabel, bukan sekadar sulit dibaca
+    pembaca layar.
+
+    Kedua grid diuji karena keduanya sempat menyimpang dengan cara yang BERBEDA — yang satu
+    `'Action'`, yang satu lagi kosong.
+  */
+  it('grid Request memakai "Aksi", bukan "Action"', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Action' })).not.toBeInTheDocument()
+  })
+
+  // Grid History tidak diuji di sini: sejak 2026-10-05 ia TIDAK punya kolom aksi sama
+  // sekali, mengikuti `pyEditingMode = expandPane` di Pega. Ketiadaannya dijaga uji
+  // tersendiri pada describe "panel riwayat keputusan".
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Label tombol pada kolom Aksi
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('label tombol kolom Aksi', () => {
+  /*
+    Tiga tombol grid Request menyalin literal Pega apa adanya, dan itu keputusan Work Owner
+    2026-10-05 setelah literalnya dibuktikan ada:
+
+      Section/ButtonApproveRejectedRequest-Section.xml
+        pyButtonLabel Approve · pyButtonLabel Reject · pyButtonLabel Lihat File
+
+    Konvensi aplikasi ini sendiri memakai "Setujui"/"Tolak" (3 modul) dan "View Document"
+    (2 modul) untuk perilaku yang sama. Keduanya SENGAJA tidak dipakai di sini — `D-13`
+    menetapkan tampilan meniru Pega supaya pengguna tidak belajar ulang, dan ketetapan
+    kolom "Aksi" menegaskan bahwa judul yang PUNYA literal tetap disalin apa adanya.
+
+    Uji ini menjaga keputusan itu dari "diseragamkan" oleh orang yang hanya melihat
+    ketidakkonsistenannya dan tidak tahu ketiganya literal.
+  */
+  it('grid Request memakai literal Pega, bukan padanan Indonesianya', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+
+    for (const literal of ['Approve', 'Reject', 'Lihat File']) {
+      expect(screen.getByRole('button', { name: literal })).toBeInTheDocument()
+    }
+    for (const padanan of ['Setujui', 'Tolak', 'View Document']) {
+      expect(screen.queryByRole('button', { name: padanan })).not.toBeInTheDocument()
+    }
+  })
+
+  // Grid History tidak punya tombol untuk dinilai labelnya — lihat catatan di atas.
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Penempatan tombol Refresh
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('tombol Refresh', () => {
+  /*
+    Tombolnya berada di HEADER HALAMAN, bukan di dalam kanvas tabel.
+
+    Itu pola mayoritas aplikasi ini. Pindaian seluruh modul (2026-10-05):
+
+      di header halaman, berlabel "Refresh"       28
+      di dalam tabel (`actions=`), "Muat ulang"   11
+      di dalam tabel, "Refresh"                    8
+      di header halaman, "Muat ulang"              2
+
+    Layar ini semula memakai pola kedua; dipindahkan atas permintaan Work Owner.
+
+    Uji ini menuntut tombolnya berbagi `<header>` dengan judul halaman — cara paling
+    langsung menyatakan "di luar tabel" tanpa bergantung pada struktur dalam DataTable,
+    yang bukan milik modul ini dan dapat berubah.
+  */
+  it('berada di header halaman, satu wadah dengan judulnya', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    // Ditunggu sampai datanya tiba: selama memuat, tombolnya bertuliskan "Memuat…".
+    await screen.findByText('Mesin Genset Bekas')
+
+    const judul = screen.getByRole('heading', {
+      name: 'Inbox Banding Harga Salvage',
+      level: 1,
+    })
+    const refresh = screen.getByRole('button', { name: 'Refresh' })
+
+    const header = judul.closest('header')
+    expect(header).not.toBeNull()
+    expect(header).toContainElement(refresh)
+  })
+
+  // Keadaan memuat dinyatakan pada tombolnya, seperti 49 tombol Refresh lain di aplikasi
+  // ini — tanpa itu, menekan tombol pada jaringan lambat tidak memberi umpan balik apa pun
+  // dan pengguna menekannya berulang kali.
+  it('menyatakan keadaan memuat pada tombolnya', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Memuat…|Refresh/ })).toBeInTheDocument()
+    })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kerapian grid berkolom sepuluh
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('kerapian grid Request', () => {
+  /*
+    Kolom aksi TIDAK boleh berlebar tetap.
+
+    Semula `19rem` — selebar ketiga tombolnya berjajar. Pada grid ber-9 kolom data, lebar itu
+    memaksa setiap judul pecah dua baris, sementara kolomnya sendiri melompong saat antrean
+    kosong (Work Owner, 2026-10-05).
+
+    Tanpa lebar tetap, peramban yang membagi ruangnya: menyusut saat kosong, melebar saat
+    berisi, dan menyusut lagi bila kolom data membutuhkannya — pembungkus tombolnya
+    `flex-wrap`, jadi tombolnya boleh turun baris.
+
+    Uji ini menjaga ketiadaannya. Lebar tetap mudah kembali: kolom yang tombolnya turun baris
+    terlihat seperti "terlalu sempit", dan memasang `width` terasa seperti memperbaikinya.
+  */
+  it('kolom Aksi tidak berlebar tetap', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+
+    const aksi = screen.getByRole('columnheader', { name: 'Aksi' })
+    expect(aksi.getAttribute('style') ?? '').not.toContain('width')
+  })
+
+  // Mode rapat `dense` memangkas jarak sel dari `px-5` ke `px-3`. Pada sepuluh kolom itu
+  // membebaskan sekitar 10rem — dan ia memang dibuat untuk grid yang harus muat satu layar
+  // tanpa gulir menyamping.
+  it('memakai mode rapat, karena kolomnya sepuluh', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await screen.findByText('Mesin Genset Bekas')
+
+    const judul = screen.getByRole('columnheader', { name: 'No Klaim' })
+    expect(judul.className).toContain('px-3')
+    expect(judul.className).not.toContain('px-5')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keterangan di bawah kotak cari
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('kotak cari', () => {
+  /*
+    Keterangannya DIPANGKAS, bukan dibuang.
+
+    Semula: *"Harus nomor klaim UTUH — pencarian di layar ini cocok persis, sama seperti di
+    layar lama. Separuh nomor tidak menghasilkan baris."*
+
+    Work Owner menyisakan kalimat pertamanya saja (2026-10-05). Yang bertahan adalah
+    ATURANNYA; yang dibuang PENJELASAN MENGAPA. Orang yang sedang mengetik butuh tahu apa
+    yang harus ia ketik, bukan riwayat perilaku pencarian.
+
+    Kedua sisi diuji sekaligus, karena keduanya mudah bergeser ke arah yang salah: aturannya
+    ikut terhapus saat membersihkan, atau penjelasannya kembali saat seseorang merasa
+    aturannya kurang jelas.
+  */
+  it('menyisakan aturannya saja, tanpa penjelasan mengapa', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(screen.getByText('Harus nomor klaim UTUH.')).toBeInTheDocument()
+
+    expect(screen.queryByText(/cocok persis, sama seperti di layar lama/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Separuh nomor tidak menghasilkan baris/)).not.toBeInTheDocument()
+  })
+
+  /*
+    Keterangannya TIDAK hilang seluruhnya — ia pindah ke pesan kosong.
+
+    Di situ ia muncul hanya ketika sebuah pencarian benar-benar tidak menghasilkan apa pun,
+    yakni saat pengguna sedang menanyakannya. Menghapusnya dari sana pula akan membuat
+    kekosongan terbaca sebagai "datanya hilang".
+  */
+  it('tetap menjelaskannya saat sebuah pencarian tidak menghasilkan baris', async () => {
+    stubDefaultFetch([])
+    await renderLoaded()
+
+    await userEvent.type(screen.getByLabelText('Cari No Klaim'), 'PNCN')
+
+    expect(await screen.findByText(/COCOK PERSIS/)).toBeInTheDocument()
   })
 })

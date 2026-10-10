@@ -207,11 +207,20 @@ export function ClausePage() {
     },
     {
       key: 'aksi',
-      title: '',
+      // "Aksi" — satu-satunya judul kolom yang sengaja TIDAK menyalin Pega (ketetapan
+      // Work Owner 2026-10-03). Section aslinya memberi judul "Action" pada kolom ini,
+      // dan banyak section lain meninggalkannya kosong; keduanya tidak dibawa.
+      //
+      // Judulnya otomatis TERPUSAT: DataTable memusatkan kepala kolom yang berjudul
+      // persis "Aksi", apa pun perataan selnya. Jadi tidak ada prop tambahan di sini —
+      // yang menentukan hanyalah judulnya ditulis benar.
+      title: 'Aksi',
       width: 'w-40',
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
+      // Selnya tetap rata KANAN, sama seperti modul lain: tombolnya menempel ke tepi
+      // tabel, sementara judulnya di tengah kolom.
       alignRight: true,
       value: () => '',
       render: (row) => (

@@ -15,7 +15,16 @@ import type { DetailResponse } from './types'
 
 const PATH = '/api/inbox-os-claim-per-cabang'
 
-const EMPTY_OBJECT = { nama: '', lokasi: '', pekerjaan: '', tanggal_lahir: '', ktp_paspor: '', status_peserta: '' }
+const EMPTY_OBJECT = {
+  id: 'OBJ-KOSONG',
+  nama: '',
+  lokasi: '',
+  pekerjaan: '',
+  tanggal_lahir: '',
+  ktp_paspor: '',
+  status_peserta: '',
+  coverage: [],
+}
 
 function detail(cob: string): DetailResponse {
   return {
@@ -49,7 +58,6 @@ function detail(cob: string): DetailResponse {
       { nama_user: '', tanggal_proses: '', pesan: '', tanggal_balas: '', jawaban: '', internal: false },
     ],
     cabang: { kode: '1', nama: 'CABANG' },
-    selisih_terencana: [],
     portal: 'ASM',
   }
 }

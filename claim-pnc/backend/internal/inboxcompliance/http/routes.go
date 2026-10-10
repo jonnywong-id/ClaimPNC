@@ -94,5 +94,66 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Itu `TKT-F3-005`, dan sampai ia ada, jejaknya hanya berupa baris log yang
 		// menyebut pemutusnya.
 		perPortal.Post("/inbox-compliance/{referensi}/keputusan", h.SubmitDecision)
+
+		// Menerbitkan tautan baru untuk satu dokumen klaim.
+		//
+		// `POST`, bukan `GET`, walau ia terbaca seperti pembacaan — karena ia MENERBITKAN
+		// sesuatu: satu tautan bertanda tangan berumur terbatas, yang dapat dibuka siapa
+		// pun yang memegangnya selama masa berlakunya. Menjadikannya `GET` mengundangnya
+		// masuk riwayat peramban, prefetch, dan cache perantara.
+		//
+		// Dokumennya dicari ULANG di server untuk memastikan ia memang milik klaim pada
+		// jalur — lihat OpenDocument. Itu satu-satunya pemeriksaan kepemilikan yang ada,
+		// karena layanan penyimpanan di seberang tidak melakukannya.
+		perPortal.Post(
+			"/inbox-compliance/{referensi}/dokumen/{dokumen}/tautan", h.OpenDocument)
+
+		// Mengunggah satu lampiran. `multipart/form-data` — lihat UploadDocument.
+		perPortal.Post("/inbox-compliance/{referensi}/dokumen", h.UploadDocument)
+
+		// Menghapus satu lampiran.
+		//
+		// Penghapusannya FISIK pada `DATA_ATTACHFILE`, atas persetujuan Work Owner
+		// (2026-10-07) — `D-66` tidak diberlakukan di tabel itu. Satu baris riwayat
+		// ditulis lebih dulu, dan itu satu-satunya jejak yang tersisa.
+		perPortal.Delete(
+			"/inbox-compliance/{referensi}/dokumen/{dokumen}", h.DeleteDocument)
+
+		// Menerbitkan Surat Penolakan — tombol "Generate PDF".
+		//
+		// Namanya BUKAN "unduh", dan itu bukan pilihan kata: ia tidak mengirim berkas ke
+		// peramban melainkan MELAMPIRKAN surat ke klaim, persis seperti Pega
+		// (`DownloadPDFReject` langkah 13-25). Jawabannya adalah baris dokumen yang baru
+		// tercatat; layar membukanya lewat jalur tautan di atas, sama seperti dokumen
+		// lain.
+		//
+		// Menekannya dua kali MENGGANTI suratnya, tidak menumpuk — lihat
+		// GenerateRejectLetter.
+		perPortal.Post(
+			"/inbox-compliance/{referensi}/surat-penolakan", h.GenerateRejectLetter)
+
+		// Melayani tab **Dokumen** (lini Travel).
+		//
+		// Keduanya dibaca SAAT DITEKAN, bukan ikut pada pembukaan form: sebagian besar
+		// kategori kosong, dan memuat seluruh lampiran setiap kali form dibuka berarti
+		// membaca banyak yang tidak pernah dilihat.
+		//
+		// `GET` di sini pembacaan murni — berbeda dari penerbitan tautan yang `POST`
+		// karena ia menerbitkan sesuatu yang berumur terbatas.
+		perPortal.Get(
+			"/inbox-compliance/{referensi}/dokumen", h.ListDocumentsInCategory)
+
+		// `POST`, bukan `PATCH`.
+		//
+		// PATCH memang lebih tepat secara makna — yang berubah satu isian dari dokumen
+		// yang sudah ada. Tetapi klien HTTP bersama belum mengenalnya, dan melebarkannya
+		// menyentuh kode yang dipakai SELURUH modul demi satu rute di sini.
+		//
+		// POST atas sub-sumber daya aksi adalah konvensi modul ini sendiri
+		// (`10-API-STRATEGY.md` §2, dan lihat `/keputusan` serta `/surat-penolakan`),
+		// sehingga ia bukan penyimpangan melainkan bentuk yang sudah berlaku.
+		perPortal.Post(
+			"/inbox-compliance/{referensi}/dokumen/{dokumen}/kategori",
+			h.ChangeDocumentCategory)
 	})
 }

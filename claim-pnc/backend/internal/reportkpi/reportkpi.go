@@ -150,6 +150,15 @@ type AdjusterSummary struct {
 	// Scores adalah kesembilan nilai rata-rata, dikunci dengan kode komponen.
 	// Kuncinya adalah Component.Code — lihat component.go.
 	Scores map[string]Score
+
+	// Category adalah kolom KATEGORI grid layar lama — KURANG BAIK, CUKUP, BAIK, atau
+	// BAIK SEKALI.
+	//
+	// Ia TIDAK disimpan di tabel penilaian melainkan dicari dari pita `NILAI ADJUSTER` pada
+	// `POOLDATA.M_KPI_PNC` memakai nilai akhir baris ini. Kosong berarti nilainya tidak
+	// masuk satu pita pun — dan itu benar-benar mungkin, karena pitanya BERLUBANG di
+	// 60,000–60,001, 69,999–70, dan 80,000–80,001.
+	Category string
 }
 
 // AdjusterDetail adalah satu baris grid **Detail KPI Adjuster** — satu kasus survei.
@@ -175,6 +184,9 @@ type AdjusterDetail struct {
 
 	// Scores adalah kesembilan nilai kasus ini, dikunci dengan kode komponen.
 	Scores map[string]Score
+
+	// Category adalah kolom KATEGORI, dicari dengan cara yang sama seperti pada Summary.
+	Category string
 }
 
 // DetailPage adalah satu halaman grid Detail beserta jumlah seluruhnya.
@@ -246,22 +258,27 @@ type Repo interface {
 	// data; pengisi memori memotongnya sendiri untuk hasil yang sama.
 	Detail(ctx context.Context, query Query, page Pagination) (DetailPage, error)
 
-	// Adjusters mengembalikan nama adjuster yang MEMANG punya baris KPI, terurut.
+	// Adjusters mengembalikan seluruh nama adjuster eksternal dari master, terurut.
 	//
-	// # Kenapa daftarnya dari tabel KPI, bukan dari master surveyor
+	// # Kenapa ia tidak menerima penyaring
 	//
-	// Layar lama mengisinya dari `V_D_SURVEYORS` lewat RDB list `BrowseAdjsuterExternal`,
-	// dan rule itu **tidak ada di export** (`R-16`) — bentuk kuerinya tidak diketahui.
+	// Karena rule Pega pengisinya tidak punya parameter satu pun. Layar lama mengisinya
+	// dari `V_D_SURVEYORS` lewat `RDB List/BrowseAdjsuterExternal-SQL.xml`, dipanggil
+	// `Activity/GetFilterKPI-Act.xml` saat layar dibuka — sebelum periode mana pun dipilih.
 	//
-	// Yang diketahui pasti adalah cara nilainya dipakai: `and adjuster='<pilihan>'`
-	// terhadap kolom `ADJUSTER` tabel ini. Mengambil daftarnya dari kolom yang SAMA dengan
-	// yang disaring menutup satu kelas kegagalan seluruhnya — tidak akan pernah ada
-	// pilihan dropdown yang menghasilkan grid kosong karena namanya dieja berbeda di dua
-	// tabel.
+	// # Kekeliruan yang ini perbaiki (2026-10-09)
 	//
-	// Selisihnya dinyatakan di PlannedDifferences: adjuster yang terdaftar di master
-	// tetapi belum punya satu pun penilaian TIDAK muncul di dropdown.
-	Adjusters(ctx context.Context, query Query) ([]string, error)
+	// Versi sebelumnya menyatakan rule itu **tidak ada di export** dan menggantinya dengan
+	// `DISTINCT ADJUSTER` dari tabel penilaian, disaring tipe report dan periode. Rulenya
+	// ADA; pernyataan itu dibuat tanpa memeriksa.
+	//
+	// Akibatnya terlihat di layar: pada periode yang belum punya baris penilaian, dropdown
+	// kosong sama sekali. Pengguna tidak punya cara tahu apakah itu wajar atau rusak.
+	//
+	// Konsekuensi yang kini kembali seperti Pega: adjuster yang terdaftar di master tetapi
+	// belum punya penilaian **tetap muncul**, dan memilihnya menghasilkan grid kosong.
+	// Begitulah layar lama berperilaku.
+	Adjusters(ctx context.Context) ([]string, error)
 
 	// AdminTotals mengembalikan angka MENTAH kartu skor tab KPI Admin.
 	//
@@ -281,6 +298,12 @@ type Repo interface {
 	// `note` menyaring kolom `NOTE` dan hanya berarti pada `SLA KLAIM`, yang punya pita
 	// berbeda untuk LEADER dan MEMBER. Kosong berarti tidak disaring.
 	Bands(ctx context.Context, job, note string) ([]Band, error)
+
+	// AdjusterCategories mengembalikan pita KATEGORI adjuster, terurut `ID`.
+	//
+	// Ia terpisah dari Bands karena menyaring `TIPE = 'ADJUSTER'`, bukan `'PIC'`, dan karena
+	// barisnya tidak punya kolom `NILAI` — yang dipakai hanyalah `BOTTOM`, `TOP`, dan `NOTE`.
+	AdjusterCategories(ctx context.Context) ([]Band, error)
 
 	// ThresholdDays mengembalikan ambang hari komponen dari kolom `DAY` tabel yang sama.
 	//
@@ -314,6 +337,16 @@ type Repo interface {
 
 	// ClosureSpans mengembalikan pasangan tanggal penilaian SLA Klaim per PIC.
 	ClosureSpans(ctx context.Context, query PICQuery) ([]ClosureSpan, error)
+
+	// PICExport mengembalikan berkas ekspor tab KPI PIC Teknik.
+	//
+	// Ia MENGEMBALIKAN JUDUL KOLOM pula, bukan hanya baris: judul itu datang dari hasil
+	// kueri dan menjadi kepala berkas CSV yang dibandingkan dengan berkas Pega. Menyusunnya
+	// di lapisan lain berarti dua sumber kebenaran untuk satu hal.
+	//
+	// Daftar PIC diterima sebagai parameter, bukan dibaca ulang di dalamnya, supaya berkas
+	// yang diunduh memakai daftar yang SAMA dengan kartu skor yang sedang terlihat.
+	PICExport(ctx context.Context, kind PICExportKind, query PICQuery, pics []string) (PICExportTable, error)
 
 	// Holidays mengembalikan tanggal libur pada satu rentang, DI LUAR akhir pekan.
 	//

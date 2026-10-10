@@ -19,6 +19,7 @@ import (
 type Service struct {
 	repoSelector mastersparepart.RepoSelector
 	clock        clock.Clock
+	uploader     mastersparepart.DocumentUploader
 }
 
 // Options adalah bahan pembentuk Service.
@@ -36,6 +37,14 @@ type Options struct {
 	// deterministik, dan supaya tidak ada satu pun penambahan 7 jam manual yang menyelinap
 	// masuk (`F-5`, `08-TECHNICAL-STRATEGY.md` §4.4).
 	Clock clock.Clock
+
+	// Uploader menyambung ke layanan penyimpanan dokumen (`D-16`). BOLEH kosong.
+	//
+	// Boleh kosong karena layanan itu tidak selalu terpasang di setiap lingkungan, dan
+	// ketiadaannya TIDAK boleh menghalangi seluruh modul: daftar, tambah, dan ubah sparepart
+	// sama sekali tidak bergantung padanya. Yang terjadi bila kosong hanyalah tombol unggah
+	// dinyatakan tidak tersedia — lewat UploadAvailable, sebelum pengguna memilih berkas.
+	Uploader mastersparepart.DocumentUploader
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -49,7 +58,7 @@ func NewService(o Options) (*Service, error) {
 	if o.Clock == nil {
 		return nil, errors.New("mastersparepart/usecase: Clock wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, clock: o.Clock}, nil
+	return &Service{repoSelector: o.RepoSelector, clock: o.Clock, uploader: o.Uploader}, nil
 }
 
 // Actor adalah pengguna yang sedang melakukan sesuatu.

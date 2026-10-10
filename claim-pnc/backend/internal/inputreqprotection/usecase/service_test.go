@@ -31,6 +31,7 @@ func bangun(t *testing.T, at time.Time) (*usecase.Service, *memory.Repo) {
 		Protections: repo,
 		Types:       memory.NewTypeRepoWithSamples(),
 		Claims:      memory.NewClaimRepoWithSamples(),
+		Causes:      memory.NewCauseRepoWithSamples(),
 	}
 	service, err := usecase.NewService(usecase.Options{
 		Protections: func(alias string) (inputreqprotection.Stores, error) {
@@ -162,6 +163,7 @@ func TestProteksiSamaDiHariBerbedaDiterima(t *testing.T) {
 				Protections: repo,
 				Types:       memory.NewTypeRepoWithSamples(),
 				Claims:      memory.NewClaimRepoWithSamples(),
+				Causes:      memory.NewCauseRepoWithSamples(),
 			}, nil
 		},
 		Now:      func() time.Time { return besok },

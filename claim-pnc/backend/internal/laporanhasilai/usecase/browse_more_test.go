@@ -13,16 +13,11 @@ import (
 
 // brokenRepo gagal pada operasi yang ditandai.
 type brokenRepo struct {
-	listErr      error
-	summarizeErr error
+	listErr error
 }
 
 func (r brokenRepo) List(context.Context, laporanhasilai.Filter, laporanhasilai.Pagination) (laporanhasilai.Page, error) {
 	return laporanhasilai.Page{}, r.listErr
-}
-
-func (r brokenRepo) Summarize(context.Context, laporanhasilai.Filter) (laporanhasilai.Summary, error) {
-	return laporanhasilai.Summary{}, r.summarizeErr
 }
 
 func serviceOver(t *testing.T, repo laporanhasilai.Repo) *usecase.Service {
@@ -32,13 +27,6 @@ func serviceOver(t *testing.T, repo laporanhasilai.Repo) *usecase.Service {
 	})
 	require.NoError(t, err)
 	return service
-}
-
-func TestSearchStopsOnSummaryFailure(t *testing.T) {
-	boom := errors.New("ringkasan gagal")
-	_, err := serviceOver(t, brokenRepo{summarizeErr: boom}).Search(
-		context.Background(), "asm", wholeSeptember(), laporanhasilai.Pagination{})
-	require.ErrorIs(t, err, boom)
 }
 
 func TestSearchStopsOnListFailure(t *testing.T) {

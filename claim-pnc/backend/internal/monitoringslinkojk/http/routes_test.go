@@ -141,7 +141,7 @@ func TestDescribeReturnsBothSegments(t *testing.T) {
 
 	require.Len(t, body.Segments, 2)
 	require.Equal(t, "D01", body.Segments[0].Code)
-	require.Equal(t, 20, body.Segments[0].Column)
+	require.Equal(t, 38, body.Segments[0].Column)
 	require.Equal(t, "F06", body.Segments[1].Code)
 	require.Equal(t, 20, body.Segments[1].Column)
 	require.Equal(t, 20, body.Segments[1].AvailableColumn)
@@ -260,38 +260,35 @@ func TestRequestWithoutCallerIsRejected(t *testing.T) {
 // EKSPOR
 // ============================================================================
 
-func TestExportWritesCSVWithEveryColumn(t *testing.T) {
-	response := get(t, testServer(t, "PELAPOR"), "/api/monitoring-slink-ojk/ekspor")
+// Ekspor segmen F06 SEJAJAR — 27 judul, 27 sel per baris.
+func TestExportF06WritesAlignedCSV(t *testing.T) {
+	response := get(t, testServer(t, "PELAPOR"),
+		"/api/monitoring-slink-ojk/ekspor?segmen=F06")
 	require.Equal(t, http.StatusOK, response.Code)
 	require.Contains(t, response.Header().Get("Content-Type"), "text/csv")
-	// Nama berkasnya memang menyebut F06 meski isinya segmen D01 — ketertukaran itu
-	// direplikasi dari Pega atas keputusan Work Owner 2026-09-26.
 	require.Contains(t, response.Header().Get("Content-Disposition"), "Laporan F06 SLIK OJK")
 	require.Equal(t, "no-store", response.Header().Get("Cache-Control"))
 
 	records, err := csv.NewReader(strings.NewReader(response.Body.String())).ReadAll()
 	require.NoError(t, err)
 
-	expected := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01)
+	expected := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06)
 	require.Equal(t, expected, records[0])
 	require.Len(t, records, 5, "satu baris kepala ditambah empat baris data contoh")
 
-	// Segmen D01 SEJAJAR — 27 judul, 27 sel. Yang misalign hanya F06.
 	for _, record := range records[1:] {
 		require.Len(t, record, len(expected))
 	}
 }
 
-// Berkas ekspor F06 SENGAJA tidak sejajar — 38 judul, 34 sel per baris.
+// Berkas ekspor segmen D01 SENGAJA tidak sejajar — 38 judul, 34 sel per baris.
 //
 // Ini replikasi `ExportDataSlinkFOG` apa adanya, diputuskan Work Owner 2026-09-26 sesudah
 // selisihnya disampaikan beserta akibatnya. Uji ini membuktikan berkas yang dihasilkan
 // benar-benar berbentuk demikian — bukan hanya katalognya.
-func TestExportF06ReplicatesPegaMisalignment(t *testing.T) {
-	response := get(t, testServer(t, "PELAPOR"), "/api/monitoring-slink-ojk/ekspor?segmen=F06")
+func TestExportD01ReplicatesPegaMisalignment(t *testing.T) {
+	response := get(t, testServer(t, "PELAPOR"), "/api/monitoring-slink-ojk/ekspor")
 	require.Equal(t, http.StatusOK, response.Code)
-
-	// Nama berkasnya menyebut D01 meski isinya segmen F06 — tertukar, dan direplikasi.
 	require.Contains(t, response.Header().Get("Content-Disposition"), "Laporan SLIK OJK D01")
 
 	// FieldsPerRecord dimatikan: pembaca CSV baku MENOLAK baris yang panjangnya berbeda

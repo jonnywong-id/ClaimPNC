@@ -88,70 +88,6 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// Summarize mencacah seluruh baris yang cocok, dipecah menurut keputusan AI dan komite.
-//
-// Satu kueri, bukan lima: kelima angkanya dibaca dari himpunan baris yang sama dalam satu
-// kali pindai. Menjalankannya sebagai lima kueri terpisah membuka kemungkinan kelimanya
-// dihitung atas keadaan basis data yang berbeda-beda — dan ringkasan yang angkanya tidak
-// saling menjumlah adalah ringkasan yang tidak dipercaya siapa pun.
-func (r *Repo) Summarize(
-	ctx context.Context,
-	filter laporanhasilai.Filter,
-) (laporanhasilai.Summary, error) {
-	from, to := bounds(filter)
-
-	var (
-		aiAccepted        sql.NullInt64
-		aiRejected        sql.NullInt64
-		committeeAccepted sql.NullInt64
-		committeeRejected sql.NullInt64
-		rowCount          sql.NullInt64
-	)
-
-	// SUM menghasilkan NULL bila tidak ada satu baris pun yang cocok, sementara COUNT
-	// menghasilkan 0. Keduanya dibaca lewat NullInt64 supaya perbedaan itu tidak menjadi
-	// galat pemindaian pada rentang tanggal yang memang kosong — keadaan yang normal,
-	// bukan kegagalan.
-	err := r.db.QueryRowContext(ctx, getQuery("report_summary"), from, to).Scan(
-		&aiAccepted,
-		&aiRejected,
-		&committeeAccepted,
-		&committeeRejected,
-		&rowCount,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// Kueri agregat tanpa GROUP BY selalu mengembalikan satu baris, sehingga ini
-			// mestinya mustahil. Ia ditangani sebagai ringkasan kosong, bukan galat:
-			// layar yang kehilangan seluruh isinya karena kejanggalan di satu angka jauh
-			// lebih buruk daripada layar yang menampilkan nol.
-			return laporanhasilai.Summary{
-				Committee: laporanhasilai.Tally{Subject: laporanhasilai.SubjectCommittee},
-				AI:        laporanhasilai.Tally{Subject: laporanhasilai.SubjectAI},
-			}, nil
-		}
-		return laporanhasilai.Summary{}, fmt.Errorf(
-			"laporanhasilai/sqlstore: membaca ringkasan: %w", err)
-	}
-
-	total := int(rowCount.Int64)
-
-	return laporanhasilai.Summary{
-		Committee: tallyOf(
-			laporanhasilai.SubjectCommittee,
-			int(committeeAccepted.Int64),
-			int(committeeRejected.Int64),
-			total,
-		),
-		AI: tallyOf(
-			laporanhasilai.SubjectAI,
-			int(aiAccepted.Int64),
-			int(aiRejected.Int64),
-			total,
-		),
-	}, nil
-}
-
 // CountAll mencacah seluruh baris pada satu rentang. Dipakai `claimpnc -periksa`.
 func (r *Repo) CountAll(ctx context.Context, filter laporanhasilai.Filter) (int, error) {
 	from, to := bounds(filter)
@@ -184,28 +120,6 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 func bounds(filter laporanhasilai.Filter) (time.Time, time.Time) {
 	clean := filter.Clean()
 	return clean.From, clean.ToExclusive()
-}
-
-// tallyOf menyusun satu baris ringkasan dari cacah mentahnya.
-//
-// Menunggu dihitung sebagai SISA, bukan sebagai kondisi tersendiri. Dengan begitu nilai
-// tak terduga di kolom statusnya — kode yang tidak dikenal, NULL, spasi — tetap terhitung
-// di suatu tempat alih-alih menghilang tanpa jejak.
-//
-// Sisa yang negatif mustahil secara aritmetika, tetapi tetap dijaga: bila kelak kueri
-// ringkasannya berubah dan pembilangnya melampaui cacah barisnya, angka negatif di layar
-// akan terbaca sebagai kerusakan data, bukan sebagai kekeliruan kueri.
-func tallyOf(subject string, accepted, rejected, rowCount int) laporanhasilai.Tally {
-	pending := rowCount - accepted - rejected
-	if pending < 0 {
-		pending = 0
-	}
-	return laporanhasilai.Tally{
-		Subject:  subject,
-		Accepted: accepted,
-		Rejected: rejected,
-		Pending:  pending,
-	}
 }
 
 // rowScanner menyatukan *sql.Row dan *sql.Rows.
@@ -355,6 +269,13 @@ func loadAllQueries() map[string]string {
 // komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 	result := map[string]string{}
 	name := ""
 	var body []string

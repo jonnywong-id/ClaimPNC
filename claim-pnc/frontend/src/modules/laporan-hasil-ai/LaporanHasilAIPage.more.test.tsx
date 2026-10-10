@@ -35,7 +35,6 @@ function row(id: string, tanggalKomite: string | null, tanggalAI: string | null)
 }
 
 const REPORT = {
-  ringkasan: [],
   baris: [row('KLM-B', '2026-09-05', null), row('KLM-A', null, '2026-09-01')],
   paginasi: { halaman: 1, ukuran: 50, total: 2, total_halaman: 1 },
   filter: { dari: '2026-09-01', sampai: '2026-09-30' },
@@ -119,15 +118,14 @@ describe('LaporanHasilAIPage', () => {
       answer: (): Answer => 'aneh',
       text: 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.',
     },
-  ])('menampilkan galat pada kedua grid: $name', async ({ answer, text }) => {
+  ])('menampilkan galat pada grid rincian: $name', async ({ answer, text }) => {
     installFetch((url) => (url.startsWith(`${ROUTE}?`) ? answer() : undefined))
     const user = userEvent.setup()
     show()
     await search(user)
 
-    expect(await screen.findByText('Ringkasan tidak dapat diambil')).toBeInTheDocument()
-    expect(screen.getByText('Rincian tidak dapat diambil')).toBeInTheDocument()
-    expect(screen.getAllByText(text)).toHaveLength(2)
+    expect(await screen.findByText('Rincian tidak dapat diambil')).toBeInTheDocument()
+    expect(screen.getAllByText(text)).toHaveLength(1)
   })
 
   it('menampilkan galat ekspor dari server', async () => {

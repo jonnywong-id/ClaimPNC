@@ -98,6 +98,11 @@ func Columns() []Column {
 // layarnya — bukan hanya oleh orang yang membaca kodenya.
 func PlannedDifferences() []string {
 	return []string{
+		"Antrean dikenali dari TAHAP PENUGASANNYA (\"Analyst Doctor\" pada " +
+			"Register_Flow), bukan dari penanda transfer di dalam blob Pega. Penanda itu " +
+			"tidak punya kolom di basis data, sehingga tidak dapat dibaca dari luar Pega. " +
+			"Akibatnya: klaim yang penandanya masih menunjuk Analyst Doctor tetapi " +
+			"penugasannya sudah berpindah muncul di Pega dan tidak muncul di sini.",
 		"Kolom \"Lama Waktu Klaim\" berisi umur tugas dalam hari. Report Definition layar " +
 			"lama tidak mengambil satu pun properti durasi, sehingga angkanya dihitung — " +
 			"sama seperti pada Inbox Close Claim.",
@@ -117,9 +122,11 @@ func PlannedDifferences() []string {
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
 func Limitations() []string {
 	return []string{
-		"Kolom \"Komentar dari PIC Teknis\" masih kosong. Properti Pega-nya tidak " +
-			"terekspos sebagai kolom SQL, dan nama kolom penggantinya menunggu konfirmasi " +
-			"DBA.",
+		"Kolom \"Komentar dari PIC Teknis\" selalu kosong. Properti Pega-nya tidak " +
+			"terekspos sebagai kolom SQL, dan dua calon penggantinya sudah diperiksa lalu " +
+			"ditolak: KOMENTARANALISATOR_1 milik jalur PUCL, dan alias AnalystDoctorRemaks " +
+			"di rule SQL lama menunjuk kolom yang berbeda-beda. Mengisinya menuntut kolom " +
+			"baru dari DBA, bukan tebakan nama.",
 		"Seluruh tugas tahap Analyst Doctor di sistem lama ditujukan ke SATU operator yang " +
 			"tertanam di dalam alur (`Flow/Register_Flow.xml`, `Assignment13`). Selama " +
 			"penugasannya belum dipindahkan ke master data (`D-15`), pengguna lain melihat " +

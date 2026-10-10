@@ -170,12 +170,17 @@ func TestPerubahanDOLMenuntutTanggalBaru(t *testing.T) {
 	require.NoError(t, d.Validate())
 }
 
-// TestPerubahanCauseOfLossMenuntutNextCauseOfLossSaja menjaga koreksi 2026-09-24.
+// TestPerubahanCauseOfLossMenuntutNextCOLDanBarisCoverage menjaga DUA koreksi berurutan.
 //
-// Semula KEDUA penyebab kerugian wajib diisi pengguna. Itu keliru: "Cause Of Loss Dipilih"
-// DITURUNKAN dari klaim (`Activity/OpenProtection-Act.xml`), sehingga memvalidasinya di sini
-// akan menolak isian yang pengguna tidak punya cara memperbaikinya.
-func TestPerubahanCauseOfLossMenuntutNextCauseOfLossSaja(t *testing.T) {
+// Koreksi 2026-09-24: semula KEDUA penyebab kerugian wajib diisi pengguna. Itu keliru —
+// "Cause Of Loss Dipilih" DITURUNKAN dari baris yang dipilih, bukan diketik.
+//
+// Koreksi 2026-10-05 (Work Owner, "ikutin pega dong"): baris coverage yang hendak diubah
+// WAJIB disebut. Satu klaim dapat punya banyak coverage — kueri terhadap `PNC-1452`
+// mengembalikan `JackHugh / Resiko A` tiga kali dengan Cause of Loss berbeda. Tanpa
+// sasarannya, permintaan tersimpan tanpa tujuan dan baru ketahuan saat seseorang
+// menyetujuinya lalu klaimnya tidak berubah.
+func TestPerubahanCauseOfLossMenuntutNextCOLDanBarisCoverage(t *testing.T) {
 	d := draftLengkap()
 	d.Type = inputreqprotection.TypeChangeCauseOfLoss
 
@@ -184,9 +189,22 @@ func TestPerubahanCauseOfLossMenuntutNextCauseOfLossSaja(t *testing.T) {
 
 	var v *inputreqprotection.ValidationError
 	require.True(t, errors.As(err, &v))
-	require.Len(t, v.Errors, 1, "hanya Next Cause Of Loss yang diisi pengguna")
+	require.Len(t, v.Errors, 2, "Next Cause Of Loss dan baris coverage yang dipilih")
 
+	// Mengisi penyebabnya saja BELUM cukup — sasarannya masih kosong.
 	d.Change.CauseOfLossAfter = "COL-CONTOH-1"
+	err = d.Validate()
+	require.Error(t, err)
+	require.True(t, errors.As(err, &v))
+	require.Len(t, v.Errors, 1)
+	require.Equal(t, inputreqprotection.FieldCoverageRow, v.Errors[0].Field)
+
+	// Separuh sasaran juga ditolak: keduanya datang dari satu tombol Pilih, jadi satu tanpa
+	// yang lain menandakan permintaan yang dirakit tangan, bukan hasil menekan tombol.
+	d.Change.ObjectID = "1"
+	require.Error(t, d.Validate())
+
+	d.Change.ObjectCoverageID = "3"
 	require.NoError(t, d.Validate())
 }
 

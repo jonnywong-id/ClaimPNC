@@ -9,56 +9,91 @@
 -- SATU sistem, dan tabel-tabel ini milik Pega (`P-1`).
 --
 -- ============================================================================
--- YANG HARUS DIBACA DBA LEBIH DULU — DUA KOLOM BELUM TERKONFIRMASI
+-- DUA KOLOM TEBAKAN SUDAH DIUJI KE ORACLE — KEDUANYA TIDAK ADA (2026-10-09)
 -- ============================================================================
 --
--- `Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai DUA propertinya sendiri:
+-- Versi sebelumnya berkas ini menyaring `w.ISCOMPLIANCETRANSFER_1 = 2` dan mengambil
+-- `w.ANALYSTDOCTORREMAKS_1`. Kedua nama itu adalah TEBAKAN yang mengikuti konvensi `_1`,
+-- karena `Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai kedua propertinya
+-- sendiri `<pzPropertyType>unexposed</pzPropertyType>` — properti tak terekspos hidup di
+-- dalam blob Pega, bukan sebagai kolom SQL.
 --
---   <pzPropertyType>unexposed</pzPropertyType>
+-- Tebakan itu kini sudah diuji langsung ke katalog Oracle:
 --
--- yaitu `.ClaimData.isComplianceTransfer` dan `.ClaimData.AnalystDoctorRemaks`. Properti tak
--- terekspos hidup di dalam blob Pega, BUKAN sebagai kolom SQL. Pega tetap dapat
--- menyaringnya karena ia memuat blob lalu menyaring di memori; Go tidak dapat.
+--   SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS
+--    WHERE TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'
+--      AND (COLUMN_NAME LIKE '%COMPLIANCE%' OR COLUMN_NAME LIKE '%ANALYST%'
+--           OR COLUMN_NAME LIKE '%REMAK%');
 --
--- Work Owner menjawab 2026-09-23: **nilainya langsung di-set 2**. Jadi ia memang nilai
--- tersimpan, dan yang dibutuhkan hanyalah nama kolomnya.
+-- Hasilnya SATU baris: `ANALYSTTRANSFERDATE_1`. Tidak ada `ISCOMPLIANCETRANSFER_1`, dan
+-- tidak ada `ANALYSTDOCTORREMAKS_1`. Itulah sebab layar ini menjawab "Antrean tidak dapat
+-- dimuat — Terjadi kesalahan pada sistem": kueri daftarnya gagal ORA-00904 pada SETIAP
+-- permintaan, bukan sesekali.
 --
--- Nama yang dipakai di bawah mengikuti konvensi `_1` yang berlaku pada SELURUH properti
--- `ClaimData` lain di tabel yang sama, dan konvensi itu bukan tebakan — ia terbaca dari
--- kolom yang sudah terbukti ada:
+-- `docs/keputusan-implementasi.md` §147.3 sudah mencatat temuan yang sama dari arah lain,
+-- sewaktu membaca `PUCLPost`: "Kolom ISCOMPLIANCETRANSFER_1 yang dipakai kueri
+-- inboxanalystdoctor tidak ada di basis data ini." Catatan itu benar; yang kurang hanyalah
+-- tindakannya.
 --
---   .ClaimData.PUCLStatus.StatusKlaim   -> STATUSKLAIM_1
---   .ClaimData.PUCLStatus.RCL_PUCL      -> RCL_PUCL_1
---   .ClaimData.PUCLStatus.LamaKlaim     -> LAMAKLAIM_1
---   .ClaimData.DateOfLoss               -> DATEOFLOSS_1
---   .ClaimData.UserTeknis               -> USERTEKNIS_1
+-- ============================================================================
+-- PENGGANTI PENYARING UTAMA — PENUGASANNYA SENDIRI, BUKAN PENANDA DI DALAM BLOB
+-- ============================================================================
 --
--- sehingga:
+-- Yang menempatkan sebuah klaim di antrean ini BUKAN penanda di dalam blob, melainkan
+-- penugasannya. `Flow/Register_Flow.xml` `Assignment13` berbunyi:
 --
---   .ClaimData.isComplianceTransfer     -> ISCOMPLIANCETRANSFER_1   ** PERLU KONFIRMASI **
---   .ClaimData.AnalystDoctorRemaks      -> ANALYSTDOCTORREMAKS_1    ** PERLU KONFIRMASI **
+--   <pyMOName>Analyst Doctor</pyMOName>
+--   <pyImplementation>WorkList</pyImplementation>
+--   <pyRouteTo>Operator</pyRouteTo>
 --
--- KEDUANYA TIDAK ADA di `docs/kolom-t-claimlist-admin.md`, yang disusun dari katalog Oracle
--- langsung (`ALL_TAB_COLUMNS`) dan mencatat 186 kolom dengan 123 di antaranya terisi.
--- Dokumen itu hanya memuat kolom YANG DIBUTUHKAN, bukan seluruhnya, sehingga ketiadaannya di
--- sana belum membuktikan ketiadaannya di tabel.
+-- dan Pega menyimpan `pyMOName` sebuah assignment sebagai `PXTASKLABEL` pada baris
+-- worklist-nya. Kesepadanan itu bukan dugaan — ia terbaca langsung dari data, dengan SETIAP
+-- label yang muncul untuk `Register_Flow` sama persis dengan `pyMOName` salah satu
+-- assignment di flow itu:
 --
--- Satu kueri katalog menutup pertanyaan ini:
+--   Input Register · Input Estimasi · Estimation · Choose Surveyor · View Polis ·
+--   Send To Analis · RCLDokter
 --
---   SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT
---     FROM ALL_TAB_COLUMNS
---    WHERE OWNER = 'DATAPEGA'
---      AND TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'
---      AND (COLUMN_NAME LIKE '%COMPLIANCE%' OR COLUMN_NAME LIKE '%ANALYSTDOCTOR%');
+-- Karena itu penyaringnya menjadi `a.PXTASKLABEL = :1` dengan nilai "Analyst Doctor".
 --
--- BILA KOLOMNYA TIDAK ADA, kueri di bawah gagal dengan ORA-00904 yang MENYEBUT NAMA
--- KOLOMNYA. Itu disengaja. Alternatifnya — menghilangkan penyaringnya supaya kuerinya jalan —
--- akan menampilkan SELURUH tugas worklist pemanggil sebagai tugas medis, tanpa satu pun
--- pesan galat. Kegagalan yang menyebut sebabnya jauh lebih murah daripada layar yang
--- terlihat benar.
+-- Label itu AMAN dipakai sebagai penanda antrean: dari keenam flow di export, hanya
+-- `Register_Flow` yang memuat assignment bernama "Analyst Doctor" — kelima flow lain nol
+-- kemunculan — sehingga tidak ada flow lain yang dapat menghasilkan label yang sama.
 --
--- `-periksa` menembak kueri `check_columns` di bawah supaya keadaan ini diketahui SEBELUM
--- ada pengguna yang membukanya.
+-- Pola yang sama sudah dipakai modul lain dan bukan hal baru di aplikasi ini:
+-- `inboxadmin/repo/sqlstore/inboxadmin.sql:191` menyaring
+-- `B.PXTASKLABEL IN (Input Register, Input Estimasi, Estimation)`.
+--
+-- SELISIH YANG DITIMBULKANNYA, dan ia dinyatakan di layar sebagai selisih terencana
+-- (`D-54`), bukan disamarkan:
+--
+--   Pega menyaring  "klaim yang PERNAH ditandai transfer ke Analyst Doctor".
+--   Kueri ini       "klaim yang SEKARANG berada di tahap Analyst Doctor".
+--
+-- Keduanya berimpit selama klaimnya memang masih menunggu penilaian medis. Keduanya BERBEDA
+-- untuk klaim yang penandanya masih bernilai 2 tetapi penugasannya sudah berpindah — klaim
+-- itu muncul di Pega dan tidak muncul di sini. Untuk sebuah Inbox, yang kedua justru bacaan
+-- yang benar menurut `D-79`: barisnya adalah pekerjaan yang MENUNGGU dikerjakan, dan
+-- barisnya hilang begitu tugasnya berpindah.
+--
+-- ============================================================================
+-- KOLOM "Komentar dari PIC Teknis" TIDAK LAGI DIAMBIL DARI SQL
+-- ============================================================================
+--
+-- `.ClaimData.AnalystDoctorRemaks` tidak punya kolom. Dua calon penggantinya sudah diperiksa
+-- dan KEDUANYA DITOLAK:
+--
+--   KOMENTARANALISATOR_1   properti `.ClaimData.KomentarAnalisator`, dipakai jalur PUCL
+--                          (`Activity/PUCLPost-Act.xml`), bukan penilaian medis.
+--
+--   alias di rule SQL      `a.QQNAME AS "AnalystDoctorRemaks"` dan
+--                          `a.clientname AS "AnalystDoctorRemaks"` muncul di belasan rule,
+--                          menunjuk kolom yang berbeda-beda. Itu alias yang MENYESATKAN —
+--                          utang teknis §4.2 — bukan bukti tempat penyimpanan.
+--
+-- Kolomnya karena itu TETAP DIGAMBAR di layar tetapi isinya kosong, dan layar menyatakan
+-- alasannya. Itu pilihan yang sama dengan sebelumnya; yang berubah hanyalah ia tidak lagi
+-- menjatuhkan SELURUH halaman hanya untuk mendapatkannya.
 --
 -- ============================================================================
 -- PEMETAAN KOLOM — properti Pega -> kolom sebenarnya -> alias di sini
@@ -73,10 +108,10 @@
 --   No Polis                   .Policy.PolicyNo                  w.POLICYNO     POLICY_NUMBER
 --   Nama Tertanggung           .Policy.QQName                    w.QQNAME       INSURED_NAME
 --   Nama Cabang                .Policy.Quotation.BranchName      w.BRANCHNAME   BRANCH_NAME
---   Tanggal Pendaftaran        .pxCreateDateTime                 w.PXCREATE…    REGISTERED_AT
+--   Tanggal Pendaftaran        .pxCreateDateTime                 w.PXCREATE..   REGISTERED_AT
 --   Nama Admin                 .pyOrigUserID                     w.PYORIGUSERID ADMIN_NAME
---   Komentar dari PIC Teknis   .ClaimData.AnalystDoctorRemaks    (unexposed)    TECHNICAL_PIC_NOTE
---   Lama Waktu Klaim           — dihitung, lihat catatan 2       —              —
+--   Komentar dari PIC Teknis   .ClaimData.AnalystDoctorRemaks    TIDAK ADA      (kosong)
+--   Lama Waktu Klaim           dihitung, lihat catatan 2         --             --
 --
 --   tidak digambar             .ClaimData.UserTeknis             w.USERTEKNIS_1 TECHNICAL_PIC
 --   tidak digambar             .pyStatusWork                     w.PYSTATUSWORK PROCESS_STATUS
@@ -91,13 +126,12 @@
 --
 -- DATAPEGA.PC_ASM_FW_GCNMFW_WORK menampung DUA jenis objek kerja sekaligus:
 --
---   'ASM-FW-GCNMFW-Work-PNC'              klaim PNC             <- yang ini
---   'ASM-FW-GCNMFW-Work-ReceiveDocument'  berkas penerimaan dokumen
+--   ASM-FW-GCNMFW-Work-PNC               klaim PNC             <- yang ini
+--   ASM-FW-GCNMFW-Work-ReceiveDocument   berkas penerimaan dokumen
 --
 -- Report Definition tidak menyaringnya karena ia TIDAK PERLU: di Pega, sebuah Report
--- Definition terikat kelasnya sendiri (`pyClassName = ASM-FW-GCNMFW-Work-PNC`) dan engine
--- yang menambahkan penyaring kelasnya. Menulis SQL langsung berarti penyaring itu harus
--- ditulis tangan.
+-- Definition terikat kelasnya sendiri dan engine yang menambahkan penyaring kelasnya.
+-- Menulis SQL langsung berarti penyaring itu harus ditulis tangan.
 --
 -- Melupakannya tidak menghasilkan galat apa pun — ia hanya mencampur berkas penerimaan
 -- dokumen ke dalam antrean medis, dengan kolom yang kebetulan terisi karena keduanya
@@ -139,26 +173,29 @@
 -- YANG BERUBAH DARI SISTEM LAMA, DAN KENAPA
 -- ============================================================================
 --
--- 1. PAGINASI DIKERJAKAN BASIS DATA.
+-- 1. ANTREAN DIKENALI DARI PENUGASANNYA, bukan dari penanda di dalam blob. Lihat bagian
+--    PENGGANTI PENYARING UTAMA di atas, termasuk selisih yang ditimbulkannya.
+--
+-- 2. PAGINASI DIKERJAKAN BASIS DATA.
 --    Report Definition memakai `pyPageSize = 50` dan `pyMaxRecords = 500`, yang berarti
 --    seluruh baris ditarik, dipotong di 500, lalu dinomori di klipboard. Di sini halamannya
---    dipotong `OFFSET … FETCH NEXT … ROWS ONLY` sebelum baris meninggalkan basis data —
+--    dipotong OFFSET .. FETCH NEXT .. ROWS ONLY sebelum baris meninggalkan basis data —
 --    didukung Oracle 12c+ dan PostgreSQL (`09-DATABASE-STRATEGY.md` §3.3). Ini PERUBAHAN
 --    PERILAKU yang disadari: antrean di atas 500 baris kini terlihat utuh.
 --
--- 2. JUMLAH SELURUH BARIS DIHITUNG `COUNT(*) OVER ()`.
+-- 3. JUMLAH SELURUH BARIS DIHITUNG `COUNT(*) OVER ()`.
 --    Satu perjalanan, bukan dua: kueri kedua yang hanya menghitung akan membaca ulang
 --    gabungan yang sama, dan gabungan itulah bagian yang mahal. Fungsi jendela dihitung
---    SEBELUM `OFFSET … FETCH` dipakai, sehingga angkanya jumlah seluruhnya — bukan jumlah
+--    SEBELUM pemotongan halaman dipakai, sehingga angkanya jumlah seluruhnya — bukan jumlah
 --    baris di halaman ini.
 --
--- 3. KOTAK CARI DITAMBAHKAN.
+-- 4. KOTAK CARI DITAMBAHKAN.
 --    Layar lama tidak punya penyaring apa pun. Begitu antreannya dipaginasi, satu klaim
 --    menjadi sulit ditemukan — dan pencarian di peramban hanya menyentuh halaman yang
 --    sedang terbuka, sehingga hasilnya bohong. Ia dinyatakan ke pengguna sebagai selisih
 --    terencana (`D-54`).
 --
--- 4. NILAI SELALU LEWAT PARAMETER BINDING.
+-- 5. NILAI SELALU LEWAT PARAMETER BINDING.
 --    Tidak ada satu pun nilai yang dirangkai ke teks SQL. Larangan perangkaian
 --    (`08-TECHNICAL-STRATEGY.md` §4.3) tidak dikecualikan oleh keputusan mana pun: yang
 --    direplikasi adalah perilaku bisnis, bukan celah injeksi.
@@ -174,9 +211,9 @@
 --   keputusan yang mendasarinya.
 --
 -- * HANYA `Resolved-Completed` yang dikecualikan. `Resolved-Rejected` TIDAK — klaim yang
---   ditolak tetap muncul di antrean ini. Itu isi `pyFilterOperation != ` pada filter C apa
---   adanya, dan ia BERBEDA dari `inboxoutstanding` yang mengecualikan keduanya. Perbedaannya
---   dibawa, bukan diseragamkan.
+--   ditolak tetap muncul di antrean ini. Itu isi filter C pada Report Definition apa adanya,
+--   dan ia BERBEDA dari `inboxoutstanding` yang mengecualikan keduanya. Perbedaannya dibawa,
+--   bukan diseragamkan.
 --
 -- * Urutan `PXCREATEDATETIME DESC, PZINSKEY DESC` mengikuti kedua `pySortType = DESC` pada
 --   Report Definition, termasuk pemutus serinya.
@@ -188,68 +225,51 @@
 -- name: list_tasks
 -- Satu halaman antrean Analyst Doctor milik seorang operator.
 --
--- ============================================================================
--- SUMBER BARU (2026-10-08) — DAN DUA ISIAN YANG TIDAK PUNYA SUMBER
--- ============================================================================
+-- Bind:
+--   :1  label tahap penugasan — "Analyst Doctor", dari Register_Flow Assignment13
+--   :2  Operator ID pemanggil
+--   :3  status kerja yang DIKECUALIKAN — "Resolved-Completed"
+--   :4  kata kunci pencarian, atau NULL bila kotak carinya kosong
+--   :5  pola LIKE untuk Nomor Case — sudah ber-wildcard dan ber-escape, dibentuk di Go
+--   :6  pola LIKE untuk No Polis — nilainya sama dengan :5
+--   :7  offset
+--   :8  jumlah baris
 --
--- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi. Baris DIGERAKKAN worklist operator
--- (`PC_ASSIGN_WORKLIST`), lalu LEFT JOIN `T_CLAIM_PNC` c (data klaim) dan `T_CLAIMLIST_ADMIN` k
--- (Nama Admin). T_CLAIMLIST_ADMIN tidak dijadikan tabel utama: ia hanya memuat tugas antrean
--- Admin, bukan antrean Analyst Doctor.
+-- KENAPA :4, :5, DAN :6 MEMBAWA NILAI YANG SAMA DI BAWAH TIGA PENANDA BERBEDA
 --
--- Pemetaan: PZINSKEY -> a.PXREFOBJECTKEY · PYID -> a.PXREFOBJECTINSNAME (nomor case Pega
--- persis), cadangan ekor c.CLAIMID · POLICYNO -> c.NOPOLIS · USERTEKNIS_1 -> c.PICTEKNIK ·
--- PXCREATEDATETIME -> c.REGISTERDATE, cadangan saat tugas dibuat · PYSTATUSWORK ->
--- c.STATUSWORK (NULL tidak dibuang: ia masih memegang tugas) · PYORIGUSERID ->
--- k.PYORIGUSERID -> k.PXCREATEOPERATOR -> c.ADMINKLAIM.
+-- Karena satu penanda TIDAK BOLEH muncul dua kali. `database/sql` mengirim argumen menurut
+-- posisi, dan driver go-ora menghitung SETIAP kemunculan `:n` sebagai satu variabel yang
+-- harus diikat. Menulis `:4` tiga kali berarti kueri menuntut delapan ikatan sementara
+-- pemanggil hanya mengirim enam, dan Oracle menjawab:
 --
--- `.ClaimData.isComplianceTransfer` dan `.ClaimData.AnalystDoctorRemaks` TIDAK ADA sebagai
--- kolom di skema mana pun — DATAPEGA maupun POOLDATA (katalog 2026-10-08). Kueri lama yang
--- menebak namanya ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1 karena itu SELALU gagal
--- ORA-00904. Akibatnya, sampai kolomnya dibuat:
+--   ORA-01008: not all variables bound
 --
---   * penyaring "penanda antrean = 2" DILEPAS — layar menampilkan seluruh tugas klaim di
---     worklist operator itu sendiri. Batas "hanya milik saya" tetap berlaku lewat worklist.
---   * kolom "Komentar dari PIC Teknis" kosong.
---
--- check_columns tetap memeriksa kedua kolom (kini di T_CLAIM_PNC), sehingga `-periksa` terus
--- melaporkannya BELUM sampai kolomnya ada.
---
--- Bind — setiap kemunculan bernomor sendiri, karena go-ora mengikat menurut URUTAN
--- KEMUNCULAN. Kueri lama memakai `:4` tiga kali sementara Go mengirim satu nilai, sehingga ia
--- juga akan gagal ORA-01008 begitu kotak cari diisi.
---   :1        Operator ID pemanggil
---   :2        status kerja yang DIKECUALIKAN — "Resolved-Completed"
---   :3 :4 :5  kata kunci pencarian, atau NULL bila kotak carinya kosong
---   :6        offset
---   :7        jumlah baris
-SELECT a.PXREFOBJECTKEY                                           AS REFERENCE,
-       COALESCE(a.PXREFOBJECTINSNAME,
-                REPLACE(c.CLAIMID, 'ASM-FW-GCNMFW-WORK ', ''))    AS CASE_ID,
-       c.NOPOLIS                                                  AS POLICY_NUMBER,
-       c.QQNAME                                                   AS INSURED_NAME,
-       c.BRANCHNAME                                               AS BRANCH_NAME,
-       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, c.ADMINKLAIM) AS ADMIN_NAME,
-       c.PICTEKNIK                                                AS TECHNICAL_PIC,
-       NULL                                                       AS TECHNICAL_PIC_NOTE,
-       COALESCE(c.REGISTERDATE, a.PXCREATEDATETIME)               AS REGISTERED_AT,
-       c.STATUSWORK                                               AS PROCESS_STATUS,
-       a.PXASSIGNEDOPERATORID                                     AS ASSIGNED_OPERATOR,
-       COUNT(*) OVER ()                                           AS TOTAL_ROWS
-  FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN POOLDATA.T_CLAIM_PNC c
-              ON c.CLAIMID = a.PXREFOBJECTKEY
-       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-              ON k.PZINSKEY = a.PXREFOBJECTKEY
-             AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
- WHERE a.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND UPPER(a.PXASSIGNEDOPERATORID) = UPPER(:1)
-   AND (c.STATUSWORK IS NULL OR c.STATUSWORK <> :2)
-   AND (:3 IS NULL
-        OR UPPER(COALESCE(a.PXREFOBJECTINSNAME, c.CLAIMNO)) LIKE '%' || UPPER(:4) || '%'
-        OR UPPER(c.NOPOLIS) LIKE '%' || UPPER(:5) || '%')
- ORDER BY COALESCE(c.REGISTERDATE, a.PXCREATEDATETIME) DESC, a.PXREFOBJECTKEY DESC
-OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
+-- Itu BUKAN dugaan — ia terjadi pada berkas ini, dan tersembunyi di belakang ORA-00904
+-- sampai penyebab yang pertama diperbaiki. Pola satu-penanda-satu-kemunculan adalah pola
+-- yang sudah berlaku di modul lain; lihat `inboxcloseclaim.sql:171-176`.
+SELECT w.PZINSKEY                    AS REFERENCE,
+       w.PYID                        AS CASE_ID,
+       w.POLICYNO                    AS POLICY_NUMBER,
+       w.QQNAME                      AS INSURED_NAME,
+       w.BRANCHNAME                  AS BRANCH_NAME,
+       w.PYORIGUSERID                AS ADMIN_NAME,
+       w.USERTEKNIS_1                AS TECHNICAL_PIC,
+       w.PXCREATEDATETIME            AS REGISTERED_AT,
+       w.PYSTATUSWORK                AS PROCESS_STATUS,
+       a.PXASSIGNEDOPERATORID        AS ASSIGNED_OPERATOR,
+       COUNT(*) OVER ()              AS TOTAL_ROWS
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
+               ON a.PXREFOBJECTKEY = w.PZINSKEY
+ WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND a.PXTASKLABEL = :1
+   AND UPPER(a.PXASSIGNEDOPERATORID) = UPPER(:2)
+   AND w.PYSTATUSWORK <> :3
+   AND (:4 IS NULL
+        OR UPPER(w.PYID) LIKE :5 ESCAPE '\'
+        OR UPPER(w.POLICYNO) LIKE :6 ESCAPE '\')
+ ORDER BY w.PXCREATEDATETIME DESC, w.PZINSKEY DESC
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 
 -- name: check_tables
 -- Dipakai perintah `-periksa`: memastikan KEDUA tabel terbaca dari koneksi yang dipakai.
@@ -262,23 +282,39 @@ OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 -- penyaringnya tidak meloloskan apa pun — pemanggil karena itu tidak perlu membedakan "tidak
 -- ada baris" dari "gagal dibaca".
 SELECT COUNT(*) AS PROBE
-  FROM DATAPEGA.PC_ASSIGN_WORKLIST a
-       LEFT JOIN POOLDATA.T_CLAIM_PNC c
-              ON c.CLAIMID = a.PXREFOBJECTKEY
-       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
-              ON k.PZINSKEY = a.PXREFOBJECTKEY
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
+               ON a.PXREFOBJECTKEY = w.PZINSKEY
  WHERE 1 = 0
 
 -- name: check_columns
--- Dipakai perintah `-periksa`: memastikan KEDUA kolom yang belum terkonfirmasi memang ada.
+-- Dipakai perintah `-periksa`: memastikan SETIAP kolom yang dibaca kueri daftar memang ada.
 --
 -- Ia terpisah dari check_tables dengan sengaja. Keduanya gagal karena sebab yang sangat
--- berbeda — yang satu hak baca, yang satu nama kolom yang belum dipastikan DBA — dan galat
--- yang menyebut sebab yang salah akan mengirim orang yang memperbaikinya ke arah yang keliru.
+-- berbeda — yang satu hak baca, yang satu nama kolom — dan galat yang menyebut sebab yang
+-- salah akan mengirim orang yang memperbaikinya ke arah yang keliru.
 --
--- `WHERE 1 = 0` membuat Oracle tetap MEM-PARSE kedua kolom tanpa membaca satu baris pun.
--- Parsing itulah yang menghasilkan ORA-00904 bila namanya salah, dan itu yang dicari di sini.
-SELECT COUNT(c.ISCOMPLIANCETRANSFER_1) AS PROBE_TRANSFER,
-       COUNT(c.ANALYSTDOCTORREMAKS_1)  AS PROBE_NOTE
-  FROM POOLDATA.T_CLAIM_PNC c
+-- `WHERE 1 = 0` membuat Oracle tetap MEM-PARSE seluruh kolomnya tanpa membaca satu baris
+-- pun. Parsing itulah yang menghasilkan ORA-00904 bila ada nama yang salah, dan itu yang
+-- dicari di sini.
+--
+-- Yang diperiksa kini SELURUH kolom yang benar-benar dipakai, bukan hanya dua kolom tebakan
+-- seperti versi sebelumnya. Alasannya langsung: versi sebelumnya memeriksa dua kolom yang
+-- ternyata tidak ada lalu BERHENTI di situ, sehingga kolom lain tidak pernah sempat
+-- terperiksa. Pemeriksaan yang menyerah pada temuan pertama menyembunyikan temuan kedua.
+--
+-- `PXTASKLABEL` ikut diperiksa karena sejak 2026-10-09 ia penyaring utama layar ini.
+SELECT COUNT(w.PYID)                 AS PROBE_CASE_ID,
+       COUNT(w.POLICYNO)             AS PROBE_POLICY,
+       COUNT(w.QQNAME)               AS PROBE_INSURED,
+       COUNT(w.BRANCHNAME)           AS PROBE_BRANCH,
+       COUNT(w.PYORIGUSERID)         AS PROBE_ADMIN,
+       COUNT(w.USERTEKNIS_1)         AS PROBE_TECHNICAL_PIC,
+       COUNT(w.PXCREATEDATETIME)     AS PROBE_REGISTERED_AT,
+       COUNT(w.PYSTATUSWORK)         AS PROBE_STATUS,
+       COUNT(a.PXTASKLABEL)          AS PROBE_TASK_LABEL,
+       COUNT(a.PXASSIGNEDOPERATORID) AS PROBE_OPERATOR
+  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
+               ON a.PXREFOBJECTKEY = w.PZINSKEY
  WHERE 1 = 0

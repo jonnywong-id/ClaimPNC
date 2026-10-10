@@ -11,7 +11,7 @@ import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
 import { downloadOutstandingCSV, PAGE_SIZE, useOutstandingList } from './api'
-import { DocumentStatusSummary } from './DocumentStatusSummary'
+import { DocumentStatusTab, PANEL_ID, tabId } from './DocumentStatusTab'
 import type { DocumentStatusCode, OutstandingClaim } from './types'
 
 /**
@@ -49,9 +49,13 @@ import type { DocumentStatusCode, OutstandingClaim } from './types'
  *
  * # Yang BELUM ada
  *
- * Section rujukan memuat beberapa tab — ALL Case, Communication, Loss Adjuster, Temporary
- * Close — yang masing-masing punya kolom tambahan sendiri. Yang dibangun di sini adalah
- * daftar intinya; tab-tab itu menunggu keputusan lingkup.
+ * Kesembilan tab section rujukan SUDAH digambar, tetapi hanya tiga yang benar-benar dapat
+ * dibuka — Complete documents, Documents not complete, dan ALL Case. Enam sisanya membaca
+ * sumber yang belum dimigrasikan, dan karena itu tampil tanpa lencana serta tidak dapat
+ * ditekan; lihat `DocumentStatusTab`.
+ *
+ * Tiap tab di Pega juga punya KOLOM tambahannya sendiri. Kolom-kolom itu belum dibawa —
+ * yang dibangun di sini adalah daftar intinya.
  *
  * Tombol **Input Claim** (`CreateInputKlaim`) juga belum ada: ia membuka alur registrasi,
  * yang dimiliki modul lain.
@@ -60,9 +64,9 @@ export function OutstandingPage() {
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
 
-  // Status dokumen yang sedang dipilih. Diisi HANYA lewat panel ringkasan — tidak ada
-  // dropdown terpisah, sama seperti Inbox Auto Claim dan sama seperti Pega, yang juga
-  // memakai tab pada panelnya sebagai satu-satunya cara memilih.
+  // Status dokumen yang sedang dipilih. Diisi HANYA lewat deret tab — tidak ada dropdown
+  // terpisah, sama seperti Inbox Auto Claim dan sama seperti Pega, yang juga memakai tab
+  // sebagai satu-satunya cara memilih. Teks kosong berarti tab "ALL Case".
   const [documentStatus, setDocumentStatus] = useState<DocumentStatusCode | ''>('')
 
   const list = useOutstandingList({ search, documentStatus, offset })
@@ -309,19 +313,29 @@ export function OutstandingPage() {
       )}
 
       {/*
-        Panel ringkasan diletakkan DI ATAS grid, mengikuti tata letak Pega — donut dan
-        tabnya berada di atas daftar klaim, bukan di sampingnya.
+        Deret tab status dokumen, di ATAS grid — mengikuti tata letak Pega dan bentuk tab
+        Inbox Auto Claim.
 
-        Ia memakai penyaring layar yang sama kecuali status, supaya angka donut selalu
-        meringkas apa yang sedang dilihat pengguna.
+        Ia memakai penyaring layar yang sama kecuali status itu sendiri, supaya lencananya
+        selalu meringkas apa yang sedang dilihat pengguna.
       */}
-      <DocumentStatusSummary
+      <DocumentStatusTab
         filter={{ search }}
         selected={documentStatus}
         onSelect={changeDocumentStatus}
       />
 
-      <div className="mt-6">
+      {/*
+        Grid adalah PANEL dari deret tab di atasnya, bukan daftar yang berdiri sendiri.
+        Tanpa `role="tabpanel"` dan `aria-labelledby`, pembaca layar mengumumkan tabnya
+        tetapi tidak pernah menyebut isi mana yang dikendalikannya.
+      */}
+      <div
+        role="tabpanel"
+        id={PANEL_ID}
+        aria-labelledby={tabId(documentStatus === '' ? 'semua' : documentStatus)}
+        className="mt-6"
+      >
         <DataTable
           columns={columns}
           rows={rows}

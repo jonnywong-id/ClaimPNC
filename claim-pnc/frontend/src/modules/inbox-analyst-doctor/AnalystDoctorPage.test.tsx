@@ -58,7 +58,6 @@ const keteranganResponse: KeteranganResponse = {
     },
     { kunci: 'lama_hari', judul: 'Lama Waktu Klaim' },
   ],
-  selisih_terencana: ['Kolom "Lama Waktu Klaim" berisi umur tugas dalam hari.'],
   keterbatasan: ['Kolom "Komentar dari PIC Teknis" masih kosong.'],
   ukuran_halaman: 25,
 }
@@ -316,21 +315,22 @@ it('menyatakan pencarian tidak cocok saat kotak cari terisi', async () => {
 })
 
 /**
- * Selisih terencana dan keterbatasan DITAMPILKAN, bukan disimpan sebagai catatan teknis.
+ * Keterbatasan TETAP ditampilkan; selisih terencana TIDAK lagi.
  *
- * `D-54` menetapkan selisih di luar 13 butir `P-5` dinyatakan. Menyatakannya di layar itulah
- * yang membuat keputusannya terlihat oleh orang yang memakai layarnya.
+ * Keputusan Work Owner 2026-10-06 menghapus panel selisih dari seluruh layar — daftarnya
+ * tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`), tetapi ia berhenti menjadi
+ * isi layar. Panel "Yang perlu diketahui" tidak ikut dihapus: ia menjawab pertanyaan yang
+ * muncul justru saat layarnya dipakai, bukan saat dibandingkan dengan Pega.
  */
-it('menampilkan selisih terencana dan keterbatasan dari server', async () => {
+it('menampilkan keterbatasan, tanpa panel selisih terencana', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0311')
 
-  expect(screen.getByText('Perbedaan yang disengaja terhadap layar lama')).toBeInTheDocument()
   expect(
-    screen.getByText('Kolom "Lama Waktu Klaim" berisi umur tugas dalam hari.'),
-  ).toBeInTheDocument()
+    screen.queryByText('Perbedaan yang disengaja terhadap layar lama'),
+  ).not.toBeInTheDocument()
   expect(screen.getByText('Yang perlu diketahui')).toBeInTheDocument()
   expect(
     screen.getByText('Kolom "Komentar dari PIC Teknis" masih kosong.'),

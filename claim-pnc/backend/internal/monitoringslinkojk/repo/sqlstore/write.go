@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -225,4 +226,55 @@ func (r *Repo) CompleteSubmission(
 		return fmt.Errorf("monitoringslinkojk/sqlstore: submission_done: %w", err)
 	}
 	return nil
+}
+
+// LoadDebtor membaca identitas debitur satu klaim beserta fasilitasnya.
+//
+// Baris yang tidak ditemukan mengembalikan Debtor KOSONG tanpa galat — dan itu disengaja.
+// Yang memutuskan muatan kosong tidak boleh dikirim adalah domain
+// (`Debtor.RequiredFieldMissing`), bukan lapisan ini; repo hanya melaporkan apa yang ada.
+//
+// Pemilihan barisnya `ORDER BY o.OBJECTID FETCH FIRST 1 ROWS ONLY`. Satu kombinasi klaim +
+// contract no semestinya satu objek; urutannya dipatok supaya hasilnya tidak berubah-ubah
+// bila ternyata lebih dari satu.
+func (r *Repo) LoadDebtor(
+	ctx context.Context,
+	claimID string,
+	contractNo string,
+) (monitoringslinkojk.Debtor, error) {
+	var nama, customerType, gender, birth, address, zip, phone any
+
+	row := r.db.QueryRowContext(ctx, query("debtor_row"), claimID, contractNo)
+	err := row.Scan(&nama, &customerType, &gender, &birth, &address, &zip, &phone)
+	if errors.Is(err, sql.ErrNoRows) {
+		return monitoringslinkojk.Debtor{}, nil
+	}
+	if err != nil {
+		return monitoringslinkojk.Debtor{}, fmt.Errorf(
+			"monitoringslinkojk/sqlstore: debtor_row: %w", err)
+	}
+
+	debtor := monitoringslinkojk.Debtor{
+		CustomerType: text(customerType),
+		FirstName:    text(nama),
+		Gender:       text(gender),
+		DateOfBirth:  text(birth),
+	}
+
+	// Alamat hanya disertakan bila ada isinya. Baris alamat kosong beserta telepon kosong
+	// tetap terkirim sebagai satu entri `AddressList` yang tidak berisi apa pun, dan itu
+	// menambah muatan tanpa menambah keterangan.
+	street, postal, number := text(address), text(zip), text(phone)
+	if street != "" || postal != "" || number != "" {
+		entry := monitoringslinkojk.DebtorAddress{
+			Street:     street,
+			PostalCode: postal,
+			Primary:    true,
+		}
+		if number != "" {
+			entry.Phones = []monitoringslinkojk.DebtorPhone{{Number: number}}
+		}
+		debtor.Addresses = []monitoringslinkojk.DebtorAddress{entry}
+	}
+	return debtor, nil
 }

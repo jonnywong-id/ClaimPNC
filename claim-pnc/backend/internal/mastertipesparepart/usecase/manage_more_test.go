@@ -68,12 +68,16 @@ func newStubService(t *testing.T, store *stubStore) *usecase.Service {
 	return service
 }
 
-func TestGetReturnsRowWithCategoryName(t *testing.T) {
+// Kunci dipangkas di kedua sisi, dan barisnya membawa ID kategori induknya.
+//
+// Nama kategori TIDAK ikut: grid Pega tidak menampilkannya, dan kueri pembacanya tanpa
+// JOIN (koreksi Work Owner 2026-10-04).
+func TestGetTrimsKeyAndReturnsCategoryID(t *testing.T) {
 	service, _ := newSampleService(t)
 	got, err := service.Get(context.Background(), portalAlias, " 3 ")
 	require.NoError(t, err)
 	require.Equal(t, "HYDRAULIC PUMP", got.Name)
-	require.Equal(t, "HYDRAULIC", got.CategoryName)
+	require.Equal(t, "2", got.CategoryID)
 }
 
 // Kegagalan membaca kategori menggagalkan pilihan, penambahan, dan penyimpanan.

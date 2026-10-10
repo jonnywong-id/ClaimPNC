@@ -3,7 +3,6 @@ package memory_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -170,32 +169,18 @@ func TestARejectedClaimDisappearsFromEveryList(t *testing.T) {
 	}
 }
 
-// Klaim yang kode statusnya kosong (dulu: tanpa baris tabel kerja Pega) tetap muncul di
-// daftar PLA, dan — sejak SUMBER BARU (2026-10-08) — juga di daftar DLA bila DLA-nya
-// terkirim.
+// Klaim TANPA baris tabel kerja Pega muncul di daftar PLA, tetapi tidak di daftar DLA.
 //
-// Dulu daftar DLA menggabungkan tabel kerja Pega secara INNER sehingga klaim seperti ini
-// tersaring keluar. Gabungan itu hilang bersama tabelnya; uji ini menjaga supaya ia tidak
-// diam-diam dihidupkan kembali sebagai penyaring.
-func TestAClaimWithoutAStatusCodeAppearsOnPLAAndOnDLA(t *testing.T) {
-	require.Contains(t, list(t, memory.NewSampleStore(), memory.SampleReinsurerLogin, "pla", ""),
-		"PNC-2007", "daftar PLA harus mempertahankannya")
+// Perbedaannya datang dari bentuk kuerinya: sub-kueri (setara LEFT JOIN) pada daftar PLA,
+// gabungan INNER pada daftar DLA. Menyeragamkan keduanya akan menghilangkan baris.
+func TestAClaimWithoutAWorkRowAppearsOnPLAButNotOnDLA(t *testing.T) {
+	store := memory.NewSampleStore()
 
-	sentOn := time.Date(2026, time.January, 15, 0, 0, 0, 0, time.UTC)
-	store := memory.NewStore()
-	store.Seed(
-		[]memory.Claim{{
-			Key: "PNCN.26.1", No: "PNCN.26.1", GroupPanel: "006",
-			RegisterDate: sentOn, LossDate: sentOn, WorkStatus: "Open",
-		}},
-		[]memory.Advice{{
-			ClaimKey: "PNCN.26.1", Kind: "dla", No: "DLA/1", ReinsCode: "R100",
-			Sent: "1", SentDate: sentOn, Email: "reas@contoh.example",
-		}},
-		[]memory.Reinsurer{{Code: "R100", Login: "MITRA"}}, nil, nil)
+	require.Contains(t, list(t, store, memory.SampleReinsurerLogin, "pla", ""),
+		"PNC-2007", "gabungan LEFT pada daftar PLA harus mempertahankannya")
 
-	require.Contains(t, list(t, store, "MITRA", "dla", ""), "PNCN.26.1",
-		"daftar DLA tidak lagi menyaring klaim tanpa baris tabel kerja Pega")
+	require.NotContains(t, list(t, store, memory.SampleReinsurerLogin, "dla", ""),
+		"PNC-2007", "gabungan INNER pada daftar DLA harus menyaringnya keluar")
 }
 
 // Daftar Close mencocokkan SELURUH kode reasuradur; daftar PLA hanya yang tertinggi.
@@ -297,45 +282,4 @@ func TestTheSummaryFollowsTheActiveSearch(t *testing.T) {
 		summed += count.Total
 	}
 	require.Equal(t, 1, summed)
-}
-
-// Grid XOL hanya menampilkan baris milik reasuradur pemanggil, dan hanya yang terkirim.
-//
-// Inilah perbedaan yang disengaja terhadap Pega: di sana kueri XOL memakai nama reasuradur
-// yang ditulis TETAP, sehingga setiap mitra melihat ringkasan milik mitra lain.
-func TestTheXOLGridIsScopedToTheCallerAndToSentAdvicesOnly(t *testing.T) {
-	store := memory.NewSampleStore()
-
-	rows, err := store.XOL(context.Background(), memory.SampleReinsurerLogin)
-	require.NoError(t, err)
-
-	kinds := map[string]bool{}
-	causes := map[string]bool{}
-	for _, row := range rows {
-		kinds[row.Kind] = true
-		causes[row.CauseOfLoss] = true
-	}
-
-	require.True(t, causes["Kebakaran"], "PLA terkirim milik pemanggil harus ada")
-	require.True(t, causes["Banjir"], "DLA terkirim milik pemanggil harus ada")
-	require.False(t, causes["Gempa"], "baris milik reasuradur lain bocor")
-	require.False(t, causes["Pencurian"], "baris yang belum terkirim ikut terhitung")
-	require.Len(t, rows, 2)
-}
-
-// Grid XOL mengambil tanggal TERAKHIR per kelompok tahun dan penyebab kerugian.
-func TestTheXOLGridKeepsTheLatestInsertPerGroup(t *testing.T) {
-	store := memory.NewSampleStore()
-
-	rows, err := store.XOL(context.Background(), memory.SampleReinsurerLogin)
-	require.NoError(t, err)
-
-	for _, row := range rows {
-		if row.Kind == "PLA" && row.CauseOfLoss == "Kebakaran" {
-			require.Equal(t, "2026-02-10", row.LastInsertDate,
-				"yang diambil harus tanggal terakhir, bukan yang pertama")
-			return
-		}
-	}
-	t.Fatal("baris PLA Kebakaran tidak ditemukan")
 }

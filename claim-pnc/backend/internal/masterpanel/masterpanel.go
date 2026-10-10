@@ -446,7 +446,27 @@ func (i Input) Clean() Input {
 //
 // Nama lokasi TIDAK dibatasi pada kelima pilihan LocationOptions. Baris lama dapat memuat
 // lokasi lain, dan menolaknya berarti baris yang hari ini sah tidak dapat disimpan ulang.
-func (i Input) Check() error {
+// AllowDuplicateLocation melonggarkan SATU aturan: lokasi yang sama boleh muncul dua kali.
+//
+// Dipakai HANYA jalur unggah CSV lokasi, karena di sanalah Pega melonggarkannya:
+// `Activity/PNCUploadLokasiSisiPanel_Act` memakai `LOKASI(<APPEND>)` tanpa satu pun
+// pemeriksaan, sehingga mengunggah berkas yang sama dua kali menambahkan barisnya dua kali.
+//
+// Form TIDAK memakainya, dan itu disengaja: layar lama pun menolak lokasi ganda saat
+// disunting manual.
+//
+// AKIBAT YANG HARUS DISADARI. Panel yang lokasinya telanjur ganda lewat unggahan TIDAK
+// dapat disimpan ulang dari form sampai salah satunya dihapus — form memakai aturan yang
+// penuh. Itu persis perilaku sistem lama, dan pengguna dapat memperbaikinya sendiri dengan
+// membuang baris yang kelebihan.
+type CheckOption struct {
+	AllowDuplicateLocation bool
+}
+
+func (i Input) Check() error { return i.CheckWith(CheckOption{}) }
+
+// CheckWith memeriksa isian dengan kelonggaran yang dinyatakan eksplisit.
+func (i Input) CheckWith(option CheckOption) error {
 	var violation []Violation
 
 	for _, r := range []struct {
@@ -467,7 +487,7 @@ func (i Input) Check() error {
 		violation = append(violation, checkRequired(r.field, r.label, r.value, r.max)...)
 	}
 
-	violation = append(violation, i.checkLocation()...)
+	violation = append(violation, i.checkLocation(option)...)
 
 	if len(violation) > 0 {
 		return &ValidationError{Violation: violation}
@@ -481,7 +501,7 @@ func (i Input) Check() error {
 // yang tepat. Indeksnya dihitung dari nol, mengikuti posisi pada daftar yang dikirim —
 // bukan nomor urut yang terlihat pengguna, karena daftar yang sedang disunting dapat
 // bergeser di antara pengiriman dan jawaban.
-func (i Input) checkLocation() []Violation {
+func (i Input) checkLocation(option CheckOption) []Violation {
 	if len(i.Location) > MaxLocationRows {
 		return []Violation{{
 			Field: "lokasi",
@@ -518,6 +538,13 @@ func (i Input) checkLocation() []Violation {
 		}
 
 		if one.Name == "" {
+			continue
+		}
+
+		// Lokasi ganda DILEWATI pemeriksaannya pada jalur unggah CSV, karena Pega pun
+		// melonggarkannya di sana — `LOKASI(<APPEND>)` tanpa satu pun pemeriksaan.
+		// Form tetap memakai aturan penuh. Lihat CheckOption.
+		if option.AllowDuplicateLocation {
 			continue
 		}
 		key := one.Name + "\x00" + string(one.Side)
@@ -691,4 +718,5 @@ type RepoSelector func(portalAlias string) (Store, error)
 type Store interface {
 	Repo
 	IDSource
+	DocumentRepo
 }

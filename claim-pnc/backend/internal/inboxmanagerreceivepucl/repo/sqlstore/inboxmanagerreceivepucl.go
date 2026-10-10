@@ -225,6 +225,10 @@ func scanDocument(row scanner) (inboxmanagerreceivepucl.ReceiveDocument, error) 
 		doc.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(groupPanel.String)
 	}
 
+	// Kode mentahnya dibawa BERDAMPINGAN dengan Jenis Klaim. Syarat tampil sebagian isian
+	// mengecualikan `005` Travel, dan Jenis Klaim tidak membedakannya dari lini lain.
+	doc.GroupPanel = strings.TrimSpace(groupPanel.String)
+
 	return doc, nil
 }
 
@@ -279,6 +283,7 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		inboxEntryAt, analystNote           sql.NullString
 		track, trackStatus, letterPrintedAt sql.NullString
 		claimAge, expiryStatus              sql.NullString
+		claimScreenReady                    sql.NullString
 		total                               sql.NullInt64
 	)
 
@@ -287,7 +292,7 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		&lossDate, &groupPanel, &senderName, &documentReceivedAt,
 		&sheetCount, &inboxEntryAt, &analystNote,
 		&track, &trackStatus, &letterPrintedAt, &claimAge, &expiryStatus,
-		&total,
+		&claimScreenReady, &total,
 	)
 	if err != nil {
 		return inboxmanagerreceivepucl.WorkItem{}, 0, err
@@ -310,6 +315,11 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		LetterPrintedAt:      letterPrintedAt.String,
 		ClaimAge:             claimAge.String,
 		ExpiryStatus:         expiryStatus.String,
+
+		// Penanda dibawa sebagai teks '1'/'0', bukan sebagai angka maupun boolean.
+		// Oracle tidak punya tipe boolean, dan teks adalah satu-satunya bentuk yang
+		// terbaca sama di Oracle dan PostgreSQL tanpa pemetaan tambahan di adapter.
+		ClaimScreenReady: claimScreenReady.String == "1",
 	}
 
 	// Jenis Klaim DITURUNKAN di sini, bukan di dalam kueri.

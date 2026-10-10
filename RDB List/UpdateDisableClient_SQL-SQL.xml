@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pyHandlerFlow/>
+<pxMoveFromSystem/>
+<pySaveSQL/>
+<pxCreateOpName>RIXTUS KUSUMA</pxCreateOpName>
+<pyRWAccess>ASM</pyRWAccess>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyMethodStatus/>
+<pyRuleEnds/>
+<pyDocumentTitle/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pySPRuleSetName>RIXTUSBAGUSRESA@</pySPRuleSetName>
+<pyStepPageReference>RH_2</pyStepPageReference>
+<pyTemplateInputBox/>
+<pyStreamName/>
+<pyClassName>ASM-FW-GISFW-Int-CLIENT</pyClassName>
+<pyCircumstanceProp/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedDateTime/>
+<pxUpdateOpName>RIXTUS KUSUMA</pxUpdateOpName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATEDISABLECLIENT_SQL #20260408T120453.145 GMT</pzDocumentKey>
+<pxMoveImportDateTime>20260411T082043.645 GMT</pxMoveImportDateTime>
+<pyCircumstanceDateProp/>
+<pyWorkKey/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyShowJavaWindowName>GeneratedJava20261008T074544.032 GMT</pyShowJavaWindowName>
+<pyRuleName>ASM-FW-GISFW-Int-CLIENT ASM UpdateDisableClient_SQL</pyRuleName>
+<pyRequestType>UpdateDisableClient_SQL</pyRequestType>
+<pyLabel>UpdateDisableClient_SQL</pyLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pzRuleSetVersionPatch>73</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDescription/>
+<pyRuleSetVersion>01-05-73</pyRuleSetVersion>
+<pxOriginalCreateDateTime/>
+<pxTabLabel>ASM-FW-GISFW-Int-CLIENT ASM UpdateDisableClient_SQL</pxTabLabel>
+<pyIsFromManageChangeLP/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedCreateDateTime/>
+<pxCommitDateTime>20260411T082044.000 GMT</pxCommitDateTime>
+<pyFormPost/>
+<pyRuleStarts/>
+<pzChecksum>-30939209</pzChecksum>
+<pyHistoryObject>false</pyHistoryObject>
+<pxSiblingCount/>
+<pyMemo>BERHASIL UPDATE</pyMemo>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!INSERTMAPPINGCLIENTLOG #20260408T111626.566 GMT</pzOriginalInstanceKey>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pxUpdateOperator>RIXTUSBAGUSRESA</pxUpdateOperator>
+<pxInsId>ASM-FW-GISFW-INT-CLIENT!ASM!UPDATEDISABLECLIENT_SQL</pxInsId>
+<pyCircumstanceType/>
+<pyWindowTitle/>
+<pxInstanceLockedRuleSet/>
+<pyRuleFormStatusTime>20261008T074544.012 GMT</pyRuleFormStatusTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20260408T120453.145 GMT</pxCreateDateTime>
+<pyCircumstanceTemplate/>
+<pyValueChanged>false</pyValueChanged>
+<pyTemplate/>
+<pyCircumstanceDate/>
+<pxHostId>jboss1040</pxHostId>
+<pyBrowseSQL>UPDATE POOLDATA.M_CLIENT
+SET STATUSAKTIF = '0'
+WHERE ID = {InputMappingClientLog.CARI1}</pyBrowseSQL>
+<pxInstanceLockedBy/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedRuleSetVersion/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxOriginalCreateOperator/>
+<pyDeleteSQL/>
+<pyCircumstanceVal/>
+<pxCreateOperator>RIXTUSBAGUSRESA</pxCreateOperator>
+<pyDeletedObject/>
+<pySpecialtyComponentData/>
+<pxOriginalCreateOpName/>
+<pxInsName>ASM-FW-GISFW-INT-CLIENT!ASM!UPDATEDISABLECLIENT_SQL</pxInsName>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATEDISABLECLIENT_SQL #20260408T120453.145 GMT</pzInsKey>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pyRuleParamsStreamName/>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pxSaveDateTime>20260408T123646.529 GMT</pxSaveDateTime>
+<pyRelativePath/>
+<pyUsage/>
+<pyLabelOld>UpdateDisableClient_SQL</pyLabelOld>
+<pyOpenSQL/>
+<pyStatus/>
+<pxUpdateDateTime>20260408T123646.515 GMT</pxUpdateDateTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceDefinition/>
+<pyBaseRule>false</pyBaseRule>
+<pyInterface/>
+<pxOriginalCreateSystemID/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzStatus>valid</pzStatus>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-CLIENT ASM!UPDATEDISABLECLIENT_SQL #20260408T120453.145 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-05-73 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+<pyShowJava>false</pyShowJava>
+<pyRecover>false</pyRecover>
+<pyVersionSecure>true</pyVersionSecure>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRuleData>true</pyRuleData>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyPreview>false</pyPreview>
+<pyRestore>false</pyRestore>
+<pyLaunch>true</pyLaunch>
+<pyRefresh>true</pyRefresh>
+<pyAvailability>false</pyAvailability>
+<pyDelete>false</pyDelete>
+<pyNew>true</pyNew>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pySave>false</pySave>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRun>false</pyRun>
+<pyBack>true</pyBack>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySiblings>true</pySiblings>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>

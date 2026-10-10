@@ -8,8 +8,13 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 import { formatRupiah } from '@/lib/money'
 
-import { useExportOSClaimPerCabang, useOSClaimPerCabangList } from './api'
+import {
+  useExportOSClaimPerCabang,
+  useOSClaimPerCabangList,
+  useOSClaimPerCabangSummary,
+} from './api'
 import { DetailDialog } from './DetailDialog'
+import { SummaryPanel } from './SummaryPanel'
 import type { Branch, PageInfo, WorkItem } from './types'
 
 /**
@@ -45,6 +50,10 @@ import type { Branch, PageInfo, WorkItem } from './types'
 export function OSClaimPerCabangPage() {
   const [page, setPage] = useState(1)
 
+  // Isi kotak cari. Ia dikirim ke peladen, bukan dipakai menyaring baris yang sudah di
+  // tangan — lihat catatan pada DataTable di bawah.
+  const [search, setSearch] = useState('')
+
   // Nomor klaim yang popupnya sedang terbuka, atau null bila tidak ada.
   //
   // Yang disimpan NOMOR, bukan barisnya. Menyimpan barisnya berarti popup menggambar
@@ -53,7 +62,15 @@ export function OSClaimPerCabangPage() {
   const [detailOf, setDetailOf] = useState<string | null>(null)
 
   const portal = useSelectedPortal((state) => state.alias)
-  const list = useOSClaimPerCabangList(page)
+  const list = useOSClaimPerCabangList(page, search)
+  const summary = useOSClaimPerCabangSummary()
+
+  function ubahPencarian(next: string) {
+    setSearch(next)
+    // Halaman dikembalikan ke awal. Tanpa ini, mencari dari halaman empat menampilkan
+    // tabel kosong yang tampak rusak padahal hasilnya ada di halaman satu.
+    setPage(1)
+  }
 
   if (portal === null) {
     return (
@@ -92,19 +109,57 @@ export function OSClaimPerCabangPage() {
   const branch = list.data?.cabang
 
   return (
-    <PageFrame exportable={(list.data?.paginasi.total ?? 0) > 0} branch={branch}>
+    // Tombol ekspor mengikuti jumlah berkas SELURUH CABANG, bukan jumlah yang cocok
+    // dengan kotak cari. Berkasnya memang berisi seluruh cabang (lihat catatan pada
+    // api.ts), sehingga mematikannya karena pencarian nihil akan mematikan tombol yang
+    // sebenarnya masih menghasilkan berkas penuh.
+    //
+    // Jumlah dari panel ringkasan dipakai karena ia TIDAK ikut tersaring; jumlah daftar
+    // dipakai hanya bila panelnya sendiri gagal dimuat.
+    <PageFrame
+      exportable={(summary.data?.total_berkas ?? list.data?.paginasi.total ?? 0) > 0}
+      branch={branch}
+    >
+      {/*
+        Panel ringkasan DI ATAS grid, bukan menggantikannya (keputusan Work Owner
+        2026-10-08). Penyelia memperoleh gambaran menyeluruh sekaligus tetap dapat
+        menelusuri per klaim lewat grid dan tombol Detail di bawahnya.
+
+        Keduanya dimuat TERPISAH: panel yang gagal tidak mengosongkan grid, dan
+        sebaliknya.
+      */}
+      <SummaryPanel
+        data={summary.data}
+        isLoading={summary.isPending}
+        error={summary.error}
+        onRefresh={() => {
+          void summary.refetch()
+          void list.refetch()
+        }}
+        isRefreshing={summary.isFetching || list.isFetching}
+      />
+
       <div className="mt-4">
         <DataTable<WorkItem>
           columns={columnsFor(list.data?.ambang_aging ?? 0, setDetailOf)}
           rows={rows}
           rowKey={(row) => row.no_klaim}
-          // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman yang
-          // sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada" untuk baris
-          // yang sebenarnya ada di halaman berikutnya.
+          // Pencarian dikerjakan PELADEN, bukan komponen ini. Penyaringan di peramban
+          // hanya menjangkau halaman yang sedang terbuka, sehingga pengguna akan diberi
+          // tahu "tidak ada" untuk baris yang sebenarnya ada di halaman berikutnya — dan
+          // gagalnya diam, tanpa satu pun tanda.
           //
-          // Layar lama pun tidak punya kotak cari — sectionnya tidak memuat satu pun
-          // isian penyaring.
-          hideSearch
+          // `matchCount` memakai total dari peladen, yang sudah ikut tersaring karena
+          // `COUNT(*) OVER ()` dihitung sesudah penyaringnya.
+          //
+          // KEMAMPUAN BARU: layar lama tidak punya kotak cari sama sekali. Diminta Work
+          // Owner 2026-10-09, dan dinyatakan di daftar selisih terencana.
+          searchLabel="Cari No Klaim / No Polis"
+          serverSearch={{
+            value: search,
+            onChange: ubahPencarian,
+            matchCount: list.data?.paginasi.total,
+          }}
           isLoading={list.isPending}
           error={
             list.isError ? (
@@ -115,6 +170,10 @@ export function OSClaimPerCabangPage() {
               />
             ) : undefined
           }
+          // Pesan ini hanya berlaku saat kotak cari KOSONG. Saat terisi, `DataTable`
+          // menggantinya sendiri dengan "Tidak ada baris yang cocok dengan …" — dan itu
+          // yang benar: "tidak ada klaim berjalan di cabang ini" saat sedang mencari
+          // adalah pernyataan yang keliru, yang kosong hasil pencariannya.
           emptyMessage="Tidak ada klaim berjalan di cabang ini."
         />
 
@@ -131,7 +190,6 @@ export function OSClaimPerCabangPage() {
       {list.data && (
         <>
           <RedRuleLegend threshold={list.data.ambang_aging} />
-          <PlannedDifferences lines={list.data.selisih_terencana} />
         </>
       )}
 
@@ -394,30 +452,6 @@ function RedRuleLegend({ threshold }: { threshold: number }) {
       berumur lebih dari {threshold} hari, atau yang progresnya tidak berubah pada tiga
       catatan terakhir.
     </p>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Ia dikirim server dan digambar di sini — bukan disimpan sebagai komentar kode — supaya
- * pengguna yang membandingkan kedua layar berdampingan memperoleh jawaban alih-alih
- * melaporkannya sebagai kerusakan (`D-54`).
- */
-function PlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <h2 className="text-sm font-semibold text-slate-800">
-        Yang berbeda dari layar lama
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"database/sql"
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -100,16 +101,41 @@ func TestCountAndListSharePredicates(t *testing.T) {
 	list, count := query("list_compliance"), query("count_compliance")
 
 	predicates := []string{
-		"wb.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
+		// `LIKE`, bukan kesamaan persis: RD memasang
+		// `pyIncludeAllDescendantclasses = true`, sehingga subkelas IKUT.
+		"A.PXOBJCLASS LIKE 'ASM-FW-GCNMFW-Work-PNC%'",
 		"wb.PXASSIGNEDOPERATORID = :1",
-		"(p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')",
+		"A.PYSTATUSWORK <> 'Resolved-Completed'",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
-		"wb.PXOBJCLASS = 'Assign-WorkBasket'",
 	}
 
 	for _, predicate := range predicates {
 		require.Containsf(t, list, predicate, "list_compliance kehilangan %q", predicate)
 		require.Containsf(t, count, predicate, "count_compliance kehilangan %q", predicate)
+	}
+}
+
+// Dua penyaring yang pernah mempersempit hasil TIDAK boleh kembali.
+//
+// Keduanya tidak ada di `InboxRegisterCompliance_RD-RD.xml` dan keduanya hanya dapat
+// mengurangi baris — tanpa satu pun pesan galat ketika ia mengosongkan daftar. Uji ini
+// ada supaya keduanya tidak dipasang ulang oleh orang yang mengira kueri ini kurang ketat.
+func TestPredikatYangDibuangTidakKembali(t *testing.T) {
+	banned := []string{
+		// Pembatasan kelas di Pega datang dari join class, bukan dari predikat kolom.
+		"wb.PXOBJCLASS",
+
+		// Kesamaan persis membuang subkelas, yang justru disertakan RD.
+		"A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
+	}
+
+	for _, name := range []string{"list_compliance", "count_compliance", "find_compliance_claim"} {
+		for _, predicate := range banned {
+			require.NotContainsf(
+				t, query(name), predicate,
+				"%s memasang kembali penyaring %q yang tidak ada di RD", name, predicate,
+			)
+		}
 	}
 }
 
@@ -154,8 +180,31 @@ func TestBindCountMatchesSuppliedArguments(t *testing.T) {
 		// diperiksa di sini adalah nomor bind TERTINGGI, bukan berapa kali ia muncul,
 		// sehingga pengulangan itu tidak mengubah angkanya.
 		"find_compliance_decision":   1,
-		"upsert_compliance_decision": 8,
+		"upsert_compliance_decision": 9,
 		"check_table_decision":       0,
+		"apply_decision_to_claim":    4,
+		"insert_history_claim":       4,
+		"check_table_history":        0,
+		"insert_penugasan":           8,
+		"check_table_penugasan":      0,
+		"find_survey_results":        1,
+		"find_claim_documents":       1,
+		"next_attachment_runno":      0,
+		"insert_attachment_counter":  3,
+		"insert_attachment":          9,
+		"delete_attachment":          2,
+		"find_reject_prefill":        1,
+
+		// Tiga bind: klaim dipakai dua kali (pencacah lampiran dan penyaring klaim),
+		// ditambah tahap dokumen. Tahapnya DIIKAT, bukan ditempel ke teks SQL — ia
+		// konstanta kami hari ini, tetapi akan menjadi nilai dari luar begitu RD-nya
+		// datang, dan menempelkannya sekarang berarti menyiapkan celah untuk nanti.
+		"find_document_checklist":        2,
+		"check_table_document_checklist": 0,
+
+		// Tiga bind: kategori baru, dokumennya, klaimnya.
+		"update_document_category": 3,
+		"count_document_stages":    0,
 	}
 
 	for name, want := range expected {
@@ -247,4 +296,125 @@ func (c *countingScanner) Scan(dest ...any) error {
 	}
 
 	return nil
+}
+
+// Galat "tabel tidak ada" ditandai, bukan diteruskan apa adanya sebagai galat teknis.
+//
+// Tanpa penandaan ini, membuka form di basis data yang migrasinya belum dijalankan
+// menghasilkan 500 "Terjadi kesalahan pada sistem" — kalimat yang tidak dapat
+// ditindaklanjuti siapa pun, dan yang sudah sekali memakan satu putaran penuh
+// tanya-jawab pada 2026-10-06.
+func TestGalatTabelHilangDitandai(t *testing.T) {
+	ditandai := []string{
+		"ORA-00942: table or view does not exist",
+		"ora-00942: table or view does not exist",
+		"ORA-00904: \"GROUPPANEL\": invalid identifier",
+	}
+
+	for _, pesan := range ditandai {
+		err := storeMissing(errors.New(pesan))
+
+		require.ErrorIsf(
+			t, err, inboxcompliance.ErrDecisionStoreMissing,
+			"%q seharusnya ditandai sebagai tabel hilang", pesan,
+		)
+
+		// Galat aslinya WAJIB ikut terbawa — ia yang menyebut nama tabelnya di log.
+		//
+		// Dibandingkan tanpa peka huruf besar-kecil, karena teks galat driver memang
+		// datang dalam kedua bentuk — dan itulah sebabnya storeMissing menormalkannya
+		// lebih dulu sebelum mencocokkan.
+		require.Containsf(
+			t, strings.ToUpper(err.Error()), "ORA-009",
+			"galat asli hilang dari %q", pesan,
+		)
+	}
+}
+
+// Galat lain TIDAK boleh ikut tertandai.
+//
+// Menandai terlalu luas jauh lebih berbahaya daripada tidak menandai sama sekali: ia akan
+// menyuruh DBA menjalankan migrasi untuk masalah yang sebenarnya lain — dan menyembunyikan
+// sebab aslinya di balik kalimat yang terdengar meyakinkan.
+func TestGalatLainTidakIkutDitandai(t *testing.T) {
+	lain := []string{
+		"ORA-12541: TNS:no listener",
+		"ORA-00001: unique constraint violated",
+		"context deadline exceeded",
+	}
+
+	for _, pesan := range lain {
+		asli := errors.New(pesan)
+		require.NotErrorIsf(
+			t, storeMissing(asli), inboxcompliance.ErrDecisionStoreMissing,
+			"%q BUKAN tabel hilang dan tidak boleh ditandai begitu", pesan,
+		)
+	}
+
+	require.NoError(t, storeMissing(nil))
+}
+
+// Bentuk nomor Post Audit dikunci pada sintaks yang Work Owner tetapkan.
+//
+// Sintaksnya (2026-10-06, mencabut keputusan 2026-09-24):
+//
+//	'CPL' || '.' || TO_CHAR(SYSDATE,'RR') || '.' || TO_CHAR(seq.NEXTVAL)
+//
+// Uji ini ada karena bentuk nomor adalah hal yang PALING mudah "dirapikan" oleh orang
+// berikutnya — menambahkan nol di depan supaya urut, atau mengganti titik menjadi tanda
+// hubung supaya seragam dengan baris warisan Pega. Keduanya terlihat seperti perbaikan,
+// dan keduanya mengubah nomor yang sudah dicetak di dokumen.
+func TestBentukNomorPostAudit(t *testing.T) {
+	sql := query("post_audit_next_sequence")
+
+	wajib := []string{
+		"'CPL'",
+		"TO_CHAR(SYSDATE, 'RR')",
+		"POOLDATA.CLAIM_COMPLIENCE_SEQ.NEXTVAL",
+	}
+	for _, bagian := range wajib {
+		require.Containsf(t, sql, bagian, "sintaks nomor Post Audit kehilangan %q", bagian)
+	}
+
+	// Format mask SENGAJA tidak ada — sintaks Work Owner memang tanpa nol di depan.
+	// Akibatnya `CPL.26.10` berada di atas `CPL.26.9` pada urutan teks, dan itu sudah
+	// dicatat sebagai konsekuensi yang diterima. Menambahkannya diam-diam akan membuat
+	// nomor baru tidak sebentuk dengan nomor yang sudah terbit.
+	require.NotContains(t, sql, "FM0000",
+		"nol di depan ditambahkan tanpa keputusan; lihat 0011_post_audit_compliance.up.sql")
+}
+
+// Pemeriksa tabel Post Audit WAJIB menyebut setiap kolom yang dipakai jalur baca dan tulis.
+//
+// `POOLDATA.T_CLAIM_COMPLIANCE_H` dibuat DBA DI LUAR repositori ini — tidak ada migrasi di
+// sini yang membuatnya, sehingga nama kolomnya dapat berbeda dari yang diandaikan kueri.
+// Pemeriksa yang hanya berbunyi `COUNT(*)` akan melaporkan HIJAU atas tabel seperti itu,
+// lalu layarnya gagal saat dipakai dengan `ORA-00904` yang hanya terlihat di log.
+//
+// Uji ini menjaga pemeriksa itu tetap kuat, dan ia mengambil daftar kolomnya dari
+// postAuditColumns — daftar yang sama yang dipakai pemindai — sehingga kolom yang kelak
+// ditambahkan ke tab ini otomatis ikut diperiksa tanpa ada yang perlu ingat.
+func TestPemeriksaPostAuditMenyebutSeluruhKolom(t *testing.T) {
+	probe := query("check_table_post_audit")
+
+	// Nama kolom pada tabelnya, bukan aliasnya. Pemindai memakai alias (`CASE_ID`),
+	// pemeriksa harus memakai nama aslinya (`CASEID`) — alias tidak membuktikan apa pun
+	// tentang kolom yang benar-benar ada.
+	kolom := []string{
+		"CASEID", "NO_KLAIM", "NAMA_TERTANGGUNG",
+		"NO_POLIS", "REMARKS", "TGL_KIRIM_POST_AUDIT",
+	}
+
+	for _, nama := range kolom {
+		require.Containsf(t, probe, nama,
+			"check_table_post_audit tidak memeriksa kolom %q; tabelnya dibuat DBA di luar "+
+				"repo ini, sehingga kolom yang tidak diperiksa baru ketahuan saat gagal",
+			nama)
+	}
+
+	// Jumlah kolom yang diperiksa harus sama dengan yang dibaca pemindai. Bila pemindai
+	// kelak menambah kolom tanpa pemeriksanya ikut, uji ini yang menangkapnya.
+	require.Lenf(t, postAuditColumns, len(kolom),
+		"postAuditColumns berubah menjadi %d kolom; perbarui check_table_post_audit dan "+
+			"daftar di uji ini bersamaan", len(postAuditColumns))
 }

@@ -18,6 +18,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -39,6 +40,12 @@ type Repo struct {
 	treaty      map[string][]inboxxol.BusinessBreakdown
 	advices     []inboxxol.Advice
 	causeOfLoss []inboxxol.CauseOfLoss
+
+	// salvageUploads merekam baris yang disisipkan "Upload MBU Salvage".
+	salvageUploads []inboxxol.SalvageInsert
+
+	// dolColInserts merekam baris yang disisipkan "INSERT DOL DAN COL".
+	dolColInserts []inboxxol.DolColInsert
 }
 
 // Option mengubah isi penyimpanan saat dibentuk.
@@ -239,4 +246,172 @@ func (r *Repo) ListCauseOfLoss(_ context.Context) ([]inboxxol.CauseOfLoss, error
 // kerugian, supaya dua pasangan berbeda tidak pernah menghasilkan kunci yang sama.
 func breakdownKey(lossDate, causeOfLoss string) string {
 	return strings.TrimSpace(lossDate) + "\x00" + strings.ToUpper(strings.TrimSpace(causeOfLoss))
+}
+
+// SummarizeBusiness menyusun grid "Summary Data XOL" dari rincian yang sudah ada.
+//
+// # Kenapa diturunkan, bukan disimpan terpisah
+//
+// Karena isinya memang turunan: kuerinya hanya menyebutkan group business MANA yang
+// menanggung klaim pada tanggal dan penyebab kerugian itu — persis himpunan yang sudah
+// dibawa kedua daftar rincian. Menyimpannya sebagai daftar ketiga membuka kemungkinan
+// ketiganya saling bertentangan di data contoh, dan itu cacat yang hanya ada di tiruan.
+func (r *Repo) SummarizeBusiness(
+	_ context.Context,
+	filter inboxxol.SummaryFilter,
+) ([]inboxxol.SummaryBusiness, error) {
+	if filter.Empty() {
+		return nil, nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := breakdownKey(filter.LossDate, filter.CauseOfLoss)
+	result := make([]inboxxol.SummaryBusiness, 0, 8)
+	seen := make(map[string]bool)
+
+	for _, row := range append(append([]inboxxol.BusinessBreakdown(nil),
+		r.breakdowns[key]...), r.treaty[key]...) {
+		id := strings.TrimSpace(row.BusinessGroupID)
+		name := strings.TrimSpace(row.BusinessGroup)
+		if seen[id+"|"+name] {
+			continue
+		}
+		seen[id+"|"+name] = true
+		result = append(result, inboxxol.SummaryBusiness{
+			BusinessGroupID:   id,
+			BusinessGroupName: name,
+		})
+	}
+	return result, nil
+}
+
+// ListClaims menyusun grid "No Klaim" dari rincian yang sudah ada.
+//
+// Diturunkan, bukan disimpan terpisah — alasannya sama dengan SummarizeBusiness: data
+// contoh yang menyimpan hal yang sama dua kali dapat saling bertentangan, dan cacat itu
+// hanya ada di tiruannya.
+//
+// Satu baris per group business, dengan nomor klaim karangan yang diturunkan dari nama
+// group business-nya. Yang diuji lewat repo ini adalah PERILAKU layar — berapa baris,
+// bagaimana baris berkurs hilang diperlakukan — bukan isi nomor klaimnya.
+func (r *Repo) ListClaims(
+	_ context.Context,
+	filter inboxxol.ClaimListFilter,
+) ([]inboxxol.ClaimListItem, error) {
+	if filter.Empty() {
+		return nil, nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := breakdownKey(filter.LossDate, filter.CauseOfLoss)
+	result := make([]inboxxol.ClaimListItem, 0, 8)
+
+	for _, row := range r.breakdowns[key] {
+		result = append(result, inboxxol.ClaimListItem{
+			ClaimNo:          "PNC-" + strings.ToUpper(strings.TrimSpace(row.BusinessGroupID)),
+			CurrencyName:     "IDR",
+			Source:           inboxxol.SourceOwnBusiness,
+			OutstandingValue: row.OutstandingValue,
+			AcceptedValue:    row.AcceptedValue,
+		})
+	}
+	for _, row := range r.treaty[key] {
+		result = append(result, inboxxol.ClaimListItem{
+			ClaimNo:          strings.TrimSpace(row.BusinessGroup),
+			CurrencyName:     "USD",
+			Source:           inboxxol.SourceTreatyInward,
+			OutstandingValue: row.OutstandingValue,
+			AcceptedValue:    row.AcceptedValue,
+			RateMissing:      row.RateMissing,
+		})
+	}
+	return result, nil
+}
+
+// ExportClaimDetail menyusun isi berkas unduhan dari rincian yang sudah ada.
+//
+// Judul kolomnya TIDAK ditiru — yang ditiru adalah bentuknya: satu baris judul, lalu satu
+// baris per klaim. Yang diuji lewat repo ini adalah perilaku layar dan handler, bukan isi
+// berkas; kesetiaan kolom diuji terhadap basis data sungguhan (`S-8`).
+func (r *Repo) ExportClaimDetail(
+	_ context.Context,
+	filter inboxxol.ExportFilter,
+) (inboxxol.ExportTable, error) {
+	if filter.Empty() {
+		return inboxxol.ExportTable{}, nil
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := breakdownKey(filter.LossDate, filter.CauseOfLoss)
+	source := r.breakdowns[key]
+	if strings.TrimSpace(filter.BusinessGroupID) == inboxxol.ExportBusinessGroupTreaty {
+		source = r.treaty[key]
+	}
+
+	table := inboxxol.ExportTable{
+		Headers: []string{"CLAIM NO", "BUSINESS", "RESERVE AMOUNT", "ACCEPTED"},
+		Rows:    make([][]string, 0, len(source)),
+	}
+	for _, row := range source {
+		table.Rows = append(table.Rows, []string{
+			"PNC-" + strings.ToUpper(strings.TrimSpace(row.BusinessGroupID)),
+			strings.TrimSpace(row.BusinessGroup),
+			strconv.FormatFloat(row.OutstandingValue, 'f', 2, 64),
+			strconv.FormatFloat(row.AcceptedValue, 'f', 2, 64),
+		})
+	}
+	return table, nil
+}
+
+// CurrencyIDByName mencari ID mata uang dari namanya.
+//
+// Daftar contohnya sengaja sempit — hanya yang benar-benar dipakai uji. Nama di luar itu
+// dijawab teks kosong, dan itulah yang membuat jalur "mata uang tidak dikenal" dapat diuji
+// tanpa basis data.
+func (r *Repo) CurrencyIDByName(_ context.Context, name string) (string, error) {
+	switch strings.ToUpper(strings.TrimSpace(name)) {
+	case "IDR":
+		return "1", nil
+	case "USD":
+		return "2", nil
+	}
+	return "", nil
+}
+
+// UploadSalvageMBU menyimpan baris unggahan ke dalam ingatan.
+func (r *Repo) UploadSalvageMBU(_ context.Context, rows []inboxxol.SalvageInsert) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.salvageUploads = append(r.salvageUploads, rows...)
+	return nil
+}
+
+// SalvageUploads mengembalikan baris yang sudah tersimpan — dipakai uji untuk memastikan
+// yang tersimpan memang yang dipetakan, bukan sekadar jumlahnya cocok.
+func (r *Repo) SalvageUploads() []inboxxol.SalvageInsert {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return append([]inboxxol.SalvageInsert(nil), r.salvageUploads...)
+}
+
+// InsertDolCol menyimpan baris "INSERT DOL DAN COL" ke dalam ingatan.
+func (r *Repo) InsertDolCol(_ context.Context, rows []inboxxol.DolColInsert) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.dolColInserts = append(r.dolColInserts, rows...)
+	return nil
+}
+
+// DolColInserts mengembalikan baris yang sudah tersimpan — dipakai uji untuk memastikan
+// satu simpan menghasilkan satu baris PER GROUP BUSINESS, bukan satu baris saja.
+func (r *Repo) DolColInserts() []inboxxol.DolColInsert {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return append([]inboxxol.DolColInsert(nil), r.dolColInserts...)
 }

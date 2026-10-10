@@ -123,9 +123,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeResponse(w, r, http.StatusOK, ListResponse{
-		Bengkel: toListDTO(list),
-		Status:  string(status),
-		Portal:  active.Alias,
+		Bengkel:         toListDTO(list),
+		Status:          string(status),
+		Portal:          active.Alias,
+		UploadAvailable: h.service.UploadAvailable(),
 	})
 }
 
@@ -429,8 +430,12 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Dokumen lampiran. Jalurnya bersarang di bawah bengkelnya karena ia memang milik
 		// satu baris — dan `10-API-STRATEGY.md` §2 membatasi sarang pada dua tingkat,
 		// yang masih terpenuhi.
+		//
+		// TIDAK ada endpoint pengambil isi berkas. Isinya tidak tinggal di aplikasi ini
+		// melainkan di layanan penyimpanan internal, dan yang dimiliki barisnya hanyalah
+		// `IMAGEID`. Menyediakan rute pengunduh di sini berarti aplikasi menjadi perantara
+		// berkas yang bukan miliknya, dengan masa berlaku tautan yang bukan miliknya pula.
 		perPortal.Post("/master/bengkel/{id}/dokumen", h.UploadDocument)
 		perPortal.Get("/master/bengkel/{id}/dokumen", h.Document)
-		perPortal.Get("/master/bengkel/{id}/dokumen/berkas", h.DocumentFile)
 	})
 }

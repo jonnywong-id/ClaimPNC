@@ -708,8 +708,19 @@ func (r *ClaimStore) restoreDropped(ctx context.Context, exec executor, k *regis
 // memuatnya satu per satu berarti puluhan perjalanan bolak-balik ke basis data untuk
 // membuka satu layar.
 func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.Claim) error {
-	itemIndex := map[int]int{}
-	objectSeqByID := map[string]int{}
+	// Pohon klaim dijodohkan lewat OBJECTID dan OBJECTCOVERAGEID — kolom `NOT NULL` di
+	// ketiga tabel — BUKAN lewat URUTAN.
+	//
+	// URUTAN dan URUTAN_OBJEK adalah kolom yang ditambahkan proyek ini, dan baris yang
+	// ditulis Pega tidak pernah mengisinya: 2.611 dari 2.726 baris objek aktif kosong,
+	// begitu pula 2.598 dari 2.635 baris coverage (diukur 2026-10-07). Memindainya ke `int`
+	// biasa membuat 1.665 dari 1.686 klaim GAGAL DIBUKA — bukan salah sebagian, melainkan
+	// seluruh layar yang memuat klaim.
+	//
+	// URUTAN tetap dibaca, tetapi hanya sebagai jalur cadangan bagi baris baru yang
+	// OBJECTID-nya tidak terjodohkan.
+	itemIndexByID := map[string]int{}
+	itemIDBySeq := map[int64]string{}
 
 	row, err := exec.QueryContext(ctx, loadQuery("objek_daftar"), k.ID, k.ID, k.ID)
 	if err != nil {
@@ -718,7 +729,7 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	defer func() { _ = row.Close() }()
 	for row.Next() {
 		var (
-			seq            int
+			seq            sql.NullInt64
 			itemID         string
 			name, location sql.NullString
 			job, birth     sql.NullString
@@ -730,10 +741,20 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			&idCard, &status, &model, &brand, &kind, &chassis); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris objek: %w", err)
 		}
-		itemIndex[seq] = len(k.InsuredItem)
-		// Spreading menunjuk objeknya lewat OBJECTID, bukan lewat urutan; peta ini yang
-		// menerjemahkannya kembali. Lihat spreading_daftar.
-		objectSeqByID[strings.TrimSpace(itemID)] = seq
+		id := strings.TrimSpace(itemID)
+		// Baris PERTAMA yang menang, bukan terakhir. Pada 4 klaim terdapat dua baris objek
+		// ber-OBJECTID sama — dan pada 4 dari 6 pasangnya nama objeknya pun berbeda, jadi
+		// ia benar-benar dua objek. Tanpa aturan ini, coverage-nya menempel ke baris mana
+		// pun yang kebetulan terbaca belakangan.
+		//
+		// Yang pertama dipilih karena `ORDER BY URUTAN, OBJECTID` membuatnya deterministik:
+		// baris ber-URUTAN terisi selalu mendahului baris warisan.
+		if _, taken := itemIndexByID[id]; !taken {
+			itemIndexByID[id] = len(k.InsuredItem)
+		}
+		if seq.Valid {
+			itemIDBySeq[seq.Int64] = id
+		}
 		k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{
 			ID: itemID, Name: name.String, Location: location.String,
 			Job: strings.TrimSpace(job.String), DateOfBirth: strings.TrimSpace(birth.String),
@@ -747,7 +768,9 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	}
 	_ = row.Close()
 
-	coverageIndex := map[[2]int]int{}
+	// Kunci peta ini PASANGAN TEKS — OBJECTID induk dan OBJECTCOVERAGEID miliknya sendiri —
+	// supaya spreading dapat menemukannya dengan kolom yang memang ada di tabelnya.
+	coverageIndex := map[[2]string]int{}
 
 	coverageRow, err := exec.QueryContext(ctx, loadQuery("coverage_daftar"), k.ID)
 	if err != nil {
@@ -756,27 +779,45 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	defer func() { _ = coverageRow.Close() }()
 	for coverageRow.Next() {
 		var (
-			itemSeq, seq      int
-			coverageID, cause sql.NullString
-			coverageName      sql.NullString
-			tsi               sql.NullInt64
-			analystFlag       sql.NullInt64
-			note              [10]sql.NullString
-			committeeDate     sql.NullTime
+			parentID, coverageKey string
+			itemSeq, seq          sql.NullInt64
+			coverageID, cause     sql.NullString
+			coverageName          sql.NullString
+			tsi                   sql.NullInt64
+			analystFlag           sql.NullInt64
+			note                  [10]sql.NullString
+			committeeDate         sql.NullTime
 		)
-		if err := coverageRow.Scan(&itemSeq, &seq, &coverageID, &cause, &tsi, &coverageName, &analystFlag,
+		if err := coverageRow.Scan(&parentID, &coverageKey, &itemSeq, &seq,
+			&coverageID, &cause, &tsi, &coverageName, &analystFlag,
 			&note[0], &note[1], &note[2], &note[3], &note[4], &note[5], &note[6], &note[7], &note[8], &note[9],
 			&committeeDate); err != nil {
 			return fmt.Errorf("registrasi/sqlstore: membaca baris coverage: %w", err)
 		}
-		i, ok := itemIndex[itemSeq]
+		// URUTAN_OBJEK DICOBA LEBIH DULU bila terisi: ia kunci yang lebih tepat, sebab
+		// OBJECTID terbukti dapat kembar dalam satu klaim. Baris warisan tidak punya
+		// URUTAN_OBJEK sama sekali, dan untuk mereka OBJECTID-lah satu-satunya jalan.
+		parent := strings.TrimSpace(parentID)
+		var (
+			i  int
+			ok bool
+		)
+		if itemSeq.Valid {
+			if id, found := itemIDBySeq[itemSeq.Int64]; found {
+				parent = id
+				i, ok = itemIndexByID[id]
+			}
+		}
+		if !ok {
+			i, ok = itemIndexByID[parent]
+		}
 		if !ok {
 			// Coverage yang objek induknya sudah ditandai terhapus. Ia dilewati, bukan
 			// dianggap galat: penandaan induk memang membuat anaknya tidak lagi
 			// terlihat.
 			continue
 		}
-		coverageIndex[[2]int{itemSeq, seq}] = len(k.InsuredItem[i].Coverage)
+		coverageIndex[[2]string{parent, strings.TrimSpace(coverageKey)}] = len(k.InsuredItem[i].Coverage)
 		k.InsuredItem[i].Coverage = append(k.InsuredItem[i].Coverage, registrasi.Coverage{
 			ID:          coverageID.String,
 			Name:        coverageName.String,
@@ -813,23 +854,20 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 			return fmt.Errorf("registrasi/sqlstore: membaca baris spreading: %w", err)
 		}
 
-		// T_CLAIM_SPREADING menyimpan OBJECTID dan OBJECTCOVERAGEID, bukan urutan objek.
-		// Keduanya diterjemahkan lewat daftar objek yang sudah dibaca di atas; objek yang
-		// sudah ditandai terhapus tidak ada di sana, sehingga spreading di bawahnya ikut
-		// terlewati — sama seperti coverage.
-		itemSeq, ok := objectSeqByID[strings.TrimSpace(objectID.String)]
+		// T_CLAIM_SPREADING menyimpan OBJECTID dan OBJECTCOVERAGEID — kunci yang sama
+		// dengan yang dipakai kedua peta di atas. Objek yang sudah ditandai terhapus tidak
+		// ada di sana, sehingga spreading di bawahnya ikut terlewati, sama seperti
+		// coverage.
+		//
+		// Sebelumnya OBJECTCOVERAGEID DIURAI menjadi angka lalu dicocokkan ke URUTAN
+		// coverage. Pencocokan itu tidak pernah berhasil pada baris warisan — URUTAN-nya
+		// kosong — sehingga spreading-nya hilang tanpa satu pun galat.
+		parent := strings.TrimSpace(objectID.String)
+		i, ok := itemIndexByID[parent]
 		if !ok {
 			continue
 		}
-		coverageSeq, err := strconv.Atoi(strings.TrimSpace(coverageID.String))
-		if err != nil {
-			continue
-		}
-		i, ok := itemIndex[itemSeq]
-		if !ok {
-			continue
-		}
-		j, ok := coverageIndex[[2]int{itemSeq, coverageSeq}]
+		j, ok := coverageIndex[[2]string{parent, strings.TrimSpace(coverageID.String)}]
 		if !ok {
 			continue
 		}
@@ -847,20 +885,15 @@ func (r *ClaimStore) loadTree(ctx context.Context, exec executor, k *registrasi.
 	}
 	_ = spreadingRow.Close()
 
+	// coverageAt menjodohkan baris rincian item dan settlement ke coverage-nya, memakai
+	// kunci teks yang sama dengan kedua peta di atas.
 	coverageAt := func(objectID, coverageID string) *registrasi.Coverage {
-		itemSeq, ok := objectSeqByID[objectID]
+		parent := strings.TrimSpace(objectID)
+		i, ok := itemIndexByID[parent]
 		if !ok {
 			return nil
 		}
-		coverageSeq, err := strconv.Atoi(coverageID)
-		if err != nil {
-			return nil
-		}
-		i, ok := itemIndex[itemSeq]
-		if !ok {
-			return nil
-		}
-		j, ok := coverageIndex[[2]int{itemSeq, coverageSeq}]
+		j, ok := coverageIndex[[2]string{parent, strings.TrimSpace(coverageID)}]
 		if !ok {
 			return nil
 		}

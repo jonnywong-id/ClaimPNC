@@ -141,5 +141,71 @@ func NewClaimRepoWithSamples() *ClaimRepo {
 			BranchName:   "CABANG CONTOH",
 		},
 	)
+
+	// Coverage contoh, untuk panel "Detail Perubahan Cause Of Loss".
+	//
+	// BENTUKNYA meniru data nyata, dan itu yang membuat contoh ini berguna: nama objek dan
+	// nama coverage BERULANG, persis seperti klaim `PNC-1452` yang kuerinya mengembalikan
+	// `JackHugh / Resiko A` tiga kali dengan Penyebab Kerugian berbeda.
+	//
+	// Contoh yang setiap barisnya bernama unik akan membuat pemilihan lewat nama tampak
+	// berhasil — dan cacatnya baru muncul di produksi, tempat nama memang berulang.
+	r.AddCoverages("PNCN.26.0008",
+		inputreqprotection.CoverageRow{
+			ObjectID: "1", ObjectCoverageID: "1",
+			ObjectName: "OBJEK CONTOH DUA", CoverageName: "Resiko A",
+			CauseOfLoss: "ILLNESS", CauseOfLossID: "12001",
+		},
+		inputreqprotection.CoverageRow{
+			ObjectID: "1", ObjectCoverageID: "2",
+			ObjectName: "OBJEK CONTOH DUA", CoverageName: "Resiko A",
+			CauseOfLoss: "STORM", CauseOfLossID: "12002",
+		},
+		inputreqprotection.CoverageRow{
+			ObjectID: "1", ObjectCoverageID: "3",
+			ObjectName: "OBJEK CONTOH DUA", CoverageName: "Katastropi",
+			CauseOfLoss: "WINDSTORM", CauseOfLossID: "12003",
+		},
+		inputreqprotection.CoverageRow{
+			ObjectID: "1", ObjectCoverageID: "4",
+			ObjectName: "OBJEK CONTOH DUA", CoverageName: "Resiko A",
+			CauseOfLoss: "HURRICANE", CauseOfLossID: "12004",
+		},
+	)
+
+	// Klaim warisan ikut diberi coverage, supaya jalur klaim Pega dapat dicoba utuh — dan
+	// supaya kunci yang dipakai memang berasal dari klaim yang nomornya berawalan.
+	r.AddCoverages("PNC-1865",
+		inputreqprotection.CoverageRow{
+			ObjectID: "1", ObjectCoverageID: "1",
+			ObjectName: "OBJEK CONTOH EMPAT", CoverageName: "Resiko A",
+			CauseOfLoss: "FIRE - OPEN FLAME", CauseOfLossID: "11997",
+		},
+	)
+
+	return r
+}
+
+// NewCauseRepoWithSamples membentuk master penyebab kerugian berisi contoh.
+//
+// Data contohnya KARANGAN (`D-69`), tetapi BENTUKNYA meniru yang nyata: beberapa pilihan
+// hanya berlaku bagi satu lini bisnis, dan sebagian berlaku bagi semuanya — itulah yang
+// `$.BISNISID` nyatakan di dokumen aslinya.
+func NewCauseRepoWithSamples() *CauseRepo {
+	r := NewCauseRepo()
+
+	// Berlaku bagi SELURUH lini — baris master yang tidak menyebut lini mana pun.
+	r.Add("",
+		inputreqprotection.CauseOfLossOption{ID: "12001", Description: "ILLNESS", LossCode: "ILL"},
+		inputreqprotection.CauseOfLossOption{ID: "12002", Description: "STORM", LossCode: "STM"},
+	)
+
+	// Hanya untuk satu lini bisnis, supaya penyaring BISNISID benar-benar teruji — bukan
+	// sekadar dilewati karena setiap pilihan kebetulan berlaku di mana saja.
+	r.Add("10166",
+		inputreqprotection.CauseOfLossOption{ID: "12003", Description: "WINDSTORM", LossCode: "WND"},
+		inputreqprotection.CauseOfLossOption{ID: "12004", Description: "HURRICANE", LossCode: "HUR"},
+	)
+
 	return r
 }

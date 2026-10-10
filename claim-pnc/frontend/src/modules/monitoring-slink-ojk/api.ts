@@ -28,7 +28,6 @@ const keys = {
       token,
       filter.segmen,
       filter.business_name,
-      filter.tipe_generate,
       filter.date_of_loss,
       filter.date_of_request_document,
       halaman,
@@ -79,7 +78,6 @@ function queryString(filter: Penyaring, halaman: number, ukuran: number): string
 
   const optional: Array<[string, string]> = [
     ['business_name', filter.business_name],
-    ['tipe_generate', filter.tipe_generate],
     ['date_of_loss', filter.date_of_loss],
     ['date_of_request_document', filter.date_of_request_document],
   ]

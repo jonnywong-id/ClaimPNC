@@ -246,7 +246,7 @@ func TestKeteranganLayarMembawaKolomDanCatatan(t *testing.T) {
 
 	body := decode(t, recorder)
 	require.Len(t, body["kolom"], 8)
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 	require.NotEmpty(t, body["keterbatasan"])
 	require.Equal(t, float64(inboxanalystdoctor.DefaultLimit), body["ukuran_halaman"])
 }

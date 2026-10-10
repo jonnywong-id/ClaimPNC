@@ -45,6 +45,12 @@ func TestEveryUsedQueryExists(t *testing.T) {
 		"sparepart_count_orphan_type",
 		"sparepart_site",
 		"sparepart_next_sequence",
+
+		// Jalur dokumen. Keempatnya dipakai document.go.
+		"sparepart_document_next_sequence",
+		"sparepart_document_insert",
+		"sparepart_document_link",
+		"sparepart_document_get",
 	}
 
 	for _, name := range usedNames {
@@ -89,17 +95,23 @@ func TestQueriesFollowPortableSQLDiscipline(t *testing.T) {
 // pernah bertabrakan dengan ID yang pernah diterbitkan Pega.
 //
 // Uji ini memagari pengecualian itu supaya ia tidak menyebar.
+// Keduanya pengambil nomor urut, dan keduanya memang menuntut NEXTVAL — deret yang berbeda
+// milik tabel yang berbeda: satu untuk ID sparepart, satu untuk DATAID baris lampiran.
 func TestFromDualOnlyInSequenceQuery(t *testing.T) {
-	const exempted = "sparepart_next_sequence"
+	exempted := map[string]bool{
+		"sparepart_next_sequence":          true,
+		"sparepart_document_next_sequence": true,
+	}
 
 	for name, text := range query {
-		if name == exempted {
-			require.Contains(t, strings.ToUpper(text), "FROM DUAL",
-				"kueri urutan memang harus memakainya; bila tidak lagi, hapus pengecualiannya")
+		if exempted[name] {
+			require.Containsf(t, strings.ToUpper(text), "FROM DUAL",
+				"kueri urutan %q memang harus memakainya; bila tidak lagi, hapus pengecualiannya",
+				name)
 			continue
 		}
 		require.NotContainsf(t, strings.ToUpper(text), "FROM DUAL",
-			"kueri %q memakai FROM DUAL; hanya %q yang dibenarkan", name, exempted)
+			"kueri %q memakai FROM DUAL; hanya kueri pengambil nomor urut yang dibenarkan", name)
 	}
 }
 
@@ -146,7 +158,24 @@ func TestNoDeleteAnywhere(t *testing.T) {
 	}
 }
 
-// Hanya SATU tabel yang ditulis: POOLDATA.SPAREPART_HE.
+// writableTables adalah SELURUH tabel yang modul ini boleh tulis.
+//
+// Dua, bukan satu, dan yang kedua perlu penjelasan:
+//
+//   - `SPAREPART_HE` dimiliki modul ini sepenuhnya.
+//   - `DATA_ATTACHFILE` adalah tabel lampiran yang DIPAKAI BERSAMA setiap modul yang
+//     mengunggah dokumen — Master Panel, Open Protection, registrasi, dan modul ini.
+//
+// Yang kedua bukan pelanggaran `P-1`. Aturan itu melarang DUA SISTEM menulis satu tabel —
+// Pega dan Go — bukan dua modul di dalam aplikasi yang sama. Barisnya pun tidak pernah
+// bertabrakan: masing-masing memakai `DATAID` dari deret yang sama dan menandai pemiliknya
+// lewat `IDPEGA`.
+var writableTables = []string{
+	"POOLDATA.SPAREPART_HE",
+	"POOLDATA.DATA_ATTACHFILE",
+}
+
+// Hanya tabel pada writableTables yang ditulis.
 //
 // Kedua tabel acuan dan tabel JSON milik Pega HANYA DIBACA (ADR-0004, penulis tunggal per
 // tabel). Satu INSERT atau UPDATE yang menyentuh salah satunya berarti aplikasi ini menulis
@@ -157,8 +186,16 @@ func TestOnlyTheOwnedTableIsWritten(t *testing.T) {
 		if !strings.Contains(upperCase, "INSERT INTO") && !strings.HasPrefix(upperCase, "UPDATE") {
 			continue
 		}
-		require.Containsf(t, upperCase, "POOLDATA.SPAREPART_HE",
-			"kueri tulis %q harus menyentuh POOLDATA.SPAREPART_HE", name)
+		owned := false
+		for _, table := range writableTables {
+			if strings.Contains(upperCase, table) {
+				owned = true
+				break
+			}
+		}
+		require.Truef(t, owned,
+			"kueri tulis %q tidak menyentuh satu pun tabel yang boleh ditulis (%s)",
+			name, strings.Join(writableTables, ", "))
 		for _, readOnly := range []string{
 			"GCNM_M_SPAREPART_CATEGORY",
 			"GCNM_M_SPAREPART_TYPE",

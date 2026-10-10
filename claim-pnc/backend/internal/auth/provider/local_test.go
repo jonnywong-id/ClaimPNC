@@ -18,10 +18,11 @@ const realFingerprint = "A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F
 // fakeLoginList meniru POOLDATA.M_LOGIN_PNC: ia hanya menjawab bila ketiga syarat
 // terpenuhi sekaligus — login_id cocok, sidik cocok, dan baris aktif.
 type fakeLoginList struct {
-	loginID     string
-	loginName   string
-	fingerprint string
-	issues      error
+	loginID          string
+	loginName        string
+	fingerprint      string
+	detailBranchCode string
+	issues           error
 
 	wantedFingerprint string
 }
@@ -34,7 +35,11 @@ func (d *fakeLoginList) FindActive(_ context.Context, loginID, fingerprint strin
 	if loginID != d.loginID || fingerprint != d.fingerprint {
 		return provider.LocalLogin{}, provider.ErrLoginMismatch
 	}
-	return provider.LocalLogin{LoginID: d.loginID, LoginName: d.loginName}, nil
+	return provider.LocalLogin{
+		LoginID:          d.loginID,
+		LoginName:        d.loginName,
+		DetailBranchCode: d.detailBranchCode,
+	}, nil
 }
 
 // Sidik yang dihitung aplikasi harus sama persis dengan yang sudah tersimpan di kolom
@@ -69,11 +74,41 @@ func TestLocalAcceptsMatchingLogin(t *testing.T) {
 	require.Equal(t, auth.NonEmployee, profile.Kind, "broker dan surveyor independen bukan karyawan")
 	require.Equal(t, "JONNY", profile.Login)
 	require.Empty(t, profile.Email, "M_LOGIN_PNC tidak memuat email")
-	require.Empty(t, profile.Branch, "M_LOGIN_PNC tidak memuat cabang")
+	require.Empty(t, profile.Branch, "M_LOGIN_PNC tidak memuat NAMA cabang")
+	require.Empty(t, profile.DetailBranchCode,
+		"tanpa baris di master HRD, cabang tetap kosong")
 
 	// Yang dikirim ke basis data adalah sidiknya, bukan kata sandinya.
 	require.Equal(t, realFingerprint, list.wantedFingerprint)
 	require.NotContains(t, list.wantedFingerprint, "123")
+}
+
+// Cabang dari master HRD lokal ikut terbawa ke profil.
+//
+// Tanpa ini, pengguna yang cabangnya SUDAH tercatat tetap ditolak layar berbatas cabang
+// dengan "Cabang Anda belum terdaftar" — data yang ada tetapi tidak pernah dibaca. Itu
+// keluhan nyata yang memicu perbaikan ini, bukan kasus yang dibayangkan.
+func TestLocalCarriesBranchFromHRDMaster(t *testing.T) {
+	list := &fakeLoginList{
+		loginID:          "JONNY",
+		loginName:        "JONNY WONG",
+		fingerprint:      realFingerprint,
+		detailBranchCode: "001",
+	}
+	local, err := provider.NewLocal(list)
+	require.NoError(t, err)
+
+	profile, err := local.Verify(context.Background(),
+		auth.Credential{Username: "JONNY", Password: "123"})
+	require.NoError(t, err)
+
+	require.Equal(t, "001", profile.DetailBranchCode)
+
+	// Yang terisi HANYA kode cabang rinci. `BranchCode` dan `Branch` sengaja dibiarkan
+	// kosong: keduanya tidak disediakan sumber ini, dan `BranchCode` punya pembaca lain
+	// yang MENULISKANNYA ke basis data (modul Archive Dokumen Klaim, kolom KODECABANG).
+	require.Empty(t, profile.BranchCode)
+	require.Empty(t, profile.Branch)
 }
 
 func TestLocalRejectsWrongPassword(t *testing.T) {

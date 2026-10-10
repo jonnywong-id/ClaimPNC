@@ -30,7 +30,8 @@ type Props = {
   /**
    * Tombol **"SEND"** — satu per BARIS di dalam grid, persis letaknya di Pega.
    *
-   * Belum dibangun; menekannya menjawab alasannya.
+   * Ia MENGIRIM SURAT ke reasuradur lalu menandai dokumennya terkirim. Akibatnya tidak
+   * dapat ditarik kembali.
    */
   onSend: (dokumen: Dokumen) => void
 
@@ -67,16 +68,25 @@ type Props = {
  * klaim, tombol per baris mengirim SATU dokumen — dan keduanya menghasilkan surat yang
  * berbeda ke reasuradur yang berbeda.
  *
- * # Syarat tampilnya SENGAJA tidak dibawa
+ * # Syarat tampilnya DIBAWA, dan ia datang dari peladen
  *
- * Pega menyembunyikan tombol ini pada dokumen yang sudah terkirim (`.MARKETING != '1'`,
- * dengan `MARKETING` sebagai alias untuk `ISKIRIM`). Penyembunyian itu **tidak dibawa**
- * atas keputusan Work Owner 2026-09-27: tombolnya digambar pada setiap baris.
+ * Pega menyembunyikan tombol ini pada dokumen yang sudah terkirim. Penyembunyian itu
+ * sempat dicabut ketika Send belum mengirim apa pun; sejak Send benar-benar mengirim
+ * surat ke luar perusahaan, mencabutnya berarti menawarkan tombol yang akibatnya tidak
+ * dapat ditarik kembali pada dokumen yang sudah sampai ke reasuradur.
  *
- * Akibatnya kolom "Terkirim" menjadi satu-satunya penanda dokumen mana yang sudah
- * dikirim. Hari ini tidak berbahaya — tombolnya menjawab alasan dan tidak mengirim apa
- * pun. Ia menjadi berbahaya pada hari Send benar-benar dibangun, dan itu dicatat sebagai
- * selisih terencana supaya tidak terlewat pada hari itu.
+ * Syaratnya BERBEDA antara kedua tab, dan perbedaan itu nyata di export:
+ *
+ *	tab PLA  `Section/InboxPLA_sect-Section.xml:13238`  `.MARKETING != '1'`
+ *	tab DLA  `Section/InboxDLA_sect-Section.xml:11972`  `.MARKETING == ''`
+ *
+ * Karena itu keputusannya TIDAK dihitung di sini melainkan dibaca dari `dapat_dikirim`
+ * pada barisnya. Menghitungnya di layar berarti menyimpulkannya dari `terkirim`, dan
+ * kesimpulan itu menyamakan kedua tab tanpa menghasilkan satu pun galat.
+ *
+ * Sel yang tidak bertombol dibiarkan KOSONG, sama seperti di Pega. Yang menjelaskannya
+ * adalah kolom "Terkirim" di sebelahnya beserta kalimat di bawah grid — bukan tombol mati
+ * yang tetap mengundang ditekan.
  */
 export function DocumentPanel({
   daftar,
@@ -150,8 +160,9 @@ export function DocumentPanel({
       <p className="mt-3 text-xs text-slate-500">
         Tombol <strong>Send</strong> mengirim <strong>satu</strong> {daftar.nama} beserta
         lampirannya ke reasuradur lewat surel, lalu menandainya terkirim. Surat yang sudah
-        terkirim tidak dapat ditarik kembali — periksa kolom <strong>Terkirim</strong>
-        sebelum menekannya.
+        terkirim tidak dapat ditarik kembali. Baris yang <strong>tidak bertombol</strong>
+        adalah dokumen yang sudah dikirim — sama seperti di layar lama, dan kolom{' '}
+        <strong>Terkirim</strong> menyatakannya.
       </p>
 
       {pesanKirim != null && pesanKirim !== '' && (
@@ -190,8 +201,8 @@ function kolomDokumen(
 
   // Kolom "SEND" — sel tombol di dalam grid, persis seperti di Pega.
   //
-  // Tombolnya ada pada SETIAP baris, termasuk dokumen yang sudah terkirim. Syarat tampil
-  // Pega (`.MARKETING != '1'`) sengaja tidak dibawa — lihat catatan di kepala berkas.
+  // Selnya KOSONG pada baris yang syarat tampilnya tidak terpenuhi. Syarat itu dihitung
+  // peladen dan berbeda per tab — lihat catatan di kepala berkas.
   kolom.push({
     key: 'aksi',
     title: '',
@@ -199,14 +210,42 @@ function kolomDokumen(
     noSort: true,
     alignRight: true,
     value: () => '',
-    render: (row) => (
-      <Button type="button" onClick={() => onSend(row)} disabled={busy}>
-        {busy ? '…' : 'Send'}
-      </Button>
-    ),
+    render: (row) =>
+      bolehKirim(row) ? (
+        <Button type="button" onClick={() => onSend(row)} disabled={busy}>
+          {busy ? '…' : 'Send'}
+        </Button>
+      ) : null,
   })
 
   return kolom
+}
+
+/**
+ * bolehKirim membaca keputusan peladen, dan bertahan terhadap peladen LAMA.
+ *
+ * # Kenapa ada cadangan, padahal keputusannya memang milik peladen
+ *
+ * Karena peladen yang berjalan bisa lebih tua daripada berkas layar — keadaan yang biasa
+ * terjadi ketika hanya salah satu dari keduanya dibangun ulang. `dapat_dikirim` baru ada
+ * sejak syarat tampilnya dibawa; tanpa cadangan, SETIAP tombol Send lenyap pada peladen
+ * lama, dan lenyapnya tidak menghasilkan satu pun galat. Yang melihatnya akan
+ * menyimpulkan tombolnya dicabut.
+ *
+ * # Cadangannya memakai syarat tab PLA, dan itu pilihan yang disengaja
+ *
+ * `!== '1'` adalah syarat yang LEBIH LONGGAR dari keduanya. Pada peladen lama, baris DLA
+ * ber-`ISKIRIM = '0'` karena itu tetap bertombol — menyimpang dari Pega, tetapi
+ * menyimpang ke arah yang dapat diperbaiki pengguna. Memilih yang lebih ketat akan
+ * menyembunyikan tombol pada baris PLA yang sah, dan tombol yang tidak ada tidak dapat
+ * ditindaklanjuti siapa pun.
+ *
+ * Dokumen yang sudah terkirim tetap TIDAK bertombol pada kedua jalur — itu bagian yang
+ * tidak boleh longgar, karena di situlah surat kedua terkirim.
+ */
+function bolehKirim(row: Dokumen): boolean {
+  if (typeof row.dapat_dikirim === 'boolean') return row.dapat_dikirim
+  return row.terkirim !== '1'
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */

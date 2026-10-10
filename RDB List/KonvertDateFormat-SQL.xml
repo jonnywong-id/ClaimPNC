@@ -1,0 +1,172 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRWAccess>GCNM</pyRWAccess>
+<pzRuleSetVersionPatch>20</pzRuleSetVersionPatch>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDateProp/>
+<pyJavaStream/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDocumentTitle/>
+<pySpecialtyComponentData/>
+<pyRuleFormStatusTime>20261010T060950.581 GMT</pyRuleFormStatusTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyIsFromManageChangeLP/>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pyRuleName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM KonvertDateFormat</pyRuleName>
+<pxSiblingCount/>
+<pyCircumstanceType/>
+<pxCreateDateTime>20261009T114236.582 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSet/>
+<pyInterface/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!KONVERTDATEFORMAT #20261009T114236.582 GMT</pzInsKey>
+<pyTemplate/>
+<pyTemplateInputBox/>
+<pyOpenSQL/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyCircumstanceDefinition/>
+<pxOriginalCreateOperator/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyLabelOld>KonvertDateFormat</pyLabelOld>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pySaveSQL/>
+<pyMethodStatus/>
+<pyRuleEnds/>
+<pyRequestType>KonvertDateFormat</pyRequestType>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleSetVersion>01-03-20</pyRuleSetVersion>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxTabLabel>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM KonvertDateFormat</pxTabLabel>
+<pyBaseRule>false</pyBaseRule>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsName>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!KONVERTDATEFORMAT</pxInsName>
+<pyLabel>KonvertDateFormat</pyLabel>
+<pyCircumstanceVal/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!KONVERTDATEFORMAT #20260902T102930.929 GMT</pzOriginalInstanceKey>
+<pyRelativePath/>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxHostId>jboss10372</pxHostId>
+<pyMemo>save to RS20</pyMemo>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyValueChanged>false</pyValueChanged>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!KONVERTDATEFORMAT #20261009T114236.582 GMT</pzDocumentKey>
+<pxInsId>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!KONVERTDATEFORMAT</pxInsId>
+<pyStatus/>
+<pyRuleStarts/>
+<pyDescription/>
+<pxMoveFromSystem/>
+<pxInstanceLockedRuleSetVersion/>
+<pxCommitDateTime>20261010T025102.000 GMT</pxCommitDateTime>
+<pxMoveImportDateTime>20261010T025102.060 GMT</pxMoveImportDateTime>
+<pyClassName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE</pyClassName>
+<pxOriginalCreateSystemID/>
+<pxInstanceLockedCreateDateTime/>
+<pyBrowseSQL>select TO_DATE(replace({TempDates.City},',',''), 'DD Mon YYYY HH24:MI') AS "City" FROM DUAL</pyBrowseSQL>
+<pxSaveDateTime>20261009T114242.363 GMT</pxSaveDateTime>
+<pxInstanceLockedKey/>
+<pyUsage/>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDate/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedBy/>
+<pyHandlerFlow/>
+<pxUpdateDateTime>20261009T114242.307 GMT</pxUpdateDateTime>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDeletedObject/>
+<pyWorkKey/>
+<pzIsPrivateCheckOut/>
+<pyDeleteSQL/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pyStreamName/>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pyFormPost/>
+<pyCircumstanceProp/>
+<pzChecksum>-1238544128</pzChecksum>
+<pyShowJavaWindowName>GeneratedJava20261010T060950.601 GMT</pyShowJavaWindowName>
+<pyWindowTitle/>
+<pxOriginalCreateOpName/>
+<pyDeleteMemo>save</pyDeleteMemo>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pxInstanceLockedDateTime/>
+<pyRuleParamsStreamName/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!KONVERTDATEFORMAT #20261009T114236.582 GMT</pzInsKey>
+<pyLabel>01-03-20 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pyVersionSecure>false</pyVersionSecure>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyBranchOut>false</pyBranchOut>
+<pyPreview>false</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyLaunch>true</pyLaunch>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyRecover>false</pyRecover>
+<pyFavorites>true</pyFavorites>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCompareVersion/>
+<pySiblings>true</pySiblings>
+<pyDelete>true</pyDelete>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

@@ -23,14 +23,19 @@ type Service struct {
 	claims dashboardclaim.RepoSelector
 	closed dashboardclaim.ClosedClaimReader
 
-	// transfers OPSIONAL — kosong berarti tombol Transfer belum terpasang.
+	// assignments OPSIONAL — kosong berarti PEMINDAHAN PIC belum terpasang.
 	//
-	// Kosong bukan galat perakitan melainkan keadaan yang sah hari ini: tabelnya dibuat
-	// migrasi `0014` yang belum dijalankan DBA. Layar menjawab galat yang MENYEBUTKAN
-	// sebabnya, bukan 500 yang tidak menjelaskan apa-apa.
-	transfers dashboardclaim.TransferRepoSelector
-	ids       IDGenerator
-	clock     Clock
+	// Terpisah dari transfers, dan pemisahannya bukan kerapian: yang satu menulis tabel
+	// milik aplikasi ini, yang lain menulis tabel milik Pega. Keduanya dapat terpasang
+	// sendiri-sendiri, dan hak basis datanya pun diminta terpisah.
+	assignments dashboardclaim.AssignmentWriterSelector
+	clock       Clock
+
+	// picReaders OPSIONAL — kosong berarti daftar PIC Teknik tidak dapat dibaca.
+	//
+	// Ia melayani modal Transfer, yang di layar lama berupa DAFTAR petugas, bukan isian
+	// bebas (`Section/PNCTransferManagement_sec-Section.xml`).
+	picReaders dashboardclaim.TechnicalPICReaderSelector
 }
 
 // Options adalah bahan pembentuk Service.
@@ -38,11 +43,13 @@ type Options struct {
 	// RepoSelector memilih penyimpanan menurut portal entitas.
 	RepoSelector dashboardclaim.RepoSelector
 
-	// Transfers memilih penyimpanan permintaan transfer. BOLEH kosong — lihat Service.
-	Transfers dashboardclaim.TransferRepoSelector
+	// Assignments memilih penulis PIC Teknik. BOLEH kosong — lihat Service.
+	Assignments dashboardclaim.AssignmentWriterSelector
 
-	// IDs dan Clock wajib bila Transfers diisi.
-	IDs   IDGenerator
+	// Clock wajib bila Assignments diisi.
+	//
+	// IDs sudah TIDAK ada: pengenal permintaan hanya dibutuhkan antrean, dan antreannya
+	// dicabut saat jalur ini dibuat mengikuti Pega.
 	Clock Clock
 
 	// ClosedClaim membaca tile CLOSE CLAIM dari modul yang sudah memilikinya.
@@ -51,6 +58,9 @@ type Options struct {
 	// tutup" pada layar manajerial — angka yang tidak dapat dibedakan dari keadaan
 	// benar-benar kosong oleh siapa pun yang membacanya.
 	ClosedClaim dashboardclaim.ClosedClaimReader
+
+	// TechnicalPIC membaca daftar PIC Teknik untuk modal Transfer. BOLEH kosong.
+	TechnicalPIC dashboardclaim.TechnicalPICReaderSelector
 }
 
 // NewService membentuk service dan menolak Options yang tidak lengkap.
@@ -65,22 +75,22 @@ func NewService(o Options) (*Service, error) {
 	if o.ClosedClaim == nil {
 		return nil, errors.New("dashboardclaim/usecase: ClosedClaim wajib diisi")
 	}
-	if o.Transfers != nil {
+	if o.Assignments != nil {
 		// Diperiksa saat START, bukan saat tombolnya ditekan: perakitan yang kurang harus
 		// gagal keras di awal, bukan saat seseorang sedang bekerja.
-		if o.IDs == nil {
-			return nil, errors.New("dashboardclaim/usecase: IDs wajib diisi bila Transfers dipasang")
-		}
+		//
+		// IDs tidak lagi dituntut — pengenal permintaan hanya dibutuhkan antrean, dan
+		// antreannya dicabut. Clock tetap: hasil pemindahan membawa WAKTU-nya.
 		if o.Clock == nil {
-			return nil, errors.New("dashboardclaim/usecase: Clock wajib diisi bila Transfers dipasang")
+			return nil, errors.New("dashboardclaim/usecase: Clock wajib diisi bila Assignments dipasang")
 		}
 	}
 	return &Service{
-		claims:    o.RepoSelector,
-		closed:    o.ClosedClaim,
-		transfers: o.Transfers,
-		ids:       o.IDs,
-		clock:     o.Clock,
+		claims:      o.RepoSelector,
+		closed:      o.ClosedClaim,
+		assignments: o.Assignments,
+		clock:       o.Clock,
+		picReaders:  o.TechnicalPIC,
 	}, nil
 }
 

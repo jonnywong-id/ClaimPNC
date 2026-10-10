@@ -10,8 +10,8 @@ import type {
   DokumenResponse,
   ListResponse,
   MetadataResponse,
+  RingkasDaftarResponse,
   RingkasResponse,
-  XOLResponse,
 } from './types'
 
 const PATH = '/api/inbox-pla-dla'
@@ -43,8 +43,10 @@ const keys = {
     search: string,
   ) => ['inbox-pla-dla', 'ringkas', portal, token, tab, search] as const,
 
-  xol: (portal: string | null, token: string | null) =>
-    ['inbox-pla-dla', 'xol', portal, token] as const,
+  // Tabel "Status / Jumlah" TIDAK dikunci per daftar: ia menyebut keenamnya sekaligus,
+  // sehingga berpindah daftar tidak membuatnya diambil ulang.
+  listCounts: (portal: string | null, token: string | null, search: string) =>
+    ['inbox-pla-dla', 'ringkas-daftar', portal, token, search] as const,
 
   detail: (portal: string | null, token: string | null, kunci: string) =>
     ['inbox-pla-dla', 'rincian', portal, token, kunci] as const,
@@ -134,22 +136,30 @@ export function useReasCounts(parameter: ParameterDaftar, enabled: boolean) {
   })
 }
 
+
 /**
- * Hook grid "DATA PLA DLA XOL KLAIM".
+ * Hook tabel **"Status / Jumlah"** — satu baris per DAFTAR.
  *
- * Ia TIDAK menerima tab maupun kata kunci: gridnya tidak disaring keduanya, sehingga
- * isinya sama berapa pun tab yang sedang dibuka. Itulah yang membuatnya boleh disimpan
- * jauh lebih lama daripada daftarnya.
+ * # Kenapa ia TIDAK menerima tab
+ *
+ * Karena tabelnya menyebut keenam daftar sekaligus; itulah yang membuatnya berguna
+ * sebagai navigasi. Mengunci kuncinya pada tab yang sedang terbuka akan membuatnya
+ * diambil ulang setiap kali pengguna berpindah — enam perjalanan ke basis data untuk
+ * jawaban yang sama persis.
+ *
+ * Kata kunci pencarian IKUT, karena angkanya memang menyusut saat pengguna mencari —
+ * sama seperti tabel di sebelahnya.
  */
-export function useReasXOL(enabled: boolean) {
+export function useReasListCounts(cari: string, enabled: boolean) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: keys.xol(portal, token),
-    queryFn: () => callAPI<XOLResponse>(`${PATH}/xol`, { token, portal }),
+    queryKey: keys.listCounts(portal, token, cari),
+    queryFn: () =>
+      callAPI<RingkasDaftarResponse>(alamatRingkasDaftar(cari), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   })
 }
 
@@ -326,6 +336,14 @@ function alamatDaftar(parameter: ParameterDaftar): string {
   return teks ? `${PATH}?${teks}` : PATH
 }
 
+
+/** alamatRingkasDaftar menyusun alamat tabel "Status / Jumlah" — tanpa tab, tanpa halaman. */
+function alamatRingkasDaftar(cari: string): string {
+  const bersih = cari.trim()
+  return bersih
+    ? `${PATH}/ringkas-daftar?cari=${encodeURIComponent(bersih)}`
+    : `${PATH}/ringkas-daftar`
+}
 /** alamatRingkas menyusun alamat tabel ringkas — tanpa halaman. */
 function alamatRingkas(parameter: ParameterDaftar): string {
   const teks = parameterPenyaring(parameter).toString()

@@ -62,6 +62,8 @@ import (
 //	/keterangan   bentuk layar        tidak menyentuh basis data sama sekali
 //	/jumlah-tab   bilah tab           tujuh penjumlahan, tidak berubah saat halaman berpindah
 //	/kpi          tab KPI             tabel LAIN (`DETAIL_KPI_ADJUSTER`)
+//	/kpi/tahun    dropdown Tahun      daftar tahun yang benar-benar ada di cakupan
+//	/kpi/ekspor   tombol Export Data  kueri yang sama, keluarannya CSV
 //	(akar)        daftar antrean      satu halaman satu tab
 //
 // Menyatukannya akan membuat setiap penekanan tombol halaman ikut menjalankan tujuh
@@ -73,6 +75,8 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Get("/inbox-survey/keterangan", h.Metadata)
 		perPortal.Get("/inbox-survey/jumlah-tab", h.Counts)
 		perPortal.Get("/inbox-survey/kpi", h.KPI)
+		perPortal.Get("/inbox-survey/kpi/tahun", h.KPIYears)
+		perPortal.Get("/inbox-survey/kpi/ekspor", h.ExportKPI)
 		perPortal.Get("/inbox-survey", h.List)
 	})
 }

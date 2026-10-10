@@ -1,11 +1,31 @@
 /**
  * Sakelar fitur dokumen penunjang.
  *
- * # Kenapa dimatikan
+ * # Riwayatnya
  *
- * Work Owner 2026-09-27: *"ternyata modul gcs belum disiapkan, tolong munculkan saja dulu
- * tombol unggah file penunjang tanpa fungsinya"*. Layanan penyimpanannya belum ada, jadi
- * tidak ada yang dapat dituju — baik untuk mengunggah maupun untuk membaca daftar.
+ * Dimatikan atas instruksi Work Owner 2026-09-27: *"ternyata modul gcs belum disiapkan,
+ * tolong munculkan saja dulu tombol unggah file penunjang tanpa fungsinya"*. Saat itu
+ * layanan penyimpanannya belum ada, sehingga tidak ada yang dapat dituju — baik untuk
+ * mengunggah maupun untuk membaca daftar.
+ *
+ * **Dinyalakan kembali 2026-10-03** atas instruksi Work Owner: *"jika saat ini sudah ada
+ * tolong buat supaya tombol bisa upload dokumen ke gcs"*.
+ *
+ * # Apa yang perlu HIDUP di luar sakelar ini
+ *
+ * Menyalakannya tidak membuat unggahan berhasil dengan sendirinya. Yang harus ada:
+ *
+ *	layanan penyimpanan    alamat bawaannya dari `Connect REST/UploadDokumenPNC`
+ *	layanan konversi AVIF  alamat bawaannya dari `Connect REST/KonversiAvif`
+ *	`GENERAL.GET_TOKEN_STORAGE`  dipanggil saat `PENYIMPANAN_DOKUMEN_KODE_AKSES` kosong
+ *
+ * Ketiganya punya nilai bawaan atau jalur cadangan, sehingga tidak ada variabel lingkungan
+ * yang WAJIB diisi. Yang tidak dapat dijamin dari sini adalah apakah ketiganya benar-benar
+ * dapat dihubungi dari server tempat aplikasi berjalan — itu hanya terbukti saat berkas
+ * pertama diunggah.
+ *
+ * Bila layanannya menolak, kegagalannya muncul sebagai `ErrUnggahGagal` dengan pesan yang
+ * menyebut layanannya — bukan sebagai tombol yang diam.
  *
  * # Kenapa satu sakelar, bukan menghapus kodenya
  *
@@ -22,6 +42,6 @@
  * perilakunya — dan menghidupkannya kembali kelak menjadi langkah yang tidak teruji sama
  * sekali.
  *
- * Menghidupkannya cukup mengubah baris ini menjadi `true`.
+ * Mematikannya kembali cukup mengubah baris ini menjadi `false`.
  */
-export const FITUR_DOKUMEN_PENUNJANG_AKTIF = false
+export const FITUR_DOKUMEN_PENUNJANG_AKTIF = true

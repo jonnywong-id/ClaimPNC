@@ -28,7 +28,11 @@ func (w *Legacy) FindActive(ctx context.Context, loginID, passwordFingerprint st
 	rows := w.db.QueryRowContext(ctx, getQuery("local_login_find_active"), loginID, passwordFingerprint)
 
 	var result provider.LocalLogin
-	err := rows.Scan(&result.LoginID, &result.LoginName)
+	// Cabang dipindai sebagai nullable: LEFT JOIN ke master HRD mengembalikan NULL untuk
+	// pengguna non-karyawan yang memang tidak ada di sana.
+	var detailBranchCode sql.NullString
+	err := rows.Scan(&result.LoginID, &result.LoginName, &detailBranchCode)
+	result.DetailBranchCode = strings.TrimSpace(detailBranchCode.String)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return provider.LocalLogin{}, provider.ErrLoginMismatch

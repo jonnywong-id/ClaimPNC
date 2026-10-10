@@ -181,10 +181,42 @@ var columns = []Column{
 	},
 }
 
-// Columns menyerahkan salinan daftar kolom.
-func Columns() []Column {
+// Columns menyerahkan salinan daftar kolom, disesuaikan dengan kesiapan portal.
+//
+// # Kenapa daftarnya disesuaikan, bukan tetap
+//
+// Tiga kolom berubah sifat begitu kolom sumbernya siap:
+//
+//	reference_no        belum tersedia  ->  tersedia
+//	location            pengganti       ->  sumber sebenarnya
+//	pic_loss_adjuster   pengganti       ->  sumber sebenarnya
+//
+// Menuliskannya tetap akan membuat layar menyatakan hal yang tidak lagi benar — persis cacat
+// yang ditemukan Work Owner 2026-10-07, ketika `pega_dev83` sudah terisi penuh dan layar tetap
+// menyatakan seluruh barisnya kosong.
+func Columns(ready inboxsurvey.Readiness) []Column {
 	result := make([]Column, len(columns))
 	copy(result, columns)
+
+	if !ready.Complete() {
+		return result
+	}
+
+	for i := range result {
+		switch result[i].Key {
+		case "reference_no":
+			result[i].Available = true
+			result[i].Note = "Dari POOLDATA.T_SURVEYORLIST.REFNO."
+		case "location":
+			result[i].Substitute = false
+			result[i].Note = "Dari POOLDATA.T_SURVEYORLIST.RESCHEDULE_LOCATION — padanan " +
+				"RescheduleLocation_1 yang digambar Pega."
+		case "pic_loss_adjuster":
+			result[i].Substitute = false
+			result[i].Note = "Dari POOLDATA.T_SURVEYORLIST.ADJUSTER_PIC — padanan " +
+				"ADJUSTERPIC_1 yang digambar Pega."
+		}
+	}
 	return result
 }
 
@@ -256,11 +288,11 @@ var tabs = []TabInfo{
 //
 // Ketersediaannya DIHITUNG di sini dari domain, bukan disimpan di dalam `tabs`. Menyimpannya
 // berarti dua daftar yang harus disamakan dengan tangan, dan yang satu akan tertinggal.
-func TabsInfo() []TabInfo {
+func TabsInfo(ready inboxsurvey.Readiness) []TabInfo {
 	result := make([]TabInfo, 0, len(tabs))
 	for _, tab := range tabs {
-		tab.Available = tab.Key.Available()
-		tab.UnavailableReason = inboxsurvey.UnavailableReason(tab.Key)
+		tab.Available = ready.TabAvailable(tab.Key)
+		tab.UnavailableReason = ready.UnavailableReason(tab.Key)
 		result = append(result, tab)
 	}
 	return result
@@ -293,6 +325,51 @@ func KPIColumns() []KPIColumn {
 	result := make([]KPIColumn, len(kpiColumns))
 	copy(result, kpiColumns)
 	return result
+}
+
+// KPILeadingColumns adalah kolom KUNCI di depan kesembilan angka, menurut bentuk hasilnya.
+//
+// # Kenapa berubah-ubah, dan kenapa itu bukan pilihan tampilan
+//
+// Karena setiap bentuk menjawab pertanyaan yang berbeda, dan barisnya pun berbeda artinya:
+//
+//	per-adjuster         satu baris = seorang adjuster
+//	per-adjuster-status  satu baris = seorang adjuster PADA SATU KATEGORI — dua baris per orang
+//	per-tahun            satu baris = satu tahun
+//	per-kuartal-tahun    satu baris = satu kuartal pada satu tahun — empat baris per tahun
+//	detail               satu baris = satu BERKAS, dan angkanya mentah
+//
+// Judul "ADJUSTER" di atas kolom berisi "2026" akan membuat tahun terbaca sebagai nama orang
+// yang kebetulan berupa angka. Dan tabel tanpa kolom kategori pada bentuk kedua akan
+// menampilkan dua baris bernama sama dengan angka berbeda, tanpa satu pun keterangan kenapa.
+func KPILeadingColumns(shape inboxsurvey.KPIShape) []KPIColumn {
+	switch shape {
+	case inboxsurvey.ShapePerAdjusterStatus:
+		return []KPIColumn{
+			{Key: "kelompok", Title: "ADJUSTER"},
+			{Key: "status", Title: "STATUS SURVEY"},
+		}
+
+	case inboxsurvey.ShapePerYear:
+		return []KPIColumn{{Key: "kelompok", Title: "TAHUN"}}
+
+	case inboxsurvey.ShapePerQuarterYear:
+		return []KPIColumn{
+			{Key: "kelompok", Title: "TAHUN"},
+			{Key: "kuartal", Title: "KUARTAL"},
+		}
+
+	case inboxsurvey.ShapeDetail:
+		return []KPIColumn{
+			{Key: "case_id", Title: "CASE ID"},
+			{Key: "kelompok", Title: "ADJUSTER"},
+			{Key: "bulan", Title: "BULAN"},
+			{Key: "kuartal", Title: "KUARTAL"},
+		}
+
+	default:
+		return []KPIColumn{{Key: "kelompok", Title: "ADJUSTER"}}
+	}
 }
 
 // PlannedDifferences adalah perbedaan yang DISENGAJA terhadap layar Pega.
@@ -343,7 +420,32 @@ func PlannedDifferences() []string {
 // Bedanya dengan PlannedDifferences: yang di atas adalah pilihan yang sudah diputuskan, yang
 // di bawah adalah penghalang yang masih menunggu pihak lain. Keduanya dipisah supaya
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
-func Limitations() []string {
+func Limitations(ready inboxsurvey.Readiness) []string {
+	if ready.Complete() {
+		// Kelima kolom siap di portal ini. Keterbatasan yang menyangkut kolom kosong TIDAK
+		// lagi berlaku dan dihapus — menyisakannya akan membuat layar menyatakan penghalang
+		// yang sudah tidak ada, dan itu persis cacat yang diperbaiki 2026-10-07.
+		return []string{
+			"Membuka baris untuk mengerjakan surveinya belum tersedia. Di layar lama tautannya " +
+				"membuka penugasan `Surveyor_Flow`, dan flow itu tidak ada di export — " +
+				"`Flow/` hanya memuat empat, dan itu bukan salah satunya. Selama masa paralel " +
+				"penugasan tetap dikerjakan di Pega.",
+
+			"ENAM padanan kolom masih BELUM diuji ke basis data, dan seluruhnya dipakai hari " +
+				"ini: Claim No (`CASEID_1`), Policy No (`POLICYNO`), Insured Name (`QQNAME`), " +
+				"COB, PIC ASM (`USERTEKNIS_1`), dan Aging (`pxcreatedatetime` versus " +
+				"`TGLINPUT`). Padanannya masuk akal, tetapi masuk akal bukan terbukti.",
+
+			"Tab komunikasi di Pega hanya menampilkan berkas yang MASIH punya penugasan " +
+				"terbuka — `BrowseCommunicationLostAdjuster` menyambung ke " +
+				"`pc_assign_worklist` lewat `a.pzInsKey = b.pxrefobjectkey`. Modul ini tidak " +
+				"membawa penyaring itu, sehingga tabnya dapat memuat lebih banyak baris.",
+
+			"Pemeriksaan kewenangan menu belum ada (`TKT-F3-005`). Yang menjaga layar ini " +
+				"sekarang adalah sesi, portal aktif, dan penyaring identitas surveyor.",
+		}
+	}
+
 	return []string{
 		"EMPAT dari tujuh tab dan SATU dari tiga belas kolom belum dapat diisi, dan sebabnya " +
 			"BUKAN kolom yang tidak ada. Per 2026-09-30 `ADJUSTERACCEPT`, `REFNO`, dan " +
@@ -418,18 +520,33 @@ type Metadata struct {
 	PageSize int
 }
 
-// Metadata menyerahkan keterangan layar.
+// Metadata menyerahkan keterangan layar untuk SATU portal.
 //
-// Ia tidak menyentuh basis data sama sekali dan tidak bergantung portal: judul kolom dan
-// judul tab sama di seluruh entitas, karena keduanya bentuk layar — bukan data entitas.
-func (s *Service) Metadata() Metadata {
+// # Kenapa ia butuh portal, padahal judul kolom sama di mana-mana
+//
+// Judulnya memang sama — yang berbeda adalah **ketersediaannya**. `D-75` menetapkan satu basis
+// data per entitas, sehingga portal yang kolomnya sudah di-`ALTER` dan terisi dapat menyalakan
+// tujuh tab, sementara portal sebelahnya baru tiga.
+//
+// Sampai 2026-10-07 fungsi ini tidak bergantung portal maupun basis data, dan ketersediaannya
+// konstanta. Akibatnya layar menyatakan "seluruh barisnya masih kosong" pada portal yang justru
+// sudah terisi penuh — ditemukan Work Owner, bukan oleh uji.
+//
+// Kegagalan membaca kesiapan TIDAK menjatuhkan keterangan layar: Readiness kosong berarti
+// perilaku paling berhati-hati — tab ditahan beserta sebabnya, kolom memakai pengganti.
+func (s *Service) Metadata(ctx context.Context, portal string) Metadata {
+	var ready inboxsurvey.Readiness
+	if repo, err := s.repoSelector(portal); err == nil && repo != nil {
+		ready = repo.Readiness(ctx)
+	}
+
 	return Metadata{
-		Columns:            Columns(),
-		Tabs:               TabsInfo(),
+		Columns:            Columns(ready),
+		Tabs:               TabsInfo(ready),
 		KPIColumns:         KPIColumns(),
 		PlannedDifferences: PlannedDifferences(),
-		Limitations:        Limitations(),
-		DefaultTab:         inboxsurvey.DefaultAvailableTab(),
+		Limitations:        Limitations(ready),
+		DefaultTab:         ready.DefaultAvailableTab(),
 		PageSize:           inboxsurvey.DefaultLimit,
 	}
 }
@@ -474,7 +591,14 @@ func (s *Service) List(
 
 	clean := filter.Normalize()
 
-	page, err := repo.List(ctx, identity, clean)
+	// Kesiapan dibaca SEKALI di sini, bukan di dalam repo.
+	//
+	// Repo yang mengintip sendiri akan menjalankan dua kueri katalog tambahan pada SETIAP
+	// permintaan, dan membuat setiap ujinya menuntut dua ekspektasi yang tidak ada
+	// hubungannya dengan yang diuji.
+	ready := repo.Readiness(ctx)
+
+	page, err := repo.List(ctx, identity, clean, ready)
 	if err != nil {
 		return Listed{}, fmt.Errorf("mengambil antrean survei: %w", err)
 	}
@@ -503,7 +627,7 @@ func (s *Service) Counts(
 		return Counted{}, err
 	}
 
-	counts, err := repo.Counts(ctx, identity)
+	counts, err := repo.Counts(ctx, identity, repo.Readiness(ctx))
 	if err != nil {
 		return Counted{}, fmt.Errorf("menghitung isi tab antrean survei: %w", err)
 	}
@@ -526,6 +650,27 @@ type Scored struct {
 // dan di Pega layar KPI ini berada di dalam harness yang sama dengan antrean — yang berarti
 // pemakainya sama. Menampilkan penilaian adjuster lain akan mengubah layar kerja menjadi
 // papan peringkat yang tidak pernah diminta siapa pun.
+// KPIYears mengisi dropdown "Tahun Kuartal".
+//
+// Ia TIDAK memeriksa isian panel: dropdown harus terisi SEBELUM pengguna memilih apa pun.
+// Yang tetap diperiksa adalah identitas — daftar tahun pun disaring cakupan.
+func (s *Service) KPIYears(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxsurvey.Caller,
+) ([]string, error) {
+	identity, repo, err := s.prepare(ctx, portalAlias, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	years, err := repo.KPIYears(ctx, identity)
+	if err != nil {
+		return nil, fmt.Errorf("mengambil daftar tahun KPI: %w", err)
+	}
+	return years, nil
+}
+
 func (s *Service) KPI(
 	ctx context.Context,
 	portalAlias string,
@@ -538,6 +683,15 @@ func (s *Service) KPI(
 	}
 
 	clean := filter.Normalize()
+
+	// Diperiksa SETELAH identitas, bukan sebelumnya.
+	//
+	// Pemanggil yang bukan surveyor harus mendapat jawaban itu lebih dulu — memberi tahu
+	// "Status Survey belum dipilih" kepada orang yang memang tidak berhak membuka layar ini
+	// akan membuatnya memilih, menekan Cari, lalu baru ditolak.
+	if err := clean.Check(); err != nil {
+		return Scored{}, err
+	}
 
 	rows, err := repo.KPI(ctx, identity, clean)
 	if err != nil {

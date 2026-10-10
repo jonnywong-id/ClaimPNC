@@ -9,9 +9,13 @@ import { TextAreaField } from '@/components/TextAreaField'
 import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
 
 import { useClaimLookup } from './api'
+import { CoveragePicker } from './CoveragePicker'
+import { useCauseOfLossPanel } from './useCauseOfLossPanel'
 import {
   TYPE_CHANGE_CAUSE_OF_LOSS,
   TYPE_CHANGE_LOSS_DATE,
+  type CauseOfLossOption,
+  type CoverageRow,
   type ProtectionDetail,
   type ProtectionFields,
 } from './types'
@@ -29,7 +33,12 @@ import {
  * | Tipe Proteksi | `.TypeProtection` | ya |
  * | Keterangan | `.Keterangan` | ya |
  * | Current / Next Date Of Loss | `.ClaimDataProtect.BeforeDateOfLoss` / `.DateOfLoss` | tipe `7` |
- * | Cause of Loss | `.ClaimDataProtect.CauseOfLossID` / `.IDMasterTONP` | tipe `8` |
+ * | Cause of Loss | `.ClaimDataProtect.IDMasterTONP` / `.CauseOfLossID` | tipe `8` |
+ *
+ * Urutan kedua properti terakhir DIKOREKSI 2026-10-05; sebelumnya tertulis terbalik. Di Pega,
+ * label "Cause Of Loss Dipilih" terikat `.IDMasterTONP` (nilai LAMA) dan "Next Cause Of Loss"
+ * terikat `.CauseOfLossID` (nilai BARU) — dan yang terakhir itulah yang dituliskan ke klaim
+ * oleh `Activity/InsertOpenProtectionCase-Act.xml:3003`. Rinciannya di `docs/peta-penamaan.md`.
  *
  * Keempat isian wajib itu berasal dari prakondisi
  * `Activity/InsertOpenProtectionCase-Act.xml:921`.
@@ -84,6 +93,16 @@ export function ProtectionForm({
     existing?.detail_perubahan.penyebab_kerugian_master ?? '',
   )
 
+  // Baris coverage yang DIPILIH pemohon — sasaran perubahan Cause of Loss.
+  //
+  // Keduanya satu keadaan, bukan dua: ia diisi sekaligus oleh satu tombol Pilih, dan
+  // dikosongkan sekaligus. Menyimpannya sebagai dua state terpisah membuka kemungkinan
+  // terisi separuh, yang ditolak server dengan pesan yang tidak dapat diperbaiki pengguna.
+  const [selected, setSelected] = useState<{ objek: string; coverage: string }>({
+    objek: existing?.detail_perubahan.id_objek ?? '',
+    coverage: existing?.detail_perubahan.id_coverage ?? '',
+  })
+
   // Pencarian klaim menggantikan tombol CARI pada form Pega.
   //
   // `Activity/OpenProtection-Act.xml` mengisi No Polis, Nama Tertanggung, Object Name,
@@ -101,6 +120,10 @@ export function ProtectionForm({
 
   const changesLossDate = type === TYPE_CHANGE_LOSS_DATE
   const changesCauseOfLoss = type === TYPE_CHANGE_CAUSE_OF_LOSS
+
+  // Seluruh turunan panel Cause Of Loss hidup di satu hook, beserta alasannya. Form hanya
+  // menggambar.
+  const panelCOL = useCauseOfLossPanel(claimNumber, changesCauseOfLoss, selected)
 
   // Keadaan pencarian klaim DITAMPILKAN, tidak lagi ditelan.
   //
@@ -130,6 +153,8 @@ export function ProtectionForm({
       detail_perubahan: {
         dol_baru: lossDateAfter,
         penyebab_kerugian_baru: causeAfter,
+        id_objek: selected.objek,
+        id_coverage: selected.coverage,
       },
     })
   }
@@ -281,28 +306,67 @@ export function ProtectionForm({
             Detail Perubahan Cause Of Loss
           </legend>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* HANYA-BACA — dari klaim, sama alasannya dengan Current Date Of Loss. */}
+          {/*
+            Tabel pemilih, mengikuti layar Pega apa adanya.
+
+            Satu klaim dapat punya banyak objek dan banyak coverage, masing-masing dengan
+            Penyebab Kerugiannya sendiri. Pada klaim `PNC-1452`, `Resiko A` muncul TIGA KALI
+            dengan penyebab berbeda — jadi memilih lewat nama tidak mungkin, dan panel ini
+            satu-satunya cara menyatakan baris mana yang hendak diubah.
+          */}
+          <CoveragePicker
+            rows={panelCOL.rows}
+            selected={selected}
+            onSelect={(row) => {
+              setSelected({ objek: row.id_objek, coverage: row.id_coverage })
+            }}
+            memuat={panelCOL.memuatCoverage}
+            gagal={panelCOL.coverageGagal}
+            failure={violations['baris_coverage'] ?? null}
+            pilihanHilang={panelCOL.pilihanHilang}
+          />
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {/* HANYA-BACA — dari BARIS YANG DIPILIH, bukan dari klaim.
+                Sebelum panel ini ada, nilainya diambil dari coverage PERTAMA klaim, yang
+                belum tentu coverage yang hendak diubah. */}
             <FormField
               id="penyebab-kerugian"
-              label="Cause Of Loss Dipilih (dari klaim)"
-              value={found?.penyebab_kerugian ?? ''}
+              label="Cause Of Loss Dipilih"
+              value={penyebabTerpilih(panelCOL.selectedRow)}
               onChange={() => {}}
               readOnly
               autoComplete="off"
             />
-            <FormField
+
+            {/*
+              DROPDOWN, bukan kotak teks — ditetapkan Work Owner 2026-10-05.
+
+              Nilainya `D_COL_ID`, bukan teks yang diketik. Teks bebas membuat salah ketik
+              tersimpan apa adanya sebagai penyebab kerugian klaim, dan tidak ada yang
+              menangkapnya: penyimpanan berhasil, layar normal, kodenya tidak cocok dengan
+              master mana pun.
+            */}
+            <SelectField
               id="penyebab-kerugian-master"
               label="Next Cause Of Loss"
+              options={panelCOL.options.map(pilihanPenyebab)}
               value={causeAfter}
               onChange={(event) => setCauseAfter(event.target.value)}
               required
-              autoComplete="off"
+              emptyText="--- Pilih Cause Of Loss ---"
               {...(violations['penyebab_kerugian_master']
-                ? { failure: violations['penyebab_kerugian_master'] }
+                ? { error: violations['penyebab_kerugian_master'] }
                 : {})}
             />
           </div>
+
+          {panelCOL.pilihanGagal && (
+            <p className="mt-2 text-sm text-rose-700">
+              Daftar Cause Of Loss gagal dimuat. Muat ulang halaman; menyimpan tanpa memilih
+              akan ditolak.
+            </p>
+          )}
         </fieldset>
       )}
 
@@ -376,4 +440,30 @@ export function ProtectionForm({
       )}
     </form>
   )
+}
+
+/**
+ * Teks kolom "Cause Of Loss Dipilih" — deskripsi beserta kodenya.
+ *
+ * Di luar komponen, bukan ternary di dalam JSX: dua baris coverage dapat bernama sama persis
+ * sementara kodenya berbeda, jadi penggabungan ini adalah aturan tampilan yang perlu terbaca
+ * sebagai satu hal, bukan diselipkan ke dalam atribut.
+ */
+function penyebabTerpilih(row: CoverageRow | null): string {
+  if (row === null) return ''
+  if (row.penyebab_kerugian_id === '') return row.penyebab_kerugian
+  return `${row.penyebab_kerugian} (${row.penyebab_kerugian_id})`
+}
+
+/**
+ * Satu pilihan dropdown "Next Cause Of Loss".
+ *
+ * `LOSS_CODE` ikut ditampilkan bila ada — sebagian penyebab kerugian bernama mirip, dan kode
+ * itulah yang membedakannya di mata petugas. Yang DISIMPAN tetap `kode` (`D_COL_ID`).
+ */
+function pilihanPenyebab(o: CauseOfLossOption): SelectOption {
+  return {
+    value: o.kode,
+    label: o.kode_kerugian === '' ? o.nama : `${o.nama} (${o.kode_kerugian})`,
+  }
 }

@@ -165,7 +165,7 @@ Diperbarui 2026-09-14 setelah export bertambah dan `Database/` diterima (`D-45`)
 | **F-4 Master Data** | tujuan penyimpanan rahasia belum ditetapkan | R-17 | **Terbuka** — `D-40` |
 | **S-5 Jejak Audit** | **daftar peristiwa wajib audit** dari Compliance | R-14 | **Terbuka** — `ADR-0026` |
 | **S-8 Perkakas Uji** | ketersediaan **Pega staging yang dapat ditembak dari luar** | R-14 | **Terbuka** — penghalang gerbang 1 seluruh modul |
-| B-7, B-11, B-13, B-14 | **8 Ticket rule custom hilang**; 14 dari 17 nama tanpa pemicu di export | R-16 | **Terbuka** — `ADR-0021` |
+| B-7, B-11, B-13, B-14 | ~~8 Ticket rule custom hilang~~ | R-16 | ✅ **GUGUR (2026-10-06)** — ticket alur bukan rule tersendiri; ia **shape di dalam flow** yang sudah kita punya. Lihat catatan di bawah tabel |
 | **B-2 Registrasi** | pengganti pola hapus-lalu-sisip-ulang belum diputuskan | — | **Terbuka** — `ADR-0013` |
 
 > Ini bukan alasan menunda mulai — modul fondasi dan sebagian besar jalur klaim tidak terhalang.
@@ -175,3 +175,27 @@ Diperbarui 2026-09-14 setelah export bertambah dan `Database/` diterima (`D-45`)
 > **Yang berubah sejak v1.0:** empat penghalang tertutup (`D-14`, `R-02`, `R-06`, sebagian `R-01`),
 > satu turun derajat (`R-04`), dan **tujuh penghalang baru** muncul dari verifikasi bukti —
 > seluruhnya menyangkut artefak atau keputusan yang sebelumnya tidak diketahui hilang.
+
+### Koreksi 2026-10-06 — "8 Ticket rule custom hilang" tidak pernah benar
+
+Klaim itu lahir dari **mencari Ticket rule sebagai berkas tersendiri**. Di Pega, ticket alur
+tidak selalu berupa `Rule-Obj-Ticket`: ia kerap hanya **shape pada flow**, dan kelimanya
+memang ada di `Flow/Register_Flow.xml` yang sudah di tangan — sebagai `<pyMOName>` di dalam
+`Data-MO-Event-Exception` ber-`pyFromMODefName = Ticket`:
+
+`setToRegister_ticket` · `SendToInvestigator` · `CompliancePNC` · `RCLDokter` · `SendtoPUCL`
+
+Satu nama keenam, **`SendToPIC`, tidak pernah ada sama sekali**. Ia muncul di daftar karena
+berkas `Ticket/SendToPIC-Ticket.xml` ada — padahal isi berkas itu rule bernama
+**`SendToPICTravel`**. Nama berkasnya menyesatkan, persis seperti
+`Activity/SendEmailNotification-Act.xml` yang berisi `CompressImage_Act` (`D-39`).
+
+**Cara memeriksanya yang benar**, dan yang dipakai untuk koreksi ini:
+
+```
+Flow/*.xml  ->  <pyMOName> di dalam <pyFromMODefName>Ticket</pyFromMODefName>
+Ticket/*.xml ->  <pyRuleName>, BUKAN nama berkasnya
+```
+
+Terkonfirmasi Tim Pega: keenam nama itu **tidak ada** di daftar Ticket rule mereka — dan
+itulah jawaban yang benar, karena memang bukan di situ tempatnya.

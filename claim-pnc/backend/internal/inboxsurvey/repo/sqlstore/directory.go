@@ -66,7 +66,7 @@ func (d *Directory) ResolveSurveyor(
 		loginStatus   sql.NullString
 	)
 
-	err := d.db.QueryRowContext(ctx, query("resolve_surveyor"), trimmed).
+	err := d.db.QueryRowContext(ctx, query("resolve_surveyor"), sql.Named("login", trimmed)).
 		Scan(&surveyorLogin, &surveyorName, &leaderLogin, &loginStatus)
 
 	switch {
@@ -132,7 +132,7 @@ func (d *Directory) members(
 	leaderLogin string,
 	leaderName string,
 ) ([]string, error) {
-	rows, err := d.db.QueryContext(ctx, query("resolve_members"), leaderLogin)
+	rows, err := d.db.QueryContext(ctx, query("resolve_members"), sql.Named("leader_login", leaderLogin))
 	if err != nil {
 		return nil, fmt.Errorf("menjalankan kueri resolve_members: %w", err)
 	}

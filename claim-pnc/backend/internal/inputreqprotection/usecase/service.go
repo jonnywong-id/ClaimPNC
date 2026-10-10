@@ -14,6 +14,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/inputreqprotection"
@@ -232,12 +233,23 @@ func (s *Service) Create(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 		return inputreqprotection.Protection{}, err
 	}
 
+	// Sasaran coverage diperiksa SESUDAH klaimnya ketemu dan SEBELUM pemeriksaan ganda.
+	//
+	// Urutannya disengaja: "baris itu bukan milik klaim ini" menjawab isian yang baru saja
+	// dipilih pengguna, sedangkan "sudah ada proteksi yang sama" menjawab hal lain. Dibalik,
+	// pengguna yang salah memilih baris akan lebih dulu menerima pesan tentang proteksi ganda
+	// — pesan yang benar tetapi menjawab pertanyaan yang tidak ia ajukan.
+	selected, err := s.resolveSelectedCoverage(ctx, stores.Claims, draft)
+	if err != nil {
+		return inputreqprotection.Protection{}, err
+	}
+
 	at := s.now()
 	if err := s.rejectDuplicate(ctx, stores.Protections, claim, draft, at, ""); err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
-	saved, err := stores.Protections.Create(ctx, draft, claim, cmd.By, at)
+	saved, err := stores.Protections.Create(ctx, draft, claim, selected, cmd.By, at)
 	if err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf("inputreqprotection/usecase: menyimpan proteksi: %w", err)
 	}
@@ -287,12 +299,21 @@ func (s *Service) Update(ctx context.Context, cmd SaveCommand) (inputreqprotecti
 		return inputreqprotection.Protection{}, err
 	}
 
+	// Diperiksa ULANG saat menyunting, bukan hanya saat membuat.
+	//
+	// Pemohon dapat mengganti nomor klaim yang ditaut, dan sasaran coverage yang tertinggal
+	// dari klaim sebelumnya akan menunjuk baris milik klaim lain — tanpa satu pun galat.
+	selected, err := s.resolveSelectedCoverage(ctx, stores.Claims, draft)
+	if err != nil {
+		return inputreqprotection.Protection{}, err
+	}
+
 	at := s.now()
 	if err := s.rejectDuplicate(ctx, stores.Protections, claim, draft, at, existing.Number); err != nil {
 		return inputreqprotection.Protection{}, err
 	}
 
-	saved, err := stores.Protections.Update(ctx, cmd.Number, draft, claim, cmd.By, at)
+	saved, err := stores.Protections.Update(ctx, cmd.Number, draft, claim, selected, cmd.By, at)
 	if err != nil {
 		return inputreqprotection.Protection{}, fmt.Errorf("inputreqprotection/usecase: menyunting proteksi: %w", err)
 	}
@@ -331,4 +352,130 @@ func (s *Service) rejectDuplicate(
 	v := &inputreqprotection.ValidationError{}
 	v.Add(inputreqprotection.FieldPolicyNumber, inputreqprotection.DuplicateMessage)
 	return v.OrNil()
+}
+
+// ListCoverages membaca seluruh coverage sebuah klaim, untuk panel pemilih pada permintaan
+// perubahan Cause of Loss.
+//
+// # Kenapa layar membutuhkannya
+//
+// Satu klaim dapat punya banyak objek, dan tiap objek banyak coverage. Pemohon harus memilih
+// SATU di antaranya, dan pilihan itulah yang kelak menentukan baris mana yang berubah saat
+// permintaannya disetujui.
+//
+// Layar Pega `InputProtectionFlow` menampilkannya sebagai tabel ber-tombol **Pilih**. Nama
+// tidak dapat menggantikan pilihan itu: kueri terhadap klaim `PNC-1452` mengembalikan
+// `JackHugh / Resiko A` TIGA KALI dengan Cause of Loss berbeda.
+//
+// # Klaimnya dipastikan ada lebih dulu
+//
+// FindClaim dipanggil sebelum daftar dibaca, supaya nomor yang tidak menunjuk klaim mana pun
+// dijawab 404 — bukan daftar kosong yang terbaca sebagai "klaim ini tidak punya coverage".
+// Keduanya keadaan yang sangat berbeda, dan hanya satu di antaranya yang dapat diperbaiki
+// pengguna.
+func (s *Service) ListCoverages(
+	ctx context.Context,
+	portalAlias, claimNumber string,
+) ([]inputreqprotection.CoverageRow, error) {
+	stores, err := s.protections(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := stores.Claims.FindClaim(ctx, claimNumber); err != nil {
+		return nil, err
+	}
+
+	daftar, err := stores.Claims.ListCoverages(ctx, claimNumber)
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/usecase: membaca coverage klaim: %w", err)
+	}
+	return daftar, nil
+}
+
+// ListCauseOfLoss membaca pilihan dropdown "Next Cause Of Loss" untuk sebuah klaim.
+//
+// # Lini bisnisnya DITURUNKAN dari klaim, bukan diterima dari layar
+//
+// Kalau kode bisnisnya datang dari permintaan, siapa pun dapat meminta daftar milik lini
+// lain — dan memilih penyebab kerugian yang tidak berlaku bagi klaimnya, tanpa satu pun
+// galat. Karena itu klaimnya dicari lebih dulu, dan kode bisnis diambil dari sana.
+//
+// Klaim yang `BUSINESSCODE`-nya kosong menerima SELURUH pilihan. Itu disengaja: daftar
+// kosong akan terbaca sebagai master yang rusak, dan pemohon tidak punya cara memperbaikinya.
+func (s *Service) ListCauseOfLoss(
+	ctx context.Context,
+	portalAlias, claimNumber string,
+) ([]inputreqprotection.CauseOfLossOption, error) {
+	stores, err := s.protections(portalAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	claim, err := stores.Claims.FindClaim(ctx, claimNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	daftar, err := stores.Causes.ListCauseOfLoss(ctx, claim.BusinessCode)
+	if err != nil {
+		return nil, fmt.Errorf("inputreqprotection/usecase: membaca master penyebab kerugian: %w", err)
+	}
+	return daftar, nil
+}
+
+// rejectUnknownCoverage menolak permintaan perubahan Cause of Loss yang menunjuk baris
+// coverage yang bukan milik klaimnya.
+//
+// # Kenapa ini diperiksa di server, padahal layar yang menyediakan pilihannya
+//
+// Karena layar bukan penjaga. Badan permintaan yang dirakit tangan dapat menyebut pasangan
+// objek dan coverage apa pun, dan tanpa pemeriksaan ini permintaan itu tersimpan — lalu saat
+// disetujui, akseptasi menulis Penyebab Kerugian ke baris milik KLAIM LAIN.
+//
+// Kegagalan seperti itu tidak punya gejala: penyimpanan berhasil, layar tampil normal, dan
+// yang berubah adalah data klaim yang tidak ada hubungannya dengan permintaan ini.
+//
+// # Hanya untuk tipe '8'
+//
+// Tipe lain tidak punya sasaran coverage, dan validasi bentuk sudah memastikan keduanya
+// kosong di sana. Membaca daftar coverage untuk tipe lain hanya menambah satu kueri yang
+// hasilnya tidak dipakai.
+// Baris yang cocok DIKEMBALIKAN, bukan dibuang. Ia yang menjadi nilai "sebelum" pada
+// `OLD_DATA` — kode penyebab kerugian baris itu, bukan deskripsi, dan bukan nilai milik
+// coverage pertama klaim.
+func (s *Service) resolveSelectedCoverage(
+	ctx context.Context,
+	claims inputreqprotection.ClaimRepo,
+	draft inputreqprotection.Draft,
+) (inputreqprotection.CoverageRow, error) {
+	if draft.Type != inputreqprotection.TypeChangeCauseOfLoss {
+		return inputreqprotection.CoverageRow{}, nil
+	}
+
+	rows, err := claims.ListCoverages(ctx, draft.ClaimNumber)
+	if err != nil {
+		return inputreqprotection.CoverageRow{}, fmt.Errorf(
+			"inputreqprotection/usecase: membaca coverage klaim: %w", err)
+	}
+
+	for _, c := range rows {
+		if strings.TrimSpace(c.ObjectID) == draft.Change.ObjectID &&
+			strings.TrimSpace(c.ObjectCoverageID) == draft.Change.ObjectCoverageID {
+			return c, nil
+		}
+	}
+
+	// Dikembalikan sebagai kesalahan validasi, bukan konflik teknis, supaya layar
+	// menempelkannya pada panel pemilih — satu-satunya tempat pengguna dapat memperbaikinya.
+	//
+	// Pesannya menyebut kemungkinan yang paling sering benar: barisnya memang ada saat
+	// panelnya dimuat, lalu coverage-nya dibuang dari klaim sebelum permintaan disimpan.
+	return inputreqprotection.CoverageRow{}, &inputreqprotection.ValidationError{
+		Errors: []inputreqprotection.FieldError{{
+			Field: inputreqprotection.FieldCoverageRow,
+			Message: "Baris objek dan coverage yang dipilih tidak ada pada klaim ini. " +
+				"Muat ulang daftarnya lalu pilih kembali.",
+		}},
+	}
 }

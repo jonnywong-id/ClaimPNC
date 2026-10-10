@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Tanggal** | 2026-09-29 · 2026-09-30 kolom tiba, isinya belum · **2026-10-03 lingkup menyusut jadi 3 kolom** |
+| **Tanggal** | 2026-09-29 · 2026-09-30 tiga kolom tiba · 2026-10-03 dua gugur, dua ditambah · **2026-10-05 dinamai ulang `ADJUSTER_PIC` dan `RESCHEDULE_LOCATION`** |
 | **Diminta oleh** | Tim migrasi Claim PNC |
 | **Ditujukan ke** | **Tim Pega** |
 | **Menempuh** | `D-63` — permintaan tertulis tim pengembang, persetujuan Work Owner, pelaksanaan DBA |
@@ -11,12 +11,34 @@
 
 ---
 
-## 1. Ringkas — SELURUH kolom sudah ada, isinya belum
+## 1. Ringkas — kolom ada di DEV, belum di PRODUKSI
 
-Per **2026-10-03** kelima kolom yang diminta sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST`.
-**Seluruhnya masih kosong**, dan karena itu belum satu pun manfaat di bawah terwujud.
+| Lingkungan | Kelima kolom ada? | Terisi? |
+|---|:---:|:---:|
+| `pega_dev83` | ✅ sejak 2026-10-03, dinamai ulang 2026-10-05 | ❌ |
+| **Produksi** | ❌ **`ALTER` belum dijalankan** | — |
 
-**Tidak ada `ALTER` lagi yang diminta.** Yang tersisa hanyalah §2 — pengisiannya.
+Jadi permintaan ini **belum selesai**: `ALTER`-nya masih dibutuhkan di produksi. Yang sudah
+selesai hanyalah di dev.
+
+**Seluruhnya masih kosong** di kedua lingkungan, dan karena itu belum satu pun manfaat di bawah
+terwujud.
+
+**Yang masih diminta:** `ALTER` yang sama dijalankan **di produksi**, lalu pengisiannya di kedua
+lingkungan. Kuerinya sudah disiapkan di
+**[`backfill-t-surveyorlist.md`](backfill-t-surveyorlist.md)**.
+
+```sql
+ALTER TABLE POOLDATA.T_SURVEYORLIST ADD (
+  ADJUSTERACCEPT      VARCHAR2(32 BYTE),
+  REFNO               VARCHAR2(101 BYTE),
+  PYSTATUSWORK        VARCHAR2(32 CHAR),
+  ADJUSTER_PIC        VARCHAR2(150),
+  RESCHEDULE_LOCATION VARCHAR2(1500 CHAR)
+);
+```
+
+Kelimanya **nullable tanpa default** — persis seperti di `pega_dev83`.
 
 Dua permintaan **dicoret** sepanjang jalan karena kolomnya ternyata sudah ada di tempat lain;
 cara gugurnya dicatat di §4 karena lebih berguna daripada daftarnya.
@@ -26,23 +48,31 @@ cara gugurnya dicatat di §4 karena lebih berguna daripada daftarnya.
 | 1 | `ADJUSTERACCEPT` | tab Outstanding, ALL, dan Invoice | ✅ | ❌ |
 | 2 | `PYSTATUSWORK` | tab Close, dan penyaring "berkas survei masih terbuka" | ✅ | ❌ |
 | 3 | `REFNO` | kolom "Reference No" dan setengah kotak cari | ✅ | ❌ |
-| 4 | `ADJUSTERPIC` | kolom "PIC Loss Adjuster" | ✅ | ❌ |
-| 5 | `RESCHEDULELOCATION` | kolom "Location" | ✅ | ❌ |
-| ~~—~~ | ~~`ADJUSTERPIC` untuk "Appointment No"~~ | ~~kolom "Appointment No"~~ | **DICORET** | — |
+| 4 | `ADJUSTER_PIC` | kolom "PIC Loss Adjuster" | ✅ | ❌ |
+| 5 | `RESCHEDULE_LOCATION` | kolom "Location" | ✅ | ❌ |
+| ~~—~~ | ~~`ADJUSTER_PIC` untuk "Appointment No"~~ | ~~kolom "Appointment No"~~ | **DICORET** | — |
 | ~~—~~ | ~~`ASMSTATUS`~~ | ~~kolom "Status ASM"~~ | **DICORET** | — |
 
-> **Kelima kolom sudah ada** per 2026-10-03 — `ADJUSTERPIC VARCHAR2(150)` dan
-> `RESCHEDULELOCATION VARCHAR2(1500 CHAR)` ditambahkan hari itu. **Seluruhnya masih kosong.**
+> **Kelima kolom sudah ada.** `ADJUSTER_PIC VARCHAR2(150)` dan
+> `RESCHEDULE_LOCATION VARCHAR2(1500 CHAR)` ditambahkan 2026-10-03, lalu **dinamai ulang
+> 2026-10-05** agar sejalan dengan gaya tabel ini (`SURVEYOR_NAME`, `LOCATION_SURVEY`).
+> **Seluruhnya masih kosong.**
 
-### Tiga kolom sempat diajukan 2026-10-03 — **dua gugur setelah diukur**
+> **Tabrakan nama yang harus disadari pembaca kode.** `ADJUSTER_PIC` kini nama kolom **dan**
+> nama alias: kueri daftar memakai `s.SURVEYOR_NAME AS ADJUSTER_PIC`. Alias menamai kolom
+> **layar**; awalan `s.` menamai kolom **basis data**. Keduanya menyatu
+> (`s.ADJUSTER_PIC AS ADJUSTER_PIC`) begitu kolomnya terisi, dan uji
+> `TestKolomYangBelumTerisiTidakDibacaKueriDaftar` memeriksa `s.<kolom>` justru karena itu.
+
+### Tiga kolom sempat diajukan 2026-10-03 — **satu gugur setelah diukur**
 
 Dicatat lengkap, karena cara gugurnya lebih berguna daripada daftarnya.
 
 | Kolom | Status | Yang memutuskan |
 |---|---|---|
 | ~~`ASMSTATUS`~~ | **BATAL** | `T_CLAIM_PNC.LEADER_MEMBER` sudah membawanya |
-| **`ADJUSTERPIC`** | **DIMINTA** | terukur: orangnya berbeda |
-| `RESCHEDULELOCATION` | tertahan | pengukuran belum tuntas |
+| **`ADJUSTER_PIC`** | **ditambahkan** | terukur: orangnya berbeda |
+| **`RESCHEDULE_LOCATION`** | **ditambahkan** | terukur: 660 dari 2.427 berkas berbeda |
 
 **`ASMSTATUS` batal — usulan Work Owner.** Kolom "Status ASM" ternyata bukan status melainkan
 **peran koasuransi**: `ASMSTATUS_1` hanya bernilai `LEADER`, `MEMBER`, atau kosong. Work Owner
@@ -60,7 +90,7 @@ MEMBER         (kosong)          10
 Sepuluh baris terakhir adalah satu-satunya selisih (**0,06%**), dan di sana modul baru justru
 lebih tepat daripada Pega yang menjatuhkan nilai kosong ke `LEADER`.
 
-**`ADJUSTERPIC` diminta — terukur berbeda orang, dan terpusat pada adjuster eksternal.**
+**`ADJUSTER_PIC` diminta — terukur berbeda orang, dan terpusat pada adjuster eksternal.**
 
 Dari 2.463 berkas survei, dipecah menurut jenis surveyor:
 
@@ -83,10 +113,10 @@ adjuster eksternal cocok dengan yang pertama, **nol** dengan yang kedua.
 menampilkan orang yang salah. Dan pada 305 berkas surveyor internal ia menampilkan nama padahal
 Pega mengosongkannya.
 
-> `ADJUSTERPIC` sempat dicoret sebagai asal "Appointment No", dan **itu tetap benar**. Keempat
+> `ADJUSTER_PIC` sempat dicoret sebagai asal "Appointment No", dan **itu tetap benar**. Keempat
 > kueri tab menunjukkan ia asal **"PIC Loss Adjuster"** — kolom yang lain.
 
-**`RESCHEDULELOCATION` — terukur berbeda, menunggu keputusan Work Owner.**
+**`RESCHEDULE_LOCATION` — terukur berbeda, dan Work Owner memutuskan menambahkannya.**
 
 Ketiga kolom yang sudah ada dibandingkan terhadapnya:
 
@@ -104,10 +134,9 @@ berbeda dari Pega.
 Sejalan dengan jalur penulisnya — `LOCATION_SURVEY ← Param.ObjName ← ObjectLocation`/`ObjectName`,
 sedangkan Pega menggambar `ObjectSurveyLocation`. Dua konsep, bukan dua salinan.
 
-**Pilihannya milik Work Owner:** minta kolomnya, atau terima 73% dengan penanda `· pengganti`.
-
-Sampai keputusannya jatuh, kolom "PIC Loss Adjuster" dan "Location" **tetap digambar dengan
-pengganti** dan ditandai `· pengganti` di judulnya, supaya selisihnya terlihat.
+Sampai kolomnya **terisi**, "PIC Loss Adjuster" dan "Location" tetap digambar dengan pengganti
+dan ditandai `· pengganti` di judulnya, supaya selisihnya terlihat. Penanda itu hilang sendiri
+begitu `-periksa` melaporkan keterisiannya.
 
 > **Perhatikan penamaannya.** Di `T_SURVEYORLIST` kolomnya **tanpa akhiran `_1`**. Akhiran itu
 > artefak perataan objek kerja di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, dan menghilangkannya memang
@@ -197,7 +226,7 @@ baris bernilai `'0'`, dan perilaku Pega dibawa apa adanya (`P-5`).
 
 Dicatat supaya tidak diminta ulang.
 
-### `ADJUSTERPIC` — DICORET, tidak pernah diperlukan
+### `ADJUSTER_PIC` — DICORET, tidak pernah diperlukan
 
 Work Owner melihat layar Pega berjalan pada 2026-10-03 dan melaporkan isi kolom **"Appointment
 No"**: **`SRV-xxx`**. Bukan nama adjuster.

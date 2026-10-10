@@ -147,3 +147,45 @@ func TestExtraMemoryStoresReused(t *testing.T) {
 	require.NoError(t, err)
 	require.Same(t, first, second, "penyimpanan master supplier dibuat ulang setiap dipilih")
 }
+
+// Setiap modul yang punya jalur unggah harus BENAR-BENAR membawa pengunggahnya setelah
+// perakitan.
+//
+// # Kenapa uji ini ada, dan kenapa ia menembak `build` yang sungguhan
+//
+// Modul-modul ini dirakit DUA KALI: sekali di `buildExtraServices` (modules.go) dan sekali
+// lagi di `build` (main.go). Yang pertama berjalan jauh sebelum `documentService` dibuat,
+// sehingga ia TIDAK dapat membawa `Uploader`. Yang melayani permintaan adalah yang pertama
+// — kecuali `build` menyambungkannya dengan `extra.<modul> = <modul>Service`.
+//
+// Bila sambungan itu lupa ditulis, gejalanya **tidak ada sama sekali**: aplikasi start
+// normal, rutenya terdaftar, `go build` hijau, seluruh uji modul lulus. Yang terjadi hanya
+// `/pilihan` menjawab `unggah_tersedia: false`, dan tombolnya mati tanpa keterangan.
+//
+// Itu sudah terjadi DUA KALI dalam satu hari — Master Sparepart pagi, Master Panel sore.
+// Uji modul tidak dapat menangkapnya: masing-masing merakit handler-nya sendiri, sehingga
+// lulus meski perakitan aplikasi salah.
+//
+// Uji ini menembak hasil `build` yang sungguhan, jadi ia gagal begitu sambungan berikutnya
+// lupa ditulis.
+func TestUploaderTerpasangSetelahPerakitan(t *testing.T) {
+	assembly, err := build(devConfig(), logging.New(0))
+	require.NoError(t, err)
+	t.Cleanup(assembly.close)
+
+	// Dibaca dari `assembly.extra`, BUKAN dari variabel lokal `build` — karena `extra`
+	// itulah yang diteruskan ke `mountExtra` dan melayani permintaan.
+	pemilikUnggah := map[string]interface{ UploadAvailable() bool }{
+		"Master Panel":     assembly.extra.panel,
+		"Master Sparepart": assembly.extra.sparepart,
+		"Master Bengkel":   assembly.extra.workshop,
+	}
+
+	for nama, service := range pemilikUnggah {
+		require.NotNilf(t, service, "%s tidak ikut dirakit sama sekali", nama)
+		require.Truef(t, service.UploadAvailable(),
+			"%s dirakit TANPA Uploader — tombol unggahnya akan mati tanpa galat. "+
+				"Tambahkan `extra.<modul> = <modul>Service` di build(), sesudah documentService dibuat.",
+			nama)
+	}
+}

@@ -127,6 +127,12 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		}, true
 
 	default:
-		return 0, ErrorResponse{}, false
+		// Dua jalur unggah punya penggolongannya sendiri, dan keduanya di dekat handler
+		// yang memakainya: document.go untuk empat golongan kegagalan unggah dokumen,
+		// import.go untuk berkas CSV yang tidak dapat dibaca sama sekali.
+		if status, body, known := mapCSVError(err); known {
+			return status, body, true
+		}
+		return mapUploadError(err)
 	}
 }

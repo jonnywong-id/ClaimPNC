@@ -7,6 +7,33 @@ Gunakan daftar ini apa adanya sebagai lampiran permintaan ke DBA dan tim Pega.
 
 Seluruh isi diekstraksi langsung dari 652 rule Connect-SQL dan 902 Activity di export.
 
+> **PERINGATAN SNAPSHOT (2026-10-03) — angka di bawah berasal dari export yang LEBIH LAMA.**
+>
+> Export bertambah lagi, dan pertambahannya menyeluruh — bukan satu dua berkas. Dihitung
+> langsung dari direktori:
+>
+> | Direktori | Snapshot v2.0 (2026-09-14) | **Sekarang** |
+> |---|---|---|
+> | Seluruh berkas XML | 2.634 | **2.960** |
+> | `Activity/` | 902 | **1.075** |
+> | `RDB List/` | 652 | **820** |
+> | `Section/` | 269 | **331** |
+> | `Harness/` | 74 | **84** |
+> | `When/` | 70 | **87** |
+> | `Data Transform/` | 80 | **85** |
+> | `Report Definition/` | 56 | **67** |
+> | `Flow Action/` | 29 | **54** |
+>
+> **307 berkas XML disentuh dalam tujuh hari terakhir.**
+>
+> Akibatnya: setiap pernyataan "tidak ada di export" pada dokumen ini — dan pada dokumen
+> mana pun yang bersandar pada snapshot 2.634 — **wajib diperiksa ulang sebelum dipakai**.
+> Satu contoh nyata sudah ditemukan: `UploadDocument` tercatat hilang pada 2026-09-20 dan
+> **sekarang ada** (`Flow Action/UploadDocument-FA.xml`).
+>
+> Ini pengulangan keadaan `D-45`, yang menjalankan ulang Fase 1 terhadap snapshot baru.
+> Audit ulang yang setara **belum dijalankan** untuk snapshot ini.
+
 > **Diperbarui v2.0 (2026-09-14) — dokumen ini ternyata jauh dari lengkap.**
 >
 > Audit ulang terhadap snapshot baru menemukan **±242 rule dirujuk tetapi tidak ada di export**,
@@ -354,3 +381,260 @@ SELECT owner, name, type, line, text
 - **Grant dan sinonim** — beberapa objek dipanggil tanpa skema, kemungkinan lewat sinonim publik.
 - **Isi master `V_STS_CLAIM`** (R-06), karena beberapa procedure menulis kolom status.
 
+
+---
+
+## Cara Meminta ke Tim Pega
+
+Bagian ini padanan **Cara Meminta ke DBA** di atas, dan `D-39` memang memintanya ada.
+Isinya dapat dikirim apa adanya.
+
+Berbeda dari permintaan ke DBA yang berupa satu kueri, permintaan ke Tim Pega selalu
+berbentuk **export rule**. Dua bentuk yang dipakai:
+
+| Bentuk | Kapan |
+|---|---|
+| **Export ulang berbasis Product rule** dengan opsi *include dependent rules* | untuk ±242 rule yang hilang menyeluruh (`R-16`) — ini yang utama (`D-39`) |
+| **Permintaan rule bernama**, seperti di bawah | bila yang dibutuhkan sedikit dan namanya sudah pasti |
+
+---
+
+### Permintaan 1 — tiga jalur unggah CSV master
+
+**Pemohon:** tim pengembang Claim PNC · **Modul terdampak:** Master Panel (MENU_ID 30) dan
+**Master Sparepart**
+**Diperiksa ulang:** 2026-10-03, terhadap snapshot **2.960 berkas XML**
+
+#### Yang diminta
+
+Tiga **Flow Action** berikut, masing-masing **beserta section form dan activity
+pemrosesnya**:
+
+| Flow Action | Dipanggil dari | Tombol di layar | Status |
+|---|---|---|---|
+| `PNCUploadMasterPanelCSV` | `Section/BrowsePanelHE` | "Upload Data Master Panel" | **belum ada** |
+
+> **KOREKSI 2026-10-06 — activity pemrosesnya ADA, hanya namanya berbeda.**
+> `Activity/PNCUploadMasterPanel_Act-Act.xml` dan
+> `Activity/PNCUploadLokasiSisiPanel_Act-Act.xml` keduanya ada di snapshot
+> (perhatikan **LokasiSisi**, bukan Lokasi). Keduanya memuat seluruh yang dibutuhkan:
+> nama kolom CSV, penerjemahan kata ke sandi, dan penanganan baris anak.
+>
+> Yang masih belum ada hanyalah **Flow Action** beserta section formnya — dan itu hanya
+> pemilih berkas, yang nilainya rendah karena bentuknya sudah ditiru dari
+> `PNCUploadMasterSparepartCSV`.
+>
+> **Pelajaran untuk permintaan berikutnya:** cari nama Flow Action **dan** nama activity
+> berpola `<nama tanpa CSV>_Act` sebelum menyatakan sebuah jalur hilang. Dua kali di
+> berkas ini sebuah rule dinyatakan hilang padahal yang dicari hanya satu nama dari dua.
+| `PNCUploadLokasiPanelCSV` | `Section/BrowsePanelHE` | "Upload Data Lokasi Panel" | **belum ada** |
+| `PNCUploadMasterSparepartCSV` | `Section/BrowseMasterSparepartHE` | "Upload Data Master Sparepart" | ✅ **flow action + activity SUDAH masuk 2026-10-04** — sisa satu SQL rule |
+
+Ketiganya dirujuk sebagai `<pyLocalAction>` pada section yang memanggilnya, masing-masing
+dua kali — yang sparepart pada pos 46933 dan 51890.
+
+**Ditambahkan 2026-10-03.** Yang sparepart baru ketahuan setelah pemeriksaan kelengkapan
+Master Sparepart; sebelumnya tidak terdeteksi karena dicari di **harness**, yang hanya
+merangkai section dan tidak memuat satu pun tombolnya.
+
+#### Sparepart — nyaris lengkap, sisa satu SQL rule
+
+Dua pengiriman pada **2026-10-04** menutup hampir seluruh jalur ini.
+
+| Rule | Tipe | Kelas · Ruleset | Status |
+|---|---|---|---|
+| `PNCUploadMasterSparepartCSV` | Rule-Obj-FlowAction | `@baseclass` · GCNMFW 01-01-89 | ✅ **diterima** |
+| `PNCUploadMasterSparepart_Act` | Rule-Obj-Activity | `@baseclass` · GCNMFW | ✅ **diterima** |
+| **`ASM-FW-GCNMFW-Int-SPAREPART_HE GCNM GetSparepartFromNoSparepart`** | **Rule-Connect-SQL** | `ASM-FW-GCNMFW-Int-SPAREPART_HE` · GCNMFW | ❌ **masih diminta** |
+| `GCNM UpdateSparepartHE` | Rule-RDB-SQL | `ASM-FW-GCNMFW-Int-SPAREPART_HE` | ✅ sudah ada |
+| `pyCaption PNCUploadMasterSparepartCSV` | Rule-Obj-FieldValue | `@baseclass` | ❌ belum (kosmetik) |
+| `pxUploadCSVResults` · `PNCSaveAttachmentToDB` | — | Pega OOTB · sudah tercatat | — jangan diminta |
+
+Nama activity-nya dibaca dari blok `rowdata` di dalam FA yang masuk lebih dulu, bukan ditebak
+dari pola penamaan — yang justru terbukti tidak konsisten (lihat di bawah).
+
+**Flow action-nya sendiri tidak memuat satu pun informasi yang dibutuhkan.** Kata `Column`
+muncul 20 kali di dalamnya dan `Template` 14 kali, tetapi seluruhnya properti **tata letak**
+(`pyColumnCount`, `pyHideRightColumn`, `pyLayoutGroupTemplateType`); `<pyFileName/>` kosong.
+Susunan kolom CSV, validasinya, dan perlakuan baris bentrok **seluruhnya ada di activity** —
+dan activity itu kini di tangan.
+
+**Yang terjawab begitu activity-nya dibaca** (rinciannya di
+`claim-pnc/docs/keputusan-implementasi.md` §184):
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Apakah unggah massal **memintas persetujuan**? | **Tidak** — `APPROVAL := "0"` tanpa syarat; baris mendarat di Waiting Approval |
+| Kunci upsert-nya apa? | **`NO_SPART`**, bukan Kode maupun Nama |
+| ID baris baru dari mana? | sentinel `"UnknownID"` → `PEGA_M_SPAREPART_HE.prc:19` membuat `id_site \|\| lpad(seq,10,'0')` |
+| Ditulis ke mana? | **`POOLDATA.M_SPAREPART_HE_BU`**, kolom **`JSONDATA`** — dokumen JSON, bukan kolom |
+
+Baris terakhir menyambung ke penghalang DBA: `M_SPAREPART_HE_BU` adalah tabel yang memberi
+**`ORA-00942`**. Ia bukan salah tulis — ia **tabel penyimpanan sebenarnya** master ini, dan
+aplikasi belum diberi hak atasnya.
+
+#### Cara menyebut rule SQL yang diminta — nama pendeknya TIDAK cukup
+
+Connect-SQL modul ini memakai nama lengkap yang memuat **kelas di depan** dan sisipan
+**`GCNM`**. Saudaranya yang sudah diterima membuktikan polanya:
+
+| Hal | Nilai pada `UpdateSparepartHE` yang SUDAH ada |
+|---|---|
+| `pyRuleName` | `ASM-FW-GCNMFW-Int-SPAREPART_HE GCNM UpdateSparepartHE` |
+| `pyClassName` | `ASM-FW-GCNMFW-Int-SPAREPART_HE` |
+| `pyRuleSet` · versi | `GCNMFW` · `01-01-88` |
+| `pzInsKey` | `RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-SPAREPART_HE GCNM!UPDATESPAREPARTHE` |
+| Nama berkasnya di export | `RDB List/UpdateSparepartHE-SQL.xml` |
+
+Perhatikan **nama berkas ≠ nama rule**: berkasnya bernama pendek, rule-nya bernama panjang.
+Meminta dengan nama pendek saja berisiko dilaporkan "tidak ditemukan".
+
+Sisa yang diminta hanya **`GetSparepartFromNoSparepart`**. Kunci pencariannya sudah diketahui
+(`NO_SPART`); yang belum terbaca adalah penyaring lain yang mungkin menyertainya.
+
+#### Yang SUDAH diterima — jangan diminta lagi
+
+| Flow Action | Berkas | Kelas · Ruleset | Activity pemrosesnya |
+|---|---|---|---|
+| `UploadDocument` | `Flow Action/UploadDocument-FA.xml` | `@baseclass` · GCNMFW 01-01-89 | `Activity/SaveFilePenunjang-Act.xml` ✅ |
+
+Ia sempat tercatat hilang pada pemeriksaan **2026-09-20**, dan memang belum ada saat itu —
+direktori `Flow Action/` masih berisi 29 berkas. Ia masuk pada pengiriman berikutnya.
+Tombol "Upload Document" **sudah dibangun** pada 2026-10-04; yang tertahan hanya ketiga
+unggahan CSV.
+
+> **Flow action-nya saja TIDAK cukup, dan ini layak dicatat untuk permintaan berikutnya.**
+> `SaveFilePenunjang` ternyata hanya **menahan** berkas di halaman sementara; yang
+> menyimpannya adalah rantai `CNMUpdatePanelHE_act` → `PNCSaveAttachmentToDB` →
+> `SET_ATTACHMENT_64BIT.prc` → `InsertDokumenPNC` → Connect REST `UploadDokumenPNC`
+> (`POST /api/v1/upload`) → `InsertDataPNCStorage`. Isi berkasnya **tidak pernah masuk**
+> `DATA_ATTACHFILE`; yang tersimpan di sana hanya metadata beserta `IMAGEID`.
+>
+> Artinya satu flow action unggah **selalu** menyeret rantai penyimpanan di belakangnya.
+> Saat meminta ketiga CSV di atas, mintakan pula **activity pemrosesnya beserta rule yang
+> dipanggil activity itu** — bukan flow action dan section-nya saja. Permintaan yang
+> berhenti di flow action akan terlihat lengkap dan tetap tidak dapat dibangun.
+
+Perhatikan kelasnya: `@baseclass`, bukan kelas modul. Itu pula sebabnya satu rule yang sama
+dipanggil **13 section** lintas modul — Surveyor, Master Rekening, Bengkel, Sparepart,
+Panel, dan Recovery.
+
+#### Cara memastikan keduanya memang belum terkirim
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Rule ber-`pyRuleName` persis kedua nama Panel itu, di seluruh snapshot | **nol** |
+| Kedua nama itu di berkas lain | **tidak ada** — hanya muncul di section yang memanggilnya |
+| Isi direktori `Flow Action/` | **55 berkas** — jadi Flow Action memang ikut diekspor |
+| `find . -iname "*PNCUploadMasterSparepart*"` (2026-10-04) | **1 berkas** — FA-nya saja; **activity-nya tidak ada** |
+
+> Baris terakhir diperbarui 2026-10-04. Sebelumnya berbunyi *"tak satu pun sparepart"*, dan
+> itu benar sampai flow action-nya masuk. Ia contoh langsung dari pelajaran §181: klaim
+> "tidak ada di export" punya tanggal kedaluwarsa.
+
+Butir terakhir yang menjadikan ini **gap**, bukan kategori yang tidak pernah dikirim.
+
+#### Bentuk yang diharapkan
+
+Padanannya sudah ada di snapshot dan dapat dipakai sebagai contoh:
+**`Flow Action/PNCUploadDataKlaimSlikOJK-FA.xml`** (ruleset `GCNMFW`), yang menunjuk
+activity `PNCUploadAutoClaimSlikOJK` dan `pxUploadCSVResults`.
+
+Padanan yang **lebih dekat lagi** untuk ketiganya, karena sama-sama unggah CSV *master*:
+**`Flow Action/PNCUploadMasterBengkelCSV-FA.xml`** beserta
+`Activity/PNCUploadMasterBengkel_Act-Act.xml`.
+
+> **Padanan bukan pengganti.** Keempat contoh itu memperlihatkan **bentuknya**, tetapi tidak
+> satu pun menyatakan **kolom apa** yang diterima berkas CSV panel maupun sparepart,
+> urutannya, dan apa yang terjadi pada baris yang bentrok dengan baris yang sudah ada.
+> Karena jalur ini **menulis massal ke master yang menentukan harga**, ketiganya tetap
+> diminta apa adanya — tidak disusun dari analogi.
+
+#### Identifikasi presisi rule yang diminta
+
+Dibaca per blok `rowdata` dari `Flow Action/PNCUploadMasterBengkelCSV-FA.xml` — bukan dari
+jendela teks, yang terbukti menyerempet blok tetangga.
+
+| Rule | Tipe | Kelas | Ruleset | Diminta? |
+|---|---|---|---|---|
+| `PNCUploadMasterSparepartCSV` | **Rule-Obj-FlowAction** | `@baseclass` | `GCNMFW` | **YA** |
+| *activity pemrosesnya* — **namanya tidak diketahui** | **Rule-Obj-Activity** | `@baseclass` | `GCNMFW` | **YA** |
+| `pyCaption PNCUploadMasterSparepartCSV` | Rule-Obj-FieldValue | `@baseclass` | `GCNMFW` | ikut |
+| `pxUploadCSVResults` | Rule-HTML-Section | `@baseclass` | **Pega OOTB** | **tidak** — bawaan |
+
+Ruleset `GCNMFW` dan versi `01-01-89` diambil dari saudara kembarnya; keduanya **dugaan
+yang wajar**, bukan hasil pembacaan rule sparepart itu sendiri — rule-nya belum ada.
+
+#### Kenapa nama activity pemrosesnya TIDAK boleh ditebak
+
+Ketiga unggah CSV yang ada di snapshot memakai **tiga pola penamaan yang berbeda**:
+
+| Flow Action | Activity pemrosesnya | Pola |
+|---|---|---|
+| `PNCUploadMasterBengkelCSV` | `PNCUploadMasterBengkel_Act` | buang `CSV`, tambah `_Act` |
+| `PNCUploadDataKlaimSlikOJK` | `PNCUploadAutoClaimSlikOJK` | nama lain sama sekali |
+| `PNCUploadClaimCSV` | `PNCUploadAutoClaim_Act` | sisip `Auto`, tambah `_Act` |
+
+Tiga contoh, tiga pola. Karena itu nama activity ketiganya **tidak dicantumkan sebagai nama
+yang diminta** — menuliskannya berisiko membuat Tim Pega mencari rule yang tidak ada, lalu
+melaporkan "tidak ditemukan" untuk sesuatu yang sebenarnya ada dengan nama lain.
+
+> **Terjawab untuk sparepart, 2026-10-04.** Setelah flow action-nya masuk, nama activity-nya
+> terbaca langsung dari dalamnya: **`PNCUploadMasterSparepart_Act`** — kebetulan mengikuti
+> pola Bengkel. Kehati-hatian di atas tetap benar saat ditulis: dua dari tiga contoh TIDAK
+> mengikuti pola itu, jadi menebaknya saat itu berpeluang salah sekitar dua pertiga.
+>
+> Untuk **`PNCUploadMasterPanelCSV`** dan **`PNCUploadLokasiPanelCSV`** namanya masih belum
+> diketahui, dan peringatan ini berlaku penuh.
+
+**Cara yang benar:** minta Flow Action-nya **beserta dependent rules**, bukan menyebut nama
+activity. Pega dapat melakukannya dalam satu langkah, dan itu persis yang `D-39` tetapkan —
+export berbasis Product rule dengan opsi *include dependent rules*.
+
+Pengiriman 2026-10-04 memperlihatkan kenapa opsi itu penting: yang masuk **hanya satu
+berkas**, flow action-nya saja. Opsi *include dependent rules* tampaknya tidak dicentang,
+sehingga permintaannya terlihat terpenuhi padahal bagian yang memuat seluruh logikanya
+tertinggal.
+
+Yang harus ikut terbawa oleh opsi itu:
+
+1. Rule Flow Action-nya sendiri.
+2. **Section form** yang dirujuknya (`pyHTMLStreamName`), bila ada — pada Bengkel **tidak
+   ada section terpisah**, jadi ketiadaannya bukan tanda export kurang.
+3. **Activity pemrosesnya**, beserta seluruh rule yang dipanggil activity itu.
+
+#### Kenapa menebak tidak dapat diterima di sini
+
+| Tidak diketahui | Akibat bila ditebak |
+|---|---|
+| **Susunan kolom CSV** | berkas diterima sistem tetapi kolomnya dipetakan ke tempat yang salah — tidak muncul sebagai galat |
+| Validasi yang berjalan | nama ganda atau sandi `STS_*` yang tidak sah lolos masuk |
+| **Apakah baris hasil unggah masuk antrean persetujuan** | unggah massal yang melewati `APPROVAL="0"` **memintas seluruh kontrol persetujuan** |
+
+Butir ketiga yang paling menentukan: salah menebak di sana berarti membuat pintu masuk
+data yang tidak diperiksa siapa pun.
+
+#### Jalan pintas bila rule-nya sulit dicari
+
+Satu **contoh berkas CSV** untuk Master Panel dan satu untuk Lokasi Panel sudah cukup
+untuk membaca susunan kolomnya. Yang tetap perlu dijawab terpisah — dan tidak terbaca dari
+CSV mana pun — adalah apakah baris hasil unggah masuk **Waiting Approval** atau langsung
+**Approve**.
+
+---
+
+### Yang juga perlu diminta bersamaan
+
+Keempatnya sudah tercatat di tempat lain pada dokumen ini, dan sebaiknya dikirim dalam
+satu permintaan yang sama:
+
+- **Export ulang berbasis Product rule** (`D-39`) — ±242 rule hilang, terberat **137 When
+  rule** yang memblokir percabangan bisnis hampir semua modul (`R-16`).
+- **Tiga router penugasan** `PNCAdminRouter`, `PNCTeknikRouter`, `RouterRCLDokter`
+  (`R-04`).
+- **40 activity buatan sendiri** yang dirujuk tetapi tidak ada (`R-07`), diprioritaskan
+  `SendEmailNotification`, `ValidasiSisaTSI`, `SetKasir_Act`.
+- **Konfirmasi cacat proses export**: dua berkas berisi rule yang berbeda dari namanya
+  (`Activity/SendEmailNotification-Act.xml` memuat `CompressImage_Act`), yang bila benar
+  berarti seluruh berkas perlu divalidasi ulang lewat `pyRuleName`, bukan lewat nama
+  berkas.

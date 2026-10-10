@@ -98,6 +98,9 @@ export type PageInfo = {
 }
 
 export type OpenResponse = {
+  /** Isi dropdown "Tipe Pencarian Archive" — No Klaim, Nama BOX, Tertanggung. */
+  tipe_pencarian: Option[]
+
   tipe_input: Option[]
   tipe_dokumen: Option[]
   jenis_dokumen: DocumentKind[]
@@ -196,24 +199,28 @@ export const ArchiveError = {
   serviceAddress: 'alamat_layanan_arsip_kosong',
 } as const
 
-/** Dua mode pencarian arsip. Nilainya sama dengan SearchMode di backend. */
-export const SearchMode = {
-  keyword: 'kata_kunci',
-  inputDate: 'tanggal_input',
-} as const
-
-export type SearchModeValue = (typeof SearchMode)[keyof typeof SearchMode]
-
-/** Isi formulir pencarian arsip. */
+/**
+ * Isi formulir pencarian arsip.
+ *
+ * # Dua penyaring yang berdiri sendiri, bukan dua mode
+ *
+ * Koreksi atas rancangan pertama. `Section/SecArchiveDokumen-Section.xml` memberi KEDUA
+ * blok ini `pyContainerVisibleWhen` yang sama — `FalgArchiveData.FlagASO==2` — sehingga
+ * keduanya tampil bersamaan di tab Archive File Klaim:
+ *
+ *	posisi 164179   "Tipe Pencarian Archive" + "Keyword"
+ *	posisi 707930   "Tgl Input Dari" + "Tgl Input Sampai"
+ */
 export type SearchForm = {
-  mode: SearchModeValue
+  /** Kolom yang dicari: `no_klaim`, `nama_box`, atau `tertanggung`. */
+  tipe_pencarian: string
   kata_kunci: string
   tanggal_dari: string
   tanggal_sampai: string
 }
 
 export const EMPTY_SEARCH: SearchForm = {
-  mode: SearchMode.keyword,
+  tipe_pencarian: 'no_klaim',
   kata_kunci: '',
   tanggal_dari: '',
   tanggal_sampai: '',

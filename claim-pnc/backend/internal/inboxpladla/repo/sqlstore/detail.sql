@@ -31,7 +31,7 @@
 -- (`pyWorkPage.ClaimData.ObjectList().ObjectCoverageList().PLAList`), yang memuat seluruh
 -- pemberitahuan klaim itu — termasuk milik mitra lain, beserta nilai masing-masing.
 --
--- Itu kebocoran yang sejenis dengan grid XOL pada layar induk, dan ia tidak dibawa. Lihat
+-- Itu kebocoran antar mitra, dan ia tidak dibawa. Lihat
 -- inboxpladla.PlannedDifferences.
 
 -- name: detail_claim_header

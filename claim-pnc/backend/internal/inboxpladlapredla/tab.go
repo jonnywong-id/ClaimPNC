@@ -73,6 +73,49 @@ const (
 	KindPreDLA AdviceKind = "pre-dla"
 )
 
+// SendVisibility adalah syarat tampilnya tombol **"SEND"** pada satu baris grid rincian.
+//
+// # Kenapa ia dinyatakan, bukan disimpulkan dari penanda terkirim
+//
+// Karena kedua tab TIDAK memakai syarat yang sama, dan perbedaannya terbaca langsung dari
+// sectionnya masing-masing:
+//
+//	tab PLA  `Section/InboxPLA_sect-Section.xml:13238`  `.MARKETING != '1'`
+//	tab DLA  `Section/InboxDLA_sect-Section.xml:11972`  `.MARKETING == ''`
+//
+// `MARKETING` adalah alias Pega untuk `ISKIRIM` — `GetPLAList-SQL.xml` menuliskannya
+// `iskirim AS MARKETING`, dan `GetDLAList-SQL.xml` sama. Aliasnya tidak menyatakan isinya
+// sama sekali: ia penanda terkirim, bukan apa pun tentang pemasaran.
+//
+// Keduanya berbeda pada SATU nilai, dan nilai itu benar-benar ada di data: `ISKIRIM = '0'`.
+// Di tab PLA barisnya masih bertombol; di tab DLA tidak. Perbedaan itu dibawa apa adanya
+// (`P-5`) — lihat catatan pada SendWhenSentFlagEmpty.
+type SendVisibility string
+
+const (
+	// SendNever berarti tab ini tidak punya tombol "SEND" sama sekali.
+	//
+	// Ia nilai NOL tipe ini, sehingga tab yang tidak menyebutkannya — Pre DLA — tidak
+	// diam-diam mewarisi syarat tab lain.
+	SendNever SendVisibility = ""
+
+	// SendWhenNotMarkedSent menampilkan tombol selama `ISKIRIM` BUKAN `'1'`.
+	//
+	// **Tab PLA.** Kosong, `'0'`, dan nilai lain apa pun tetap bertombol.
+	SendWhenNotMarkedSent SendVisibility = "bukan-satu"
+
+	// SendWhenSentFlagEmpty menampilkan tombol HANYA ketika `ISKIRIM` kosong.
+	//
+	// **Tab DLA.** `ISKIRIM = '0'` TIDAK bertombol di sini, padahal penyaring antreannya
+	// sendiri menerima `'0'` sebagai "belum terkirim" — sehingga baris seperti itu masuk
+	// antrean tetapi tidak dapat dikirim dari layar ini.
+	//
+	// Itu kejanggalan Pega, bukan kekeliruan pembacaan. Ia dibawa apa adanya karena
+	// menyeragamkannya mengubah dokumen mana yang dapat dikirim ke pihak LUAR perusahaan
+	// — perubahan yang menuntut keputusan Work Owner, bukan penyeragaman sepihak.
+	SendWhenSentFlagEmpty SendVisibility = "kosong"
+)
+
 // Tab adalah satu daftar beserta kolom dan penyaringnya.
 type Tab struct {
 	// Code adalah kode tab, kontrak modul ini sendiri.
@@ -174,6 +217,12 @@ type Tab struct {
 	// yang membuka rincian adalah keberadaan rinciannya, bukan ada-tidaknya tombol.
 	RowActionLabel string
 
+	// SendVisible adalah syarat tampilnya tombol "SEND" pada baris grid rincian.
+	//
+	// Kosong (SendNever) berarti daftar ini tidak punya tombol itu — Pre DLA, yang
+	// gridnya pun tidak ada.
+	SendVisible SendVisibility
+
 	// RequiresNoAcceptance menyatakan keanggotaan baris ditentukan `NOAKSEP IS NULL`.
 	//
 	// **Tab Pre DLA saja.** Ia dinyatakan sebagai isian TERSENDIRI, bukan disimpulkan
@@ -196,6 +245,33 @@ func (t Tab) HasDocuments() bool {
 	return len(t.DocumentColumns) > 0
 }
 
+// ShowSendButton menyatakan baris ber-`ISKIRIM` ini digambar bertombol "SEND".
+//
+// # Ia DIHITUNG peladen, bukan disimpulkan layar
+//
+// Syaratnya hasil pembacaan section Pega, dan tempat pembacaan itu tercatat adalah paket
+// ini — sama halnya dengan daftar kolom. Layar yang menyimpulkannya sendiri dari
+// `terkirim` akan menyamakan kedua tab, dan penyamaan itu tidak akan menghasilkan satu
+// pun galat: tombolnya muncul pada baris DLA yang di Pega tidak pernah bertombol.
+//
+// # Ia BUKAN pemeriksaan boleh-tidaknya mengirim
+//
+// Tombol yang tampil masih dapat ditolak — alamat reasuradur yang kosong dijawab
+// ErrReinsurerEmailEmpty, persis seperti Pega menjawab "Email Reinsurer Kosong". Pega pun
+// tetap menggambar tombolnya pada baris beralamat kosong, dan itu benar: yang harus
+// dilakukan pengguna adalah melengkapi alamatnya, dan ia tidak akan tahu itu dari tombol
+// yang menghilang.
+func (t Tab) ShowSendButton(sent string) bool {
+	switch t.SendVisible {
+	case SendWhenNotMarkedSent:
+		return strings.TrimSpace(sent) != "1"
+	case SendWhenSentFlagEmpty:
+		return strings.TrimSpace(sent) == ""
+	default:
+		return false
+	}
+}
+
 // DefaultTab adalah tab yang terbuka pertama kali.
 //
 // PLA, mengikuti urutan tab di `Section/InboxPLADLA_sect-Section.xml` — dan mengikuti
@@ -208,14 +284,29 @@ const DefaultTab = "pla"
 // Ia fungsi, bukan variabel, supaya setiap tab memegang senarai kolomnya sendiri. Senarai
 // bersama yang dipakai tiga tab dapat diubah salah satu pemakainya dan diam-diam mengubah
 // dua yang lain.
+// # Judul dan jumlahnya MENGIKUTI PEGA apa adanya (`D-13`)
+//
+// Keenamnya terbaca langsung dari kepala grid ketiga section, sebagai teks tebal:
+//
+//	Section/InboxPLA_sect-Section.xml:4334,4515,4628,4775,4894,5079
+//	Section/InboxDLA_sect-Section.xml
+//	Section/PNCInboxPreDLA_sect-Section.xml
+//
+// Sampai 2026-10-10 senarai ini memuat TUJUH kolom berjudul bahasa Indonesia, dan kolom
+// ketujuh — "PIC Teknik" — tidak ada di satu pun dari ketiga grid Pega. Keduanya
+// dikoreksi atas permintaan Work Owner: layar depan harus terbaca sama dengan layar lama
+// supaya petugas tidak perlu belajar ulang.
+//
+// `FieldPICTeknik` TIDAK dihapus dari baris jawabannya — ia hanya tidak lagi digambar
+// sebagai kolom. Membuangnya dari baris akan memutus pemakainya yang lain tanpa satu pun
+// permintaan untuk itu.
 func queueColumns(adviceTitle string) []Column {
 	return []Column{
-		{Key: FieldClaimNo, Title: "No Klaim"},
-		{Key: FieldPolicyNo, Title: "No Polis"},
-		{Key: FieldInsured, Title: "Nama Tertanggung"},
-		{Key: FieldRegisterDate, Title: "Tanggal Register", Date: true},
-		{Key: FieldLossDate, Title: "Tanggal Kejadian", Date: true},
-		{Key: FieldPICTeknik, Title: "PIC Teknik"},
+		{Key: FieldClaimNo, Title: "CLAIM NO"},
+		{Key: FieldPolicyNo, Title: "POLICY NO"},
+		{Key: FieldInsured, Title: "QQ NAME"},
+		{Key: FieldRegisterDate, Title: "REGISTER DATE", Date: true},
+		{Key: FieldLossDate, Title: "DATE OF LOSS", Date: true},
 		{Key: FieldAdviceDate, Title: adviceTitle, Date: true},
 	}
 }
@@ -233,20 +324,38 @@ var tabs = []Tab{
 			"reasuradur, tetapi belum dikirim. PLA memberitahukan nilai ESTIMASI klaim " +
 			"kepada koasuransi/reasuransi.",
 		Kind:              KindPLA,
-		Columns:           queueColumns("Tanggal PLA"),
+		Columns:           queueColumns("DATE OF PLA"),
 		SearchLabel:       "No Klaim",
 		DateLabel:         "Tanggal PLA",
 		SentFilterApplies: true,
 		RequiresReinsurer: true,
+
+		// `Section/InboxPLA_sect-Section.xml:13238` -> `.MARKETING != '1'`.
+		SendVisible: SendWhenNotMarkedSent,
+
+		// Urutannya mengikuti grid "Detail PLA List" di Pega apa adanya (`D-13`):
+		//
+		//	No PLA · PLA REINSURER · PLA TYPE · REVISION · PLA DATE ·
+		//	TGL Terima PLA · SENT DATE · Email · File Penunjang
+		//
+		// Perhatikan TGL Terima mendahului SENT DATE, bukan sebaliknya. Judulnya
+		// diterjemahkan karena seluruh judul modul ini berbahasa Indonesia, tetapi
+		// URUTANNYA tidak diubah — petugas membaca grid ini berdampingan dengan layar
+		// lama selama masa paralel.
 		DocumentColumns: []Column{
 			{Key: FieldAdviceNo, Title: "No PLA"},
 			{Key: FieldReinsurer, Title: "Reasuradur"},
 			{Key: FieldAdviceType, Title: "Tipe"},
 			{Key: FieldRevision, Title: "Revisi"},
 			{Key: FieldDocDate, Title: "Tanggal PLA", Date: true},
-			{Key: FieldSent, Title: "Terkirim"},
-			{Key: FieldSentDate, Title: "Tanggal Kirim", Date: true},
 			{Key: FieldReceivedDate, Title: "Tanggal Terima", Date: true},
+			{Key: FieldSentDate, Title: "Tanggal Kirim", Date: true},
+
+			// DITAMBAHKAN — Pega tidak punya kolom ini; penanda terkirimnya hanya
+			// terbaca dari ada-tidaknya SENT DATE. Letaknya tepat di sebelah
+			// "Tanggal Kirim" karena keduanya menyatakan fakta yang sama.
+			{Key: FieldSent, Title: "Terkirim"},
+
 			{Key: FieldEmail, Title: "Email"},
 			{Key: FieldNotes, Title: "Catatan"},
 		},
@@ -258,21 +367,36 @@ var tabs = []Tab{
 			"memberitahukan nilai AKSEPTASI klaim. Daftar ini mengecualikan cabang ASNET " +
 			"dan kelompok bisnis 10008 — dua pengecualian yang tidak berlaku di tab lain.",
 		Kind:                 KindDLA,
-		Columns:              queueColumns("Tanggal DLA"),
+		Columns:              queueColumns("DATE OF DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal DLA",
 		ExcludeASNET:         true,
 		ExcludeBusinessGroup: "10008",
 		SentFilterApplies:    true,
+
+		// `Section/InboxDLA_sect-Section.xml:11972` -> `.MARKETING == ''`.
+		//
+		// Syaratnya LEBIH KETAT daripada tab PLA, dan itu bukan salah salin. Lihat
+		// SendWhenSentFlagEmpty.
+		SendVisible: SendWhenSentFlagEmpty,
+
+		// Urutannya mengikuti grid "Detail DLA List" di Pega apa adanya (`D-13`):
+		//
+		//	NO DLA · DLA REINSURER · DLA TYPE · DLA DATE · Tgl Terima DLA ·
+		//	SENT DATE · EMAIL · File Penunjang
+		//
+		// "No Akseptasi" DITAMBAHKAN — `GetDLAList` mengambil `noaksep` tetapi grid Pega
+		// tidak menggambarnya. Ia ditaruh sebelum tanggal karena ia pengenal, bukan
+		// keterangan waktu.
 		DocumentColumns: []Column{
 			{Key: FieldAdviceNo, Title: "No DLA"},
 			{Key: FieldReinsurer, Title: "Reasuradur"},
 			{Key: FieldAdviceType, Title: "Tipe"},
 			{Key: FieldAcceptanceNo, Title: "No Akseptasi"},
 			{Key: FieldDocDate, Title: "Tanggal DLA", Date: true},
-			{Key: FieldSent, Title: "Terkirim"},
-			{Key: FieldSentDate, Title: "Tanggal Kirim", Date: true},
 			{Key: FieldReceivedDate, Title: "Tanggal Terima", Date: true},
+			{Key: FieldSentDate, Title: "Tanggal Kirim", Date: true},
+			{Key: FieldSent, Title: "Terkirim"},
 			{Key: FieldEmail, Title: "Email"},
 			{Key: FieldNotes, Title: "Catatan"},
 		},
@@ -284,7 +408,7 @@ var tabs = []Tab{
 			"yang AKAN diakseptasi. Berbeda dari dua tab lain, yang mengeluarkan baris " +
 			"dari daftar ini adalah terbitnya Nomor Akseptasi — bukan terkirimnya surat.",
 		Kind:                 KindPreDLA,
-		Columns:              queueColumns("Tanggal Pre DLA"),
+		Columns:              queueColumns("DATE OF PRE DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal Pre DLA",
 		RequiresNoAcceptance: true,
@@ -294,11 +418,20 @@ var tabs = []Tab{
 		// Keempat kolom panel "Print Pre DLA", mengikuti caption
 		// `Section/PrintPreDLA-Section.xml` apa adanya — termasuk yang ditulis KAPITAL
 		// di sana (`D-13`).
+		//
+		// Kolom "Tgl Kirim" memakai FieldSentDate, BUKAN FieldDocDate. Keduanya pernah
+		// tertukar di sini, dan tertukarnya tidak menghasilkan satu pun galat:
+		// PreDLADocumentDTO memang tidak punya `tanggal_dokumen`, sehingga selnya
+		// mengambil medan yang tidak ada dan menggambar tanda hubung pada SETIAP baris.
+		// Panelnya terlihat utuh; hanya tanggalnya yang tidak pernah muncul.
+		//
+		// Kuerinya sendiri mengambil `TGLKIRIM` (beralias `"TglDLA"` di Pega — alias
+		// yang menyesatkan, dan justru itu yang membuat keduanya mudah tertukar).
 		PrintColumns: []Column{
 			{Key: FieldAdviceNo, Title: "NO DLA"},
 			{Key: FieldReinsurer, Title: "DLA REINSURER"},
 			{Key: FieldAdviceType, Title: "TIPE DLA"},
-			{Key: FieldDocDate, Title: "Tgl Kirim", Date: true},
+			{Key: FieldSentDate, Title: "Tgl Kirim", Date: true},
 			{Key: FieldSent, Title: "Terkirim"},
 		},
 

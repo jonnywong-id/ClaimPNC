@@ -47,7 +47,6 @@ function list(rows: WorkItem[], halaman = 1, total = rows.length, totalHalaman =
     cabang: { kode: '100099', nama: '' },
     paginasi: { halaman, ukuran: 25, total, total_halaman: totalHalaman },
     ambang_aging: 180,
-    selisih_terencana: [],
     portal: 'ASM',
   }
 }
@@ -76,6 +75,32 @@ function installFetch(answer: (url: string) => Answer = () => undefined) {
       } as unknown as Response)
     }
     if (custom) return Promise.resolve(custom)
+
+    // Panel ringkasan dijawab dengan angka minimum. Tanpa ini layar menggantung menunggu
+    // rute yang tidak dijawab siapa pun, dan SELURUH uji di berkas ini kehabisan waktu.
+    if (url.startsWith(`${PATH}/ringkasan`)) {
+      return Promise.resolve(
+        json(200, {
+          posisi: '2026-09-28',
+          total_berkas: 2,
+          total_estimasi: '0.00',
+          total_reserve_or: '0.00',
+          total_reserve_or_terbaca: true,
+          umur_di_atas_2_tahun: 0,
+          sebaran_umur: [
+            { label: 'Sampai 6 bulan', berkas: 2, nilai: '0.00' },
+            { label: '6–12 bulan', berkas: 0, nilai: '0.00' },
+            { label: '1–2 tahun', berkas: 0, nilai: '0.00' },
+            { label: 'Di atas 2 tahun', berkas: 0, nilai: '0.00' },
+          ],
+          per_cob: [],
+          per_sumber_bisnis: [],
+          cabang: { kode: '100099', nama: 'CILEGON' },
+          portal: 'ASM',
+        }),
+      )
+    }
+
     if (url === `${PATH}/ekspor`) return Promise.resolve(new Response('a\n', { status: 200 }))
     if (url.startsWith(`${PATH}/PNC-`)) return Promise.resolve(json(404, { kode: 'klaim_tidak_ditemukan', pesan: 'Klaim tidak ada.' }))
     return Promise.resolve(json(200, list([item({ no_klaim: 'PNC-2', aging_hari: 9 }), item({})])))
@@ -133,19 +158,35 @@ describe('daftar', () => {
     expect(cell).toHaveAttribute('title', 'Perlu perhatian.')
   })
 
-  it('mengurutkan menurut setiap kolom data', async () => {
+  it('TIDAK menawarkan pengurutan kolom — layar lama pun tidak', async () => {
+    // # Pega TIDAK punya pengurutan di layar ini, dan itu terbaca langsung
+    //
+    // `Harness/OutstandingKlaimperCabang_Harness-Harness.xml` memuat SATU grid, dan
+    // sakelar grid-nya `<pyGridSorting>false</pyGridSorting>`. Ke-61 `pyColumnSorting`
+    // bernilai `true` di bawahnya tidak mengubah apa pun — itu daftar izin personalisasi
+    // per kolom, dan sakelar grid yang mati mendahuluinya.
+    //
+    // Diuji silang supaya `false` itu tidak dibaca sebagai bawaan: inbox lain di export
+    // yang sama bernilai `true` — InboxRegister (6×), PNCInboxAdmin (9×), InboxSurvey
+    // (8×), InboxKomite (7 dari 8). Jadi layar INI memang sengaja tanpa pengurutan.
+    //
+    // # Artinya pengurutan yang sempat ada di sini adalah TAMBAHAN, bukan pemindahan
+    //
+    // Ia bawaan `DataTable` yang ikut menyala karena tidak pernah dimatikan, dan ia
+    // MENYESATKAN: daftarnya dipotong `OFFSET … FETCH NEXT`, sehingga "urutkan menurut
+    // Aging menurun" hanya mengurutkan halaman yang sedang tampil — menyebut klaim tertua
+    // halaman ini, bukan klaim tertua cabang, tanpa satu pun tanda di layar.
+    //
+    // Hilangnya karena itu menyamakan layar ini dengan Pega (`P-5`), bukan menjauhinya.
+    // Bila kelak pengurutan diminta, ia kemampuan BARU yang harus dikerjakan peladen lewat
+    // `ORDER BY` berdaftar-putih dan dinyatakan di `PlannedDifferences` — bukan dinyalakan
+    // lagi di peramban.
     installFetch()
     show()
     const table = await screen.findByRole('table')
 
-    const aging = within(table).getByRole('columnheader', { name: /^Aging/ })
-    await userEvent.click(within(aging).getByRole('button'))
-    expect(within(table).getAllByRole('row')[1]).toHaveTextContent('PNC-1')
-
     for (const header of within(table).getAllByRole('columnheader')) {
-      const button = within(header).queryByRole('button')
-      if (button) await userEvent.click(button)
-      if (button) expect(header).not.toHaveAttribute('aria-sort', 'none')
+      expect(within(header).queryByRole('button')).toBeNull()
     }
   })
 

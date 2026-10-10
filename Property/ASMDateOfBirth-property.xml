@@ -1,0 +1,279 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyHistoryObject/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyRuleEnds/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pxUpdateOperator>roby_t@sinarmas.co.id</pxUpdateOperator>
+<pxInstanceLockedKey/>
+<pyPropertyModeLabel>Date</pyPropertyModeLabel>
+<pyRuleName>ASMDateOfBirth</pyRuleName>
+<pyWorkKey/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyValueChanged>false</pyValueChanged>
+<pyInterface/>
+<pyIsReference>false</pyIsReference>
+<pyCircumstanceDateProp/>
+<pyPageClass/>
+<pxInsName>DATA-PARTY-PERSON!ASMDATEOFBIRTH</pxInsName>
+<pyRuleAccessWhen/>
+<pzIndexCount>24</pzIndexCount>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyTableClass/>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pyIsFromManageChangeLP/>
+<pyBaseRule>false</pyBaseRule>
+<pxInstanceLockedCreateDateTime/>
+<pyDataRetrievalType/>
+<pzEntryCode>sDN</pzEntryCode>
+<pyTableSelector/>
+<pzDocumentKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzDocumentKey>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyWindowTitle/>
+<pyIsJavaPage/>
+<pxInsId>!ASMDATEOFBIRTH</pxInsId>
+<pxCreateOpName>Roby Tan</pxCreateOpName>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyEditValidate/>
+<pxCommitDateTime>20200312T080324.000 GMT</pxCommitDateTime>
+<pyIsLightweight>false</pyIsLightweight>
+<pyOldStreamName>pxDateTime</pyOldStreamName>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzOriginalInstanceKey>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyRuleParamsStreamName/>
+<pyLocalize>false</pyLocalize>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTableProperty/>
+<pyStreamName>pxDateTime</pyStreamName>
+<pxSaveDateTime>20151124T102433.500 GMT</pxSaveDateTime>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceVal/>
+<pyExpectedSize/>
+<pyDeletedObject/>
+<pyRuleSetVersion>01-01-01</pyRuleSetVersion>
+<pzChecksum>996498400</pzChecksum>
+<pzInsKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzInsKey>
+<pyTableOption/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyDocumentTitle/>
+<pySpecialtyComponentData/>
+<pyIsManualReference/>
+<pyIsTransient/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyRuleFormStatusTime>20261008T040255.556 GMT</pyRuleFormStatusTime>
+<pyIsGateway>false</pyIsGateway>
+<pyDisplayMode>basic</pyDisplayMode>
+<pxInstanceLockedRuleSet/>
+<pyColumnIndexed/>
+<pySpecial>false</pySpecial>
+<pyReflectStatus>true</pyReflectStatus>
+<pyOnInput/>
+<pyJavaStream/>
+<pyMethodStatus/>
+<pyFieldName/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTableAggregate/>
+<pyShowJavaWindowName>GeneratedJava20261008T040255.582 GMT</pyShowJavaWindowName>
+<pxInstanceLockedRuleSetVersion/>
+<pyDescription/>
+<pyCircumstanceDate/>
+<pxCreateOperator>roby_t@sinarmas.co.id</pxCreateOperator>
+<pyStringType>Date</pyStringType>
+<pyFieldClass/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pxHostId>jboss2058</pxHostId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxUpdateOpName>Roby Tan</pxUpdateOpName>
+<pyOnObjChange/>
+<pyPropertyMode>String</pyPropertyMode>
+<pxTabLabel>ASMDateOfBirth</pxTabLabel>
+<pyTemplate/>
+<pyColumnInclusion/>
+<pySerializeJavaObject>false</pySerializeJavaObject>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyGatewayClass/>
+<pyClassName>Data-Party-Person</pyClassName>
+<pyPropertyName>ASMDateOfBirth</pyPropertyName>
+<pySPRuleSetName/>
+<pyRuleStarts/>
+<pxInstanceLockedBy/>
+<pyCircumstanceProp/>
+<pyMaxLength/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyDataObject/>
+<pyUsage/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pxCreateDateTime>20151124T100148.313 GMT</pxCreateDateTime>
+<pyFormPost/>
+<pyJavaObjectClass/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxMoveImportDateTime>20191226T024601.781 GMT</pxMoveImportDateTime>
+<pyComparator/>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyLabelOld>Tanggal Lahir</pyLabelOld>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyTemplateInputBox/>
+<pyLabel>Tanggal Lahir</pyLabel>
+<pxUpdateDateTime>20151124T102433.498 GMT</pxUpdateDateTime>
+<pyRefLocalizedValue/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceType/>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pzStatus>valid</pzStatus>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-01 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyValue/>
+<pyKeyCaption/>
+</rowdata>
+</pyTableKeys>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+</rowdata>
+</pyqualifierpagegroup>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pyLaunch>true</pyLaunch>
+<pySaveAs>true</pySaveAs>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRecover>false</pyRecover>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyBack>true</pyBack>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyPreview>true</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyFavorites>true</pyFavorites>
+<pyCompareVersion/>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyStandardValue/>
+<pyLocalizedValue/>
+</rowdata>
+</pyPromptTableList>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>none</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pyRuleName>Data-Party-Person</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DATA-PARTY-PERSON</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON ASMDATEOFBIRTH #20151124T100148.313 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pxRuleFamilyName>PXDATETIME</pxRuleFamilyName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxDateTime</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pyCFieldType/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+</pagedata>

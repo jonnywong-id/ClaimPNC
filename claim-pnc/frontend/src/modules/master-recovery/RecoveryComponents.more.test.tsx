@@ -15,6 +15,23 @@ import { RecoveryPage } from './RecoveryPage'
 import { VirtualAccountPanel } from './VirtualAccountPanel'
 
 /**
+ * Isian "Nama Principal" milik bagian Principal — BUKAN milik blok Generated New VA.
+ *
+ * Sejak blok VA duduk di dalam alur Tambah (2026-10-06), label itu muncul dua kali di
+ * satu layar — persis seperti layar lama, yang juga memuatnya dua kali. Yang di bawah
+ * adalah isian form.
+ */
+function labelTerakhir(nama: string): HTMLElement {
+  const daftar = screen.getAllByLabelText(nama)
+  return daftar[daftar.length - 1] as HTMLElement
+}
+
+function namaPrincipalTerakhir(): HTMLElement {
+  const semua = screen.getAllByLabelText('Nama Principal')
+  return semua[semua.length - 1] as HTMLElement
+}
+
+/**
  * Uji tambahan per komponen Master Recovery.
  *
  * Berbeda dari `RecoveryPage.test.tsx` yang merakit seluruh aplikasi, berkas ini merender
@@ -167,8 +184,8 @@ afterEach(() => {
 
 describe('VirtualAccountPanel', () => {
   async function fillVA(user: ReturnType<typeof userEvent.setup>, email = 'petugas@contoh.invalid') {
-    await user.type(screen.getByLabelText('Client ID'), 'CL-9')
-    await user.type(screen.getByLabelText('Nama Principal'), 'PT CONTOH VA')
+    await user.type(labelTerakhir('Client ID'), 'CL-9')
+    await user.type(namaPrincipalTerakhir(), 'PT CONTOH VA')
     await user.type(screen.getByLabelText('Email Inputor VA'), email)
   }
 
@@ -176,7 +193,7 @@ describe('VirtualAccountPanel', () => {
     const user = userEvent.setup()
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByText('Client ID wajib diisi.')).toBeInTheDocument()
     expect(screen.getByText('Nama principal wajib diisi.')).toBeInTheDocument()
@@ -189,7 +206,7 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user, 'bukan-surel')
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(
       await screen.findByText('Email inputor VA belum berupa alamat surel.'),
@@ -207,7 +224,7 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={onIssued} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByText('Virtual account berhasil diterbitkan')).toBeInTheDocument()
     expect(screen.getByText('8800000000000009')).toBeInTheDocument()
@@ -234,7 +251,7 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(
       await screen.findByText('Principal ini sudah punya virtual account'),
@@ -252,14 +269,15 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByRole('button', { name: 'Memproses…' })).toBeDisabled()
-    expect(screen.getByLabelText('Client ID')).toBeDisabled()
+    expect(labelTerakhir('Client ID')).toBeDisabled()
 
     finish(jsonResponse(200, { nomor_virtual_account: '1', dipakai_ulang: false, pesan: '' }))
-    expect(await screen.findByRole('button', { name: 'Terbitkan VA' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Get VA' })).toBeEnabled()
   })
+
 
   it.each([
     ['penerbit_va_belum_terdaftar', 'Layanan penerbit VA belum terdaftar'],
@@ -274,18 +292,17 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByText(judul)).toBeInTheDocument()
   })
-
   it('memakai pesan server untuk kode yang tidak dikenal', async () => {
     replies[`POST ${ROUTE}/virtual-account`] = apiError(500, 'galat_lain', 'Sesuatu rusak.')
     const user = userEvent.setup()
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByText('Gagal menerbitkan virtual account')).toBeInTheDocument()
     expect(screen.getByText('Sesuatu rusak.')).toBeInTheDocument()
@@ -299,7 +316,7 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(
       await screen.findByText('Client ID sudah dipakai principal lain.'),
@@ -313,7 +330,7 @@ describe('VirtualAccountPanel', () => {
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
 
     expect(await screen.findByText('Isian belum benar')).toBeInTheDocument()
     expect(screen.getByText('Badan cacat.')).toBeInTheDocument()
@@ -325,14 +342,14 @@ describe('VirtualAccountPanel', () => {
     const view = wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
 
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
     expect(await screen.findByText('Tidak dapat menghubungi server')).toBeInTheDocument()
     view.unmount()
 
     replies[`POST ${ROUTE}/virtual-account`] = brokenResponse
     wrap(<VirtualAccountPanel onIssued={vi.fn()} onClose={vi.fn()} />)
     await fillVA(user)
-    await user.click(screen.getByRole('button', { name: 'Terbitkan VA' }))
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
     expect(await screen.findByText(/kesalahan yang tidak terduga/)).toBeInTheDocument()
   })
 
@@ -356,11 +373,11 @@ describe('ClaimLineUpload', () => {
     return <ClaimLineUpload claimLine={line} onChange={setLine} disabled={disabled} />
   }
 
-  const csv = () => new File(['polis\nP-1'], 'klaim.csv', { type: 'text/csv' })
+  const csv = () => new File(['polis' + String.fromCharCode(10) + 'P-1'], 'klaim.csv', { type: 'text/csv' })
 
   it('menyebut batch tetap dapat disimpan tanpa daftar', () => {
     wrap(<Harness />)
-    expect(screen.getByText(/Belum ada data klaim/)).toBeInTheDocument()
+    expect(screen.getByText(/Data Tidak Ada/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kosongkan' })).not.toBeInTheDocument()
   })
 
@@ -380,14 +397,14 @@ describe('ClaimLineUpload', () => {
 
     expect(await screen.findByText('P-1')).toBeInTheDocument()
     expect(screen.getByText('P-2')).toBeInTheDocument()
-    expect(screen.getByText('2 polis')).toBeInTheDocument()
-    expect(screen.getByText('Jumlah nilai klaim: Rp 3.500')).toBeInTheDocument()
+    expect(screen.getByText('Total Klaim')).toBeInTheDocument()
+    expect(screen.getByText('3.500')).toBeInTheDocument()
     expect(screen.getByText('1 baris tidak dapat dibaca dan tidak ikut disimpan')).toBeInTheDocument()
     expect(screen.getByText(/Baris 4: nilai klaim bukan angka\./)).toBeInTheDocument()
     expect((calls[0]?.init?.body as FormData).get('berkas')).toBeInstanceOf(File)
 
     await user.click(screen.getByRole('button', { name: 'Kosongkan' }))
-    expect(screen.getByText(/Belum ada data klaim/)).toBeInTheDocument()
+    expect(screen.getByText(/Data Tidak Ada/)).toBeInTheDocument()
   })
 
   it('tidak mengirim apa pun bila pemilih berkas ditutup tanpa memilih', () => {
@@ -405,7 +422,7 @@ describe('ClaimLineUpload', () => {
     const user = userEvent.setup()
     wrap(<Harness />)
 
-    await user.click(screen.getByRole('button', { name: 'Unggah data klaim' }))
+    await user.click(screen.getByRole('button', { name: 'Upload Data Klaim' }))
 
     expect(pick).toHaveBeenCalled()
   })
@@ -413,7 +430,7 @@ describe('ClaimLineUpload', () => {
   it('mematikan tombol unggah dan kosongkan saat form sedang menyimpan', () => {
     wrap(<Harness disabled initial={[{ nomor_polis: 'P-9', nilai_klaim: 1 }]} />)
 
-    expect(screen.getByRole('button', { name: 'Unggah data klaim' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Upload Data Klaim' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Kosongkan' })).toBeDisabled()
   })
 
@@ -422,14 +439,14 @@ describe('ClaimLineUpload', () => {
     const user = userEvent.setup()
     wrap(<Harness />)
 
-    await user.click(screen.getByRole('button', { name: 'Unduh format' }))
+    await user.click(screen.getByRole('button', { name: 'Format File' }))
 
     await waitFor(() =>
       expect(clicked).toEqual([
         { href: 'blob:contoh', download: 'format-data-klaim-recovery.csv' },
       ]),
     )
-    expect(await screen.findByRole('button', { name: 'Unduh format' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Format File' })).toBeEnabled()
   })
 
   it('menampilkan Membaca dan Menyiapkan selama permintaan berjalan', async () => {
@@ -440,7 +457,7 @@ describe('ClaimLineUpload', () => {
     wrap(<Harness />)
 
     await user.upload(screen.getByLabelText('Pilih berkas CSV data klaim'), csv())
-    await user.click(screen.getByRole('button', { name: 'Unduh format' }))
+    await user.click(screen.getByRole('button', { name: 'Format File' }))
 
     expect(await screen.findByRole('button', { name: 'Membaca…' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Menyiapkan…' })).toBeDisabled()
@@ -489,10 +506,41 @@ describe('RecoveryForm', () => {
     return onSaved
   }
 
+  /**
+   * Membuka sisa isian dengan mengunggah satu baris klaim.
+   *
+   * Sejak alurnya disamakan dengan Pega (2026-10-06), menekan Tambah hanya
+   * memunculkan kotak Tambah Data; isian lain baru muncul setelah data klaim masuk.
+   */
+  async function bukaIsian(user: ReturnType<typeof userEvent.setup>) {
+    replies[`POST ${ROUTE}/baris-klaim`] = jsonResponse(200, {
+      baris_klaim: [{ nomor_polis: 'P-1', nilai_klaim: 1000 }],
+      baris_ditolak: [],
+      portal: 'ASM',
+    })
+    await user.upload(
+      screen.getByLabelText('Pilih berkas CSV data klaim'),
+      new File(['polis' + String.fromCharCode(10) + 'P-1'], 'klaim.csv', { type: 'text/csv' }),
+    )
+    // Isian nilai baru muncul SETELAH VA terbit — padanan TempRecovery.IBNR == 1.
+    replies[`POST ${ROUTE}/virtual-account`] = jsonResponse(201, {
+      nomor_virtual_account: '8800000000000009',
+      dipakai_ulang: false,
+      pesan: 'Nomor baru diterbitkan.',
+    })
+    // Isian PERTAMA: milik blok Generated New VA, yang berada di atas isian form.
+    // Dipakai getAll supaya pembantu ini tetap benar saat dipanggil dua kali.
+    await user.type(screen.getAllByLabelText('Client ID')[0]!, 'C-1')
+    await user.type(screen.getAllByLabelText('Nama Principal')[0]!, 'PT CONTOH SATU')
+    await user.type(screen.getByLabelText('Email Inputor VA'), 'a@b.invalid')
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
+
+    await screen.findByLabelText('Tahun')
+  }
   async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
-    await user.type(screen.getByLabelText('Nama Principal'), 'PT CONTOH SATU')
-    await user.type(screen.getByLabelText('Nilai Klaim (Rp)'), '1000')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '100')
+    await user.type(namaPrincipalTerakhir(), 'PT CONTOH SATU')
+    await user.type(screen.getByLabelText('Nilai Klaim'), '1000')
+    await user.type(screen.getByLabelText('Pembayaran'), '100')
     await user.type(screen.getByLabelText('Keterangan'), 'k')
     await user.type(screen.getByLabelText('Posisi Kasus'), 'p')
   }
@@ -502,151 +550,17 @@ describe('RecoveryForm', () => {
     return JSON.parse(String(call?.init?.body ?? '{}')) as Record<string, unknown>
   }
 
-  it('menampilkan tanda pisah saat nomor batch perkiraan belum ada', () => {
-    showForm()
-    expect(screen.getByText('—')).toBeInTheDocument()
-  })
-
-  it('menolak nilai uang negatif', async () => {
+    it('menolak nilai uang negatif', async () => {
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '-5')
+    await user.type(screen.getByLabelText('Pembayaran'), '-5')
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
 
     expect(await screen.findByText('Pembayaran tidak boleh negatif.')).toBeInTheDocument()
   })
 
-  it('mengabaikan pilihan kosong pada daftar principal', async () => {
-    const user = userEvent.setup()
-    showForm()
-    const pilih = screen.getByLabelText('Pilih dari master') as HTMLSelectElement
-
-    await user.selectOptions(pilih, 'CONTOH-001')
-    await user.selectOptions(pilih, '')
-
-    // Isian yang sudah terisi dari pilihan sebelumnya dibiarkan, bukan dikosongkan.
-    expect((screen.getByLabelText('Nama Principal') as HTMLInputElement).value).toBe(
-      'PT CONTOH SATU',
-    )
-  })
-
-  it('mencari identitas polis dan menulis tanda pisah untuk kolom yang kosong', async () => {
-    replies[`GET ${ROUTE}/polis/P%2F01`] = jsonResponse(200, {
-      id_lini_bisnis: 'LB-07',
-      id_cabang: '',
-      id_agen: 'AG-1',
-      id_marketing: '',
-    })
-    const user = userEvent.setup()
-    showForm()
-
-    const cari = screen.getByRole('button', { name: 'Cari identitas' })
-    expect(cari).toBeDisabled()
-    await user.type(screen.getByLabelText('Nomor Polis'), ' P/01 ')
-    await user.click(cari)
-
-    expect(await screen.findByText('LB-07')).toBeInTheDocument()
-    expect(screen.getByText('AG-1')).toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('membedakan polis yang tidak ditemukan dari pencarian yang gagal', async () => {
-    replies[`GET ${ROUTE}/polis/X1`] = apiError(404, 'polis_tidak_ditemukan')
-    replies[`GET ${ROUTE}/polis/X2`] = apiError(502, 'galat_internal')
-    const user = userEvent.setup()
-    showForm()
-
-    await user.type(screen.getByLabelText('Nomor Polis'), 'X1')
-    await user.click(screen.getByRole('button', { name: 'Cari identitas' }))
-    expect(await screen.findByText('Nomor polis tidak ditemukan')).toBeInTheDocument()
-
-    await user.clear(screen.getByLabelText('Nomor Polis'))
-    await user.type(screen.getByLabelText('Nomor Polis'), 'X2')
-    await user.click(screen.getByRole('button', { name: 'Cari identitas' }))
-    expect(await screen.findByText('Identitas polis belum dapat dicari')).toBeInTheDocument()
-  })
-
-  it('mengunggah bukti bayar, mengirim ID-nya saat simpan, dan dapat dilepas', async () => {
-    replies[`POST ${ROUTE}/bukti-bayar`] = jsonResponse(201, {
-      id_dokumen: 'DOK-9',
-      nama_berkas: 'transfer.pdf',
-      portal: 'ASM',
-    })
-    replies[`POST ${ROUTE}/`] = jsonResponse(201, savedRecovery())
-    const onSaved = showForm()
-    const user = userEvent.setup()
-
-    await user.upload(
-      screen.getByLabelText('Berkas bukti bayar'),
-      new File(['%PDF'], 'transfer.pdf', { type: 'application/pdf' }),
-    )
-    expect(await screen.findByText('transfer.pdf')).toBeInTheDocument()
-    expect(screen.getByText('ID dokumen: DOK-9')).toBeInTheDocument()
-
-    await fillRequired(user)
-    await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
-
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
-    expect(lastSaveBody()['id_dokumen']).toBe('DOK-9')
-    expect(lastSaveBody()['id_log_layanan']).toBe('')
-    expect(onSaved.mock.calls[0]?.[1]).toBe(false)
-    // Form dikosongkan setelah berhasil, termasuk bukti bayarnya.
-    expect(screen.queryByText('ID dokumen: DOK-9')).not.toBeInTheDocument()
-  })
-
-  it('melepas bukti bayar sebelum menyimpan', async () => {
-    replies[`POST ${ROUTE}/bukti-bayar`] = jsonResponse(201, {
-      id_dokumen: 'DOK-1',
-      nama_berkas: 'a.pdf',
-      portal: 'ASM',
-    })
-    const user = userEvent.setup()
-    showForm()
-
-    await user.upload(screen.getByLabelText('Berkas bukti bayar'), new File(['x'], 'a.pdf'))
-    await user.click(await screen.findByRole('button', { name: 'Lepas' }))
-
-    expect(screen.queryByText('ID dokumen: DOK-1')).not.toBeInTheDocument()
-  })
-
-  it('tidak mengunggah apa pun bila pemilih bukti bayar ditutup kosong', () => {
-    showForm()
-    fireEvent.change(screen.getByLabelText('Berkas bukti bayar'), { target: { files: [] } })
-    expect(calls).toHaveLength(0)
-  })
-
-  it('menampilkan Mengunggah selama bukti bayar dikirim', async () => {
-    replies[`POST ${ROUTE}/bukti-bayar`] = () =>
-      new Promise<Response>(() => undefined) as unknown as Response
-    const user = userEvent.setup()
-    showForm()
-
-    await user.upload(screen.getByLabelText('Berkas bukti bayar'), new File(['x'], 'a.pdf'))
-
-    expect(await screen.findByText('Mengunggah…')).toBeInTheDocument()
-    expect(screen.getByLabelText('Berkas bukti bayar')).toBeDisabled()
-  })
-
-  it.each([
-    [
-      'pelanggaran pada bukti_bayar',
-      apiError(422, 'validasi_gagal', 'Ditolak.', { field: { bukti_bayar: 'Lebih dari 5 MB.' } }),
-      'Berkas ditolak',
-      'Lebih dari 5 MB.',
-    ],
-    ['validasi tanpa rincian', apiError(422, 'validasi_gagal', 'Jenis tidak dikenal.'), 'Berkas ditolak', 'Jenis tidak dikenal.'],
-    ['galat lain', apiError(500, 'bukti_bayar_gagal_disimpan'), 'Bukti bayar gagal diunggah', /Coba unggah ulang/],
-  ])('menjelaskan unggahan bukti bayar yang gagal: %s', async (_name, reply, judul, isi) => {
-    replies[`POST ${ROUTE}/bukti-bayar`] = reply
-    const user = userEvent.setup()
-    showForm()
-
-    await user.upload(screen.getByLabelText('Berkas bukti bayar'), new File(['x'], 'a.pdf'))
-
-    expect(await screen.findByText(judul)).toBeInTheDocument()
-    expect(screen.getByText(isi)).toBeInTheDocument()
-  })
 
   it('menyertakan baris klaim yang diunggah ke dalam permintaan simpan', async () => {
     replies[`POST ${ROUTE}/baris-klaim`] = jsonResponse(200, {
@@ -659,6 +573,20 @@ describe('RecoveryForm', () => {
 
     await user.upload(screen.getByLabelText('Pilih berkas CSV data klaim'), new File(['p'], 'k.csv'))
     expect(await screen.findByText('P-5')).toBeInTheDocument()
+
+    // Isian nilai baru muncul setelah VA terbit.
+    replies[`POST ${ROUTE}/virtual-account`] = jsonResponse(201, {
+      nomor_virtual_account: '8800000000000009',
+      dipakai_ulang: false,
+      pesan: 'Nomor baru diterbitkan.',
+    })
+    // Isian PERTAMA: milik blok Generated New VA, yang berada di atas isian form.
+    // Dipakai getAll supaya pembantu ini tetap benar saat dipanggil dua kali.
+    await user.type(screen.getAllByLabelText('Client ID')[0]!, 'C-1')
+    await user.type(screen.getAllByLabelText('Nama Principal')[0]!, 'PT CONTOH SATU')
+    await user.type(screen.getByLabelText('Email Inputor VA'), 'a@b.invalid')
+    await user.click(screen.getByRole('button', { name: 'Get VA' }))
+    await screen.findByLabelText('Tahun')
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
 
@@ -666,13 +594,14 @@ describe('RecoveryForm', () => {
       expect(lastSaveBody()['baris_klaim']).toEqual([{ nomor_polis: 'P-5', nilai_klaim: 50 }]),
     )
     // Daftar klaim dikosongkan bersama isian setelah berhasil.
-    expect(await screen.findByText(/Belum ada data klaim/)).toBeInTheDocument()
+    expect(await screen.findByText(/Data Tidak Ada/)).toBeInTheDocument()
   })
 
   it('menampilkan Menyimpan dan mematikan isian selama penyimpanan berjalan', async () => {
     replies[`POST ${ROUTE}/`] = () => new Promise<Response>(() => undefined) as unknown as Response
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -687,6 +616,7 @@ describe('RecoveryForm', () => {
     })
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -705,6 +635,7 @@ describe('RecoveryForm', () => {
     replies[`POST ${ROUTE}/`] = apiError(409, kode)
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -716,6 +647,7 @@ describe('RecoveryForm', () => {
     replies[`POST ${ROUTE}/`] = NETWORK as unknown as Reply
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -730,6 +662,7 @@ describe('RecoveryForm', () => {
     replies[`POST ${ROUTE}/`] = apiError(500, 'galat_lain')
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
     await fillRequired(user)
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -737,26 +670,36 @@ describe('RecoveryForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kosongkan isian' }))
 
-    expect((screen.getByLabelText('Keterangan') as HTMLInputElement).value).toBe('')
+    // Daftar klaim ikut dikosongkan, sehingga sisa isian MENUTUP kembali — persis
+    // seperti keadaan sesaat setelah Tambah ditekan.
+    expect(screen.queryByLabelText('Keterangan')).not.toBeInTheDocument()
     expect(screen.queryByText('Gagal menyimpan')).not.toBeInTheDocument()
+
+    // Dibuka lagi: ketikan sebelumnya memang sudah hilang.
+    await bukaIsian(user)
+    expect((screen.getByLabelText('Keterangan') as HTMLInputElement).value).toBe('')
   })
 
   it('mewarnai sisa negatif sebagai peringatan', async () => {
     const user = userEvent.setup()
     showForm()
+    await bukaIsian(user)
 
-    await user.type(screen.getByLabelText('Nilai Klaim (Rp)'), '10')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '30')
+    await user.type(screen.getByLabelText('Nilai Klaim'), '10')
+    await user.type(screen.getByLabelText('Pembayaran'), '30')
 
-    expect(screen.getByText('Rp -20')).toHaveClass('text-red-700')
+    expect((screen.getByLabelText('Sisa') as HTMLInputElement).value).toBe('-20')
   })
 
   it('mengisi Tahun dengan pilihan pertama begitu daftarnya tiba', async () => {
+    const user = userEvent.setup()
     const view = render(
       <QueryClientProvider client={new QueryClient()}>
         <RecoveryForm nextBatch={1} year={[]} principal={[]} onSaved={vi.fn()} />
       </QueryClientProvider>,
     )
+    // Isian Tahun baru ada setelah data klaim diunggah.
+    await bukaIsian(user)
     expect((screen.getByLabelText('Tahun') as HTMLSelectElement).value).toBe('')
 
     view.rerender(
@@ -809,66 +752,9 @@ describe('RecoveryPage', () => {
     expect(await screen.findByText('Terjadi kesalahan pada sistem. Coba muat ulang.')).toBeInTheDocument()
   })
 
-  it('membuka panel VA, memuat ulang principal setelah terbit, lalu menutupnya', async () => {
-    defaultPage()
-    replies[`POST ${ROUTE}/virtual-account`] = jsonResponse(201, {
-      nomor_virtual_account: '77',
-      dipakai_ulang: false,
-      pesan: '',
-    })
-    const user = userEvent.setup()
-    wrap(<RecoveryPage />)
-
-    await user.click(await screen.findByRole('button', { name: 'Terbitkan VA baru' }))
-    const panel = screen.getByRole('form', { name: 'Terbitkan virtual account' })
-    await user.type(within(panel).getByLabelText('Client ID'), 'C')
-    await user.type(within(panel).getByLabelText('Nama Principal'), 'N')
-    await user.type(within(panel).getByLabelText('Email Inputor VA'), 'a@b.c')
-    await waitFor(() => expect(callsTo('GET', `${ROUTE}/principal`).length).toBeGreaterThan(0))
-    const before = callsTo('GET', `${ROUTE}/principal`).length
-    await user.click(within(panel).getByRole('button', { name: 'Terbitkan VA' }))
-
-    expect(await within(panel).findByText('77')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(callsTo('GET', `${ROUTE}/principal`).length).toBeGreaterThan(before),
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Tutup panel VA' }))
-    expect(screen.queryByRole('form', { name: 'Terbitkan virtual account' })).not.toBeInTheDocument()
-  })
-
-  it('menutup panel VA lewat tombol Tutup di dalamnya', async () => {
-    defaultPage()
-    const user = userEvent.setup()
-    wrap(<RecoveryPage />)
-
-    await user.click(await screen.findByRole('button', { name: 'Terbitkan VA baru' }))
-    await user.click(screen.getByRole('button', { name: 'Tutup' }))
-
-    expect(screen.getByRole('button', { name: 'Terbitkan VA baru' })).toBeInTheDocument()
-  })
-
-  it('memberi tahu bila identitas polis tidak ditemukan meski batch tersimpan', async () => {
-    defaultPage()
-    replies[`POST ${ROUTE}/`] = jsonResponse(201, savedRecovery('P-404'))
-    const user = userEvent.setup()
-    wrap(<RecoveryPage />)
-
-    await user.click(await screen.findByRole('button', { name: 'Tambah' }))
-    const tahun = screen.getByLabelText('Tahun') as HTMLSelectElement
-    await waitFor(() => expect(tahun.value).toBe('2027'))
-    await user.type(screen.getByLabelText('Nama Principal'), 'PT CONTOH SATU')
-    await user.type(screen.getByLabelText('Keterangan'), 'k')
-    await user.type(screen.getByLabelText('Posisi Kasus'), 'p')
-    await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
-
-    expect(await screen.findByText('Batch 7 tersimpan')).toBeInTheDocument()
-    expect(screen.getByText(/Identitas polis tidak ditemukan/)).toBeInTheDocument()
-    // Panel entri sudah ditutup; tombolnya kembali bernama Tambah.
-    expect(screen.getByRole('button', { name: 'Tambah' })).toBeInTheDocument()
-  })
-
-  it('menutup form lewat tombol yang sama dengan pembukanya', async () => {
+  
+  
+    it('menutup form lewat tombol yang sama dengan pembukanya', async () => {
     defaultPage()
     const user = userEvent.setup()
     wrap(<RecoveryPage />)

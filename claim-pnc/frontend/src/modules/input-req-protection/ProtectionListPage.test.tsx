@@ -64,6 +64,43 @@ const KLAIM = {
   nama_cabang: 'CABANG CONTOH',
 }
 
+/**
+ * Coverage klaim, sebagaimana dikirim `GET …/klaim/{nomor}/coverage`.
+ *
+ * Isinya DISALIN dari data nyata klaim `PNC-1452` — termasuk pengulangannya: `Resiko A`
+ * muncul TIGA KALI dengan Penyebab Kerugian berbeda. Data karangan yang setiap barisnya
+ * bernama unik akan membuat pemilihan lewat nama tampak berhasil, dan cacatnya baru muncul
+ * di produksi tempat nama memang berulang.
+ */
+const COVERAGE = {
+  coverage: [
+    {
+      id_objek: '1', id_coverage: '1', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
+      penyebab_kerugian: 'ILLNESS', penyebab_kerugian_id: '12001',
+    },
+    {
+      id_objek: '1', id_coverage: '2', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
+      penyebab_kerugian: 'STORM', penyebab_kerugian_id: '12002',
+    },
+    {
+      id_objek: '1', id_coverage: '3', nama_objek: 'JackHugh', nama_coverage: 'Katastropi',
+      penyebab_kerugian: 'WINDSTORM', penyebab_kerugian_id: '12003',
+    },
+    {
+      id_objek: '1', id_coverage: '4', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
+      penyebab_kerugian: 'HURRICANE', penyebab_kerugian_id: '12004',
+    },
+  ],
+}
+
+/** Pilihan dropdown "Next Cause Of Loss", dari `POOLDATA.D_CAUSE_OF_LOSS`. */
+const PENYEBAB = {
+  penyebab_kerugian: [
+    { kode: '11997', nama: 'FIRE - OPEN FLAME', kode_kerugian: 'A' },
+    { kode: '12033', nama: 'WRECK REMOVAL', kode_kerugian: '' },
+  ],
+}
+
 const TIPE = {
   tipe: [
     { kode: '1', nama: 'General' },
@@ -105,12 +142,19 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promi
     // Bila ia lebih dulu, daftar dokumen akan menerima badan pencarian klaim — yang tidak
     // punya `data`, dan panelnya galat pada setiap uji yang membuka form.
     //
-    // Hari ini cabang ini tidak pernah terpakai — sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF`
-    // bernilai `false` sampai modul GCS disiapkan. Ia dipasang untuk saat sakelar itu
-    // dinyalakan, dan urutannya yang mudah terlewat itulah sebabnya ia tidak dihapus.
+    // Sejak sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF` dinyalakan (2026-10-03), cabang ini
+    // BENAR-BENAR terpakai: panelnya dirender pada form dan menembak jalur ini setiap kali
+    // form dibuka. Sebelumnya ia dipasang untuk saat itu tiba.
     if (url.includes('/dokumen-penunjang')) {
       return Promise.resolve(jsonResponse(200, { data: [] }))
     }
+
+    // Keduanya diperiksa SEBELUM `/klaim/`, dengan alasan yang sama seperti dokumen
+    // penunjang di atas: jalurnya bersarang di bawah klaim, sehingga `/klaim/` ikut cocok.
+    // Bila urutannya terbalik, panel pemilih menerima badan pencarian klaim — yang tidak
+    // punya `coverage`, dan tabelnya kosong tanpa satu pun galat.
+    if (url.includes('/coverage')) return Promise.resolve(jsonResponse(200, COVERAGE))
+    if (url.includes('/penyebab-kerugian')) return Promise.resolve(jsonResponse(200, PENYEBAB))
 
     if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(200, KLAIM))
     return Promise.resolve(answer(url, init))
@@ -420,4 +464,84 @@ it('tidak mengeluh ketika klaim ADA tetapi tanpa Object Name', async () => {
   )
   expect(screen.queryByText('Klaim tidak ditemukan')).not.toBeInTheDocument()
   expect(screen.queryByText('Data klaim gagal dibaca')).not.toBeInTheDocument()
+})
+
+// Panel pemilih adalah inti permintaan perubahan Cause Of Loss.
+//
+// Yang dijaga uji ini bukan tampilannya melainkan SATU hal: baris yang namanya sama persis
+// tetap dapat dibedakan dan dipilih. Pada klaim nyata `PNC-1452`, `JackHugh / Resiko A`
+// muncul tiga kali — kalau pemilihan bersandar pada nama, dua dari tiga pilihan akan menunjuk
+// baris yang salah, dan tidak ada galat yang memberi tahu.
+it('menampilkan SETIAP baris coverage, termasuk yang namanya berulang', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  await bukaFormLaluKetik('PNCN.26.0007')
+
+  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+
+  // Keempat baris tampil, dan ketiga `Resiko A` tidak dilebur menjadi satu.
+  await waitFor(() => {
+    expect(screen.getAllByText('Resiko A')).toHaveLength(3)
+  })
+  expect(screen.getByText('Katastropi')).toBeInTheDocument()
+
+  // Kode ditampilkan berdampingan dengan deskripsinya: dua baris dapat bernama sama
+  // sementara kodenya berbeda, dan akseptasi mengubah keduanya.
+  expect(screen.getByText('WINDSTORM (12003)')).toBeInTheDocument()
+})
+
+// "Next Cause Of Loss" adalah DROPDOWN, bukan kotak teks (Work Owner, 2026-10-05).
+//
+// Teks bebas membuat salah ketik tersimpan apa adanya sebagai penyebab kerugian klaim —
+// penyimpanan berhasil, layar normal, dan kodenya tidak cocok dengan master mana pun.
+it('menawarkan Next Cause Of Loss sebagai pilihan, bukan isian bebas', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  await bukaFormLaluKetik('PNCN.26.0007')
+
+  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+
+  const dropdown = await screen.findByLabelText('Next Cause Of Loss')
+  expect(dropdown.tagName).toBe('SELECT')
+
+  // Pilihannya datang dari master, beserta LOSS_CODE-nya bila ada.
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: 'FIRE - OPEN FLAME (A)' })).toBeInTheDocument()
+  })
+  expect(screen.getByRole('option', { name: 'WRECK REMOVAL' })).toBeInTheDocument()
+})
+
+// Menekan Pilih menetapkan SASARAN perubahan, dan sasaran itulah yang dikirim.
+//
+// Tanpa keduanya, permintaan tersimpan tanpa tujuan — dan kegagalannya baru terlihat saat
+// seseorang menyetujuinya lalu klaimnya tidak berubah.
+it('mengirim id_objek dan id_coverage dari baris yang ditekan Pilih', async () => {
+  stubFetch(() => jsonResponse(200, listResponse()))
+  await bukaFormLaluKetik('PNCN.26.0007')
+
+  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+  await waitFor(() => {
+    expect(screen.getAllByRole('button', { name: 'Pilih' })).toHaveLength(4)
+  })
+
+  // Baris KETIGA — Katastropi / WINDSTORM, id_coverage 3.
+  await userEvent.click(screen.getAllByRole('button', { name: 'Pilih' })[2]!)
+
+  // Nilai "sebelum" mengikuti baris yang dipilih, bukan coverage pertama klaim.
+  await waitFor(() => {
+    expect(screen.getByLabelText('Cause Of Loss Dipilih')).toHaveValue('WINDSTORM (12003)')
+  })
+
+  await userEvent.selectOptions(screen.getByLabelText('Next Cause Of Loss'), '11997')
+  await userEvent.type(screen.getByLabelText('Keterangan'), 'ubah penyebab')
+  await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+  await waitFor(() => {
+    const simpan = calls.find((c) => c.init?.method === 'POST')
+    expect(simpan).toBeDefined()
+    const body = JSON.parse(String(simpan?.init?.body)) as {
+      detail_perubahan: { id_objek: string; id_coverage: string; penyebab_kerugian_baru: string }
+    }
+    expect(body.detail_perubahan.id_objek).toBe('1')
+    expect(body.detail_perubahan.id_coverage).toBe('3')
+    expect(body.detail_perubahan.penyebab_kerugian_baru).toBe('11997')
+  })
 })

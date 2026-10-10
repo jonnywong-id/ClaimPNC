@@ -19,7 +19,6 @@ const (
 	CodeInternalError     = "galat_internal"
 
 	// Kode layar RINCIAN.
-	CodeNotAClaimList        = "bukan_daftar_klaim"
 	CodeAdviceKindUnknown    = "jenis_pemberitahuan_tidak_dikenal"
 	CodeClaimNotFound        = "klaim_tidak_ditemukan"
 	CodeDocumentNotFound     = "dokumen_tidak_ditemukan"

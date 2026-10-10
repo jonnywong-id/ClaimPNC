@@ -87,7 +87,6 @@ const METADATA: MetadataResponse = {
   semua_tab: [TAB_NONMBU, TAB_PA, TAB_TRAVEL],
   lini_bisnis_yang_diharapkan: ['NONMBU', 'PA', 'TRAVEL'],
   lini_bisnis_anda: '',
-  selisih_terencana: SELISIH,
   portal: 'ASM',
 }
 
@@ -306,12 +305,16 @@ describe('bentuk layar', () => {
     expect(screen.getByText(/seluruh petugas/)).toBeInTheDocument()
   })
 
-  it('menampilkan selisih terencana apa adanya dari server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     for (const line of SELISIH) {
-      expect(await screen.findByText(line)).toBeInTheDocument()
+      expect(screen.queryByText(line)).not.toBeInTheDocument()
     }
   })
 })

@@ -241,38 +241,39 @@ func TestListQueriesDifferOnlyInTheReplyFilterAndTheOrdering(t *testing.T) {
 	require.Contains(t, answered, "ORDER BY k.CREATEDATEREPLY DESC")
 }
 
-func TestCounterQueriesCheckTwoReplyColumnsWhileListQueriesCheckOne(t *testing.T) {
-	// Selisih SATU KOLOM yang ada di sistem lama, dan yang paling mudah "dirapikan" oleh
-	// pembaca berikutnya. Menyeragamkannya mengubah angka yang dilihat pengguna hari ini.
-	for _, name := range countQueries {
-		require.Containsf(t, getQuery(name), "k.REPLYFROM",
-			"pencacah %q harus memeriksa kolom penjawab pula", name)
-	}
-
-	for _, name := range listQueries {
+func TestNoQueryFiltersOnTheReplierColumn(t *testing.T) {
+	// `REPLYFROM` dipakai kedua kueri pencacah Pega dan TIDAK dipakai kueri grid mana pun.
+	// Selisih itu yang membuat tabel ringkas menyebut satu percakapan sementara gridnya
+	// menyatakan kosong, dan Work Owner memutuskan keduanya diselaraskan (2026-10-09).
+	//
+	// Uji ini menjaga keselarasan itu dari sisi yang paling mungkin dibatalkan tanpa
+	// sengaja: seseorang yang membandingkan ulang dengan export lalu "mengembalikannya".
+	for _, name := range append(append([]string{}, listQueries...), countQueries...) {
 		require.NotContainsf(t, getQuery(name), "REPLYFROM IS",
-			"kueri daftar %q TIDAK boleh memeriksa kolom penjawab", name)
+			"kueri %q tidak boleh menyaring kolom penjawab", name)
 	}
 }
 
-func TestCounterQueriesDoNotFilterSenderOrMessage(t *testing.T) {
-	// Kedua kueri pencacah tidak memuat penyaring itu, padahal kedua kueri grid memilikinya.
-	// Dibawa apa adanya (`P-5`).
-	for _, name := range countQueries {
-		text := getQuery(name)
-		require.NotContainsf(t, text, "k.SENDER IS NOT NULL",
-			"pencacah %q tidak boleh menyaring pengirim", name)
-		require.NotContainsf(t, text, "k.MESSAGE IS NOT NULL",
-			"pencacah %q tidak boleh menyaring pesan", name)
-	}
-}
-
-func TestListQueriesFilterSenderAndMessage(t *testing.T) {
-	for _, name := range listQueries {
+func TestCounterAndListQueriesFilterSenderAndMessageAlike(t *testing.T) {
+	// Keempatnya memakai penyaring yang sama persis kecuali `REPLYMESSAGE`. Begitu salah
+	// satu pencacah kehilangan salah satu penyaring ini, angkanya kembali menjanjikan baris
+	// yang tidak akan pernah terbuka.
+	for _, name := range append(append([]string{}, listQueries...), countQueries...) {
 		text := getQuery(name)
 		require.Containsf(t, text, "k.SENDER IS NOT NULL", "kueri %q", name)
 		require.Containsf(t, text, "k.MESSAGE IS NOT NULL", "kueri %q", name)
 	}
+}
+
+func TestEachCounterPairsWithTheListItOpens(t *testing.T) {
+	// Pencacah "Answered" harus menyaring balasan dengan arah yang SAMA dengan
+	// `list_answered`, begitu pula sebaliknya. Arah yang tertukar menghasilkan dua angka
+	// yang masing-masing menjanjikan isi tab sebelahnya.
+	require.Contains(t, getQuery("count_answered"), "k.REPLYMESSAGE IS NOT NULL")
+	require.Contains(t, getQuery("list_answered"), "k.REPLYMESSAGE IS NOT NULL")
+
+	require.Contains(t, getQuery("count_not_answered"), "k.REPLYMESSAGE IS NULL")
+	require.Contains(t, getQuery("list_not_answered"), "k.REPLYMESSAGE IS NULL")
 }
 
 func TestListAndCounterQueriesCompareTheChannelExactly(t *testing.T) {

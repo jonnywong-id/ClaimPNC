@@ -76,33 +76,57 @@ func (r *Repo) Search(
 	return sliceToPage(matched, page), nil
 }
 
-// matches meniru klausa WHERE kedua mode pencarian.
+// matches meniru klausa WHERE kueri `search_archive`.
+//
+// Kedua penyaring BERLAKU BERSAMAAN, dan masing-masing mematikan dirinya sendiri bila
+// tidak diisi — persis `:n IS NULL` pada kuerinya.
 func matches(file archivedokumenklaim.ArchiveFile, criteria archivedokumenklaim.Criteria) bool {
-	if criteria.Mode == archivedokumenklaim.ModeInputDate {
-		if file.InputDate == nil {
-			return false
-		}
+	if criteria.HasKeyword() && !matchesKeyword(file, criteria) {
+		return false
+	}
+	if criteria.HasDateRange() && !matchesDateRange(file, criteria) {
+		return false
+	}
+	return true
+}
 
-		// Jamnya dibuang sebelum dibandingkan, persis `trunc(TGLINPUT)` pada kueri lama.
-		// Tanpa itu, berkas yang diinput sore hari pada tanggal akhir akan tersaring
-		// keluar — kelas cacat yang paling sering luput karena hanya muncul pada
-		// sebagian baris.
-		moment := file.InputDate.UTC()
-		day := time.Date(moment.Year(), moment.Month(), moment.Day(), 0, 0, 0, 0, time.UTC)
+// matchesKeyword mencocokkan SATU kolom — kolom yang dipilih dropdown.
+//
+// Pencocokannya PERSIS, bukan sebagian, sama seperti kuerinya.
+func matchesKeyword(
+	file archivedokumenklaim.ArchiveFile,
+	criteria archivedokumenklaim.Criteria,
+) bool {
+	switch criteria.Column {
+	case archivedokumenklaim.ColumnClaimNumber:
+		return strings.EqualFold(file.ClaimNumber, criteria.Keyword)
+	case archivedokumenklaim.ColumnBoxName:
+		return strings.EqualFold(file.BoxName, criteria.Keyword)
+	case archivedokumenklaim.ColumnInsuredName:
+		return strings.EqualFold(file.InsuredName, criteria.Keyword)
+	default:
+		// Kolom yang tidak dikenal tidak meloloskan apa pun. Mengembalikan true akan
+		// membuat penyaring yang cacat terbaca sebagai "tanpa penyaring".
+		return false
+	}
+}
 
-		if criteria.From != nil && day.Before(*criteria.From) {
-			return false
-		}
-		if criteria.To != nil && day.After(*criteria.To) {
-			return false
-		}
-		return true
+// matchesDateRange mencocokkan Tgl Input terhadap rentangnya.
+func matchesDateRange(
+	file archivedokumenklaim.ArchiveFile,
+	criteria archivedokumenklaim.Criteria,
+) bool {
+	if file.InputDate == nil {
+		return false
 	}
 
-	keyword := criteria.Keyword
-	return strings.EqualFold(file.ClaimNumber, keyword) ||
-		strings.EqualFold(file.BoxName, keyword) ||
-		strings.EqualFold(file.InsuredName, keyword)
+	// Jamnya dibuang sebelum dibandingkan, persis `trunc(TGLINPUT)` pada kueri lama.
+	// Tanpa itu, berkas yang diinput sore hari pada tanggal akhir akan tersaring keluar —
+	// kelas cacat yang paling sering luput karena hanya muncul pada sebagian baris.
+	moment := file.InputDate.UTC()
+	day := time.Date(moment.Year(), moment.Month(), moment.Day(), 0, 0, 0, 0, time.UTC)
+
+	return !day.Before(*criteria.From) && !day.After(*criteria.To)
 }
 
 // PendingBranch membaca berkas yang belum dikirim ke layanan Arsip.

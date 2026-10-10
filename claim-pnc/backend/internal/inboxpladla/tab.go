@@ -28,27 +28,6 @@ type Column struct {
 	Date bool
 }
 
-// ViewKind menyatakan BENTUK sebuah tampilan, bukan penyaringnya.
-//
-// # Kenapa ia ada
-//
-// Karena layar Pega punya tujuh tampilan yang dikendalikan SATU nilai (`TempView.CityID`),
-// dan tidak semuanya menggambar hal yang sama. Enam menggambar daftar klaim; yang ketujuh
-// menggambar ringkasan XOL yang kolom dan sumbernya sama sekali berbeda.
-//
-// Tanpa penanda ini, layar harus mencocokkan kode tab (`kode === 'xol'`) untuk memutuskan
-// apa yang digambar — dan keputusan yang sama akan hidup di dua tempat, dengan yang di
-// layar tertinggal saat tampilannya bertambah.
-type ViewKind string
-
-const (
-	// ViewClaimList menggambar daftar klaim beserta tabel ringkas "Status / Jumlah".
-	ViewClaimList ViewKind = "daftar-klaim"
-
-	// ViewXOL menggambar grid "DATA PLA DLA XOL KLAIM".
-	ViewXOL ViewKind = "xol"
-)
-
 // Source menyatakan TABEL ASAL sebuah daftar klaim.
 //
 // Keenam daftar klaim tidak berangkat dari penyaring yang sama. Tiga berangkat dari
@@ -122,13 +101,10 @@ type Tab struct {
 	// yang menjelaskan mengapa sebuah klaim ada di yang satu dan tidak di yang lain.
 	Description string
 
-	// Kind menyatakan bentuk tampilannya.
-	Kind ViewKind
-
 	// Columns adalah kolom grid, berurutan seperti tampilnya.
 	Columns []Column
 
-	// Source menyatakan tabel asal daftarnya. Kosong pada tampilan XOL.
+	// Source menyatakan tabel asal daftarnya.
 	Source Source
 
 	// AdviceKindSent menyatakan dokumen JENIS APA yang harus sudah terkirim kepada
@@ -241,7 +217,7 @@ const PendingCloseStatusCode = "1139"
 //	005  Travel
 var ExcludedGroupPanels = []string{"002", "005"}
 
-// Kode keenam daftar klaim dan satu tampilan XOL.
+// Kode keenam daftar klaim.
 //
 // Kodenya mengikuti JUDULNYA, bukan penyaringnya. Kode yang menggambarkan penyaring
 // (`komunikasi-masuk`) dan judul yang menggambarkan keadaan (`NOT ANSWERED`) akan selalu
@@ -253,7 +229,6 @@ const (
 	TabInbound  = "not-answered"
 	TabOutbound = "not-replied-from-asm"
 	TabAnswered = "replied-from-asm"
-	TabXOL      = "xol"
 )
 
 // DefaultTab adalah tampilan yang terbuka pertama kali.
@@ -322,7 +297,9 @@ func listColumnsFor() []Column {
 //	tipe 4  komunikasi masuk    BrowseCommunicationReas  status 0, COMMUNICATE_TO
 //	tipe 5  komunikasi keluar   BrowseCommunicationReas  status 0, SENDER
 //	tipe 6  komunikasi dijawab  BrowseCommunicationReas  status 1, SENDER
-//	tipe 7  DATA PLA DLA XOL KLAIM
+//
+// tipe 7 TIDAK dibawa: ia tampilan XOL, dan wadahnya di Pega bersyarat
+// `TempView.CityID==7` yang tidak pernah dapat tercapai. Lihat Tabs().
 //
 // # Judul ketiga daftar komunikasi datang dari WORK OWNER, bukan dari export
 //
@@ -352,7 +329,6 @@ var tabs = []Tab{
 		Description: "Klaim yang PLA-nya sudah dikirimkan kepada Anda, tetapi DLA-nya " +
 			"belum. Anda sudah diberi tahu nilai estimasinya dan belum diberi tahu " +
 			"nilai akseptasinya.",
-		Kind:               ViewClaimList,
 		Columns:            listColumnsFor(),
 		Source:             SourceAdvice,
 		AdviceKindSent:     "pla",
@@ -367,7 +343,6 @@ var tabs = []Tab{
 		Description: "Klaim yang DLA-nya sudah dikirimkan kepada Anda. Termasuk klaim " +
 			"yang sudah selesai tetapi masih menunggu penutupan — status klaim itu " +
 			"digambar sebagai 1139.",
-		Kind:                    ViewClaimList,
 		Columns:                 listColumnsFor(),
 		Source:                  SourceAdvice,
 		AdviceKindSent:          "dla",
@@ -382,7 +357,6 @@ var tabs = []Tab{
 		Description: "Klaim yang sudah selesai dan tidak lagi menunggu penutupan. " +
 			"Disaring oleh PLA yang terkirim — bukan DLA — dan mencocokkan SELURUH " +
 			"kode reasuradur milik login Anda.",
-		Kind:               ViewClaimList,
 		Columns:            listColumnsFor(),
 		Source:             SourceAdvice,
 		AdviceKindSent:     "pla",
@@ -398,7 +372,6 @@ var tabs = []Tab{
 			"jawab. Bukalah rinciannya untuk membaca dan membalas pesannya. Berbeda " +
 			"dari ketiga daftar di sebelah kiri, daftar ini TIDAK mengecualikan lini " +
 			"Personal Accident maupun Travel.",
-		Kind:                ViewClaimList,
 		Columns:             listColumnsFor(),
 		Source:              SourceCommunication,
 		WorkStatus:          WorkOpen,
@@ -411,7 +384,6 @@ var tabs = []Tab{
 		Name: "NOT REPLIED FROM ASM",
 		Description: "Klaim yang punya pesan yang ANDA kirim dan belum dijawab pihak " +
 			"Asuransi Sinar Mas.",
-		Kind:                ViewClaimList,
 		Columns:             listColumnsFor(),
 		Source:              SourceCommunication,
 		WorkStatus:          WorkOpen,
@@ -424,22 +396,12 @@ var tabs = []Tab{
 		Name: "REPLIED FROM ASM",
 		Description: "Klaim yang punya pesan yang Anda kirim dan SUDAH dijawab " +
 			"Asuransi Sinar Mas. Jawabannya terbaca pada rincian klaim.",
-		Kind:                ViewClaimList,
 		Columns:             listColumnsFor(),
 		Source:              SourceCommunication,
 		WorkStatus:          WorkOpen,
 		CommunicationStatus: CommunicationAnswered,
 		CommunicationRole:   RoleSender,
 		HasDetailAction:     true,
-	},
-	{
-		Code: TabXOL,
-		Name: "DATA PLA DLA XOL KLAIM",
-		Description: "Ringkasan pemberitahuan XOL yang sudah dikirimkan kepada Anda, " +
-			"dikelompokkan per tahun dan per penyebab kerugian. Ia tidak menampilkan " +
-			"klaim satu per satu, dan karena itu tidak disaring kotak pencarian.",
-		Kind:    ViewXOL,
-		Columns: XOLColumns(),
 	},
 }
 
@@ -464,9 +426,6 @@ func FindTab(code string) (Tab, bool) {
 	return Tab{}, false
 }
 
-// IsClaimList menyatakan tab ini menggambar daftar klaim.
-func (t Tab) IsClaimList() bool { return t.Kind == ViewClaimList }
-
 // ExcludesGroupPanel menyatakan sebuah lini bisnis dikecualikan tab ini.
 func (t Tab) ExcludesGroupPanel(groupPanel string) bool {
 	for _, excluded := range t.ExcludeGroupPanels {
@@ -475,26 +434,4 @@ func (t Tab) ExcludesGroupPanel(groupPanel string) bool {
 		}
 	}
 	return false
-}
-
-// XOLColumns adalah kolom grid "DATA PLA DLA XOL KLAIM".
-//
-// # Satu judul Pega TIDAK dibawa, dan ia yang paling menyesatkan di layar ini
-//
-// Header pertamanya di Pega berbunyi **"Date Of Loss"**, sementara kolomnya berisi
-// `T_PLA_XOL.TAHUN` — sebuah TAHUN, bukan tanggal kejadian. Keduanya bahkan berbeda tipe.
-//
-// `D-13` menuntut teks layar mengikuti Pega, tetapi ia tidak menuntut membawa judul yang
-// menyatakan hal yang BUKAN isinya: pembaca layar ini adalah pihak luar, dan "Date Of
-// Loss" yang berisi `2024` akan dibaca sebagai kerusakan data, bukan sebagai judul yang
-// keliru. Selisihnya dinyatakan di PlannedDifferences.
-//
-// Ketiga judul lain dibawa apa adanya.
-func XOLColumns() []Column {
-	return []Column{
-		{Key: "tahun", Title: "Tahun"},
-		{Key: "penyebab_kerugian", Title: "Cause Of Loss"},
-		{Key: "jenis", Title: "TIPE"},
-		{Key: "tanggal_terakhir", Title: "Tanggal Insert", Date: true},
-	}
 }

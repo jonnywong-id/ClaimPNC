@@ -12,14 +12,21 @@ import (
 
 // ErrorResponse adalah bentuk badan galat.
 type ErrorResponse struct {
-	Code    string         `json:"kode"`
-	Message string         `json:"pesan"`
-	Details []ViolationDTO `json:"rincian,omitempty"`
+	Code    string `json:"kode"`
+	Message string `json:"pesan"`
+	// Namanya `detail`, bukan `rincian`, dan isinya ber-`field` bukan `isian`.
+	//
+	// Itu BUKAN selera: klien HTTP bersama (`frontend/src/api/client.ts`) membaca pelanggaran
+	// validasi dari kunci `detail` dan `field`. Modul ini sempat memakai nama sendiri,
+	// sehingga pesan validasinya tidak pernah sampai ke layar sama sekali — pengguna hanya
+	// melihat "Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi." tanpa pernah
+	// tahu apa yang ditandai.
+	Details []ViolationDTO `json:"detail,omitempty"`
 }
 
 // ViolationDTO menunjuk satu isian yang bermasalah.
 type ViolationDTO struct {
-	Field   string `json:"isian"`
+	Field   string `json:"field"`
 	Message string `json:"pesan"`
 }
 
@@ -47,6 +54,17 @@ type DecisionRuleDTO struct {
 
 	ReasonRequiredOnReject bool   `json:"alasan_wajib_saat_menolak"`
 	ReasonLabel            string `json:"label_alasan,omitempty"`
+
+	// ApproveLabel dan RejectLabel adalah label tombol apa adanya dari Pega. Kosong berarti
+	// antrean ini tidak punya tombol bernama di sana, dan layar memakai kata aplikasi
+	// sendiri.
+	ApproveLabel string `json:"label_setujui,omitempty"`
+	RejectLabel  string `json:"label_tolak,omitempty"`
+
+	// Bulk menyatakan antrean ini dapat diputuskan banyak baris sekaligus. Hanya tiga
+	// antrean punya jalur itu di Pega, dan batasnya ditegakkan server — bukan hanya
+	// disembunyikan layar.
+	Bulk bool `json:"dapat_massal"`
 }
 
 // TabDTO adalah satu tab beserta bentuk isinya.
@@ -57,6 +75,23 @@ type TabDTO struct {
 
 	// Kind bernilai "dashboard", "ringkasan", atau "antrean".
 	Kind string `json:"jenis"`
+
+	// InParentTabStrip menyatakan tab ini muncul di bilah tab induknya.
+	//
+	// Tidak sama dengan `induk`: Penolakan Klaim BERINDUK Approval Master — pencacahnya
+	// ditulis sebagai anak baris itu — tetapi `Section/InboxManager_Section2` tidak
+	// menyertakannya di bilah tabnya.
+	InParentTabStrip bool `json:"dalam_bilah_induk,omitempty"`
+
+	// SectionTitle adalah judul sub-tab di dalam tab ini. Kosong pada tab yang di Pega
+	// isinya langsung grid, tanpa bilah sub-tab.
+	SectionTitle string `json:"judul_sub_tab,omitempty"`
+
+	// Parent adalah kode tab induk; kosong pada keempat tab tingkat atas.
+	//
+	// Ia dikirim supaya layar tidak menyimpulkan jenjangnya sendiri dari `jenis`. Jenjang
+	// tab dibaca dari export Pega, dan tempat pembacaan itu tercatat adalah server.
+	Parent string `json:"induk,omitempty"`
 
 	// Panels hanya terisi pada tab dashboard — bentuk gridnya, tanpa barisnya.
 	Panels []PanelShapeDTO `json:"panel,omitempty"`
@@ -70,6 +105,13 @@ type TabDTO struct {
 	LineBusiness string `json:"lini_bisnis,omitempty"`
 
 	HasPeriodFilter bool `json:"punya_penyaring_periode"`
+
+	// PeriodApplyLabel adalah label tombol yang menerapkan penyaring periode. Kosong berarti
+	// tab ini tidak punya penyaring periode.
+	PeriodApplyLabel string `json:"label_terapkan_periode,omitempty"`
+
+	// HasDetailExport menyatakan tab ini punya blok "Export Data Detail Klaim".
+	HasDetailExport bool `json:"punya_ekspor_detail,omitempty"`
 }
 
 // PanelShapeDTO adalah bentuk satu grid dashboard, tanpa barisnya.
@@ -84,8 +126,6 @@ type MetadataResponse struct {
 	Tabs         []TabDTO `json:"tab"`
 	DefaultTab   string   `json:"tab_bawaan"`
 	LineBusiness string   `json:"lini_bisnis_anda"`
-
-	PlannedDifferences []string `json:"selisih_terencana"`
 }
 
 // CounterDTO adalah satu pencacah di kepala layar.
@@ -124,6 +164,20 @@ type PanelDTO struct {
 	Title   string               `json:"judul"`
 	Columns []ColumnDTO          `json:"kolom"`
 	Rows    []map[string]CellDTO `json:"baris"`
+}
+
+// FilterOptionDTO adalah satu pilihan penyaring.
+type FilterOptionDTO struct {
+	// Value kosong berarti "seluruhnya" — padanan pilihan "All" di layar lama.
+	Value string `json:"nilai"`
+	Label string `json:"label"`
+}
+
+// FilterDTO adalah satu penyaring dashboard beserta pilihannya.
+type FilterDTO struct {
+	Key     string            `json:"kunci"`
+	Label   string            `json:"label"`
+	Options []FilterOptionDTO `json:"pilihan"`
 }
 
 // QueueRowDTO adalah satu baris antrean.
@@ -172,6 +226,12 @@ type ListResponse struct {
 	// Pagination terisi pada tab antrean.
 	Pagination *PaginationDTO `json:"paginasi,omitempty"`
 
+	// Filters terisi pada dashboard yang punya penyaring di bawah gridnya.
+	//
+	// Ia dikirim bersama DATA, bukan bersama keterangan layar: pilihan "Kategori OS"
+	// dibaca dari master yang dapat berubah tanpa deploy.
+	Filters []FilterDTO `json:"penyaring,omitempty"`
+
 	// Period terisi pada tab yang punya penyaring periode.
 	Period *PeriodDTO `json:"periode,omitempty"`
 }
@@ -203,17 +263,25 @@ type DecisionResponse struct {
 // toTabDTO menyusun satu tab untuk dikirim ke layar.
 func toTabDTO(tab inboxmanager.Tab) TabDTO {
 	dto := TabDTO{
-		Code:            tab.Code,
-		Name:            tab.Name,
-		Description:     tab.Description,
-		Kind:            string(tab.Kind),
-		LineBusiness:    tab.LineBusiness,
-		HasPeriodFilter: tab.HasPeriodFilter,
+		Code:             tab.Code,
+		Name:             tab.Name,
+		Description:      tab.Description,
+		Kind:             string(tab.Kind),
+		Parent:           tab.Parent(),
+		InParentTabStrip: tab.InParentTabStrip,
+		SectionTitle:     tab.SectionTitle,
+		LineBusiness:     tab.LineBusiness,
+		HasPeriodFilter:  tab.HasPeriodFilter,
+		PeriodApplyLabel: tab.PeriodApplyLabel,
+		HasDetailExport:  tab.HasDetailExport,
 		Decision: DecisionRuleDTO{
 			Decidable:              tab.Decision.Decidable,
 			ApproveBlockedReason:   tab.Decision.ApproveBlockedReason,
 			ReasonRequiredOnReject: tab.Decision.ReasonRequiredOnReject,
 			ReasonLabel:            tab.Decision.ReasonLabel,
+			ApproveLabel:           tab.Decision.ApproveLabel,
+			RejectLabel:            tab.Decision.RejectLabel,
+			Bulk:                   tab.Decision.Bulk,
 		},
 	}
 
@@ -240,7 +308,6 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 	response := MetadataResponse{
 		DefaultTab:         meta.DefaultTab,
 		LineBusiness:       meta.LineBusiness,
-		PlannedDifferences: meta.PlannedDifferences,
 		Tabs:               []TabDTO{},
 	}
 	for _, tab := range meta.Tabs {
@@ -273,6 +340,14 @@ func toListResponse(view usecase.View) ListResponse {
 		response.Panels = []PanelDTO{}
 		for _, panel := range view.Dashboard.Panels {
 			response.Panels = append(response.Panels, toPanelDTO(panel))
+		}
+		for _, filter := range view.Dashboard.Filters {
+			dto := FilterDTO{Key: filter.Key, Label: filter.Label, Options: []FilterOptionDTO{}}
+			for _, option := range filter.Options {
+				dto.Options = append(dto.Options,
+					FilterOptionDTO{Value: option.Value, Label: option.Label})
+			}
+			response.Filters = append(response.Filters, dto)
 		}
 		if view.Dashboard.RefreshedAt != nil {
 			response.RefreshedAt = view.Dashboard.RefreshedAt.Format(time.RFC3339)

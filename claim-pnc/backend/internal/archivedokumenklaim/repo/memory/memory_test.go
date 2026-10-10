@@ -36,23 +36,37 @@ func TestDataContohTerisiNamaDokumen(t *testing.T) {
 	require.Len(t, memory.SampleDocumentKinds(), 5)
 }
 
-// Pencarian kata kunci mencocokkan salah satu dari tiga kolom tanpa peka huruf.
-func TestSearchKataKunci(t *testing.T) {
+// Pencarian kata kunci mencocokkan SATU kolom — kolom yang dipilih dropdown.
+//
+// Kueri lama meng-OR ketiganya sekaligus, sehingga dropdown-nya tidak mempersempit apa
+// pun. Yang dipakai di sini adalah arti dropdown-nya.
+func TestSearchKataKunciPerKolom(t *testing.T) {
 	repo := memory.NewSampleRepo()
 
 	byInsured, err := repo.Search(ctx, archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeKeyword, Keyword: "contoh tertanggung tiga",
+		Column:  archivedokumenklaim.ColumnInsuredName,
+		Keyword: "contoh tertanggung tiga",
 	}, archivedokumenklaim.Pagination{})
 	require.NoError(t, err)
 	require.Equal(t, 1, byInsured.Total)
 	require.Equal(t, int64(3), byInsured.Files[0].ID)
 
 	byBox, err := repo.Search(ctx, archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeKeyword, Keyword: "BOX-A-01",
+		Column:  archivedokumenklaim.ColumnBoxName,
+		Keyword: "BOX-A-01",
 	}, archivedokumenklaim.Pagination{})
 	require.NoError(t, err)
 	require.Equal(t, 2, byBox.Total)
 	require.Equal(t, int64(2), byBox.Files[0].ID, "urutan menurun menurut ID")
+
+	// Kata kunci yang benar TETAPI dicari di kolom yang salah tidak cocok — inilah yang
+	// membedakan dropdown yang berarti dari dropdown yang tidak.
+	salahKolom, err := repo.Search(ctx, archivedokumenklaim.Criteria{
+		Column:  archivedokumenklaim.ColumnClaimNumber,
+		Keyword: "BOX-A-01",
+	}, archivedokumenklaim.Pagination{})
+	require.NoError(t, err)
+	require.Zero(t, salahKolom.Total)
 }
 
 // Rentang tanggal input dibandingkan per tanggal kalender, inklusif di kedua ujung.
@@ -66,7 +80,6 @@ func TestSearchRentangTanggalInput(t *testing.T) {
 	}})
 
 	page, err := repo.Search(ctx, archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeInputDate,
 		From: date(2024, 4, 1),
 		To:   date(2024, 4, 10),
 	}, archivedokumenklaim.Pagination{})
@@ -74,19 +87,28 @@ func TestSearchRentangTanggalInput(t *testing.T) {
 	require.Equal(t, 1, page.Total, "berkas sore hari pada tanggal akhir tetap ikut")
 	require.Equal(t, int64(2), page.Files[0].ID)
 
-	before, err := repo.Search(ctx, archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeInputDate,
+	after, err := repo.Search(ctx, archivedokumenklaim.Criteria{
+		From: date(2024, 5, 1),
+		To:   date(2024, 5, 31),
+	}, archivedokumenklaim.Pagination{})
+	require.NoError(t, err)
+	require.Equal(t, 1, after.Total)
+	require.Equal(t, int64(3), after.Files[0].ID)
+
+	// Rentang yang hanya terisi satu ujung TIDAK menyaring apa pun di lapisan ini —
+	// penolakannya ada di NewCriteria, dan repo tidak menebak ujung yang hilang.
+	setengah, err := repo.Search(ctx, archivedokumenklaim.Criteria{
 		From: date(2024, 5, 1),
 	}, archivedokumenklaim.Pagination{})
 	require.NoError(t, err)
-	require.Equal(t, 1, before.Total)
-	require.Equal(t, int64(3), before.Files[0].ID)
+	require.Equal(t, 4, setengah.Total)
 }
 
 func TestPaginasiMemotongHalaman(t *testing.T) {
 	repo := memory.NewSampleRepo()
 
-	criteria := archivedokumenklaim.Criteria{Mode: archivedokumenklaim.ModeInputDate}
+	// Kriteria kosong berarti tanpa penyaring sama sekali.
+	criteria := archivedokumenklaim.Criteria{}
 
 	second, err := repo.Search(ctx, criteria, archivedokumenklaim.Pagination{Page: 2, Size: 2})
 	require.NoError(t, err)

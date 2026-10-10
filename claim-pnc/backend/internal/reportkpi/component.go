@@ -50,9 +50,10 @@ const (
 
 // components adalah kesembilan komponen, DALAM URUTAN KOLOM LAYAR LAMA.
 //
-// Urutannya mengikuti urutan SELECT pada `RDB List/GetSummaryKPIAdjuster-SQL.xml`, yang
-// sama pula dengan urutan parameter `Database/INSERT_KPIADJUSTER.prc`. Keduanya sepakat,
-// dan kesepakatan itulah yang menjadikan urutan ini fakta, bukan pilihan.
+// Urutannya diambil dari GRID layar lama — susunan properti pada
+// `Section/ReportKPI_Section-Section.xml` — bukan dari urutan SELECT kuerinya. Keduanya
+// BERBEDA pada pasangan propose/komunikasi, dan yang menentukan apa yang dilihat pengguna
+// adalah grid (`D-13`).
 //
 // `ComponentTotal` sengaja ikut di dalam daftar ini meski ia bukan komponen melainkan
 // NILAI AKHIR — lihat catatan di bawah.
@@ -77,13 +78,23 @@ var components = []Component{
 		Code: ComponentProgress, Label: "UPDATE PROGRESS",
 		Column: "PROGRESS", LegacyAlias: "CountryID",
 	},
-	{
-		Code: ComponentCommunication, Label: "TANGGAPAN KOMUNIKASI",
-		Column: "KOMUNIKASI", LegacyAlias: "RWID",
-	},
+	// PROPOSE lebih dulu, baru KOMUNIKASI — dan urutan itu dikoreksi pada 2026-10-09.
+	//
+	// Sebelumnya terbalik, karena urutannya diambil dari urutan SELECT kueri. Urutan SELECT
+	// memang menempatkan `komunikasi` lebih dulu, TETAPI yang menentukan urutan KOLOM LAYAR
+	// bukan kueri melainkan grid di `Section/ReportKPI_Section-Section.xml`, dan grid itu
+	// menyusun propertinya `.AlasanKlaim` (propose) sebelum `.RWID` (komunikasi).
+	//
+	// Keduanya sama-sama angka 1–5, sehingga tertukarnya TIDAK terlihat sebagai kerusakan —
+	// hanya sebagai nilai yang berbeda dari Pega. Itu sebabnya urutannya diambil dari grid,
+	// bukan dari kueri.
 	{
 		Code: ComponentPropose, Label: "PROPOSE ADJUSTMENT",
 		Column: "PROPOSE", LegacyAlias: "AlasanKlaim",
+	},
+	{
+		Code: ComponentCommunication, Label: "TANGGAPAN KOMUNIKASI",
+		Column: "KOMUNIKASI", LegacyAlias: "RWID",
 	},
 	{
 		Code: ComponentFinalReport, Label: "FINAL REPORT",

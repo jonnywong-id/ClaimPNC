@@ -30,7 +30,7 @@ func TestListSkipsUnavailableTabWithoutQuery(t *testing.T) {
 	db, mock := newDB(t)
 
 	page, err := NewRepo(db).List(context.Background(), leaderIdentity,
-		inboxsurvey.Filter{Tab: inboxsurvey.TabOutstanding})
+		inboxsurvey.Filter{Tab: inboxsurvey.TabOutstanding}, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 	require.Empty(t, page.Tasks)
 	require.NotNil(t, page.Tasks)
@@ -47,14 +47,14 @@ func TestListBindsScopeTabAndScansTasks(t *testing.T) {
 			inboxsurvey.CommunicationOpen, inboxsurvey.CommunicationAnswered,
 			"PNC", 10, 5).
 		WillReturnRows(sqlmock.NewRows(taskColumns).
-			AddRow("S1", "C1", "1", "PNCN.26.1", "POL", "Nama", "Fire", "Api", "Jakarta",
-				"PIC", "BUDI", loss, created, "Final Report", "2", 4).
+			AddRow("S1", "C1", "1", nil, "PNCN.26.1", "POL", "Nama", "Fire", "Api", "Jakarta",
+				"PIC", "BUDI", loss, created, "LEADER", "2", 4).
 			AddRow(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-				nil, 4))
+				nil, nil, 4))
 
 	page, err := NewRepo(db).List(context.Background(), leaderIdentity, inboxsurvey.Filter{
 		Tab: inboxsurvey.TabNotAnswered, Search: " PNC ", Offset: 10, Limit: 5,
-	})
+	}, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 	require.Equal(t, 4, page.Total)
 	require.Len(t, page.Tasks, 2)
@@ -62,7 +62,7 @@ func TestListBindsScopeTabAndScansTasks(t *testing.T) {
 		SurveyID: "S1", ClaimID: "C1", SurveyIndex: "1", ClaimNumber: "PNCN.26.1",
 		PolicyNumber: "POL", InsuredName: "Nama", ClassOfBusiness: "Fire", CauseOfLoss: "Api",
 		Location: "Jakarta", TechnicalPIC: "PIC", AdjusterPIC: "BUDI", DateOfLoss: loss,
-		CreatedAt: created, ASMStatus: "Final Report", SurveyorType: "2",
+		CreatedAt: created, ASMStatus: "LEADER", SurveyorType: "2",
 	}, page.Tasks[0])
 	require.True(t, page.Tasks[1].DateOfLoss.IsZero())
 	require.True(t, page.Tasks[1].CreatedAt.IsZero())
@@ -77,7 +77,7 @@ func TestListBindsNilForEmptySearch(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(taskColumns))
 
 	page, err := NewRepo(db).List(context.Background(), inboxsurvey.SurveyorIdentity{},
-		inboxsurvey.Filter{Tab: inboxsurvey.TabReplied})
+		inboxsurvey.Filter{Tab: inboxsurvey.TabReplied}, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 	require.Zero(t, page.Total)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -88,13 +88,13 @@ func TestListWrapsErrors(t *testing.T) {
 
 	db, mock := newDB(t)
 	mock.ExpectQuery(query("list_tasks")).WillReturnError(errors.New("ora"))
-	_, err := NewRepo(db).List(context.Background(), leaderIdentity, filter)
+	_, err := NewRepo(db).List(context.Background(), leaderIdentity, filter, inboxsurvey.Readiness{})
 	require.ErrorContains(t, err, "menjalankan kueri list_tasks: ora")
 
 	db, mock = newDB(t)
 	mock.ExpectQuery(query("list_tasks")).
 		WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("x"))
-	_, err = NewRepo(db).List(context.Background(), leaderIdentity, filter)
+	_, err = NewRepo(db).List(context.Background(), leaderIdentity, filter, inboxsurvey.Readiness{})
 	require.ErrorContains(t, err, "membaca baris kueri list_tasks")
 
 	db, mock = newDB(t)
@@ -102,7 +102,7 @@ func TestListWrapsErrors(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(taskColumns).
 			AddRow(make([]driver.Value, len(taskColumns))...).
 			RowError(0, errors.New("putus")))
-	_, err = NewRepo(db).List(context.Background(), leaderIdentity, filter)
+	_, err = NewRepo(db).List(context.Background(), leaderIdentity, filter, inboxsurvey.Readiness{})
 	require.ErrorContains(t, err, "menelusuri hasil kueri list_tasks: putus")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -116,17 +116,20 @@ func TestCountsMapsColumnsToAvailableTabsInOrder(t *testing.T) {
 	}
 	values[len(values)-1] = nil
 
+	// Cakupan surveyor adalah argumen TERAKHIR, bukan pertama — `INSTR(...)` ada di klausa
+	// WHERE, sesudah seluruh SUM, dan penomoran bind mengikuti urutan kemunculan.
+	// Lihat TestAngkaBindMengikutiUrutanKemunculan.
 	mock.ExpectQuery(query("count_tabs")).
-		WithArgs("|BUDI|SITI|", "ADJLEADER", inboxsurvey.CommunicationOpen,
-			inboxsurvey.CommunicationAnswered).
+		WithArgs("ADJLEADER", inboxsurvey.CommunicationOpen,
+			inboxsurvey.CommunicationAnswered, "|BUDI|SITI|").
 		WillReturnRows(sqlmock.NewRows(countColumns).AddRow(values...))
 
-	counts, err := NewRepo(db).Counts(context.Background(), leaderIdentity)
+	counts, err := NewRepo(db).Counts(context.Background(), leaderIdentity, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 
 	var available []inboxsurvey.Tab
 	for _, tab := range inboxsurvey.Tabs() {
-		if tab.Available() {
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
 			available = append(available, tab)
 		}
 	}
@@ -142,27 +145,35 @@ func TestCountsMapsColumnsToAvailableTabsInOrder(t *testing.T) {
 func TestCountsWrapsScanError(t *testing.T) {
 	db, mock := newDB(t)
 	mock.ExpectQuery(query("count_tabs")).WillReturnError(errors.New("ora"))
-	_, err := NewRepo(db).Counts(context.Background(), leaderIdentity)
+	_, err := NewRepo(db).Counts(context.Background(), leaderIdentity, inboxsurvey.Readiness{})
 	require.ErrorContains(t, err, "membaca hasil kueri count_tabs: ora")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// kpiValues menyusun satu baris hasil: LIMA kolom kunci lalu sembilan angka.
+//
+// Kolom kunci yang tidak berlaku diisi nil — persis seperti SQL mengisinya NULL. Menyusunnya
+// sebagai angka akan membuat uji lulus atas bentuk yang basis data tidak pernah kirimkan.
 func kpiValues(group string) []driver.Value {
-	values := []driver.Value{group}
-	for i := 1; i < len(kpiColumns); i++ {
-		values = append(values, float64(i))
+	values := []driver.Value{group, nil, nil, nil, nil}
+	for i := len(values); i < len(kpiColumns); i++ {
+		values = append(values, float64(i-len(kpiKeyColumns)+1))
 	}
 	return values
 }
 
-func TestKPIOutstandingUsesCategoryAndAdjusterQuery(t *testing.T) {
+// TestKPITanpaKuartalDikelompokkanPerAdjuster mengunci pemilihan kuerinya.
+//
+// Status Survey OUTSTANDING tidak menampilkan kendali kuartal (`pyVisibleWhen`), sehingga
+// jalurnya selalu `GetSummaryKPIAdjuster` — dikelompokkan per adjuster.
+func TestKPITanpaKuartalDikelompokkanPerAdjuster(t *testing.T) {
 	db, mock := newDB(t)
 	mock.ExpectQuery(query("kpi_by_adjuster")).
-		WithArgs("|BUDI|SITI|", "INTERIM", "2026").
+		WithArgs("|BUDI|SITI|", "OUTSTANDING").
 		WillReturnRows(sqlmock.NewRows(kpiColumns).AddRow(kpiValues("BUDI")...))
 
 	rows, err := NewRepo(db).KPI(context.Background(), leaderIdentity, inboxsurvey.KPIFilter{
-		Kind: inboxsurvey.KPIOutstanding, Category: "INTERIM", Year: "2026",
+		Status: inboxsurvey.SurveyStatusOutstanding, Report: inboxsurvey.ReportSummary,
 	})
 	require.NoError(t, err)
 	require.Equal(t, []inboxsurvey.KPIRow{{
@@ -173,31 +184,37 @@ func TestKPIOutstandingUsesCategoryAndAdjusterQuery(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestKPIFinalAndQuarterlyForceFinalCategory(t *testing.T) {
+// TestKuartalMemindahkanPengelompokanKePerTahun mengunci sisi sebaliknya.
+//
+// Begitu Kuartal atau Tahun Kuartal diisi, jalurnya berpindah ke
+// `GetSummaryKPIAdjusterKuartal` — dikelompokkan per TAHUN, bukan per adjuster. Sekaligus
+// mengunci bahwa Status Survey "ALL" dikirim sebagai NULL, bukan sebagai teks "ALL": "ALL"
+// adalah pilihan di layar, bukan nilai yang pernah ada di kolom `tipe`.
+func TestKuartalMemindahkanPengelompokanKePerTahun(t *testing.T) {
 	db, mock := newDB(t)
-	mock.ExpectQuery(query("kpi_by_adjuster")).
-		WithArgs("|BUDI|SITI|", inboxsurvey.KPITypeFinal, nil).
-		WillReturnRows(sqlmock.NewRows(kpiColumns))
 	mock.ExpectQuery(query("kpi_by_year")).
-		WithArgs("|BUDI|SITI|", inboxsurvey.KPITypeFinal, nil).
+		WithArgs("|BUDI|SITI|", "2026", "3").
 		WillReturnRows(sqlmock.NewRows(kpiColumns).AddRow(kpiValues("2026")...))
 
-	repo := NewRepo(db)
-	rows, err := repo.KPI(context.Background(), leaderIdentity,
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal, Category: "abaikan"})
-	require.NoError(t, err)
-	require.Empty(t, rows)
-	require.NotNil(t, rows)
-
-	rows, err = repo.KPI(context.Background(), leaderIdentity,
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIQuarterly})
+	rows, err := NewRepo(db).KPI(context.Background(), leaderIdentity, inboxsurvey.KPIFilter{
+		Status:  inboxsurvey.SurveyStatusFinal,
+		Report:  inboxsurvey.ReportSummary,
+		Quarter: "3",
+		Year:    "2026",
+	})
 	require.NoError(t, err)
 	require.Equal(t, "2026", rows[0].Group)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestKPIWrapsErrors(t *testing.T) {
-	filter := inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIQuarterly}
+	// Isian ini menempuh kpi_by_year — Kuartal terisi, sehingga pengelompokannya per tahun.
+	filter := inboxsurvey.KPIFilter{
+		Status:  inboxsurvey.SurveyStatusFinal,
+		Report:  inboxsurvey.ReportSummary,
+		Quarter: "1",
+		Year:    "2026",
+	}
 
 	db, mock := newDB(t)
 	mock.ExpectQuery(query("kpi_by_year")).WillReturnError(errors.New("ora"))

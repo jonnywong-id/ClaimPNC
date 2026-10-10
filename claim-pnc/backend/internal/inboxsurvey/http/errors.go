@@ -16,6 +16,10 @@ import (
 const (
 	CodeCallerUnknown = "profil_pemanggil_tidak_lengkap"
 	CodeNotSurveyor   = "bukan_surveyor"
+
+	// CodeKPIFilterIncomplete — Status Survey atau Tipe Report belum dipilih.
+	CodeKPIFilterIncomplete = "isian_kpi_belum_lengkap"
+
 	CodeInternalError = "galat_internal"
 )
 
@@ -93,6 +97,15 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Message: "Akun Anda belum terdaftar pada Master Login Surveyor, sehingga " +
 				"antrean survei belum dapat ditampilkan. Hubungi admin untuk mendaftarkan " +
 				"login Anda beserta nama surveyornya.",
+		}, true
+
+	case errors.Is(err, inboxsurvey.ErrKPIFilterIncomplete):
+		// 422: permintaannya berbentuk benar, isinya yang melanggar aturan bisnis.
+		// Keduanya ditangani layar secara berbeda — 400 berarti bug frontend, 422 berarti
+		// pengguna belum memilih (`09-API-STRATEGY.md` §5).
+		return http.StatusUnprocessableEntity, ErrorResponse{
+			Code:    CodeKPIFilterIncomplete,
+			Message: "Pilih Status Survey dan Tipe Report lebih dulu, lalu tekan Cari.",
 		}, true
 
 	default:

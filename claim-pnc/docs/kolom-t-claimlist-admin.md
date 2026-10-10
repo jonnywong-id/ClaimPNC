@@ -436,3 +436,38 @@ Ini menutup §D.4 secara empiris: tabelnya memang bercampur, dan kedua angka itu
 
 Apakah proses pengisi tabel ini akan mengisi kolom yang masih kosong, dan kapan. Katalog hanya
 menyatakan kolomnya ada — §D.1 dan §F.2 tetap berlaku sepenuhnya.
+
+---
+
+## I. Dua view RUSAK di POOLDATA (diperiksa 2026-10-07)
+
+Diperiksa lewat `ALL_OBJECTS` terhadap seluruh sumber antrean Inbox Manager:
+
+| Objek | Jenis | Status |
+|---|---|---|
+| **`POOLDATA.BENGKEL_HE`** | VIEW | **INVALID** |
+| **`POOLDATA.SPAREPART_HE`** | VIEW | **INVALID** |
+| `PANEL_HE` · `SPAREPART_HE_VIN_KEY` · `SPAREPART_HE_VIN_GROUP` | VIEW | VALID |
+| `GCNM_M_SPAREPART_CATEGORY` · `GCNM_M_SPAREPART_TYPE` · `NOTIF_RANGKA_HE` · `MST_PENOLAKAN_KLAIM_2` · `T_CLAIM_AKSEPTASI_CHECKER` · `T_CLAIMLIST_ADMIN` | TABLE | VALID |
+
+Sebelumnya hanya `SPAREPART_HE` yang tercatat. **`BENGKEL_HE` baru ketahuan**, dan ia memasok
+tab Master Bengkel pada Inbox Manager serta modul Master Bengkel.
+
+Kueri apa pun terhadap keduanya gagal dengan `ORA-04063: view "…" has errors`. Katalog kolomnya
+tetap terbaca — `ALL_TAB_COLUMNS` menjawab normal — sehingga pemeriksaan keberadaan kolom
+TIDAK dapat dipakai untuk memastikan view-nya dapat dibaca.
+
+**Untuk DBA:** kedua view perlu dikompilasi ulang, dan sebabnya ditelusuri — view menjadi
+INVALID ketika objek yang dirujuknya berubah atau hilang.
+
+### Volume antrean saat diperiksa
+
+| Antrean | Baris menunggu | Seluruh baris |
+|---|---:|---:|
+| Penolakan Klaim | 12 | 14 |
+| Payment Klaim Akseptasi | 8 | 83 |
+| Nomor Rangka | 2 | 17 |
+| Kategori Sparepart · Tipe Sparepart · Grouping Sparepart | 2 masing-masing | — |
+| Master Panel | 0 | — |
+
+Dimensi dashboard: 30 grup bisnis · 29 PIC · 22 baris grid silang.

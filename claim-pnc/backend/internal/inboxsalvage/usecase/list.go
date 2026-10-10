@@ -37,6 +37,15 @@ import (
 type Service struct {
 	repoSelector inboxsalvage.RepoSelector
 	logger       *slog.Logger
+
+	// notifier dan auction BOLEH nil, dan nil berarti "tidak dipasang" — bukan "gagal".
+	//
+	// Keduanya menyentuh sistem di luar aplikasi ini, dan keduanya dapat belum
+	// terkonfigurasi di sebuah lingkungan tanpa itu berarti ada yang rusak. Yang TIDAK
+	// boleh terjadi adalah menyamarkannya: Submit tetap berhasil, dan jawabannya menyebut
+	// apa yang tidak terjadi.
+	notifier inboxsalvage.Notifier
+	auction  inboxsalvage.AuctionHouse
 }
 
 // Options adalah bahan pembentuk Service.
@@ -45,6 +54,16 @@ type Options struct {
 
 	// Logger boleh nil; bila nil, jejaknya tidak ditulis dan tidak ada yang gagal karenanya.
 	Logger *slog.Logger
+
+	// Notifier mengirim pemberitahuan "pengajuan salvage tersimpan".
+	//
+	// Boleh nil. Lihat Service.
+	Notifier inboxsalvage.Notifier
+
+	// Auction mengirim pengajuan ke balai lelang SimasBid.
+	//
+	// Boleh nil. Lihat Service.
+	Auction inboxsalvage.AuctionHouse
 }
 
 // NewService membentuk layanan modul Inbox Salvage.
@@ -52,9 +71,13 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("inboxsalvage/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, logger: o.Logger}, nil
+	return &Service{
+		repoSelector: o.RepoSelector,
+		logger:       o.Logger,
+		notifier:     o.Notifier,
+		auction:      o.Auction,
+	}, nil
 }
-
 // Metadata adalah keterangan layar yang tidak bergantung isi daftar.
 type Metadata struct {
 	// Tabs adalah daftar yang DITAWARKAN layar beserta kolomnya — sembilan dari tiga
@@ -321,9 +344,105 @@ type Created struct {
 
 	// ItemCount adalah jumlah baris Detail Item Salvage yang ikut tersimpan.
 	ItemCount int
+
+	// Auction menyatakan apa yang terjadi pada pengiriman ke balai lelang.
+	Auction AuctionOutcome
+
+	// Notification menyatakan apa yang terjadi pada pemberitahuan surel.
+	Notification NotificationOutcome
+}
+
+// AuctionOutcome adalah hasil pengiriman satu pengajuan ke balai lelang.
+//
+// # Kenapa TIGA keadaan, bukan berhasil-gagal
+//
+// Karena "tidak dipasang" dan "dipasang lalu gagal" menuntut tindakan yang berbeda dari
+// orang yang berbeda. Yang pertama urusan Tim Infra — alamatnya belum diisi di lingkungan
+// ini. Yang kedua urusan petugas — pengajuannya perlu dikirim ulang. Menyatukan keduanya
+// menjadi satu penanda "tidak terkirim" membuat petugas menunggu perbaikan yang bukan
+// miliknya, atau sebaliknya.
+type AuctionOutcome struct {
+	// Attempted bernilai salah bila AuctionHouse memang tidak dipasang.
+	Attempted bool
+
+	// Accepted bernilai benar hanya bila balai lelang MENERIMA pengajuan ini.
+	Accepted bool
+
+	// AuctionID adalah nomor dari balai lelang, bila ada.
+	AuctionID string
+
+	// Message adalah jawaban balai lelang, atau sebab kegagalannya.
+	//
+	// Ia dibawa sampai ke layar, karena petugaslah yang memutuskan apakah pengajuan ini
+	// perlu dikirim ulang — dan ia tidak dapat memutuskannya dari penanda biner.
+	Message string
+}
+
+// NotificationOutcome adalah hasil pengiriman pemberitahuan surel.
+type NotificationOutcome struct {
+	// Attempted bernilai salah bila Notifier memang tidak dipasang.
+	Attempted bool
+
+	// Sent bernilai benar bila surelnya benar-benar terkirim.
+	Sent bool
+}
+
+// auctionEntityFlag memetakan portal menjadi `Lelang.Flag` pada badan permintaan SimasBid.
+//
+// Nilainya diambil apa adanya dari `Activity/Insert_salvageToSimasBid-Act.xml`:
+//
+//	@if(TempGetApp.LSC_ID=="SIMASNET","ASI","ASM")
+//
+// CATATAN. Ini bentuk hardcode yang `ADR-0025` perintahkan menjadi master atau
+// konfigurasi, sama seperti `portalsRegisteredWithCashier` di modul Master Rekening. Ia
+// dibiarkan sebagai konstanta yang TERLIHAT dan bernama alih-alih tersebar di dalam
+// percabangan, supaya saat master portal siap yang perlu diubah hanya satu tempat ini.
+var auctionEntityFlag = map[string]string{
+	"SIMASNET": "ASI",
+}
+
+// defaultAuctionEntityFlag berlaku bagi portal yang tidak disebut di atas.
+const defaultAuctionEntityFlag = "ASM"
+
+// portalWithCompositeAuctionID menyebut portal yang `Lelang.IDObject`-nya berbentuk
+// `<nomor klaim>/<id salvage>`, bukan ID detail salvage.
+//
+// Diambil dari ekspresi yang sama:
+//
+//	@if(TempGetApp.LSC_ID=="SIMASNET", Param.NoKlaim+"/"+Param.IDSalvage,
+//	    Param.IDDetailSalvage)
+//
+// Bentuk kedua — ID detail salvage — menunjuk SATU BARANG, bukan satu pengajuan. Lihat
+// catatan pada Service.sendToAuction.
+var portalWithCompositeAuctionID = map[string]bool{
+	"SIMASNET": true,
 }
 
 // Create menyimpan satu pengajuan salvage beserta detail itemnya.
+//
+// # Urutannya: simpan, kirim ke balai lelang, kirim surel
+//
+// Sama seperti `Activity/SetStsSalvagePNC_act-Act.xml`, yang menjalankan
+// `Insert_salvageToSimasBid` pada langkah 19 dan `UploadingFileUntukSendByEmail` pada
+// langkah 23 — keduanya SESUDAH penyimpanan.
+//
+// # Kedua akibat sampingan TIDAK dapat menggagalkan penyimpanan
+//
+// Pengajuan yang sudah tersimpan tetap tersimpan meski balai lelang tidak dapat dihubungi
+// dan meski server surel sedang mati. Pilihan ini berpihak pada pekerjaan pengguna:
+// kehilangan tujuh belas isian yang sudah diketik karena jaringan ke sistem lain sedang
+// bermasalah adalah kerugian yang jauh lebih besar daripada satu pengiriman yang harus
+// diulang.
+//
+// Yang menggantikan kegagalan diam-diam adalah JAWABAN YANG MENYEBUTKANNYA. Layar
+// menuliskan apa yang terjadi dan apa yang tidak, sehingga petugas tahu apakah ia masih
+// perlu mengabari seseorang.
+//
+// # Keduanya di LUAR transaksi basis data
+//
+// `09-API-STRATEGY.md` §8.2: pemanggilan sistem eksternal tidak boleh berada di dalam
+// transaksi — kegagalan jaringan tidak boleh menahan kunci baris. Repo.Create sudah
+// menutup transaksinya sebelum baris mana pun di bawah ini berjalan.
 func (s *Service) Create(
 	ctx context.Context,
 	portalAlias string,
@@ -365,9 +484,166 @@ func (s *Service) Create(
 		)
 	}
 
-	return Created{SalvageID: salvageID, ItemCount: len(form.Items)}, nil
+	created := Created{SalvageID: salvageID, ItemCount: len(form.Items)}
+	created.Auction = s.sendToAuction(ctx, repo, portalAlias, form, salvageID)
+	created.Notification = s.notifySubmission(ctx, repo, portalAlias, form, salvageID)
+	return created, nil
 }
 
+// sendToAuction mengirim satu pengajuan ke balai lelang, lalu mencatat jawabannya.
+//
+// # Satu pengajuan, satu pengiriman
+//
+// Sistem lama mengirim per BARANG: `Lelang.IDObject` pada portal non-Insurtech berisi ID
+// detail salvage, dan pemanggilnya memutari daftar barang. Di sini satu pengajuan dikirim
+// sekali, dengan ID pengajuan sebagai kuncinya.
+//
+// Perbedaannya nyata dan dinyatakan di PlannedDifferences. Alasan memilihnya: pengiriman
+// per barang membuat satu Submit menghasilkan banyak pengiriman yang sebagian dapat
+// berhasil dan sebagian gagal, sementara `STSTRANSFER` hanya punya SATU nilai untuk
+// seluruh pengajuan — sehingga keadaan setengah terkirim tidak dapat dinyatakan sama
+// sekali. Yang pertama membuat cacat itu terlihat; yang kedua menyembunyikannya.
+func (s *Service) sendToAuction(
+	ctx context.Context,
+	repo inboxsalvage.Repo,
+	portalAlias string,
+	form inboxsalvage.Form,
+	salvageID string,
+) AuctionOutcome {
+	if s.auction == nil {
+		return AuctionOutcome{Message: inboxsalvage.ErrAuctionNotAvailable.Error()}
+	}
+
+	flag := auctionEntityFlag[portalAlias]
+	if flag == "" {
+		flag = defaultAuctionEntityFlag
+	}
+
+	itemID := salvageID
+	if portalWithCompositeAuctionID[portalAlias] {
+		itemID = form.ClaimNo + "/" + salvageID
+	}
+
+	submission := inboxsalvage.AuctionSubmission{
+		ItemID:          itemID,
+		ClaimNo:         form.ClaimNo,
+		SalvageID:       salvageID,
+		ItemName:        form.ObjectName,
+		ItemDescription: form.Remark,
+		Location:        form.Location,
+		InJabodetabek:   form.InJabodetabek,
+		Price:           form.MinimumValue,
+		EntityFlag:      flag,
+	}
+
+	outcome := AuctionOutcome{Attempted: true}
+
+	receipt, err := s.auction.SendSalvage(ctx, submission)
+	if err != nil {
+		outcome.Message = err.Error()
+		s.warn("pengiriman pengajuan salvage ke balai lelang gagal",
+			salvageID, portalAlias, err.Error())
+		return outcome
+	}
+
+	outcome.Accepted = receipt.Accepted()
+	outcome.AuctionID = receipt.AuctionID
+	outcome.Message = receipt.Message
+
+	// Jawabannya DICATAT apa pun isinya, termasuk penolakan.
+	//
+	// Penolakan yang tidak dicatat membuat baris tetap bertanda "belum dikirim", dan
+	// petugas mengirimnya berulang kali ke balai lelang yang sudah menolaknya.
+	if err := repo.MarkSentToAuction(ctx, salvageID, receipt); err != nil {
+		s.warn("jawaban balai lelang gagal dicatat pada pengajuan",
+			salvageID, portalAlias, err.Error())
+	}
+
+	if s.logger != nil {
+		s.logger.Info("pengajuan salvage dikirim ke balai lelang",
+			slog.String("modul", "inbox-salvage"),
+			slog.String("id_salvage", salvageID),
+			slog.String("portal", portalAlias),
+			slog.Bool("diterima", outcome.Accepted),
+			slog.String("id_balai_lelang", outcome.AuctionID),
+		)
+	}
+	return outcome
+}
+
+// notifySubmission mengirim pemberitahuan "pengajuan salvage tersimpan".
+//
+// # Kenapa rinciannya DIBACA ULANG, bukan disalin dari form
+//
+// Karena subjek surel memuat NAMA TERTANGGUNG, dan form Tambah tidak memuatnya — ia milik
+// klaimnya, bukan milik pengajuannya. Sistem lama membacanya dari
+// `pyWorkPage.Policy.QQName`, halaman yang sudah termuat di sana sepanjang alur; di sini
+// halaman itu tidak ada, dan satu pembacaan adalah harga yang dibayar untuk subjek yang
+// sama.
+//
+// Pembacaannya di LUAR transaksi dan hanya terjadi bila Notifier memang dipasang.
+// Kegagalannya tidak menggagalkan apa pun — surel tetap dikirim, hanya tanpa ekor subjek.
+func (s *Service) notifySubmission(
+	ctx context.Context,
+	repo inboxsalvage.Repo,
+	portalAlias string,
+	form inboxsalvage.Form,
+	salvageID string,
+) NotificationOutcome {
+	if s.notifier == nil {
+		return NotificationOutcome{}
+	}
+
+	notice := inboxsalvage.SubmissionNotice{
+		SalvageID:    salvageID,
+		ClaimNo:      form.ClaimNo,
+		SalvageType:  form.SalvageType,
+		Location:     form.Location,
+		Currency:     form.Currency,
+		MinimumValue: form.MinimumValue,
+		OfferValue:   form.OfferValue,
+		Remark:       form.Remark,
+		Submitter:    form.Caller.Login,
+		ItemCount:    len(form.Items),
+	}
+	if form.Email != "" {
+		notice.ExtraRecipients = []string{form.Email}
+	}
+
+	if detail, err := repo.Detail(ctx, salvageID); err == nil {
+		notice.InsuredName = detail.BusinessName
+	}
+
+	outcome := NotificationOutcome{Attempted: true}
+
+	if err := s.notifier.NotifySalvageSubmitted(ctx, notice); err != nil {
+		// WARN, bukan ERROR: penyimpanannya berhasil, dan yang gagal adalah akibat
+		// sampingannya. Mencatatnya sebagai ERROR akan menyamakannya dengan kegagalan
+		// yang membuat pengguna kehilangan pekerjaan (`11-CROSSCUTTING.md` §2.2).
+		s.warn("pemberitahuan pengajuan salvage gagal dikirim",
+			salvageID, portalAlias, err.Error())
+		return outcome
+	}
+
+	outcome.Sent = true
+	return outcome
+}
+
+// warn menulis satu baris peringatan dengan isian yang sama di setiap tempat.
+//
+// Nomor klaim TIDAK ikut, dengan alasan yang sama seperti pada pencatatan penyimpanan: ia
+// data nasabah (`D-69`). Yang menunjuk barisnya adalah ID salvage.
+func (s *Service) warn(message, salvageID, portalAlias, reason string) {
+	if s.logger == nil {
+		return
+	}
+	s.logger.Warn(message,
+		slog.String("modul", "inbox-salvage"),
+		slog.String("id_salvage", salvageID),
+		slog.String("portal", portalAlias),
+		slog.String("galat", reason),
+	)
+}
 // AttachedDocuments adalah hasil satu permintaan unggah, satu baris per berkas.
 type AttachedDocuments struct {
 	Items []inboxsalvage.AttachedDocument

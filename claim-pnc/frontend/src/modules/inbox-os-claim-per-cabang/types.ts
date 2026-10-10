@@ -103,10 +103,6 @@ export type ListResponse = {
 
   /** Ambang umur yang membuat baris merah, dipakai menjelaskan pewarnaannya. */
   ambang_aging: number
-
-  /** Selisih terhadap layar Pega yang sudah diputuskan (`D-54`). */
-  selisih_terencana: string[]
-
   portal: string
 }
 
@@ -161,12 +157,94 @@ export type DetailHeader = {
  * itu dapat diperbaiki tanpa menyentuh backend begitu keempat rule itu tiba.
  */
 export type DetailObject = {
+  /** Kunci baris. Tidak digambar; ia yang menandai baris mana yang sedang terbuka. */
+  id: string
   nama: string
   lokasi: string
   pekerjaan: string
   tanggal_lahir: string
   ktp_paspor: string
   status_peserta: string
+
+  /** Isi panel yang terbuka ketika baris ini dibuka. Lihat `DetailCoverage`. */
+  coverage: DetailCoverage[]
+}
+
+/**
+ * Satu baris coverage di bawah sebuah objek pertanggungan.
+ *
+ * Ketiga kolomnya persis yang digambar layar lama. Di Pega, baris objek adalah
+ * **master-detail** (`pyRowEditing = masterDetail`, `pyEditAction = ViewObjectItem`), dan
+ * aksi itu merender `ViewObjectCoverage` yang menggambar `.Currency`, `.SumTSI`, dan
+ * `.CoverageNote`.
+ */
+export type DetailCoverage = {
+  id: string
+  /** Isi kolom "Coverage" — NAMA jaminan, mis. "FLEXAS". */
+  coverage: string
+  mata_uang: string
+  /** Teks desimal kanonik, bukan angka — digambar lewat `formatRupiah`. */
+  tsi: string
+  /** Isi grid "Object Item" yang terbuka saat baris coverage dibuka. */
+  object_item: DetailItem[]
+  /** Isi grid "List Spreading". */
+  list_spreading: DetailSpreading[]
+  /** Isi grid "CO MEMBER". */
+  co_member: DetailCoMember[]
+}
+
+/**
+ * Satu baris grid "List Spreading".
+ *
+ * Melekat pada COVERAGE, bukan pada adjustment. Kedua nilai uangnya DIHITUNG peladen —
+ * kolom tersimpannya NULL pada seluruh baris tabel sumbernya.
+ */
+export type DetailSpreading = {
+  /** `ORS`, `QS`, `FAC-OUT`, dan seterusnya — bukan kodenya. */
+  tipe_treaty: string
+  currency: string
+  /** Teks desimal kanonik. */
+  estimasi_value: string
+  /** Teks berdesimal EMPAT, mengikuti layar lama yang menuliskannya `100,0000%`. */
+  pembagian_persentase: string
+  /** Teks desimal kanonik — `estimasi_value × persentase / 100`. */
+  result_value: string
+}
+
+/** Satu baris grid "CO MEMBER". Bentuknya sama dengan Spreading. */
+export type DetailCoMember = {
+  asuransi: string
+  currency: string
+  estimasi_value: string
+  pembagian_persentase: string
+  result_value: string
+}
+
+/**
+ * Satu baris grid "Object Item" — tingkat ketiga.
+ *
+ * Nama dan deskripsinya HAMPIR SELALU KOSONG, dan itu bukan cacat: sumbernya memang tidak
+ * memuatnya. `T_CLAIM_OBJECTITEMLIST` hanya punya 1 baris di seluruh tabel, sedangkan
+ * 22.004 klaim punya estimasi. Layar lama pun menggambar barisnya dengan sel kosong.
+ */
+export type DetailItem = {
+  id: string
+  object_item: string
+  deskripsi_item: string
+  /** Isi grid "Estimasi" yang terbuka saat baris item dibuka. */
+  estimasi: DetailEstimation[]
+}
+
+/** Satu baris grid "Estimasi" — tingkat terdalam. */
+export type DetailEstimation = {
+  estimasi_ke: string
+  tanggal_estimasi: string
+  tipe_estimasi: string
+  mata_uang: string
+  /** Teks desimal kanonik. */
+  nilai_kurs: string
+  /** Teks desimal kanonik. DAPAT negatif — koreksi yang saling meniadakan. */
+  nilai_estimasi: string
 }
 
 /** Satu baris grid riwayat progres. */
@@ -204,9 +282,60 @@ export type DetailResponse = {
   riwayat_progres: DetailProgress[]
   komunikasi_adjuster: DetailMessage[]
   cabang: Branch
+  portal: string
+}
 
-  /** Selisih POPUP terhadap Pega — daftar yang berbeda dari milik layar daftar. */
-  selisih_terencana: string[]
+/**
+ * Bentuk panel ringkasan di atas grid — kartu angka, sebaran umur, dan rincian per COB
+ * maupun per sumber bisnis.
+ *
+ * Panel ini TIDAK ada di Pega; ia diminta Work Owner (2026-10-08). Karena tidak ada
+ * pembandingnya, yang dapat diuji hanyalah konsistensinya dengan grid di bawahnya.
+ */
 
+/** Satu pita pada batang sebaran umur. */
+export type AgeBucket = {
+  label: string
+  berkas: number
+
+  /** Teks desimal kanonik; dibaca dengan `formatRupiah`. */
+  nilai: string
+}
+
+/** Satu baris rincian per COB atau per sumber bisnis. */
+export type SummaryGroup = {
+  nama: string
+  berkas: number
+  nilai: string
+  umur_di_atas_2_tahun: number
+}
+
+/** Jawaban `GET /api/inbox-os-claim-per-cabang/ringkasan`. */
+export type SummaryResponse = {
+  /** Kapan angkanya dibaca — waktu PEMBACAAN, bukan tanggal posisi data. */
+  posisi: string
+
+  total_berkas: number
+
+  /** Teks desimal kanonik. */
+  total_estimasi: string
+  total_reserve_or: string
+
+  /**
+   * Membedakan "nol" dari "tidak terbaca".
+   *
+   * Rp 0 adalah jawaban yang sah dan memang lazim di sini — tabel treaty hampir tidak
+   * memuat klaim PNC. Yang `false` berarti DB Link sedang bermasalah, dan itu menuntut
+   * tindakan yang berbeda.
+   */
+  total_reserve_or_terbaca: boolean
+
+  umur_di_atas_2_tahun: number
+
+  sebaran_umur: AgeBucket[]
+  per_cob: SummaryGroup[]
+  per_sumber_bisnis: SummaryGroup[]
+
+  cabang: Branch
   portal: string
 }

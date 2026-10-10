@@ -5,13 +5,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
 import { TextAreaField } from '@/components/TextAreaField'
 
-import {
-  usePUCLReasons,
-  usePUCLSubjects,
-  useRCLDoctors,
-  useSendToRCLPUCL,
-  violationsFrom,
-} from './api'
+import { usePUCLReasons, usePUCLSubjects, useSendToRCLPUCL, violationsFrom } from './api'
 
 /**
  * Tiga jalur penanganan — `.ClaimData.PUCLStatus.RCL_PUCL`.
@@ -29,6 +23,36 @@ const PANEL_PA = '002'
 
 /** Panjang kolom POOLDATA.TC_PNC_PUCL yang menampung isiannya. */
 const MAX_TEXT = 4000
+
+/**
+ * Pilihan dropdown "Nama Dokter" — `pyPromptTableList` property `NamaDokterRCL`.
+ *
+ * Daftar TETAP dua baris, disalin apa adanya dari property yang diserahkan Work Owner,
+ * dalam urutan aslinya (`REPEATINGINDEX` 1 lalu 2) — bukan diurutkan abjad, karena itulah
+ * urutan yang dilihat petugas hari ini.
+ *
+ * # Kenapa di sini, bukan diambil dari server
+ *
+ * Di Pega ia bukan data melainkan bagian dari definisi property-nya: tidak ada kueri, tidak
+ * ada tabel, tidak ada yang dapat gagal. Menjadikannya panggilan jaringan menambah keadaan
+ * memuat dan keadaan gagal pada sesuatu yang tidak punya keduanya — dan keadaan gagal itu
+ * yang benar-benar terjadi: versi sebelumnya menariknya dari `POOLDATA.T_ACCESS_GROUP_PNC`
+ * (dugaan, karena rule sumbernya hilang dari export — `R-16`), kuerinya tidak mengembalikan
+ * satu baris pun, dan dropdown-nya kosong di layar.
+ *
+ * `id` yang disimpan (`pyStandardValue`), `nama` yang digambar (`pyLocalizedValue`). Pada
+ * baris kedua keduanya BERBEDA, dan tidak boleh tertukar: yang tersimpan ke
+ * `NAMADOKTERRCL_1` harus bentuk tanpa spasi, karena itulah yang dicocokkan penyaring
+ * Inbox RCL. Tertukar, klaimnya hilang dari semua inbox tanpa satu pesan galat.
+ *
+ * Kedua nama ini hardcode di dalam rule Pega — bagian dari 24 Operator ID yang `D-15`
+ * tetapkan menjadi master data (`F-4`), yang belum ada. Work Owner mengonfirmasi keduanya
+ * masih berlaku (2026-10-06). Menuliskan nama Operator ID lengkap diizinkan `D-69`.
+ */
+const RCL_DOCTORS = [
+  { id: 'WAHYUKRISTANTI', nama: 'WAHYUKRISTANTI' },
+  { id: 'MARGARETHAROSAGUNAWAN', nama: 'MARGARETHA ROSA GUNAWAN' },
+]
 
 /**
  * Isian "Nama Dokter" — `pyVisible OTHER`, kondisi
@@ -122,7 +146,6 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
   const withDoctor = showDoctorName(track, groupPanel)
   const withReasons = showRejectReasons(track, groupPanel)
   const reasons = usePUCLReasons(search, withReasons)
-  const doctors = useRCLDoctors(withDoctor)
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -297,17 +320,15 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
 
         {/* 7 — Nama Dokter: `RCL_PUCL != 2 && IsPA`
 
-            DROPDOWN, bukan isian bebas — `pxDropdown` pada sectionnya. Sumber pilihannya
-            tidak ada di export (`R-16`), tetapi tidak perlu dikarang: nilai yang dipilih
-            di sini disimpan ke `NAMADOKTERRCL_1`, dan layar Inbox RCL menyaring antreannya
-            dengan mencocokkan kolom itu terhadap identitas LAMA pemanggil. Daftarnya
-            karena itu dibaca dari tabel dan penyaring yang sama persis.
+            DROPDOWN, bukan isian bebas — `pxDropdown` pada sectionnya. Isinya `RCL_DOCTORS`
+            di atas: `pyPromptTableList` property `NamaDokterRCL`, disalin apa adanya.
 
-            Itu pula sebabnya ia tidak boleh tetap berupa isian bebas: nama yang diketik
-            dan tidak cocok dengan satu identitas pun membuat klaimnya hilang dari semua
-            inbox — tanpa satu pesan galat. Dibiarkan "----- PILIH -----", penerimanya
-            ditentukan penugasan tahap RCLDokter, persis seperti lini selain PA yang tidak
-            menampilkan isian ini sama sekali. */}
+            Digambar langsung dari daftar itu, TANPA panggilan jaringan. Tidak ada keadaan
+            memuat dan tidak ada keadaan gagal, karena di Pega pun ia bukan data melainkan
+            bagian dari definisi property-nya.
+
+            Dibiarkan "----- PILIH -----", penerimanya ditentukan penugasan tahap
+            RCLDokter, persis seperti lini selain PA yang tidak menampilkan isian ini. */}
         {withDoctor && (
           <div className="mt-4">
             <label htmlFor="nama-dokter" className="block text-sm font-medium text-slate-700">
@@ -321,20 +342,14 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
               onChange={(e) => setDoctor(e.target.value)}
             >
               <option value="">----- PILIH -----</option>
-              {(doctors.data?.pilihan ?? []).map((o) => (
+              {RCL_DOCTORS.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.id}
+                  {o.nama}
                 </option>
               ))}
             </select>
             {failureOf('nama_dokter') && (
               <p className="mt-1 text-sm text-red-700">{failureOf('nama_dokter')}</p>
-            )}
-            {doctors.isError && (
-              <p className="mt-1 text-xs text-red-700">
-                Daftar dokter RCL gagal dimuat. Klaim tetap dapat dikirim; penerimanya
-                ditentukan penugasan tahap RCLDokter.
-              </p>
             )}
             <p className="mt-1 text-xs text-slate-500">
               Dokter yang dipilih inilah yang melihat klaimnya di Inbox RCL. Dibiarkan kosong,

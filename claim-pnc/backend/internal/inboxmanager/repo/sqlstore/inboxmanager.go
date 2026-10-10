@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -243,11 +244,220 @@ func (r *Repo) dashboardOutstanding(
 		return inboxmanager.DashboardView{}, err
 	}
 
+	years, err := r.outstandingYears(ctx, flags)
+	if err != nil {
+		return inboxmanager.DashboardView{}, err
+	}
+
+	summary, err := r.outstandingSummary(ctx, q, flags, years)
+	if err != nil {
+		return inboxmanager.DashboardView{}, err
+	}
+
+	categories, err := r.outstandingCategories(ctx)
+	if err != nil {
+		return inboxmanager.DashboardView{}, err
+	}
+
 	panels := clonePanels(q.Tab.Panels)
 	panels[0].Rows = pic
 	panels[1].Rows = group
 
-	return inboxmanager.DashboardView{Panels: panels}, nil
+	// Kolom tahun DITAMBAHKAN di sini, bukan diumumkan di tab.go: tahun mana saja yang
+	// tampil ditentukan data, dan di Pega pun begitu.
+	panels[2].Columns = append(panels[2].Columns, yearColumns(years)...)
+	panels[2].Rows = summary
+
+	return inboxmanager.DashboardView{
+		Panels:  panels,
+		Filters: outstandingFilters(categories),
+	}, nil
+}
+
+// yearColumns mengubah daftar tahun menjadi kolom grid.
+func yearColumns(years []string) []inboxmanager.Column {
+	result := make([]inboxmanager.Column, 0, len(years))
+	for _, year := range years {
+		result = append(result, inboxmanager.Column{Key: year, Title: year})
+	}
+	return result
+}
+
+// outstandingFilters menyusun kedua penyaring di bawah kedua grid pertama.
+//
+// Pilihan "Reinsurer" ditulis TETAP, dan itu mengikuti Pega: `PNCGetDashboardOSInbox_Act`
+// langkah 7 menyusun ketiganya sebagai nilai literal (`1`→Leader, `2`→Member, `F`→Fac In),
+// bukan membacanya dari tabel. Nilai yang disimpan `T_CLAIMLIST_ADMIN.REINSURER` sudah
+// berbentuk hasil `DECODE` itu — `LEADER`, `MEMBER`, `FAC-IN`.
+//
+// Pilihan "Kategori OS" dibaca dari master, karena di Pega pun begitu (`BrowseMstProgress1`).
+func outstandingFilters(categories []string) []inboxmanager.FilterView {
+	categoryOptions := make([]inboxmanager.FilterOption, 0, len(categories)+1)
+	categoryOptions = append(categoryOptions, inboxmanager.FilterOption{Label: "All"})
+	for _, category := range categories {
+		categoryOptions = append(categoryOptions,
+			inboxmanager.FilterOption{Value: category, Label: category})
+	}
+
+	return []inboxmanager.FilterView{
+		{
+			Key:   inboxmanager.FilterReinsurer,
+			Label: "Reinsurer",
+			Options: []inboxmanager.FilterOption{
+				{Label: "All"},
+				{Value: "LEADER", Label: "Leader"},
+				{Value: "MEMBER", Label: "Member"},
+				{Value: "FAC-IN", Label: "Fac In"},
+			},
+		},
+		{
+			Key:     inboxmanager.FilterCategoryOS,
+			Label:   "Kategori OS",
+			Options: categoryOptions,
+		},
+	}
+}
+
+// outstandingYears membaca tahun mana saja yang menjadi kolom grid ketiga.
+func (r *Repo) outstandingYears(ctx context.Context, flags []any) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, query("dashboard_os_years"), flags...)
+	if err != nil {
+		return nil, wrapQueryError("menjalankan kueri dashboard_os_years", err)
+	}
+	defer rows.Close()
+
+	// Tahunnya dibaca sebagai ANGKA — kueri memakai EXTRACT, bukan TO_CHAR, supaya
+	// pemformatan tetap berada di Go dan pernyataannya tetap portabel.
+	result := []string{}
+	for rows.Next() {
+		var year sql.NullInt64
+		if err := rows.Scan(&year); err != nil {
+			return nil, fmt.Errorf("membaca baris dashboard_os_years: %w", err)
+		}
+		if year.Valid {
+			result = append(result, strconv.FormatInt(year.Int64, 10))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil dashboard_os_years: %w", err)
+	}
+	return result, nil
+}
+
+// outstandingCategories membaca pilihan penyaring "Kategori OS" dari master.
+func (r *Repo) outstandingCategories(ctx context.Context) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, query("dashboard_os_categories"))
+	if err != nil {
+		return nil, wrapQueryError("menjalankan kueri dashboard_os_categories", err)
+	}
+	defer rows.Close()
+
+	result := []string{}
+	for rows.Next() {
+		var label sql.NullString
+		if err := rows.Scan(&label); err != nil {
+			return nil, fmt.Errorf("membaca baris dashboard_os_categories: %w", err)
+		}
+		if value := strings.TrimSpace(label.String); value != "" {
+			result = append(result, value)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil dashboard_os_categories: %w", err)
+	}
+	return result, nil
+}
+
+// outstandingSummary menyusun tabel silang grid ketiga.
+//
+// # Kenapa pivotnya di sini, bukan di SQL
+//
+// Pega merangkai satu `SUM(CASE WHEN … )` per tahun sebagai TEKS lalu menyisipkannya ke
+// daftar SELECT. Pola itu membangun SQL saat jalan dan membuat jumlah penanda bind berubah
+// tiap tahun bertambah — dua hal yang dilarang di berkas ini. Kuerinya karena itu
+// mengembalikan bentuk panjang, dan penyilangannya dikerjakan di sini.
+//
+// Tahun yang TIDAK ada di daftar kolom diabaikan, bukan dibuang diam-diam ke kolom lain.
+// Dengan satu dasar tahun untuk kolom dan isinya, keadaan itu tidak dapat terjadi — lihat
+// catatan selisih terencana.
+func (r *Repo) outstandingSummary(
+	ctx context.Context,
+	q inboxmanager.Query,
+	flags []any,
+	years []string,
+) ([]inboxmanager.DashboardRow, error) {
+	args := append(append([]any{}, flags...),
+		boolFlag(q.Reinsurer == ""), q.Reinsurer,
+		boolFlag(q.CategoryOS == ""), q.CategoryOS,
+	)
+
+	rows, err := r.db.QueryContext(ctx, query("dashboard_os_summary"), args...)
+	if err != nil {
+		return nil, wrapQueryError("menjalankan kueri dashboard_os_summary", err)
+	}
+	defer rows.Close()
+
+	known := map[string]bool{}
+	for _, year := range years {
+		known[year] = true
+	}
+
+	type key struct{ category, reinsurer string }
+	order := []key{}
+	cells := map[key]map[string]int{}
+
+	for rows.Next() {
+		var category, reinsurer sql.NullString
+		var year sql.NullInt64
+		var total int
+		if err := rows.Scan(&category, &reinsurer, &year, &total); err != nil {
+			return nil, fmt.Errorf("membaca baris dashboard_os_summary: %w", err)
+		}
+
+		k := key{
+			category:  strings.TrimSpace(category.String),
+			reinsurer: strings.TrimSpace(reinsurer.String),
+		}
+		if _, seen := cells[k]; !seen {
+			cells[k] = map[string]int{}
+			order = append(order, k)
+		}
+		if value := strconv.FormatInt(year.Int64, 10); year.Valid && known[value] {
+			cells[k][value] += total
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil dashboard_os_summary: %w", err)
+	}
+
+	result := make([]inboxmanager.DashboardRow, 0, len(order))
+	for _, k := range order {
+		row := inboxmanager.DashboardRow{
+			Cells: map[string]inboxmanager.DashboardCell{
+				inboxmanager.FieldKategoriDOL: {Text: k.category},
+				inboxmanager.FieldReinsurer:   {Text: k.reinsurer},
+			},
+		}
+
+		// Tahun TANPA klaim digambar sebagai 0, bukan dikosongkan. Sel kosong pada tabel
+		// silang terbaca sebagai "tidak diketahui"; nol terbaca sebagai "tidak ada".
+		for _, year := range years {
+			row.Cells[year] = inboxmanager.DashboardCell{Count: cells[k][year]}
+		}
+		result = append(result, row)
+	}
+	return result, nil
+}
+
+// boolFlag mengubah syarat Go menjadi bendera 1/0 yang dikirim sebagai argumen.
+//
+// Bentuk ini dipakai supaya penanda bind tetap muncul tepat sekali dan menaik — lihat
+// catatan di kepala berkas SQL.
+func boolFlag(on bool) int {
+	if on {
+		return 1
+	}
+	return 0
 }
 
 // countByDimension membaca grid berbentuk (dimensi, jumlah).
@@ -329,9 +539,10 @@ func (r *Repo) dashboardProduktivitas(
 		return inboxmanager.DashboardView{}, err
 	}
 
+	// Urutan panelnya PIC lebih dulu, mengikuti urutan page list di section.
 	panels := clonePanels(q.Tab.Panels)
-	panels[0].Rows = business
-	panels[1].Rows = pic
+	panels[0].Rows = pic
+	panels[1].Rows = business
 
 	refreshed, err := r.refreshedAt(ctx)
 	if err != nil {
@@ -453,14 +664,14 @@ func (r *Repo) claimRows(
 	for rows.Next() {
 		var dimension, cause sql.NullString
 		var total, accepted, rejected, outstanding int
-		var acceptedAmount, rejectedAmount, outstandingAmount sql.NullString
+		var claimAmount, acceptedAmount, rejectedAmount, outstandingAmount sql.NullString
 
 		targets := []any{&dimension}
 		if withCause {
 			targets = append(targets, &cause)
 		}
 		targets = append(targets,
-			&total, &accepted, &rejected, &outstanding,
+			&total, &claimAmount, &accepted, &rejected, &outstanding,
 			&acceptedAmount, &rejectedAmount, &outstandingAmount)
 
 		if err := rows.Scan(targets...); err != nil {
@@ -470,6 +681,7 @@ func (r *Repo) claimRows(
 		cells := map[string]inboxmanager.DashboardCell{
 			inboxmanager.FieldNamaBisnisDK: {Text: dimension.String},
 			inboxmanager.FieldTotalKlaim:   {Count: total},
+			inboxmanager.FieldNilaiKlaim:   {Amount: claimAmount.String},
 			inboxmanager.FieldJumlahAksep:  {Count: accepted},
 			inboxmanager.FieldJumlahTolak:  {Count: rejected},
 			inboxmanager.FieldJumlahOS:     {Count: outstanding},

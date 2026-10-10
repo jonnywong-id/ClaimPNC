@@ -45,7 +45,10 @@ func TestCountOutstandingBindsFilters(t *testing.T) {
 	// Kotak cari dikirim apa adanya (sudah dipangkas), polanya dibesarkan dan wildcard-nya
 	// di-escape; paginasi tidak ikut pada kueri hitung.
 	mock.ExpectQuery(exact("outstanding_count")).
-		WithArgs("pol_1", `%POL\_1%`, `%POL\_1%`, "PA", "PA", "PA", "PA", "PA").
+		WithArgs("pol_1", `%POL\_1%`, `%POL\_1%`, "PA", "PA", "PA", "PA", "PA",
+			// Kedua belas penanda panel penyaring kosong: ujinya hanya mengisi kotak cari.
+			nil, nil, nil, nil, nil, nil,
+			nil, nil, nil, nil, nil, nil).
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(12))
 
 	total, err := repo.CountOutstanding(context.Background(),
@@ -59,7 +62,9 @@ func TestCountOutstandingError(t *testing.T) {
 	repo, mock := newMockRepo(t)
 
 	mock.ExpectQuery(exact("outstanding_count")).
-		WithArgs(nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL").
+		WithArgs(nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL",
+			nil, nil, nil, nil, nil, nil,
+			nil, nil, nil, nil, nil, nil).
 		WillReturnError(sql.ErrConnDone)
 
 	_, err := repo.CountOutstanding(context.Background(), dashboardclaim.Filter{})
@@ -77,7 +82,11 @@ func TestListOutstandingMapsRows(t *testing.T) {
 	report := time.Date(2026, time.September, 2, 0, 0, 0, 0, time.UTC)
 	registered := time.Date(2026, time.September, 2, 3, 0, 0, 0, time.UTC)
 
-	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL"}
+	// Delapan penyaring lama ditambah dua belas penanda panel — Outstanding sendiri yang
+	// memilikinya; kueri survei tetap delapan.
+	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL",
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil}
 	mock.ExpectQuery(exact("outstanding_count")).WithArgs(filters...).
 		WillReturnRows(sqlmock.NewRows([]string{"TOTAL"}).AddRow(30))
 	mock.ExpectQuery(exact("outstanding_list")).WithArgs(append(filters, 25, 25)...).
@@ -102,7 +111,9 @@ func TestListOutstandingMapsRows(t *testing.T) {
 }
 
 func TestListOutstandingErrors(t *testing.T) {
-	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL"}
+	filters := []driver.Value{nil, nil, nil, "ALL", "ALL", "ALL", "ALL", "ALL",
+		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil}
 	ctx := context.Background()
 
 	repo, mock := newMockRepo(t)
@@ -257,5 +268,57 @@ func TestListSurveyErrors(t *testing.T) {
 	_, err = repo.ListSurvey(ctx, kind, dashboardclaim.Filter{})
 	require.ErrorIs(t, err, boom)
 	require.Contains(t, err.Error(), `menutup daftar survei "2"`)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Dokumen yang KOSONG bukan galat — klaim yang belum punya baris di JSON_KLAIM tetap terbuka.
+func TestFindClaimDetailTreatsMissingDocumentAsEmpty(t *testing.T) {
+	repo, mock := newMockRepo(t)
+
+	mock.ExpectQuery(exact("klaim_rincian")).WithArgs("KUNCI-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"NOMOR_KLAIM", "KLAIM_ID", "STATUS_PROSES", "STATUS_KLAIM",
+			"PIC_TEKNIK", "ADMIN_PNC", "DIDAFTARKAN_PADA", "DOKUMEN",
+		}).AddRow("PNCN.26.0001", "KUNCI-1", "Open", "1147", "PIC", "Admin", nil, nil))
+
+	detail, err := repo.FindClaimDetail(context.Background(), "KUNCI-1")
+	require.NoError(t, err)
+	require.Equal(t, "PNCN.26.0001", detail.ClaimNumber)
+	require.NotNil(t, detail.Document, "peta nil memaksa setiap pemanggil menjaganya")
+	require.Empty(t, detail.Document)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Dokumen yang ADA tetapi rusak JUSTRU galat, dan galatnya tidak mengutip isinya.
+func TestFindClaimDetailRejectsBrokenDocument(t *testing.T) {
+	repo, mock := newMockRepo(t)
+
+	// Nilai di bawah sengaja BUKAN data nasabah: ia hanya perlu gagal diurai.
+	const rusak = `{"ClaimData": `
+
+	mock.ExpectQuery(exact("klaim_rincian")).WithArgs("KUNCI-2").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"NOMOR_KLAIM", "KLAIM_ID", "STATUS_PROSES", "STATUS_KLAIM",
+			"PIC_TEKNIK", "ADMIN_PNC", "DIDAFTARKAN_PADA", "DOKUMEN",
+		}).AddRow("PNCN.26.0002", "KUNCI-2", "Open", "1147", "PIC", "Admin", nil, rusak))
+
+	_, err := repo.FindClaimDetail(context.Background(), "KUNCI-2")
+	require.ErrorIs(t, err, dashboardclaim.ErrClaimDetailUnreadable)
+
+	// Isi dokumen TIDAK boleh ikut ke pesan galat: ia memuat data nasabah (`D-69`), dan
+	// galat berakhir di log.
+	require.NotContains(t, err.Error(), "ClaimData")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Klaim yang tidak ada dijawab ErrClaimNotFound, bukan galat teknis.
+func TestFindClaimDetailMissingClaim(t *testing.T) {
+	repo, mock := newMockRepo(t)
+
+	mock.ExpectQuery(exact("klaim_rincian")).WithArgs("TIDAK-ADA").
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := repo.FindClaimDetail(context.Background(), "TIDAK-ADA")
+	require.ErrorIs(t, err, dashboardclaim.ErrClaimNotFound)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

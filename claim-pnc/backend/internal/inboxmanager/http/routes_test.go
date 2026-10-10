@@ -158,11 +158,14 @@ func TestMetadataPerCaller(t *testing.T) {
 	require.Equal(t, inboxmanager.LineNonMBU, body["lini_bisnis_anda"])
 	require.Equal(t, inboxmanager.DefaultTab, body["tab_bawaan"])
 	require.Len(t, body["tab"], 13)
-	require.NotEmpty(t, body["selisih_terencana"])
+	require.NotContains(t, body, "selisih_terencana")
 
 	first := body["tab"].([]any)[0].(map[string]any)
 	require.Equal(t, "dashboard", first["jenis"])
-	require.Len(t, first["panel"], 2)
+	require.Len(t, first["panel"], 3,
+		"tab Outstanding punya TIGA grid; yang ketiga tabel silang Kategori/DOL x Reinsurer")
+	require.Equal(t, true, first["punya_ekspor_detail"],
+		"hanya tab ini yang punya blok Export Data Detail Klaim")
 	require.Nil(t, first["kolom"])
 
 	payment := body["tab"].([]any)[11].(map[string]any)
@@ -211,10 +214,11 @@ func TestListDashboardWithRefreshAndPeriod(t *testing.T) {
 	panels := body["panel"].([]any)
 	require.Len(t, panels, 2)
 	first := panels[0].(map[string]any)
-	require.Equal(t, "grup_bisnis", first["kunci"])
+	require.Equal(t, "pic", first["kunci"],
+		"grid PIC lebih dulu, mengikuti urutan page list di section")
 	row := first["baris"].([]any)[0].(map[string]any)
-	require.Equal(t, map[string]any{"teks": "ANEKA"}, row[inboxmanager.FieldDimensi])
-	require.Equal(t, map[string]any{"jumlah": float64(21)}, row[inboxmanager.FieldTotalPeriodeIni])
+	require.Equal(t, map[string]any{"teks": "ALL"}, row[inboxmanager.FieldDimensi])
+	require.Equal(t, map[string]any{"jumlah": float64(34)}, row[inboxmanager.FieldTotalPeriodeIni])
 	require.Nil(t, body["baris"])
 	require.Nil(t, body["paginasi"])
 }
@@ -251,7 +255,7 @@ func TestListErrorsMapped(t *testing.T) {
 	rec, body := call(t, server, http.MethodGet, route+"?tab=99", "")
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	require.Equal(t, inboxmanagerhttp.CodeValidationFail, body["kode"])
-	require.Equal(t, []any{map[string]any{"isian": "tab", "pesan": "Tab tidak dikenal."}}, body["rincian"])
+	require.Equal(t, []any{map[string]any{"field": "tab", "pesan": "Tab tidak dikenal."}}, body["detail"])
 
 	rec, body = call(t, server, http.MethodGet, route+"?tab=8", "")
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
@@ -375,8 +379,8 @@ func TestDecideFlow(t *testing.T) {
 		rec, body := call(t, server, http.MethodPost, route+"/keputusan", `{bukan json`)
 		require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 		require.Equal(t, []any{map[string]any{
-			"isian": inboxmanager.FieldKeys, "pesan": "Badan permintaan tidak dapat dibaca.",
-		}}, body["rincian"])
+			"field": inboxmanager.FieldKeys, "pesan": "Badan permintaan tidak dapat dibaca.",
+		}}, body["detail"])
 	})
 
 	t.Run("bukan antrean", func(t *testing.T) {
@@ -459,8 +463,8 @@ func TestExportRejections(t *testing.T) {
 	rec, body := call(t, server, http.MethodGet, route+"/ekspor?tab=1", "")
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	require.Equal(t, []any{map[string]any{
-		"isian": "tab", "pesan": "Hanya antrean persetujuan yang dapat diekspor.",
-	}}, body["rincian"])
+		"field": "tab", "pesan": "Hanya antrean persetujuan yang dapat diekspor.",
+	}}, body["detail"])
 
 	rec, body = call(t, server, http.MethodGet, route+"/ekspor?tab=99", "")
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
@@ -488,4 +492,29 @@ func TestExportWriteFailureIsLogged(t *testing.T) {
 
 	require.Contains(t, logs.String(), "ekspor inbox manager gagal di tengah berkas")
 	require.Contains(t, logs.String(), "koneksi terputus")
+}
+
+// TestRentangLintasTahunMengirimPesanPega memastikan pesan Pega benar-benar sampai ke klien.
+//
+// Yang diuji BENTUK jawabannya, bukan hanya penolakannya: klien HTTP bersama membaca
+// pelanggaran dari kunci `detail` ber-`field`. Modul ini sempat memakai `rincian` ber-`isian`,
+// sehingga pesannya tidak pernah sampai ke layar sama sekali — pengguna hanya melihat
+// "Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi." tanpa tahu apa yang
+// ditandai.
+func TestRentangLintasTahunMengirimPesanPega(t *testing.T) {
+	server, _ := newServer(t, serverOptions{login: "MGR"})
+
+	rec, body := call(t, server, http.MethodGet,
+		route+"?tab=3&bentuk_periode=rentang&dari=2000-01-01&sampai=2026-01-01", "")
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	require.Equal(t, []any{map[string]any{
+		"field": inboxmanager.FieldPeriod,
+		"pesan": inboxmanager.MessageRangeSameYear,
+	}}, body["detail"])
+
+	// Tab Produktivitas TIDAK punya batas itu — rentang yang sama diterima.
+	rec, _ = call(t, server, http.MethodGet,
+		route+"?tab=2&bentuk_periode=rentang&dari=2000-01-01&sampai=2026-01-01", "")
+	require.Equal(t, http.StatusOK, rec.Code)
 }

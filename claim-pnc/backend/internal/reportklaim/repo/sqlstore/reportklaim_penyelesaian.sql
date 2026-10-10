@@ -109,16 +109,6 @@ SELECT a.claimid              AS "CaseID",
 --
 -- Yang dicari: akseptasi yang sudah bernilai tetapi LOD-nya belum tercetak —
 -- `STATUSAKSEPTASILOD IS NULL` dan `NOAKSEPTASI IS NULL`, pada klaim yang belum tutup.
---
--- SUMBER BARU (2026-10-08) — berlaku sama untuk report_pending_lod, report_akseptasi,
--- report_os_komite, dan report_os_belum_komite: JOIN INNER ke objek kerja Pega
--- (`PC_ASM_FW_GCNMFW_WORK` d/f) DIHAPUS. Satu-satunya yang dibacanya adalah penyaring
--- "belum tutup", kini dari `T_CLAIM_PNC` sendiri: `PYSTATUSWORK -> STATUSWORK`,
--- `ISPENDINGCLOSE -> ISPENDINGCLOSE`. Akibatnya klaim yang TIDAK punya objek kerja —
--- terutama klaim `PNCN` terbitan aplikasi ini — kini ikut. Diukur di Oracle dev
--- (rentang 2000–2030): pending LOD lini 346 95 -> 97 (lini lain sama), akseptasi
--- 182 -> 209, OS komite 112 -> 114 (diukur pada salinan yang cacat lamanya ditambal),
--- OS belum komite 206 -> 214. Tidak ada baris lama yang hilang karena status berbeda.
 SELECT b.nopolis    AS "PolicyNo",
        b.claimno    AS "ClaimNo",
        b.picteknik  AS "UserTeknis",
@@ -133,13 +123,14 @@ SELECT b.nopolis    AS "PolicyNo",
   FROM pooldata.t_claim_adjustment a
   JOIN pooldata.t_claim_pnc b ON a.claimid = b.claimid
   JOIN pooldata.pega_dashboardpnc c ON b.claimno = c.noklaim
+  JOIN datapega.pc_asm_fw_gcnmfw_work d ON b.claimid = d.pzinskey
  WHERE a.statusakseptasi IN ('0', '1')
    AND a.statusakseptasilod IS NULL
    AND a.paymenttype IN ('1', '2')
    AND a.noakseptasi IS NULL
    AND a.grossvalue IS NOT NULL
    AND b.branchname <> 'ASNET'
-   AND (b.statuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR b.ispendingclose = 'true')
+   AND (d.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR d.ispendingclose = 'true')
    AND CAST(b.registerdate AS DATE) >= :1
    AND CAST(b.registerdate AS DATE) <= :2
    AND (
@@ -177,9 +168,6 @@ SELECT b.nopolis    AS "PolicyNo",
 -- Ketiga anak-kueri okupasi memakai `rownum = 1` — sebagian bahkan `rownum = '1'`,
 -- membandingkan angka dengan teks. Keduanya diganti `FETCH NEXT 1 ROW ONLY`, padanan
 -- wajib pada `09-DATABASE-STRATEGY.md` §4 yang sudah dipakai 35 rule di sistem lama.
---
--- SUMBER BARU (2026-10-08): penyaring "belum tutup" dari T_CLAIM_PNC, bukan objek kerja
--- Pega — lihat report_pending_lod.
 SELECT b.claimno       AS "CaseID",
        b.nopolis       AS "NoKTP",
        b.qqname        AS "ClaimID",
@@ -259,12 +247,13 @@ SELECT b.claimno       AS "CaseID",
   FROM pooldata.t_claim_adjustment a
   JOIN pooldata.t_claim_pnc b ON a.claimid = b.claimid
   JOIN pooldata.pega_dashboardpnc c ON b.claimno = c.noklaim
+  JOIN datapega.pc_asm_fw_gcnmfw_work d ON b.claimid = d.pzinskey
  WHERE a.noakseptasi IS NOT NULL
    AND a.paymenttype IN ('1', '2')
    AND b.branchname <> 'ASNET'
    AND b.grouppanel IN ('003','004','006','009')
    AND b.businesscode NOT IN ('10145','10168','10165','10164','10053','10075','10126','10011','10077','10007')
-   AND (b.statuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR b.ispendingclose = 'true')
+   AND (d.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR d.ispendingclose = 'true')
    AND CAST(a.tglakseptasi AS DATE) >= :1
    AND CAST(a.tglakseptasi AS DATE) <= :2
  ORDER BY a.tglakseptasi ASC
@@ -283,17 +272,58 @@ SELECT b.claimno       AS "CaseID",
 -- Yang dicari: adjustment yang SUDAH bernilai tetapi BELUM bernomor akseptasi —
 -- `STATUSAKSEPTASI IN ('0','1')` dan `NOAKSEPTASI IS NULL`. Kolom "TKI" menyatakan
 -- keduanya: sudah komite bila statusnya '1', menunggu komite bila '0'.
---
--- SUMBER BARU (2026-10-08): penyaring "belum tutup" dari T_CLAIM_PNC, bukan objek kerja
--- Pega — lihat report_pending_lod.
 SELECT b.claimno       AS "CaseID",
        b.nopolis       AS "NoKTP",
        b.qqname        AS "ClaimID",
        b.picteknik     AS "Conveyance",
        b.businessname  AS "ClaimNo",
        b.leader_member AS "UserTeknisEmail",
-       c.occupationid   AS "UserTeknis",
-       c.occupation     AS "UserName",
+       -- Dua kolom ini DIPENDEKKAN keliru saat dipindahkan: ditulis sebagai satu kolom
+       -- `pega_dashboardpnc`, padahal sumbernya memilih di antara TIGA tabel menurut
+       -- Group Panel — Aneka, Properti (dari JSON), dan Marine Cargo.
+       --
+       -- Ketahuan karena `c.occupationid` tidak ada di `pega_dashboardpnc` (ORA-00904).
+       -- `c.occupation` justru ADA, sehingga separuh kesalahan ini tidak akan ketahuan
+       -- dari galat mana pun — ia hanya akan mengisi kolom dengan nilai yang salah.
+       --
+       -- Bentuknya disalin dari `report_komite_nonmbu`, yang memindahkan CASE yang
+       -- sama dengan benar.
+       CASE
+         WHEN b.grouppanel IN ('003','009') THEN
+           (SELECT t.occupationid FROM pooldata.t_anekalist t
+             WHERE t.nopolis = b.nopolis AND t.prodke = b.prodke AND t.indexobject = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+         WHEN b.grouppanel = '006' THEN
+           (SELECT cc.OccupationCode
+              FROM pooldata.t_propertylist z,
+                   JSON_TABLE(z.OCCUPATIONLIST, '$'
+                     COLUMNS (NESTED PATH '$.OccupationList[*]'
+                              COLUMNS (OccupationCode VARCHAR PATH '$.OccupationCode'))) cc
+             WHERE z.nopolis = b.nopolis AND z.indexobject = a.objectid AND z.prodke = b.prodke
+             FETCH NEXT 1 ROW ONLY)
+         ELSE
+           (SELECT g.goodsid FROM pooldata.t_cargolist g
+             WHERE g.nopolis = b.nopolis AND g.prodke = b.prodke AND g.goodsid = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+       END AS "UserTeknis",
+       CASE
+         WHEN b.grouppanel IN ('003','009') THEN
+           (SELECT t.occupationname FROM pooldata.t_anekalist t
+             WHERE t.nopolis = b.nopolis AND t.prodke = b.prodke AND t.indexobject = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+         WHEN b.grouppanel = '006' THEN
+           (SELECT dd.OccupationName
+              FROM pooldata.t_propertylist x,
+                   JSON_TABLE(x.OCCUPATIONLIST, '$'
+                     COLUMNS (NESTED PATH '$.OccupationList[*]'
+                              COLUMNS (OccupationName VARCHAR PATH '$.OccupationName'))) dd
+             WHERE x.nopolis = b.nopolis AND x.indexobject = a.objectid AND x.prodke = b.prodke
+             FETCH NEXT 1 ROW ONLY)
+         ELSE
+           (SELECT g.goodsname FROM pooldata.t_cargolist g
+             WHERE g.nopolis = b.nopolis AND g.prodke = b.prodke AND g.goodsid = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+       END AS "UserName",
        b.dateofloss    AS "CountryID",
        b.registerdate  AS "Country",
        a.analyst_tfkomitedate   AS "Email",
@@ -303,7 +333,7 @@ SELECT b.claimno       AS "CaseID",
        (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
          WHERE e.claimid = a.claimid AND e.estimationtype = '1' AND e.kursid = a.currency) AS "ProdKe",
        CASE
-         WHEN c.leader_member = 'LEADER'
+         WHEN b.leader_member = 'LEADER'
          THEN (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
                 WHERE e.claimid = a.claimid AND e.estimationtype = '1' AND e.kursid = a.currency) - a.grossvalue
          ELSE (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
@@ -347,6 +377,7 @@ SELECT b.claimno       AS "CaseID",
   FROM pooldata.t_claim_adjustment a
   JOIN pooldata.t_claim_pnc b ON a.claimid = b.claimid
   JOIN pooldata.pega_dashboardpnc c ON b.claimno = c.noklaim
+  JOIN datapega.pc_asm_fw_gcnmfw_work d ON b.claimid = d.pzinskey
  WHERE a.statusakseptasi IN ('0','1')
    AND (a.statusakseptasilod IS NULL OR a.statusakseptasilod <> '0')
    AND a.paymenttype IN ('1','2')
@@ -354,7 +385,7 @@ SELECT b.claimno       AS "CaseID",
    AND b.branchname <> 'ASNET'
    AND b.grouppanel IN ('003','004','006','009')
    AND b.businesscode NOT IN ('10145','10168','10165','10164','10053','10075','10126','10011','10077','10007')
-   AND (b.statuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR b.ispendingclose = 'true')
+   AND (d.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR d.ispendingclose = 'true')
    AND CAST(b.registerdate AS DATE) >= :1
    AND CAST(b.registerdate AS DATE) <= :2
  ORDER BY b.registerdate DESC
@@ -376,9 +407,6 @@ SELECT b.claimno       AS "CaseID",
 --
 -- Akibatnya nilai yang dikalikan pun berbeda: karena tidak ada akseptasi, yang dipakai
 -- adalah ESTIMASI — `shareasm / 100 * TTLOS`, bukan `ASM_SHARE_VALUE`.
---
--- SUMBER BARU (2026-10-08): penyaring "belum tutup" dari T_CLAIM_PNC (`a`), bukan objek
--- kerja Pega `f` — lihat report_pending_lod.
 SELECT a.claimno       AS "CaseID",
        a.nopolis       AS "NoKTP",
        a.qqname        AS "ClaimID",
@@ -448,6 +476,7 @@ SELECT a.claimno       AS "CaseID",
   FROM pooldata.t_claim_pnc a
   JOIN pooldata.pega_dashboardpnc b ON a.claimno = b.noklaim
   JOIN pooldata.t_claim_objectlist e ON a.claimid = e.claimid
+  JOIN datapega.pc_asm_fw_gcnmfw_work f ON a.claimid = f.pzinskey
   JOIN (SELECT d.claimid,
                SUM(d.estimationvalue) AS ttlos,
                MIN(k.currency)        AS currency
@@ -457,7 +486,7 @@ SELECT a.claimno       AS "CaseID",
  WHERE a.branchname <> 'ASNET'
    AND a.grouppanel IN ('003','004','006','009')
    AND a.businesscode NOT IN ('10145','10168','10165','10164','10053','10075','10126','10011','10077','10007')
-   AND (a.statuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR a.ispendingclose = 'true')
+   AND (f.pystatuswork NOT IN ('Resolved-Completed', 'Resolved-Rejected') OR f.ispendingclose = 'true')
    AND NOT EXISTS (SELECT 1 FROM pooldata.t_claim_adjustment adj WHERE adj.claimid = a.claimid)
    AND CAST(a.registerdate AS DATE) >= :1
    AND CAST(a.registerdate AS DATE) <= :2
@@ -524,10 +553,10 @@ SELECT a.claimno      AS "CaseID",
 -- Asal: `RDB List/ExportDataKomitesKlaimNONMBU-SQL.xml`, dijalankan
 -- `Activity/PNCReportDataKomites_act-Act.xml`.
 --
--- Bind:
---   :1  tanggal tutup klaim dari    DATE
---   :2  tanggal tutup klaim sampai  DATE
---   :3  status approve komite       '1' Approved | '2' Rejected
+-- Bind — nomornya mengikuti URUTAN KEMUNCULAN:
+--   :1  status approve komite       '1' Approved | '2' Rejected  (muncul paling awal)
+--   :2  tanggal tutup klaim dari    DATE
+--   :3  tanggal tutup klaim sampai  DATE
 --
 -- Berbeda dari jalur lini lain, di sini `statusapprove` BENAR-BENAR menyaring — kedua
 -- tombol menghasilkan berkas yang berbeda. Lihat catatan pada report_komite.
@@ -581,20 +610,6 @@ SELECT a.claimno      AS "CaseID",
 -- `Location` (judul "OR ASM") dan `NoteKasir` (judul "CLOSE CLAIM NOTE") tidak punya satu
 -- pun ekspresi di kueri aslinya. Keduanya SELALU kosong di berkas lama, dan dibiarkan
 -- kosong di sini — menebak `PRSN_OR` sebagai sumber "OR ASM" adalah karangan, bukan port.
---
--- # Objek kerja Pega tidak dibaca lagi (2026-10-08)
---
--- Join `d` ke `PC_ASM_FW_GCNMFW_WORK` diganti ("Perubahan nama tabel untuk Inbox.xlsx",
--- baris 16):
---
---   d.CLOSECLAIMDATE_1   -> b.CLOSECLAIMDATE (`T_CLAIM_PNC`)
---   d.PYID               -> `b.CLAIMID` tanpa prefix `ASM-FW-GCNMFW-WORK `, BUKAN `b.CLAIMNO`:
---                           diukur 2026-10-08, 15 klaim punya CLAIMNO yang berbeda dari nomor
---                           case-nya sendiri, dan nomor case Pega persis adalah ekor CLAIMID.
---                           Klaim `PNCN.YY.xxxx` tidak berprefix, sehingga ia apa adanya.
---   d.SURVEYORTYPE_1, ADJUSTERPIC_1, SURVEYORNAME_1, SURVEYORNAMEMARINE_1
---                        -> sv (`T_SURVEYORLIST`): berkas survei terakhir klaim itu, pada
---                           langkah terakhirnya — sama dengan report_close_klaim_nonmbu.
 SELECT b.claimno                                               AS "CaseID",
        b.nopolis                                               AS "NoKTP",
        b.qqname                                                AS "ClaimID",
@@ -681,17 +696,17 @@ SELECT b.claimno                                               AS "CaseID",
        a.analyst_tfkomitedate                                  AS "Email",
        a.acceptance_datecomitee                                AS "District",
        a.tglakseptasi                                          AS "AlasanKlaim",
-       b.closeclaimdate                                      AS "Conveyance",
+       d.closeclaimdate_1                                      AS "Conveyance",
        b.analyst_transferdate                                  AS "EmailTertanggung",
        b.closeclaimdate                                        AS "TanggalCloseUntukTAT",
        a.receivedatelod                                        AS "TanggalTerimaLOD",
        a.transfer_cashier_date                                 AS "TanggalTransferKasir",
-       CASE WHEN sv.surveytype IN ('2','3','4')
-            THEN sv.adjuster_pic ELSE '' END                   AS "FlagNOLL",
-       CASE WHEN sv.surveytype = '1' AND b.businessname = 'MARINE HULL'
-            THEN sv.surveyor_name
-            WHEN sv.surveytype = '2' AND b.businessname = 'MARINE HULL'
-            THEN sv.surveyor_name_marine
+       CASE WHEN d.surveyortype_1 IN ('2','3','4')
+            THEN d.adjusterpic_1 ELSE '' END                   AS "FlagNOLL",
+       CASE WHEN d.surveyortype_1 = '1' AND b.businessname = 'MARINE HULL'
+            THEN d.surveyorname_1
+            WHEN d.surveyortype_1 = '2' AND b.businessname = 'MARINE HULL'
+            THEN d.surveyornamemarine_1
             ELSE '' END                                        AS "FlagReject",
        (SELECT cu.currency
           FROM pooldata.currency cu
@@ -769,7 +784,11 @@ SELECT b.claimno                                               AS "CaseID",
        END                                                     AS "IDMaster",
        c.tsi                                                   AS "IdxSurveyResults",
        b.leader_member                                         AS "DaftarObjek",
-       p.sts_progress1                                         AS "AgingAmount",
+       -- "STS PROGRESS 1" adalah NAMA tahapan, dan namanya hidup di master
+       -- GCNM_MST_PROGRESS_KLAIM — tabel progres hanya menyimpan kodenya
+       -- (STATUS_PROGRESS1). Sumbernya pun menempuh dua tabel:
+       -- `WHERE G.STATUS_PROGRESS1 = I.ID_PROGRESS`.
+       mprog.sts_progress1                                        AS "AgingAmount",
        p.jsonstatus_progress2                                  AS "ProgresJSON",
        p.keterangan                                            AS "pyNote",
        b.coinsname                                             AS "OwnRisk",
@@ -795,15 +814,8 @@ SELECT b.claimno                                               AS "CaseID",
   FROM pooldata.t_claim_adjustment a
   JOIN pooldata.t_claim_pnc b            ON a.claimid = b.claimid
   JOIN pooldata.pega_dashboardpnc c      ON b.claimno = c.noklaim
-  LEFT JOIN (SELECT t.pnccaseid, t.surveytype, t.adjuster_pic,
-                    t.surveyor_name, t.surveyor_name_marine,
-                    ROW_NUMBER() OVER (PARTITION BY t.pnccaseid
-                                       ORDER BY t.tglinput DESC NULLS LAST,
-                                                LPAD(TRIM(t.index_survey), 10, '0') DESC NULLS LAST) AS rn
-               FROM pooldata.t_surveyorlist t) sv
-         ON sv.pnccaseid = b.claimid
-        AND sv.rn = 1
-  JOIN pooldata.t_claim_komite_list k    ON k.no_klaim = REPLACE(b.claimid, 'ASM-FW-GCNMFW-WORK ', '')
+  JOIN datapega.pc_asm_fw_gcnmfw_work d  ON b.claimid = d.pzinskey
+  JOIN pooldata.t_claim_komite_list k    ON k.no_klaim = d.pyid
                                         AND k.komite_id = a.caseidkomite
   LEFT JOIN pooldata.gcnm_progress_claim p
          ON p.pnccaseid = c.noklaim
@@ -811,14 +823,15 @@ SELECT b.claimno                                               AS "CaseID",
                              FROM pooldata.gcnm_progress_claim m
                             WHERE m.pnccaseid = c.noklaim
                               AND m.status_progress2 NOT IN ('2','24','60','59'))
+  LEFT JOIN pooldata.gcnm_mst_progress_klaim mprog ON mprog.id_progress = p.status_progress1
  WHERE b.branchname <> 'ASNET'
    AND b.grouppanel IN ('003','004','006','009')
    AND b.businesscode NOT IN ('10145','10168','10165','10164','10053',
                               '10075','10126','10011','10077','10007')
    AND k.komite_id IN (SELECT f.komite_id
                          FROM pooldata.t_claim_komite_list f
-                        WHERE f.statusapprove = :3
-                          AND f.no_klaim = REPLACE(b.claimid, 'ASM-FW-GCNMFW-WORK ', ''))
-   AND CAST(b.closeclaimdate AS DATE) >= :1
-   AND CAST(b.closeclaimdate AS DATE) <= :2
- ORDER BY b.closeclaimdate ASC
+                        WHERE f.statusapprove = :1
+                          AND f.no_klaim = d.pyid)
+   AND CAST(d.closeclaimdate_1 AS DATE) >= :2
+   AND CAST(d.closeclaimdate_1 AS DATE) <= :3
+ ORDER BY d.closeclaimdate_1 ASC

@@ -41,7 +41,14 @@ func TestSetujuMengeluarkanKlaimDariAntreanDokter(t *testing.T) {
 
 	decisions := store.Decisions()
 	require.Len(t, decisions, 1)
-	require.Equal(t, inboxrcl.WorkbasketRCLPUCL, decisions[0].Assignee)
+
+	// `ASSIGNED_OPERATOR_ID` berisi ADMIN KLAIM, bukan nama antrean dan bukan PIC Teknik
+	// (Work Owner, 2026-10-07). Contohnya punya keduanya, jadi uji ini benar-benar memilih.
+	require.Equal(t, memory.SampleClaimAdmin, decisions[0].Assignee)
+	require.NotEqual(t, inboxrcl.WorkbasketRCLPUCL, decisions[0].Assignee,
+		"nama antrean di kolom pemilik tidak dapat dicocokkan dengan satu orang pun")
+	require.NotEqual(t, memory.SampleTechnicalPIC, decisions[0].Assignee)
+
 	require.Equal(t, memory.SampleOperator, decisions[0].Operator)
 
 	// Tombol yang sama ditekan lagi (tab lain): klaim sudah bukan di antrean.

@@ -131,19 +131,25 @@ export function DetailForm({
       }}
     >
       {/*
-        ID hanya ditampilkan. Pada baris baru belum ada nilainya sama sekali — dan
-        menampilkan kotak kosong yang tampak dapat diisi justru menyesatkan.
+        ID DISEMBUNYIKAN saat menambah, mengikuti Pega (permintaan Work Owner 2026-10-05).
+
+        Di layar lama isiannya `pyReadOnly=true` dan belum punya nilai pada baris baru,
+        sehingga yang terlihat hanyalah kotak kosong yang tidak dapat diapa-apakan.
+        Menggambarnya di sini — bahkan sebagai keterangan "diterbitkan sistem" — hanya
+        menambah satu baris yang tidak dapat ditindaklanjuti siapa pun, tepat di puncak
+        form.
+
+        Pada penyuntingan ia TETAP ditampilkan: di sana nilainya ada, dan itulah satu-satunya
+        tempat petugas dapat membaca ID baris yang sedang dibuka.
       */}
-      <div>
-        <span className="block text-sm font-medium text-slate-700">ID</span>
-        <p className="mt-1.5 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
-          {existing === null ? (
-            <span className="text-slate-500">Diterbitkan sistem setelah disimpan.</span>
-          ) : (
-            existing.id
-          )}
-        </p>
-      </div>
+      {existing !== null && (
+        <div>
+          <span className="block text-sm font-medium text-slate-700">ID</span>
+          <p className="mt-1.5 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+            {existing.id}
+          </p>
+        </div>
+      )}
 
       {/* ID Master Kerugian — autocomplete ke POOLDATA.V_M_CAUSE_OF_LOSS. */}
       <div>
@@ -249,26 +255,60 @@ export function DetailForm({
         onChange={(e) => change('deskripsi_kerugian', e.target.value)}
       />
 
-      <Field
-        id={`${idField}-kode`}
-        label="Kode Kehilangan"
-        value={values.kode_kehilangan}
-        error={fieldError['kode_kehilangan']}
-        onChange={(e) => change('kode_kehilangan', e.target.value)}
-      />
+      {/*
+        URUTAN ISIAN mengikuti layar lama persis, dibaca dari posisi propertinya di
+        `Section/BrowseDetailCauseOfLoss-Section.xml`:
 
+          ID                 :1475
+          ID Master Kerugian :1631
+          Deskripsi Kerugian :1954
+          Status Aktif       :2123   <-- SEBELUM Kode Kehilangan
+          Kode Kehilangan    :2356
+          Bisnis             :3251
+
+        Keduanya sempat tertukar di sini, dan itu dikoreksi atas permintaan Work Owner
+        2026-10-05.
+      */}
       <SelectField
         id={`${idField}-status`}
         label="Status Aktif"
         value={values.status_aktif}
         options={options.map((option) => ({ value: option.kode, label: option.label }))}
         error={fieldError['status_aktif']}
-        // Baris lama dapat memuat Status Aktif kosong — kolomnya tidak punya constraint
-        // NOT NULL yang diketahui (`R-08`). Pilihan kosong dibiarkan agar baris semacam itu
-        // dapat disimpan ulang tanpa dipaksa memilih, yang berarti mengubah data yang tidak
-        // diminta siapa pun untuk diubah.
+        // TEPAT DUA pilihan — Aktif dan Tidak Aktif — persis seperti Pega.
+        //
+        // Work Owner mengirimkan tangkapan layar Pega yang berjalan pada 2026-10-05:
+        // dropdown-nya terbuka dan memuat dua baris saja, tanpa pilihan kosong. Itu bukti
+        // yang TIDAK dapat dibaca dari export — daftar pilihannya ber-`pyListSource =
+        // associated`, dan tidak ada satu pun direktori Properties di sana (`R-16`).
+        //
+        // # Kenapa ia tetap dinyalakan untuk baris bernilai kosong
+        //
+        // Dihitung dari Oracle pada hari yang sama:
+        //
+        //	STS_AKTIF = "1"   232 baris
+        //	STS_AKTIF = NULL    4 baris
+        //	STS_AKTIF = "0"     NOL baris
+        //
+        // Keempat baris ber-NULL itu nyata. Dropdown tanpa pilihan kosong menampilkan
+        // pilihan PERTAMA sebagai terpilih untuk nilai yang tidak dikenalnya — sehingga
+        // membuka salah satu baris itu akan memperlihatkan "Aktif", dan menekan Simpan
+        // mengubah datanya tanpa diminta siapa pun.
+        //
+        // Jadi: dua pilihan untuk setiap baris yang punya nilai — yaitu seluruh baris yang
+        // akan ditemui petugas sehari-hari — dan pilihan kosong HANYA muncul pada baris
+        // warisan yang memang belum pernah diisi.
+        includeEmpty={values.status_aktif === ''}
         emptyText="— belum diisi —"
         onChange={(e) => change('status_aktif', e.target.value)}
+      />
+
+      <Field
+        id={`${idField}-kode`}
+        label="Kode Kehilangan"
+        value={values.kode_kehilangan}
+        error={fieldError['kode_kehilangan']}
+        onChange={(e) => change('kode_kehilangan', e.target.value)}
       />
 
       <BusinessPicker

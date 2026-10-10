@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 
 import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
@@ -13,7 +12,6 @@ type Props = {
   /** Nomor klaim yang dibuka. Kosong berarti panel tertutup. */
   claimNo: string
   columns: DecisionColumn[]
-  onClose: () => void
 }
 
 /**
@@ -32,43 +30,44 @@ type Props = {
  * punya keputusannya sendiri. Grid History menampilkan pengajuan salvage; panel ini
  * menampilkan setiap keputusan di bawah klaim yang sama.
  *
- * # Kenapa ia panel, bukan halaman tersendiri
+ * # Kenapa ia MENGEMBANG DI DALAM baris, bukan panel di bawah tabel
  *
- * Karena di Pega pun ia flow action — dibuka di atas gridnya, lalu ditutup. Menjadikannya
- * halaman berarti pengguna kehilangan tempatnya di daftar setiap kali membuka satu klaim,
- * dan pada antrean yang dibaca berurutan itu terasa setiap kali.
+ * Karena begitulah Pega membukanya. Grid History di `Section/InboxReqSalvageASM` berkonfigurasi
+ * `pyEditingMode = expandPane` dengan `pyEditAction = DetailHistoryRequestSalvage` — yang
+ * diklik adalah BARISNYA, dan rinciannya mengembang di tempat. Grid itu **tidak punya kolom
+ * aksi sama sekali**.
+ *
+ * Semula di sini ia panel di bawah tabel yang dibuka tombol "Detail". Work Owner menunjukkan
+ * Pega tidak punya kolom itu (2026-10-05), dan `DataTable.expandedRow` ternyata sudah
+ * menirukan `expandPane` persis — barisnya menjadi `role="button"`, dapat dibuka Enter maupun
+ * Spasi, dan ber-`aria-expanded`. Tombolnya karena itu dibuang tanpa kehilangan satu pun
+ * jalur papan ketik.
+ *
+ * Tidak ada tombol "Tutup": menutupnya dengan menekan barisnya lagi, sama seperti membukanya.
  */
-export function DecisionPanel({ claimNo, columns, onClose }: Props) {
+export function DecisionPanel({ claimNo, columns }: Props) {
   const decisions = useBandingHargaSalvageDecisions(claimNo)
 
   if (claimNo === '') return null
 
   return (
-    <section
-      className="mt-4 rounded-kartu border border-slate-200 bg-white"
-      aria-label={`Riwayat keputusan banding klaim ${claimNo}`}
-    >
-      <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">
-            Riwayat Keputusan Banding
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-600">
-            Klaim <span className="font-medium text-slate-800">{claimNo}</span>
-          </p>
-        </div>
-
-        <Button tone="halus" onClick={onClose} aria-label="Tutup riwayat keputusan">
-          Tutup
-        </Button>
+    <section aria-label={`Riwayat keputusan banding klaim ${claimNo}`}>
+      <header className="px-1 pt-1 pb-2">
+        <h2 className="text-sm font-semibold text-slate-900">Riwayat Keputusan Banding</h2>
+        <p className="mt-0.5 text-xs text-slate-600">
+          Klaim <span className="font-medium text-slate-800">{claimNo}</span>
+        </p>
       </header>
 
-      <div className="px-4 pb-4">
+      <div className="pb-1">
         <DataTable<Decision>
           columns={columnsFor(columns)}
           rows={decisions.data?.baris ?? []}
           rowKey={(row) => `${row.detail_object}|${row.tanggal_approve ?? ''}`}
           label={`Keputusan banding klaim ${claimNo}`}
+          // Kepala kolom tetap tergambar meski belum ada keputusan — lihat catatan
+          // yang sama pada layar utamanya.
+          showHeaderWhenEmpty
           hideSearch
           isLoading={decisions.isPending}
           error={

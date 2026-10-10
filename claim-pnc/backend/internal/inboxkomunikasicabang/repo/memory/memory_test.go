@@ -198,14 +198,12 @@ func TestAnsweredTabIsOrderedNewestReplyFirstWhichIsTheOppositeDirection(t *test
 	require.Equal(t, "KOM-0004", ids[0])
 }
 
-func TestARepliedConversationWithoutARecordedReplierAppearsButIsCountedNowhere(t *testing.T) {
-	// Selisih SATU KOLOM antara grid dan pencacah, dan ia ada di sistem lama:
+func TestARepliedConversationWithoutARecordedReplierIsCountedLikeItIsListed(t *testing.T) {
+	// KOM-0006 dibalas TANPA penjawab tercatat. Di sistem lama ia muncul di tab "Answered"
+	// tetapi tidak terhitung di pencacah mana pun, karena pencacahnya menuntut `REPLYFROM`
+	// pula — percakapan yang ada di layar tetapi tidak ada di angkanya.
 	//
-	//	grid     REPLYMESSAGE IS NOT NULL
-	//	pencacah REPLYFROM IS NOT NULL AND REPLYMESSAGE IS NOT NULL
-	//
-	// KOM-0006 dibalas tanpa penjawab tercatat, sehingga ia MUNCUL di tab "Sudah Dijawab"
-	// tetapi tidak terhitung di pencacah mana pun.
+	// Sejak keselarasan 2026-10-09 ia terhitung persis seperti ia tampil.
 	answered := listOf(t, inboxkomunikasicabang.TabAnswered, branch1001())
 	require.Contains(t, idsOf(answered), "KOM-0006")
 
@@ -213,15 +211,9 @@ func TestARepliedConversationWithoutARecordedReplierAppearsButIsCountedNowhere(t
 	summary, err := store.Summarize(context.Background(), branch1001())
 	require.NoError(t, err)
 
-	// Selisihnya diuji TERISOLASI pada pencacah "Answered" saja.
-	//
-	// Membandingkan TOTAL kedua pencacah dengan total kedua tab tidak akan menyatakan apa
-	// pun tentang KOM-0006: pencacah juga menghitung baris yang grid-nya sembunyikan
-	// (KOM-0008 dan KOM-0009), dan kedua efek itu saling menutupi. Yang satu mengurangi,
-	// yang lain menambah — dan totalnya justru lebih besar.
 	require.Len(t, answered, 3, "tab menampilkan KOM-0002, KOM-0004, dan KOM-0006")
-	require.Equal(t, 2, summary.Answered,
-		"pencacah menuntut REPLYFROM pula, sehingga KOM-0006 tidak terhitung")
+	require.Equal(t, 3, summary.Answered,
+		"pencacah tidak lagi menuntut REPLYFROM, sehingga KOM-0006 ikut terhitung")
 }
 
 func TestTheSenderNameColumnNeverReachesTheScreen(t *testing.T) {
@@ -245,18 +237,48 @@ func TestTheSenderNameColumnNeverReachesTheScreen(t *testing.T) {
 	t.Fatal("KOM-0001 tidak ditemukan di tab Belum Dijawab")
 }
 
-func TestSummaryCountsIgnoreTheSenderAndMessageFiltersThatTheGridApplies(t *testing.T) {
-	// Kedua kueri pencacah TIDAK memuat `SENDER IS NOT NULL` maupun `MESSAGE IS NOT NULL`,
-	// padahal kedua kueri grid memilikinya. KOM-0008 dan KOM-0009 karena itu IKUT terhitung
-	// meski tidak pernah tampil.
+func TestEachCounterEqualsTheNumberOfRowsItsTabShows(t *testing.T) {
+	// Ini inti keselarasan 2026-10-09, dan uji yang paling layak gagal lebih dulu bila
+	// penyaring pencacah dan penyaring grid kembali berbeda.
+	//
+	// Baris yang sebelumnya memisahkan keduanya ada di data contoh dan sengaja dibiarkan:
+	// KOM-0006 dibalas tanpa penjawab, KOM-0008 tanpa pengirim, KOM-0009 tanpa isi pesan.
+	// Dulu ketiganya membuat angka pencacah dan jumlah baris grid berselisih dua arah
+	// sekaligus; sekarang ketiganya diperlakukan sama oleh keduanya.
+	for _, filter := range []inboxkomunikasicabang.BranchFilter{headOffice(), branch1001()} {
+		store := memory.NewSampleStore()
+
+		summary, err := store.Summarize(context.Background(), filter)
+		require.NoError(t, err)
+
+		require.Equalf(t,
+			len(listOf(t, inboxkomunikasicabang.TabAnswered, filter)),
+			summary.Answered,
+			"pencacah Answered harus sama dengan jumlah baris tabnya (cabang %q)", filter.Code)
+
+		require.Equalf(t,
+			len(listOf(t, inboxkomunikasicabang.TabNotAnswered, filter)),
+			summary.NotAnswered,
+			"pencacah Not Answered harus sama dengan jumlah baris tabnya (cabang %q)",
+			filter.Code)
+	}
+}
+
+func TestRowsHiddenFromTheGridAreNotCountedEither(t *testing.T) {
+	// KOM-0008 (tanpa pengirim) dan KOM-0009 (tanpa isi pesan) tidak pernah tampil di grid
+	// mana pun. Dulu keduanya tetap terhitung — angka yang menjanjikan baris yang tidak
+	// akan pernah terbuka, dan persis keluhan yang memicu keselarasan ini.
 	store := memory.NewSampleStore()
 
 	summary, err := store.Summarize(context.Background(), headOffice())
 	require.NoError(t, err)
 
-	visible := len(listOf(t, inboxkomunikasicabang.TabNotAnswered, headOffice()))
-	require.Greater(t, summary.NotAnswered, visible,
-		"pencacah harus menghitung baris yang grid-nya sembunyikan")
+	ids := idsOf(listOf(t, inboxkomunikasicabang.TabNotAnswered, headOffice()))
+	require.NotContains(t, ids, "KOM-0008")
+	require.NotContains(t, ids, "KOM-0009")
+
+	require.Equal(t, len(ids), summary.NotAnswered,
+		"baris yang disembunyikan grid tidak boleh menambah pencacahnya")
 }
 
 func TestDetailRefusesAConversationBelongingToAnotherBranch(t *testing.T) {

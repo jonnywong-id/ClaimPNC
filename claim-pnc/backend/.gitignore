@@ -29,3 +29,6 @@ test-report.json
 .sonar/
 .scannerwork/
 gl-code-quality-report.json
+
+# Contoh PDF yang dibangkitkan uji (REJECT_PDF_OUT). Bukan artefak sumber.
+.contoh-surat/

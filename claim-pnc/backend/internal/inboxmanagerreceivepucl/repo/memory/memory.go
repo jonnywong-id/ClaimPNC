@@ -211,6 +211,10 @@ func decorate(
 	if q.Tab.Code == inboxmanagerreceivepucl.TabReceive &&
 		strings.TrimSpace(candidate.GroupPanel) != "" {
 		item.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(candidate.GroupPanel)
+
+		// Tab Receive membuka layar yang dibaca dari tabel yang sama dengan daftarnya,
+		// sehingga barisnya SELALU dapat dibuka. Kueri SQL-nya pun memaksakan `'1'`.
+		item.ClaimScreenReady = true
 	}
 
 	return item

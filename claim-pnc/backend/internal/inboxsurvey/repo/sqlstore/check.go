@@ -3,6 +3,8 @@ package sqlstore
 import (
 	"context"
 	"fmt"
+
+	"claim-pnc/internal/inboxsurvey"
 )
 
 // Pemeriksaan yang dijalankan perintah `-periksa`.
@@ -62,7 +64,7 @@ func (r *Repo) CheckColumns(ctx context.Context) error {
 //
 // # Kenapa jumlahnya berubah-ubah, dan itu bukan kebingungan
 //
-// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTERPIC` dicoret sebagai asal
+// Daftar ini EMPAT pada 2026-09-29, TIGA setelah `ADJUSTER_PIC` dicoret sebagai asal
 // "Appointment No", lalu LIMA setelah keempat kueri tab tiba dan dua kolom lain terbukti
 // benar-benar berbeda. Setiap perubahan bersandar pada satu pengukuran, bukan pada pembacaan
 // ulang — dan daftar yang mengecil justru hasil terbaiknya.
@@ -170,4 +172,57 @@ func (r *Repo) CheckKPI(ctx context.Context) error {
 				"INSERT_KPIADJUSTER, dan ketiadaannya hanya mengosongkan tab KPI: %w", err)
 	}
 	return nil
+}
+
+// Readiness melaporkan kolom mana yang benar-benar dapat dipakai di portal ini.
+//
+// # Dua syarat, bukan satu
+//
+// Sebuah kolom dinyatakan siap hanya bila ia **ada** DAN **ada isinya**. Keduanya diukur
+// terpisah karena diperbaiki orang yang berbeda — kolom ditambahkan DBA lewat `ALTER`, isinya
+// ditulis Tim Pega lewat jalur pemutakhiran — dan karena kolom yang ADA tetapi KOSONG adalah
+// keadaan yang paling berbahaya di antara keduanya: ia dibaca tanpa galat apa pun, lalu
+// menjawab salah.
+//
+// Tab Outstanding menyaring `ADJUSTERACCEPT IS NULL`. Dengan kolom yang seluruhnya kosong ia
+// menampilkan **seluruh antrean** sebagai belum dikonfirmasi adjuster — terisi wajar, angkanya
+// masuk akal, isinya salah.
+//
+// # Kenapa galat ditelan, dan kenapa itu bukan kelalaian
+//
+// Kegagalan pemeriksaan mengembalikan Readiness kosong, yaitu "tidak ada yang siap". Itu
+// perilaku yang sama dengan sebelum kolomnya tiba: tab ditahan beserta sebabnya, dan enam tab
+// lain tetap berjalan.
+//
+// Alternatifnya — mengembalikan galat — akan menjatuhkan seluruh layar hanya karena pemeriksaan
+// KETERSEDIAAN gagal, padahal yang diperiksa adalah sesuatu yang memang boleh belum ada. Salah
+// ke arah "belum siap" menahan tab; salah ke arah "siap" membaca kolom yang mungkin tidak ada
+// dan menjatuhkan layar dengan ORA-00904.
+func (r *Repo) Readiness(ctx context.Context) inboxsurvey.Readiness {
+	columns, err := r.CheckNewColumns(ctx)
+	if err != nil {
+		return inboxsurvey.Readiness{}
+	}
+	if !columns.Accept && !columns.Reference && !columns.WorkStatus &&
+		!columns.AdjusterPIC && !columns.SurveyLocation {
+		// Tidak satu pun kolom ada — `check_filled_columns` akan gagal dengan ORA-00904
+		// karena ia menyebut kelimanya. Berhenti di sini.
+		return inboxsurvey.Readiness{}
+	}
+
+	filled, err := r.CheckFilledColumns(ctx)
+	if err != nil {
+		// Sebagian kolom ada tetapi keterisiannya tidak terukur — kemungkinan besar karena
+		// SEBAGIAN lain belum ada, sehingga kueri pengukurnya gagal seluruhnya. Tanpa angka,
+		// tidak ada dasar menyatakan satu pun siap.
+		return inboxsurvey.Readiness{}
+	}
+
+	return inboxsurvey.Readiness{
+		AdjusterAccept: columns.Accept && filled.Accept > 0,
+		WorkStatus:     columns.WorkStatus && filled.WorkStatus > 0,
+		Reference:      columns.Reference && filled.Reference > 0,
+		AdjusterPIC:    columns.AdjusterPIC && filled.AdjusterPIC > 0,
+		SurveyLocation: columns.SurveyLocation && filled.SurveyLocation > 0,
+	}
 }

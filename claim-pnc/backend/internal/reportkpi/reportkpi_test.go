@@ -263,18 +263,31 @@ func TestTabTerhalangMenyebutkanSebabnya(t *testing.T) {
 		"ketiga tab sudah dibangun; tidak ada lagi yang terhalang")
 }
 
-// Tab KPI Admin punya kartu skor dan grid rinciannya.
+// Grid "Data KPI" punya kelima kolom identitas di depan dan NOTE di belakang.
 //
-// Kartu skor sengaja TANPA kolom tetap: ia bukan tabel berbaris-baris melainkan satu kartu
-// berisi metrik berurutan, dan metriknya berbeda antar kelompok. Yang menyusunnya adalah
-// BuildScorecard, bukan daftar kolom.
+// Metriknya tidak ada di antara keduanya, dan itu disengaja: metrik berbeda antar kelompok
+// dan sebagiannya baru diketahui saat permintaan dijawab, sehingga yang menyusunnya adalah
+// BuildScorecard — bukan daftar kolom.
+//
+// Uji ini dibalik pada 2026-10-09. Sebelumnya ia menuntut kolomnya KOSONG, karena grid ini
+// digambar sebagai kartu; layar Pega menggambarnya sebagai tabel berkolom 21.
 func TestTabAdminPunyaKartuSkorDanRincian(t *testing.T) {
 	tab := reportkpi.AdminTab()
 	require.False(t, tab.Blocked)
 	require.Len(t, tab.Grids, 2)
 
-	require.Empty(t, reportkpi.AdminGridFor(reportkpi.GridScorecard).Columns,
-		"kartu skor tidak punya kolom tetap")
+	kartu := reportkpi.AdminGridFor(reportkpi.GridScorecard)
+	judul := make([]string, 0, len(kartu.Columns))
+	for _, c := range kartu.Columns {
+		judul = append(judul, c.Title)
+	}
+	require.Equal(t,
+		[]string{"UNIT KERJA", "NAMA KOORDINATOR", "BUSINESS", "NIK", "TANGGAL EFEKTIF"},
+		judul)
+
+	require.Len(t, kartu.TrailingColumns, 1)
+	require.Equal(t, "NOTE", kartu.TrailingColumns[0].Title)
+
 	require.NotEmpty(t, reportkpi.AdminGridFor(reportkpi.GridAdminDetail).Columns)
 }
 
@@ -348,15 +361,22 @@ func TestTabAdjusterPunyaKeduaGrid(t *testing.T) {
 	}
 }
 
-// Kolom TIPE pada grid Summary HANYA muncul pada tipe report ALL.
+// Kolom "Status" pada grid Summary SELALU digambar, pada tipe report mana pun.
 //
-// Ini meniru Pega apa adanya, dan buktinya dua rule yang berbeda:
+// # Uji ini dibalik pada 2026-10-09
+//
+// Sebelumnya ia menuntut kebalikannya — kolom disembunyikan pada tipe tunggal — dengan
+// alasan dua rule Pega yang berbeda:
 //
 //	GetSummaryKPIAdjuster-SQL.xml     SELECT adjuster …                 tanpa kolom tipe
 //	GetSummaryKPIAdjusterALL-SQL.xml  SELECT adjuster, 'OUTSTANDING' …  DENGAN kolom tipe
 //
-// Menggambarnya pada tipe tunggal akan menambah kolom yang tidak ada di layar lama, dan
-// isinya pun tidak berarti apa-apa di sana — seluruh barisnya bernilai sama.
+// Kedua rule itu memang berbeda, tetapi yang disimpulkan darinya keliru: yang menentukan
+// KOLOM GRID bukan kuerinya melainkan gridnya, dan grid di
+// `Section/ReportKPI_Section-Section.xml` menyusun `.StatusWork` tanpa syarat apa pun.
+//
+// Jadi pada tipe tunggal Pega menggambar kolom itu KOSONG — bukan menghilangkannya. Itu
+// yang ditiru di sini (`D-13`).
 func TestKolomTipeHanyaMunculPadaTipeGabungan(t *testing.T) {
 	var summary reportkpi.Grid
 	for _, grid := range reportkpi.AdjusterTab().Grids {
@@ -374,16 +394,15 @@ func TestKolomTipeHanyaMunculPadaTipeGabungan(t *testing.T) {
 		return result
 	}
 
-	require.Equal(t, []string{"ADJUSTER", "TIPE"},
-		judul(summary.ColumnsFor(reportkpi.TypeAll)),
-		"tipe ALL menggabungkan dua kelompok, sehingga penandanya wajib ada")
-
-	for _, tunggal := range []reportkpi.ReportType{
-		reportkpi.TypeOutstanding, reportkpi.TypeFinal,
+	for _, tipe := range []reportkpi.ReportType{
+		reportkpi.TypeAll, reportkpi.TypeOutstanding, reportkpi.TypeFinal,
 	} {
-		require.Equalf(t, []string{"ADJUSTER"}, judul(summary.ColumnsFor(tunggal)),
-			"kolom TIPE tidak boleh digambar pada tipe tunggal %s", tunggal)
+		require.Equalf(t, []string{"ADJUSTER", "Status"}, judul(summary.ColumnsFor(tipe)),
+			"kolom Status wajib digambar pada tipe %s, meski isinya kosong", tipe)
 	}
+
+	// KATEGORI berada SESUDAH kesembilan komponen, karena itu ia tidak ada di Columns.
+	require.Equal(t, []string{"KATEGORI"}, judul(summary.TrailingColumns))
 }
 
 // Grid Detail TIDAK punya kolom yang muncul-hilang.

@@ -50,12 +50,15 @@ func SampleOutstanding() []ClaimRecord {
 		},
 		{
 			GroupPanel: "002", BusinessGroupID: "10002",
+			// Satu-satunya contoh yang sudah transfer DAN lunas, supaya kedua dropdown
+			// penyaring terlihat benar-benar menyaring di mode tanpa basis data.
+			TransferredToCashier: true,
 			Row: dashboardclaim.ClaimRow{
 				ClaimID: "CONTOH-BERJALAN-2", ClaimNumber: "PNCN.26.0002",
 				PolicyNumber: "POLIS-CONTOH-0002", InsuredName: "Tertanggung Contoh B",
 				BusinessName: "Personal Accident", BusinessSource: "Broker", BranchName: "Surabaya",
 				TechnicalPIC: "PIC Contoh 2", AdminPNC: "Admin Contoh 2",
-				ClaimStatusCode: "1149", ProcessStatus: "Pending",
+				ClaimStatusCode: "1163", ProcessStatus: "Pending",
 				LossDate: sampleDate(6), RegisteredAt: sampleTime(7),
 			},
 		},
@@ -72,6 +75,8 @@ func SampleOutstanding() []ClaimRecord {
 		},
 		{
 			GroupPanel: "004", BusinessGroupID: "10008",
+			// Sudah transfer, belum lunas — kombinasi yang membedakan kedua dropdown.
+			TransferredToCashier: true,
 			Row: dashboardclaim.ClaimRow{
 				ClaimID: "CONTOH-BERJALAN-4", ClaimNumber: "PNCN.26.0004",
 				PolicyNumber: "POLIS-CONTOH-0004", InsuredName: "Tertanggung Contoh D",

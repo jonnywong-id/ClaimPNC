@@ -154,7 +154,7 @@ func TestMetadataReturnsTabsAndPortal(t *testing.T) {
 	body := decode(t, recorder)
 	require.Equal(t, portalMain, body["portal"])
 	require.Equal(t, inboxclaimtreatynonprop.DefaultTab, body["tab_bawaan"])
-	require.Len(t, body["selisih_terencana"], len(inboxclaimtreatynonprop.PlannedDifferences))
+	require.NotContains(t, body, "selisih_terencana")
 
 	tabs := body["tab"].([]any)
 	require.Len(t, tabs, 3)

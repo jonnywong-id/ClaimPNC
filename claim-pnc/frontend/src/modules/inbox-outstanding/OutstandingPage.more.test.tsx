@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
+import { render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { cloneElement, type ReactElement, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -12,20 +12,6 @@ import { useOutstandingList, useOutstandingSummary } from './api'
 import { isOpenableHere, OutstandingPage } from './OutstandingPage'
 import type { OutstandingClaim, OutstandingSummaryResponse } from './types'
 
-// ResponsiveContainer mengukur induknya, dan jsdom selalu melaporkan lebar nol sehingga
-// donut tidak pernah digambar. Diganti wadah berukuran tetap supaya irisan dan legendanya
-// benar-benar ada di DOM.
-vi.mock('recharts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('recharts')>()
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: ReactElement<{ width?: number }> }) => (
-      <div style={{ width: 400, height: 300 }}>
-        {cloneElement(children, { width: 400, height: 300 } as never)}
-      </div>
-    ),
-  }
-})
 
 /** Seluruh data KARANGAN (`D-69`). */
 function claim(partial: Partial<OutstandingClaim> = {}): OutstandingClaim {
@@ -55,12 +41,13 @@ function claim(partial: Partial<OutstandingClaim> = {}): OutstandingClaim {
   }
 }
 
+// Urutannya mengikuti `statusOrder` di backend — "ALL Case" paling depan.
 const SUMMARY: OutstandingSummaryResponse = {
   status: [
+    { kode: 'semua', judul: 'ALL Case', jumlah: 5, dapat_dipilih: true },
     { kode: 'lengkap', judul: 'Complete documents', jumlah: 3, dapat_dipilih: true },
     { kode: 'belum-lengkap', judul: 'Documents not complete', jumlah: 2, dapat_dipilih: true },
     { kode: 'loss-adjuster', judul: 'Loss Adjuster', jumlah: null, dapat_dipilih: false },
-    { kode: 'semua', judul: 'ALL Case', jumlah: 5, dapat_dipilih: true },
   ],
   total: 5,
   pemilik: 'ADMINPNC',
@@ -309,9 +296,9 @@ describe('ringkasan', () => {
     )
     renderPage()
 
-    expect(screen.getByLabelText('Memuat ringkasan')).toBeInTheDocument()
+    expect(screen.getByLabelText('Memuat status dokumen')).toBeInTheDocument()
     release(json(500, { kode: 'galat_internal', pesan: 'x' }))
-    expect(await screen.findByText('Ringkasan tidak dapat dimuat')).toBeInTheDocument()
+    expect(await screen.findByText('Status dokumen tidak dapat dimuat')).toBeInTheDocument()
     expect(
       screen.getByText('Daftar klaim di bawah tetap dapat dipakai. Coba muat ulang halaman ini.'),
     ).toBeInTheDocument()
@@ -332,11 +319,14 @@ describe('ringkasan', () => {
     stubFetch((url) => (url.includes('/ringkasan') ? json(200, { pemilik: 'X' }) : undefined))
     renderPage()
 
-    expect(await screen.findByText('Tidak ada klaim berjalan untuk diringkas.')).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Status dokumen' })).not.toBeInTheDocument()
+    // Deret tabnya tidak digambar, dan layar TETAP berdiri — daftar klaim di bawahnya
+    // yang menjadi isinya. Respons cacat hanya boleh menghilangkan tabnya, bukan
+    // menjatuhkan seluruh halaman.
+    expect(await screen.findByText('PNCN.26.0001')).toBeInTheDocument()
+    expect(screen.queryByRole('tablist', { name: 'Status dokumen' })).not.toBeInTheDocument()
   })
 
-  it('menyatakan tidak ada irisan bila tidak satu pun status terhitung', async () => {
+  it('menggambar tab meski hanya sebagian status yang terhitung', async () => {
     stubFetch((url) =>
       url.includes('/ringkasan')
         ? json(200, {
@@ -351,74 +341,64 @@ describe('ringkasan', () => {
     )
     renderPage()
 
-    expect(
-      await screen.findByText('Belum ada status dokumen yang dapat digambarkan.'),
-    ).toBeInTheDocument()
+    const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+    expect(within(tabs).getByRole('tab', { name: 'Complete documents, 0 klaim' })).toBeInTheDocument()
+    expect(within(tabs).getByRole('tab', { name: 'ALL Case, 4 klaim' })).toBeInTheDocument()
   })
 
   it('memilih dan membatalkan status lewat tab, termasuk lewat ALL Case', async () => {
     stubFetch()
     renderPage()
-    const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
-    const all = within(tabs).getByRole('button', { name: 'ALL Case, 5 klaim' })
-    expect(all).toHaveAttribute('aria-current', 'true')
+    const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+    const all = within(tabs).getByRole('tab', { name: 'ALL Case, 5 klaim' })
+    expect(all).toHaveAttribute('aria-selected', 'true')
 
-    const complete = within(tabs).getByRole('button', { name: 'Complete documents, 3 klaim' })
+    const complete = within(tabs).getByRole('tab', { name: 'Complete documents, 3 klaim' })
     await userEvent.click(complete)
-    await waitFor(() => expect(complete).toHaveAttribute('aria-current', 'true'))
-    expect(all).not.toHaveAttribute('aria-current')
+    await waitFor(() => expect(complete).toHaveAttribute('aria-selected', 'true'))
+    expect(all).toHaveAttribute('aria-selected', 'false')
     expect(listCalls().some((c) => c.url.includes('status_dokumen=lengkap'))).toBe(true)
 
-    // Menekan tab yang sedang aktif membatalkan pilihan.
+    // Menekan tab yang SEDANG aktif tidak membatalkannya.
+    //
+    // Versi pertama layar ini memperlakukannya sebagai sakelar, dan itu dibuang saat
+    // bentuknya mengikuti `SourceTab` Inbox Auto Claim: pada tablist, satu tab SELALU
+    // terpilih. Tab yang membatalkan pilihan sudah ada namanya sendiri — "ALL Case" —
+    // dan klik yang diam-diam melompat ke tab lain justru yang mengagetkan.
     await userEvent.click(complete)
-    await waitFor(() => expect(all).toHaveAttribute('aria-current', 'true'))
+    await waitFor(() => expect(complete).toHaveAttribute('aria-selected', 'true'))
+    expect(all).toHaveAttribute('aria-selected', 'false')
 
-    await userEvent.click(within(tabs).getByRole('button', { name: 'Documents not complete, 2 klaim' }))
+    // "ALL Case" itulah yang mengembalikan daftar ke seluruh status.
+    await userEvent.click(within(tabs).getByRole('tab', { name: 'Documents not complete, 2 klaim' }))
     await userEvent.click(all)
-    await waitFor(() => expect(all).toHaveAttribute('aria-current', 'true'))
+    await waitFor(() => expect(all).toHaveAttribute('aria-selected', 'true'))
   })
 
-  it('memilih status lewat irisan donut dan legendanya', async () => {
+  // Panah kiri/kanan berpindah tab, dan MELEWATI tab yang belum tersedia.
+  //
+  // Tanpa itu, pengguna papan ketik berhenti di tab mati yang tidak dapat dibuka dan
+  // kehilangan cara meneruskannya.
+  it('berpindah tab dengan panah dan melewati tab yang belum tersedia', async () => {
     stubFetch()
-    const { container } = renderPage()
-    const tabs = await screen.findByRole('navigation', { name: 'Status dokumen' })
-    await waitFor(() =>
-      expect(container.querySelectorAll('.recharts-pie-sector').length).toBe(2),
-    )
-    const complete = within(tabs).getByRole('button', { name: 'Complete documents, 3 klaim' })
+    renderPage()
+    const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+    const all = within(tabs).getByRole('tab', { name: 'ALL Case, 5 klaim' })
 
-    fireEvent.click(container.querySelectorAll('.recharts-pie-sector')[0]!.firstElementChild!)
-    await waitFor(() => expect(complete).toHaveAttribute('aria-current', 'true'))
-    // Tooltip menyebut jumlah klaim irisan yang disorot.
-    fireEvent.mouseEnter(container.querySelectorAll('.recharts-pie-sector')[0]!.firstElementChild!)
-    expect(await screen.findByText(/3 klaim$/)).toBeInTheDocument()
-    // Irisan terpilih dipertegas garis tepi.
-    await waitFor(() =>
-      expect(container.querySelector('.recharts-pie-sector path')).toHaveAttribute(
-        'stroke',
-        '#0f172a',
-      ),
-    )
+    all.focus()
+    await userEvent.keyboard('{ArrowRight}')
 
-    fireEvent.click(container.querySelectorAll('.recharts-pie-sector')[0]!.firstElementChild!)
-    await waitFor(() => expect(complete).not.toHaveAttribute('aria-current'))
-
-    const legend = container.querySelectorAll('.recharts-legend-item')
-    expect(legend).toHaveLength(2)
-    fireEvent.click(legend[1]!)
+    // "ALL Case" tab pertama, jadi panah kanan menuju tab berikutnya yang dapat dipilih:
+    // "Complete documents". "Loss Adjuster" yang belum tersedia tidak pernah jadi tujuan.
     await waitFor(() =>
-      expect(
-        within(tabs).getByRole('button', { name: 'Documents not complete, 2 klaim' }),
-      ).toHaveAttribute('aria-current', 'true'),
-    )
-    fireEvent.click(container.querySelectorAll('.recharts-legend-item')[1]!)
-    await waitFor(() =>
-      expect(within(tabs).getByRole('button', { name: 'ALL Case, 5 klaim' })).toHaveAttribute(
-        'aria-current',
+      expect(within(tabs).getByRole('tab', { name: 'Complete documents, 3 klaim' })).toHaveAttribute(
+        'aria-selected',
         'true',
       ),
     )
+    expect(within(tabs).getByRole('tab', { name: 'Loss Adjuster, belum tersedia' })).toBeDisabled()
   })
+
 })
 
 describe('hook', () => {

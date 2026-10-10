@@ -163,7 +163,12 @@ describe('daftar', () => {
 
     const table = await screen.findByRole('table')
     const first = () => within(table).getAllByRole('row')[1]?.textContent ?? ''
-    for (const title of ['Nama', 'Login', 'Email', 'Telp', 'Alamat']) {
+    /*
+      EMPAT kolom, bukan lima. Alamat dihapus dari grid pada 2026-10-04: `.BodyLetterTo`
+      nol kemunculan di wilayah grid `Section/BrowseLoginSurveyor-Section.xml`, dan isian
+      itu hanya ada di FORM. Lihat catatan pada SurveyorLoginPage.
+    */
+    for (const title of ['Nama', 'Login', 'Email', 'Telp']) {
       await user.click(within(table).getByRole('button', { name: title }))
       expect(first()).toContain('Ani Contoh')
     }

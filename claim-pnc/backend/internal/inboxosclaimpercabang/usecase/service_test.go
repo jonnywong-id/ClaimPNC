@@ -79,7 +79,7 @@ func TestListRefusesCallerWithoutIdentity(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		inboxosclaimpercabang.Caller{DetailBranchCode: "078"}, firstPage())
+		inboxosclaimpercabang.Caller{DetailBranchCode: "078"}, firstPage(), "")
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrCallerUnknown)
 }
@@ -94,7 +94,7 @@ func TestListRefusesCallerWithoutBranchInsteadOfShowingNothing(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		inboxosclaimpercabang.Caller{Login: "MITRA1"}, firstPage())
+		inboxosclaimpercabang.Caller{Login: "MITRA1"}, firstPage(), "")
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
 }
@@ -105,7 +105,7 @@ func TestIdentityIsCheckedBeforeBranch(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		inboxosclaimpercabang.Caller{}, firstPage())
+		inboxosclaimpercabang.Caller{}, firstPage(), "")
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrCallerUnknown)
 	require.NotErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
@@ -115,7 +115,7 @@ func TestListScopesToTheCallerBranch(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("078"), firstPage())
+		callerAt("078"), firstPage(), "")
 	require.NoError(t, err)
 
 	require.Equal(t, "100099", listed.Query.Branch.Code)
@@ -127,11 +127,85 @@ func TestListScopesToTheCallerBranch(t *testing.T) {
 	}
 }
 
+func TestListSearchesByClaimNumber(t *testing.T) {
+	service := newService(t, memory.NewSampleStore())
+
+	listed, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "PNC-9003")
+	require.NoError(t, err)
+
+	require.Len(t, listed.Page.Items, 1)
+	require.Equal(t, "PNC-9003", listed.Page.Items[0].ClaimNumber)
+
+	// Jumlahnya ikut menyusut. Bila ia tetap menyebut seluruh cabang, paginasi akan
+	// menjanjikan halaman berikutnya yang isinya kosong.
+	require.Equal(t, 1, listed.Page.Total)
+}
+
+func TestListSearchesByPolicyNumber(t *testing.T) {
+	service := newService(t, memory.NewSampleStore())
+
+	// Sebagian nomor polis, bukan seluruhnya — penyelia mengetik beberapa angka
+	// terakhirnya, dan pencocokan sama persis akan hampir selalu nihil.
+	listed, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "0000003")
+	require.NoError(t, err)
+
+	require.Len(t, listed.Page.Items, 1)
+	require.Equal(t, "PNC-9003", listed.Page.Items[0].ClaimNumber)
+}
+
+func TestListSearchIgnoresLetterCase(t *testing.T) {
+	service := newService(t, memory.NewSampleStore())
+
+	listed, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "  pnc-9003  ")
+	require.NoError(t, err)
+
+	require.Len(t, listed.Page.Items, 1,
+		"huruf kecil dan spasi berlebih harus tetap cocok — pengguna tidak mengetik "+
+			"dengan huruf besar")
+}
+
+func TestListSearchNeverWidensTheBranchScope(t *testing.T) {
+	// Cacat yang paling mahal bila terjadi: mencari nomor klaim cabang LAIN lalu
+	// menemukannya. Itu kebocoran data antar cabang, bukan sekadar hasil yang aneh.
+	service := newService(t, memory.NewSampleStore())
+
+	listed, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "PNC-9003")
+	require.NoError(t, err)
+	require.Len(t, listed.Page.Items, 1, "prasyarat: klaim ini milik cabang pemanggil")
+
+	// `PNC-9004` ada di sample, tetapi di cabang 100059 — bukan cabang pemanggil.
+	other, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "PNC-9004")
+	require.NoError(t, err)
+	require.Empty(t, other.Page.Items,
+		"klaim cabang lain tidak boleh muncul hanya karena nomornya dicari")
+}
+
+func TestListWithoutSearchReturnsEverything(t *testing.T) {
+	service := newService(t, memory.NewSampleStore())
+
+	all, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "")
+	require.NoError(t, err)
+
+	blank, err := service.List(context.Background(), primaryPortal,
+		callerAt("078"), firstPage(), "   ")
+	require.NoError(t, err)
+
+	require.NotEmpty(t, all.Page.Items)
+	require.Equal(t, len(all.Page.Items), len(blank.Page.Items),
+		"kotak cari yang berisi spasi saja sama dengan kotak cari kosong")
+}
+
 func TestListFillsAgingFromTheClock(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("078"), firstPage())
+		callerAt("078"), firstPage(), "")
 	require.NoError(t, err)
 
 	byNumber := map[string]inboxosclaimpercabang.WorkItem{}
@@ -160,7 +234,7 @@ func TestUnknownDetailBranchCodeStopsTheScreenInsteadOfShowingNothing(t *testing
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		callerAt("999"), firstPage())
+		callerAt("999"), firstPage(), "")
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
 }
@@ -174,7 +248,7 @@ func TestClaimBranchCodeIsNotAcceptedAsTheDetailCode(t *testing.T) {
 	service := newService(t, memory.NewSampleStore())
 
 	_, err := service.List(context.Background(), primaryPortal,
-		callerAt("100099"), firstPage())
+		callerAt("100099"), firstPage(), "")
 
 	require.ErrorIs(t, err, inboxosclaimpercabang.ErrBranchUnknown)
 }
@@ -185,18 +259,31 @@ func TestListRejectsUnknownPortal(t *testing.T) {
 	// tanpa satu pun pesan galat (`R-20`).
 	service := newService(t, memory.NewSampleStore())
 
-	_, err := service.List(context.Background(), "SMI", callerAt("078"), firstPage())
+	_, err := service.List(context.Background(), "SMI", callerAt("078"), firstPage(), "")
 	require.Error(t, err)
 }
 
 func TestListCarriesThePlannedDifferences(t *testing.T) {
+	// Yang diuji: senarainya DITERUSKAN apa adanya dari paket domain ke layar — bukan bahwa
+	// ia berisi sesuatu.
+	//
+	// Uji ini sempat menuntut `NotEmpty`, dan tuntutan itu keliru. Seluruh butirnya dicabut
+	// Work Owner pada 2026-10-10, sehingga senarainya kini kosong dengan sengaja; uji yang
+	// menuntut isinya akan memaksa orang berikutnya menambahkan butir karangan hanya supaya
+	// ujinya hijau.
+	//
+	// Yang masih penting dijaga: senarainya tidak boleh `nil`. `nil` diserialkan JSON
+	// sebagai `null`, dan layar yang memanggil `.map` atasnya akan jatuh — persis kelas
+	// cacat yang pernah mengosongkan panel ringkasan.
 	service := newService(t, memory.NewSampleStore())
 
 	listed, err := service.List(context.Background(), primaryPortal,
-		callerAt("078"), firstPage())
+		callerAt("078"), firstPage(), "")
 	require.NoError(t, err)
-	require.NotEmpty(t, listed.PlannedDifferences,
-		"selisih terencana harus sampai ke layar, bukan berhenti di komentar kode")
+	require.NotNil(t, listed.PlannedDifferences,
+		"senarai selisih tidak boleh nil — JSON `null` menjatuhkan layar yang memetakannya")
+	require.Equal(t, inboxosclaimpercabang.PlannedDifferences, listed.PlannedDifferences,
+		"senarai diteruskan apa adanya, tidak disalin sebagian maupun diurutkan ulang")
 }
 
 func TestExportSessionAppliesTheSameGuardsAsTheList(t *testing.T) {

@@ -20,6 +20,7 @@ func TestAllUsedQueriesExist(t *testing.T) {
 		"reas_count_empty_login",
 		"reas_count_missing_email",
 		"reas_count_without_fallback",
+		"reas_update",
 	}
 	for _, name := range used {
 		t.Run(name, func(t *testing.T) {
@@ -60,25 +61,73 @@ func TestQueriesFollowPortableSQLDiscipline(t *testing.T) {
 	}
 }
 
-// Modul ini HANYA MEMBACA, dan uji ini yang menjaganya tetap begitu.
+// Modul ini menulis TEPAT SATU hal: surel, lewat `reas_update`.
 //
-// Keputusannya berdasar bukti: satu-satunya penulis POOLDATA.T_REINSURER di sistem lama
-// adalah alur PLA/DLA lewat Database/UPDATEREAS.prc, dipanggil Activity/UpdateDetailPLA2 dan
-// Activity/UpdateDetailDLA2 — bukan layar master ini.
+// Uji ini memagari batas itu. Ia semula melarang SELURUH penulisan — keputusan yang
+// berdasar pada bukti yang tersedia saat itu, dan yang **dikoreksi Work Owner 2026-10-05**:
+// layar Pega punya kolom Aksi berisi tombol Ubah, dan itu tidak dapat dibaca dari export
+// karena section gridnya hilang (`R-16`).
 //
-// Bila kelak terbukti layar lamanya punya tombol simpan (section gridnya memang tidak ada di
-// export, `R-16`), uji ini yang akan gagal lebih dulu. Itu memang yang diinginkan:
-// penambahan jalur tulis harus menjadi keputusan yang disadari, bukan yang menyelinap.
-func TestNoQueryWrites(t *testing.T) {
+// Yang TETAP dilarang, dan alasannya bertahan:
+//
+//	INSERT    baris baru lahir dari alur PLA/DLA; layar lamanya tanpa tombol Tambah
+//	DELETE    tidak satu pun rule menghapus baris tabel ini, dan `D-66` melarangnya
+//	MERGE     upsert lewat pintu belakang — ia INSERT yang menyamar
+//
+// Penambahan jalur tulis berikutnya harus menjadi keputusan yang disadari, bukan yang
+// menyelinap: uji ini yang akan gagal lebih dulu.
+func TestOnlyUpdateWrites(t *testing.T) {
 	for name, text := range query {
 		uppercase := strings.ToUpper(text)
+
 		for _, statement := range []string{
-			"INSERT", "UPDATE", "DELETE", "MERGE", "TRUNCATE", "DROP ", "LOCK TABLE",
+			"INSERT", "DELETE", "MERGE", "TRUNCATE", "DROP ", "LOCK TABLE",
 		} {
 			require.NotContainsf(t, uppercase, statement,
-				"kueri %q memuat %q; modul ini hanya membaca", name, statement)
+				"kueri %q memuat %q; modul ini hanya mengubah surel", name, statement)
+		}
+
+		if name != "reas_update" {
+			require.NotContainsf(t, uppercase, "UPDATE",
+				"hanya reas_update yang boleh menulis; kueri %q tidak", name)
 		}
 	}
+}
+
+// Jalur ubah hanya boleh menyentuh SATU kolom.
+//
+// `Database/UPDATEREAS.prc` pada baris yang sudah ada hanya menulis `EMAIl`. `LOGIN`,
+// `COUNTRY`, dan `COUNTRYID` hanya ditulis pada jalur sisip — yang tidak dibawa modul ini.
+//
+// `LOGIN` yang paling berakibat bila ikut: ia menentukan klaim mana yang dilihat seorang
+// mitra reasuransi (lima kueri inbox menyaringnya), dan mengubahnya dari layar master berarti
+// memindahkan visibilitas klaim tanpa satu pun pesan galat (`R-20`).
+func TestUpdateTouchesEmailOnly(t *testing.T) {
+	text := strings.ToUpper(getQuery("reas_update"))
+
+	setClause := text[strings.Index(text, "SET"):strings.Index(text, "WHERE")]
+	require.Contains(t, setClause, "EMAIL")
+
+	for _, column := range []string{"LOGIN", "COUNTRY", "COUNTRYID", "REINSURERNAME", "TYPE"} {
+		require.NotContainsf(t, setClause, column,
+			"klausa SET menyentuh %s; hanya EMAIL yang boleh berubah", column)
+	}
+}
+
+// Ketiga bagian kunci WAJIB dibungkus COALESCE(TRIM(...), ”).
+//
+// COALESCE bukan kerapian: `TYPE` benar-benar dapat NULL — `GetListDataLoginReas`
+// menyisipkan baris tanpa kolom itu sama sekali. Tanpa COALESCE, baris seperti itu TIDAK
+// PERNAH dapat diubah dari layar, dan kegagalannya tampak sebagai "baris tidak ditemukan"
+// pada baris yang jelas-jelas tampil.
+func TestUpdateKeyHandlesNullAndPadding(t *testing.T) {
+	text := strings.ToUpper(getQuery("reas_update"))
+
+	for _, column := range []string{"REINSURERID", "REINSURERNAME", "TYPE"} {
+		require.Containsf(t, text, "COALESCE(TRIM("+column+"), '')",
+			"bagian kunci %s harus tahan NULL dan spasi padding", column)
+	}
+	require.NotContains(t, text, "NVL(", "NVL khas Oracle; D-20 menuntut COALESCE")
 }
 
 // Nilai selalu lewat parameter binding. Kueri yang merangkai nilai ke dalam teks SQL adalah

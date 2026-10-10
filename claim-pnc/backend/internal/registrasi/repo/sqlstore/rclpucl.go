@@ -53,10 +53,22 @@ func (s *PUCLStore) SaveLetter(ctx context.Context, letter registrasi.PUCLLetter
 	// Urutannya mengikuti SET pada surat_rclpucl_perbarui kolom demi kolom, dimulai
 	// TGL_CREATE_PUCL. UPDATE menutup dengan CLAIMID di WHERE; INSERT membukanya
 	// sebagai kolom pertama.
+	//
+	// `OPERATOR_ID` dan `ASSIGNED_OPERATOR_ID` ditulis dengan nilai yang BERBEDA sejak
+	// 2026-10-07, dan perbedaan itulah intinya:
+	//
+	//	OPERATOR_ID           analis yang menekan Kirim — catatan "siapa mengirim"
+	//	ASSIGNED_OPERATOR_ID  PIC Teknik klaim          — penyaring "siapa menerima"
+	//
+	// Kolom kedua adalah SATU-SATUNYA penyaring kepemilikan Inbox RCL (penyaring A
+	// `InboxRCLDokter_RD`). Selama ia berisi analis, klaim berjalur RCL mendarat di Inbox
+	// RCL analis sendiri, bukan di inbox petugas yang harus menanganinya. Work Owner
+	// menetapkan user teknis sebagai pemiliknya; aturan dan cadangannya ada di
+	// `registrasi.PUCLLetter.AssignedOperator`.
 	values := []any{
 		letter.SentAt,
 		emptyTextAsNil(letter.Operator),
-		emptyTextAsNil(letter.Operator),
+		emptyTextAsNil(letter.AssignedOperator()),
 		registrasi.WorkStatusNew,
 		statusCase,
 		strconv.Itoa(letter.Track),
@@ -78,6 +90,13 @@ func (s *PUCLStore) SaveLetter(ctx context.Context, letter registrasi.PUCLLetter
 		emptyTextAsNil(letter.ObjectID),
 		ordinalOrNil(letter.CoverageIndex),
 		ordinalOrNil(letter.AdjustmentIndex),
+		// `NAMA_DOKTER_RCL` — argumen ke-25, dan ia yang menutup gejala yang dilaporkan
+		// Work Owner: nama dokter dulu HANYA ditulis ke
+		// `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1`, tabel yang sejak 2026-10-05 tidak lagi
+		// dibaca Inbox RCL. Nilainya tersimpan rapi di tempat yang tidak pernah dilihat.
+		//
+		// Kosong pada jalur PUCL — isiannya memang tidak ditampilkan di sana.
+		emptyTextAsNil(strings.TrimSpace(letter.DoctorName)),
 	}
 	update := append(append([]any{}, values...), letter.ClaimID)
 	insert := append([]any{letter.ClaimID}, values...)
@@ -211,39 +230,13 @@ func (s *PUCLStore) RejectReasons(ctx context.Context, keyword string, limit int
 	return result, nil
 }
 
-// RCLDoctors membaca pilihan dropdown "Nama Dokter".
+// Pilihan "Nama Dokter" TIDAK dibaca di sini, dan dulu pernah.
 //
-// Sumbernya tabel dan penyaring yang SAMA dengan yang dipakai Inbox RCL mencari identitas
-// lama pemanggilnya, sehingga setiap pilihan di sini pasti dapat dicocokkan penyaring itu.
-// Alasan lengkapnya ada di rclpucl.sql.
-func (s *PUCLStore) RCLDoctors(ctx context.Context) ([]registrasi.RCLDoctorOption, error) {
-	groups := registrasi.RCLDoctorAccessGroups
-	if len(groups) != 3 {
-		return nil, fmt.Errorf("registrasi/sqlstore: kueri dokter RCL mengikat 3 grup akses, daftarnya %d", len(groups))
-	}
-
-	rows, err := executorFrom(ctx, s.db).QueryContext(ctx, loadQuery("dokter_rcl"),
-		groups[0], groups[1], groups[2], registrasi.RCLDoctorExcludedAccessGroup)
-	if err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca pilihan Nama Dokter: %w", err)
-	}
-	defer rows.Close()
-
-	result := []registrasi.RCLDoctorOption{}
-	for rows.Next() {
-		var id sql.NullString
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("registrasi/sqlstore: memindai pilihan Nama Dokter: %w", err)
-		}
-		if name := strings.TrimSpace(id.String); name != "" {
-			result = append(result, registrasi.RCLDoctorOption{ID: name})
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("registrasi/sqlstore: membaca pilihan Nama Dokter: %w", err)
-	}
-	return result, nil
-}
+// Kuerinya menarik identitas lama pada ketiga grup akses `T_ACCESS_GROUP_PNC` — turunan
+// dari penyaring Inbox RCL, karena rule sumbernya tidak ada di export (`R-16`). Property
+// `NamaDokterRCL` yang diserahkan Work Owner pada 2026-10-06 membuktikan sumbernya bukan
+// tabel mana pun melainkan `pyPromptTableList` pada property itu sendiri, dua baris.
+// Kuerinya ikut dihapus bersama metode ini; daftarnya kini `registrasi.RCLDoctorOptions`.
 
 // escapeLikePattern menetralkan ketiga aksara yang punya arti khusus di dalam LIKE,
 // supaya pencarian "100%" mencari teks itu dan bukan mencocokkan segalanya. Aksara

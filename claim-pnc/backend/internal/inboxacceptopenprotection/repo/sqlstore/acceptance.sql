@@ -119,7 +119,9 @@ SELECT p.OPEN_PROTECTION_ID,
        p.BRANCH_NAME,
        p.APPROVAL_STATUS,
        p.RESOLVED_DATETIME,
-       p.RESOLVED_BY
+       p.RESOLVED_BY,
+       p.OBJECT_ID,
+       p.OBJECT_COVERAGE_ID
   FROM POOLDATA.T_CLAIM_OPENPROTECTION p
   LEFT JOIN POOLDATA.M_CLAIM_PROTECTION_TYPE t
          ON TRIM(t.PROTECTION_TYPE_ID) = TRIM(p.PROTECTION_TYPE_ID)
@@ -238,6 +240,8 @@ SELECT p.OPEN_PROTECTION_ID,
        p.APPROVAL_STATUS,
        p.RESOLVED_DATETIME,
        p.RESOLVED_BY,
+       p.OBJECT_ID,
+       p.OBJECT_COVERAGE_ID,
        (SELECT g.THEINSURED FROM POOLDATA.T_GENERAL g
          WHERE UPPER(TRIM(g.NOPOLIS)) = UPPER(TRIM(p.POLICY_NO))
          ORDER BY CAST(TRIM(g.PRODKE) AS NUMERIC) DESC
@@ -320,3 +324,116 @@ UPDATE POOLDATA.T_CLAIM_OPENPROTECTION
 UPDATE POOLDATA.T_CLAIM_PNC
    SET DATEOFLOSS = :1
  WHERE UPPER(TRIM(CLAIMID)) = :2
+
+
+-- name: cause_of_loss_describe
+-- Mencari DESKRIPSI sebuah Penyebab Kerugian dari kodenya.
+--
+-- ============================================================================
+-- PASANGAN KOLOMNYA DIBUKTIKAN, BUKAN DIANDAIKAN
+-- ============================================================================
+--
+-- `T_CLAIM_OBJECTCOVERAGE` menyimpan DUA kolom berdampingan — `CAUSEOFLOSSID` dan
+-- `CAUSEOFLOSS` — dan menerapkan perubahan menuntut mengetahui mana yang berisi apa.
+-- Dua bukti menetapkannya, dan hanya satu pemasangan yang konsisten dengan keduanya:
+--
+--   1. Data produksi, klaim `PNC-1452`: `CAUSEOFLOSSID = 12003`, `CAUSEOFLOSS = WINDSTORM`.
+--
+--   2. Rule Pega `RDB List/GetCauseofLossDesc-SQL.xml`, kueri lengkapnya:
+--
+--        SELECT DESCRIPTION as "LSC_NOTE" FROM POOLDATA.V_D_CAUSE_OF_LOSS
+--         WHERE D_COL_ID={InputParam.CauseOfLoss}
+--
+--      Yaitu: diberi KODE, kembalikan DESKRIPSI. Itulah pencarian kanoniknya di sistem lama.
+--
+-- Jadi `D_COL_ID` -> `CAUSEOFLOSSID`, dan `DESCRIPTION` -> `CAUSEOFLOSS`. Bentuk nilainya
+-- membenarkan: contoh isi master "11997 FIRE - OPEN FLAME" dan "12033 WRECK REMOVAL" sebentuk
+-- dengan `WINDSTORM`, `HURRICANE`, `ILLNESS`, `STORM` yang tersimpan di coverage.
+--
+-- ============================================================================
+-- TABEL INDUK, BUKAN VIEW
+-- ============================================================================
+--
+-- Pega membaca `V_D_CAUSE_OF_LOSS`; di sini tabel induknya, mengikuti ketetapan Work Owner
+-- 2026-10-05 ("menggunakan D_CAUSE_OF_LOSS jangan view"). Dropdown yang menawarkan pilihan
+-- dan penerapan yang menuliskannya WAJIB membaca sumber yang sama — kalau tidak, sebuah kode
+-- dapat tampil di dropdown lalu ditolak saat diterapkan.
+--
+-- ============================================================================
+-- NOL BARIS BUKAN GALAT BASIS DATA
+-- ============================================================================
+--
+-- Kode yang tidak ada di master menghasilkan nol baris, dan pemanggillah yang menjawabnya
+-- (`ErrUnknownCauseOfLoss`). Menuliskannya lewat subkueri skalar di dalam UPDATE akan
+-- menghasilkan `CAUSEOFLOSS = NULL` tanpa satu pun gejala — baris yang kodenya terisi dan
+-- namanya kosong.
+SELECT d.DESCRIPTION
+  FROM POOLDATA.D_CAUSE_OF_LOSS d
+ WHERE TRIM(d.D_COL_ID) = :1
+
+
+-- name: claim_apply_cause_of_loss
+-- Menerapkan Penyebab Kerugian baru ke SATU baris coverage klaim.
+--
+-- ============================================================================
+-- SASARANNYA SATU BARIS, DITUNJUK PEMOHON
+-- ============================================================================
+--
+-- Kuncinya `CLAIMID` + `OBJECTID` + `OBJECTCOVERAGEID` — bentuk yang sama dipakai
+-- `T_CLAIM_SPREADING`. Ketiganya diperlukan: pada klaim `PNC-1452`, `JackHugh / Resiko A`
+-- muncul TIGA KALI dengan Penyebab Kerugian berbeda, sehingga menyaring dengan nama akan
+-- mengubah baris yang salah dua dari tiga kali.
+--
+-- `OBJECTID` dan `OBJECT_COVERAGE_ID` datang dari panel pemilih pada form permintaan, dan
+-- disimpan di kolom `OBJECT_ID` dan `OBJECT_COVERAGE_ID` milik `T_CLAIM_OPENPROTECTION`
+-- (ditambahkan 2026-10-05, lihat `migrations/0015_openprotection_sasaran_coverage.up.sql`).
+--
+-- ============================================================================
+-- KEDUA KOLOM DIUBAH BERSAMAAN
+-- ============================================================================
+--
+-- Work Owner, 2026-10-05: *"ingat ganti cause of loss itu ganti causeoflossid juga"*.
+--
+-- Mengubah salah satunya saja menghasilkan baris yang namanya berkata satu hal dan kodenya
+-- berkata hal lain — dan laporan yang mengelompokkan menurut kode akan menghitungnya ke
+-- golongan lama sementara layar menampilkan yang baru.
+--
+-- Deskripsinya DITERIMA SEBAGAI PARAMETER, hasil `cause_of_loss_describe` yang dijalankan
+-- lebih dulu di dalam transaksi yang sama. Lihat kueri itu untuk alasannya.
+--
+-- ============================================================================
+-- SATU SELISIH DARI PEGA, DIAMBIL SADAR
+-- ============================================================================
+--
+-- Pega MEMBAWA keduanya di dalam permintaan: `Activity/InsertOpenProtectionCase-Act.xml`
+-- menyalin `.ClaimDataProtect.CauseOfLoss` ke kolom teks (`:2956`) dan `.CauseOfLossID` ke
+-- kolom kode (`:3003`), keduanya dari permintaan yang disimpan.
+--
+-- Di sini hanya KODENYA yang disimpan — Work Owner, 2026-10-05: *"old data new data simpan
+-- idcol aja"* — dan teksnya dicari saat menerapkan. Akibatnya permintaan yang dibuat bulan
+-- lalu lalu disetujui hari ini menuliskan teks yang berlaku HARI INI, bukan teks yang
+-- kebetulan tersimpan saat permintaan dibuat.
+--
+-- Konsekuensi yang diterima: kode yang DIHAPUS dari master antara meminta dan menyetujui
+-- membuat keputusannya ditolak (`ErrUnknownCauseOfLoss`), sedangkan Pega akan tetap
+-- menuliskannya memakai teks lama. Itu memang yang dikehendaki — menuliskan penyebab kerugian
+-- yang sudah tidak berlaku lebih buruk daripada menolaknya.
+--
+-- ============================================================================
+-- BARIS TERHAPUS TIDAK IKUT BERUBAH
+-- ============================================================================
+--
+-- `DIHAPUS_PADA IS NULL` menjaga penghapusan lunak (`D-66`): coverage yang sudah dibuang dari
+-- klaim tidak boleh berubah karena persetujuan yang menunjuknya. Penyaring yang sama dipakai
+-- `claim_coverages` saat menawarkan pilihannya, sehingga yang dapat dipilih dan yang dapat
+-- diubah adalah himpunan yang sama.
+--
+-- Akibatnya nol baris tersentuh ketika coverage-nya dibuang setelah permintaan diajukan —
+-- keadaan yang dijawab pemanggil sebagai `ErrClaimNotSynced`, bukan diabaikan.
+UPDATE POOLDATA.T_CLAIM_OBJECTCOVERAGE
+   SET CAUSEOFLOSSID = :1,
+       CAUSEOFLOSS   = :2
+ WHERE UPPER(TRIM(CLAIMID)) = :3
+   AND TRIM(OBJECTID) = :4
+   AND TRIM(OBJECTCOVERAGEID) = :5
+   AND DIHAPUS_PADA IS NULL

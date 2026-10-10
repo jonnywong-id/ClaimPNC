@@ -412,7 +412,10 @@ SELECT a.CLAIMNO AS "CaseID",
           FROM POOLDATA.T_CLAIM_ADJUSTMENT x
          WHERE x.CLAIMID = a.CLAIMID) AS "Country"
   FROM POOLDATA.T_CLAIM_PNC a
- WHERE a.GROUP_PANEL = '002'
+-- Kolomnya `GROUPPANEL` tanpa garis bawah. `GROUP_PANEL` memang ada, tetapi di
+-- `PEGA_DASHBOARDPNC` — bukan di tabel ini. Keduanya dipakai berdampingan di modul ini,
+-- dan nama yang nyaris sama inilah yang membuatnya tertukar.
+ WHERE a.GROUPPANEL = '002'
    AND a.REGISTERDATE >= :1
    AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
  ORDER BY a.REGISTERDATE, a.CLAIMNO

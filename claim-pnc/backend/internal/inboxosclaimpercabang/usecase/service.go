@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"claim-pnc/internal/inboxosclaimpercabang"
 )
@@ -82,11 +83,14 @@ type Listed struct {
 // Urutan langkahnya menentukan pesan galat mana yang sampai ke pengguna, jadi ia tetap:
 // identitas, lalu cabang, baru isinya. Memeriksa cabang lebih dulu akan menjawab "cabang
 // tidak diketahui" kepada pengguna yang sebenarnya sesinya yang belum lengkap.
+// `search` menyaring menurut nomor klaim atau nomor polis; kosong berarti seluruh cabang.
+// Ia TIDAK menggeser batas data — cabang pemanggil tetap ditentukan sesi, bukan ketikan.
 func (s *Service) List(
 	ctx context.Context,
 	portalAlias string,
 	caller inboxosclaimpercabang.Caller,
 	page inboxosclaimpercabang.Pagination,
+	search string,
 ) (Listed, error) {
 	clean := caller.Clean()
 	if clean.Login == "" {
@@ -120,7 +124,7 @@ func (s *Service) List(
 		return Listed{}, inboxosclaimpercabang.ErrBranchUnknown
 	}
 
-	query := inboxosclaimpercabang.Query{Branch: branch}
+	query := inboxosclaimpercabang.Query{Branch: branch, Search: strings.TrimSpace(search)}
 
 	result, err := repo.List(ctx, query, page)
 	if err != nil {

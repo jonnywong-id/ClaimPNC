@@ -468,12 +468,16 @@ export function usePUCLReasons(cari: string, aktif: boolean) {
 }
 
 /**
- * Pilihan dropdown "Nama Dokter" — `POOLDATA.T_ACCESS_GROUP_PNC`, disaring dengan ketiga
- * grup akses yang sama dengan yang dipakai Inbox RCL mencari identitas lama pemanggilnya.
+ * Pilihan dropdown "Nama Dokter" — `pyPromptTableList` property `NamaDokterRCL`.
  *
- * Yang dipilih di sini menentukan SIAPA yang melihat klaimnya, jadi daftarnya tidak boleh
- * lebih luas maupun lebih sempit daripada himpunan nilai yang dapat dicocokkan penyaring
- * itu. Alasan lengkapnya ada di `rclpucl.sql`.
+ * Daftar TETAP dua baris pada property-nya sendiri, bukan kueri. Sebelumnya layar ini
+ * menarik identitas lama dari `POOLDATA.T_ACCESS_GROUP_PNC` — turunan dari penyaring
+ * Inbox RCL, karena rule sumbernya tidak ada di export (`R-16`). Property yang diserahkan
+ * Work Owner pada 2026-10-06 membuktikan turunan itu salah, dan itulah sebab dropdown-nya
+ * tampil kosong: kuerinya mencari himpunan yang tidak pernah menjadi isinya.
+ *
+ * `id` adalah yang dikirim balik (`pyStandardValue`), `nama` yang digambar
+ * (`pyLocalizedValue`). Keduanya berbeda pada baris kedua, jadi tidak boleh tertukar.
  */
 export function useRCLDoctors(aktif: boolean) {
   const token = useSession((state) => state.token)
@@ -486,7 +490,10 @@ export function useRCLDoctors(aktif: boolean) {
     enabled: aktif,
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
-      callAPI<{ pilihan: { id: string }[] }>('/api/registrasi/rclpucl/dokter', { token, portal }),
+      callAPI<{ pilihan: { id: string; nama: string }[] }>('/api/registrasi/rclpucl/dokter', {
+        token,
+        portal,
+      }),
   })
 }
 

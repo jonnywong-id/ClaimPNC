@@ -114,6 +114,15 @@ type detailPerubahanDTO struct {
 	// NamaObjek dan NamaCabang — dari KLAIM.
 	NamaObjek  string `json:"nama_objek"`
 	NamaCabang string `json:"nama_cabang"`
+
+	// IDObjek dan IDCoverage adalah SASARAN perubahan tipe '8' — baris coverage yang
+	// Penyebab Kerugiannya hendak diubah.
+	//
+	// Dikembalikan supaya form suntingan dapat menandai kembali baris yang dipilih, dan
+	// supaya layar akseptasi dapat menunjukkan baris mana yang akan berubah. Kosong pada
+	// tipe lain dan pada seluruh baris warisan Pega.
+	IDObjek    string `json:"id_objek"`
+	IDCoverage string `json:"id_coverage"`
 }
 
 // detailPerubahanRequest adalah bagian panel yang BENAR-BENAR dikirim klien.
@@ -132,6 +141,15 @@ type detailPerubahanRequest struct {
 
 	// PenyebabKerugianBaru — "Next Cause Of Loss". Wajib untuk tipe '8'.
 	PenyebabKerugianBaru string `json:"penyebab_kerugian_baru"`
+
+	// IDObjek dan IDCoverage adalah baris coverage yang DIPILIH pemohon pada panel
+	// "Detail Perubahan Cause Of Loss". Wajib untuk tipe '8'.
+	//
+	// Keduanya memang datang dari klien — berbeda dari empat field di atas yang diturunkan
+	// dari klaim — karena ia PILIHAN, bukan keadaan. Yang menjaganya: nilainya harus
+	// menunjuk baris coverage milik klaim yang sama, dan itu diperiksa server.
+	IDObjek    string `json:"id_objek"`
+	IDCoverage string `json:"id_coverage"`
 }
 
 // listResponse adalah badan respons daftar.
@@ -221,6 +239,8 @@ func toDetailDTO(p inputreqprotection.Protection, location *time.Location) detai
 			PenyebabKerugianMaster: p.ChangeDetail.CauseOfLossMasterID,
 			NamaObjek:              p.ChangeDetail.ObjectName,
 			NamaCabang:             p.ChangeDetail.BranchName,
+			IDObjek:                p.ChangeDetail.ObjectID,
+			IDCoverage:             p.ChangeDetail.ObjectCoverageID,
 		},
 	}
 }
@@ -239,6 +259,8 @@ func toDraft(req saveRequest, location *time.Location) inputreqprotection.Draft 
 		Change: inputreqprotection.ChangeRequest{
 			LossDateAfter:    parseDate(req.DetailPerubahan.DOLBaru, location),
 			CauseOfLossAfter: req.DetailPerubahan.PenyebabKerugianBaru,
+			ObjectID:         req.DetailPerubahan.IDObjek,
+			ObjectCoverageID: req.DetailPerubahan.IDCoverage,
 		},
 	}
 }
@@ -312,4 +334,83 @@ func toClaimDTO(c inputreqprotection.Claim, location *time.Location) claimDTO {
 		NamaObjek:        c.ObjectName,
 		NamaCabang:       c.BranchName,
 	}
+}
+
+// coverageRowDTO adalah satu baris panel "Detail Perubahan Cause Of Loss".
+//
+// Keempat field pertama DITAMPILKAN; `id_objek` dan `id_coverage` adalah yang dikirim balik
+// saat pemohon menekan Pilih. Keduanya ikut dikirim ke layar karena layar yang menyimpannya,
+// bukan karena pengguna membacanya.
+type coverageRowDTO struct {
+	IDObjek    string `json:"id_objek"`
+	IDCoverage string `json:"id_coverage"`
+
+	NamaObjek    string `json:"nama_objek"`    // kolom "Object Name"
+	NamaCoverage string `json:"nama_coverage"` // kolom "Coverage Name"
+
+	// PenyebabKerugian adalah keadaan SEKARANG baris ini — kolom "Cause of Loss".
+	PenyebabKerugian string `json:"penyebab_kerugian"`
+
+	// PenyebabKerugianID adalah KODE-nya.
+	//
+	// Penyebab kerugian adalah sepasang nilai, dan akseptasi mengubah KEDUANYA —
+	// `CAUSEOFLOSS` beserta `CAUSEOFLOSSID`. Mengirim deskripsinya saja akan membuat layar
+	// tidak dapat menunjukkan apa yang sebenarnya berubah.
+	PenyebabKerugianID string `json:"penyebab_kerugian_id"`
+}
+
+// coverageListResponse adalah badan respons daftar coverage sebuah klaim.
+type coverageListResponse struct {
+	Coverage []coverageRowDTO `json:"coverage"`
+}
+
+// causeOptionDTO adalah satu pilihan dropdown "Next Cause Of Loss".
+type causeOptionDTO struct {
+	// Kode adalah `D_COL_ID` — nilai yang DISIMPAN.
+	Kode string `json:"kode"`
+
+	// Nama adalah teks yang DIBACA pengguna.
+	Nama string `json:"nama"`
+
+	// KodeKerugian adalah `LOSS_CODE`. Ditampilkan berdampingan dengan nama supaya pilihan
+	// yang namanya mirip dapat dibedakan.
+	KodeKerugian string `json:"kode_kerugian"`
+}
+
+// causeListResponse adalah badan respons daftar penyebab kerugian.
+type causeListResponse struct {
+	Penyebab []causeOptionDTO `json:"penyebab_kerugian"`
+}
+
+// toCoverageListResponse memetakan baris domain ke bentuk JSON.
+//
+// Daftar kosong dikirim sebagai array kosong, BUKAN null. Klien yang menerima null harus
+// memeriksanya lebih dulu sebelum memetakannya, dan yang lupa akan gagal di peramban —
+// bukan di server, tempat sebabnya terbaca.
+func toCoverageListResponse(rows []inputreqprotection.CoverageRow) coverageListResponse {
+	daftar := make([]coverageRowDTO, 0, len(rows))
+	for _, c := range rows {
+		daftar = append(daftar, coverageRowDTO{
+			IDObjek:            c.ObjectID,
+			IDCoverage:         c.ObjectCoverageID,
+			NamaObjek:          c.ObjectName,
+			NamaCoverage:       c.CoverageName,
+			PenyebabKerugian:   c.CauseOfLoss,
+			PenyebabKerugianID: c.CauseOfLossID,
+		})
+	}
+	return coverageListResponse{Coverage: daftar}
+}
+
+// toCauseListResponse memetakan pilihan domain ke bentuk JSON.
+func toCauseListResponse(options []inputreqprotection.CauseOfLossOption) causeListResponse {
+	daftar := make([]causeOptionDTO, 0, len(options))
+	for _, o := range options {
+		daftar = append(daftar, causeOptionDTO{
+			Kode:         o.ID,
+			Nama:         o.Description,
+			KodeKerugian: o.LossCode,
+		})
+	}
+	return causeListResponse{Penyebab: daftar}
 }

@@ -508,3 +508,42 @@ type listStub struct {
 func (s listStub) List(context.Context, usecase.ListQuery) (inboxacceptopenprotection.Page, error) {
 	return s.page, nil
 }
+
+// TestWriteErrorMapsUnknownCauseOfLoss menjaga galat master DIBEDAKAN dari galat data klaim.
+//
+// Keduanya 409 dan keduanya membatalkan keputusan, tetapi pekerjaan perbaikannya berbeda:
+// yang satu di master penyebab kerugian, yang lain di data klaim. Pesan yang sama untuk
+// keduanya membuat yang pertama dicoba hampir pasti yang salah.
+func TestWriteErrorMapsUnknownCauseOfLoss(t *testing.T) {
+	write := accepthttp.WriteError(discardLogger(), writeJSON, nil)
+
+	rec := httptest.NewRecorder()
+	write(rec, httptest.NewRequest(http.MethodGet, "/x", nil),
+		inboxacceptopenprotection.ErrUnknownCauseOfLoss)
+
+	require.Equal(t, http.StatusConflict, rec.Code)
+	body := decode[errorBody](t, rec)
+	require.Equal(t, accepthttp.CodeConflict, body.Code)
+	require.Contains(t, body.Message, "Penyebab Kerugian")
+	require.Contains(t, body.Message, "master")
+
+	// Pesannya TIDAK menyebut klaim: yang harus dibereskan bukan di sana.
+	require.NotContains(t, body.Message, "daftar klaim")
+}
+
+// TestPesanClaimNotSyncedTidakMenyebutDOLSaja menjaga pesan tetap benar bagi KEDUA tipe.
+//
+// Sejak perubahan Penyebab Kerugian ikut diterapkan, galat yang sama muncul ketika baris
+// coverage yang ditunjuk sudah dibuang dari klaim. Pesan yang menyebut Tanggal Kejadian akan
+// menyuruh petugas memeriksa hal yang sama sekali tidak berhubungan.
+func TestPesanClaimNotSyncedTidakMenyebutDOLSaja(t *testing.T) {
+	write := accepthttp.WriteError(discardLogger(), writeJSON, nil)
+
+	rec := httptest.NewRecorder()
+	write(rec, httptest.NewRequest(http.MethodGet, "/x", nil),
+		inboxacceptopenprotection.ErrClaimNotSynced)
+
+	body := decode[errorBody](t, rec)
+	require.NotContains(t, body.Message, "Tanggal Kejadian")
+	require.Contains(t, body.Message, "coverage")
+}

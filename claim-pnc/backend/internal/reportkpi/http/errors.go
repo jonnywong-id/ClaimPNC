@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/reportkpi"
+	reportkpisql "claim-pnc/internal/reportkpi/repo/sqlstore"
 )
 
 // Kode galat yang dikenali klien. Klien membedakan jenis galat lewat kode ini, bukan
@@ -18,6 +20,18 @@ const (
 	CodeCallerUnknown     = "profil_pemanggil_tidak_lengkap"
 	CodeWriteNotAvailable = "belum_tersedia"
 	CodeInternalError     = "galat_internal"
+
+	// CodeQueryFailed: kuerinya dijalankan, basis data yang menolaknya.
+	//
+	// Dipisahkan dari galat internal umum karena tindak lanjutnya berbeda: yang satu
+	// menuntut pembacaan kode, yang ini menuntut pembacaan pesan ORA pada log peladen.
+	CodeQueryFailed = "penilaian_gagal_diambil"
+
+	// CodeSecondaryConnectionMissing: sambungan ANEKA_<PORTAL>_* belum dipasang.
+	//
+	// Ia BUKAN kerusakan, dan karena itu tidak boleh berbagi kode dengan kerusakan:
+	// yang dibutuhkan adalah lima baris konfigurasi, bukan perbaikan kode.
+	CodeSecondaryConnectionMissing = "koneksi_kedua_belum_terpasang"
 )
 
 // JSONWriter menuliskan badan respons. Modul ini tidak membawa penulisnya sendiri supaya
@@ -36,6 +50,30 @@ type ErrorWriter func(w http.ResponseWriter, r *http.Request, err error)
 // rinciannya hanya masuk log — rincian galat internal tidak pernah dikirim ke peramban.
 func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter) ErrorWriter {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
+		// Penolakan basis data ditangani lebih dulu, karena jawabannya menyertakan ID
+		// permintaan — dan ID itu hanya ada di sini, bukan di mapError yang murni.
+		//
+		// Pesan ORA-nya TIDAK ikut dikirim: ia memuat nama tabel dan kolom
+		// (`11-CROSSCUTTING.md` §1.2 aturan 5). Yang dikirim adalah ID permintaan, yang
+		// menunjuk tepat satu baris log bagi yang berhak membacanya dan tidak berarti
+		// apa-apa bagi yang tidak.
+		if errors.Is(err, reportkpisql.ErrQueryFailed) {
+			id := logging.RequestID(r.Context())
+			if logger != nil {
+				logger.ErrorContext(r.Context(), "kueri KPI ditolak basis data",
+					slog.String("jalur", r.URL.Path),
+					slog.String("id_permintaan", id),
+					slog.String("galat", err.Error()))
+			}
+			writeJSON(w, r, http.StatusInternalServerError, ErrorResponse{
+				Code: CodeQueryFailed,
+				Message: "Penilaian gagal diambil dari basis data. Keterangan lengkapnya " +
+					"ada pada log peladen dengan nomor permintaan " + id + " — sampaikan " +
+					"nomor itu kepada tim pengembang.",
+			})
+			return
+		}
+
 		status, body, recognized := mapError(err)
 
 		if !recognized {
@@ -115,6 +153,22 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"dan sistem baru berjalan berdampingan tabel itu hanya boleh ditulis satu " +
 				"sistem — hari ini Pega. Jalankan perhitungannya lewat Pega; hasilnya " +
 				"langsung terbaca di sini.",
+		}, true
+
+	case errors.Is(err, reportkpisql.ErrHolidayCalendarUnavailable):
+		// 503, bukan 500. Tidak ada yang rusak — sambungan yang dibutuhkannya belum
+		// dipasang, dan itu keadaan yang dapat diperbaiki tanpa menyentuh satu baris kode.
+		//
+		// Pesannya menyebut nama variabelnya, karena pesan yang hanya berkata "koneksi
+		// kedua tidak tersedia" memaksa pembacanya mencari tahu koneksi yang mana.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeSecondaryConnectionMissing,
+			Message: "Penilaian tidak dapat dihitung karena kalender hari libur belum " +
+				"dapat dibaca. Kalender itu berada di basis data ASMD, dan sambungannya " +
+				"diatur lewat ANEKA_<PORTAL>_HOST, _PORT, _SERVICE, _PENGGUNA, dan _SANDI " +
+				"pada berkas konfigurasi. Tanpa kalender itu, setiap rentang yang memuat " +
+				"hari libur akan terhitung lebih panjang — sehingga penilaiannya sengaja " +
+				"tidak ditampilkan, bukan ditampilkan keliru.",
 		}, true
 
 	default:

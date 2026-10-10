@@ -5,7 +5,6 @@
 //	Metadata  menyerahkan daftar tab, kolomnya, dan selisih terencana yang berlaku
 //	List      mengambil isi satu daftar
 //	Counts    mengambil tabel ringkas "Status / Jumlah"
-//	XOL       mengambil isi grid "DATA PLA DLA XOL KLAIM"
 //
 // Layar rincian ("Detail Claim") — empat lagi, di usecase/detail.go:
 //
@@ -78,9 +77,6 @@ type Metadata struct {
 	Tabs       []inboxpladla.Tab
 	DefaultTab string
 
-	// XOLColumns adalah kolom grid "DATA PLA DLA XOL KLAIM".
-	XOLColumns []inboxpladla.Column
-
 	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
 	PlannedDifferences []string
 }
@@ -93,7 +89,6 @@ func (s *Service) Metadata() Metadata {
 	return Metadata{
 		Tabs:               inboxpladla.Tabs(),
 		DefaultTab:         inboxpladla.DefaultTab,
-		XOLColumns:         inboxpladla.XOLColumns(),
 		PlannedDifferences: inboxpladla.PlannedDifferences,
 	}
 }
@@ -115,15 +110,6 @@ func (s *Service) List(
 	repo, query, err := s.prepare(ctx, portalAlias, caller, input)
 	if err != nil {
 		return Listed{}, err
-	}
-
-	// Tampilan XOL tidak punya daftar klaim — lihat inboxpladla.ErrNotAClaimList.
-	//
-	// Pemeriksaannya di SINI, bukan di penyimpanan, karena ia keputusan bentuk layar:
-	// penyimpanan yang menolaknya akan menjawab "daftar tidak dikenal", dan kalimat itu
-	// salah — tampilannya dikenal, ia hanya bukan daftar.
-	if !query.Tab.IsClaimList() {
-		return Listed{}, inboxpladla.ErrNotAClaimList
 	}
 
 	result, err := repo.List(ctx, query, page)
@@ -176,10 +162,6 @@ func (s *Service) Counts(
 		return nil, err
 	}
 
-	if !query.Tab.IsClaimList() {
-		return nil, inboxpladla.ErrNotAClaimList
-	}
-
 	counts, err := repo.Counts(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -188,28 +170,69 @@ func (s *Service) Counts(
 	return counts, nil
 }
 
-// XOL mengambil isi grid "DATA PLA DLA XOL KLAIM".
+// ListCounts mengambil tabel **"Status / Jumlah"** — satu baris per DAFTAR.
 //
-// # Kenapa ia TIDAK menerima tab maupun kata kunci
+// # Kenapa ia memanggil List, bukan kueri hitung tersendiri
 //
-// Karena gridnya di Pega tidak disaring keduanya — ia hanya disaring reasuradur. Grid itu
-// digambar sekali di luar ketiga daftarnya, dan menambahkan penyaring yang tidak ada di
-// sana akan mengubah isinya tanpa ada yang memintanya.
-func (s *Service) XOL(
+// Karena angkanya WAJIB sama dengan isi daftarnya, dan satu-satunya cara menjamin itu
+// adalah memakai pernyataan yang sama persis. Keenam kueri daftar sudah membawa
+// `COUNT(*) OVER ()`, sehingga meminta satu baris saja sudah mengembalikan jumlah
+// seluruhnya — tanpa satu pun SQL baru yang harus dijaga tetap sejalan.
+//
+// Kueri hitung tersendiri pernah ditempuh untuk StatusCount, dan berkas .sql-nya sendiri
+// memperingatkan bahayanya: *"Penyaringnya WAJIB sama persis dengan list_pla. Angka yang
+// tidak cocok dengan tabel di bawahnya adalah hal pertama yang dilaporkan pengguna
+// sebagai kerusakan."* Peringatan itu dipatuhi di sini dengan tidak membuat kuerinya.
+//
+// # Biayanya: enam perjalanan ke basis data
+//
+// Diterima secara sadar. Pega pun memuat SELURUH baris keenam daftar ke klipboard untuk
+// menghitung tabel yang sama, sehingga ini tidak lebih mahal daripada layar lama — dan
+// profil bebannya memang data besar dengan konkurensi rendah (`D-10`).
+//
+// # Tampilan XOL tidak ikut dicacah
+//
+// Ia bukan daftar klaim, dan di Pega pun tidak punya baris di tabel ini: tabelnya berisi
+// enam baris, sementara layarnya punya tujuh tampilan.
+func (s *Service) ListCounts(
 	ctx context.Context,
 	portalAlias string,
 	caller inboxpladla.Caller,
-) ([]inboxpladla.XOLRow, error) {
-	repo, _, err := s.reinsurerOf(ctx, portalAlias, caller)
+	input inboxpladla.QueryInput,
+) ([]inboxpladla.ListCount, error) {
+	repo, codes, err := s.reinsurerOf(ctx, portalAlias, caller)
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := repo.XOL(ctx, caller.Clean().Login)
-	if err != nil {
-		return nil, fmt.Errorf("mengambil ringkasan XOL: %w", err)
+	counts := []inboxpladla.ListCount{}
+	for _, tab := range inboxpladla.Tabs() {
+		// Kata kunci pencarian DIBAWA, kode tabnya diganti.
+		//
+		// Tanpa membawa pencariannya, angka di samping daftar akan menyatakan populasi
+		// yang berbeda dari tabel yang sedang dilihat pengguna — persis selisih yang
+		// paling cepat dilaporkan sebagai kerusakan.
+		query, err := inboxpladla.NewQuery(
+			inboxpladla.QueryInput{Tab: tab.Code, Search: input.Search}, caller, codes)
+		if err != nil {
+			return nil, err
+		}
+
+		// Satu baris sudah cukup: jumlahnya datang dari `COUNT(*) OVER ()`, bukan dari
+		// banyaknya baris yang terkirim.
+		page, err := repo.List(ctx, query, inboxpladla.Pagination{Page: 1, Size: 1})
+		if err != nil {
+			return nil, fmt.Errorf("menghitung isi daftar %s: %w", tab.Code, err)
+		}
+
+		counts = append(counts, inboxpladla.ListCount{
+			Code:  tab.Code,
+			Name:  tab.Name,
+			Total: page.Total,
+		})
 	}
-	return rows, nil
+
+	return counts, nil
 }
 
 // prepare menerjemahkan login menjadi kode reasuradur lalu menyusun permintaannya.

@@ -5,8 +5,8 @@
 -- ============================================================================
 --
 -- Berkas ini TIDAK menyentuh satu pun objek milik sistem lama. Ia hanya membuat SATU
--- sequence baru. Tabel yang memakainya, `POOLDATA.T_CLAIM_COMPLIANCE_H`, dibuat terpisah
--- oleh DBA dan tidak disentuh di sini.
+-- sequence baru. Tabel yang memakainya, `POOLDATA.T_CLAIM_COMPLIANCE_H`, sudah ada dan
+-- tidak disentuh di sini.
 --
 -- Meski begitu ia tetap DDL, sehingga tetap menempuh `D-63`: permintaan tertulis tim
 -- pengembang, persetujuan Work Owner, pelaksanaan oleh DBA. Akun aplikasi tidak memiliki
@@ -20,68 +20,114 @@
 -- dengan galat yang menyebut sequence tidak ditemukan.
 --
 -- ============================================================================
--- KENAPA MULAI DARI 100001
+-- BENTUK NOMOR BERUBAH — KEPUTUSAN 2026-09-24 DICABUT
 -- ============================================================================
 --
--- Kolom `CASEID` sudah berisi nomor terbitan Pega berbentuk `CPL-1` … `CPL-19`, dan Pega
--- MASIH menerbitkannya selama masa paralel. Nomor terbitan aplikasi baru karena itu harus
--- berada di rentang yang tidak mungkin dicapai Pega dalam waktu dekat.
+-- Versi pertama berkas ini membuat `POOLDATA.CPNC_POST_AUDIT_SEQ` yang mulai dari 100001,
+-- dan menerbitkan nomor berbentuk `CPL-100001` — meniru bentuk Pega (`CPL-1` … `CPL-19`),
+-- dengan pemisahan terbitan lama dan baru dilakukan lewat RENTANG ANGKA.
 --
--- Keputusan Work Owner 2026-09-24: bentuknya **meniru bentuk Pega** — `CPL-` diikuti angka,
--- bukan tiga segmen bertitik seperti `PNCN.YY.xxxx` (`D-71`) maupun `LPK.YY.xxxx` yang
--- dipakai modul Pelaporan Klaim. Pemisahannya dilakukan lewat RENTANG, bukan lewat bentuk.
+-- Work Owner mencabutnya pada 2026-10-06 dan menetapkan bentuk serta sintaksnya secara
+-- harfiah:
 --
--- Konsekuensi yang diterima secara sadar, dan tercatat supaya tidak ditemukan sebagai
--- kejutan:
+--     'CPL' || '.' || TO_CHAR(SYSDATE,'RR') || '.'
+--            || TO_CHAR(POOLDATA.CLAIM_COMPLIENCE_SEQ.NEXTVAL)
 --
---   1. Asal sebuah nomor TIDAK terbaca dari bentuknya. `CPL-100001` dan `CPL-19` terlihat
---      sejenis; yang membedakan hanya besarnya angka. Ini berbeda dari nomor klaim, yang
---      `D-22` sengaja buat dapat dibedakan tanpa tabel pemetaan.
---   2. Rentangnya harus DIJAGA. Bila Pega kelak menerbitkan `CPL-100001`, keduanya
---      bertabrakan — dan tabel ini tidak punya constraint unik yang akan menolaknya.
---      Jarak 100.000 nomor dipilih supaya itu tidak mungkin terjadi pada umur sistem
---      paralel.
---   3. **Nomor baru TIDAK tampil di paling atas.** Pengurutan tab Post Audit adalah
---      pengurutan TEKS, meniru Pega (lihat inboxcompliance.sql), dan dalam urutan teks
---      `CPL-100001` jatuh DI ANTARA `CPL-15` dan `CPL-1`:
+-- Hasilnya `CPL.26.1`, sebentuk dengan nomor klaim `PNCN.YY.xxxx` (`D-71`) dan nomor
+-- laporan `LPK.YY.xxxx`.
 --
---          CPL-3 · CPL-2 · CPL-19 · CPL-15 · CPL-100002 · CPL-100001 · CPL-1
+-- Ejaan `COMPLIENCE` pada nama sequence SENGAJA dipertahankan apa adanya. Ia ejaan yang
+-- Work Owner tulis, dan ia sejalan dengan ejaan yang sudah hidup di sistem lama —
+-- access group Pega-nya pun bernama `PncComplience`. Memperbaiki ejaannya di sini akan
+-- membuat nama objek basis data berbeda dari yang disebut di permintaan ke DBA.
 --
---      Sebabnya perbandingan berhenti pada karakter keenam: `CPL-1` sama, lalu `0`
---      dibandingkan dengan `9`. Petugas yang baru mengirim karena itu harus menggulir
---      untuk menemukan barisnya, dan dapat mengira pengirimannya gagal.
+-- # Tiga konsekuensi lama yang IKUT TERCABUT
 --
---      Ini TIDAK diperbaiki dengan mengubah pengurutan, karena urutan teks itulah yang
---      dipakai Pega dan `D-13` menetapkan tampilan ditiru. Ia juga tidak dapat diperbaiki
---      dengan menambahkan nol di depan, karena baris terbitan Pega yang sudah ada tidak
---      ikut berubah.
+-- Ketiganya tertulis panjang di versi pertama berkas ini, dan ketiganya **tidak lagi
+-- berlaku**. Dicatat supaya tidak ada yang mencarinya lalu mengira hilang tanpa sebab.
 --
---      Versi pertama catatan ini menyatakan sebaliknya — bahwa nomor baru tampil paling
---      atas. Itu SALAH, hasil penalaran yang tidak diuji, dan dibiarkan tertulis di sini
---      supaya kekeliruannya tidak diulang: urutan teks tidak sama dengan urutan angka
---      begitu lebar digitnya berbeda.
+--   1. "Asal nomor tidak terbaca dari bentuknya" — TIDAK LAGI BENAR. `CPL.26.1` dan
+--      `CPL-19` berbeda pada karakter keempat: titik versus tanda hubung. Asalnya terbaca
+--      langsung, tanpa tabel pemetaan, persis seperti yang `D-22` kehendaki untuk nomor
+--      klaim.
+--   2. "Rentangnya harus dijaga" — TIDAK LAGI PERLU. Bentuknya sendiri yang memisahkan,
+--      sehingga Pega tidak akan pernah menerbitkan nomor yang sama berapa pun angkanya
+--      bertambah. Karena itu sequence ini mulai dari 1, bukan 100001.
+--   3. "Nomor baru tidak tampil di paling atas" — BERUBAH ARAH. Dalam himpunan karakter
+--      Oracle, tanda hubung (`-`) berada SEBELUM titik (`.`), sehingga pada pengurutan
+--      teks MENURUN seluruh `CPL.26.x` justru berada DI ATAS seluruh `CPL-nn`. Nomor baru
+--      kini tampil paling atas — kebetulan yang menguntungkan, bukan hasil rancangan.
+--
+-- # Satu masalah lama yang TETAP ADA
+--
+-- Di dalam bentuk barunya sendiri, urutan teks masih tidak sama dengan urutan penerbitan:
+-- `CPL.26.10` berada di atas `CPL.26.9`, karena perbandingan berhenti pada karakter
+-- kesembilan (`1` versus `9`).
+--
+-- Itu akibat langsung `TO_CHAR(...NEXTVAL)` tanpa format mask, yang sintaks Work Owner
+-- memang tidak memilikinya. Sintaksnya dipakai APA ADANYA, sama seperti `D-71`
+-- memperlakukan sintaks nomor klaim. Bila lebar tetap kelak dikehendaki, yang berubah
+-- hanya satu kueri — `post_audit_next_sequence` — menjadi
+-- `TO_CHAR(seq.NEXTVAL,'FM0000')`, tanpa menyentuh DDL ini.
+--
+-- # Tahun diambil dari SYSDATE
+--
+-- Yakni tanggal server BASIS DATA, bukan tanggal kejadian dan bukan jam aplikasi. Nomor
+-- yang terbit di sekitar pergantian tahun mengambil tahunnya dari jam server, dan itu
+-- bertaut dengan `R-12`. Konsekuensi yang sama sudah dicatat `D-71` untuk nomor klaim;
+-- dicatat ulang di sini supaya tidak perlu dicari ke dokumen lain.
+--
+-- Catatan teknis: pada `TO_CHAR`, `'RR'` dan `'YY'` menghasilkan dua digit tahun yang
+-- IDENTIK. Perbedaan perilaku `RR` hanya berlaku saat MENAFSIRKAN masukan (`TO_DATE`),
+-- bukan saat mengeluarkan teks. Sintaks Work Owner dipakai apa adanya.
 --
 -- NOCACHE dipilih supaya tidak ada nomor yang hilang saat instans dimatikan. Lubang
 -- penomoran bukan cacat teknis, tetapi pada nomor yang dibaca orang ia selalu menimbulkan
 -- pertanyaan yang mahal dijawab.
 
-CREATE SEQUENCE POOLDATA.CPNC_POST_AUDIT_SEQ
-    START WITH 100001
+CREATE SEQUENCE POOLDATA.CLAIM_COMPLIENCE_SEQ
+    START WITH 1
     INCREMENT BY 1
     NOCACHE
     NOCYCLE;
 
 -- Hak pakai untuk akun aplikasi.
 --
--- Dijalankan DBA dengan mengganti CPNC_APP menjadi nama akun yang sebenarnya. Tanpa ini,
--- sequence-nya ada tetapi aplikasi tidak dapat memanggilnya, dan galatnya berbunyi
--- "sequence does not exist" — pesan yang menyesatkan karena objeknya sebenarnya ada.
+-- Ganti `APP_CLAIM_PNC` dengan nama akun aplikasi yang sebenarnya di tiap entitas. Tanpa
+-- ini, sequence-nya ada tetapi aplikasi tidak dapat memanggilnya — dan galat Oracle
+-- berbunyi "sequence does not exist", pesan yang menyesatkan karena objeknya sebenarnya
+-- ada dan yang kurang hanyalah haknya.
+-- ============================================================================
+-- GRANT DI BAWAH SENGAJA DIKOMENTARI — JANGAN DIAKTIFKAN TANPA MEMBACA INI
+-- ============================================================================
 --
--- GRANT SELECT ON POOLDATA.CPNC_POST_AUDIT_SEQ TO CPNC_APP;
+-- Menurut `claim-pnc/backend/.env` baris 60, aplikasi menyambung sebagai
+-- POOLDATA_ASM_PENGGUNA=POOLDATA — yakni PEMILIK SKEMA-nya sendiri.
+--
+-- Dua akibatnya:
+--
+--   1. GRANT TIDAK DIBUTUHKAN. Pemilik skema selalu punya hak penuh atas objek yang ia
+--      miliki; tidak ada hak yang perlu diberikan kepada dirinya sendiri.
+--   2. Menjalankannya JUSTRU GAGAL. `APP_CLAIM_PNC` tidak ada di basis data ini, sehingga
+--      Oracle melempar `ORA-01917: user or role 'APP_CLAIM_PNC' does not exist` — dan satu
+--      pernyataan gagal dapat menghentikan skrip DBA di tengah jalan, meninggalkan
+--      sebagian objek terbuat dan sebagian tidak.
+--
+-- AKTIFKAN baris di bawah HANYA bila aplikasi kelak memakai akun terpisah dari POOLDATA,
+-- lalu ganti APP_CLAIM_PNC dengan nama akun itu.
+--
+-- # Satu pengaman yang TIDAK berlaku selama aplikasi menyambung sebagai POOLDATA
+--
+-- Ketiadaan `DELETE` pada GRANT dimaksudkan menegakkan `D-66` — soft delete — lewat hak
+-- akses basis data, bukan lewat disiplin kode. Pengaman itu **tidak bekerja** pada pemilik
+-- skema: POOLDATA dapat menghapus barisnya sendiri apa pun yang tertulis di sini.
+--
+-- Jadi selama konfigurasi ini berlaku, `D-66` ditegakkan HANYA oleh kode dan oleh review.
+-- Itu kelemahan nyata, dan ia hilang begitu akun aplikasi terpisah dibuat.
+-- GRANT SELECT ON POOLDATA.CLAIM_COMPLIENCE_SEQ TO APP_CLAIM_PNC;
 
--- Hak tulis pada tabel yang dibuat DBA terpisah.
+-- Hak tulis pada tabel tujuannya, yang sudah ada dan tidak dibuat berkas ini.
 --
 -- Dicatat di sini karena keduanya dibutuhkan bersamaan: tanpa INSERT, pengiriman ke Post
--- Audit gagal meski sequence-nya sudah ada.
---
--- GRANT SELECT, INSERT ON POOLDATA.T_CLAIM_COMPLIANCE_H TO CPNC_APP;
+-- Audit tetap gagal meski sequence-nya sudah ada dan dapat dipanggil.
+-- GRANT SELECT, INSERT ON POOLDATA.T_CLAIM_COMPLIANCE_H TO APP_CLAIM_PNC;

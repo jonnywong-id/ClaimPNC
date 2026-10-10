@@ -203,47 +203,75 @@ func rejectTakenName(ctx context.Context, tx *sql.Tx, name string) error {
 	}
 }
 
-// nextID membaca nomor urut berikutnya di dalam transaksi yang sudah memegang kunci tabel.
+// rowScannerQuery adalah sumber baris yang sama bentuknya pada *sql.DB maupun *sql.Tx.
 //
-// Hasilnya dibaca sebagai int64 lalu diubah menjadi teks desimal, bukan dibaca langsung
-// sebagai string. Alasannya: driver Oracle mengembalikan NUMBER sebagai bentuk yang
-// bergantung pada konfigurasinya — "8", "8.0", atau bahkan notasi ilmiah pada nilai besar —
-// dan ID yang tersimpan sebagai "8.0" tidak akan pernah cocok dengan
-// `SPAREPART_HE.KATEGORI_SPART` yang berisi "8".
-func nextID(ctx context.Context, tx *sql.Tx) (string, error) {
-	var next int64
-	if err := tx.QueryRowContext(ctx, getQuery("category_next_id")).Scan(&next); err != nil {
-		return "", fmt.Errorf(
-			"masterkategorisparepart/sqlstore: menerbitkan ID kategori: %w", err)
-	}
-	if next <= 0 {
-		// COALESCE(MAX(...),0)+1 tidak dapat menghasilkan nilai ini pada tabel yang waras.
-		// Bila ia terjadi, ada ID negatif di tabelnya — dan menyisipkan baris di atasnya akan
-		// menimpa deret yang sudah ada.
-		return "", fmt.Errorf(
-			"masterkategorisparepart/sqlstore: ID kategori berikutnya tidak masuk akal: %d", next)
-	}
-	return strconv.FormatInt(next, 10), nil
+// Dipakai supaya penerbitan kunci ditulis SEKALI dan dipakai dua jalur — di dalam transaksi
+// penambahan, dan di luar transaksi oleh `claimpnc -periksa`. Dua salinan yang dapat
+// berbeda diam-diam justru hal yang paling ingin dihindari di sini.
+type rowScannerQuery interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// NextID menerbitkan ID berikutnya di luar transaksi penambahan.
+// nextID menerbitkan kunci berikutnya: maksimum NUMERIK dari kunci yang ada, ditambah satu.
+//
+// # Kenapa tidak meniru Pega
+//
+// `nvl(max(PART_CATEGORY_ID),0)+1` milik Pega mengambil maksimum LEKSIKOGRAFIS, karena
+// kolomnya `VARCHAR2(10)`. Selama kuncinya baru sampai "9" itu tidak terlihat; begitu "10"
+// lahir, `max()` mengembalikan "9" lagi dan kunci 10 diterbitkan untuk kedua kalinya.
+//
+// Basis data pengembangan hari ini berisi kunci "1".."9" — tepat satu penambahan sebelum
+// cacat itu muncul. Menirunya berarti mewarisi kunci ganda yang tidak ditahan constraint
+// apa pun (`R-08`), jadi yang ditiru hanyalah BENTUK kuncinya.
+//
+// # Kunci yang bukan angka dilewati, bukan menggagalkan
+//
+// Perilakunya sama persis dengan adapter memori. Satu baris berkunci janggal tidak boleh
+// membuat seluruh penambahan berhenti — ia justru keadaan yang paling membutuhkan baris
+// baru dapat ditambahkan.
+func nextID(ctx context.Context, source rowScannerQuery) (string, error) {
+	rows, err := source.QueryContext(ctx, getQuery("category_all_ids"))
+	if err != nil {
+		return "", fmt.Errorf(
+			"masterkategorisparepart/sqlstore: membaca kunci kategori: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var existing []string
+	for rows.Next() {
+		var id sql.NullString
+		if err := rows.Scan(&id); err != nil {
+			return "", fmt.Errorf(
+				"masterkategorisparepart/sqlstore: membaca kunci kategori: %w", err)
+		}
+		existing = append(existing, id.String)
+	}
+	if err := rows.Err(); err != nil {
+		// Diperiksa, bukan diabaikan: baris yang gagal dibaca di tengah penelusuran akan
+		// membuat daftar tampak KOSONG, dan kunci berikutnya terbit sebagai "1" atas tabel
+		// yang sebenarnya berisi.
+		return "", fmt.Errorf(
+			"masterkategorisparepart/sqlstore: menelusuri kunci kategori: %w", err)
+	}
+
+	// Perhitungannya ada di paket domain, bukan di sini: bentuk kunci adalah aturan domain,
+	// dan adapter memori memakai fungsi yang sama persis.
+	return masterkategorisparepart.NextKey(existing)
+}
+
+// NextID menerbitkan kunci berikutnya di luar transaksi penambahan.
 //
 // Ia TIDAK dipakai jalur simpan — Insert menerbitkannya sendiri di dalam transaksinya, dan
 // itulah satu-satunya cara nilainya dijamin masih benar saat dipakai.
 //
 // Yang memakainya adalah `claimpnc -periksa`: ia membuktikan penerbitan kunci bekerja
-// terhadap basis data nyata TANPA menyisipkan satu baris pun. Tanpa itu, kegagalan
-// penerbitan ID baru terlihat saat petugas menekan Simpan untuk pertama kalinya.
-//
-// Nilai yang dikembalikannya karena itu bersifat SEMENTARA dan tidak boleh dipakai
+// terhadap basis data nyata TANPA menyisipkan satu baris pun. Nilainya tidak boleh dipakai
 // menyisipkan apa pun.
+//
+// Pemeriksaan itu terbukti berguna: ia yang menangkap `ORA-00932` pada 2026-10-04, jauh
+// sebelum ada yang membaca kode penyebabnya.
 func (r *Repo) NextID(ctx context.Context) (string, error) {
-	var next int64
-	if err := r.db.QueryRowContext(ctx, getQuery("category_next_id")).Scan(&next); err != nil {
-		return "", fmt.Errorf(
-			"masterkategorisparepart/sqlstore: menerbitkan ID kategori: %w", err)
-	}
-	return strconv.FormatInt(next, 10), nil
+	return nextID(ctx, r.db)
 }
 
 // Update menyimpan perubahan pada baris yang sudah ada.
@@ -482,6 +510,13 @@ func loadAllQueries() map[string]string {
 // komentar dari badan kueri supaya yang dikirim ke basis data hanya pernyataannya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 	result := map[string]string{}
 	name := ""
 	var body []string

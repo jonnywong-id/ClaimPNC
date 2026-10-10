@@ -5,11 +5,9 @@ import { formatDate } from '@/components/format'
 
 import { useState } from 'react'
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
 import { Button } from '@/components/Button'
 
-import { PAGE_SIZE, unduhTampungan, useTampunganPIC } from './api'
+import { PAGE_SIZE, useTampunganPIC } from './api'
 import { DialogTransfer } from './DialogTransfer'
 import type { BarisTampungan } from './types'
 
@@ -25,14 +23,28 @@ import type { BarisTampungan } from './types'
  * Kueri lamanya tidak punya penandanya, dan layar lamanya tidak menggambar dropdown Bisnis
  * pada tab ini. Satu-satunya penyaringnya kotak cari No Klaim.
  *
- * # Tombol Transfer tidak dibawa
+ * # Tombol Transfer MEMINDAHKAN
  *
- * Layar lama menggambar tombol "Transfer" pada setiap baris — ia MENULIS, memindahkan tugas
- * ke operator lain. `P-1` menetapkan `DATAPEGA.PC_ASSIGN_WORKLIST` masih ditulis Pega selama
- * masa paralel, sehingga tab ini membaca saja.
+ * KOREKSI (2026-10-06): sebelumnya tombol ini hanya mencatat permintaan, dengan alasan `P-1`
+ * — `DATAPEGA.PC_ASSIGN_WORKLIST` ditulis Pega selama masa paralel. Alasan itu salah sasaran:
+ * yang dipindahkan BUKAN penugasan Pega melainkan **PIC Teknik klaim** (`USERTEKNIS_1`), dan
+ * `PNC_ReassignPNCTeknik` — activity di balik tombol yang sama di Pega — juga tidak menyentuh
+ * `PC_ASSIGN_WORKLIST`.
  *
- * Dinyatakan di layar, bukan dihilangkan diam-diam: pengguna yang mencari tombolnya perlu
- * tahu ia belum ada, bukan mengira layarnya rusak.
+ * Antreannya karena itu dicabut: ia tidak punya pelaksana, dan baris di tab ini akan menumpuk
+ * selamanya. Tab inilah yang paling dirugikan oleh itu — isinya justru klaim yang menunggu
+ * diberi PIC.
+ *
+ * # TANPA tombol unduh — berbeda dari keempat tile
+ *
+ * Tab ini pernah punya tombol "Export to Excel"; ia **dicabut 2026-10-07** karena layar lama
+ * tidak punya padanannya. Dibuktikan dua cara: `DashboardClaim_Section2-Section.xml` memuat
+ * **nol** `openUrlInWindow` — cara keempat ekspor tile dipanggil, yang muncul 4× di
+ * `DashboardClaim_Section1` — dan tidak ada satu pun activity `Export*` di export yang
+ * menyentuh klaim ber-`USERTEKNIS_1 IS NULL`.
+ *
+ * Yang ada di tab ini hanya dua: kotak cari (`SearchCaseNotAssigned_act`) dan tombol Transfer
+ * per baris (`GCNMTransferAssignmentManager_act`).
  */
 export function TampunganPIC({
   cari,
@@ -47,23 +59,7 @@ export function TampunganPIC({
 }) {
   const daftar = useTampunganPIC(true, { cari, halaman })
 
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-
   const [transfer, setTransfer] = useState<BarisTampungan | null>(null)
-  const [galatUnduh, setGalatUnduh] = useState<string | null>(null)
-
-  async function unduh() {
-    setGalatUnduh(null)
-    try {
-      await unduhTampungan(cari, token, portal)
-    } catch (failure) {
-      // Unduhan gagal TIDAK boleh diam: pengguna menekan tombol, tidak ada berkas yang
-      // muncul, dan tanpa pesan ia tidak tahu apakah berkasnya kosong atau permintaannya
-      // yang gagal.
-      setGalatUnduh(pesanGalat(failure))
-    }
-  }
 
   const keterangan = daftar.data?.halaman
   const pagination = {
@@ -79,19 +75,9 @@ export function TampunganPIC({
     <>
       <p className="mb-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         Klaim yang sudah terdaftar tetapi <strong>belum dipegang PIC Teknik</strong>. Tombol{' '}
-        <em>Transfer</em> mencatat permintaan pemindahan — penugasannya dipindahkan Pega
-        selama masa paralel, jadi barisnya masih akan tampil di sini sesudahnya.
+        <em>Transfer</em> menyerahkannya kepada petugas yang dipilih, dan barisnya hilang dari
+        sini setelah daftarnya dimuat ulang.
       </p>
-
-      {galatUnduh !== null ? (
-        <div className="mb-4">
-          <ErrorMessage
-            tone="gangguan"
-            title="Unduhan gagal"
-            description={galatUnduh}
-          />
-        </div>
-      ) : null}
 
       <DataTable<BarisTampungan>
         title="Inbox Tampungan PIC"
@@ -114,11 +100,6 @@ export function TampunganPIC({
         emptyMessage="Tidak ada klaim di tampungan yang cocok dengan pencarian."
         showHeaderWhenEmpty
         pagination={pagination}
-        actions={
-          <Button tone="kedua" onClick={() => void unduh()}>
-            Export to Excel
-          </Button>
-        }
       />
 
       {transfer !== null ? (
@@ -126,6 +107,8 @@ export function TampunganPIC({
           lingkup="baris"
           nomorKlaim={transfer.nomor_klaim}
           klaimID={transfer.klaim_id}
+          // Tab Tampungan tidak punya penyaring lini bisnis — kuerinya pun tidak (`D-73`).
+          // Daftar PIC karena itu tidak dapat disaring dari sini, dan dialog menyatakannya.
           onTutup={() => setTransfer(null)}
         />
       ) : null}

@@ -1,13 +1,21 @@
 import { useMemo, useState } from 'react'
 
-import { APIError } from '@/api/client'
 import { SparepartStatus, type Sparepart } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
 
-import { useCreateSparepart, useDecideSparepart, useSaveSparepart, useSparepartList } from './api'
+import {
+  useCreateSparepart,
+  useImportSparepartCSV,
+  useSaveSparepart,
+  useSparepartDocument,
+  useSparepartList,
+  useSparepartOptions,
+  useUploadSparepartDocument,
+} from './api'
+import { DocumentField } from './DocumentField'
+import { ImportCSVPanel } from './ImportCSVPanel'
 import { SparepartForm, type SparepartFormValues } from './SparepartForm'
 import { compareCodeUnits } from '@/lib/sort'
 
@@ -132,23 +140,28 @@ function emptyMessageFor(hasPortal: boolean): string {
  * Itu bukan efek samping melainkan langkah tersendiri di sistem lama:
  * `Activity/UpdateSparepartHE_act` menetapkan `APPROVAL := "0"` tanpa syarat apa pun.
  *
- * # Kenapa Approve dan Reject ada DI SINI, bukan di Inbox Manager
+ * # TIDAK ada Approve dan Reject di layar ini — dan itu mengikuti Pega
  *
- * Di Pega keduanya ada di layar lain: `Section/ApprovalMasterSparepartHE` dipakai Inbox
- * Manager, dan keputusannya dijalankan `Activity/SetApprovalAllMaster` yang melayani
- * bengkel, panel, dan sparepart sekaligus.
+ * Ketiga tabnya berperilaku SAMA: daftar, ditambah tombol Ubah per baris. Terbukti dari
+ * ketiga sectionnya, yang hanya memuat dua tombol — `SIMPAN` dan `Ubah` — dan **nol**
+ * `pxCheckbox` serta **nol** `pySelected`:
  *
- * Inbox Manager belum dibangun. Menunda keputusannya sampai layar itu ada berarti setiap
- * sparepart yang ditambah tertahan di Waiting Approval tanpa satu pun cara menyelesaikannya.
- * Yang dipakai sebagai gantinya adalah BENTUK yang sama persis: centang beberapa baris, lalu
- * satu tombol untuk seluruh pilihan. Perlakuannya sama dengan Master Panel dan Master
- * Bengkel.
+ *	Section/BrowseMasterSparepartHEApprove-Section.xml    SIMPAN · Ubah
+ *	Section/BrowseMasterSparepartHEReject-Section.xml     SIMPAN · Ubah
+ *	Section/BrowseMasterSparepartHEApproval-Section.xml   SIMPAN · Ubah
  *
- * # Tanpa isian Catatan, berbeda dari Master Panel
+ * Centang, Select All, Approve, dan Reject hanya ada di `ApprovalMasterSparepartHE` — layar
+ * **Inbox Manager**, bukan layar ini. Di sanalah `Activity/SetApprovalAllMaster` dipanggil.
  *
- * `POOLDATA.SPAREPART_HE` tidak punya kolom penampung alasan penolakan — kedua puluh tiga
- * kolomnya terbaca lengkap dari `BrowseSparepartHE_RD`, dan tidak satu pun menampungnya.
- * Menggambar isian yang diam-diam membuang isinya lebih buruk daripada tidak menggambarnya.
+ * Layar ini sempat menggambar bilah keputusan itu dengan alasan "Inbox Manager belum
+ * dibangun, tanpa ini pengajuan tertahan tanpa cara menyelesaikannya". Work Owner
+ * mencabutnya (2026-10-03): tab Waiting Approval harus mengikuti perilaku Pega, dan
+ * persetujuan ditempatkan di layar yang memang memilikinya.
+ *
+ * Akibat yang diterima: sampai Inbox Manager dibangun, **tidak ada satu pun layar yang dapat
+ * menyetujui sparepart**. Endpoint `POST /api/master/sparepart/keputusan` beserta
+ * `useDecideSparepart` sengaja TIDAK dihapus — keduanya sudah teruji dan menunggu layar yang
+ * benar, bukan menunggu ditulis ulang.
  */
 export function SparepartPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -156,13 +169,44 @@ export function SparepartPage() {
   const [tab, setTab] = useState<TabId>('approve')
   const [isAdding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Sparepart | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
 
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useSparepartList(active.status)
   const create = useCreateSparepart()
   const save = useSaveSparepart()
-  const decide = useDecideSparepart()
+  const upload = useUploadSparepartDocument()
+
+  /*
+    Berkas dan catatannya dipegang HALAMAN, bukan panelnya, karena unggahannya terjadi
+    SESUDAH penyimpanan berhasil — dan yang tahu penyimpanan berhasil adalah halaman.
+
+    Keduanya TIDAK dihapus saat form dibuka: berkas dipilih lebih dulu, form dibuka
+    kemudian, dan menghapusnya di sana membuang berkas tepat sebelum Simpan ditekan tanpa
+    satu pun tanda. Pega pun menyimpannya di halaman klipboard yang tidak ikut terhapus.
+    Yang menghapusnya hanya closeForm, SESUDAH penyimpanan beserta unggahannya selesai.
+  */
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [documentNote, setDocumentNote] = useState('')
+
+  /*
+    Panel unggah yang sedang terbuka — SATU saja pada satu waktu.
+
+    Keduanya menempati tempat yang sama di bawah kepala halaman, dan membuka dua sekaligus
+    hanya memanjangkan layar tanpa menambah apa pun. Bentuknya sama dengan Master Panel, yang
+    menampung tiga panel pada satu keadaan.
+  */
+  const [panelUnggah, setPanelUnggah] = useState<'dokumen' | 'csv' | null>(null)
+
+  function bukaPanel(nama: 'dokumen' | 'csv') {
+    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama))
+  }
+
+  const importCSV = useImportSparepartCSV()
+  const options = useSparepartOptions()
+  const documentOf = useSparepartDocument(editing?.id_sparepart ?? null)
+
+  /** Dibaca dari `unggah_tersedia`; menentukan hidup-matinya tombol di kepala halaman. */
+  const uploadAvailable = options.data?.unggah_tersedia ?? false
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.sparepart ?? []
@@ -190,6 +234,9 @@ export function SparepartPage() {
   function closeForm() {
     create.reset()
     save.reset()
+    upload.reset()
+    setDocumentFile(null)
+    setDocumentNote('')
     setAdding(false)
     setEditing(null)
   }
@@ -208,31 +255,38 @@ export function SparepartPage() {
     setEditing(row)
   }
 
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
+  /**
+   * Sparepart disimpan LEBIH DULU, dokumennya menyusul.
+   *
+   * Urutan itu mengikuti Pega, dan pada jalur Tambah ia satu-satunya yang mungkin: ID
+   * sparepart diterbitkan server dan baru lahir setelah tersimpan, sementara dokumen
+   * menuntut ID untuk ditautkan.
+   *
+   * Form ditutup HANYA setelah keduanya selesai. Menutupnya lebih dulu akan membuang isian
+   * pengguna saat penyimpanan gagal — dan pada form berisi dua puluh isian, itu kehilangan
+   * yang tidak dapat dimaafkan.
+   *
+   * Bila unggahan gagal SESUDAH sparepart tersimpan, form dibiarkan TERBUKA dengan pesan
+   * yang menyebutkan barisnya sudah tersimpan. Menutupnya akan menyembunyikan kegagalan itu,
+   * dan pengguna baru menyadarinya saat mencari dokumen yang tidak pernah ada.
+   */
   function submit(values: SparepartFormValues) {
-    // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
-    // membuang isian pengguna saat penyimpanan gagal — dan pada form berisi dua puluh isian,
-    // itu kehilangan yang tidak dapat dimaafkan.
+    const attach = (id: string) => {
+      if (documentFile === null) {
+        closeForm()
+        return
+      }
+      upload.mutate({ id, file: documentFile, note: documentNote }, { onSuccess: closeForm })
+    }
+
     if (editing) {
-      save.mutate({ id: editing.id_sparepart, input: values }, { onSuccess: closeForm })
+      save.mutate(
+        { id: editing.id_sparepart, input: values },
+        { onSuccess: () => attach(editing.id_sparepart) },
+      )
       return
     }
-    create.mutate(values, { onSuccess: closeForm })
-  }
-
-  function runDecision(status: string) {
-    decide.mutate(
-      { id_sparepart: [...chosen], status },
-      { onSuccess: () => setChosen(new Set()) },
-    )
+    create.mutate(values, { onSuccess: (created) => attach(created.sparepart.id_sparepart) })
   }
 
   /*
@@ -241,33 +295,11 @@ export function SparepartPage() {
 
     Dua kolomnya di layar lama TIDAK punya judul sama sekali: selnya bertuliskan
     `.HARGA_JUAL` dan `.TGL_UPDATE_HARGA`, yakni nama propertinya sendiri yang bocor ke
-    layar. Judulnya di sini diisi kata yang benar — "Harga Jual" dan "Tanggal Update" —
+    layar. Judulnya diambil dari caption grid Pega yang sebenarnya — "Harga (Rp)" dan
+    "Tanggal Update" —
     karena nama properti yang bocor bukan tata letak yang layak ditiru, melainkan cacat.
   */
   const columns: Column<Sparepart>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Sparepart) => (chosen.has(row.id_sparepart) ? 'dipilih' : ''),
-            render: (row: Sparepart) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_sparepart)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_sparepart)}
-                />
-                <span className="sr-only">Pilih {row.nama_sparepart}</span>
-              </label>
-            ),
-          } satisfies Column<Sparepart>,
-        ]
-      : []),
     {
       key: 'id',
       title: 'ID Sparepart',
@@ -282,7 +314,7 @@ export function SparepartPage() {
     },
     {
       key: 'harga',
-      title: 'Harga Jual',
+      title: 'Harga (Rp)',
       width: '10rem',
       alignRight: true,
       // Yang dicari dan diurutkan adalah teks aslinya, sedangkan yang dilihat pengguna
@@ -342,24 +374,91 @@ export function SparepartPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
+          {/*
+            Letaknya di kepala halaman mengikuti Pega apa adanya
+            (`Section/BrowseMasterSparepartHE`, offset 36628 — sejajar dengan tab).
+
+            Ia membuka panel inline, bukan modal, karena aplikasi ini memang tidak punya
+            modal: form tambah dan ubah pun digambar sebagai panel inline di bawah kepala
+            halaman.
+          */}
+          <Button
+            tone="kedua"
+            onClick={() => { bukaPanel('dokumen') }}
+            disabled={!uploadAvailable}
+          >
+            Upload Document
+          </Button>
+          {/*
+            Tombol KEDUA layar Pega. Ia TIDAK bergantung pada `unggah_tersedia`: yang diperiksa
+            penanda itu adalah layanan penyimpanan dokumen, sedangkan unggah CSV menulis
+            langsung ke tabel sparepart dan tidak menyentuh layanan itu sama sekali.
+          */}
+          <Button tone="kedua" onClick={() => { bukaPanel('csv') }}>
+            Upload Data Master Sparepart
+          </Button>
           <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
             {list.isFetching ? 'Memuat…' : 'Refresh'}
           </Button>
         </div>
       </header>
 
+      {panelUnggah === 'dokumen' && (
+        <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Upload Document</h2>
+          <p className="mb-3 mt-0.5 text-xs text-slate-600">
+            Dokumen pendukung untuk <span className="font-medium">satu</span> sparepart.
+          </p>
+          <DocumentField
+            current={documentOf.data?.data ?? null}
+            available={uploadAvailable}
+            file={documentFile}
+            note={documentNote}
+            onPick={setDocumentFile}
+            onNote={setDocumentNote}
+            isSaving={create.isPending || save.isPending || upload.isPending}
+            error={upload.error}
+            onClose={() => { setPanelUnggah(null) }}
+          />
+        </section>
+      )}
+
+      {panelUnggah === 'csv' && (
+        <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Upload Data Master Sparepart</h2>
+          <p className="mb-3 mt-0.5 text-xs text-slate-600">
+            Berkas CSV berisi <span className="font-medium">banyak</span> sparepart sekaligus.
+            Barisnya dicocokkan menurut <span className="font-medium">nomor sparepart</span>, dan
+            seluruhnya masuk antrean persetujuan.
+          </p>
+          <ImportCSVPanel
+            isSending={importCSV.isPending}
+            report={importCSV.data?.data ?? null}
+            error={importCSV.error}
+            onSend={(berkas) => { importCSV.mutate(berkas) }}
+            onClose={() => { setPanelUnggah(null) }}
+          />
+        </section>
+      )}
+
       {/*
-        Kedua tombol unggah layar Pega — "Upload Document" dan "Upload Data Master Sparepart"
-        (`pyButtonLabel` pada Section/BrowseMasterSparepartHE) — SENGAJA TIDAK DIGAMBAR.
+        Kedua tombol unggah layar Pega kini lengkap, dan aturannya diturunkan dari activity
+        yang ADA di export — bukan dari Flow Action pemanggilnya.
 
-        Keduanya memanggil local action `UploadDocument` dan `PNCUploadMasterSparepartCSV`;
-        tidak satu pun ada di export (`R-16`), sehingga susunan kolom CSV-nya, validasinya,
-        dan — yang paling menentukan — apakah baris hasil unggah masuk antrean persetujuan,
-        seluruhnya tidak diketahui.
+        `Flow Action/PNCUploadMasterSparepartCSV-FA` isinya hanya pemilih berkas. Yang
+        menentukan perilaku ada di `Activity/PNCUploadMasterSparepart_Act`, yang terbaca utuh:
 
-        Sempat digambar dalam keadaan mati supaya ketiadaannya terbaca dari layar. Work Owner
-        memilih menariknya sama sekali (2026-09-24), menyamakannya dengan Master Panel (§28);
-        lihat docs/keputusan-implementasi.md §30.9.
+          header CSV = nama kolom tabel (pxUploadCSVResults memetakannya langsung,
+            lalu @GCNM.GetPageJSONString() menserialkan halamannya apa adanya)
+          kunci upsert NO_SPART  —  GCNM GetSparepartFromNoSparepart, nol penyaring tambahan
+          tidak ketemu -> ID "UnknownID", diterbitkan PEGA_M_SPAREPART_HE.prc
+          NAMA_SPART DIHURUFBESARKAN  —  hanya di jalur ini, tidak di jalur form
+          APPROVAL := "0" tanpa syarat
+          USER_UPDATE dari pengunggah, TGL_UPDATE_HARGA dari jam sistem
+
+        Satu jebakan yang sama dengan Master Panel: yang dijalankan adalah `PropertiesValue`
+        di bawah `Embed-MethodParams`; `pyExpression` di bawah `PegaGadget-ExpressionBuilder`
+        hanyalah draf editor yang tertinggal.
       */}
       <nav
         aria-label="Tab Master Sparepart"
@@ -372,11 +471,6 @@ export function SparepartPage() {
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
               closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab sebelumnya,
-              // dan menyimpannya berarti keputusan dapat mengenai baris yang tidak sedang
-              // dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
               setTab(t.id)
             }}
             className={[
@@ -403,37 +497,6 @@ export function SparepartPage() {
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
         </span>
       </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} sparepart dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(SparepartStatus.disetujui)}
-          onReject={() => runDecision(SparepartStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
 
       {isFormOpen && (
         <section className="mt-5">
@@ -471,66 +534,6 @@ export function SparepartPage() {
         />
       </section>
     </main>
-  )
-}
-
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Section/ApprovalMasterSparepartHE-Section.xml` yang menyediakan Select All,
- * Deselect All, Approve, dan Reject.
- *
- * TANPA isian Catatan, berbeda dari Master Panel: `POOLDATA.SPAREPART_HE` tidak punya kolom
- * penampungnya. Lihat catatan pada SparepartPage.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: {
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang sparepart yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} sparepart</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama sama
-        membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari namanya.
-        Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
   )
 }
 
