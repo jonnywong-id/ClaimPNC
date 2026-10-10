@@ -52,101 +52,80 @@
 --    itu sampai ke pengguna apa adanya. Di sini ia DITAHAN — lihat NULLIF di bawah, satu-
 --    satunya penyimpangan pada berkas ini dan alasannya ada di komentar tempatnya.
 
--- name: admin_scorecard_nonmbu
--- Kartu skor **NON-MBU** — satu baris, seluruh angkanya dihitung basis data.
+-- ============================================================================
+-- JAM KERJA DIHITUNG DI GO, BUKAN DI BASIS DATA (2026-10-09)
+-- ============================================================================
+--
+-- Keempat kueri di bawah DULU memanggil `datamining.get_working_hours@asmd.sinarmas.co.id`
+-- — fungsi lintas DB Link milik basis data ASMD. Pemanggilan itu dicabut seluruhnya,
+-- karena dua alasan yang berdiri sendiri:
+--
+--   1. Fungsinya TIDAK DAPAT DIJANGKAU dari basis data kita. Dibuktikan dengan
+--      memanggilnya langsung: `ORA-00904: "DATAMINING"."GET_WORKING_HOURS": invalid
+--      identifier`, sementara `GENERAL.HRD_LBR@asmd.sinarmas.co.id` pada DB Link YANG SAMA
+--      terbaca normal. Jadi bukan DB Link-nya yang mati — objek itu yang tidak terlihat.
+--      Akibatnya seluruh tab KPI Admin gagal dengan "Terjadi kesalahan pada sistem".
+--
+--   2. `D-50` memang menetapkan perhitungan jam kerja dan kalender libur **ditulis ulang
+--      di Go**: ia aturan bisnis, bukan pengambilan data. Tab KPI PIC Teknik sudah begitu.
+--      Yang diambil dari basis data kini hanyalah daftar tanggal liburnya.
+--
+-- Akibatnya pada bentuk kueri: yang dulu MENGHITUNG di SQL kini MENGEMBALIKAN BARIS, dan
+-- pencacahan beserta penilaiannya pindah ke Go — lihat `admin_penilaian.go`.
+--
+-- SELISIH YANG DIKETAHUI. Fungsi lama mengembalikan DETIK, lalu dibagi 28.800 (= 8 jam),
+-- sehingga umurnya PECAHAN — grid Pega menampilkan misalnya 2,35 hari. Perhitungan Go
+-- menghitung HARI KERJA BULAT, karena jam masuk dan jam pulang yang dipakai fungsi itu
+-- tidak dapat dibaca dari mana pun. Dua akibatnya: kolom umur tampil bulat, dan ambang
+-- `> 1 hari` dapat berbeda untuk kasus yang sebenarnya 1,4 hari. Begitu jam kerjanya
+-- diketahui, yang berubah hanya satu fungsi di Go — kueri di bawah tidak tersentuh.
+
+-- name: admin_rows_nonmbu
+-- Baris mentah kartu skor **NON-MBU** — satu baris per klaim.
 -- — RDB List/GetDataKPIAdmin-SQL.xml
 --
--- Empat pencacah di dalamnya membedakan LEADER dari MEMBER lewat `a.reinsurer`:
+-- Penyaringnya sama persis dengan keempat subquery kueri lama, yang memang mengulang
+-- penyaring yang sama empat kali. Di sini cukup SEKALI: pembedaan leader/member dan
+-- pelanggaran SLA dikerjakan Go atas baris yang sama.
 --
---   reinsurer  = '1'  leader
---   reinsurer <> '1'  member
+-- `GROUP_PANEL` dan `GROUPBISNISID` memakai alias `a` (pega_dashboardpnc), bukan `b`.
+-- Kueri Pega menulisnya tanpa alias; katalog menunjukkan keduanya milik tabel itu, dan
+-- menempelkannya ke `b` menghasilkan `ORA-00904`.
 --
--- dan "melewati SLA" berarti `tat_regis > 1` — TAT registrasi lebih dari satu hari kerja.
--- Satu hari kerja di sana adalah 28.800 detik (8 jam), dan pembaginya ditulis apa adanya.
---
--- `datamining.get_working_hours@asmd.sinarmas.co.id` DIPERTAHANKAN sebagai DB link.
--- Work Owner, 2026-09-24: yang berupa SUB-QUERY tetap memakai DB link. Fungsi ini dipanggil
--- di dalam subquery terhadap tabel POOLDATA; memindahkannya ke koneksi langsung berarti
--- satu perjalanan jaringan PER BARIS, dan itu menghancurkan kinerja laporan (`D-50`).
---
--- Bind: :1 periode dari · :2 periode sampai (dipakai empat kali, lihat urutannya di Go)
-SELECT leader_over_sla                                          AS LEADER_OVER_SLA,
-       leader_total                                             AS LEADER_TOTAL,
-       (leader_over_sla / NULLIF(leader_total, 0)) * 100         AS LEADER_PERCENT,
-       member_over_sla                                          AS MEMBER_OVER_SLA,
-       member_total                                             AS MEMBER_TOTAL,
-       (member_over_sla / NULLIF(member_total, 0)) * 100         AS MEMBER_PERCENT,
-       leader_score                                             AS LEADER_SCORE,
-       member_score                                             AS MEMBER_SCORE,
-       (leader_score / 5) * 0.45 * 100                          AS LEADER_SUBTOTAL,
-       (member_score / 5) * 0.40 * 100                          AS MEMBER_SUBTOTAL,
-       (leader_score / 5) * 0.45 * 100
-         + (member_score / 5) * 0.40 * 100                      AS QUANTITATIVE_TOTAL,
-       ROUND(((leader_score / 5) * 0.45 * 100
-         + (member_score / 5) * 0.40 * 100) / ((3 / 5) * 90), 2) AS ACHIEVEMENT_RATIO
-  FROM (SELECT leader_over_sla,
-               leader_total,
-               member_over_sla,
-               member_total,
-               -- Tangga nilai 1–5. Ditiru kata demi kata, termasuk tumpang tindih
-               -- BETWEEN-nya: `= 1` tidak pernah tercapai karena cabang `BETWEEN 0.5 AND 1`
-               -- di atasnya sudah menangkapnya lebih dulu. Itu perilaku Pega hari ini.
-               CASE
-                 WHEN (leader_over_sla / NULLIF(leader_total, 0)) * 100 < 0.5            THEN 5
-                 WHEN (leader_over_sla / NULLIF(leader_total, 0)) * 100 BETWEEN 0.5 AND 1 THEN 4
-                 WHEN (leader_over_sla / NULLIF(leader_total, 0)) * 100 = 1              THEN 3
-                 WHEN (leader_over_sla / NULLIF(leader_total, 0)) * 100 BETWEEN 1 AND 1.5 THEN 2
-                 WHEN (leader_over_sla / NULLIF(leader_total, 0)) * 100 BETWEEN 1.5 AND 2 THEN 1
-                 ELSE 0
-               END AS leader_score,
-               CASE
-                 WHEN (member_over_sla / NULLIF(member_total, 0)) * 100 < 0.5            THEN 5
-                 WHEN (member_over_sla / NULLIF(member_total, 0)) * 100 BETWEEN 0.5 AND 1 THEN 4
-                 WHEN (member_over_sla / NULLIF(member_total, 0)) * 100 = 1              THEN 3
-                 WHEN (member_over_sla / NULLIF(member_total, 0)) * 100 BETWEEN 1 AND 1.5 THEN 2
-                 WHEN (member_over_sla / NULLIF(member_total, 0)) * 100 BETWEEN 1.5 AND 2 THEN 1
-                 ELSE 0
-               END AS member_score
-          FROM (SELECT COUNT(CASE WHEN reinsurer =  '1' AND tat_regis > 1 THEN 1 END) AS leader_over_sla,
-                       COUNT(CASE WHEN reinsurer =  '1'                   THEN 1 END) AS leader_total,
-                       COUNT(CASE WHEN reinsurer <> '1' AND tat_regis > 1 THEN 1 END) AS member_over_sla,
-                       COUNT(CASE WHEN reinsurer <> '1'                   THEN 1 END) AS member_total
-                  FROM (SELECT a.reinsurer,
-                               datamining.get_working_hours@asmd.sinarmas.co.id(
-                                 b.REGISTERDATE, b.TRANSFERPIC_DATE) / 28800 AS tat_regis
-                          FROM pooldata.pega_dashboardpnc a,
-                               pooldata.t_claim_pnc b,
-                               datapega.pc_asm_fw_gcnmfw_work d
-                         WHERE a.noklaim = b.claimno
-                           AND b.claimid = d.pzinskey
-                           AND a.stsklaim <> '2'
-                           AND d.pxcreateoperator IN
-                                 ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
-                           AND b.group_panel IN ('003', '004', '006', '009')
-                           AND b.groupbisnisid NOT IN ('09', '11', '16', '25')
-                           AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
-                           AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY)))
+-- Bind: :1 periode dari · :2 periode sampai
+SELECT a.reinsurer        AS REINSURER,
+       b.REGISTERDATE     AS REGISTER_DATE,
+       b.TRANSFERPIC_DATE AS TRANSFER_DATE
+  FROM pooldata.pega_dashboardpnc a,
+       pooldata.t_claim_pnc b,
+       datapega.pc_asm_fw_gcnmfw_work d
+ WHERE a.noklaim = b.claimno
+   AND b.claimid = d.pzinskey
+   AND a.stsklaim <> '2'
+   AND d.pxcreateoperator IN
+         ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
+   AND a.group_panel IN ('003', '004', '006', '009')
+   AND a.groupbisnisid NOT IN ('09', '11', '16', '25')
+   AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
+   AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY
 
 -- name: admin_detail_nonmbu
 -- Grid rincian **NON-MBU** — satu baris per klaim.
 -- — RDB List/BrowseDataKPIAdmin-SQL.xml
 --
 -- PERHATIKAN penyaring Group Panel-nya: `('003','004','006')` — TANPA `009`, berbeda dari
--- kartu skor di atas. Itu keanehan nomor 1 pada kepala berkas ini, direplikasi apa adanya.
+-- kartu skor di atas. Itu keanehan kueri lama, direplikasi apa adanya.
 --
--- Tanggal diambil sebagai TANGGAL, bukan `to_char` seperti kueri lama: pemformatan
--- dikerjakan Go (`08-TECHNICAL-STRATEGY.md` §4.3).
+-- Umur registrasi TIDAK lagi dipilih di sini; ia dihitung Go dari kedua tanggalnya.
 --
 -- Bind: :1 periode dari · :2 periode sampai · :3 offset · :4 jumlah baris
-SELECT a.noklaim                AS CLAIM_NUMBER,
-       b.nopolis                AS POLICY_NUMBER,
-       b.businessname           AS BUSINESS_NAME,
-       b.REGISTERDATE           AS REGISTER_DATE,
-       b.TRANSFERPIC_DATE       AS TRANSFER_DATE,
-       b.leader_member          AS TEAM_FLAG,
-       datamining.get_working_hours@asmd.sinarmas.co.id(
-         b.REGISTERDATE, b.TRANSFERPIC_DATE) / 28800 AS REGISTER_AGING,
-       COUNT(*) OVER ()         AS TOTAL_ROWS
+SELECT a.noklaim          AS CLAIM_NUMBER,
+       b.nopolis          AS POLICY_NUMBER,
+       b.businessname     AS BUSINESS_NAME,
+       b.REGISTERDATE     AS REGISTER_DATE,
+       b.TRANSFERPIC_DATE AS TRANSFER_DATE,
+       b.leader_member    AS TEAM_FLAG,
+       COUNT(*) OVER ()   AS TOTAL_ROWS
   FROM pooldata.pega_dashboardpnc a,
        pooldata.t_claim_pnc b,
        datapega.pc_asm_fw_gcnmfw_work d
@@ -155,160 +134,111 @@ SELECT a.noklaim                AS CLAIM_NUMBER,
    AND b.claimid = d.pzinskey
    AND d.pxcreateoperator IN
          ('SOPHIANOVITAEVELYN_1', 'SOPHIANOVITAEVELYN', 'RUTHCLARA')
-   AND b.group_panel IN ('003', '004', '006')
-   AND b.groupbisnisid NOT IN ('09', '11', '16', '25')
+   AND a.group_panel IN ('003', '004', '006')
+   AND a.groupbisnisid NOT IN ('09', '11', '16', '25')
    AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
    AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY
  ORDER BY b.REGISTERDATE DESC, a.noklaim
 OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 
--- name: admin_scorecard_pa
--- Kartu skor **PA** — satu baris.
--- — RDB List/GetDataKPIAdminPA-SQL.xml
+-- name: admin_rows_pa_register
+-- Baris tahap REGISTRASI kelompok **PA** — satu baris per klaim.
+-- — RDB List/GetDataKPIAdminPA_khususPA-SQL.xml
 --
--- Bentuknya BERBEDA dari NON-MBU, dan itu bukan penyederhanaan: yang diukur memang bukan
--- leader versus member melainkan DUA TAHAP — registrasi dan pembayaran.
---
---   regist_klaim_pa      klaim yang TAT registrasinya > 0 hari kerja
---   pembayaran_klaim_pa  klaim yang TAT pembayarannya > 0 hari kerja
---
--- Perhatikan ambangnya `> 0`, bukan `> 1` seperti NON-MBU. Ditiru apa adanya.
---
--- ============================================================================
--- RENTANG 2023 YANG TERTANAM — KEANEHAN NOMOR 2
--- ============================================================================
---
--- Pembagi `total_pembayaran_pa` menyaring `b.receivedate BETWEEN 01/01/2023 AND
--- 10/11/2023` — rentang TETAP yang tidak ikut berubah ketika pengguna memilih periode
--- lain. Ia tampak seperti sisa uji coba yang tertinggal di produksi.
---
--- Direplikasi apa adanya (`P-5`), dan ditandai sebagai selisih terencana supaya penguji
--- tidak melaporkannya sebagai cacat sistem baru. Bila Work Owner memutuskan memperbaikinya,
--- yang berubah hanya dua baris di bawah.
+-- Ia melayani DUA cacahan sekaligus: `claim_total` adalah seluruh barisnya, dan
+-- `register_over_sla` adalah yang umurnya melewati ambang. Kueri lama memisahkannya
+-- menjadi dua subquery dengan penyaring yang identik; di sini cukup satu.
 --
 -- Bind: :1 periode dari · :2 periode sampai
-SELECT register_over_sla                                       AS REGISTER_OVER_SLA,
-       payment_over_sla                                        AS PAYMENT_OVER_SLA,
-       claim_total                                             AS CLAIM_TOTAL,
-       payment_total                                           AS PAYMENT_TOTAL,
-       CASE
-         WHEN (register_over_sla / NULLIF(claim_total, 0)) * 100 < 0.5             THEN 5
-         WHEN (register_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 0.5 AND 1 THEN 4
-         WHEN (register_over_sla / NULLIF(claim_total, 0)) * 100 = 1               THEN 3
-         WHEN (register_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 1 AND 1.5 THEN 2
-         WHEN (register_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 1.5 AND 2 THEN 1
-         ELSE 0
-       END                                                     AS REGISTER_SCORE,
-       CASE
-         WHEN (payment_over_sla / NULLIF(claim_total, 0)) * 100 < 0.5              THEN 5
-         WHEN (payment_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 0.5 AND 1  THEN 4
-         WHEN (payment_over_sla / NULLIF(claim_total, 0)) * 100 = 1                THEN 3
-         WHEN (payment_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 1 AND 1.5  THEN 2
-         WHEN (payment_over_sla / NULLIF(claim_total, 0)) * 100 BETWEEN 1.5 AND 2  THEN 1
-         ELSE 0
-       END                                                     AS PAYMENT_SCORE
-  FROM (SELECT
-          (SELECT COUNT(CLAIMNO)
-             FROM (SELECT b.CLAIMNO,
-                          datamining.get_working_hours@asmd.sinarmas.co.id(
-                            b.receivedate, b.REGISTERDATE) / 28800 AS tat_regis
-                     FROM pooldata.t_claim_pnc b,
-                          datapega.pc_asm_fw_gcnmfw_work d
-                    WHERE b.claimid = d.pzinskey
-                      AND b.STATUSWORK <> 'Resolved-Rejected'
-                      AND d.pxcreateoperator IN
-                            ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
-                      AND b.GROUPPANEL IN ('002')
-                      AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
-                      AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY)
-            WHERE tat_regis > 0) AS register_over_sla,
+SELECT b.CLAIMNO      AS CLAIM_NUMBER,
+       b.RECEIVEDATE  AS RECEIVE_DATE,
+       b.REGISTERDATE AS REGISTER_DATE
+  FROM pooldata.t_claim_pnc b,
+       datapega.pc_asm_fw_gcnmfw_work d
+ WHERE b.claimid = d.pzinskey
+   AND b.STATUSWORK <> 'Resolved-Rejected'
+   AND d.pxcreateoperator IN
+         ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
+   AND b.GROUPPANEL IN ('002')
+   AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
+   AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY
 
-          (SELECT COUNT(DISTINCT CLAIMNO)
-             FROM (SELECT b.CLAIMNO,
-                          datamining.get_working_hours@asmd.sinarmas.co.id(
-                            c.RECEIVEDATELOD, c.TGLAKSEPTASI) / 28800 AS tat_bayar
-                     FROM pooldata.t_claim_pnc b,
-                          POOLDATA.T_CLAIM_ADJUSTMENT c,
-                          datapega.pc_asm_fw_gcnmfw_work d
-                    WHERE b.CLAIMID = c.CLAIMID
-                      AND b.claimid = d.pzinskey
-                      AND b.STATUSWORK <> 'Resolved-Rejected'
-                      AND c.NOAKSEPTASI IS NOT NULL
-                      AND d.pxcreateoperator IN
-                            ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
-                      AND b.GROUPPANEL IN ('002')
-                      AND b.REGISTERDATE >= TO_DATE(:3, 'YYYY-MM-DD')
-                      AND b.REGISTERDATE <  TO_DATE(:4, 'YYYY-MM-DD') + INTERVAL '1' DAY)
-            WHERE tat_bayar > 0) AS payment_over_sla,
+-- name: admin_rows_pa_payment
+-- Baris tahap PEMBAYARAN kelompok **PA**, disaring periode yang dipilih pengguna.
+--
+-- Melayani `payment_over_sla`. Cacahnya DISTINCT per nomor klaim — satu klaim dapat punya
+-- beberapa baris akseptasi, dan kueri lama pun menghitungnya sekali.
+--
+-- Bind: :1 periode dari · :2 periode sampai
+SELECT b.CLAIMNO         AS CLAIM_NUMBER,
+       c.RECEIVEDATELOD  AS LOD_RECEIVE_DATE,
+       c.TGLAKSEPTASI    AS ACCEPTANCE_DATE
+  FROM pooldata.t_claim_pnc b,
+       POOLDATA.T_CLAIM_ADJUSTMENT c,
+       datapega.pc_asm_fw_gcnmfw_work d
+ WHERE b.CLAIMID = c.CLAIMID
+   AND b.claimid = d.pzinskey
+   AND b.STATUSWORK <> 'Resolved-Rejected'
+   AND c.NOAKSEPTASI IS NOT NULL
+   AND d.pxcreateoperator IN
+         ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
+   AND b.GROUPPANEL IN ('002')
+   AND b.REGISTERDATE >= TO_DATE(:1, 'YYYY-MM-DD')
+   AND b.REGISTERDATE <  TO_DATE(:2, 'YYYY-MM-DD') + INTERVAL '1' DAY
 
-          (SELECT COUNT(CLAIMNO)
-             FROM (SELECT b.CLAIMNO
-                     FROM pooldata.t_claim_pnc b,
-                          datapega.pc_asm_fw_gcnmfw_work d
-                    WHERE b.claimid = d.pzinskey
-                      AND b.STATUSWORK <> 'Resolved-Rejected'
-                      AND d.pxcreateoperator IN
-                            ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
-                      AND b.GROUPPANEL IN ('002')
-                      AND b.REGISTERDATE >= TO_DATE(:5, 'YYYY-MM-DD')
-                      AND b.REGISTERDATE <  TO_DATE(:6, 'YYYY-MM-DD') + INTERVAL '1' DAY))
-            AS claim_total,
-
-          -- RENTANG 2023 YANG TERTANAM. Dua baris `TO_DATE` di bawah TIDAK memakai periode
-          -- yang dipilih pengguna — persis seperti di Pega. Lihat kepala kueri ini.
-          (SELECT COUNT(DISTINCT CLAIMNO)
-             FROM (SELECT b.CLAIMNO,
-                          datamining.get_working_hours@asmd.sinarmas.co.id(
-                            c.RECEIVEDATELOD, c.TGLAKSEPTASI) / 28800 AS tat_bayar
-                     FROM pooldata.t_claim_pnc b,
-                          POOLDATA.T_CLAIM_ADJUSTMENT c,
-                          datapega.pc_asm_fw_gcnmfw_work d
-                    WHERE b.CLAIMID = c.CLAIMID
-                      AND b.claimid = d.pzinskey
-                      AND b.STATUSWORK <> 'Resolved-Rejected'
-                      AND c.NOAKSEPTASI IS NOT NULL
-                      AND d.pxcreateoperator IN
-                            ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
-                      AND b.GROUPPANEL IN ('002')
-                      AND b.receivedate >= TO_DATE('2023-01-01', 'YYYY-MM-DD')
-                      AND b.receivedate <  TO_DATE('2023-11-10', 'YYYY-MM-DD') + INTERVAL '1' DAY)
-            WHERE tat_bayar > 0) AS payment_total
-       FROM DUAL)
+-- name: admin_rows_pa_payment_total
+-- Baris pembayaran untuk `payment_total` — RENTANG 2023 YANG TERTANAM.
+--
+-- Ia TIDAK menerima periode yang dipilih pengguna. Rentangnya terkunci pada
+-- 2023-01-01 s.d. 2023-11-10 di dalam teks kueri, persis seperti di Pega, dan menyaring
+-- `receivedate` — bukan `registerdate` seperti ketiga subquery lainnya.
+--
+-- Direplikasi apa adanya (`P-5`) dan ditandai sebagai selisih terencana, supaya penguji
+-- tidak melaporkannya sebagai cacat sistem baru. Bila Work Owner memutuskan
+-- memperbaikinya, yang berubah hanya dua baris di bawah.
+--
+-- Tanpa bind.
+SELECT b.CLAIMNO         AS CLAIM_NUMBER,
+       c.RECEIVEDATELOD  AS LOD_RECEIVE_DATE,
+       c.TGLAKSEPTASI    AS ACCEPTANCE_DATE
+  FROM pooldata.t_claim_pnc b,
+       POOLDATA.T_CLAIM_ADJUSTMENT c,
+       datapega.pc_asm_fw_gcnmfw_work d
+ WHERE b.CLAIMID = c.CLAIMID
+   AND b.claimid = d.pzinskey
+   AND b.STATUSWORK <> 'Resolved-Rejected'
+   AND c.NOAKSEPTASI IS NOT NULL
+   AND d.pxcreateoperator IN
+         ('IRMANOPITAPURBA_1', 'IRMANOPITAPURBA', 'YUNIARPAMORSUARI')
+   AND b.GROUPPANEL IN ('002')
+   AND b.receivedate >= TO_DATE('2023-01-01', 'YYYY-MM-DD')
+   AND b.receivedate <  TO_DATE('2023-11-10', 'YYYY-MM-DD') + INTERVAL '1' DAY
 
 -- name: admin_detail_pa
 -- Grid rincian **PA** — satu baris per klaim, dipaginasi.
 -- — RDB List/GetDataKPIAdminPA_khususPA-SQL.xml
 --
--- Ia membawa DUA umur dan DUA penanda SLA, karena yang diukur dua tahap. Penanda SLA
--- ditulis basis data sebagai teks `SLA` / `TIDAK SLA`, dan itu dibawa apa adanya (`D-13`).
+-- Ia membawa DUA umur dan DUA penanda SLA, karena yang diukur dua tahap. Keduanya kini
+-- dihitung Go dari tanggal-tanggal di bawah; teks `SLA` / `TIDAK SLA` tetap seperti layar
+-- lama (`D-13`).
 --
 -- `RECEIVEDATELOD` yang kosong jatuh ke `TGLAKSEPTASI` — akibatnya umur pembayaran menjadi
--- nol pada baris seperti itu, bukan kosong. Ditiru apa adanya.
+-- nol pada baris seperti itu, bukan kosong. Ditiru apa adanya, dan kejatuhannya kini
+-- dikerjakan Go.
 --
 -- Paginasinya `OFFSET … FETCH NEXT`, bukan `rownum BETWEEN` seperti kueri lama: `ROWNUM`
--- khas Oracle dan `D-20` menggantinya. Halaman 25 baris milik Pega tidak dibawa; ukuran
--- halaman di sini ditentukan pemanggil.
+-- khas Oracle dan `D-20` menggantinya.
 --
 -- Bind: :1 periode dari · :2 periode sampai · :3 offset · :4 jumlah baris
-SELECT b.CLAIMNO             AS CLAIM_NUMBER,
-       b.NOPOLIS             AS POLICY_NUMBER,
-       g.STARTDATE           AS POLICY_START,
-       g.ENDDATE             AS POLICY_END,
-       d.pxcreateoperator    AS ADMIN_NAME,
-       b.RECEIVEDATE         AS RECEIVE_DATE,
-       b.REGISTERDATE        AS REGISTER_DATE,
-       COALESCE(c.RECEIVEDATELOD, c.TGLAKSEPTASI) AS LOD_RECEIVE_DATE,
-       c.TGLAKSEPTASI        AS ACCEPTANCE_DATE,
-       datamining.get_working_hours@asmd.sinarmas.co.id(
-         b.RECEIVEDATE, b.REGISTERDATE) / 28800 AS REGISTER_AGING,
-       datamining.get_working_hours@asmd.sinarmas.co.id(
-         COALESCE(c.RECEIVEDATELOD, c.TGLAKSEPTASI), c.TGLAKSEPTASI) / 28800 AS PAYMENT_AGING,
-       CASE WHEN datamining.get_working_hours@asmd.sinarmas.co.id(
-                   b.RECEIVEDATE, b.REGISTERDATE) / 28800 > 1
-            THEN 'TIDAK SLA' ELSE 'SLA' END AS REGISTER_SLA,
-       CASE WHEN datamining.get_working_hours@asmd.sinarmas.co.id(
-                   COALESCE(c.RECEIVEDATELOD, c.TGLAKSEPTASI), c.TGLAKSEPTASI) / 28800 > 1
-            THEN 'TIDAK SLA' ELSE 'SLA' END AS PAYMENT_SLA,
+SELECT b.CLAIMNO          AS CLAIM_NUMBER,
+       b.NOPOLIS          AS POLICY_NUMBER,
+       g.STARTDATE        AS POLICY_START,
+       g.ENDDATE          AS POLICY_END,
+       d.pxcreateoperator AS ADMIN_NAME,
+       b.RECEIVEDATE      AS RECEIVE_DATE,
+       b.REGISTERDATE     AS REGISTER_DATE,
+       c.RECEIVEDATELOD   AS LOD_RECEIVE_DATE,
+       c.TGLAKSEPTASI     AS ACCEPTANCE_DATE,
        CASE WHEN d.pystatuswork = 'Resolved-Rejected'  THEN 'Rejected'
             WHEN d.pystatuswork = 'Resolved-Completed' THEN 'Close'
             ELSE 'Outstanding' END          AS CLAIM_STATUS,

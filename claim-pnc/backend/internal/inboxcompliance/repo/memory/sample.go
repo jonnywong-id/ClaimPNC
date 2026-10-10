@@ -30,7 +30,7 @@ func NewSampleStore() *Store {
 
 	// Selisih dipilih supaya ketiga cabang pemformatan Aging terlihat sekaligus: di bawah
 	// 24 jam, di atas 24 jam, dan melewati akhir pekan.
-	return NewStore(
+	store := NewStore(
 		Row{
 			Workbasket: inboxcompliance.WorkbasketCompliance,
 			CreatedAt:  now.Add(-3 * time.Hour),
@@ -172,6 +172,33 @@ func NewSampleStore() *Store {
 			},
 		},
 	)
+
+	seedPraIsiSuratContoh(store, now)
+	return store
+}
+
+// seedPraIsiSuratContoh menyemai pra-isi form Surat Penolakan untuk data contoh.
+//
+// Tanpa ini, dialog Surat Penolakan terbuka dengan seluruh isian kosong saat aplikasi
+// dijalankan tanpa basis data — dan ketiga isian yang SEHARUSNYA terbawa dari klaim tidak
+// terlihat bekerja sama sekali.
+//
+// Hanya dua klaim yang disemai, bukan seluruhnya. Itu disengaja: yang tidak disemai
+// memperlihatkan keadaan yang sama nyatanya, karena `LOCATION` maupun objek pertanggungan
+// boleh tidak ada — dan dialognya harus tetap terbuka dengan isian kosong, bukan gagal.
+func seedPraIsiSuratContoh(store *Store, now time.Time) {
+	kejadian := now.Add(-30 * 24 * time.Hour)
+
+	store.SeedRejectPrefill("ASM-FW-GCNMFW-WORK PNC-900101", inboxcompliance.RejectPrefill{
+		IncidentDate:  &kejadian,
+		IncidentPlace: "Gudang Contoh, Jakarta Pusat",
+		PatientName:   "Objek Pertanggungan Contoh Satu",
+	})
+	store.SeedRejectPrefill("ASM-FW-GCNMFW-WORK PNC-900102", inboxcompliance.RejectPrefill{
+		IncidentDate:  &kejadian,
+		IncidentPlace: "Pelabuhan Contoh, Surabaya",
+		PatientName:   "Objek Pertanggungan Contoh Dua",
+	})
 }
 
 // timePtr menyalin sebuah waktu menjadi pointer.

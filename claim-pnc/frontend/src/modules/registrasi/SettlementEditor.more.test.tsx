@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { SettlementDetail, SettlementEditor } from './SettlementEditor'
+import { SettlementDetail, SettlementEditor, finishMoney, groupMoney, inpatientDays } from './SettlementEditor'
 import type { Settlement } from './types'
 
 /**
@@ -126,6 +126,51 @@ afterEach(() => {
 describe('SettlementEditor', () => {
   // InputAdjustment_sect: LOC dan Salvage A/B di kontainer !IsPATRAVEL; Lama hari rawat inap dan Status Aksep
   // Analysator IsPA; tabel treaty hanya di kontainer .ExGratia = 1.
+  // Work Owner 2026-10-09: isian uang memasang pemisah ribuan saat diketik, dan dua desimal saat ditinggalkan.
+  it('memformat isian uang dengan pemisah ribuan dan dua desimal', () => {
+    expect(groupMoney('3000000')).toBe('3.000.000')
+    expect(groupMoney('3.000.000,5')).toBe('3.000.000,5')
+    expect(groupMoney('3000000,456')).toBe('3.000.000,45')
+    expect(groupMoney('0012')).toBe('12')
+    expect(groupMoney(',5')).toBe('0,5')
+    expect(groupMoney('abc')).toBe('')
+    expect(finishMoney('3000000')).toBe('3.000.000,00')
+    expect(finishMoney('3.000.000,5')).toBe('3.000.000,50')
+    expect(finishMoney('')).toBe('')
+  })
+
+  it('isian Nilai Pengajuan menampilkan pemisah saat diketik', async () => {
+    installFetch(() => undefined)
+    wrap(editor({ pa: true }))
+    const user = userEvent.setup()
+    const field = screen.getByLabelText('Nilai Pengajuan')
+    await user.type(field, '3000000')
+    expect(field).toHaveValue('3.000.000')
+    await user.tab()
+    expect(field).toHaveValue('3.000.000,00')
+
+    // Nilai Pengajuan Tertanggung PA terkirim untuk PROPOSE_VALUE_TERTANGGUNG.
+    const insured = screen.getByLabelText('Nilai Pengajuan Tertanggung')
+    await user.type(insured, '2500000')
+    await user.tab()
+    expect(insured).toHaveValue('2.500.000,00')
+    await waitFor(() =>
+      expect(previews().at(-1)?.body).toMatchObject({
+        nilai_pengajuan_sen: 300_000_000,
+        nilai_pengajuan_tertanggung_sen: 250_000_000,
+      }),
+    )
+  })
+
+  // ValidationAdjustment langkah 95: selisih hari Tanggal Masuk sampai Tanggal Keluar Rawat Inap.
+  it('menghitung Lama Hari Rawat Inap dari tanggal masuk dan keluar', () => {
+    expect(inpatientDays('2026-08-10', '2026-08-12')).toBe(2)
+    expect(inpatientDays('2026-08-10', '2026-08-10')).toBe(0)
+    expect(inpatientDays('2026-02-27', '2026-03-02')).toBe(3)
+    expect(inpatientDays('2026-08-10', '')).toBeNull()
+    expect(inpatientDays('2026-08-10', '2026-08-09')).toBeNull()
+  })
+
   it('lini PA: tanpa LOC dan Salvage, dengan Lama Hari Rawat Inap; tabel treaty hanya Ex Gratia', async () => {
     installFetch((url) =>
       url === `${BASE}/hitung`

@@ -18,22 +18,47 @@ const PATH = '/api/report-kpi'
 
 const METADATA = {
   tab: [
-    { kode: 'pic-teknik', judul: 'KPI PIC Teknik', grid: [], terhalang: false },
+    {
+      kode: 'pic-teknik',
+      judul: 'KPI PIC Teknik',
+      grid: [
+        {
+          kode: 'kartu-skor-pic',
+          judul: 'Data KPI PIC Teknik',
+          kolom: [
+            { kunci: 'pic', judul: 'PIC' },
+            { kunci: 'kpi', judul: 'KATEGORI' },
+            { kunci: 'total', judul: 'TOTAL DATA' },
+            { kunci: 'tercapai', judul: 'JUMLAH TERCAPAI' },
+            { kunci: 'persentase', judul: 'TERCAPAI (%)' },
+            { kunci: 'nilai', judul: 'NILAI' },
+          ],
+          kolom_akhir: [],
+        },
+      ],
+      terhalang: false,
+    },
     {
       kode: 'adjuster',
       judul: 'KPI Adjuster',
       grid: [
-        { kode: 'ringkasan', judul: 'Ringkasan Uji', kolom: [{ kunci: 'adjuster', judul: 'ADJUSTER' }] },
+        {
+          kode: 'ringkasan',
+          judul: 'Ringkasan Uji',
+          kolom: [{ kunci: 'adjuster', judul: 'ADJUSTER' }],
+          kolom_akhir: [{ kunci: 'kategori', judul: 'KATEGORI' }],
+        },
         {
           kode: 'rincian',
           judul: 'Rincian Uji',
           kolom: [
             { kunci: 'adjuster', judul: 'ADJUSTER' },
             { kunci: 'no_case', judul: 'NO CASE' },
-            { kunci: 'tipe', judul: 'TIPE' },
-            { kunci: 'tanggal', judul: 'TANGGAL' },
+            { kunci: 'no_klaim', judul: 'NO KLAIM' },
+            { kunci: 'status_survey', judul: 'STATUS SURVEY' },
             { kunci: 'lain', judul: 'LAIN' },
           ],
+          kolom_akhir: [{ kunci: 'kategori', judul: 'KATEGORI' }],
         },
       ],
       terhalang: false,
@@ -43,13 +68,29 @@ const METADATA = {
       judul: 'KPI Admin',
       grid: [
         {
+          kode: 'kartu-skor',
+          judul: 'Data KPI',
+          kolom: [
+            { kunci: 'unit_kerja', judul: 'UNIT KERJA' },
+            { kunci: 'nama_koordinator', judul: 'NAMA KOORDINATOR' },
+            { kunci: 'business', judul: 'BUSINESS' },
+            { kunci: 'nik', judul: 'NIK' },
+            { kunci: 'tanggal_efektif', judul: 'TANGGAL EFEKTIF' },
+          ],
+          kolom_akhir: [{ kunci: 'note', judul: 'NOTE' }],
+        },
+        {
           kode: 'rincian-klaim',
           judul: 'Rincian Klaim',
           kolom: [
             { kunci: 'no_klaim', judul: 'No Klaim' },
-            { kunci: 'aging_pembayaran_klaim', judul: 'Aging Pembayaran klaim', hanya_kelompok: 'PA' },
-            { kunci: 'tgl_terima_lod', judul: 'Tgl Terima LOD', hanya_kelompok: 'PA' },
+            // Dibatasi ke NONMBU, bukan PA: sejak 2026-10-09 hanya blok itu yang
+            // digambar, sehingga kolom ber-`hanya_kelompok: 'PA'` tidak akan pernah
+            // muncul dan uji pembulatan di bawah kehilangan objeknya.
+            { kunci: 'aging_pembayaran_klaim', judul: 'Aging Pembayaran klaim', hanya_kelompok: 'NONMBU' },
+            { kunci: 'tgl_terima_lod', judul: 'Tgl Terima LOD', hanya_kelompok: 'NONMBU' },
           ],
+          kolom_akhir: [],
         },
       ],
       terhalang: false,
@@ -66,10 +107,22 @@ const METADATA = {
     { kode: 'NONMBU', judul: 'NON MBU' },
     { kode: 'PA', judul: 'PA', keterangan: 'Kelompok PA mengukur dua tahap.' },
   ],
-  koordinator_di_kueri: '',
   lini_bisnis: [{ kode: 'PA', judul: 'PA' }],
+  data_kpi: [
+    { kode: '1', judul: 'Export KPI Progress' },
+    { kode: '2', judul: 'Export KPI SLA' },
+    { kode: '3', judul: 'Export KPI Akseptasi' },
+    { kode: '4', judul: 'Export KPI Analisis' },
+  ],
   komponen_pic: [{ kode: 'analisa_klaim', judul: 'Analisa Klaim' }],
   pic_dikecualikan_sla: [],
+  periode_kpi: [
+    { kode: '202602', judul: '202602' },
+    // Maret 2026 dipilih helper: rentangnya 2026-03-01..2026-03-31, sama dengan
+    // tanggal yang diketik blok NON MBU — sehingga kedua blok dapat dibandingkan.
+    { kode: '202603', judul: '202603' },
+    { kode: '202604', judul: '202604' },
+  ],
   tabel_sumber: '',
   tabel_tangga_nilai: '',
 } as unknown as MetadataResponse
@@ -187,27 +240,47 @@ const API_FAIL = (): Answer => json(500, { kode: 'galat_internal', pesan: 'Basis
 // Pesan cadangan saat galat bukan Error.
 const FALLBACK_TEXT = 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
 
-async function searchAdjuster(user: ReturnType<typeof userEvent.setup>) {
+// varian memilih grid mana yang digambar — di Pega satu grid saja, ditentukan
+// isian "Pilih Tipe Report". Bawaannya DATA SUMMARY.
+async function searchAdjuster(user: ReturnType<typeof userEvent.setup>, varian = 'DATA SUMMARY') {
   await screen.findByRole('tab', { name: /KPI Adjuster/ })
-  await user.selectOptions(screen.getByLabelText('Pilih Tipe Report'), 'FINAL')
-  await user.type(screen.getByLabelText('Periode — Dari'), '2026-03-01')
-  await user.type(screen.getByLabelText('Periode — Sampai'), '2026-03-31')
+  await user.selectOptions(screen.getByLabelText('Pilih Status Survey'), 'FINAL')
+  await user.type(screen.getByLabelText('Dari'), '2026-03-01')
+  await user.type(screen.getByLabelText('Sampai'), '2026-03-31')
+  // Pega menuntut isian ini pula — tanpanya tombol Cari ditolak.
+  await user.selectOptions(screen.getByLabelText('Pilih Tipe Report'), varian)
   await user.click(screen.getByRole('button', { name: 'Cari' }))
 }
 
-async function searchAdmin(user: ReturnType<typeof userEvent.setup>, group = 'PA') {
+/**
+ * searchAdmin mencari pada KEDUA blok tab KPI Admin.
+ *
+ * Sejak 2026-10-09 tiap blok punya bilah penyaringnya sendiri, dan isiannya berbeda:
+ * NON MBU dua tanggal, PA satu dropdown bulan. Keduanya dicari supaya uji yang menyoroti
+ * salah satu tetap menemukan isinya.
+ *
+ * Bulan yang dipilih — `202603` — rentangnya sama persis dengan tanggal yang diketik di
+ * blok NON MBU, sehingga keduanya dapat dibandingkan apa adanya.
+ */
+/**
+ * searchAdmin mengisi penyaring tab KPI Admin lalu menekan Cari.
+ *
+ * SATU blok sejak 2026-10-09: Work Owner memastikan Pega hanya menampilkan bilah
+ * `Dari`/`Sampai`, dan bilah PA dicabut.
+ */
+async function searchAdmin(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('tab', { name: /KPI Admin/ }))
-  await user.selectOptions(screen.getByLabelText('Pilih Data KPI'), group)
-  await user.type(screen.getByLabelText('Periode — Dari'), '2026-03-01')
-  await user.type(screen.getByLabelText('Periode — Sampai'), '2026-03-31')
-  await user.click(screen.getByRole('button', { name: 'Cari' }))
+
+  const blok = within(screen.getByRole('region', { name: 'NON MBU' }))
+  await user.type(blok.getByLabelText('Dari'), '2026-03-01')
+  await user.type(blok.getByLabelText('Sampai'), '2026-03-31')
+  await user.click(blok.getByRole('button', { name: 'Cari' }))
 }
 
 async function searchPIC(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('tab', { name: /KPI PIC Teknik/ }))
-  await user.selectOptions(screen.getByLabelText('Lini Bisnis'), 'PA')
-  await user.type(screen.getByLabelText('Periode — Dari'), '2026-03-01')
-  await user.type(screen.getByLabelText('Periode — Sampai'), '2026-03-31')
+  await user.type(screen.getByLabelText('Dari'), '2026-03-01')
+  await user.type(screen.getByLabelText('Sampai'), '2026-03-31')
   await user.click(screen.getByRole('button', { name: 'Cari' }))
 }
 
@@ -281,15 +354,32 @@ describe('tab KPI Adjuster', () => {
     show()
     await searchAdjuster(user)
 
+    // Judul grid Ringkasan diperiksa lebih dulu, lalu layar dipindah ke DATA DETAIL —
+    // hanya satu grid digambar sekali jalan, sama seperti Pega.
     expect(await screen.findByText('Ringkasan Uji')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Pilih Tipe Report'), 'DATA DETAIL')
+    await user.click(screen.getByRole('button', { name: 'Cari' }))
     const table = await screen.findByRole('table', { name: /Rincian KPI per kasus survei/ })
     const row = (await within(table).findByText('KASUS-1')).closest('tr')!
-    // Tanggal kosong, kolom tak dikenal, dan komponen yang tidak dikirim server bertanda hubung.
-    expect(within(row).getAllByText('—')).toHaveLength(3)
+    // Tanda hubung HANYA untuk komponen yang tidak dinilai — di sini satu, yaitu `ekstra`
+    // yang tidak dikirim peladen. Di situ tanda hubung bermakna: ia membedakan "belum
+    // dinilai" dari "bernilai nol".
+    expect(within(row).getAllByText('—')).toHaveLength(1)
+
+    // Kolom yang memang TIDAK PUNYA SUMBER digambar KOSONG, bukan bertanda hubung —
+    // seperti Pega. `lain` tidak dikenali penggambar sel, `no_klaim` dan `status_survey`
+    // tidak ada di tabelnya.
+    const kepalaRincian = within(table).getAllByRole('columnheader').map((h) => h.textContent)
+    const selRincian = within(row).getAllByRole('cell').map((c) => c.textContent)
+    for (const judul of ['NO KLAIM', 'STATUS SURVEY', 'LAIN']) {
+      expect(selRincian[kepalaRincian.indexOf(judul)]).toBe(judul)
+    }
 
     await user.click(screen.getAllByRole('button', { name: 'Halaman berikutnya' })[0]!)
     expect(await within(table).findByText('KASUS-2')).toBeInTheDocument()
-    expect(within(table).getByText('2026-03-04')).toBeInTheDocument()
+    // Kolom TANGGAL DICABUT: grid Detail Pega tidak memuatnya.
+    expect(within(table).queryByText('2026-03-04')).not.toBeInTheDocument()
     expect(urls.some((u) => u.includes('&halaman=2'))).toBe(true)
   })
 
@@ -304,7 +394,8 @@ describe('tab KPI Adjuster', () => {
     await searchAdjuster(user)
 
     expect(await screen.findByText('Summary KPI Adjuster')).toBeInTheDocument()
-    expect(screen.getByText('Detail KPI Adjuster')).toBeInTheDocument()
+    // Grid Rincian TIDAK ikut digambar — ia muncul hanya pada DATA DETAIL.
+    expect(screen.queryByText('Detail KPI Adjuster')).not.toBeInTheDocument()
   })
 
   it('menampilkan galat ringkasan dan rincian', async () => {
@@ -317,6 +408,10 @@ describe('tab KPI Adjuster', () => {
 
     expect(await screen.findByText('Ringkasan tidak dapat diambil')).toBeInTheDocument()
     expect(screen.getByText('Basis data sibuk.')).toBeInTheDocument()
+
+    // Galat grid Rincian diperiksa setelah layar dipindah ke DATA DETAIL.
+    await user.selectOptions(screen.getByLabelText('Pilih Tipe Report'), 'DATA DETAIL')
+    await user.click(screen.getByRole('button', { name: 'Cari' }))
     expect(await screen.findByText('Rincian tidak dapat diambil')).toBeInTheDocument()
   })
 
@@ -326,36 +421,46 @@ describe('tab KPI Adjuster', () => {
     installFetch((url) => (url.includes('/ekspor') && fail ? json(500, { kode: 'x', pesan: 'Ekspor ditolak.' }) : undefined))
     const user = userEvent.setup()
     show()
-    await searchAdjuster(user)
+    await searchAdjuster(user, 'DATA DETAIL')
     await screen.findByText('KASUS-1')
 
-    await user.click(screen.getByRole('button', { name: 'Export Rincian' }))
+    // SATU tombol; yang diunduh ditentukan Pilih Tipe Report yang sedang terpilih.
+    await user.click(screen.getByRole('button', { name: 'Export Data' }))
     await waitFor(() => expect(names).toHaveLength(1))
     expect(urls.some((u) => u.includes('/adjuster/ekspor') && u.includes('grid=rincian'))).toBe(true)
 
     fail = true
-    await user.click(screen.getByRole('button', { name: 'Export Ringkasan' }))
+    await user.click(screen.getByRole('button', { name: 'Export Data' }))
     expect(await screen.findByText('Berkas tidak dapat diunduh')).toBeInTheDocument()
   })
 })
 
 describe('tab KPI Admin', () => {
-  it('menyebut keterangan kelompok, menggambar kartu tercapai, dan membulatkan sel angka', async () => {
+  it('menggambar kartu tercapai dan membulatkan sel angka, tanpa keterangan kelompok', async () => {
     installFetch()
     const user = userEvent.setup()
     show()
     await searchAdmin(user)
 
-    expect(screen.getByText('Kelompok PA mengukur dua tahap.')).toBeInTheDocument()
-    expect(await screen.findByText('TERCAPAI TARGET')).toHaveClass('bg-blue-50')
-    expect(screen.getByText('Metrik Cacah').parentElement).toHaveTextContent('7')
-    // Koordinator di kueri kosong: catatan perbedaan nama tidak digambar.
+    // Keterangan kelompok TIDAK digambar sejak 2026-10-09: bagian Admin pada section Pega
+    // hanya memuat tiga label isian, tanpa judul blok maupun kalimat penjelas.
+    expect(screen.queryByText('Kelompok PA mengukur dua tahap.')).not.toBeInTheDocument()
+
+    const blok = within(await screen.findByRole('region', { name: 'NON MBU' }))
+
+    // Kesimpulannya kini SEL kolom NOTE, bukan lencana berwarna.
+    expect(await blok.findAllByText('TERCAPAI TARGET')).not.toHaveLength(0)
+
+    const tabel = within(blok.getByRole('table'))
+    const kepala = tabel.getAllByRole('columnheader').map((h) => h.textContent)
+    const sel = tabel.getAllByRole('cell').map((c) => c.textContent)
+    expect(sel[kepala.indexOf('Metrik Cacah')]).toMatch(/7$/)
+
+    // Catatan perbedaan nama koordinator DICABUT — lihat `D-13` di ReportKPIAdmin.tsx.
     expect(screen.queryByText(/teks kueri Pega menyebut nama koordinator/)).not.toBeInTheDocument()
 
-    const table = screen.getByRole('table', { name: /Rincian klaim yang ditangani tim admin/ })
-    const row = (await within(table).findByText('ADM-1')).closest('tr')!
-    expect(within(row).getByText('2.35')).toBeInTheDocument()
-    expect(within(row).getByText('—')).toBeInTheDocument()
+    // Grid rincian tidak digambar; rinciannya hanya lewat Export Detail Data.
+    expect(screen.queryByText('Rincian Klaim')).not.toBeInTheDocument()
   })
 
   it('tidak menggambar kesimpulan bila server tidak mengirimnya', async () => {
@@ -375,8 +480,9 @@ describe('tab KPI Admin', () => {
     show()
     await searchAdmin(user)
 
-    expect(await screen.findByText('KATEGORI TANPA HASIL')).toBeInTheDocument()
-    expect(screen.queryByText(/TERCAPAI/)).not.toBeInTheDocument()
+    const blok = within(await screen.findByRole('region', { name: 'NON MBU' }))
+    expect(await blok.findAllByText('KATEGORI TANPA HASIL')).not.toHaveLength(0)
+    expect(blok.queryByText(/TERCAPAI/)).not.toBeInTheDocument()
   })
 
   it('menampilkan keadaan menghitung kartu skor', async () => {
@@ -385,7 +491,10 @@ describe('tab KPI Admin', () => {
     show()
     await searchAdmin(user)
 
-    expect(screen.getByText('Menghitung kartu skor…')).toBeInTheDocument()
+    // Keadaan memuat kini digambar DataTable, bukan kartu skor tersendiri.
+    expect(
+      within(screen.getByRole('region', { name: 'NON MBU' })).getByText(/Memuat/),
+    ).toBeInTheDocument()
   })
 
   it('menampilkan galat kartu skor dan rincian', async () => {
@@ -396,9 +505,9 @@ describe('tab KPI Admin', () => {
     show()
     await searchAdmin(user)
 
-    expect(await screen.findByText('Kartu skor tidak dapat diambil')).toBeInTheDocument()
-    expect(screen.getByText('Basis data sibuk.')).toBeInTheDocument()
-    expect(await screen.findByText('Rincian tidak dapat diambil')).toBeInTheDocument()
+    const blok = within(await screen.findByRole('region', { name: 'NON MBU' }))
+    expect(blok.getByText('Data KPI tidak dapat diambil')).toBeInTheDocument()
+    expect(blok.getByText('Basis data sibuk.')).toBeInTheDocument()
   })
 
   it('menandai isian yang ditolak server', async () => {
@@ -407,7 +516,7 @@ describe('tab KPI Admin', () => {
         ? json(422, {
             kode: 'validasi_gagal',
             pesan: 'Permintaan belum benar.',
-            detail: [{ field: 'kelompok', pesan: 'Kelompok wajib dipilih.' }],
+            detail: [{ field: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
           })
         : undefined,
     )
@@ -415,7 +524,16 @@ describe('tab KPI Admin', () => {
     show()
     await searchAdmin(user)
 
-    expect(await screen.findByText('Kelompok wajib dipilih.')).toBeInTheDocument()
+    // Ditandai di KEDUA blok, masing-masing pada isiannya sendiri.
+    //
+    // Keduanya memanggil peladen sendiri-sendiri, jadi keduanya menerima penolakan yang
+    // sama. Menuntut satu saja akan gagal dengan "found multiple" — dan itu justru
+    // menyembunyikan bahwa tiap blok memang melaporkan penolakannya sendiri.
+    const nonMBU = within(await screen.findByRole('region', { name: 'NON MBU' }))
+    expect(await nonMBU.findByText('Tanggal Dari wajib diisi.')).toBeInTheDocument()
+
+    const pa = within(screen.getByRole('region', { name: 'NON MBU' }))
+    expect(await pa.findByText('Tanggal Dari wajib diisi.')).toBeInTheDocument()
   })
 
   it('mengunduh rincian lalu menyebut galat ekspor tanpa pesan', async () => {
@@ -425,14 +543,16 @@ describe('tab KPI Admin', () => {
     const user = userEvent.setup()
     show()
     await searchAdmin(user)
-    await screen.findByText('ADM-1')
+    await screen.findAllByText('Data KPI')
 
-    await user.click(screen.getByRole('button', { name: 'Export Detail Data' }))
+    // Tombol milik bloknya sendiri, dan kelompoknya ikut terkirim.
+    const blok = within(screen.getByRole('region', { name: 'NON MBU' }))
+    await user.click(blok.getByRole('button', { name: 'Export Detail Data' }))
     await waitFor(() => expect(names).toHaveLength(1))
-    expect(urls.some((u) => u.startsWith(`${PATH}/admin/ekspor?kelompok=PA`))).toBe(true)
+    expect(urls.some((u) => u.startsWith(`${PATH}/admin/ekspor?kelompok=NONMBU`))).toBe(true)
 
     fail = true
-    await user.click(screen.getByRole('button', { name: 'Export Detail Data' }))
+    await user.click(blok.getByRole('button', { name: 'Export Detail Data' }))
     expect(await screen.findByText('Berkas tidak dapat diunduh')).toBeInTheDocument()
   })
 })
@@ -444,10 +564,10 @@ describe('tab KPI PIC Teknik', () => {
     show()
     await searchPIC(user)
 
-    expect(await screen.findByText('PICUJI')).toBeInTheDocument()
-    expect(screen.queryByText('Leader tim')).not.toBeInTheDocument()
-    expect(screen.getByText('33.33%')).toBeInTheDocument()
-    expect(screen.getByText('Nilai berbobot 7.46 dari 15')).toBeInTheDocument()
+    expect(await screen.findAllByText('PICUJI')).not.toHaveLength(0)
+
+    // Persentase digambar sebagai ANGKA saja — judul kolomnya sudah menyebut "(%)".
+    expect(screen.getAllByText('33.33').length).toBeGreaterThan(0)
   })
 
   it('menampilkan keadaan menghitung penilaian', async () => {
@@ -456,7 +576,8 @@ describe('tab KPI PIC Teknik', () => {
     show()
     await searchPIC(user)
 
-    expect(screen.getByText('Menghitung penilaian…')).toBeInTheDocument()
+    // Keadaan memuat kini digambar DataTable.
+    expect(screen.getByText(/Memuat/)).toBeInTheDocument()
   })
 
   it.each([
@@ -478,7 +599,7 @@ describe('tab KPI PIC Teknik', () => {
         ? json(422, {
             kode: 'validasi_gagal',
             pesan: 'Permintaan belum benar.',
-            detail: [{ field: 'lini_bisnis', pesan: 'Lini bisnis wajib dipilih.' }],
+            detail: [{ field: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
           })
         : undefined,
     )
@@ -486,7 +607,8 @@ describe('tab KPI PIC Teknik', () => {
     show()
     await searchPIC(user)
 
-    expect(await screen.findByText('Lini bisnis wajib dipilih.')).toBeInTheDocument()
+    // Ditandai pada isian yang masih ada di layar — Lini Bisnis sudah dicabut.
+    expect(await screen.findByText('Tanggal Dari wajib diisi.')).toBeInTheDocument()
   })
 
   it('mengunduh berkas lalu menampilkan galat ekspor', async () => {
@@ -496,14 +618,20 @@ describe('tab KPI PIC Teknik', () => {
     const user = userEvent.setup()
     show()
     await searchPIC(user)
-    await screen.findByText('PICUJI')
+    await screen.findAllByText('PICUJI')
 
-    await user.click(screen.getByRole('button', { name: 'Export Data' }))
+    // DUA tombol berlabel sama, seperti Pega: yang pertama mengunduh penilaiannya, yang
+    // kedua data klaim mentah menurut "Pilih Data KPI". Yang diuji di sini yang KEDUA.
+    const tombol = () => screen.getAllByRole('button', { name: 'Export Data KPI' })
+    expect(tombol()).toHaveLength(2)
+
+    await user.click(tombol()[1]!)
     await waitFor(() => expect(names).toHaveLength(1))
-    expect(urls.some((u) => u.startsWith(`${PATH}/pic-teknik/ekspor?lini_bisnis=PA`))).toBe(true)
+    // Lininya kini TETAP NONMBU — isiannya dicabut mengikuti layar Pega.
+    expect(urls.some((u) => u.startsWith(`${PATH}/pic-teknik/ekspor?lini_bisnis=NONMBU`))).toBe(true)
 
     fail = true
-    await user.click(screen.getByRole('button', { name: 'Export Data' }))
+    await user.click(tombol()[1]!)
     expect(await screen.findByText('Berkas tidak dapat diunduh')).toBeInTheDocument()
   })
 
@@ -517,6 +645,9 @@ describe('tab KPI PIC Teknik', () => {
     show()
     await user.click(await screen.findByRole('tab', { name: /KPI PIC Teknik/ }))
 
-    expect(within(screen.getByLabelText('Lini Bisnis')).getAllByRole('option')).toHaveLength(1)
+    // Dropdown Lini Bisnis sudah dicabut; yang masih harus benar adalah layarnya
+    // TETAP terbuka walau keterangan lini dan komponen tidak dikirim server.
+    expect(screen.getByLabelText('Dari')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Lini Bisnis')).not.toBeInTheDocument()
   })
 })

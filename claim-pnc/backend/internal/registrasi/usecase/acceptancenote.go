@@ -68,6 +68,21 @@ func (l *Service) PrintAcceptanceNote(ctx context.Context, p AcceptanceNoteComma
 	if err != nil {
 		return AcceptanceNoteResult{}, err
 	}
+	entity := plaEntity(claim.Portal)
+	personalAccident := claim.Policy.Line == registrasi.LinePersonalAccident
+	var paSigners []registrasi.AcceptanceNoteSigner
+	if personalAccident {
+		// SetSignaturePA: dua tanda tangan tetap per entitas dari POOLDATA.M_SIGNATURE1.
+		for i, id := range registrasi.AcceptanceNotePASignatureIDs(entity) {
+			signer := registrasi.AcceptanceNoteSigner{Title: registrasi.AcceptanceNotePATitles[i]}
+			if id != "" {
+				if signer.Name, signer.Signature, err = l.pla.PASignature(ctx, id); err != nil {
+					return AcceptanceNoteResult{}, err
+				}
+			}
+			paSigners = append(paSigners, signer)
+		}
+	}
 	signerName := strings.TrimSpace(line.Acceptance.Form.CommitteeName)
 	signerID := registrasi.AcceptanceNoteSignerID(signerName)
 	var signature []byte
@@ -79,9 +94,11 @@ func (l *Service) PrintAcceptanceNote(ctx context.Context, p AcceptanceNoteComma
 
 	spread, parts := registrasi.AcceptanceNoteSpreading(coverage.Spreading, line.Value, qs)
 	note := registrasi.AcceptanceNote{
-		Entity:       plaEntity(claim.Portal),
-		AcceptedNo:   line.AcceptedNo,
-		PaymentLabel: registrasi.AcceptanceNotePaymentLabel(line.PaymentType),
+		Entity:           entity,
+		PersonalAccident: personalAccident,
+		PASigners:        paSigners,
+		AcceptedNo:       line.AcceptedNo,
+		PaymentLabel:     registrasi.AcceptanceNotePaymentLabel(line.PaymentType),
 
 		PolicyNumber:    claim.Policy.Number,
 		ClaimNumber:     claim.Number,

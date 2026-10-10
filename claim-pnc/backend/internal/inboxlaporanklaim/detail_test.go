@@ -104,7 +104,7 @@ func TestFormHasNoDateOrderRuleBecauseThatBelongsToRegistration(t *testing.T) {
 func TestFormTrimsBeforeItChecks(t *testing.T) {
 	// Isian sepanjang batas ditambah spasi harus LOLOS: yang tersimpan adalah nilai yang
 	// sudah dipangkas. Memeriksa sebelum memangkas akan menolaknya.
-	atLimit := strings.Repeat("a", inboxlaporanklaim.MaxNameLength)
+	atLimit := strings.Repeat("a", inboxlaporanklaim.MaxReporterNameLength)
 	detail := inboxlaporanklaim.Detail{ReporterName: "  " + atLimit + "  "}.Clean()
 
 	if detail.ReporterName != atLimit {
@@ -119,7 +119,7 @@ func TestFormRejectsTextLongerThanItsColumn(t *testing.T) {
 	// Ini penjaga PENYIMPANAN, bukan aturan bisnis. Tanpa ia, Oracle menolaknya dengan
 	// ORA-12899 yang tidak menyebut isian mana yang terlalu panjang.
 	detail := inboxlaporanklaim.Detail{
-		ReporterName: strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+		ReporterName: strings.Repeat("a", inboxlaporanklaim.MaxReporterNameLength+1),
 	}
 
 	var failure *inboxlaporanklaim.ValidationError
@@ -135,7 +135,7 @@ func TestFormReportsEveryViolationAtOnce(t *testing.T) {
 	// Form ini memuat tujuh belas isian. Mengembalikan satu galat per percobaan akan
 	// membuat pengguna menebak isian mana lagi yang salah (`P-5`).
 	detail := inboxlaporanklaim.Detail{
-		ReporterName:  strings.Repeat("a", inboxlaporanklaim.MaxNameLength+1),
+		ReporterName:  strings.Repeat("a", inboxlaporanklaim.MaxReporterNameLength+1),
 		ReporterEmail: strings.Repeat("b", inboxlaporanklaim.MaxEmailLength+1),
 		PolicyNumber:  strings.Repeat("c", inboxlaporanklaim.MaxPolicyLength+1),
 		EstimateValue: -1,
@@ -163,10 +163,10 @@ func TestFormCountsLengthInCharactersNotBytes(t *testing.T) {
 	// Satu huruf beraksen memakan dua byte. Menghitungnya sebagai dua karakter akan
 	// menolak isian yang sebenarnya pendek — dan nama orang Indonesia memuatnya.
 	detail := inboxlaporanklaim.Detail{
-		ReporterName: strings.Repeat("é", inboxlaporanklaim.MaxNameLength),
+		ReporterName: strings.Repeat("é", inboxlaporanklaim.MaxReporterNameLength),
 	}
 	if err := detail.Clean().Check(); err != nil {
-		t.Fatalf("isian %d karakter beraksen ditolak: %v", inboxlaporanklaim.MaxNameLength, err)
+		t.Fatalf("isian %d karakter beraksen ditolak: %v", inboxlaporanklaim.MaxReporterNameLength, err)
 	}
 }
 

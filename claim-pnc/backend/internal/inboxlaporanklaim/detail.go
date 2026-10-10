@@ -49,7 +49,7 @@ import (
 //     Oracle menolaknya dengan `ORA-12899` yang tidak menyebut isian mana;
 //   - **angka tidak boleh negatif** — estimasi kerugian dan jumlah dokumen.
 //
-// Aturan tanggal — DOL di dalam periode polis, Tanggal Lapor <= DOL + 7 hari, dan
+// Aturan tanggal — DOL di dalam periode polis, Tanggal Lapor <= Tanggal Terima Dokumen,
 // seterusnya — **sengaja TIDAK ada di sini**. Ia milik `B-2` Registrasi Klaim
 // (`02-BUSINESS-UNDERSTANDING.md` §3.1), dan berkas laporan justru dapat masuk sebelum
 // tanggalnya diketahui. Menambahkannya di sini akan menolak berkas yang di Pega diterima.
@@ -93,15 +93,40 @@ type Detail struct {
 // harus ikut berubah — utang yang disadari dari menduplikasi sebuah angka, dan uji di
 // `detail_test.go` yang menjaganya tetap terlihat.
 const (
-	MaxNameLength      = 255
-	MaxEmailLength     = 200
-	MaxPhoneLength     = 64
-	MaxPolicyLength    = 64
-	MaxReferenceLength = 64
-	MaxLocationLength  = 500
-	MaxSubjectLength   = 1000
-	MaxNoteLength      = 1000
-	MaxNarrativeLength = 4000
+	MaxNameLength = 255
+
+	// MaxInsuredNameLength adalah batas Nama Tertanggung (QQ), dan ia SENGAJA berbeda
+	// dari MaxNameLength.
+	//
+	// Isian ini tidak diketik petugas melainkan disalin dari POOLDATA.T_GENERAL.QQNAME —
+	// kolom yang menampung sampai 2000 karakter. Membatasinya di 255 memotong nama
+	// tertanggung panjang (nama badan hukum beserta klausa QQ) tanpa pemberitahuan, atau
+	// menolak berkas yang datanya sendiri sah di sistem polis.
+	//
+	// Isian nama LAIN tetap 255: ketiganya diketik petugas dan kolomnya memang 255.
+	MaxInsuredNameLength = 2000
+
+	// MaxReporterNameLength adalah lebar kolom NAMAPELAPOR dan NAMAKURIRASM di
+	// T_CLAIM_RECIVEDCLAIM: VARCHAR2(100), terukur dari ALL_TAB_COLUMNS 2026-10-10. Batas 255
+	// sebelumnya membuat nama sepanjang 101–255 karakter lolos pemeriksaan lalu ditolak basis
+	// data dengan galat sistem.
+	MaxReporterNameLength = 100
+
+	// StoredInsuredNameLength adalah lebar kolom NAMATERTANGGUNG di T_CLAIM_RECIVEDCLAIM:
+	// VARCHAR2(100) byte. Nama tertanggung yang lebih panjang (disalin dari polis, mis. 219
+	// dan 336 karakter pada RCVN.26.90/.91) dipotong ke lebar ini saat disimpan ke berkas;
+	// nama lengkapnya tetap di T_CLAIM_PNC.QQNAME, dan klaim mengambilnya dari snapshot polis.
+	StoredInsuredNameLength = 100
+	MaxEmailLength          = 200
+	MaxPhoneLength          = 64
+	MaxPolicyLength         = 64
+	MaxReferenceLength      = 64
+	MaxLocationLength       = 500
+	MaxSubjectLength        = 1000
+	MaxNoteLength           = 1000
+	// MaxNarrativeLength adalah lebar kolom KRONOLOGIKEJADIAN dan RINCIANKERUSAKAN:
+	// VARCHAR2(1000), terukur dari ALL_TAB_COLUMNS 2026-10-10 (sebelumnya 4000).
+	MaxNarrativeLength = 1000
 
 	// Lebar kolom T_CLAIM_RECIVEDCLAIM untuk empat isian InputReceiveDocument_sect.
 	MaxGroupPanelLength    = 10
@@ -159,12 +184,12 @@ func (d Detail) Check() error {
 		value string
 		max   int
 	}{
-		{"nama_pelapor", "Nama Pengirim / Pelapor Dokumen", d.ReporterName, MaxNameLength},
+		{"nama_pelapor", "Nama Pengirim / Pelapor Dokumen", d.ReporterName, MaxReporterNameLength},
 		{"email_pelapor", "Email Pengirim", d.ReporterEmail, MaxEmailLength},
 		{"telepon_pelapor", "No. HP Pengirim", d.ReporterPhone, MaxPhoneLength},
-		{"nama_kurir", "Nama Kurir ASM", d.CourierName, MaxNameLength},
+		{"nama_kurir", "Nama Kurir ASM", d.CourierName, MaxReporterNameLength},
 		{"nomor_polis", "Nomor Polis", d.PolicyNumber, MaxPolicyLength},
-		{"tertanggung", "Nama Tertanggung", d.InsuredName, MaxNameLength},
+		{"tertanggung", "Nama Tertanggung", d.InsuredName, MaxInsuredNameLength},
 		{"nama_bisnis", "Nama Bisnis", d.BusinessName, MaxNameLength},
 		{"nomor_rujukan", "No. Referensi/Placing Slip", d.ReferenceNumber, MaxReferenceLength},
 		{"lokasi_kejadian", "Lokasi Kejadian", d.LossLocation, MaxLocationLength},

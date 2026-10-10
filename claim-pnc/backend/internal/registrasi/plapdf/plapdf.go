@@ -102,7 +102,14 @@ func (r Renderer) Render(d registrasi.PLADocument) ([]byte, error) {
 		pdf.Ln(1.5)
 	}
 
-	row("Coinsurer", d.Recipient, false)
+	// PLA reasuransi (PLAHTML_FACOUT, PLAHTML_BPPDAN): penerimanya "Reinsurer".
+	facOut := d.Type == registrasi.PLATypeFacOut
+	bppdan := d.Type == registrasi.PLATypeBPPDAN || d.Type == registrasi.PLATypeEQPool
+	recipientLabel := "Coinsurer"
+	if facOut || bppdan {
+		recipientLabel = "Reinsurer"
+	}
+	row(recipientLabel, d.Recipient, false)
 	row("Line Of Business", strings.ToUpper(d.BusinessName), true)
 	row("Policy No.", d.PolicyNumber, false)
 	row("Claim No.", d.ClaimNumber, false)
@@ -122,16 +129,35 @@ func (r Renderer) Render(d registrasi.PLADocument) ([]byte, error) {
 		if a.Reserve > 0 {
 			reserve = append(reserve, amount(a.Currency, a.Reserve))
 		}
+		if a.Result > 0 && bppdan {
+			// PLAHTML_BPPDAN: SharePLA % X <mata uang> EstimationValue = <mata uang> ResultPLA.
+			// Persennya dua desimal (Work Owner 2026-10-09) — 0,2% dulu tercetak "0 %".
+			share = append(share, fmt.Sprintf("%s %% X %s = %s",
+				twoDecimals(a.FacShare), amount(a.Currency, a.Base), amount(a.Currency, a.Result)))
+			continue
+		}
+		if a.Result > 0 && facOut {
+			// PLAHTML_FACOUT: SharePLA / PercentPLA X <mata uang> EstimationValue = <mata uang> ResultPLA
+			share = append(share, fmt.Sprintf("%s / %s X %s = %s",
+				facesheetpdf.FormatMoney(a.FacShare), facesheetpdf.FormatMoney(a.FacBase),
+				amount(a.Currency, a.Base), amount(a.Currency, a.Result)))
+			continue
+		}
 		if a.Result > 0 {
 			share = append(share, fmt.Sprintf("%s X %s%% = %s",
 				amount(a.Currency, a.Base), facesheetpdf.FormatPercent(a.Share), amount(a.Currency, a.Result)))
 		}
 	}
 	row("Est. Claim Amount", strings.Join(reserve, "\n"), false)
-	for i, s := range share {
-		share[i] = "COAS = " + s
+	shareLabel := "Your Share"
+	if facOut || bppdan {
+		shareLabel = strings.TrimSpace("Your Share " + d.ShareLabel)
+	} else {
+		for i, s := range share {
+			share[i] = "COAS = " + s
+		}
 	}
-	row("Your Share", strings.Join(share, "\n"), false)
+	row(shareLabel, strings.Join(share, "\n"), false)
 	row("Remarks", d.Note, false)
 
 	pdf.Ln(6)
@@ -160,6 +186,17 @@ func (r Renderer) Render(d registrasi.PLADocument) ([]byte, error) {
 		return nil, fmt.Errorf("plapdf: %w", err)
 	}
 	return out.Bytes(), nil
+}
+
+// twoDecimals menuliskan nilai bersatuan seperseratus dengan dua desimal berformat Indonesia:
+// 20 → "0,20", 1234567 → "12.345,67".
+func twoDecimals(v registrasi.Money) string {
+	sen := int64(v)
+	sign := ""
+	if sen < 0 {
+		sign, sen = "-", -sen
+	}
+	return fmt.Sprintf("%s%s,%02d", sign, facesheetpdf.FormatMoney(registrasi.Money(sen/100*100)), sen%100)
 }
 
 func amount(currency string, v registrasi.Money) string {

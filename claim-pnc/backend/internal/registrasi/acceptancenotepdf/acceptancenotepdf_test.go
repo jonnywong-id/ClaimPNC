@@ -2,6 +2,9 @@ package acceptancenotepdf
 
 import (
 	"bytes"
+	"image"
+	"image/color"
+	"image/png"
 	"math/big"
 	"testing"
 	"time"
@@ -26,6 +29,44 @@ func TestRenderProducesPDF(t *testing.T) {
 	}
 	if !bytes.HasPrefix(out, []byte("%PDF")) {
 		t.Fatal("bukan PDF")
+	}
+}
+
+// Personal Accident: blok GroupPanel='002' dengan dua tanda tangan bergambar; tanda tangan
+// tanpa gambar (ASI kolom kedua) tetap tercetak tanpa galat.
+func TestRenderPersonalAccident(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	img.Set(1, 1, color.Black)
+	var sig bytes.Buffer
+	if err := png.Encode(&sig, img); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 7, 3, 0, 0, 0, time.UTC)
+	note := registrasi.AcceptanceNote{
+		Entity: "ASM", PersonalAccident: true, AcceptedNo: "A26", PaymentLabel: "Interim",
+		PolicyNumber: "P-1", ClaimNumber: "PNCN.26.0001", PolicyCurrency: "IDR", Currency: "IDR",
+		PeriodStart: at, PeriodEnd: at, DateOfLoss: at, PaymentType: registrasi.PaymentInterim,
+		Gross: registrasi.Money(5_000_000_00), Own: registrasi.Money(5_000_000_00), SignedAt: at,
+		PASigners: []registrasi.AcceptanceNoteSigner{
+			{Name: "PENANDA SATU", Title: registrasi.AcceptanceNotePATitles[0], Signature: sig.Bytes()},
+			{Title: registrasi.AcceptanceNotePATitles[1]},
+		},
+	}
+	out, err := Renderer{}.Render(note)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(out, []byte("%PDF")) {
+		t.Fatal("bukan PDF")
+	}
+	general := note
+	general.PersonalAccident = false
+	other, err := Renderer{}.Render(general)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(out, other) {
+		t.Fatal("tata letak PA sama dengan tata letak umum")
 	}
 }
 

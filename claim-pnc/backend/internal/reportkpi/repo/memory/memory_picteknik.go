@@ -111,6 +111,23 @@ func (s *Store) Bands(_ context.Context, job, note string) ([]reportkpi.Band, er
 	return out, nil
 }
 
+// AdjusterCategories mengembalikan pita KATEGORI adjuster.
+//
+// Ia memakai penyimpan yang sama dengan Bands dan menyaring menurut `Job`, karena itulah
+// yang membedakan kedua kelompok pita di tabel aslinya.
+func (s *Store) AdjusterCategories(_ context.Context) ([]reportkpi.Band, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var out []reportkpi.Band
+	for _, band := range s.picTeknik.Bands {
+		if band.Job == reportkpi.AdjusterCategoryJob {
+			out = append(out, band)
+		}
+	}
+	return out, nil
+}
+
 // ThresholdDays mengembalikan ambang hari satu komponen.
 func (s *Store) ThresholdDays(_ context.Context, job, note string) (reportkpi.Score, error) {
 	s.mu.RLock()
@@ -261,4 +278,34 @@ func withinDays(at, from, to time.Time) bool {
 	}
 	day := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
 	return !day.Before(from) && !day.After(to)
+}
+
+// PICExport mengembalikan berkas ekspor contoh.
+//
+// Bentuknya sengaja MENIRU yang sungguhan — judul kolom dari Pega, satu baris contoh —
+// supaya layar pengembangan dapat memperlihatkan bahwa pilihan "Pilih Data KPI"
+// benar-benar mengubah berkas yang diunduh, bukan hanya namanya.
+func (s *Store) PICExport(
+	_ context.Context,
+	kind reportkpi.PICExportKind,
+	_ reportkpi.PICQuery,
+	pics []string,
+) (reportkpi.PICExportTable, error) {
+	header := []string{"POLICYDECLARATIONNO", "IDPEGA", "QQNAME", "OLDPOLICYNO"}
+	if kind == reportkpi.PICExportProgress {
+		// Hanya pilihan Progress yang punya kolom pencapaian; ketiga lainnya tidak.
+		header = append(header, "ASMCityId")
+	}
+
+	table := reportkpi.PICExportTable{Header: header}
+	if len(pics) == 0 {
+		return table, nil
+	}
+
+	row := []string{"ASM-FW-GCNMFW-WORK PNC-0001", "PNC-0001", "CONTOH TERTANGGUNG", pics[0]}
+	if kind == reportkpi.PICExportProgress {
+		row = append(row, "Tercapai")
+	}
+	table.Rows = append(table.Rows, row)
+	return table, nil
 }

@@ -96,6 +96,10 @@ type QueryInput struct {
 
 	// Keyword adalah isi kotak cari.
 	Keyword string
+
+	// Region adalah pilihan dropdown "Pilih Kanwil". Hanya berlaku bagi manajer — lihat
+	// ResolveScope.
+	Region string
 }
 
 // Query adalah permintaan isi satu tab yang sudah tervalidasi.
@@ -117,6 +121,11 @@ type Query struct {
 
 	// Caller adalah identitas pemanggil. Tiga tab menyaring menurut nilai ini.
 	Caller Caller
+
+	// Scope adalah batas data cabang dan kanwil. Ia diisi usecase dari cabang dan access
+	// group pemanggil — BUKAN oleh NewQuery, dan tidak pernah dari isian layar secara
+	// langsung — sehingga petugas tidak dapat melebarkan batasnya sendiri.
+	Scope Scope
 }
 
 // NewQuery membentuk permintaan yang sah, atau menyatakan apa yang salah.

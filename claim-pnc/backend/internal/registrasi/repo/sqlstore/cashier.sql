@@ -44,3 +44,13 @@ SELECT COUNT(*)
 INSERT INTO POOLDATA.CLAIM_SERVICE_LOG (SERVICEID, JSONIN, JSONOUT, CATEGORYSERVICE, ID, SERVICEREF)
 SELECT :1, :2, :3, :4, COALESCE(MAX(l.ID), 0) + 1, :5
   FROM POOLDATA.CLAIM_SERVICE_LOG l
+
+-- name: kasir_riwayat
+--
+-- Grid "Histori Transfer Kasir" (Section/InputAdjustment_sect.xml, TempDataLogKasir). Rule
+-- pengisinya tidak ada di export; kolomnya diturunkan dari InsertLogKasir_sql, yang menulis
+-- tabel yang sama. Baca saja.
+SELECT PIC, TGL_TRF, STATUS, ALASAN
+  FROM POOLDATA.TRF_KASIR_LOG
+ WHERE NOAKSEPTASI = :1
+ ORDER BY TGL_TRF

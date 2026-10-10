@@ -7,6 +7,7 @@
 package inboxcompliancehttp
 
 import (
+	"strings"
 	"time"
 
 	"claim-pnc/internal/inboxcompliance"
@@ -314,7 +315,7 @@ type SendPostAuditRequest struct {
 
 // SendPostAuditResponse adalah jawaban pengiriman yang berhasil.
 type SendPostAuditResponse struct {
-	// CaseID adalah nomor yang terbit, misalnya `CPL-100001`.
+	// CaseID adalah nomor yang terbit, misalnya `CPL.26.1`.
 	CaseID string `json:"nomor_case"`
 
 	ClaimNumber  string `json:"no_klaim"`
@@ -368,8 +369,18 @@ type DecisionDTO struct {
 	// terjadi bila barisnya ditulis tangan ke basis data.
 	ChoiceLabel string `json:"pilihan_label"`
 
-	Note    string `json:"note"`
-	Remarks string `json:"catatan"`
+	Note string `json:"note"`
+
+	// Comments adalah grid komentar — tempat petugas Compliance menulis.
+	//
+	// Jangan tertukar dengan Remarks di bawahnya: yang ini DIISI petugas, yang itu
+	// ditampilkan saja.
+	Comments []CommentDTO `json:"komentar"`
+
+	// Remarks adalah catatan **Investigator** — `.ClaimData.ComplianceRemark`, yang pada
+	// form Pega bertanda `pyEditOptions=Read-only`. Ia datang dari klaim, bukan dari
+	// layar, dan karena itu tidak ada padanannya di SubmitDecisionRequest.
+	Remarks string `json:"catatan_investigator"`
 
 	DecidedBy string  `json:"diputuskan_oleh"`
 	DecidedAt *string `json:"diputuskan_pada"`
@@ -392,6 +403,14 @@ type CheckerResponse struct {
 	// Decision adalah keputusan yang sudah tersimpan, bila ada.
 	Decision *DecisionDTO `json:"keputusan"`
 
+	// Actions adalah tombol mana yang boleh digambar untuk klaim ini.
+	//
+	// Ia datang dari SERVER, bukan disimpulkan layar dari lini bisnis, karena syaratnya
+	// dibaca dari rule Pega dan tempat pembacaan itu tercatat adalah backend — alasan yang
+	// sama seperti daftar Pilihan Compliance. Menyimpulkannya di layar berarti aturan yang
+	// sama hidup di dua tempat, dan yang di layar tidak mengikat apa pun.
+	Actions ActionsDTO `json:"tombol"`
+
 	// Limitation adalah kalimat yang WAJIB sampai ke petugas, bukan hanya ke DBA.
 	//
 	// Form ini mencatat keputusan; ia belum menjalankan alurnya. Klaimnya di Pega tidak
@@ -400,7 +419,140 @@ type CheckerResponse struct {
 	// pekerjaannya selesai padahal klaimnya masih menunggu di Pega.
 	Limitation string `json:"keterbatasan"`
 
+	// Medan `dokumen` dan `dokumen_gagal_dibaca` DICABUT 2026-10-08 bersama gridnya —
+	// lihat catatan pada usecase.CheckerOpened.
+
+	// RejectPrefill mengisi tiga isian form Surat Penolakan saat dialognya dibuka.
+	//
+	// Dikirim bersama form, bukan lewat permintaan tersendiri saat dialognya dibuka —
+	// lihat usecase.CheckerOpened.RejectPrefill untuk alasannya.
+	RejectPrefill RejectPrefillDTO `json:"pra_isi_surat_penolakan"`
+
+	// ShowDocumentChecklist menyatakan tab "Dokumen" DIGAMBAR, yakni `IsTravel`.
+	//
+	// Terpisah dari panjang DocumentChecklist, alasan yang sama dengan
+	// ShowSurveyResults: lini Travel yang masternya belum diisi tetap menggambar tabnya
+	// dengan tabel kosong, dan itu tidak dapat dibedakan dari lini lain bila layar hanya
+	// melihat jumlah barisnya.
+	ShowDocumentChecklist bool `json:"tampilkan_daftar_dokumen"`
+
+	// DocumentChecklist mengisi tab "Dokumen" — hanya terisi pada lini Travel.
+	DocumentChecklist []DocumentChecklistDTO `json:"daftar_dokumen"`
+
+	// DocumentChecklistFailed menyatakan daftar periksa GAGAL dibaca.
+	//
+	// Tanpa penanda ini, tabel kosong karena gangguan basis data tak terbedakan dari
+	// lini yang masternya memang belum diisi — dan petugas dapat menyimpulkan tidak ada
+	// dokumen yang wajib.
+	DocumentChecklistFailed bool `json:"daftar_dokumen_gagal_dibaca"`
+
+	// ShowSurveyResults menyatakan blok "Hasil Investigasi" DIGAMBAR, yakni `IsPA`.
+	//
+	// Terpisah dari panjang SurveyResults dengan sengaja. Klaim PA yang belum pernah
+	// disurvei tetap menggambar bloknya — grid kosong, persis seperti di Pega — dan itu
+	// tidak dapat dibedakan dari lini non-PA bila layar hanya melihat jumlah barisnya.
+	//
+	// Layar TIDAK menyimpulkan `IsPA` sendiri, alasan yang sama seperti tombol: syaratnya
+	// dibaca dari rule Pega, dan tempat pembacaan itu tercatat adalah backend.
+	ShowSurveyResults bool `json:"tampilkan_hasil_investigasi"`
+
+	// SurveyResults mengisi blok "Hasil Investigasi" — hanya terisi pada lini PA.
+	//
+	// Senarai kosong, bukan null, supaya layar tidak perlu membedakan dua bentuk
+	// "tidak ada baris".
+	SurveyResults []SurveyResultDTO `json:"hasil_investigasi"`
+
+	// SurveyResultsFailed menyatakan hasil investigasi GAGAL dibaca.
+	//
+	// Tanpa penanda ini, blok kosong karena gangguan basis data tak terbedakan dari blok
+	// kosong karena klaimnya memang belum disurvei — dan petugas akan memutuskan klaim
+	// PA dengan mengira tidak ada hasil investigasi, padahal ada.
+	SurveyResultsFailed bool `json:"hasil_investigasi_gagal_dibaca"`
+
 	Portal string `json:"portal"`
+}
+
+// SurveyResultDTO adalah satu baris blok "Hasil Investigasi".
+//
+// Keempat isiannya persis keempat kolom grid `isPA_PNC` pada
+// `Section/ViewHasilSurvey-Section.xml` — tidak lebih. Lihat inboxcompliance.SurveyResult.
+type SurveyResultDTO struct {
+	// SurveyedAt bertipe pointer, sama dengan seluruh tanggal lain di modul ini:
+	// `null` berarti kolomnya kosong, bukan 1 Januari tahun nol.
+	SurveyedAt *string `json:"tanggal_investigasi"`
+
+	ObjectName     string `json:"nama_peserta"`
+	ObjectLocation string `json:"lokasi_objek"`
+	Status         string `json:"status"`
+}
+
+// RejectPrefillDTO adalah isian form Surat Penolakan yang terbawa dari klaim.
+//
+// Hanya TIGA dari empat isian `AutoFillFormReject_Pre`. Yang keempat — Tanggal Keluar
+// Rawat Inap — tidak punya kolom di `T_CLAIM_PNC`, sehingga ia selalu diketik petugas.
+type RejectPrefillDTO struct {
+	PatientName   string `json:"nama_pasien"`
+	IncidentPlace string `json:"tempat_kejadian"`
+
+	// IncidentDate bertipe pointer, sama dengan seluruh tanggal lain di modul ini:
+	// `null` berarti kolomnya kosong, bukan 1 Januari tahun nol.
+	IncidentDate *string `json:"tanggal_kejadian"`
+}
+
+func toRejectPrefillDTO(prefill inboxcompliance.RejectPrefill) RejectPrefillDTO {
+	return RejectPrefillDTO{
+		PatientName:   prefill.PatientName,
+		IncidentPlace: prefill.IncidentPlace,
+
+		// toDateString, bukan toDateTimeString: Tanggal Kejadian adalah tanggal murni,
+		// dan jam pada surat penolakan tidak punya arti apa pun.
+		IncidentDate: toDateString(prefill.IncidentDate),
+	}
+}
+
+// DocumentDTO adalah satu baris grid dokumen.
+//
+// Ketiga kolom datanya persis sel 55–57 `Section/CompliancePNC-Section.xml`; kolom
+// keempat di Pega adalah ikon tanpa judul, dan di sini ia menjadi `id_penyimpanan`.
+type DocumentDTO struct {
+	ID       string `json:"id"`
+	Name     string `json:"nama_file"`
+	MimeType string `json:"tipe_file"`
+	Category string `json:"kategori"`
+
+	// StorageID dikirim karena tombol "lihat" membutuhkannya untuk meminta tautan baru
+	// lewat `NewLinkDokumenPNC`. Ia bukan kolom yang digambar.
+	StorageID string `json:"id_penyimpanan"`
+
+	UploadedAt *string `json:"tanggal_unggah"`
+}
+
+func toDocumentDTOs(documents []inboxcompliance.Document) []DocumentDTO {
+	rows := make([]DocumentDTO, 0, len(documents))
+	for _, document := range documents {
+		rows = append(rows, DocumentDTO{
+			ID:         document.ID,
+			Name:       document.Name,
+			MimeType:   document.MimeType,
+			Category:   document.Category,
+			StorageID:  document.StorageID,
+			UploadedAt: toDateTimeString(document.UploadedAt),
+		})
+	}
+	return rows
+}
+
+func toSurveyResultDTOs(results []inboxcompliance.SurveyResult) []SurveyResultDTO {
+	rows := make([]SurveyResultDTO, 0, len(results))
+	for _, result := range results {
+		rows = append(rows, SurveyResultDTO{
+			SurveyedAt:     toDateTimeString(result.SurveyedAt),
+			ObjectName:     result.ObjectName,
+			ObjectLocation: result.ObjectLocation,
+			Status:         result.Status,
+		})
+	}
+	return rows
 }
 
 // SubmitDecisionRequest adalah badan permintaan penyimpanan keputusan.
@@ -411,8 +563,46 @@ type SubmitDecisionRequest struct {
 	// akan membuat `0` tidak dapat dibedakan dari field yang tidak dikirim sama sekali.
 	Choice string `json:"pilihan"`
 
-	Note    string `json:"note"`
-	Remarks string `json:"catatan"`
+	// Note adalah "Note Lainya" — layar hanya menampilkannya saat Choice bernilai `"3"`.
+	Note string `json:"note"`
+
+	// Comments adalah baris grid komentar.
+	//
+	// Tidak ada `catatan` di sini, dan ketiadaannya disengaja: catatan Investigator
+	// read-only di Pega, sehingga menerimanya dari layar berarti membiarkan klien
+	// menimpanya.
+	Comments []CommentRequestDTO `json:"komentar"`
+
+	// Action adalah TOMBOL yang ditekan — `"simpan"` atau `"kirim"`.
+	//
+	// Keduanya dibedakan karena di Pega tombolnya memang mengerjakan hal yang berbeda:
+	// "Simpan Data" tidak memanggil `SetComplianceResult`, sehingga ia tidak memindahkan
+	// klaim. Lihat inboxcompliance.ActionSave.
+	//
+	// Kosong diperlakukan sebagai `"simpan"` — bentuk yang paling tidak berakibat.
+	Action string `json:"aksi"`
+}
+
+// CommentDTO adalah satu baris grid komentar yang sudah tersimpan.
+type CommentDTO struct {
+	// Index adalah nomor baris yang dilihat petugas — grid Pega bernomor.
+	Index int `json:"urutan"`
+
+	// Date adalah Tanggal Komentar. Pointer supaya baris tanpa tanggal — keadaan yang
+	// hanya mungkin terjadi bila barisnya ditulis tangan ke basis data — tidak tampil
+	// sebagai tahun 1.
+	Date *string `json:"tanggal"`
+
+	Text string `json:"komentar"`
+}
+
+// CommentRequestDTO adalah satu baris grid komentar sebagaimana dikirim layar.
+type CommentRequestDTO struct {
+	// Date boleh kosong: Pega mengisi sel Tanggal Komentar dengan waktu sekarang sebagai
+	// nilai BAWAAN yang masih dapat diubah petugas. Kosong berarti pakai bawaan itu.
+	Date string `json:"tanggal"`
+
+	Text string `json:"komentar"`
 }
 
 // SubmitDecisionResponse adalah hasil penyimpanan keputusan.
@@ -454,6 +644,7 @@ func toDecisionDTO(decision inboxcompliance.Decision) DecisionDTO {
 		Choice:            decision.Choice,
 		ChoiceLabel:       label,
 		Note:              decision.Note,
+		Comments:          toCommentDTOs(decision.Comments),
 		Remarks:           decision.Remarks,
 		DecidedBy:         decision.DecidedBy,
 		DecidedAt:         toDateTimeString(&decidedAt),
@@ -462,12 +653,62 @@ func toDecisionDTO(decision inboxcompliance.Decision) DecisionDTO {
 	}
 }
 
+// ActionsDTO adalah kelima tombol pada form Compliance Checker.
+//
+// Syaratnya dibaca dari DUA bilah tombol Pega yang saling melengkapi — `CompliancePNC`
+// S14 (`!IsTravel`) dan `ComplianceChecker` S4 (`IsTravel`). Lihat FormActions untuk
+// rinciannya, termasuk koreksi atas pembacaan pertama yang hanya melihat salah satunya.
+type ActionsDTO struct {
+	UploadDocument       bool `json:"unggah_dokumen"`
+	DownloadRejectLetter bool `json:"unduh_dokumen_reject"`
+	Save                 bool `json:"simpan"`
+
+	// SendToAnalyst tampil pada lini PA.
+	SendToAnalyst bool `json:"kirim_ke_analyst"`
+
+	// SendToTechnician tampil pada lini Travel.
+	//
+	// Tombolnya tampil tetapi BELUM dapat dijalankan — Data Transform `SendToPIC` tidak
+	// ada di export (`R-16`). Lihat FormActions.
+	SendToTechnician bool `json:"kirim_ke_pic_teknik"`
+}
+
+func toActionsDTO(actions inboxcompliance.FormActions) ActionsDTO {
+	return ActionsDTO{
+		UploadDocument:       actions.UploadDocument,
+		DownloadRejectLetter: actions.DownloadRejectLetter,
+		Save:                 actions.Save,
+		SendToAnalyst:        actions.SendToAnalyst,
+		SendToTechnician:     actions.SendToTechnician,
+	}
+}
+
 func toCheckerResponse(opened usecase.CheckerOpened, portalAlias string) CheckerResponse {
 	response := CheckerResponse{
 		Claim:      toWorkItemDTO(opened.Case.Claim),
 		Choices:    toChoiceDTOs(opened.Choices),
+		Actions:    toActionsDTO(opened.Case.Actions()),
 		Limitation: checkerLimitation,
-		Portal:     portalAlias,
+
+		// `IsPA` dibaca dari lini bisnis klaimnya, sumber yang sama dengan tombol —
+		// bukan disimpulkan dari ada-tidaknya baris survei.
+		ShowSurveyResults: opened.Case.Claim.GroupPanel ==
+			inboxcompliance.GroupPanelPersonalAccident,
+
+		SurveyResults:       toSurveyResultDTOs(opened.SurveyResults),
+		SurveyResultsFailed: opened.SurveyResultsError != nil,
+
+		RejectPrefill: toRejectPrefillDTO(opened.RejectPrefill),
+
+		// `IsTravel` dibaca dari lini bisnis klaimnya, sumber yang sama dengan tombol —
+		// bukan disimpulkan dari ada-tidaknya baris daftar periksa.
+		ShowDocumentChecklist: opened.Case.Claim.GroupPanel ==
+			inboxcompliance.GroupPanelTravel,
+
+		DocumentChecklist:       toDocumentChecklistDTOs(opened.DocumentChecklist),
+		DocumentChecklistFailed: opened.DocumentChecklistError != nil,
+
+		Portal: portalAlias,
 	}
 
 	if opened.Case.Decision != nil {
@@ -496,4 +737,173 @@ func toSubmitDecisionResponse(
 	}
 
 	return response
+}
+
+// toCommentDTOs memetakan grid komentar ke bentuk yang dibaca layar.
+//
+// Senarai kosong dipulangkan sebagai `[]`, bukan `null`: layar menggambar grid dengan
+// memetakan senarai itu, dan `null` memaksa setiap pemanggil memeriksanya lebih dulu.
+func toCommentDTOs(comments []inboxcompliance.Comment) []CommentDTO {
+	out := make([]CommentDTO, 0, len(comments))
+	for _, comment := range comments {
+		date := comment.Date
+		out = append(out, CommentDTO{
+			Index: comment.Index,
+			Date:  toDateTimeString(&date),
+			Text:  comment.Text,
+		})
+	}
+	return out
+}
+
+// toCommentInputs memetakan baris grid dari layar ke bentuk domain.
+//
+// # Tanggal yang tidak dapat diurai DIABAIKAN, bukan diadukan
+//
+// Bukan kelonggaran: sel Tanggal Komentar di Pega punya nilai bawaan
+// `@(Pega-RULES:DateTime).CurrentDateTime()`, sehingga "tidak ada tanggal yang sah" dan
+// "tanggal tidak dikirim" berakhir pada perlakuan yang sama — pakai waktu keputusan.
+// Menolak permintaannya justru akan membuang komentar yang sudah diketik petugas hanya
+// karena selnya salah format.
+func toCommentInputs(rows []CommentRequestDTO) []inboxcompliance.CommentInput {
+	out := make([]inboxcompliance.CommentInput, 0, len(rows))
+	for _, row := range rows {
+		input := inboxcompliance.CommentInput{Text: row.Text}
+
+		if trimmed := strings.TrimSpace(row.Date); trimmed != "" {
+			// Diurai dalam WIB, zona yang sama dengan yang dipakai menampilkannya
+			// (`F-5`). Mengurainya sebagai UTC akan menggeser setiap tanggal 7 jam —
+			// persis kelas cacat yang `R-12` catat.
+			if parsed, err := time.ParseInLocation(
+				dateTimeLayout, trimmed, clock.ZoneWIB,
+			); err == nil {
+				input.Date = &parsed
+			}
+		}
+
+		out = append(out, input)
+	}
+	return out
+}
+
+// OpenDocumentResponse adalah tautan siap buka untuk satu dokumen.
+//
+// Tautan penyimpanan yang BELUM dibungkus penampil sengaja TIDAK dikirim. Layar tidak
+// membutuhkannya, dan mengirimkannya berarti menaruh tautan bertanda tangan di satu
+// tempat lagi — padahal siapa pun yang memegangnya dapat membuka berkasnya.
+type OpenDocumentResponse struct {
+	Name      string `json:"nama_file"`
+	ViewerURL string `json:"tautan"`
+	Portal    string `json:"portal"`
+}
+
+// toDocumentDTO memetakan satu dokumen — dipakai jawaban unggah.
+func toDocumentDTO(document inboxcompliance.Document) DocumentDTO {
+	return DocumentDTO{
+		ID:         document.ID,
+		Name:       document.Name,
+		MimeType:   document.MimeType,
+		Category:   document.Category,
+		StorageID:  document.StorageID,
+		UploadedAt: toDateTimeString(document.UploadedAt),
+	}
+}
+
+// GenerateRejectLetterRequest adalah isian form Download Dokumen Reject.
+//
+// Delapan isian beserta grid "Alasan" — persis `Section/FormRejectClaim_section`. Nama
+// field JSON berbahasa Indonesia mengikuti `D-80`: ia kontrak, bukan nama internal.
+//
+// Seluruh tanggal bertipe TEKS, bukan tanggal. Isian "Tanggal Keluar Rawat Inap" tidak
+// punya sumber basis data sehingga diketik bebas, dan satu-satunya tujuan nilai-nilai ini
+// adalah digambar ke surat. Menguraikannya lalu menggambarnya kembali hanya menambah satu
+// tempat yang dapat menolak masukan yang Pega terima.
+type GenerateRejectLetterRequest struct {
+	Recipient     string `json:"up"`
+	Position      string `json:"jabatan"`
+	PatientName   string `json:"nama_pasien"`
+	IncidentPlace string `json:"tempat_kejadian"`
+	IncidentDate  string `json:"tanggal_kejadian"`
+	DischargeDate string `json:"tanggal_keluar_rawat_inap"`
+	PaidAmount    string `json:"nilai_klaim_dibayarkan"`
+	PaymentDate   string `json:"tanggal_pembayaran"`
+
+	// Reasons adalah grid "Alasan" apa adanya, termasuk baris kosongnya.
+	//
+	// Baris kosong TIDAK ditolak di sini — ia dibuang saat penomoran. Menolaknya akan
+	// membuat petugas yang menyisakan satu baris kosong di grid mendapat pesan kesalahan
+	// alih-alih surat, dan baris kosong di grid adalah kejadian normal.
+	Reasons []string `json:"alasan"`
+}
+
+// GenerateRejectLetterResponse adalah jawaban penerbitan surat.
+type GenerateRejectLetterResponse struct {
+	// Document adalah baris dokumen yang baru tercatat, berbentuk sama dengan baris grid
+	// Dokumen — sehingga layar dapat menyisipkannya tanpa memuat ulang seluruh grid.
+	Document DocumentDTO `json:"dokumen"`
+
+	// Replaced menyatakan surat sebelumnya DIGANTI, bukan ditambahkan.
+	//
+	// Dikirim supaya layar dapat mengatakan "surat diperbarui" alih-alih "surat dibuat".
+	// Tanpa ini, perilaku ganti-bukan-tambah tidak terlihat sama sekali oleh petugas, dan
+	// ia dapat mengira suratnya yang lama masih ada.
+	Replaced bool `json:"mengganti_surat_sebelumnya"`
+
+	Portal string `json:"portal"`
+}
+
+// DocumentChecklistDTO adalah satu baris tab "Dokumen".
+//
+// Keempat kolomnya persis grid `UploadDocument` pada layar Pega — tidak lebih. Lihat
+// inboxcompliance.DocumentChecklistItem.
+type DocumentChecklistDTO struct {
+	// CategoryID tidak digambar; ia dibawa karena tombol Unggah menempelkan berkas pada
+	// kategori ini.
+	CategoryID string `json:"id_kategori"`
+
+	CategoryName string `json:"kategori"`
+
+	// MandatoryLabel TEKS, bukan boolean — tiga nilai yang mungkin: "Ya", "Tidak", dan
+	// KOSONG. Kosong memang terjadi di Pega; lihat catatan pada tipe domainnya.
+	MandatoryLabel string `json:"wajib_unggah"`
+
+	// MinUpload pointer: kolomnya boleh NULL, dan `0` berarti lain daripada "tidak
+	// ditentukan".
+	MinUpload *int `json:"minimal_unggah"`
+
+	UploadedCount int `json:"total_sudah_diunggah"`
+}
+
+func toDocumentChecklistDTOs(
+	items []inboxcompliance.DocumentChecklistItem,
+) []DocumentChecklistDTO {
+	rows := make([]DocumentChecklistDTO, 0, len(items))
+	for _, item := range items {
+		rows = append(rows, DocumentChecklistDTO{
+			CategoryID:     item.CategoryID,
+			CategoryName:   item.CategoryName,
+			MandatoryLabel: item.MandatoryLabel,
+			MinUpload:      item.MinUpload,
+			UploadedCount:  item.UploadedCount,
+		})
+	}
+	return rows
+}
+
+// ListDocumentsResponse adalah jawaban daftar lampiran klaim.
+type ListDocumentsResponse struct {
+	// Documents memakai bentuk baris yang sama dengan DocumentDTO — satu bentuk dokumen
+	// di seluruh modul, bukan satu per layar.
+	Documents []DocumentDTO `json:"dokumen"`
+
+	Portal string `json:"portal"`
+}
+
+// ChangeDocumentCategoryRequest adalah badan permintaan pemindahan kategori.
+type ChangeDocumentCategoryRequest struct {
+	// Category adalah `DOC_TYPE_DT_ID` kategori TUJUAN.
+	//
+	// Hanya ini yang datang dari badan; klaim dan dokumennya dari jalur — lihat
+	// handler-nya.
+	Category string `json:"kategori"`
 }

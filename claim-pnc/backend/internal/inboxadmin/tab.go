@@ -124,6 +124,10 @@ type Tab struct {
 	// Hanya kueri yang bergabung ke POOLDATA.BUSINESS dan BUSINESSGROUP yang dapat
 	// menyaringnya — empat dari tujuh.
 	SupportsBusinessFilter bool
+
+	// PageSize adalah jumlah baris per halaman tab ini bila pemanggil tidak menyebut
+	// `ukuran`. Nol berarti DefaultPageSize.
+	PageSize int
 }
 
 // Kolom yang dipakai berulang, disusun sekali supaya judulnya tidak dapat berbeda antar tab
@@ -163,9 +167,15 @@ var tabs = []Tab{
 		SupportsSearch: true,
 	},
 	{
-		Code:        TabAll,
-		Name:        "ALL",
+		Code: TabAll,
+		// "Outstanding", bukan "ALL": itulah label baris kode 3 pada daftar Status
+		// Register Pega (`GetReportClaimRegistList` langkah 30). Nama "ALL" sempat dipakai
+		// karena label itu disusun activity, bukan ditulis di section — dikoreksi
+		// 2026-10-07 dari tangkapan layar Pega yang berjalan.
+		Name:        "Outstanding",
 		Description: "Seluruh klaim PNC yang masih berjalan pada tahap Register, Estimasi, atau Estimation.",
+		// 10 baris per halaman — permintaan Work Owner 2026-10-08.
+		PageSize: 10,
 		Columns: []Column{
 			colCaseID, colPolicyNumber, colInsuredName, colBusinessName, colBusinessSrc,
 			colBranchName, colLossDate, colReportDate, colInputDate,
@@ -235,7 +245,7 @@ var tabs = []Tab{
 	},
 	{
 		Code:        TabBranchClaim,
-		Name:        "Branch Claim",
+		Name:        "LOD", // `GetReportClaimRegistList` langkah 48
 		Description: "Klaim personal accident yang menunggu unggahan LOD dari cabang.",
 		Columns: []Column{
 			colCaseID, colPolicyNumber, colInsuredName, colBusinessSrc, colBranchName,
@@ -256,7 +266,7 @@ var tabs = []Tab{
 	},
 	{
 		Code:        TabRCLPUCL,
-		Name:        "Status RCL/PUCL",
+		Name:        "PUCL", // `GetReportClaimRegistList` langkah 50
 		Description: "Klaim yang suratnya sudah dicetak dan menunggu persetujuan PUCL.",
 		Columns: []Column{
 			colCaseID,

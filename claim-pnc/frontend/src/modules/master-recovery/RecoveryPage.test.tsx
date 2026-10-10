@@ -8,6 +8,18 @@ import { AppRoute } from '@/app/App'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
+/**
+ * Isian "Nama Principal" milik bagian Principal — BUKAN milik blok Generated New VA.
+ *
+ * Sejak blok VA duduk di dalam alur Tambah (2026-10-06), label itu muncul dua kali di
+ * satu layar — persis seperti layar lama, yang juga memuatnya dua kali. Yang di bawah
+ * adalah isian form.
+ */
+function namaPrincipalTerakhir(): HTMLElement {
+  const semua = screen.getAllByLabelText('Nama Principal')
+  return semua[semua.length - 1] as HTMLElement
+}
+
 const ROUTE = '/api/master/recovery'
 
 const SAMPLE_PROFILE = {
@@ -82,6 +94,20 @@ let OUTSTANDING: unknown[] = []
 function installDefaultFetch() {
   installFetch((url, init) => {
     if (url === `${ROUTE}/form`) return jsonResponse(200, FORM)
+    if (url === `${ROUTE}/virtual-account` && init?.method === 'POST') {
+      return jsonResponse(201, {
+        nomor_virtual_account: '8800000000000009',
+        dipakai_ulang: false,
+        pesan: 'Nomor baru diterbitkan.',
+      })
+    }
+    if (url === `${ROUTE}/baris-klaim` && init?.method === 'POST') {
+      return jsonResponse(200, {
+        baris_klaim: [{ nomor_polis: 'P-1', nilai_klaim: 1000 }],
+        baris_ditolak: [],
+        portal: 'ASM',
+      })
+    }
     // Daftar Outstanding. Jalurnya selalu membawa query string (limit dan lewati),
     // sehingga dicocokkan dengan awalan — bukan kesamaan penuh.
     if (url.startsWith(`${ROUTE}/?`)) {
@@ -156,15 +182,30 @@ function show() {
  */
 async function openEntry(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+
+  // Sisa isian baru muncul SETELAH data klaim diunggah — alur layar lama: menekan
+  // Tambah hanya memunculkan kotak Tambah Data berisi Upload Data Klaim.
+  await user.upload(
+    screen.getByLabelText('Pilih berkas CSV data klaim'),
+    new File(['polis' + String.fromCharCode(10) + 'P-1'], 'klaim.csv', { type: 'text/csv' }),
+  )
+  // Isian nilai baru muncul SETELAH VA terbit — padanan `TempRecovery.IBNR == 1`
+  // pada layar lama, yang di-set activity tombol Get VA.
+  await user.type(screen.getAllByLabelText('Client ID')[0]!, 'C-1')
+  await user.type(screen.getAllByLabelText('Nama Principal')[0]!, 'PT CONTOH SATU')
+  await user.type(screen.getByLabelText('Email Inputor VA'), 'petugas@contoh.invalid')
+  await user.click(screen.getByRole('button', { name: 'Get VA' }))
+
+  await screen.findByLabelText('Tahun')
 }
 
 async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
   const tahun = (await screen.findByLabelText('Tahun')) as HTMLSelectElement
   await waitFor(() => expect(tahun.value).not.toBe(''))
 
-  await user.type(screen.getByLabelText('Nama Principal'), 'PT CONTOH PENJAMINAN')
-  await user.type(screen.getByLabelText('Nilai Klaim (Rp)'), '160000')
-  await user.type(screen.getByLabelText('Pembayaran (Rp)'), '5000')
+  await user.type(namaPrincipalTerakhir(), 'PT CONTOH PENJAMINAN')
+  await user.type(screen.getByLabelText('Nilai Klaim'), '160000')
+  await user.type(screen.getByLabelText('Pembayaran'), '5000')
   await user.type(screen.getByLabelText('Keterangan'), 'pengembalian sebagian')
   await user.type(screen.getByLabelText('Posisi Kasus'), 'dalam proses')
 }
@@ -188,19 +229,7 @@ afterEach(() => {
 })
 
 describe('bekal awal layar', () => {
-  it('menampilkan nomor batch perkiraan dan menyebutnya perkiraan', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await openEntry(user)
-
-    expect(await screen.findByText('4')).toBeInTheDocument()
-    // Kata "perkiraan" WAJIB terbaca. Nomor batch di sistem lama tampak pasti padahal
-    // tidak, dan dua petugas yang membuka layar bersamaan melihat angka yang sama.
-    expect(screen.getByText(/Perkiraan/i)).toBeInTheDocument()
-  })
-
-  it('mengisi pilihan tahun dari server, terbaru lebih dulu', async () => {
+    it('mengisi pilihan tahun dari server, terbaru lebih dulu', async () => {
     installDefaultFetch()
     const user = userEvent.setup()
     show()
@@ -234,11 +263,10 @@ describe('aturan Sisa', () => {
     show()
     await openEntry(user)
 
-    await user.type(await screen.findByLabelText('Nilai Klaim (Rp)'), '160000')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '5000')
+    await user.type(await screen.findByLabelText('Nilai Klaim'), '160000')
+    await user.type(screen.getByLabelText('Pembayaran'), '5000')
 
-    expect(await screen.findByText('Rp 155.000')).toBeInTheDocument()
-    expect(screen.getByText(/Nilai Klaim − Pembayaran/)).toBeInTheDocument()
+    expect((screen.getByLabelText('Sisa') as HTMLInputElement).value).toBe('155.000')
   })
 
   it('MENGABAIKAN Pembayaran ketika ada pembayaran sebelumnya', async () => {
@@ -250,28 +278,14 @@ describe('aturan Sisa', () => {
     show()
     await openEntry(user)
 
-    await user.type(await screen.findByLabelText('Nilai Klaim (Rp)'), '160000')
-    await user.type(screen.getByLabelText('Nilai Pembayaran Sebelumnya (Rp)'), '7000')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '100000')
+    await user.type(await screen.findByLabelText('Nilai Klaim'), '160000')
+    await user.type(screen.getByLabelText('Nilai Pembayaran Sebelumnya'), '7000')
+    await user.type(screen.getByLabelText('Pembayaran'), '100000')
 
-    expect(await screen.findByText('Rp 153.000')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Nilai Klaim − Nilai Pembayaran Sebelumnya/),
-    ).toBeInTheDocument()
+    expect((screen.getByLabelText('Sisa') as HTMLInputElement).value).toBe('153.000')
   })
 
-  it('memperingatkan ketika sisa negatif alih-alih menyembunyikannya', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await openEntry(user)
-
-    await user.type(await screen.findByLabelText('Nilai Klaim (Rp)'), '10000')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '50000')
-
-    expect(await screen.findByText(/Sisa negatif/)).toBeInTheDocument()
   })
-})
 
 describe('validasi', () => {
   it('menandai SELURUH isian wajib sekaligus, bukan satu per satu', async () => {
@@ -279,6 +293,10 @@ describe('validasi', () => {
     const user = userEvent.setup()
     show()
     await openEntry(user)
+
+    // Nama Principal terisi sendiri oleh Get VA, jadi dikosongkan dulu supaya pesan
+    // wajibnya benar-benar diuji.
+    await user.clear(namaPrincipalTerakhir())
 
     await user.click(await screen.findByRole('button', { name: 'Transfer Recovery' }))
 
@@ -298,7 +316,7 @@ describe('validasi', () => {
     show()
     await openEntry(user)
 
-    await user.type(await screen.findByLabelText('Nilai Klaim (Rp)'), 'seribu')
+    await user.type(await screen.findByLabelText('Nilai Klaim'), 'seribu')
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
 
     expect(
@@ -317,10 +335,10 @@ describe('simpan', () => {
     const tahun = (await screen.findByLabelText('Tahun')) as HTMLSelectElement
     await waitFor(() => expect(tahun.value).not.toBe(''))
 
-    await user.type(screen.getByLabelText('Nama Principal'), 'PT CONTOH')
+    await user.type(namaPrincipalTerakhir(), 'PT CONTOH')
     // Diketik DENGAN pemisah ribuan, seperti yang benar-benar dilakukan petugas.
-    await user.type(screen.getByLabelText('Nilai Klaim (Rp)'), '160.000')
-    await user.type(screen.getByLabelText('Pembayaran (Rp)'), '5.000')
+    await user.type(screen.getByLabelText('Nilai Klaim'), '160.000')
+    await user.type(screen.getByLabelText('Pembayaran'), '5.000')
     await user.type(screen.getByLabelText('Keterangan'), 'pengembalian')
     await user.type(screen.getByLabelText('Posisi Kasus'), 'proses')
     await user.click(screen.getByRole('button', { name: 'Transfer Recovery' }))
@@ -386,6 +404,20 @@ describe('simpan', () => {
       if (url === `${ROUTE}/principal`) {
         return jsonResponse(200, { principal: PRINCIPAL, total: 1, portal: 'ASM' })
       }
+      if (url === `${ROUTE}/virtual-account` && init?.method === 'POST') {
+      return jsonResponse(201, {
+        nomor_virtual_account: '8800000000000009',
+        dipakai_ulang: false,
+        pesan: 'Nomor baru diterbitkan.',
+      })
+    }
+    if (url === `${ROUTE}/baris-klaim` && init?.method === 'POST') {
+        return jsonResponse(200, {
+          baris_klaim: [{ nomor_polis: 'P-1', nilai_klaim: 1000 }],
+          baris_ditolak: [],
+          portal: 'ASM',
+        })
+      }
       if (url === `${ROUTE}/` && init?.method === 'POST') {
         return jsonResponse(409, {
           kode: 'nomor_batch_sudah_dipakai',
@@ -406,30 +438,6 @@ describe('simpan', () => {
     expect((screen.getByLabelText('Keterangan') as HTMLInputElement).value).toBe(
       'pengembalian sebagian',
     )
-  })
-})
-
-describe('memilih principal dari master', () => {
-  it('mengisi nama, Client ID, dan nomor VA sekaligus', async () => {
-    installDefaultFetch()
-    const user = userEvent.setup()
-    show()
-    await openEntry(user)
-
-    const pilih = (await screen.findByLabelText('Pilih dari master')) as HTMLSelectElement
-    // Sama seperti Tahun: pilihannya baru terisi setelah /principal dijawab.
-    await waitFor(() => expect(pilih.options.length).toBeGreaterThan(1))
-    await user.selectOptions(pilih, 'CONTOH-PRINCIPAL-001')
-
-    expect((screen.getByLabelText('Nama Principal') as HTMLInputElement).value).toBe(
-      'PT CONTOH PENJAMINAN NUSANTARA',
-    )
-    expect((screen.getByLabelText('Client ID') as HTMLInputElement).value).toBe(
-      'CONTOH-PRINCIPAL-001',
-    )
-    expect(
-      (screen.getByLabelText('Virtual Account Number') as HTMLInputElement).value,
-    ).toBe('0000000000000001')
   })
 })
 

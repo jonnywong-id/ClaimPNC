@@ -91,8 +91,11 @@ func (s *Service) Document(
 	}
 
 	return Document{
-		Detail:  detail,
-		Groups:  inboxmanagerreceivepucl.DocumentFieldGroupList(),
+		Detail: detail,
+		// Bentuk layar disusun UNTUK BERKAS INI, bukan daftar tetap: 14 dari 24 isian punya
+		// syarat tampil di section Pega, dan empat di antaranya sudah dapat diterjemahkan
+		// dari Group Panel dan nomor polis berkas ini sendiri.
+		Groups:  inboxmanagerreceivepucl.DocumentFieldGroupsFor(detail),
 		Actions: inboxmanagerreceivepucl.DocumentWriteActionList(),
 	}, nil
 }

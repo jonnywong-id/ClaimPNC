@@ -27,6 +27,7 @@ package notification
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -40,10 +41,17 @@ import (
 	"time"
 
 	"claim-pnc/internal/inboxpladlapredla"
+	"claim-pnc/internal/platform/emailserver"
 )
 
 // Config adalah parameter sambungan SMTP.
 type Config struct {
+	// Account membaca akun server surel dari POOLDATA.M_EMAIL_SERVER_PNC (EMAIL_ACCOUNT)
+	// setiap kali surel dikirim — pengganti Email Account Pega (Work Owner 2026-10-10).
+	// Bila terisi, Host, Port, User, Password, dan From diambil dari akun itu; User dan From
+	// sama-sama EMAIL_ADDRESS. Nil: isian di atas yang dipakai (mode tanpa Oracle).
+	Account func(ctx context.Context) (emailserver.Account, error)
+
 	Host string
 	Port int
 
@@ -70,13 +78,16 @@ type Config struct {
 // menyebut apa yang kurang — bukan gagal di tengah dengan galat jaringan yang tidak
 // menjelaskan apa-apa.
 func (c Config) Complete() bool {
-	return strings.TrimSpace(c.Host) != "" && c.Port > 0 &&
+	return c.Account != nil || strings.TrimSpace(c.Host) != "" && c.Port > 0 &&
 		strings.TrimSpace(c.From) != ""
 }
 
 // Missing menyebut isian konfigurasi yang belum diisi.
 func (c Config) Missing() []string {
 	kurang := []string{}
+	if c.Account != nil {
+		return kurang
+	}
 	if strings.TrimSpace(c.Host) == "" {
 		kurang = append(kurang, "host SMTP")
 	}
@@ -102,6 +113,22 @@ type Sender struct{ cfg Config }
 // NewSender membentuk pengirim.
 func NewSender(c Config) *Sender { return &Sender{cfg: c} }
 
+// withAccount mengembalikan pengirim berkonfigurasi akun M_EMAIL_SERVER_PNC terbaru, atau
+// pengirim itu sendiri bila Account tidak dipasang.
+func (s *Sender) withAccount(ctx context.Context) (*Sender, error) {
+	if s.cfg.Account == nil {
+		return s, nil
+	}
+	account, err := s.cfg.Account(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("inboxpladlapredla/notification: akun surel: %w", err)
+	}
+	c := s.cfg
+	c.Host, c.Port = account.Host, account.Port
+	c.User, c.Password, c.From = account.Address, account.Password, account.Address
+	return &Sender{cfg: c}, nil
+}
+
 // SendAdvice mengirim satu surat beserta lampirannya.
 //
 // Galat berarti surat TIDAK terkirim — kontrak seam-nya, dan seluruh urutan Send
@@ -110,6 +137,10 @@ func (s *Sender) SendAdvice(
 	ctx context.Context,
 	letter inboxpladlapredla.Letter,
 ) error {
+	s, err := s.withAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %v", inboxpladlapredla.ErrNotifierUnavailable, err)
+	}
 	if !s.cfg.Complete() {
 		return fmt.Errorf("%w: %s belum diisi",
 			inboxpladlapredla.ErrNotifierUnavailable,
@@ -168,7 +199,7 @@ func (s *Sender) send(ctx context.Context, to []string, pesan []byte) error {
 	// bukan diwarisi.
 	adaTLS := false
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(nil); err != nil {
+		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host}); err != nil {
 			return fmt.Errorf("inboxpladlapredla/notification: menegakkan TLS: %w", err)
 		}
 		adaTLS = true

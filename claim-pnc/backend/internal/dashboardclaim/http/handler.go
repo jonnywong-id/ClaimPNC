@@ -26,6 +26,10 @@ type Service interface {
 	List(ctx context.Context, q usecase.ListQuery) (usecase.ListResult, error)
 	Holding(ctx context.Context, q usecase.Query) (usecase.HoldingResult, error)
 	Transfer(ctx context.Context, cmd usecase.TransferCommand) (dashboardclaim.TransferRequest, error)
+	TechnicalPIC(ctx context.Context, q usecase.TechnicalPICQuery) (usecase.TechnicalPICResult, error)
+
+	// ClaimDetail membaca isi popup yang terbuka saat nomor klaim diklik.
+	ClaimDetail(ctx context.Context, q usecase.ClaimDetailQuery) (dashboardclaim.ClaimDetail, error)
 }
 
 // Handler melayani rute Dashboard Claim.
@@ -227,6 +231,33 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		choices = append(choices, choiceDTO{Nilai: string(line), Label: line.Label()})
 	}
 
+	// Kedua dropdown panel penyaring. Daftarnya datang dari SERVER, bukan ditulis ulang di
+	// layar: nilai yang dikirim layar dicocokkan dengan konstanta di dalam SQL, sehingga
+	// salah ketik satu huruf di frontend akan menghasilkan penyaring yang tidak menyaring
+	// apa pun — tanpa galat.
+	cashiers := dashboardclaim.CashierStatuses()
+	cashierChoices := make([]choiceDTO, 0, len(cashiers))
+	for _, status := range cashiers {
+		cashierChoices = append(cashierChoices,
+			choiceDTO{Nilai: string(status), Label: status.Label()})
+	}
+
+	payments := dashboardclaim.PaymentStatuses()
+	paymentChoices := make([]choiceDTO, 0, len(payments))
+	for _, status := range payments {
+		paymentChoices = append(paymentChoices,
+			choiceDTO{Nilai: string(status), Label: status.Label()})
+	}
+
+	// Isi dropdown "Pilih Type User" pada Transfer All Case. Nilainya dibandingkan sebagai
+	// TEKS oleh pelaksananya, sehingga daftarnya datang dari server — salah ketik satu huruf
+	// di layar menghasilkan permintaan yang diam saat dijalankan.
+	types := dashboardclaim.UserTypes()
+	typeChoices := make([]choiceDTO, 0, len(types))
+	for _, t := range types {
+		typeChoices = append(typeChoices, choiceDTO{Nilai: string(t), Label: t.Label()})
+	}
+
 	all := dashboardclaim.Tiles()
 	tileList := make([]tileDTO, 0, len(all))
 	for _, tile := range all {
@@ -238,9 +269,12 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeResponse(w, r, http.StatusOK, metadataResponse{
-		LiniBisnis: choices,
-		Tile:       tileList,
-		Portal:     active.Alias,
+		LiniBisnis:     choices,
+		StatusTransfer: cashierChoices,
+		StatusBayar:    paymentChoices,
+		TipePengguna:   typeChoices,
+		Tile:           tileList,
+		Portal:         active.Alias,
 	})
 }
 
@@ -329,6 +363,22 @@ func readFilter(values url.Values) (dashboardclaim.Filter, error) {
 		})
 	}
 
+	cashier, known := dashboardclaim.ParseCashierStatus(values.Get("status_transfer"))
+	if !known {
+		violations = append(violations, dashboardclaim.Violation{
+			Field:   dashboardclaim.FieldCashierStatus,
+			Message: "Status transfer tidak dikenal.",
+		})
+	}
+
+	payment, known := dashboardclaim.ParsePaymentStatus(values.Get("status_bayar"))
+	if !known {
+		violations = append(violations, dashboardclaim.Violation{
+			Field:   dashboardclaim.FieldPaymentStatus,
+			Message: "Status pembayaran tidak dikenal.",
+		})
+	}
+
 	page, err := readPositiveInt(values.Get("halaman"))
 	if err != nil {
 		violations = append(violations, dashboardclaim.Violation{
@@ -361,7 +411,18 @@ func readFilter(values url.Values) (dashboardclaim.Filter, error) {
 	filter := dashboardclaim.Filter{
 		Business: business,
 		Search:   values.Get("cari"),
-		Limit:    size,
+
+		// Kelima penyaring panel `FilterDashboardClaim_sec`. Namanya di sini mengikuti
+		// ISINYA, bukan properti Pega yang menyimpannya — yang terakhir menyesatkan
+		// (`TempInputFilter.CaseID` berisi nomor polis, `.City` berisi status pembayaran,
+		// `.CityID` berisi status transfer).
+		PolicyNumber: values.Get("nomor_polis"),
+		ClaimNumber:  values.Get("nomor_klaim"),
+		TechnicalPIC: values.Get("pic"),
+		Cashier:      cashier,
+		Payment:      payment,
+
+		Limit: size,
 	}.Normalize()
 	filter.Offset = (page - 1) * filter.Limit
 

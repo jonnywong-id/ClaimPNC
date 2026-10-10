@@ -95,43 +95,34 @@ func TestFilterDateRangeReversed(t *testing.T) {
 // menggambar kolom sebanyak layar lamanya. Bila sebuah kolom laporan regulator hilang,
 // tidak ada apa pun di layar yang menandakannya — uji inilah satu-satunya yang menyalak.
 func TestColumnCounts(t *testing.T) {
-	require.Len(t, monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01), 20,
-		"grid D01 di Sec_SegmentD01_1 punya 20 kolom")
-	require.Len(t, monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01), 27,
-		"CSVPropHeaders pada ExportDataSlinkD01 memuat 27 judul")
-	// Grid F06 memakai daftar kolom yang SAMA dengan D01 — terbukti dari layar Pega yang
-	// berjalan dan dari alias `GetDataSlinkAllFOG-SQL.xml`.
+	// D01 = IDENTITAS DEBITUR (38 kolom), F06 = FASILITAS KREDIT (20).
 	//
-	// Uji ini sempat menuntut 38, karena grid F06 dibangun dari judul BERKAS EKSPOR.
-	// Angka 38 tetap dijaga — tetapi pada ExportHeaders, tempatnya yang benar.
-	require.Len(t, monitoringslinkojk.Columns(monitoringslinkojk.SegmentF06), 20,
-		"grid F06 memakai kolom yang sama dengan grid D01")
-	require.Len(t, monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06), 38,
+	// Angkanya sempat tertukar dua kali. Yang berlaku adalah layar Pega PRODUKSI
+	// (`clouduniapp`), dan itu juga struktur pelaporan SLIK OJK yang sebenarnya.
+	// Lihat catatan pemetaan pada Columns.
+	require.Len(t, monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01), 38,
+		"grid D01 menampilkan 38 kolom identitas debitur")
+	require.Len(t, monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01), 38,
 		"CSVPropHeaders pada ExportDataSlinkFOG memuat 38 judul")
-}
 
-// Kedua grid identik — bukan mirip.
-//
-// Bila kelak salah satunya disunting sendirian, uji ini menyalak. Di Pega keduanya satu
-// daftar yang sama, dan perbedaan di antara keduanya adalah cacat, bukan keputusan.
-func TestBothGridsUseTheSameColumns(t *testing.T) {
-	require.Equal(t,
-		monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01),
-		monitoringslinkojk.Columns(monitoringslinkojk.SegmentF06))
+	require.Len(t, monitoringslinkojk.Columns(monitoringslinkojk.SegmentF06), 20,
+		"grid F06 menampilkan 20 kolom fasilitas kredit")
+	require.Len(t, monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06), 27,
+		"CSVPropHeaders pada ExportDataSlinkD01 memuat 27 judul")
 }
 
 // ============================================================================
-// EKSPOR F06 MISALIGN — DIREPLIKASI ATAS KEPUTUSAN WORK OWNER
+// EKSPOR SEGMEN D01 MISALIGN — DIREPLIKASI ATAS KEPUTUSAN WORK OWNER
 // ============================================================================
 
-// Berkas ekspor F06 SENGAJA tidak sejajar: 38 judul, 34 kolom data.
+// Berkas ekspor segmen D01 SENGAJA tidak sejajar: 38 judul, 34 kolom data.
 //
 // Keputusan Work Owner 2026-09-26 sesudah selisihnya disampaikan beserta akibatnya.
 // Uji ini menjaganya tetap begitu — tanpa uji, "merapikannya" adalah suntingan satu baris
 // yang tidak akan ketahuan siapa pun sampai berkasnya dibandingkan dengan keluaran Pega.
-func TestF06ExportReplicatesPegaMisalignment(t *testing.T) {
-	headers := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06)
-	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentF06)
+func TestD01ExportReplicatesPegaMisalignment(t *testing.T) {
+	headers := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01)
+	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentD01)
 
 	require.Len(t, headers, 38, "CSVPropHeaders pada ExportDataSlinkFOG memuat 38 judul")
 	require.Len(t, slots, 34, "CSVProperties pada aktivitas yang sama memuat 34 nama")
@@ -143,8 +134,8 @@ func TestF06ExportReplicatesPegaMisalignment(t *testing.T) {
 //
 // Ia yang menyebabkan seluruh slot sesudahnya bergeser terhadap judulnya, dan ia harus
 // tetap ada sebagai SATU slot — memecahnya menjadi dua akan menggeser berkasnya kembali.
-func TestF06ExportKeepsGluedPropertyName(t *testing.T) {
-	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentF06)
+func TestD01ExportKeepsGluedPropertyName(t *testing.T) {
+	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentD01)
 	require.Equal(t, "ASMGenderASMDateOfBirth", slots[5].Header)
 	require.Empty(t, slots[5].Key, "properti sambungan itu tidak pernah ada; slotnya kosong")
 }
@@ -153,9 +144,9 @@ func TestF06ExportKeepsGluedPropertyName(t *testing.T) {
 //
 // Angka dan posisinya dikunci di sini supaya akibat replikasi ini terbaca dari uji, bukan
 // hanya dari komentar.
-func TestF06ExportHasThreePopulatedSlots(t *testing.T) {
-	headers := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06)
-	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentF06)
+func TestD01ExportHasThreePopulatedSlots(t *testing.T) {
+	headers := monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01)
+	slots := monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentD01)
 
 	populated := map[int]string{}
 	for i, slot := range slots {
@@ -177,10 +168,10 @@ func TestF06ExportHasThreePopulatedSlots(t *testing.T) {
 }
 
 // Ekspor D01 SEJAJAR — 27 judul, 27 kolom data. Yang misalign hanya F06.
-func TestD01ExportIsAligned(t *testing.T) {
+func TestF06ExportIsAligned(t *testing.T) {
 	require.Len(t,
-		monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentD01),
-		len(monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentD01)))
+		monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentF06),
+		len(monitoringslinkojk.ExportHeaders(monitoringslinkojk.SegmentF06)))
 }
 
 // SELURUH kolom grid F06 bersumber — tidak ada lagi kolom penanda kosong.
@@ -200,12 +191,21 @@ func TestEveryF06GridColumnIsSourced(t *testing.T) {
 		"tidak boleh ada kolom grid F06 yang tanpa sumber")
 }
 
-// Seluruh kolom grid D01 bersumber. Bila satu saja tidak, pemetaannya ke
-// GetDataSlinkAllFOGF06 sudah putus.
-func TestD01ColumnsAllAvailable(t *testing.T) {
-	require.Len(t,
-		monitoringslinkojk.AvailableColumns(monitoringslinkojk.SegmentD01),
-		len(monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01)))
+// Hanya DELAPAN dari 38 kolom grid D01 yang punya sumber.
+//
+// Ketiga puluh sisanya properti CIF (`ASMNIK`, `pyFullName`, `SpouseName`, …) yang diisi
+// `InsertDataSlinkOJKIndividu` dari data Customer — jalur yang tidak menyentuh kueri
+// pengisi grid ini. Kedelapan yang bersumber dipasangkan karena nama kolom sumbernya
+// menyatakan artinya sendiri, bukan karena ditebak.
+//
+// Angka 8 dikunci di sini supaya kolom yang kelak diisi tebakan membuatnya bergerak.
+func TestOnlyEightD01ColumnsAreSourced(t *testing.T) {
+	all := monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01)
+	available := monitoringslinkojk.AvailableColumns(monitoringslinkojk.SegmentD01)
+
+	require.Len(t, all, 38)
+	require.Len(t, available, 8,
+		"menambahnya berarti menebak isi kolom laporan regulator")
 }
 
 // Kunci kolom GRID wajib unik — ia dipakai sebagai kunci peta pada setiap baris, dan
@@ -227,9 +227,9 @@ func TestGridColumnKeysUnique(t *testing.T) {
 // Kunci pada katalog EKSPOR D01 sengaja TIDAK unik: `Keterangan` muncul dua kali di
 // `CSVPropHeaders`, dan itu direplikasi. Uji ini mengunci fakta tersebut supaya penyunting
 // berikutnya tidak "merapikannya" tanpa menyadari bahwa duplikatnya memang ada di Pega.
-func TestD01ExportRepeatsKeteranganTwice(t *testing.T) {
+func TestF06ExportRepeatsKeteranganTwice(t *testing.T) {
 	count := 0
-	for _, slot := range monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentD01) {
+	for _, slot := range monitoringslinkojk.ExportSlots(monitoringslinkojk.SegmentF06) {
 		if slot.Key == "keterangan" {
 			count++
 		}
@@ -262,7 +262,7 @@ func TestExportSlotsHaveHeaders(t *testing.T) {
 // berkas kerja yang sudah ada di sisi pelapor.
 func TestTypoHeadersPreserved(t *testing.T) {
 	var found bool
-	for _, column := range monitoringslinkojk.Columns(monitoringslinkojk.SegmentD01) {
+	for _, column := range monitoringslinkojk.Columns(monitoringslinkojk.SegmentF06) {
 		if column.Key == "kode_kolektibilitas" {
 			require.Equal(t, "Kode Kelektibilitas", column.Header,
 				"salah ketik pada Sec_SegmentD01_1 sengaja dipertahankan")
@@ -272,18 +272,16 @@ func TestTypoHeadersPreserved(t *testing.T) {
 	require.True(t, found)
 }
 
-// Nama berkas ekspor di Pega TERTUKAR, dan ketertukaran itu DIREPLIKASI.
+// Nama berkas ekspor COCOK dengan segmennya.
 //
-// Keputusan Work Owner 2026-09-26. Uji ini menyatakan ketertukarannya disengaja —
-// tanpanya, siapa pun yang membacanya akan "membetulkannya" dan mengira sedang
-// memperbaiki salah ketik.
+// Uji ini sempat menuntut kebalikannya — "namanya tertukar di Pega, dan ketertukarannya
+// direplikasi". Ketertukaran itu ternyata berasal dari pemetaan segmen saya sendiri yang
+// keliru, bukan dari Pega. Dengan pemetaan yang benar, keduanya cocok.
 func TestFileNamesMatchPega(t *testing.T) {
-	require.Equal(t, "Laporan F06 SLIK OJK",
-		monitoringslinkojk.FileName(monitoringslinkojk.SegmentD01),
-		"ekspor segmen D01 memang bernama F06 di Pega; jangan dibetulkan")
 	require.Equal(t, "Laporan SLIK OJK D01",
-		monitoringslinkojk.FileName(monitoringslinkojk.SegmentF06),
-		"ekspor segmen F06 memang bernama D01 di Pega; jangan dibetulkan")
+		monitoringslinkojk.FileName(monitoringslinkojk.SegmentD01))
+	require.Equal(t, "Laporan F06 SLIK OJK",
+		monitoringslinkojk.FileName(monitoringslinkojk.SegmentF06))
 }
 
 // Berkas contoh unggahan disalin UTUH: 25 kolom, sama dengan `CSVPropHeaders` di Pega.

@@ -11,7 +11,8 @@
 //     sebelum koneksi entitas tersedia.
 //
 // Penyaringnya sengaja menempuh aturan yang SAMA dengan sisi SQL — lini bisnis, kotak cari,
-// paginasi — supaya perilaku yang diuji di sini memang perilaku yang berjalan di produksi.
+// kelima penyaring panel, paginasi — supaya perilaku yang diuji di sini memang perilaku yang
+// berjalan di produksi.
 // Yang tidak ditiru hanyalah bentuk gabung tabelnya, karena di sini tidak ada tabel.
 package memory
 
@@ -32,6 +33,13 @@ type ClaimRecord struct {
 	Row             dashboardclaim.ClaimRow
 	GroupPanel      string
 	BusinessGroupID string
+
+	// TransferredToCashier menirukan keberadaan baris `POOLDATA.T_CLAIM_ADJUSTMENT`
+	// ber-`TRANSFER_CASHIER_DATE` tidak kosong.
+	//
+	// Ia penanda, bukan tanggal: yang disaring layar ini hanya "ada atau tidak", dan
+	// menyimpan tanggalnya akan mengundang penyaring lain yang tidak ada di Pega.
+	TransferredToCashier bool
 }
 
 // SurveyRecord adalah satu survei beserta penanda penyaringnya.
@@ -145,9 +153,69 @@ func (r *Repo) matchingClaims(f dashboardclaim.Filter) []ClaimRecord {
 		if !matchesSearch(f.Search, record.Row.PolicyNumber, record.Row.ClaimNumber) {
 			continue
 		}
+		if !matchesPanel(f, record) {
+			continue
+		}
 		result = append(result, record)
 	}
 	return result
+}
+
+// matchesPanel menerapkan kelima penyaring panel `FilterDashboardClaim`.
+//
+// Ia ADA, dan itu bukan kelengkapan yang berlebihan. Penyaring yang hadir di layar tetapi
+// tidak berpengaruh pada mode tanpa basis data akan terbaca sebagai "tidak ada yang cocok"
+// — bukan sebagai "penyaring ini belum bekerja". Itu persis kelas kekeliruan yang membuat
+// panel ini dibangun lengkap atau tidak sama sekali.
+func matchesPanel(f dashboardclaim.Filter, record ClaimRecord) bool {
+	if !containsFold(record.Row.PolicyNumber, f.PolicyNumber) {
+		return false
+	}
+	if !containsFold(record.Row.ClaimNumber, f.ClaimNumber) {
+		return false
+	}
+	if !containsFold(record.Row.TechnicalPIC, f.TechnicalPIC) {
+		return false
+	}
+
+	switch f.Cashier {
+	case dashboardclaim.CashierDone:
+		if !record.TransferredToCashier {
+			return false
+		}
+	case dashboardclaim.CashierTodo:
+		if record.TransferredToCashier {
+			return false
+		}
+	}
+
+	// `paidStatusCode` adalah kode Paid pada master status klaim. Perbandingannya memakai
+	// kode, bukan labelnya: label dapat berubah di master tanpa kodenya berubah.
+	switch f.Payment {
+	case dashboardclaim.PaymentPaid:
+		if record.Row.ClaimStatusCode != paidStatusCode {
+			return false
+		}
+	case dashboardclaim.PaymentUnpaid:
+		// Sengaja `!=` tanpa memperlakukan kosong secara khusus — SQL-nya pun begitu, dan
+		// baris tanpa status klaim ikut terbuang di sana. Lihat catatan di outstanding.sql.
+		if record.Row.ClaimStatusCode == paidStatusCode || record.Row.ClaimStatusCode == "" {
+			return false
+		}
+	}
+
+	return true
+}
+
+// paidStatusCode adalah `1163` — Paid pada master status klaim (`R-06`).
+const paidStatusCode = "1163"
+
+// containsFold menjawab "apakah isian penyaring cocok", dengan isian kosong selalu cocok.
+func containsFold(value, needle string) bool {
+	if needle == "" {
+		return true
+	}
+	return strings.Contains(strings.ToUpper(value), strings.ToUpper(needle))
 }
 
 // matchingSurveys menyaring survei. Pemanggil wajib sudah memegang kunci baca.

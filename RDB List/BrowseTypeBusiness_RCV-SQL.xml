@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyJavaStream/>
+<pyRuleFormStatusTime>20261010T060257.704 GMT</pyRuleFormStatusTime>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyCircumstanceProp/>
+<pyStreamName/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pyMemo>done</pyMemo>
+<pxInstanceLockedBy/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzChecksum>-1196014972</pzChecksum>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyShowJavaWindowName>GeneratedJava20261010T060257.728 GMT</pyShowJavaWindowName>
+<pxCreateDateTime>20200313T043655.482 GMT</pxCreateDateTime>
+<pxInsName>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!BROWSETYPEBUSINESS_RCV</pxInsName>
+<pyInterface/>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pyLabelOld>BrowseTypeBusiness_RCV</pyLabelOld>
+<pyDeleteSQL/>
+<pyDeletedObject/>
+<pyCircumstanceVal/>
+<pxMoveFromSystem/>
+<pyBaseRule>false</pyBaseRule>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!BROWSETYPEBUSINESS_RCV #20200313T043655.482 GMT</pzDocumentKey>
+<pzRuleSetVersionPatch>84</pzRuleSetVersionPatch>
+<pyUsage/>
+<pxInstanceLockedKey/>
+<pyCircumstanceDate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyDescription/>
+<pxOriginalCreateDateTime/>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyBrowseSQL>select ID,businessgroupid,grouppanel,  
+case
+when grouppanel='002' then 'PA'
+when grouppanel='005' then 'TRAVEL'
+when businessgroupid IN ('10008', '10010', '10015', '10023') then 'BONDING'
+when GROUPPANEL in ('003','004','006') AND businessgroupid NOT IN ('10008', '10010', '10015', '10023') then 'NONMBU'
+else 'DATA TIDAK DITEMUKAN'
+end as "CaseID"
+from pooldata.business where id = {TempSendEmail.pzInsKey}</pyBrowseSQL>
+<pySpecialtyComponentData/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!BROWSEEMAILPELAPOR_PNC #20200312T032202.619 GMT</pzOriginalInstanceKey>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pyCircumstanceDateProp/>
+<pyLabel>BrowseTypeBusiness_RCV</pyLabel>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxHostId>jboss2145</pxHostId>
+<pxOriginalCreateSystemID/>
+<pxOriginalCreateOpName/>
+<pyRelativePath/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pxSiblingCount/>
+<pyRequestType>BrowseTypeBusiness_RCV</pyRequestType>
+<pxInsId>ASM-FW-GCNMFW-DATA-OBJECT!GCNM!BROWSETYPEBUSINESS_RCV</pxInsId>
+<pyDocumentTitle/>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Object GCNM BrowseTypeBusiness_RCV</pyRuleName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplateInputBox/>
+<pxInstanceLockedDateTime/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyStatus/>
+<pyClassName>ASM-FW-GCNMFW-Data-Object</pyClassName>
+<pxInstanceLockedRuleSet/>
+<pyFormPost/>
+<pyOpenSQL/>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyCircumstanceTemplate/>
+<pyCircumstanceDefinition/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxUpdateDateTime>20200313T074217.569 GMT</pxUpdateDateTime>
+<pyHandlerFlow/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pySaveSQL/>
+<pyIsFromManageChangeLP/>
+<pxSaveDateTime>20200313T074217.609 GMT</pxSaveDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDeleteMemo>DONE</pyDeleteMemo>
+<pxInstanceLockedRuleSetVersion/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!BROWSETYPEBUSINESS_RCV #20200313T043655.482 GMT</pzInsKey>
+<pyCircumstanceType/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyRuleSetVersion>01-01-84</pyRuleSetVersion>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyWorkKey/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportDateTime>20200813T090536.071 GMT</pxMoveImportDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMethodStatus/>
+<pxCommitDateTime>20200813T090536.000 GMT</pxCommitDateTime>
+<pyRuleStarts/>
+<pxOriginalCreateOperator/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyRuleParamsStreamName/>
+<pyTempText>saved</pyTempText>
+<pyTemplate/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-Object GCNM BrowseTypeBusiness_RCV</pxTabLabel>
+<pyWindowTitle/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleEnds/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyHistoryObject>false</pyHistoryObject>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pySave>false</pySave>
+<pyLaunch>true</pyLaunch>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCheckIn>false</pyCheckIn>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pySiblings>true</pySiblings>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyCompareVersion/>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRun>false</pyRun>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyAvailability>false</pyAvailability>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyDelegates>false</pyDelegates>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-OBJECT GCNM!BROWSETYPEBUSINESS_RCV #20200313T043655.482 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+</pagedata>

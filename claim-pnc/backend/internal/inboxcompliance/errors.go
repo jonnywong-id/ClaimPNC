@@ -40,6 +40,63 @@ var (
 	// identitas itu tersimpan — dan menulis baris tanpa pelaku yang terbaca sama sekali
 	// bertentangan dengan `D-28`.
 	ErrCallerUnknown = errors.New("inboxcompliance: identitas pemanggil tidak terbaca")
+
+	// ErrSaveNotAllowed DICABUT 2026-10-07 dan sengaja tidak diganti.
+	//
+	// Ia menolak penyimpanan pada lini Travel, atas premis bahwa form Travel tidak punya
+	// tombol "Simpan Data". Premisnya salah: tombol Simpan ber-`pyVisible=ALWAYS` di kedua
+	// bilah tombol Pega — lihat FormActions pada checker.go. Galat ini karena itu melarang
+	// apa yang Pega izinkan.
+	//
+	// Catatan ini ditinggalkan, bukan dihapus bersih, supaya alasan pencabutannya terbaca
+	// bila seseorang menemukan rujukannya di dokumen atau riwayat.
+
+	// ErrDocumentNotFound berarti dokumen yang diminta bukan milik klaim ini — atau
+	// tidak ada sama sekali.
+	//
+	// Keduanya SENGAJA tidak dibedakan. Membedakannya akan memberi tahu pemanggil bahwa
+	// sebuah id dokumen itu sah, hanya milik klaim lain — dan layanan penyimpanan di
+	// seberang tidak memeriksa kepemilikan apa pun (`pyUseAuthentication = false`).
+	ErrDocumentNotFound = errors.New("inboxcompliance: dokumen tidak ditemukan pada klaim ini")
+
+	// ErrDocumentServiceMissing berarti layanan dokumen belum dikonfigurasi untuk
+	// portal ini.
+	//
+	// Ia BUKAN kerusakan: modul ini tetap melayani seluruh layarnya tanpa layanan
+	// dokumen, dan yang hilang hanyalah kemampuan membuka berkas. Karena itu ia galat
+	// tersendiri, bukan galat internal — pesannya dapat menyebut apa yang kurang.
+	ErrDocumentServiceMissing = errors.New("inboxcompliance: layanan dokumen belum dikonfigurasi")
+
+	// ErrLetterRendererMissing berarti pembentuk PDF Surat Penolakan belum dipasang.
+	//
+	// Dibedakan dari ErrDocumentServiceMissing meski keduanya "sesuatu belum dipasang":
+	// yang satu layanan di seberang jaringan, yang satu lagi paket di dalam binary ini.
+	// Yang pertama diperbaiki tim infrastruktur lewat konfigurasi, yang kedua hanya dapat
+	// terjadi karena perakitan modul yang keliru — dan keduanya butuh orang yang berbeda.
+	ErrLetterRendererMissing = errors.New("inboxcompliance: pembentuk surat penolakan belum dipasang")
+
+	// ErrDecisionStoreMissing berarti tabel penyimpan keputusan Compliance belum ada di
+	// basis data — migrasi `0012_keputusan_compliance` belum dijalankan DBA.
+	//
+	// Sejak 2026-10-07 grid komentar menjadi satu kolom JSON pada tabel yang sama, bukan
+	// tabel kedua, sehingga hanya ada SATU objek yang dapat hilang. Sebelumnya ada dua,
+	// dan galat ini menyebut keduanya.
+	//
+	// # Kenapa ia galat tersendiri, bukan dibiarkan jatuh ke 500
+	//
+	// Karena 500 "Terjadi kesalahan pada sistem" **tidak dapat ditindaklanjuti siapa pun**.
+	// Petugas melaporkannya sebagai aplikasi rusak, pengembang membuka log, lalu menemukan
+	// `ORA-00942` yang sebenarnya sudah diketahui sejak migrasinya ditulis. Satu kalimat
+	// yang menyebut nomor migrasinya memotong seluruh putaran itu.
+	//
+	// # Kenapa form DITOLAK, bukan dibuka dengan keputusan kosong
+	//
+	// Tabel yang hilang akan membuat `FindDecision` seolah menjawab "belum pernah
+	// diputuskan" — form terbuka normal, petugas mengisinya, lalu **menekan Simpan dan
+	// kehilangan seluruh isiannya** karena tabel tujuannya memang tidak ada. Gagal di awal
+	// jauh lebih murah daripada gagal setelah pekerjaan dilakukan
+	// (`11-CROSSCUTTING.md` §3.1).
+	ErrDecisionStoreMissing = errors.New("inboxcompliance: tabel keputusan Compliance belum dibuat")
 )
 
 // Nama isian yang dapat ditunjuk sebuah pelanggaran validasi.

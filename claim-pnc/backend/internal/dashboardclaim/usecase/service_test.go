@@ -56,6 +56,17 @@ func (f faultyRepo) ListHolding(context.Context, dashboardclaim.Filter) (dashboa
 	return dashboardclaim.HoldingPage{}, nil
 }
 
+// FindClaimDetail memakai penanda kegagalan yang SAMA dengan daftarnya.
+//
+// Keduanya membaca klaim, dan uji yang memastikan kegagalan penyimpanan diteruskan apa adanya
+// berlaku bagi keduanya. Penanda terpisah akan menambah kombinasi tanpa menambah yang diuji.
+func (f faultyRepo) FindClaimDetail(context.Context, string) (dashboardclaim.ClaimDetail, error) {
+	if f.failList {
+		return dashboardclaim.ClaimDetail{}, errStore
+	}
+	return dashboardclaim.ClaimDetail{Document: map[string]any{}}, nil
+}
+
 // faultyClosed selalu gagal.
 type faultyClosed struct{}
 

@@ -1,0 +1,906 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyAdvParamPageClass/>
+<pxInsId>!VIEWINPUTRECEIVER</pxInsId>
+<pxInstanceLockedCreateDateTime/>
+<pyJavaClassName>Rule_Obj_FlowAction_ASM_FW_GCNMFW_Data_ClaimReceiver_ViewInputReceiver_Stream_20190411T090334_894_GMT</pyJavaClassName>
+<pyLocalized>false</pyLocalized>
+<pyLabel>ViewInputReceiver</pyLabel>
+<pyNextAssignmentCover>false</pyNextAssignmentCover>
+<pyJSRCompliant>false</pyJSRCompliant>
+<pyStepPageReference>RH_2</pyStepPageReference>
+<pxInstanceLockedKey/>
+<pyDocumentTitle/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyAutoHelp>true</pyAutoHelp>
+<pyJavaStream/>
+<pySectionReferenceRefreshWhen/>
+<pzSectionParamPageClass/>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceDate/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyCircumstanceVal/>
+<pyNextAssignment>false</pyNextAssignment>
+<pyHTMLVersion>1</pyHTMLVersion>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedDateTime/>
+<pySpecialityControl>false</pySpecialityControl>
+<pySPRuleSetName>CHRISTINE_TANDYWIJAYA@</pySPRuleSetName>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyAdvParamPageSection/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyAutoHTML>true</pyAutoHTML>
+<pyCategoryDisplayName>None</pyCategoryDisplayName>
+<pxOriginalCreateOpName/>
+<pyObjClassLabel>Flow Action</pyObjClassLabel>
+<pySectionReferenceDisplayWhen/>
+<pyInterface/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateDateTime>20190411T091420.267 GMT</pxUpdateDateTime>
+<pyTemplate/>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pyPreProcessingTransformRule/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxMoveImportDateTime>20191231T042605.284 GMT</pxMoveImportDateTime>
+<pzOriginalInstanceKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER INPUTRECEIVER #20170710T103217.680 GMT</pzOriginalInstanceKey>
+<pyCategory/>
+<pxHostId>jboss2058</pxHostId>
+<pyFileName/>
+<pyPreviousLabel>Previous</pyPreviousLabel>
+<pyShowJavaWindowName>GeneratedJava20261007T083924.957 GMT</pyShowJavaWindowName>
+<pyHelpText/>
+<pyProposedStatus/>
+<pyCompact>true</pyCompact>
+<pySpecialtyComponentData/>
+<pxInstanceLockedRuleSetVersion/>
+<pySectionReferencePage/>
+<pyRelativePath/>
+<pyCircumstanceDateProp/>
+<pyIsFromManageChangeLP/>
+<pyAuditUse>false</pyAuditUse>
+<pyCorrType/>
+<pxObjClass>Rule-Obj-FlowAction</pxObjClass>
+<pxMoveFromSystem/>
+<pyConfirmHarness>Confirm</pyConfirmHarness>
+<pyDescription/>
+<pyClientValidation>true</pyClientValidation>
+<pyValueChanged>false</pyValueChanged>
+<pyValidateActivity/>
+<pyContainerType>NOHEADER</pyContainerType>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyParameterSetFlag>false</pyParameterSetFlag>
+<pyRuleFormStatusTime>20261007T083924.922 GMT</pyRuleFormStatusTime>
+<pyNextAssignmentWorkBasket>false</pyNextAssignmentWorkBasket>
+<pyHelpStream/>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyHistoryObject>false</pyHistoryObject>
+<pyFormPost/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMRECEIVER!VIEWINPUTRECEIVER</pxInsName>
+<pySubmitLabel>Simpan</pySubmitLabel>
+<pzSectionParamPageSection/>
+<pyActionTransformRule/>
+<pyUsedAs>LOCALANDCONNECTOR</pyUsedAs>
+<pyTemplateInputBox/>
+<pySourceStreamDispBackUp/>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pzRuleSetVersionPatch>68</pzRuleSetVersionPatch>
+<pyDeletedObject/>
+<pyPreProcessingActivity/>
+<pyAuditWhenName/>
+<pxOriginalCreateOperator/>
+<pyRuleName>ViewInputReceiver</pyRuleName>
+<pzDocumentKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzDocumentKey>
+<pyExpressionCalculation>false</pyExpressionCalculation>
+<pyBaseRule>false</pyBaseRule>
+<pyCircumstanceType/>
+<pzIndexCount>9</pzIndexCount>
+<pxCreateOpName>CHRISTINE TANDYWIJAYA</pxCreateOpName>
+<pyActionInstructions/>
+<pxCreateDateTime>20190411T090334.321 GMT</pxCreateDateTime>
+<pyCircumstanceDefinition/>
+<pzChecksum>-1995601026</pzChecksum>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimReceiver</pyClassName>
+<pyMethodStatus/>
+<pyLabelOld>ViewInputReceiver</pyLabelOld>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyUpdateStatus>false</pyUpdateStatus>
+<pxUpdateOpName>CHRISTINE TANDYWIJAYA</pxUpdateOpName>
+<pyCustomizeFALabels>false</pyCustomizeFALabels>
+<pyRuleParamsStreamName/>
+<pxCommitDateTime>20200312T080318.000 GMT</pxCommitDateTime>
+<pyWorkKey/>
+<pxInstanceLockedBy/>
+<pyWindowTitle/>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyHTMLReference/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleSetVersion>01-01-68</pyRuleSetVersion>
+<pzInsKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzInsKey>
+<pyOldStreamType>Rule-HTML-Section</pyOldStreamType>
+<pxSaveDateTime>20190411T091420.342 GMT</pxSaveDateTime>
+<pyCircumstanceProp/>
+<pyActionName>ViewInputReceiver</pyActionName>
+<pyClientRuntimeVersion>05-03</pyClientRuntimeVersion>
+<pyStreamType>Rule-Obj-FlowAction</pyStreamType>
+<pxCreateOperator>CHRISTINE_TANDYWIJAYA</pxCreateOperator>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyHelpType>DEFINE</pyHelpType>
+<pyLocalActionActivity/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFileType/>
+<pyconfirmchoice>ShowHarness</pyconfirmchoice>
+<pyNextLabel>Next</pyNextLabel>
+<pyUsage/>
+<pyStatus/>
+<pyBrowserSupportLevel>1</pyBrowserSupportLevel>
+<pyAuditActivity>Audit</pyAuditActivity>
+<pyCost/>
+<pyShowFAButtons>true</pyShowFAButtons>
+<pyTempNewVersion>false</pyTempNewVersion>
+<pySectionReferencePrivilegeView/>
+<pySourceStream>
+&lt;% tools.putSaveValue("bClientValidation", "true"); %&gt;
+&lt;% tools.putSaveValue("FlowActionValidate", "NO_VALIDATION"); %&gt;
+&lt;%pzAuto.getSection().includeShowMeHarnessInsert();%&gt;
+&lt;pega:when test="$input-enabled"&gt;
+&lt;/pega:when&gt;&lt;%tools.putParamValue("flowActionUIRef","ViewInputReceiver"); %&gt;
+&lt;%
+tools.putParamValue("pyShowFAButtons","true");
+String bshowFAButtons = tools.getParamValue("pyShowFAButtons");
+tools.putParamValue("pyCustomizeFALabels","false");
+tools.putParamValue("pySubmitLabel","Simpan");
+tools.putParamValue("pyCancelLabel","Cancel");
+tools.putParamValue("pyNextLabel","Next");
+tools.putParamValue("pyPreviousLabel","Previous");
+tools.putParamValue("StreamType","Rule-Obj-FlowAction");
+%&gt;&lt;% if(pzAuto.isInspectMode()){ %&gt;&lt;span  &lt;%= pzAuto.getInpectorData("FlowAction", "", "","ViewInputReceiver","Rule-Obj-FlowAction","ASM-FW-GCNMFW-Data-ClaimReceiver") %&gt; &gt;&lt;% } %&gt;&lt;%if(pega_uiengine_offlinesupport.pzIsForOfflineTemplate()){%&gt;&lt;%pzPackageRuntime.packageSection("ViewInputReceiver",tools.getStepPage().getReference(), null);%&gt;&lt;div id='section-placeholder' data-class='&lt;%=tools.getStepPage().getString("pxObjClass")%&gt;' data-section='ViewInputReceiver'&gt;&lt;/div&gt;
+&lt;%} else {%&gt;&lt;%includeSectionBody_1();%&gt;&lt;%}%&gt;&lt;span style="display: none;" uitype="Rule-HTML-Section" id="pzFlowActionUITypeRef" uiref="ViewInputReceiver"&gt;&lt;/span&gt;
+&lt;%tools.putParamValue("pyShowFAButtons",bshowFAButtons);%&gt;&lt;% if(pzAuto.isInspectMode()){ %&gt;&lt;/span&gt;&lt;% } %&gt;</pySourceStream>
+<pyRuleStarts/>
+<pxUpdateOperator>CHRISTINE_TANDYWIJAYA</pxUpdateOperator>
+<pySectionReferencePassParamPage>true</pySectionReferencePassParamPage>
+<pyStreamName>ViewInputReceiver</pyStreamName>
+<pySectionReference>ViewInputReceiver</pySectionReference>
+<pyMemo>done</pyMemo>
+<pzIsAutoGenerated>false</pzIsAutoGenerated>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyDisqualifyAction>true</pyDisqualifyAction>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pxTabLabel>ViewInputReceiver</pxTabLabel>
+<pyActionInstructionsCaption>Instructions</pyActionInstructionsCaption>
+<pyRuleEnds/>
+<pyCancelLabel>Cancel</pyCancelLabel>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyNextAssignmentFlow>false</pyNextAssignmentFlow>
+<pyCircumstanceTemplate/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySectionXML/>
+<pySectionReferencePrivilegeUpdate/>
+<pzStatus>valid</pzStatus>
+<pySavableDataPageList REPEATINGTYPE="PageList"/>
+<pyPreProcessingTransformRuleParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreProcessingTransformRuleParams>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyThirdPartyParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamType/>
+<pyParametersParamDesc/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+<pyThirdPartyParams REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+<pyParametersParamDesc/>
+</rowdata>
+</pyThirdPartyParams>
+</rowdata>
+</pyThirdPartyParams>
+<pyDefaultUserData>
+<pyDefaultValue/>
+<pyReadOnly/>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyVisible>ALWAYS</pyVisible>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyReadOnlyCondition/>
+<pyRequired/>
+<pxObjClass>Embed-Harness-UserData</pxObjClass>
+<pyRefreshWhen/>
+<pyCondition/>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+</pyDefaultUserData>
+<pyPostAutomationList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDescription/>
+<pyRoboticAutomationId/>
+<pxObjClass>Embed-RoboticAutomation</pxObjClass>
+</rowdata>
+</pyPostAutomationList>
+<pyPreProcessingActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreProcessingActivityParams>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pySections REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pySpecifyPreLoadActivity/>
+<pyIconProperty/>
+<pyPromptClass>ASM-FW-GCNMFW-Data-ClaimReceiver</pyPromptClass>
+<pyRemoveSpacingLeft>None</pyRemoveSpacingLeft>
+<pySectionId/>
+<pyAutomationID/>
+<pyLoadDeferred>false</pyLoadDeferred>
+<pyPageContext>none</pyPageContext>
+<pyEditOptions/>
+<pyAriaRoleType/>
+<pyTemplateType/>
+<pyImage/>
+<pyAriaRole/>
+<pyRefreshRunActivity>false</pyRefreshRunActivity>
+<pyContainerRefreshWhen/>
+<pyLegacyOptions/>
+<pyAllowChangesToColumns/>
+<pyIncludeLabel/>
+<pyRefreshPreActivity/>
+<pyIncludeHeader/>
+<pyIsVisibilityOption/>
+<pyReadOnlyWhen/>
+<pyContainerTypeUpgrade>NO_HEADER</pyContainerTypeUpgrade>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyAssociatedPrivileges/>
+<pyHeaderIconSource>standard</pyHeaderIconSource>
+<pyIsBodyVisibilityOption/>
+<pyPrefixRowColRepeat/>
+<pyContainerFormat>NOHEADER</pyContainerFormat>
+<pyImageTitle/>
+<pyInlineStyle/>
+<pyTitleType/>
+<pyLayoutAutoWidth>false</pyLayoutAutoWidth>
+<pyHideRightColumn/>
+<pySelfClear>true</pySelfClear>
+<pyIsClientActiveWhen>false</pyIsClientActiveWhen>
+<pyLabelFieldValue/>
+<pyPrefix/>
+<pyHeaderType/>
+<pyTabPosition/>
+<pyCustomClass/>
+<pyReadOnlyStyle/>
+<pyExpanded>true</pyExpanded>
+<pyLayoutMode>Inline-block</pyLayoutMode>
+<pyPreProcRunDataTrans/>
+<pyRemoveSpacingRight>None</pyRemoveSpacingRight>
+<pyIsRegion/>
+<pyUsingPage/>
+<pyIncludeTitleIcon/>
+<pyTabAlignment>Top</pyTabAlignment>
+<pyContainerCustomClass/>
+<pyPreProcRunActivity/>
+<pyRegionName/>
+<pyFloatLayout>None</pyFloatLayout>
+<pyLayoutGroupFormatOther/>
+<pyRefreshRunDataTrans>false</pyRefreshRunDataTrans>
+<pyReadWriteStyle/>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pyDisplayAdvancedOptions>false</pyDisplayAdvancedOptions>
+<pyTabNavigationType>Menu</pyTabNavigationType>
+<pyRefreshWhenActive>false</pyRefreshWhenActive>
+<pyCustomTabStyle/>
+<pyContainerStyle/>
+<pyStretchTab>false</pyStretchTab>
+<pyIsClientDisableWhen>false</pyIsClientDisableWhen>
+<pyHeaderCustomClass/>
+<pyClearFloatedLayouts>false</pyClearFloatedLayouts>
+<pyNewTabGroup>false</pyNewTabGroup>
+<pyAriaLabel/>
+<pyHeadingLevel/>
+<pxObjClass>Embed-Harness-Section</pxObjClass>
+<pyHideLeftColumn/>
+<pyRemoveSpacingBottom>None</pyRemoveSpacingBottom>
+<pyLayoutModeVariants/>
+<pyExpandable>false</pyExpandable>
+<pyReadOnly/>
+<pyIsRepeatLayoutGroup>false</pyIsRepeatLayoutGroup>
+<pyTemplateFormat/>
+<pyRemoveSpacingTop>None</pyRemoveSpacingTop>
+<pyContainerType>NOHEADER</pyContainerType>
+<pyContainerOtherFormat/>
+<pyLayoutGroupTemplateType/>
+<pyExpandedWhen/>
+<pyContainerVisibleWhen/>
+<pyTitle/>
+<pyCustomHeader/>
+<pyFlexAlignment/>
+<pyTabbedHeader>false</pyTabbedHeader>
+<pyLayoutGroupItemsHeadingLevel/>
+<pyTourID/>
+<pyPrefixOther/>
+<pyContainerDisableWhen/>
+<pyDeferLoadRetrievalActivity/>
+<pyContainerActiveWhen/>
+<pyRefreshPreActivityParams>
+</pyRefreshPreActivityParams>
+<pyRefreshPreDataTransform>
+<pyName/>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyRefreshPreDataTransform>
+<pyStandardHeaderElements REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyVisible>ALWAYS</pyVisible>
+<pyReadOnlyCondition/>
+<pyOverridingStyle/>
+<pyCaption/>
+<pyField/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyCondition/>
+<pyReadOnly/>
+</rowdata>
+</pyStandardHeaderElements>
+<pyUserData>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyReadOnlyCondition/>
+</pyUserData>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pySectionBody REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyNumberOfColumns/>
+<pyDisplayWhen/>
+<pyPageListProperty/>
+<pySummary/>
+<pyRDLPageSize>10</pyRDLPageSize>
+<pySectionSource/>
+<pyDPName/>
+<pyGridAppendActivityExists>false</pyGridAppendActivityExists>
+<pyDisplayActionArea>true</pyDisplayActionArea>
+<pyRepeatDirection/>
+<pyPreserveParamState>false</pyPreserveParamState>
+<pyAllowRowUpdate>true</pyAllowRowUpdate>
+<pyRDLHeight/>
+<pyRDLCategorizationScrubber>false</pyRDLCategorizationScrubber>
+<pyColumnResizing>false</pyColumnResizing>
+<pyDragDropEnableGrouping>false</pyDragDropEnableGrouping>
+<pyAlignment/>
+<pyDisableAutoRefresh>false</pyDisableAutoRefresh>
+<pyPreActivity/>
+<pyRowResizing>false</pyRowResizing>
+<pyRDAppliesTo/>
+<pyFieldValueForNoRows>pzRDLNoResults</pyFieldValueForNoRows>
+<pySectionForNoRdlRows>pzRDLNoResultsMessage</pySectionForNoRdlRows>
+<pyForceNonTemplate>false</pyForceNonTemplate>
+<pyShowCustomMessageForNoLoadMoreMessages>true</pyShowCustomMessageForNoLoadMoreMessages>
+<pyDecPassCurrentParamPage>false</pyDecPassCurrentParamPage>
+<pyDragDropGroupName/>
+<pyRDLCategorization>false</pyRDLCategorization>
+<pyRuleForCustomNoRowsRdlMsg>section</pyRuleForCustomNoRowsRdlMsg>
+<pyRefreshWhen/>
+<pyRDLPostActivityExists>false</pyRDLPostActivityExists>
+<pyUsingPage/>
+<pyRDLPreActivityExists>false</pyRDLPreActivityExists>
+<pyPrivilegeUpdate/>
+<pxObjClass>Embed-Harness-SectionBody</pxObjClass>
+<pyPassCurrentParameterPage>true</pyPassCurrentParameterPage>
+<pyShowNoRowsRdLMsg>false</pyShowNoRowsRdLMsg>
+<pyRDLRowDetailsTemplate>pzRDLRowDetailsTemplate</pyRDLRowDetailsTemplate>
+<pyInclude>ViewInputReceiver</pyInclude>
+<pyRDLDetailsPrimarySection/>
+<pyEnableSwipe>false</pyEnableSwipe>
+<pyDPResultsClass/>
+<pyRDLDetailsFlowAction/>
+<pyDragDrop>false</pyDragDrop>
+<pyRDLPageSizeOther/>
+<pySectionId/>
+<pyBodyType>INCLUDE</pyBodyType>
+<pyPrivilegeView/>
+<pyDeleteActivity/>
+<pyRDLPageMode>0</pyRDLPageMode>
+<pyPageListPropertyClass/>
+<pyRDLPreActivity>pyPreListAction</pyRDLPreActivity>
+<pySourceType>Property</pySourceType>
+<pyRowPromptClass/>
+<pyFieldValueForNoLoadMoreRowsMsg>pyRDLNoMoreData</pyFieldValueForNoLoadMoreRowsMsg>
+<pySectionForNoLoadMoreRowsMsg>pyRDLNoMoreData</pySectionForNoLoadMoreRowsMsg>
+<pyRDLPostActivity>pyPostListAction</pyRDLPostActivity>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyRDLCategorizeBy/>
+<pyRDName/>
+<pyRDLShowDetails>false</pyRDLShowDetails>
+<pyAppendActivity/>
+<pyGridDeleteActivityExists>false</pyGridDeleteActivityExists>
+<pyRDParams>
+</pyRDParams>
+<pySectionBodyElements REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyCondition/>
+<pyReadOnlyCondition/>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyReadOnly/>
+<pyOverridingStyle/>
+<pyField/>
+<pyCaption/>
+<pyDefaultValue/>
+<pyRequired/>
+<pyVisible/>
+</rowdata>
+</pySectionBodyElements>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+<pyIncludedRuleXML>
+<pxObjClass>Rule-HTML-Section</pxObjClass>
+</pyIncludedRuleXML>
+<pySectionParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+<pxObjClass/>
+</pySectionParams>
+<pyPreactivityParams>
+</pyPreactivityParams>
+<pyDeclareParams>
+</pyDeclareParams>
+<pyDCPreDataTransform>
+<pyName/>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyDCPreDataTransform>
+<pyTable>
+<pxObjClass>Embed-Display-Table</pxObjClass>
+<pyHeight/>
+<pyWidth/>
+<pyID/>
+<pyUnitHeight>px</pyUnitHeight>
+<pyLayoutOtherFormat/>
+<pyRowCount>1</pyRowCount>
+<pyLayoutFormat/>
+<pyColumnCount>1</pyColumnCount>
+<pyUnit>px</pyUnit>
+<pyLayoutFormatType>SIMPLELAYOUT</pyLayoutFormatType>
+<pyRows REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Row</pxObjClass>
+<pyRowDefaults>
+<pyRestrictedType>NONE</pyRestrictedType>
+<pyCellHeader>false</pyCellHeader>
+<pyCellId/>
+<pyInlineStyle/>
+<pxObjClass>Embed-Display-Table-Restricted</pxObjClass>
+<pyHeaderStyle/>
+</pyRowDefaults>
+<pyCells REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyWidthUse>true</pyWidthUse>
+<pyInputFormat>false</pyInputFormat>
+<pyBeforeMergeHeight/>
+<pyAutomationIDWarning>false</pyAutomationIDWarning>
+<pyColSpan/>
+<pyRequired/>
+<pyPassCurrentParameterPage/>
+<pyRowSpan/>
+<pyCellId/>
+<pyClientAction/>
+<pySortFilterProperty/>
+<pyFormat/>
+<pyReadOnlyStyleValue/>
+<pyCanbeAutoGenerated>false</pyCanbeAutoGenerated>
+<pyLabelFieldValue/>
+<pyLabelFor/>
+<pyRestricted>false</pyRestricted>
+<pyCategorizeSortType>ASC</pyCategorizeSortType>
+<pyReadOnly/>
+<pyIncludeLabel>false</pyIncludeLabel>
+<pyValue/>
+<pyAutoHTML/>
+<pyCellHeader>false</pyCellHeader>
+<pyDateFormat/>
+<pyLabelReserveSpace>true</pyLabelReserveSpace>
+<pyShowFilterUIBy>value</pyShowFilterUIBy>
+<pyColumnFilteringDropDown>true</pyColumnFilteringDropDown>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pyTourID/>
+<pyEditOptions/>
+<pyBeforeMergeWidth/>
+<pyAutomationID/>
+<pyLabelFormatOther/>
+<pyCustDateTime/>
+<pyWidth>130</pyWidth>
+<pyType/>
+<pyColumnSorting>true</pyColumnSorting>
+<pzShowSelectOther>false</pzShowSelectOther>
+<pyUseLabelDesc>false</pyUseLabelDesc>
+<pyDateTimeSecondCutoff>3</pyDateTimeSecondCutoff>
+<pyRangeFiltering/>
+<pyHeightUse>true</pyHeightUse>
+<pyHorizontalAlignment>true</pyHorizontalAlignment>
+<pyGridRDClass/>
+<pyPreActivity/>
+<pyClientEvent/>
+<pyInlineStyle/>
+<pxObjClass>Embed-Display-Table-Cell</pxObjClass>
+<pyTooltip/>
+<pyGridRDName/>
+<pyDateTimeFormat/>
+<pyHeaderTitle/>
+<pyReadWriteStyleValue/>
+<pyPreserveParamState/>
+<pyColumnFiltering>true</pyColumnFiltering>
+<pyReadWriteStyle/>
+<pyWrap>true</pyWrap>
+<pyReadOnlyStyle/>
+<pyHeight>22</pyHeight>
+<pyColumnCategorize>false</pyColumnCategorize>
+<pyUserData>
+<pyDefaultValue/>
+<pyRefreshWhen/>
+<pyReadOnly/>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyVisible/>
+<pyCondition/>
+<pyRequired/>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+<pyReadOnlyCondition/>
+</pyUserData>
+<pyPreActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreActivityParams>
+<pyHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLParams>
+<pyGeneratedDefinition>
+<pxObjClass>Embed-Control-Mode-GeneratedDefinition</pxObjClass>
+</pyGeneratedDefinition>
+<pyModes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+<pyHelperTextType>none</pyHelperTextType>
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+</rowdata>
+</pyModes>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyPreDataTransform>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+</rowdata>
+</pyCells>
+</rowdata>
+</pyRows>
+<pyColumnDefaults REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyHeaderStyle/>
+<pyCellId/>
+<pyInlineStyle/>
+<pyRestrictedType>NONE</pyRestrictedType>
+<pyCellHeader>false</pyCellHeader>
+<pxObjClass>Embed-Display-Table-Restricted</pxObjClass>
+</rowdata>
+</pyColumnDefaults>
+</pyTable>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+<pyName/>
+</pyPreDataTransform>
+<pyDPParams>
+</pyDPParams>
+</rowdata>
+</pySectionBody>
+<pyDeferLoadRetrievalActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyDeferLoadRetrievalActivityParams>
+<pyHeaderTable>
+<pyColumnCount>1</pyColumnCount>
+<pyWidth/>
+<pyLayoutFormat>CUSTOM</pyLayoutFormat>
+<pyLayoutOtherFormat/>
+<pyLayoutFormatType>FREEFORM</pyLayoutFormatType>
+<pyID/>
+<pxObjClass>Embed-Display-Table</pxObjClass>
+<pyHeight/>
+<pyUnit>px</pyUnit>
+<pyRowCount>1</pyRowCount>
+<pyRows REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Display-Table-Row</pxObjClass>
+<pyCells REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPassCurrentParameterPage/>
+<pyReadOnlyStyle/>
+<pzShowSelectOther>false</pzShowSelectOther>
+<pyHeight>13</pyHeight>
+<pyClientEvent/>
+<pyReadWriteStyleValue/>
+<pyGridRDName/>
+<pyAutomationIDWarning>false</pyAutomationIDWarning>
+<pyWidthUse>true</pyWidthUse>
+<pyReadOnlyStyleValue/>
+<pyLabelFormat>Standard</pyLabelFormat>
+<pyInlineStyle/>
+<pyAutoHTML/>
+<pyRestricted>false</pyRestricted>
+<pyTooltip/>
+<pyLabelFor/>
+<pyBeforeMergeHeight/>
+<pyType/>
+<pyValue/>
+<pyHeightUse>true</pyHeightUse>
+<pyEditOptions/>
+<pyLabelFieldValue/>
+<pyPreserveParamState/>
+<pyLabelFormatOther/>
+<pyCellId/>
+<pyReadWriteStyle/>
+<pyAutomationID/>
+<pyClientAction/>
+<pyIncludeLabel>false</pyIncludeLabel>
+<pyWrap>false</pyWrap>
+<pyInputFormat>false</pyInputFormat>
+<pyWidth>100</pyWidth>
+<pyTourID/>
+<pyUseLabelDesc>false</pyUseLabelDesc>
+<pyReadOnly>true</pyReadOnly>
+<pyHeaderTitle/>
+<pyPreActivity/>
+<pyRowSpan/>
+<pyBeforeMergeWidth/>
+<pyColSpan/>
+<pxObjClass>Embed-Display-Table-Cell</pxObjClass>
+<pyFormat/>
+<pyGridRDClass/>
+<pyLabelReserveSpace>true</pyLabelReserveSpace>
+<pyCanbeAutoGenerated>false</pyCanbeAutoGenerated>
+<pyCellHeader>false</pyCellHeader>
+<pzSectionParamPage>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPage>
+<pyPreActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyPreActivityParams>
+<pyHTMLParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLParams>
+<pyModes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDisplayAsComboBox>false</pyDisplayAsComboBox>
+<pxObjClass>Embed-Control-Mode</pxObjClass>
+<pyDisplayFullScreen>true</pyDisplayFullScreen>
+</rowdata>
+</pyModes>
+<pyUserData>
+<pxObjClass>Embed-Harness-HeaderElements</pxObjClass>
+<pyIsClientROWhen>false</pyIsClientROWhen>
+<pyVisible>ALWAYS</pyVisible>
+<pyIsClientWhen>false</pyIsClientWhen>
+<pyDefaultValue/>
+<pyRefreshWhen/>
+<pyReadOnly/>
+<pyRequired/>
+<pyIsVisibleWhenActive>false</pyIsVisibleWhenActive>
+<pyReadOnlyCondition/>
+<pyCondition/>
+</pyUserData>
+<pyGeneratedDefinition>
+<pxObjClass>Embed-Control-Mode-GeneratedDefinition</pxObjClass>
+</pyGeneratedDefinition>
+<pyPreDataTransform>
+<pxObjClass>Embed-Invoke-DataTransform</pxObjClass>
+</pyPreDataTransform>
+</rowdata>
+</pyCells>
+</rowdata>
+</pyRows>
+</pyHeaderTable>
+</rowdata>
+</pySections>
+<pyLocalActionActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLocalActionActivityParams>
+<pyParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParametersParamName/>
+<pyParametersParamReq/>
+<pyParametersParamType/>
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamSize/>
+<pyParametersParamIntelliValidateAs/>
+<pyParametersParamDesc/>
+<pyParametersParamIntelliBaseClass/>
+<pyParametersParamInOut/>
+<pyParametersParamIntelliRule/>
+<pyParametersParamLabel/>
+</rowdata>
+</pyParameters>
+<pySectionReferenceParams>
+<pxObjClass/>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pySectionReferenceParams>
+<pyCachingData>
+<pyLabel>ViewInputReceiver</pyLabel>
+<pyUsedAs>LOCALANDCONNECTOR</pyUsedAs>
+<pxObjClass>Rule-Obj-FlowAction</pxObjClass>
+</pyCachingData>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pzSectionParamPageDefaults>
+<pxObjClass>PegaGadget</pxObjClass>
+</pzSectionParamPageDefaults>
+<pyPreAutomationList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-RoboticAutomation</pxObjClass>
+<pyDescription/>
+<pyRoboticAutomationId/>
+</rowdata>
+</pyPreAutomationList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyActionWhensList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Rule-Whens</pxObjClass>
+<pyWhenName/>
+</rowdata>
+</pyActionWhensList>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyAuditActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyAuditActivityParams>
+<pyLocalActionTransformRuleParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyLocalActionTransformRuleParams>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-68 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyDeclareParams>
+<pxObjClass>$Any</pxObjClass>
+</pyDeclareParams>
+<pyActionPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeName/>
+<pyPrivilegeClass>ASM-FW-GCNMFW-Data-ClaimReceiver</pyPrivilegeClass>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyActionPrivilegeList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>true</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyRestore>false</pyRestore>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-flowaction/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyRuleData>true</pyRuleData>
+<pyPropertyPane>true</pyPropertyPane>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-flowaction/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRun>true</pyRun>
+<pyForward>true</pyForward>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyShowJava>true</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+</pyToolBarSettings>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyName/>
+<pyDescription/>
+<pxObjClass>Embed-Alias</pxObjClass>
+<pyValue/>
+</rowdata>
+</pyIndirectIncludes>
+<pyDefaultButton>
+<pyTooltip/>
+<pyNoFormSubmit>false</pyNoFormSubmit>
+<pyIsModalWindow>false</pyIsModalWindow>
+<pyButtonPosition/>
+<pyAction/>
+<pyVisibleWhen/>
+<pyStyle/>
+<pyActionComplete/>
+<pyUseExistingFrame/>
+<pyPrivilege/>
+<pyLocalAction/>
+<pyButtonId/>
+<pyCaption/>
+<pyButtonType/>
+<pyWhenNotPrivilege/>
+<pyWindowHeight>82</pyWindowHeight>
+<pyWindowWidth>80</pyWindowWidth>
+<pyTargetName/>
+<pxObjClass>Embed-Harness-Button</pxObjClass>
+<pyPassCurrentParameterPage/>
+<pyActionParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyActionParams>
+</pyDefaultButton>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pyCaption ViewInputReceiver</pyRuleName>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!VIEWINPUTRECEIVER</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimReceiver</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ViewInputReceiver</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Section</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimReceiver</pxRuleClassName>
+<pxRuleFamilyName>VIEWINPUTRECEIVER</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMethodStatus/>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimReceiver</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-FLOWACTION ASM-FW-GCNMFW-DATA-CLAIMRECEIVER VIEWINPUTRECEIVER #20190411T090334.321 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimReceiver</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMRECEIVER</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

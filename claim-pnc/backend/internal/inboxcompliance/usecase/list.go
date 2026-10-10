@@ -23,7 +23,35 @@ type Service struct {
 	repoSelector inboxcompliance.RepoSelector
 	clock        inboxcompliance.Clock
 	logger       *slog.Logger
+
+	// linkerSelector memilih klien layanan dokumen menurut portal.
+	//
+	// BOLEH nil, dan itu disengaja: modul ini tetap melayani seluruh layarnya tanpa
+	// layanan dokumen — yang hilang hanyalah tombol "Lihat". Mewajibkannya akan
+	// membuat satu konfigurasi yang belum diisi menutup seluruh Inbox Compliance.
+	linkerSelector DocumentLinkerSelector
+
+	// storeSelector memilih penyimpan dokumen menurut portal. BOLEH nil, alasan yang
+	// sama dengan linkerSelector.
+	storeSelector DocumentStoreSelector
+
+	// letterRenderer membentuk PDF Surat Penolakan.
+	//
+	// BOLEH nil — tanpa perender, yang hilang hanyalah tombol "Generate PDF"; seluruh
+	// layar lain tetap melayani. Tidak seperti kedua selector di atas, ia TIDAK
+	// bergantung portal: bentuk suratnya sama di seluruh entitas karena ia templat
+	// Pega yang satu, bukan data entitas.
+	letterRenderer inboxcompliance.RejectLetterRenderer
 }
+
+// DocumentStoreSelector menyerahkan penyimpan dokumen untuk satu portal.
+type DocumentStoreSelector func(portalAlias string) (inboxcompliance.DocumentStore, error)
+
+// DocumentLinkerSelector menyerahkan klien layanan dokumen untuk satu portal.
+//
+// Bentuknya sama dengan RepoSelector dan alasannya sama: `D-75` menetapkan satu sumber
+// per entitas, sehingga pemilihannya terjadi SEKALI di tepi, bukan di setiap panggilan.
+type DocumentLinkerSelector func(portalAlias string) (inboxcompliance.DocumentLinker, error)
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
@@ -33,6 +61,15 @@ type Options struct {
 	// Logger boleh nil; bila nil, tidak ada yang dicatat dan tidak ada yang gagal
 	// karenanya.
 	Logger *slog.Logger
+
+	// DocumentLinkerSelector boleh nil — lihat Service.linkerSelector.
+	DocumentLinkerSelector DocumentLinkerSelector
+
+	// DocumentStoreSelector boleh nil — lihat Service.storeSelector.
+	DocumentStoreSelector DocumentStoreSelector
+
+	// RejectLetterRenderer boleh nil — lihat Service.letterRenderer.
+	RejectLetterRenderer inboxcompliance.RejectLetterRenderer
 }
 
 // NewService membentuk layanan modul Inbox Compliance.
@@ -43,7 +80,14 @@ func NewService(o Options) (*Service, error) {
 	if o.Clock == nil {
 		return nil, errors.New("inboxcompliance/usecase: Clock wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, clock: o.Clock, logger: o.Logger}, nil
+	return &Service{
+		repoSelector:   o.RepoSelector,
+		clock:          o.Clock,
+		logger:         o.Logger,
+		linkerSelector: o.DocumentLinkerSelector,
+		storeSelector:  o.DocumentStoreSelector,
+		letterRenderer: o.RejectLetterRenderer,
+	}, nil
 }
 
 // Metadata adalah keterangan layar yang tidak bergantung isi antrean.

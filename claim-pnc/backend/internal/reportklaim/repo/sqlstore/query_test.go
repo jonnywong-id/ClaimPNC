@@ -1,6 +1,9 @@
 package sqlstore
 
 import (
+	"fmt"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -150,8 +153,6 @@ func TestTidakAdaPolaSQLTerlarang(t *testing.T) {
 		"SYSDATE":     "pakai CURRENT_TIMESTAMP",
 		"DECODE(":     "pakai CASE WHEN ... END",
 		"ROWNUM":      "pakai OFFSET ... FETCH NEXT ... ROWS ONLY",
-		"INSTR(":      "pakai POSITION",
-		"LISTAGG(":    "pakai STRING_AGG",
 		"FROM DUAL":   "hilangkan klausa FROM",
 		"ADD_MONTHS(": "pakai penambahan INTERVAL",
 		"SELECT *":    "sebutkan nama kolom",
@@ -161,6 +162,32 @@ func TestTidakAdaPolaSQLTerlarang(t *testing.T) {
 		// jarang dibaca ulang. PostgreSQL tidak mengenal tipe itu sama sekali, sehingga
 		// kueri yang memuatnya gagal seketika di sana. VARCHAR diterima keduanya.
 		"VARCHAR2": "pakai VARCHAR",
+
+		// ====================================================================
+		// Dua padanan `09-DATABASE-STRATEGY.md` §4 yang TIDAK DAPAT DIJALANKAN
+		// ====================================================================
+		//
+		// Diuji langsung ke Oracle 19c lewat `EXPLAIN PLAN` pada 2026-10-09 —
+		// bukan disimpulkan dari dokumen:
+		//
+		//   POSITION('/' IN 'a/b')  -> ORA-00907: missing right parenthesis
+		//   INSTR('a/b','/')        -> diterima
+		//   STRING_AGG(x, ',')      -> ORA-06553: PLS-306
+		//   LISTAGG(x, ',') ...     -> diterima
+		//
+		// §4 menyuruh menempuh arah yang justru tidak berjalan di basis data yang
+		// dipakai hari ini. Keduanya diajukan sebagai usulan koreksi Steering;
+		// sampai itu diputuskan, yang berlaku di sini adalah bukti.
+		//
+		// POSITION dilarang karena tidak jalan di Oracle. Penggantinya INSTR, dan
+		// pemakaiannya dikunci TestInstrHanyaDiKueriYangDisepakati.
+		"POSITION(": "tidak jalan di Oracle 19c (ORA-00907) — pakai INSTR",
+
+		// LISTAGG dan STRING_AGG SAMA-SAMA dilarang, dan itu disengaja: tidak ada
+		// bentuk penggabungan baris yang berjalan di keduanya. Penggabungannya
+		// dikerjakan di Go — lihat `dominanfactor.go`.
+		"LISTAGG(":    "gabungkan di Go, bukan di SQL",
+		"STRING_AGG(": "tidak jalan di Oracle 19c (ORA-06553) — gabungkan di Go",
 	}
 
 	for name, text := range query {
@@ -172,12 +199,97 @@ func TestTidakAdaPolaSQLTerlarang(t *testing.T) {
 	}
 }
 
-// kueriDenganDBLink adalah satu-satunya kueri yang MASIH memuat DB Link.
+// bindMengikutiKemunculan mengunci satu sifat driver yang tidak terlihat dari kodenya.
 //
-// Work Owner memutuskan 2026-09-24: yang berupa SUB-QUERY tetap memakai DB Link; selain
-// itu memakai koneksi langsung. Laporan TAT punya satu sub-query seperti itu — kolom
-// "PolicyRange" yang membaca `collection.mst_det_sales@ASMD`.
-const kueriDenganDBLink = "report_tat"
+// # Sifatnya
+//
+// go-ora mengikat `:n` menurut **urutan kemunculan**, bukan menurut nomornya. Diuji
+// langsung ke Oracle 19c pada 2026-10-09 (`cmd/cekddl`, fungsi ujiBind):
+//
+//	SELECT :3, :1, :2        3 argumen a,b,c  ->  hasil  a b c
+//	SELECT :1, :2, :1        2 argumen a,b    ->  hasil  a b a
+//	SELECT :1, :2, :3, :3    3 argumen a,b,c  ->  hasil  a b c c
+//	SELECT :1, :2, :3, :3    4 argumen a..d   ->  hasil  a b c d
+//
+// Baris pertama yang menentukan: `:3` menerima argumen PERTAMA. Nomornya diabaikan.
+//
+// # Kenapa ini diuji, bukan sekadar dikomentari
+//
+// Kueri yang nomornya tidak berurut tetap SAH, tetap lulus EXPLAIN PLAN, dan tetap
+// berjalan — ia hanya mengikat nilai ke tempat yang salah. Dua kueri modul ini pernah
+// begitu, dan keduanya tidak menyalak:
+//
+//	report_close_klaim_nonmbu   ORA-01008 — ketahuan hanya karena jumlahnya kebetulan kurang
+//	report_komite_nonmbu        TIDAK ADA GALAT — tanggal masuk ke kolom status, hasilnya
+//	                            nol baris selamanya
+//
+// Yang kedua adalah bentuk kegagalan terburuk yang mungkin ada di modul laporan: berkas
+// kosong, tanpa pesan, dan pengguna tidak punya cara tahu sebabnya.
+func TestNomorBindMengikutiUrutanKemunculan(t *testing.T) {
+	bind := regexp.MustCompile(`:\d+`)
+
+	for name, text := range query {
+		// Baris komentar dibuang — blok "Bind:" di kepala kueri menyebut `:1` dan
+		// kawan-kawannya sebagai dokumentasi, bukan sebagai placeholder.
+		var sql []string
+		for _, l := range strings.Split(text, "\n") {
+			if !strings.HasPrefix(strings.TrimSpace(l), "--") {
+				sql = append(sql, l)
+			}
+		}
+
+		var urutPertama []string
+		for _, m := range bind.FindAllString(strings.Join(sql, "\n"), -1) {
+			if !slices.Contains(urutPertama, m) {
+				urutPertama = append(urutPertama, m)
+			}
+		}
+
+		for i, m := range urutPertama {
+			require.Equalf(t, fmt.Sprintf(":%d", i+1), m,
+				"kueri %q: placeholder ke-%d yang muncul bernomor %s — penomoran harus "+
+					"mengikuti urutan kemunculan, karena driver mengabaikan nomornya",
+				name, i+1, m)
+		}
+	}
+}
+
+// INSTR adalah pengecualian dialek yang disadari — bukan izin umum.
+//
+// Ia dipakai HANYA di tempat sumbernya memang memakainya, dan daftarnya dikunci di sini
+// supaya ia tidak menyebar diam-diam ke kueri lain ketika seseorang kelak membutuhkan
+// "cari posisi karakter" dan menyalin dari tetangganya.
+//
+// Padanan PostgreSQL-nya `strpos`/`position`, dan itulah yang ditukar saat pindah basis
+// data — satu tempat, bukan tersebar.
+func TestInstrHanyaDiKueriYangDisepakati(t *testing.T) {
+	disepakati := map[string]bool{
+		// Sumbernya `RDB List/GetDataAIKlaim-SQL.xml` memang memakai INSTR.
+		"report_ai_klaim": true,
+	}
+
+	for name, text := range query {
+		if strings.Contains(strings.ToUpper(text), "INSTR(") {
+			require.Truef(t, disepakati[name],
+				"kueri %q memakai INSTR tanpa disepakati — gabungkan ke daftar ini bila memang perlu", name)
+		}
+	}
+}
+
+// kueriDenganDBLink adalah kueri yang MASIH memuat DB Link, beserta sebabnya.
+//
+//	report_tat                      Work Owner 2026-09-24 — sub-query dibawa apa adanya.
+//	                                Kolom "PolicyRange" membaca
+//	                                `collection.mst_det_sales@ASMD`.
+//
+//	report_holiday_calendar_dblink  Work Owner 2026-10-09 — cadangan SEMENTARA selama
+//	report_mitra_logins_dblink      `ANEKA_<PORTAL_ALIAS>_*` belum terisi. Keduanya
+//	                                berhenti terpakai sendiri begitu koneksi kedua ada.
+var kueriDenganDBLink = map[string]bool{
+	"report_tat":                     true,
+	"report_holiday_calendar_dblink": true,
+	"report_mitra_logins_dblink":     true,
+}
 
 // Dua pola Oracle hanya boleh muncul DI DALAM sub-query DB Link yang dipertahankan.
 //
@@ -214,7 +326,7 @@ func TestPolaOracleHanyaPadaSubQueryDBLinkYangDipertahankan(t *testing.T) {
 	hanyaDiDBLink := []string{"TO_CHAR(", "MONTHS_BETWEEN("}
 
 	for name, text := range query {
-		if name == kueriDenganDBLink {
+		if kueriDenganDBLink[name] {
 			continue
 		}
 		upper := strings.ToUpper(text)
@@ -239,28 +351,82 @@ func TestPolaOracleHanyaPadaSubQueryDBLinkYangDipertahankan(t *testing.T) {
 			"kueri %q tidak lagi memakai TO_CHAR; buang dari kueriDenganJamTampil", name)
 	}
 
-	dikecualikan := strings.ToUpper(query[kueriDenganDBLink])
-	require.Contains(t, dikecualikan, "@ASMD",
-		"kueri yang dikecualikan wajib benar-benar memuat DB Link")
+	// Setiap kueri yang dikecualikan wajib benar-benar memuat DB Link — bukan lolos
+	// karena namanya kebetulan masuk daftar.
+	for name := range kueriDenganDBLink {
+		require.Containsf(t, strings.ToUpper(query[name]), "@ASMD",
+			"kueri %q dikecualikan tetapi tidak memuat DB Link; buang dari daftar", name)
+	}
+
+	// Dan kedua pola Oracle yang dikecualikan harus masih terpakai di SALAH SATU-nya.
+	// Yang memakainya hanya `report_tat`; kedua kueri cadangan tidak, dan memang tidak
+	// seharusnya — ia salinan kueri portabel, hanya dengan akhiran DB Link.
 	for _, pola := range hanyaDiDBLink {
-		require.Containsf(t, dikecualikan, pola,
+		require.Containsf(t, strings.ToUpper(query["report_tat"]), pola,
 			"pengecualian %s tidak lagi terpakai; buang dari daftar", pola)
 	}
 }
 
-// DB Link hanya boleh muncul pada SUB-QUERY, dan hanya di satu kueri.
+// DB Link hanya boleh muncul pada kueri yang memang diputuskan mempertahankannya.
 //
-// Keputusan Work Owner 2026-09-24: yang berupa sub-query tetap memakai DB Link; selain
-// itu memakai koneksi langsung. Uji ini menjaga agar DB Link tidak merambat kembali ke
-// kueri lain lewat salin-tempel.
+// Tiga kueri, DUA sebab yang berbeda — dan perbedaannya ditulis di sini karena yang satu
+// permanen sementara yang dua sementara:
+//
+//	report_tat                      sub-query dibawa apa adanya (Work Owner 2026-09-24)
+//	report_*_dblink                 cadangan selama ANEKA_* kosong  (Work Owner 2026-10-09)
+//
+// Uji ini menjaga agar DB Link tidak merambat ke kueri lain lewat salin-tempel — godaan
+// yang justru menguat sejak ada tiga contohnya di berkas yang sama.
 func TestDBLinkHanyaPadaKueriYangDiputuskanMempertahankannya(t *testing.T) {
-	var memakai []string
+	memakai := map[string]bool{}
 	for name, text := range query {
 		if strings.Contains(strings.ToUpper(text), "@ASMD") {
-			memakai = append(memakai, name)
+			memakai[name] = true
 		}
 	}
-	require.Equal(t, []string{kueriDenganDBLink}, memakai)
+	require.Equal(t, kueriDenganDBLink, memakai)
+}
+
+// Setiap kueri cadangan wajib punya pasangan tanpa DB Link, dan isinya wajib SAMA —
+// berbeda hanya pada akhiran DB Link-nya.
+//
+// Tanpa uji ini, perbaikan pada salah satunya tidak akan ikut ke pasangannya, dan
+// laporan akan berperilaku berbeda tergantung apakah `ANEKA_*` kebetulan terisi. Selisih
+// seperti itu hampir mustahil ditelusuri: keduanya "jalan", hasilnya saja yang berbeda.
+func TestKueriCadanganSamaDenganAslinya(t *testing.T) {
+	const link = "@ASMD.SINARMAS.CO.ID"
+
+	n := 0
+	for name := range query {
+		asli, cadangan := strings.CutSuffix(name, "_dblink")
+		if !cadangan {
+			continue
+		}
+		n++
+
+		require.Truef(t, hasQuery(asli), "kueri cadangan %q tanpa pasangan %q", name, asli)
+		require.Equal(t, badanKueri(query[asli]),
+			strings.ReplaceAll(badanKueri(query[name]), link, ""),
+			"isi %q berbeda dari %q di luar akhiran DB Link-nya", name, asli)
+	}
+	require.Equal(t, len(kueriCadanganDBLink), n, "jumlah kueri cadangan berubah")
+}
+
+// kueriCadanganDBLink adalah kueri cadangan yang dipakai selama `ANEKA_*` kosong.
+var kueriCadanganDBLink = map[string]bool{
+	"report_holiday_calendar_dblink": true,
+	"report_mitra_logins_dblink":     true,
+}
+
+// badanKueri membuang baris komentar supaya yang dibandingkan SQL-nya saja.
+func badanKueri(text string) string {
+	var isi []string
+	for _, l := range strings.Split(text, "\n") {
+		if t := strings.TrimSpace(l); t != "" && !strings.HasPrefix(t, "--") {
+			isi = append(isi, t)
+		}
+	}
+	return strings.Join(isi, "\n")
 }
 
 // Kueri yang dijalankan pada koneksi KEDUA tidak boleh memuat akhiran DB Link — justru
@@ -310,6 +476,11 @@ func TestTidakAdaKueriYatim(t *testing.T) {
 		// closure — yang terlihat di sana hanyalah `keep: mitraKeep`, bukan nama kueri
 		// yang dibacanya.
 		"report_mitra_logins": true,
+
+		// Kedua cadangan DB Link dipilih Repo.koneksiKedua saat ANEKA_* kosong, dan
+		// pemilihnya pun tidak terlihat dari plans.
+		"report_holiday_calendar_dblink": true,
+		"report_mitra_logins_dblink":     true,
 	}
 	for _, p := range plans {
 		for _, f := range kombinasiPenyaring {

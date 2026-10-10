@@ -62,3 +62,14 @@ INSERT INTO POOLDATA.TC_PNC_CFS_ESTIMASI
        (CLAIMID, OBJECTID, OBJECTCOVERAGEID, REVISI, URUTAN, CURRENCY, ESTIMATIONDATE,
         ESTIMATIONVALUE)
 VALUES (:1, :2, :3, :4, :5, :6, :7, :8 / 100)
+
+-- name: cfs_tambah_beban_pic
+--
+-- `RDB List/AddTJobCQuota_SQL-SQL.xml`, apa adanya: tabelnya MST_USER_TEKNIS (bukan
+-- MST_USER_TEKNIK yang dibaca kueri pemilihan PIC), dan yang naik TOTAL_JOB serta
+-- COUNTER_QUOTA. Pasangannya, `klaim_tutup_beban_pic`, mengurangi TOTAL_JOB saat klaim
+-- ditutup. TOTAL_JOB bertipe VARCHAR2; Oracle mengubahnya ke angka, sama seperti Pega.
+UPDATE POOLDATA.MST_USER_TEKNIS
+   SET TOTAL_JOB = TOTAL_JOB + 1,
+       COUNTER_QUOTA = COUNTER_QUOTA + 1
+ WHERE OPERATOR_ID = :1

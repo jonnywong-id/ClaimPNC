@@ -3,6 +3,7 @@ package registrasi
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 )
@@ -69,6 +70,11 @@ type PLAAmount struct {
 	Share      Percent
 	Result     Money // ResultPLA
 	ASMCount   Money // reserve × share ASM
+
+	// FacShare (SharePLA) dan FacBase (PercentPLA) hanya untuk PLA FAC OUT: bagian
+	// reasuradur dan dasar pembaginya, keduanya NILAI uang, bukan persen.
+	FacShare Money
+	FacBase  Money
 }
 
 // PLA adalah satu PLA untuk satu penerima.
@@ -86,6 +92,25 @@ type PLA struct {
 	PolicyCurrency string
 	Amount         []PLAAmount
 	Info           PLARecipientInfo
+
+	// Sent adalah T_PLALIST.ISKIRIM = '1': PLA ini sudah dikirim lewat email (`.IsKirim`).
+	Sent bool
+}
+
+// PLASender mengirim satu PLA yang sudah terbit lewat email kepada penerimanya
+// (T_PLALIST.EMAILPLA), lalu menandainya terkirim (ISKIRIM, TGLKIRIM) — padanan
+// `UpdateDetailPLA2` + `UpdatesetstatusdantanggalKirimPLA` yang dijalankan tombol SEND ALL PLA
+// (`DownloadAllDocumentPLA` SendPrint "2"). Galat berarti PLA itu tidak terkirim, atau
+// terkirim tetapi penandaannya gagal — pesannya menyebut yang mana.
+type PLASender interface {
+	SendPLA(ctx context.Context, portal, login, claimID, number string, document PLAAttachment) error
+}
+
+// PLAAttachment adalah PDF satu PLA yang dilampirkan pada suratnya — padanan berkas kategori PLA
+// hasil `AttachAsPDFC` yang dilampirkan `UpdateDetailPLA2`.
+type PLAAttachment struct {
+	Name    string
+	Content []byte
 }
 
 // PLAPrevious adalah PLA terakhir kepada seorang penerima pada klaim yang sama.
@@ -113,11 +138,19 @@ type PLADocument struct {
 	Place           string
 	SignerName      string
 	Signature       []byte // PNG
+	// ShareLabel adalah akhiran label "Your Share" (PLAShareLabel).
+	ShareLabel string
 }
 
 // PLASource adalah seam ke data PLA: CoinsList, master penerima, nomor, dan T_PLALIST.
 type PLASource interface {
 	CoinsMembers(ctx context.Context, policyNumber, prodKe string) ([]PLACoinsMember, error)
+	// FacOffers membaca FacOfferList polis (POOLDATA.T_FACOFFER) — penerima PLA FAC OUT.
+	FacOffers(ctx context.Context, policyNumber, prodKe string) ([]FacOffer, error)
+	// SpreadingTSI membaca TSISPREADED spreading polis (POOLDATA.T_SPREADINGLIST) untuk satu
+	// objek dan coverage: baris FAC OUT (10015) dan jumlah seluruh baris yang berlaku.
+	// Cadangan PLA FAC OUT untuk Fac Offer tanpa JSONDATA. nil bila tidak ada barisnya.
+	SpreadingTSI(ctx context.Context, q SpreadingTSIQuery) (facOut, total *big.Rat, err error)
 	Recipient(ctx context.Context, code, name string) (PLARecipientInfo, error)
 	Previous(ctx context.Context, claimID, recipientCode string) (PLAPrevious, bool, error)
 
@@ -130,9 +163,14 @@ type PLASource interface {
 	Save(ctx context.Context, p PLA) error
 	// UpdateNote mengganti catatan PLA yang sudah terbit.
 	UpdateNote(ctx context.Context, claimID, number string, revision int, note string) error
+	// UpdateEmail mengganti email penerima PLA yang sudah terbit (EMAILPLA).
+	UpdateEmail(ctx context.Context, claimID, number string, revision int, email string) error
 
 	// Signature membaca penanda tangan PLA sebuah entitas (POOLDATA.MTTD).
 	Signature(ctx context.Context, entity string) (name string, png []byte, err error)
+	// PASignature membaca satu tanda tangan POOLDATA.M_SIGNATURE1 menurut SIGNATURE_ID
+	// (`BrowseSignature`) — dipakai blok tanda tangan Draft Persetujuan Personal Accident.
+	PASignature(ctx context.Context, id string) (name string, image []byte, err error)
 
 	// LODEmails membaca bahan isian Email LOD: email tertanggung dari pengkinian data
 	// klaim dan email PIC teknik. Kosong bila tidak ada barisnya.

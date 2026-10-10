@@ -119,11 +119,35 @@ func Keys(cols []Column) []string {
 //
 // Senarai BARU setiap kali, bukan senarai bersama: pemanggil yang mengurutkan atau
 // memotongnya tidak boleh mengubah katalog bagi pemanggil berikutnya.
+// ============================================================================
+// PEMETAAN SEGMEN — TERTUKAR TERHADAP NAMA BERKAS DI EXPORT
+// ============================================================================
+//
+// Layar Pega PRODUKSI (`clouduniapp`, tangkapan layar Work Owner 2026-10-09):
+//
+//	Segment Slik D01 -> 38 kolom IDENTITAS DEBITUR (Nomor CIF Debitur … Operasi Data)
+//	Segment Slik F06 -> 20 kolom FASILITAS KREDIT  (No Klaim … Keterangan)
+//
+// Itu juga struktur pelaporan SLIK OJK yang sebenarnya: **D01 debitur, F06 fasilitas**.
+//
+// Berkas di export menamainya terbalik — ke-38 judul itu ada di `ExportDataSlinkFOG`
+// (menyebut F06), dan ke-27 judul fasilitas ada di `ExportDataSlinkD01`. Penamaan terbalik
+// yang sudah tercatat untuk rule SQL (`GetDataSlinkAllFOGF06` melayani D01) ternyata
+// berlaku juga untuk section dan aktivitas ekspor.
+//
+// Nama variabel di bawah MENGIKUTI NAMA BERKAS EXPORT, bukan nama segmen layarnya —
+// supaya tiap variabel dapat dibaca berdampingan dengan berkas asalnya. Pemetaan ke segmen
+// layar terjadi di sini, satu tempat.
+//
+// Catatan atas `pegadev`: di sana segmen D01 menampilkan kolom FASILITAS, bukan debitur.
+// Work Owner menetapkan yang berlaku adalah produksi (2026-10-09).
 func Columns(segment Segment) []Column {
 	switch segment {
 	case SegmentD01:
-		return append([]Column(nil), d01Columns...)
+		// Identitas debitur — daftar milik `ExportDataSlinkFOG`.
+		return append([]Column(nil), f06ExportColumns...)
 	case SegmentF06:
+		// Fasilitas kredit — daftar milik `ExportDataSlinkD01`.
 		return append([]Column(nil), f06Columns...)
 	}
 	return nil
@@ -145,9 +169,11 @@ func Columns(segment Segment) []Column {
 func ExportHeaders(segment Segment) []string {
 	switch segment {
 	case SegmentD01:
-		return Headers(d01ExportColumns)
-	case SegmentF06:
+		// 38 judul identitas debitur. Lihat catatan pemetaan pada Columns.
 		return Headers(f06ExportColumns)
+	case SegmentF06:
+		// 27 judul fasilitas kredit.
+		return Headers(d01ExportColumns)
 	}
 	return nil
 }
@@ -190,9 +216,11 @@ func ExportHeaders(segment Segment) []string {
 func ExportSlots(segment Segment) []Column {
 	switch segment {
 	case SegmentD01:
-		return append([]Column(nil), d01ExportColumns...)
-	case SegmentF06:
+		// 34 slot — SENGAJA tidak sejajar dengan 38 judulnya. Lihat catatan di atas.
 		return append([]Column(nil), f06ExportSlots...)
+	case SegmentF06:
+		// 27 slot, sejajar dengan 27 judulnya.
+		return append([]Column(nil), d01ExportColumns...)
 	}
 	return nil
 }
@@ -215,14 +243,26 @@ func ExportSlots(segment Segment) []Column {
 // Nilai di bawah karena itu disalin APA ADANYA dari elemen `<FileName>` masing-masing
 // aktivitas — termasuk ketertukarannya. Jangan "dirapikan": ia diuji di
 // TestFileNamesMatchPega.
+// # KOREKSI 2026-10-09 — namanya ternyata TIDAK tertukar
+//
+// Catatan di atas menyimpulkan kedua nama berkas tertukar. Itu akibat pemetaan segmen saya
+// sendiri yang keliru, bukan cacat di Pega.
+//
+// Dengan pemetaan yang benar — D01 memakai `ExportDataSlinkFOG`, F06 memakai
+// `ExportDataSlinkD01` — nama berkasnya justru **cocok dengan segmennya**:
+//
+//	segmen D01 -> ExportDataSlinkFOG -> "Laporan SLIK OJK D01"
+//	segmen F06 -> ExportDataSlinkD01 -> "Laporan F06 SLIK OJK"
+//
+// Kecocokan itu sendiri menjadi bukti tambahan bahwa pemetaan barunya benar: dua
+// ketertukaran yang saling meniadakan jauh lebih mungkin berarti satu kesalahan baca
+// daripada dua cacat terpisah di sistem lama.
 func FileName(segment Segment) string {
 	switch segment {
 	case SegmentD01:
-		// Ya, F06 — lihat catatan di atas. Ini nama berkas ekspor segmen D01.
-		return "Laporan F06 SLIK OJK"
-	case SegmentF06:
-		// Ya, D01 — lihat catatan di atas. Ini nama berkas ekspor segmen F06.
 		return "Laporan SLIK OJK D01"
+	case SegmentF06:
+		return "Laporan F06 SLIK OJK"
 	}
 	return "Laporan SLIK OJK"
 }
@@ -264,9 +304,13 @@ const RowKeyColumn = "kunci_baris"
 // 2026-09-26 **tidak lagi berlaku untuk grid** — ia diambil di atas premis saya yang salah.
 // Keputusan itu tetap berlaku untuk berkas ekspornya, yang memang 38 judul.
 //
-// Keduanya sengaja berbagi satu daftar, bukan disalin: bila kelak satu kolom grid berubah,
-// dua grid yang di Pega memang identik tidak boleh menjadi berbeda karena salinan yang
-// terlewat diperbarui.
+// # Koreksi kedua, 2026-10-08 — keduanya TIDAK sepenuhnya identik
+//
+// Sempat ditulis `f06Columns = d01Columns`. Tangkapan layar kedua membuktikan ada satu
+// selisih: grid **D01 punya "Nama Debitur"** sebagai kolom ketiga, grid **F06 tidak**.
+//
+// Jadi F06 = D01 **tanpa** kolom itu. Ia diturunkan dari d01Columns alih-alih disalin,
+// supaya kesembilan belas kolom yang memang sama tidak dapat menyimpang diam-diam.
 var f06Columns = d01Columns
 
 // ============================================================================
@@ -300,6 +344,15 @@ var f06Columns = d01Columns
 var d01Columns = []Column{
 	{Key: "no_klaim", Header: "No Klaim", LegacyProperty: "ClaimID", Source: SourceAvailable},
 	{Key: "contract_no", Header: "Contract No", LegacyProperty: "ContractNo", Source: SourceAvailable},
+
+	// Tidak ada "Nama Debitur" di sini.
+	//
+	// Kolom itu sempat ditambahkan karena tampil di layar `pegadev`. Layar PRODUKSI
+	// (`clouduniapp`) tidak memilikinya — pada kedua segmen. Work Owner menetapkan
+	// produksi yang berlaku (2026-10-09), jadi kolomnya dicabut.
+	//
+	// Pemeriksaan ke Oracle juga menunjukkan `OBJECTNAME` kosong pada seluruh baris
+	// laporan yang cocok, sehingga kolomnya tidak akan pernah berisi apa pun.
 	{Key: "nomor_rekening_fasilitas", Header: "Nomor Rekening Fasilitas", LegacyProperty: "NOMORREKENINGFASILITAS", Source: SourceAvailable},
 	{Key: "no_cif_debitur", Header: "No CIF Debitur", LegacyProperty: "NOMORCIFDEBITUR", Source: SourceAvailable},
 	{Key: "kode_jenis_fasilitas", Header: "Kode Jenis Fasilitas", LegacyProperty: "KodeJenisFasilitas", Source: SourceAvailable},

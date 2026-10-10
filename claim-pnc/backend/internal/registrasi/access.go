@@ -12,10 +12,12 @@ import (
 // tahap itu, dibaca dari POOLDATA.M_LOGIN_GROUP_PNC:
 //
 //	PNCAdminRouter   → PncAdmin          (Input Register, Input Estimasi)
-//	PNCTeknikRouter  → PNCKomiteTeknik   (Choose Surveyor, Send To PIC Teknik, Send To Analis)
+//	PNCTeknikRouter  → PNCKomiteTeknik atau PncPICTeknik
+//	                   (Choose Surveyor, Send To PIC Teknik, Send To Analis)
 //
-// `PNCKomiteTeknik` dianggap PIC Teknik atas keputusan Work Owner. Access group Pega untuk
-// PIC Teknik sebenarnya `PncPICTeknik`, tetapi grup itu belum ada di tabel.
+// `PNCKomiteTeknik` dianggap PIC Teknik atas keputusan Work Owner (2026-09-28), ketika access
+// group Pega yang sebenarnya — `PncPICTeknik` — belum ada di tabel. Setelah grup itu terisi,
+// Work Owner menetapkan (2026-10-08) keduanya diterima berdampingan.
 //
 // Tahap antrean bersama tetap diatur Workbasket-nya (diambil lebih dulu), dan tahap yang
 // dirutekan ke orang bernama atau ke pemanggil tidak punya grup.
@@ -27,14 +29,16 @@ const GroupPrefix = "GCNMFW:"
 
 // Grup penentu kewenangan tahap.
 const (
-	RoleAdmin      = GroupPrefix + "PncAdmin"
-	RoleTechnicPIC = GroupPrefix + "PNCKomiteTeknik"
+	RoleAdmin           = GroupPrefix + "PncAdmin"
+	RoleTechnicPIC      = GroupPrefix + "PNCKomiteTeknik"
+	RoleTechnicPICGroup = GroupPrefix + "PncPICTeknik"
 )
 
-// routerRole memetakan router tahap ke grup yang boleh mengerjakannya.
-var routerRole = map[string]string{
-	RouterPNCAdmin:     RoleAdmin,
-	RouterPNCTechnical: RoleTechnicPIC,
+// routerRoles memetakan router tahap ke grup-grup yang boleh mengerjakannya; memegang
+// salah satunya sudah cukup.
+var routerRoles = map[string][]string{
+	RouterPNCAdmin:     {RoleAdmin},
+	RouterPNCTechnical: {RoleTechnicPIC, RoleTechnicPICGroup},
 }
 
 // GroupSource adalah seam ke keanggotaan grup pengguna (POOLDATA.M_LOGIN_GROUP_PNC).
@@ -64,13 +68,18 @@ func RolesOfGroups(groups []string) []string {
 	return roles
 }
 
-// StageRole adalah grup yang boleh mengerjakan tahap ini; kosong bila tahap tidak diatur
-// grup.
-func StageRole(s Stage) string {
+// StageRoles adalah grup-grup yang boleh mengerjakan tahap ini; kosong bila tahap tidak
+// diatur grup.
+func StageRoles(s Stage) []string {
 	if s.Queue != QueueWorklist {
-		return ""
+		return nil
 	}
-	return routerRole[s.Router]
+	return routerRoles[s.Router]
+}
+
+// holdsStageRole menyatakan pemegang peran-peran ini memegang salah satu grup tahap.
+func holdsStageRole(s Stage, roles []string) bool {
+	return FlowContext{CallerRoles: roles}.HasRole(StageRoles(s)...)
 }
 
 // RoleAnalyst adalah When `IsAnalisator`: operator anggota workgroup `KlaimAnalisator`
@@ -90,20 +99,15 @@ func CanWork(task Task, stage Stage, identity string, roles []string) bool {
 	if !task.Owned() || equalFold(task.Owner, identity) {
 		return true
 	}
-	role := StageRole(stage)
-	if role == "" {
-		return false
-	}
-	return FlowContext{CallerRoles: roles}.HasRole(role)
+	return holdsStageRole(stage, roles)
 }
 
 // GroupStages adalah tahap yang boleh dikerjakan pemegang peran-peran ini — dipakai Inbox
 // untuk menampilkan tugas grup, bukan hanya tugas milik sendiri.
 func (d Definition) GroupStages(roles []string) []string {
-	fctx := FlowContext{CallerRoles: roles}
 	var result []string
 	for _, s := range d.Stages() {
-		if role := StageRole(s); role != "" && fctx.HasRole(role) {
+		if holdsStageRole(s, roles) {
 			result = append(result, s.ID)
 		}
 	}

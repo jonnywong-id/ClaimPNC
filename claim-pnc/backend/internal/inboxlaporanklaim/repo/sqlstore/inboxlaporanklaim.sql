@@ -5,7 +5,9 @@
 -- ============================================================================
 --
 --   POOLDATA.T_CLAIMLIST_ADMIN       kumpulan BARIS daftar    — hanya dibaca
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK   empat kolom penentu tab  — hanya dibaca
+--   POOLDATA.T_CLAIM_RECIVEDCLAIM    baris berkas warisan Pega dan terbitan sendiri
+--                                    (sebelum 2026-10-08: DATAPEGA.PC_ASM_FW_GCNMFW_WORK,
+--                                    kini tidak dipakai — lihat claim_report_source)
 --   POOLDATA.CPNC_LAPORAN_KLAIM      berkas terbitan sendiri  — dibaca DAN ditulis
 --
 -- Work Owner menetapkan 2026-09-23 daftar ditarik dari T_CLAIMLIST_ADMIN. Tabel itu
@@ -132,30 +134,79 @@
 --
 -- `pxobjclass` disaring persis seperti kueri lama: tabel ini memuat seluruh case Pega,
 -- bukan hanya Receive Document.
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08)
+-- ============================================================================
+--
+-- Keputusan Work Owner 2026-10-08: tabel objek kerja Pega (`PC_ASM_FW_GCNMFW_WORK`) TIDAK
+-- DIPAKAI LAGI. Penjelasan di atas tentang tabel itu adalah REKAMAN; cabang pertama kini
+-- DIGERAKKAN tabel cermin `POOLDATA.T_CLAIM_RECIVEDCLAIM` (baris berkunci
+-- `ASM-FW-GCNMFW-WORK RCV-…`, yaitu berkas warisan Pega), dengan `T_CLAIMLIST_ADMIN`
+-- didahulukan untuk kolom yang ada di sana. Seluruh 143 berkas penerimaan di
+-- `T_CLAIMLIST_ADMIN` punya baris di tabel cermin.
+--
+--   kolom Pega          sumber baru                                  cocok dgn Pega*
+--   ------------------- -------------------------------------------- ----------------
+--   pyid                REPLACE(r.claimid, awalan kelas)             kunci
+--   pnccaseid           t.pnccaseid, lalu r.noklaim tanpa awalan      kosong/isi 2.640
+--   statuslock_1        TIDAK ADA PADANAN — NULL                     lihat di bawah
+--   policyno            t.policyno, lalu r.nopolis                   —
+--   qqname              r.namatertanggung (t.qqname BUKAN padanan)    —
+--   businessname        t.businessname, lalu BUSINESS.note            1.963
+--   bookno_1            r.noreferensi                                2.625
+--   dateofloss_1        t.dateofloss_1, lalu r.dol                    —
+--   pxcreatedatetime    t.pxcreatedatetime, lalu r.tanggalinputdokumen sama sampai detik
+--   pxcreateoperator    t.pxcreateoperator, lalu r.userinput          2.485
+--   kodecabang_1        t.kodecabang_1, lalu r.kodecabang             1.021, 0 berbeda
+--   dateforaging_1      t.dateforaging_1, lalu r.tanggalinputdokumen  2.589 (hari sama)
+--   pystatuswork        t.pystatuswork, lalu r.pystatuswork           lihat di bawah
+--   grouppanel_1        t.grouppanel_1, lalu r.grouppanel             —
+--   businesscode_1      t.businesscode_1, lalu r.businesscode         2.015
+--   (* dari 2.788 baris versi lama, Oracle dev 2026-10-08)
+--
+-- # `statuslock_1` TIDAK PUNYA PADANAN, dan posisi berkas ikut berubah
+--
+-- `.ReceiveDocument.StatusLock` adalah kotak centang di form penerimaan
+-- (`Activity/Pre_ActReceiveDocument-Act.xml`), hanya tersimpan di objek kerja Pega. Tidak
+-- satu pun kolom tabel cermin berkorelasi dengannya (diukur atas `TRANSFERASM`,
+-- `REGISTDATE`, `USERINPUT`, `PICREKANAN`, `RESOURCES`, `KODECABANG`, `NOKLAIM`), dan
+-- `T_CLAIMLIST_ADMIN.STATUSLOCK_1` sama dengan nilai Pega hanya pada 8 dari 143 berkas.
+-- Kolomnya karena itu NULL bertipe, dan akibatnya TERUKUR: posisi versi lama
+-- Outstanding 1.301 · Not Registered 544 · Not Transferred 643 · tanpa tab 300; versi baru
+-- Not Transferred 1.317 · tanpa tab 1.453 — tab Outstanding dan Not Registered KOSONG untuk
+-- berkas warisan Pega. Keputusan penggantinya milik Work Owner.
+--
+-- # Status pekerjaan hanya sebagian
+--
+-- `r.pystatuswork` adalah status saat berkas DITERIMA dan tidak diperbarui. Penyaring
+-- "sembunyikan yang selesai" (:22) karena itu menyembunyikan 102 berkas, bukan 1.311
+-- seperti versi lama; 92 di antaranya sama, 10 sebenarnya masih berjalan di Pega.
 WITH source AS (
-    SELECT w.pyid                AS report_id,
-           w.pnccaseid           AS claim_number,
-           w.statuslock_1        AS assignment_ref,
-           w.policyno            AS policy_number,
-           w.qqname              AS insured_name,
+    SELECT REPLACE(r.claimid, 'ASM-FW-GCNMFW-WORK ', '') AS report_id,
+           COALESCE(t.pnccaseid,
+                    REPLACE(r.noklaim, 'ASM-FW-GCNMFW-WORK ', '')) AS claim_number,
+           CAST(NULL AS VARCHAR(32))  AS assignment_ref,
+           COALESCE(t.policyno, r.nopolis) AS policy_number,
+           r.namatertanggung     AS insured_name,
            -- Nama pembuat berkas, sama seperti `Sender := OperatorID.pyUserName` pada
            -- Activity/CreateNewCaseRCV-Act.xml. Hanya ada di tabel admin.
            t.pxcreateopname      AS reporter_name,
-           w.businessname        AS business_name,
-           w.bookno_1            AS reference_number,
-           w.dateofloss_1        AS date_of_loss,
-           w.pxcreatedatetime    AS created_at,
-           w.pxcreateoperator    AS created_by,
-           w.kodecabang_1        AS branch_code,
-           w.dateforaging_1      AS aging_at,
+           COALESCE(t.businessname, b.note) AS business_name,
+           r.noreferensi         AS reference_number,
+           COALESCE(t.dateofloss_1, CAST(r.dol AS TIMESTAMP)) AS date_of_loss,
+           COALESCE(t.pxcreatedatetime, r.tanggalinputdokumen) AS created_at,
+           COALESCE(t.pxcreateoperator, r.userinput) AS created_by,
+           COALESCE(t.kodecabang_1, r.kodecabang) AS branch_code,
+           COALESCE(t.dateforaging_1, r.tanggalinputdokumen) AS aging_at,
            -- Keduanya tidak dipakai dulu (Work Owner, 2026-09-23).
            CAST(NULL AS VARCHAR(1000)) AS reason,
            CAST(NULL AS VARCHAR(1000)) AS email_subject,
-           w.pystatuswork        AS work_status,
-           w.grouppanel_1        AS group_panel,
+           COALESCE(t.pystatuswork, r.pystatuswork) AS work_status,
+           COALESCE(t.grouppanel_1, r.grouppanel) AS group_panel,
            b.businessgroupid     AS business_group,
            CASE
-               WHEN w.pyid LIKE 'RCVN%' THEN 'claimpnc'
+               WHEN REPLACE(r.claimid, 'ASM-FW-GCNMFW-WORK ', '') LIKE 'RCVN%' THEN 'claimpnc'
                ELSE 'pega'
            END                   AS origin,
            CAST(NULL AS DATE)         AS received_date,
@@ -169,10 +220,13 @@ WITH source AS (
            t.notregistnote_1          AS not_registered_note,
            t.aging                    AS aging_value,
            CAST(NULL AS NUMBER)       AS document_count,
+           -- Penanda kunci (`statuslock_1`) tidak punya padanan dan selalu NULL, sehingga
+           -- dari keempat keadaan lama hanya dua yang masih dapat terjadi: tanpa nomor
+           -- klaim -> Not Transferred; bernomor klaim -> tidak masuk tab mana pun.
+           -- Outstanding dan Not Registered SENGAJA tidak ditulis: keduanya menuntut
+           -- penanda kunci, dan menurunkannya dari kolom lain berarti mengarang.
            CASE
-               WHEN w.pnccaseid IS NOT NULL AND w.statuslock_1 IS NOT NULL THEN 'Outstanding'
-               WHEN w.pnccaseid IS NULL     AND w.statuslock_1 IS NOT NULL THEN 'Not Registered'
-               WHEN w.pnccaseid IS NULL     AND w.statuslock_1 IS NULL     THEN 'Not Transferred'
+               WHEN COALESCE(t.pnccaseid, r.noklaim) IS NULL THEN 'Not Transferred'
                ELSE NULL
            END                   AS position,
            CASE
@@ -180,24 +234,28 @@ WITH source AS (
                               FROM POOLDATA.T_CLAIM_PNC p,
                                    POOLDATA.T_CLAIM_ADJUSTMENT a
                              WHERE p.claimid = a.claimid
-                               AND p.claimno = w.pnccaseid
+                               AND p.claimno = COALESCE(t.pnccaseid,
+                                       REPLACE(r.noklaim, 'ASM-FW-GCNMFW-WORK ', ''))
                                AND a.noakseptasi IS NOT NULL)
                THEN '1' ELSE '0'
            END                   AS accepted,
            CASE
                WHEN EXISTS (SELECT 1
                               FROM POOLDATA.T_CLAIM_PNC p
-                             WHERE p.claimno = w.pnccaseid
+                             WHERE p.claimno = COALESCE(t.pnccaseid,
+                                       REPLACE(r.noklaim, 'ASM-FW-GCNMFW-WORK ', ''))
                                AND p.statuswork = 'Resolved-Rejected')
                THEN '1' ELSE '0'
            END                   AS rejected
-      FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-      LEFT JOIN POOLDATA.BUSINESS b
-             ON b.id = w.businesscode_1
+      FROM POOLDATA.T_CLAIM_RECIVEDCLAIM r
       LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN t
-             ON t.pyid = w.pyid
-            AND t.pxobjclass = w.pxobjclass
-     WHERE w.pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
+             ON t.pzinskey = r.claimid
+            AND t.pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
+      LEFT JOIN POOLDATA.BUSINESS b
+             ON b.id = COALESCE(t.businesscode_1, r.businesscode)
+     -- Pengganti penyaring `pxobjclass`: hanya kunci berkas penerimaan warisan Pega.
+     -- Awalan `RCVN` milik cabang kedua, sehingga keduanya tetap tidak tumpang tindih.
+     WHERE r.claimid LIKE 'ASM-FW-GCNMFW-WORK RCV-%'
        -- '0' berarti klaim sudah tidak aktif dan tidak ditampilkan lagi (Work Owner,
        -- 2026-09-23). Yang dikecualikan HANYA yang bernilai '0' secara tegas: baris yang
        -- tidak ada di tabel admin ber-NULL, dan menyembunyikannya akan menghapus hampir

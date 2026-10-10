@@ -136,3 +136,74 @@ func TestClosedReader(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, page.Rows)
 }
+
+// TestPanelFilters menjaga kelima penyaring panel BENAR-BENAR menyaring.
+//
+// Ia ada karena kegagalannya tidak terlihat sebagai galat: penyaring yang tidak berpengaruh
+// mengembalikan seluruh baris, dan layar yang menampilkan seluruh baris tampak sehat.
+// Ketiga penyaring teks sempat dibangun tanpa penerapannya di adapter ini — uji inilah yang
+// membuat kelalaian serupa gagal, bukan lolos diam-diam.
+func TestPanelFilters(t *testing.T) {
+	repo := memory.NewRepo(memory.SampleOutstanding(), nil)
+	ctx := context.Background()
+
+	cases := map[string]struct {
+		filter dashboardclaim.Filter
+		want   []string
+	}{
+		"nomor polis sebagian, tanpa peduli besar-kecil huruf": {
+			filter: dashboardclaim.Filter{PolicyNumber: "contoh-0003"},
+			want:   []string{"PNCN.26.0003"},
+		},
+		"nomor klaim sebagian": {
+			filter: dashboardclaim.Filter{ClaimNumber: "26.0005"},
+			want:   []string{"PNCN.26.0005"},
+		},
+		"pic teknik": {
+			filter: dashboardclaim.Filter{TechnicalPIC: "Contoh 4"},
+			want:   []string{"PNCN.26.0004"},
+		},
+		"sudah transfer ke kasir": {
+			filter: dashboardclaim.Filter{Cashier: dashboardclaim.CashierDone},
+			want:   []string{"PNCN.26.0002", "PNCN.26.0004"},
+		},
+		"belum transfer ke kasir": {
+			filter: dashboardclaim.Filter{Cashier: dashboardclaim.CashierTodo},
+			want:   []string{"PNCN.26.0001", "PNCN.26.0003", "PNCN.26.0005"},
+		},
+		"lunas berarti kode status 1163": {
+			filter: dashboardclaim.Filter{Payment: dashboardclaim.PaymentPaid},
+			want:   []string{"PNCN.26.0002"},
+		},
+		"belum lunas": {
+			filter: dashboardclaim.Filter{Payment: dashboardclaim.PaymentUnpaid},
+			want:   []string{"PNCN.26.0001", "PNCN.26.0003", "PNCN.26.0004", "PNCN.26.0005"},
+		},
+		"dua penyaring berlaku bersamaan, bukan salah satu": {
+			filter: dashboardclaim.Filter{
+				Cashier: dashboardclaim.CashierDone,
+				Payment: dashboardclaim.PaymentUnpaid,
+			},
+			want: []string{"PNCN.26.0004"},
+		},
+		"penyaring yang tidak cocok mengembalikan kosong, bukan seluruhnya": {
+			filter: dashboardclaim.Filter{PolicyNumber: "TIDAK-ADA"},
+			want:   []string{},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			page, err := repo.ListOutstanding(ctx, tc.filter)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, claimNumbers(page.Rows))
+
+			// Angka kartu dan jumlah baris telusurnya wajib sepakat; selisihnya tidak
+			// menghasilkan galat apa pun, hanya pengguna yang kebingungan.
+			count, err := repo.CountOutstanding(ctx, tc.filter)
+			require.NoError(t, err)
+			require.Equal(t, len(tc.want), count)
+			require.Equal(t, len(tc.want), page.Total)
+		})
+	}
+}

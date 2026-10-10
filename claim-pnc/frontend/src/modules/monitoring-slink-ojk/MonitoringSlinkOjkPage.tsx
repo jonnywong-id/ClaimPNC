@@ -231,16 +231,14 @@ function IsiLayar() {
             emptyText="— seluruh lini —"
           />
 
-          {/* "Tipe Generate" HANYA ada di segmen D01, persis seperti di Pega. */}
-          {form.segmen === 'D01' && (
-            <Field
-              id="tipe_generate"
-              label="Tipe Generate"
-              value={form.tipe_generate}
-              onChange={(event) => ubah('tipe_generate', event.target.value)}
-              hint="Belum menyaring — daftar pilihannya tidak ada di export."
-            />
-          )}
+          {/*
+            Tidak ada isian "Tipe Generate" di sini.
+
+            Properti `.GenerateType` ada di `Sec_SegmentD01_1-Section.xml`, dan atas dasar
+            itu ia sempat dibangun. Tangkapan layar Pega yang berjalan (2026-10-08)
+            membuktikan ia tidak tampil — segmen D01 di sana hanya punya Business Name,
+            Dari, dan Sampai. Section di export lebih tua daripada yang terpasang.
+          */}
 
           {/*
             Label "Dari" dan "Sampai" mengikuti layar Pega. Keterangan di bawahnya yang
@@ -283,7 +281,18 @@ function IsiLayar() {
           <Button type="button" tone="kedua" onClick={() => { unduh(() => ekspor(terkirim)) }}>
             Export Data
           </Button>
-          {form.segmen === 'D01' && (
+          {/*
+            Keempat tombol berikut ada di segmen F06, bukan D01.
+
+            Ketiganya menyusun dan mengirim data FASILITAS KREDIT — yang ditulis
+            `T_CLAIM_SLIK_OJK`, sumber segmen F06 — dan berkas "Format File" pun berisi
+            kolom fasilitas. Sempat dipasang di D01 mengikuti pemetaan segmen yang keliru.
+
+            Catatan: layar Pega PRODUKSI tidak menampilkan keempatnya. Keempatnya ada di
+            `pegadev` dan dibangun atas permintaan Work Owner (2026-09-26), jadi
+            dipertahankan — kemungkinan besar kemampuan yang belum naik ke produksi.
+          */}
+          {form.segmen === 'F06' && (
             <Button type="button" tone="halus" onClick={() => { unduh(formatFile) }}>
               Format File
             </Button>
@@ -306,7 +315,7 @@ function IsiLayar() {
             KOSONG, dan menekan "Proses Data Klaim" saat itu menyusun laporan atas seluruh
             klaim yang memenuhi syarat.
           */}
-          {form.segmen === 'D01' && (
+          {form.segmen === 'F06' && (
             <Button
               type="button"
               tone="kedua"
@@ -326,7 +335,7 @@ function IsiLayar() {
             XML belum tentu dirender, dan layar yang berjalan adalah bukti yang lebih kuat
             daripada berkasnya.
           */}
-          {form.segmen === 'D01' && (
+          {form.segmen === 'F06' && (
             <Button
               type="button"
               tone="kedua"
@@ -337,7 +346,7 @@ function IsiLayar() {
             </Button>
           )}
 
-          {form.segmen === 'D01' && (
+          {form.segmen === 'F06' && (
             <Button
               type="button"
               tone="kedua"

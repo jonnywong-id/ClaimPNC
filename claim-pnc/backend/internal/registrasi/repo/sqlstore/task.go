@@ -38,7 +38,7 @@ func (r *TaskStore) Save(ctx context.Context, t registrasi.Task) error {
 		t.Owner,
 	)
 	if err != nil {
-		return fmt.Errorf("registrasi/sqlstore: memperbarui tugas: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: memperbarui tugas di CPNC_TUGAS: %w", err)
 	}
 	row, err := result.RowsAffected()
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *TaskStore) Save(ctx context.Context, t registrasi.Task) error {
 		emptyTextAsNil(t.Workbasket),
 		t.CreatedAt.UTC(),
 	); err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menyisipkan tugas: %w", err)
+		return fmt.Errorf("registrasi/sqlstore: menyisipkan tugas ke CPNC_TUGAS: %w", err)
 	}
 	return nil
 }
@@ -224,4 +224,37 @@ func scanTask(row scanner) (registrasi.Task, error) {
 	return t, nil
 }
 
-var _ registrasi.TaskRepo = (*TaskStore)(nil)
+// UnassignedTechnicalTasks memenuhi registrasi.UnassignedTasks.
+func (r *TaskStore) UnassignedTechnicalTasks(ctx context.Context) ([]registrasi.Task, error) {
+	return r.collect(ctx, executorFrom(ctx, r.db), "tugas_belum_bertuan", registrasi.OperatorUnassigned)
+}
+
+// LockUnassigned memenuhi registrasi.UnassignedTasks.
+func (r *TaskStore) LockUnassigned(ctx context.Context, taskID string) (registrasi.Task, error) {
+	row := executorFrom(ctx, r.db).QueryRowContext(ctx, loadQuery("tugas_kunci_belum_bertuan"), taskID, registrasi.OperatorUnassigned)
+	t, err := scanTaskRow(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return registrasi.Task{}, registrasi.ErrTaskNotFound
+	}
+	if err != nil {
+		return registrasi.Task{}, fmt.Errorf("registrasi/sqlstore: mengunci tugas %s: %w", taskID, err)
+	}
+	return t, nil
+}
+
+// Reassign memenuhi registrasi.UnassignedTasks.
+func (r *TaskStore) Reassign(ctx context.Context, taskID, to string) error {
+	res, err := executorFrom(ctx, r.db).ExecContext(ctx, loadQuery("tugas_pindah_dari_antrean"), to, taskID, registrasi.OperatorUnassigned)
+	if err != nil {
+		return fmt.Errorf("registrasi/sqlstore: memindahkan tugas %s: %w", taskID, err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return registrasi.ErrTaskAlreadyClaimed
+	}
+	return nil
+}
+
+var (
+	_ registrasi.TaskRepo        = (*TaskStore)(nil)
+	_ registrasi.UnassignedTasks = (*TaskStore)(nil)
+)

@@ -2,9 +2,53 @@
 --
 -- TIGA tabel, dan aplikasi ini menulis SATU kolom pada satu di antaranya:
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK  sumber daftar     — hanya DIBACA, milik engine Pega
+--   POOLDATA.JSON_KLAIM             sumber daftar     — hanya DIBACA (snapshot kasus Pega)
 --   POOLDATA.T_CLAIM_PNC            klaim sebenarnya  — DIBACA, dan satu kolom DITULIS
 --   POOLDATA.T_GENERAL              tabel polis       — hanya DIBACA
+--
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08)
+-- ============================================================================
+--
+-- Keputusan Work Owner 2026-10-08: tabel objek kerja Pega (`DATAPEGA.PC_ASM_FW_GCNMFW_WORK`)
+-- SUDAH TIDAK DIPAKAI. Penjelasan di bawah tentang kolom `TKA_1`, `TANGGALDOKLENGKAP`,
+-- `REGISTERDATE_1`, dan `PYID` adalah REKAMAN asal-usul aturan Report Definition; yang kini
+-- dijalankan adalah pemetaan berikut, diukur di Oracle dev portal ASM pada 2026-10-08:
+--
+--   Pega (objek kerja)         Sumber baru
+--   -------------------------- ----------------------------------------------------------
+--   PZINSKEY                   JSON_KLAIM.IDPEGA  (= T_CLAIM_PNC.CLAIMID)
+--   PYID                       REPLACE(IDPEGA, 'ASM-FW-GCNMFW-WORK ', '')
+--   TKA_1  (.ClaimData.TKA)    JSON_VALUE(DATA_JSONBLOB, '$.TKA') pada snapshot TERAKHIR
+--   TANGGALDOKLENGKAP          JSON_VALUE(DATA_JSONBLOB, '$.TanggalDokLengkap'), idem
+--   PYSTATUSWORK               T_CLAIM_PNC.STATUSWORK
+--   POLICYNO · QQNAME          T_CLAIM_PNC.NOPOLIS · QQNAME
+--   DATEOFLOSS_1               T_CLAIM_PNC.DATEOFLOSS (DATE)
+--   REGISTERDATE_1 (teks)      T_CLAIM_PNC.REGISTERDATE (DATE) — pemindai Go ikut berubah
+--
+-- # Kenapa penanda TKA diambil dari JSON_KLAIM
+--
+-- Penanda TKA TIDAK ADA di tabel relasional mana pun: `T_CLAIM_PNC.TKA` kosong pada seluruh
+-- baris (prosedur konversi tidak mengisinya), dan `T_CLAIMLIST_ADMIN` tidak punya kolomnya.
+-- Satu-satunya tempat ia tersimpan adalah snapshot kasus di `POOLDATA.JSON_KLAIM` — tabel yang
+-- juga dibaca modul riwayat klaim, laporan klaim, dan akseptasi. `JSON_KLAIM` menyimpan
+-- BEBERAPA versi per kasus (16.257 baris untuk 2.470 kasus); yang dipakai versi terakhir
+-- menurut `TGL_INPUT`. Seri `TGL_INPUT` ada, tetapi tidak satu pun berbeda nilai TKA-nya.
+--
+-- # Akibat yang terukur: populasi BERTAMBAH
+--
+-- Kolom `TKA_1` Pega hanya terisi pada 11 kasus, padahal snapshotnya bertanda TKA pada 29
+-- kasus — 18 kasus lain tidak pernah di-indeks ulang Pega setelah kolomnya di-expose. Daftar
+-- menunggu karena itu naik dari 2 baris (versi lama) menjadi 15 baris. Satu baris lama hilang:
+-- kasus yatim yang tidak ada di `T_CLAIM_PNC` MAUPUN `JSON_KLAIM` — penanda TKA-nya hanya
+-- tercatat di tabel kerja yang kini tidak dipakai.
+--
+-- # Status pekerjaan NULL tidak lagi menyembunyikan baris
+--
+-- `T_CLAIM_PNC.STATUSWORK` dapat NULL (diisi prosedur konversi yang dapat tertinggal). Baris
+-- seperti itu TETAP TAMPIL: menyembunyikannya berarti menyembunyikan pekerjaan yang belum
+-- terbukti selesai. Pada data 2026-10-08 tidak ada klaim TKA yang statusnya NULL.
 --
 -- Empat aturan yang mengikat seluruh berkas ini:
 --   1. Kolom disebut namanya; SELECT * dilarang.
@@ -131,6 +175,32 @@
 --
 -- `PYID` menjadi pemutus di ujung: tanpa kolom unik di akhir, dua baris bertanggal sama
 -- dapat bertukar tempat antar pemuatan.
+--
+-- SUMBER BARU (2026-10-08): urutannya kini `c.REGISTERDATE` (DATE, menaik, NULL di akhir)
+-- lalu `x.IDPEGA` sebagai pemutus unik. Tanggal di `T_CLAIM_PNC` sama dengan `REGISTERDATE_1`
+-- Pega pada 1.248 kasus, berbeda pada 35, dan kosong pada 121 (seluruh kasus PNC); pada 11
+-- kasus TKA yang terbaca keduanya, seluruhnya sama.
+--
+-- # Rangkaian FROM yang dipakai bersama
+--
+-- Setiap kueri pembaca berangkat dari snapshot TERAKHIR `JSON_KLAIM` (alias `x`), lalu LEFT
+-- JOIN ke klaim dan polis. LEFT, bukan INNER: kasus yang klaimnya belum dikonversi ke
+-- `T_CLAIM_PNC` tetap tampil dengan `CLAIM_KEY` kosong, persis perilaku versi lama.
+-- Alias kolom di dalam subkueri ditulis TANPA kata `AS` — `query_test.go` membaca alias
+-- `AS` sebagai daftar kolom hasil.
+--
+-- # Penyaring status DI DALAM subkueri, dan kenapa
+--
+-- `JSON_VALUE` atas BLOB adalah bagian yang mahal: diukur 2026-10-08, kueri daftar yang
+-- mengurai seluruh 16.257 snapshot butuh ±4,8 detik. Karena itu snapshot milik klaim yang
+-- SUDAH lengkap dokumennya atau SUDAH selesai dibuang lebih dulu lewat `NOT EXISTS` —
+-- penyaringnya per kasus, sehingga nomor urut `RN` tidak berubah — dan penguraian JSON
+-- hanya dikerjakan pada sisanya (±3 detik; versi lama 0,24 detik). Penyaring status
+-- `:1` karena itu kini hidup di dalam subkueri; urutan bind tidak berubah.
+--
+-- Bentuk `NOT EXISTS (… TGLDOKLENGKAP IS NOT NULL OR STATUSWORK = :1)` setara dengan
+-- `c.TGLDOKLENGKAP IS NULL AND (c.STATUSWORK IS NULL OR c.STATUSWORK <> :1)` karena
+-- `CLAIMID` unik; kasus yang belum punya baris klaim lolos — itulah kasus yatim.
 
 
 -- name: tka_inbox_list
@@ -141,26 +211,34 @@
 -- daripada yang akan dikirim, supaya keberadaan baris ke-(N+1) membuktikan hasilnya
 -- terpotong. Itu yang membuat pemotongan di sini DINYATAKAN, berbeda dari
 -- `pyMaxRecords = 500` sistem lama yang memotong dalam diam.
-SELECT w.PZINSKEY       AS REFERENCE,
-       c.CLAIMID        AS CLAIM_KEY,
-       w.PYID           AS CLAIM_NUMBER,
-       w.POLICYNO       AS POLICY_NUMBER,
-       w.QQNAME         AS INSURED_NAME,
-       g.THEINSURED     AS PARTICIPANT_NAME,
-       w.DATEOFLOSS_1   AS DATE_OF_LOSS,
-       w.REGISTERDATE_1 AS REGISTERED_ON
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+SELECT x.IDPEGA                                    AS REFERENCE,
+       c.CLAIMID                                   AS CLAIM_KEY,
+       REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', '') AS CLAIM_NUMBER,
+       c.NOPOLIS                                   AS POLICY_NUMBER,
+       c.QQNAME                                    AS INSURED_NAME,
+       g.THEINSURED                                AS PARTICIPANT_NAME,
+       c.DATEOFLOSS                                AS DATE_OF_LOSS,
+       c.REGISTERDATE                              AS REGISTERED_ON
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
+    ON c.CLAIMID = x.IDPEGA
   LEFT JOIN POOLDATA.T_GENERAL g
     ON g.NOPOLIS = c.NOPOLIS
    AND g.PRODKE = c.PRODKE
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
- ORDER BY w.REGISTERDATE_1, w.PYID
+ ORDER BY c.REGISTERDATE, x.IDPEGA
  FETCH FIRST :2 ROWS ONLY
 
 -- name: tka_inbox_search
@@ -184,30 +262,38 @@ SELECT w.PZINSKEY       AS REFERENCE,
 -- kedua basis data.
 --
 -- ESCAPE '\' disebut eksplisit karena Oracle tidak punya karakter pelolos bawaan pada LIKE.
-SELECT w.PZINSKEY       AS REFERENCE,
-       c.CLAIMID        AS CLAIM_KEY,
-       w.PYID           AS CLAIM_NUMBER,
-       w.POLICYNO       AS POLICY_NUMBER,
-       w.QQNAME         AS INSURED_NAME,
-       g.THEINSURED     AS PARTICIPANT_NAME,
-       w.DATEOFLOSS_1   AS DATE_OF_LOSS,
-       w.REGISTERDATE_1 AS REGISTERED_ON
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+SELECT x.IDPEGA                                    AS REFERENCE,
+       c.CLAIMID                                   AS CLAIM_KEY,
+       REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', '') AS CLAIM_NUMBER,
+       c.NOPOLIS                                   AS POLICY_NUMBER,
+       c.QQNAME                                    AS INSURED_NAME,
+       g.THEINSURED                                AS PARTICIPANT_NAME,
+       c.DATEOFLOSS                                AS DATE_OF_LOSS,
+       c.REGISTERDATE                              AS REGISTERED_ON
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
+    ON c.CLAIMID = x.IDPEGA
   LEFT JOIN POOLDATA.T_GENERAL g
     ON g.NOPOLIS = c.NOPOLIS
    AND g.PRODKE = c.PRODKE
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
-   AND (UPPER(TRIM(w.PYID)) LIKE :2 ESCAPE '\'
-     OR UPPER(TRIM(w.POLICYNO)) LIKE :3 ESCAPE '\'
-     OR UPPER(TRIM(w.QQNAME)) LIKE :4 ESCAPE '\'
+   AND (UPPER(TRIM(REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', ''))) LIKE :2 ESCAPE '\'
+     OR UPPER(TRIM(c.NOPOLIS)) LIKE :3 ESCAPE '\'
+     OR UPPER(TRIM(c.QQNAME)) LIKE :4 ESCAPE '\'
      OR UPPER(TRIM(g.THEINSURED)) LIKE :5 ESCAPE '\')
- ORDER BY w.REGISTERDATE_1, w.PYID
+ ORDER BY c.REGISTERDATE, x.IDPEGA
  FETCH FIRST :6 ROWS ONLY
 
 -- name: tka_inbox_find_one
@@ -220,34 +306,45 @@ SELECT w.PZINSKEY       AS REFERENCE,
 --
 -- # TANPA `FOR UPDATE`, dan itu keputusan yang disengaja
 --
--- Kueri ini menyentuh tabel engine Pega. Menguncinya berarti menahan baris yang sedang
--- dilayani aplikasi lama, dan kunci yang ditahan permintaan kita dapat menghentikan alur
--- kerja Pega yang berjalan di atas kasus yang sama.
+-- Kueri ini menyentuh `T_CLAIM_PNC`, tabel yang juga ditulis prosedur konversi Pega.
+-- Menguncinya berarti menahan baris yang sedang dilayani aplikasi lama, dan kunci yang
+-- ditahan permintaan kita dapat menghentikan konversi yang berjalan di atas kasus yang sama.
+-- (Sebelum 2026-10-08 kueri ini membaca tabel objek kerja Pega; alasannya tetap sama.)
+--
+-- Nomor kasus dicocokkan dengan `IDPEGA` tanpa awalan kelasnya — padanan `PYID` Pega.
 --
 -- Penguncian tidak dibutuhkan di sini: pengaman pengisian ganda ada pada UPDATE-nya sendiri,
 -- yang menyertakan `TGLDOKLENGKAP IS NULL` dan memeriksa jumlah baris terpengaruhnya. Dua
 -- permintaan bersamaan hanya membuat satu di antaranya menyentuh satu baris; yang kedua
 -- menyentuh nol dan ditolak.
-SELECT w.PZINSKEY       AS REFERENCE,
-       c.CLAIMID        AS CLAIM_KEY,
-       w.PYID           AS CLAIM_NUMBER,
-       w.POLICYNO       AS POLICY_NUMBER,
-       w.QQNAME         AS INSURED_NAME,
-       g.THEINSURED     AS PARTICIPANT_NAME,
-       w.DATEOFLOSS_1   AS DATE_OF_LOSS,
-       w.REGISTERDATE_1 AS REGISTERED_ON
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+SELECT x.IDPEGA                                    AS REFERENCE,
+       c.CLAIMID                                   AS CLAIM_KEY,
+       REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', '') AS CLAIM_NUMBER,
+       c.NOPOLIS                                   AS POLICY_NUMBER,
+       c.QQNAME                                    AS INSURED_NAME,
+       g.THEINSURED                                AS PARTICIPANT_NAME,
+       c.DATEOFLOSS                                AS DATE_OF_LOSS,
+       c.REGISTERDATE                              AS REGISTERED_ON
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
+    ON c.CLAIMID = x.IDPEGA
   LEFT JOIN POOLDATA.T_GENERAL g
     ON g.NOPOLIS = c.NOPOLIS
    AND g.PRODKE = c.PRODKE
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
-   AND TRIM(w.PYID) = :2
+   AND TRIM(REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', '')) = :2
 
 -- name: tka_claim_set_document_date
 --
@@ -257,9 +354,12 @@ SELECT w.PZINSKEY       AS REFERENCE,
 -- terbaca di `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc`, yang mengambil kunci JSON
 -- `TanggalDokLengkap` ke dalam kolom itu.
 --
--- Penyaringnya memakai `CLAIMID`, bukan `CLAIMNO`: `CLAIMID` sama dengan `PZINSKEY` dan
--- itulah kunci yang barusan dibaca dari tabel kerja Pega. Memakai nomor klaim berarti
--- mencocokkan teks yang keunikannya tidak dibuktikan DDL mana pun (`R-08`).
+-- Penyaringnya memakai `CLAIMID`, bukan `CLAIMNO`: `CLAIMID` sama dengan `JSON_KLAIM.IDPEGA`
+-- (dulu `PZINSKEY`) dan itulah kunci yang barusan dibaca kueri daftar. Memakai nomor klaim
+-- berarti mencocokkan teks yang keunikannya tidak dibuktikan DDL mana pun (`R-08`).
+--
+-- SUMBER BARU (2026-10-08): pernyataan ini TIDAK berubah. WHERE-nya diverifikasi di Oracle
+-- dev dengan SELECT setara (`CLAIMID = :2 AND TGLDOKLENGKAP IS NULL`), tanpa menulis.
 --
 -- # `TGLDOKLENGKAP IS NULL` pada WHERE adalah pengaman pengisian ganda
 --
@@ -267,11 +367,11 @@ SELECT w.PZINSKEY       AS REFERENCE,
 -- yang membuat dua permintaan bersamaan tidak dapat sama-sama berhasil — dan karena itu
 -- surel ganda tidak dapat terjadi, tanpa perlu kunci idempotensi terpisah.
 --
--- # Tabel engine Pega TIDAK ikut ditulis
+-- # Snapshot kasus Pega TIDAK ikut ditulis
 --
--- Pega menyimpan nilai sebenarnya di BLOB kasus dan menyalinnya ke kolom
--- `PC_ASM_FW_GCNMFW_WORK.TANGGALDOKLENGKAP`. Menulis kolom itu langsung akan tertimpa tanpa
--- satu pun tanda begitu Pega menyimpan kasusnya lagi. Lihat kepala berkas ini.
+-- Pega menyimpan nilai sebenarnya di BLOB kasus (snapshotnya di `JSON_KLAIM`). Menulis
+-- salinannya dari luar akan tertimpa tanpa satu pun tanda begitu Pega menyimpan kasusnya
+-- lagi. Lihat kepala berkas ini.
 --
 -- Penulisan ini tetap menuntut serah-terima kepemilikan tulis (`P-1`, `D-63`): permintaan
 -- tertulis, persetujuan Work Owner, pelaksanaan DBA.
@@ -288,23 +388,31 @@ UPDATE POOLDATA.T_CLAIM_PNC
 -- pernyataannya dapat diurai dan dijalankan, bukan isinya — menarik satu baris berarti
 -- membaca data nasabah tanpa keperluan.
 --
--- Pemeriksaan ini berharga justru karena gabungannya menyentuh DUA skema sekaligus,
--- DATAPEGA dan POOLDATA. Hak baca yang kurang pada salah satunya baru terlihat saat
--- pengguna membuka layar — kecuali diperiksa lebih dulu di sini.
-SELECT w.PZINSKEY       AS REFERENCE,
-       c.CLAIMID        AS CLAIM_KEY,
-       w.PYID           AS CLAIM_NUMBER,
-       w.POLICYNO       AS POLICY_NUMBER,
-       w.QQNAME         AS INSURED_NAME,
-       g.THEINSURED     AS PARTICIPANT_NAME,
-       w.DATEOFLOSS_1   AS DATE_OF_LOSS,
-       w.REGISTERDATE_1 AS REGISTERED_ON
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+-- SUMBER BARU (2026-10-08): ketiga tabelnya kini berada di skema POOLDATA (`JSON_KLAIM`,
+-- `T_CLAIM_PNC`, `T_GENERAL`); pemeriksaan ini sekaligus membuktikan `JSON_VALUE` atas
+-- `DATA_JSONBLOB` dapat diurai.
+SELECT x.IDPEGA                                    AS REFERENCE,
+       c.CLAIMID                                   AS CLAIM_KEY,
+       REPLACE(x.IDPEGA, 'ASM-FW-GCNMFW-WORK ', '') AS CLAIM_NUMBER,
+       c.NOPOLIS                                   AS POLICY_NUMBER,
+       c.QQNAME                                    AS INSURED_NAME,
+       g.THEINSURED                                AS PARTICIPANT_NAME,
+       c.DATEOFLOSS                                AS DATE_OF_LOSS,
+       c.REGISTERDATE                              AS REGISTERED_ON
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
+    ON c.CLAIMID = x.IDPEGA
   LEFT JOIN POOLDATA.T_GENERAL g
     ON g.NOPOLIS = c.NOPOLIS
    AND g.PRODKE = c.PRODKE
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
  FETCH FIRST 0 ROWS ONLY
 
 -- name: tka_inbox_check_claim_column
@@ -323,42 +431,64 @@ SELECT c.TGLDOKLENGKAP AS CLAIM_DOCUMENT_DATE
 -- Cacah pekerjaan yang menunggu, tanpa dipotong.
 --
 -- Dipakai `claimpnc -periksa`. Angkanya menjawab pertanyaan yang tidak dapat dijawab layar
--- ketika hasilnya terpotong: BERAPA SEBENARNYA yang menunggu. Ia juga angka yang dapat
--- dibandingkan langsung dengan jumlah baris pada layar Pega — keduanya kini memakai
--- penyaring yang sama.
+-- ketika hasilnya terpotong: BERAPA SEBENARNYA yang menunggu. Penyaringnya sama persis
+-- dengan tka_inbox_list.
+--
+-- SUMBER BARU (2026-10-08): angka ini TIDAK LAGI sama dengan jumlah baris layar Pega —
+-- Pega menyaring kolom `TKA_1` yang hanya terisi pada sebagian kasus. Lihat kepala berkas.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+    ON c.CLAIMID = x.IDPEGA
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
 
 -- name: tka_inbox_count_pega_only
 --
 -- Cacah pekerjaan yang MASIH tampil di layar Pega tetapi SUDAH dikerjakan lewat aplikasi
 -- ini.
 --
--- # Angka inilah harga dari tidak menulis ke tabel engine Pega
+-- # Angka inilah harga dari tidak menulis ke data kasus Pega
 --
--- Aplikasi ini mengisi `T_CLAIM_PNC.TGLDOKLENGKAP`; Pega menyaring
--- `PC_ASM_FW_GCNMFW_WORK.TANGGALDOKLENGKAP`. Selama Pega belum menyinkronkan keduanya,
+-- Aplikasi ini mengisi `T_CLAIM_PNC.TGLDOKLENGKAP`; Pega memegang `TanggalDokLengkap` di
+-- BLOB kasusnya (snapshotnya `JSON_KLAIM`). Selama Pega belum menyinkronkan keduanya,
 -- barisnya hilang dari layar kita dan tetap ada di layar Pega.
 --
 -- Itu perbedaan yang DISENGAJA dan sudah dinyatakan di kepala berkas ini — tetapi ia harus
 -- dapat diukur, bukan sekadar diketahui. Bila angkanya menumpuk, petugas Pega akan mengisi
 -- ulang tanggal yang sebenarnya sudah diisi.
+--
+-- SUMBER BARU (2026-10-08): sisi Pega kini dibaca dari snapshot `JSON_KLAIM` terakhir,
+-- bukan dari kolom tabel objek kerja.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE EXISTS (SELECT 1
+                         FROM POOLDATA.T_CLAIM_PNC c0
+                        WHERE c0.CLAIMID = j.IDPEGA
+                          AND c0.TGLDOKLENGKAP IS NOT NULL
+                          AND (c0.STATUSWORK IS NULL OR c0.STATUSWORK <> :1))) x
   INNER JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+    ON c.CLAIMID = x.IDPEGA
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NOT NULL
-   AND w.PYSTATUSWORK <> :1
 
 -- name: tka_inbox_count_orphan_claim
 --
@@ -375,15 +505,27 @@ SELECT COUNT(*)
 -- membiarkan pengguna menekan tombol yang sudah pasti gagal.
 --
 -- Bila angkanya besar, yang perlu ditinjau adalah kelengkapan `T_CLAIM_PNC`, bukan layarnya.
+--
+-- SUMBER BARU (2026-10-08): kasusnya kini dikenali dari snapshot `JSON_KLAIM`. Tanpa baris
+-- klaim, status pekerjaannya tidak diketahui, sehingga penyaring status terpenuhi lewat
+-- cabang NULL — persis sebagaimana baris itu tampil di tka_inbox_list.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
-   AND NOT EXISTS (SELECT 1
-                     FROM POOLDATA.T_CLAIM_PNC c
-                    WHERE c.CLAIMID = w.PZINSKEY)
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
+  LEFT JOIN POOLDATA.T_CLAIM_PNC c
+    ON c.CLAIMID = x.IDPEGA
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
+   AND c.CLAIMID IS NULL
 
 -- name: tka_inbox_count_missing_participant
 --
@@ -394,32 +536,47 @@ SELECT COUNT(*)
 -- kolom "Nama Peserta" akan kosong bagi sebagian besar daftar — keadaan yang hanya dapat
 -- diketahui dari data nyata.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j
+         WHERE NOT EXISTS (SELECT 1
+                             FROM POOLDATA.T_CLAIM_PNC c0
+                            WHERE c0.CLAIMID = j.IDPEGA
+                              AND (c0.TGLDOKLENGKAP IS NOT NULL OR c0.STATUSWORK = :1))) x
   LEFT JOIN POOLDATA.T_CLAIM_PNC c
-    ON c.CLAIMID = w.PZINSKEY
+    ON c.CLAIMID = x.IDPEGA
   LEFT JOIN POOLDATA.T_GENERAL g
     ON g.NOPOLIS = c.NOPOLIS
    AND g.PRODKE = c.PRODKE
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.TANGGALDOKLENGKAP IS NULL
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TanggalDokLengkap') IS NULL
    AND c.TGLDOKLENGKAP IS NULL
-   AND w.PYSTATUSWORK <> :1
    AND (g.THEINSURED IS NULL OR TRIM(g.THEINSURED) IS NULL OR TRIM(g.THEINSURED) = '')
 
 -- name: tka_inbox_sample_registered_on
 --
--- Dua puluh nilai `REGISTERDATE_1` yang berbeda, untuk dilihat manusia.
+-- Dua puluh nilai tanggal registrasi yang berbeda, untuk dilihat manusia.
 --
--- Kolomnya `VARCHAR2(32)` dan isinya terverifikasi berformat `yyyymmdd` pada dua baris uji
--- (`20230510`, `20240319`). Kueri ini memastikan bentuk itu berlaku pada seluruh daftar,
--- bukan hanya pada dua baris — karena kolom teks dapat memuat apa saja, dan penguraiannya
--- di Go bergantung pada bentuk itu.
+-- SUMBER BARU (2026-10-08): sumbernya kini `T_CLAIM_PNC.REGISTERDATE` bertipe DATE, bukan
+-- `REGISTERDATE_1` teks `yyyymmdd` milik tabel objek kerja Pega. Pemindai Go membaca DATE
+-- lalu memformatnya `yyyymmdd`, sehingga pemeriksaan `claimpnc -periksa` tetap menerima
+-- bentuk yang sama; yang kini diperiksanya adalah apakah tanggalnya terbaca, bukan formatnya.
 --
 -- Ia tidak mengembalikan data nasabah: tanggal registrasi bukan identitas.
-SELECT DISTINCT w.REGISTERDATE_1 AS REGISTERED_ON
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND w.TKA_1 = '1'
-   AND w.REGISTERDATE_1 IS NOT NULL
+SELECT DISTINCT c.REGISTERDATE AS REGISTERED_ON
+  FROM (SELECT j.IDPEGA,
+               j.DATA_JSONBLOB,
+               ROW_NUMBER() OVER (PARTITION BY j.IDPEGA
+                                  ORDER BY j.TGL_INPUT DESC NULLS LAST,
+                                           j.TGL_KONVERSI DESC NULLS LAST) RN
+          FROM POOLDATA.JSON_KLAIM j) x
+  INNER JOIN POOLDATA.T_CLAIM_PNC c
+    ON c.CLAIMID = x.IDPEGA
+ WHERE x.RN = 1
+   AND JSON_VALUE(x.DATA_JSONBLOB, '$.TKA') = '1'
+   AND c.REGISTERDATE IS NOT NULL
  FETCH FIRST 20 ROWS ONLY

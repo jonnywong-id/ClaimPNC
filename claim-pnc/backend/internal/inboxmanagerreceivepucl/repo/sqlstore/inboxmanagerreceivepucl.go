@@ -225,6 +225,10 @@ func scanDocument(row scanner) (inboxmanagerreceivepucl.ReceiveDocument, error) 
 		doc.ClaimType = inboxmanagerreceivepucl.ClaimTypeOf(groupPanel.String)
 	}
 
+	// Kode mentahnya dibawa BERDAMPINGAN dengan Jenis Klaim. Syarat tampil sebagian isian
+	// mengecualikan `005` Travel, dan Jenis Klaim tidak membedakannya dari lini lain.
+	doc.GroupPanel = strings.TrimSpace(groupPanel.String)
+
 	return doc, nil
 }
 
@@ -238,11 +242,11 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_receive")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK, DATAPEGA.PC_ASSIGN_WORKLIST, "+
-				"atau POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST, POOLDATA.T_CLAIMLIST_ADMIN, "+
+				"POOLDATA.T_CLAIM_RECIVEDCLAIM, atau POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_rclpucl")).Scan(&ignored); err != nil {
-		return fmt.Errorf("membaca DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
+		return fmt.Errorf("membaca POOLDATA.TC_PNC_PUCL atau POOLDATA.T_CLAIM_PNC: %w", err)
 	}
 	return nil
 }
@@ -279,6 +283,7 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		inboxEntryAt, analystNote           sql.NullString
 		track, trackStatus, letterPrintedAt sql.NullString
 		claimAge, expiryStatus              sql.NullString
+		claimScreenReady                    sql.NullString
 		total                               sql.NullInt64
 	)
 
@@ -287,7 +292,7 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		&lossDate, &groupPanel, &senderName, &documentReceivedAt,
 		&sheetCount, &inboxEntryAt, &analystNote,
 		&track, &trackStatus, &letterPrintedAt, &claimAge, &expiryStatus,
-		&total,
+		&claimScreenReady, &total,
 	)
 	if err != nil {
 		return inboxmanagerreceivepucl.WorkItem{}, 0, err
@@ -310,6 +315,11 @@ func scanWorkItem(row scanner) (inboxmanagerreceivepucl.WorkItem, int, error) {
 		LetterPrintedAt:      letterPrintedAt.String,
 		ClaimAge:             claimAge.String,
 		ExpiryStatus:         expiryStatus.String,
+
+		// Penanda dibawa sebagai teks '1'/'0', bukan sebagai angka maupun boolean.
+		// Oracle tidak punya tipe boolean, dan teks adalah satu-satunya bentuk yang
+		// terbaca sama di Oracle dan PostgreSQL tanpa pemetaan tambahan di adapter.
+		ClaimScreenReady: claimScreenReady.String == "1",
 	}
 
 	// Jenis Klaim DITURUNKAN di sini, bukan di dalam kueri.

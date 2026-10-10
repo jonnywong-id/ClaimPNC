@@ -53,7 +53,8 @@ func query(name string) string {
 var (
 	complianceColumns = []string{
 		"CASE_ID", "REFERENCE", "POLICY_NUMBER", "INSURED_NAME",
-		"BUSINESS_NAME", "BRANCH_NAME", "ADMIN_NAME", "COMPLIANCE_SENT_DATE",
+		"BUSINESS_NAME", "BRANCH_NAME", "ADMIN_NAME", "GROUP_PANEL",
+		"TECHNICIAN_ID", "COMPLIANCE_SENT_DATE",
 	}
 
 	postAuditColumns = []string{

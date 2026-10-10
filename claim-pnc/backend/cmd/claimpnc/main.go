@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -59,6 +60,9 @@ import (
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/konversicoins"
+	"claim-pnc/internal/konversicoverage"
+	"claim-pnc/internal/konversiobjectitemfire"
 	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -91,6 +95,7 @@ import (
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/platform/emailserver"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/random"
@@ -254,6 +259,9 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	konversicoinshttp "claim-pnc/internal/konversicoins/http"
+	konversicoveragehttp "claim-pnc/internal/konversicoverage/http"
+	konversiobjectitemfirehttp "claim-pnc/internal/konversiobjectitemfire/http"
 	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
 	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
 	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
@@ -377,6 +385,7 @@ import (
 	menumemory "claim-pnc/internal/menu/repo/memory"
 	menusql "claim-pnc/internal/menu/repo/sqlstore"
 	menuusecase "claim-pnc/internal/menu/usecase"
+	slinkojkpega "claim-pnc/internal/monitoringslinkojk/adapter/pegaslik"
 	slinkojkhttp "claim-pnc/internal/monitoringslinkojk/http"
 	slinkojkmemory "claim-pnc/internal/monitoringslinkojk/repo/memory"
 	slinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
@@ -443,6 +452,13 @@ func run() error {
 		return err
 	}
 	defer assembly.close()
+
+	// Pekerjaan terjadwal hidup selama server hidup.
+	jobs, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	if err := startAutoPIC(jobs, cfg.AutoPIC, assembly.registrasi, logger); err != nil {
+		return err
+	}
 
 	spaFiles, err := spa.Files()
 	if err != nil {
@@ -1785,6 +1801,54 @@ func run() error {
 	//
 	// Identitasnya tetap dituntut ada. Susunan kolom laporan ke OJK beserta nomor CIF
 	// dan tanggal lahir debitur tidak boleh terbaca tanpa sesi.
+	// Konversi Coverage (`MENU_ID 87`) — alat bantu data uji: membaca dokumen coverage
+	// polis dari LIVE dan menulis tabel relasionalnya ke TEST. Koneksinya milik modul
+	// sendiri (KONVERSI_LIVE_* dan KONVERSI_TEST_*) dan baru dibuka saat pertama dijalankan.
+	konversiCoverageHandler := konversicoveragehttp.NewHandler(konversicoveragehttp.Options{
+		Config: konversicoverage.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoveragehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoveragehttp.Caller{}, false
+			}
+			return konversicoveragehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoverageHandler.Close()
+
+	// Konversi Object Item Fire (`MENU_ID 88`) — alat bantu data uji yang sama polanya:
+	// PropertyItemList polis Fire dari LIVE menjadi T_PROPERTYITEMLIST di TEST, sekaligus
+	// menyalin BLOB-nya. Memakai koneksi KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiObjectItemFireHandler := konversiobjectitemfirehttp.NewHandler(konversiobjectitemfirehttp.Options{
+		Config: konversiobjectitemfire.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversiobjectitemfirehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversiobjectitemfirehttp.Caller{}, false
+			}
+			return konversiobjectitemfirehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiObjectItemFireHandler.Close()
+
+	// Konversi Coins (`MENU_ID 89`) — alat bantu data uji yang sama polanya: CoinsList dokumen
+	// polis JSON_POLIS.DATA_JSONBLOB di LIVE menjadi T_COINSLIST di TEST. Memakai koneksi
+	// KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiCoinsHandler := konversicoinshttp.NewHandler(konversicoinshttp.Options{
+		Config: konversicoins.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoinshttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoinshttp.Caller{}, false
+			}
+			return konversicoinshttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoinsHandler.Close()
+
 	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
 		Service: assembly.monitoringSlinkOJK,
 		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
@@ -2509,6 +2573,12 @@ func run() error {
 				// export (`R-16`).
 				slinkojkhttp.Mount(protected, slinkOJKHandler, activePortalDeps)
 
+				// Konversi Coverage — TIDAK di balik pemeriksaan portal: koneksinya ditentukan
+				// konfigurasi modul, bukan portal yang dipilih pengguna.
+				konversicoveragehttp.Mount(protected, konversiCoverageHandler)
+				konversiobjectitemfirehttp.Mount(protected, konversiObjectItemFireHandler)
+				konversicoinshttp.Mount(protected, konversiCoinsHandler)
+
 				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
 				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut
 				// portal karena alasan yang sama dengan modul inbox lain, dan satu
@@ -2997,6 +3067,11 @@ type assembly struct {
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type storage struct {
+	// emailServer membaca akun surel POOLDATA.M_EMAIL_SERVER_PNC dari portal utama — sumber
+	// host, port, alamat, dan sandi seluruh pengirim surel. Nil pada mode tanpa Oracle:
+	// pengirim lalu memakai SMTP_* dari .env.
+	emailServer *emailserver.Store
+
 	user    auth.UserRepo
 	session auth.SessionRepo
 	portal  portal.Repo
@@ -3215,6 +3290,17 @@ type storage struct {
 	// metadatanya dicatat.
 	dokumenPenunjangStorage dokumenpenunjang.Storage
 
+	// dokumenPenunjangKodeAkses adalah `PENYIMPANAN_DOKUMEN_KODE_AKSES`, bila diisi.
+	//
+	// Disimpan di sini supaya buildExtraServices dapat membacanya tanpa ikut menerima
+	// seluruh config — modul lain di berkas itu tidak membutuhkannya, dan menambah satu
+	// parameter config ke sana akan membuka pintu bagi modul berikutnya untuk membaca apa
+	// pun dari config langsung.
+	//
+	// Kosong berarti token sekali pakai diterbitkan per unggahan, seperti
+	// `GENERAL.GET_TOKEN_STORAGE`. RAHASIA: tidak pernah dicatat ke log.
+	dokumenPenunjangKodeAkses string
+
 	// dokumenPenunjangConverter adalah klien layanan konversi gambar.
 	//
 	// Layanan TERSENDIRI di alamat tersendiri, bukan bagian dari penyimpanan — dan
@@ -3258,12 +3344,18 @@ type storage struct {
 	// atas, supaya kuerinya tidak disalin ke dua modul yang kelak dapat menyimpang.
 	dashboardSelector dashboardclaim.RepoSelector
 
-	// dashboardTransfers memilih penyimpanan PERMINTAAN transfer milik satu portal.
+	// dashboardAssignments memindahkan PIC Teknik klaim pada basis data satu portal.
 	//
-	// Terpisah dari dashboardSelector meski keduanya melayani satu layar, dan pembelahannya
-	// mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega, yang kedua menulis
-	// tabel milik aplikasi ini sendiri (`P-1`).
-	dashboardTransfers dashboardclaim.TransferRepoSelector
+	// Terpisah dari dashboardTransfers karena menulis tabel milik pihak yang BERBEDA:
+	// yang satu tabel aplikasi ini, yang lain `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` milik Pega.
+	dashboardAssignments dashboardclaim.AssignmentWriterSelector
+
+	// dashboardPIC memilih pembaca daftar PIC Teknik milik satu portal.
+	//
+	// Ia melayani modal Transfer, yang di layar lama berupa DAFTAR petugas dengan tombol
+	// "Assign" per baris (`Section/PNCTransferManagement_sec-Section.xml`), bukan isian
+	// bebas. Daftarnya dibaca dari master `POOLDATA.MST_USER_TEKNIK`.
+	dashboardPIC dashboardclaim.TechnicalPICReaderSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -3749,7 +3841,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	receiveTKAService, err := inboxreceivetkausecase.NewService(
 		inboxreceivetkausecase.Options{
 			RepoSelector: store.receiveTKASelector,
-			Notifier:     buildReceiveTKANotifier(cfg, logger),
+			Notifier:     buildReceiveTKANotifier(cfg, store, logger),
 			Logger:       logger,
 		})
 	if err != nil {
@@ -3867,7 +3959,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	xolService, err := masterxolusecase.NewService(masterxolusecase.Options{
 		RepoSelector: store.xolSelector,
-		Notifier:     buildXOLNotifier(cfg, logger),
+		Notifier:     buildXOLNotifier(cfg, store, logger),
 		Logger:       logger,
 	})
 	if err != nil {
@@ -4384,8 +4476,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	dashboardClaimService, err := dashboardclaimusecase.NewService(dashboardclaimusecase.Options{
 		RepoSelector: store.dashboardSelector,
 		ClosedClaim:  dashboardClosedReader,
-		Transfers:    store.dashboardTransfers,
-		IDs:          dashboardclaimmemory.IDGenerator{},
+		TechnicalPIC: store.dashboardPIC,
+		Assignments:  store.dashboardAssignments,
 		Clock:        clock.System{},
 	})
 	if err != nil {
@@ -4431,9 +4523,35 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	// Monitoring SLINK OJK (`MENU_ID 78`). MEMBACA SAJA — lihat slinkojkhttp.Mount.
+	// Monitoring SLINK OJK (`MENU_ID 78`).
 	slinkOJKService, err := slinkojkusecase.NewService(slinkojkusecase.Options{
 		RepoSelector: store.slinkOJKSelector,
+
+		// Pemanggil layanan pendaftaran klien untuk tombol "SLIK OJK".
+		//
+		// # Yang dipanggil BUKAN OJK
+		//
+		// `ASMRequestServiceCreateClient` pada aplikasi Pega `ASMFWInternalWork`. Nama
+		// tombolnya menyesatkan dan dipertahankan apa adanya (`D-13`). Kontraknya terbaca
+		// 2026-10-08 dari rule yang dikirim Work Owner — lihat paket pegaslik.
+		//
+		// # Alamat KOSONG adalah keadaan yang sah
+		//
+		// `D-75` menetapkan satu alamat per entitas, dan belum semua portal punya. Portal
+		// tanpa alamat menjawab 503 dengan sebabnya — bukan jatuh ke alamat bawaan, yang
+		// berarti mendaftarkan klien satu badan hukum ke sistem badan hukum lain (`R-20`).
+		//
+		// # Kredensial kosong mengirim TANPA otentikasi
+		//
+		// Itu keadaan layanannya hari ini (`pyUseAuthentication=false`). Keduanya tetap
+		// disediakan supaya keputusan Keamanan Informasi yang berbeda hanya mengubah satu
+		// nilai konfigurasi, bukan kode.
+		Sender: slinkojkpega.NewClient(slinkojkpega.Config{
+			BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN")),
+			Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN_PATH")),
+			User:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN_PENGGUNA")),
+			Password: os.Getenv("PEGA_LAYANAN_KLIEN_SANDI"),
+		}),
 	})
 	if err != nil {
 		store.close()
@@ -4601,7 +4719,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	extra.sparepart = sparepartService
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee, cfg.PATechnicalPIC, plaEmailSender{queue: pladlaService.queue})
 		if err != nil {
 			store.close()
 			return assembly{}, err
@@ -4881,18 +4999,11 @@ func buildAuctionHouse(cfg config.Config, logger *slog.Logger) inboxsalvage.Auct
 
 func buildReceiveTKANotifier(
 	cfg config.Config,
+	store storage,
 	logger *slog.Logger,
 ) inboxreceivetka.Notifier {
-	if !cfg.SMTP.TKAActive() {
-		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
-			slog.String("akibat",
-				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
-			slog.String("perbaikan",
-				"isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_TKA"))
-		return nil
-	}
-
-	return inboxreceivetkanotif.NewSender(inboxreceivetkanotif.Config{
+	smtpConfig := inboxreceivetkanotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -4900,7 +5011,33 @@ func buildReceiveTKANotifier(
 		From:     cfg.SMTP.From,
 		To:       cfg.SMTP.TKARecipients,
 		Timeout:  cfg.SMTP.Timeout,
-	})
+	}
+	if !smtpConfig.Complete() {
+		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
+			slog.String("akibat",
+				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
+			slog.String("perbaikan", "isi SMTP_PENERIMA_TKA"))
+		return nil
+	}
+	return inboxreceivetkanotif.NewSender(smtpConfig)
+}
+
+// emailAccountSource adalah sumber akun surel POOLDATA.M_EMAIL_SERVER_PNC untuk seluruh
+// pengirim surel, atau nil pada mode tanpa Oracle (pengirim memakai SMTP_* dari .env).
+func emailAccountSource(store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.Account
+}
+
+// adminEmailAccountSource adalah sumber akun surel untuk modul yang di Pega memakai Email
+// Account "Admin-PNC" (PLA/DLA, peringatan Master Rekening) — EMAIL_ACCOUNT_ADMIN_PNC.
+func adminEmailAccountSource(cfg config.Config, store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.With(cfg.SMTP.AdminAccount).Account
 }
 
 // buildMasterRekening menyusun modul Master Rekening di balik seam-nya.
@@ -4927,21 +5064,23 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 		notifier      masterrekening.Notifier
 	)
 
-	if cfg.SMTP.Active() {
-		notifier = masterrekeningnotif.NewSender(masterrekeningnotif.Config{
-			Host:     cfg.SMTP.Host,
-			Port:     cfg.SMTP.Port,
-			User:     cfg.SMTP.User,
-			Password: cfg.SMTP.Password,
-			From:     cfg.SMTP.From,
-			To:       cfg.SMTP.AlertRecipients,
-			Timeout:  cfg.SMTP.Timeout,
-		})
+	alertConfig := masterrekeningnotif.Config{
+		Account:  adminEmailAccountSource(cfg, store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.AlertRecipients,
+		Timeout:  cfg.SMTP.Timeout,
+	}
+	if alertConfig.Complete() {
+		notifier = masterrekeningnotif.NewSender(alertConfig)
 	} else {
 		notifier = &masterrekeningnotif.Fake{}
 		logger.Warn("pengirim surel tiruan dipakai",
 			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Cashier gagal"),
-			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_PERINGATAN"))
+			slog.String("perbaikan", "isi SMTP_PENERIMA_PERINGATAN"))
 	}
 
 	switch {
@@ -5084,6 +5223,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				"kolom laporan yang bersumber dari sana akan dikosongkan (R-03)")
 		}
 		primary := pool.Primary()
+		store.emailServer = emailserver.NewStore(primary, cfg.SMTP.EmailAccount)
 		store.legacy = sqlstore.NewLegacy(primary)
 		store.portal = portalsql.NewRepo(primary)
 		store.accountSelector = func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error) {
@@ -5530,6 +5670,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return dokumenpenunjangsql.NewRepo(conn), nil
 		}
 		store.dokumenPenunjangStorage = buildDocumentStorage(cfg, logger)
+		store.dokumenPenunjangKodeAkses = cfg.DocumentStorage.AccessCode
 		store.dokumenPenunjangConverter = buildImageConverter(cfg, logger)
 
 		// Access group dibaca dari koneksi UTAMA, bukan dari pool portal — lihat komentar
@@ -5558,17 +5699,32 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return dashboardclaimsql.NewRepo(conn), nil
 		}
 
-		// Permintaan transfer ditulis ke basis data entitas yang SAMA dengan klaimnya.
-		//
-		// Tabelnya dibuat migrasi `0014`, yang BELUM dijalankan DBA di lingkungan mana pun.
-		// Sampai itu terjadi, pencatatannya gagal dan layar menjawab 503 yang menyebutkan
-		// sebabnya — bukan 500 yang tidak menjelaskan apa-apa.
-		store.dashboardTransfers = func(alias string) (dashboardclaim.TransferRepo, error) {
+		// Daftar PIC Teknik dibaca dari basis data entitas yang SAMA dengan klaimnya:
+		// memindahkan klaim ke petugas entitas lain adalah kebocoran lintas badan hukum
+		// (`R-20`), bukan sekadar salah pilih.
+		store.dashboardPIC = func(alias string) (dashboardclaim.TechnicalPICReader, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
 				return nil, err
 			}
-			return dashboardclaimsql.NewTransferRepo(conn), nil
+			return dashboardclaimsql.NewRepo(conn), nil
+		}
+
+		// Pemindahan PIC Teknik menulis tabel kerja Pega — satu-satunya tulisan aplikasi ini
+		// ke skema DATAPEGA.
+		//
+		// Ia menuntut hak yang diminta bersama `pindahpic.sql`:
+		//
+		//     GRANT UPDATE (USERTEKNIS_1) ON DATAPEGA.PC_ASM_FW_GCNMFW_WORK TO <akun aplikasi>;
+		//
+		// Tanpa hak itu pemindahannya gagal pada `UPDATE`-nya, bukan saat dirakit — dan
+		// galatnya diteruskan apa adanya supaya sebabnya terbaca di log.
+		store.dashboardAssignments = func(alias string) (dashboardclaim.AssignmentWriter, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return dashboardclaimsql.NewAssignmentWriter(conn), nil
 		}
 
 		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
@@ -5763,7 +5919,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			if err != nil {
 				return nil, err
 			}
-			return reportkpisql.NewRepo(conn), nil
+			return reportkpisql.NewRepo(conn, anekaFor(anekaPool, alias)).WithLogger(logger), nil
 		}
 
 		// Report Klaim adalah satu-satunya modul yang menerima DUA koneksi: basis data
@@ -6078,11 +6234,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.dashboardSelector = func(string) (dashboardclaim.Repo, error) {
 			return dashboardMemory, nil
 		}
-		// Permintaan transfer ditampung di memori supaya tombolnya dapat dicoba tanpa Oracle
-		// DAN tanpa menunggu migrasi `0014`.
-		dashboardTransferMemory := dashboardclaimmemory.NewTransferStore()
-		store.dashboardTransfers = func(string) (dashboardclaim.TransferRepo, error) {
-			return dashboardTransferMemory, nil
+		// Pemindahan PIC Teknik dikerjakan di memori juga. Tanpa ini tombol Assign akan
+		// mencatat jejak tetapi daftarnya tidak berubah — berhasil yang tidak berbekas.
+		dashboardAssignMemory := dashboardclaimmemory.NewAssignmentWriter(dashboardMemory)
+		store.dashboardAssignments = func(string) (dashboardclaim.AssignmentWriter, error) {
+			return dashboardAssignMemory, nil
+		}
+		// Daftar PIC Teknik contoh, supaya modal Transfer dapat dicoba tanpa Oracle.
+		dashboardPICMemory := dashboardclaimmemory.NewPICReader()
+		store.dashboardPIC = func(string) (dashboardclaim.TechnicalPICReader, error) {
+			return dashboardPICMemory, nil
 		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
@@ -7429,8 +7590,9 @@ func claimStatusSelectorMemory(primaryAlias string) masterstatus.RepoSelector {
 //
 // Tempat yang benar bagi daftar ini kelak adalah master Penerima Notifikasi (`F-4`), yang
 // belum dibangun.
-func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier {
+func buildXOLNotifier(cfg config.Config, store storage, logger *slog.Logger) masterxol.Notifier {
 	smtpConfig := masterxolnotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -7445,7 +7607,7 @@ func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier
 
 	logger.Warn("pemberitahuan komite Master XOL tidak dikirim: SMTP atau penerimanya belum lengkap",
 		slog.String("modul", "masterxol"),
-		slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan XOL_PENERIMA_KOMITE"))
+		slog.String("perbaikan", "isi XOL_PENERIMA_KOMITE"))
 	return masterxolnotif.NewFake()
 }
 
@@ -8686,4 +8848,40 @@ func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxauto
 		panic(err)
 	}
 	return checker
+}
+
+// anekaFor mengambil koneksi KEDUA satu portal, atau nil bila tidak ada.
+//
+// Ketiadaannya BUKAN galat di sini: koneksi kedua memang boleh tidak terpasang, dan yang
+// menentukan akibatnya adalah repo yang menerimanya — Report Klaim mengosongkan kolom
+// yang bersumber dari sana, Report KPI menolak permintaan karena angkanya akan menilai
+// orang secara keliru.
+//
+// Keputusan itu sengaja TIDAK diambil di sini. Satu tempat yang memutuskan untuk semua
+// pemanggil akan memaksa kedua modul berperilaku sama, padahal taruhannya berbeda.
+func anekaFor(pool *db.Pool, alias string) *sql.DB {
+	if !pool.Has(alias) {
+		return nil
+	}
+	second, err := pool.For(alias)
+	if err != nil {
+		return nil
+	}
+	return second
+}
+
+// emailAccountLabel menyebut sumber akun surel untuk log, tanpa sandi.
+func emailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+}
+
+// adminEmailAccountLabel menyebut sumber akun surel Admin-PNC untuk log, tanpa sandi.
+func adminEmailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.With(cfg.SMTP.AdminAccount).AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 }

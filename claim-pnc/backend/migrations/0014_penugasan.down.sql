@@ -1,0 +1,29 @@
+-- 0014 turun — membatalkan tabel penugasan (Oracle 19c)
+--
+-- ============================================================================
+-- INI MENGHAPUS JEJAK PERPINDAHAN, BUKAN PEKERJAANNYA.
+-- ============================================================================
+--
+-- Tabel Pega tidak disentuh, baik saat naik maupun saat turun. Jadi setiap klaim tetap
+-- punya barisnya di `DATAPEGA.PC_ASSIGN_WORKBASKET`, dan antrean Compliance kembali
+-- menampilkan apa adanya.
+--
+-- Yang hilang adalah penanda **"sudah selesai di tahap ini"**.
+--
+-- Akibatnya terbalik dari yang biasanya ditakutkan: tidak ada pekerjaan yang lenyap —
+-- justru klaim yang sudah diputuskan **MUNCUL KEMBALI** di antrean Compliance, seolah
+-- belum pernah diperiksa. Keputusannya sendiri tetap aman di
+-- `CPNC_KEPUTUSAN_COMPLIANCE`, begitu pula riwayatnya.
+--
+-- Karena itu, sebelum menjalankan berkas ini di lingkungan yang sudah berisi data,
+-- daftarnya WAJIB diambil lebih dulu dan disimpan di luar basis data:
+--
+--   SELECT PENUGASAN_ID, NO_KLAIM, TAHAP, JENIS, DITUGASKAN_KE, WORKBASKET,
+--          STATUS, DIBUAT_PADA, DIUBAH_PADA
+--     FROM POOLDATA.CPNC_PENUGASAN
+--    ORDER BY NO_KLAIM, DIBUAT_PADA;
+--
+-- Tanpa itu, satu-satunya cara mengetahui klaim mana yang sudah diputuskan adalah
+-- mencocokkannya satu per satu dengan `CPNC_KEPUTUSAN_COMPLIANCE`.
+
+DROP TABLE POOLDATA.CPNC_PENUGASAN;

@@ -338,6 +338,14 @@ func (p *Assigner) Assign(_ context.Context, stage registrasi.Stage, claim regis
 		return registrasi.Assignee{Operator: pic}, nil
 	}
 
+	// Sama seperti pengisi SQL: petugas yang ditetapkan rule (registrasi.PlanTechnicalPIC)
+	// mendahului pemilihan beban. Memori tidak punya kurs, sehingga estimasi dipakai apa adanya.
+	if stage.Router == registrasi.RouterPNCTechnical {
+		if plan := registrasi.PlanTechnicalPIC(claim, claim.EstimateValue); plan.Operator != "" {
+			return registrasi.Assignee{Operator: plan.Operator}, nil
+		}
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

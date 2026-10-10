@@ -96,12 +96,14 @@ const DOKUMEN: DocumentResponse = {
       label: 'Register Klaim',
       activity_pega: 'CreateRegisterKlaimPNC',
       pemilik: '`B-2` Registrasi Klaim',
+      di_atas: false,
     },
     {
       kode: 'simpan',
       label: 'Simpan',
       activity_pega: '(flow action save)',
       pemilik: 'modul ini',
+      di_atas: false,
     },
   ],
 
@@ -184,7 +186,7 @@ describe('bentuk layar kerja', () => {
   })
 
   it('menggambar judul isian dan kelompok yang ditetapkan server', async () => {
-    // Ke-36 judul dibaca backend dari `Section/InputReceiveDocument_sect.xml`. Menyalinnya
+    // Ke-36 judul dibaca backend dari `Section/InputReceiveDocument-Section.xml`. Menyalinnya
     // ke layar berarti daftar yang sama hidup di dua tempat, dan yang satu akan tertinggal
     // saat yang lain diperbaiki.
     renderWorkScreen()

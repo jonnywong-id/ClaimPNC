@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -56,14 +57,26 @@ func lineFilter(line reportkpi.BusinessLine) string {
 
 // picQuery mengambil kueri bernama dan memasang penyaring lininya.
 func picQuery(name string, line reportkpi.BusinessLine) string {
-	return strings.Replace(query(name), lineFilterMarker, lineFilter(line), 1)
+	text := query(name)
+	if !strings.Contains(text, lineFilterMarker) {
+		// Panik, bukan mengembalikan kueri apa adanya.
+		//
+		// Mengembalikannya berarti penyaring lini HILANG tanpa satu pun tanda, dan
+		// laporannya memuat baris lini lain — kegagalan yang diam, dan hanya terlihat
+		// bila seseorang kebetulan menghitung ulang angkanya. Nama kueri adalah konstanta
+		// di dalam kode, jadi ketiadaannya cacat pemrograman yang harus terlihat saat
+		// pertama dijalankan.
+		panic("reportkpi/sqlstore: kueri " + name + " tidak punya penanda " + lineFilterMarker +
+			" — jangan memanggilnya lewat picQuery")
+	}
+	return strings.Replace(text, lineFilterMarker, lineFilter(line), 1)
 }
 
 // PICs mengembalikan petugas satu lini bisnis.
 func (r *Repo) PICs(ctx context.Context, line reportkpi.BusinessLine) ([]reportkpi.PICProfile, error) {
 	rows, err := r.db.QueryContext(ctx, query("pic_list"), string(line))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "pic_list", err)
 	}
 	defer rows.Close()
 
@@ -90,9 +103,9 @@ func (r *Repo) PICs(ctx context.Context, line reportkpi.BusinessLine) ([]reportk
 
 // Bands mengembalikan pita nilai satu komponen, terurut menurut `ID`.
 func (r *Repo) Bands(ctx context.Context, job, note string) ([]reportkpi.Band, error) {
-	rows, err := r.db.QueryContext(ctx, query("bands"), job, nullableText(note))
+	rows, err := r.db.QueryContext(ctx, query("bands"), job, nullableText(note), nullableText(note))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "bands", err)
 	}
 	defer rows.Close()
 
@@ -114,6 +127,34 @@ func (r *Repo) Bands(ctx context.Context, job, note string) ([]reportkpi.Band, e
 	return result, rows.Err()
 }
 
+// AdjusterCategories mengembalikan pita KATEGORI adjuster, terurut menurut `ID`.
+//
+// Kolom `NILAI` tidak ikut dibaca: pada baris `NILAI ADJUSTER` kolom itu kosong, dan yang
+// dipakai layar hanyalah `NOTE`.
+func (r *Repo) AdjusterCategories(ctx context.Context) ([]reportkpi.Band, error) {
+	rows, err := r.db.QueryContext(ctx, query("adjuster_categories"), reportkpi.AdjusterCategoryJob)
+	if err != nil {
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "adjuster_categories", err)
+	}
+	defer rows.Close()
+
+	var result []reportkpi.Band
+	for rows.Next() {
+		var noteText sql.NullString
+		var bottom, top sql.NullFloat64
+		if err := rows.Scan(&bottom, &top, &noteText); err != nil {
+			return nil, err
+		}
+		result = append(result, reportkpi.Band{
+			Job:    reportkpi.AdjusterCategoryJob,
+			Bottom: bottom.Float64,
+			Top:    top.Float64,
+			Note:   strings.TrimSpace(noteText.String),
+		})
+	}
+	return result, rows.Err()
+}
+
 // ThresholdDays mengembalikan ambang hari satu komponen.
 //
 // Tidak ada baris berarti komponennya memang tidak punya ambang hari, dan itu dikembalikan
@@ -121,7 +162,7 @@ func (r *Repo) Bands(ctx context.Context, job, note string) ([]reportkpi.Band, e
 // pernyataan yang sangat berbeda dari "tidak diukur lamanya".
 func (r *Repo) ThresholdDays(ctx context.Context, job, note string) (reportkpi.Score, error) {
 	var days sql.NullFloat64
-	err := r.db.QueryRowContext(ctx, query("threshold_days"), job, nullableText(note)).Scan(&days)
+	err := r.db.QueryRowContext(ctx, query("threshold_days"), job, nullableText(note), nullableText(note)).Scan(&days)
 	switch {
 	case err == sql.ErrNoRows:
 		return reportkpi.EmptyScore(), nil
@@ -135,10 +176,51 @@ func (r *Repo) ThresholdDays(ctx context.Context, job, note string) (reportkpi.S
 }
 
 // Holidays mengembalikan tanggal libur pada satu rentang, di luar akhir pekan.
+//
+// # Dua jalur, dan urutannya disengaja
+//
+// `GENERAL.HRD_LBR` tidak ada di basis data portal. Ia dapat dicapai dua cara:
+//
+//	KONEKSI KEDUA  `ANEKA_<PORTAL_ALIAS>_*`  → jalur UTAMA, sesuai `D-25`/`R-03`
+//	DB LINK        `@ASMD.SINARMAS.CO.ID`    → jalur CADANGAN, persis seperti Pega
+//
+// Jalur kedua dipakai HANYA bila koneksi kedua belum terpasang. Ia bukan jalan pintas:
+// `RDB List/CheckHoliday_SQL-SQL.xml` membaca objek yang sama lewat DB Link yang sama,
+// jadi memakainya berarti meniru Pega apa adanya (`P-5`).
+//
+// Urutannya tidak boleh dibalik. DB Link tidak ada di PostgreSQL, sehingga jalur cadangan
+// akan mati pada perpindahan basis data (`D-01`, `D-24`); menjadikannya jalur utama
+// berarti memindahkan kegagalan itu ke hari cutover, saat ia paling mahal. Pemakaiannya
+// dicatat sebagai PERINGATAN supaya jembatan sementara tidak diam-diam menjadi permanen.
+//
+// # Bila KEDUANYA gagal, permintaan DITOLAK — bukan dihitung tanpa kalender
+//
+// Tanpa kalender libur, perhitungan hari kerja hanya memotong akhir pekan — sehingga
+// setiap rentang yang memuat hari libur dihitung LEBIH PANJANG dari seharusnya, dan
+// setiap PIC tampak LEBIH LAMBAT dari kenyataannya. Angka itu menilai orang.
+//
+// Ia akan tampil sebagai nilai yang wajar, tanpa satu pun tanda bahwa ia salah — kelas
+// cacat yang sama dengan `GETCURRENCYSTANDARD` yang mengembalikan `1` dan `GETSELISIHJAM`
+// yang mengembalikan `0` (`D-49` butir 5 dan 10). Keduanya diperbaiki justru karena
+// kegagalannya diam. Penolakan di sini menjaga modul ini tidak mengulanginya.
 func (r *Repo) Holidays(ctx context.Context, from, to time.Time) ([]time.Time, error) {
-	rows, err := r.db.QueryContext(ctx, query("holidays"), from, to)
+	conn, name := r.aneka, "holidays"
+	if conn == nil {
+		conn, name = r.db, "holidays_dblink"
+		r.warnDBLinkOnce()
+	}
+
+	rows, err := conn.QueryContext(ctx, query(name), from, to)
 	if err != nil {
-		return nil, err
+		if name == "holidays_dblink" {
+			// Keduanya buntu. Yang dilaporkan adalah ketiadaan koneksi keduanya, karena
+			// ITU yang dapat ditindaklanjuti — galat DB Link hanya menyertainya sebagai
+			// keterangan, bukan sebagai perintah memperbaiki DB Link yang memang akan
+			// dipensiunkan.
+			return nil, fmt.Errorf("%w (jalur cadangan DB Link juga gagal: %v)",
+				ErrHolidayCalendarUnavailable, err)
+		}
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, name, err)
 	}
 	defer rows.Close()
 
@@ -161,7 +243,7 @@ func (r *Repo) ProgressCounts(
 ) ([]reportkpi.ProgressCount, error) {
 	rows, err := r.db.QueryContext(ctx, picQuery("progress_counts", q.Line), q.From, q.To)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "progress_counts", err)
 	}
 	defer rows.Close()
 
@@ -185,9 +267,9 @@ func (r *Repo) ProgressCounts(
 func (r *Repo) AnalysisSpans(
 	ctx context.Context, q reportkpi.PICQuery,
 ) ([]reportkpi.DateSpan, error) {
-	rows, err := r.db.QueryContext(ctx, picQuery("analysis_spans", q.Line), q.From, q.To)
+	rows, err := r.db.QueryContext(ctx, query("analysis_spans"), q.From, q.To)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "analysis_spans", err)
 	}
 	defer rows.Close()
 
@@ -211,9 +293,9 @@ func (r *Repo) AnalysisSpans(
 func (r *Repo) AcceptanceSpans(
 	ctx context.Context, q reportkpi.PICQuery,
 ) ([]reportkpi.AcceptanceSpan, error) {
-	rows, err := r.db.QueryContext(ctx, picQuery("acceptance_spans", q.Line), q.From, q.To)
+	rows, err := r.db.QueryContext(ctx, query("acceptance_spans"), q.From, q.To)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "acceptance_spans", err)
 	}
 	defer rows.Close()
 
@@ -239,9 +321,9 @@ func (r *Repo) AcceptanceSpans(
 func (r *Repo) ClosureSpans(
 	ctx context.Context, q reportkpi.PICQuery,
 ) ([]reportkpi.ClosureSpan, error) {
-	rows, err := r.db.QueryContext(ctx, picQuery("closure_spans", q.Line), q.From, q.To)
+	rows, err := r.db.QueryContext(ctx, query("closure_spans"), q.From, q.To)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: kueri %q: %w", ErrQueryFailed, "closure_spans", err)
 	}
 	defer rows.Close()
 

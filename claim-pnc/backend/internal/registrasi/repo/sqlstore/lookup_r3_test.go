@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestExchangeRateFind(t *testing.T) {
 	_, err := s.Find(ctx, " ", day)
 	require.ErrorIs(t, err, registrasi.ErrExchangeRateNotFound)
 
-	mock.ExpectQuery(be4Q("kurs_pada_tanggal")).WithArgs("USD", day).WillReturnRows(sqlmock.NewRows([]string{"k"}).AddRow("15000,5"))
+	mock.ExpectQuery(be4Q("kurs_pada_tanggal")).WithArgs("USD", "USD", day).WillReturnRows(sqlmock.NewRows([]string{"k"}).AddRow("15000,5"))
 	rate, err := s.Find(ctx, " USD ", day)
 	require.NoError(t, err)
 	require.Equal(t, registrasi.ExchangeRate(150_005_000), rate)
@@ -159,32 +160,108 @@ func TestAssignerLightestTechnician(t *testing.T) {
 	ctx := context.Background()
 	technical := registrasi.Stage{ID: "T", Router: registrasi.RouterPNCTechnical}
 
-	for line, group := range map[registrasi.LineOfBusiness]string{
-		registrasi.LinePersonalAccident: "PA",
-		registrasi.LineTravel:           "TRAVEL",
-		registrasi.LineFire:             "NONMBU",
-	} {
-		mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WithArgs(group).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow(" TEK1 "))
-		mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
-		got, err := a.Assign(ctx, technical, registrasi.Claim{Policy: registrasi.Policy{Line: line}}, "NIK1")
-		require.NoError(t, err)
-		require.Equal(t, registrasi.Assignee{Operator: "TEK1"}, got)
-	}
+	row := func() *sqlmock.Rows { return sqlmock.NewRows([]string{"o"}).AddRow(" TEK1 ") }
+	fire := registrasi.Policy{Line: registrasi.LineFire}
 
-	claim := registrasi.Claim{Policy: registrasi.Policy{Line: registrasi.LineFire}}
-	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC.
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
-	got, err := a.Assign(ctx, technical, claim, "NIK1")
+	pa := registrasi.Policy{Line: registrasi.LinePersonalAccident, BusinessType: "PA"}
+	position := func(v string) *sqlmock.Rows { return sqlmock.NewRows([]string{"p"}).AddRow(v) }
+
+	// Jabatan PA + TKI: GETDATA_PICTEKNIK memilih DIBADYASANTI, lalu COUNTER_QUOTA naik.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WithArgs("NIK1").WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WithArgs("DIBADYASANTI").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
+	got, err := a.Assign(ctx, technical, registrasi.Claim{Policy: pa, TKI: true}, " nik1 ")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "TEK1"}, got)
+
+	// Jabatan selain PA (atau tidak ada di M_LOGIN_PNC): cabang TRAVEL, beban paling ringan.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(sqlmock.NewRows([]string{"p"}))
+	mock.ExpectQuery(be4Q("pic_teknik_travel")).WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs(" TEK1 ").WillReturnResult(sqlmock.NewResult(0, 1))
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
+	require.NoError(t, err)
+
+	// Petugas PA tidak ada di master: prosedur keluar tanpa PIC.
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WithArgs("ESTHERSIMBOLON").WillReturnRows(sqlmock.NewRows([]string{"o"}))
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
 	require.NoError(t, err)
 	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
 
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnError(be4Boom)
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
+	require.ErrorContains(t, err, "membaca jabatan operator")
+
+	// Rotasi Team A/B kolom FLAG2 (< 1M): terakhir A → B.
+	rotateSmall := func(last any, next string) {
+		mock.ExpectQuery(be4Q("rotasi_tim_baca_kecil")).WillReturnRows(sqlmock.NewRows([]string{"f"}).AddRow(last))
+		mock.ExpectExec(be4Q("rotasi_tim_tulis_kecil")).WithArgs(next).WillReturnResult(sqlmock.NewResult(0, 1))
+	}
+
+	// NONMBU < 1M, ASM leader: rotasi, tanpa saringan tim C, lalu COUNTER_QUOTA petugas terpilih
+	// naik (AddTJobCounterPIC_SQL) supaya giliran berputar.
+	rotateSmall("A", "B")
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: fire}, "NIK1")
+	require.NoError(t, err)
+
+	// NONMBU > 1M, ASM member: tim C, diurutkan dan dinaikkan COUNTER_QUOTA2 (AddTJobCounterPIC_SQL_22).
+	member := fire
+	member.Coinsurance.Role = "MEMBER"
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "Y").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban_besar")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: member, EstimateValue: registrasi.Rupiah(2_000_000_000)}, "NIK1")
+	require.NoError(t, err)
+
+	// Kandidat tetap per sumber bisnis: tanpa kueri daftar, tetapi bebannya tetap naik.
+	ibs := member
+	ibs.SourceOfBusiness = "10001551"
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WithArgs("YOSECHRISTOFER").WillReturnResult(sqlmock.NewResult(0, 1))
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: ibs}, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "YOSECHRISTOFER"}, got)
+
+	// Asuransi Kredit: PIC = admin, tanpa kueri dan tanpa beban.
+	credit := fire
+	credit.BusinessCode = "10165"
+	got, err = a.Assign(ctx, technical, registrasi.Claim{Policy: credit, CreatedBy: "ADMIN1"}, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: "ADMIN1"}, got)
+
+	claim := registrasi.Claim{Policy: fire}
+	// Tanpa petugas aktif: PNCTeknikRouter langkah 2 menugaskan ke ServicePNC. Rotasi tetap jalan.
+	rotateSmall(nil, "A")
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnRows(sqlmock.NewRows([]string{"o"}))
+	got, err = a.Assign(ctx, technical, claim, "NIK1")
+	require.NoError(t, err)
+	require.Equal(t, registrasi.Assignee{Operator: registrasi.OperatorUnassigned}, got)
+
+	rotateSmall("B", "A")
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu")).WillReturnError(be4Boom)
 	_, err = a.Assign(ctx, technical, claim, "NIK1")
 	require.ErrorContains(t, err, "memilih petugas teknis")
 
-	mock.ExpectQuery(be4Q("pic_teknik_paling_ringan")).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow("TEK1"))
+	// Rotasi > 1M memakai FLAG; galat bacanya menghentikan pemilihan.
+	big := registrasi.Claim{Policy: fire, EstimateValue: registrasi.Rupiah(2_000_000_000)}
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnRows(sqlmock.NewRows([]string{"f"}))
+	mock.ExpectExec(be4Q("rotasi_tim_tulis_besar")).WithArgs("A").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(be4Q("pic_teknik_nonmbu_besar")).WithArgs(registrasi.ExcludedTechnicalPIC, "N").WillReturnRows(row())
+	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban_besar")).WithArgs("TEK1").WillReturnResult(sqlmock.NewResult(0, 1))
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.NoError(t, err)
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.ErrorContains(t, err, "membaca rotasi tim FLAG")
+	mock.ExpectQuery(be4Q("rotasi_tim_baca_besar")).WillReturnRows(sqlmock.NewRows([]string{"f"}).AddRow("B"))
+	mock.ExpectExec(be4Q("rotasi_tim_tulis_besar")).WillReturnError(be4Boom)
+	_, err = a.Assign(ctx, technical, big, "NIK1")
+	require.ErrorContains(t, err, "menulis rotasi tim FLAG")
+
+	mock.ExpectQuery(be4Q("pic_teknik_jabatan")).WillReturnRows(position("PA"))
+	mock.ExpectQuery(be4Q("pic_teknik_pa")).WillReturnRows(sqlmock.NewRows([]string{"o"}).AddRow("TEK1"))
 	mock.ExpectExec(be4Q("pic_teknik_naikkan_beban")).WillReturnError(be4Boom)
-	_, err = a.Assign(ctx, technical, claim, "NIK1")
+	_, err = a.Assign(ctx, technical, registrasi.Claim{Policy: pa}, "NIK1")
 	require.ErrorContains(t, err, `menaikkan beban petugas "TEK1"`)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -214,6 +291,10 @@ func TestLookupHelpers(t *testing.T) {
 }
 
 // Objek polis: tanpa nomor/versi tidak dibaca; tiap sumber memakai kuerinya sendiri.
+//
+// Urutan kueri sejak coverage pindah ke tabel relasional (Work Owner, 2026-10-06) adalah
+// objek, spreading, coverage, lalu nama treaty. Urutan itu bukan selera: spreading dibaca
+// SEBELUM coverage karena setiap baris coverage langsung memungut spreading miliknya.
 func TestPolicyItemsItems(t *testing.T) {
 	db, mock := be4DB(t)
 	p := NewPolicyItems(db)
@@ -223,9 +304,12 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, got)
 
-	cov := `{"CoverageList":[{"Coverage":"11022","CoverageNote":"ICC C","TSI":"100"}]}`
 	mock.ExpectQuery(be4Q("polis_objek_cargo")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" OBJ1 ", " Kargo ", " Laut ", cov))
+		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" 1 ", " OBJ1 ", " Kargo ", " Laut "))
+	mock.ExpectQuery(be4Q("polis_spreading")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(7)).AddRow("1", "1", "11022", "10001", "OR", "100.0000", "0"))
+	mock.ExpectQuery(be4Q("polis_coverage_cargo")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(8)).AddRow("1", "1", " 11022 ", " ICC C ", "100", nil, nil, "0"))
 	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow("10001", "OR"))
 	got, err = p.Items(ctx, registrasi.Policy{Number: " POL ", ProdKe: " 1 ", Line: registrasi.LineMarineCargo})
 	require.NoError(t, err)
@@ -233,12 +317,13 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.Equal(t, "OBJ1", got[0].ID)
 	require.Equal(t, "Kargo", got[0].Name)
 	require.Equal(t, "Laut", got[0].Location)
+	require.Len(t, got[0].Coverage, 1)
 	require.Equal(t, "11022", got[0].Coverage[0].Code)
-
-	// Dokumen coverage rusak menghentikan pembacaan.
-	mock.ExpectQuery(be4Q("polis_objek_person")).WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow("O", "N", "L", "{rusak"))
-	_, err = p.Items(ctx, registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LinePersonalAccident})
-	require.ErrorContains(t, err, "dokumen coverage objek O")
+	require.Equal(t, "ICC C", got[0].Coverage[0].Name)
+	require.Equal(t, registrasi.Rupiah(100), got[0].Coverage[0].TSI)
+	require.Equal(t, []registrasi.SourceSpreading{
+		{TreatyType: "10001", TreatyName: "OR", Share: registrasi.PercentFull},
+	}, got[0].Coverage[0].Spreading)
 
 	mock.ExpectQuery(be4Q("polis_objek_aneka")).WillReturnError(be4Boom)
 	_, err = p.Items(ctx, registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineMiscellaneous})
@@ -252,27 +337,45 @@ func TestPolicyItemsItems(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Objek properti: coverage dibaca per INDEXOBJECT, kode ganda dibuang.
+// Objek tanpa satu baris pun TIDAK menjalankan kueri coverage maupun spreading.
+//
+// Tanpa jalan pintas ini, membuka polis yang objeknya belum ada menembak basis data tiga
+// kali untuk mendapat nol baris.
+func TestPolicyItemsSkipsCoverageWhenNoObject(t *testing.T) {
+	db, mock := be4DB(t)
+	p := NewPolicyItems(db)
+
+	mock.ExpectQuery(be4Q("polis_objek_cargo")).WillReturnRows(sqlmock.NewRows(be4Cols(4)))
+	got, err := p.Items(context.Background(), registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineMarineCargo})
+	require.NoError(t, err)
+	require.Nil(t, got)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Objek properti: kunci penggabungannya INDEXOBJECT, sementara ID objek klaim OBJECTNO.
+//
+// Lini Fire satu-satunya yang kedua nilainya berbeda, sehingga ia pula yang akan patah
+// lebih dulu bila penggabungan keliru memakai ID.
 func TestPolicyItemsPropertyCoverages(t *testing.T) {
 	db, mock := be4DB(t)
 	p := NewPolicyItems(db)
 	ctx := context.Background()
 	fire := registrasi.Policy{Number: "POL", ProdKe: "1", Line: registrasi.LineFire}
 
-	mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" IDX1 ", " OBJ1 ", " Gudang ", " Jakarta "))
-	a := `{"CoverageList":[{"Coverage":"C1","TSI":"10"}]}`
-	b := `{"CoverageList":[{"Coverage":"C1","TSI":"10"},{"Coverage":"C2","TSI":"20"}]}`
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
-	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnError(be4Boom)
-	_, err := p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca nama treaty")
+	object := func() {
+		mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
+			WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" 7 ", " OBJ1 ", " Gudang ", " Jakarta "))
+	}
+	noSpreading := func() {
+		mock.ExpectQuery(be4Q("polis_spreading")).WillReturnRows(sqlmock.NewRows(be4Cols(7)))
+	}
 
-	mock.ExpectQuery(be4Q("polis_objek_property")).WithArgs("POL", "1").
-		WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow(" IDX1 ", " OBJ1 ", " Gudang ", " Jakarta "))
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1", "IDX1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(a).AddRow(b))
+	object()
+	noSpreading()
+	mock.ExpectQuery(be4Q("polis_coverage_property")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(8)).
+			AddRow("7", "1", "C1", "Kebakaran", "10", nil, nil, "0").
+			AddRow("7", "2", "C2", "Gempa", "20", nil, "25", "0"))
 	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnRows(sqlmock.NewRows(be4Cols(2)))
 	got, err := p.Items(ctx, fire)
 	require.NoError(t, err)
@@ -280,22 +383,37 @@ func TestPolicyItemsPropertyCoverages(t *testing.T) {
 	require.Equal(t, "OBJ1", got[0].ID)
 	require.Len(t, got[0].Coverage, 2)
 	require.Equal(t, "C2", got[0].Coverage[1].Code)
+	// TSISUBLIMIT menang atas TSI bila terisi (coverageTSI).
+	require.Equal(t, registrasi.Rupiah(25), got[0].Coverage[1].TSISublimit)
 
-	object := func() {
-		mock.ExpectQuery(be4Q("polis_objek_property")).WillReturnRows(sqlmock.NewRows(be4Cols(4)).AddRow("IDX1", "OBJ1", "G", "J"))
-	}
 	object()
+	noSpreading()
+	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows(be4Cols(8)))
+	mock.ExpectQuery(be4Q("jenis_treaty_nama")).WillReturnError(be4Boom)
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca nama treaty")
+
+	object()
+	mock.ExpectQuery(be4Q("polis_spreading")).WillReturnError(be4Boom)
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca spreading polis")
+
+	object()
+	mock.ExpectQuery(be4Q("polis_spreading")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
+	_, err = p.Items(ctx, fire)
+	require.ErrorContains(t, err, "membaca baris spreading polis")
+
+	object()
+	noSpreading()
 	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnError(be4Boom)
 	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca coverage objek properti IDX1")
+	require.ErrorContains(t, err, "membaca coverage polis")
+
 	object()
+	noSpreading()
 	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow("1", "2"))
 	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "membaca dokumen coverage properti")
-	object()
-	mock.ExpectQuery(be4Q("polis_coverage_property")).WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow("{rusak"))
-	_, err = p.Items(ctx, fire)
-	require.ErrorContains(t, err, "dokumen coverage properti IDX1")
+	require.ErrorContains(t, err, "membaca baris coverage polis")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -309,11 +427,13 @@ func TestPolicyItemsItemOptions(t *testing.T) {
 	require.Nil(t, got)
 
 	fire := registrasi.Policy{Number: " POL ", ProdKe: " 1 ", Line: registrasi.LineFire}
-	doc := `{"PropertyItemList":[{"ItemType":" Bangunan ","PropertyItemGroup":"G1","TSIObjectItem":"1000.5"},
-		{"ItemType":"Bangunan","PropertyItemGroup":"G1","TSIObjectItem":"1"},
-		{"ItemType":"Hapus","FlagDelete":"1"},{"ItemType":""}]}`
+	cols := []string{"ITEMTYPE", "PROPERTYITEMGROUP", "TSIOBJECTITEM"}
 	mock.ExpectQuery(be4Q("item_pilihan_properti")).WithArgs("POL", "1", "OBJ1").
-		WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow(doc).AddRow(" "))
+		WillReturnRows(sqlmock.NewRows(cols).
+			AddRow(" Bangunan ", "G1", "1000.5").
+			AddRow("Bangunan", "G1", "1").
+			AddRow("", "G2", "5").
+			AddRow(nil, nil, nil))
 	got, err = p.ItemOptions(ctx, fire, " OBJ1 ")
 	require.NoError(t, err)
 	require.Equal(t, []registrasi.ItemOption{{Name: "Bangunan", Group: "G1", TSI: 100_050}}, got)
@@ -321,12 +441,40 @@ func TestPolicyItemsItemOptions(t *testing.T) {
 	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnError(be4Boom)
 	_, err = p.ItemOptions(ctx, fire, "OBJ1")
 	require.ErrorContains(t, err, "membaca item properti polis")
-	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow("1", "2"))
+	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
 	_, err = p.ItemOptions(ctx, fire, "OBJ1")
-	require.ErrorContains(t, err, "membaca dokumen item properti")
-	mock.ExpectQuery(be4Q("item_pilihan_properti")).WillReturnRows(sqlmock.NewRows([]string{"d"}).AddRow("{rusak"))
-	_, err = p.ItemOptions(ctx, fire, "OBJ1")
-	require.ErrorContains(t, err, "dokumen item properti")
+	require.ErrorContains(t, err, "membaca baris item properti")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPolicyItemsTravelBenefits(t *testing.T) {
+	db, mock := be4DB(t)
+	p := NewPolicyItems(db)
+	ctx := context.Background()
+
+	got, err := p.TravelBenefits(ctx, "  ")
+	require.NoError(t, err)
+	require.Nil(t, got, "tanpa plan tidak ada kueri")
+
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WithArgs("10089").
+		WillReturnRows(sqlmock.NewRows([]string{"ID", "INDCOVERAGENAME"}).
+			AddRow("10919", "   B.1. Bagasi  ").
+			AddRow("10920", "B.1. Bagasi").
+			AddRow("10921", "B.2. Keterlambatan").
+			AddRow("10922", nil))
+	got, err = p.TravelBenefits(ctx, " 10089 ")
+	require.NoError(t, err)
+	require.Equal(t, []registrasi.ItemOption{
+		{ID: "10919", Name: "B.1. Bagasi"},
+		{ID: "10921", Name: "B.2. Keterlambatan"},
+	}, got)
+
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WillReturnError(be4Boom)
+	_, err = p.TravelBenefits(ctx, "10089")
+	require.ErrorContains(t, err, "membaca manfaat plan Travel")
+	mock.ExpectQuery(be4Q("item_pilihan_travel")).WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow("1"))
+	_, err = p.TravelBenefits(ctx, "10089")
+	require.ErrorContains(t, err, "membaca baris manfaat Travel")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -344,4 +492,90 @@ func TestJSONTextAndParseMoney(t *testing.T) {
 	require.Equal(t, registrasi.Money(0), parseMoney("x"))
 	require.Equal(t, registrasi.Money(-150), parseMoney("-1.495"))
 	require.Equal(t, registrasi.Money(9_720_000_000), parseMoney("97200000.0000"))
+}
+
+// fakeAttendance menjawab absensi per petugas; tanggal dan nomor klaim yang diminta dicatat.
+type fakeAttendance struct {
+	by    map[string]registrasi.Attendance
+	err   map[string]error
+	asked []string
+}
+
+func (f *fakeAttendance) Attendance(_ context.Context, operator string, date time.Time, claimNumber string) (registrasi.Attendance, error) {
+	f.asked = append(f.asked, operator+"|"+date.Format("20060102")+"|"+claimNumber)
+	return f.by[operator], f.err[operator]
+}
+
+// TestAssignerAttendanceLoop: getRandomTeam_act step 15 — lewati yang tidak masuk, berhenti
+// pada akhir pekan/libur, dan kegagalan layanan dianggap hadir.
+func TestAssignerAttendanceLoop(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	claim := registrasi.Claim{Number: "PNCN.26.1", DateOfLoss: start.AddDate(0, 3, 0),
+		Policy: registrasi.Policy{Line: registrasi.LineFire, Number: "P1", CoverageStart: start, CoverageEnd: start.AddDate(1, 0, 0)}}
+	now := time.Date(2026, 10, 7, 20, 0, 0, 0, time.UTC) // 8 Oktober WIB
+	att := &fakeAttendance{by: map[string]registrasi.Attendance{
+		"A": {RuleTimeIn: "000000"},
+		"B": {RuleTimeIn: "080000"},
+	}, err: map[string]error{}}
+	a := NewAssigner(nil).WithAttendance(att, nil)
+	a.now = func() time.Time { return now }
+
+	require.Equal(t, "B", a.firstPresent(context.Background(), claim, []string{"A", " B ", "C"}))
+	require.Equal(t, []string{"A|20261008|PNCN.26.1", "B|20261008|PNCN.26.1"}, att.asked)
+
+	att.by["A"] = registrasi.Attendance{Day: "SABTU"}
+	require.Empty(t, a.firstPresent(context.Background(), claim, []string{"A", "B"}), "akhir pekan: tanpa PIC")
+
+	att.by["A"] = registrasi.Attendance{RuleTimeIn: "000000"}
+	att.by["B"] = registrasi.Attendance{RuleTimeIn: "000000"}
+	require.Empty(t, a.firstPresent(context.Background(), claim, []string{"A", "B"}), "semua tidak masuk")
+
+	att.err["A"] = be4Boom
+	require.Equal(t, "A", a.firstPresent(context.Background(), claim, []string{"A", "B"}), "layanan gagal = hadir")
+
+	// Tanggal kejadian di luar periode polis: jawaban absensi diabaikan.
+	outside := claim
+	outside.DateOfLoss = start.AddDate(-1, 0, 0)
+	att.asked = nil
+	require.Equal(t, "A", a.firstPresent(context.Background(), outside, []string{"A", "B"}))
+	require.Empty(t, att.asked)
+
+	// Tanpa sumber absensi: kandidat pertama.
+	require.Equal(t, "A", NewAssigner(nil).firstPresent(context.Background(), claim, []string{"A", "B"}))
+}
+
+// TestTaskStoreUnassigned: kueri agent PIC Teknik otomatis.
+func TestTaskStoreUnassigned(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewTaskStore(db)
+	ctx := context.Background()
+	created := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
+	row := []driver.Value{"T1", "K1", "PNCN.26.1", "pilih-surveyor", "WORKLIST", nil, "ServicePNC", created, nil, nil, nil}
+
+	mock.ExpectQuery(be4Q("tugas_belum_bertuan")).WithArgs("ServicePNC").
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).AddRow(row...))
+	got, err := s.UnassignedTechnicalTasks(ctx)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "ServicePNC", got[0].Owner)
+
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WithArgs("T1", "ServicePNC").
+		WillReturnRows(sqlmock.NewRows(be4Cols(11)).AddRow(row...))
+	locked, err := s.LockUnassigned(ctx, "T1")
+	require.NoError(t, err)
+	require.Equal(t, "T1", locked.ID)
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WillReturnRows(sqlmock.NewRows(be4Cols(11)))
+	_, err = s.LockUnassigned(ctx, "T1")
+	require.ErrorIs(t, err, registrasi.ErrTaskNotFound)
+	mock.ExpectQuery(be4Q("tugas_kunci_belum_bertuan")).WillReturnError(be4Boom)
+	_, err = s.LockUnassigned(ctx, "T1")
+	require.ErrorContains(t, err, "mengunci tugas T1")
+
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WithArgs("PIC1", "T1", "ServicePNC").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.Reassign(ctx, "T1", "PIC1"))
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WillReturnResult(sqlmock.NewResult(0, 0))
+	require.ErrorIs(t, s.Reassign(ctx, "T1", "PIC1"), registrasi.ErrTaskAlreadyClaimed)
+	mock.ExpectExec(be4Q("tugas_pindah_dari_antrean")).WillReturnError(be4Boom)
+	require.ErrorContains(t, s.Reassign(ctx, "T1", "PIC1"), "memindahkan tugas T1")
+	require.NoError(t, mock.ExpectationsWereMet())
 }

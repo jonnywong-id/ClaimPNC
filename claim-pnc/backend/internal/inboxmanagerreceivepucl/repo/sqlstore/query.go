@@ -39,7 +39,7 @@ func query(name string) string {
 	return text
 }
 
-// resultColumns adalah ke-18 alias yang dikembalikan SETIAP kueri daftar.
+// resultColumns adalah ke-19 alias yang dikembalikan SETIAP kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxmanagerreceivepucl.sql dan dengan urutan
 // pemindai scanWorkItem. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat
@@ -49,6 +49,7 @@ var resultColumns = []string{
 	"LOSS_DATE", "GROUP_PANEL", "SENDER_NAME", "DOCUMENT_RECEIVED_DATE",
 	"DOCUMENT_SHEET_COUNT", "INBOX_ENTRY_AT", "ANALYST_NOTE",
 	"TRACK", "TRACK_STATUS", "LETTER_PRINTED_AT", "CLAIM_AGE", "EXPIRY_STATUS",
+	"CLAIM_SCREEN_READY",
 	"TOTAL_ROWS",
 }
 

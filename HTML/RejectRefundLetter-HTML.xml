@@ -1,0 +1,824 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxSaveDateTime>20180425T064237.896 GMT</pxSaveDateTime>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxCreateOpName>YENI YENI</pxCreateOpName>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pxCreateOperator>YENIHULU2</pxCreateOperator>
+<pyRuleName>RejectRefundLetter</pyRuleName>
+<pyRuleFormStatusTime>20261006T035858.910 GMT</pyRuleFormStatusTime>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyCompact>false</pyCompact>
+<pxCreateDateTime>20180425T064215.894 GMT</pxCreateDateTime>
+<pyLabel>RejectRefundLetter</pyLabel>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxHostId>jboss2058</pxHostId>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyLabelOld>RejectRefundLetter</pyLabelOld>
+<pyDeleteMemo>checkpoint</pyDeleteMemo>
+<pxUpdateOpName>YENI YENI</pxUpdateOpName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pyHistoryObject>false</pyHistoryObject>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyReloadForm>true</pyReloadForm>
+<pxUpdateDateTime>20180425T064237.844 GMT</pxUpdateDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pySPRuleSetName>YENIHULU2@</pySPRuleSetName>
+<pxTabLabel>RejectRefundLetter</pxTabLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzInsKey>
+<pxInsId>!REJECTREFUNDLETTER</pxInsId>
+<pxCommitDateTime>20200312T080320.000 GMT</pxCommitDateTime>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_RejectRefundLetter_Stream_20180425T064216_268_GMT</pyJavaClassName>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pySourceStream>&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;Surat Penolakan dan Penarikan Dana Klaim&lt;/title&gt;
+&lt;style type="text/css"&gt;
+body {
+	margin: 5px;
+	padding: 0;
+	height: 400px;
+	width: 595px;
+	text-align: justify;
+	font-size: 10px;
+  	font:"Times New Roman";margin-top:15px; margin-bottom:20px; margin-right:45px; margin-left:55px;
+}
+h3 		{font-size:12px; font-style:"bold";}
+h5		{font-size:10px; font-style:"bold";}
+table	{font-size:10px; border: 1px solide black; border-collapse: collapse;}
+h4.kepuasan {text-align: center; font-size: 14px;}
+img{align : center;}
+table.kepuasan      {padding: 10px;  border: 1px solid black;}
+tr.kepuasan {padding: 5px; text-align: center;}
+td.kepuasan {padding: 5px; text-align: center;}
+table.kepuasanimage {padding: 5px;  border: 1px solid black;}
+td.kepuasanimage    {padding: 5px; border: 1px solid black;}
+tr.kepuasanimage    {padding: 2px; border: 1px solid black;}
+.ttd {page-break-before: always;}  
+.squareroot {font-family: Helvetica;}
+table.breakpage {page-break-before: always;}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;Body&gt;
+&lt;header&gt;  
+&lt;img alt="" src="webweb/LogoASM.PNG" style="max-width: 33%;"/&gt;
+&lt;/header&gt; &lt;br&gt;&lt;br&gt;
+Jakarta, &lt;pega:reference name="RejectPage.AcceptanceNo"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+No. &lt;pega:reference name="RejectPage.AcceptanceBank"&gt;&lt;/pega:reference&gt;/CL.AHID.ASM/&lt;pega:reference name="RejectPage.AcceptanceCurrency"&gt;&lt;/pega:reference&gt;/&lt;pega:reference name="RejectPage.AcceptanceDate"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+&lt;br&gt;
+&lt;p align="left"&gt;
+	Kepada Yth. &lt;br&gt;
+	&lt;b&gt;&lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_C.pyCompany"&gt;&lt;/pega:reference&gt;&lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+       &lt;pega:reference name="pyWorkCover.Policy.CIFData.AddressList(1).ASMAddress"&gt;&lt;/pega:reference&gt;&lt;br&gt;&lt;/b&gt;
+	&lt;br&gt;
+&lt;u&gt;&lt;strong&gt;Up.&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;br&gt;
+	Jabatan. &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;br&gt;&lt;br&gt;
+    Perihal: Tolakan dan Penarikan Dana Klaim Asuransi Kecelakaan Diri a/n &lt;pega:reference name="RejectPage.AcceptanceStream"&gt;&lt;/pega:reference&gt;&lt;/strong&gt;&lt;/u&gt;&lt;br&gt;
+&lt;/p&gt;
+
+&lt;p align="justify"&gt;
+	Dengan Hormat,
+&lt;/p&gt;
+&lt;p align="justify"&gt;
+	Bersama surat ini, kami informasikan bahwa diantara dokumen klaim dengan data sebagai berikut :
+&lt;/p&gt;
+&lt;table width=100%&gt;
+	&lt;tr&gt;
+		&lt;td&gt;a.&lt;/td&gt;
+		&lt;td&gt;Nama Pasien / No.Reg.&lt;/td&gt;
+		&lt;td&gt;:&lt;/td&gt;
+	  	&lt;td width=60%&gt;
+	  	&lt;/td&gt;
+	&lt;/tr&gt;
+	&lt;tr&gt;
+		&lt;td&gt;b.&lt;/td&gt;
+		&lt;td&gt;Tempat Kejadian/Perawatan&lt;/td&gt;
+		&lt;td&gt;:&lt;/td&gt;
+	  	&lt;td&gt;
+	  	&lt;/td&gt;
+	&lt;/tr&gt;
+	&lt;tr&gt;
+		&lt;td&gt;c.&lt;/td&gt;
+		&lt;td&gt;Tanggal Kejadian&lt;/td&gt;
+		&lt;td&gt;:&lt;/td&gt;
+	  	&lt;td&gt;
+	  	&lt;/td&gt;
+	&lt;/tr&gt;
+    &lt;tr&gt;
+		&lt;td&gt;d.&lt;/td&gt;
+		&lt;td&gt;Nilai Klaim yang Sudah Dibayarkan&lt;/td&gt;
+		&lt;td&gt;:&lt;/td&gt;
+	  	&lt;td&gt;
+	  	&lt;/td&gt;
+	&lt;/tr&gt;
+    &lt;tr&gt;
+		&lt;td&gt;e.&lt;/td&gt;
+		&lt;td&gt;Tanggal pembayaran klaim&lt;/td&gt;
+		&lt;td&gt;:&lt;/td&gt;
+	  	&lt;td&gt;
+	  	&lt;/td&gt;
+	&lt;/tr&gt;
+&lt;/table&gt;
+&lt;br&gt;
+&lt;p align="justify"&gt;
+	Bersama ini kami sampaikan bahwa klaim Asuransi dengan data-data tersebut di atas &lt;strong&gt;ditolak&lt;/strong&gt; berdasarkan hal-hal sebagai berikut :
+&lt;/p&gt;
+  &lt;table cellpadding="16"&gt;
+    &lt;tr&gt;
+      &lt;td&gt;
+        1.
+      &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;
+        2.
+      &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;
+        3.
+      &lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/table&gt;
+&lt;p align="justify"&gt;
+Atas hal ini kami mohon bantuan Bapak/Ibu untuk peserta melakukan pengembalian klaim senilai Rp._____________&amp;nbsp;ke rekening kami di &lt;strong&gt;Bank BCA Cabang Gajah Mada No. 0123.301.5859 a/n PT. Asuransi Sinar Mas &lt;/strong&gt;selambat-lambatnya 14 (empat belas) hari kalender sejak tanggal surat ini.
+&lt;/p&gt;
+&lt;p align="justify"&gt;
+Demikian kami sampaikan, atas perhatian dan kerjasama yang telah terjalin baik selama ini kami ucapkan terima kasih.
+&lt;/p&gt;
+&lt;p align="justify"&gt;
+Hormat Kami,
+&lt;/p&gt;
+&lt;br&gt;
+&lt;br&gt;
+&lt;table&gt;
+	&lt;tr&gt;
+		&lt;td style="width: 33%;"&gt;
+			&lt;p&gt;&lt;strong&gt;&lt;u&gt;Rudy Widjaja&lt;/u&gt;&lt;/strong&gt;&lt;/p&gt;
+			&lt;p&gt;Division Head&lt;/p&gt;
+		&lt;/td&gt;
+		&lt;td style="width: 33%;"&gt;&amp;nbsp;&lt;/td&gt;
+		&lt;td style="width: 33%;"&gt;
+			&lt;p&gt;&amp;nbsp;&lt;strong&gt;&lt;u&gt;dr.&lt;/u&gt;&lt;/strong&gt;&lt;strong&gt;&lt;u&gt; Margaretha Rosa G, AAK&lt;/u&gt;&lt;/strong&gt;&lt;/p&gt;
+		&lt;p&gt;Accident &amp;amp; Health Ins. Claim Dept. Head&lt;/p&gt;
+		&lt;/td&gt;
+	&lt;/tr&gt;
+&lt;/table&gt;
+&lt;br&gt;
+Tembusan:
+&lt;ol&gt;
+	&lt;li&gt;Direktur PT. Asuransi Sinar Mas&lt;/li&gt;
+	&lt;!--li&gt;Direktur PT. Bukit Makmur Mandiri Utama&lt;/li&gt;
+	&lt;li&gt;Direktur Kalibesar Raya Utama&lt;/li--&gt;
+  	&lt;li&gt;&lt;pega:when test="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName=''"&gt;Direktur &lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_C.pyCompany"&gt;&lt;/pega:reference&gt;&lt;/pega:when&gt;&lt;pega:when test="pyWorkCover.Policy.CIFData.Customer_C.pyCompany=''"&gt;Pihak Sdr. &lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName"&gt;&lt;/pega:reference&gt;&lt;/pega:when&gt;&lt;/li&gt;
+&lt;/ol&gt;
+Lampiran:
+&lt;ol&gt;
+	&lt;li&gt;Surat &lt;pega:reference name="RejectPage.AcceptanceBank"&gt;&lt;/pega:reference&gt;/CL.AHID.ASM/&lt;pega:reference name="RejectPage.AcceptanceCurrency"&gt;&lt;/pega:reference&gt;/&lt;pega:reference name="RejectPage.AcceptanceDate"&gt;&lt;/pega:reference&gt;, surat tolakan klaim Asuransi Kecelakaan Diri a/n &lt;strong&gt;&lt;pega:reference name="RejectPage.AcceptanceStream"&gt;&lt;/pega:reference&gt;&lt;/strong&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p style="page-break-before: always;"&gt;
+	Jakarta, &lt;pega:reference name="RejectPage.AcceptanceNo"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+	No. &lt;pega:reference name="RejectPage.AcceptanceBank"&gt;&lt;/pega:reference&gt;/CL.AHID.ASM/&lt;pega:reference name="RejectPage.AcceptanceCurrency"&gt;&lt;/pega:reference&gt;/&lt;pega:reference name="RejectPage.AcceptanceDate"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+	&lt;br&gt;
+ 	&lt;br&gt;
+	&lt;p align="left"&gt;
+		Kepada Yth. &lt;br&gt;
+		&lt;b&gt;&lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_C.pyCompany"&gt;&lt;/pega:reference&gt;&lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName"&gt;&lt;/pega:reference&gt;&lt;br&gt;
+           &lt;pega:reference name="pyWorkCover.Policy.CIFData.AddressList(1).ASMAddress"&gt;&lt;/pega:reference&gt;&lt;br&gt;&lt;/b&gt;
+		&lt;br&gt;
+		&lt;u&gt;&lt;strong&gt;Up.Nama Pasien &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;br&gt;
+		Jabatan. &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;br&gt;
+        Perihal: Tolakan dan Penarikan Dana Klaim Asuransi Kecelakaan Diri a/n &lt;pega:reference name="RejectPage.AcceptanceStream"&gt;&lt;/pega:reference&gt;&lt;/strong&gt;&lt;/u&gt;&lt;br&gt;
+	&lt;/p&gt;
+
+	&lt;p align="justify"&gt;
+		Dengan Hormat,
+	&lt;/p&gt;
+	&lt;p align="justify"&gt;
+		Bersama surat ini, kami informasikan bahwa diantara dokumen klaim dengan data sebagai berikut :
+	&lt;/p&gt;
+	&lt;table width=100%&gt;
+		&lt;tr&gt;
+			&lt;td&gt;a.&lt;/td&gt;
+			&lt;td&gt;Nama Pasien / No.Reg.&lt;/td&gt;
+			&lt;td&gt;:&lt;/td&gt;
+		  	&lt;td width=60%&gt;
+		  	&lt;/td&gt;
+		&lt;/tr&gt;
+		&lt;tr&gt;
+			&lt;td&gt;b.&lt;/td&gt;
+			&lt;td&gt;Tempat Kejadian/Perawatan&lt;/td&gt;
+			&lt;td&gt;:&lt;/td&gt;
+		  	&lt;td&gt;
+		  	&lt;/td&gt;
+		&lt;/tr&gt;
+		&lt;tr&gt;
+			&lt;td&gt;c.&lt;/td&gt;
+			&lt;td&gt;Tanggal Kejadian&lt;/td&gt;
+			&lt;td&gt;:&lt;/td&gt;
+		  	&lt;td&gt;
+		  	&lt;/td&gt;
+		&lt;/tr&gt;
+      	&lt;tr&gt;
+			&lt;td&gt;d.&lt;/td&gt;
+			&lt;td&gt;Nilai Klaim yang Sudah Dibayarkan&lt;/td&gt;
+			&lt;td&gt;:&lt;/td&gt;
+		  	&lt;td&gt;
+		  	&lt;/td&gt;
+		&lt;/tr&gt;
+	&lt;/table&gt;
+	&lt;br&gt;
+	&lt;p align="justify"&gt;
+      Maka kami mohon untuk dapat segera dilakukan pengembalian dana klaim tersebut di atas melalui transfer ke rekening kami di &lt;strong&gt;Bank BCA Cabang Gajah Mada No. 0123.301.5859 a/n PT. Asuransi Sinar Mas&lt;/strong&gt; selambat-lambatnya 14 (empat belas) hari kalender sejak tanggal surat ini.
+	&lt;/p&gt;
+    &lt;p align="justify"&gt;Keputusan tersebut didasarkan atas temuan kami sebagai berikut :&lt;/p&gt;
+      &lt;table cellpadding="16"&gt;
+        &lt;tr&gt;
+          &lt;td&gt;
+            1.
+          &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td&gt;
+            2.
+          &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td&gt;
+            3.
+          &lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/table&gt;
+	&lt;p align="justify"&gt;
+	Demikian kami sampaikan, atas perhatian dan kerjasama yang telah terjalin baik selama ini kami ucapkan terima kasih.
+	&lt;/p&gt;
+    &lt;p align="justify"&gt;
+	Hormat Kami,
+	&lt;/p&gt;
+	&lt;br&gt;
+	&lt;br&gt;
+	&lt;table&gt;
+		&lt;tr&gt;
+			&lt;td style="width: 33%;"&gt;
+				&lt;p&gt;&lt;strong&gt;&lt;u&gt;dr. Margaretha Rosa G, AAK&lt;/u&gt;&lt;/strong&gt;&lt;/p&gt;
+				&lt;p&gt;Accident &amp;amp; Health Ins. Claim Dept. Head&lt;/p&gt;
+			&lt;/td&gt;
+			&lt;td style="width: 33%;"&gt;&amp;nbsp;&lt;/td&gt;
+			&lt;td style="width: 33%;"&gt;
+				&lt;p&gt;&amp;nbsp;&lt;strong&gt;&lt;u&gt; dr. Wahyu Kristanti&lt;/u&gt;&lt;/strong&gt;&lt;/p&gt;
+			&lt;p&gt;Claim Section Head&lt;/p&gt;
+			&lt;/td&gt;
+		&lt;/tr&gt;
+	&lt;/table&gt;
+  	&lt;br&gt;
+	Tembusan:
+	&lt;ol&gt;
+		&lt;!--li&gt;HRD PT. Bukit Makmur Mandiri Utama&lt;/li&gt;
+		&lt;li&gt;PT. Kalibesar Raya Utama&lt;/li--&gt;
+      	&lt;li&gt;&lt;pega:when test="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName=''"&gt;Direktur &lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_C.pyCompany"&gt;&lt;/pega:reference&gt;&lt;/pega:when&gt;&lt;pega:when test="pyWorkCover.Policy.CIFData.Customer_C.pyCompany=''"&gt;Pihak Sdr. &lt;pega:reference name="pyWorkCover.Policy.CIFData.Customer_P.pyFirstName"&gt;&lt;/pega:reference&gt;&lt;/pega:when&gt;&lt;/li&gt;
+	&lt;/ol&gt;
+  &lt;/Body&gt;
+&lt;/html&gt;</pySourceStream>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxMoveImportDateTime>20191231T042624.447 GMT</pxMoveImportDateTime>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pyStreamName>RejectRefundLetter</pyStreamName>
+<pyShowJavaWindowName>GeneratedJava20261006T035858.935 GMT</pyShowJavaWindowName>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzIndexCount>84</pzIndexCount>
+<pyBaseRule>false</pyBaseRule>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyMemo>kasih header</pyMemo>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzRuleSetVersionPatch>38</pzRuleSetVersionPatch>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzDocumentKey>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180201T020816.125 GMT</pzOriginalInstanceKey>
+<pxUpdateOperator>YENIHULU2</pxUpdateOperator>
+<pyRuleSetVersion>01-01-38</pyRuleSetVersion>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pzChecksum>1134975200</pzChecksum>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!REJECTREFUNDLETTER</pxInsName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzStatus>valid</pzStatus>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-38 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180201T020816.125 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-17 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180129T030812.994 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-15 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-01-08 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180111T034638.511 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180109T012337.246 GMT</pzInsKey>
+<pyLabel>01-01-07 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyValue>3</pyValue>
+<pxListSubscript>6</pxListSubscript>
+<pyLabel>01-01-06 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180105T074809.349 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxListSubscript>7</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-05 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180103T064113.775 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleCompareList>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pxMessageSummary>
+<pxUnjustifiedHSWarningCount>1</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+</pxMessageSummary>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-Acceptance</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>RejectPage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-Compliance</pyPagesAndClassesClass>
+<pyPagesAndClassesPage>pyWorkCover</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pyRestore>false</pyRestore>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyFavorites>true</pyFavorites>
+<pyPreview>true</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyAvailability>false</pyAvailability>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyDelete>false</pyDelete>
+<pySiblings>true</pySiblings>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>true</pyShowJava>
+<pyDelegates>false</pyDelegates>
+<pyForward>true</pyForward>
+</pyToolBarSettings>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>AcceptanceCurrency</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ACCEPTANCECURRENCY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">60</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>DEFAULT</pxRuleFamilyName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pyRuleName>Default</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">61</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pyRuleName>Data-Address</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>DATA-ADDRESS</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">62</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CUSTOMER_P</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pyRuleName>Customer_P</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">63</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxTextArea</pyRuleName>
+<pxRuleFamilyName>PXTEXTAREA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">64</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyRuleName>Policy</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Compliance</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>POLICY</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">65</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASMADDRESS</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>ASMAddress</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">66</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ACCEPTANCEDATE</pxRuleFamilyName>
+<pyRuleName>AcceptanceDate</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">67</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CUSTOMER_C</pxRuleFamilyName>
+<pyRuleName>Customer_C</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">68</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>PYFIRSTNAME</pxRuleFamilyName>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pyRuleName>pyFirstName</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">69</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ACCEPTANCENO</pxRuleFamilyName>
+<pyRuleName>AcceptanceNo</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">70</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">71</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="13">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Data-Party-Com</pxRuleClassName>
+<pxRuleFamilyName>DATA-PARTY-COM</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>Data-Party-Com</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pyMethodStatus>Deprecated</pyMethodStatus>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">72</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="14">
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-ACCEPTANCE</pxRuleFamilyName>
+<pyRuleName>ASM-FW-GCNMFW-Data-Acceptance</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">73</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="15">
+<pyRuleName>ASM-FW-GCNMFW-Work-Compliance</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-Compliance</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-COMPLIANCE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">74</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="16">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>CIFDATA</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pyRuleName>CIFData</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">75</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="17">
+<pyRuleName>Data-Party-Person</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>DATA-PARTY-PERSON</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">76</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="18">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pyRuleName>AcceptanceBank</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ACCEPTANCEBANK</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">77</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="19">
+<pxRuleClassName>ASM-FW-GISFW-Data-Policy</pxRuleClassName>
+<pyRuleName>ASM-FW-GISFW-Data-Policy</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-POLICY</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">78</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="20">
+<pxRuleFamilyName>ADDRESSLIST</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pyRuleName>AddressList</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">79</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="21">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">80</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="22">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>AcceptanceStream</pyRuleName>
+<pxRuleFamilyName>ACCEPTANCESTREAM</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-Acceptance</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">81</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="23">
+<pyRuleName>ASM-FW-GISFW-Data-CIF</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-CIF</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-CIF</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">82</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="24">
+<pxRuleFamilyName>PYCOMPANY</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus>Deprecated-Class</pyMethodStatus>
+<pyRuleName>pyCompany</pyRuleName>
+<pxRuleClassName>Data-Party-Com</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">83</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-01-38 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyLabel>01-01-17 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180201T020816.125 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180129T030812.994 GMT</pzInsKey>
+<pyLabel>01-01-15 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxListSubscript>4</pxListSubscript>
+<pyLabel>01-01-08 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180111T034638.511 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-07 (Available)</pyLabel>
+<pxListSubscript>5</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180109T012337.246 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyLabel>01-01-06 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180105T074809.349 GMT</pzInsKey>
+<pxListSubscript>6</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pxListSubscript>7</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180103T064113.775 GMT</pzInsKey>
+<pyLabel>01-01-05 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Work-Compliance</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxPageName>pyWorkCover</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">57</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxPageName>RejectPage</pxPageName>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Data-Acceptance</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">58</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxPageName>pyWorkPage</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">59</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreatedTime>20180425T064237.832 GMT</pxWarningCreatedTime>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningMessage>(@baseclass)pxReferencingDeprecatedRule	This class is deprecated so that it won't appear in party class dropdown list.</pxWarningMessage>
+<pxWarningCreateOperator>ALDO_SAPUTRA</pxWarningCreateOperator>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxWarningDetails>(@baseclass)pxReferencingDeprecatedRule	This class is deprecated so that it won't appear in party class dropdown list.</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningName>Referencing deprecated rule</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">56</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningCreateOperator>ALDO_SAPUTRA</pxWarningCreateOperator>
+<pxWarningDetails>(@baseclass)pxReferencingDeprecatedRule	This class is deprecated so that it won't appear in party class dropdown list.</pxWarningDetails>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningName>Referencing deprecated rule</pxWarningName>
+<pxWarningCreatedTime>20180425T064237.832 GMT</pxWarningCreatedTime>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC REJECTREFUNDLETTER #20180425T064215.894 GMT</pzIndexOwnerKey>
+<pxWarningMessage>This class is deprecated so that it won't appear in party class dropdown list.</pxWarningMessage>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">56</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+</pagedata>

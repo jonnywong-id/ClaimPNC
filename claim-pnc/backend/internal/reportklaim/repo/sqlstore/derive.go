@@ -58,8 +58,19 @@ func bacaTanggalCSV(nilai string) time.Time {
 // bukan dengan fungsi tanggal, karena nilainya memang tersimpan sebagai teks dan bukan
 // sebagai kolom tanggal. Perlakuan itu ditiru: yang tidak berbentuk delapan angka
 // dikembalikan sebagai sel kosong, bukan dipaksa menjadi tanggal.
+//
+// Sejak 2026-10-08 sebagian sumbernya bukan lagi teks Pega melainkan kolom DATE
+// (`T_CLAIM_PNC.RECEIVEDATE`, `REPORTDATE`, `REGISTERDATE`), yang sudah tiba dalam bentuk
+// dd/mm/yyyy dari `text`. Bentuk itu sudah merupakan keluarannya, sehingga diteruskan apa
+// adanya — dan hanya bila benar-benar tanggal yang sah.
 func tanggalDariTeksPadat(nilai string) string {
 	nilai = strings.TrimSpace(nilai)
+	if len(nilai) == len(tanggalCSV) {
+		if _, err := time.Parse(tanggalCSV, nilai); err == nil {
+			return nilai
+		}
+		return ""
+	}
 	if len(nilai) != 8 {
 		return ""
 	}

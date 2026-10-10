@@ -152,7 +152,6 @@ func TestMetadataReturnsScreenDescription(t *testing.T) {
 	require.Equal(t, reportkpi.DefaultTabKPI, body["tab_bawaan"])
 	require.Equal(t, reportkpi.SourceTable, body["tabel_sumber"])
 	require.Equal(t, reportkpi.BandTable, body["tabel_tangga_nilai"])
-	require.Equal(t, reportkpi.CoordinatorInQuery, body["koordinator_di_kueri"])
 	require.Len(t, body["komponen"], 9)
 	require.Len(t, body["tipe_report"], 3)
 	require.Len(t, body["kelompok_admin"], 2)
@@ -161,14 +160,14 @@ func TestMetadataReturnsScreenDescription(t *testing.T) {
 	require.Len(t, body["lini_bisnis"], len(reportkpi.BusinessLines()))
 	require.NotEmpty(t, body["pic_dikecualikan_sla"])
 
-	// Kolom TIPE pada grid Summary ditandai hanya untuk tipe gabungan.
+	// KATEGORI dikirim sebagai kolom AKHIR, bukan kolom biasa — ia digambar sesudah
+	// kesembilan komponen, dan layar membutuhkan pemisahan itu untuk menyusun urutannya.
 	tabs := body["tab"].([]any)
 	found := false
 	for _, tab := range tabs {
 		for _, grid := range tab.(map[string]any)["grid"].([]any) {
-			for _, column := range grid.(map[string]any)["kolom"].([]any) {
-				c := column.(map[string]any)
-				if c["kunci"] == reportkpi.FieldType && c["hanya_tipe_gabungan"] == true {
+			for _, column := range grid.(map[string]any)["kolom_akhir"].([]any) {
+				if column.(map[string]any)["kunci"] == reportkpi.FieldCategory {
 					found = true
 				}
 			}
@@ -358,24 +357,38 @@ func TestDetailValidationIs422(t *testing.T) {
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 }
 
-// Penyaring yang dikirim balik daftar pilihan tidak memuat adjuster.
-func TestAdjustersListIgnoresChosenAdjuster(t *testing.T) {
+// Daftar pilihan mengabaikan SELURUH penyaring pada URL, bukan hanya adjuster.
+func TestAdjustersListIgnoresEveryFilter(t *testing.T) {
 	h := newHarness(t, memory.NewSampleStore())
 
 	rec := h.do(http.MethodGet,
 		"/report-kpi/adjuster/pilihan?tipe_report=FINAL&adjuster=PT%20TEPI%20CONTOH%20MANDIRI&"+period)
 	require.Equal(t, http.StatusOK, rec.Code)
+
 	body := decode(t, rec)
 	require.Equal(t, []any{
-		"PT ADJUSTER NUSA CONTOH", "PT PENILAI CONTOH PRATAMA", "PT TEPI CONTOH MANDIRI",
+		"CV SURVEI CONTOH SEJAHTERA",
+		"PT ADJUSTER NUSA CONTOH",
+		"PT LUAR CONTOH PERIODE",
+		"PT PENILAI CONTOH PRATAMA",
+		"PT TEPI CONTOH MANDIRI",
 	}, body["adjuster"])
-	require.Equal(t, "", body["penyaring"].(map[string]any)["adjuster"])
+
+	// Jawabannya TIDAK lagi memuat penyaring: mengirim baliknya akan membuat layar mengira
+	// daftarnya sudah menyempit mengikuti isian.
+	require.NotContains(t, body, "penyaring")
 }
 
-func TestAdjustersValidationIs422(t *testing.T) {
+// Tanpa penyaring apa pun, daftar tetap terisi — bukan 422.
+//
+// Sampai 2026-10-09 permintaan ini dijawab 422 karena periodenya kosong. Itu keliru:
+// layar lama mengisi dropdown saat dibuka, sebelum pengguna menyentuh tanggal mana pun.
+func TestAdjustersWithoutFilterStillAnswers(t *testing.T) {
 	h := newHarness(t, memory.NewSampleStore())
+
 	rec := h.do(http.MethodGet, "/report-kpi/adjuster/pilihan")
-	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.NotEmpty(t, decode(t, rec)["adjuster"])
 }
 
 // Ekspor ringkasan bawaan: kolom TIPE hanya muncul pada tipe ALL.
@@ -385,22 +398,29 @@ func TestExportSummaryCSV(t *testing.T) {
 	rec := h.do(http.MethodGet, "/report-kpi/adjuster/ekspor?tipe_report=FINAL&"+period)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "text/csv; charset=utf-8", rec.Header().Get("Content-Type"))
-	require.Equal(t, `attachment; filename="ringkasan-kpi-adjuster-final-2026-03-01-sd-2026-03-31.csv"`,
+	// Nama berkas APA ADANYA seperti Pega: tanpa periode, tanpa tipe report.
+	require.Equal(t, `attachment; filename="LAPORAN SUMMARY KPI ADJUSTER.csv"`,
 		rec.Header().Get("Content-Disposition"))
 	require.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 
+	// Baris judul APA ADANYA seperti `CSVPropHeaders` Pega — 11 kolom, TANPA `Status`,
+	// dan kolom terakhir tertulis `KATEGORY` (salah ketik yang ikut dibawa).
 	records := readCSV(t, rec)
-	require.Equal(t, "ADJUSTER", records[0][0])
-	require.Len(t, records[0], 1+9)
+	require.Equal(t, []string{
+		"ADJUSTER", "PENJADWALAN SURVEY", "IMMEDIATE ADVICE", "PRELIMINARY ADVICE",
+		"INTERIM REPORT", "UPDATE PROGRESS", "PROPOSE ADJUSTMENT", "TANGGAPAN KOMUNIKASI",
+		"FINAL REPORT", "NILAI", "KATEGORY",
+	}, records[0])
 	require.Len(t, records, 1+3)
 	// PT PENILAI punya satu komponen "N/A" yang menjadi sel kosong.
 	require.Equal(t, "PT PENILAI CONTOH PRATAMA", records[2][0])
 	require.Equal(t, "", records[2][3])
 
+	// Kolom `Status` TIDAK ikut ke berkas, bahkan pada tipe ALL — di Pega pun begitu.
 	rec = h.do(http.MethodGet, "/report-kpi/adjuster/ekspor?tipe_report=ALL&"+period)
 	records = readCSV(t, rec)
-	require.Equal(t, []string{"ADJUSTER", "TIPE"}, records[0][:2])
-	require.Contains(t, []string{"OUTSTANDING", "FINAL"}, records[1][1])
+	require.Len(t, records[0], 11)
+	require.NotContains(t, records[0], "Status")
 }
 
 func TestExportDetailCSV(t *testing.T) {
@@ -411,9 +431,11 @@ func TestExportDetailCSV(t *testing.T) {
 	require.Contains(t, rec.Header().Get("Content-Disposition"), "rincian-kpi-adjuster-final-")
 
 	records := readCSV(t, rec)
-	require.Equal(t, []string{"ADJUSTER", "NO CASE", "TIPE", "TANGGAL"}, records[0][:4])
+	// NO KLAIM dan STATUS SURVEY selalu kosong — lihat FieldClaimNumberAdjuster.
+	require.Equal(t,
+		[]string{"ADJUSTER", "NO CASE", "NO KLAIM", "STATUS SURVEY"}, records[0][:4])
 	require.Len(t, records, 1+4)
-	require.Equal(t, []string{"PT ADJUSTER NUSA CONTOH", "CONTOH-KPI-0003", "FINAL", "2026-03-25"},
+	require.Equal(t, []string{"PT ADJUSTER NUSA CONTOH", "CONTOH-KPI-0003", "", ""},
 		records[1][:4])
 }
 
@@ -440,11 +462,12 @@ func TestScorecardNonMBU(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := decode(t, rec)
 	require.Equal(t, "01/03/2026 - 31/03/2026", body["tanggal_efektif"])
-	require.Equal(t, "MORASOTARDODOTARIGAN", body["identitas"].(map[string]any)["nama_koordinator"])
+	require.Equal(t, "YUSMIARSIH DYAHPUSPITA S",
+		body["identitas"].(map[string]any)["nama_koordinator"])
 	require.Equal(t, map[string]any{"kelompok": "NONMBU", "dari": "2026-03-01", "sampai": "2026-03-31"},
 		body["penyaring"])
 	metrics := body["metrik"].([]any)
-	require.Len(t, metrics, 14)
+	require.Len(t, metrics, 15)
 	first := metrics[0].(map[string]any)
 	require.Equal(t, reportkpi.MetricLeaderOverSLA, first["kode"])
 	require.Equal(t, 1.0, first["nilai"])
@@ -544,18 +567,49 @@ func TestPICTeknikValidationIs422(t *testing.T) {
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 }
 
-// Berkas ekspor meratakan kartu skor: satu baris per PIC per komponen, ditambah rekapitulasi.
+// Berkas ekspor berisi DATA KLAIM MENTAH, bukan kartu skor.
+//
+// Sampai 2026-10-08 berkas ini meratakan kartu skor — dan itu tidak pernah dilakukan
+// Pega. Pega mengekspor data klaim, dan pilihan "Pilih Data KPI" menentukan kumpulan
+// yang mana. Judul kolomnya alias warisan Pega, dibawa apa adanya supaya berkas kami
+// dapat ditumpuk dengan berkas Pega saat dibandingkan (`P-5`).
 func TestPICTeknikExportCSV(t *testing.T) {
 	h := newHarness(t, memory.NewSampleStore())
 
 	rec := h.do(http.MethodGet, "/report-kpi/pic-teknik/ekspor?lini_bisnis=NONMBU&"+period)
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, `attachment; filename="kpi-pic-teknik-NONMBU-2026-03-01-sd-2026-03-31.csv"`,
+	require.Equal(t, `attachment; filename="kpi-pic-teknik-export-kpi-progress-NONMBU-2026-03-01-sd-2026-03-31.csv"`,
 		rec.Header().Get("Content-Disposition"))
 	records := readCSV(t, rec)
-	require.Equal(t, []string{"PIC", "KPI", "Total", "Tercapai", "Persentase", "Nilai"}, records[0])
-	require.Greater(t, len(records), 4)
-	require.Equal(t, "CONTOHPICDUA", records[1][0])
+	require.Equal(t,
+		[]string{"POLICYDECLARATIONNO", "IDPEGA", "QQNAME", "OLDPOLICYNO", "ASMCityId"},
+		records[0])
+	require.Len(t, records, 2)
+	require.Equal(t, "ASM-FW-GCNMFW-WORK PNC-0001", records[1][0])
+}
+
+// Tab KPI PIC Teknik punya DUA ekspor, dan yang ini mengekspor PENILAIANNYA.
+//
+// Ia terlewat sampai 2026-10-09: seluruh perhatian tertuju pada "Pilih Data KPI", dan
+// tombol di sebelah Cari — yang di Pega berlabel sama — tidak pernah dibangun.
+//
+// Judul kolomnya diambil dari `CSVPropHeaders` Pega apa adanya, termasuk `KETERANGAN`
+// yang di layar tertulis `KATEGORI`.
+func TestPICTeknikLaporanExportCSV(t *testing.T) {
+	h := newHarness(t, memory.NewSampleStore())
+
+	rec := h.do(http.MethodGet, "/report-kpi/pic-teknik/ekspor-laporan?lini_bisnis=NONMBU&"+period)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "text/csv; charset=utf-8", rec.Header().Get("Content-Type"))
+
+	records := readCSV(t, rec)
+	require.Equal(t, []string{
+		"PIC", "KETERANGAN", "TOTAL DATA", "JUMLAH TERCAPAI", "TERCAPAI (%)", "NILAI",
+	}, records[0])
+
+	// Satu baris per pasangan PIC x komponen, ditutup baris rekapitulasi "Leader".
+	require.Greater(t, len(records), 1)
+	require.Equal(t, "Leader", records[len(records)-1][0])
 }
 
 // --- Ekspor bervolume besar dan kegagalan di tengah unduhan ---

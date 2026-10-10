@@ -50,6 +50,18 @@ const (
 	// peladen. Tanpa pemisahan itu keduanya tampil sebagai kalimat yang sama, dan
 	// kalimat itu tidak mengarahkan ke mana pun.
 	CodeQueryFailed = "laporan_gagal_dijalankan"
+
+	// CodeMitraListUnavailable: Laporan Mitra kehilangan PENYARING barisnya.
+	//
+	// Dipisahkan dari CodeQueryFailed meski keduanya berarti laporan tidak terbit.
+	// Yang harus dilakukan berbeda, dan pemiliknya pun berbeda:
+	//
+	//	laporan_gagal_dijalankan  basis data menolak kueri   → baca pesan ORA di log
+	//	daftar_mitra_tidak_ada    koneksi kedua belum ada    → Infra mengisi ANEKA_*
+	//
+	// Tanpa pemisahan ini keduanya tampil sebagai kalimat yang sama, dan kalimat itu
+	// mengirim orang membaca log untuk masalah yang tidak meninggalkan jejak di log.
+	CodeMitraListUnavailable = "daftar_mitra_tidak_ada"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -153,6 +165,26 @@ func mapError(err error) (int, errorBody, bool) {
 			Kode: CodeQueryNotPorted,
 			Pesan: "Laporan ini belum tersedia untuk lini bisnis yang dipilih. " +
 				"Lini bisnis lain pada laporan yang sama tetap dapat diunduh.",
+		}, true
+
+	case errors.Is(err, reportklaimsql.ErrMitraListUnavailable):
+		// 409, bukan 500: tidak ada yang rusak. Laporan Mitra menyaring barisnya dengan
+		// daftar login mitra yang hidup di koneksi KEDUA portal, dan koneksi itu belum
+		// terpasang (`R-03`).
+		//
+		// Pesannya menyebut sebabnya, dan itu disengaja: tanpa menyebutnya, yang sampai
+		// ke pengguna hanyalah "berkas tidak dapat diunduh" — kalimat yang tidak
+		// mengarahkan ke mana pun, dan yang membuat orang melaporkannya sebagai cacat
+		// laporan padahal yang kurang sebuah konfigurasi.
+		//
+		// Yang TIDAK dilakukan: menerbitkan laporannya tanpa penyaring. Berkasnya akan
+		// berisi SELURUH petugas alih-alih petugas mitra — tetap wajar dilihat, dan tanpa
+		// satu pun tanda bahwa isinya bukan yang diminta.
+		return http.StatusConflict, errorBody{
+			Kode: CodeMitraListUnavailable,
+			Pesan: "Laporan Mitra belum dapat diunduh: daftar login mitra dibaca dari " +
+				"koneksi kedua portal, dan koneksi itu belum dikonfigurasi. " +
+				"Sampaikan ke tim Infra untuk mengisi ANEKA_<PORTAL>_* pada konfigurasi aplikasi.",
 		}, true
 
 	case errors.Is(err, reportklaim.ErrCallerUnknown):

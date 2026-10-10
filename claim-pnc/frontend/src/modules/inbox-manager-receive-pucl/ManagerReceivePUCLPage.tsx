@@ -3,17 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
+
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { formatPegaDateTime } from '@/components/format'
 
 import { ReceivePUCLTabs } from './ReceivePUCLTabs'
-import {
-  useExportManagerReceivePUCL,
-  useManagerReceivePUCLList,
-  useManagerReceivePUCLMetadata,
-} from './api'
+import { useManagerReceivePUCLList, useManagerReceivePUCLMetadata } from './api'
 import type { Tab, TabColumn, WorkItem } from './types'
 
 /**
@@ -104,9 +100,21 @@ export function ManagerReceivePUCLPage() {
     )
   }
 
+  /**
+   * Membuka LAYAR KERJA klaim RCL/PUCL — padanan Open Assignment pada grid RCL/PUCL.
+   *
+   * Yang dialamatkan NOMOR CASE, bukan `referensi`. Layar tujuannya membaca
+   * `POOLDATA.TC_PNC_PUCL` yang kuncinya `CLAIMID` — nomor case telanjang (`PNC-2266`) —
+   * sedangkan `referensi` di tab ini berisi `PZINSKEY` (`ASM-FW-GCNMFW-WORK PNC-2266`).
+   * Mengirim yang kedua menghasilkan "tidak ditemukan" untuk klaim yang sebenarnya ada.
+   */
+  function openClaim(row: WorkItem) {
+    navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.no_case)}`)
+  }
+
   if (portal === null) {
     return (
-      <PageFrame tab={active} exportable={false}>
+      <PageFrame>
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
@@ -121,7 +129,7 @@ export function ManagerReceivePUCLPage() {
 
   if (meta.isError) {
     return (
-      <PageFrame tab={active} exportable={false}>
+      <PageFrame>
         <ErrorMessage
           title="Layar tidak dapat dibuka"
           description={messageOf(meta.error)}
@@ -132,10 +140,7 @@ export function ManagerReceivePUCLPage() {
   }
 
   return (
-    <PageFrame
-      tab={active}
-      exportable={!blocked && (list.data?.paginasi.total ?? 0) > 0}
-    >
+    <PageFrame>
       <div className="mt-4">
         <ReceivePUCLTabs tabs={tabs} active={active} onSelect={selectTab} />
       </div>
@@ -150,7 +155,10 @@ export function ManagerReceivePUCLPage() {
             <div className="mt-4">
               <DataTable<WorkItem>
                 columns={columnsFor(tab, (row) => (
-                  <CaseLink item={row} onOpen={openDocument} />
+                  <CaseLink
+                    item={row}
+                    onOpen={tab.buka_layar_klaim ? openClaim : openDocument}
+                  />
                 ))}
                 rows={list.data?.baris ?? []}
                 rowKey={(row) => `${row.referensi}|${row.no_case}`}
@@ -192,19 +200,17 @@ export function ManagerReceivePUCLPage() {
   )
 }
 
-function PageFrame({
-  tab,
-  exportable,
-  children,
-}: {
-  tab: string
-  /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
-  exportable: boolean
-  children: ReactNode
-}) {
+/**
+ * Kepala layar.
+ *
+ * TIDAK ada tombol di sini, dan itu keputusan — bukan kelalaian. Versi sebelumnya memasang
+ * tombol "Export Data" di sudut kanan; layar lama tidak punya padanannya sama sekali, dan
+ * `D-13` menetapkan tampilan mengikuti Pega. Dicabut atas keputusan Work Owner 2026-10-10.
+ */
+function PageFrame({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+      <header className="border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
             Inbox Manager Receive / PUCL
@@ -227,41 +233,8 @@ function PageFrame({
             pembukaannya tercatat.
           </p>
         </div>
-        <ExportButton tab={tab} enabled={exportable} />
       </header>
       {children}
-    </div>
-  )
-}
-
-/**
- * Tombol ekspor.
- *
- * Ia KEMAMPUAN BARU: layar lama tidak punya tombol ekspor sama sekali — tidak ada activity
- * ekspor yang dirujuk harness maupun section-nya. Penambahannya diputuskan Work Owner
- * 2026-09-22, dan dinyatakan ke pengguna lewat panel selisih terencana di bawah tabel.
- *
- * Tombolnya dimatikan saat tidak ada yang dapat diekspor. Berkas kosong yang tetap terunduh
- * adalah jawaban yang membingungkan: pengguna tidak dapat membedakannya dari ekspor yang
- * gagal diam-diam.
- */
-function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
-  const ekspor = useExportManagerReceivePUCL()
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        tone="kedua"
-        disabled={!enabled || ekspor.isPending}
-        onClick={() => ekspor.mutate(tab)}
-      >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export Data'}
-      </Button>
-      {ekspor.isError && (
-        <p className="max-w-md text-right text-xs text-red-700" role="alert">
-          {messageOf(ekspor.error)}
-        </p>
-      )}
     </div>
   )
 }
@@ -304,22 +277,25 @@ function BlockedNotice({ tab }: { tab: Tab }) {
  *
  * # Apa yang sebenarnya terjadi saat diklik di Pega
  *
- * Tiga perilaku berurutan pada sel yang sama:
+ * Tiga perilaku berurutan pada sel yang sama, dan susunannya SAMA di kedua grid — hanya
+ * activity dan kelas objek kerjanya yang berbeda:
  *
- *   1. `runActivity`    `SetAssignmentInboxReceive_act`, parameter `kunci = .pzInsKey`
- *   2. `refresh`        thisSection
- *   3. `openAssignment` `pyInsKey = TempIns.pyNote`
+ *   grid        activity                        kelas
+ *   ----------- ------------------------------- ----------------------------------
+ *   Receive     `SetAssignmentInboxReceive_act`  ASM-FW-GCNMFW-Work-ReceiveDocument
+ *   RCL/PUCL    `SetAssignmentInboxPUCL_act`     ASM-FW-GCNMFW-Work-PNC
  *
- * Activity-nya sendiri nyaris kosong — `pyUsage = FLOW`, satu `Property-Set` ke
- * `TempIns.pyNote`. Ia kait pra-proses; yang bekerja adalah **Open Assignment** bawaan Pega,
- * yang membuka berkas penerimaan dokumen pada tahap alur kerjanya saat itu — dan flow action
- * yang menunggu di sana adalah `InputReceiveDocument`.
+ * Keduanya diikuti `refresh` thisSection lalu `openAssignment`. Activity-nya sendiri nyaris
+ * kosong — satu `Property-Set` ke `TempIns.pyNote`; ia kait pra-proses, dan yang bekerja
+ * adalah **Open Assignment** bawaan Pega.
  *
- * # Hanya tab Receive
+ * # Koreksi: tab RCL/PUCL PUNYA tautan
  *
- * `buka_layar_kerja` datang dari server, dan hanya tab Receive yang membawanya. Di layar lama
- * pun perilaku klik hanya dipasang pada kedua grid Receive; nomor case di grid RCL/PUCL
- * bukan tautan sama sekali.
+ * Versi sebelumnya menggambar nomor case tab itu sebagai teks biasa, dengan alasan tertulis
+ * "di layar lama pun tidak". Itu **salah**, dan terbantah dari export: sel `.pyID` pada grid
+ * RCL/PUCL bertanda `pyControlDisplayTitle = Link` dan `pyUIElement = link`, dengan
+ * `pyActivity = SetAssignmentInboxPUCL_act` berparameter `inskey = .pzInsKey`. Dilaporkan
+ * Work Owner 2026-10-10 dan diperbaiki.
  */
 function CaseLink({
   item,
@@ -333,6 +309,31 @@ function CaseLink({
   // Tanpa kunci teknis, Open Assignment tidak punya apa pun untuk dibuka. Nomornya tetap
   // digambar sebagai teks alih-alih sebagai tautan yang pasti gagal.
   if (item.referensi === '') return <span>{item.no_case}</span>
+
+  // Layar tujuannya belum punya data untuk baris ini.
+  //
+  // Pada tab RCL/PUCL, daftar dibaca dari antrean Pega sedangkan layar kerja klaim dibaca
+  // dari `POOLDATA.TC_PNC_PUCL` — dan keduanya tidak dijamin memuat klaim yang sama.
+  // Sebelum penanda ini ada, barisnya tetap digambar sebagai tautan dan mendarat di
+  // "klaim tidak ditemukan pada entitas yang sedang dipilih", yang mengarahkan petugas
+  // memeriksa pilihan portal padahal portalnya benar.
+  //
+  // Sebabnya dinyatakan di `title`, bukan digambar penuh: pada antrean berisi puluhan
+  // baris, keterangan di setiap sel akan menenggelamkan daftarnya.
+  if (!item.layar_klaim_siap) {
+    return (
+      <span
+        className="cursor-help text-slate-500"
+        title={
+          `Layar kerja klaim ${item.no_case} belum dapat dibuka: klaim ini ada di antrean ` +
+          'Pega tetapi belum punya baris di tabel datar RCL/PUCL milik aplikasi. ' +
+          'Kerjakan lewat Pega, dan laporkan ke tim teknis bila seharusnya sudah ada.'
+        }
+      >
+        {item.no_case}
+      </span>
+    )
+  }
 
   return (
     <button
@@ -372,9 +373,9 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
       value: (row) => cellText(row, column),
     }
 
-    // Hanya tab Receive yang nomor case-nya membuka layar kerja. Penandanya datang dari
-    // server, bukan disimpulkan dari kode tab di sini.
-    if (column.kunci === 'no_case' && tab.buka_layar_kerja) {
+    // Kedua tab nomor case-nya membuka layar kerja — hanya layarnya yang berbeda. Penandanya
+    // datang dari server, bukan disimpulkan dari kode tab di sini.
+    if (column.kunci === 'no_case' && (tab.buka_layar_kerja || tab.buka_layar_klaim)) {
       return { ...base, render: openCase }
     }
     return base
@@ -384,29 +385,31 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
 /**
  * cellText menyusun teks satu sel.
  *
- * Dua perlakuan, dan masing-masing punya alasannya:
+ * # Tanggal ditulis seperti GRID Pega: `dd/MM/yy HH:mm`
  *
- *  - Tanggal diformat HANYA bila bentuknya memang `YYYY-MM-DD`. Seluruh kolom tanggal di
- *    layar ini dibaca dari kolom yang bentuknya tidak dapat diperiksa tanpa DDL (`R-08`) —
- *    satu di antaranya bahkan disimpan sebagai teks oleh procedure yang mengisinya. Memaksa
- *    pemformatan akan mengubah nilai yang tidak dikenali menjadi teks yang salah, dan itu
- *    lebih buruk daripada menampilkannya apa adanya.
- *  - Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari
- *    kolom yang gagal dimuat. Di layar ini itu penting khusus: satu kolom memang SELALU
- *    kosong, dan tanda pisah menyatakan "tidak ada isinya" alih-alih "gagal".
+ * Versi sebelumnya memformat HANYA bentuk `YYYY-MM-DD` telanjang, lewat `formatDate` yang
+ * menulis "13 Juni 2025". Akibatnya dua hal sekaligus, dan keduanya terlihat berdampingan
+ * di layar:
+ *
+ *   - kolom berisi waktu lengkap (`2025-06-13T14:24:21.212+07:00`) tidak cocok dengan
+ *     penyaringnya, sehingga digambar MENTAH — persis yang dilaporkan Work Owner
+ *     2026-10-10;
+ *   - yang cocok pun ditulis dalam bentuk yang tidak dipakai Pega di mana pun.
+ *
+ * `formatPegaDateTime` menjawab keduanya: ia bentuk sel grid Pega apa adanya, dan ia
+ * mengembalikan teks yang tidak dikenalinya APA ADANYA — sehingga kekhawatiran lama tentang
+ * kolom yang bentuknya belum dapat diperiksa tanpa DDL (`R-08`) tetap terjaga. Nilai aneh
+ * tetap terbaca dan dapat ditelusuri, bukan berubah menjadi teks yang salah.
+ *
+ * Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari kolom
+ * yang gagal dimuat. Di layar ini itu penting khusus: satu kolom memang SELALU kosong.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]
 
   if (value == null || value === '') return '—'
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
-
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return formatPegaDateTime(String(value))
 }
 
 /**

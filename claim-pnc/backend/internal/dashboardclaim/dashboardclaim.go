@@ -135,7 +135,7 @@ func ParseTile(raw string) (Tile, bool) {
 	return "", false
 }
 
-// SurveyorType membedakan kedua jenis survei di `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`.
+// SurveyorType membedakan kedua jenis survei di `POOLDATA.T_CLAIMLIST_ADMIN`.
 //
 // Nilainya persis seperti yang tersimpan di kolom `SURVEYORTYPE_1`, dan itu bukan pilihan
 // gaya: ia dikirim sebagai nilai bind ke kueri, sehingga mengubahnya di sini mengubah baris
@@ -240,6 +240,17 @@ type ClaimRow struct {
 	// Inilah yang digambar kolom "Claim status" pada layar lama — "Register", "Waiting
 	// Survey", dan seterusnya. Kodenya sendiri tidak pernah ditampilkan kepada pengguna.
 	ClaimStatusLabel string
+
+	// `Position` dan `Progress` DICABUT 2026-10-07 — grid Pega tidak menggambarnya.
+	//
+	// Keduanya dibangun atas pembacaan `InboxOutstandingClaim_Section` yang keliru. Grid yang
+	// sebenarnya berakhir di "Claim status", lalu langsung tombol Transfer; Work Owner
+	// membuktikannya dengan menggulir ke kanan.
+	//
+	// Bila kelak keduanya memang diminta, yang perlu dibangun ulang adalah
+	// `GET_POSISI_PROGRESS_PNC(pyID,'POSISI')` dan `(pyID,'sts_prg2')` — satu kueri untuk
+	// seluruh halaman, bukan dua panggilan per baris seperti sistem lama. Alasan lengkapnya
+	// di `keputusan-implementasi.md` §207.
 
 	// ReportDate adalah `RECEIVEDDATE_1` — kolom "Report Date" pada layar lama.
 	//
@@ -434,6 +445,14 @@ type Repo interface {
 	// layar lamanya tidak menggambar dropdown Bisnis pada tab ini. Hanya kotak cari No Klaim
 	// dan paginasi yang berlaku, dan keduanya dibawa Filter.
 	ListHolding(ctx context.Context, f Filter) (HoldingPage, error)
+
+	// ClaimDetailReader menyatukan pembacaan rincian satu klaim ke dalam Repo yang sama.
+	//
+	// Disertakan di SINI, bukan sebagai selector tersendiri, karena rincian klaim berada di
+	// basis data entitas yang sama dengan daftarnya. Selector kedua akan membuka kemungkinan
+	// keduanya menunjuk portal yang berbeda — dan itu kebocoran data antar badan hukum
+	// (`R-20`), bukan sekadar ketidakrapian.
+	ClaimDetailReader
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.
@@ -469,4 +488,96 @@ type ClosedClaimReader interface {
 
 	// List membaca satu halaman klaim tutup.
 	List(ctx context.Context, portalAlias string, f Filter) (ClaimPage, error)
+}
+
+// TechnicalPICRow adalah satu baris daftar **PIC Teknik** yang dapat menerima pemindahan.
+//
+// # Kenapa daftar, bukan isian bebas
+//
+// `Section/PNCTransferManagement_sec-Section.xml` menggambar **grid**, bukan formulir: ia
+// memuat daftar user teknis dengan tombol **"Assign"** pada setiap baris. Yang dipilih
+// pengguna adalah barisnya, dan tombol itu mengirim `UserID` baris tersebut ke
+// `PNC_ReassignPNCTeknik`.
+//
+// Isian bebas akan menerima operator yang tidak ada, tidak aktif, atau tidak melayani lini
+// bisnis klaim itu — tiga hal yang justru disaring oleh daftarnya.
+type TechnicalPICRow struct {
+	// OperatorID adalah nilai yang dikirim sebagai `UserID` saat baris ini dipilih.
+	OperatorID string
+
+	Name      string // MCL_NAME
+	Email     string // EMAIL
+	TeamGroup string // TEAM_GROUP
+
+	// Workload adalah COUNTER_QUOTA — pencacah beban yang dipakai `BrowsePICRandomTeam-SQL`
+	// untuk memilih petugas dengan beban paling sedikit (`R-04`).
+	//
+	// Ditampilkan supaya pemilihan manual dapat mempertimbangkan hal yang sama dengan
+	// pemilihan otomatis, bukan menebak.
+	Workload int
+
+	// TOTAL_JOB TIDAK ada di sini, dan itu disengaja (2026-10-07).
+	//
+	// Kolomnya tidak ada pada tabel yang dibaca daftar ini, hanya pada view
+	// V_MST_USER_TEKNIS. Field-nya sempat ada dan SELALU bernilai nol di Oracle, sementara
+	// adapter memori mengisinya dengan angka contoh — sehingga layar menampilkan angka yang
+	// masuk akal saat dicoba tanpa Oracle lalu nol di produksi, tanpa satu pun galat.
+	//
+	// Field yang hanya benar di satu adapter lebih buruk daripada field yang tidak ada.
+}
+
+// TechnicalPICPage adalah satu halaman daftar PIC Teknik.
+type TechnicalPICPage struct {
+	Rows  []TechnicalPICRow
+	Total int
+}
+
+// TechnicalPICFilter menyaring daftar PIC Teknik.
+//
+// BusinessType adalah `TYPE_BUSINESS` dan **wajib** — `BrowseVMstUserTeknis_RD` menyaring
+// `TYPE_BUSINESS = Param.type_business AND STS_AKTIF = 1`, dan tanpa lini bisnisnya daftar
+// akan memuat petugas yang tidak melayani klaim yang sedang dipindahkan.
+type TechnicalPICFilter struct {
+	BusinessType string
+	Search       string
+	Limit        int
+	Offset       int
+}
+
+// Normalize merapikan penyaring dan menerapkan batas halaman.
+func (f TechnicalPICFilter) Normalize() TechnicalPICFilter {
+	f.BusinessType = strings.ToUpper(strings.TrimSpace(f.BusinessType))
+	f.Search = strings.TrimSpace(f.Search)
+
+	if f.Limit <= 0 {
+		f.Limit = DefaultLimit
+	}
+	if f.Limit > MaxLimit {
+		f.Limit = MaxLimit
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+	return f
+}
+
+// TechnicalPICReader membaca daftar PIC Teknik.
+//
+// Seam tersendiri, bukan method pada Repo: Repo melayani tile dashboard atas tabel klaim,
+// sedangkan ini membaca **master** `POOLDATA.MST_USER_TEKNIK`. Menyatukannya membuat satu
+// interface memikul dua sumber data yang tidak berhubungan.
+type TechnicalPICReader interface {
+	ListTechnicalPIC(ctx context.Context, filter TechnicalPICFilter) (TechnicalPICPage, error)
+}
+
+// TechnicalPICReaderSelector memilih pembaca sesuai portal aktif (`ADR-0030`).
+type TechnicalPICReaderSelector func(portalAlias string) (TechnicalPICReader, error)
+
+// ClaimPosition adalah dua kolom posisi sebuah klaim, sudah digabung.
+//
+// Ia tipe tersendiri — bukan dua string lepas — supaya pembacanya tidak dapat memasangkan
+// posisi sebuah klaim dengan progres klaim yang lain tanpa sengaja.
+type ClaimPosition struct {
+	Position string
+	Progress string
 }

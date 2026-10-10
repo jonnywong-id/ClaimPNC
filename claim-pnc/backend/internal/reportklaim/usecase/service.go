@@ -67,7 +67,12 @@ func (s *Service) Now() time.Time { return s.clock.Now() }
 // bertanda sebabnya — sama seperti butir menu yang belum punya layar tetap tampil.
 // Menghilangkannya membuat pengguna melaporkan laporan yang "hilang", dan membuat
 // kemajuan migrasi tidak terbaca dari layar.
-func (s *Service) Catalog() []reportklaim.Report { return reportklaim.Catalog() }
+// Urutannya adalah URUTAN LAYAR Pega, bukan urutan abjad maupun urutan kelompok.
+//
+// Layar lama menumpuk ke-28 panel dalam SATU kolom dengan urutan tertentu, dan pengguna
+// menghafal letaknya. Mengurutkannya ulang — bahkan menjadi urutan yang lebih masuk akal —
+// berarti melatih ulang tanpa ada yang meminta (`D-13`).
+func (s *Service) Catalog() []reportklaim.Report { return reportklaim.CatalogInPegaOrder() }
 
 // BusinessOptions mengembalikan isi autocomplete "Bisnis" milik satu portal.
 func (s *Service) BusinessOptions(ctx context.Context, portalAlias string) ([]reportklaim.BusinessOption, error) {

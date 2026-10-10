@@ -7,7 +7,6 @@ import type { Claim, InsuredAddress } from './types'
 
 const NOT_BUILT = 'Proses tombol ini belum dibangun.'
 
-const UNSAVED_NOTE = 'Not saved yet: no column for this field in T_CLAIM_PNC.'
 
 /**
  * Bagian atas tab Register untuk PA — kontainer `IsPA` pada `Section/InputRegisterDetail`:
@@ -69,9 +68,8 @@ export function InsuredDataSection({
             <label htmlFor="no_ktp" className="block text-sm font-medium text-slate-700">
               No KTP <span className="text-red-600">*</span>
             </label>
-            <input id="no_ktp" value={idCard} onChange={(e) => onIDCard(e.target.value)}
-              className="mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none" />
-            <p className="mt-1 text-xs text-amber-700">{UNSAVED_NOTE}</p>
+            <input id="no_ktp" value={idCard} maxLength={100} onChange={(e) => onIDCard(e.target.value)}
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none" />
           </div>
         </div>
       </div>
@@ -131,8 +129,8 @@ export function InsuredDataSection({
             <i>No HP harus diisi. Harap Masukan No. Hp yang terhubung dengan WA</i>
           </p>
           <div className="mt-2 grid gap-3">
-            <UnsavedInput id="pengkinian_hp" label="No. HP" value={phone} onChange={onPhone} />
-            <UnsavedInput id="pengkinian_email" label="Email" value={email} onChange={onEmail} />
+            <TextInput id="pengkinian_hp" label="No. HP" value={phone} maxLength={100} onChange={onPhone} />
+            <TextInput id="pengkinian_email" label="Email" value={email} maxLength={200} onChange={onEmail} />
           </div>
         </div>
       </div>
@@ -149,13 +147,15 @@ function ReadField({ label, value }: { label: string; value: string }) {
   )
 }
 
-function UnsavedInput({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
+/** Isian Pengkinian Data — tersimpan ke T_CLAIM_PNC.PENGKINIAN_NO_HP / PENGKINIAN_EMAIL. */
+function TextInput({
+  id, label, value, maxLength, onChange,
+}: { id: string; label: string; value: string; maxLength: number; onChange: (v: string) => void }) {
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
-      <input id={id} value={value} onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded border border-dashed border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none" />
-      <p className="mt-1 text-xs text-amber-700">{UNSAVED_NOTE}</p>
+      <input id={id} value={value} maxLength={maxLength} onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none" />
     </div>
   )
 }

@@ -15,8 +15,10 @@
 --                                     DDL: Database/CREATE_TABLE_3.SQL
 --                                          claim-pnc/docs/ddl/tc_pnc_pucl.sql
 --
---   DATAPEGA.PC_ASM_FW_GCNMFW_WORK    MILIK PEGA — hanya `daily_report`, lihat alasannya
---   DATAPEGA.PC_ASSIGN_WORKBASKET     pada kueri itu
+--   (dulu) DATAPEGA.PC_ASM_FW_GCNMFW_WORK — TIDAK dibaca lagi sejak 2026-10-08 (keputusan
+--                                     Work Owner); lihat catatan SUMBER BARU per kueri
+--   DATAPEGA.PC_ASSIGN_WORKBASKET     MILIK PEGA — lihat kueri yang memakainya
+--   DATAPEGA.PC_LINK_ATTACHMENT       MILIK PEGA — kategori lampiran
 --   POOLDATA.T_CLAIM_PNC              MILIK PEGA — kunci teknis klaim
 --   POOLDATA.T_CLAIM_OBJECTLIST       MILIK PEGA — isian turunan layar kerja
 --   POOLDATA.T_CLAIM_ADJUSTMENT       MILIK PEGA — isian turunan layar kerja
@@ -333,20 +335,28 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 -- — RDB List/GetDataPUCLRCLForDailyReport-SQL.xml
 --
 -- ============================================================================
--- SATU-SATUNYA KUERI DI BERKAS INI YANG MASIH MEMBACA TABEL PEGA — DAN ITU DISENGAJA
+-- SUMBER: POOLDATA.TC_PNC_PUCL (2026-10-08) — SEBELUMNYA SENGAJA DI TABEL PEGA
 -- ============================================================================
 --
--- Ketiga tab dan layar kerja sudah pindah ke `TC_PNC_PUCL`. Laporan ini TIDAK, dan sebabnya
--- bukan pekerjaan yang tertunda melainkan ISI YANG BERBEDA.
+-- Laporan ini sempat SENGAJA dibiarkan membaca `PC_ASM_FW_GCNMFW_WORK`, karena cabang
+-- keduanya mengambil seluruh klaim Personal Accident TANPA gabungan antrean bersama. Work
+-- Owner kemudian menetapkan objek kerja Pega tidak dipakai lagi dan laporan ini pindah ke
+-- `TC_PNC_PUCL` ("Perubahan nama tabel untuk Inbox.xlsx", kolom E).
 --
--- Cabang keduanya mengambil SELURUH klaim ber-GROUPPANEL '002' (Personal Accident) pada
--- rentang tanggal itu, **tanpa gabungan antrean bersama sama sekali** — termasuk klaim yang
--- tidak pernah masuk antrean RCL/PUCL. `TC_PNC_PUCL` berisi antrean RCL/PUCL; klaim PA di
--- luar antrean itu TIDAK ADA di sana.
+-- Kekhawatiran lamanya lebih sempit daripada kedengarannya: cabang PA TETAP menuntut
+-- `TANGGALKIRIMPUCL_1` berada dalam rentang, sehingga ia hanya memuat klaim PA yang PERNAH
+-- dikirim ke RCL/PUCL. Di portal ASM (diukur 2026-10-08) `TC_PNC_PUCL` menyimpan baris yang
+-- antreannya sudah berpindah ke orang lain maupun yang sudah `Resolved-*` — jadi klaim
+-- seperti itu tetap terbawa.
 --
--- Memindahkannya sekarang akan membuat berkas unduhan kehilangan baris TANPA satu pun
--- galat, dan tidak ada apa pun di layar yang menandakannya. Ia baru dapat pindah bila proses
--- pengisi dinyatakan memuat klaim PA di luar antrean pula — dan itu belum diputuskan.
+-- RISIKO YANG TERSISA: bila proses pengisi kelak menghapus baris yang meninggalkan antrean,
+-- cabang PA kehilangan baris itu tanpa galat. Proses pengisi WAJIB menyimpan setiap klaim
+-- yang pernah dikirim ke RCL/PUCL, bukan hanya yang masih menunggu.
+--
+-- Pemetaan: TANGGALKIRIMPUCL_1 -> TGL_KIRIM_PUCL · KOMENTARANALISATOR_1 -> KOMENTAR_ANALISATOR ·
+-- TANGGALCETAKDOKUMENPUCL_1 -> TGL_CETAK_DOKUMEN_PUCL · RCL_PUCL_1 -> RCL_PUCL ·
+-- STATUSCLAIM_1 -> STATUS_CLAIM · GROUPPANEL_1 -> GROUPPANEL · gabung antrean ->
+-- ASSIGNED_OPERATOR_ID. Penyaring PXOBJCLASS hilang: tabelnya hanya berisi klaim (DDL §3b).
 --
 -- ============================================================================
 -- ISI LAPORAN INI TIDAK SAMA DENGAN ISI TABEL DI ATASNYA
@@ -374,11 +384,11 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 -- yang tidak dipilih kueri lama dan karena itu tidak tersedia setelah UNION.
 --
 -- Bind cabang antrean bersama:
---   :1 kelas objek kerja · :2 akun antrean bersama · :3 awal rentang · :4 akhir rentang
+--   :1 akun antrean bersama · :2 awal rentang · :3 akhir rentang
 -- Bind cabang Personal Accident:
---   :5 kelas objek kerja · :6 kode Group Panel PA · :7 awal rentang · :8 akhir rentang
+--   :4 kode Group Panel PA · :5 awal rentang · :6 akhir rentang
 -- Bind paginasi:
---   :9 offset · :10 jumlah baris
+--   :7 offset · :8 jumlah baris
 --
 -- Kedua rentang diikat TERPISAH meski nilainya sama. Menulis `:3` dua kali akan bergantung
 -- pada cara driver menafsirkan penanda berulang, dan itu perbedaan yang tidak terlihat saat
@@ -393,40 +403,35 @@ SELECT r.REFERENCE,
        r.TRACK_CODE,
        r.CLAIM_STATUS,
        COUNT(*) OVER () AS TOTAL_ROWS
-  FROM (SELECT w.PZINSKEY                  AS REFERENCE,
-               w.PYID                      AS CASE_ID,
-               w.POLICYNO                  AS POLICY_NUMBER,
-               w.QQNAME                    AS INSURED_NAME,
-               w.TANGGALKIRIMPUCL_1        AS SENT_AT,
-               w.KOMENTARANALISATOR_1      AS ANALYST_NOTE,
-               w.TANGGALCETAKDOKUMENPUCL_1 AS LETTER_PRINTED_AT,
-               w.RCL_PUCL_1                AS TRACK_CODE,
-               w.STATUSCLAIM_1             AS CLAIM_STATUS
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-               INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-                       ON b.PXREFOBJECTKEY = w.PZINSKEY
-                      AND b.PXOBJCLASS = 'Assign-WorkBasket'
-         WHERE w.PXOBJCLASS = :1
-           AND b.PXASSIGNEDOPERATORID = :2
-           AND w.TANGGALKIRIMPUCL_1 >= TO_DATE(:3, 'YYYY-MM-DD')
-           AND w.TANGGALKIRIMPUCL_1 < TO_DATE(:4, 'YYYY-MM-DD') + INTERVAL '1' DAY
+  FROM (SELECT p.CLAIMID                   AS REFERENCE,
+               p.CLAIMID                   AS CASE_ID,
+               p.POLICY_NO                 AS POLICY_NUMBER,
+               p.QQ_NAME                   AS INSURED_NAME,
+               p.TGL_KIRIM_PUCL            AS SENT_AT,
+               p.KOMENTAR_ANALISATOR       AS ANALYST_NOTE,
+               p.TGL_CETAK_DOKUMEN_PUCL    AS LETTER_PRINTED_AT,
+               p.RCL_PUCL                  AS TRACK_CODE,
+               p.STATUS_CLAIM              AS CLAIM_STATUS
+          FROM POOLDATA.TC_PNC_PUCL p
+         WHERE p.ASSIGNED_OPERATOR_ID = :1
+           AND p.TGL_KIRIM_PUCL >= TO_DATE(:2, 'YYYY-MM-DD')
+           AND p.TGL_KIRIM_PUCL < TO_DATE(:3, 'YYYY-MM-DD') + INTERVAL '1' DAY
         UNION
-        SELECT w.PZINSKEY                  AS REFERENCE,
-               w.PYID                      AS CASE_ID,
-               w.POLICYNO                  AS POLICY_NUMBER,
-               w.QQNAME                    AS INSURED_NAME,
-               w.TANGGALKIRIMPUCL_1        AS SENT_AT,
-               w.KOMENTARANALISATOR_1      AS ANALYST_NOTE,
-               w.TANGGALCETAKDOKUMENPUCL_1 AS LETTER_PRINTED_AT,
-               w.RCL_PUCL_1                AS TRACK_CODE,
-               w.STATUSCLAIM_1             AS CLAIM_STATUS
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         WHERE w.PXOBJCLASS = :5
-           AND w.GROUPPANEL_1 = :6
-           AND w.TANGGALKIRIMPUCL_1 >= TO_DATE(:7, 'YYYY-MM-DD')
-           AND w.TANGGALKIRIMPUCL_1 < TO_DATE(:8, 'YYYY-MM-DD') + INTERVAL '1' DAY) r
+        SELECT p.CLAIMID                   AS REFERENCE,
+               p.CLAIMID                   AS CASE_ID,
+               p.POLICY_NO                 AS POLICY_NUMBER,
+               p.QQ_NAME                   AS INSURED_NAME,
+               p.TGL_KIRIM_PUCL            AS SENT_AT,
+               p.KOMENTAR_ANALISATOR       AS ANALYST_NOTE,
+               p.TGL_CETAK_DOKUMEN_PUCL    AS LETTER_PRINTED_AT,
+               p.RCL_PUCL                  AS TRACK_CODE,
+               p.STATUS_CLAIM              AS CLAIM_STATUS
+          FROM POOLDATA.TC_PNC_PUCL p
+         WHERE p.GROUPPANEL = :4
+           AND p.TGL_KIRIM_PUCL >= TO_DATE(:5, 'YYYY-MM-DD')
+           AND p.TGL_KIRIM_PUCL < TO_DATE(:6, 'YYYY-MM-DD') + INTERVAL '1' DAY) r
  ORDER BY r.SENT_AT DESC, r.CASE_ID DESC
-OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 
 -- name: check_rclpucl
 -- Dipakai perintah `-periksa`: memastikan tabel datar RCL/PUCL terbaca dari koneksi yang
@@ -503,17 +508,22 @@ SELECT COUNT(*)                                                          AS TOTA
   FROM POOLDATA.TC_PNC_PUCL p
 
 -- name: check_laporan
--- Memastikan kedua tabel PEGA yang masih dipakai LAPORAN HARIAN terbaca.
+-- Memastikan kolom yang dipakai LAPORAN HARIAN terbaca dari tabel datar `TC_PNC_PUCL`.
 --
--- Terpisah dari check_rclpucl karena yang diperiksa memang milik sistem lain. Sejak ketiga
--- tab pindah ke tabel datar, kedua tabel ini hanya dipakai `daily_report` — dan bila
--- keduanya tidak terbaca, yang gagal HANYA tombol unduh tab "Cetak Surat", bukan layarnya.
--- Galat yang menyebut tabel yang salah menyesatkan orang yang memperbaikinya.
+-- Sejak 2026-10-08 laporan harian tidak lagi membaca tabel Pega. Pemeriksaannya tetap
+-- terpisah dari check_rclpucl karena kolom yang dipakainya berbeda — `GROUPPANEL`,
+-- `ASSIGNED_OPERATOR_ID`, `STATUS_CLAIM` tidak menyaring ketiga tab — dan bila salah satunya
+-- tidak ada, yang gagal HANYA tombol unduh tab "Cetak Surat", bukan layarnya.
+--
+-- Satu kolom hasil, karena pemanggilnya memindai satu nilai. Keempat kolom disebut di WHERE:
+-- Oracle tetap mem-parse namanya dan menjawab ORA-00904 bila salah satunya tidak ada.
 SELECT COUNT(*) AS PROBE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-               ON b.PXREFOBJECTKEY = w.PZINSKEY
+  FROM POOLDATA.TC_PNC_PUCL p
  WHERE 1 = 0
+   AND p.GROUPPANEL IS NULL
+   AND p.ASSIGNED_OPERATOR_ID IS NULL
+   AND p.STATUS_CLAIM IS NULL
+   AND p.TGL_KIRIM_PUCL IS NULL
 
 -- name: detail
 -- LAYAR KERJA RCL/PUCL untuk SATU klaim — yang terbuka saat nomor klaim diklik.
@@ -770,14 +780,26 @@ SELECT p.CLAIMID                        AS REFERENCE,
        -- Karena itu grid digambar dengan SATU baris, dan layar menyatakan bahwa baris kedua
        -- dan seterusnya tidak terbaca. Arah kegagalannya sama dengan daftar dokumen: KURANG,
        -- bukan salah.
-       (SELECT w.RECEIVEDDATE_1
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         WHERE TRIM(w.PYID) = TRIM(p.CLAIMID)
+       --
+       -- SUMBER BARU (2026-10-08): tabel objek kerja Pega tidak dipakai lagi (keputusan Work
+       -- Owner), sehingga kedua kolom ekspos `_1` di atas tidak dibaca lagi.
+       --
+       --   RECEIVEDDATE_1 -> T_CLAIM_PNC.RECEIVEDATE (DATE). Kesepadanan terukur: tanggalnya
+       --                     sama pada 1.098 dari 1.121 klaim Work-PNC yang keduanya terisi,
+       --                     dan 2/2 klaim PUCL yang punya objek kerja. Yang hilang: JAM-nya —
+       --                     RECEIVEDATE hanya tanggal, teks Pega memuat jam GMT. Pemindai Go
+       --                     tetap NullString + DisplayTimeText, sama seperti DATE_OF_LOSS.
+       --   KETERANGAN_1   -> TIDAK ADA padanan; terukur 0 terisi pada 1.404 klaim Work-PNC yang
+       --                     ada di T_CLAIM_PNC. Kini NULL bertipe — kolom Remarks baris
+       --                     pertama selalu kosong.
+       --
+       -- Kunci T_CLAIM_PNC berprefix untuk klaim Pega dan polos untuk klaim PNCN, sehingga
+       -- keduanya disebut; CLAIMID unik, berbeda dari CLAIMNO yang tidak unik.
+       (SELECT c.RECEIVEDATE
+          FROM POOLDATA.T_CLAIM_PNC c
+         WHERE c.CLAIMID IN ('ASM-FW-GCNMFW-WORK ' || TRIM(p.CLAIMID), TRIM(p.CLAIMID))
          FETCH FIRST 1 ROWS ONLY)       AS RECEIVED_DATE_FIRST,
-       (SELECT w.KETERANGAN_1
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         WHERE TRIM(w.PYID) = TRIM(p.CLAIMID)
-         FETCH FIRST 1 ROWS ONLY)       AS RECEIVED_NOTE_FIRST,
+       CAST(NULL AS VARCHAR2(4000))     AS RECEIVED_NOTE_FIRST,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
                INNER JOIN POOLDATA.T_CLAIM_PNC c
@@ -878,7 +900,9 @@ SELECT COUNT(*) AS PROBE
 --
 --	T_CLAIM_PNC.CLAIMID                      yang ditulis modul ini dan modul registrasi
 --	'ASM-FW-GCNMFW-WORK ' || CLAIMNO         bentuk berprefix milik modul registrasi
---	PC_ASM_FW_GCNMFW_WORK.PZINSKEY           yang ditulis Pega sendiri
+--	'ASM-FW-GCNMFW-WORK ' || nomor case      yang ditulis Pega sendiri (dulu dibaca dari
+--	                                         PZINSKEY tabel objek kerja; sejak
+--	                                         2026-10-08 dirangkai — lihat badan kueri)
 --
 -- Untuk klaim Pega ketiganya menunjuk nilai yang sama, sehingga tidak ada baris yang
 -- tergambar dua kali: `IN` menguji keanggotaan, bukan menggabungkan baris.
@@ -916,27 +940,31 @@ SELECT a.DATAID                                     AS DOCUMENT_ID,
          ON t.ID = a.CATEGORY
   LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC dt
          ON dt.ID = a.SUB_CATEGORY
+  -- SUMBER BARU (2026-10-08): himpunan kategori dulu disaring lewat gabungan ke tabel objek
+  -- kerja Pega (kelas Work-PNC). Kini disaring `l.PXLINKEDCLASSFROM` milik tabel lampiran
+  -- itu sendiri — terukur sama pada 8.649/8.649 lampiran, dan himpunan namanya identik
+  -- (selisih dua arah 0). Gabungan ke T_CLAIM_PNC SENGAJA tidak dipakai: ia ikut memuat
+  -- baris RCV dan menggeser himpunannya (+ReceiverDocument, -XOLFILES).
   LEFT JOIN (SELECT DISTINCT TRIM(l.PYCATEGORY) AS CATEGORY_NAME
                FROM DATAPEGA.PC_LINK_ATTACHMENT l
-                    INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK wk
-                            ON wk.PZINSKEY = l.PXLINKEDREFFROM
-              WHERE wk.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+              WHERE l.PXLINKEDCLASSFROM = 'ASM-FW-GCNMFW-Work-PNC'
                 AND l.PYCATEGORY IS NOT NULL
                 AND TRIM(l.PYCATEGORY) IS NOT NULL) k
          ON k.CATEGORY_NAME = TRIM(a.CATEGORY)
  WHERE a.ATTACHFILE IS NOT NULL
-   AND a.IDPEGA IN (SELECT c.CLAIMID
-                      FROM POOLDATA.T_CLAIM_PNC c
-                     WHERE TRIM(c.CLAIMNO) = TRIM(:1)
-                    UNION ALL
-                    SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
-                      FROM POOLDATA.T_CLAIM_PNC c
-                     WHERE TRIM(c.CLAIMNO) = TRIM(:2)
-                    UNION ALL
-                    SELECT w.PZINSKEY
-                      FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-                     WHERE TRIM(w.PYID) = TRIM(:3)
-                       AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC')
+   -- SUMBER BARU (2026-10-08): kunci ketiga dulu `PZINSKEY` objek kerja Pega ber-PYID = nomor
+   -- case. Kunci itu terukur sama dengan 'ASM-FW-GCNMFW-WORK ' || PYID pada 2.645 dari 2.647
+   -- objek Work-PNC, sehingga kini dirangkai langsung dari nomor case — tanpa tabel. Ini
+   -- penting: 1.243 objek Work-PNC TIDAK ada di T_CLAIM_PNC, dan 134 dokumen (36 klaim)
+   -- hanya terjangkau lewat kunci ini. Bentuk OR, bukan UNION, karena tidak ada sumber baris.
+   AND (a.IDPEGA IN (SELECT c.CLAIMID
+                       FROM POOLDATA.T_CLAIM_PNC c
+                      WHERE TRIM(c.CLAIMNO) = TRIM(:1)
+                     UNION ALL
+                     SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
+                       FROM POOLDATA.T_CLAIM_PNC c
+                      WHERE TRIM(c.CLAIMNO) = TRIM(:2))
+        OR a.IDPEGA = 'ASM-FW-GCNMFW-WORK ' || TRIM(:3))
  ORDER BY a.INPUTDATE DESC NULLS LAST, a.DATAID DESC
 
 -- name: document_content
@@ -961,18 +989,16 @@ SELECT a.ATTACHNAME     AS DOCUMENT_NAME,
        a.ATTACHFILE     AS CONTENT
   FROM POOLDATA.DATA_ATTACHFILE a
  WHERE a.DATAID = :1
-   AND a.IDPEGA IN (SELECT c.CLAIMID
-                      FROM POOLDATA.T_CLAIM_PNC c
-                     WHERE TRIM(c.CLAIMNO) = TRIM(:2)
-                    UNION ALL
-                    SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
-                      FROM POOLDATA.T_CLAIM_PNC c
-                     WHERE TRIM(c.CLAIMNO) = TRIM(:3)
-                    UNION ALL
-                    SELECT w.PZINSKEY
-                      FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-                     WHERE TRIM(w.PYID) = TRIM(:4)
-                       AND w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC')
+   -- SUMBER BARU (2026-10-08): kunci ketiga dirangkai dari nomor case, sama persis dengan
+   -- `documents` — lihat catatan di sana. Keduanya WAJIB tetap sejalan.
+   AND (a.IDPEGA IN (SELECT c.CLAIMID
+                       FROM POOLDATA.T_CLAIM_PNC c
+                      WHERE TRIM(c.CLAIMNO) = TRIM(:2)
+                     UNION ALL
+                     SELECT 'ASM-FW-GCNMFW-WORK ' || TRIM(c.CLAIMNO)
+                       FROM POOLDATA.T_CLAIM_PNC c
+                      WHERE TRIM(c.CLAIMNO) = TRIM(:3))
+        OR a.IDPEGA = 'ASM-FW-GCNMFW-WORK ' || TRIM(:4))
 
 -- name: return_to_analyst
 -- Menandai klaim SUDAH SELESAI dikerjakan PUCL — tombol "Kirim Ke Analyst" dan
@@ -1287,10 +1313,14 @@ VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4, :5, :6, :7, :8)
 -- dulu, dan daftarnya tidak lagi terbaca sebagai daftar yang sama.
 --
 -- MEMBACA tabel engine Pega, tidak menulisnya — `P-1` melarang menulis, bukan membaca.
+--
+-- SUMBER BARU (2026-10-08): dulu disaring lewat gabungan ke tabel objek kerja Pega (kelas
+-- Work-PNC). Kini `a.PXLINKEDCLASSFROM` milik tabel lampiran itu sendiri — terukur sama
+-- pada 8.649/8.649 lampiran, 30 nama kategori, selisih himpunan dua arah 0. Sama persis
+-- dengan himpunan PEGA_VISIBLE pada `documents`.
 SELECT TRIM(a.PYCATEGORY) AS CATEGORY_NAME
   FROM DATAPEGA.PC_LINK_ATTACHMENT a
-  JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w ON w.PZINSKEY = a.PXLINKEDREFFROM
- WHERE w.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE a.PXLINKEDCLASSFROM = 'ASM-FW-GCNMFW-Work-PNC'
    AND a.PYCATEGORY IS NOT NULL
    AND TRIM(a.PYCATEGORY) IS NOT NULL
  GROUP BY TRIM(a.PYCATEGORY)

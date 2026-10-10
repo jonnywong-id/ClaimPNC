@@ -37,7 +37,7 @@ import (
 //
 // `@substring(...,0,8)` memotong bentuk `YYYYMMDD`, lalu menempelkan `T000000.000 GMT`.
 // Jadi yang tersimpan adalah TANGGAL, tanpa jam. Ditiru apa adanya: DOL adalah tanggal
-// kejadian, dan jam yang ikut tersimpan akan membuat perbandingan "DOL + 7 hari" pada aturan
+// kejadian, dan jam yang ikut tersimpan akan membuat perbandingan tanggal pada aturan
 // registrasi bergeser tanpa terlihat.
 
 // LossDateToApply menyatakan tanggal kejadian baru yang harus diterapkan ke klaim, bila ada.

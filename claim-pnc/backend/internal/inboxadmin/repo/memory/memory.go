@@ -20,6 +20,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 
 	"claim-pnc/internal/inboxadmin"
 )
@@ -46,6 +47,11 @@ type Row struct {
 
 	// Courier — `KURIR`, membedakan Unregistered RCV dari RCV Online.
 	Courier string
+
+	// BranchCode dan RegionCode adalah cabang klaim (KODECABANG_1) dan kanwilnya, untuk
+	// menguji batas data. Kosong berarti baris itu tidak lolos batas cabang/kanwil apa pun.
+	BranchCode string
+	RegionCode string
 }
 
 // Store adalah penyimpanan antrean di memori.
@@ -54,6 +60,11 @@ type Row struct {
 // membaca, dan tidak ada satu pun operasi yang menulis.
 type Store struct {
 	rows []Row
+
+	// mutex menjaga kedua peta batas data; baris contoh tidak pernah berubah.
+	mutex    sync.Mutex
+	branches map[string]string
+	groups   map[string][]string
 }
 
 // NewStore membentuk penyimpanan berisi baris yang diberikan.
@@ -84,6 +95,12 @@ func (s *Store) List(_ context.Context, q inboxadmin.Query) ([]inboxadmin.WorkIt
 			continue
 		}
 		if !matchesKeyword(candidate, q.Keyword) {
+			continue
+		}
+		if q.Scope.BranchCode != "" && candidate.BranchCode != q.Scope.BranchCode {
+			continue
+		}
+		if q.Scope.RegionCode != "" && candidate.RegionCode != q.Scope.RegionCode {
 			continue
 		}
 		result = append(result, candidate.Item)

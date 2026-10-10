@@ -23,10 +23,27 @@ var (
 	// ErrSenderNotConfigured — pengiriman ke SLIK diminta, tetapi alamat layanannya
 	// belum diatur.
 	//
-	// Ia BUKAN kegagalan jaringan melainkan kegagalan konfigurasi, dan keduanya wajib
-	// dapat dibedakan: yang satu dicoba lagi, yang satu menunggu kontrak layanan
-	// `Rest_SendDataClientBasedDebitur` yang **tidak ada di export** (`R-16`).
+	// Ia BUKAN kegagalan jaringan melainkan kegagalan konfigurasi.
+	//
+	// Keadaan yang SAH hari ini: alamat layanannya berbeda per portal (`D-75`), dan
+	// portal yang belum punya alamat menolak terang-terangan alih-alih menembak alamat
+	// entitas lain — jalur kebocoran yang `R-20` jaga.
+	//
+	// Kegagalan menghubungi disatukan ke sini dengan sengaja; lihat pegaslik.Send.
 	ErrSenderNotConfigured = errors.New("monitoringslinkojk: layanan SLIK belum dikonfigurasi")
+
+	// ErrEmptyClient dan ErrEmptyCompany adalah dua penolakan yang layanan tujuan
+	// lakukan sendiri, dicegat lebih dulu di sini.
+	//
+	// Teksnya disalin apa adanya dari `ASMRequestServiceCreateClient_Act` supaya yang
+	// terbaca pelapor sama dengan yang akan dikatakan layanannya.
+	//
+	// Dicegat di muka karena penolakan tetap meninggalkan baris pengiriman di tabel kita
+	// — tercatat sebelum dikirim, mengikuti `InsertDataSlinkOJKIndividu`. Baris tanpa
+	// `id_transaction` berarti "tidak sampai", dan muatan yang sejak awal pasti ditolak
+	// bukan itu artinya.
+	ErrEmptyClient  = errors.New("monitoringslinkojk: Data Client tidak boleh kosong")
+	ErrEmptyCompany = errors.New("monitoringslinkojk: Data Perusahaan tidak boleh kosong")
 
 	// ErrNothingToProcess — tidak ada satu baris pun yang dapat disusun.
 	//

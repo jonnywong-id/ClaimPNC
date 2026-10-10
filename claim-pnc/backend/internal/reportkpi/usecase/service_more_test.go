@@ -52,11 +52,11 @@ func (r faultyRepo) Detail(
 	return r.Store.Detail(ctx, q, p)
 }
 
-func (r faultyRepo) Adjusters(ctx context.Context, q reportkpi.Query) ([]string, error) {
+func (r faultyRepo) Adjusters(ctx context.Context) ([]string, error) {
 	if err := r.failing("Adjusters"); err != nil {
 		return nil, err
 	}
-	return r.Store.Adjusters(ctx, q)
+	return r.Store.Adjusters(ctx)
 }
 
 func (r faultyRepo) AdminTotals(ctx context.Context, q reportkpi.AdminQuery) (reportkpi.AdminTotals, error) {
@@ -176,7 +176,6 @@ func TestMetadataListsEverything(t *testing.T) {
 	require.Len(t, meta.Components, 9)
 	require.Len(t, meta.ReportTypes, 3)
 	require.Len(t, meta.AdminGroups, 2)
-	require.Equal(t, reportkpi.CoordinatorInQuery, meta.CoordinatorInQuery)
 	require.Equal(t, reportkpi.PlannedDifferences, meta.PlannedDifferences)
 	require.Equal(t, reportkpi.AdminPlannedDifferences, meta.AdminPlannedDifferences)
 	require.Equal(t, reportkpi.PICTeknikPlannedDifferences, meta.PICTeknikPlannedDifferences)
@@ -250,32 +249,39 @@ func TestDetailErrors(t *testing.T) {
 	require.ErrorIs(t, err, errRepo)
 }
 
-// Pilihan adjuster yang sedang aktif diabaikan saat mengisi dropdown.
-func TestAdjustersIgnoresActiveChoice(t *testing.T) {
+// Dropdown adjuster berisi SELURUH master, tidak disaring penyaring layar mana pun.
+//
+// Sampai 2026-10-09 daftar ini diturunkan dari tabel penilaian dan menyempit mengikuti
+// periode — sehingga kosong pada periode yang belum punya baris. Uji ini mengunci
+// perilaku yang benar: isinya sama berapa pun penyaring yang sedang aktif.
+func TestAdjustersReturnsWholeMaster(t *testing.T) {
 	service := serviceWith(t, reportkpimemory.NewSampleStore(), nil)
 
-	input := adjusterInput()
-	input.Adjuster = "PT TEPI CONTOH MANDIRI"
-	names, err := service.Adjusters(context.Background(), samplePortal, picCaller(), input)
+	names, err := service.Adjusters(context.Background(), samplePortal)
 	require.NoError(t, err)
+
+	// Lima, bukan tiga. Dua yang bertambah — "CV SURVEI CONTOH SEJAHTERA" dan "PT LUAR
+	// CONTOH PERIODE" — adalah nama yang baris penilaiannya berada di luar periode contoh.
+	// Dulu keduanya tersaring keluar; sekarang muncul, persis seperti Pega.
 	require.Equal(t, []string{
-		"PT ADJUSTER NUSA CONTOH", "PT PENILAI CONTOH PRATAMA", "PT TEPI CONTOH MANDIRI",
+		"CV SURVEI CONTOH SEJAHTERA",
+		"PT ADJUSTER NUSA CONTOH",
+		"PT LUAR CONTOH PERIODE",
+		"PT PENILAI CONTOH PRATAMA",
+		"PT TEPI CONTOH MANDIRI",
 	}, names)
 }
 
 func TestAdjustersErrors(t *testing.T) {
 	store := reportkpimemory.NewSampleStore()
 
-	_, err := serviceWith(t, store, nil).Adjusters(context.Background(), samplePortal, picCaller(),
-		reportkpi.QueryInput{})
-	var validation *reportkpi.ValidationError
-	require.ErrorAs(t, err, &validation)
-
-	_, err = serviceWith(t, store, nil).Adjusters(context.Background(), "LAIN", picCaller(), adjusterInput())
+	// Periode yang belum diisi BUKAN lagi galat: dropdown terisi sebelum pengguna
+	// menyentuh tanggal mana pun, persis seperti layar lama.
+	_, err := serviceWith(t, store, nil).Adjusters(context.Background(), "LAIN")
 	require.ErrorIs(t, err, errNoPortal)
 
 	_, err = serviceWith(t, faultyRepo{store, "Adjusters"}, nil).
-		Adjusters(context.Background(), samplePortal, picCaller(), adjusterInput())
+		Adjusters(context.Background(), samplePortal)
 	require.ErrorIs(t, err, errRepo)
 	require.ErrorContains(t, err, "mengambil daftar adjuster")
 }
@@ -289,10 +295,10 @@ func TestAdminScorecardBuildsCardAndRecordsCoordinator(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, reportkpi.AdminGroupNonMBU, result.Query.Group)
 	require.Equal(t, reportkpi.AdminGroupNonMBU, result.Card.Group)
-	require.Len(t, result.Card.Metrics, 14)
+	require.Len(t, result.Card.Metrics, 15)
 	require.Equal(t, "01/03/2026 - 31/03/2026", result.Card.EffectiveOn)
 	require.Contains(t, logs.String(), "kartu skor KPI admin dibuka")
-	require.Contains(t, logs.String(), `"koordinator":"MORASOTARDODOTARIGAN"`)
+	require.Contains(t, logs.String(), `"koordinator":"YUSMIARSIH DYAHPUSPITA S"`)
 }
 
 func TestAdminScorecardErrors(t *testing.T) {

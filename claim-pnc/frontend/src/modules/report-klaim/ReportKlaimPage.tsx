@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { APIError } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
@@ -8,7 +8,14 @@ import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 
 import { useBusinessOptions, useExportReport, useReportCatalog } from './api'
-import { EMPTY_FILTER, type ExportRequest, type Report, type ReportFilter } from './types'
+import {
+  EMPTY_FILTER,
+  type BusinessLine,
+  type ComplianceStatus,
+  type ExportRequest,
+  type Report,
+  type ReportFilter,
+} from './types'
 
 /**
  * Report Klaim — menu `MENU_ID 85`, pengganti harness `PNCTATReport`.
@@ -18,65 +25,59 @@ import { EMPTY_FILTER, type ExportRequest, type Report, type ReportFilter } from
  * berisi judul dan tombol Export; tidak ada tabel hasil di layar sama sekali — yang
  * keluar adalah berkas CSV.
  *
- * # Susunan layar
+ * # Susunan layar dibaca dari harness, bukan dikarang
  *
- * Penyaring bersama di atas, lalu kartu laporan — keputusan Work Owner 2026-09-24.
+ * Ralat Work Owner 2026-10-08 menolak susunan sebelumnya. Harness `PNCTATReport` dibaca
+ * ulang, dan kontrolnya — menurut urutan tata letaknya sendiri — hanya empat:
  *
- * Yang ditambahkan dari sistem lama hanya **pengelompokan kartu**. Harness lama menumpuk
- * ke-28 panel dalam satu kolom tanpa pengelompokan, sehingga mencari satu laporan berarti
- * membaca 28 judul berurutan. Pengelompokannya tidak mengubah satu pun laporan, satu pun
- * penyaring, dan satu pun kolom keluaran.
+ *	posisi   properti                            kontrol            label
+ *	167.588  TempLaporan.AnalystTransferDate     pxDateTime         Dari
+ *	179.041  TempLaporan.DateOfLoss              pxDateTime         Sampai
+ *	185.181  TempLaporan.StatusReceiver          pxDropdown         Bisnis
+ *	193.497  ComplianceStatus                    pxRadioButtons     Status Compliance
  *
- * # Label "Treaty" yang isinya bukan treaty
+ * Dua kontrol lain ada di harness, tetapi JAUH di bawah — bukan di bilah penyaring:
  *
- * Dropdown itu mengisi penyaring **lini bisnis**, bukan treaty. Labelnya tetap ditiru
- * (`D-13`, keputusan Work Owner 2026-09-24): pengguna sudah mengenalnya dengan nama itu
- * selama bertahun-tahun, dan memperbaikinya di layar berarti melatih ulang tanpa ada yang
- * meminta. Di dalam kode ia bernama menurut isinya.
+ *	874.168  TempLaporan.Country                 pxAutoComplete     tepat setelah REPORT KLAIM PER BISNIS
+ *	961.442  TempLaporan.Remark                  pxCheckbox         tepat setelah REPORT AKSEPTASI, berlabel "Treaty"
  *
- * # Isian yang tidak berlaku DINONAKTIFKAN, bukan disembunyikan
+ * Empat hal karena itu diperbaiki di sini:
  *
- * Setiap kartu menyebutkan penyaring mana yang benar-benar dipakai kuerinya. Isian yang
- * tidak berpengaruh dibuat pudar dan tidak dapat diisi ketika kartunya dipilih — bukan
- * dihilangkan, supaya letak isian tidak berpindah-pindah setiap kali kartu berganti.
+ *  1. **Dropdown lini bisnis berlabel "Bisnis"**, bukan "Treaty". Yang berlabel "Treaty"
+ *     adalah kotak centang pada panel Akseptasi — kontrol yang sama sekali berbeda.
+ *  2. **Status Compliance menjadi tiga radio**, bukan dropdown (`pxRadioButtons`).
+ *  3. **Autocomplete bisnis dan kotak centang pindah ke baris panelnya masing-masing**,
+ *     seperti di harness.
+ *  4. **Daftar panel menjadi satu kolom datar berurutan**, tanpa pengelompokan. Harness
+ *     tidak punya kelompok; pengelompokan sebelumnya memindahkan panel dari tempat yang
+ *     sudah dihafal pengguna.
+ *
+ * Satu isian yang sempat ada — kotak centang bersama "Tampilkan kolom rincian" — dihapus
+ * seluruhnya. Ia tidak ada di harness; yang ada adalah kotak centang "Treaty" pada satu
+ * panel, dan itulah yang sekarang digambar.
  */
 export function ReportKlaimPage() {
   const portal = useSelectedPortal((state) => state.alias)
   const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER)
-  const [dipilih, setDipilih] = useState<string | null>(null)
+  const [sedangDiunduh, setSedangDiunduh] = useState<string | null>(null)
 
   const catalog = useReportCatalog()
   const exportReport = useExportReport()
 
-  const laporanTerpilih = useMemo(() => {
-    if (dipilih === null || catalog.data === undefined) return null
-    for (const kelompok of catalog.data.kelompok) {
-      const hit = kelompok.laporan.find((l) => l.kode === dipilih)
-      if (hit !== undefined) return hit
-    }
-    return null
-  }, [catalog.data, dipilih])
-
-  // Daftar bisnis ditarik ketika kartu yang membutuhkannya tersorot, ATAU ketika pengguna
-  // menyentuh dropdown-nya sendiri. Ia dapat berisi ratusan baris, dan 27 dari 28 panel
-  // tidak memakainya — jadi ia tetap tidak ditarik saat layar dibuka.
-  //
-  // Syarat keduanya ada karena isiannya kini SELALU dapat dibuka (lihat FilterBar): tanpa
-  // itu, pengguna yang membuka dropdown tanpa menyorot kartunya lebih dulu akan menemukan
-  // daftar kosong — dan daftar kosong tidak dapat dibedakan dari "tidak ada bisnis".
+  // Daftar bisnis ditarik hanya ketika pengguna menyentuh autocomplete-nya — ia dapat
+  // berisi ratusan baris, dan 27 dari 28 panel tidak memakainya.
   const [bisnisDiminta, setBisnisDiminta] = useState(false)
-  const perluBisnis = laporanTerpilih?.penyaring.bisnis === true
-  const businessOptions = useBusinessOptions(perluBisnis || bisnisDiminta)
+  const businessOptions = useBusinessOptions(bisnisDiminta)
 
   function unduh(laporan: Report, aksi: string) {
-    setDipilih(laporan.kode)
+    setSedangDiunduh(laporan.kode)
     const request: ExportRequest = {
       kode: laporan.kode,
       aksi,
       filter,
       penyaring: laporan.penyaring,
     }
-    exportReport.mutate(request)
+    exportReport.mutate(request, { onSettled: () => setSedangDiunduh(null) })
   }
 
   if (portal === null) {
@@ -94,8 +95,10 @@ export function ReportKlaimPage() {
     )
   }
 
+  const ubah = (bagian: Partial<ReportFilter>) => setFilter({ ...filter, ...bagian })
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header>
         <h1 className="text-xl font-semibold text-slate-900">
           {catalog.data?.judul ?? 'Report Claim'}
@@ -108,13 +111,10 @@ export function ReportKlaimPage() {
 
       <FilterBar
         filter={filter}
-        setFilter={setFilter}
+        ubah={ubah}
         liniBisnis={catalog.data?.lini_bisnis ?? []}
         statusCompliance={catalog.data?.status_compliance ?? []}
         pelanggaran={pelanggaranOf(exportReport.error)}
-        bisnis={businessOptions.data?.bisnis ?? []}
-        bisnisMemuat={(perluBisnis || bisnisDiminta) && businessOptions.isPending}
-        mintaBisnis={() => setBisnisDiminta(true)}
       />
 
       {exportReport.isError && (
@@ -135,82 +135,51 @@ export function ReportKlaimPage() {
         />
       )}
 
-      {catalog.data?.kelompok.map((kelompok) => (
-        <section key={kelompok.kode} className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {kelompok.judul}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {kelompok.laporan.map((laporan) => (
-              <ReportCard
-                key={laporan.kode}
-                laporan={laporan}
-                sedangDiunduh={exportReport.isPending && dipilih === laporan.kode}
-                onExport={(aksi) => unduh(laporan, aksi)}
-                onFocus={() => setDipilih(laporan.kode)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/*
+        Satu kolom, berurutan, tanpa kelompok — persis susunan harness-nya.
+      */}
+      <div className="space-y-3">
+        {catalog.data?.laporan.map((laporan) => (
+          <ReportRow
+            key={laporan.kode}
+            laporan={laporan}
+            filter={filter}
+            ubah={ubah}
+            bisnis={businessOptions.data?.bisnis ?? []}
+            bisnisMemuat={bisnisDiminta && businessOptions.isPending}
+            mintaBisnis={() => setBisnisDiminta(true)}
+            sedangDiunduh={sedangDiunduh === laporan.kode}
+            onExport={(aksi) => unduh(laporan, aksi)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
 type FilterBarProps = {
   filter: ReportFilter
-  setFilter: (next: ReportFilter) => void
-  liniBisnis: { nilai: string; nama: string }[]
-  statusCompliance: { nilai: string; nama: string }[]
+  ubah: (bagian: Partial<ReportFilter>) => void
+  liniBisnis: BusinessLine[]
+  statusCompliance: ComplianceStatus[]
   /** Pesan per isian dari penolakan terakhir, dikunci nama isiannya. */
   pelanggaran: Record<string, string>
-  bisnis: { kode: string; nama: string }[]
-  bisnisMemuat: boolean
-  /** Dipanggil saat pengguna menyentuh dropdown Bisnis, untuk menarik daftarnya. */
-  mintaBisnis: () => void
 }
 
 /**
- * Penyaring bersama di atas layar.
+ * Bilah penyaring bersama — EMPAT kontrol, persis seperti harness.
  *
- * Keempatnya diambil apa adanya dari harness: "Dari", "Sampai", "Treaty", dan
- * "Status Compliance" — ditambah "Bisnis" yang di sistem lama berada DI DALAM panel
- * Klaim Per Bisnis, satu-satunya panel yang memakainya.
+ * # Kenapa tidak ada isian yang dinonaktifkan
  *
- * Memindahkannya ke atas bersama yang lain adalah penyesuaian bentuk, bukan perubahan
- * perilaku: ia tetap hanya dibaca oleh panel yang memakainya.
+ * Sebelumnya isian dinonaktifkan bila kartu yang sedang tersorot tidak memakainya.
+ * Niatnya menuntun; akibatnya menjebak, dan laporannya masuk 2026-10-01: kursor yang
+ * bergerak ke arah dropdown melintasi kartu lain, dan dropdown itu mati tepat sebelum
+ * disentuh.
  *
- * # Kenapa tidak ada isian yang dinonaktifkan di sini
- *
- * Sebelumnya setiap isian dinonaktifkan bila kartu yang sedang TERSOROT tidak memakainya.
- * Niatnya menuntun; akibatnya menjebak, dan laporannya masuk 2026-10-01: "dropdown Bisnis
- * dan Status Compliance tidak selalu bisa dibuka".
- *
- * Sebabnya, kartu tersorot berubah karena TIGA hal — kursor melintasinya, fokus papan
- * ketik masuk, dan tombol Export ditekan — dan tidak pernah dibersihkan. Dua akibatnya:
- *
- *   - Kursor yang bergerak ke arah dropdown melintasi kartu lain, dan dropdown itu mati
- *     tepat sebelum disentuh.
- *   - Sesudah satu Export ditekan, sorotannya melekat, sehingga isian yang tidak dipakai
- *     laporan itu tetap mati sampai kartu lain kebetulan tersorot.
- *
- * Menautkan *dapat-tidaknya diisi* pada posisi kursor adalah kesalahannya. Isian karena
- * itu kini SELALU dapat diisi — yang juga lebih dekat ke layar Pega (`D-13`), yang
- * menampilkan kelima isiannya hidup setiap saat. Isian yang tidak dipakai sebuah laporan
- * diabaikan peladen, persis seperti di Pega.
+ * Layar Pega menampilkan keempat isiannya hidup setiap saat, dan isian yang tidak dipakai
+ * sebuah laporan diabaikan peladen. Itu yang ditiru.
  */
-function FilterBar({
-  filter,
-  setFilter,
-  liniBisnis,
-  statusCompliance,
-  pelanggaran,
-  bisnis,
-  bisnisMemuat,
-  mintaBisnis,
-}: FilterBarProps) {
-  const ubah = (bagian: Partial<ReportFilter>) => setFilter({ ...filter, ...bagian })
-
+function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: FilterBarProps) {
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -219,7 +188,7 @@ function FilterBar({
           label="Dari"
           type="date"
           value={filter.dari}
-          error={pelanggaran["dari"]}
+          error={pelanggaran['dari']}
           onChange={(e) => ubah({ dari: e.target.value })}
         />
         <Field
@@ -227,12 +196,16 @@ function FilterBar({
           label="Sampai"
           type="date"
           value={filter.sampai}
-          error={pelanggaran["sampai"]}
+          error={pelanggaran['sampai']}
           onChange={(e) => ubah({ sampai: e.target.value })}
         />
+        {/*
+          Label "Bisnis" disalin dari harness; isinya lini bisnis (`TempLaporan.StatusReceiver`),
+          yaitu nilai yang dibandingkan prakondisi activity-nya: "002", "005", "346", "003".
+        */}
         <SelectField
           id="lini"
-          label="Treaty"
+          label="Bisnis"
           value={filter.lini}
           options={liniBisnis
             .filter((l) => l.nilai !== '')
@@ -240,90 +213,83 @@ function FilterBar({
           emptyText="----- Pilih -----"
           onChange={(e) => ubah({ lini: e.target.value })}
         />
-        <SelectField
-          id="bisnis"
-          label="Bisnis"
-          value={filter.bisnis}
-          disabled={bisnisMemuat}
-          onFocus={mintaBisnis}
-          onMouseDown={mintaBisnis}
-          options={bisnis.map((b) => ({ value: b.kode, label: b.nama }))}
-          emptyText={bisnisMemuat ? 'Memuat…' : '----- Pilih -----'}
-          onChange={(e) => ubah({ bisnis: e.target.value })}
-        />
-      </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-6">
         {/*
-          Nilai yang dikirim adalah KODENYA ("0", "1", "2"), bukan labelnya. Daftarnya
-          berasal dari rule Property ComplienceStatus — perhatikan ejaannya, "Complience",
-          salah ketik yang memang ada di Pega dan hanya dirujuk di sini.
+          Tiga radio, bukan dropdown — `pyFormat = pxRadioButtons` pada harness.
+          Nilainya "0", "1", "2" dari rule Property ComplianceStatus; labelnya dibaca
+          pengguna. Mengirim labelnya akan membuat penyaringnya tidak pernah cocok.
         */}
-        <SelectField
-          id="status_compliance"
-          label="Status Compliance"
-          value={filter.status_compliance}
-          options={statusCompliance.map((s) => ({ value: s.nilai, label: s.nama }))}
-          emptyText="----- Pilih -----"
-          onChange={(e) => ubah({ status_compliance: e.target.value })}
-          className="max-w-xs"
-        />
-        <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={filter.rincian}
-            onChange={(e) => ubah({ rincian: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300"
-          />
-          Tampilkan kolom rincian
-        </label>
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium text-slate-700">
+            Status Compliance
+          </legend>
+          <div className="space-y-1">
+            {statusCompliance.map((pilihan) => (
+              <label
+                key={pilihan.nilai}
+                className="flex items-center gap-2 text-sm text-slate-700"
+              >
+                <input
+                  type="radio"
+                  name="status_compliance"
+                  value={pilihan.nilai}
+                  checked={filter.status_compliance === pilihan.nilai}
+                  onChange={(e) => ubah({ status_compliance: e.target.value })}
+                  className="h-4 w-4 border-slate-300"
+                />
+                {pilihan.nama}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
     </div>
   )
 }
 
-type CardProps = {
+type RowProps = {
   laporan: Report
+  filter: ReportFilter
+  ubah: (bagian: Partial<ReportFilter>) => void
+  bisnis: { kode: string; nama: string }[]
+  bisnisMemuat: boolean
+  mintaBisnis: () => void
   sedangDiunduh: boolean
   onExport: (aksi: string) => void
-  onFocus: () => void
 }
 
 /**
- * Satu kartu laporan.
+ * Satu baris laporan: judul, tombol Export di sampingnya, dan isian khusus panel itu.
  *
- * Kartu yang TIDAK tersedia tetap digambar, bertanda sebabnya. Menghilangkannya membuat
+ * Panel yang TIDAK tersedia tetap digambar, bertanda sebabnya. Menghilangkannya membuat
  * pengguna melaporkan laporan yang "hilang", dan membuat kemajuan migrasi tidak terbaca
  * dari layar — perlakuan yang sama dengan butir menu yang belum punya layar.
  */
-function ReportCard({ laporan, sedangDiunduh, onExport, onFocus }: CardProps) {
+function ReportRow({
+  laporan,
+  filter,
+  ubah,
+  bisnis,
+  bisnisMemuat,
+  mintaBisnis,
+  sedangDiunduh,
+  onExport,
+}: RowProps) {
   const mati = !laporan.tersedia
 
   return (
     <article
-      onMouseEnter={onFocus}
-      onFocusCapture={onFocus}
-      className={`flex flex-col justify-between rounded-kartu border p-4 shadow-lembut ${
+      className={`rounded-kartu border p-4 shadow-lembut ${
         mati ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'
       }`}
     >
-      <div>
-        <h3 className={`text-sm font-semibold ${mati ? 'text-slate-500' : 'text-slate-900'}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <h2
+          className={`text-sm font-semibold ${mati ? 'text-slate-500' : 'text-slate-900'}`}
+        >
           {laporan.judul}
-        </h3>
-        {mati && (
-          <p className="mt-2 text-xs leading-relaxed text-slate-500">
-            {laporan.alasan}
-            {laporan.penghalang !== undefined && laporan.penghalang !== '' && (
-              <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-medium text-slate-600">
-                {laporan.penghalang}
-              </span>
-            )}
-          </p>
-        )}
-      </div>
+        </h2>
 
-      <div className="mt-4 flex flex-wrap gap-2">
         {mati ? (
           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Belum tersedia
@@ -341,27 +307,88 @@ function ReportCard({ laporan, sedangDiunduh, onExport, onFocus }: CardProps) {
           ))
         )}
       </div>
+
+      {/*
+        Isian khusus panel ini. Letaknya mengikuti harness: autocomplete bisnis berada
+        tepat setelah panel Klaim Per Bisnis, dan kotak centang "Treaty" tepat setelah
+        panel Akseptasi.
+      */}
+      {!mati && laporan.penyaring.bisnis && (
+        <div className="mt-3 max-w-sm">
+          {/*
+            Ia TIDAK memakai SelectField, dan itu disengaja.
+
+            Di harness kontrol ini ber-`pyIncludeLabel = false` — tidak berlabel sama
+            sekali, karena letaknya tepat di sebelah judul panelnya. SelectField selalu
+            menggambar label yang terlihat, dan label kedua berbunyi "Bisnis" di layar
+            yang bilah atasnya sudah punya "Bisnis" justru menimbulkan pertanyaan yang
+            tidak ada di layar lama.
+
+            Yang dipakai karena itu `aria-label`: tidak terlihat, tetapi tetap terbaca
+            pembaca layar — label tersembunyi lebih baik daripada tidak ada label sama
+            sekali, dan lebih baik daripada label yang membingungkan.
+          */}
+          <select
+            aria-label="Bisnis untuk Report Klaim Per Bisnis"
+            value={filter.bisnis}
+            disabled={bisnisMemuat}
+            onFocus={mintaBisnis}
+            onMouseDown={mintaBisnis}
+            onChange={(e) => ubah({ bisnis: e.target.value })}
+            className={
+              'w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 ' +
+              'text-slate-900 shadow-lembut transition-[border-color,box-shadow] ' +
+              'duration-150 ease-halus focus:border-blue-500 focus:outline-none ' +
+              'focus-visible:ring-4 focus-visible:ring-blue-500/20'
+            }
+          >
+            <option value="">{bisnisMemuat ? 'Memuat…' : '----- Pilih -----'}</option>
+            {bisnis.map((b) => (
+              <option key={b.kode} value={b.kode}>
+                {b.nama}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {!mati && laporan.penyaring.rincian && (
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={filter.rincian}
+            onChange={(e) => ubah({ rincian: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          {/*
+            Labelnya "Treaty" dan isinya bukan treaty: ia memilih SUSUNAN KOLOM berkas,
+            bukan menyaring baris. Label itu ditiru apa adanya (`D-13`) — penggunanya sudah
+            mengenalnya dengan nama itu, dan memperbaikinya di layar berarti melatih ulang
+            tanpa ada yang meminta.
+          */}
+          Treaty
+        </label>
+      )}
+
+      {mati && (
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          {laporan.alasan}
+          {laporan.penghalang !== undefined && laporan.penghalang !== '' && (
+            <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-medium text-slate-600">
+              {laporan.penghalang}
+            </span>
+          )}
+        </p>
+      )}
     </article>
   )
 }
 
 function messageOf(failure: unknown): string {
   if (failure instanceof APIError) {
-    // Pesan ringkasnya DIGANTI daftar isian yang kurang, bukan ditambahi.
-    //
-    // # Kenapa
-    //
-    // Peladen mengirim keduanya: ringkasan "Ada isian yang belum benar." dan rincian per
-    // isian "Tanggal Dari wajib diisi.". Sebelumnya hanya ringkasannya yang tampil, dan
-    // ringkasan itu TIDAK dapat ditindaklanjuti — pengguna melihat penolakan tanpa tahu
-    // isian mana yang dimaksud, pada layar yang punya lima isian dan 28 tombol.
-    //
-    // Tombolnya pun jauh dari pesannya: kartu yang ditekan bisa berada jauh di bawah,
-    // sementara pesannya muncul di atas. Tanpa menyebut nama isiannya, pengguna harus
-    // menebak.
-    //
-    // Ringkasannya dibuang karena rinciannya sudah memuat seluruh isinya — menampilkan
-    // keduanya hanya menambah satu baris yang tidak memberi tahu apa pun.
+    // Pesan ringkasnya DIGANTI daftar isian yang kurang, bukan ditambahi: ringkasan
+    // "Ada isian yang belum benar." tidak dapat ditindaklanjuti pada layar yang punya
+    // empat isian dan 28 tombol.
     const perIsian = Object.values(failure.violations())
     if (perIsian.length > 0) return perIsian.join(' ')
     return failure.message
@@ -381,14 +408,7 @@ function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
   return 'gangguan'
 }
 
-/**
- * pelanggaranOf mengambil pesan PER ISIAN dari sebuah penolakan.
- *
- * Dipakai menandai isiannya sendiri, bukan hanya menampilkan pesan di atas layar.
- * Pada layar dengan lima isian dan 28 tombol, pesan yang tidak menunjuk isiannya
- * memaksa pengguna menebak — dan tombol yang ditekan sering berada jauh di bawah
- * tempat pesannya muncul.
- */
+/** pelanggaranOf mengambil pesan PER ISIAN dari sebuah penolakan. */
 function pelanggaranOf(failure: unknown): Record<string, string> {
   if (failure instanceof APIError) return failure.violations()
   return {}

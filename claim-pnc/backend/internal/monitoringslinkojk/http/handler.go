@@ -236,7 +236,6 @@ func readRequest(
 		Segment:     segment,
 		Filter: monitoringslinkojk.Filter{
 			BusinessScope:         scope,
-			GenerateType:          query.Get("tipe_generate"),
 			DateOfLoss:            from,
 			DateOfRequestDocument: to,
 			Page:                  readInt(query.Get("halaman"), 1),

@@ -113,6 +113,21 @@ type claimDTO struct {
 	// ditampilkan kepada pengguna.
 	StatusKlaimLabel string `json:"status_klaim_label"`
 
+	// `posisi_klaim` dan `progress_klaim` DICABUT 2026-10-07.
+	//
+	// Keduanya dibangun atas pembacaan `InboxOutstandingClaim_Section:20167` dan `:20279`,
+	// tempat `.CloseClaimNote` dan `.ClaimNo` terikat sebagai nilai sel ber-`pyVisible=ALWAYS`.
+	// Pembacaan itu KELIRU: Work Owner menggulir grid Pega ke kanan, dan setelah
+	// "Claim status" langsung tombol Transfer — kedua kolom itu tidak digambar.
+	//
+	// Ikatan di baris tersebut rupanya milik tata letak lain di dalam section yang sama.
+	// Pelajarannya: `pyVisible=ALWAYS` membuktikan satu elemen terlihat, BUKAN bahwa ia
+	// kolom pada grid yang sedang dicari.
+	//
+	// Yang ikut dicabut: `posisi.sql`, `posisi.go`, `attachPositions`, dan `ClaimRow.Position`
+	// / `.Progress` — seluruh rantainya hanya melayani kedua kolom ini, termasuk satu kueri
+	// tambahan per halaman.
+
 	StatusProses string `json:"status_proses"`
 }
 
@@ -205,9 +220,12 @@ func pagination(total, limit, offset int) paginationDTO {
 // Ia membentuk LAYAR, bukan data: isi dropdown dan daftar kartu. Dipisahkan dari ringkasan
 // supaya layar dapat menggambar kerangkanya sebelum angka apa pun selesai dihitung.
 type metadataResponse struct {
-	LiniBisnis []choiceDTO `json:"lini_bisnis"`
-	Tile       []tileDTO   `json:"tile"`
-	Portal     string      `json:"portal"`
+	LiniBisnis     []choiceDTO `json:"lini_bisnis"`
+	StatusTransfer []choiceDTO `json:"status_transfer"`
+	StatusBayar    []choiceDTO `json:"status_bayar"`
+	TipePengguna   []choiceDTO `json:"tipe_pengguna"`
+	Tile           []tileDTO   `json:"tile"`
+	Portal         string      `json:"portal"`
 }
 
 // choiceDTO adalah satu pilihan pada dropdown.
@@ -238,8 +256,9 @@ func adaptClaim(row dashboardclaim.ClaimRow, now time.Time, loc *time.Location) 
 		NamaCabang:         row.BranchName,
 		PICTeknik:          row.TechnicalPIC,
 		AdminPNC:           row.AdminPNC,
-		TanggalPendaftaran: formatDate(&row.RegisteredAt, loc),
-		TanggalLapor:       formatDate(row.ReportDate, loc),
+		// Keduanya membawa JAM, dan `TanggalKejadian` tidak — lihat formatTimestamp.
+		TanggalPendaftaran: formatTimestamp(&row.RegisteredAt, loc),
+		TanggalLapor:       formatTimestamp(row.ReportDate, loc),
 		TanggalKejadian:    formatDate(row.LossDate, loc),
 		LamaHari:           row.AgeInDays(now, loc),
 		StatusKlaimKode:    row.ClaimStatusCode,
@@ -284,6 +303,29 @@ func formatDate(t *time.Time, loc *time.Location) string {
 		loc = time.UTC
 	}
 	return t.In(loc).Format("2006-01-02")
+}
+
+// formatTimestamp memformat tanggal BESERTA jamnya, sampai detik.
+//
+// Dipakai dua kolom saja: "Tanggal Pendaftaran" dan "Report Date". Layar Pega menggambar
+// keduanya dengan jam — `24 Jan 20 14:54:24` — dan memotongnya menjadi tanggal saja
+// menghilangkan isi: dua klaim yang didaftarkan pada hari yang sama menjadi tidak
+// terbedakan urutannya, padahal grid lama mengurutkannya tepat dengan nilai ini.
+//
+// Detik ikut dibawa karena Pega membawanya. Pada baris yang jamnya memang kosong, Pega
+// menggambar `0:00:00` apa adanya, dan itu direplikasi (`P-5`) — menyembunyikannya membuat
+// dua keadaan berbeda (tengah malam, dan "tidak ada jam") tampak sama.
+//
+// "Tanggal Kejadian" TIDAK memakainya: ia tanggal, bukan stempel waktu, dan grid lama pun
+// tidak menggambarnya di sini.
+func formatTimestamp(t *time.Time, loc *time.Location) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	if loc == nil {
+		loc = time.UTC
+	}
+	return t.In(loc).Format("2006-01-02 15:04:05")
 }
 
 // holdingDTO adalah satu baris tab Inbox Tampungan PIC.

@@ -137,9 +137,15 @@ function toColumn(kolom: Kolom): Column<Baris> {
   return column
 }
 
-/** keterangan menjelaskan apa yang dibaca segmen ini. */
+/**
+ * keterangan menjelaskan apa yang dibaca segmen ini.
+ *
+ * Kedua teks ini sempat TERTUKAR, mengikuti pemetaan segmen yang keliru. Struktur
+ * pelaporan SLIK OJK — dan layar Pega produksi — menempatkan D01 sebagai data DEBITUR
+ * dan F06 sebagai data FASILITAS.
+ */
 function keterangan(segmen: Segmen): string {
   return segmen.kode === 'D01'
-    ? 'Data fasilitas kredit yang SUDAH tersusun sebagai laporan SLIK OJK.'
-    : 'Data debitur perorangan dari berkas klaim — calon laporan yang belum tersusun.'
+    ? 'Data identitas debitur perorangan — segmen D01 laporan SLIK OJK.'
+    : 'Data fasilitas kredit yang sudah tersusun sebagai laporan — segmen F06.'
 }

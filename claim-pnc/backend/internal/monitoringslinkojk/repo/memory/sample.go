@@ -26,9 +26,15 @@ import (
 // Seluruh nilainya KARANGAN. Tidak ada nomor polis, nama tertanggung, maupun nomor
 // rekening nyata di sini (`D-69`).
 func NewSampleRepo() *Repo {
+	// Pemetaannya SENGAJA bersilang terhadap nama fungsinya.
+	//
+	// Nama fungsi mengikuti berkas asalnya di export — `sampleD01` menyusun kolom
+	// fasilitas milik `ExportDataSlinkD01`, `sampleF06` menyusun kolom identitas debitur
+	// milik `ExportDataSlinkFOG`. Nama berkas di export terbalik terhadap nama segmen
+	// layarnya; lihat catatan pemetaan pada monitoringslinkojk.Columns.
 	return NewRepo(
-		WithRows(monitoringslinkojk.SegmentD01, sampleD01()),
-		WithRows(monitoringslinkojk.SegmentF06, sampleF06()),
+		WithRows(monitoringslinkojk.SegmentD01, sampleF06()),
+		WithRows(monitoringslinkojk.SegmentF06, sampleD01()),
 	)
 }
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"claim-pnc/internal/reportkpi"
 )
@@ -103,56 +104,51 @@ func (h *Handler) PICTeknik(w http.ResponseWriter, r *http.Request) {
 
 // PICTeknikExport melayani GET /api/report-kpi/pic-teknik/ekspor.
 //
-// Berkasnya MERATAKAN kartu skor menjadi tabel: satu baris per PIC per komponen, dengan nama
-// PIC diulang di setiap baris. Bentuk kartu tidak dapat dipindahkan apa adanya ke CSV, dan
-// mengulang namanya membuat berkasnya dapat disaring dan diurutkan di penampil lembar kerja
-// — yang justru alasan orang mengunduhnya.
+// # Yang diekspor BUKAN kartu skor
+//
+// Sampai 2026-10-08 berkas ini berisi kartu skor — nama PIC dan nilainya. Itu tidak pernah
+// dilakukan Pega. Pega mengekspor DATA KLAIM MENTAH, dan pilihan "Pilih Data KPI"
+// menentukan kumpulan yang mana dari empat.
+//
+// Judul kolom berkasnya datang dari hasil kueri, bukan disusun di sini — lihat
+// reportkpi.PICExportTable.
 func (h *Handler) PICTeknikExport(w http.ResponseWriter, r *http.Request) {
 	active, caller, ready := h.prepare(w, r)
 	if !ready {
 		return
 	}
 
+	kind, known := reportkpi.FindPICExportKind(r.URL.Query().Get("data_kpi"))
+	if !known {
+		h.writeError(w, r, reportkpi.NewValidationError([]reportkpi.Violation{{
+			Field: "data_kpi",
+			Message: "Pilihan data KPI tidak dikenal. Pilih salah satu dari daftar " +
+				"\"Pilih Data KPI\".",
+		}}))
+		return
+	}
+
 	// Seluruh isinya diambil SEBELUM satu byte pun ditulis. Setelah header terkirim, galat
 	// tidak dapat lagi dijawab sebagai JSON — yang sampai ke pengguna akan berupa berkas
 	// separuh jadi tanpa satu pun keterangan.
-	scored, err := h.service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
+	exported, err := h.service.PICTeknikExport(
+		r.Context(), active.Alias, kind, readPICFilter(r), caller)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	grid := reportkpi.PICTeknikGrid()
-	header := make([]string, 0, len(grid.Columns))
-	for _, column := range grid.Columns {
-		header = append(header, column.Title)
-	}
-
-	h.beginDownload(w, picExportFilename(scored.Filter))
+	h.beginDownload(w, picExportFilename(exported.Filter, exported.Kind))
 
 	writer := csv.NewWriter(w)
-	if err := writer.Write(header); err != nil {
+	if err := writer.Write(exported.Table.Header); err != nil {
 		h.logExportFailure(r, err)
 		return
 	}
-
-	cards := append([]reportkpi.PICScorecard{}, scored.Result.Scorecards...)
-	cards = append(cards, scored.Result.Leader)
-
-	for _, card := range cards {
-		for _, row := range card.Rows {
-			record := []string{
-				card.PIC,
-				row.Label,
-				strconv.FormatFloat(row.Total, 'f', -1, 64),
-				strconv.FormatFloat(row.Achieved, 'f', -1, 64),
-				numberText(row.Percent),
-				numberText(row.Value),
-			}
-			if err := writer.Write(record); err != nil {
-				h.logExportFailure(r, err)
-				return
-			}
+	for _, record := range exported.Table.Rows {
+		if err := writer.Write(record); err != nil {
+			h.logExportFailure(r, err)
+			return
 		}
 	}
 
@@ -238,8 +234,121 @@ func toPICComponents(components []reportkpi.PICComponent) []PICComponentDTO {
 }
 
 // picExportFilename menyusun nama berkas yang menyebut penyaringnya.
-func picExportFilename(query reportkpi.PICTeknikQuery) string {
-	name := "kpi-pic-teknik-" + string(query.Line) +
+// picExportFilename menyusun nama berkas unduhan.
+//
+// Pilihan data KPI ikut masuk ke namanya. Keempat berkas dapat diunduh pada penyaring
+// yang sama, dan tanpa pembeda itu keempatnya akan bernama sama persis di folder
+// unduhan — lalu bertimpa diam-diam.
+func picExportFilename(query reportkpi.PICTeknikQuery, kind reportkpi.PICExportKind) string {
+	name := "kpi-pic-teknik-" + strings.ToLower(strings.ReplaceAll(kind.Label(), " ", "-")) +
+		"-" + string(query.Line) +
 		"-" + query.Range.From + "-sd-" + query.Range.To + ".csv"
+	return url.PathEscape(name)
+}
+
+// PICTeknikLaporanExport melayani GET /api/report-kpi/pic-teknik/ekspor-laporan.
+//
+// # Ia BUKAN varian dari PICTeknikExport
+//
+// Tab KPI PIC Teknik di Pega punya DUA tombol ekspor, dan keduanya mengeluarkan berkas
+// yang sama sekali berbeda:
+//
+//	Export Data KPI  di sebelah Cari            -> PENILAIANNYA, 6 kolom      <- yang ini
+//	Export Data KPI  di sebelah Pilih Data KPI  -> data klaim mentah, 27–40 kolom
+//
+// Yang ini mengekspor persis isi grid di layar, sehingga ia memakai ulang `PICTeknik` —
+// bukan kueri tersendiri. Dengan begitu angka di layar dan angka di berkas tidak dapat
+// berselisih: keduanya hasil perhitungan yang sama.
+func (h *Handler) PICTeknikLaporanExport(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.prepare(w, r)
+	if !ready {
+		return
+	}
+
+	// Seluruh isinya dihitung SEBELUM satu byte pun ditulis. Setelah header terkirim,
+	// galat tidak dapat lagi dijawab sebagai JSON.
+	scored, err := h.service.PICTeknik(r.Context(), active.Alias, readPICFilter(r), caller)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	spec := reportkpi.ExportPICScorecard()
+	h.beginDownload(w, picLaporanFilename(spec.FileLabel, scored.Filter))
+
+	writer := csv.NewWriter(w)
+	if err := writer.Write(spec.Headers); err != nil {
+		h.logExportFailure(r, err)
+		return
+	}
+
+	for _, card := range picExportCards(scored.Result) {
+		for _, row := range card.Rows {
+			cells := make([]string, 0, len(spec.Fields))
+			for _, field := range spec.Fields {
+				cells = append(cells, picScorecardCell(card, row, field))
+			}
+			if err := writer.Write(cells); err != nil {
+				h.logExportFailure(r, err)
+				return
+			}
+		}
+	}
+
+	h.flush(w, writer, r)
+}
+
+// picExportCards menyusun urutan kartu yang ditulis: tiap PIC, lalu baris rekapitulasi.
+//
+// Rekapitulasi DIBUANG ketika tidak ada satu pun petugas — ia rata-rata dari nol orang,
+// dan menuliskannya menghasilkan baris "Leader" yang tidak merangkum apa pun. Layar pun
+// menyembunyikannya pada keadaan yang sama.
+func picExportCards(result reportkpi.PICTeknikResult) []reportkpi.PICScorecard {
+	if len(result.Scorecards) == 0 {
+		return nil
+	}
+	return append(append([]reportkpi.PICScorecard{}, result.Scorecards...), result.Leader)
+}
+
+// picScorecardCell mengambil satu sel berkas "Laporan KPI".
+//
+// Persentase dan nilai yang TIDAK dapat dihitung menjadi sel KOSONG, bukan "0" — sama
+// seperti berkas ekspor lain. Nol yang dikarang akan ikut terhitung ketika pembacanya
+// menjumlahkan kolomnya di Excel.
+func picScorecardCell(
+	card reportkpi.PICScorecard,
+	row reportkpi.PICRow,
+	field string,
+) string {
+	switch field {
+	case reportkpi.FieldPICName:
+		return card.PIC
+	case reportkpi.FieldPICMetric:
+		return row.Label
+	case reportkpi.FieldPICTotal:
+		return strconv.FormatFloat(row.Total, 'f', -1, 64)
+	case reportkpi.FieldPICAchieved:
+		return strconv.FormatFloat(row.Achieved, 'f', -1, 64)
+	case reportkpi.FieldPICPercent:
+		return scoreCell(row.Percent)
+	case reportkpi.FieldPICValue:
+		return scoreCell(row.Value)
+	default:
+		return ""
+	}
+}
+
+// picLaporanFilename menyusun nama berkas "Laporan KPI" beserta periodenya.
+//
+// Pega menyusunnya `"Laporan KPI "+" , "+Param.awal+" - "+Param.akhir` — dua spasi sebelum
+// koma, dan itu ditiru. Yang TIDAK dapat ditiru adalah bentuk `Param.awal`: badan langkah
+// activity-nya tidak ikut ter-export, sehingga tidak diketahui apakah ia `dd/mm/yyyy`
+// atau bentuk lain.
+//
+// Dipakai di sini bentuk `YYYY-MM-DD` apa adanya seperti yang dipilih pengguna. Alasannya
+// bukan selera: `dd/mm/yyyy` memuat garis miring, dan garis miring tidak sah di dalam nama
+// berkas Windows — bentuk itu karena itu mustahil menjadi yang dipakai Pega.
+func picLaporanFilename(label string, query reportkpi.PICTeknikQuery) string {
+	name := label + "  , " + query.Range.From + " - " + query.Range.To + ".csv"
 	return url.PathEscape(name)
 }

@@ -219,7 +219,7 @@ func scanTask(row rowScanner) (inboxinvestigator.Task, error) {
 		branchName      sql.NullString
 		adminName       sql.NullString
 		registeredAt    sql.NullTime
-		surveyDate      sql.NullString
+		surveyDate      sql.NullTime
 		businessLine    sql.NullString
 	)
 
@@ -242,7 +242,7 @@ func scanTask(row rowScanner) (inboxinvestigator.Task, error) {
 		BranchName:      strings.TrimSpace(branchName.String),
 		AdminName:       strings.TrimSpace(adminName.String),
 		RegisteredAt:    nullableTime(registeredAt),
-		SurveyDate:      parsePegaMoment(surveyDate.String),
+		SurveyDate:      nullableTime(surveyDate),
 		BusinessLine:    strings.TrimSpace(businessLine.String),
 	}, nil
 }

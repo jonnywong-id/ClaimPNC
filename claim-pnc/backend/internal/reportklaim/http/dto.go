@@ -14,9 +14,19 @@ type CatalogResponse struct {
 	// Judul adalah judul layar, disalin dari harness: "Report Claim".
 	Judul string `json:"judul"`
 
-	Kelompok []GroupDTO `json:"kelompok"`
+	// Laporan adalah ke-28 panel dalam URUTAN LAYAR Pega — DATAR, tanpa pengelompokan.
+	//
+	// Sebelumnya daftar ini dikelompokkan menjadi lima bagian berjudul (Klaim, PLA/DLA,
+	// dan seterusnya). Pengelompokan itu TIDAK ADA di layar lama: harness-nya menumpuk
+	// ke-28 panel dalam satu kolom, berurutan. Ia dicabut 2026-10-08 atas ralat Work
+	// Owner — pengelompokannya memindahkan panel dari tempat yang dihafal pengguna.
+	Laporan []ReportDTO `json:"laporan"`
 
-	// LiniBisnis adalah isi dropdown yang di layar berlabel "Treaty".
+	// LiniBisnis adalah isi dropdown yang di layar berlabel "Bisnis".
+	//
+	// Namanya "Bisnis", bukan "Treaty". Yang berlabel "Treaty" di layar lama adalah
+	// KOTAK CENTANG pada panel Akseptasi — kontrol yang sama sekali berbeda. Lihat
+	// FilterUsageDTO.Rincian.
 	LiniBisnis []BusinessLineDTO `json:"lini_bisnis"`
 
 	// StatusCompliance adalah isi dropdown "Status Compliance".
@@ -34,13 +44,6 @@ type CatalogResponse struct {
 type ComplianceStatusDTO struct {
 	Nilai string `json:"nilai"`
 	Nama  string `json:"nama"`
-}
-
-// GroupDTO adalah satu kelompok kartu di layar.
-type GroupDTO struct {
-	Kode    string      `json:"kode"`
-	Judul   string      `json:"judul"`
-	Laporan []ReportDTO `json:"laporan"`
 }
 
 // ReportDTO adalah satu kartu laporan.
@@ -115,33 +118,13 @@ type BusinessOptionResponse struct {
 
 // toCatalogDTO menyusun isi layar dari katalog.
 //
-// Urutan kelompoknya TETAP — ia ditulis di sini, bukan diambil dari peta, supaya susunan
-// layar tidak berubah-ubah antar permintaan.
+// Urutan laporannya dipakai APA ADANYA dari pemanggil — yaitu urutan layar Pega. Tidak ada
+// pengurutan ulang di sini: susunan layar adalah hal yang dihafal pengguna, dan satu-satunya
+// tempat yang boleh menentukannya adalah katalog.
 func toCatalogDTO(reports []reportklaim.Report) CatalogResponse {
-	order := []reportklaim.Group{
-		reportklaim.GroupKlaim,
-		reportklaim.GroupReasuransi,
-		reportklaim.GroupPenyelesaian,
-		reportklaim.GroupLiniBisnis,
-		reportklaim.GroupOperasional,
-	}
-
-	byGroup := make(map[reportklaim.Group][]ReportDTO, len(order))
+	laporan := make([]ReportDTO, 0, len(reports))
 	for _, r := range reports {
-		byGroup[r.Group] = append(byGroup[r.Group], toReportDTO(r))
-	}
-
-	groups := make([]GroupDTO, 0, len(order))
-	for _, g := range order {
-		item := byGroup[g]
-		if len(item) == 0 {
-			continue
-		}
-		groups = append(groups, GroupDTO{
-			Kode:    string(g),
-			Judul:   reportklaim.GroupLabel(g),
-			Laporan: item,
-		})
+		laporan = append(laporan, toReportDTO(r))
 	}
 
 	lines := reportklaim.BusinessLineOptions()
@@ -159,7 +142,7 @@ func toCatalogDTO(reports []reportklaim.Report) CatalogResponse {
 		// Disalin apa adanya dari harness. Judulnya memang berbahasa Inggris di sistem
 		// lama, dan `D-13` menetapkan teks layar ditiru (`D-80`).
 		Judul:            "Report Claim",
-		Kelompok:         groups,
+		Laporan:          laporan,
 		LiniBisnis:       lineDTO,
 		StatusCompliance: statusDTO,
 	}

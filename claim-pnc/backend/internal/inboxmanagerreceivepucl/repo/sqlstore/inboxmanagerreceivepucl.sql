@@ -111,7 +111,7 @@
 -- procedure yang mengisinya (`Database/PROCINSERTDATARECIVEDKLAIM.prc`) menerima 26
 -- parameter dan tidak satu pun berisi jumlah lembar.
 --
--- `CAST(NULL …)` dipakai, bukan kolomnya dihilangkan, karena ke-16 alias WAJIB sama di setiap
+-- `CAST(NULL …)` dipakai, bukan kolomnya dihilangkan, karena ke-18 alias WAJIB sama di setiap
 -- kueri — lihat bagian berikutnya. Kolomnya tetap DIGAMBAR di layar supaya isian yang belum
 -- terbawa terlihat, bukan tersamar sebagai layar yang sudah setara.
 --
@@ -135,12 +135,12 @@
 -- `TCLAIMID := {TampunganPages.pzInsKey}` (`Rcv_ProcInsertRecivedDocument-SQL.xml`).
 --
 -- ============================================================================
--- KE-17 ALIAS WAJIB SAMA DI SETIAP KUERI
+-- KE-18 ALIAS WAJIB SAMA DI SETIAP KUERI
 -- ============================================================================
 --
 -- Urutan DAN namanya. Dua hal bergantung padanya:
 --
---   * satu pemindai Go melayani ketiga kueri (scanWorkItem di
+--   * satu pemindai Go melayani kedua kueri daftar (scanWorkItem di
 --     inboxmanagerreceivepucl.go);
 --   * uji query_test.go menjaganya, dan ia gagal bila ada kueri yang aliasnya berbeda.
 --
@@ -268,6 +268,12 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        CAST(NULL AS VARCHAR2(100))      AS LETTER_PRINTED_AT,
        CAST(NULL AS VARCHAR2(100))      AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))      AS EXPIRY_STATUS,
+
+       -- Tab Receive membuka layar PENERIMAAN DOKUMEN, yang dibaca dari tabel yang sama
+       -- dengan daftar ini. Barisnya karena itu SELALU dapat dibuka, dan penanda ini tetap
+       -- '1' — bukan NULL. Ia ada semata supaya kedua kueri daftar punya alias yang sama.
+       '1'                              AS CLAIM_SCREEN_READY,
+
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST a
@@ -311,6 +317,45 @@ SELECT w.PZINSKEY                       AS REFERENCE,
        w.TANGGALCETAKDOKUMENPUCL_1      AS LETTER_PRINTED_AT,
        w.LAMAKLAIM_1                    AS CLAIM_AGE,
        w.STATUSCASE_1                   AS EXPIRY_STATUS,
+
+       -- Apakah layar kerja klaim dapat dibuka untuk baris ini.
+       --
+       -- # Kenapa penanda ini perlu
+       --
+       -- Daftar ini dan layar tujuannya membaca TABEL YANG BERBEDA. Daftar ini membaca
+       -- antrean Pega; layar kerja RCL/PUCL membaca `POOLDATA.TC_PNC_PUCL`, tabel datar
+       -- milik aplikasi yang DDL-nya sendiri menulis "sesudah tabel ini terisi".
+       --
+       -- Keduanya karena itu tidak dijamin memuat klaim yang sama. Tanpa penanda ini,
+       -- nomor case pada baris yang belum punya pasangan di sana digambar sebagai tautan
+       -- yang PASTI gagal — dan pesannya, "klaim tidak ditemukan pada entitas yang sedang
+       -- dipilih", mengarahkan petugas memeriksa pilihan portal padahal portalnya benar.
+       -- Itu dilaporkan Work Owner 2026-10-10.
+       --
+       -- # Kenapa EXISTS, bukan gabungan
+       --
+       -- Karena yang dibutuhkan jawaban ya/tidak, bukan barisnya. Gabungan ke `TC_PNC_PUCL`
+       -- akan MENGGANDAKAN baris bila kelak satu klaim punya lebih dari satu baris di sana,
+       -- dan itu mengubah jumlah baris yang dilihat pengguna — persis yang tidak boleh
+       -- terjadi pada antrean (`P-5`).
+       --
+       -- `TRIM` di kedua sisi mengikuti `ReminderPUCL-SQL.xml` dan kueri `detail` pada
+       -- modul `inboxrclpucl`: kolom kunci bertipe `CHAR` di sebagian tabel, dan
+       -- perbandingan tanpa `TRIM` gagal diam-diam karena spasi penyangga.
+       -- # Kenapa tanpa `ELSE`
+       --
+       -- Karena berkas ini tidak memakai `ELSE` sama sekali, dan sebuah uji menjaganya —
+       -- penerjemahan `RCL_PUCL_1` pun ditulis tanpa `ELSE`, persis seperti
+       -- `GetReminderPUCL-SQL.xml`. Nilai yang tidak cocok karena itu menghasilkan NULL,
+       -- dan pemindai Go memperlakukan apa pun selain `'1'` sebagai belum siap — termasuk
+       -- NULL. Hasilnya sama dengan `ELSE '0'`, tanpa melonggarkan aturan berkas ini.
+       CASE
+           WHEN EXISTS (SELECT 1
+                          FROM POOLDATA.TC_PNC_PUCL p
+                         WHERE TRIM(p.CLAIMID) = TRIM(w.PYID))
+           THEN '1'
+       END                              AS CLAIM_SCREEN_READY,
+
        COUNT(*) OVER ()                 AS TOTAL_ROWS
   FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
        INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
@@ -332,7 +377,7 @@ OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
 -- PEMETAAN KOLOM — judul layar -> properti Pega -> kolom sebenarnya
 -- ============================================================================
 --
--- Judulnya dari `Section/InputReceiveDocument_sect.xml`; propertinya dari `pyValue` sel yang
+-- Judulnya dari `Section/InputReceiveDocument-Section.xml`; propertinya dari `pyValue` sel yang
 -- sama; kolomnya dari pernyataan `update` pada
 -- `Database/PROCINSERTDATARECIVEDKLAIM.prc` untuk tabel cermin, dan dari kueri Pega yang
 -- membaca kelas yang sama untuk objek kerja.

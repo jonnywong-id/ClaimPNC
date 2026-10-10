@@ -255,7 +255,7 @@ SELECT a.userassign AS "QQNAME",
 --
 -- Empat hal yang diambil dari sana apa adanya:
 --
---   tabelnya              DATAPEGA.PC_ASM_FW_GCNMFW_WORK
+--   tabelnya              DATAPEGA.PC_ASM_FW_GCNMFW_WORK (kini diganti — lihat SUMBER BARU)
 --   pembeda kelasnya      PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
 --   pembeda internal      SURVEYORTYPE_1 = '1'
 --   keterkaitan klaimnya  CASEID_1 = pzinskey klaim induknya
@@ -290,28 +290,55 @@ SELECT a.userassign AS "QQNAME",
 -- daftar yang SAMA (`TempExportAdjuster.pxResults(<APPEND>)`). Jadi berkasnya memuat
 -- survei internal dan eksternal sekaligus, tanpa kolom yang membedakan keduanya.
 -- Karena itu `SURVEYORTYPE_1` tidak disaring di sini.
-SELECT (SELECT w.PYID
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         WHERE w.PZINSKEY = s.CASEID_1) AS "IDSurvey",
-       s.POLICYNO AS "IDObject",
-       REPLACE(s.QQNAME, ',', ' ') AS "InsuredPIC",
-       (SELECT c.BUSINESSNAME
-          FROM POOLDATA.T_CLAIM_PNC c
-         WHERE c.CLAIMID = s.CASEID_1) AS "CouseOfLos",
+--
+-- ============================================================================
+-- SUMBER BARU (2026-10-08) — objek kerja SurveyClaim diganti T_SURVEYORLIST
+-- ============================================================================
+--
+-- `PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi. Satu berkas survei kini = LANGKAH TERAKHIR
+-- per `CASEID` di `T_SURVEYORLIST` (tabel itu jejak per langkah), klaimnya `T_CLAIM_PNC`
+-- lewat `PNCCASEID`. Pemetaan dan kecocokannya, diukur atas 187 berkas yang ada di kedua
+-- sumber (Oracle dev):
+--
+--   PYSTATUSWORK      -> t.PYSTATUSWORK       187/187 sama
+--   CASEID_1          -> t.PNCCASEID          156 sama; 31 sisanya CASEID_1 KOSONG di
+--                                             objek kerja (T_SURVEYORLIST justru terisi)
+--   PYID klaim        -> REPLACE(t.PNCCASEID, prefix Pega, '')  (kesepadanan PYID Work-PNC)
+--   SURVEYORNAME_1    -> t.SURVEYOR_NAME      173/175 terisi sama
+--   ADJUSTERSTATUS_1  -> t.STS_SURVEY         155/187 sama
+--   USERTEKNIS_1      -> c.PICTEKNIK          114/150 sama (ADJUSTER_PIC 0 sama)
+--   POLICYNO, QQNAME  -> c.NOPOLIS, c.QQNAME  170/187 sama
+--   KETERANGAN_1      -> t.KETERANGAN         BELUM TERBUKTI — di objek kerja 0/187 terisi
+--   SURVEYDATE_1      -> t.SURVEYDATE         BELUM TERBUKTI — hanya 1 dari 29 sama harinya;
+--                                             dipakai karena tidak ada kolom lain yang lebih
+--                                             dekat, dan tanpa tanggal laporan ini kosong
+--
+-- Akibat pada populasi: objek kerja memuat 367 survei, T_SURVEYORLIST hanya 188 berkas.
+-- Yang selesai: 134 lama vs 48 baru; yang selesai DAN bertanggal survei: 7 lama vs 13 baru.
+SELECT REPLACE(t.PNCCASEID, 'ASM-FW-GCNMFW-WORK ', '') AS "IDSurvey",
+       c.NOPOLIS AS "IDObject",
+       REPLACE(c.QQNAME, ',', ' ') AS "InsuredPIC",
+       c.BUSINESSNAME AS "CouseOfLos",
        (SELECT SUM(e.CONVERTVALUE)
           FROM POOLDATA.T_CLAIM_ESTIMASI e
-         WHERE e.CLAIMID = s.CASEID_1) AS "Salvage",
-       s.SURVEYDATE_1 AS "BodyLetterOP",
-       s.SURVEYORNAME_1 AS "SurveyorName",
-       s.KETERANGAN_1 AS "KeteranganLain",
-       s.USERTEKNIS_1 AS "AdjusterPIC",
-       s.ADJUSTERSTATUS_1 AS "AdjusterStatus"
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
- WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-   AND s.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND s.SURVEYDATE_1 >= :1
-   AND s.SURVEYDATE_1 < :2 + INTERVAL '1' DAY
- ORDER BY s.SURVEYDATE_1, s.PYID
+         WHERE e.CLAIMID = t.PNCCASEID) AS "Salvage",
+       t.SURVEYDATE AS "BodyLetterOP",
+       t.SURVEYOR_NAME AS "SurveyorName",
+       t.KETERANGAN AS "KeteranganLain",
+       c.PICTEKNIK AS "AdjusterPIC",
+       t.STS_SURVEY AS "AdjusterStatus"
+  FROM (SELECT l.CASEID, l.PNCCASEID, l.PYSTATUSWORK, l.SURVEYDATE, l.SURVEYOR_NAME,
+               l.KETERANGAN, l.STS_SURVEY,
+               ROW_NUMBER() OVER (PARTITION BY l.CASEID
+                                  ORDER BY LPAD(TRIM(l.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           l.TGLINPUT DESC NULLS LAST) AS rn
+          FROM POOLDATA.T_SURVEYORLIST l) t
+  LEFT JOIN POOLDATA.T_CLAIM_PNC c ON c.CLAIMID = t.PNCCASEID
+ WHERE t.rn = 1
+   AND t.PYSTATUSWORK IN ('Resolved-Completed', 'Resolved-Rejected')
+   AND t.SURVEYDATE >= :1
+   AND t.SURVEYDATE < :2 + INTERVAL '1' DAY
+ ORDER BY t.SURVEYDATE, REPLACE(t.CASEID, 'ASM-FW-GCNMFW-WORK ', '')
 
 
 -- name: report_compliance
@@ -385,7 +412,10 @@ SELECT a.CLAIMNO AS "CaseID",
           FROM POOLDATA.T_CLAIM_ADJUSTMENT x
          WHERE x.CLAIMID = a.CLAIMID) AS "Country"
   FROM POOLDATA.T_CLAIM_PNC a
- WHERE a.GROUP_PANEL = '002'
+-- Kolomnya `GROUPPANEL` tanpa garis bawah. `GROUP_PANEL` memang ada, tetapi di
+-- `PEGA_DASHBOARDPNC` — bukan di tabel ini. Keduanya dipakai berdampingan di modul ini,
+-- dan nama yang nyaris sama inilah yang membuatnya tertukar.
+ WHERE a.GROUPPANEL = '002'
    AND a.REGISTERDATE >= :1
    AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
  ORDER BY a.REGISTERDATE, a.CLAIMNO

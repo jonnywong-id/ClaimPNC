@@ -90,6 +90,9 @@ import { InputAcceptationPage } from '@/modules/input-acceptation/InputAcceptati
 import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingClaimPage'
 import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
 import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
+import { CoverageConversionPage } from '@/modules/konversi-coverage/CoverageConversionPage'
+import { CoinsConversionPage } from '@/modules/konversi-coins/CoinsConversionPage'
+import { ObjectItemConversionPage } from '@/modules/konversi-object-item-fire/ObjectItemConversionPage'
 import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
 import { APIError } from '@/api/client'
 import { ErrorCode } from '@/api/types'
@@ -958,6 +961,48 @@ export function AppRoute() {
         paralel (`P-1`), dan kontrak layanan pengiriman ke SLIK tidak ada di export
         (`R-16`). Ketiadaannya dijelaskan di layarnya, bukan disembunyikan.
       */}
+      {/*
+        Konversi Coverage (`MENU_ID 87`) — alat bantu data uji: dokumen coverage polis di
+        LIVE dikonversi menjadi tabel coverage dan spreading di TEST.
+      */}
+      <Route
+        path="/konversi-coverage"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CoverageConversionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Konversi Object Item Fire (`MENU_ID 88`) — alat bantu data uji: PropertyItemList polis
+        Fire di LIVE dikonversi menjadi T_PROPERTYITEMLIST di TEST, BLOB-nya ikut disalin.
+      */}
+      <Route
+        path="/konversi-object-item-fire"
+        element={
+          <SessionGuard>
+            <Protected>
+              <ObjectItemConversionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
+      {/*
+        Konversi Coins (`MENU_ID 89`) — alat bantu data uji: CoinsList dokumen polis
+        JSON_POLIS.DATA_JSONBLOB di LIVE dikonversi menjadi T_COINSLIST di TEST.
+      */}
+      <Route
+        path="/konversi-coins"
+        element={
+          <SessionGuard>
+            <Protected>
+              <CoinsConversionPage />
+            </Protected>
+          </SessionGuard>
+        }
+      />
       <Route
         path="/monitoring-slink-ojk"
         element={

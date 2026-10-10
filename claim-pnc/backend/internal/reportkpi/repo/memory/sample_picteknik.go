@@ -128,6 +128,17 @@ func sampleBands() []reportkpi.Band {
 		{Job: reportkpi.JobSLA, Value: 3, Bottom: 25, Top: 30},
 		{Job: reportkpi.JobSLA, Value: 2, Bottom: 30, Top: 35},
 		{Job: reportkpi.JobSLA, Value: 1, Bottom: 35, Top: 100},
+
+		// NILAI ADJUSTER — pita KATEGORI, disalin apa adanya termasuk LUBANGNYA.
+		//
+		// Perhatikan 60 sampai 60,001, 69,999 sampai 70, dan 80 sampai 80,001 tidak tercakup
+		// pita mana pun. Lubang itu ada di master produksi, dan disalin ke sini supaya layar
+		// pengembangan dapat menunjukkan kategori yang KOSONG — yang di produksi memang
+		// terjadi, dan tanpa contoh seperti ini akan dilaporkan sebagai kerusakan.
+		{Job: reportkpi.AdjusterCategoryJob, Bottom: 0, Top: 60, Note: "KURANG BAIK"},
+		{Job: reportkpi.AdjusterCategoryJob, Bottom: 60.001, Top: 69.999, Note: "CUKUP"},
+		{Job: reportkpi.AdjusterCategoryJob, Bottom: 70, Top: 80, Note: "BAIK"},
+		{Job: reportkpi.AdjusterCategoryJob, Bottom: 80.001, Top: 100, Note: "BAIK SEKALI"},
 	}
 }
 

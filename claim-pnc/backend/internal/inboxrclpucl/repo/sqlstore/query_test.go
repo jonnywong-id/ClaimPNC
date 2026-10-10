@@ -438,17 +438,19 @@ func TestDailyReportKeepsBothUnionBranches(t *testing.T) {
 
 	require.Contains(t, text, "UNION")
 	require.NotContains(t, strings.ToUpper(text), "UNION ALL")
-	require.Contains(t, text, "w.GROUPPANEL_1 = :6",
+	require.Contains(t, text, "p.GROUPPANEL = :4",
 		"cabang kedua harus menyaring Group Panel Personal Accident")
 }
 
-func TestDailyReportSecondBranchDoesNotJoinTheWorkbasket(t *testing.T) {
-	// Cabang kedua sengaja TIDAK menggabung antrean bersama — ia mengambil seluruh klaim
-	// PA pada rentang itu, termasuk yang tidak pernah masuk antrean RCL/PUCL. Itulah
+func TestDailyReportSecondBranchDoesNotFilterTheWorkbasket(t *testing.T) {
+	// Cabang kedua sengaja TIDAK menyaring antrean bersama — ia mengambil seluruh klaim PA
+	// pada rentang itu dari TC_PNC_PUCL, termasuk yang antreannya sudah berpindah. Itulah
 	// sebabnya isi laporan berbeda dari isi tabel.
 	text := query("daily_report")
-	require.Equal(t, 1, strings.Count(text, "DATAPEGA.PC_ASSIGN_WORKBASKET"),
-		"hanya cabang pertama yang menggabung antrean bersama")
+	require.Equal(t, 1, strings.Count(text, "ASSIGNED_OPERATOR_ID ="),
+		"hanya cabang pertama yang menyaring antrean bersama")
+	require.NotContains(t, text, "PC_ASM_FW_GCNMFW_WORK", "laporan harian masih membaca objek kerja Pega")
+	require.NotContains(t, text, "PC_ASSIGN_WORKBASKET", "laporan harian masih membaca antrean Pega")
 }
 
 func TestDailyReportUsesAHalfOpenDateRange(t *testing.T) {
@@ -463,7 +465,7 @@ func TestDailyReportBindsEachRangeSeparately(t *testing.T) {
 	// Kedua cabang menyaring rentang yang sama, tetapi penandanya berbeda — menulis `:3`
 	// dua kali akan bergantung pada cara driver menafsirkan penanda berulang.
 	text := query("daily_report")
-	for _, marker := range []string{":3", ":4", ":7", ":8"} {
+	for _, marker := range []string{":2", ":3", ":5", ":6"} {
 		require.Containsf(t, text, marker, "penanda %s hilang", marker)
 	}
 }
@@ -473,7 +475,7 @@ func TestDailyReportIsOrderedAndPaginated(t *testing.T) {
 	// di dua halaman sekaligus hilang dari halaman lain begitu hasilnya dipotong.
 	text := query("daily_report")
 	require.Contains(t, text, "ORDER BY r.SENT_AT DESC, r.CASE_ID DESC")
-	require.Contains(t, text, "OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY")
+	require.Contains(t, text, "OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY")
 }
 
 func TestProbeQueriesTouchNoRows(t *testing.T) {
@@ -503,13 +505,16 @@ func TestColumnProbeNamesEveryFilteringColumn(t *testing.T) {
 		"pemeriksaan kolom harus menyebut tabel datar, bukan tabel Pega")
 }
 
-func TestTheReportProbeChecksThePegaTables(t *testing.T) {
-	// Laporan harian masih membaca kedua tabel Pega, dan kegagalannya BERBEDA akibatnya dari
-	// kegagalan tabel datar: yang mati hanya tombol unduh tab "Cetak Surat", bukan layarnya.
-	// Pemeriksaannya terpisah supaya galatnya menyebut hal yang benar.
+func TestTheReportProbeChecksTheReportColumns(t *testing.T) {
+	// Laporan harian membaca TC_PNC_PUCL sejak 2026-10-08. Kolom yang HANYA dipakainya —
+	// GROUPPANEL, ASSIGNED_OPERATOR_ID, STATUS_CLAIM — diperiksa terpisah supaya galatnya
+	// menyebut tombol unduh, bukan layarnya.
 	text := query("check_laporan")
-	require.Contains(t, text, "DATAPEGA.PC_ASM_FW_GCNMFW_WORK")
-	require.Contains(t, text, "DATAPEGA.PC_ASSIGN_WORKBASKET")
+	require.Contains(t, text, "POOLDATA.TC_PNC_PUCL")
+	for _, column := range []string{"GROUPPANEL", "ASSIGNED_OPERATOR_ID", "STATUS_CLAIM", "TGL_KIRIM_PUCL"} {
+		require.Containsf(t, text, column, "kolom %s tidak ikut diperiksa", column)
+	}
+	require.NotContains(t, text, "DATAPEGA.")
 }
 
 // ---------------------------------------------------------------------------
@@ -563,7 +568,15 @@ func TestDetailReachesTheChildTablesThroughTClaimPNC(t *testing.T) {
 
 	// Prefix TIDAK boleh dirangkai sendiri. Ia benar untuk klaim warisan dan GAGAL DIAM-DIAM
 	// untuk klaim ber-nomor `PNCN.YY.xxxx`, yang `D-22` dan `D-71` bebaskan dari prefix itu.
-	require.NotContains(t, text, "ASM-FW-GCNMFW-WORK",
+	//
+	// Satu-satunya pengecualian (2026-10-08): RECEIVED_DATE_FIRST mencocokkan
+	// `T_CLAIM_PNC.CLAIMID` (unik) terhadap KEDUA bentuk sekaligus — berprefix untuk klaim
+	// warisan, polos untuk PNCN — menggantikan `PYID` tabel objek kerja Pega. Jembatan
+	// `CLAIMNO` tidak dipakai di sana karena terukur salah pada 2 klaim dan hanya menjangkau
+	// 1.356 dari 1.404. Bentuk gabungan itu dihapus dulu, baru literalnya dilarang.
+	const bothForms = "c.CLAIMID IN ('ASM-FW-GCNMFW-WORK ' || TRIM(p.CLAIMID), TRIM(p.CLAIMID))"
+	require.Contains(t, text, bothForms)
+	require.NotContains(t, strings.ReplaceAll(text, bothForms, ""), "ASM-FW-GCNMFW-WORK",
 		"kunci teknis dibaca dari T_CLAIM_PNC, bukan dirangkai dari literal")
 }
 
@@ -774,8 +787,8 @@ func TestPenandaBindSetiapKueriMenaikDanTidakBerulang(t *testing.T) {
 //
 // # Membaca TETAP boleh
 //
-// Modul ini memang membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` untuk menerjemahkan nomor case
-// menjadi kunci objek kerja, dan `PC_LINK_ATTACHMENT` untuk penyaring daftar dokumen. `P-1`
+// Modul ini membaca `PC_LINK_ATTACHMENT` untuk penyaring daftar dokumen. (Tabel objek kerja
+// Pega dulu ikut dibaca untuk menerjemahkan nomor case; sejak 2026-10-08 tidak lagi.) `P-1`
 // melarang menulis, bukan membaca.
 func TestNoQueryWritesToPegaTables(t *testing.T) {
 	for name, text := range queries {

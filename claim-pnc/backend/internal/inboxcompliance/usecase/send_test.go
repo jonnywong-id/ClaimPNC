@@ -69,7 +69,7 @@ func TestSendToPostAudit(t *testing.T) {
 
 	// Nomornya terbit dari penyimpanan, bukan dari pemanggil, dan mulai dari 100001 —
 	// rentang yang tidak mungkin dicapai Pega.
-	require.Equal(t, "CPL-100001", sent.Entry.CaseID)
+	require.Equal(t, "CPL.26.1", sent.Entry.CaseID)
 
 	// Nama tertanggung dan nomor polis DISALIN dari klaimnya, tidak diketik ulang.
 	require.Equal(t, "PT CONTOH SATU ABADI", sent.Entry.InsuredName)
@@ -103,7 +103,7 @@ func TestSendToPostAuditLangsungTampilDiTabnya(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, listed.Page.Total)
-	require.Equal(t, "CPL-100001", listed.Page.Items[0].CaseID)
+	require.Equal(t, "CPL.26.1", listed.Page.Items[0].CaseID)
 	require.Equal(t, "diteruskan", listed.Page.Items[0].ComplianceRemarks)
 }
 
@@ -123,7 +123,7 @@ func TestSendToPostAuditNomorBerurutan(t *testing.T) {
 		terbit = append(terbit, sent.Entry.CaseID)
 	}
 
-	require.Equal(t, []string{"CPL-100001", "CPL-100002", "CPL-100003"}, terbit)
+	require.Equal(t, []string{"CPL.26.1", "CPL.26.2", "CPL.26.3"}, terbit)
 }
 
 // Klaim yang tidak ada di antrean DITOLAK, dan galatnya dapat dibedakan.

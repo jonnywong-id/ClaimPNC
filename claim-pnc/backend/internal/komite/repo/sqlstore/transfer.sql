@@ -156,8 +156,9 @@ SELECT MAX(k.NAMAKOMITE),
 -- Oracle menolaknya: `ORA-00937: not a single-group group function`. Jadi pemisahan ini
 -- bukan selera melainkan satu-satunya bentuk yang jalan.
 --
--- Pemisahan itu sekaligus membuat kedua medan ini tetap terbaca pada case yang TIDAK punya
--- baris komite sama sekali — 218 dari 610 sejak 2024 berada dalam keadaan itu.
+-- (Catatan lama, tidak berlaku lagi sejak SUMBER BARU di bawah: dulu pemisahan ini juga
+-- membuat kedua medan terbaca pada case yang TIDAK punya baris komite sama sekali — 218
+-- dari 610 sejak 2024. Kini sumbernya justru baris komite itu sendiri.)
 --
 -- # Yang harus disadari tentang BUSINESSTYPE
 --
@@ -175,12 +176,55 @@ SELECT MAX(k.NAMAKOMITE),
 -- lebih dulu menghasilkan nol baris pada seluruh 189 case, tanpa satu pun galat.
 --
 -- Pemangkasannya terjadi di lapisan domain, setelah join selesai (`D-22`).
-SELECT MAX(a.GROUPPANEL_1),
-       MAX(a.BUSINESSTYPE),
-       MAX(a.PNCCASEID)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- WHERE a.PYID = :1
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'
+--
+-- # SUMBER BARU (2026-10-08) — objek kerja Work-Komite tidak dibaca lagi
+--
+-- Keputusan Work Owner: `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` sudah tidak dipakai. Yang dulu
+-- dibaca adalah baris kelas `Work-Komite` (PYID = nomor case komite `KMT-*`), BUKAN
+-- objek kerja klaim; tidak ada tabel POOLDATA yang menyimpan kepala case Work-Komite
+-- Pega. Penggantinya:
+--
+--     PYID                -> T_CLAIM_KOMITE_LIST.KOMITE_ID   (berindeks)
+--     PNCCASEID           -> 'ASM-FW-GCNMFW-WORK ' || TRIM(T_CLAIM_KOMITE_LIST.NO_KLAIM)
+--     GROUPPANEL_1        -> COALESCE(T_CLAIMLIST_ADMIN.GROUPPANEL_1 baris Work-PNC
+--                            klaimnya, T_CLAIM_PNC.GROUPPANEL) — urutan ini yang paling
+--                            sering sama dengan nilai lama (lihat angka di bawah)
+--     BUSINESSTYPE        -> T_CLAIM_PNC.POLIS_JENIS_BISNIS  (sama dengan transfer_case_new)
+--     PXOBJCLASS Komite   -> KOMITE_ID LIKE 'KMT-%'          (case Pega; KMTN lewat _new)
+--
+-- Kuncinya DIRAKIT dengan prefix, bukan dipangkas: `NO_KLAIM` menyimpan nomor case tanpa
+-- prefix, sedangkan `T_CLAIM_PNC.CLAIMID` dan tabel turunannya menyimpannya ber-prefix.
+--
+-- Diukur di Oracle dev ASM terhadap 1.547 baris Work-Komite:
+--
+--     kunci klaim sama dengan PNCCASEID lama     1.378
+--     berbeda                                    2
+--     case tanpa baris T_CLAIM_KOMITE_LIST       167 (+1 dengan NO_KLAIM ganda) — kunci
+--                                                kini KOSONG; blok klaim/coverage/
+--                                                lampiran/riwayat tidak terbaca. Case itu
+--                                                juga tanpa baris adjustment (CASEIDKOMITE)
+--     GROUPPANEL baru sama dengan GROUPPANEL_1   1.343; beda 37 (panel klaim berubah
+--                                                setelah case komite dibentuk); sisanya
+--                                                case tanpa baris komite (panel kosong).
+--                                                Tanpa T_CLAIMLIST_ADMIN: hanya 1.334 sama
+--                                                dan 93 panel hilang
+--     BUSINESSTYPE lama terisi 0; POLIS_JENIS_BISNIS klaim-klaim itu juga terisi 0 —
+--     label IsHE tetap tidak dapat dinilai, sama seperti sebelumnya.
+--
+-- Sebaliknya ±270 case `KMT-*` yang ADA di T_CLAIM_KOMITE_LIST tetapi tidak punya baris
+-- Work-Komite kini mendapat kunci klaim (dulu kosong).
+SELECT COALESCE(MAX(m.GROUPPANEL_1), MAX(p.GROUPPANEL)),
+       MAX(p.POLIS_JENIS_BISNIS),
+       MAX(CASE WHEN TRIM(k.NO_KLAIM) IS NOT NULL
+                THEN 'ASM-FW-GCNMFW-WORK ' || TRIM(k.NO_KLAIM) END)
+  FROM POOLDATA.T_CLAIM_KOMITE_LIST k
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+         ON p.CLAIMID = 'ASM-FW-GCNMFW-WORK ' || TRIM(k.NO_KLAIM)
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN m
+         ON m.PZINSKEY = 'ASM-FW-GCNMFW-WORK ' || TRIM(k.NO_KLAIM)
+        AND m.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE k.KOMITE_ID = :1
+   AND k.KOMITE_ID LIKE 'KMT-%'
 
 
 -- name: transfer_case_new
@@ -433,6 +477,16 @@ SELECT MAX(TRIM(k.NAMAKOMITE)),
 -- (diukur 13 ms).
 --
 -- :1 kunci klaim ber-prefix, :2 case yang sedang dibuka (dikecualikan).
+--
+-- SUMBER BARU (2026-10-08): daftar case komite klaim ini tidak lagi diambil dari baris
+-- Work-Komite tabel kerja Pega (sudah tidak dipakai), melainkan dari
+-- `T_CLAIM_KOMITE_LIST.NO_KLAIM` sendiri — nomor case klaim TANPA prefix, sehingga kuncinya
+-- dipangkas di sini (`REPLACE`). `KOMITE_ID LIKE 'KMT-%'` menggantikan penyaring kelas
+-- Work-Komite; case KMTN dibaca transfer_history_new. Jumlah dan urutan bind tidak berubah.
+--
+-- `NO_KLAIM` tanpa indeks: diukur ±175 ms per pembukaan rincian di Oracle dev.
+-- Pasangan (klaim, case komite) yang terbaca: 1.380 lama, 1.651 baru; 1.379 sama. Tambahan
+-- ±270 adalah case `KMT-*` di daftar komite yang tidak punya baris Work-Komite.
 SELECT MAX(TRIM(k.NAMAKOMITE)),
        CAST(k.KOMITEKE AS INTEGER),
        MAX(k.STATUSAPPROVE),
@@ -440,10 +494,10 @@ SELECT MAX(TRIM(k.NAMAKOMITE)),
        MAX(k.TANGGALKOMITE),
        k.KOMITE_ID
   FROM POOLDATA.T_CLAIM_KOMITE_LIST k
- WHERE k.KOMITE_ID IN (SELECT a.PYID
-                         FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
-                        WHERE a.PNCCASEID = :1
-                          AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite')
+ WHERE k.KOMITE_ID IN (SELECT h.KOMITE_ID
+                         FROM POOLDATA.T_CLAIM_KOMITE_LIST h
+                        WHERE TRIM(h.NO_KLAIM) = REPLACE(:1, 'ASM-FW-GCNMFW-WORK ', '')
+                          AND h.KOMITE_ID LIKE 'KMT-%')
    AND k.KOMITE_ID <> :2
  GROUP BY k.KOMITE_ID, UPPER(TRIM(k.NAMAKOMITE)), CAST(k.KOMITEKE AS INTEGER)
  ORDER BY MIN(k.DATEOFCOMMITE_CREATE), k.KOMITE_ID, CAST(k.KOMITEKE AS INTEGER)

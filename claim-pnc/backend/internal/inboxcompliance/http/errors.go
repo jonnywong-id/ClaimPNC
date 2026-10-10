@@ -19,7 +19,13 @@ const (
 	CodeMalformedBody   = "permintaan_tidak_terbaca"
 	CodeClaimNotInQueue = "klaim_tidak_di_antrean"
 	CodeCallerUnknown   = "profil_pemanggil_tidak_lengkap"
-	CodeInternalError   = "galat_internal"
+	CodeStoreMissing    = "tabel_keputusan_belum_ada"
+
+	CodeDocumentNotFound       = "dokumen_tidak_ditemukan"
+	CodeDocumentServiceMissing = "layanan_dokumen_belum_ada"
+	CodeLetterRendererMissing  = "pembentuk_surat_belum_ada"
+
+	CodeInternalError = "galat_internal"
 )
 
 // errMalformedBody berarti badan permintaan tidak dapat diurai sebagai JSON.
@@ -97,6 +103,61 @@ func mapError(err error) (int, ErrorResponse, bool) {
 			Code: CodeClaimNotInQueue,
 			Message: "Klaim ini sudah tidak ada di antrean Compliance. Mungkin sudah " +
 				"dikirim petugas lain. Segarkan daftar lalu periksa kembali.",
+		}, true
+
+	case errors.Is(err, inboxcompliance.ErrDecisionStoreMissing):
+		// 503, bukan 500. Permintaannya benar dan kodenya benar — yang belum ada adalah
+		// tabel yang hanya DBA dapat membuatnya (`D-63`). Keadaan itu akan berubah tanpa
+		// pengguna melakukan apa pun, persis seperti ErrTabNotReady.
+		//
+		// Pesannya menyebut NOMOR MIGRASINYA. Tanpa itu, petugas melaporkan "aplikasi
+		// rusak", pengembang membuka log, lalu menemukan ORA-00942 yang sudah diketahui
+		// sejak migrasinya ditulis — satu putaran penuh untuk informasi yang sudah ada.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeStoreMissing,
+			Message: "Form Compliance Checker belum dapat dibuka: tabel penyimpan " +
+				"keputusannya belum ada di basis data. DBA perlu membuat " +
+				"POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE di basis data setiap entitas — " +
+				"skripnya ada di claim-pnc/docs/permintaan-dba-compliance.sql.",
+		}, true
+
+	// Cabang `ErrSaveNotAllowed` DICABUT 2026-10-07 bersama galatnya: ia menolak klaim
+	// Travel atas premis yang terbukti salah. Lihat errors.go pada paket domain.
+
+	case errors.Is(err, inboxcompliance.ErrDocumentNotFound):
+		// 404. Dokumen yang tidak ada dan dokumen milik klaim LAIN dijawab sama —
+		// membedakannya akan memberi tahu pemanggil bahwa sebuah id itu sah.
+		return http.StatusNotFound, ErrorResponse{
+			Code: CodeDocumentNotFound,
+			Message: "Dokumen tidak ditemukan pada klaim ini. Segarkan halaman — " +
+				"dokumennya mungkin sudah dihapus.",
+		}, true
+
+	case errors.Is(err, inboxcompliance.ErrDocumentServiceMissing):
+		// 503, bukan 500: tidak ada yang rusak — layanan dokumennya memang belum
+		// dikonfigurasi untuk portal ini. Pesannya menyebut apa yang kurang supaya
+		// petugas tidak melaporkannya sebagai kerusakan.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeDocumentServiceMissing,
+			Message: "Berkas belum dapat dibuka: layanan dokumen belum dikonfigurasi " +
+				"untuk portal ini. Keputusan atas klaim tetap dapat disimpan.",
+		}, true
+
+	case errors.Is(err, inboxcompliance.ErrLetterRendererMissing):
+		// 500, BUKAN 503 — berbeda dari ErrDocumentServiceMissing di atas meski keduanya
+		// "sesuatu belum dipasang".
+		//
+		// Yang di atas adalah layanan di seberang jaringan yang memang boleh belum
+		// dikonfigurasi per portal; keadaan itu normal dan akan berubah sendiri. Yang ini
+		// adalah paket DI DALAM binary yang sama: bila ia tidak terpasang, perakitan
+		// modulnya yang keliru, dan tidak ada yang akan berubah sampai seseorang
+		// memperbaiki kodenya. Menjawabnya 503 akan membuat petugas menunggu sesuatu yang
+		// tidak akan datang.
+		return http.StatusInternalServerError, ErrorResponse{
+			Code: CodeLetterRendererMissing,
+			Message: "Surat penolakan belum dapat dibuat karena pembentuk suratnya belum " +
+				"terpasang di aplikasi. Laporkan ke tim pengembang — ini bukan kesalahan " +
+				"pengisian Anda.",
 		}, true
 
 	case errors.Is(err, inboxcompliance.ErrCallerUnknown):

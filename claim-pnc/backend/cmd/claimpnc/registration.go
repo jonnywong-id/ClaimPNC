@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"claim-pnc/internal/registrasi/facesheetpdf"
 	"claim-pnc/internal/registrasi/lodpdf"
 	"claim-pnc/internal/registrasi/plapdf"
+	"claim-pnc/internal/registrasi/repo/absenlink"
 	"claim-pnc/internal/registrasi/repo/cashierlink"
 	"claim-pnc/internal/registrasi/repo/komitelink"
 	registrasimemory "claim-pnc/internal/registrasi/repo/memory"
@@ -59,7 +61,10 @@ func assembleRegistration(
 	documents registrasi.DocumentUploader,
 	catalog premiumlink.ServiceCatalog,
 	cashier config.Cashier,
+	attendance config.AttendancePIC,
 	acceptanceCommittee string,
+	paTechnicalPIC string,
+	plaSender registrasi.PLASender,
 ) (*registrasiusecase.Service, error) {
 	idGenerator := registrasimemory.IDGenerator{}
 	clock := clock.System{}
@@ -74,11 +79,15 @@ func assembleRegistration(
 		LODRenderer:            lodpdf.Renderer{},
 
 		AcceptanceMultiLevelCommittee: acceptanceCommittee,
+		DefaultPATechnicalPIC:         paTechnicalPIC,
+		PLASender:                     plaSender,
 	}
 
 	if db != nil {
 		options.ClaimRepo = registrasisql.NewClaimStore(db)
-		options.TaskRepo = registrasisql.NewTaskStore(db)
+		taskStore := registrasisql.NewTaskStore(db)
+		options.TaskRepo = taskStore
+		options.UnassignedTasks = taskStore
 		options.NumberIssuer = registrasisql.NewNumberIssuer(db)
 		options.AuditRecorder = registrasisql.NewAuditRecorder(db, idGenerator)
 		options.Notifier = registrasisql.NewNotifier(db, idGenerator)
@@ -87,12 +96,22 @@ func assembleRegistration(
 		options.PolicyRepo = registrasisql.NewPolicyRepo(db)
 		options.Parameter = registrasisql.NewParameter(db)
 		options.ExchangeRateSource = registrasisql.NewExchangeRateSource(db)
-		options.Assigner = registrasisql.NewAssigner(db)
+		// Absensi PIC Teknik (ServiceGetDataAbsenPIC): tanpa ABSEN_PIC_URL setiap kandidat
+		// dianggap hadir, sama dengan Pega saat layanannya tidak menjawab.
+		assigner := registrasisql.NewAssigner(db)
+		if attendance.Active() {
+			assigner.WithAttendance(absenlink.New(attendance.BaseURL, attendance.User, attendance.Password,
+				&http.Client{Timeout: attendance.Timeout}), logger)
+		} else {
+			logger.Warn("absensi PIC Teknik tidak diperiksa — isi ABSEN_PIC_URL (ServiceGetDataAbsenPIC)")
+		}
+		options.Assigner = assigner
 		options.ClaimReportLink = registrasisql.NewClaimReportLink(db)
 		options.AreaDirectory = registrasisql.NewAreaDirectory(db)
 		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasisql.NewPolicyItems(db)
 		options.CurrencyDirectory = registrasisql.NewCurrencyDirectory(db)
+		options.Diagnosis = registrasisql.NewDiagnosisDirectory(db)
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
 		options.ClaimRecords = registrasisql.NewClaimRecords(db)
 		options.FaceSheet = registrasisql.NewFaceSheetStore(db)
@@ -117,7 +136,8 @@ func assembleRegistration(
 		// Transfer Kasir: alamat dari POOLDATA.GCNM_CONNECT_REST (KASIRPAID…), kredensial dari
 		// KASIR_USER / KASIR_PASSWORD.
 		if catalog != nil {
-			options.CashierGateway = cashierlink.New(catalog, cashier.User, cashier.Password, nil)
+			options.CashierGateway = cashierlink.New(catalog, cashier.User, cashier.Password,
+				&http.Client{Timeout: cashier.TransferTimeout})
 			if cashier.User == "" {
 				logger.Warn("Transfer Kasir tanpa kredensial — isi KASIR_USER dan KASIR_PASSWORD bila Kasir menuntutnya")
 			}
@@ -156,6 +176,7 @@ func assembleRegistration(
 		store := registrasimemory.NewStore()
 		options.ClaimRepo = store
 		options.TaskRepo = store.TaskRepo()
+		options.UnassignedTasks = store
 		options.NumberIssuer = registrasimemory.NewNumberIssuer()
 		options.AuditRecorder = store
 		options.Notifier = store
@@ -170,6 +191,7 @@ func assembleRegistration(
 		options.CauseOfLoss = options.AreaDirectory.(registrasi.CauseOfLossDirectory)
 		options.PolicyItems = registrasimemory.NewPolicyItems(registrasimemory.SamplePolicyItems())
 		options.CurrencyDirectory = registrasimemory.CurrencyDirectory{}
+		options.Diagnosis = registrasimemory.DiagnosisDirectory{}
 		options.ItemOptions = options.PolicyItems.(registrasi.ItemOptionSource)
 		records := registrasimemory.SampleClaimRecords()
 		options.ClaimRecords = records

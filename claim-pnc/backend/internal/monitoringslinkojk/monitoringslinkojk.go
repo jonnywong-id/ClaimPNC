@@ -188,23 +188,19 @@ type Filter struct {
 	// BusinessScope adalah pilihan dropdown "Business Name". Lihat BusinessScope.
 	BusinessScope BusinessScope
 
-	// GenerateType adalah isi dropdown "Tipe Generate" — HANYA ada di segmen D01.
+	// Tidak ada isian "Tipe Generate" di sini, dan itu disengaja.
 	//
-	// # Ia dibawa tetapi TIDAK menyaring apa pun, dan itu bukan kelalaian
+	// Properti `.GenerateType` memang ADA di `Sec_SegmentD01_1-Section.xml` sebagai
+	// dropdown berlabel "Tipe Generate", dan atas dasar itu ia sempat dibangun. Tangkapan
+	// layar Pega yang berjalan (2026-10-08) membuktikan ia **tidak tampil**: segmen D01 di
+	// sana hanya punya Business Name, Dari, dan Sampai.
 	//
-	// Properti `.GenerateType` ada di `Sec_SegmentD01_1` sebagai dropdown berlabel
-	// "Tipe Generate", tetapi TIDAK satu pun kueri maupun aktivitas di export
-	// membacanya: `GetTempDataD01` hanya menyusun dua penggal penyaring — tanggal dan
-	// `businesstype` — dan `GetDataSlinkAllFOGF06` hanya menerima keduanya
-	// (`{ASIS:DetailTempSlink.NoteKasir}` dan `{ASIS:DetailTempSlink.BusinessID}`).
+	// Section di export kita karena itu lebih tua daripada yang terpasang — hal yang sama
+	// sudah terbukti dua arah: tombol yang ada di XML tetapi tidak dirender, dan kolom
+	// "Nama Debitur" yang dirender tetapi tidak ada di XML.
 	//
-	// Daftar pilihannya pun tidak ada: ia Rule-Obj-FieldValue yang **hilang dari export**
-	// (`R-16`). Jadi yang diketahui hanyalah bahwa isiannya ADA.
-	//
-	// Ia karena itu diterima, diteruskan, dan dicatat — tetapi tidak dipakai menyaring.
-	// Menebak aturannya berarti menyaring baris laporan OJK berdasarkan tebakan, dan
-	// baris yang hilang dari laporan regulator tidak menghasilkan satu pun galat.
-	GenerateType string
+	// Dicabut. Tidak ada kueri maupun aktivitas yang membacanya, sehingga tidak ada
+	// perilaku yang hilang.
 
 	// DateOfLoss adalah isian berlabel **"Dari"** — batas BAWAH tanggal registrasi klaim.
 	//
@@ -253,7 +249,6 @@ const (
 // mengulanginya.
 func (f Filter) Normalize() Filter {
 	clean := f
-	clean.GenerateType = strings.TrimSpace(f.GenerateType)
 
 	if clean.Page < 1 {
 		clean.Page = 1
@@ -354,6 +349,26 @@ type Repo interface {
 	// lama, yang menandai baris berulang lewat `operasidata = 'U'` alih-alih
 	// memperbaruinya.
 	InsertReport(ctx context.Context, entry ReportEntry) error
+
+	// LoadDebtor membaca data debitur yang menyusun badan permintaan pendaftaran klien.
+	//
+	// # Kenapa ia method tersendiri, bukan diambil dari baris grid
+	//
+	// Karena yang dikirim BUKAN isi laporan SLIK melainkan identitas debiturnya — nama,
+	// jenis kelamin, tanggal lahir, alamat, telepon. Sistem lama membacanya dari
+	// `pyWorkPagee.ClaimData.PolicyData.CIFData`, yaitu CIF pada snapshot polis.
+	//
+	// Di sini sumbernya `POOLDATA.T_CLAIM_OBJECTLIST`, yang memuat kolom padanannya dan
+	// sudah dibaca kueri segmen F06. Itu **pilihan yang dicatat**, bukan kesetaraan yang
+	// terbukti: bila CIF polis memuat field yang tidak ada di tabel objek — NIK, NPWP,
+	// nama ibu kandung — muatannya lebih miskin daripada yang dikirim Pega.
+	//
+	// Field yang tidak tersedia dibiarkan KOSONG, tidak diisi tebakan. Penerimanya hanya
+	// mewajibkan satu field per cabang (lihat Debtor.RequiredFieldMissing), sehingga
+	// muatan yang lebih miskin tetap diterima — hanya kurang lengkap.
+	//
+	// Tercatat sebagai pertanyaan terbuka di `docs/permintaan-artefak-pega.md`.
+	LoadDebtor(ctx context.Context, claimID, contractNo string) (Debtor, error)
 
 	// NextSubmissionID mengembalikan nomor urut pengiriman berikutnya.
 	//

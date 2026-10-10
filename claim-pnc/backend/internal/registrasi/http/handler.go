@@ -596,6 +596,14 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 			return usecase.RegisterCommand{}, err
 		}
 	}
+	// Tanggal Keluar Rawat Inap boleh kosong: isiannya hanya tampil pada PA yang rawat inap.
+	var dischargeDate time.Time
+	if b.DischargeDate != "" {
+		dischargeDate, err = parseDate(b.DischargeDate, "Tanggal Keluar Rawat Inap")
+		if err != nil {
+			return usecase.RegisterCommand{}, err
+		}
+	}
 	if b.TaskID == "" {
 		return usecase.RegisterCommand{}, errors.New("tugas_id wajib diisi")
 	}
@@ -631,12 +639,13 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 	}
 
 	return usecase.RegisterCommand{
-		TaskID:       b.TaskID,
-		DateOfLoss:   lossDate,
-		ReportDate:   reportDate,
-		DateReceived: receivedDate,
-		Location:     b.Location,
-		Chronology:   b.Chronology,
+		TaskID:        b.TaskID,
+		DateOfLoss:    lossDate,
+		ReportDate:    reportDate,
+		DateReceived:  receivedDate,
+		DischargeDate: dischargeDate,
+		Location:      b.Location,
+		Chronology:    b.Chronology,
 		Area: registrasi.Area{
 			Country: b.Area.Country, CountryID: b.Area.CountryID,
 			Province: b.Area.Province, ProvinceID: b.Area.ProvinceID,
@@ -652,6 +661,10 @@ func registerCommand(b RegisterRequest) (usecase.RegisterCommand, error) {
 		RemarkRecommendation: b.RemarkRecommendation,
 		SubjectEmail:         b.SubjectEmail,
 		SalvageStatus:        b.SalvageStatus,
+		InsuredUpdate: registrasi.InsuredUpdate{
+			IDCard: b.UpdateIDCard, Phone: b.UpdatePhone, Email: b.UpdateEmail,
+		},
+		ReportType: b.ReportType,
 		Reporter: registrasi.Reporter{
 			Name:          b.Reporter.Name,
 			Phone:         b.Reporter.Phone,
@@ -702,6 +715,13 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			Coverage:    make([]CoverageDTO, 0, len(o.Coverage)),
 			Job:         o.Job,
 			DateOfBirth: birthDate(o.DateOfBirth),
+
+			IDCard:            o.IDCard,
+			ParticipantStatus: o.ParticipantStatus,
+			VehicleModel:      o.VehicleModel,
+			VehicleBrand:      o.VehicleBrand,
+			VehicleType:       o.VehicleType,
+			ChassisNumber:     o.ChassisNumber,
 		}
 		for _, c := range o.Coverage {
 			cov := CoverageDTO{
@@ -715,6 +735,8 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 
 				AnalystTransferred: c.AnalystTransferred,
 			}
+			committee := committeeNoteDTO(c.Committee)
+			cov.Committee = &committee
 			for _, s := range c.Spreading {
 				cov.Spreading = append(cov.Spreading, SpreadingDTO{
 					TreatyKind:   s.TreatyKind,
@@ -752,12 +774,13 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 			BusinessName:         k.Policy.BusinessName,
 			BranchCode:           k.Policy.BranchCode,
 		},
-		Receiver:     receiverDTO(k.Receiver),
-		DateOfLoss:   formatDate(k.DateOfLoss),
-		ReportDate:   formatDate(k.ReportDate),
-		DateReceived: formatDate(k.DateReceived),
-		Location:     k.Location,
-		Chronology:   k.Chronology,
+		Receiver:      receiverDTO(k.Receiver),
+		DateOfLoss:    formatDate(k.DateOfLoss),
+		ReportDate:    formatDate(k.ReportDate),
+		DateReceived:  formatDate(k.DateReceived),
+		DischargeDate: formatDate(k.DischargeDate),
+		Location:      k.Location,
+		Chronology:    k.Chronology,
 		Area: AreaDTO{
 			Country: k.Area.Country, CountryID: k.Area.CountryID,
 			Province: k.Area.Province, ProvinceID: k.Area.ProvinceID,
@@ -773,6 +796,11 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		RemarkRecommendation: k.RemarkRecommendation,
 		SubjectEmail:         k.SubjectEmail,
 		SalvageStatus:        k.SalvageStatus,
+		TechnicalPICNote:     k.TechnicalPICNote,
+		UpdateIDCard:         k.InsuredUpdate.IDCard,
+		UpdatePhone:          k.InsuredUpdate.Phone,
+		UpdateEmail:          k.InsuredUpdate.Email,
+		ReportType:           k.ReportType,
 		Reporter: ReporterDTO{
 			Name:          k.Reporter.Name,
 			Phone:         k.Reporter.Phone,

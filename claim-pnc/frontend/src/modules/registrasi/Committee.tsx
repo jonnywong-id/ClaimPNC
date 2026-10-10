@@ -5,20 +5,19 @@ import { APIError } from '@/api/client'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
-import { useCommittee, useDecideCommittee, usePendingCommittees, useTransferCommittee, violationsFrom } from './api'
+import { useCommittee, useDecideCommittee, usePendingCommittees, violationsFrom } from './api'
 import { CommitteeDecision, type CommitteeItem, type Settlement } from './types'
 
 /**
  * Komite adjustment klaim PNCN.
  *
- * - Tombol **Transfer Komite** pada baris Adjustment (`ValidationTypePaymentAdj` →
- *   `SetListComiteeClaimPerObjAdj`): baris dibekukan dan jenjang 1 menunggu putusan.
+ * - Tombol **Transfer ke Komite** pada baris Adjustment membuka modal ClaimComitee_OC
+ *   (CommitteeTransferDialog); Kirim Komite (`ValidationTypePaymentAdj` →
+ *   `SetListComiteeClaimPerObjAdj`) membekukan baris dan jenjang 1 menunggu putusan.
  * - Kolom Akseptasi menampilkan status komite per jenjang.
  * - Daftar **Komite** di Inbox berisi putusan yang menunggu pengguna ini, dengan Setuju/Tolak
  *   (`KomitePost_Adjustment`).
  *
- * Section grid Adjustment Pega (`InputEstimasi`) tidak ada di export; letak tombolnya
- * mengikuti tangkapan layar Work Owner.
  */
 
 function failureText(failure: unknown): string {
@@ -26,47 +25,6 @@ function failureText(failure: unknown): string {
   if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
   if (failure instanceof APIError || failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
-}
-
-/** Tombol Transfer Komite satu baris Adjustment. Mati bila baris sudah ditransfer. */
-export function TransferCommitteeButton({
-  claimID,
-  taskID,
-  object,
-  coverage,
-  adjustment,
-  line,
-  lockedReason,
-}: {
-  claimID: string
-  taskID: string
-  object: number
-  coverage: number
-  adjustment: number
-  line: Settlement
-  lockedReason: string | null
-}) {
-  const transfer = useTransferCommittee(claimID)
-  const done = !!line.komite_id
-  const title = done ? 'Sudah ditransfer ke komite.' : (lockedReason ?? undefined)
-  return (
-    <div>
-      <button
-        type="button"
-        disabled={done || lockedReason !== null || transfer.isPending}
-        title={title}
-        onClick={() => transfer.mutate({ tugas_id: taskID, objek: object, jaminan: coverage, adjustment })}
-        className="rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
-      >
-        {transfer.isPending ? 'Mentransfer…' : 'Transfer Komite'}
-      </button>
-      {transfer.isError && (
-        <p role="alert" className="mt-1 max-w-48 text-xs text-red-700">
-          {failureText(transfer.error)}
-        </p>
-      )}
-    </div>
-  )
 }
 
 const decisionLabel: Record<string, string> = {

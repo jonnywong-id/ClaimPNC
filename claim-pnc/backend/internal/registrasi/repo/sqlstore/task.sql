@@ -71,3 +71,35 @@ SELECT ID, KLAIM_ID, NOMOR_KLAIM, TAHAP, ANTREAN, WORKBASKET, PEMILIK,
    AND ANTREAN = 'WORKLIST'
    AND SELESAI_PADA IS NULL
  ORDER BY DIBUAT_PADA, ID
+
+-- name: tugas_belum_bertuan
+-- `RDB List/BrowseCaseNotAssigned` untuk klaim aplikasi ini: tugas terbuka milik ServicePNC
+-- (:1) yang klaimnya belum ber-PIC Teknik dan bernomor polis. `-` dianggap kosong, sama
+-- dengan registrasi.HasTechnicalPIC. Paginasi Pega (ROWNUM) tidak dibawa: agent membaca
+-- seluruhnya.
+SELECT t.ID, t.KLAIM_ID, t.NOMOR_KLAIM, t.TAHAP, t.ANTREAN, t.WORKBASKET, t.PEMILIK,
+       t.DIBUAT_PADA, t.DIAMBIL_PADA, t.SELESAI_PADA, t.ALASAN_SELESAI
+  FROM CPNC_TUGAS t
+  JOIN POOLDATA.T_CLAIM_PNC c ON c.CLAIMID = t.KLAIM_ID
+ WHERE t.PEMILIK = :1
+   AND t.SELESAI_PADA IS NULL
+   AND COALESCE(NULLIF(TRIM(c.PICTEKNIK), ''), '-') = '-'
+   AND c.NOPOLIS IS NOT NULL
+ ORDER BY t.DIBUAT_PADA, t.ID
+
+-- name: tugas_kunci_belum_bertuan
+SELECT ID, KLAIM_ID, NOMOR_KLAIM, TAHAP, ANTREAN, WORKBASKET, PEMILIK,
+       DIBUAT_PADA, DIAMBIL_PADA, SELESAI_PADA, ALASAN_SELESAI
+  FROM CPNC_TUGAS
+ WHERE ID = :1
+   AND SELESAI_PADA IS NULL
+   AND PEMILIK = :2
+   FOR UPDATE
+
+-- name: tugas_pindah_dari_antrean
+-- Penjaga `PEMILIK = :3` (ServicePNC) mencegah tugas yang sudah dipindah ikut ditimpa.
+UPDATE CPNC_TUGAS
+   SET PEMILIK = :1
+ WHERE ID = :2
+   AND SELESAI_PADA IS NULL
+   AND PEMILIK = :3

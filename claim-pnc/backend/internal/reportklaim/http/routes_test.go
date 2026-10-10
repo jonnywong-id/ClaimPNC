@@ -170,7 +170,24 @@ const rentangSah = "dari=2026-09-01&sampai=2026-09-30"
 
 // ---------------------------------------------------------------------------
 
-func TestKatalogMengembalikanKeduapuluhDelapanPanelBerkelompok(t *testing.T) {
+// panelKatalog membaca daftar panel dari jawaban katalog, dikunci kodenya.
+//
+// Daftarnya DATAR dan sudah berurutan — harness lama menumpuk ke-28 panel dalam satu
+// kolom tanpa pengelompokan, dan pengelompokan yang sempat ada di sini dicabut
+// 2026-10-08 atas ralat Work Owner.
+func panelKatalog(t *testing.T, body map[string]any) map[string]map[string]any {
+	t.Helper()
+
+	laporan, _ := body["laporan"].([]any)
+	out := make(map[string]map[string]any, len(laporan))
+	for _, l := range laporan {
+		r, _ := l.(map[string]any)
+		out[r["kode"].(string)] = r
+	}
+	return out
+}
+
+func TestKatalogMengembalikanKeduapuluhDelapanPanelDatar(t *testing.T) {
 	p := newTestServer(t)
 
 	response := p.get(t, "/api/report-klaim", portalUji)
@@ -179,19 +196,37 @@ func TestKatalogMengembalikanKeduapuluhDelapanPanelBerkelompok(t *testing.T) {
 	body := decodeJSON(t, response)
 	require.Equal(t, "Report Claim", body["judul"], "judul layar disalin dari harness")
 
-	groups, _ := body["kelompok"].([]any)
-	require.Len(t, groups, 5)
+	require.Nil(t, body["kelompok"], "katalog TIDAK lagi dikelompokkan")
 
-	total := 0
-	for _, g := range groups {
-		item, _ := g.(map[string]any)
-		laporan, _ := item["laporan"].([]any)
-		total += len(laporan)
-	}
-	require.Equal(t, 28, total)
+	laporan, _ := body["laporan"].([]any)
+	require.Len(t, laporan, 28)
 
 	lines, _ := body["lini_bisnis"].([]any)
 	require.Len(t, lines, 5)
+
+	status, _ := body["status_compliance"].([]any)
+	require.Len(t, status, 3, "tiga radio: Fraud/ditolak, Valid/Bayar, Post Audit/Bayar")
+}
+
+// Urutan panel adalah URUTAN LAYAR Pega, dan itu yang dihafal pengguna. Mengurutkannya
+// ulang — bahkan menjadi urutan yang lebih masuk akal — berarti memindahkan tombol dari
+// tempat yang sudah dikenal.
+func TestUrutanPanelMengikutiLayarPega(t *testing.T) {
+	p := newTestServer(t)
+	body := decodeJSON(t, p.get(t, "/api/report-klaim", portalUji))
+
+	laporan, _ := body["laporan"].([]any)
+	var kode []string
+	for _, l := range laporan {
+		r, _ := l.(map[string]any)
+		kode = append(kode, r["kode"].(string))
+	}
+
+	// Ketujuh pertama dibaca langsung dari layar Pega.
+	require.Equal(t, []string{
+		"tat", "mitra", "produksi-klaim-pa", "compliance",
+		"adjuster", "klaim-harian", "klaim-he",
+	}, kode[:7])
 }
 
 // Panel yang terhalang tetap TAMPIL, bertanda sebab dan penghalangnya.
@@ -200,15 +235,9 @@ func TestPanelTerhalangTampilBesertaSebabnya(t *testing.T) {
 	body := decodeJSON(t, p.get(t, "/api/report-klaim", portalUji))
 
 	terhalang := map[string]map[string]any{}
-	groups, _ := body["kelompok"].([]any)
-	for _, g := range groups {
-		item, _ := g.(map[string]any)
-		laporan, _ := item["laporan"].([]any)
-		for _, l := range laporan {
-			r, _ := l.(map[string]any)
-			if r["tersedia"] == false {
-				terhalang[r["kode"].(string)] = r
-			}
+	for kode, r := range panelKatalog(t, body) {
+		if r["tersedia"] == false {
+			terhalang[kode] = r
 		}
 	}
 
@@ -227,16 +256,7 @@ func TestKartuMenyebutkanPenyaringYangBerlaku(t *testing.T) {
 	p := newTestServer(t)
 	body := decodeJSON(t, p.get(t, "/api/report-klaim", portalUji))
 
-	byCode := map[string]map[string]any{}
-	groups, _ := body["kelompok"].([]any)
-	for _, g := range groups {
-		item, _ := g.(map[string]any)
-		laporan, _ := item["laporan"].([]any)
-		for _, l := range laporan {
-			r, _ := l.(map[string]any)
-			byCode[r["kode"].(string)] = r
-		}
-	}
+	byCode := panelKatalog(t, body)
 
 	tat, _ := byCode["tat"]["penyaring"].(map[string]any)
 	require.True(t, tat["rentang_tanggal"].(bool))
@@ -257,18 +277,7 @@ func TestPanelDataKomiteMengirimDuaTombol(t *testing.T) {
 	p := newTestServer(t)
 	body := decodeJSON(t, p.get(t, "/api/report-klaim", portalUji))
 
-	var tombol []any
-	groups, _ := body["kelompok"].([]any)
-	for _, g := range groups {
-		item, _ := g.(map[string]any)
-		laporan, _ := item["laporan"].([]any)
-		for _, l := range laporan {
-			r, _ := l.(map[string]any)
-			if r["kode"] == "komite" {
-				tombol, _ = r["tombol"].([]any)
-			}
-		}
-	}
+	tombol, _ := panelKatalog(t, body)["komite"]["tombol"].([]any)
 	require.Len(t, tombol, 2)
 }
 

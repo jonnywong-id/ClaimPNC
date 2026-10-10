@@ -164,6 +164,27 @@ type WorkItem struct {
 	// Hanya tab Compliance yang membawanya.
 	BranchName string
 
+	// GroupPanel adalah lini bisnis klaim — `.Policy.Quotation.GroupPanel`, kolom
+	// `GROUPPANEL` pada `POOLDATA.T_CLAIM_PNC`.
+	//
+	// Ia TIDAK digambar di satu kolom pun, baik di daftar maupun di form. Ia dibawa semata
+	// karena **ia yang menentukan tombol mana yang muncul** pada form Compliance Checker —
+	// lihat ActionsFor pada checker.go.
+	//
+	// Hanya form yang mengisinya; baris daftar meninggalkannya kosong, dan itu tidak
+	// berakibat apa pun karena daftar tidak punya tombol per baris.
+	GroupPanel string
+
+	// TechnicianID adalah PIC Teknik klaim ini — `.ClaimData.UserTeknis`, kolom
+	// `USERTEKNIS_1` pada `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`.
+	//
+	// Nama kolomnya terbukti dari `dashboardclaim/repo/sqlstore/pindahpic.sql`, yang
+	// memindahkan PIC dengan `UPDATE … SET USERTEKNIS_1`.
+	//
+	// Ia TIDAK digambar di satu kolom pun. Ia dibawa karena **ia tujuan perpindahan**
+	// setelah Compliance memutuskan — lihat NewAssignmentMove pada penugasan.go.
+	TechnicianID string
+
 	// AdminName adalah Nama Admin — `.pyOrigUserID`.
 	//
 	// Perhatikan: BUKAN `PXCREATEOPERATOR` yang dipakai modul Inbox Admin untuk kolom
@@ -333,9 +354,9 @@ func (p Page) TotalPages() int {
 //
 // Pembedaan itu yang membuatnya tidak melanggar `P-1`: selama masa paralel setiap tabel
 // hanya boleh ditulis satu sistem, dan untuk tabel ini sistem itu adalah aplikasi baru.
-// Ketiga tabel warisan yang dibaca modul ini — `PC_ASM_FW_GCNMFW_WORK`,
-// `PC_ASSIGN_WORKBASKET`, `T_CLAIM_PNC` — tetap DIBACA saja, dan tidak ada operasi di seam
-// ini yang dapat mengubahnya.
+// Ketiga tabel warisan yang dibaca modul ini — `PC_ASSIGN_WORKBASKET`, `T_CLAIM_PNC`,
+// `T_CLAIMLIST_ADMIN` — tetap DIBACA saja, dan tidak ada operasi di seam ini yang dapat
+// mengubahnya.
 type Repo interface {
 	// List mengembalikan SATU HALAMAN baris beserta jumlah seluruh baris yang cocok.
 	//
@@ -381,11 +402,152 @@ type Repo interface {
 	// Ke `POOLDATA.CPNC_KEPUTUSAN_COMPLIANCE`, tabel BARU milik aplikasi ini — bukan ke
 	// `T_CLAIM_PNC` maupun `PC_ASM_FW_GCNMFW_WORK`.
 	//
-	// Itu bukan pilihan rancangan melainkan keharusan `P-1`: selama masa paralel setiap
-	// tabel hanya boleh ditulis SATU sistem, dan kedua tabel itu masih dimiliki Pega.
-	// Konsekuensinya nyata dan disadari — lihat catatan "Akibat yang BELUM sampai ke
-	// klaim" pada usecase.SubmitDecision.
+	// Keputusannya sendiri tinggal di tabel milik aplikasi ini; akibatnya PADA KLAIM
+	// ditulis terpisah lewat ApplyDecisionToClaim di bawah.
 	SaveDecision(ctx context.Context, decision Decision) error
+
+	// ApplyDecisionToClaim menulis akibat keputusan ke KLAIMNYA —
+	// `POOLDATA.T_CLAIM_PNC`, padanan tiga langkah pertama `SetComplianceResult`.
+	//
+	// # Kenapa terpisah dari SaveDecision
+	//
+	// Karena tabelnya berbeda dan kepemilikannya berbeda. `CPNC_KEPUTUSAN_COMPLIANCE`
+	// milik aplikasi ini sepenuhnya; `T_CLAIM_PNC` dipakai bersama Pega selama masa
+	// paralel. Menggabungkannya menjadi satu method akan menyembunyikan perbedaan itu
+	// dari pembaca, dan membuat kegagalan salah satunya tak terbedakan dari kegagalan
+	// yang lain.
+	//
+	// Work Owner menetapkan `T_CLAIM_PNC` memang dipakai Go (2026-10-06), sehingga
+	// penulisan ini bukan pelanggaran `P-1` melainkan pelaksanaan keputusan itu.
+	ApplyDecisionToClaim(ctx context.Context, effect ClaimEffect) error
+
+	// AppendHistory menulis satu baris riwayat keputusan ke
+	// `POOLDATA.LIST_HISTORY_CLAIM_PNC`.
+	//
+	// Append-only: tidak ada method yang mengubah maupun menghapusnya, dan itu
+	// disengaja. Sampai modul `S-5` ada, baris inilah satu-satunya jejak keputusan
+	// Compliance — dan `D-59` menjadikan jejak audit satu-satunya kontrol pengimbang
+	// karena tidak ada pemisahan tugas.
+	AppendHistory(ctx context.Context, entry HistoryEntry) error
+
+	// MoveAssignment memindahkan klaim dari satu tahap ke tahap berikutnya —
+	// menutup yang lama dan membuka yang baru, dalam SATU operasi.
+	//
+	// Keduanya satu parameter dan bukan dua method, supaya pemanggil tidak dapat
+	// mengerjakan separuhnya. Tahap lama tertutup tanpa tahap baru terbuka berarti klaim
+	// hilang dari antrean tanpa tiba di mana pun — tanpa galat, dan tanpa seorang pun
+	// tahu sampai ada yang menanyakan klaim yang tidak pernah selesai.
+	MoveAssignment(ctx context.Context, move AssignmentMove) error
+
+	// FindSurveyResults mengambil hasil investigasi satu klaim, untuk blok
+	// "Hasil Investigasi" pada form Compliance Checker.
+	//
+	// Senarai KOSONG bukan galat: klaim PA yang belum pernah disurvei memang belum punya
+	// baris, dan layar menggambarnya sebagai "Data Tidak Ada" — persis seperti grid Pega
+	// yang kosong.
+	//
+	// Pemanggil hanya memanggilnya untuk klaim PA; lihat SurveyResult untuk alasannya.
+	FindSurveyResults(ctx context.Context, reference string) ([]SurveyResult, error)
+
+	// FindDocuments mengambil dokumen satu klaim.
+	//
+	// Senarai kosong bukan galat: klaim tanpa lampiran memang belum punya baris.
+	//
+	// TIDAK dipakai menggambar layar sejak grid dokumennya dicabut (2026-10-08). Yang
+	// memakainya sekarang penggantian Surat Penolakan — mencari dokumen senama — dan
+	// DeleteDocument, memeriksa kepemilikan.
+	FindDocuments(ctx context.Context, reference string) ([]Document, error)
+
+	// FindDocumentChecklist mengambil daftar periksa kelengkapan dokumen satu klaim,
+	// untuk tab "Dokumen" pada form Compliance Checker.
+	//
+	// Senarai KOSONG bukan galat: lini yang masternya belum diisi memang belum punya
+	// baris, dan tabnya menggambar tabel kosong.
+	//
+	// Pemanggil hanya memanggilnya untuk klaim Travel; lihat DocumentChecklistItem.
+	FindDocumentChecklist(ctx context.Context, reference string) ([]DocumentChecklistItem, error)
+
+	// FindRejectPrefill membaca isian pra-isi form Surat Penolakan.
+	//
+	// Isian KOSONG bukan galat: klaim yang belum terkonversi ke tabel datar memang belum
+	// punya barisnya, dan formnya tetap dapat dibuka — isiannya saja yang diketik.
+	FindRejectPrefill(ctx context.Context, reference string) (RejectPrefill, error)
+
+	// UpdateDocumentCategory memindahkan satu lampiran ke kategori lain — tombol
+	// "Ubah Kategori Dok" pada tab Dokumen.
+	//
+	// Mengembalikan false bila tidak ada baris yang cocok: dokumennya tidak ada, ATAU ia
+	// milik klaim lain. Keduanya sengaja tidak dibedakan, alasan yang sama dengan
+	// ErrDocumentNotFound.
+	UpdateDocumentCategory(ctx context.Context, reference, documentID, category string) (bool, error)
+
+	// SaveDocument menulis satu baris lampiran dan mengembalikan `DATAID` yang terbit.
+	//
+	// Nomornya dibentuk DI SINI dari sequence, bukan diterima pemanggil — alasan yang
+	// sama seperti CreatePostAudit: nomor yang dikarang lapisan di atasnya bertabrakan
+	// diam-diam.
+	SaveDocument(ctx context.Context, document Document) (Document, error)
+
+	// DeleteDocument menghapus satu baris lampiran milik satu klaim.
+	//
+	// Nilai kedua bernilai salah bila tidak ada baris yang terhapus — karena
+	// dokumennya tidak ada, ATAU karena ia milik klaim lain. Keduanya tidak dibedakan,
+	// sama alasannya dengan ErrDocumentNotFound.
+	DeleteDocument(ctx context.Context, reference, documentID string) (bool, error)
+}
+
+// ClaimEffect adalah akibat satu keputusan Compliance pada klaimnya.
+//
+// # Tiga kolom, bukan sembilan — dan sebabnya bukan pilihan
+//
+// `SetComplianceResult` menulis sembilan hal. Hanya tiga yang punya kolom, diperiksa
+// langsung ke `Database/PEGA_CONVERT_JSONKLAIM_PNC.prc`, procedure yang meratakan klaim
+// dari JSON ke tabel:
+//
+//	CPLVALID_DATE · POSTAUDIT_TF_ANALYSTDATE · STATUSCLAIM        ada
+//	isComplianceTransfer · UserBusinessPA · ComplianceStatus      NOL kemunculan
+//
+// Ketiga yang terakhir hidup hanya di klipboard Pega, sama seperti `ComplianceRemark`.
+// Sampai Tim Pega mengeksposnya ke kolom, ia tidak dapat ditulis dari sini — dan itu
+// dinyatakan, bukan disiasati dengan menulisnya ke tempat lain.
+type ClaimEffect struct {
+	// Reference adalah `CLAIMID` pada `T_CLAIM_PNC`, yakni `PZINSKEY` klaimnya.
+	Reference string
+
+	// StatusClaim selalu terisi — langkah 1 Pega TANPA syarat, sehingga setiap keputusan
+	// menulisnya, termasuk Fraud/Tolak.
+	StatusClaim string
+
+	// ValidatedAt terisi HANYA pada Bayar/Valid, SentToPostAuditAt HANYA pada
+	// Bayar/PostAudit — meniru syarat langkah 2 dan 15.
+	//
+	// Pointer, dan nil berarti **jangan sentuh kolomnya**, bukan kosongkan. Di Pega
+	// langkah yang tidak berjalan meninggalkan nilai lamanya; mengosongkannya akan
+	// menghapus tanggal yang sudah ada saat keputusan diubah.
+	ValidatedAt       *time.Time
+	SentToPostAuditAt *time.Time
+}
+
+// StatusClaimAfterCompliance adalah nilai yang `SetComplianceResult` langkah 1 tulis ke
+// `.ClaimData.StatusClaim`.
+//
+// `1151` berarti **Analyst** menurut master `v_sts_claim` — bukan Investigator, yang
+// sempat disimpulkan keliru sebelum master diterima (`R-06`). Itu sejalan dengan dua
+// langkah terakhir activity-nya, yang memasang Ticket untuk mengembalikan klaim ke
+// Analyst.
+//
+// Ia ditulis TANPA SYARAT, termasuk pada Fraud/Tolak — jadi setiap keputusan Compliance
+// mengembalikan klaim ke Analyst, apa pun isinya.
+const StatusClaimAfterCompliance = "1151"
+
+// NewClaimEffect menurunkan akibat pada klaim dari keputusan yang baru disimpan.
+func NewClaimEffect(decision Decision) ClaimEffect {
+	return ClaimEffect{
+		Reference:         decision.Reference,
+		StatusClaim:       StatusClaimAfterCompliance,
+		ValidatedAt:       decision.ValidatedAt,
+		SentToPostAuditAt: decision.SentToPostAuditAt,
+	}
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

@@ -252,11 +252,17 @@ var tabs = []Tab{
 			"sehingga tidak ada cara membacanya tanpa menebak. Di Pega ia juga bukan " +
 			"pilihan pada dropdown ini melainkan pada DROPDOWN KEDUA yang hanya tampil " +
 			"bagi anggota komite, dan daftar pilihan dropdown itu (Operator1.pxResults) " +
-			"pun tidak punya rule pembangun di export (R-16).",
+			"pun tidak punya rule pembangun di export (R-16). Sejak 2026-10-08 tabel " +
+			"objek kerja Pega juga sudah tidak dipakai, dan objek kerja komite treaty " +
+			"tidak punya baris di POOLDATA.JSON_KLAIM (0 dari 15 penugasan antrean bersama di dev).",
 
-		BlockedOwner: "DBA — dibutuhkan DDL DATAPEGA.PC_ASM_FW_GCNMFW_WORK beserta " +
-			"pemetaan properti KomiteClaimData ke kolomnya. Ditambah Tim Pega, untuk " +
-			"rule yang mengisi Operator1.pxResults.",
+		// Sebelum 2026-10-08 pemiliknya DBA (DDL tabel objek kerja Pega). Tabel itu kini
+		// sudah tidak dipakai, sehingga yang dibutuhkan bukan lagi DDL-nya melainkan tabel
+		// POOLDATA pengganti yang memuat data komite treaty.
+		BlockedOwner: "Work Owner + DBA — dibutuhkan tabel POOLDATA pengganti yang memuat " +
+			"data klaim komite treaty (KomiteClaimData: No Klaim, Insured, Ceding Co, dan " +
+			"seterusnya), karena tabel objek kerja Pega sudah tidak dipakai (keputusan " +
+			"2026-10-08). Ditambah Tim Pega, untuk rule yang mengisi Operator1.pxResults.",
 	},
 }
 
@@ -292,11 +298,12 @@ func FindTab(code string) (Tab, bool) {
 // ke salah satu butir `P-5`, atau dinyatakan sebagai bug (`D-54`). Butir di bawah adalah
 // pemetaan itu, sudah tertulis di muka alih-alih dicari setelah selisihnya muncul.
 var PlannedDifferences = []string{
-	"Kolom bisnis dibaca dari KOLOM TEREKSPOS pada objek kerja, bukan dari dokumen JSON " +
-		"POOLDATA.JSON_KLAIM. Itu mengikuti Report Definition InboxKlaimPropAdmin dan " +
-		"InboxKlaimPropTeknik yang memasok kedua grid di Pega produksi. Kedua sumber itu " +
-		"dapat berbeda isinya, sehingga baris yang dulu terisi dapat menjadi kosong dan " +
-		"sebaliknya.",
+	"Kolom bisnis dibaca dari dokumen klaim POOLDATA.JSON_KLAIM, bukan dari kolom " +
+		"terekspos pada objek kerja seperti Report Definition InboxKlaimPropAdmin dan " +
+		"InboxKlaimPropTeknik di Pega produksi: tabel objek kerja Pega sudah tidak dipakai " +
+		"(keputusan Work Owner 2026-10-08). Properti yang dibaca sama (ClaimData), tetapi " +
+		"sumbernya berbeda, sehingga baris yang dulu terisi dapat menjadi kosong — klaim " +
+		"yang belum punya dokumen — dan sebaliknya.",
 
 	"Antrean \"Prop Treaty-in Admin\" menampilkan SELURUH penugasan klaim treaty di " +
 		"entitas ini, bukan hanya milik Anda. Report Definition-nya tidak menyaring " +
@@ -307,10 +314,10 @@ var PlannedDifferences = []string{
 		"tidak lagi disaring ke akun TreatyinPNCTeknik saja. Report Definition-nya tidak " +
 		"menyaring menurut nama antrean.",
 
-	"Kolom \"Subjectivity\" pada antrean Teknik SELALU kosong. Report Definition " +
-		"mengambilnya dari properti IsSubjectivity, tetapi nama kolom terekspos properti " +
-		"itu tidak dapat ditemukan di export — dan menebaknya akan menggagalkan seluruh " +
-		"kueri, bukan satu kolom.",
+	"Kolom \"Subjectivity\" pada antrean Teknik dibaca dari properti IsSubjectivity " +
+		"pada dokumen klaim POOLDATA.JSON_KLAIM. Sebelum 2026-10-08 ia selalu kosong " +
+		"karena nama kolom terekspos properti itu pada objek kerja tidak dapat ditemukan; " +
+		"kini ia terisi bila dokumennya memuat properti itu.",
 
 	"Kolom \"Date Of Loss\" pada tab Work Teknik Treatyin kini TERISI. Di sistem lama ia " +
 		"selalu kosong: kueri antrean teknik menaruh tanggalnya di kolom CARI13 " +
@@ -321,9 +328,10 @@ var PlannedDifferences = []string{
 		"baru berjalan berdampingan, tabel objek kerja hanya boleh ditulis satu sistem " +
 		"(P-1), dan tabel itu masih dimiliki Pega. Buat klaim treaty baru lewat Pega.",
 
-	"Kolom \"Last update\" dan \"Status Claim ID\" dibaca dari PXUPDATEOPERATOR dan " +
-		"PYSTATUSWORK pada tabel objek kerja — persis seperti Report Definition " +
-		"menyebutnya (WorkPage.pxUpdateOperator dan WorkPage.pyStatusWork).",
+	"Kolom \"Last update\" dan \"Status Claim ID\" KOSONG. Report Definition membacanya " +
+		"dari WorkPage.pxUpdateOperator dan WorkPage.pyStatusWork pada tabel objek kerja, " +
+		"yang sudah tidak dipakai sejak 2026-10-08, dan keduanya tidak punya padanan di " +
+		"tabel POOLDATA mana pun.",
 
 	"\"Status Claim ID\" berisi status ALUR KERJA Pega (\"New\", \"Pending\", …), bukan " +
 		"Status Klaim berkode 1134–1166 milik master V_STS_CLAIM. Judulnya menyesatkan " +

@@ -11,7 +11,6 @@ import { TabBar } from '@/components/TabBar'
 
 import { OutstandingTable } from './OutstandingTable'
 import { RecoveryForm } from './RecoveryForm'
-import { VirtualAccountPanel } from './VirtualAccountPanel'
 import { useRecoveryForm, useRecoveryPrincipals, useRefreshRecoveryList } from './api'
 
 /**
@@ -67,7 +66,6 @@ export function RecoveryPage() {
   const principal = useRecoveryPrincipals()
   const refreshList = useRefreshRecoveryList()
 
-  const [vaOpen, setVAOpen] = useState(false)
   const [entryOpen, setEntryOpen] = useState(false)
   const [lastSaved, setLastSaved] = useState<Recovery | null>(null)
   const [lastPolicyMissing, setLastPolicyMissing] = useState(false)
@@ -149,17 +147,6 @@ export function RecoveryPage() {
             </div>
           )}
 
-          {vaOpen && (
-            <VirtualAccountPanel
-              onClose={() => setVAOpen(false)}
-              onIssued={() => {
-                // Panel dibiarkan TERBUKA supaya nomor yang baru terbit tetap terlihat dan
-                // dapat disalin. Daftar principal sudah dimuat ulang oleh hook-nya, jadi
-                // principal baru itu langsung dapat dipilih pada form entri.
-                principal.refetch()
-              }}
-            />
-          )}
 
           {entryOpen && (
             <RecoveryForm
@@ -197,9 +184,14 @@ export function RecoveryPage() {
                   />
                   {form.isFetching || principal.isFetching ? 'Memuat…' : 'Refresh'}
                 </Button>
-                <Button tone="halus" onClick={() => setVAOpen((open) => !open)}>
-                  {vaOpen ? 'Tutup panel VA' : 'Terbitkan VA baru'}
-                </Button>
+                {/*
+                  Tombol "Terbitkan VA baru" DICABUT dari tingkat halaman.
+
+                  Di layar lama, penerbitan VA bukan aksi tersendiri: ia blok
+                  "Generated New VA" yang muncul DI DALAM alur Tambah, tepat sesudah data
+                  klaim diunggah. Menyediakannya juga sebagai tombol terpisah membuat satu
+                  hal punya dua pintu, dan tidak satu pun dari keduanya seperti Pega.
+                */}
                 <Button tone="utama" onClick={() => setEntryOpen((open) => !open)}>
                   <AddIcon className="h-4 w-4" />
                   {entryOpen ? 'Tutup form' : 'Tambah'}

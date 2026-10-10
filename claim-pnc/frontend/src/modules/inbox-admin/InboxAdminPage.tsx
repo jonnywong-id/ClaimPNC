@@ -6,14 +6,19 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
-import { formatDate } from '@/components/format'
 
-import { InboxTabs } from './InboxTabs'
-import { useInboxAdminList, useInboxAdminMetadata } from './api'
+import { StatusRegister } from './StatusRegister'
+import {
+  useInboxAdminCounts,
+  useInboxAdminExport,
+  useInboxAdminList,
+  useInboxAdminMetadata,
+  useInboxAdminViewer,
+  type ExportKind,
+} from './api'
 import {
   EMPTY_FILTER,
-  type BusinessLine,
+
   type DisabledTab,
   type FilterForm,
   type PageInfo,
@@ -76,6 +81,8 @@ export function InboxAdminPage() {
   const portal = useSelectedPortal((state) => state.alias)
   const meta = useInboxAdminMetadata()
   const list = useInboxAdminList(filter, page, meta.isSuccess)
+  const counts = useInboxAdminCounts(filter.bisnis, filter.kanwil, meta.isSuccess)
+  const viewer = useInboxAdminViewer(meta.isSuccess)
 
   const tabs: Tab[] = meta.data?.tab ?? []
   const active = filter.tab || meta.data?.tab_bawaan || ''
@@ -89,13 +96,20 @@ export function InboxAdminPage() {
    * cari yang masih terisi dari tab sebelumnya.
    */
   function selectTab(code: string) {
-    setFilter({ ...EMPTY_FILTER, tab: code })
+    // Lini bisnis DIPERTAHANKAN: di Pega dropdown Bisnis adalah penyaring tingkat layar,
+    // di atas daftar Status Register, bukan milik satu antrean.
+    setFilter((previous) => ({ ...EMPTY_FILTER, tab: code, bisnis: previous.bisnis, kanwil: previous.kanwil }))
     setDraft('')
     setPage(1)
   }
 
   function changeBusiness(code: string) {
     setFilter((previous) => ({ ...previous, bisnis: code }))
+    setPage(1)
+  }
+
+  function changeRegion(code: string) {
+    setFilter((previous) => ({ ...previous, kanwil: code }))
     setPage(1)
   }
 
@@ -128,9 +142,20 @@ export function InboxAdminPage() {
 
   return (
     <PageFrame>
-      <div className="mt-4">
-        <InboxTabs tabs={tabs} active={active} onSelect={selectTab} />
-      </div>
+      <StatusRegister
+        tabs={tabs}
+        counts={counts.data?.jumlah}
+        countsLoading={counts.isPending}
+        countsFailed={counts.isError}
+        active={active}
+        onSelect={selectTab}
+        lines={meta.data?.lini_bisnis ?? []}
+        business={filter.bisnis}
+        onBusiness={changeBusiness}
+        viewer={viewer.data}
+        region={filter.kanwil}
+        onRegion={changeRegion}
+      />
 
       {tab && (
         <>
@@ -138,12 +163,11 @@ export function InboxAdminPage() {
 
           <FilterBar
             tab={tab}
-            lines={meta.data?.lini_bisnis ?? []}
-            business={filter.bisnis}
             search={draft}
-            onBusiness={changeBusiness}
             onSearch={setDraft}
           />
+
+          <ExportBar tabCode={tab.kode} filter={filter} />
 
           <div className="mt-4">
             <DataTable<WorkItem>
@@ -155,6 +179,9 @@ export function InboxAdminPage() {
               // atas, dan yang kedua hanya akan menyaring halaman yang sedang terbuka —
               // hasilnya menyesatkan pada data berhalaman.
               hideSearch
+              // Mode rapat: antrean berkolom belasan harus muat selebar layar tanpa gulir
+              // menyamping, dengan tombol Lihat Detail Klaim di ujung kanan tetap terlihat.
+              dense
               isLoading={list.isPending}
               error={
                 list.isError ? (
@@ -212,38 +239,19 @@ function PageFrame({ children }: { children: ReactNode }) {
  */
 function FilterBar({
   tab,
-  lines,
-  business,
   search,
-  onBusiness,
   onSearch,
 }: {
   tab: Tab
-  lines: BusinessLine[]
-  business: string
   search: string
-  onBusiness: (code: string) => void
   onSearch: (text: string) => void
 }) {
-  if (!tab.pakai_pencarian && !tab.pakai_lini_bisnis && !tab.hanya_milik_saya) {
+  if (!tab.pakai_pencarian && !tab.hanya_milik_saya) {
     return null
   }
 
   return (
     <div className="mt-4 flex flex-wrap items-end gap-4">
-      {tab.pakai_lini_bisnis && (
-        <div className="w-full sm:w-64">
-          <SelectField
-            id="inbox-admin-bisnis"
-            label="Business"
-            options={lines.map((line) => ({ value: line.kode, label: line.label }))}
-            emptyText="Semua Lini Bisnis"
-            value={business}
-            onChange={(event) => onBusiness(event.target.value)}
-          />
-        </div>
-      )}
-
       {tab.pakai_pencarian && (
         <div className="w-full sm:w-72">
           <label
@@ -292,23 +300,37 @@ function FilterBar({
 /**
  * Tombol "Lihat Detail Klaim".
  *
- * Layar tujuannya adalah `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
- * belum dibangun. Tombolnya tetap dibangun atas keputusan Work Owner 2026-09-20, dan
- * tujuannya diarahkan ke rute yang sudah ada tempat keadaan itu dinyatakan apa adanya.
+ * # Dua tujuan, menurut asal klaimnya
  *
- * Yang dikirim adalah `referensi`, kunci teknis Pega yang memang dipakai
- * `setDataViewKlaim_Act` di sistem lama. Dengan begitu menyalakan layar rincian kelak tidak
- * menuntut perubahan kontrak API modul ini.
+ * - Klaim PNCN — lahir di aplikasi ini — dibuka LANGSUNG di halaman kerja klaimnya,
+ *   `/registrasi/klaim/<nomor>`, sama seperti Pega membuka case-nya. Nomor klaim dipakai
+ *   sebagai kunci: halaman itu mencari klaim menurut nomornya bila ID tidak cocok, dan
+ *   nomor itulah PYID barisnya di T_CLAIMLIST_ADMIN. Aturan yang sama dipakai Inbox
+ *   Outstanding (`isOpenableHere`); ia disalin, bukan diimpor, karena modul tidak boleh
+ *   saling mengimpor.
+ * - Klaim Pega menuju `MENU_ID 75` "View Claim" (`PNCViewClaim`) — modul tersendiri yang
+ *   belum dibangun — dengan `referensi`, kunci teknis Pega yang dipakai
+ *   `setDataViewKlaim_Act` di sistem lama.
  */
+export function detailPath(item: Pick<WorkItem, 'case_id' | 'referensi'>): string | null {
+  const number = item.case_id.trim()
+  if (number.startsWith('PNCN.')) return `/registrasi/klaim/${encodeURIComponent(number)}`
+  const key = item.referensi || item.case_id
+  return key ? `/view-claim/${encodeURIComponent(key)}` : null
+}
+
 function DetailButton({ item }: { item: WorkItem }) {
   const navigate = useNavigate()
-  const key = item.referensi || item.case_id
+  const path = detailPath(item)
 
   return (
+    // Nada `utama` dan tidak terlipat: ini satu-satunya tindakan pada baris antrean, dan
+    // tombol berwarna redup di ujung tabel lebar mudah terlewat.
     <Button
-      tone="halus"
-      disabled={key === ''}
-      onClick={() => navigate(`/view-claim/${encodeURIComponent(key)}`)}
+      tone="utama"
+      className="whitespace-nowrap px-3 py-1.5 text-xs"
+      disabled={path === null}
+      onClick={() => path && navigate(path)}
     >
       Lihat Detail Klaim
     </Button>
@@ -402,8 +424,12 @@ function Notes({
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
  *
- * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
+ * Kolom aksi ditambahkan di sini, bukan disebut server: ia bukan DATA melainkan kontrol,
  * dan backend tidak tahu apa pun tentang rute antarmuka.
+ *
+ * Ia diletakkan di ujung KANAN (permintaan Work Owner 2026-10-07). Supaya tetap terlihat
+ * tanpa gulir menyamping, tabelnya memakai mode rapat `DataTable` dan tanggal diringkas —
+ * seluruh kolom muat selebar layar meja.
  */
 function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
   const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
@@ -417,7 +443,7 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
 
   columns.push({
     key: 'aksi',
-    title: '',
+    title: 'Aksi',
     value: () => '',
     render: action,
     noSort: true,
@@ -447,7 +473,17 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (isAging(column.kunci)) return `${value} hari`
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  return isDate(text) ? shortDate(text) : text
+}
+
+/**
+ * shortDate menulis `YYYY-MM-DD` sebagai `dd/mm/yyyy`. Antrean ini memuat tiga kolom tanggal
+ * berdampingan; bentuk panjang ("7 Oktober 2026") melipat setiap sel menjadi tiga baris dan
+ * melebarkan tabel. Nilainya tanggal murni, sehingga tidak ada pergeseran zona waktu.
+ */
+function shortDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk seluruh kolom tanggal. */
@@ -478,4 +514,61 @@ function emptyMessageFor(tab: Tab, filter: FilterForm): string {
 function messageOf(error: unknown): string {
   if (error instanceof APIError) return error.message
   return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+}
+
+/** Kode tab Branch Claim — satu-satunya tab tempat tombol Export LOD tampil. */
+const TAB_BRANCH_CLAIM = '12'
+
+const EXPORT_LABEL: Record<ExportKind, string> = {
+  lod: 'Export LOD',
+  'hasil-auto-claim': 'Export Hasil Auto Claim',
+  'klaim-gagal': 'Export Klaim Gagal',
+}
+
+/**
+ * ExportBar memuat tombol ekspor CSV layar lama.
+ *
+ * Export LOD hanya tampil di tab Branch Claim — kondisi `TempView.CityID==12` pada
+ * wadahnya di section Pega. Dua tombol Auto Claim tidak punya kondisi tampil pada selnya,
+ * sehingga keduanya tampil di setiap tab.
+ */
+function ExportBar({ tabCode, filter }: { tabCode: string; filter: FilterForm }) {
+  const download = useInboxAdminExport()
+  const [busy, setBusy] = useState<ExportKind | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const kinds: ExportKind[] = [
+    ...(tabCode === TAB_BRANCH_CLAIM ? (['lod'] as const) : []),
+    'hasil-auto-claim',
+    'klaim-gagal',
+  ]
+
+  async function run(kind: ExportKind) {
+    setBusy(kind)
+    setError(null)
+    try {
+      await download(kind, filter)
+    } catch (e) {
+      setError(messageOf(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2">
+        {kinds.map((kind) => (
+          <Button key={kind} tone="kedua" disabled={busy !== null} onClick={() => run(kind)}>
+            {busy === kind ? 'Menyiapkan berkas…' : EXPORT_LABEL[kind]}
+          </Button>
+        ))}
+      </div>
+      {error && (
+        <div className="mt-2">
+          <ErrorMessage title="Berkas tidak dapat diunduh" description={error} tone="gangguan" />
+        </div>
+      )}
+    </div>
+  )
 }

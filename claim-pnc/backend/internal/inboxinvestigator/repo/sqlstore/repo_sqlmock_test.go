@@ -42,13 +42,13 @@ func TestListWithoutKeywordMapsEveryColumn(t *testing.T) {
 	registered := time.Date(2026, 9, 21, 2, 15, 0, 0, time.UTC)
 	survey := time.Date(2026, 9, 22, 1, 0, 0, 0, time.UTC)
 
-	// SURVEY_DATE datang sebagai TEKS, bukan tanggal: ia hasil `JSON_VALUE` atas dokumen
-	// klaim, dan bentuknya persis seperti yang disimpan Pega di dalam JSON.
+	// SURVEY_DATE kini datang sebagai TANGGAL: sumbernya kolom T_SURVEYORLIST.SURVEYDATE,
+	// bukan lagi teks hasil `JSON_VALUE` atas dokumen klaim.
 	mock.ExpectQuery(sqlNamed("investigator_inbox_list")).
 		WithArgs(basket(), inboxinvestigator.MaxRows+1).
 		WillReturnRows(sqlmock.NewRows(taskColumns).
 			AddRow(" REF-1 ", "PNC-1 ", "POL-1", "PT Satu", "Peserta", "PA", "Pusat",
-				"ADMIN1  ", registered, "20260922T010000.000 GMT", " 002 ").
+				"ADMIN1  ", registered, survey, " 002 ").
 			AddRow("REF-2", "PNC-2", nil, nil, nil, nil, nil, nil, nil, nil, nil))
 
 	page, err := repo.List(context.Background(), inboxinvestigator.Filter{Keyword: "  "})

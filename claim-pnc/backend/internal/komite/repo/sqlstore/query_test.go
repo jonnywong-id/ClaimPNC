@@ -589,19 +589,17 @@ func TestKueriKeputusanKomiteSelaluSatuBaris(t *testing.T) {
 // asalnya — dan pada rincian yang memuat nilai uang, asal-usul itu yang menentukan apakah
 // angkanya dapat dipercaya.
 //
-// # Kenapa `transfer_case` boleh menyentuh DATAPEGA dan yang lain tidak
+// # SUMBER BARU (2026-10-08): tidak ada lagi pengecualian DATAPEGA
 //
-// Kedua kueri NILAI (`transfer_lines`, `transfer_committee`) membaca POOLDATA saja, dan
-// itu batas yang dijaga ketat. `transfer_case` tidak membaca nilai sama sekali: ia
-// mengambil `GROUPPANEL_1` dan `BUSINESSTYPE` yang dibutuhkan JUDUL layar, dan keduanya
-// memang hanya ada di baris kerja.
-//
-// Pembedaan ini disengaja: yang dijaga bukan "jangan sentuh DATAPEGA", melainkan "nilai
-// uang hanya boleh datang dari POOLDATA".
+// Dulu `transfer_case` dan `transfer_history_legacy` boleh membaca tabel kerja Pega untuk
+// JUDUL layar dan daftar nomor case. Keputusan Work Owner mencabut tabel kerja itu, dan
+// keduanya kini membaca `T_CLAIM_KOMITE_LIST` (ditambah `T_CLAIM_PNC`/`T_CLAIMLIST_ADMIN`
+// untuk judul). Karena itu SELURUH kueri rincian kini tidak boleh menyentuh tabel kerja
+// Pega — dan nilai uang tetap hanya boleh dari POOLDATA.
 func TestKueriTransferHanyaMenyentuhTabelYangSudahDitelusuri(t *testing.T) {
 	terlarang := []string{
 		"T_CLAIM_DATA_RESULTS_AI", "PEGA_DASHBOARDPNC",
-		"CPNC_KOMITE_KEPUTUSAN", "EMAILKOMITE",
+		"CPNC_KOMITE_KEPUTUSAN", "EMAILKOMITE", "PC_ASM_FW_GCNMFW_WORK",
 	}
 
 	for nama, teks := range queries {
@@ -613,53 +611,51 @@ func TestKueriTransferHanyaMenyentuhTabelYangSudahDitelusuri(t *testing.T) {
 			require.NotContainsf(t, hurufBesar, strings.ToUpper(tabel),
 				"kueri %q menyentuh %s", nama, tabel)
 		}
-
-		// transfer_history_legacy hanya mengambil PYID case komite yang menaungi klaim —
-		// daftar nomor case, bukan nilai.
-		if nama == "transfer_case" || nama == "transfer_history_legacy" {
-			continue
-		}
 		require.NotContainsf(t, hurufBesar, "DATAPEGA.",
-			"kueri nilai %q membaca tabel engine Pega; nilai uang hanya boleh dari POOLDATA", nama)
+			"kueri %q membaca tabel engine Pega; rincian hanya boleh dari POOLDATA", nama)
 	}
 }
 
-// `transfer_case` membaca tepat dua medan, dan tidak satu pun di antaranya nilai uang.
+// `transfer_case` membaca tepat tiga medan judul, dan tidak satu pun di antaranya nilai uang.
 //
-// Ia satu-satunya kueri rincian yang menyentuh tabel engine Pega. Batasnya dijaga di sini
-// supaya ia tidak perlahan berubah menjadi jalan pintas untuk mengambil apa pun dari sana.
+// Batasnya dijaga di sini supaya ia tidak perlahan berubah menjadi jalan pintas untuk
+// mengambil apa pun dari tabel klaim.
 func TestKueriKonteksCaseHanyaUntukJudul(t *testing.T) {
 	rapat := bersihkanSpasi(query("transfer_case"))
 
-	require.Contains(t, rapat, "MAX(a.GROUPPANEL_1)",
+	require.Contains(t, rapat, "SELECT COALESCE(MAX(m.GROUPPANEL_1), MAX(p.GROUPPANEL)),",
 		"IsTravel pada ShowTransfer membandingkan GroupPanel = 005")
-	require.Contains(t, rapat, "MAX(a.BUSINESSTYPE)",
-		"IsHE pada ShowTransfer membandingkan BusinessType")
-	require.Contains(t, rapat, "WHERE a.PYID = :1")
-	require.Contains(t, rapat, "PXOBJCLASS = 'ASM-FW-GCNMFW-Work-Komite'",
-		"tanpa penyaring kelas, PYID dapat mengenai case bukan komite")
+	require.Contains(t, rapat, "MAX(p.POLIS_JENIS_BISNIS)",
+		"IsHE pada ShowTransfer membandingkan BusinessType — padanan transfer_case_new")
+	require.Contains(t, rapat, "FROM POOLDATA.T_CLAIM_KOMITE_LIST k")
+	require.Contains(t, rapat, "WHERE k.KOMITE_ID = :1")
+	require.Contains(t, rapat, "k.KOMITE_ID LIKE 'KMT-%'",
+		"hanya case Pega; case KMTN wajib tetap dibaca transfer_case_new")
+	require.Contains(t, rapat, "m.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'",
+		"T_CLAIMLIST_ADMIN juga memuat baris ReceiveDocument")
 
 	// MAX bukan kerapian: tanpanya kueri ini tidak mengembalikan baris sama sekali ketika
-	// PYID tidak ditemukan, dan `QueryRow` akan berbunyi sql.ErrNoRows pada case yang
+	// KOMITE_ID tidak ditemukan, dan `QueryRow` akan berbunyi sql.ErrNoRows pada case yang
 	// sebenarnya sehat.
 	require.NotContains(t, rapat, "NILAI", "kueri judul tidak boleh membaca nilai uang")
 }
 
-// Kunci klaim WAJIB diambil ber-prefix, dan ini uji yang paling berharga di berkas ini.
+// Kunci klaim WAJIB keluar ber-prefix, dan ini uji yang paling berharga di berkas ini.
 //
 // `T_CLAIM_PNC.CLAIMID` berbunyi `ASM-FW-GCNMFW-WORK PNC-1670`, bukan `PNC-1670`. Menjoin
 // dengan nomor yang sudah dipangkas menghasilkan NOL baris pada seluruh 189 case — tanpa
 // satu pun galat, hanya layar kosong. Cacat seperti itu tidak terlihat sebagai cacat.
 //
-// Karena itu `transfer_case` tidak boleh memangkas apa pun dari `PNCCASEID`.
+// SUMBER BARU (2026-10-08): `NO_KLAIM` menyimpan nomor TANPA prefix, sehingga
+// `transfer_case` kini MERAKIT prefixnya — dan tidak boleh memangkas apa pun. Nomor kosong
+// tidak boleh menjadi prefix telanjang (Oracle memperlakukan `'x' || NULL` sebagai `'x'`).
 func TestKunciKlaimDiambilBerPrefix(t *testing.T) {
 	rapat := bersihkanSpasi(query("transfer_case"))
 
-	require.Contains(t, rapat, "MAX(a.PNCCASEID)")
+	require.Contains(t, rapat,
+		"MAX(CASE WHEN TRIM(k.NO_KLAIM) IS NOT NULL THEN 'ASM-FW-GCNMFW-WORK ' || TRIM(k.NO_KLAIM) END)")
 	require.NotContains(t, rapat, "REPLACE",
-		"PNCCASEID adalah kunci join; prefiksnya dibuang di domain, bukan di SQL")
-	require.NotContains(t, rapat, "ASM-FW-GCNMFW-WORK ",
-		"tidak ada pemangkasan prefix di kueri ini")
+		"kunci klaim keluar ber-prefix; pemangkasan terjadi di domain, bukan di SQL")
 
 	for _, nama := range []string{"transfer_claim", "transfer_coverages"} {
 		teks := bersihkanSpasi(query(nama))
@@ -708,4 +704,22 @@ func TestKueriCoverageMembuangBarisTerhapus(t *testing.T) {
 	// baris ketiga tanpa alasan.
 	require.NotContains(t, rapat, "FETCH NEXT",
 		"coverage tidak dipaginasi — maksimum tiga baris per case")
+}
+
+// Riwayat komite klaim Pega dicari lewat `T_CLAIM_KOMITE_LIST.NO_KLAIM` (SUMBER BARU
+// 2026-10-08), bukan lewat baris Work-Komite tabel kerja Pega yang sudah tidak dipakai.
+//
+// `NO_KLAIM` menyimpan nomor TANPA prefix, sehingga kunci ber-prefix :1 dipangkas di sini —
+// satu-satunya tempat pemangkasan di SQL rincian. Urutan bind (:1 kunci, :2 case dibuka)
+// tetap, karena pemanggilnya tidak berubah.
+func TestRiwayatKomiteLegacyDariDaftarKomite(t *testing.T) {
+	rapat := bersihkanSpasi(query("transfer_history_legacy"))
+
+	require.Contains(t, rapat,
+		"WHERE TRIM(h.NO_KLAIM) = REPLACE(:1, 'ASM-FW-GCNMFW-WORK ', '')")
+	require.Contains(t, rapat, "h.KOMITE_ID LIKE 'KMT-%'",
+		"case KMTN dibaca transfer_history_new")
+	require.Contains(t, rapat, "AND k.KOMITE_ID <> :2")
+	require.Less(t, strings.Index(rapat, ":1"), strings.Index(rapat, ":2"),
+		"go-ora mengikat menurut urutan kemunculan")
 }

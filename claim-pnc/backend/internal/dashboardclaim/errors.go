@@ -34,6 +34,10 @@ const (
 	FieldBusinessLine = "lini_bisnis"
 	FieldPage         = "halaman"
 	FieldSize         = "ukuran"
+
+	// Kedua dropdown panel penyaring.
+	FieldCashierStatus = "status_transfer"
+	FieldPaymentStatus = "status_bayar"
 )
 
 // Violation adalah satu pelanggaran validasi pada satu isian.
@@ -75,11 +79,23 @@ func NewValidationError(violations []Violation) error {
 	return &ValidationError{Violations: violations}
 }
 
-// ErrTransferUnavailable berarti tombol Transfer belum dapat dipakai.
+// ErrTransferUnavailable DICABUT 2026-10-06, bersama tabel permintaan transfer.
 //
-// Sebabnya tabel `POOLDATA.CPNC_PERMINTAAN_TRANSFER` dibuat migrasi `0014` yang BELUM
-// dijalankan DBA di lingkungan mana pun (`D-63`).
+// Sebabnya dulu tabel `POOLDATA.CPNC_PERMINTAAN_TRANSFER` (migrasi `0014`) yang belum
+// dijalankan DBA. Tabel itu tidak jadi dipakai — ia tidak punya pelaksana — sehingga yang
+// ditunggu sekarang bukan tabel melainkan **hak UPDATE** pada satu kolom. Penggantinya
+// `ErrAssignmentUnavailable` di bawah.
+
+// ErrClaimNotFound dikembalikan saat klaim yang hendak dipindahkan tidak ada.
 //
-// Ia galat tersendiri, bukan 500: pengguna yang menekan Transfer berhak tahu bahwa yang
-// kurang adalah perubahan skema yang sedang ditunggu — bukan bahwa sistemnya rusak.
-var ErrTransferUnavailable = errors.New("dashboardclaim: pencatatan permintaan transfer belum terpasang")
+// Ia dibedakan dari galat teknis karena sebabnya berbeda dan jawabannya ke layar pun berbeda:
+// klaim yang hilang berarti seseorang menekan Transfer pada baris yang sudah tidak ada —
+// biasanya karena halamannya sudah usang — dan itu `404`, bukan `500`.
+var ErrClaimNotFound = errors.New("dashboardclaim: klaim tidak ditemukan")
+
+// ErrAssignmentUnavailable dikembalikan saat pemindahan PIC belum dapat dijalankan.
+//
+// Sebabnya satu: akun aplikasi belum memiliki `GRANT UPDATE (USERTEKNIS_1)` pada tabel kerja
+// Pega — hak yang diminta bersama berkas `pindahpic.sql`. Dinyatakan sebagai galat
+// tersendiri supaya layar dapat mengatakan APA yang kurang, bukan sekadar gagal.
+var ErrAssignmentUnavailable = errors.New("dashboardclaim: pemindahan PIC belum terpasang")

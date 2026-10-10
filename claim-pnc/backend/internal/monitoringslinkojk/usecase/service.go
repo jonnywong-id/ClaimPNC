@@ -222,11 +222,5 @@ func (s *Service) prepare(request Request) (monitoringslinkojk.Filter, error) {
 		return monitoringslinkojk.Filter{}, err
 	}
 
-	// GenerateType TIDAK ikut menyaring. Lihat Filter.GenerateType: isiannya ada di layar
-	// lama tetapi tidak satu pun kueri membacanya, dan daftar pilihannya hilang dari
-	// export (`R-16`). Ia dibiarkan lewat apa adanya supaya layar tetap dapat
-	// mengirimkannya, dan supaya penyaringnya dapat dipasang di SATU tempat begitu
-	// aturannya diterima.
-
 	return filter, nil
 }

@@ -27,6 +27,17 @@ func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 // terjadi di produksi — bukan saat ditulis.
 const filterBindCount = 8
 
+// outstandingBindCount adalah jumlah argumen penyaring kueri OUTSTANDING.
+//
+// Ia LEBIH BANYAK daripada kueri survei sejak panel penyaring dibangun: tile Outstanding
+// punya lima penyaring tambahan — Nopolis, No Klaim, PIC, Status Transfer, Status
+// Pembayaran — yang datang dari `Section/FilterDashboardClaim_sec-Section.xml`, dan tile
+// survei tidak punya panel itu.
+//
+// Kedua konstanta sengaja dipisah, bukan disatukan ke angka terbesar: menyamakannya akan
+// menuntut kueri survei menyiapkan argumen yang tidak pernah dipakainya.
+const outstandingBindCount = 20
+
 // filterArgs menyusun kedelapan argumen penyaring.
 //
 // Setiap penanda `:n` memperoleh argumennya sendiri, termasuk ketika nilainya sama — itulah
@@ -65,6 +76,9 @@ func outstandingFilterArgs(f dashboardclaim.Filter) []any {
 	search := nilIfEmpty(f.Search)
 	searchPattern := nilIfEmpty(likePattern(f.Search))
 
+	transfer := nilIfEmpty(string(f.Cashier))
+	payment := nilIfEmpty(string(f.Payment))
+
 	return []any{
 		search,        // :1 kotak cari aktif?
 		searchPattern, // :2 POLICYNO
@@ -75,6 +89,27 @@ func outstandingFilterArgs(f dashboardclaim.Filter) []any {
 		business, // :6 BONDING
 		business, // :7 PA
 		business, // :8 TRAVEL
+
+		// Ketiga penyaring panel. Masing-masing dua penanda — satu menjawab "apakah isian
+		// ini diisi", satu membawa polanya — mengikuti pola penyaring pencarian di atas.
+		nilIfEmpty(f.PolicyNumber),              // :9  Nopolis diisi?
+		nilIfEmpty(likePattern(f.PolicyNumber)), // :10 polanya
+		nilIfEmpty(f.ClaimNumber),               // :11 No Klaim diisi?
+		nilIfEmpty(likePattern(f.ClaimNumber)),  // :12 polanya
+		nilIfEmpty(f.TechnicalPIC),              // :13 PIC diisi?
+		nilIfEmpty(likePattern(f.TechnicalPIC)), // :14 polanya
+
+		// Kedua dropdown. Tiga penanda masing-masing: satu menjawab "apakah dropdown ini
+		// dipilih", dua sisanya memilih salah satu dari dua cabang klausanya.
+		//
+		// Nilainya dikirim APA ADANYA, bukan sebagai pola LIKE — keduanya dibandingkan
+		// dengan konstanta, bukan dicocokkan.
+		transfer, // :15 Status Transfer dipilih?
+		transfer, // :16 cabang SUDAH
+		transfer, // :17 cabang BELUM
+		payment,  // :18 Status Pembayaran dipilih?
+		payment,  // :19 cabang LUNAS
+		payment,  // :20 cabang BELUM
 	}
 }
 

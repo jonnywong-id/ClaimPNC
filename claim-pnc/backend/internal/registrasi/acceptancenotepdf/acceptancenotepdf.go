@@ -1,5 +1,6 @@
 // Package acceptancenotepdf membentuk PDF Draft Persetujuan ("ACCEPTED CLAIM INSURANCE") —
-// template Pega `AcceptanceNotePDF`, tata letak umum (bukan Travel, bukan Personal Accident).
+// template Pega `AcceptanceNotePDF`: tata letak umum, dan blok Personal Accident
+// (`GroupPanel='002'`) pada template yang sama. Tata letak Travel belum dibangun.
 //
 // Susunannya mengikuti template dan contoh `Sample Form/DraftPersetujuan_NO.<nomor>.pdf`:
 // judul dan Accepted No di tengah, tipe pembayaran miring di kanan, daftar label–nilai, baris
@@ -63,7 +64,11 @@ func (Renderer) Render(n registrasi.AcceptanceNote) ([]byte, error) {
 	pdf.SetY(28)
 
 	pdf.SetFont(font, "B", 14)
-	pdf.CellFormat(0, 7, "ACCEPTED CLAIM INSURANCE", "", 1, "C", false, 0, "")
+	title := "ACCEPTED CLAIM INSURANCE"
+	if n.PersonalAccident {
+		title = "ACCEPTED PERSONAL ACCIDENT CLAIM"
+	}
+	pdf.CellFormat(0, 7, title, "", 1, "C", false, 0, "")
 	pdf.CellFormat(0, 8, tr("Accepted No : "+n.AcceptedNo), "", 1, "C", false, 0, "")
 	pdf.SetFont(font, "I", 9)
 	pdf.CellFormat(0, 5, tr(n.PaymentLabel), "", 1, "R", false, 0, "")
@@ -90,11 +95,20 @@ func (Renderer) Render(n registrasi.AcceptanceNote) ([]byte, error) {
 	row("Name of Insured", n.InsuredName)
 	row("Sum Insured", join(n.PolicyCurrency, number(money(n.SumInsured))))
 	row("Location of Loss", n.LossLocation)
-	row("Policy Condition", n.PolicyCondition)
-	row("Object", n.ObjectName)
-	row("Policy Period", date(n.PeriodStart)+" s/d "+date(n.PeriodEnd))
-	row("Date of Loss", date(n.DateOfLoss))
-	row("Nature Of Loss", n.NatureOfLoss)
+	if n.PersonalAccident {
+		// Blok GroupPanel='002': label "Interest"/"Accident", periode dipisah tanda hubung.
+		row("Risk Of Interest", n.PolicyCondition)
+		row("Name Of Interest", n.ObjectName)
+		row("Period Policy", date(n.PeriodStart)+" - "+date(n.PeriodEnd))
+		row("Date of Accident", date(n.DateOfLoss))
+		row("Nature Of Accident", n.NatureOfLoss)
+	} else {
+		row("Policy Condition", n.PolicyCondition)
+		row("Object", n.ObjectName)
+		row("Policy Period", date(n.PeriodStart)+" s/d "+date(n.PeriodEnd))
+		row("Date of Loss", date(n.DateOfLoss))
+		row("Nature Of Loss", n.NatureOfLoss)
+	}
 
 	// Premium Paid On: satu baris per cicilan; label dan titik dua hanya pada baris pertama.
 	pdf.Ln(1)
@@ -166,7 +180,35 @@ func (Renderer) Render(n registrasi.AcceptanceNote) ([]byte, error) {
 	row(receiverLabel, strings.Join(receiver, "\n"))
 	row("Remark", n.Remark)
 
-	// Tanda tangan di kanan: tanggal akseptasi, gambar, nama komite penyetuju.
+	if n.PersonalAccident {
+		paSignatures(pdf, tr, n)
+	} else {
+		committeeSignature(pdf, tr, n)
+	}
+
+	// Catatan; alamat perusahaan hanya pada tata letak umum (template tidak mencetaknya
+	// untuk Travel maupun PA).
+	c := company[entity]
+	pdf.Ln(12)
+	pdf.SetFont(font, "B", 9)
+	pdf.MultiCell(0, 4.2, tr("Catatan :\nSurat ini sah dikeluarkan oleh "+c[0]+" dan tercatat pada sistem "+c[0]), "", "L", false)
+	if !n.PersonalAccident {
+		pdf.Ln(4)
+		pdf.CellFormat(0, 4.2, tr(c[0]), "", 1, "L", false, 0, "")
+		pdf.SetFont(font, "", 9)
+		pdf.MultiCell(0, 4.2, tr(c[1]), "", "L", false)
+	}
+
+	var out bytes.Buffer
+	if err := pdf.Output(&out); err != nil {
+		return nil, fmt.Errorf("acceptancenotepdf: %w", err)
+	}
+	return out.Bytes(), nil
+}
+
+// committeeSignature adalah blok tanda tangan tata letak umum: di kanan, tanggal akseptasi,
+// gambar, dan nama komite penyetuju.
+func committeeSignature(pdf *fpdf.Fpdf, tr func(string) string, n registrasi.AcceptanceNote) {
 	pdf.Ln(8)
 	right := 138.0
 	pdf.SetFont(font, "", textSize)
@@ -185,22 +227,50 @@ func (Renderer) Render(n registrasi.AcceptanceNote) ([]byte, error) {
 	pdf.SetFont(font, "B", textSize)
 	pdf.SetX(right)
 	pdf.CellFormat(60, lineHeight, tr(n.SignerName), "", 1, "C", false, 0, "")
+}
 
-	// Catatan dan alamat perusahaan.
-	c := company[entity]
-	pdf.Ln(12)
-	pdf.SetFont(font, "B", 9)
-	pdf.MultiCell(0, 4.2, tr("Catatan :\nSurat ini sah dikeluarkan oleh "+c[0]+" dan tercatat pada sistem "+c[0]), "", "L", false)
-	pdf.Ln(4)
-	pdf.CellFormat(0, 4.2, tr(c[0]), "", 1, "L", false, 0, "")
-	pdf.SetFont(font, "", 9)
-	pdf.MultiCell(0, 4.2, tr(c[1]), "", "L", false)
+// paSignatures adalah blok tanda tangan Personal Accident (`GroupPanel='002'`): tanggal
+// akseptasi di tengah, lalu dua kolom — gambar 120×120 px, nama tebal bergaris bawah, dan
+// jabatannya.
+func paSignatures(pdf *fpdf.Fpdf, tr func(string) string, n registrasi.AcceptanceNote) {
+	pdf.Ln(8)
+	half := (210 - 2*marginLeft) / 2
+	pdf.SetFont(font, "", textSize)
+	pdf.SetX(marginLeft)
+	pdf.CellFormat(half, lineHeight, tr("Jakarta, "+longDate(n.SignedAt)), "", 1, "C", false, 0, "")
+	pdf.Ln(8)
 
-	var out bytes.Buffer
-	if err := pdf.Output(&out); err != nil {
-		return nil, fmt.Errorf("acceptancenotepdf: %w", err)
+	size := 32.0 // 120 px
+	top := pdf.GetY()
+	for i, signer := range n.PASigners {
+		if i > 1 {
+			break
+		}
+		if image := normalizeImage(signer.Signature); len(image) > 0 {
+			name := fmt.Sprintf("ttd-pa-%d", i)
+			opt := fpdf.ImageOptions{ImageType: "PNG", ReadDpi: false}
+			pdf.RegisterImageOptionsReader(name, opt, bytes.NewReader(image))
+			pdf.ImageOptions(name, marginLeft+float64(i)*half+half/2-size/2, top, size, size, false, opt, 0, "")
+		}
 	}
-	return out.Bytes(), nil
+	pdf.SetY(top + size + 2)
+	pdf.SetFont(font, "BU", textSize)
+	for i, signer := range n.PASigners {
+		if i > 1 {
+			break
+		}
+		pdf.SetXY(marginLeft+float64(i)*half, top+size+2)
+		pdf.CellFormat(half, lineHeight, tr(signer.Name), "", 0, "C", false, 0, "")
+	}
+	pdf.SetFont(font, "", textSize)
+	for i, signer := range n.PASigners {
+		if i > 1 {
+			break
+		}
+		pdf.SetXY(marginLeft+float64(i)*half, top+size+2+lineHeight+1)
+		pdf.CellFormat(half, lineHeight, tr(signer.Title), "", 0, "C", false, 0, "")
+	}
+	pdf.SetY(top + size + 2 + 2*lineHeight + 2)
 }
 
 func join(currency, value string) string { return strings.TrimSpace(currency + " " + value) }

@@ -308,6 +308,30 @@ func BandFor(bands []Band, percent float64) (Band, bool) {
 	return Band{}, false
 }
 
+// AdjusterCategoryJob adalah nilai kolom `JOB` pita kategori adjuster.
+const AdjusterCategoryJob = "NILAI ADJUSTER"
+
+// CategoryFor mencari teks KATEGORI untuk sebuah nilai akhir adjuster.
+//
+// Nilai yang tidak dapat dibaca menghasilkan kategori KOSONG, bukan kategori terendah:
+// "belum dinilai" dan "dinilai buruk" adalah dua hal yang berbeda, dan pada laporan kinerja
+// perbedaan itu menyangkut orang.
+//
+// Pita kategori BERLUBANG — 60 sampai 60,001, 69,999 sampai 70, dan 80 sampai 80,001 tidak
+// tercakup pita mana pun. Nilai yang jatuh di lubang itu juga menghasilkan kosong. Lubangnya
+// ada di master, bukan di sini, dan menambalnya di kode berarti menampilkan kategori yang
+// tidak pernah ditampilkan Pega.
+func CategoryFor(bands []Band, score Score) string {
+	if !score.Present {
+		return ""
+	}
+	band, found := BandFor(bands, score.Value)
+	if !found {
+		return ""
+	}
+	return band.Note
+}
+
 // PICRow adalah satu baris penilaian — satu komponen untuk satu PIC.
 type PICRow struct {
 	// PIC adalah `OPERATOR_ID` petugasnya, atau "Leader" pada baris rekapitulasi.

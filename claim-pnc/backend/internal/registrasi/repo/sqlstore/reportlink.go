@@ -36,7 +36,7 @@ func (p *ClaimReportLink) MarkHandedOver(ctx context.Context, reportID string, a
 	exec := executorFrom(ctx, p.db)
 	result, err := exec.ExecContext(ctx, loadQuery("laporan_tandai_diserahkan"), at.UTC(), id)
 	if err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menandai laporan %s diserahkan: %w", id, err)
+		return fmt.Errorf("registrasi/sqlstore: menandai laporan %s diserahkan di POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", id, err)
 	}
 	row, err := result.RowsAffected()
 	if err != nil {
@@ -68,7 +68,7 @@ func (p *ClaimReportLink) AttachClaimNumber(ctx context.Context, reportID, claim
 	exec := executorFrom(ctx, p.db)
 	result, err := exec.ExecContext(ctx, loadQuery("laporan_pasang_nomor_klaim"), number, id)
 	if err != nil {
-		return fmt.Errorf("registrasi/sqlstore: memasang nomor klaim pada laporan %s: %w", id, err)
+		return fmt.Errorf("registrasi/sqlstore: memasang nomor klaim pada laporan %s di POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", id, err)
 	}
 	row, err := result.RowsAffected()
 	if err != nil {

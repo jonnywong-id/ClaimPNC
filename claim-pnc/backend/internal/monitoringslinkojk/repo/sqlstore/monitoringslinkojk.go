@@ -271,19 +271,28 @@ func (r *Repo) planFor(segment monitoringslinkojk.Segment) (segmentPlan, error) 
 	switch segment {
 	case monitoringslinkojk.SegmentD01:
 		return segmentPlan{
-			rowsQuery:          "d01_rows",
-			countQuery:         "d01_count",
-			exportQuery:        "d01_export",
-			takesBusinessScope: true,
-			toRow:              d01Row,
-		}, nil
-	case monitoringslinkojk.SegmentF06:
-		return segmentPlan{
+			// Segmen D01 menampilkan IDENTITAS DEBITUR, dan sumbernya
+			// `T_CLAIM_OBJECTLIST` — tabel yang memuat CIF, jenis kelamin, tanggal
+			// lahir, alamat, dan telepon debitur.
+			//
+			// Nama kuerinya tetap `f06_*` mengikuti berkas asalnya di export
+			// (`GetDataSlinkAllFOG`). Penamaan terbalik itu dicatat di columns.go;
+			// pemetaan ke segmen layar terjadi di sini.
 			rowsQuery:       "f06_rows",
 			countQuery:      "f06_count",
 			exportQuery:     "f06_export",
 			takesBranchCode: true,
 			toRow:           f06Row,
+		}, nil
+	case monitoringslinkojk.SegmentF06:
+		return segmentPlan{
+			// Segmen F06 menampilkan FASILITAS KREDIT yang sudah tersusun sebagai
+			// laporan, dan sumbernya `T_CLAIM_SLIK_OJK`.
+			rowsQuery:          "d01_rows",
+			countQuery:         "d01_count",
+			exportQuery:        "d01_export",
+			takesBusinessScope: true,
+			toRow:              d01Row,
 		}, nil
 	}
 	return segmentPlan{}, monitoringslinkojk.ErrUnknownSegment
@@ -378,6 +387,37 @@ const (
 	scopeExclude = "EXCLUDE"
 )
 
+// creditInsuranceNamePattern memilih lini Asuransi Kredit pada `BUSINESSNAME`.
+//
+// ============================================================================
+// KENAPA POLA, BUKAN PERBANDINGAN PERSIS — dan kenapa kolomnya bukan BUSINESSTYPE
+// ============================================================================
+//
+// Kueri Pega menyaring `b.businesstype = 'AsuransiKredit'` pada tabel kerja Pega. Tabel
+// datar `POOLDATA.T_CLAIMLIST_ADMIN` yang menggantikannya **tidak punya kolom
+// `BUSINESSTYPE` sama sekali** — terbukti dari katalog Oracle, dan sebelumnya membuat
+// seluruh kueri segmen F06 gagal dengan `ORA-00904`.
+//
+// Yang ada `BUSINESSNAME`, dan isinya nama lini yang terbaca — bukan kode. Asuransi
+// Kredit muncul sebagai EMPAT varian:
+//
+//	ASURANSI KREDIT 2             ASURANSI KREDIT PEMBIAYAAN
+//	ASURANSI KREDIT               ASURANSI KREDIT PERDAGANGAN
+//
+// Perbandingan persis karena itu tidak mungkin; yang dipakai adalah awalan. Pada data
+// hari ini, dari 119 baris laporan: **74 tercakup awalan ini**, 45 sisanya menjadi
+// "Surety Bond".
+//
+// # Ini PILIHAN yang perlu dikonfirmasi, bukan kesetaraan yang terbukti
+//
+// Pencocokan awalan adalah kelas pola yang sama dengan toleransi spreading yang `D-49`
+// butir 1 perbaiki. Dipakai di sini karena tidak ada kolom kode yang dapat dibandingkan
+// persis — bukan karena dianggap aman. Bila ternyata salah satu varian seharusnya TIDAK
+// termasuk, baris itu hilang dari laporan regulator tanpa satu pun galat.
+//
+// Tercatat sebagai pertanyaan terbuka di `docs/permintaan-artefak-pega.md`.
+const creditInsuranceNamePattern = "ASURANSI KREDIT%"
+
 // scopeArgs menerjemahkan pilihan "Business Name" menjadi mode dan nilai pembanding.
 //
 // Lihat monitoringslinkojk.BusinessScope: "SURETY BOND" MENIADAKAN Asuransi Kredit alih-
@@ -385,9 +425,9 @@ const (
 func scopeArgs(scope monitoringslinkojk.BusinessScope) (any, any) {
 	switch scope {
 	case monitoringslinkojk.ScopeCreditInsurance:
-		return scopeInclude, monitoringslinkojk.CreditInsuranceBusinessType
+		return scopeInclude, creditInsuranceNamePattern
 	case monitoringslinkojk.ScopeSuretyBond:
-		return scopeExclude, monitoringslinkojk.CreditInsuranceBusinessType
+		return scopeExclude, creditInsuranceNamePattern
 	default:
 		return nil, nil
 	}

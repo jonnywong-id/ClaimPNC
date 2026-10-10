@@ -25,12 +25,13 @@ func TestDetailQueryReturnsTheExpectedAliases(t *testing.T) {
 }
 
 func TestDetailQueryBindsTheClaimNumber(t *testing.T) {
-	// Satu bind, dan hanya satu. Bind kedua yang masuk diam-diam menghasilkan ORA-01008
+	// Tiga bind bernilai sama (sejak 2026-10-08: satu per sumber kunci), dan hanya tiga —
+	// pemanggil mengirim nomor klaim tiga kali. Bind tambahan yang masuk diam-diam menghasilkan ORA-01008
 	// saat permintaan pertama datang di produksi — kuerinya tidak pernah dijalankan saat
 	// kompilasi.
 	bind := regexp.MustCompile(`:(\d+)`)
 	matches := bind.FindAllString(query("find_claim"), -1)
-	require.Equal(t, []string{":1"}, matches)
+	require.Equal(t, []string{":1", ":2", ":3"}, matches)
 }
 
 func TestDetailQueryNeverDropsRowsWithoutADocument(t *testing.T) {
@@ -117,7 +118,8 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 	// yang ditambahkan kemudian dapat menarik data dari tabel yang belum pernah ditinjau
 	// kepemilikannya (`P-1`) maupun kewenangan bacanya.
 	allowed := []string{
-		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		"DATAPEGA.PC_ASSIGN_WORKLIST",
+		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 		"POOLDATA.JSON_KLAIM",
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/platform/logging"
+	"claim-pnc/internal/platform/oraerror"
 )
 
 // Kode galat modul ini.
@@ -52,6 +53,11 @@ const (
 	// sistem" mengirim orang mencari cacat di aplikasi, dan itu pencarian yang tidak akan
 	// menemukan apa pun.
 	CodePenyimpananBelumSiap = "penyimpanan_belum_siap"
+
+	// CodeDatabaseError: penyimpanan/pembacaan tabel ditolak Oracle; pesannya memuat galat
+	// Oracle apa adanya, mis. "Gagal penyimpanan ke tabel POOLDATA.T_CLAIM_RECIVEDCLAIM:
+	// ORA-01427: ..." (Work Owner 2026-10-10).
+	CodeDatabaseError = "galat_basis_data"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.
@@ -64,6 +70,16 @@ type JSONWriter func(w http.ResponseWriter, r *http.Request, status int, body an
 func (h *Handler) writeModuleError(w http.ResponseWriter, r *http.Request, err error) {
 	status, body, known := mapError(err)
 	if !known {
+		// Galat Oracle TIDAK diserahkan ke pesan umum: Work Owner meminta pesan Oracle-nya
+		// tetap tampil beserta tabelnya (2026-10-10). Rincian lengkapnya tetap di log.
+		if message, ok := oraerror.Describe(err); ok {
+			logging.From(r.Context(), h.logger).Error("permintaan gagal",
+				slog.String("jalur", r.URL.Path),
+				slog.String("galat", err.Error()),
+			)
+			h.writeResponse(w, r, http.StatusInternalServerError, ErrorResponse{Code: CodeDatabaseError, Message: message})
+			return
+		}
 		// Galat yang tidak dikenali modul ini — kegagalan basis data, kegagalan
 		// jaringan, cacat pemrograman — diserahkan ke penulis bersama, yang menjawab 500
 		// dengan pesan umum dan menaruh rinciannya di log saja. Rincian galat internal

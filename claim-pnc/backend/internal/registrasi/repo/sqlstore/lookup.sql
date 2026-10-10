@@ -36,10 +36,21 @@
 -- Tidak ditemukan berarti TIDAK ADA baris, bukan nol. `D-48` menetapkan klaim ditolak
 -- bila kurs tanggal kejadian tidak tersedia — tidak ada nilai bawaan, dan tidak ada
 -- RETURN 1 seperti GETCURRENCYSTANDARD yang lama.
+--
+-- # Simbol ISO tetap diterima, diterjemahkan lewat master POOLDATA.CURRENCY
+--
+-- Klaim dapat membawa simbol (IDR) alih-alih kode (10026) -- terukur 2026-10-07 pada
+-- klaim PA yang polisnya tidak berisi mata uang, sehingga layar mengisi bawaan IDR.
+-- Kode tetap dicocokkan lebih dulu; simbol diterjemahkan lewat CURRENCY.CURRENCY, yang
+-- unik per simbol (terverifikasi 2026-10-07). Nilai yang sama diikat dua kali supaya
+-- setiap penanda bind dipakai satu kali.
 SELECT CURRENCYVALUE
   FROM POOLDATA.M_CURRENCYSTANDARD
- WHERE TRIM(ID) = :1
-   AND CURRENCYDATE <= :2
+ WHERE (TRIM(ID) = :1
+        OR TRIM(ID) IN (SELECT TRIM(c.ID)
+                          FROM POOLDATA.CURRENCY c
+                         WHERE UPPER(TRIM(c.CURRENCY)) = UPPER(:2)))
+   AND CURRENCYDATE <= :3
  ORDER BY CURRENCYDATE DESC
  FETCH FIRST 1 ROWS ONLY
 
@@ -184,41 +195,81 @@ SELECT JSONDATA
   FROM POOLDATA.M_PARAMETER
  WHERE ID = :1
 
--- name: pic_teknik_paling_ringan
+-- ============================================================================
+-- PIC TEKNIK — getRandomTeam_act (lihat registrasi/technicalpic.go)
+-- ============================================================================
 --
--- Petugas teknis dengan beban paling sedikit untuk sebuah lini bisnis.
+-- Disamakan dengan Pega atas keputusan Work Owner 2026-10-08, termasuk pengecualian
+-- ELLENSUPRIYATI yang di Pega tertulis di dalam kueri. Namanya diikat sebagai parameter
+-- (registrasi.ExcludedTechnicalPIC), bukan ditulis di SQL, supaya hanya ada satu tempat.
+-- Penanda tim C diikat 'Y'/'N' — klausa `{ASIS:TempNoPolis.InvoiceNo}` Pega tidak dibawa.
+
+-- name: pic_teknik_nonmbu
 --
--- Disalin dari `RDB List/BrowsePICRandomTeam-SQL.xml` — `ORDER BY counter_quota ASC`,
--- yakni yang paling sedikit bebannya mendapat tugas berikutnya. Itulah algoritma yang
--- `R-04` sebut hilang bersama PNCAdminRouter dan PNCTeknikRouter, dan yang terbaca
--- kembali dari kueri ini.
---
--- # Satu hal yang TIDAK dibawa
---
--- Kueri lama memuat `and operator_ID != 'ELLENSUPRIYATI'` — satu dari 24 Operator ID yang
--- tertanam di dalam kode. `D-15` menetapkan seluruhnya menjadi master data, dan `P-5`
--- butir 1 menjadikannya perbaikan yang direncanakan. Mekanisme yang benar sudah ada di
--- tabel ini: `STS_AKTIF`. Mengecualikan seseorang dilakukan dengan menonaktifkannya di
--- master, bukan dengan menulis namanya di dalam kueri.
---
--- Selisih yang mungkin timbul pada uji kesetaraan karena itu SUDAH DIPERKIRAKAN, dan
--- terpetakan ke butir `P-5` nomor 1.
+-- SELURUH kandidat, berurutan: `getRandomTeam_act` step 15 memeriksa absensinya satu per satu.
+-- `RDB List/BrowsePICRandomTeam-SQL.xml` — estimasi < Rp 1 miliar, beban COUNTER_QUOTA.
 SELECT OPERATOR_ID
   FROM POOLDATA.MST_USER_TEKNIK
  WHERE STS_AKTIF = '1'
-   AND TRIM(TYPE_BUSINESS) = :1
+   AND TRIM(TYPE_BUSINESS) = 'NONMBU'
+   AND TRIM(OPERATOR_ID) <> :1
+   AND (:2 = 'N' OR TRIM(TEAM_GROUP) = 'C')
+ ORDER BY COUNTER_QUOTA ASC, OPERATOR_ID ASC
+
+-- name: pic_teknik_nonmbu_besar
+--
+-- `RDB List/BrowsePICRandomTeam2-SQL.xml` — estimasi > Rp 1 miliar, beban COUNTER_QUOTA2.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE STS_AKTIF = '1'
+   AND TRIM(TYPE_BUSINESS) = 'NONMBU'
+   AND TRIM(OPERATOR_ID) <> :1
+   AND (:2 = 'N' OR TRIM(TEAM_GROUP) = 'C')
+ ORDER BY COUNTER_QUOTA2 ASC, OPERATOR_ID ASC
+
+-- name: pic_teknik_jabatan
+--
+-- `OperatorID.pyPosition` operator yang sedang bekerja — padanannya M_LOGIN_PNC.LINE_BUSINESS,
+-- sama dengan `line_business_for` modul Inbox Outstanding. Bind: :1 login, huruf besar.
+SELECT p.LINE_BUSINESS
+  FROM POOLDATA.M_LOGIN_PNC p
+ WHERE UPPER(TRIM(p.LOGIN_ID)) = :1
+
+-- name: pic_teknik_pa
+--
+-- `Database/POOLDATA.GETDATA_PICTEKNIK.sql` cabang PA: satu petugas bernama (TKI atau
+-- bukan). Prosedurnya tidak menyaring STS_AKTIF, dan itu dibawa apa adanya.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE TRIM(TYPE_BUSINESS) = 'PA'
+   AND TRIM(OPERATOR_ID) = :1
+ FETCH FIRST 1 ROWS ONLY
+
+-- name: pic_teknik_travel
+--
+-- `Database/POOLDATA.GETDATA_PICTEKNIK.sql` cabang selain PA: beban paling ringan TRAVEL,
+-- juga tanpa saringan STS_AKTIF.
+SELECT OPERATOR_ID
+  FROM POOLDATA.MST_USER_TEKNIK
+ WHERE TRIM(TYPE_BUSINESS) = 'TRAVEL'
  ORDER BY COUNTER_QUOTA ASC, OPERATOR_ID ASC
  FETCH FIRST 1 ROWS ONLY
 
 -- name: pic_teknik_naikkan_beban
 --
--- Menaikkan pencacah beban petugas yang baru saja menerima tugas.
---
--- Disalin dari `RDB List/AddTJobCounterPIC_SQL-SQL.xml`. Tanpa langkah ini, petugas yang
--- sama akan terus terpilih karena bebannya tidak pernah bertambah.
+-- Langkah UPDATE pada akhir `GETDATA_PICTEKNIK` (PA/Travel), dan `AddTJobCounterPIC_SQL` jalur
+-- NONMBU estimasi < Rp 1 miliar. Lihat Assigner.chooseTechnicalPIC.
 UPDATE POOLDATA.MST_USER_TEKNIK
-   SET COUNTER_QUOTA = COUNTER_QUOTA + 1
+   SET COUNTER_QUOTA = COALESCE(COUNTER_QUOTA, 0) + 1
  WHERE OPERATOR_ID = :1
+
+-- name: pic_teknik_naikkan_beban_besar
+--
+-- `AddTJobCounterPIC_SQL_22` — jalur NONMBU estimasi > Rp 1 miliar.
+UPDATE POOLDATA.MST_USER_TEKNIK
+   SET COUNTER_QUOTA2 = COALESCE(COUNTER_QUOTA2, 0) + 1
+ WHERE OPERATOR_ID = :1
+
 
 -- name: polis_koasuransi
 --
@@ -289,3 +340,33 @@ SELECT ID, JSON_VALUE(JSONDATA, '$.Note'), JSON_VALUE(JSONDATA, '$.ZipCode')
   FROM POOLDATA.M_RW
  WHERE JSON_VALUE(JSONDATA, '$.DistrictID') = :1
  ORDER BY 2
+
+-- ============================================================================
+-- ROTASI TEAM A/B — GetRandomTeamClaimLeader (lihat registrasi.TeamRotation)
+-- ============================================================================
+--
+-- Tabel yang SAMA dengan Pega (`RDB List/GetLastTeamGetSurveyor_sql*`,
+-- `UpdateLastTeamGetSurveyor_sql*`), keputusan Work Owner 2026-10-09. Selama masa paralel ia
+-- ditulis dua sistem — pengecualian sadar terhadap `P-1`. Pega membaca baris pertama tanpa
+-- WHERE dan menulis tanpa WHERE; FOR UPDATE ditambahkan supaya dua instans aplikasi ini
+-- tidak membaca flag yang sama lalu menulis giliran yang sama.
+
+-- name: rotasi_tim_baca_besar
+-- `GetLastTeamGetSurveyor_sql` (RandomOver1M_act, estimasi > Rp 1 miliar).
+SELECT FLAG
+  FROM POOLDATA.PEGA_DASHBOARDPNC_REFRESH
+   FOR UPDATE
+
+-- name: rotasi_tim_tulis_besar
+-- `UpdateLastTeamGetSurveyor_sql`.
+UPDATE POOLDATA.PEGA_DASHBOARDPNC_REFRESH SET FLAG = :1
+
+-- name: rotasi_tim_baca_kecil
+-- `GetLastTeamGetSurveyor_sql2` (RandomUnder1M_act, estimasi < Rp 1 miliar).
+SELECT FLAG2
+  FROM POOLDATA.PEGA_DASHBOARDPNC_REFRESH
+   FOR UPDATE
+
+-- name: rotasi_tim_tulis_kecil
+-- `UpdateLastTeamGetSurveyor_sql2`.
+UPDATE POOLDATA.PEGA_DASHBOARDPNC_REFRESH SET FLAG2 = :1

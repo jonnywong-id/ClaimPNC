@@ -44,19 +44,11 @@ const keys = {
     page: number,
   ) => ['report-kpi', 'rincian', portal, token, filter, page] as const,
 
-  adjusters: (portal: string | null, token: string | null, filter: FilterInput) =>
-    [
-      'report-kpi',
-      'pilihan-adjuster',
-      portal,
-      token,
-      // Adjuster yang sedang dipilih SENGAJA tidak ikut kunci: daftar pilihan tidak
-      // disaring olehnya, sehingga memasukkannya hanya membuat cache terpecah menjadi
-      // sekian salinan yang isinya sama persis.
-      filter.tipeReport,
-      filter.dari,
-      filter.sampai,
-    ] as const,
+  // Tanpa penyaring sama sekali: daftarnya master, dan isinya sama berapa pun isian yang
+  // sedang dipilih. Memasukkan penyaring ke kunci hanya memecah cache menjadi sekian
+  // salinan yang isinya persis sama.
+  adjusters: (portal: string | null, token: string | null) =>
+    ['report-kpi', 'pilihan-adjuster', portal, token] as const,
 }
 
 /**
@@ -149,27 +141,28 @@ export function useReportKPIDetail(filter: FilterInput, page: number, enabled: b
 /**
  * Hook isi dropdown "Pilih Adjuster".
  *
- * # Kenapa ia menuntut tipe report dan periode
+ * # Kenapa ia tidak menerima penyaring, dan tidak menunggu apa pun
  *
- * Karena daftarnya diambil dari tabel penilaian itu sendiri, sehingga ikut menyempit
- * mengikuti keduanya. Itu yang menjaga janji pada selisih terencana: setiap pilihan yang
- * muncul pasti menghasilkan baris.
+ * Karena daftarnya adalah MASTER adjuster eksternal. Layar lama mengisinya saat dibuka
+ * lewat `Activity/GetFilterKPI-Act.xml` — sebelum periode, tipe report, atau apa pun
+ * dipilih.
  *
- * Sebaliknya ia TIDAK disaring oleh adjuster yang sedang dipilih — kalau disaring,
- * dropdown akan menyisakan satu pilihan saja dan pengguna tidak dapat berpindah lagi.
+ * # Dua kekeliruan yang ini perbaiki (2026-10-09)
+ *
+ * Pertama, daftarnya dulu diturunkan dari tabel penilaian dan disaring periode. Kedua,
+ * hook ini dulu dipanggil dengan `enabled` yang baru menyala setelah SELURUH isian
+ * lengkap. Keduanya berakibat sama di layar: dropdown kosong, dan pengguna tidak punya
+ * cara tahu apakah itu wajar atau rusak.
  */
-export function useReportKPIAdjusters(filter: FilterInput, enabled: boolean) {
+export function useReportKPIAdjusters() {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
   return useQuery({
-    queryKey: keys.adjusters(portal, token, filter),
+    queryKey: keys.adjusters(portal, token),
     queryFn: () =>
-      callAPI<AdjusterListResponse>(
-        `${PATH}/adjuster/pilihan?${params({ ...filter, adjuster: '' })}`,
-        { token, portal },
-      ),
-    enabled: enabled && token !== null && portal !== null,
+      callAPI<AdjusterListResponse>(`${PATH}/adjuster/pilihan`, { token, portal }),
+    enabled: token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
   })
@@ -356,7 +349,32 @@ export function useExportPICTeknik() {
 
   return useMutation({
     mutationFn: async (filter: PICFilterInput) => {
-      const address = `${PATH}/pic-teknik/ekspor?${picParams(filter)}`
+      // data_kpi HANYA dikirim pada ekspor. Ia memilih berkas, bukan isi layar —
+      // mengirimkannya pada permintaan kartu skor akan menyarankan sebaliknya.
+      const address =
+        `${PATH}/pic-teknik/ekspor?${picParams(filter)}&data_kpi=${encodeURIComponent(filter.dataKPI)}`
+      simpanBerkas(await unduhBerkas(address, { token, portal }))
+    },
+  })
+}
+
+/**
+ * Hook tombol ekspor PERTAMA tab KPI PIC Teknik — yang di sebelah Cari.
+ *
+ * Ia mengunduh PENILAIANNYA, bukan data klaim mentah: isinya persis grid yang sedang
+ * terlihat. Karena itu ia tidak mengirim `data_kpi` — pilihan itu milik tombol kedua, dan
+ * mengirimkannya di sini akan menyarankan bahwa isi berkasnya ikut berubah.
+ *
+ * Kedua tombol berlabel SAMA di Pega, dan itu ditiru. Yang membedakan keduanya adalah
+ * letaknya, persis seperti di layar lama.
+ */
+export function useExportPICLaporan() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: async (filter: PICFilterInput) => {
+      const address = `${PATH}/pic-teknik/ekspor-laporan?${picParams(filter)}`
       simpanBerkas(await unduhBerkas(address, { token, portal }))
     },
   })

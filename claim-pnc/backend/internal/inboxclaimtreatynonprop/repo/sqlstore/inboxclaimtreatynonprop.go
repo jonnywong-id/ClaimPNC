@@ -166,8 +166,8 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// CheckTable memastikan keempat tabel yang disentuh modul ini terbaca dari koneksi yang
-// dipakai.
+// CheckTable memastikan ketiga tabel yang disentuh modul ini terbaca dari koneksi yang
+// dipakai (sejak 2026-10-08 objek kerja Pega tidak lagi disentuh).
 //
 // Dipanggil perintah `-periksa`. Ia tidak menyentuh satu baris pun: yang diperiksa adalah
 // hak baca dan keberadaan tabelnya.
@@ -176,8 +176,7 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_admin")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASSIGN_WORKLIST, DATAPEGA.PC_ASM_FW_GCNMFW_WORK, "+
-				"atau POOLDATA.JSON_KLAIM: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKLIST atau POOLDATA.JSON_KLAIM: %w", err)
 	}
 	if err := r.db.QueryRowContext(ctx, query("check_technical")).Scan(&ignored); err != nil {
 		return fmt.Errorf("membaca DATAPEGA.PC_ASSIGN_WORKBASKET: %w", err)
@@ -197,10 +196,12 @@ type scanner interface {
 // inboxclaimtreatynonprop.sql. Ketiganya dijaga query_test.go.
 //
 // Seluruh kolom teks dipindai lewat tipe yang mengizinkan NULL. Itu bukan kehati-hatian
-// berlebih: kedua gabungan adalah LEFT JOIN, sehingga penugasan yang objek kerjanya atau
-// baris JSON_KLAIM-nya belum ada mengembalikan NULL pada seluruh kolom tabel itu sekaligus.
+// berlebih: gabungannya LEFT JOIN, sehingga penugasan yang baris JSON_KLAIM-nya belum ada
+// mengembalikan NULL pada seluruh kolom tabel itu sekaligus. (Gabungan kedua ke objek kerja
+// Pega dilepas 2026-10-08 — lihat SUMBER BARU di berkas .sql.)
 //
-// WORK_CREATED_AT dipindai lewat `sql.NullTime` dengan alasan yang sama, dan darinya DUA
+// WORK_CREATED_AT dipindai lewat `sql.NullTime` — sejak 2026-10-08 ia SELALU NULL karena
+// waktu objek kerja tidak punya padanan terbukti di tabel pengganti — dan darinya DUA
 // isian diturunkan sekaligus: teks kolom "Status" dan umur pekerjaan. Baris tanpa pasangan
 // objek kerja karena itu menghasilkan teks kosong dan umur nol, bukan tanggal tahun satu.
 func scanWorkItem(row scanner) (inboxclaimtreatynonprop.WorkItem, int, error) {

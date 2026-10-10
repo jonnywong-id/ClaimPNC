@@ -509,6 +509,9 @@ func (s InboxSummary) Count(kind InboxKind) int {
 // `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, `DATAPEGA.PC_ASSIGN_WORKLIST`,
 // `POOLDATA.T_CLAIM_KOMITE_LIST`, dan `POOLDATA.T_CLAIM_DATA_RESULTS_AI`.
 //
+// Keputusan Work Owner 2026-10-08 mencabut `PC_ASM_FW_GCNMFW_WORK` dari daftar itu: tabel
+// kerja Pega sudah tidak dipakai, dan tidak satu pun kueri di repo/sqlstore membacanya lagi.
+//
 // `P-1` terpenuhi tanpa negosiasi kepemilikan karena tidak ada satu pun pernyataan yang
 // menulis ke sana. Yang ditulis aplikasi ini adalah tabel keputusannya SENDIRI — lihat
 // DecisionRepo.

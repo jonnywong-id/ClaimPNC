@@ -278,8 +278,52 @@ SELECT b.claimno       AS "CaseID",
        b.picteknik     AS "Conveyance",
        b.businessname  AS "ClaimNo",
        b.leader_member AS "UserTeknisEmail",
-       c.occupationid   AS "UserTeknis",
-       c.occupation     AS "UserName",
+       -- Dua kolom ini DIPENDEKKAN keliru saat dipindahkan: ditulis sebagai satu kolom
+       -- `pega_dashboardpnc`, padahal sumbernya memilih di antara TIGA tabel menurut
+       -- Group Panel — Aneka, Properti (dari JSON), dan Marine Cargo.
+       --
+       -- Ketahuan karena `c.occupationid` tidak ada di `pega_dashboardpnc` (ORA-00904).
+       -- `c.occupation` justru ADA, sehingga separuh kesalahan ini tidak akan ketahuan
+       -- dari galat mana pun — ia hanya akan mengisi kolom dengan nilai yang salah.
+       --
+       -- Bentuknya disalin dari `report_komite_nonmbu`, yang memindahkan CASE yang
+       -- sama dengan benar.
+       CASE
+         WHEN b.grouppanel IN ('003','009') THEN
+           (SELECT t.occupationid FROM pooldata.t_anekalist t
+             WHERE t.nopolis = b.nopolis AND t.prodke = b.prodke AND t.indexobject = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+         WHEN b.grouppanel = '006' THEN
+           (SELECT cc.OccupationCode
+              FROM pooldata.t_propertylist z,
+                   JSON_TABLE(z.OCCUPATIONLIST, '$'
+                     COLUMNS (NESTED PATH '$.OccupationList[*]'
+                              COLUMNS (OccupationCode VARCHAR PATH '$.OccupationCode'))) cc
+             WHERE z.nopolis = b.nopolis AND z.indexobject = a.objectid AND z.prodke = b.prodke
+             FETCH NEXT 1 ROW ONLY)
+         ELSE
+           (SELECT g.goodsid FROM pooldata.t_cargolist g
+             WHERE g.nopolis = b.nopolis AND g.prodke = b.prodke AND g.goodsid = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+       END AS "UserTeknis",
+       CASE
+         WHEN b.grouppanel IN ('003','009') THEN
+           (SELECT t.occupationname FROM pooldata.t_anekalist t
+             WHERE t.nopolis = b.nopolis AND t.prodke = b.prodke AND t.indexobject = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+         WHEN b.grouppanel = '006' THEN
+           (SELECT dd.OccupationName
+              FROM pooldata.t_propertylist x,
+                   JSON_TABLE(x.OCCUPATIONLIST, '$'
+                     COLUMNS (NESTED PATH '$.OccupationList[*]'
+                              COLUMNS (OccupationName VARCHAR PATH '$.OccupationName'))) dd
+             WHERE x.nopolis = b.nopolis AND x.indexobject = a.objectid AND x.prodke = b.prodke
+             FETCH NEXT 1 ROW ONLY)
+         ELSE
+           (SELECT g.goodsname FROM pooldata.t_cargolist g
+             WHERE g.nopolis = b.nopolis AND g.prodke = b.prodke AND g.goodsid = a.objectid
+             FETCH NEXT 1 ROW ONLY)
+       END AS "UserName",
        b.dateofloss    AS "CountryID",
        b.registerdate  AS "Country",
        a.analyst_tfkomitedate   AS "Email",
@@ -289,7 +333,7 @@ SELECT b.claimno       AS "CaseID",
        (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
          WHERE e.claimid = a.claimid AND e.estimationtype = '1' AND e.kursid = a.currency) AS "ProdKe",
        CASE
-         WHEN c.leader_member = 'LEADER'
+         WHEN b.leader_member = 'LEADER'
          THEN (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
                 WHERE e.claimid = a.claimid AND e.estimationtype = '1' AND e.kursid = a.currency) - a.grossvalue
          ELSE (SELECT SUM(e.estimationvalue) FROM pooldata.T_CLAIM_ESTIMASI e
@@ -509,10 +553,10 @@ SELECT a.claimno      AS "CaseID",
 -- Asal: `RDB List/ExportDataKomitesKlaimNONMBU-SQL.xml`, dijalankan
 -- `Activity/PNCReportDataKomites_act-Act.xml`.
 --
--- Bind:
---   :1  tanggal tutup klaim dari    DATE
---   :2  tanggal tutup klaim sampai  DATE
---   :3  status approve komite       '1' Approved | '2' Rejected
+-- Bind — nomornya mengikuti URUTAN KEMUNCULAN:
+--   :1  status approve komite       '1' Approved | '2' Rejected  (muncul paling awal)
+--   :2  tanggal tutup klaim dari    DATE
+--   :3  tanggal tutup klaim sampai  DATE
 --
 -- Berbeda dari jalur lini lain, di sini `statusapprove` BENAR-BENAR menyaring — kedua
 -- tombol menghasilkan berkas yang berbeda. Lihat catatan pada report_komite.
@@ -740,7 +784,11 @@ SELECT b.claimno                                               AS "CaseID",
        END                                                     AS "IDMaster",
        c.tsi                                                   AS "IdxSurveyResults",
        b.leader_member                                         AS "DaftarObjek",
-       p.sts_progress1                                         AS "AgingAmount",
+       -- "STS PROGRESS 1" adalah NAMA tahapan, dan namanya hidup di master
+       -- GCNM_MST_PROGRESS_KLAIM — tabel progres hanya menyimpan kodenya
+       -- (STATUS_PROGRESS1). Sumbernya pun menempuh dua tabel:
+       -- `WHERE G.STATUS_PROGRESS1 = I.ID_PROGRESS`.
+       mprog.sts_progress1                                        AS "AgingAmount",
        p.jsonstatus_progress2                                  AS "ProgresJSON",
        p.keterangan                                            AS "pyNote",
        b.coinsname                                             AS "OwnRisk",
@@ -775,14 +823,15 @@ SELECT b.claimno                                               AS "CaseID",
                              FROM pooldata.gcnm_progress_claim m
                             WHERE m.pnccaseid = c.noklaim
                               AND m.status_progress2 NOT IN ('2','24','60','59'))
+  LEFT JOIN pooldata.gcnm_mst_progress_klaim mprog ON mprog.id_progress = p.status_progress1
  WHERE b.branchname <> 'ASNET'
    AND b.grouppanel IN ('003','004','006','009')
    AND b.businesscode NOT IN ('10145','10168','10165','10164','10053',
                               '10075','10126','10011','10077','10007')
    AND k.komite_id IN (SELECT f.komite_id
                          FROM pooldata.t_claim_komite_list f
-                        WHERE f.statusapprove = :3
+                        WHERE f.statusapprove = :1
                           AND f.no_klaim = d.pyid)
-   AND CAST(d.closeclaimdate_1 AS DATE) >= :1
-   AND CAST(d.closeclaimdate_1 AS DATE) <= :2
+   AND CAST(d.closeclaimdate_1 AS DATE) >= :2
+   AND CAST(d.closeclaimdate_1 AS DATE) <= :3
  ORDER BY d.closeclaimdate_1 ASC

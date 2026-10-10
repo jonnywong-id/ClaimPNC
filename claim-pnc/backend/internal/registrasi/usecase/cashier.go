@@ -13,6 +13,12 @@ import (
 // terdaftar alamatnya. Tidak ada yang ditandai terkirim.
 var ErrCashierUnavailable = errors.New("cashier system could not be reached")
 
+// ErrCashierNoReply menandai Kasir yang menerima permintaan tetapi TIDAK MENJAWAB dalam batas
+// waktu. Berbeda dari ErrCashierUnavailable: Kasir mungkin sudah memproses pembayarannya,
+// sehingga layar harus meminta petugas memeriksa Kasir sebelum mencoba lagi — mengulang
+// begitu saja dapat menghasilkan transfer ganda.
+var ErrCashierNoReply = errors.New("cashier did not reply in time")
+
 // CashierRejectedError adalah jawaban Kasir yang tidak memuat CaseIDCashier / NoTransClaim.
 type CashierRejectedError struct{ Message string }
 
@@ -190,6 +196,10 @@ func (l *Service) TransferCashier(ctx context.Context, p CashierCommand, by Call
 		logNote = "; log layanan gagal ditulis: " + logErr.Error()
 	}
 	if err != nil {
+		var timeout interface{ Timeout() bool }
+		if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &timeout) && timeout.Timeout()) {
+			return registrasi.Claim{}, fmt.Errorf("%w: %v", ErrCashierNoReply, err)
+		}
 		return registrasi.Claim{}, fmt.Errorf("%w: %v", ErrCashierUnavailable, err)
 	}
 	// TRF_KASIR_LOG ditulis begitu Kasir menjawab SUCCESS — sebelum CaseID diperiksa, seperti Pega.

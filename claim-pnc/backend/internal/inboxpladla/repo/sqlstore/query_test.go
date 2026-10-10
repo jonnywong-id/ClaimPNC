@@ -374,20 +374,28 @@ func TestOnlyTheDLAListReplacesTheStatusWith1139(t *testing.T) {
 	}
 }
 
-// Hanya daftar DLA yang menggabungkan tabel kerja Pega secara INNER.
+// SUMBER BARU (2026-10-08): tidak satu kueri pun membaca tabel kerja Pega lagi.
 //
-// Menyeragamkan ketiganya menjadi INNER akan MENGHILANGKAN baris dari dua daftar lain —
-// klaim yang belum punya baris tabel kerja. Baris yang hilang dari antrean tidak
-// menghasilkan keluhan sampai seseorang menyadari klaimnya tidak pernah muncul.
-func TestOnlyTheDLAListJoinsTheWorkTableInner(t *testing.T) {
-	require.NotContains(t, strings.ToUpper(query("list_dla")),
-		"LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
-		"daftar DLA membaca ISPENDINGCLOSE, sehingga gabungannya harus INNER")
+// Kode status dan penanda tunggu-tutup dibaca dari `T_CLAIM_PNC` sendiri. Gabungan INNER
+// yang dulu ada di daftar DLA ikut hilang — dan uji ini menjaga supaya tidak ada gabungan
+// lain yang diam-diam menyaring klaim dari antrean.
+func TestNoQueryReadsThePegaWorkTable(t *testing.T) {
+	for name, text := range queries {
+		require.NotContainsf(t, strings.ToUpper(text), "PC_ASM_FW_GCNMFW_WORK",
+			"kueri %q masih membaca tabel kerja Pega yang sudah tidak dipakai", name)
+	}
 
-	for _, name := range []string{"list_pla", "list_close"} {
-		require.Contains(t, strings.ToUpper(query(name)),
-			"LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
-			"kueri %q harus memakai LEFT JOIN, setara sub-kueri di Pega", name)
+	for _, name := range append(append([]string{}, adviceListQueries...), adviceCountQueries...) {
+		upper := strings.ToUpper(query(name))
+		require.Containsf(t, upper, "C.STATUSCLAIM",
+			"kueri %q harus membaca kode status dari T_CLAIM_PNC", name)
+		require.NotContainsf(t, upper, "STATUSCLAIM_1",
+			"kueri %q masih memakai nama kolom tabel kerja Pega", name)
+	}
+
+	for _, name := range []string{"list_dla", "count_dla", "list_close", "count_close"} {
+		require.Containsf(t, strings.ToUpper(query(name)), "C.ISPENDINGCLOSE",
+			"kueri %q harus membaca penanda tunggu-tutup dari T_CLAIM_PNC", name)
 	}
 }
 
@@ -437,6 +445,7 @@ func TestDatesAreReturnedAsDatesNotAsFormattedText(t *testing.T) {
 func TestEachQueryUsesTheExpectedNumberOfBinds(t *testing.T) {
 	expected := map[string]int{
 		"reinsurer_codes": 1,
+		"xol_summary":     2, // login dua kali, satu per bagian union
 		"list_pla":        7, // 3 login + 2 penyaring + offset + ukuran
 		"list_dla":        6, // 2 login + 2 penyaring + offset + ukuran
 		"list_close":      6, // 2 login + 2 penyaring + offset + ukuran

@@ -205,8 +205,8 @@ func TestNamaKoordinatorMengikutiActivityBukanTeksKueri(t *testing.T) {
 		reportkpi.AdminTotals{},
 	)
 
-	require.Equal(t, "MORASOTARDODOTARIGAN", card.Identity.Coordinator)
-	require.NotEqual(t, reportkpi.CoordinatorInQuery, card.Identity.Coordinator)
+	require.Equal(t, "YUSMIARSIH DYAHPUSPITA S", card.Identity.Coordinator)
+	require.NotEqual(t, reportkpi.CoordinatorInActivity, card.Identity.Coordinator)
 	require.Equal(t, "96030583", card.Identity.NIK)
 }
 

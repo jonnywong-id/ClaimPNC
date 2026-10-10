@@ -59,8 +59,8 @@ func TestSegmentsReturnsBothWithColumnCounts(t *testing.T) {
 
 	require.Equal(t, monitoringslinkojk.SegmentD01, segments[0].Segment)
 	require.Equal(t, "Segment Slik D01", segments[0].Label)
-	require.Len(t, segments[0].Columns, 20)
-	require.Equal(t, 20, segments[0].AvailableCount)
+	require.Len(t, segments[0].Columns, 38)
+	require.Equal(t, 8, segments[0].AvailableCount)
 
 	require.Equal(t, monitoringslinkojk.SegmentF06, segments[1].Segment)
 	require.Len(t, segments[1].Columns, 20)
@@ -252,7 +252,8 @@ func TestSearchKeepsBothFacilitiesOfOneClaim(t *testing.T) {
 //
 // Uji ini sempat menuntut kebalikannya — hanya kolom bersumber, sisanya kosong — ketika
 // grid F06 keliru dibangun dari judul berkas ekspor.
-func TestSearchF06ReturnsTheSameGridColumnsAsD01(t *testing.T) {
+// Segmen F06 mengembalikan kolom FASILITAS KREDIT.
+func TestSearchF06ReturnsFacilityColumns(t *testing.T) {
 	page, err := newService(t).Search(context.Background(),
 		request(monitoringslinkojk.SegmentF06, monitoringslinkojk.Filter{}))
 	require.NoError(t, err)
@@ -265,8 +266,23 @@ func TestSearchF06ReturnsTheSameGridColumnsAsD01(t *testing.T) {
 	}
 
 	require.NotEmpty(t, row.Get("no_klaim"))
-	require.NotEmpty(t, row.Get("nomor_cif_debitur"),
-		"kunci khusus berkas ekspor F06 tetap terbawa")
+	require.NotEmpty(t, row.Get("nomor_rekening_fasilitas"))
+}
+
+// Segmen D01 mengembalikan kolom IDENTITAS DEBITUR.
+//
+// Hanya delapan di antaranya bersumber; sisanya sengaja tidak ada di peta baris, dan
+// Row.Get yang menerjemahkannya menjadi sel kosong.
+func TestSearchD01ReturnsDebtorColumns(t *testing.T) {
+	page, err := newService(t).Search(context.Background(),
+		request(monitoringslinkojk.SegmentD01, monitoringslinkojk.Filter{}))
+	require.NoError(t, err)
+	require.NotEmpty(t, page.Rows)
+
+	row := page.Rows[0]
+	require.NotEmpty(t, row.Get("nomor_cif_debitur"))
+	require.Empty(t, row.Get("nama_lengkap"),
+		"kolom tanpa sumber tidak boleh diisi tebakan")
 }
 
 // ============================================================================

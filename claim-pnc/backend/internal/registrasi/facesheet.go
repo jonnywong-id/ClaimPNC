@@ -115,6 +115,11 @@ type FaceSheetSource interface {
 
 	// SaveRevision menulis satu revisi. Dipanggil di dalam UnitOfWork.
 	SaveRevision(ctx context.Context, r FaceSheetRevision) error
+
+	// AddTechnicalPICJob adalah `RDB List/AddTJobCQuota_SQL` (`DownloadClaimFaceSheet_act`
+	// step 14, hanya pada Claim Face Sheet PERTAMA klaim): MST_USER_TEKNIS.TOTAL_JOB dan
+	// COUNTER_QUOTA PIC Teknik klaim naik satu. Dipanggil di dalam UnitOfWork.
+	AddTechnicalPICJob(ctx context.Context, operatorID string) error
 }
 
 // FaceSheetRenderer mengubah Claim Face Sheet menjadi dokumen yang diunduh.

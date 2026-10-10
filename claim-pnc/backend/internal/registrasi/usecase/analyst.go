@@ -62,6 +62,13 @@ func (l *Service) TransferToAnalyst(ctx context.Context, p TransferToAnalystComm
 	}
 	last := j == len(claim.InsuredItem[i].Coverage)-1
 
+	// PreClaimComitee_OC langkah 21 (modal ClaimComitee_OC dibuka): UserTeknis kosong diisi PIC
+	// Teknik bawaan — di Pega satu Operator ID di dalam rule, di sini pengaturan
+	// PIC_TEKNIK_PA_BAWAAN (D-15). PNCTeknikRouter tahap Send To Analis lalu menugaskan ke sana.
+	if strings.TrimSpace(claim.TechnicalPIC) == "" && l.defaultPATechnicalPIC != "" {
+		claim.TechnicalPIC = l.defaultPATechnicalPIC
+	}
+
 	now := l.clock.Now().UTC()
 	claim.InsuredItem[i].Coverage[j].AnalystTransferred = true
 	if claim.AnalystTransferredAt.IsZero() {
@@ -84,6 +91,8 @@ func (l *Service) TransferToAnalyst(ctx context.Context, p TransferToAnalystComm
 		if err != nil {
 			return CompleteResult{}, fmt.Errorf("registrasi/usecase: menentukan penerima tahap %q: %w", target.ID, err)
 		}
+		// PIC yang dipilih router dicatat ke klaim (PICTEKNIK), seperti tahap teknis lain.
+		registrasi.AdoptTechnicalPIC(&claim, target, recipients)
 		next := registrasi.NewTask(l.id.New(), claim, target, recipients, now)
 		fresh = &next
 		claim.CurrentStage = target.ID

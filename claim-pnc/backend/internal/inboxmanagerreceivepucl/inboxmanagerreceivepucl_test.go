@@ -339,19 +339,74 @@ func TestEveryTabColumnHasATitleAndKey(t *testing.T) {
 	}
 }
 
-func TestOnlyTheReceiveTabOpensTheWorkScreen(t *testing.T) {
-	// Di layar lama, perilaku klik hanya dipasang pada kedua grid Receive — nomor case di
-	// grid RCL/PUCL bukan tautan sama sekali.
+func TestEachTabOpensItsOwnWorkScreen(t *testing.T) {
+	// Kedua grid di Pega punya tautan pada nomor case-nya, dan keduanya membuka layar yang
+	// BERBEDA karena kelas objek kerjanya berbeda:
 	//
-	// Bila penandanya bocor ke tab RCL/PUCL, nomor case di sana menjadi tautan yang membuka
-	// layar kerja PENERIMAAN DOKUMEN untuk sebuah KLAIM. Kuerinya menyaring kelas objek
-	// kerja, sehingga yang terjadi bukan layar berisi data keliru melainkan "berkas tidak
-	// ditemukan" pada setiap baris — kerusakan yang sebabnya tidak terbaca di mana pun.
+	//	Receive    SetAssignmentInboxReceive_act   ASM-FW-GCNMFW-Work-ReceiveDocument
+	//	RCL/PUCL   SetAssignmentInboxPUCL_act      ASM-FW-GCNMFW-Work-PNC
+	//
+	// Keduanya tidak boleh benar bersamaan pada satu tab. Bila penanda layar dokumen bocor
+	// ke tab RCL/PUCL, nomor case di sana akan membuka layar PENERIMAAN DOKUMEN untuk sebuah
+	// KLAIM — dan kuerinya menyaring kelas objek kerja, sehingga yang terjadi bukan layar
+	// berisi data keliru melainkan "berkas tidak ditemukan" pada setiap baris.
 	for _, tab := range inboxmanagerreceivepucl.Tabs() {
-		want := tab.Code == inboxmanagerreceivepucl.TabReceive
-		if tab.OpensReceiveDocument != want {
-			t.Fatalf("tab %s (%s) membuka layar kerja = %v, seharusnya %v",
-				tab.Code, tab.Name, tab.OpensReceiveDocument, want)
+		wantDocument := tab.Code == inboxmanagerreceivepucl.TabReceive
+		wantClaim := tab.Code == inboxmanagerreceivepucl.TabRCLPUCL
+
+		if tab.OpensReceiveDocument != wantDocument {
+			t.Fatalf("tab %s (%s) membuka layar dokumen = %v, seharusnya %v",
+				tab.Code, tab.Name, tab.OpensReceiveDocument, wantDocument)
+		}
+		if tab.OpensClaimScreen != wantClaim {
+			t.Fatalf("tab %s (%s) membuka layar klaim = %v, seharusnya %v",
+				tab.Code, tab.Name, tab.OpensClaimScreen, wantClaim)
+		}
+		if tab.OpensReceiveDocument && tab.OpensClaimScreen {
+			t.Fatalf("tab %s (%s) membuka DUA layar sekaligus", tab.Code, tab.Name)
+		}
+	}
+}
+
+func TestFieldGroupsUseThePegaHeadings(t *testing.T) {
+	// `Section/InputReceiveDocument-Section.xml` punya enam `<pyTitle>`, dan modul ini
+	// menggambar tiga di antaranya — yang tiga lagi tidak punya satu pun isian yang modul
+	// ini baca.
+	//
+	// Uji ini menjaga kekeliruan 2026-10-10 tidak terulang: versi sebelumnya memakai lima
+	// judul KARANGAN yang tidak satu pun ada di section, dengan alasan tertulis bahwa
+	// section itu tidak punya judul panel. Judul karangan tidak dapat ditelusuri balik ke
+	// bukti, dan `D-13` menuntut tampilan mengikuti Pega.
+	groups := inboxmanagerreceivepucl.DocumentFieldGroupList()
+
+	want := []string{"Data Pelaporan Klaim", "Data Tertanggung Klaim", "Alamat"}
+	if len(groups) != len(want) {
+		t.Fatalf("layar punya %d kelompok isian, seharusnya %d", len(groups), len(want))
+	}
+	for i, title := range want {
+		if groups[i].Title != title {
+			t.Fatalf("kelompok ke-%d berjudul %q, seharusnya %q", i+1, groups[i].Title, title)
+		}
+		if len(groups[i].Fields) == 0 {
+			t.Fatalf("kelompok %q tidak punya satu pun isian", title)
+		}
+	}
+}
+
+func TestOnlyDocumentButtonsSitAboveTheFields(t *testing.T) {
+	// Di section, tombol "Upload Form Klaim" (sel 179928) dan "View Form Klaim" (200348)
+	// berada di dalam blok utama dekat puncaknya; `SendAttachmentToPNC` (1587331) dan
+	// `CreateRegisterKlaimPNC` (1618486) berada SETELAH blok itu tertutup di 1564427, yaitu
+	// di tempat Pega menggambar tombol flow action.
+	//
+	// Membalik keduanya membuat petugas yang membandingkan kedua layar berdampingan mencari
+	// tombol di tempat yang salah.
+	atas := map[string]bool{"unggah-form-klaim": true, "lihat-form-klaim": true}
+
+	for _, action := range inboxmanagerreceivepucl.DocumentWriteActionList() {
+		if action.AtTop != atas[action.Code] {
+			t.Fatalf("tombol %q (%s) di atas = %v, seharusnya %v",
+				action.Label, action.Code, action.AtTop, atas[action.Code])
 		}
 	}
 }
@@ -582,5 +637,82 @@ func TestEveryWriteActionNamesItsActivityAndItsOwner(t *testing.T) {
 		if action.Owner == "" {
 			t.Fatalf("tombol %q tidak menyebut modul pemiliknya", action.Code)
 		}
+	}
+}
+
+func TestFieldVisibilityFollowsThePegaConditions(t *testing.T) {
+	// Layar lama TIDAK menggambar seluruh isian pada setiap berkas: 14 dari 24 isian punya
+	// `<pyCondition>` pada selnya di `Section/InputReceiveDocument-Section.xml`. Empat di
+	// antaranya sudah dapat diterjemahkan, dan uji ini menjaga keempatnya.
+	//
+	// Menggambarnya tanpa syarat membuat layar kita menampilkan isian yang di Pega tidak
+	// ada — dilaporkan Work Owner 2026-10-10.
+	punya := func(groups []inboxmanagerreceivepucl.FieldGroup, key string) bool {
+		for _, group := range groups {
+			for _, field := range group.Fields {
+				if field.Key == key {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	for name, tc := range map[string]struct {
+		detail inboxmanagerreceivepucl.ReceiveDocument
+		want   map[string]bool
+	}{
+		// `.ReceiveDocument.PolicyNo != '' && GroupPanel != '002' && != '005'`
+		"Fire berpolis": {
+			detail: inboxmanagerreceivepucl.ReceiveDocument{GroupPanel: "006", PolicyNumber: "P-1"},
+			want: map[string]bool{
+				inboxmanagerreceivepucl.DocFieldPolicyLeader:    true,
+				inboxmanagerreceivepucl.DocFieldBrokerReference: true,
+				inboxmanagerreceivepucl.DocFieldInsuredEmail:    false,
+				inboxmanagerreceivepucl.DocFieldDriverLicence:   false,
+			},
+		},
+		// Personal Accident: Polis Leader dan No Ref Broker DIKECUALIKAN; dua lainnya muncul.
+		"PA berpolis": {
+			detail: inboxmanagerreceivepucl.ReceiveDocument{GroupPanel: "002", PolicyNumber: "P-2"},
+			want: map[string]bool{
+				inboxmanagerreceivepucl.DocFieldPolicyLeader:    false,
+				inboxmanagerreceivepucl.DocFieldBrokerReference: false,
+				inboxmanagerreceivepucl.DocFieldInsuredEmail:    true,
+				inboxmanagerreceivepucl.DocFieldDriverLicence:   true,
+			},
+		},
+		// Travel dikecualikan dari Polis Leader dan No Ref Broker, SAMA seperti PA — dan
+		// itulah sebabnya Group Panel mentah dibawa berdampingan dengan Jenis Klaim, yang
+		// tidak membedakan Travel dari lini lain.
+		"Travel berpolis": {
+			detail: inboxmanagerreceivepucl.ReceiveDocument{GroupPanel: "005", PolicyNumber: "P-3"},
+			want: map[string]bool{
+				inboxmanagerreceivepucl.DocFieldPolicyLeader:    false,
+				inboxmanagerreceivepucl.DocFieldBrokerReference: false,
+			},
+		},
+		// Tanpa nomor polis, dua syarat gugur — tetapi "SIM Pengendara" TIDAK menuntut
+		// nomor polis, dan itu keadaan di section apa adanya.
+		"PA tanpa polis": {
+			detail: inboxmanagerreceivepucl.ReceiveDocument{GroupPanel: "002"},
+			want: map[string]bool{
+				inboxmanagerreceivepucl.DocFieldInsuredEmail:  false,
+				inboxmanagerreceivepucl.DocFieldDriverLicence: true,
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			groups := inboxmanagerreceivepucl.DocumentFieldGroupsFor(tc.detail)
+			for key, want := range tc.want {
+				if punya(groups, key) != want {
+					t.Fatalf("isian %q tergambar = %v, seharusnya %v", key, !want, want)
+				}
+			}
+			// Isian tanpa syarat selalu ada, apa pun berkasnya.
+			if !punya(groups, inboxmanagerreceivepucl.DocFieldInsuredName) {
+				t.Fatal("isian tanpa syarat ikut tersaring")
+			}
+		})
 	}
 }

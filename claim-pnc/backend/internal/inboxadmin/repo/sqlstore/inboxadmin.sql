@@ -122,11 +122,12 @@
 --   sudah terlanjur ditarik. Pemotongan halaman terjadi di aplikasi — lihat
 --   inboxadmin.Slice, yang juga memuat konsekuensi yang diterima secara sadar.
 --
--- * PENYARING CABANG DAN KORWIL TIDAK ADA DI SINI. Sistem lama menyusunnya dari
---   `GetIDCabang`, yang membaca `HRDASM.V_HRD_MST@ASMD` dan `LST_USER_ASURANSI@ASMD` lewat
---   DB Link. Work Owner memutuskan 2026-09-20 modul ini MENUNGGU API pengganti (`R-03`)
---   alih-alih menembus DB Link. Akibat yang diterima secara sadar: sampai API-nya ada,
---   petugas cabang melihat baris cabang lain.
+-- * PENYARING CABANG DAN KANWIL dipasang 2026-10-07 atas permintaan Work Owner, mencabut
+--   penundaan 2026-09-20. Potongan `{ASIS:TempView.Currency}` (cabang) dan
+--   `{ASIS:TempView.Remark}` (kanwil) kini menjadi klausa ber-parameter di akhir setiap
+--   kueri yang memakainya. Cabang petugas dibaca `branch_of_login` lewat DB Link HRD yang
+--   sama dengan `GetIDCabang` (`R-03` -- API penggantinya belum ada). Aturannya di
+--   inboxadmin/scope.go.
 --
 -- * LEFT JOIN ke T_CLAIM_DATACABANG DIPERTAHANKAN meski tak satu pun kolomnya dibawa.
 --   Ia dapat menggandakan baris bila satu NOKLAIM punya lebih dari satu baris di sana,
@@ -140,7 +141,8 @@
 -- name: list_all
 -- Tab ALL (`TempView.CityID = '3'`) — RDB List/BrowseClaimALL-SQL.xml
 --
--- Bind: :1 kata kunci (boleh NULL) · :2 lini bisnis ('ALL' bila tanpa saringan)
+-- Bind (urut kemunculan): kata kunci (boleh NULL) x3 · lini bisnis ('ALL' bila tanpa
+-- saringan) x5. Setiap kemunculan bernomor sendiri -- lihat bindArgs di inboxadmin.go.
 SELECT A.PYID                                            AS CASE_ID,
        A.PZINSKEY                                        AS REFERENCE,
        A.POLICYNO                                        AS POLICY_NUMBER,
@@ -176,31 +178,35 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS DATE)                                AS LETTER_PRINT_DATE,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        LEFT JOIN POOLDATA.T_CLAIM_DATACABANG E
               ON A.PZINSKEY = E.NOKLAIM
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-              ON B.PXREFOBJECTINSNAME = A.PYID
        INNER JOIN POOLDATA.BUSINESS c
               ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
               ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND B.PXFLOWNAME NOT LIKE '%FixCorrespondence%'
-   AND B.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')
+   AND A.PXFLOWNAME NOT LIKE '%FixCorrespondence%'
+   AND A.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')
    AND (A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)
    AND (:1 IS NULL
-        OR A.PYID LIKE '%' || :1 || '%' ESCAPE '\'
-        OR A.POLICYNO LIKE '%' || :1 || '%' ESCAPE '\')
-   AND (:2 = 'ALL'
-        OR (:2 = 'NONMBU'
+        OR A.PYID LIKE '%' || :2 || '%' ESCAPE '\'
+        OR A.POLICYNO LIKE '%' || :3 || '%' ESCAPE '\')
+   AND (:4 = 'ALL'
+        OR (:5 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006', '009')
             AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'BONDING'
+        OR (:6 = 'BONDING'
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'PA' AND A.GROUPPANEL_1 = '002')
-        OR (:2 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+        OR (:7 = 'PA' AND A.GROUPPANEL_1 = '002')
+        OR (:8 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   -- Batas cabang petugas (langkah 8). NULL = tidak dibatasi; lihat inboxadmin.ResolveScope.
+   AND (:9 IS NULL OR A.KODECABANG_1 = :10)
+   -- Kanwil pilihan manajer (langkah 2). NULL = tidak dibatasi.
+   AND (:11 IS NULL
+        OR A.KODECABANG_1 IN (SELECT br.ID FROM POOLDATA.BRANCH br
+                   WHERE br.BASTERRITORY = :12))
  ORDER BY A.PXCREATEDATETIME DESC
 
 -- name: list_unregistered
@@ -211,7 +217,7 @@ SELECT A.PYID                                            AS CASE_ID,
 -- saringan kurir, yang di sistem lama disisipkan sebagai `{ASIS:TempView.Location}` dari
 -- langkah 17 dan 18 activity.
 --
--- Bind: :1 kata kunci (boleh NULL) · :2 lini bisnis · :3 mode kurir ('NORMAL' | 'ONLINE')
+-- Bind (urut kemunculan): mode kurir ('NORMAL' | 'ONLINE') x2 · kata kunci x3 · lini bisnis x5
 SELECT A.PYID                                            AS CASE_ID,
        A.PZINSKEY                                        AS REFERENCE,
        A.POLICYNO                                        AS POLICY_NUMBER,
@@ -242,9 +248,7 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS DATE)                                AS LETTER_PRINT_DATE,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-              ON B.PXREFOBJECTINSNAME = A.PYID
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
               ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -254,19 +258,25 @@ SELECT A.PYID                                            AS CASE_ID,
    AND A.PNCCASEID IS NULL
    AND A.STATUSLOCK_1 = '1'
    AND (A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)
-   AND ((:3 = 'NORMAL' AND (A.KURIR IS NULL OR A.KURIR <> 'Auto Service'))
-        OR (:3 = 'ONLINE' AND A.KURIR = 'Auto Service'))
-   AND (:1 IS NULL
-        OR A.PYID LIKE '%' || :1 || '%' ESCAPE '\'
-        OR A.POLICYNO LIKE '%' || :1 || '%' ESCAPE '\')
-   AND (:2 = 'ALL'
-        OR (:2 = 'NONMBU'
+   AND ((:1 = 'NORMAL' AND (A.KURIR IS NULL OR A.KURIR <> 'Auto Service'))
+        OR (:2 = 'ONLINE' AND A.KURIR = 'Auto Service'))
+   AND (:3 IS NULL
+        OR A.PYID LIKE '%' || :4 || '%' ESCAPE '\'
+        OR A.POLICYNO LIKE '%' || :5 || '%' ESCAPE '\')
+   AND (:6 = 'ALL'
+        OR (:7 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006', '009')
             AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'BONDING'
+        OR (:8 = 'BONDING'
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'PA' AND A.GROUPPANEL_1 = '002')
-        OR (:2 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+        OR (:9 = 'PA' AND A.GROUPPANEL_1 = '002')
+        OR (:10 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   -- Batas cabang petugas (langkah 8). NULL = tidak dibatasi; lihat inboxadmin.ResolveScope.
+   AND (:11 IS NULL OR A.KODECABANG_1 = :12)
+   -- Kanwil pilihan manajer (langkah 2). NULL = tidak dibatasi.
+   AND (:13 IS NULL
+        OR A.KODECABANG_1 IN (SELECT br.ID FROM POOLDATA.BRANCH br
+                   WHERE br.BASTERRITORY = :14))
  ORDER BY A.PXCREATEDATETIME DESC
 
 -- name: list_request_survey
@@ -275,7 +285,7 @@ SELECT A.PYID                                            AS CASE_ID,
 -- Saringan `NOT EXISTS` atas T_CLAIM_ADJUSTMENT dibawa apa adanya: permintaan survei yang
 -- sudah punya adjustment bertipe selain salvage tidak lagi menunggu dikerjakan.
 --
--- Bind: :1 kata kunci (boleh NULL) · :2 login pemanggil
+-- Bind (urut kemunculan): login pemanggil · kata kunci (boleh NULL) x3
 SELECT A.PYID                                            AS CASE_ID,
        s.CLAIMID                                         AS REFERENCE,
        A.POLICYNO                                        AS POLICY_NUMBER,
@@ -305,21 +315,21 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS DATE)                                AS LETTER_PRINT_DATE,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.T_REQ_SURVEY s
               ON A.PZINSKEY = s.CLAIMID
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
-              ON s.CLAIMID = w.PXREFOBJECTKEY
  WHERE A.REQUESTSURVEY_1 = '1'
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND w.PXASSIGNEDOPERATORID = :2
+   AND A.PXASSIGNEDOPERATORID = :1
    AND NOT EXISTS (SELECT 1
                      FROM POOLDATA.T_CLAIM_ADJUSTMENT adj
                     WHERE adj.CLAIMID = A.PZINSKEY
                       AND adj.PAYMENTTYPE <> '3')
-   AND (:1 IS NULL
-        OR A.PYID LIKE '%' || :1 || '%' ESCAPE '\'
-        OR A.POLICYNO LIKE '%' || :1 || '%' ESCAPE '\')
+   AND (:2 IS NULL
+        OR A.PYID LIKE '%' || :3 || '%' ESCAPE '\'
+        OR A.POLICYNO LIKE '%' || :4 || '%' ESCAPE '\')
+   -- Batas cabang petugas (langkah 8). NULL = tidak dibatasi; lihat inboxadmin.ResolveScope.
+   AND (:5 IS NULL OR A.KODECABANG_1 = :6)
  ORDER BY s.INPUTDATE DESC
 
 -- name: list_request_document
@@ -362,9 +372,9 @@ SELECT p.CLAIMNO                                         AS CASE_ID,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
   FROM POOLDATA.T_CLAIM_PNC p
-       INNER JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN A
               ON p.CLAIMNO = A.PYID
- WHERE A.PXCREATEOPNAME = :1
+ WHERE UPPER(A.PXCREATEOPERATOR) = UPPER(:1)
    AND EXISTS (SELECT 1
                  FROM POOLDATA.M_KOMUNIKASI_PNC k
                 WHERE k.COMMUNICATE_TO = A.PYID
@@ -379,7 +389,7 @@ SELECT p.CLAIMNO                                         AS CASE_ID,
 --
 -- Kueri lama tidak mengurutkan hasilnya sama sekali; urutan di sini ditambahkan.
 --
--- Bind: :1 kata kunci (boleh NULL) · :2 login pemanggil
+-- Bind (urut kemunculan): login pemanggil · kata kunci (boleh NULL) x3
 SELECT p.CLAIMNO                                         AS CASE_ID,
        A.PZINSKEY                                        AS REFERENCE,
        p.NOPOLIS                                         AS POLICY_NUMBER,
@@ -409,17 +419,17 @@ SELECT p.CLAIMNO                                         AS CASE_ID,
        CAST(NULL AS DATE)                                AS LETTER_PRINT_DATE,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST w
-              ON A.PZINSKEY = w.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.T_CLAIM_PNC p
-              ON w.PXREFOBJECTKEY = p.CLAIMID
+              ON A.PZINSKEY = p.CLAIMID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND A.PXCREATEOPNAME = :2
-   AND (:1 IS NULL
-        OR A.PYID LIKE '%' || :1 || '%' ESCAPE '\'
-        OR p.NOPOLIS LIKE '%' || :1 || '%' ESCAPE '\')
+   AND UPPER(A.PXCREATEOPERATOR) = UPPER(:1)
+   AND (:2 IS NULL
+        OR A.PYID LIKE '%' || :3 || '%' ESCAPE '\'
+        OR p.NOPOLIS LIKE '%' || :4 || '%' ESCAPE '\')
+   -- Batas cabang petugas (langkah 8). NULL = tidak dibatasi; lihat inboxadmin.ResolveScope.
+   AND (:5 IS NULL OR A.KODECABANG_1 = :6)
  ORDER BY A.PXCREATEDATETIME DESC
 
 -- name: list_branch_claim
@@ -436,7 +446,7 @@ SELECT p.CLAIMNO                                         AS CASE_ID,
 -- membedakannya. Ia dipertahankan karena `P-5`, dan dicatat di sini supaya tidak
 -- "diperbaiki" tanpa keputusan.
 --
--- Bind: :1 kata kunci (boleh NULL) · :2 lini bisnis
+-- Bind (urut kemunculan): kata kunci (boleh NULL) x3 · lini bisnis x5
 SELECT A.PYID                                            AS CASE_ID,
        A.PZINSKEY                                        AS REFERENCE,
        A.POLICYNO                                        AS POLICY_NUMBER,
@@ -459,7 +469,7 @@ SELECT A.PYID                                            AS CASE_ID,
        END                                               AS CLAIM_POSITION,
        CAST(NULL AS VARCHAR2(400))                       AS CLAIM_STATUS,
        CASE
-            WHEN A.FLAGBISNIS IN ('OTO', 'BFI') THEN
+            WHEN j.FLAGBISNIS IN ('OTO', 'BFI') THEN
                  CASE j.STATUSLOD
                       WHEN '1' THEN 'Belum Upload'
                       WHEN '2' THEN 'Sudah Upload'
@@ -482,9 +492,7 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS DATE)                                AS LETTER_PRINT_DATE,
        CAST(NULL AS VARCHAR2(100))                       AS CLAIM_AGE,
        CAST(NULL AS VARCHAR2(100))                       AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-              ON B.PXREFOBJECTINSNAME = A.PYID
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
               ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -492,21 +500,27 @@ SELECT A.PYID                                            AS CASE_ID,
        INNER JOIN POOLDATA.T_CLAIM_JOB_PERSONALACCIDENT j
               ON j.CLAIMID = A.PZINSKEY
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND B.PXFLOWNAME NOT LIKE '%FixCorrespondence%'
-   AND B.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')
+   AND A.PXFLOWNAME NOT LIKE '%FixCorrespondence%'
+   AND A.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')
    AND (A.BRANCHNAME <> 'ASNET' OR A.BRANCHNAME IS NULL)
    AND A.STATUSCLAIM_1 = '1150'
    AND (:1 IS NULL
-        OR A.PYID LIKE '%' || :1 || '%' ESCAPE '\'
-        OR A.POLICYNO LIKE '%' || :1 || '%' ESCAPE '\')
-   AND (:2 = 'ALL'
-        OR (:2 = 'NONMBU'
+        OR A.PYID LIKE '%' || :2 || '%' ESCAPE '\'
+        OR A.POLICYNO LIKE '%' || :3 || '%' ESCAPE '\')
+   AND (:4 = 'ALL'
+        OR (:5 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006', '009')
             AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'BONDING'
+        OR (:6 = 'BONDING'
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-        OR (:2 = 'PA' AND A.GROUPPANEL_1 = '002')
-        OR (:2 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+        OR (:7 = 'PA' AND A.GROUPPANEL_1 = '002')
+        OR (:8 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   -- Batas cabang petugas (langkah 8). NULL = tidak dibatasi; lihat inboxadmin.ResolveScope.
+   AND (:9 IS NULL OR A.KODECABANG_1 = :10)
+   -- Kanwil pilihan manajer (langkah 2). NULL = tidak dibatasi.
+   AND (:11 IS NULL
+        OR A.KODECABANG_1 IN (SELECT br.ID FROM POOLDATA.BRANCH br
+                   WHERE br.BASTERRITORY = :12))
  ORDER BY A.PYSTATUSWORK ASC, A.PXCREATEDATETIME DESC
 
 -- name: list_rcl_pucl
@@ -519,10 +533,10 @@ SELECT A.PYID                                            AS CASE_ID,
 -- Perhatikan saringannya berbeda dari tab lain: ia hanya mengecualikan
 -- `Resolved-Completed`, sehingga klaim ber-`Resolved-Rejected` TETAP muncul. Itu masuk
 -- akal untuk antrean penolakan, dan dibawa apa adanya.
-SELECT A.PYID                                            AS CASE_ID,
-       A.PZINSKEY                                        AS REFERENCE,
-       A.POLICYNO                                        AS POLICY_NUMBER,
-       A.QQNAME                                          AS INSURED_NAME,
+SELECT L.PYID                                            AS CASE_ID,
+       L.PZINSKEY                                        AS REFERENCE,
+       L.POLICYNO                                        AS POLICY_NUMBER,
+       L.QQNAME                                          AS INSURED_NAME,
        CAST(NULL AS VARCHAR2(200))                       AS BUSINESS_NAME,
        CAST(NULL AS VARCHAR2(200))                       AS BUSINESS_SOURCE,
        CAST(NULL AS VARCHAR2(200))                       AS BRANCH_NAME,
@@ -542,26 +556,152 @@ SELECT A.PYID                                            AS CASE_ID,
        CAST(NULL AS VARCHAR2(200))                       AS TECHNICAL_PIC,
        CAST(NULL AS VARCHAR2(200))                       AS SURVEYOR,
        CAST(NULL AS VARCHAR2(100))                       AS SURVEY_NUMBER,
-       A.TANGGALKIRIMPUCL_1                              AS INBOX_DATE,
-       A.KOMENTARANALISATOR_1                            AS ANALYST_NOTE,
-       CASE A.RCL_PUCL_1
+       A.TGL_KIRIM_PUCL                                  AS INBOX_DATE,
+       A.KOMENTAR_ANALISATOR                             AS ANALYST_NOTE,
+       CASE A.RCL_PUCL
             WHEN '1' THEN 'RCL'
             WHEN '2' THEN 'PUCL'
        END                                               AS RCL_PUCL_STATUS,
-       A.TANGGALCETAKDOKUMENPUCL_1                       AS LETTER_PRINT_DATE,
-       A.LAMAKLAIM_1                                     AS CLAIM_AGE,
-       A.STATUSKLAIM_1                                   AS EXPIRY_STATUS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET wb
-              ON wb.PXREFOBJECTKEY = A.PZINSKEY
-             AND wb.PXOBJCLASS = 'Assign-WorkBasket'
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-   AND A.PYSTATUSWORK <> 'Resolved-Completed'
-   AND wb.PXASSIGNEDOPERATORID = 'RCLPUCL'
-   AND A.TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL
-   AND A.PUCLAPPROVE_1 <> '1'
-   AND A.MSIG_1 IS NULL
- ORDER BY A.TANGGALKIRIMPUCL_1 DESC
+       A.TGL_CETAK_DOKUMEN_PUCL                          AS LETTER_PRINT_DATE,
+       A.LAMA_KLAIM                                      AS CLAIM_AGE,
+       A.STATUS_KLAIM                                    AS EXPIRY_STATUS
+  FROM POOLDATA.T_CLAIMLIST_ADMIN L
+       -- Tujuh kolom PUCL (tanggal kirim/cetak, status, lama klaim, persetujuan, MSIG)
+       -- TIDAK ada di T_CLAIMLIST_ADMIN. Penugasannya -- siapa dan di workbasket mana --
+       -- dibaca dari T_CLAIMLIST_ADMIN.
+       --
+       -- SUMBER BARU (2026-10-08): kolom PUCL dulu dibaca dari tabel kerja Pega (kolom
+       -- ber-`_1`), kini dari POOLDATA.TC_PNC_PUCL — satu baris per klaim, kunci CLAIMID =
+       -- nomor case (bukan kunci berprefix) = L.PYID. Pemetaan: TANGGALKIRIMPUCL_1 ->
+       -- TGL_KIRIM_PUCL, KOMENTARANALISATOR_1 -> KOMENTAR_ANALISATOR, RCL_PUCL_1 -> RCL_PUCL,
+       -- TANGGALCETAKDOKUMENPUCL_1 -> TGL_CETAK_DOKUMEN_PUCL, LAMAKLAIM_1 -> LAMA_KLAIM,
+       -- STATUSKLAIM_1 -> STATUS_KLAIM, PUCLAPPROVE_1 -> PUCL_APPROVE, MSIG_1 -> MSIG (tipe
+       -- sama: TIMESTAMP/VARCHAR2). Tetap INNER seperti dulu: tanpa baris PUCL, tiga saringan
+       -- di bawah memang tidak pernah lolos. Akibat terukur di Oracle dev: TC_PNC_PUCL berisi
+       -- 6 klaim, sedangkan tabel kerja memuat 24 klaim yang lolos saringan PUCL; antrean
+       -- RCLPUCL di T_CLAIMLIST_ADMIN saat ini kosong, sehingga hasil lama dan baru sama-sama
+       -- 0 baris.
+       INNER JOIN POOLDATA.TC_PNC_PUCL A
+              ON A.CLAIMID = L.PYID
+ WHERE L.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND L.PYSTATUSWORK <> 'Resolved-Completed'
+   AND L.PXASSIGNEDOPERATORID = 'RCLPUCL'
+   AND A.TGL_CETAK_DOKUMEN_PUCL IS NOT NULL
+   AND A.PUCL_APPROVE <> '1'
+   AND A.MSIG IS NULL
+ ORDER BY A.TGL_KIRIM_PUCL DESC
+
+-- ============================================================================
+-- SUMBER ANTREAN: POOLDATA.T_CLAIMLIST_ADMIN -- keputusan Work Owner 2026-10-07
+-- ============================================================================
+--
+-- Ketujuh kueri tab membaca POOLDATA.T_CLAIMLIST_ADMIN, bukan lagi
+-- DATAPEGA.PC_ASM_FW_GCNMFW_WORK + PC_ASSIGN_WORKLIST. Tabel itu memuat kepala klaim
+-- beserta penugasannya dalam satu baris (PXASSIGNEDOPERATORID, PXTASKLABEL, PXFLOWNAME),
+-- untuk klaim Pega MAUPUN klaim PNCN -- registrasi Go menulisnya lewat inboxentry.sql.
+-- Karena itu kueri PNCN terpisah (list_all_pncn, list_all_case_admin_pncn) dibuang:
+-- mempertahankannya akan menampilkan klaim PNCN dua kali.
+--
+-- Akibat yang diterima secara sadar, terukur 2026-10-07: klaim yang belum ada di tabel
+-- ini tidak tampil. Saat itu Outstanding turun dari 983 ke sekitar 520, Unregistered RCV
+-- dari 22 ke 1, LOD dan PUCL menjadi 0, dan baris Pega terbaru di tabel ini dibuat
+-- 2026-10-03.
+--
+-- "Pembuat" pada All Case Admin dan Request Dokumen dicocokkan lewat PXCREATEOPERATOR,
+-- bukan PXCREATEOPNAME seperti SQL Pega: kolom kedua kosong pada baris PNCN, sehingga
+-- klaim PNCN tidak akan pernah ditemukan pemiliknya (keputusan Work Owner 2026-10-07).
+--
+-- Satu pengecualian: tab PUCL masih membaca tujuh kolom PUCL dari tabel kerja Pega,
+-- karena kolom itu tidak ada di T_CLAIMLIST_ADMIN.
+
+-- ============================================================================
+-- EKSPOR AUTO CLAIM -- tombol "Export Hasil Auto Claim" dan "Export Klaim Gagal"
+-- ============================================================================
+--
+-- Keduanya membaca POOLDATA.TMP_BATCH_CLAIM_KREDIT, tabel hasil batch pembuatan klaim
+-- kredit otomatis. Alias Pega (`NILAIKLAIM AS "BRANCHCODE"`, `ACCEPTNO AS "EDMNO"`, ...)
+-- TIDAK dibawa; nama kolom dibaca apa adanya dan dipetakan ke judul CSV di Go.
+
+-- name: auto_claim_results
+-- Tombol "Export Hasil Auto Claim" -- RDB List/GetHasilAutoClaim-SQL.xml
+--
+-- `trunc(tglproses) = trunc(sysdate)` diganti rentang setengah-terbuka yang dihitung di
+-- Go (inboxadmin.ProcessingDay): TRUNC dan SYSDATE tidak portabel, dan TRUNC pada kolom
+-- mematikan indeksnya.
+--
+-- Bind (urut kemunculan): awal hari · akhir hari (eksklusif) · login pemanggil
+SELECT AGENID, NOPOLIS, IDPEGA, ACCEPTNO, NILAIKLAIM, NOASURANSI, TMP_MESSAGE
+  FROM POOLDATA.TMP_BATCH_CLAIM_KREDIT
+ WHERE TGLPROSES >= :1
+   AND TGLPROSES < :2
+   AND TMP_MESSAGE = 'Sukses Klaim'
+   AND IDPEGA IS NOT NULL
+   AND USERINPUT = :3
+ ORDER BY TGLPROSES, NOPOLIS
+
+-- name: auto_claim_failures
+-- Tombol "Export Klaim Gagal" -- RDB List/GetHasilAutoClaimGagal-SQL.xml
+--
+-- Kueri lama TIDAK menyaring tanggal maupun pengguna: ia mengekspor SELURUH baris gagal
+-- yang pernah ada. Itu dipertahankan (`P-5`).
+--
+-- Nama mata uang diambil activity lama satu per baris lewat GetIDCurrencyByID
+-- (`select currency from pooldata.currency where id = ...`). Di sini ia LEFT JOIN: hasilnya
+-- sama, tanpa satu perjalanan ke basis data per baris. Bila kodenya tidak ada di master,
+-- kodenya sendiri yang ditampilkan alih-alih sel kosong.
+SELECT b.NOPOLIS, b.NOASURANSI, b.NILAIKLAIM, b.TYPEKLAIM,
+       COALESCE(cur.CURRENCY, b.CURRENCY) AS CURRENCY_NAME,
+       b.AGENID, b.TMP_MESSAGE
+  FROM POOLDATA.TMP_BATCH_CLAIM_KREDIT b
+       LEFT JOIN POOLDATA.CURRENCY cur
+              ON cur.ID = b.CURRENCY
+ WHERE b.TMP_MESSAGE <> 'Sukses Klaim'
+   AND b.TMP_MESSAGE IS NOT NULL
+ ORDER BY b.NOPOLIS
+
+-- ============================================================================
+-- BATAS DATA -- cabang petugas, access group, dan daftar kanwil
+-- ============================================================================
+--
+-- Lihat inboxadmin/scope.go untuk aturannya.
+
+-- name: branch_of_login
+-- Cabang petugas -- RDB List/GetIDCabang-SQL.xml, bentuk yang sama dengan modul Inbox
+-- Laporan Klaim (`inboxlaporanklaim/repo/sqlstore/branch.sql`).
+--
+-- Ia MASIH memakai dua DB Link sistem lama (`R-03`): API pengganti HRD belum ada, dan
+-- objeknya sama dengan yang dibaca Pega. Ia berada di balik seam inboxadmin.ScopeRepo,
+-- sehingga saat API-nya tiba yang berubah hanya kueri ini.
+--
+-- Kueri lama mengambil `pxResults(1)` tanpa urutan; di sini urutannya ditegaskan supaya
+-- batas data seorang petugas tidak berpindah-pindah di antara dua permintaan.
+--
+-- Bind: login petugas
+SELECT a.ID
+  FROM POOLDATA.BRANCH a
+  JOIN LST_USER_ASURANSI@asmd.sinarmas.co.id b ON b.CAB_ID = a.OLDID
+  JOIN HRDASM.V_HRD_MST@asmd.sinarmas.co.id c ON c.NIK = b.NIK
+ WHERE c.LOGIN_APLIKASI = :1
+ ORDER BY a.ID
+ FETCH NEXT 1 ROWS ONLY
+
+-- name: groups_of_login
+-- Access group petugas -- POOLDATA.M_LOGIN_GROUP_PNC, sumber peran yang sama dengan modul
+-- menu dan Inbox Accept Open Protection.
+--
+-- Bind: login petugas
+SELECT g.GROUP_ID
+  FROM POOLDATA.M_LOGIN_GROUP_PNC g
+ WHERE UPPER(TRIM(g.LOGIN_ID)) = UPPER(TRIM(:1))
+ ORDER BY g.GROUP_ID
+
+-- name: region_list
+-- Isi dropdown "Pilih Kanwil" -- nilai BASTERRITORY yang benar-benar dipakai cabang,
+-- sama dengan modul Inbox Laporan Klaim.
+SELECT DISTINCT br.BASTERRITORY
+  FROM POOLDATA.BRANCH br
+ WHERE br.BASTERRITORY IS NOT NULL
+ ORDER BY br.BASTERRITORY
 
 -- name: check_table
 -- Memeriksa tabel inti modul ini terbaca dari koneksi yang dipakai.
@@ -569,5 +709,5 @@ SELECT A.PYID                                            AS CASE_ID,
 -- Ia dipanggil perintah `-periksa` saat aplikasi start, dan sengaja tidak menyentuh baris
 -- mana pun: yang diperiksa adalah HAK BACA dan keberadaan tabelnya, bukan isinya.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK
+  FROM POOLDATA.T_CLAIMLIST_ADMIN
  WHERE 1 = 0

@@ -45,8 +45,9 @@ type Row struct {
 	// AssignedAt adalah waktu penugasan dibuat — `PXCREATEDATETIME`, dasar pengurutan.
 	AssignedAt time.Time
 
-	// WorkClass adalah kelas objek kerja yang ditunjuk penugasan ini — `PXOBJCLASS` pada
-	// DATAPEGA.PC_ASM_FW_GCNMFW_WORK.
+	// WorkClass adalah kelas objek kerja yang ditunjuk penugasan ini — dulu `PXOBJCLASS` pada
+	// tabel objek kerja Pega, sejak 2026-10-08 `PXREFOBJECTCLASS` pada baris penugasan
+	// (terbukti setara di dev).
 	//
 	// Ia yang MENGGANTIKAN penanda `%CLMP%`: kedua Report Definition membatasi barisnya
 	// dengan JOIN ke kelas `ASM-FW-GCNMFW-Work-ClaimTreaty`, bukan dengan pola di tengah

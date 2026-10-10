@@ -52,7 +52,7 @@ func query(name string) string {
 // yang menandakannya.
 var scoreColumns = []string{
 	"SURVEY", "IMMEDIATE_ADVICE", "PRELIMINARY_ADVICE", "INTERIM_REPORT",
-	"PROGRESS", "COMMUNICATION", "PROPOSE", "FINAL_REPORT", "TOTAL_SCORE",
+	"PROGRESS", "PROPOSE", "COMMUNICATION", "FINAL_REPORT", "TOTAL_SCORE",
 }
 
 // summaryColumns adalah ke-11 alias yang dikembalikan kueri Summary.

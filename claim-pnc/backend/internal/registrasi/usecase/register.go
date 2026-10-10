@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"claim-pnc/internal/registrasi"
@@ -42,6 +43,9 @@ type RegisterCommand struct {
 	ReportDate   time.Time
 	DateReceived time.Time
 
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate time.Time
+
 	Location   string
 	Chronology string
 	Reporter   registrasi.Reporter
@@ -56,6 +60,12 @@ type RegisterCommand struct {
 	RemarkRecommendation string
 	SubjectEmail         string
 	SalvageStatus        string
+
+	// InsuredUpdate adalah No KTP dan Pengkinian Data (No. HP, Email) Input Register PA.
+	InsuredUpdate registrasi.InsuredUpdate
+
+	// ReportType adalah Jenis Laporan (T_CLAIM_PNC.REPORTTYPE).
+	ReportType string
 
 	EstimateValue registrasi.Money
 	Currency      string
@@ -122,6 +132,12 @@ func (l *Service) SaveRegister(ctx context.Context, p RegisterCommand, by Caller
 		return RegisterResult{}, registrasi.ErrNotTaskOwner
 	}
 
+	if err := registrasi.ValidateInsuredUpdate(p.InsuredUpdate.Trimmed()); err != nil {
+		return RegisterResult{}, err
+	}
+	if err := registrasi.ValidateReportType(strings.TrimSpace(p.ReportType)); err != nil {
+		return RegisterResult{}, err
+	}
 	now := l.clock.Now().UTC()
 	applyInput(&claim, p, by, now)
 
@@ -340,6 +356,7 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.DateOfLoss = p.DateOfLoss.UTC()
 	k.ReportDate = p.ReportDate.UTC()
 	k.DateReceived = p.DateReceived.UTC()
+	k.DischargeDate = p.DischargeDate.UTC()
 
 	k.Location = p.Location
 	k.Chronology = p.Chronology
@@ -361,6 +378,8 @@ func applyInput(k *registrasi.Claim, p RegisterCommand, by Caller, now time.Time
 	k.RemarkRecommendation = p.RemarkRecommendation
 	k.SubjectEmail = p.SubjectEmail
 	k.SalvageStatus = p.SalvageStatus
+	k.InsuredUpdate = p.InsuredUpdate.Trimmed()
+	k.ReportType = strings.TrimSpace(p.ReportType)
 
 	k.EstimateValue = p.EstimateValue
 	if p.Currency != "" {

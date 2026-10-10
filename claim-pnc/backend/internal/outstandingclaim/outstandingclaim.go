@@ -92,7 +92,8 @@ import (
 // yang dipakai section. Bentuk gridnya senarai, bukan peta, karena urutan barisnya bermakna:
 // urutan itulah yang dipakai Pega menghitung total di baris terakhirnya.
 type Detail struct {
-	// ── Keadaan objek kerja, dari DATAPEGA.PC_ASM_FW_GCNMFW_WORK ──
+	// ── Keadaan objek kerja (dulu DATAPEGA.PC_ASM_FW_GCNMFW_WORK; sejak 2026-10-08 kunci dari
+	// JSON_KLAIM/tabel penugasan, StatusWork dan LastUpdateOperator kosong) ──
 
 	// ClaimID adalah nomor klaim yang dibaca pengguna — `PYID`, mis. `CLMP-70`.
 	//

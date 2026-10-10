@@ -3,16 +3,10 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"claim-pnc/internal/dashboardclaim"
 )
-
-// IDGenerator membangkitkan pengenal permintaan.
-type IDGenerator interface {
-	New() (string, error)
-}
 
 // Clock adalah seam ke jam.
 //
@@ -40,47 +34,55 @@ type TransferCommand struct {
 	Request     dashboardclaim.TransferCommand
 }
 
-// Transfer mencatat permintaan pemindahan penugasan.
+// Transfer MEMINDAHKAN PIC Teknik — tidak ada antrean, persis seperti Pega.
 //
-// # Ia MENCATAT PERMINTAAN, bukan memindahkan penugasan
+// # Kenapa tanpa tabel permintaan
 //
-// `P-1` menetapkan `DATAPEGA.PC_ASSIGN_WORKLIST` ditulis Pega selama masa paralel, sehingga
-// yang tercatat di sini adalah permintaan beserta pemohonnya; pelaksanaannya tetap di Pega.
-// Penugasannya TIDAK berpindah, dan barisnya tetap ada di layar.
+// Bentuk pertama mencatat permintaan dan menyerahkan pelaksanaannya ke Pega, atas dasar
+// `P-1`. Dua kenyataan membatalkannya:
 //
-// Itu bukan setengah jalan melainkan satu-satunya bentuk yang aman: dua sistem yang
-// sama-sama memindahkan penugasan menghasilkan tugas yang hilang atau terpegang dua orang.
+//  1. **Antreannya tidak punya pelaksana.** Tidak ada satu pun job Pega yang membaca tabel
+//     itu; kelima job terjadwal (`D-57`) seluruhnya lebih tua daripadanya. Permintaan
+//     menumpuk berstatus `menunggu`, dan pengguna menunggu sesuatu yang tidak akan datang.
+//
+//  2. **`P-1` tidak berlaku di jalur ini.** Assign per baris di Pega TIDAK memanggil
+//     `pxTransferAssignment` — `PNC_ReassignPNCTeknik` hanya mengubah
+//     `ClaimData.UserTeknis`. Antrean tugas `PC_ASSIGN_WORKLIST` tidak disentuh sama
+//     sekali, sehingga tidak ada dua sistem yang berebut menulisnya.
+//
+// Work Owner memutuskan (2026-10-06) jalur ini mengikuti Pega apa adanya, termasuk tanpa
+// tabel permintaan.
+//
+// # Yang hilang bersamanya, dan itu disengaja
+//
+// Pega tidak mencatat siapa memindahkan klaim ke siapa, dan sekarang kita pun tidak.
+// `D-28` dan `D-59` menghendaki jejak atas perubahan bernilai bisnis; jejak itu TIDAK ADA
+// pada jalur ini, dan ketiadaannya adalah keputusan Work Owner — bukan kelalaian.
+//
+// Bila kelak jejak itu dituntut audit, yang dikembalikan bukan antrean melainkan tabel log
+// tersendiri yang ditulis SESUDAH pemindahan berhasil.
 func (s *Service) Transfer(ctx context.Context, cmd TransferCommand) (dashboardclaim.TransferRequest, error) {
 	if cmd.Caller.Login == "" {
-		// Tidak boleh terjadi: rute dilindungi sesi. Bila terjadi, ia cacat pemrograman —
-		// dan mencatat permintaan tanpa pemohon menghapus satu-satunya kontrol pengimbang
-		// yang tersisa (`D-59`).
+		// Tidak boleh terjadi: rute dilindungi sesi. Bila terjadi, ia cacat pemrograman.
 		return dashboardclaim.TransferRequest{}, errors.New("dashboardclaim/usecase: identitas pemohon kosong")
 	}
-	if s.transfers == nil {
-		return dashboardclaim.TransferRequest{}, dashboardclaim.ErrTransferUnavailable
+	if s.assignments == nil {
+		return dashboardclaim.TransferRequest{}, dashboardclaim.ErrAssignmentUnavailable
 	}
 
 	if err := cmd.Request.Validate(); err != nil {
 		return dashboardclaim.TransferRequest{}, err
 	}
 
-	// Penyimpanan dipilih menurut portal SEBELUM apa pun ditulis. Permintaan atas klaim satu
-	// badan hukum yang tercatat di basis data badan hukum lain adalah kebocoran yang persis
-	// `R-20` larang — dan di sini yang tercatat adalah perintah yang akan dijalankan.
-	store, err := s.transfers(cmd.PortalAlias)
+	// Penulis dipilih menurut portal SEBELUM satu kolom pun berubah. Mengubah klaim milik
+	// satu badan hukum di basis data badan hukum lain bukan sekadar menampilkan yang keliru
+	// (`R-20`) melainkan MENGUBAH yang keliru.
+	writer, err := s.assignments(cmd.PortalAlias)
 	if err != nil {
 		return dashboardclaim.TransferRequest{}, err
 	}
 
-	id, err := s.ids.New()
-	if err != nil {
-		return dashboardclaim.TransferRequest{}, fmt.Errorf(
-			"dashboardclaim/usecase: membangkitkan pengenal permintaan: %w", err)
-	}
-
-	request := dashboardclaim.TransferRequest{
-		ID:              id,
+	hasil := dashboardclaim.TransferRequest{
 		Scope:           cmd.Request.Scope,
 		ClaimID:         cmd.Request.ClaimID,
 		ClaimNumber:     cmd.Request.ClaimNumber,
@@ -88,47 +90,104 @@ func (s *Service) Transfer(ctx context.Context, cmd TransferCommand) (dashboardc
 		ToOperator:      cmd.Request.ToOperator,
 		UserType:        cmd.Request.UserType,
 		Reason:          cmd.Request.Reason,
-		Status:          dashboardclaim.TransferPending,
+		Status:          dashboardclaim.TransferExecuted,
 		RequestedBy:     cmd.Caller.Login,
 		RequestedByName: cmd.Caller.Name,
 		RequestedAt:     s.clock.Now(),
 	}
 
-	if err := store.Record(ctx, request); err != nil {
-		return dashboardclaim.TransferRequest{}, fmt.Errorf(
-			"dashboardclaim/usecase: mencatat permintaan transfer: %w", err)
+	if cmd.Request.Scope == dashboardclaim.TransferFilter {
+		// "Select All" — seluruh klaim yang cocok penyaring layar, lintas halaman.
+		//
+		// Penyaringnya datang dari permintaan, bukan disusun di sini: ia harus sama persis
+		// dengan yang dipakai daftar, atau tombolnya memindahkan himpunan yang berbeda dari
+		// yang dilihat pengguna — tanpa galat apa pun.
+		dipindah, err := writer.MoveAllMatching(ctx, cmd.Request.Filter, cmd.Request.ToOperator)
+		if err != nil {
+			return dashboardclaim.TransferRequest{}, err
+		}
+		hasil.MovedCount = dipindah
+		return hasil, nil
 	}
-	return request, nil
+
+	if cmd.Request.Scope == dashboardclaim.TransferBulk {
+		// "Transfer All Case By UserID" — seluruh pekerjaan satu operator sekaligus.
+		//
+		// Satu pernyataan, bukan perulangan per klaim: jumlah klaim seorang petugas tidak
+		// diketahui di muka, dan memutarnya satu per satu membuat kegagalan di tengah
+		// meninggalkan sebagian berpindah dan sebagian tidak.
+		dipindah, err := writer.MoveAllForOperator(ctx,
+			cmd.Request.FromOperator, cmd.Request.ToOperator)
+		if err != nil {
+			return dashboardclaim.TransferRequest{}, err
+		}
+		hasil.MovedCount = dipindah
+		return hasil, nil
+	}
+
+	moved, err := writer.MovePIC(ctx, dashboardclaim.PICMove{
+		ClaimID:     cmd.Request.ClaimID,
+		ClaimNumber: cmd.Request.ClaimNumber,
+		ToOperator:  cmd.Request.ToOperator,
+	})
+	if err != nil {
+		return dashboardclaim.TransferRequest{}, err
+	}
+
+	// PIC lama dibaca dari hasil pemindahan, bukan dari layar: layar memegang nilai yang
+	// dibacanya saat halaman dimuat, dan nilai itu dapat sudah berubah.
+	hasil.FromOperator = moved.FromOperator
+	hasil.MovedCount = 1
+	return hasil, nil
 }
 
-// PendingTransfers membaca permintaan tertunda atas sekumpulan klaim.
+// TechnicalPICQuery adalah permintaan daftar PIC Teknik untuk layar Transfer.
+type TechnicalPICQuery struct {
+	PortalAlias string
+
+	// BusinessType TIDAK lagi menyaring apa pun — lihat `picteknik.sql`.
+	//
+	// Ia dibiarkan ada supaya pemanggil tidak perlu berubah saat penyaringnya kelak
+	// dikembalikan bersama master pemetaan pengguna ke lini bisnis (`F-4`).
+	BusinessType string
+
+	Search string
+	Limit  int
+	Offset int
+}
+
+// TechnicalPICResult membawa satu halaman daftar PIC beserta portal asalnya.
 //
-// Galatnya TIDAK dikembalikan sebagai kegagalan layar: tabelnya dibuat migrasi `0014` yang
-// belum dijalankan DBA di lingkungan mana pun, sehingga pembacaannya gagal di setiap portal
-// hari ini. Mengembalikannya sebagai galat berarti DAFTARNYA IKUT MATI — padahal daftarnya
-// sendiri sudah dapat dipakai.
-//
-// Yang dilakukan: peta kosong dikembalikan bersama galatnya, dan pemanggil WAJIB mencatat
-// galat itu. Bila pemanggil mengabaikannya, kegagalan ini menjadi tidak terlihat oleh
-// siapa pun.
-func (s *Service) PendingTransfers(
+// Portalnya ikut dikembalikan, bukan diasumsikan: layar menampilkannya, dan daftar petugas
+// satu badan hukum yang terbaca di portal badan hukum lain adalah persis `R-20`.
+type TechnicalPICResult struct {
+	Page   dashboardclaim.TechnicalPICPage
+	Portal string
+}
+
+// TechnicalPIC membaca daftar PIC Teknik pada portal yang sedang dibuka.
+func (s *Service) TechnicalPIC(
 	ctx context.Context,
-	portalAlias string,
-	claimIDs []string,
-) (map[string][]dashboardclaim.TransferRequest, error) {
-	empty := map[string][]dashboardclaim.TransferRequest{}
-	if s.transfers == nil || len(claimIDs) == 0 {
-		return empty, nil
+	q TechnicalPICQuery,
+) (TechnicalPICResult, error) {
+	if s.picReaders == nil {
+		return TechnicalPICResult{}, dashboardclaim.ErrAssignmentUnavailable
 	}
 
-	store, err := s.transfers(portalAlias)
+	reader, err := s.picReaders(q.PortalAlias)
 	if err != nil {
-		return empty, err
+		return TechnicalPICResult{}, err
 	}
 
-	pending, err := store.PendingFor(ctx, claimIDs)
+	page, err := reader.ListTechnicalPIC(ctx, dashboardclaim.TechnicalPICFilter{
+		BusinessType: q.BusinessType,
+		Search:       q.Search,
+		Limit:        q.Limit,
+		Offset:       q.Offset,
+	})
 	if err != nil {
-		return empty, fmt.Errorf("dashboardclaim/usecase: membaca permintaan transfer tertunda: %w", err)
+		return TechnicalPICResult{}, err
 	}
-	return pending, nil
+
+	return TechnicalPICResult{Page: page, Portal: q.PortalAlias}, nil
 }

@@ -121,7 +121,7 @@
 -- mengurutkan apa pun, dan Oracle menolaknya dengan ORA-00979.
 SELECT COALESCE(SUM(CASE
                     WHEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
+                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
                            WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
                              AND s.SURVEYORTYPE_1 = '2'
                              AND s.CASEID_1 = A.PZINSKEY
@@ -129,17 +129,15 @@ SELECT COALESCE(SUM(CASE
                     THEN 1
                     ELSE 0
                  END), 0)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -157,7 +155,7 @@ SELECT COALESCE(SUM(CASE
 SELECT A.PZINSKEY             AS ID_SURVEY,
        A.PYID                 AS NO_SURVEY,
        (SELECT p.PYID
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK p
+          FROM POOLDATA.T_CLAIMLIST_ADMIN p
          WHERE p.PZINSKEY = A.CASEID_1
            AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
        A.POLICYNO             AS NO_POLIS,
@@ -171,22 +169,20 @@ SELECT A.PZINSKEY             AS ID_SURVEY,
        A.ADJUSTERPIC_1        AS PIC_ADJUSTER,
        CAST(NULL AS DATE)     AS TANGGAL_SURVEI,
        A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND A.SURVEYORTYPE_1 = '2'
    AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK z
-                      INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST b
-                              ON z.PZINSKEY = b.PXREFOBJECTKEY
+                 FROM POOLDATA.T_CLAIMLIST_ADMIN z
                       INNER JOIN POOLDATA.BUSINESS c
                               ON z.BUSINESSCODE_1 = c.ID
                       INNER JOIN POOLDATA.BUSINESSGROUP d
                               ON c.BUSINESSGROUPID = d.ID
                 WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
                   AND z.BRANCHNAME <> 'ASNET'
-                  AND b.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-                  AND b.PXTASKLABEL NOT IN ('FixCorrespondence')
+                  AND z.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+                  AND z.PXTASKLABEL NOT IN ('FixCorrespondence')
                   AND A.CASEID_1 = z.PZINSKEY
                   AND (:1 = 'ALL'
                        OR (:2 = 'NONMBU'
@@ -223,7 +219,7 @@ OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 -- menyaring baris survei. Akibatnya angka kartu dan jumlah baris telusur dapat berbeda.
 SELECT COALESCE(SUM(CASE
                     WHEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
+                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
                            WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
                              AND s.SURVEYORTYPE_1 = '1'
                              AND s.PYSTATUSWORK <> 'Resolved-Completed'
@@ -231,7 +227,7 @@ SELECT COALESCE(SUM(CASE
                              AND s.CASEID_1 = A.PZINSKEY
                              AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')) > 0
                     THEN (SELECT COUNT(*)
-                            FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK s
+                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
                            WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
                              AND s.SURVEYORTYPE_1 = '1'
                              AND s.PYSTATUSWORK <> 'Resolved-Completed'
@@ -240,17 +236,15 @@ SELECT COALESCE(SUM(CASE
                              AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
                     ELSE 0
                  END), 0)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -267,14 +261,14 @@ SELECT COALESCE(SUM(CASE
 -- Membaca satu halaman survei internal.
 --
 -- Gabung ke `PC_ASSIGN_WORKLIST` pada kueri lama TIDAK dibawa. Di sana ia dipakai hanya
--- untuk mengambil `B.PXFLOWNAME` sebagai kolom `"RefNo"` — kolom yang tidak digambar
+-- untuk mengambil `A.PXFLOWNAME` sebagai kolom `"RefNo"` — kolom yang tidak digambar
 -- `Section/DashboardClaim_Section1-Section.xml`. Gabungnya sendiri menggandakan baris survei
 -- untuk klaim yang memegang lebih dari satu penugasan, sehingga membawanya berarti menampilkan
 -- survei yang sama berkali-kali demi kolom yang tidak dibaca siapa pun.
 SELECT A.PZINSKEY             AS ID_SURVEY,
        A.PYID                 AS NO_SURVEY,
        (SELECT p.PYID
-          FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK p
+          FROM POOLDATA.T_CLAIMLIST_ADMIN p
          WHERE p.PZINSKEY = A.CASEID_1
            AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
        A.POLICYNO             AS NO_POLIS,
@@ -288,7 +282,7 @@ SELECT A.PZINSKEY             AS ID_SURVEY,
        A.SURVEYORNAME_1       AS PIC_ADJUSTER,
        A.RESCHEDULEDATE_1     AS TANGGAL_SURVEI,
        A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -297,7 +291,7 @@ SELECT A.PZINSKEY             AS ID_SURVEY,
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND A.SURVEYORTYPE_1 = '1'
    AND EXISTS (SELECT 1
-                 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK z
+                 FROM POOLDATA.T_CLAIMLIST_ADMIN z
                 WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
                   AND z.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
                   AND A.CASEID_1 = z.PZINSKEY)

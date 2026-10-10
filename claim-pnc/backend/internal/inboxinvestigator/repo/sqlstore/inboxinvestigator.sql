@@ -146,6 +146,33 @@
 --
 -- Arahnya BUKAN detail kerapian. Daftar dipotong pada MaxRows, sehingga arah urutan
 -- menentukan baris MANA yang bertahan saat antreannya panjang.
+-- ============================================================================
+-- SUMBER BARU (2026-10-08): OBJEK KERJA PEGA TIDAK DIBACA LAGI
+-- ============================================================================
+--
+-- `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` tidak dipakai lagi ("Perubahan nama tabel untuk
+-- Inbox.xlsx"). Baris DIGERAKKAN ANTREAN `PC_ASSIGN_WORKBASKET`, lalu disambung LEFT JOIN:
+--
+--   T_CLAIM_PNC p         nomor klaim, polis, tertanggung, bisnis, cabang, status, tanggal
+--   T_CLAIMLIST_ADMIN k   "Nama Admin" (`PYORIGUSERID`)
+--
+-- T_CLAIMLIST_ADMIN TIDAK dijadikan tabel utama karena ia hanya memuat klaim di antrean
+-- Admin: diukur 2026-10-08, klaim di antrean InvestigatorPNC ada di T_CLAIM_PNC tetapi
+-- **tidak satu pun** di T_CLAIMLIST_ADMIN. Menjadikannya tabel utama mengosongkan layar.
+--
+-- Pemetaan kolom Pega -> pengganti:
+--
+--   PZINSKEY          -> b.PXREFOBJECTKEY
+--   PYID              -> b.PXREFOBJECTINSNAME (nomor case Pega persis), cadangan p.CLAIMNO.
+--                        BUKAN CLAIMNO lebih dulu: diukur 2026-10-08, 15 klaim punya CLAIMNO
+--                        yang berbeda dari nomor case-nya sendiri.
+--   POLICYNO          -> p.NOPOLIS
+--   PYORIGUSERID      -> k.PYORIGUSERID -> k.PXCREATEOPERATOR -> p.ADMINKLAIM
+--   PXCREATEDATETIME  -> p.REGISTERDATE, cadangan saat penugasan dibuat
+--   PYSTATUSWORK      -> p.STATUSWORK; NULL TIDAK dibuang — ia masih memegang tugas antrean
+--
+-- `ADMINKLAIM` adalah Operator ID pembuat klaim: sama dengan `PXCREATEOPERATOR` pada 504
+-- dari 522 klaim yang ada di kedua tabel (diukur 2026-10-08).
 
 
 -- name: investigator_inbox_list
@@ -162,43 +189,44 @@
 -- daripada yang akan dikirim, supaya keberadaan baris ke-(N+1) membuktikan hasilnya
 -- terpotong — lihat catatan pada Repo.List. Itu yang membuat pemotongan di sini DINYATAKAN,
 -- berbeda dari `pyMaxRecords = 500` sistem lama yang memotong dalam diam.
-SELECT a.PZINSKEY                                                AS REFERENCE,
-       a.PYID                                                    AS CASE_NUMBER,
-       a.POLICYNO                                                AS POLICY_NUMBER,
-       a.QQNAME                                                  AS INSURED_NAME,
+SELECT b.PXREFOBJECTKEY                                           AS REFERENCE,
+       COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO)                 AS CASE_NUMBER,
+       p.NOPOLIS                                                 AS POLICY_NUMBER,
+       p.QQNAME                                                  AS INSURED_NAME,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
-         WHERE o.CLAIMID = a.PZINSKEY
+         WHERE o.CLAIMID = b.PXREFOBJECTKEY
          ORDER BY o.OBJECTID
          FETCH FIRST 1 ROW ONLY)                                 AS PARTICIPANT_NAME,
-       a.BUSINESSNAME                                            AS BUSINESS_NAME,
-       a.BRANCHNAME                                              AS BRANCH_NAME,
-       a.PYORIGUSERID                                            AS ADMIN_NAME,
-       a.PXCREATEDATETIME                                        AS REGISTERED_AT,
-       (SELECT JSON_VALUE(j.DATA_JSONBLOB FORMAT JSON, '$.SurveyResults[0].SurveyDate')
-          FROM POOLDATA.JSON_KLAIM j
-         WHERE j.IDPEGA = a.PZINSKEY
-         ORDER BY j.TGL_INPUT DESC
+       p.BUSINESSNAME                                            AS BUSINESS_NAME,
+       p.BRANCHNAME                                              AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM) AS ADMIN_NAME,
+       COALESCE(p.REGISTERDATE, b.PXCREATEDATETIME)              AS REGISTERED_AT,
+       (SELECT s.SURVEYDATE
+          FROM POOLDATA.T_SURVEYORLIST s
+         WHERE s.PNCCASEID = b.PXREFOBJECTKEY
+         ORDER BY s.INDEX_SURVEY
          FETCH FIRST 1 ROW ONLY)                                 AS SURVEY_DATE,
        -- Kode lini bisnis. TIDAK digambar sebagai kolom grid — layar lama pun tidak
        -- menggambarnya — tetapi tab Unggah Dokumen memakainya untuk menyembunyikan
        -- kategori yang tidak berlaku bagi lini itu, persis seperti di layar Registrasi.
        --
-       -- Dibaca dari POOLDATA.T_CLAIM_PNC, bukan dari GROUPPANEL_1 pada tabel kerja Pega:
-       -- yang pertama kolom bisnisnya, yang kedua salinan ber-akhiran `_1` yang kosong
-       -- pada 416 dari 2.647 baris (diukur 2026-10-07).
-       (SELECT c.GROUPPANEL
-          FROM POOLDATA.T_CLAIM_PNC c
-         WHERE c.CLAIMID = a.PZINSKEY
-         FETCH FIRST 1 ROW ONLY)                                 AS BUSINESS_LINE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-    ON b.PXREFOBJECTKEY = a.PZINSKEY
-   AND b.PXOBJCLASS = 'Assign-WorkBasket'
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
- WHERE a.PYSTATUSWORK <> 'Resolved-Completed'
+       -- Dibaca langsung dari `p` (POOLDATA.T_CLAIM_PNC) yang sudah di-LEFT JOIN di bawah,
+       -- bukan dari GROUPPANEL_1 pada tabel kerja Pega — tabel itu tidak dibaca lagi.
+       p.GROUPPANEL                                              AS BUSINESS_LINE
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET b
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+    ON p.CLAIMID = b.PXREFOBJECTKEY
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = b.PXREFOBJECTKEY
+   AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.PXOBJCLASS = 'Assign-WorkBasket'
+   AND b.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
    AND UPPER(TRIM(b.PXASSIGNEDOPERATORID)) = :1
- ORDER BY a.PYID DESC, a.PXCREATEDATETIME DESC, a.PZINSKEY DESC
+ ORDER BY COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO) DESC,
+          COALESCE(p.REGISTERDATE, b.PXCREATEDATETIME) DESC,
+          b.PXREFOBJECTKEY DESC
  FETCH FIRST :2 ROWS ONLY
 
 -- name: investigator_inbox_search
@@ -228,54 +256,55 @@ SELECT a.PZINSKEY                                                AS REFERENCE,
 -- ESCAPE '\' disebut eksplisit karena Oracle tidak punya karakter pelolos bawaan pada LIKE.
 -- Tanpa itu, pengguna yang mengetik "%" akan mencocokkan seluruh antrean tanpa satu pun
 -- tanda bahwa yang dicari bukan yang diketik.
-SELECT a.PZINSKEY                                                AS REFERENCE,
-       a.PYID                                                    AS CASE_NUMBER,
-       a.POLICYNO                                                AS POLICY_NUMBER,
-       a.QQNAME                                                  AS INSURED_NAME,
+SELECT b.PXREFOBJECTKEY                                           AS REFERENCE,
+       COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO)                 AS CASE_NUMBER,
+       p.NOPOLIS                                                 AS POLICY_NUMBER,
+       p.QQNAME                                                  AS INSURED_NAME,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
-         WHERE o.CLAIMID = a.PZINSKEY
+         WHERE o.CLAIMID = b.PXREFOBJECTKEY
          ORDER BY o.OBJECTID
          FETCH FIRST 1 ROW ONLY)                                 AS PARTICIPANT_NAME,
-       a.BUSINESSNAME                                            AS BUSINESS_NAME,
-       a.BRANCHNAME                                              AS BRANCH_NAME,
-       a.PYORIGUSERID                                            AS ADMIN_NAME,
-       a.PXCREATEDATETIME                                        AS REGISTERED_AT,
-       (SELECT JSON_VALUE(j.DATA_JSONBLOB FORMAT JSON, '$.SurveyResults[0].SurveyDate')
-          FROM POOLDATA.JSON_KLAIM j
-         WHERE j.IDPEGA = a.PZINSKEY
-         ORDER BY j.TGL_INPUT DESC
+       p.BUSINESSNAME                                            AS BUSINESS_NAME,
+       p.BRANCHNAME                                              AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM) AS ADMIN_NAME,
+       COALESCE(p.REGISTERDATE, b.PXCREATEDATETIME)              AS REGISTERED_AT,
+       (SELECT s.SURVEYDATE
+          FROM POOLDATA.T_SURVEYORLIST s
+         WHERE s.PNCCASEID = b.PXREFOBJECTKEY
+         ORDER BY s.INDEX_SURVEY
          FETCH FIRST 1 ROW ONLY)                                 AS SURVEY_DATE,
        -- Kode lini bisnis. TIDAK digambar sebagai kolom grid — layar lama pun tidak
        -- menggambarnya — tetapi tab Unggah Dokumen memakainya untuk menyembunyikan
        -- kategori yang tidak berlaku bagi lini itu, persis seperti di layar Registrasi.
        --
-       -- Dibaca dari POOLDATA.T_CLAIM_PNC, bukan dari GROUPPANEL_1 pada tabel kerja Pega:
-       -- yang pertama kolom bisnisnya, yang kedua salinan ber-akhiran `_1` yang kosong
-       -- pada 416 dari 2.647 baris (diukur 2026-10-07).
-       (SELECT c.GROUPPANEL
-          FROM POOLDATA.T_CLAIM_PNC c
-         WHERE c.CLAIMID = a.PZINSKEY
-         FETCH FIRST 1 ROW ONLY)                                 AS BUSINESS_LINE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-    ON b.PXREFOBJECTKEY = a.PZINSKEY
-   AND b.PXOBJCLASS = 'Assign-WorkBasket'
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
- WHERE a.PYSTATUSWORK <> 'Resolved-Completed'
+       -- Dibaca langsung dari `p` (POOLDATA.T_CLAIM_PNC) yang sudah di-LEFT JOIN di bawah,
+       -- bukan dari GROUPPANEL_1 pada tabel kerja Pega — tabel itu tidak dibaca lagi.
+       p.GROUPPANEL                                              AS BUSINESS_LINE
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET b
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+    ON p.CLAIMID = b.PXREFOBJECTKEY
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = b.PXREFOBJECTKEY
+   AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.PXOBJCLASS = 'Assign-WorkBasket'
+   AND b.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
    AND UPPER(TRIM(b.PXASSIGNEDOPERATORID)) = :1
-   AND (UPPER(TRIM(a.PYID)) LIKE :2 ESCAPE '\'
-     OR UPPER(TRIM(a.POLICYNO)) LIKE :3 ESCAPE '\'
-     OR UPPER(TRIM(a.QQNAME)) LIKE :4 ESCAPE '\'
-     OR UPPER(TRIM(a.BUSINESSNAME)) LIKE :5 ESCAPE '\'
-     OR UPPER(TRIM(a.BRANCHNAME)) LIKE :6 ESCAPE '\'
-     OR UPPER(TRIM(a.PYORIGUSERID)) LIKE :7 ESCAPE '\'
+   AND (UPPER(TRIM(COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO))) LIKE :2 ESCAPE '\'
+     OR UPPER(TRIM(p.NOPOLIS)) LIKE :3 ESCAPE '\'
+     OR UPPER(TRIM(p.QQNAME)) LIKE :4 ESCAPE '\'
+     OR UPPER(TRIM(p.BUSINESSNAME)) LIKE :5 ESCAPE '\'
+     OR UPPER(TRIM(p.BRANCHNAME)) LIKE :6 ESCAPE '\'
+     OR UPPER(TRIM(COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM))) LIKE :7 ESCAPE '\'
      OR UPPER(TRIM((SELECT o.OBJECTNAME
                       FROM POOLDATA.T_CLAIM_OBJECTLIST o
-                     WHERE o.CLAIMID = a.PZINSKEY
+                     WHERE o.CLAIMID = b.PXREFOBJECTKEY
                      ORDER BY o.OBJECTID
                      FETCH FIRST 1 ROW ONLY))) LIKE :8 ESCAPE '\')
- ORDER BY a.PYID DESC, a.PXCREATEDATETIME DESC, a.PZINSKEY DESC
+ ORDER BY COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO) DESC,
+          COALESCE(p.REGISTERDATE, b.PXCREATEDATETIME) DESC,
+          b.PXREFOBJECTKEY DESC
  FETCH FIRST :9 ROWS ONLY
 
 -- name: investigator_inbox_check_table
@@ -289,40 +318,39 @@ SELECT a.PZINSKEY                                                AS REFERENCE,
 -- Pemeriksaan ini berharga justru karena gabungannya menyentuh DUA skema sekaligus,
 -- DATAPEGA dan POOLDATA. Hak baca yang kurang pada salah satunya baru terlihat saat
 -- pengguna membuka layar — kecuali diperiksa lebih dulu di sini.
-SELECT a.PZINSKEY                                                AS REFERENCE,
-       a.PYID                                                    AS CASE_NUMBER,
-       a.POLICYNO                                                AS POLICY_NUMBER,
-       a.QQNAME                                                  AS INSURED_NAME,
+SELECT b.PXREFOBJECTKEY                                           AS REFERENCE,
+       COALESCE(b.PXREFOBJECTINSNAME, p.CLAIMNO)                 AS CASE_NUMBER,
+       p.NOPOLIS                                                 AS POLICY_NUMBER,
+       p.QQNAME                                                  AS INSURED_NAME,
        (SELECT o.OBJECTNAME
           FROM POOLDATA.T_CLAIM_OBJECTLIST o
-         WHERE o.CLAIMID = a.PZINSKEY
+         WHERE o.CLAIMID = b.PXREFOBJECTKEY
          ORDER BY o.OBJECTID
          FETCH FIRST 1 ROW ONLY)                                 AS PARTICIPANT_NAME,
-       a.BUSINESSNAME                                            AS BUSINESS_NAME,
-       a.BRANCHNAME                                              AS BRANCH_NAME,
-       a.PYORIGUSERID                                            AS ADMIN_NAME,
-       a.PXCREATEDATETIME                                        AS REGISTERED_AT,
-       (SELECT JSON_VALUE(j.DATA_JSONBLOB FORMAT JSON, '$.SurveyResults[0].SurveyDate')
-          FROM POOLDATA.JSON_KLAIM j
-         WHERE j.IDPEGA = a.PZINSKEY
-         ORDER BY j.TGL_INPUT DESC
+       p.BUSINESSNAME                                            AS BUSINESS_NAME,
+       p.BRANCHNAME                                              AS BRANCH_NAME,
+       COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM) AS ADMIN_NAME,
+       COALESCE(p.REGISTERDATE, b.PXCREATEDATETIME)              AS REGISTERED_AT,
+       (SELECT s.SURVEYDATE
+          FROM POOLDATA.T_SURVEYORLIST s
+         WHERE s.PNCCASEID = b.PXREFOBJECTKEY
+         ORDER BY s.INDEX_SURVEY
          FETCH FIRST 1 ROW ONLY)                                 AS SURVEY_DATE,
        -- Kode lini bisnis. TIDAK digambar sebagai kolom grid — layar lama pun tidak
        -- menggambarnya — tetapi tab Unggah Dokumen memakainya untuk menyembunyikan
        -- kategori yang tidak berlaku bagi lini itu, persis seperti di layar Registrasi.
        --
-       -- Dibaca dari POOLDATA.T_CLAIM_PNC, bukan dari GROUPPANEL_1 pada tabel kerja Pega:
-       -- yang pertama kolom bisnisnya, yang kedua salinan ber-akhiran `_1` yang kosong
-       -- pada 416 dari 2.647 baris (diukur 2026-10-07).
-       (SELECT c.GROUPPANEL
-          FROM POOLDATA.T_CLAIM_PNC c
-         WHERE c.CLAIMID = a.PZINSKEY
-         FETCH FIRST 1 ROW ONLY)                                 AS BUSINESS_LINE
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-    ON b.PXREFOBJECTKEY = a.PZINSKEY
-   AND b.PXOBJCLASS = 'Assign-WorkBasket'
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+       -- Dibaca langsung dari `p` (POOLDATA.T_CLAIM_PNC) yang sudah di-LEFT JOIN di bawah,
+       -- bukan dari GROUPPANEL_1 pada tabel kerja Pega — tabel itu tidak dibaca lagi.
+       p.GROUPPANEL                                              AS BUSINESS_LINE
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET b
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+    ON p.CLAIMID = b.PXREFOBJECTKEY
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = b.PXREFOBJECTKEY
+   AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.PXOBJCLASS = 'Assign-WorkBasket'
+   AND b.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
  FETCH FIRST 0 ROWS ONLY
 
 -- name: investigator_inbox_count_waiting
@@ -332,12 +360,15 @@ SELECT a.PZINSKEY                                                AS REFERENCE,
 -- Dipakai `claimpnc -periksa`. Angkanya menjawab pertanyaan yang tidak dapat dijawab layar
 -- ketika hasilnya terpotong: BERAPA SEBENARNYA yang menunggu.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-    ON b.PXREFOBJECTKEY = a.PZINSKEY
-   AND b.PXOBJCLASS = 'Assign-WorkBasket'
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
- WHERE a.PYSTATUSWORK <> 'Resolved-Completed'
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET b
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+    ON p.CLAIMID = b.PXREFOBJECTKEY
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = b.PXREFOBJECTKEY
+   AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.PXOBJCLASS = 'Assign-WorkBasket'
+   AND b.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
    AND UPPER(TRIM(b.PXASSIGNEDOPERATORID)) = :1
 
 -- name: investigator_inbox_count_without_survey
@@ -354,18 +385,20 @@ SELECT COUNT(*)
 -- awalnya perlu ditinjau ulang. Itu pertanyaan yang hanya dapat dijawab data produksi,
 -- bukan export.
 SELECT COUNT(*)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK a
- INNER JOIN DATAPEGA.PC_ASSIGN_WORKBASKET b
-    ON b.PXREFOBJECTKEY = a.PZINSKEY
-   AND b.PXOBJCLASS = 'Assign-WorkBasket'
-   AND a.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
- WHERE a.PYSTATUSWORK <> 'Resolved-Completed'
+  FROM DATAPEGA.PC_ASSIGN_WORKBASKET b
+  LEFT JOIN POOLDATA.T_CLAIM_PNC p
+    ON p.CLAIMID = b.PXREFOBJECTKEY
+  LEFT JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = b.PXREFOBJECTKEY
+   AND k.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.PXOBJCLASS = 'Assign-WorkBasket'
+   AND b.PXREFOBJECTCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND (p.STATUSWORK IS NULL OR p.STATUSWORK <> 'Resolved-Completed')
    AND UPPER(TRIM(b.PXASSIGNEDOPERATORID)) = :1
    AND NOT EXISTS (SELECT 1
-                     FROM POOLDATA.JSON_KLAIM j
-                    WHERE j.IDPEGA = a.PZINSKEY
-                      AND JSON_VALUE(j.DATA_JSONBLOB FORMAT JSON,
-                                     '$.SurveyResults[0].SurveyDate') IS NOT NULL)
+                     FROM POOLDATA.T_SURVEYORLIST s
+                    WHERE s.PNCCASEID = b.PXREFOBJECTKEY
+                      AND s.SURVEYDATE IS NOT NULL)
 
 -- name: investigator_export
 --

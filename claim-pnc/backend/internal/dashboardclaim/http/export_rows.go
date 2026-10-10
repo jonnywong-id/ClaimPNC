@@ -137,31 +137,3 @@ func surveyExportRow(
 		row.SurveyorName,
 	}
 }
-
-// holdingExportHeader adalah judul kolom unduhan tab Inbox Tampungan PIC.
-func holdingExportHeader() []string {
-	return []string{
-		"No Klaim",
-		"No Polis",
-		"Nama Tertanggung",
-		"Nama Bisnis",
-		"Sumber Bisnis",
-		"Nama Cabang",
-		"Tanggal Pendaftaran",
-		"Admin PNC",
-	}
-}
-
-// holdingExportRow menuliskan satu baris penampungan.
-func holdingExportRow(row dashboardclaim.HoldingRow, loc *time.Location) []string {
-	return []string{
-		row.ClaimNumber,
-		row.PolicyNumber,
-		row.InsuredName,
-		row.BusinessName,
-		row.BusinessSource,
-		row.BranchName,
-		formatDate(&row.RegisteredAt, loc),
-		row.AdminPNC,
-	}
-}

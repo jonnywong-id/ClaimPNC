@@ -524,26 +524,29 @@ SELECT d.NODLA                       AS ADVICE_NO,
 -- name: attachments_for_claim
 -- Berkas lampiran satu klaim pada satu kategori, beserta ISINYA.
 --
--- Bind: :1 kunci klaim · :2 kategori (`PLA` atau `DLA`)
+-- Bind: :1 kunci klaim · :2 kategori (`PLA` atau `DLA`).
 --
--- Sumbernya sama dengan yang dibaca `Obj-Open-By-Handle` pada
--- `Activity/PNCGetListPreDla-Act.xml` — tabel lampiran Pega, bukan penyimpanan dokumen
--- eksternal (`D-16`).
+-- Sumbernya `POOLDATA.DATA_ATTACHFILE` — tabel yang dibaca `UpdateDetailPLA2` lewat
+-- `GetAttachmentFromDB_Sql` (`tempAttachment2`: ATTACHNAME, ATTACHMIMETYPE, ATTACHFILE).
+--
+-- Bukan `DATAPEGA.PC_DATA_WORKATTACH`: tabel itu tidak punya kolom isi berkas — isinya ada di
+-- blob internal Pega `PZPVSTREAM` yang tidak dapat dibaca SQL. Kueri sebelumnya memakai
+-- `PYATTACHSTREAM` dan ditolak ORA-00904 (SEND ALL PLA PNCN.26.43, 2026-10-10). Berkas
+-- kategori PLA di tabel Pega itu adalah PDF PLA hasil `AttachAsPDFC`; di sistem ini PDF-nya
+-- dibuat ulang dan dilampirkan oleh pemanggil (SEND ALL PLA), bukan dibaca dari sini.
 --
 -- **Isinya ikut terbaca.** Itu disengaja dan berbeda dari panel "Print Pre DLA", yang
 -- hanya mengambil kuncinya: di sini isinya memang dibutuhkan, karena ia yang dilampirkan
 -- ke surat. Batasnya disadari — satu surat memuat dokumen pendukung satu klaim, bukan
 -- arsip.
-SELECT a.PXATTACHNAME                AS NAME,
-       a.PYATTACHMIMETYPE            AS MIME_TYPE,
-       a.PYATTACHSTREAM              AS CONTENT
-  FROM DATAPEGA.PC_DATA_WORKATTACH a
-  JOIN DATAPEGA.PC_LINK_ATTACHMENT b
-    ON b.PXLINKEDREFTO = a.PZINSKEY
- WHERE a.PXREFOBJECTKEY = :1
-   AND b.PXLINKEDREFFROM = :1
-   AND b.PYCATEGORY = :2
- ORDER BY a.PXATTACHNAME
+SELECT a.ATTACHNAME                  AS NAME,
+       a.ATTACHMIMETYPE              AS MIME_TYPE,
+       a.ATTACHFILE                  AS CONTENT
+  FROM POOLDATA.DATA_ATTACHFILE a
+ WHERE a.IDPEGA = :1
+   AND UPPER(TRIM(a.CATEGORY)) = UPPER(:2)
+   AND a.ATTACHFILE IS NOT NULL
+ ORDER BY a.ATTACHNAME, a.DATAID
 
 -- name: mark_advice_sent_pla
 -- Menandai satu PLA terkirim beserta tanggal dan alamat tujuannya.
