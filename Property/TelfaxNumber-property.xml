@@ -1,0 +1,328 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyIsReference>false</pyIsReference>
+<pyShowJavaWindowName>GeneratedJava20261008T041849.474 GMT</pyShowJavaWindowName>
+<pyOnInput>ASMRemoveSpecialCharTelfax</pyOnInput>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyHistoryObject>false</pyHistoryObject>
+<pxOriginalCreateDateTime/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxInstanceLockedDateTime/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pySpecialtyComponentData/>
+<pxCreateOpName>Febry</pxCreateOpName>
+<pxUpdateOpName>Febry</pxUpdateOpName>
+<pyRuleFormStatusTime>20261008T041849.450 GMT</pyRuleFormStatusTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleAccessWhen/>
+<pyIsTransient>false</pyIsTransient>
+<pyStreamName>pxTextInput</pyStreamName>
+<pyMemo>.</pyMemo>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInsName>ASM-FW-GISFW-DATA-TELFAX!TELFAXNUMBER</pxInsName>
+<pyWindowTitle/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyColumnInclusion/>
+<pyExpectedSize/>
+<pyJavaObjectClass/>
+<pyRuleEnds/>
+<pyUsage>Created from Data Type Landing Page</pyUsage>
+<pyLabel>Nomor Telfax</pyLabel>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFormPost/>
+<pyGatewayClass/>
+<pyTableClass/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyTableOption/>
+<pyJavaStream/>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzDocumentKey>
+<pyPageClass/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateInputBox/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedKey/>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pxInsId>!TELFAXNUMBER</pxInsId>
+<pyErrorMessage/>
+<pxTabLabel>TelfaxNumber</pxTabLabel>
+<pxInstanceLockedRuleSetVersion/>
+<pyStatus/>
+<pyCircumstanceDate/>
+<pxHostId>jboss2058</pxHostId>
+<pyInterface/>
+<pyCircumstanceProp/>
+<pyPropertyMode>String</pyPropertyMode>
+<pyCircumstanceDateProp/>
+<pyValueChanged>false</pyValueChanged>
+<pySPRuleSetName>febry@sinarmas.co.id</pySPRuleSetName>
+<pyRelativePath/>
+<pyRuleSetVersion>01-01-15</pyRuleSetVersion>
+<pzEntryCode>sTI</pzEntryCode>
+<pyIsManualReference>false</pyIsManualReference>
+<pyRuleParamsStreamName/>
+<pySpecial>false</pySpecial>
+<pxMoveImportDateTime>20191226T024304.591 GMT</pxMoveImportDateTime>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyEditValidate/>
+<pxOriginalCreateOperator/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyRuleStarts/>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pxUpdateDateTime>20160721T151025.019 GMT</pxUpdateDateTime>
+<pyCircumstanceType/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRefLocalizedValue/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pySerializeJavaObject/>
+<pxUpdateOperator>febry@sinarmas.co.id</pxUpdateOperator>
+<pyFieldClass/>
+<pyDescription>Created from Data Type Landing Page</pyDescription>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzInsKey>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTableSelector/>
+<pyWorkKey/>
+<pyPropertyName>TelfaxNumber</pyPropertyName>
+<pyReflectStatus>true</pyReflectStatus>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pxCreateOperator>febry@sinarmas.co.id</pxCreateOperator>
+<pxOriginalCreateOpName/>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyBaseRule>false</pyBaseRule>
+<pyLocalize>false</pyLocalize>
+<pyEditable/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyComparator/>
+<pxSaveDateTime>20160721T151025.085 GMT</pxSaveDateTime>
+<pxInstanceLockedRuleSet/>
+<pyDocumentTitle/>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyMaxLength/>
+<pyRuleName>TelfaxNumber</pyRuleName>
+<pySkipLocalization>false</pySkipLocalization>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pyDataAccessInfo>Manual</pyDataAccessInfo>
+<pyDataObject/>
+<pyIsJavaPage/>
+<pxOriginalCreateSystemID/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyIsGateway/>
+<pzIndexCount>16</pzIndexCount>
+<pyClassName>ASM-FW-GISFW-Data-Telfax</pyClassName>
+<pxInstanceLockedBy/>
+<pyDataRetrievalType/>
+<pyStringType>Text</pyStringType>
+<pzChecksum>838148811</pzChecksum>
+<pyDeletedObject/>
+<pyFieldName/>
+<pyIsLightweight>false</pyIsLightweight>
+<pyIsAssociation/>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160107T091554.303 GMT</pzOriginalInstanceKey>
+<pyCircumstanceVal/>
+<pyColumnIndexed/>
+<pxCreateDateTime>20160721T104651.079 GMT</pxCreateDateTime>
+<pyOnObjChange/>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTableAggregate/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyTableProperty/>
+<pyLabelOld>Nomor Telfax</pyLabelOld>
+<pxCommitDateTime>20200312T080322.000 GMT</pxCommitDateTime>
+<pyMethodStatus/>
+<pzStatus>valid</pzStatus>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pyToolBarSettings>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyRestore>false</pyRestore>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyAvailability>false</pyAvailability>
+<pyPropertyPane>false</pyPropertyPane>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyFavorites>true</pyFavorites>
+<pyRecover>false</pyRecover>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyPreview>true</pyPreview>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyNew>true</pyNew>
+</pyToolBarSettings>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+</rowdata>
+</pyqualifierpagegroup>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-15 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzInsKey>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160107T091554.303 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-01-06 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pxPages REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="DP">
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pxSubscript>DP</pxSubscript>
+<pyLabel/>
+</rowdata>
+<rowdata REPEATINGINDEX="DT">
+<pxObjClass>Rule-Obj-Class</pxObjClass>
+<pyLabel/>
+<pxSubscript>DT</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="ROC">
+<pyLabel/>
+<pxSubscript>ROC</pxSubscript>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+</rowdata>
+</pxPages>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyStandardValue/>
+<pyLocalizedValue/>
+</rowdata>
+</pyPromptTableList>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel/>
+<pxObjClass>@baseclass</pxObjClass>
+</rowdata>
+</pyListValues>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyValue/>
+<pyKeyCaption/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+</rowdata>
+</pyTableKeys>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-TELFAX</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GISFW-Data-Telfax</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GISFW-Data-Telfax</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyRuleName>none</pyRuleName>
+<pyMethodStatus/>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GISFW-Data-Telfax</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleFamilyName>ASMREMOVESPECIALCHARTELFAX</pxRuleFamilyName>
+<pyRuleName>ASMRemoveSpecialCharTelfax</pyRuleName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Edit-Input</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-TELFAX TELFAXNUMBER #20160721T104651.079 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -88,3 +88,62 @@ SELECT tanggal
 SELECT login_aplikasi
   FROM general.lst_mitra
  WHERE login_aplikasi IS NOT NULL
+
+
+-- ============================================================================
+-- Dua kueri cadangan — SEMENTARA, lewat DB Link
+-- ============================================================================
+--
+-- Keduanya salinan persis kueri di atas, hanya dengan akhiran DB Link dikembalikan.
+-- Dipakai HANYA ketika koneksi kedua (`ANEKA_<PORTAL_ALIAS>_*`) belum terpasang.
+--
+-- # Kenapa ada sama sekali
+--
+-- Karena tabelnya SUDAH ADA dan sudah terjangkau. Diuji ke basis data pada 2026-10-09:
+-- `general.lst_mitra@ASMD...` terbaca 2.159 baris dan `general.hrd_lbr@ASMD...` terbaca
+-- dari koneksi portal yang sama yang sudah dipakai seluruh laporan lain.
+--
+-- Tanpa cadangan ini, laporan Mitra menolak terbit dan enam kolom "Lama proses" pada
+-- laporan TAT serta Data Komite kosong — padahal datanya ada, dan jalannya pun ada.
+--
+-- # Harganya, dan kenapa diterima
+--
+-- `D-25` mengganti DB Link dengan pemanggilan API, dan `D-20` menuntut SQL portabel —
+-- PostgreSQL tidak punya DB Link. Jadi kedua kueri ini adalah UTANG yang harus dibayar
+-- saat pindah basis data.
+--
+-- Utang itu diterima Work Owner pada 2026-10-09 sebagai jalan SEMENTARA, dengan dua
+-- alasan: `ANEKA_*` kosong sejak awal proyek dan menunggunya berarti dua laporan tetap
+-- tidak lengkap tanpa batas waktu, dan modul ini sudah memakai DB Link di satu tempat
+-- (`report_tat`) atas keputusan 2026-09-24 — sehingga utangnya bertambah dari satu
+-- tempat menjadi tiga, bukan dari nol.
+--
+-- # Cara membuangnya nanti
+--
+-- Keduanya berhenti terpakai dengan sendirinya begitu `ANEKA_<PORTAL_ALIAS>_*` diisi —
+-- Repo memilih koneksi kedua lebih dulu, dan cadangan ini hanya dipakai bila koneksi itu
+-- tidak ada. Menghapusnya cukup membuang kedua blok ini beserta cabang pemilihnya.
+
+
+-- name: report_holiday_calendar_dblink
+--
+-- Cadangan report_holiday_calendar. Lihat catatan di atas.
+--
+-- Bind:
+--   :1  tanggal dari    DATE
+--   :2  tanggal sampai  DATE
+SELECT tanggal
+  FROM general.hrd_lbr@ASMD.SINARMAS.CO.ID
+ WHERE tanggal >= :1
+   AND tanggal <= :2
+ ORDER BY tanggal
+
+
+-- name: report_mitra_logins_dblink
+--
+-- Cadangan report_mitra_logins. Lihat catatan di atas.
+--
+-- Tanpa bind.
+SELECT login_aplikasi
+  FROM general.lst_mitra@ASMD.SINARMAS.CO.ID
+ WHERE login_aplikasi IS NOT NULL

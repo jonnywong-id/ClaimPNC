@@ -1,0 +1,289 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedBy/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyTemplate/>
+<pxHostId>jboss2058</pxHostId>
+<pySerializeJavaObject/>
+<pyIsFromManageChangeLP/>
+<pyTableAggregate/>
+<pyDeletedObject/>
+<pyClassName>ASM-FW-GISFW-Data-Quotation</pyClassName>
+<pyRuleStarts/>
+<pyRuleName>AccessCode</pyRuleName>
+<pxCommitDateTime>20200312T080323.000 GMT</pxCommitDateTime>
+<pyRefLocalizedValue/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSet/>
+<pyDataObject/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyUsage/>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzInsKey>
+<pyRelativePath/>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pxOriginalCreateOperator/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyWorkKey/>
+<pyIsJavaPage/>
+<pxInsName>ASM-FW-GISFW-DATA-QUOTATION!ACCESSCODE</pxInsName>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pxInstanceLockedKey/>
+<pyComparator/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pyFieldName/>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyTemplateInputBox/>
+<pyBaseRule>false</pyBaseRule>
+<pyStreamName>pxTextInput</pyStreamName>
+<pyDataRetrievalType/>
+<pyColumnInclusion/>
+<pyJavaObjectClass/>
+<pyInterface/>
+<pyLabelOld>AccessCode</pyLabelOld>
+<pyEditValidate/>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pyColumnIndexed/>
+<pySPRuleSetName>YOHANESBAPTISTA@</pySPRuleSetName>
+<pyPageClass/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyFieldClass/>
+<pyExpectedSize/>
+<pzIndexCount>12</pzIndexCount>
+<pyDocumentTitle/>
+<pxInstanceLockedRuleSetVersion/>
+<pyValueChanged>false</pyValueChanged>
+<pxTabLabel>AccessCode</pxTabLabel>
+<pxUpdateDateTime>20181217T030656.594 GMT</pxUpdateDateTime>
+<pzChecksum>488894391</pzChecksum>
+<pyLocalize>false</pyLocalize>
+<pyIsGateway/>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-INT-TEMPLATEB2B ACCESSCODE #20171110T025421.853 GMT</pzOriginalInstanceKey>
+<pyCircumstanceType/>
+<pyRuleAccessWhen/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyIsManualReference/>
+<pxOriginalCreateOpName/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyReflectStatus>true</pyReflectStatus>
+<pyLabel>AccessCode</pyLabel>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzDocumentKey>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyIsTransient/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyPreviousApplicationName>SFAGIS</pyPreviousApplicationName>
+<pyPropertyName>AccessCode</pyPropertyName>
+<pyGatewayClass/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pzRuleSetVersionPatch>86</pzRuleSetVersionPatch>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyCircumstanceDate/>
+<pyTableOption/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxInsId>!ACCESSCODE</pxInsId>
+<pyStringType>Text</pyStringType>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyFormPost/>
+<pyOnInput/>
+<pyDescription/>
+<pxOriginalCreateSystemID/>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyShowJavaWindowName>GeneratedJava20261008T042122.730 GMT</pyShowJavaWindowName>
+<pyRuleParamsStreamName/>
+<pyStatus/>
+<pxInstanceLockedCreateDateTime/>
+<pyIsLightweight>false</pyIsLightweight>
+<pyJavaStream/>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyMemo>Initial Creation</pyMemo>
+<pyCircumstanceVal/>
+<pyTableClass/>
+<pxMoveImportDateTime>20191226T024235.519 GMT</pxMoveImportDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyMaxLength/>
+<pyRuleSetVersion>01-01-86</pyRuleSetVersion>
+<pxSaveDateTime>20181217T030656.628 GMT</pxSaveDateTime>
+<pyRuleEnds/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTableSelector/>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pxOriginalCreateDateTime/>
+<pyCircumstanceProp/>
+<pyIsReference>false</pyIsReference>
+<pyOnObjChange/>
+<pyPropertyMode>String</pyPropertyMode>
+<pyCircumstanceDateProp/>
+<pyHistoryObject>false</pyHistoryObject>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pxInstanceLockedDateTime/>
+<pzEntryCode>sTN</pzEntryCode>
+<pyRuleFormStatusTime>20261008T042122.704 GMT</pyRuleFormStatusTime>
+<pyWindowTitle/>
+<pyMethodStatus/>
+<pxCreateDateTime>20181217T030630.319 GMT</pxCreateDateTime>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<pySpecial>false</pySpecial>
+<pyTableProperty/>
+<pzStatus>valid</pzStatus>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyCaption/>
+<pyKeyValue/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+</rowdata>
+</pyTableKeys>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pyToolBarSettings>
+<pyPreview>true</pyPreview>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyForward>true</pyForward>
+<pyDelete>false</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPropertyPane>false</pyPropertyPane>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pySaveAs>true</pySaveAs>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRuleResolution>true</pyRuleResolution>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyBack>true</pyBack>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzIndexOwnerKey>
+<pxRuleClassName/>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pyRuleName>pxTextInput</pyRuleName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>ASM-FW-GISFW-Data-Quotation</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GISFW-Data-Quotation</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>ASM-FW-GISFW-DATA-QUOTATION</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMethodStatus/>
+<pxRuleClassName>ASM-FW-GISFW-Data-Quotation</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyLocalizedValue/>
+<pyStandardValue/>
+</rowdata>
+</pyPromptTableList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-86 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GISFW-DATA-QUOTATION ACCESSCODE #20181217T030630.319 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pxSubscript>none</pxSubscript>
+<pyLabel/>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+</rowdata>
+</pyqualifierpagegroup>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

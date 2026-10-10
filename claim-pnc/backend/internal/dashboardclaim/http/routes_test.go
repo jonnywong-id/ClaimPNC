@@ -535,14 +535,63 @@ func TestPenyaringMembentukLayarTanpaMenyentuhBasisData(t *testing.T) {
 
 // TestTanggalDiformatWIB memastikan konversi zona waktu terjadi SATU KALI di lapisan ini.
 //
-// Waktu disimpan UTC (`F-5`). Contoh registrasi pukul 03:00 UTC jatuh pada hari yang sama di
-// WIB (10:00), sehingga yang diuji di sini bukan pergeseran harinya melainkan bahwa
-// formatnya tanggal dan bukan stempel waktu penuh.
+// Waktu disimpan UTC (`F-5`). Contoh registrasi pukul 03:00 UTC menjadi 10:00 WIB pada hari
+// yang sama, sehingga **jamnya** yang membuktikan konversinya terjadi — bukan tanggalnya.
+//
+// Sejak 2026-10-07 kolom ini membawa jam, karena layar Pega menggambarnya
+// (`24 Jan 20 14:54:24`). Uji ini dulu justru mematok bentuk "tanggal saja" sebagai yang
+// benar; sekarang ia mematok jamnya, dan dengan begitu ia memeriksa hal yang lebih kuat:
+// konversi yang meleset beberapa jam dulu lolos selama ia tidak menyeberangi tengah malam.
+//
+// `tanggal_kejadian` diperiksa berdampingan karena ia SENGAJA tetap tanggal saja — ia
+// tanggal, bukan stempel waktu. Tanpa baris itu, "semua kolom tanggal diberi jam" akan
+// lolos sebagai perubahan yang tidak disengaja.
 func TestTanggalDiformatWIB(t *testing.T) {
 	server := testServer(t)
 
 	body := decode(t, get(t, server, "/api/dashboard-claim/outstanding"))
 	first := body["klaim"].([]any)[0].(map[string]any)
 
-	require.Regexp(t, `^\d{4}-\d{2}-\d{2}$`, first["tanggal_pendaftaran"])
+	require.Equal(t, "2026-08-05 10:00:00", first["tanggal_pendaftaran"],
+		"03:00 UTC harus tampil sebagai 10:00 WIB — jamnya yang membuktikan konversinya")
+
+	require.Regexp(t, `^(\d{4}-\d{2}-\d{2})?$`, first["tanggal_kejadian"],
+		"tanggal kejadian tetap tanggal saja, bukan stempel waktu")
+}
+
+// Rincian klaim dibaca lewat rutenya sendiri, bukan ikut pada daftar.
+//
+// Di Pega ia popup yang datanya diambil SAAT diklik (`setDataViewKlaim_Act` →
+// `ViewTempDetailClaim`, `pyTarget: popup`). Menyertakan dokumen JSON pada setiap baris
+// daftar akan membawa puluhan dokumen klaim pada setiap pemuatan halaman.
+func TestClaimDetailRoute(t *testing.T) {
+	server := testServer(t)
+
+	body := decode(t, get(t, server, "/api/dashboard-claim/klaim/CONTOH-BERJALAN-1"))
+
+	require.Equal(t, "CONTOH-BERJALAN-1", body["klaim_id"])
+	require.NotNil(t, body["dokumen"], "dokumen null memaksa layar menjaga satu keadaan lagi")
+}
+
+// Rute rincian TIDAK boleh tertangkap pola "/{tile}".
+//
+// chi memilih menurut urutan pendaftaran. Bila "/klaim/{id}" dipasang sesudah "/{tile}",
+// permintaannya dijawab sebagai tile bernama "klaim" — dan jawabannya 404 tile tidak dikenal,
+// galat yang menyesatkan karena menyebut hal yang tidak diminta siapa pun.
+func TestClaimDetailRouteIsNotSwallowedByTile(t *testing.T) {
+	server := testServer(t)
+
+	recorder := get(t, server, "/api/dashboard-claim/klaim/CONTOH-BERJALAN-1")
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	body := decode(t, recorder)
+	require.NotContains(t, body, "tile", "jawabannya rincian klaim, bukan daftar tile")
+}
+
+// Klaim yang tidak ada dijawab 404, bukan 500.
+func TestClaimDetailMissingClaim(t *testing.T) {
+	server := testServer(t)
+
+	recorder := get(t, server, "/api/dashboard-claim/klaim/TIDAK-ADA")
+	require.Equal(t, http.StatusNotFound, recorder.Code)
 }

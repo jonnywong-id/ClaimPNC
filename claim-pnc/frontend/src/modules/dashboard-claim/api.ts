@@ -8,7 +8,9 @@ import type {
   HasilPermintaanKlaim,
   IzinPermintaanKlaim,
   JenisPermintaanKlaim,
+  PICResponse,
   PenyaringDashboard,
+  RincianKlaim,
   PermintaanTransfer,
   PenyaringResponse,
   RingkasanResponse,
@@ -38,8 +40,32 @@ const keys = {
   penyaring: (portal: string | null, token: string | null) =>
     ['dashboard-claim', 'penyaring', portal, token] as const,
 
+  /**
+   * Kunci ringkasan memuat SELURUH penyaring, bukan hanya lini bisnis dan kotak cari.
+   *
+   * `buildParams` mengirim kelima isian panel ke endpoint ringkasan juga, sehingga angka
+   * pada kartu memang disaring. Bila kuncinya tidak memuatnya, mengubah Nopolis akan
+   * menembak ulang daftarnya tetapi TIDAK kartunya — dan pengguna membaca satu angka di
+   * kartu lalu menemukan jumlah baris yang lain di bawahnya.
+   *
+   * Itu persis penyimpangan yang dijaga `TestOutstandingListAndCountShareTheSameWhere` di
+   * sisi SQL. Dijaga di sana tetapi dilanggar di lapisan cache tetap menghasilkan layar
+   * yang salah.
+   */
   ringkasan: (portal: string | null, token: string | null, f: PenyaringDashboard) =>
-    ['dashboard-claim', 'ringkasan', portal, token, f.lini_bisnis ?? '', f.cari ?? ''] as const,
+    [
+      'dashboard-claim',
+      'ringkasan',
+      portal,
+      token,
+      f.lini_bisnis ?? '',
+      f.cari ?? '',
+      f.nomor_polis ?? '',
+      f.nomor_klaim ?? '',
+      f.pic ?? '',
+      f.status_transfer ?? '',
+      f.status_bayar ?? '',
+    ] as const,
 
   telusur: (portal: string | null, token: string | null, tile: Tile, f: PenyaringDashboard) =>
     [
@@ -50,6 +76,14 @@ const keys = {
       tile,
       f.lini_bisnis ?? '',
       f.cari ?? '',
+      // Kelima isian panel WAJIB ikut kunci. Tanpa itu, mengubah Nopolis tidak menembak
+      // ulang dan pengguna melihat daftar lama — tanpa tanda apa pun bahwa penyaringnya
+      // diabaikan.
+      f.nomor_polis ?? '',
+      f.nomor_klaim ?? '',
+      f.pic ?? '',
+      f.status_transfer ?? '',
+      f.status_bayar ?? '',
       f.halaman ?? 1,
     ] as const,
 }
@@ -59,6 +93,16 @@ function buildParams(f: PenyaringDashboard): URLSearchParams {
   const params = new URLSearchParams()
   if (f.lini_bisnis?.trim()) params.set('lini_bisnis', f.lini_bisnis.trim())
   if (f.cari?.trim()) params.set('cari', f.cari.trim())
+
+  // Ketiga isian panel penyaring. Yang kosong TIDAK dikirim: server memperlakukan penanda
+  // kosong sebagai "tidak menyaring", dan mengirim string kosong akan menyamakannya dengan
+  // mencari klaim yang nomor polisnya memang kosong.
+  if (f.nomor_polis?.trim()) params.set('nomor_polis', f.nomor_polis.trim())
+  if (f.nomor_klaim?.trim()) params.set('nomor_klaim', f.nomor_klaim.trim())
+  if (f.pic?.trim()) params.set('pic', f.pic.trim())
+  if (f.status_transfer?.trim()) params.set('status_transfer', f.status_transfer.trim())
+  if (f.status_bayar?.trim()) params.set('status_bayar', f.status_bayar.trim())
+
   return params
 }
 
@@ -221,18 +265,9 @@ export async function unduhTile(
   simpanBerkas(await unduhBerkas(path, { token, portal }))
 }
 
-/** Mengunduh tab Inbox Tampungan PIC sebagai CSV. */
-export async function unduhTampungan(
-  cari: string,
-  token: string | null,
-  portal: string | null,
-): Promise<void> {
-  const params = new URLSearchParams()
-  if (cari.trim()) params.set('cari', cari.trim())
-  const query = params.toString()
-
-  simpanBerkas(await unduhBerkas(`${PATH}/tampungan/unduh${query ? `?${query}` : ''}`, { token, portal }))
-}
+// Tidak ada `unduhTampungan`. Tab Inbox Tampungan PIC TIDAK punya tombol unduh di layar
+// lama, dan yang pernah ada di sini dicabut 2026-10-07 — lihat keterangan di
+// TampunganPIC.tsx.
 
 /**
  * Hook pengajuan permintaan transfer.
@@ -250,8 +285,20 @@ export function useAjukanTransfer() {
   const client = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: PermintaanTransfer) =>
-      callAPI<TransferResponse>(`${PATH}/transfer`, { metode: 'POST', body, token, portal }),
+    /*
+      Penyaring ikut sebagai PARAMETER KUERI, bukan di badan permintaan.
+
+      Server membacanya dengan `readFilter` — pembaca yang SAMA dengan yang dipakai daftar.
+      Itu yang membuat lingkup `saring` memindahkan tepat klaim yang terlihat pengguna; dua
+      pembaca berbeda akan menyimpang diam-diam begitu salah satunya berubah.
+
+      Pada lingkup lain parameternya diabaikan server, jadi mengirimkannya selalu aman.
+    */
+    mutationFn: ({ body, penyaring }: { body: PermintaanTransfer; penyaring?: PenyaringDashboard }) =>
+      callAPI<TransferResponse>(
+        `${PATH}/transfer${jalurPenyaring(penyaring)}`,
+        { metode: 'POST', body, token, portal },
+      ),
 
     // Daftar disegarkan supaya penanda "permintaan terkirim" muncul tanpa muat ulang manual.
     onSuccess: () => {
@@ -365,4 +412,93 @@ function pesanGalat(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * Daftar PIC Teknik untuk layar Transfer.
+ *
+ * # Tanpa penyaring lini bisnis
+ *
+ * `BrowseVMstUserTeknis_RD` menyaring `TYPE_BUSINESS = Param.type_business`, dan parameter
+ * itu diisi `OperatorID.pyPosition` — properti Pega yang rupanya memuat "NONMBU", "TRAVEL",
+ * "BONDING", atau "PA". Nilai itu **tidak ada** di sistem baru: HCC/HCQ mengembalikan jabatan
+ * sebenarnya (`Placement.PositionName`).
+ *
+ * Tiga bentuk sudah dicoba dan ketiganya keliru — memblokir daftar dengan peringatan,
+ * memakai jabatan sesi (daftar kosong tanpa penjelasan), lalu meminta pengguna memilih lini
+ * bisnis (langkah yang di layar lama tidak ada).
+ *
+ * Yang berlaku: tidak ada penyaring lini sama sekali, mengikuti layar lama. Selisihnya —
+ * daftar yang lebih luas — dicatat di `picteknik.sql`.
+ */
+export function useDaftarPIC(aktif: boolean, cari: string, halaman = 1) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['dashboard-claim', 'pic-teknik', portal, token, cari, halaman],
+    enabled: aktif && portal !== null,
+    queryFn: () => {
+      const q = new URLSearchParams({
+        ukuran: String(PAGE_SIZE),
+        halaman: String(halaman),
+      })
+      if (cari) q.set('cari', cari)
+      return callAPI<PICResponse>(`${PATH}/pic-teknik?${q.toString()}`, { token, portal })
+    },
+
+    // Master petugas berubah jarang; menembaknya ulang setiap ketikan tidak memberi apa pun.
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Mengubah penyaring menjadi parameter kueri.
+ *
+ * Ditulis sendiri, bukan `new URLSearchParams(penyaring)`: penyaringnya memuat `halaman`
+ * yang bertipe angka, dan URLSearchParams hanya menerima teks. Isian kosong DIBUANG supaya
+ * alamatnya tidak dipenuhi parameter hampa yang menyulitkan pembacaan log.
+ */
+function jalurPenyaring(penyaring?: PenyaringDashboard): string {
+  if (penyaring === undefined) return ''
+
+  const query = paramPenyaring(penyaring)
+
+  // Tanpa penjagaan ini, penyaring yang seluruh isiannya kosong meninggalkan `?` menggantung
+  // di alamatnya — benar secara teknis, dan menyesatkan di log.
+  return query === '' ? '' : `?${query}`
+}
+
+function paramPenyaring(penyaring: PenyaringDashboard): string {
+  const params = new URLSearchParams()
+  for (const [kunci, nilai] of Object.entries(penyaring)) {
+    if (nilai === undefined || nilai === '') continue
+    params.set(kunci, String(nilai))
+  }
+  return params.toString()
+}
+
+/**
+ * Rincian satu klaim, untuk popup yang terbuka dari nomor klaim.
+ *
+ * Kuncinya `klaim_id` (PZINSKEY), bukan nomor klaim — itu yang dipakai Pega
+ * (`GetJsonKlaimPNC` menyaring `idpega`), dan pada data warisan yang nomornya kembar,
+ * mencari lewat nomor dapat membuka klaim yang salah.
+ *
+ * `aktif` memastikan permintaannya hanya berangkat saat popup-nya dibuka. Di Pega pun
+ * pengambilannya terjadi SAAT diklik, bukan saat gridnya dimuat.
+ */
+export function useRincianKlaim(klaimID: string | null) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['dashboard-claim', 'rincian', portal, token, klaimID],
+    enabled: klaimID !== null && klaimID !== '',
+    queryFn: () =>
+      callAPI<RincianKlaim>(`${PATH}/klaim/${encodeURIComponent(klaimID ?? '')}`, {
+        token,
+        portal,
+      }),
+  })
 }

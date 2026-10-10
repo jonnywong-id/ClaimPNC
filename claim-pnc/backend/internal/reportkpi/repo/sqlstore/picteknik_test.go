@@ -22,13 +22,32 @@ var picQueryNames = []string{
 	"progress_counts", "analysis_spans", "acceptance_spans", "closure_spans",
 }
 
-// lineScopedQueries adalah kueri yang WAJIB menyaring lini bisnis.
+// lineScopedQueries adalah kueri yang menyaring lini bisnis LEWAT PENANDA.
 //
-// Satu saja yang tidak menyaring akan menampilkan angka SELURUH lini kepada orang yang
-// meminta satu lini — dan itu tidak terlihat sebagai galat, hanya sebagai angka yang lebih
-// besar.
+// # Kenapa hanya satu, padahal dulu empat
+//
+// Daftar ini semula memuat keempat kueri berbasis periode, dan itu KELIRU — terbukti
+// 2026-10-08 ketika tombol Cari selalu gagal dengan `ORA-00904`.
+//
+// Penyaringnya menyebut `a.GROUP_PANEL` dan `a.GROUPBISNISID`, sementara alias `a`
+// menunjuk tabel yang berbeda di tiap kueri:
+//
+//	progress_counts    a = PEGA_DASHBOARDPNC   punya kedua kolom  ✓
+//	analysis_spans     a = T_CLAIM_PNC         TIDAK punya        ✗
+//	acceptance_spans   a = T_CLAIM_PNC         TIDAK punya        ✗
+//	closure_spans      a = T_CLAIM_PNC         TIDAK punya        ✗
+//
+// `T_CLAIM_PNC` memakai `GROUPPANEL` (tanpa garis bawah) dan `BUSINESSCODE`.
+//
+// Pega pun hanya memasangnya di satu tempat: `{ASIS:TempBisnis.GROUP_PANEL}` pada
+// `RDB List/GetProgressForKPIPIC-SQL.xml`. Ketiga rule lainnya menyaring dengan
+// `picteknik` dan tanggal saja — lingkup lininya datang dari daftar PIC, yang sudah
+// disaring `TYPE_BUSINESS` di `pic_list`.
+//
+// Jadi membuang ketiganya bukan melonggarkan penyaringan, melainkan mengembalikannya ke
+// perilaku Pega (`P-5`).
 var lineScopedQueries = []string{
-	"progress_counts", "analysis_spans", "acceptance_spans", "closure_spans",
+	"progress_counts",
 }
 
 func TestSeluruhKueriPICTeknikAda(t *testing.T) {
@@ -50,7 +69,7 @@ func TestPenandaLiniTergantiDanBerbedaTiapLini(t *testing.T) {
 	seen := map[string]bool{}
 
 	for _, line := range reportkpi.BusinessLines() {
-		text := picQuery("closure_spans", line.Code)
+		text := picQuery("progress_counts", line.Code)
 		require.NotContainsf(t, text, lineFilterMarker,
 			"penanda masih tertinggal pada lini %s", line.Code)
 		require.Falsef(t, seen[text], "lini %s memakai penyaring yang sama dengan lini lain",
@@ -66,7 +85,7 @@ func TestPenandaLiniTergantiDanBerbedaTiapLini(t *testing.T) {
 // Ini penjaga terakhir. Penyaring kosong akan menampilkan seluruh lini kepada peminta satu
 // lini — kegagalan yang tidak terlihat. `AND 1 = 0` membuatnya terlihat seketika.
 func TestLiniTidakDikenalMenolakSemuaBaris(t *testing.T) {
-	text := picQuery("closure_spans", reportkpi.BusinessLine("MBU"))
+	text := picQuery("progress_counts", reportkpi.BusinessLine("MBU"))
 	require.Contains(t, text, "AND 1 = 0")
 }
 

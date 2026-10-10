@@ -428,3 +428,58 @@ describe('portal', () => {
     expect(await screen.findByText(/Pilih entitas lebih dulu/)).toBeInTheDocument()
   })
 })
+
+describe('angka negatif', () => {
+  // Baris dengan NILAI KLAIM NET negatif.
+  //
+  // Ia bukan kemustahilan: kolom itu hasil pengurangan berlapis — total dikurangi own
+  // retention, dikurangi LOC, ditambah salvage, dikurangi adjuster fee — dan salvage yang
+  // melampaui nilai klaim membuatnya negatif.
+  const ROW_MINUS: CaseStudyRow = {
+    ...ROW,
+    nomor_klaim: 'STD-0099',
+    nilai_klaim_net_100: -73_800_000_000,
+  }
+
+  it('menggambar angka negatif dengan warna merah', async () => {
+    stubDefaultFetch([ROW_MINUS])
+    const user = userEvent.setup()
+    await renderLoaded()
+    await lihatData(user)
+
+    const cell = await screen.findByText('Rp -738.000.000,00')
+    expect(cell).toHaveClass('text-red-600')
+  })
+
+  // Tanda minus TETAP ada di dalam teksnya — warna hanya mempercepat mata menemukannya.
+  //
+  // Sekitar satu dari dua belas laki-laki mengalami buta warna merah-hijau; bagi mereka
+  // warna ini tidak menambah apa pun, dan angkanya harus tetap terbaca benar.
+  it('tidak menghilangkan tanda minus dari teksnya', async () => {
+    stubDefaultFetch([ROW_MINUS])
+    const user = userEvent.setup()
+    await renderLoaded()
+    await lihatData(user)
+
+    expect(await screen.findByText(/^Rp -738/)).toBeInTheDocument()
+  })
+
+  // Angka POSITIF dan nilai KOSONG tidak ikut memerah.
+  //
+  // Nol bukan kerugian, dan "belum ada nilainya" bukan angka sama sekali — mewarnainya
+  // akan membuat warna merah berhenti berarti apa pun.
+  it('tidak mewarnai angka positif maupun nilai kosong', async () => {
+    stubDefaultFetch([ROW_MINUS])
+    const user = userEvent.setup()
+    await renderLoaded()
+    await lihatData(user)
+
+    // Positif — nilai klaim 100%.
+    expect(await screen.findByText('Rp 8.000.000.000,00')).not.toHaveClass('text-red-600')
+
+    // Kosong — deductible pada baris contoh memang null.
+    for (const dash of screen.getAllByText('—')) {
+      expect(dash).not.toHaveClass('text-red-600')
+    }
+  })
+})

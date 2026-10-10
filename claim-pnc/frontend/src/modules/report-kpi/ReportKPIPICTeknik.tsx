@@ -2,15 +2,16 @@ import { useState } from 'react'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
+import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
-import { SelectField, type SelectOption } from '@/components/SelectField'
+import { SelectField } from '@/components/SelectField'
 
-import { useExportPICTeknik, usePICTeknik } from './api'
+import { useExportPICLaporan, useExportPICTeknik, usePICTeknik } from './api'
 import type {
+  Grid,
   MetadataResponse,
   PICComponent,
-  PICFilterInput,
   PICRow,
   PICScorecard,
 } from './types'
@@ -18,20 +19,31 @@ import type {
 /**
  * Tab KPI PIC Teknik — penilaian kinerja PIC Teknik, empat komponen per orang.
  *
- * # Kenapa satu kartu per petugas, bukan satu tabel besar
+ * # Satu TABEL datar, bukan kartu per petugas
  *
- * Layar lama menggambar satu tabel kecil per PIC, empat baris masing-masing. Bentuk itu
- * dipertahankan (`D-13`), dan alasannya masih berlaku: yang dibaca penyelia adalah
- * "bagaimana orang ini", bukan "bandingkan kolom Nilai seluruh orang". Satu tabel besar
- * berisi dua puluh petugas × empat baris memaksa mata mencari batas antar orang.
+ * Koreksi 2026-10-09. Sebelumnya tab ini menggambar satu kartu per PIC, masing-masing berisi
+ * tabel kecil empat baris, dengan alasan "yang dibaca penyelia adalah bagaimana orang ini".
+ * Alasan itu masuk akal, tetapi bukan alasan yang berlaku: layar Pega menggambar SATU grid
+ * datar berjudul **Data KPI PIC Teknik**, satu baris per pasangan PIC × komponen, berkolom
+ * `PIC · KATEGORI · TOTAL DATA · JUMLAH TERCAPAI · TERCAPAI (%) · NILAI`.
+ *
+ * Susunan kolomnya dibaca dari `Section/ReportKPI_Section-Section.xml` — urutan `pyValue`
+ * pada grid itu — bukan dari tangkapan layar, dan `D-13` menetapkan tampilan mengikuti Pega.
  *
  * # Hal yang WAJIB diketahui sebelum membaca angkanya
  *
  * Dua dari empat komponen — Update Status Progress dan SLA Klaim — tangganya MENURUN:
  * makin kecil persentasenya, makin TINGGI nilainya. Itu bukan kekeliruan di sini melainkan
- * perilaku Pega yang direplikasi (`P-5`), dan setiap baris semacam itu diberi penanda.
+ * perilaku Pega yang direplikasi (`P-5`), dan setiap baris semacam itu diberi penanda pada
+ * `title` selnya.
  *
- * Tanpa penanda, pembaca yang melihat "95% → nilai 1" akan melaporkannya sebagai kerusakan.
+ * # Satu selisih yang BELUM dapat dipastikan
+ *
+ * Pada Pega, sebagian PIC tampil dengan dua atau tiga baris saja — bukan empat. Dugaan
+ * terkuatnya: kueri komponennya ber-`GROUP BY pic`, sehingga PIC tanpa data sama sekali
+ * tidak dikembalikan dan barisnya tidak terbentuk. Dugaan itu TIDAK dapat dibuktikan dari
+ * export — badan `GetProgressPerPIC-Act.xml` tidak terbaca di sana — sehingga aturannya
+ * tidak dibuat-buat di sini: keempat baris tetap digambar, yang tanpa data bertotal 0.
  */
 export function ReportKPIPICTeknik({
   metadata,
@@ -46,34 +58,35 @@ export function ReportKPIPICTeknik({
 
   const result = usePICTeknik(active, searched)
   const exportFile = useExportPICTeknik()
+  const exportLaporan = useExportPICLaporan()
 
   const violations = violationsOf(result.error)
   const components = metadata?.komponen_pic ?? []
+  const grid = picGrid(metadata)
+
+  const rows = searched && result.data ? flatten(result.data.kartu_skor, result.data.rekapitulasi) : []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <form
-        className="space-y-4 rounded-kotak border border-slate-200 bg-white p-4"
+        className="rounded-kotak border border-slate-200 bg-white p-4"
         onSubmit={(event) => {
           event.preventDefault()
           setApplied(draft)
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SelectField
-            id="kpi-pic-lini"
-            label="Lini Bisnis"
-            options={lineOptions(metadata)}
-            emptyText="--Pilih--"
-            value={draft.lini}
-            error={violations['lini_bisnis']}
-            onChange={(event) => setDraft({ ...draft, lini: event.target.value })}
-          />
-
+        {/*
+          SATU baris: Dari, Sampai, Cari, Export Data KPI, Pilih Data KPI, Export Data KPI
+          — seperti bilah
+          penyaring Pega. Sebelumnya isiannya digambar sebagai kisi dua kolom dengan tombol
+          di baris tersendiri, sehingga bilahnya dua kali lebih tinggi daripada layar lama.
+        */}
+        <div className="flex flex-wrap items-end gap-3">
           <FormField
             id="kpi-pic-dari"
-            label="Periode — Dari"
+            label="Dari"
             type="date"
+            className="w-44"
             value={draft.dari}
             failure={violations['dari']}
             onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
@@ -81,214 +94,241 @@ export function ReportKPIPICTeknik({
 
           <FormField
             id="kpi-pic-sampai"
-            label="Periode — Sampai"
+            label="Sampai"
             type="date"
+            className="w-44"
             value={draft.sampai}
             failure={violations['sampai']}
             onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
           />
-        </div>
 
-        {lineNote(metadata, draft.lini) && (
-          <p className="text-sm text-slate-600">{lineNote(metadata, draft.lini)}</p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" tone="utama">
             Cari
           </Button>
+
+          {/*
+            Tombol ekspor PERTAMA — mengunduh penilaian yang sedang terlihat.
+
+            Pega punya DUA tombol berlabel sama di tab ini, dan sampai 2026-10-09 kami
+            hanya membangun yang kedua. Yang membedakan keduanya adalah letaknya: yang
+            ini menempel pada Cari, yang satunya pada Pilih Data KPI.
+          */}
+          <Button
+            onClick={() => exportLaporan.mutate(active)}
+            disabled={!searched || exportLaporan.isPending}
+          >
+            Export Data KPI
+          </Button>
+
+          {/*
+            Dropdown ini memilih BERKAS yang diunduh, bukan isi layar — karena itu ia
+            berdiri di sebelah tombol Export, bukan di antara penyaring. Begitu pula
+            letaknya di layar Pega.
+          */}
+          <SelectField
+            id="kpi-pic-data"
+            label="Pilih Data KPI"
+            options={(metadata?.data_kpi ?? []).map((item) => ({
+              value: item.kode,
+              label: item.judul,
+            }))}
+            value={draft.dataKPI}
+            onChange={(event) => setDraft({ ...draft, dataKPI: event.target.value })}
+            className="max-w-xs"
+          />
+
           <Button
             onClick={() => exportFile.mutate(active)}
             disabled={!searched || exportFile.isPending}
           >
-            Export Data
+            Export Data KPI
           </Button>
         </div>
       </form>
 
-      {exportFile.isError && (
+      {(exportFile.isError || exportLaporan.isError) && (
         <ErrorMessage
           title="Berkas tidak dapat diunduh"
-          description={messageOf(exportFile.error)}
+          description={messageOf(exportFile.error ?? exportLaporan.error)}
           tone="gangguan"
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih lini bisnis dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
-          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
-        </p>
-      ) : result.isError ? (
-        <ErrorMessage
-          title="Penilaian tidak dapat diambil"
-          description={messageOf(result.error)}
-          tone="gangguan"
+      {/*
+        Sebelum Cari ditekan TIDAK ada apa pun di bawah bilah penyaring, seperti layar lama.
+        Ajakan "Pilih lini bisnis dan periode, lalu tekan Cari" sempat digambar di sini; itu
+        tambahan kami, dan bagian PIC Teknik pada section Pega tidak memuat satu pun teks
+        selain label isiannya.
+      */}
+      {searched && (
+        <DataTable<FlatPICRow>
+          title={grid?.judul ?? 'Data KPI PIC Teknik'}
+          label="Penilaian KPI per PIC Teknik"
+          columns={picColumns(grid, components)}
+          rows={rows}
+          rowKey={(row) => `${row.pic}|${row.komponen}`}
+          isLoading={result.isPending}
+          error={
+            result.isError ? (
+              <ErrorMessage
+                title="Penilaian tidak dapat diambil"
+                description={messageOf(result.error)}
+                tone="gangguan"
+              />
+            ) : undefined
+          }
+          emptyMessage={emptyMessage}
+          hideSearch
         />
-      ) : result.isPending ? (
-        <p className="rounded-kotak border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">
-          Menghitung penilaian…
-        </p>
-      ) : (
-        <>
-          {result.data.kartu_skor.length === 0 ? (
-            <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              Tidak ada petugas terdaftar pada lini bisnis ini.
-            </p>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {result.data.kartu_skor.map((card) => (
-                <Scorecard key={card.pic} card={card} components={components} />
-              ))}
-            </div>
-          )}
-
-          {/*
-            Rekapitulasi digambar TERPISAH di bawah, bukan sebagai kartu kesekian di dalam
-            kisi. Ia bukan orang, dan menaruhnya berdampingan dengan kartu petugas membuat
-            pembacanya mengira "Leader" adalah nama seseorang.
-          */}
-          <Scorecard
-            card={result.data.rekapitulasi}
-            components={components}
-            summary
-          />
-        </>
       )}
-
     </div>
   )
 }
 
-/* ─────────────────────────── Kartu skor ─────────────────────────── */
+/* ─────────────────────────── Perataan baris ─────────────────────────── */
 
-function Scorecard({
-  card,
-  components,
-  summary,
-}: {
-  card: PICScorecard
-  components: PICComponent[]
-  summary?: boolean
-}) {
-  return (
-    <section
-      className={[
-        'rounded-kotak border bg-white p-4',
-        summary ? 'border-slate-400' : 'border-slate-200',
-      ].join(' ')}
-    >
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900">
-            {summary ? 'Rekapitulasi seluruh PIC' : card.pic}
-          </h3>
-          {!summary && card.leader && (
-            <p className="text-xs text-slate-500">Leader tim</p>
-          )}
-        </div>
+/**
+ * FlatPICRow adalah satu baris grid: satu PIC × satu komponen.
+ *
+ * Ia membawa `leader` supaya baris rekapitulasi dapat dibedakan tanpa membandingkan nama —
+ * nama "Leader" kebetulan juga dapat menjadi nama orang.
+ */
+type FlatPICRow = PICRow & { pic: string; leader: boolean }
 
-        {card.nilai_berbobot !== null && (
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-            Nilai berbobot {round2(card.nilai_berbobot)} dari 15
-          </span>
-        )}
-      </header>
+/**
+ * flatten meratakan kartu skor menjadi baris grid.
+ *
+ * Baris rekapitulasi ikut diratakan ke tabel yang sama, bukan digambar terpisah: ia memang
+ * satu baris grid di Pega, dengan kolom PIC berisi "Leader". Ia dihitung
+ * `PNCReportKPI_act` — bukan tambahan kami — sehingga menghilangkannya berarti kehilangan
+ * angka yang ada di layar lama.
+ */
+function flatten(cards: PICScorecard[], recap: PICScorecard): FlatPICRow[] {
+  // Tanpa satu pun petugas, rekapitulasinya TIDAK digambar: ia rata-rata dari nol orang,
+  // dan menggambarnya akan menampilkan baris "Leader" berisi angka yang tidak merangkum
+  // apa pun — sekaligus menyembunyikan pesan "tidak ada petugas terdaftar".
+  const semua = cards.length === 0 ? [] : [...cards, recap]
 
-      <table className="w-full text-sm">
-        <caption className="sr-only">
-          Penilaian KPI {summary ? 'seluruh PIC' : card.pic}
-        </caption>
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-            <th scope="col" className="py-2">
-              KPI
-            </th>
-            <th scope="col" className="py-2 text-right">
-              Total
-            </th>
-            <th scope="col" className="py-2 text-right">
-              Tercapai
-            </th>
-            <th scope="col" className="py-2 text-right">
-              Persentase
-            </th>
-            <th scope="col" className="py-2 text-right">
-              Nilai
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {card.baris.map((row) => (
-            <MetricRow
-              key={row.komponen}
-              row={row}
-              descending={isDescending(components, row.komponen)}
-            />
-          ))}
-        </tbody>
-      </table>
-    </section>
-  )
+  const rows: FlatPICRow[] = []
+  for (const card of semua) {
+    for (const row of card.baris) {
+      rows.push({ ...row, pic: card.pic, leader: card.leader })
+    }
+  }
+  return rows
+}
+
+/* ─────────────────────────── Penyusun kolom ─────────────────────────── */
+
+/**
+ * picColumns menyusun keenam kolom grid dari metadata.
+ *
+ * Judulnya datang dari server, bukan ditulis di sini: judul yang sama dipakai berkas ekspor,
+ * dan dua daftar yang kebetulan sejalan akan berselisih pada perubahan berikutnya.
+ */
+function picColumns(
+  grid: Grid | undefined,
+  components: PICComponent[],
+): Column<FlatPICRow>[] {
+  return (grid?.kolom ?? []).map((column) => {
+    const base: Column<FlatPICRow> = {
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => picCellText(row, column.kunci),
+
+      // Keempat kolom angka dirapatkan ke kanan supaya desimalnya sejajar antar baris.
+      alignRight: column.kunci !== 'pic' && column.kunci !== 'kpi',
+    }
+
+    // `render` DIHILANGKAN, bukan diisi undefined: `exactOptionalPropertyTypes` menolak
+    // properti opsional yang ada tetapi bernilai undefined.
+    if (column.kunci !== 'kpi') return base
+    return { ...base, render: (row: FlatPICRow) => metricLabel(row, components) }
+  })
 }
 
 /**
- * Satu baris penilaian.
+ * metricLabel menggambar sel KATEGORI beserta penanda tangga menurun.
  *
- * Baris bertangga menurun diberi penanda "↓" beserta penjelasannya pada `title`. Penanda itu
- * bukan hiasan: tanpa itu, baris yang menunjukkan 95% dengan nilai 1 terbaca sebagai
- * kerusakan, dan yang melaporkannya akan menghabiskan waktu menelusuri hal yang memang
- * disengaja.
+ * Penanda itu bukan hiasan: tanpa itu, baris yang menunjukkan 95% dengan nilai 1 terbaca
+ * sebagai kerusakan, dan yang melaporkannya akan menghabiskan waktu menelusuri hal yang
+ * memang disengaja.
  */
-function MetricRow({ row, descending }: { row: PICRow; descending: boolean }) {
+function metricLabel(row: FlatPICRow, components: PICComponent[]) {
+  const descending = components.find((c) => c.kode === row.komponen)?.tangga_menurun === true
+  if (!descending) return row.judul
+
   return (
-    <tr className="border-b border-slate-100 last:border-0">
-      <td className="py-2 text-slate-800">
-        {row.judul}
-        {descending && (
-          <span
-            className="ml-1 text-amber-700"
-            title="Tangga nilainya MENURUN: makin kecil persentasenya, makin tinggi nilainya. Direplikasi dari Pega."
-          >
-            ↓
-          </span>
-        )}
-      </td>
-      <td className="py-2 text-right tabular-nums text-slate-700">{row.total}</td>
-      <td className="py-2 text-right tabular-nums text-slate-700">{row.tercapai}</td>
-      <td className="py-2 text-right tabular-nums text-slate-700">
-        {row.persentase === null ? '—' : `${round2(row.persentase)}%`}
-      </td>
-      <td className="py-2 text-right tabular-nums font-medium text-slate-900">
-        {row.nilai === null ? '—' : row.nilai}
-      </td>
-    </tr>
+    <>
+      {row.judul}
+      <span
+        className="ml-1 text-amber-700"
+        title="Tangga nilainya MENURUN: makin kecil persentasenya, makin tinggi nilainya. Direplikasi dari Pega."
+      >
+        ↓
+      </span>
+    </>
   )
+}
+
+/** picCellText mengambil isi satu sel; yang kosong digambar sebagai tanda hubung. */
+function picCellText(row: FlatPICRow, key: string): string {
+  switch (key) {
+    case 'pic':
+      return row.pic
+    case 'kpi':
+      return row.judul
+    case 'total':
+      return String(row.total)
+    case 'tercapai':
+      return String(row.tercapai)
+    case 'persentase':
+      return row.persentase === null ? '—' : String(round2(row.persentase))
+    case 'nilai':
+      return row.nilai === null ? '—' : String(row.nilai)
+    default:
+      return ''
+  }
 }
 
 /* ─────────────────────────── Bantuan kecil ─────────────────────────── */
 
-const emptyPICFilter: PICFilterInput = { lini: '', dari: '', sampai: '' }
-
-/** lineOptions menyusun isi dropdown lini bisnis. */
-function lineOptions(metadata: MetadataResponse | undefined): SelectOption[] {
-  return (metadata?.lini_bisnis ?? []).map((line) => ({
-    value: line.kode,
-    label: line.judul,
-  }))
+/** Isian penyaring tab KPI PIC Teknik sebagaimana dipegang layar. */
+type PICFilterInput = {
+  lini: string
+  dari: string
+  sampai: string
+  dataKPI: string
 }
 
-/** lineNote mengambil keterangan penyaring lini yang sedang dipilih. */
-function lineNote(
-  metadata: MetadataResponse | undefined,
-  code: string,
-): string | undefined {
-  return (metadata?.lini_bisnis ?? []).find((line) => line.kode === code)?.keterangan
-}
+/**
+ * Penyaring awal tab KPI PIC Teknik.
+ *
+ * # Kenapa lininya TETAP, bukan dipilih pengguna
+ *
+ * Layar Pega tidak punya pilihan lini bisnis di tab ini, dan itu bukan kelalaian:
+ * `Activity/PNCReportKPI_act-Act.xml` menyetel `NONMBU` sebagai bawaan, lalu punya tiga
+ * cabang — PA, TRAVEL, BONDING — yang menyala bila `TempLaporan.StatusReceiver` bernilai
+ * `002`, `005`, atau `003`.
+ *
+ * Properti itu TIDAK terikat satu kontrol pun di `ReportKPIHarness` maupun
+ * `ReportKPI_Section`, sehingga ia tidak pernah terisi dan ketiga cabang tidak pernah
+ * menyala. Dikuatkan `RDB List/GetDataPICGroup-SQL.xml`, yang mematok
+ * `type_business='NONMBU'` di dalam teks kuerinya.
+ *
+ * Jadi tab ini **selalu NONMBU di Pega**, dan dropdown yang sempat ada di sini adalah
+ * tambahan kami — dicabut atas keputusan Work Owner "ikuti Pega as-is" (2026-10-08).
+ */
+const emptyPICFilter: PICFilterInput = { lini: 'NONMBU', dari: '', sampai: '', dataKPI: '1' }
 
-/** isDescending menyatakan sebuah komponen bertangga menurun. */
-function isDescending(components: PICComponent[], code: string): boolean {
-  return components.find((component) => component.kode === code)?.tangga_menurun === true
+const emptyMessage =
+  'Tidak ada petugas terdaftar pada lini bisnis ini. Daftarnya datang dari master ' +
+  'MST_USER_TEKNIK, bukan dari data klaim.'
+
+/** picGrid mengambil keterangan grid tab KPI PIC Teknik dari metadata. */
+function picGrid(metadata: MetadataResponse | undefined): Grid | undefined {
+  const tab = metadata?.tab.find((item) => item.kode === 'pic-teknik')
+  return tab?.grid.find((item) => item.kode === 'kartu-skor-pic')
 }
 
 /** round2 membulatkan untuk TAMPILAN saja — nilai simpanannya tidak disentuh. */

@@ -1,3 +1,34 @@
+-- ============================================================================
+-- DICABUT 2026-10-07 — JANGAN DIJALANKAN
+-- ============================================================================
+--
+-- Tabel ini TIDAK JADI DIPAKAI. Work Owner memutuskan Transfer mengikuti Pega apa
+-- adanya: PIC Teknik dipindahkan LANGSUNG, tanpa antrean permintaan.
+--
+-- Dua kenyataan yang mendasarinya:
+--
+--   1. Antreannya tidak punya pelaksana. Tidak ada satu pun job Pega yang membacanya;
+--      kelima job terjadwal (D-57) seluruhnya lebih tua daripada tabel ini. Permintaan
+--      akan menumpuk berstatus menunggu, dan pengguna menunggu sesuatu yang tidak
+--      akan datang.
+--
+--   2. P-1 tidak berlaku di jalur ini. Assign per baris di Pega TIDAK memanggil
+--      pxTransferAssignment — PNC_ReassignPNCTeknik hanya mengubah ClaimData.UserTeknis.
+--      Antrean tugas PC_ASSIGN_WORKLIST tidak disentuh sama sekali.
+--
+-- Rinciannya di docs/keputusan-implementasi.md §204.
+--
+-- Yang dibutuhkan sebagai GANTINYA, dan hanya ini:
+--
+--     GRANT UPDATE (USERTEKNIS_1) ON DATAPEGA.PC_ASM_FW_GCNMFW_WORK TO <akun aplikasi>;
+--
+-- Berkas ini TIDAK dihapus karena ia rekaman: ia memuat alasan rancangan antrean beserta
+-- bentuk tabelnya, dan itu yang dibutuhkan bila kelak jejak audit dituntut kembali.
+-- Yang dikembalikan nanti bukan antrean melainkan tabel LOG yang ditulis SESUDAH
+-- pemindahan berhasil — bentuknya mirip, artinya berbeda.
+--
+-- ============================================================================
+
 -- 0014 naik — tabel permintaan TRANSFER penugasan klaim.
 --
 -- ============================================================================

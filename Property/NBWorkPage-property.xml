@@ -1,0 +1,280 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzInsKey>
+<pyRuleFormStatusTime>20261008T042601.648 GMT</pyRuleFormStatusTime>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyFieldClass/>
+<pxHostId>jboss1040</pxHostId>
+<pyCircumstanceProp/>
+<pxInstanceLockedKey/>
+<pxCreateDateTime>20250710T074232.176 GMT</pxCreateDateTime>
+<pyHistoryObject/>
+<pyShowJavaWindowName>GeneratedJava20261008T042601.674 GMT</pyShowJavaWindowName>
+<pyColumnInclusion/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pxInstanceLockedRuleSetVersion/>
+<pyTableClass/>
+<pyCircumstanceVal/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceType/>
+<pxUpdateDateTime>20250710T074255.339 GMT</pxUpdateDateTime>
+<pyTableAggregate/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyInterface/>
+<pxCommitDateTime>20250710T074255.000 GMT</pxCommitDateTime>
+<pyMethodStatus/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pzRuleSetVersionPatch>13</pzRuleSetVersionPatch>
+<pyReflectStatus>true</pyReflectStatus>
+<pxInstanceLockedRuleSet/>
+<pyMaxLength/>
+<pyExpectedSize/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDateProp/>
+<pyJavaObjectClass/>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzOriginalInstanceKey>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyFieldName/>
+<pySkipLocalization>false</pySkipLocalization>
+<pyOnInput/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pxCreateOperator>NICKSONTICHANDRA</pxCreateOperator>
+<pyGatewayClass/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!NBWORKPAGE</pxInsName>
+<pyRuleSetVersion>01-03-13</pyRuleSetVersion>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyIsManualReference/>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyStreamName>pxTextInput</pyStreamName>
+<pyRefLocalizedValue/>
+<pyLocalize>false</pyLocalize>
+<pzIsPrivateCheckOut/>
+<pxSaveDateTime>20250710T074255.463 GMT</pxSaveDateTime>
+<pzIndexCount>3</pzIndexCount>
+<pyRuleStarts/>
+<pyTemplate/>
+<pyWorkKey/>
+<pyIsReference>false</pyIsReference>
+<pxTabLabel>NBWorkPage</pxTabLabel>
+<pyDescription/>
+<pySPRuleSetName/>
+<pyBaseRule>false</pyBaseRule>
+<pyDTName/>
+<pyIsAssociation/>
+<pxUpdateOpName>NICKSON TICHANDRA</pxUpdateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyPropertyName>NBWorkPage</pyPropertyName>
+<pyDeletedObject/>
+<pyRuleName>NBWorkPage</pyRuleName>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pyTableProperty/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyPageClass>ASM-FW-GKM-Data-NBWorkPage</pyPageClass>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pyUsage/>
+<pxInstanceLockedBy/>
+<pyIsGateway/>
+<pyPropertyModeLabel>Single Page</pyPropertyModeLabel>
+<pyEditValidate/>
+<pyFormPost/>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzDocumentKey>
+<pyPropertyMode>Page</pyPropertyMode>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pzEntryCode>S*NASM-FW-GKM-Data-NBWorkPage</pzEntryCode>
+<pxCreateOpName>NICKSON TICHANDRA</pxCreateOpName>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedDateTime/>
+<pyCircumstanceDate/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyTableSelector/>
+<pyComparator/>
+<pxUpdateOperator>NICKSONTICHANDRA</pxUpdateOperator>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOnObjChange/>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pySpecial>false</pySpecial>
+<pxInsId>!NBWORKPAGE</pxInsId>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyDataObject/>
+<pyTableOption/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyIsLightweight>false</pyIsLightweight>
+<pyJavaStream/>
+<pyWindowTitle/>
+<pyIsFromManageChangeLP/>
+<pyIsJavaPage/>
+<pyRuleAccessWhen/>
+<pySerializeJavaObject>false</pySerializeJavaObject>
+<pyRuleEnds/>
+<pyStringType>Text</pyStringType>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyTemplateInputBox/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyLabel>NBWorkPage</pyLabel>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pzChecksum>669010605</pzChecksum>
+<pyIsTransient/>
+<pyColumnIndexed/>
+<pyDataRetrievalType>MANUAL</pyDataRetrievalType>
+<pySpecialtyComponentData/>
+<pzStatus>valid</pzStatus>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxSubscript>none</pxSubscript>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+</rowdata>
+</pyqualifierpagegroup>
+<pyDTParamList REPEATINGTYPE="PageList"/>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pyMethodStatus/>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">1</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">2</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>ASM-FW-GKM-DATA-NBWORKPAGE</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GKM-Data-NBWorkPage</pxRuleClassName>
+<pyRuleName>ASM-FW-GKM-Data-NBWorkPage</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">0</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStandardValue/>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyLocalizedValue/>
+</rowdata>
+</pyPromptTableList>
+<pyToolBarSettings>
+<pyNew>true</pyNew>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyDelete>true</pyDelete>
+<pyFavorites>true</pyFavorites>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyAvailability>false</pyAvailability>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyDelegates>false</pyDelegates>
+<pyPreview>false</pyPreview>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyRun>false</pyRun>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRestore>false</pyRestore>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRefresh>true</pyRefresh>
+<pyRuleResolution>true</pyRuleResolution>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>false</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pyShowJava>false</pyShowJava>
+</pyToolBarSettings>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-DATA-CLAIMDATA NBWORKPAGE #20250710T074232.176 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-13 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pyDOParamList REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyValue/>
+<pyKeyCaption/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+</rowdata>
+</pyTableKeys>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+</pagedata>

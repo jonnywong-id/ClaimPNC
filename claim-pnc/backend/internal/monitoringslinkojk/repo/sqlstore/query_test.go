@@ -22,6 +22,7 @@ var readOnlyQueries = []string{
 	"d01_rows", "d01_count", "d01_export",
 	"f06_rows", "f06_count", "f06_export",
 	"source_rows",
+	"debtor_row",
 	"report_count",
 	"submission_next",
 	"probe_slik_table", "probe_objectlist_table", "probe_general_table",
@@ -205,7 +206,7 @@ func TestCountSharesFilterWithRows(t *testing.T) {
 		require.NotEmpty(t, countWhere)
 
 		require.Equalf(t,
-			strings.Count(rowsWhere, "BUSINESSTYPE"), strings.Count(countWhere, "BUSINESSTYPE"),
+			strings.Count(rowsWhere, "BUSINESSNAME"), strings.Count(countWhere, "BUSINESSNAME"),
 			"%s dan %s tidak menyaring lini bisnis dengan cara yang sama", pair[0], pair[1])
 		require.Equalf(t,
 			strings.Count(rowsWhere, "REGISTERDATE_1"), strings.Count(countWhere, "REGISTERDATE_1"),
@@ -303,11 +304,11 @@ func TestDateBoundsEmptyMeansNoFilter(t *testing.T) {
 func TestScopeArgsSuretyBondExcludes(t *testing.T) {
 	mode, value := scopeArgs(monitoringslinkojk.ScopeSuretyBond)
 	require.Equal(t, scopeExclude, mode)
-	require.Equal(t, monitoringslinkojk.CreditInsuranceBusinessType, value)
+	require.Equal(t, creditInsuranceNamePattern, value)
 
 	mode, value = scopeArgs(monitoringslinkojk.ScopeCreditInsurance)
 	require.Equal(t, scopeInclude, mode)
-	require.Equal(t, monitoringslinkojk.CreditInsuranceBusinessType, value)
+	require.Equal(t, creditInsuranceNamePattern, value)
 
 	mode, value = scopeArgs(monitoringslinkojk.ScopeAll)
 	require.Nil(t, mode)

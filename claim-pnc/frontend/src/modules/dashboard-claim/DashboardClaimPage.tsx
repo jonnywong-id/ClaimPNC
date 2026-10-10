@@ -6,6 +6,7 @@ import { useSession } from '@/app/session'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { Field } from '@/components/Field'
 import { formatDate } from '@/components/format'
 import { ReloadIcon } from '@/components/Icon'
 import { SelectField } from '@/components/SelectField'
@@ -19,6 +20,7 @@ import {
   useTelusurDashboard,
 } from './api'
 import { DialogPermintaanKlaim } from './DialogPermintaanKlaim'
+import { DialogRincianKlaim } from './DialogRincianKlaim'
 import { DialogTransfer } from './DialogTransfer'
 import { KartuPenghitung } from './KartuPenghitung'
 import { RingkasanDonut } from './RingkasanDonut'
@@ -59,6 +61,29 @@ import type {
  * permukaan yang harus diuji tanpa diminta siapa pun. Work Owner memilihnya demikian pada
  * 2026-09-26.
  */
+/**
+ * Isi panel penyaring `FilterDashboardClaim`.
+ *
+ * Satu bentuk, bukan lima state lepas: draf dan terapan WAJIB punya bentuk yang sama, dan
+ * menyalin yang satu ke yang lain harus satu baris. Lima pasang state lepas akan membuat
+ * "terapkan" menjadi lima penyalinan yang salah satunya dapat terlupa.
+ */
+type PanelPenyaring = {
+  nomorPolis: string
+  nomorKlaim: string
+  pic: string
+  statusTransfer: string
+  statusBayar: string
+}
+
+const PANEL_KOSONG: PanelPenyaring = {
+  nomorPolis: '',
+  nomorKlaim: '',
+  pic: '',
+  statusTransfer: '',
+  statusBayar: '',
+}
+
 export function DashboardClaimPage() {
   const portal = useSelectedPortal((state) => state.alias)
 
@@ -66,6 +91,27 @@ export function DashboardClaimPage() {
 
   const [liniBisnis, setLiniBisnis] = useState('')
   const [cari, setCari] = useState('')
+
+  /*
+    Kelima isian panel penyaring `Section/FilterDashboardClaim_sec-Section.xml`.
+
+    Namanya mengikuti ISINYA. Di layar lama properti penyimpannya menyesatkan — Nopolis
+    disimpan pada `TempInputFilter.CaseID`, PIC pada `TempInputFilter.ClaimID`, status
+    pembayaran pada `.City`, dan status transfer pada `.CityID`.
+
+    # Kenapa ada DUA salinan: draf dan terapan
+
+    Layar lama TIDAK menyaring sambil mengetik. Panelnya punya tombol **Search Data**, dan
+    penyaringnya baru berlaku saat tombol itu ditekan. Bentuk sebelumnya di sini menembak
+    ulang pada setiap ketikan — lebih gesit, tetapi bukan perilaku yang direplikasi, dan
+    pada tabel berpuluh juta baris ia juga mengirim satu permintaan per huruf.
+
+    `draf` adalah apa yang sedang diketik; `terapan` adalah apa yang benar-benar menyaring.
+    Keduanya dipisah supaya "yang terlihat di kotak" dan "yang sedang berlaku" tidak dapat
+    menyimpang tanpa disadari.
+  */
+  const [draf, setDraf] = useState(PANEL_KOSONG)
+  const [terapan, setTerapan] = useState(PANEL_KOSONG)
   const [tile, setTile] = useState<Tile | null>(null)
   const [halaman, setHalaman] = useState(1)
 
@@ -80,7 +126,23 @@ export function DashboardClaimPage() {
 
   // "Transfer All Case By UserID" — tombol tingkat layar pada grid Outstanding, bukan per
   // baris. Ia memindahkan SELURUH pekerjaan satu operator sekaligus.
-  const [transferMassal, setTransferMassal] = useState(false)
+  /**
+   * Baris yang dibawa ke Transfer All Case By UserID.
+   *
+   * `null` berarti dialognya tertutup; irisan kosong berarti terbuka tanpa satu pun baris
+   * tercentang — dan keduanya memang keadaan yang berbeda.
+   */
+  /*
+    Permintaan transfer massal yang sedang terbuka.
+
+    `semuaCocok` dibawa bersama barisnya, bukan disimpan terpisah: dialog harus tahu APA yang
+    dipindahkan — baris tercentang, atau seluruh hasil penyaring — dan dua state yang harus
+    sepakat tentang hal yang sama adalah dua state yang akan menyimpang.
+  */
+  const [transferMassal, setTransferMassal] = useState<{
+    baris: BarisKlaim[]
+    semuaCocok: boolean
+  } | null>(null)
 
   const [cariTampungan, setCariTampungan] = useState('')
   const [halamanTampungan, setHalamanTampungan] = useState(1)
@@ -95,8 +157,51 @@ export function DashboardClaimPage() {
   }
 
   const penyaring = usePenyaringDashboard()
-  const ringkasan = useRingkasanDashboard({ lini_bisnis: liniBisnis, cari })
-  const telusur = useTelusurDashboard(tile, { lini_bisnis: liniBisnis, cari, halaman })
+  // Ringkasan menerima penyaring yang SAMA dengan telusur. Kartu yang disaring berbeda dari
+  // daftarnya akan menampilkan angka yang tidak cocok dengan isi tabel di bawahnya, dan tidak
+  // ada galat yang muncul.
+  const penyaringAktif = {
+    lini_bisnis: liniBisnis,
+    cari,
+    nomor_polis: terapan.nomorPolis,
+    nomor_klaim: terapan.nomorKlaim,
+    pic: terapan.pic,
+    status_transfer: terapan.statusTransfer,
+    status_bayar: terapan.statusBayar,
+  }
+
+  /**
+   * Apakah ada yang bisa dikosongkan.
+   *
+   * Draf DAN terapan sama-sama diperiksa: kotak yang sudah dikosongkan tangan tetapi belum
+   * ditekan Search Data meninggalkan penyaring yang masih berlaku, dan Clear Filter harus
+   * tetap dapat ditekan untuk mencabutnya.
+   */
+  const panelTerisi =
+    Object.values(draf).some((nilai) => nilai !== '') ||
+    Object.values(terapan).some((nilai) => nilai !== '')
+
+  /** Menerapkan isi panel — tombol "Search Data" pada layar lama. */
+  function terapkanPanel() {
+    setTerapan(draf)
+    setHalaman(1)
+  }
+
+  /**
+   * Mengosongkan panel — tombol "Clear Filter".
+   *
+   * Keduanya dikosongkan sekaligus. Mengosongkan draf saja akan menyisakan penyaring yang
+   * MASIH berlaku sementara kotaknya sudah kosong — pengguna membaca daftar tersaring
+   * tanpa satu pun petunjuk mengapa.
+   */
+  function kosongkanPanel() {
+    setDraf(PANEL_KOSONG)
+    setTerapan(PANEL_KOSONG)
+    setHalaman(1)
+  }
+
+  const ringkasan = useRingkasanDashboard(penyaringAktif)
+  const telusur = useTelusurDashboard(tile, { ...penyaringAktif, halaman })
 
   /**
    * Mengubah penyaring mengembalikan telusur ke halaman pertama.
@@ -126,6 +231,29 @@ export function DashboardClaimPage() {
 
   const pilihanLini = useMemo(
     () => (penyaring.data?.lini_bisnis ?? []).map((p) => ({ value: p.nilai, label: p.label })),
+    [penyaring.data],
+  )
+
+  /**
+   * Isi kedua dropdown panel, datang dari server bersama pilihan lini bisnis.
+   *
+   * Pilihan bernilai kosong DIBUANG di sini: `SelectField` sudah menggambar baris kosongnya
+   * sendiri lewat `emptyText`, sehingga membiarkannya akan memberi dua baris "Semua …" yang
+   * berbeda tulisan tetapi sama artinya.
+   */
+  const pilihanStatusTransfer = useMemo(
+    () =>
+      (penyaring.data?.status_transfer ?? [])
+        .filter((p) => p.nilai !== '')
+        .map((p) => ({ value: p.nilai, label: p.label })),
+    [penyaring.data],
+  )
+
+  const pilihanStatusBayar = useMemo(
+    () =>
+      (penyaring.data?.status_bayar ?? [])
+        .filter((p) => p.nilai !== '')
+        .map((p) => ({ value: p.nilai, label: p.label })),
     [penyaring.data],
   )
 
@@ -231,9 +359,97 @@ export function DashboardClaimPage() {
             onChange={(event) => gantiLiniBisnis(event.target.value)}
           />
 
-          <div className="flex items-end">
+          {/*
+            Kelima isian panel penyaring layar lama, dengan nama yang dilihat pengguna di
+            sana: Nopolis, No Klaim, PIC, Status Transfer, Status Pembayaran.
+
+            Kedua dropdown sempat TIDAK digambar, dengan alasan bahwa kolom yang disaringnya
+            tidak ada pada tabel yang dibaca tile Outstanding. Alasan itu KELIRU: keduanya
+            memang bukan kolom — `Activity/GCNMGetManagerCase_Act-Act.xml` menyaring Status
+            Transfer lewat sub-kueri EXISTS atas tabel adjustment, dan Status Pembayaran
+            lewat kode status klaim `1163` (Paid).
+          */}
+          <Field
+            id="dashboard-nomor-polis"
+            label="Nopolis"
+            value={draf.nomorPolis}
+            onChange={(event) =>
+              setDraf((isi) => ({ ...isi, nomorPolis: event.target.value }))
+            }
+          />
+
+          <Field
+            id="dashboard-nomor-klaim"
+            label="No Klaim"
+            value={draf.nomorKlaim}
+            onChange={(event) =>
+              setDraf((isi) => ({ ...isi, nomorKlaim: event.target.value }))
+            }
+            hint="Contoh : PNC-1234"
+          />
+
+          <Field
+            id="dashboard-pic"
+            label="PIC"
+            value={draf.pic}
+            onChange={(event) =>
+              setDraf((isi) => ({ ...isi, pic: event.target.value }))
+            }
+          />
+
+          {/*
+            Teks pilihan kosong kedua dropdown disalin APA ADANYA dari
+            `Section/FilterDashboardClaim_sec-Section.xml`, elemen `pyNoSelectionText`
+            (`D-13`). Section-nya diterima 2026-10-08; sebelum itu keduanya berbunyi
+            "Semua Status Transfer" dan "Semua Status Pembayaran" — karangan kita sendiri.
+
+            Huruf besar dan tanda hubungnya ikut ditiru. Ia terbaca aneh, dan memang begitu
+            di layar lama — menyeragamkannya berarti mengubah teks yang sudah dikenal
+            pengguna.
+          */}
+          <SelectField
+            id="dashboard-status-transfer"
+            label="Status Transfer"
+            value={draf.statusTransfer}
+            options={pilihanStatusTransfer}
+            emptyText="---PILIH STATUS TRANSFER---"
+            onChange={(event) =>
+              setDraf((isi) => ({ ...isi, statusTransfer: event.target.value }))
+            }
+          />
+
+          <SelectField
+            id="dashboard-status-bayar"
+            label="Status Pembayaran"
+            value={draf.statusBayar}
+            options={pilihanStatusBayar}
+            emptyText="---PILIH STATUS PEMBAYARAN---"
+            onChange={(event) =>
+              setDraf((isi) => ({ ...isi, statusBayar: event.target.value }))
+            }
+          />
+
+          {/*
+            Tiga tombol panel layar lama: Search Data, Clear Filter, dan Muat ulang.
+
+            Search Data ADA karena panelnya memang tidak menyaring sambil mengetik — lihat
+            catatan pada `draf`. Clear Filter mengosongkan kotaknya DAN penyaring yang
+            sedang berlaku sekaligus; mengosongkan kotaknya saja akan menyisakan daftar
+            tersaring tanpa satu pun petunjuk mengapa.
+
+            "Select All" pada layar lama TIDAK digambar di sini — lihat catatan di bawah.
+          */}
+          <div className="col-span-full flex flex-wrap items-end gap-2">
+            <Button tone="utama" onClick={terapkanPanel} disabled={ringkasan.isFetching}>
+              Search Data
+            </Button>
+
+            <Button tone="kedua" onClick={kosongkanPanel} disabled={!panelTerisi}>
+              Clear Filter
+            </Button>
+
             <Button
-              tone="kedua"
+              tone="halus"
               onClick={() => {
                 ringkasan.refetch()
                 if (tile !== null) telusur.refetch()
@@ -246,15 +462,12 @@ export function DashboardClaimPage() {
           </div>
 
           {/*
-            "Transfer All Case By UserID" — tombol tingkat layar pada layar lama, bukan per
-            baris. Ia memindahkan SELURUH pekerjaan satu operator sekaligus, sehingga ia
-            tidak bergantung pada kartu mana yang sedang dipilih dan tetap digambar di sini.
+            "Transfer All Case By UserID" TIDAK lagi digambar di panel ini.
+
+            Di layar lama ia milik `InboxOutstandingClaim_Section` — tombol di atas GRID,
+            bersebelahan dengan "Select All" yang menyuapinya. Menaruhnya di panel penyaring
+            memisahkannya dari centang yang menjadi isinya.
           */}
-          <div className="flex items-end">
-            <Button tone="kedua" onClick={() => setTransferMassal(true)}>
-              Transfer All Case By UserID
-            </Button>
-          </div>
         </div>
       </section>
 
@@ -315,13 +528,21 @@ export function DashboardClaimPage() {
           state={telusur}
           liniBisnis={liniBisnis}
           onTransfer={setTransferKlaim}
+          kunciPenyaring={JSON.stringify(penyaringAktif)}
+          onTransferMassal={(baris, semuaCocok) => setTransferMassal({ baris, semuaCocok })}
         />
       )}
         </>
       )}
 
-      {transferMassal ? (
-        <DialogTransfer lingkup="massal" onTutup={() => setTransferMassal(false)} />
+      {transferMassal !== null ? (
+        <DialogTransfer
+          lingkup="massal"
+          baris={transferMassal.baris}
+          semuaCocok={transferMassal.semuaCocok}
+          penyaringAktif={penyaringAktif}
+          onTutup={() => setTransferMassal(null)}
+        />
       ) : null}
 
       {transferKlaim !== null ? (
@@ -351,7 +572,9 @@ function Telusur({
   onHalaman,
   state,
   liniBisnis,
+  kunciPenyaring,
   onTransfer,
+  onTransferMassal,
 }: {
   tile: Tile
   judul: string
@@ -361,11 +584,37 @@ function Telusur({
   onHalaman: (halaman: number) => void
   state: ReturnType<typeof useTelusurDashboard>
   liniBisnis: string
+
+  /**
+   * Sidik jari penyaring yang sedang berlaku, untuk membuang mode "Select All".
+   *
+   * Dikirim sebagai satu teks, bukan objek: objek baru pada setiap penggambaran akan
+   * membuat efeknya berjalan terus-menerus dan membuang mode itu sebelum sempat dipakai.
+   */
+  kunciPenyaring: string
+
   onTransfer: (row: BarisKlaim) => void
+  /**
+   * Membuka Transfer All Case By UserID dengan baris yang sedang tercentang.
+   *
+   * Barisnya dikirim ke ATAS, bukan state halaman yang diturunkan ke bawah: centang hidup
+   * di sini bersama barisnya, dan menaikkannya ke halaman akan membuat dua tempat harus
+   * sepakat tentang baris mana yang sedang tampil.
+   */
+  onTransferMassal: (baris: BarisKlaim[], semuaCocok: boolean) => void
 }) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
   const [galatUnduh, setGalatUnduh] = useState<string | null>(null)
+
+  /*
+    Klaim yang rinciannya sedang dibuka.
+
+    Disimpan BARISNYA, bukan hanya kuncinya: judul popup menyebut nomor klaim, dan barisnya
+    sudah memuatnya. Mengambilnya ulang dari server hanya untuk judul adalah perjalanan
+    jaringan yang tidak perlu.
+  */
+  const [rincian, setRincian] = useState<BarisKlaim | null>(null)
 
   // Baris yang dicentang pada kolom "Pilih" — hanya tile Close Claim yang memilikinya.
   //
@@ -383,6 +632,24 @@ function Telusur({
   useEffect(() => {
     setDipilih(new Set())
   }, [tile, halaman, cari, liniBisnis])
+
+  /*
+    Mode "seluruh hasil penyaring" — inilah arti "Select All".
+
+    Ia TERPISAH dari centang per baris, dan pemisahannya disengaja. Centang per baris
+    sengaja dibuang saat halaman berganti (lihat useEffect di atas): tanpa itu, pengguna
+    mencentang tiga baris di halaman 1, berpindah ke halaman 2, lalu menekan ReOpen — dan
+    tiga klaim yang TIDAK terlihat ikut terkirim.
+
+    Alasan itu tetap berlaku. Yang tidak berlaku untuknya adalah "Select All", karena di sana
+    pengguna memang menyatakan seluruhnya. Jadi mode ini bertahan melewati halaman, dan
+    DIBUANG saat penyaringnya berubah — sebab "seluruhnya" lalu berarti himpunan yang lain.
+  */
+  const [semuaCocok, setSemuaCocok] = useState(false)
+
+  useEffect(() => {
+    setSemuaCocok(false)
+  }, [tile, kunciPenyaring])
 
   function gantiPilih(klaimID: string) {
     setDipilih((sebelumnya) => {
@@ -468,6 +735,22 @@ function Telusur({
   const barisKlaim = data?.klaim ?? []
   const barisDipilih = barisKlaim.filter((row) => dipilih.has(row.klaim_id || row.nomor_klaim))
 
+  /*
+    Nomor baris dihitung dari posisi baris pada halaman INI ditambah offset halamannya.
+
+    Peta dibangun sekali per penggambaran, bukan `indexOf` per sel: `indexOf` pada 25 baris
+    dipanggil 25 kali menjadi pekerjaan kuadrat, dan pada grid yang isinya dapat tumbuh itu
+    biaya yang tidak perlu dibayar.
+
+    Kuncinya sama persis dengan `rowKey` tabel. Kunci yang berbeda akan menomori baris yang
+    salah pada data yang nomor klaimnya kembar — dan data warisan memuat kasus seperti itu.
+  */
+  const awalHalaman = (pagination.page - 1) * pagination.size
+  const petaNomor = new Map(
+    barisKlaim.map((row, index) => [row.klaim_id || row.nomor_klaim, awalHalaman + index + 1]),
+  )
+  const nomorBaris = (row: BarisKlaim) => petaNomor.get(row.klaim_id || row.nomor_klaim) ?? 0
+
   // Kedua tombol hanya ada pada tile Close Claim, karena di layar lama keduanya digambar
   // oleh `InboxManagerReopen1_Sec` — section yang hanya menampung grid Close Claim.
   const tombolCloseClaim =
@@ -490,9 +773,70 @@ function Telusur({
       </>
     ) : null
 
+  /*
+    Dua tombol tingkat grid pada Inbox Outstanding layar lama.
+
+    "Select All" berarti SELURUH hasil penyaring — lintas halaman, bukan 25 baris pada halaman
+    yang terbuka. Itu arti namanya, dan itu yang diminta Work Owner (2026-10-07).
+
+    Centang per baris DIMATIKAN selagi mode itu hidup. Alternatifnya — membiarkan pengguna
+    melepas satu baris dari "seluruhnya" — menuntut daftar pengecualian yang ikut dikirim ke
+    server, dan penyaring bersisa-kecuali itu belum ada. Mematikannya membuat batasnya
+    terlihat; membiarkannya membuat layar menjanjikan hal yang tidak dikerjakannya.
+  */
+  const totalCocok = pagination.total
+
+  const tombolOutstanding =
+    tile === 'outstanding' ? (
+      <>
+        <Button
+          tone="kedua"
+          disabled={totalCocok === 0}
+          onClick={() => {
+            // Keduanya diubah bersama: mode hidup berarti centang per baris tidak lagi
+            // bermakna, dan meninggalkannya terisi akan membuat pembatalan mengembalikan
+            // centang yang sudah tidak terlihat alasannya.
+            setSemuaCocok((aktif) => !aktif)
+            setDipilih(new Set())
+          }}
+        >
+          {semuaCocok ? 'Batalkan Pilihan' : 'Select All'}
+        </Button>
+        <Button
+          tone="kedua"
+          onClick={() => onTransferMassal(semuaCocok ? [] : barisDipilih, semuaCocok)}
+        >
+          Transfer All Case By UserID
+        </Button>
+      </>
+    ) : null
+
+  /*
+    Jumlahnya dinyatakan, bukan dibiarkan ditebak.
+
+    "Select All" yang menyentuh 1.639 klaim dan yang menyentuh 3 klaim terlihat sama persis di
+    layar bila angkanya tidak disebut — dan yang pertama tidak dapat dibatalkan dengan mudah.
+  */
+  const keteranganPilihan =
+    tile === 'outstanding' && semuaCocok ? (
+      <p className="mb-4 rounded-kartu border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <strong>{totalCocok.toLocaleString('id-ID')}</strong> klaim terpilih — seluruh hasil
+        penyaring, termasuk halaman lain. Centang per baris dimatikan selama pilihan ini aktif.
+      </p>
+    ) : null
+
   return (
     <>
     {peringatanUnduh}
+    {keteranganPilihan}
+
+    {rincian !== null ? (
+      <DialogRincianKlaim
+        klaimID={rincian.klaim_id || rincian.nomor_klaim}
+        nomorKlaim={rincian.nomor_klaim}
+        onTutup={() => setRincian(null)}
+      />
+    ) : null}
 
     {/*
       Sebab tombolnya mati dinyatakan, bukan dibiarkan ditebak.
@@ -515,8 +859,8 @@ function Telusur({
       // itu ada di layar lama dan ditiru apa adanya.
       columns={
         tile === 'close-claim'
-          ? kolomCloseClaim(dipilih, gantiPilih)
-          : kolomOutstanding(onTransfer)
+          ? kolomCloseClaim(dipilih, gantiPilih, nomorBaris, setRincian)
+          : kolomOutstanding(onTransfer, dipilih, gantiPilih, nomorBaris, semuaCocok, setRincian)
       }
       rows={barisKlaim}
       rowKey={(row) => row.klaim_id || row.nomor_klaim}
@@ -530,6 +874,7 @@ function Telusur({
       actions={
         <>
           {tombolCloseClaim}
+          {tombolOutstanding}
           {tombolUnduh}
         </>
       }
@@ -566,9 +911,99 @@ function umur(hari: number): string {
   return `${hari}d ago`
 }
 
+/**
+ * Menggambar stempel waktu `YYYY-MM-DD HH:MM:SS` sebagai tanggal beserta jamnya.
+ *
+ * Ada DI SINI, bukan di `components/format`, karena `formatDate` bersama dipakai belasan modul
+ * yang sudah selesai — dan hanya grid ini yang menampilkan jam.
+ *
+ * Dua kolom memakainya: **Tanggal Pendaftaran** dan **Report Date**. Layar Pega menggambar
+ * keduanya dengan jam (`24 Jan 20 14:54:24`); menampilkannya sebagai tanggal saja
+ * menghilangkan isi, bukan sekadar perinciannya — dua klaim yang didaftarkan pada hari yang
+ * sama menjadi tidak terbedakan urutannya.
+ *
+ * Jam `00:00:00` DIGAMBAR apa adanya, sama seperti Pega. Menyembunyikannya membuat dua
+ * keadaan yang berbeda — tengah malam, dan baris yang memang tidak membawa jam — tampak sama.
+ */
+function tanggalJam(nilai: string): string {
+  if (!nilai) return '—'
+
+  // Bentuk lama (tanggal saja) tetap digambar benar: ini jalur yang dilalui data mana pun
+  // yang belum membawa jam, dan membiarkannya jatuh ke cabang bawah akan menampilkan
+  // "— 00:00:00" untuk tanggal yang sebenarnya sah.
+  const [tanggal, jam] = nilai.split(' ')
+  if (!tanggal) return '—'
+  if (!jam) return formatDate(tanggal)
+
+  return `${formatDate(tanggal)} ${jam}`
+}
+
+/**
+ * Nomor klaim sebagai tautan — di Pega ia pranala, dan di sini pun.
+ *
+ * # Ke mana ia menuju, dan kenapa ke sana
+ *
+ * Preseden modul lain: tautkan ke modul yang benar-benar menggantikan Flow Action yang Pega
+ * gambar untuk kelas objek kerja baris itu. `inbox-claim-treaty-non-prop` menempuh itu dan
+ * berakhir di `input-acceptation`, karena `InputAcceptation` satu-satunya Flow Action yang
+ * terdaftar pada kelasnya.
+ *
+ * Baris di sini berkelas **`ASM-FW-GCNMFW-Work-PNC`** — case klaim utama — dan layar yang
+ * dibukanya adalah harness **`PNCViewClaim`**, yang **tidak ada di export** (`R-16`;
+ * `catatan-pengembangan.md:1832`). Jadi bentuk layarnya pun belum diketahui, apalagi modul
+ * penggantinya.
+ *
+ * Yang dipakai karena itu `/view-claim/:referensi` — rute yang sudah dicadangkan dan sudah
+ * ditautkan **tujuh inbox lain**. Pengguna sampai di penampung yang menyatakan layarnya belum
+ * dibangun; itu jujur, dan konsisten dengan seluruh aplikasi. Begitu modul View Claim ada,
+ * satu rute berubah untuk delapan layar sekaligus — bukan delapan perubahan.
+ *
+ * # Yang dikirim NOMOR klaim, bukan kunci teknis Pega
+ *
+ * Alamatnya terbaca orang, dapat disalin ke percakapan, dan tidak membocorkan bentuk kunci
+ * internal Pega ke bilah alamat (`D-22`). Kunci teknisnya tetap dikirim server pada setiap
+ * baris, sehingga beralih memakainya kelak tidak menuntut perubahan kontrak.
+ *
+ * # Baris tanpa nomor klaim TIDAK menjadi tautan
+ *
+ * Tautan beralamat kosong tetap dapat diklik dan membawa pengguna ke layar yang pasti gagal.
+ * Data warisan memuat baris seperti itu — uji adapter memori memakainya sebagai contoh.
+ */
+function TautanKlaim({
+  row,
+  onBuka,
+}: {
+  row: BarisKlaim
+  onBuka: (row: BarisKlaim) => void
+}) {
+  if (!row.nomor_klaim) return <span className='text-slate-400'>—</span>
+
+  return (
+    <button
+      type='button'
+      onClick={() => onBuka(row)}
+      className={[
+        'font-medium text-blue-700 underline-offset-2 hover:underline',
+        'focus:outline-none focus-visible:rounded-kontrol',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+        'focus-visible:outline-blue-600',
+      ].join(' ')}
+    >
+      {row.nomor_klaim}
+    </button>
+  )
+}
+
 /** Kolom bersama kedua tile bertipe klaim, dalam urutan yang sama dengan layar lama. */
-const kolomKlaimDasar: Column<BarisKlaim>[] = [
-  { key: 'nomor_klaim', title: 'No Klaim', value: (row) => row.nomor_klaim, width: '9rem' },
+function kolomKlaimDasar(onBuka: (row: BarisKlaim) => void): Column<BarisKlaim>[] {
+  return [
+  {
+    key: 'nomor_klaim',
+    title: 'No Klaim',
+    value: (row) => row.nomor_klaim,
+    width: '9rem',
+    render: (row) => <TautanKlaim row={row} onBuka={onBuka} />,
+  },
   { key: 'nomor_polis', title: 'No Polis', value: (row) => row.nomor_polis, width: '11rem' },
   { key: 'nama_tertanggung', title: 'Nama Tertanggung', value: (row) => row.nama_tertanggung },
   { key: 'nama_bisnis', title: 'Nama Bisnis', value: (row) => row.nama_bisnis },
@@ -578,10 +1013,11 @@ const kolomKlaimDasar: Column<BarisKlaim>[] = [
     key: 'tanggal_pendaftaran',
     title: 'Tanggal Pendaftaran',
     value: (row) => row.tanggal_pendaftaran,
-    render: (row) => formatDate(row.tanggal_pendaftaran),
-    width: '10rem',
+    render: (row) => tanggalJam(row.tanggal_pendaftaran),
+    width: '12rem',
   },
-]
+  ]
+}
 
 const kolomLamaWaktu: Column<BarisKlaim> = {
   key: 'lama_hari',
@@ -610,19 +1046,44 @@ const kolomPICAdmin: Column<BarisKlaim>[] = [
  */
 function kolomOutstanding(
   onTransfer: (row: BarisKlaim) => void,
+  dipilih: Set<string>,
+  onPilih: (klaimID: string) => void,
+  nomor: (row: BarisKlaim) => number,
+  semuaCocok: boolean,
+  onBuka: (row: BarisKlaim) => void,
 ): Column<BarisKlaim>[] {
   return [
-  ...kolomKlaimDasar,
+  kolomNomor(nomor),
+  // Layar lama menggambar "Pilih" di grid INI juga, dan centangnya melayani
+  // "Transfer All Case By UserID".
+  kolomPilih(dipilih, onPilih, semuaCocok),
+  ...kolomKlaimDasar(onBuka),
   {
     key: 'tanggal_lapor',
     title: 'Report Date',
     value: (row) => row.tanggal_lapor,
-    render: (row) => (row.tanggal_lapor ? formatDate(row.tanggal_lapor) : '—'),
-    width: '10rem',
+    render: (row) => tanggalJam(row.tanggal_lapor),
+    width: '12rem',
   },
   kolomLamaWaktu,
   ...kolomPICAdmin,
   { key: 'status_klaim_label', title: 'Claim status', value: (row) => row.status_klaim_label },
+
+  /*
+    Posisi Klaim dan Progress Klaim DICABUT 2026-10-07.
+
+    Keduanya dibangun atas pembacaan `InboxOutstandingClaim_Section:20167` dan `:20279`,
+    tempat `.CloseClaimNote` dan `.ClaimNo` terikat sebagai nilai sel ber-`pyVisible=ALWAYS`.
+    Pembacaan itu KELIRU: Work Owner menggulir grid Pega ke kanan, dan setelah "Claim status"
+    langsung tombol Transfer.
+
+    `pyVisible=ALWAYS` membuktikan satu elemen terlihat — BUKAN bahwa ia kolom pada grid yang
+    sedang dicari. Ikatan di baris itu rupanya milik tata letak lain di section yang sama.
+
+    Ikut dicabut sampai ke pangkalnya: `posisi.sql`, `posisi.go`, `attachPositions`,
+    `ClaimRow.Position`/`.Progress`, dan kedua field DTO — seluruh rantainya hanya melayani
+    kedua kolom ini, termasuk SATU KUERI TAMBAHAN per halaman.
+  */
   {
     key: 'aksi',
     title: 'Aksi',
@@ -640,32 +1101,45 @@ function kolomOutstanding(
 }
 
 /**
- * Kolom tile **Close Claim**, mengikuti grid layar lama apa adanya:
+ * Kolom **"Pilih"** — kotak centang per baris.
  *
- *	No Klaim · No Polis · Nama Tertanggung · Nama Bisnis · Sumber Bisnis · Nama Cabang ·
- *	Tanggal Pendaftaran · Lama Waktu Klaim · PIC Teknik · Admin PNC
+ * Dipakai DUA grid, dan keduanya menggambarnya di layar lama: `InboxManagerReopen1_Sec`
+ * untuk Close Claim (melayani ReOpen dan Copy Klaim) dan `InboxOutstandingClaim_Section`
+ * untuk Outstanding (melayani Transfer All Case By UserID).
  *
- * Ia sengaja BERBEDA dari Outstanding: layar lama tidak menggambar Report Date maupun Claim
- * status di sini. Menyamakan keduanya akan menampilkan kolom yang datanya memang tidak
- * dibaca — dan kolom kosong tidak dapat dibedakan dari data yang hilang.
- *
- * # Kolom "Pilih"
- *
- * Kolom pertamanya adalah kotak centang, persis `Section/InboxManagerReopen1_Sec-Section.xml`
- * yang menggambar caption **"Pilih"** dengan kontrol `pxCheckbox`. Centangnya melayani kedua
- * tombol di atas tabel — ReOpen dan Copy Klaim.
- *
- * **Tanpa "Pilih Semua".** Section lamanya memuat tepat SATU kontrol checkbox, yaitu yang
- * per baris; tidak ada kontrol di kepala kolomnya. Menambahkannya akan memudahkan pekerjaan
- * yang akibatnya tidak dapat dibatalkan — mencentang seluruh halaman lalu menekan ReOpen
- * mencatat 25 permintaan sekaligus.
+ * Satu definisi untuk keduanya, bukan dua salinan: bentuk dan label aksesibilitasnya wajib
+ * sama, dan dua salinan akan menyimpang pada perubahan berikutnya.
  */
-function kolomCloseClaim(
+/**
+ * Kolom nomor baris — kolom paling kiri pada grid Pega.
+ *
+ * PERHATIAN: penomorannya BERLANJUT antar halaman (halaman 2 mulai dari 26), bukan mengulang
+ * dari 1. Itu satu-satunya hal di grid ini yang saya PILIH, bukan salin — tangkapan layar
+ * Pega hanya memperlihatkan halaman pertama, sehingga perilakunya di halaman kedua tidak
+ * terbaca dari sana.
+ *
+ * Dipilih berlanjut supaya tidak bertentangan dengan keterangan di bawah tabel, yang berbunyi
+ * 'Menampilkan 26–50 dari 1.639 baris' pada halaman yang sama. Nomor yang mengulang dari 1 di
+ * sebelah keterangan itu akan membuat keduanya saling membantah.
+ */
+function kolomNomor(nomor: (row: BarisKlaim) => number): Column<BarisKlaim> {
+  return {
+    key: 'nomor_baris',
+    title: '',
+    // Bukan data: tidak diurutkan dan tidak ikut dicari.
+    noSort: true,
+    value: () => '',
+    width: '3rem',
+    render: (row) => <span className='text-slate-400'>{nomor(row)}</span>,
+  }
+}
+
+function kolomPilih(
   dipilih: Set<string>,
   onPilih: (klaimID: string) => void,
-): Column<BarisKlaim>[] {
-  return [
-  {
+  semuaCocok: boolean,
+): Column<BarisKlaim> {
+  return {
     key: 'pilih',
     title: 'Pilih',
     // Kolom centang tidak diurutkan dan tidak dicari: isinya kendali, bukan data.
@@ -677,7 +1151,11 @@ function kolomCloseClaim(
       return (
         <input
           type="checkbox"
-          checked={dipilih.has(id)}
+          // Mode "seluruh hasil penyaring" menggambar SETIAP baris tercentang, di halaman
+          // mana pun — itu yang membedakannya dari centang per halaman. Dimatikan karena
+          // melepas satu baris darinya menuntut daftar pengecualian yang belum ada.
+          checked={semuaCocok || dipilih.has(id)}
+          disabled={semuaCocok}
           onChange={() => onPilih(id)}
           // Nomor klaimnya disebut, bukan "Pilih" saja: pembaca layar membacakan 25 kotak
           // centang berturut-turut, dan label yang sama persis membuat keduanya tidak
@@ -687,8 +1165,47 @@ function kolomCloseClaim(
         />
       )
     },
-  },
-  ...kolomKlaimDasar,
+  }
+}
+
+/**
+ * Kolom tile **Close Claim**, mengikuti grid layar lama apa adanya:
+ *
+ *	No Klaim · No Polis · Nama Tertanggung · Nama Bisnis · Sumber Bisnis · Nama Cabang ·
+ *	Tanggal Pendaftaran · Lama Waktu Klaim · PIC Teknik · Admin PNC
+ *
+ * Ia sengaja BERBEDA dari Outstanding: layar lama tidak menggambar Report Date maupun Claim
+ * status di sini. Menyamakan keduanya akan menampilkan kolom yang datanya memang tidak
+ * dibaca — dan kolom kosong tidak dapat dibedakan dari data yang hilang.
+ *
+ * # Kolom "Pilih" — urutannya BERBEDA dari Outstanding
+ *
+ * Kotak centangnya ada di kolom **kedua**, sesudah No Klaim. Itu bukan selera: baris header
+ * `Section/InboxManagerReopen1_Sec-Section.xml` menyusunnya `No Klaim` lalu `Pilih`,
+ * sedangkan `InboxOutstandingClaim_Section` menyusunnya terbalik — `Pilih` lalu `No Klaim`.
+ * Kedua urutan ditiru apa adanya, bukan diseragamkan.
+ *
+ * Centangnya melayani kedua tombol di atas tabel — ReOpen dan Copy Klaim.
+ *
+ * **Tanpa "Select All" — berbeda dari Outstanding.** Section lamanya memuat tepat SATU
+ * kontrol checkbox, yaitu yang per baris; tidak ada tombol pilih-semua. Outstanding punya
+ * tombol itu dan Close Claim tidak, dan perbedaan itu ditiru apa adanya — menambahkannya di
+ * sini akan memudahkan pekerjaan yang akibatnya tidak dapat dibatalkan: mencentang seluruh
+ * halaman lalu menekan ReOpen mencatat 25 permintaan sekaligus.
+ */
+function kolomCloseClaim(
+  dipilih: Set<string>,
+  onPilih: (klaimID: string) => void,
+  nomor: (row: BarisKlaim) => number,
+  onBuka: (row: BarisKlaim) => void,
+): Column<BarisKlaim>[] {
+  // `No Klaim` mendahului `Pilih` di sini — lihat keterangan di atas.
+  const [noKlaim, ...sisaKlaimDasar] = kolomKlaimDasar(onBuka)
+  return [
+  kolomNomor(nomor),
+  ...(noKlaim ? [noKlaim] : []),
+  kolomPilih(dipilih, onPilih, false),
+  ...sisaKlaimDasar,
   kolomLamaWaktu,
   ...kolomPICAdmin,
   ]

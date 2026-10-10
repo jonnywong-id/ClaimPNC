@@ -55,7 +55,8 @@ type FieldValues = z.infer<typeof schema>
 type Props = {
   /** Dipanggil setelah nomor terbit, supaya form utama dapat memakainya langsung. */
   onIssued: (value: { client_id: string; nama_principal: string; nomor: string }) => void
-  onClose: () => void
+  /** Opsional: di dalam alur Tambah panel ini bagian tetap, tidak ada yang menutupnya. */
+  onClose?: () => void
 }
 
 /**
@@ -119,7 +120,7 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
       aria-label="Terbitkan virtual account"
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">Terbitkan Virtual Account</h3>
+        <h3 className="text-base font-semibold text-slate-900">Generated New VA</h3>
         <p className="mt-1 text-sm text-slate-600">
           Nomor rekening virtual tempat principal mengembalikan dana. Bila principal ini
           sudah punya, nomor yang lama yang dipakai — bukan diterbitkan yang baru.
@@ -201,11 +202,13 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={issue.isPending}>
-            {issue.isPending ? 'Memproses…' : 'Terbitkan VA'}
+            {issue.isPending ? 'Memproses…' : 'Get VA'}
           </Button>
-          <Button tone="halus" onClick={onClose} disabled={issue.isPending}>
-            Tutup
-          </Button>
+          {onClose && (
+            <Button tone="halus" onClick={onClose} disabled={issue.isPending}>
+              Tutup
+            </Button>
+          )}
         </div>
       </div>
     </form>

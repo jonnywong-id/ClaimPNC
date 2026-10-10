@@ -64,6 +64,10 @@ type GridDTO struct {
 	// jawaban. Keduanya dipisah karena kesembilan komponen itu sama di kedua grid;
 	// mengirimnya dua kali berarti dua daftar yang dapat berselisih.
 	Columns []ColumnDTO `json:"kolom"`
+
+	// TrailingColumns adalah kolom tetap SESUDAH kesembilan komponen — hari ini hanya
+	// KATEGORI pada tab Adjuster dan NOTE pada tab Admin.
+	TrailingColumns []ColumnDTO `json:"kolom_akhir"`
 }
 
 // TabDTO adalah satu tab layar.
@@ -102,22 +106,32 @@ type MetadataResponse struct {
 	// AdminPlannedDifferences adalah selisih terencana tab KPI Admin.
 	AdminPlannedDifferences []string `json:"selisih_terencana_admin"`
 
-	// CoordinatorInQuery adalah nama koordinator sebagaimana ditulis di TEKS KUERI lama,
-	// yang BERBEDA dari yang ditampilkan. Dikirim supaya layar dapat menjelaskan
-	// selisihnya kepada penguji yang membandingkan layar ini dengan rule Pega.
-	CoordinatorInQuery string `json:"koordinator_di_kueri"`
-
 	// BusinessLines adalah isi dropdown lini bisnis pada tab KPI PIC Teknik.
 	BusinessLines []BusinessLineDTO `json:"lini_bisnis"`
 
 	// PICComponents adalah keempat komponen penilaian PIC Teknik.
 	PICComponents []PICComponentDTO `json:"komponen_pic"`
 
+	// PICExportKinds adalah isi dropdown "Pilih Data KPI" pada tab KPI PIC Teknik.
+	//
+	// Dikirim peladen, bukan ditulis di layar: nilai dan labelnya berasal dari
+	// Activity/EksportDataKPIProgressKlaim-Act.xml, dan keduanya menentukan berkas mana
+	// yang diunduh. Menuliskannya dua kali berarti layar dan peladen dapat berbeda
+	// pendapat tentang pilihan yang sama.
+	PICExportKinds []PICExportKindDTO `json:"data_kpi"`
+
 	// PICTeknikPlannedDifferences adalah selisih terencana tab KPI PIC Teknik.
 	PICTeknikPlannedDifferences []string `json:"selisih_terencana_pic"`
 
 	// SLAExcludedPICs adalah petugas yang dikecualikan dari penilaian SLA di sistem lama.
 	SLAExcludedPICs []string `json:"pic_dikecualikan_sla"`
+
+	// AdminPeriods adalah isi dropdown "Periode KPI" — penyaring blok PA tab KPI Admin.
+	//
+	// Dikirim peladen, bukan disusun di layar: isinya diturunkan dari TAHUN BERJALAN, dan
+	// tahun yang dipakai harus tahun peladen. Menyusunnya di browser berarti jam klien
+	// yang salah setel diam-diam mengubah bulan yang dapat dipilih.
+	AdminPeriods []AdminPeriodDTO `json:"periode_kpi"`
 
 	// SourceTable disebutkan supaya penguji tahu tabel mana yang dibandingkan.
 	SourceTable string `json:"tabel_sumber"`
@@ -157,6 +171,10 @@ type SummaryRowDTO struct {
 	// Scores memetakan kode komponen ke nilainya. `null` berarti komponen itu tidak punya
 	// satu pun nilai yang terbaca — BUKAN bernilai nol.
 	Scores map[string]*float64 `json:"nilai"`
+
+	// Category adalah kolom KATEGORI grid layar lama. Kosong berarti nilainya tidak masuk
+	// satu pita pun — pitanya memang berlubang di tiga tempat.
+	Category string `json:"kategori"`
 }
 
 // DetailRowDTO adalah satu baris grid Detail.
@@ -169,6 +187,10 @@ type DetailRowDTO struct {
 	ScoredOn string `json:"tanggal"`
 
 	Scores map[string]*float64 `json:"nilai"`
+
+	// Category adalah kolom KATEGORI grid layar lama. Kosong berarti nilainya tidak masuk
+	// satu pita pun — pitanya memang berlubang di tiga tempat.
+	Category string `json:"kategori"`
 }
 
 // PaginationDTO adalah keterangan halaman.
@@ -198,10 +220,13 @@ type DetailResponse struct {
 }
 
 // AdjusterListResponse adalah jawaban GET /api/report-kpi/adjuster/pilihan.
+//
+// Tanpa `penyaring`, dan itu disengaja: daftarnya adalah master adjuster eksternal yang
+// tidak disaring apa pun. Mengirim balik sebuah penyaring akan membuat layar mengira
+// daftarnya sudah menyempit mengikuti isian — padahal tidak, dan tidak pernah di Pega.
 type AdjusterListResponse struct {
-	Adjusters []string  `json:"adjuster"`
-	Filter    FilterDTO `json:"penyaring"`
-	Portal    string    `json:"portal"`
+	Adjusters []string `json:"adjuster"`
+	Portal    string   `json:"portal"`
 }
 
 // ViolationDTO adalah satu pelanggaran pada satu isian.
@@ -232,8 +257,18 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 					OnlyOnGroup:        string(column.OnlyOnGroup),
 				})
 			}
+			trailing := make([]ColumnDTO, 0, len(grid.TrailingColumns))
+			for _, column := range grid.TrailingColumns {
+				trailing = append(trailing, ColumnDTO{
+					Key:                column.Key,
+					Title:              column.Title,
+					OnlyOnCombinedType: column.OnlyOnCombinedType,
+					OnlyOnGroup:        string(column.OnlyOnGroup),
+				})
+			}
 			grids = append(grids, GridDTO{
-				Code: grid.Code, Title: grid.Title, Columns: columns,
+				Code: grid.Code, Title: grid.Title,
+				Columns: columns, TrailingColumns: trailing,
 			})
 		}
 
@@ -281,10 +316,10 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 		PlannedDifferences:      differences,
 		AdminGroups:             adminGroups,
 		AdminPlannedDifferences: adminDifferences,
-		CoordinatorInQuery:      meta.CoordinatorInQuery,
 
 		BusinessLines: toBusinessLines(meta.BusinessLines),
-		PICComponents: toPICComponents(meta.PICComponents),
+		PICComponents:  toPICComponents(meta.PICComponents),
+		PICExportKinds: toPICExportKinds(reportkpi.PICExportOptions()),
 		PICTeknikPlannedDifferences: append(
 			make([]string, 0, len(meta.PICTeknikPlannedDifferences)),
 			meta.PICTeknikPlannedDifferences...,
@@ -293,6 +328,7 @@ func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 			make([]string, 0, len(meta.SLAExcludedPICs)),
 			meta.SLAExcludedPICs...,
 		),
+		AdminPeriods: toAdminPeriods(meta.AdminPeriods),
 
 		SourceTable: reportkpi.SourceTable,
 		BandTable:   reportkpi.BandTable,
@@ -343,6 +379,7 @@ func toSummaryRows(rows []reportkpi.AdjusterSummary) []SummaryRowDTO {
 			Adjuster:   row.Adjuster,
 			ReportType: string(row.ReportType),
 			Scores:     toScoreDTO(row.Scores),
+			Category:   row.Category,
 		})
 	}
 	return result
@@ -358,6 +395,7 @@ func toDetailRows(rows []reportkpi.AdjusterDetail) []DetailRowDTO {
 			ReportType: string(row.ReportType),
 			ScoredOn:   row.ScoredOn,
 			Scores:     toScoreDTO(row.Scores),
+			Category:   row.Category,
 		})
 	}
 	return result
@@ -378,4 +416,35 @@ func toPaginationDTO(page reportkpi.Pagination, total int) PaginationDTO {
 		Total:      total,
 		TotalPages: totalPages,
 	}
+}
+
+
+// PICExportKindDTO adalah satu pilihan dropdown "Pilih Data KPI".
+type PICExportKindDTO struct {
+	Code  string `json:"kode"`
+	Label string `json:"judul"`
+}
+
+// toPICExportKinds menyalin keempat pilihan ke bentuk jawaban.
+func toPICExportKinds(options []reportkpi.PICExportOption) []PICExportKindDTO {
+	out := make([]PICExportKindDTO, 0, len(options))
+	for _, option := range options {
+		out = append(out, PICExportKindDTO{Code: string(option.Code), Label: option.Label})
+	}
+	return out
+}
+
+// AdminPeriodDTO adalah satu baris dropdown "Periode KPI".
+type AdminPeriodDTO struct {
+	Code  string `json:"kode"`
+	Label string `json:"judul"`
+}
+
+// toAdminPeriods menyalin isi dropdown "Periode KPI" ke bentuk jawaban.
+func toAdminPeriods(options []reportkpi.AdminPeriodOption) []AdminPeriodDTO {
+	out := make([]AdminPeriodDTO, 0, len(options))
+	for _, option := range options {
+		out = append(out, AdminPeriodDTO{Code: option.Code, Label: option.Label})
+	}
+	return out
 }

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,107 +10,105 @@ import { useSession } from '@/app/session'
 import { ReportKlaimPage } from './ReportKlaimPage'
 
 /**
- * Katalog contoh — bentuknya sama persis dengan yang dikirim backend, dan isinya
- * mewakili empat keadaan yang membedakan kartu satu dari yang lain:
+ * Katalog contoh — bentuknya sama persis dengan yang dikirim backend: DATAR dan sudah
+ * berurutan menurut urutan layar Pega.
  *
- *	tat       memakai rentang tanggal DAN lini bisnis
- *	komite    bertombol DUA
- *	adjuster  TERHALANG
- *	bisnis    satu-satunya yang memakai autocomplete Bisnis
+ * Isinya mewakili lima keadaan yang membedakan satu baris dari yang lain:
+ *
+ *	tat               memakai rentang tanggal DAN lini bisnis
+ *	adjuster          TERHALANG
+ *	komite            bertombol DUA
+ *	klaim-per-bisnis  satu-satunya yang punya autocomplete Bisnis di barisnya
+ *	akseptasi         satu-satunya yang punya kotak centang "Treaty" di barisnya
  */
 const CATALOG = {
   judul: 'Report Claim',
-  kelompok: [
+  laporan: [
     {
-      kode: 'klaim',
-      judul: 'Klaim',
-      laporan: [
-        {
-          kode: 'tat',
-          judul: 'REPORT TAT',
-          tombol: [{ kode: '', label: 'Export Data TAT' }],
-          penyaring: {
-            rentang_tanggal: true,
-            lini_bisnis: true,
-            status_compliance: false,
-            bisnis: false,
-            rincian: false,
-          },
-          tersedia: true,
-          sumber: { activity: 'PNCTATReport1_Act' },
-        },
-      ],
+      kode: 'tat',
+      judul: 'REPORT TAT',
+      tombol: [{ kode: '', label: 'Export Data TAT' }],
+      penyaring: {
+        rentang_tanggal: true,
+        lini_bisnis: true,
+        status_compliance: false,
+        bisnis: false,
+        rincian: false,
+      },
+      tersedia: true,
+      sumber: { activity: 'PNCTATReport1_Act' },
     },
     {
-      kode: 'penyelesaian',
-      judul: 'Akseptasi & Penyelesaian',
-      laporan: [
-        {
-          kode: 'komite',
-          judul: 'REPORT DATA KOMITE',
-          tombol: [
-            { kode: 'approve', label: 'Export Data Approve' },
-            { kode: 'rejected', label: 'Export Data Rejected' },
-          ],
-          penyaring: {
-            rentang_tanggal: true,
-            lini_bisnis: true,
-            status_compliance: false,
-            bisnis: false,
-            rincian: false,
-          },
-          tersedia: true,
-          sumber: { activity: 'PNCReportDataKomites_act' },
-        },
-      ],
+      kode: 'adjuster',
+      judul: 'REPORT ADJUSTER',
+      tombol: [{ kode: '', label: 'Export Data Adjuster' }],
+      penyaring: {
+        rentang_tanggal: true,
+        lini_bisnis: false,
+        status_compliance: false,
+        bisnis: false,
+        rincian: false,
+      },
+      tersedia: false,
+      alasan: 'Report Definition-nya tidak ada di export Pega.',
+      penghalang: 'R-16',
+      sumber: { activity: 'PNCAdjusterReport_Act' },
     },
     {
-      kode: 'lini-bisnis',
-      judul: 'Lini Bisnis & Mitra Kerja Sama',
-      laporan: [
-        {
-          kode: 'klaim-per-bisnis',
-          judul: 'REPORT KLAIM PER BISNIS',
-          tombol: [{ kode: '', label: 'Export Data' }],
-          penyaring: {
-            rentang_tanggal: false,
-            lini_bisnis: false,
-            status_compliance: false,
-            bisnis: true,
-            rincian: false,
-          },
-          tersedia: true,
-          sumber: { activity: 'ExportDataClaimBusiness' },
-        },
-      ],
+      kode: 'klaim-per-bisnis',
+      judul: 'REPORT KLAIM PER BISNIS',
+      tombol: [{ kode: '', label: 'Export Data' }],
+      penyaring: {
+        rentang_tanggal: false,
+        lini_bisnis: false,
+        status_compliance: false,
+        bisnis: true,
+        rincian: false,
+      },
+      tersedia: true,
+      sumber: { activity: 'ExportDataClaimBusiness' },
     },
     {
-      kode: 'operasional',
-      judul: 'Operasional',
-      laporan: [
-        {
-          kode: 'adjuster',
-          judul: 'REPORT ADJUSTER',
-          tombol: [{ kode: '', label: 'Export Data Adjuster' }],
-          penyaring: {
-            rentang_tanggal: true,
-            lini_bisnis: false,
-            status_compliance: false,
-            bisnis: false,
-            rincian: false,
-          },
-          tersedia: false,
-          alasan: 'Report Definition-nya tidak ada di export Pega.',
-          penghalang: 'R-16',
-          sumber: { activity: 'PNCAdjusterReport_Act' },
-        },
+      kode: 'akseptasi',
+      judul: 'REPORT AKSEPTASI',
+      tombol: [{ kode: '', label: 'Export Data Akseptasi' }],
+      penyaring: {
+        rentang_tanggal: true,
+        lini_bisnis: false,
+        status_compliance: false,
+        bisnis: false,
+        rincian: true,
+      },
+      tersedia: true,
+      sumber: { activity: 'ReportAkseptasiNonMBU' },
+    },
+    {
+      kode: 'komite',
+      judul: 'REPORT DATA KOMITE',
+      tombol: [
+        { kode: 'approve', label: 'Export Data Approve' },
+        { kode: 'rejected', label: 'Export Data Rejected' },
       ],
+      penyaring: {
+        rentang_tanggal: true,
+        lini_bisnis: true,
+        status_compliance: false,
+        bisnis: false,
+        rincian: false,
+      },
+      tersedia: true,
+      sumber: { activity: 'PNCReportDataKomites_act' },
     },
   ],
   lini_bisnis: [
     { nilai: '', nama: '----- Pilih -----' },
     { nilai: '002', nama: 'Personal Accident' },
     { nilai: '346', nama: 'Non-MBU' },
+  ],
+  status_compliance: [
+    { nilai: '0', nama: 'Fraud / ditolak' },
+    { nilai: '1', nama: 'Valid / Bayar' },
+    { nilai: '2', nama: 'Post Audit / Bayar' },
   ],
 }
 
@@ -202,17 +200,104 @@ afterEach(() => {
 })
 
 describe('layar Report Klaim', () => {
-  it('menggambar judul dan kartu berkelompok', async () => {
+  it('menggambar judul dan daftar laporan', async () => {
     installFetch()
     show()
 
-    expect(await screen.findByRole('heading', { name: 'Report Claim', level: 1 })).toBeVisible()
-    expect(await screen.findByRole('heading', { name: 'Klaim', level: 2 })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'REPORT TAT', level: 3 })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'REPORT TAT', level: 2 })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Report Claim', level: 1 })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Export Data TAT' })).toBeEnabled()
   })
 
-  // Panel bertombol dua adalah SATU kartu, bukan dua kartu berjudul sama.
+  // Daftarnya DATAR dan berurutan — tidak ada judul kelompok, dan urutannya tidak diubah.
+  // Itu susunan yang dihafal pengguna di layar lama.
+  it('tidak mengelompokkan laporan dan tidak mengurutkannya ulang', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('heading', { name: 'REPORT TAT', level: 2 })
+
+    expect(screen.queryByRole('heading', { name: 'Klaim', level: 2 })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Akseptasi & Penyelesaian' })).toBeNull()
+
+    const judul = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent)
+    expect(judul).toEqual([
+      'REPORT TAT',
+      'REPORT ADJUSTER',
+      'REPORT KLAIM PER BISNIS',
+      'REPORT AKSEPTASI',
+      'REPORT DATA KOMITE',
+    ])
+  })
+
+  // Dropdown lini bisnis berlabel "Bisnis", bukan "Treaty". Yang berlabel "Treaty" adalah
+  // kotak centang pada panel Akseptasi.
+  it('memberi label Bisnis pada dropdown lini bisnis', async () => {
+    installFetch()
+    show()
+
+    expect(await screen.findByLabelText('Bisnis')).toBeVisible()
+    expect(screen.queryByLabelText('Treaty')).toBeNull()
+  })
+
+  // Status Compliance adalah TIGA radio, bukan dropdown — `pxRadioButtons` di harness.
+  it('menggambar Status Compliance sebagai tiga radio', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('heading', { name: 'REPORT TAT', level: 2 })
+
+    const radio = screen.getAllByRole('radio')
+    expect(radio).toHaveLength(3)
+    expect(screen.getByLabelText('Fraud / ditolak')).toBeVisible()
+    expect(screen.getByLabelText('Valid / Bayar')).toBeVisible()
+    expect(screen.getByLabelText('Post Audit / Bayar')).toBeVisible()
+  })
+
+  it('mengirim kode Status Compliance, bukan labelnya', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('button', { name: 'Export Data TAT' })
+    await userEvent.click(screen.getByLabelText('Post Audit / Bayar'))
+
+    expect((screen.getByLabelText('Post Audit / Bayar') as HTMLInputElement).value).toBe('2')
+  })
+
+  // Kotak centang "Treaty" berada DI BARIS panel Akseptasi, bukan di bilah penyaring.
+  it('menempatkan kotak centang Treaty pada baris Akseptasi saja', async () => {
+    installFetch()
+    show()
+
+    const akseptasi = (
+      await screen.findByRole('heading', { name: 'REPORT AKSEPTASI', level: 2 })
+    ).closest('article') as HTMLElement
+    expect(within(akseptasi).getByLabelText('Treaty')).toBeVisible()
+
+    const tat = screen
+      .getByRole('heading', { name: 'REPORT TAT', level: 2 })
+      .closest('article') as HTMLElement
+    expect(within(tat).queryByLabelText('Treaty')).toBeNull()
+  })
+
+  // Autocomplete bisnis berada DI BARIS panel Klaim Per Bisnis, bukan di bilah penyaring.
+  it('menempatkan autocomplete Bisnis pada baris Klaim Per Bisnis saja', async () => {
+    installFetch()
+    show()
+
+    const perBisnis = (
+      await screen.findByRole('heading', { name: 'REPORT KLAIM PER BISNIS', level: 2 })
+    ).closest('article') as HTMLElement
+    expect(within(perBisnis).getByLabelText('Bisnis untuk Report Klaim Per Bisnis')).toBeVisible()
+
+    // Bilah atas tetap satu-satunya yang berlabel "Bisnis" — kontrol baris ini tidak
+    // berlabel di layar lama, dan tidak diberi label terlihat di sini.
+    expect(screen.getAllByLabelText('Bisnis')).toHaveLength(1)
+  })
+
+  // Panel bertombol dua adalah SATU baris, bukan dua baris berjudul sama.
   it('menggambar dua tombol pada panel Data Komite', async () => {
     installFetch()
     show()
@@ -227,19 +312,11 @@ describe('layar Report Klaim', () => {
     installFetch()
     show()
 
-    expect(await screen.findByRole('heading', { name: 'REPORT ADJUSTER', level: 3 })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'REPORT ADJUSTER', level: 2 })).toBeVisible()
     expect(screen.getByText(/Report Definition-nya tidak ada di export/)).toBeVisible()
     expect(screen.getByText('R-16')).toBeVisible()
     expect(screen.getByText('Belum tersedia')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Export Data Adjuster' })).toBeNull()
-  })
-
-  // Label "Treaty" DITIRU apa adanya meski isinya lini bisnis (`D-13`).
-  it('memberi label Treaty pada dropdown lini bisnis', async () => {
-    installFetch()
-    show()
-
-    expect(await screen.findByLabelText('Treaty')).toBeVisible()
   })
 
   it('mengirim penyaring yang diisi ke alamat ekspor', async () => {
@@ -249,7 +326,7 @@ describe('layar Report Klaim', () => {
     const tombol = await screen.findByRole('button', { name: 'Export Data TAT' })
     await userEvent.type(screen.getByLabelText('Dari'), '2026-09-01')
     await userEvent.type(screen.getByLabelText('Sampai'), '2026-09-30')
-    await userEvent.selectOptions(screen.getByLabelText('Treaty'), '002')
+    await userEvent.selectOptions(screen.getByLabelText('Bisnis'), '002')
     await userEvent.click(tombol)
 
     await waitFor(() => {
@@ -294,64 +371,8 @@ describe('layar Report Klaim', () => {
     expect(ekspor?.url).not.toContain('dari=')
   })
 
-  // Isian yang tidak berpengaruh DINONAKTIFKAN, bukan dihilangkan — supaya letaknya
-  // tidak berpindah-pindah setiap kali kartu berganti.
-  // Isian penyaring TIDAK PERNAH mati karena kartu mana yang kebetulan tersorot.
-  //
-  // # Kenapa uji ini berbalik arah
-  //
-  // Sebelumnya ia justru MENUNTUT isian mati pada kartu yang tidak memakainya.
-  // Perilaku itu dicabut 2026-10-01 setelah dilaporkan sebagai cacat: "dropdown
-  // Bisnis dan Status Compliance tidak selalu bisa dibuka".
-  //
-  // Sebabnya, kartu tersorot berubah saat kursor sekadar melintas — sehingga dropdown
-  // mati tepat sebelum disentuh — dan sorotannya melekat sesudah Export ditekan.
-  // Menautkan dapat-tidaknya diisi pada posisi kursor adalah kesalahannya. Isian kini
-  // selalu hidup, yang juga lebih dekat ke layar Pega (`D-13`).
-  it('isian penyaring tetap hidup apa pun kartu yang tersorot', async () => {
-    installFetch()
-    show()
-
-    const kartu = await screen.findByRole('heading', { name: 'REPORT KLAIM PER BISNIS', level: 3 })
-    await userEvent.hover(kartu)
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Bisnis')).toBeEnabled()
-    })
-    expect(screen.getByLabelText('Dari')).toBeEnabled()
-    expect(screen.getByLabelText('Treaty')).toBeEnabled()
-    expect(screen.getByLabelText('Status Compliance')).toBeEnabled()
-
-    // Dan tetap hidup SESUDAH Export ditekan — di situlah sorotannya dulu melekat.
-    await userEvent.click(screen.getByRole('button', { name: 'Export Data TAT' }))
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Bisnis')).toBeEnabled()
-    })
-    expect(screen.getByLabelText('Status Compliance')).toBeEnabled()
-  })
-
-  // Daftar bisnis ikut ditarik ketika dropdown-nya disentuh langsung.
-  //
-  // Tanpa ini, pengguna yang membuka dropdown tanpa menyorot kartunya lebih dulu akan
-  // menemukan daftar KOSONG — dan daftar kosong tidak dapat dibedakan dari "tidak ada
-  // bisnis". Ia pasangan wajib dari pencabutan penonaktifan di atas.
-  it('menarik pilihan bisnis saat dropdown-nya disentuh', async () => {
-    installFetch()
-    show()
-
-    const bisnis = await screen.findByLabelText('Bisnis')
-    expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(false)
-
-    await userEvent.click(bisnis)
-
-    await waitFor(() => {
-      expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(true)
-    })
-  })
-
-  // Daftar bisnis hanya ditarik ketika kartu yang membutuhkannya disorot — ia dapat
-  // berisi ratusan baris, dan 27 dari 28 panel tidak memakainya.
+  // Daftar bisnis hanya ditarik ketika autocomplete-nya disentuh — ia dapat berisi ratusan
+  // baris, dan 27 dari 28 panel tidak memakainya.
   it('menarik pilihan bisnis hanya saat dibutuhkan', async () => {
     installFetch()
     show()
@@ -359,7 +380,10 @@ describe('layar Report Klaim', () => {
     await screen.findByRole('button', { name: 'Export Data TAT' })
     expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(false)
 
-    await userEvent.hover(screen.getByRole('heading', { name: 'REPORT KLAIM PER BISNIS', level: 3 }))
+    const perBisnis = screen
+      .getByRole('heading', { name: 'REPORT KLAIM PER BISNIS', level: 2 })
+      .closest('article') as HTMLElement
+    await userEvent.click(within(perBisnis).getByLabelText('Bisnis untuk Report Klaim Per Bisnis'))
 
     await waitFor(() => {
       expect(calls.some((c) => c.url.includes('/pilihan-bisnis'))).toBe(true)
@@ -376,85 +400,4 @@ describe('layar Report Klaim', () => {
     expect(screen.getByText('Pilih entitas lebih dulu')).toBeVisible()
     expect(calls).toHaveLength(0)
   })
-
-  // Penolakan validasi menyebut ISIAN MANA yang kurang — bukan hanya "ada isian yang
-  // belum benar".
-  //
-  // # Kenapa uji ini ada
-  //
-  // Ia mengunci cacat nyata yang ditemukan 2026-10-01. Peladen mengirim rinciannya
-  // ("Tanggal Dari wajib diisi."), tetapi layar hanya menampilkan ringkasannya. Pada layar
-  // dengan lima isian dan 28 tombol, ringkasan itu tidak dapat ditindaklanjuti — dan
-  // tombol yang ditekan sering berada jauh di bawah tempat pesannya muncul.
-  //
-  // Gejalanya di sisi pengguna: "semua export tidak bisa, kecuali satu". Yang satu itu
-  // kebetulan satu-satunya laporan yang tidak menuntut periode.
-  it('menyebut isian mana yang kurang saat penolakan validasi', async () => {
-    vi.stubGlobal('fetch', (url: string) => {
-      if (url.includes('/ekspor')) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              kode: 'validasi_gagal',
-              pesan: 'Ada isian yang belum benar.',
-              detail: [{ isian: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
-            }),
-            { status: 422, headers: { 'Content-Type': 'application/json' } },
-          ),
-        )
-      }
-      return Promise.resolve(
-        new Response(JSON.stringify(CATALOG), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-    })
-
-    show()
-
-    const tombol = await screen.findByRole('button', { name: 'Export Data TAT' })
-    await userEvent.click(tombol)
-
-    // Rinciannya tampil, bukan ringkasannya. Ia muncul dua kali dengan sengaja: sekali
-    // sebagai pesan di atas layar, sekali melekat pada isiannya sendiri.
-    expect((await screen.findAllByText('Tanggal Dari wajib diisi.')).length).toBeGreaterThan(0)
-    expect(screen.queryByText('Ada isian yang belum benar.')).not.toBeInTheDocument()
-  })
-
-  // Isiannya sendiri ikut ditandai, supaya pengguna tidak perlu mencocokkan pesan di atas
-  // layar dengan isian yang dimaksud.
-  it('menandai isian yang ditolak', async () => {
-    vi.stubGlobal('fetch', (url: string) => {
-      if (url.includes('/ekspor')) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              kode: 'validasi_gagal',
-              pesan: 'Ada isian yang belum benar.',
-              detail: [{ isian: 'dari', pesan: 'Tanggal Dari wajib diisi.' }],
-            }),
-            { status: 422, headers: { 'Content-Type': 'application/json' } },
-          ),
-        )
-      }
-      return Promise.resolve(
-        new Response(JSON.stringify(CATALOG), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-    })
-
-    show()
-
-    await userEvent.click(await screen.findByRole('button', { name: 'Export Data TAT' }))
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Dari')).toHaveAttribute('aria-invalid', 'true')
-    })
-    // "Sampai" tidak disebut peladen, jadi ia TIDAK ikut ditandai.
-    expect(screen.getByLabelText('Sampai')).not.toHaveAttribute('aria-invalid', 'true')
-  })
-
 })

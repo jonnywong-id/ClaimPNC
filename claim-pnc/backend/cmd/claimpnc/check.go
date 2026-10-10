@@ -51,6 +51,7 @@ import (
 	daftarobjekdokumensql "claim-pnc/internal/daftarobjekdokumen/repo/sqlstore"
 	daftartipedokumensql "claim-pnc/internal/daftartipedokumen/repo/sqlstore"
 	daftartipedokumenbisnissql "claim-pnc/internal/daftartipedokumenbisnis/repo/sqlstore"
+	dashboardclaimsql "claim-pnc/internal/dashboardclaim/repo/sqlstore"
 	detailpenyebabsql "claim-pnc/internal/detailpenyebab/repo/sqlstore"
 	inboxadminsql "claim-pnc/internal/inboxadmin/repo/sqlstore"
 	inboxanalystdoctorsql "claim-pnc/internal/inboxanalystdoctor/repo/sqlstore"
@@ -246,8 +247,8 @@ func check(cfg config.Config, login string, passwordSource io.Reader, out io.Wri
 	checkPLADLAQueue(ctx, inboxpladlapredlasql.NewRepo(primary), print)
 	checkPLADLAReinsurer(ctx, inboxpladlasql.NewRepo(primary), print)
 	checkPLADLACommunicationFunnel(ctx, primary, login, print)
-	checkReportKPI(ctx, reportkpisql.NewRepo(primary), print)
-	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary), print)
+	checkReportKPI(ctx, reportkpisql.NewRepo(primary, anekaPrimary), print)
+	checkReportKPIPICTeknik(ctx, reportkpisql.NewRepo(primary, anekaPrimary), print)
 	checkReportKlaim(ctx, reportklaimsql.NewRepo(primary, anekaPrimary), print)
 	checkKomunikasiCabang(ctx,
 		inboxkomunikasicabangsql.NewRepo(primary),
@@ -1250,6 +1251,8 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 	rejection := masterpenolakansql.NewRepo(primary)
 	supplier := mastersuppliersql.NewRepo(primary)
 	inboxCompliance := inboxcompliancesql.NewRepo(primary)
+	dashboardClaim := dashboardclaimsql.NewRepo(primary)
+	dashboardAssign := dashboardclaimsql.NewAssignmentWriter(primary)
 	inboxServiceCenter := inboxservicecentersql.NewRepo(primary)
 
 	// Tab Registrasi SC dicari lewat FindTab, bukan disusun di sini, supaya pemeriksaan ini
@@ -1321,6 +1324,97 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 		// seluruh form lalu menekan tombolnya.
 		{"Inbox Compliance (simpan keputusan)",
 			inboxCompliance.CheckDecisionWritable, nil},
+
+		// Tabel riwayat diperiksa TERPISAH, dan ia satu-satunya di modul ini yang
+		// SKEMANYA disimpulkan — `PEGA_JSON_INSERT_HISTORY_CLAIM_PNC.prc` menyebut
+		// tabelnya tanpa skema, sehingga POOLDATA adalah kesimpulan, bukan bacaan.
+		//
+		// Kalau kesimpulan itu keliru, yang gagal adalah JEJAK AUDIT — dan `D-59`
+		// menjadikannya satu-satunya kontrol pengimbang. Lebih baik ketahuan saat start
+		// daripada saat petugas menekan Simpan pada keputusan yang menyangkut uang.
+		{"Inbox Compliance (riwayat keputusan)",
+			inboxCompliance.CheckHistoryWritable, nil},
+
+		// Tabel penugasan. Kegagalannya paling berat di modul ini: kueri DAFTAR ikut
+		// menyentuhnya lewat `NOT EXISTS`, sehingga tabel yang hilang tidak hanya
+		// menggagalkan perpindahan — ia MENGOSONGKAN seluruh antrean Compliance. Layar
+		// kosong jauh lebih mudah disalahartikan sebagai "tidak ada pekerjaan" daripada
+		// sebagai kerusakan.
+		{"Inbox Compliance (penugasan)",
+			inboxCompliance.CheckPenugasanWritable, nil},
+
+		// Tab Dokumen — hanya tampil pada lini Travel (`IsTravel`).
+		//
+		// Ketiga objeknya diperiksa bersama karena dibutuhkan bersama: master jenis
+		// dokumen tanpa view tahapnya tidak dapat disaring, dan tanpa tabel lampiran
+		// pencacah "Total Sudah Diunggah" gagal.
+		//
+		// Pencacahan per tahap ikut dicetak, dan itu bukan hiasan: tahap yang disaring tab
+		// ini masih ASUMSI karena Report Definition aslinya hilang dari export. Angkanya
+		// dibandingkan dengan jumlah baris grid di layar Pega — tahap yang cocok adalah
+		// jawabannya. Ditaruh di sini supaya pertanyaannya terjawab oleh perkakas yang
+		// memang dijalankan sebelum rilis.
+		{"Inbox Compliance (tab Dokumen)",
+			inboxCompliance.CheckDocumentChecklist,
+			func(ctx context.Context) (int, error) {
+				tahap, err := inboxCompliance.DocumentStageCounts(ctx)
+				if err != nil {
+					return 0, err
+				}
+				for _, nama := range urutTahap(tahap) {
+					print("            tahap %-22s %d kategori%s",
+						nama, tahap[nama], tandaTahapDipakai(nama))
+				}
+				return len(tahap), nil
+			}},
+
+		// Probe terpisah untuk tabel komentar DIBUANG 2026-10-07.
+		//
+		// Grid komentar kini satu kolom JSON pada tabel keputusan, bukan tabel kedua, atas
+		// permintaan Work Owner. Tidak ada lagi dua objek yang dapat dijalankan sebagian —
+		// sehingga tidak ada lagi yang perlu dibedakan oleh dua probe.
+
+		// Dashboard Claim — daftar PIC Teknik pada dialog Transfer.
+		//
+		// Kolomnya diperiksa satu per satu, bukan sekadar keberadaan tabelnya. Modul ini
+		// sudah dua kali gagal karena kueri menyebut kolom yang tidak ada (TOTAL_JOB), dan
+		// probe 'SELECT 1' akan LULUS sementara dialognya gagal dimuat.
+		{"Dashboard Claim (daftar PIC Teknik)",
+			dashboardClaim.CheckPICTable, nil},
+
+		// Dashboard Claim — hak UPDATE pada kolom PIC Teknik.
+		//
+		// Satu-satunya tulisan aplikasi ini ke skema DATAPEGA, dan hak itu BELUM diberikan.
+		// Tanpa baris ini, satu-satunya cara mengetahuinya adalah menekan tombol Transfer
+		// dan menerima 503 — ditemukan pengguna, bukan operator.
+		{"Dashboard Claim (hak pindah PIC Teknik)",
+			dashboardAssign.CheckPICMovable, nil},
+
+		// Dashboard Claim — pencacah beban PIC.
+		//
+		// Terpisah dari baris di atas karena akibat kegagalannya berbeda: tanpa hak pada
+		// tabel kerja Pega pemindahan tidak terjadi sama sekali, sedangkan tanpa kolom
+		// pencacah ia berhasil lalu batal di tengah transaksi. Baris gabungan akan
+		// menyembunyikan mana dari keduanya yang kurang.
+		{"Dashboard Claim (pencacah beban PIC)",
+			dashboardAssign.CheckWorkloadWritable, nil},
+
+		// Dashboard Claim — tabel ringkasan dashboard.
+		//
+		// Baris KETIGA untuk satu tombol, dan itu disengaja: jalur Transfer menulis tiga
+		// tabel — PC_ASM_FW_GCNMFW_WORK, MST_USER_TEKNIK, dan PEGA_DASHBOARDPNC. Sampai
+		// 2026-10-08 hanya dua yang punya probe, sehingga `-periksa` dapat melaporkan hijau
+		// sementara tombolnya tetap gagal.
+		{"Dashboard Claim (ringkasan dashboard)",
+			dashboardAssign.CheckDashboardWritable, nil},
+
+		// Dashboard Claim — rincian klaim, isi popup yang terbuka dari nomor klaim.
+		//
+		// Ia menyebut DATA_JSON, kolom yang berdampingan dengan DATA_JSONBLOB pada tabel yang
+		// SAMA. Probe yang hanya membuktikan tabelnya ada akan lulus terhadap kolom yang salah
+		// di antara keduanya — dan popup-nya tetap gagal dibuka.
+		{"Dashboard Claim (rincian klaim)",
+			dashboardClaim.CheckClaimDetailReadable, nil},
 
 		// Kueri daftarnya ikut dijalankan, dan di modul ini pembedaan itu justru paling
 		// berharga: kueri grid aslinya TIDAK ADA di export (`R-16`) dan disusun ulang dari
@@ -5169,6 +5263,36 @@ func checkReportKPIPICTeknik(
 	repo *reportkpisql.Repo,
 	print func(string, ...any),
 ) {
+	// Objeknya diperiksa LEBIH DULU, sebelum isi tangga nilai.
+	//
+	// Urutannya penting: tangga nilai hanyalah satu dari tujuh objek yang dibaca tab ini,
+	// dan memeriksanya lebih dulu pernah menyesatkan — pada 2026-10-08 tangga nilainya
+	// terbaca baik sementara kalender hari libur tidak ada sama sekali, sehingga laporan
+	// "[ok]" muncul untuk tab yang sebenarnya tidak dapat dijalankan.
+	gagal := 0
+	for _, s := range repo.CheckSources(ctx) {
+		switch {
+		case s.Err == nil:
+			print("  [ok]    %s terbaca — %s", s.Object, s.Purpose)
+		case s.Secondary:
+			gagal++
+			print("  [BELUM] %s TIDAK terbaca di koneksi kedua: %v", s.Object, s.Err)
+			print("            Ia dipakai untuk %s.", s.Purpose)
+			print("            Di Pega ia dicapai lewat DB Link @ASMD; penggantinya adalah")
+			print("            ANEKA_<PORTAL>_HOST/_PORT/_SERVICE/_PENGGUNA/_SANDI.")
+		default:
+			gagal++
+			print("  [BELUM] %s TIDAK terbaca: %v", s.Object, s.Err)
+			print("            Ia dipakai untuk %s.", s.Purpose)
+			print("            Periksa keberadaan objek, nama kolom, dan hak SELECT akun aplikasi.")
+		}
+	}
+	if gagal > 0 {
+		print("  [PERIKSA] %d sumber belum terbaca — tab KPI PIC Teknik TIDAK akan jalan", gagal)
+		print("            sampai seluruhnya beres. Daftar di atas lengkap; mintakan")
+		print("            sekaligus, bukan satu per satu.")
+	}
+
 	jobs := []struct {
 		job      string
 		expected bool
@@ -7346,4 +7470,29 @@ func firstTreatyClaimID(ctx context.Context, queue *inboxclaimtreatypropsql.Repo
 		return ""
 	}
 	return page.Items[0].ClaimID
+}
+
+// urutTahap mengurutkan nama tahap dokumen supaya keluarannya tetap sama tiap jalan.
+//
+// Peta Go diiterasi ACAK. Tanpa pengurutan, dua kali menjalankan `check` menghasilkan
+// urutan berbeda — dan keluaran yang berubah-ubah tanpa sebab membuat orang berhenti
+// membandingkannya dengan yang kemarin.
+func urutTahap(tahap map[string]int) []string {
+	nama := make([]string, 0, len(tahap))
+	for k := range tahap {
+		nama = append(nama, k)
+	}
+	sort.Strings(nama)
+	return nama
+}
+
+// tandaTahapDipakai menandai tahap yang sedang DIASUMSIKAN dipakai tab Dokumen.
+//
+// Tanpa tanda ini, pembaca melihat enam angka tanpa tahu mana yang sedang dipegang
+// aplikasi — dan perbandingan dengan layar Pega menjadi mustahil dilakukan sambil lalu.
+func tandaTahapDipakai(nama string) string {
+	if nama == inboxcompliance.DocumentChecklistStage {
+		return "   <- yang dipakai aplikasi (ASUMSI; cocokkan dengan grid Pega)"
+	}
+	return ""
 }

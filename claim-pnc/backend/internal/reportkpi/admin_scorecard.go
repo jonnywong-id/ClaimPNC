@@ -83,6 +83,14 @@ func nonMBUMetrics(t AdminTotals) []Metric {
 		{MetricMemberSubtotal, "SUBTOTAL MEMBER", t.MemberSubtotal, FormatPercent},
 
 		{MetricQuantitativeSum, "TOTAL KUANTITATIF", t.QuantitativeTotal, FormatPercent},
+
+		// ACHIEVEMENT adalah TETAPAN, bukan hasil hitungan — `3/5*85` di dalam teks kueri.
+		//
+		// Ia sempat terlewat, dan terlewatnya tidak terlihat sebagai apa pun: kartu skornya
+		// tetap tampak lengkap dan masuk akal dengan empat belas baris. Yang membuatnya
+		// ketahuan adalah membandingkan jumlah kolom grid Pega dengan jumlah metrik di sini.
+		{MetricAchievementTarget, "ACHIEVEMENT", NewScore(AdminAchievementTarget), FormatCount},
+
 		{MetricAchievementRatio, "PENCAPAIAN KUANTITATIF", t.AchievementRatio, FormatDecimal},
 	}
 }

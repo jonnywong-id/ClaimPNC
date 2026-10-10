@@ -23,32 +23,31 @@ const SEMUA = {
 
 const CATALOG = {
   judul: '',
-  kelompok: [
+  laporan: [
     {
-      kode: 'klaim',
-      judul: 'Klaim',
-      laporan: [
-        {
-          kode: 'compliance',
-          judul: 'REPORT COMPLIANCE',
-          tombol: [{ kode: '', label: 'Export Compliance' }],
-          penyaring: SEMUA,
-          tersedia: true,
-          sumber: { activity: 'X' },
-        },
-        {
-          kode: 'mati',
-          judul: 'REPORT MATI',
-          tombol: [],
-          penyaring: SEMUA,
-          tersedia: false,
-          alasan: 'Sumbernya belum ada.',
-          sumber: { activity: 'Y' },
-        },
-      ],
+      kode: 'compliance',
+      judul: 'REPORT COMPLIANCE',
+      tombol: [{ kode: '', label: 'Export Compliance' }],
+      penyaring: SEMUA,
+      tersedia: true,
+      sumber: { activity: 'X' },
+    },
+    {
+      kode: 'mati',
+      judul: 'REPORT MATI',
+      tombol: [],
+      penyaring: SEMUA,
+      tersedia: false,
+      alasan: 'Sumbernya belum ada.',
+      sumber: { activity: 'Y' },
     },
   ],
   lini_bisnis: [{ nilai: '002', nama: 'Personal Accident' }],
+  status_compliance: [
+    { nilai: '0', nama: 'Fraud / ditolak' },
+    { nilai: '1', nama: 'Valid / Bayar' },
+    { nilai: '2', nama: 'Post Audit / Bayar' },
+  ],
 }
 
 type Answer = Response | Promise<Response> | 'putus' | 'aneh' | undefined
@@ -129,17 +128,19 @@ describe('katalog', () => {
 })
 
 describe('ekspor', () => {
+  // Status Compliance kini TIGA RADIO (pxRadioButtons di harness), dan kotak centangnya
+  // berlabel "Treaty" di baris panelnya sendiri — bukan kotak centang bersama di bilah atas.
   it('mengirim status compliance dan rincian bila diisi', async () => {
     installFetch()
     show()
 
     const tombol = await screen.findByRole('button', { name: 'Export Compliance' })
-    await userEvent.type(screen.getByLabelText('Status Compliance'), '3')
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Tampilkan kolom rincian' }))
+    await userEvent.click(screen.getByLabelText('Valid / Bayar'))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Treaty' }))
     await userEvent.click(tombol)
 
     await waitFor(() =>
-      expect(urls).toContain('/api/report-klaim/compliance/ekspor?status_compliance=3&rincian=1'),
+      expect(urls).toContain('/api/report-klaim/compliance/ekspor?status_compliance=1&rincian=1'),
     )
   })
 

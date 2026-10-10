@@ -286,6 +286,12 @@ type Submission struct {
 
 	ClaimID    string
 	ContractNo string
+
+	// Debtor adalah muatan yang benar-benar dikirim. Lihat debtor.go.
+	//
+	// Ia dibawa Submission, bukan diambil adapter dari basis data, supaya adapter tetap
+	// hanya mengenal HTTP: satu-satunya hal yang membuatnya dapat diuji tanpa Oracle.
+	Debtor Debtor
 }
 
 // SubmissionResult adalah jawaban sistem SLIK atas satu pengiriman.
@@ -298,11 +304,21 @@ type SubmissionResult struct {
 	TransactionID string
 }
 
-// Sender mengirim data debitur ke sistem SLIK.
+// Sender mengirim data debitur ke layanan pendaftaran klien.
 //
-// Seam, bukan pemanggilan langsung, dengan alasan yang lebih tegas daripada biasanya:
-// kontraknya BELUM ADA. Adapter pertamanya karena itu dibangun terhadap kontrak yang
-// belum diterima, sama seperti seam Identity pada `F-3` (`04-FUTURE-ARCHITECTURE.md` §3.5).
+// # Kontraknya SUDAH ada sejak 2026-10-08
+//
+// Catatan sebelumnya di paket ini menyatakan kontraknya belum ada. Itu keliru — lihat
+// kepala debtor.go. Seam-nya tetap dipertahankan, kini dengan alasan yang berbeda dan
+// lebih tahan lama:
+//
+//   - Alamat layanannya **berpindah-pindah**. Work Owner menerangkan kedua alamat yang
+//     tercatat di rule berasal dari dua masa yang berbeda. Alamat yang berubah adalah
+//     konfigurasi, bukan kode (`D-15`, `§3.4`).
+//   - Alamatnya **berbeda per portal** (`D-75`): tiap entitas punya aplikasi Pega sendiri.
+//   - Tanpa seam, modul ini tidak dapat diuji tanpa Pega yang menyala.
+//
+// Pengisinya: pegaslik.Client untuk pemakaian nyata, dan tiruan untuk pengujian.
 type Sender interface {
 	Send(ctx context.Context, submission Submission) (SubmissionResult, error)
 }

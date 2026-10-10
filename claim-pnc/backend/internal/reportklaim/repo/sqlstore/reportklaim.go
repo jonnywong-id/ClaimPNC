@@ -265,7 +265,10 @@ var plans = map[reportklaim.Code]plan{
 // menghasilkan berkas yang berbeda. Pada susunan ringkas nilainya tidak dipakai sama
 // sekali, dan itu keanehan sistem lama yang ditiru apa adanya (lihat report_komite).
 func komiteNonMBUArgs(f reportklaim.Filter) []any {
-	return []any{f.From, f.To, f.FixedParam["statusapprove"]}
+	// Urutannya mengikuti URUTAN KEMUNCULAN placeholder di kueri, bukan nomornya —
+	// lihat bindMengikutiKemunculan di query_test.go. Di kueri ini `statusapprove`
+	// muncul lebih dulu daripada kedua tanggalnya.
+	return []any{f.FixedParam["statusapprove"], f.From, f.To}
 }
 
 // closeNonMBUArgs menyusun parameter susunan rinci Close Klaim.
@@ -274,7 +277,11 @@ func komiteNonMBUArgs(f reportklaim.Filter) []any {
 // SEMENTARA versus penutupan tetap.
 func closeNonMBUArgs(pending string) func(reportklaim.Filter) []any {
 	return func(f reportklaim.Filter) []any {
-		return []any{f.From, f.To, pending}
+		// SATU nilai per KEMUNCULAN, bukan per nomor. `pending` dibandingkan dua kali di
+		// kueri, sehingga ia dikirim dua kali — driver mengisi tiap kemunculan dari urutan
+		// argumen, dan menghemat satu di sini membuat tanggalnya bergeser ke kemunculan
+		// yang salah tanpa galat apa pun.
+		return []any{pending, pending, f.From, f.To}
 	}
 }
 
@@ -303,12 +310,46 @@ func businessCodeArgs(f reportklaim.Filter) []any {
 // 35 kolom yang sudah benar. Mengisinya dengan angka yang dihitung tanpa hari libur jauh
 // lebih buruk lagi: angkanya akan lebih besar dari yang sebenarnya, dan tidak ada apa pun
 // di berkas yang menandakannya.
+// koneksiKedua memilih DARI MANA kedua kueri `general.*` dibaca.
+//
+// # Dua jalan menuju tabel yang sama
+//
+//	koneksi kedua terpasang  → ANEKA_<PORTAL_ALIAS>_*, kueri tanpa akhiran DB Link
+//	belum terpasang          → koneksi portal + kueri bercadang `@ASMD` (SEMENTARA)
+//
+// Yang pertama adalah bentuk yang dikehendaki `D-25`. Yang kedua jalan keluar sementara
+// yang diterima Work Owner 2026-10-09, karena tabelnya ternyata sudah terjangkau dari
+// koneksi portal lewat DB Link yang memang sudah terdaftar di sana.
+//
+// # Kenapa pemilihannya di SATU tempat
+//
+// Supaya membuangnya kelak cukup menghapus satu fungsi ini beserta kedua kueri
+// cadangannya — bukan menelusuri setiap pembaca. Keduanya berhenti terpakai dengan
+// sendirinya begitu `ANEKA_*` diisi; tidak ada sakelar yang perlu digeser.
+//
+// Mengembalikan nil bila tidak ada jalan sama sekali — keadaan yang tetap mungkin, karena
+// DB Link dapat saja tidak terdaftar pada portal lain.
+func (r *Repo) koneksiKedua(nama string) (*sql.DB, string) {
+	if r.aneka != nil {
+		return r.aneka, nama
+	}
+	if r.db == nil {
+		return nil, ""
+	}
+	cadangan := nama + "_dblink"
+	if !hasQuery(cadangan) {
+		return nil, ""
+	}
+	return r.db, cadangan
+}
+
 func (r *Repo) holidayCalendar(ctx context.Context, from, to time.Time) *reportklaim.HolidayCalendar {
-	if r.aneka == nil || from.IsZero() || to.IsZero() {
+	conn, nama := r.koneksiKedua("report_holiday_calendar")
+	if conn == nil || from.IsZero() || to.IsZero() {
 		return reportklaim.UnavailableCalendar()
 	}
 
-	rows, err := r.aneka.QueryContext(ctx, getQuery("report_holiday_calendar"), from, to)
+	rows, err := conn.QueryContext(ctx, getQuery(nama), from, to)
 	if err != nil {
 		return reportklaim.UnavailableCalendar()
 	}
@@ -610,12 +651,14 @@ var ErrMitraListUnavailable = errors.New(
 // teknis sah, tetapi ia menghasilkan berkas tanpa satu baris pun — dan berkas kosong
 // tidak dapat dibedakan dari "memang tidak ada penugasan pada periode itu".
 func mitraKeep(ctx context.Context, r *Repo, _ reportklaim.Filter) (func(reportklaim.Row) bool, error) {
-	if r.aneka == nil {
-		return nil, fmt.Errorf("%w: koneksi kedua belum dikonfigurasi (ANEKA_<PORTAL_ALIAS>_*)",
+	conn, nama := r.koneksiKedua("report_mitra_logins")
+	if conn == nil {
+		return nil, fmt.Errorf(
+			"%w: koneksi kedua belum dikonfigurasi (ANEKA_<PORTAL_ALIAS>_*) dan DB Link cadangan tidak tersedia",
 			ErrMitraListUnavailable)
 	}
 
-	rows, err := r.aneka.QueryContext(ctx, getQuery("report_mitra_logins"))
+	rows, err := conn.QueryContext(ctx, getQuery(nama))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrMitraListUnavailable, err)
 	}

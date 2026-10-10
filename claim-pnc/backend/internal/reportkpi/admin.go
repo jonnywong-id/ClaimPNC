@@ -97,23 +97,24 @@ type AdminIdentity struct {
 
 // adminIdentities memetakan kelompok ke identitas koordinatornya.
 //
-// # SATU KEJANGGALAN YANG DIREPLIKASI, DAN PERLU DIKETAHUI SEBELUM DIBANDINGKAN
+// # SATU SELISIH YANG SEMPAT DIPUTUSKAN KELIRU
 //
 // Pada kelompok NON-MBU, kueri dan activity menyebut nama yang BERBEDA:
 //
 //	RDB List/GetDataKPIAdmin-SQL.xml     'YUSMIARSIH DYAHPUSPITA S' AS "Remark"
 //	Activity/PNCReportKPIAdmin_Act       .Remark := "MORASOTARDODOTARIGAN"
 //
-// Activity berjalan SESUDAH kueri, sehingga yang benar-benar dilihat pengguna adalah nama
-// kedua. Itulah yang dipakai di sini (`P-5` — hasil yang sama dengan Pega).
+// Sebelumnya dipilih nama KEDUA, dengan alasan activity berjalan sesudah kueri. Alasan itu
+// masuk akal tetapi tidak diuji, dan **layar Pega yang berjalan menampilkan nama PERTAMA**
+// (diperiksa Work Owner, 2026-10-09).
 //
-// Nama pertama tidak dibuang; ia dicatat pada CoordinatorInQuery supaya selisihnya terlihat
-// saat seseorang membandingkan layar ini dengan teks kuerinya. Mana yang BENAR menurut
-// bisnis belum dipastikan — diajukan ke Work Owner.
+// Jadi penimpaan oleh activity itu tidak mengenai grid ini. Yang dipakai kini nama yang
+// benar-benar terlihat di layar lama (`D-13`, `P-5`) — bukan yang disimpulkan dari urutan
+// jalannya rule.
 var adminIdentities = map[AdminGroup]AdminIdentity{
 	AdminGroupNonMBU: {
 		Category:    "KLAIM NON MBU",
-		Coordinator: "MORASOTARDODOTARIGAN",
+		Coordinator: "YUSMIARSIH DYAHPUSPITA S",
 		NIK:         "96030583",
 		WorkUnit:    "ALL (NON HEALTH DAN NON MBU)",
 	},
@@ -125,11 +126,12 @@ var adminIdentities = map[AdminGroup]AdminIdentity{
 	},
 }
 
-// CoordinatorInQuery adalah nama koordinator sebagaimana ditulis di dalam TEKS KUERI lama.
+// CoordinatorInActivity adalah nama koordinator yang DITULIS activity lama, dan yang
+// ternyata TIDAK sampai ke grid "Data KPI".
 //
-// Hanya NON-MBU yang punya selisih; pada PA kueri dan activity sepakat. Dipakai keterangan
-// layar, bukan sebagai nilai yang ditampilkan.
-const CoordinatorInQuery = "YUSMIARSIH DYAHPUSPITA S"
+// Ia disimpan sebagai catatan penelusuran — bukan untuk ditampilkan. Nama ini pernah dipakai
+// sebagai nilai yang digambar, dan pemeriksaan terhadap Pega yang berjalan membatalkannya.
+const CoordinatorInActivity = "MORASOTARDODOTARIGAN"
 
 // AdminIdentityFor mengembalikan identitas koordinator sebuah kelompok.
 func AdminIdentityFor(group AdminGroup) AdminIdentity {
@@ -210,8 +212,9 @@ const (
 	MetricMemberScore      = "nilai_member_sla"
 	MetricMemberWeight     = "bobot_member"
 	MetricMemberSubtotal   = "subtotal_member"
-	MetricQuantitativeSum  = "total_kuantitatif"
-	MetricAchievementRatio = "pencapaian_kuantitatif"
+	MetricQuantitativeSum   = "total_kuantitatif"
+	MetricAchievementTarget = "achievement"
+	MetricAchievementRatio  = "pencapaian_kuantitatif"
 )
 
 // Kode metrik kartu skor PA.

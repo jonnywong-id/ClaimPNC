@@ -3,8 +3,10 @@ package inboxcompliancehttp
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -256,7 +258,8 @@ func (h *Handler) SubmitDecision(w http.ResponseWriter, r *http.Request) {
 			Reference: strings.TrimSpace(chi.URLParam(r, "referensi")),
 			Choice:    body.Choice,
 			Note:      body.Note,
-			Remarks:   body.Remarks,
+			Comments:  toCommentInputs(body.Comments),
+			Action:    strings.TrimSpace(body.Action),
 		},
 	)
 	if err != nil {
@@ -269,4 +272,295 @@ func (h *Handler) SubmitDecision(w http.ResponseWriter, r *http.Request) {
 	// terbit dibawa di dalam badan, bukan dijadikan alasan mengubah kodenya — layar tetap
 	// perlu membedakan keduanya lewat isi, bukan lewat status.
 	h.writeJSON(w, r, http.StatusOK, toSubmitDecisionResponse(decided, active.Alias))
+}
+
+// OpenDocument menerbitkan tautan baru untuk satu dokumen klaim.
+//
+// Kedua kunci — klaim dan dokumen — diambil dari JALUR, bukan dari badan permintaan.
+// Alasannya sama dengan SubmitDecision: dengan satu sumber, badan yang menyebut klaim
+// berbeda dari jalurnya tidak mungkin terjadi.
+func (h *Handler) OpenDocument(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	// Pelaku WAJIB terbaca: `UserInput` ikut dikirim ke layanan penyimpanan, dan tanpa
+	// itu pembukaan berkas tidak tercatat atas nama siapa pun.
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	opened, err := h.service.OpenDocument(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		strings.TrimSpace(chi.URLParam(r, "referensi")),
+		strings.TrimSpace(chi.URLParam(r, "dokumen")),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, OpenDocumentResponse{
+		Name:      opened.Document.Name,
+		ViewerURL: opened.ViewerURL,
+		Portal:    active.Alias,
+	})
+}
+
+// batasUnggah membatasi ukuran satu berkas yang diunggah.
+//
+// # Kenapa ADA batasnya, dan kenapa angkanya ini
+//
+// Tanpa batas, satu permintaan dapat menghabiskan memori proses — berkasnya dibaca utuh
+// sebelum di-Base64-kan. 20 MiB adalah TEBAKAN: export tidak menyebut batas apa pun, dan
+// `pzMultiFilePath` tidak membawa angka.
+//
+// Ia sengaja ditulis sebagai konstanta bernama, bukan angka di tengah kode, supaya
+// penggantinya jelas begitu batas sebenarnya diketahui.
+const batasUnggah = 20 << 20
+
+// UploadDocument menerima satu berkas dan menempelkannya ke klaim.
+//
+// `multipart/form-data`, bukan JSON ber-Base64: Base64 membengkakkan badan permintaan
+// sepertiga, dan pembengkakan itu ditanggung dua kali — sekali di peramban, sekali lagi
+// saat adapter meng-Base64-kannya untuk layanan penyimpanan. Dengan multipart, hanya
+// yang kedua yang terjadi.
+func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	// Batas dipasang pada BADAN permintaan, bukan hanya pada potongannya: tanpa ini,
+	// badan yang jauh lebih besar tetap terbaca seluruhnya sebelum ditolak.
+	r.Body = http.MaxBytesReader(w, r.Body, batasUnggah)
+	if err := r.ParseMultipartForm(batasUnggah); err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+
+	berkas, kepala, err := r.FormFile("berkas")
+	if err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+	defer berkas.Close()
+
+	isi, err := io.ReadAll(berkas)
+	if err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+
+	// Ekstensi diambil dari nama berkas, bukan dari `Content-Type` yang dikirim
+	// peramban — Pega pun memetakannya dari ekstensi (`InsertDokumenPNC` langkah 16).
+	nama := kepala.Filename
+	ekstensi := strings.TrimPrefix(filepath.Ext(nama), ".")
+
+	tersimpan, err := h.service.UploadDocument(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		usecase.UploadInput{
+			Reference:   strings.TrimSpace(chi.URLParam(r, "referensi")),
+			FileName:    nama,
+			Extension:   ekstensi,
+			Category:    strings.TrimSpace(r.FormValue("kategori")),
+			SubCategory: strings.TrimSpace(r.FormValue("sub_kategori")),
+			Note:        strings.TrimSpace(r.FormValue("catatan")),
+			Content:     isi,
+		},
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// 201: satu lampiran BARU terbit, dan ia punya identitas sendiri.
+	h.writeJSON(w, r, http.StatusCreated, toDocumentDTO(tersimpan))
+}
+
+// DeleteDocument menghapus satu lampiran klaim.
+func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	if err := h.service.DeleteDocument(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		strings.TrimSpace(chi.URLParam(r, "referensi")),
+		strings.TrimSpace(chi.URLParam(r, "dokumen")),
+	); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GenerateRejectLetter menerbitkan Surat Penolakan lalu melampirkannya pada klaim.
+//
+// `POST`, dan jalurnya `surat-penolakan` — bukan `dokumen/...`. Dua alasan: ia MENERBITKAN
+// dokumen baru alih-alih menerima yang sudah jadi, dan isinya dibentuk server dari isian
+// form, bukan diunggah peramban. Menaruhnya di bawah `dokumen` akan menyamarkannya sebagai
+// unggahan biasa.
+//
+// Kunci klaim diambil dari JALUR, bukan dari badan permintaan — alasan yang sama dengan
+// SubmitDecision: badan yang menyebut klaim berbeda dari jalurnya akan diam-diam
+// menerbitkan surat penolakan atas klaim yang salah, dan surat itu keluar ke nasabah.
+//
+// Jawabannya 200, bukan 201: menekan tombol dua kali MENGGANTI surat yang sudah ada alih-
+// alih menambah satu lagi, sehingga tidak selalu ada sumber daya baru yang tercipta.
+// Mana yang terjadi dibawa di dalam badan lewat `mengganti_surat_sebelumnya`.
+func (h *Handler) GenerateRejectLetter(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	// Pelaku WAJIB terbaca: namanya tercatat sebagai pengunggah surat, dan surat penolakan
+	// adalah dokumen yang keluar ke nasabah — `D-59` menjadikan jejak audit satu-satunya
+	// kontrol pengimbang karena tidak ada pemisahan tugas.
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	var body GenerateRejectLetterRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+
+	issued, err := h.service.GenerateRejectLetter(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		usecase.RejectLetterInput{
+			Reference:     strings.TrimSpace(chi.URLParam(r, "referensi")),
+			Recipient:     body.Recipient,
+			Position:      body.Position,
+			PatientName:   body.PatientName,
+			IncidentPlace: body.IncidentPlace,
+			IncidentDate:  body.IncidentDate,
+			DischargeDate: body.DischargeDate,
+			PaidAmount:    body.PaidAmount,
+			PaymentDate:   body.PaymentDate,
+			Reasons:       body.Reasons,
+		},
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, GenerateRejectLetterResponse{
+		Document: toDocumentDTOs([]inboxcompliance.Document{issued.Document})[0],
+		Replaced: issued.Replaced,
+		Portal:   active.Alias,
+	})
+}
+
+// ListDocumentsInCategory menyerahkan lampiran klaim pada satu kategori.
+//
+// `GET`, dan di sini ia memang pembacaan murni — berbeda dari penerbitan tautan yang
+// `POST` karena menerbitkan sesuatu yang berumur terbatas.
+//
+// Kategorinya parameter kueri `?kategori=`, bukan bagian jalur. Ia PENYARING atas dokumen
+// klaim, bukan sumber daya tersendiri: tanpa kategori, jawabannya seluruh dokumen klaim
+// itu — dan tombol "Ubah Kategori Dok" memang membutuhkan yang seluruhnya.
+func (h *Handler) ListDocumentsInCategory(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	documents, err := h.service.ListDocumentsInCategory(
+		r.Context(),
+		active.Alias,
+		strings.TrimSpace(chi.URLParam(r, "referensi")),
+		strings.TrimSpace(r.URL.Query().Get("kategori")),
+	)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, ListDocumentsResponse{
+		Documents: toDocumentDTOs(documents),
+		Portal:    active.Alias,
+	})
+}
+
+// ChangeDocumentCategory memindahkan satu lampiran ke kategori lain.
+//
+// `POST` atas sub-sumber daya aksi — konvensi modul ini. PATCH lebih tepat secara makna
+// tetapi belum dikenal klien HTTP bersama; lihat catatan pada rutenya.
+//
+// Kedua kunci — klaim dan dokumen — diambil dari JALUR; hanya kategori tujuannya yang
+// datang dari badan. Alasannya sama dengan SubmitDecision: badan yang menyebut klaim
+// berbeda dari jalurnya akan diam-diam memindahkan dokumen milik klaim lain.
+func (h *Handler) ChangeDocumentCategory(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	// Pelaku WAJIB terbaca: perpindahan kategori mengubah apa yang dianggap lengkap, dan
+	// jejak audit adalah satu-satunya kontrol pengimbang (`D-59`).
+	caller, known := h.readCaller(r)
+	if !known {
+		h.writeError(w, r, inboxcompliance.ErrCallerUnknown)
+		return
+	}
+
+	var body ChangeDocumentCategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		h.writeError(w, r, errMalformedBody)
+		return
+	}
+
+	if err := h.service.ChangeDocumentCategory(
+		r.Context(),
+		active.Alias,
+		usecase.Caller{Login: caller.Login},
+		strings.TrimSpace(chi.URLParam(r, "referensi")),
+		strings.TrimSpace(chi.URLParam(r, "dokumen")),
+		strings.TrimSpace(body.Category),
+	); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	// 204: tidak ada badan yang berguna dikembalikan, dan layar menyegarkan daftar
+	// periksanya sendiri — pencacah "Total Sudah Diunggah" berubah pada DUA kategori
+	// sekaligus, asal dan tujuan, sehingga mengirim balik satu baris pun tidak cukup.
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"claim-pnc/internal/reportkpi"
 )
@@ -29,6 +30,7 @@ import (
 type Service struct {
 	repoSelector reportkpi.RepoSelector
 	logger       *slog.Logger
+	now          func() time.Time
 }
 
 // Options adalah bahan pembentuk Service.
@@ -38,6 +40,13 @@ type Options struct {
 	// Logger boleh nil; bila nil, jejaknya tidak ditulis dan tidak ada yang gagal
 	// karenanya.
 	Logger *slog.Logger
+
+	// Now boleh nil; bila nil, jam sistem yang dipakai.
+	//
+	// Ia ada untuk SATU hal: isi dropdown "Periode KPI" diturunkan dari tahun berjalan,
+	// dan satu-satunya saat isinya dapat salah adalah di sekitar pergantian tahun. Tanpa
+	// seam ini, saat itu tidak dapat diuji sama sekali.
+	Now func() time.Time
 }
 
 // NewService membentuk layanan modul Report KPI PNC.
@@ -45,7 +54,10 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("reportkpi/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector, logger: o.Logger}, nil
+	if o.Now == nil {
+		o.Now = time.Now
+	}
+	return &Service{repoSelector: o.RepoSelector, logger: o.Logger, now: o.Now}, nil
 }
 
 // Metadata adalah keterangan layar yang tidak bergantung isi laporan.
@@ -79,11 +91,6 @@ type Metadata struct {
 	// baginya — lalu berhenti membaca seluruhnya.
 	AdminPlannedDifferences []string
 
-	// CoordinatorInQuery adalah nama koordinator sebagaimana ditulis di TEKS KUERI lama,
-	// yang BERBEDA dari yang ditampilkan. Dikirim supaya layar dapat menjelaskan
-	// selisihnya kepada penguji yang membandingkannya dengan rule Pega.
-	CoordinatorInQuery string
-
 	// BusinessLines adalah isi dropdown lini bisnis pada tab KPI PIC Teknik.
 	BusinessLines []reportkpi.BusinessLineOption
 
@@ -99,12 +106,21 @@ type Metadata struct {
 	// pengecualian yang tidak dapat dipertanyakan — dan ini pengecualian berbasis nama
 	// orang di dalam kode (`D-15`).
 	SLAExcludedPICs []string
+
+	// AdminPeriods adalah isi dropdown "Periode KPI" — penyaring blok PA tab KPI Admin.
+	//
+	// Ia satu-satunya bagian Metadata yang bergantung WAKTU, dan karena itu satu-satunya
+	// yang berubah tanpa seorang pun menyunting kode. Lihat reportkpi.BuildAdminPeriods.
+	AdminPeriods []reportkpi.AdminPeriodOption
 }
 
 // Metadata menyerahkan keterangan layar.
 //
 // Ia tidak menyentuh basis data sama sekali dan tidak bergantung portal: susunan tab,
 // grid, dan komponen sama di seluruh entitas karena ia bentuk layar, bukan data entitas.
+//
+// Satu bagiannya bergantung WAKTU — `AdminPeriods`. Jamnya diambil dari seam `Now`
+// supaya pergantian tahun dapat diuji; di luar itu seluruh isinya tetap.
 func (s *Service) Metadata() Metadata {
 	return Metadata{
 		Tabs:                    reportkpi.Tabs(),
@@ -114,12 +130,12 @@ func (s *Service) Metadata() Metadata {
 		PlannedDifferences:      reportkpi.PlannedDifferences,
 		AdminGroups:             reportkpi.AdminGroups(),
 		AdminPlannedDifferences: reportkpi.AdminPlannedDifferences,
-		CoordinatorInQuery:      reportkpi.CoordinatorInQuery,
 
 		BusinessLines:               reportkpi.BusinessLines(),
 		PICComponents:               reportkpi.PICComponents(),
 		PICTeknikPlannedDifferences: reportkpi.PICTeknikPlannedDifferences,
 		SLAExcludedPICs:             reportkpi.SLAExcludedPICs(),
+		AdminPeriods:                reportkpi.BuildAdminPeriods(s.now()),
 	}
 }
 
@@ -155,6 +171,14 @@ func (s *Service) Summary(
 	rows, err := repo.Summary(ctx, query)
 	if err != nil {
 		return Summarized{}, fmt.Errorf("mengambil ringkasan KPI adjuster: %w", err)
+	}
+
+	categories, err := repo.AdjusterCategories(ctx)
+	if err != nil {
+		return Summarized{}, fmt.Errorf("mengambil pita kategori adjuster: %w", err)
+	}
+	for i := range rows {
+		rows[i].Category = reportkpi.CategoryFor(categories, rows[i].Scores[reportkpi.ComponentTotal])
 	}
 
 	s.record(ctx, "ringkasan KPI adjuster dibuka", portalAlias, query, len(rows))
@@ -194,40 +218,46 @@ func (s *Service) Detail(
 		return Detailed{}, fmt.Errorf("mengambil rincian KPI adjuster: %w", err)
 	}
 
+	// Pita kategori dibaca SEKALI per permintaan, bukan per baris.
+	//
+	// Isinya empat baris master yang nyaris tidak pernah berubah; membacanya per baris
+	// grid berarti lima puluh pemanggilan untuk satu halaman yang hasilnya selalu sama.
+	categories, err := repo.AdjusterCategories(ctx)
+	if err != nil {
+		return Detailed{}, fmt.Errorf("mengambil pita kategori adjuster: %w", err)
+	}
+	for i := range result.Rows {
+		result.Rows[i].Category = reportkpi.CategoryFor(
+			categories, result.Rows[i].Scores[reportkpi.ComponentTotal],
+		)
+	}
+
 	s.record(ctx, "rincian KPI adjuster dibuka", portalAlias, query, len(result.Rows))
 	return Detailed{Page: result, Query: query}, nil
 }
 
 // Adjusters mengambil isi dropdown Adjuster.
 //
-// # Kenapa ia menerima permintaan yang LENGKAP, bukan hanya alias portal
+// # Kenapa ia hanya butuh alias portal
 //
-// Karena daftarnya diambil dari tabel penilaian itu sendiri, sehingga ia ikut menyempit
-// mengikuti tipe report dan periode yang sedang dipilih. Itu yang menjaga janji pada
-// PlannedDifferences: setiap pilihan yang muncul pasti menghasilkan baris.
+// Karena daftarnya adalah MASTER adjuster eksternal, dan master itu tidak bergantung pada
+// penyaring layar mana pun. Layar lama pun mengisinya saat dibuka — sebelum periode,
+// tipe report, atau apa pun dipilih (`Activity/GetFilterKPI-Act.xml`).
 //
-// Isian `Adjuster` pada permintaan diabaikan di sini — menyaring daftar pilihan dengan
-// pilihan yang sedang aktif akan menyisakan satu pilihan saja, dan pengguna tidak dapat
-// berpindah adjuster lagi.
-func (s *Service) Adjusters(
-	ctx context.Context,
-	portalAlias string,
-	caller reportkpi.Caller,
-	input reportkpi.QueryInput,
-) ([]string, error) {
-	input.Adjuster = ""
-
-	query, err := reportkpi.NewQuery(input, caller)
-	if err != nil {
-		return nil, err
-	}
-
+// Sampai 2026-10-09 fungsi ini menerima seluruh penyaring dan meneruskannya ke repo. Itu
+// berakar pada pernyataan keliru bahwa rule Pega pengisinya hilang dari export; rincian
+// koreksinya ada di seam `reportkpi.Repo.Adjusters`.
+//
+// Akibat yang ikut hilang bersama penyaringnya: dropdown tidak lagi menolak dengan 422
+// ketika periodenya belum diisi. Itu benar — di Pega ia memang sudah terisi sebelum
+// pengguna menyentuh tanggal mana pun.
+func (s *Service) Adjusters(ctx context.Context, portalAlias string) ([]string, error) {
 	repo, err := s.repoSelector(portalAlias)
 	if err != nil {
 		return nil, err
 	}
 
-	names, err := repo.Adjusters(ctx, query)
+	names, err := repo.Adjusters(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("mengambil daftar adjuster: %w", err)
 	}

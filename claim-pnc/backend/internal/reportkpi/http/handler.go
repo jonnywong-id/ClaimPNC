@@ -131,31 +131,23 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 
 // Adjusters menangani GET /api/report-kpi/adjuster/pilihan.
 //
-// Ia isi dropdown "Pilih Adjuster", dan ia menuntut tipe report serta periode seperti
-// permintaan lainnya — daftarnya menyempit mengikuti keduanya. Lihat usecase.Adjusters.
+// Ia isi dropdown "Pilih Adjuster": MASTER adjuster eksternal, tanpa penyaring. Penyaring
+// pada URL — bila ada — diabaikan, bukan ditolak: layar lama memuat daftar ini saat dibuka
+// dan tidak pernah menyaringnya. Lihat usecase.Adjusters.
 func (h *Handler) Adjusters(w http.ResponseWriter, r *http.Request) {
-	active, caller, ready := h.prepare(w, r)
+	active, _, ready := h.prepare(w, r)
 	if !ready {
 		return
 	}
 
-	input := readFilter(r.URL.Query())
-
-	names, err := h.service.Adjusters(r.Context(), active.Alias, caller, input)
+	names, err := h.service.Adjusters(r.Context(), active.Alias)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	// Penyaring yang dikirim balik sengaja TIDAK memuat adjuster: daftar pilihan tidak
-	// disaring oleh pilihan yang sedang aktif, dan menyatakannya sebaliknya akan membuat
-	// layar mengira daftarnya sudah menyempit.
-	input.Adjuster = ""
-	query, _ := reportkpi.NewQuery(input, reportkpi.Caller{Login: caller.Login})
-
 	h.writeJSON(w, r, http.StatusOK, AdjusterListResponse{
 		Adjusters: names,
-		Filter:    toFilterDTO(query),
 		Portal:    active.Alias,
 	})
 }

@@ -71,16 +71,40 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// tile yang sah, sehingga ia tidak pernah terbaca sebagai telusur tile.
 		dashboard.Get("/tampungan", h.Holding)
 
+		// Didaftarkan SEBELUM `/{tile}`: chi mencocokkan jalur statis lebih dulu, tetapi
+		// menaruhnya di sini membuat urutannya terbaca tanpa perlu tahu aturan itu.
+		dashboard.Get("/pic-teknik", h.TechnicalPIC)
+
 		// Unduhan dipisahkan menjadi jalurnya sendiri, bukan parameter format pada daftar.
 		// Keduanya berbeda sifat: yang satu dipaginasi dan dibaca layar, yang lain mengalir
 		// sampai habis dan diterima sebagai berkas.
-		dashboard.Get("/tampungan/unduh", h.ExportHolding)
+		// Rincian satu klaim — isi popup yang terbuka saat nomor klaim diklik.
+		//
+		// Didaftarkan SEBELUM "/{tile}", karena chi memilih rute menurut urutan dan
+		// "/klaim/..." akan tertangkap pola satu segmen itu bila dipasang sesudahnya.
+		dashboard.Get("/klaim/{klaim_id}", h.ClaimDetail)
+
 		dashboard.Get("/{tile}", h.List)
 		dashboard.Get("/{tile}/unduh", h.ExportTile)
 
-		// SATU-SATUNYA rute yang menulis, dan yang ditulisnya BUKAN klaim melainkan
-		// POOLDATA.CPNC_PERMINTAAN_TRANSFER — tabel milik aplikasi ini sendiri, dibuat
-		// migrasi 0014. Penugasannya tetap dipindahkan Pega (`P-1`).
+		// SATU-SATUNYA rute yang menulis.
+		//
+		// KOREKSI (2026-10-08): keterangan sebelumnya menyebut "SATU KOLOM pada tabel kerja
+		// Pega". Itu kurang lengkap — benar untuk skema DATAPEGA, tetapi satu transaksinya
+		// menulis TIGA tabel:
+		//
+		//	DATAPEGA.PC_ASM_FW_GCNMFW_WORK   USERTEKNIS_1      PIC Teknik klaim
+		//	POOLDATA.MST_USER_TEKNIK         COUNTER_QUOTA     pencacah beban PIC baru
+		//	POOLDATA.PEGA_DASHBOARDPNC       PIC               tabel ringkasan dashboard
+		//
+		// Ketiganya ditulis `PNC_ReassignPNCTeknik` di layar lama, jadi tidak satu pun
+		// tambahan kita. Yang penting untuk `P-1`: antrean tugas Pega
+		// (DATAPEGA.PC_ASSIGN_WORKLIST) TIDAK disentuh sama sekali.
+		//
+		// Ketiganya punya probe di `claimpnc -periksa`. Probe ketiga baru ditambahkan pada
+		// tanggal koreksi ini; sebelumnya pemeriksaan dapat hijau sementara tombolnya gagal.
+		//
+		// Rinciannya di pindahpic.sql.
 		dashboard.Post("/transfer", h.Transfer)
 	})
 }

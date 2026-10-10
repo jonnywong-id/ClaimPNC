@@ -1,0 +1,331 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyOnObjChange/>
+<pyDocumentTitle/>
+<pyClassName>Data-Party-Person</pyClassName>
+<pxUpdateDateTime>20241202T070259.946 GMT</pxUpdateDateTime>
+<pyPropertyMode>String</pyPropertyMode>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyColumnInclusion/>
+<pyIsTransient/>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pySpecialtyComponentData/>
+<pxInsName>DATA-PARTY-PERSON!INCOMESOURCE</pxInsName>
+<pyUsage/>
+<pyRelativePath/>
+<pyFieldName/>
+<pyCircumstanceDate/>
+<pxMoveImportDateTime>20241208T024154.858 GMT</pxMoveImportDateTime>
+<pyExpectedSize/>
+<pxInstanceLockedDateTime/>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceProp/>
+<pyMemo>Sumber Penghasilan</pyMemo>
+<pyStreamName>pxTextInput</pyStreamName>
+<pyTableSelector/>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pxSaveDateTime>20241202T070259.970 GMT</pxSaveDateTime>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyLocalize>false</pyLocalize>
+<pyStringType>Text</pyStringType>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyTemplate/>
+<pyWindowTitle/>
+<pyColumnIndexed/>
+<pyTemplateInputBox/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyCircumstanceType/>
+<pxHostId>jboss10362</pxHostId>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pySerializeJavaObject/>
+<pyShowJavaWindowName>GeneratedJava20261008T040714.052 GMT</pyShowJavaWindowName>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSet/>
+<pyStatus/>
+<pyIsReference>false</pyIsReference>
+<pyDescription/>
+<pxCreateDateTime>20241202T070219.937 GMT</pxCreateDateTime>
+<pyIsJavaPage/>
+<pyOnInput/>
+<pyCircumstanceDateProp/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyMethodStatus/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleName>IncomeSource</pyRuleName>
+<pyFieldClass/>
+<pyWorkKey/>
+<pyDataObject/>
+<pyRuleEnds/>
+<pyRuleStarts/>
+<pyHistoryObject/>
+<pzDocumentKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzDocumentKey>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pySpecial>false</pySpecial>
+<pyIsFromManageChangeLP/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormStatusTime>20261008T040714.031 GMT</pyRuleFormStatusTime>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pyJavaStream/>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pyRefLocalizedValue/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleSet>GISFW</pyRuleSet>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pySPRuleSetName>GISFW</pySPRuleSetName>
+<pxInstanceLockedCreateDateTime/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pzIndexCount>12</pzIndexCount>
+<pyDeletedObject/>
+<pyTableProperty/>
+<pyReflectStatus>true</pyReflectStatus>
+<pyRuleSetVersion>01-04-98</pyRuleSetVersion>
+<pyOptimizeForThisClass/>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyRuleAccessWhen/>
+<pzEntryCode>stN</pzEntryCode>
+<pyIsLightweight>false</pyIsLightweight>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pyValueChanged>false</pyValueChanged>
+<pyOptimizeForDecendents/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzRuleSetVersionMinor>04</pzRuleSetVersionMinor>
+<pyGatewayClass/>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pzChecksum>-194854735</pzChecksum>
+<pyPropertyName>IncomeSource</pyPropertyName>
+<pxInstanceLockedBy/>
+<pxInstanceLockedRuleSetVersion/>
+<pyPageClass/>
+<pyLabel>Sumber Penghasilan</pyLabel>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pxInstanceLockedKey/>
+<pxCommitDateTime>20241208T024155.000 GMT</pxCommitDateTime>
+<pyInterface/>
+<pzRuleSetVersionPatch>98</pzRuleSetVersionPatch>
+<pyComparator/>
+<pxInsId>!INCOMESOURCE</pxInsId>
+<pyDataRetrievalType/>
+<pzInsKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzInsKey>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyLabelOld>Sumber Penghasilan</pyLabelOld>
+<pyRuleParamsStreamName/>
+<pyTableAggregate/>
+<pyTableOption>PromptList</pyTableOption>
+<pyIsGateway/>
+<pyIsManualReference/>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pyMaxLength/>
+<pyEditValidate/>
+<pxTabLabel>IncomeSource</pxTabLabel>
+<pyCircumstanceVal/>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyBaseRule>false</pyBaseRule>
+<pyFormPost/>
+<pyJavaObjectClass/>
+<pyTableClass/>
+<pzStatus>valid</pzStatus>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel/>
+<pxObjClass>@baseclass</pxObjClass>
+</rowdata>
+</pyListValues>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLocalizedValue>Gaji</pyLocalizedValue>
+<pyStandardValue>1</pyStandardValue>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyStandardValue>2</pyStandardValue>
+<pyLocalizedValue>Usaha</pyLocalizedValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+<pyLocalizedValue>Lainnya</pyLocalizedValue>
+<pyStandardValue>3</pyStandardValue>
+</rowdata>
+</pyPromptTableList>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pxSubscript>none</pxSubscript>
+</rowdata>
+</pyqualifierpagegroup>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyValue/>
+<pyKeyCaption/>
+</rowdata>
+</pyTableKeys>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyRuleData>true</pyRuleData>
+<pySaveAs>true</pySaveAs>
+<pyRuleResolution>true</pyRuleResolution>
+<pyVersionSecure>true</pyVersionSecure>
+<pyForward>true</pyForward>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyNew>true</pyNew>
+<pyRefresh>true</pyRefresh>
+<pySave>false</pySave>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>false</pyShowJava>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyLaunch>true</pyLaunch>
+<pyCheckIn>false</pyCheckIn>
+<pyFavorites>true</pyFavorites>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRecover>false</pyRecover>
+<pyPreview>true</pyPreview>
+<pyCheckOut>true</pyCheckOut>
+<pyCompareVersion/>
+<pyBack>true</pyBack>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pyRuleName>pxTextInput</pyRuleName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">6</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">7</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>pyCaption Lainnya</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pxRuleFamilyName>PYCAPTION!LAINNYA</pxRuleFamilyName>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">8</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Data-Party-Person</pyRuleName>
+<pyMethodStatus/>
+<pxRuleClassName>Data-Party-Person</pxRuleClassName>
+<pxRuleFamilyName>DATA-PARTY-PERSON</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">9</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRuleName>pyCaption Usaha</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>PYCAPTION!USAHA</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">10</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>@baseclass</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-FieldValue</pxRuleObjClass>
+<pyRuleName>pyCaption Gaji</pyRuleName>
+<pxRuleFamilyName>PYCAPTION!GAJI</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxSubscript>empty</pxSubscript>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-04-98 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-PROPERTY DATA-PARTY-PERSON INCOMESOURCE #20241202T070219.937 GMT</pzInsKey>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

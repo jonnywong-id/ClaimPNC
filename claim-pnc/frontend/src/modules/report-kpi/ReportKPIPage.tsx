@@ -91,7 +91,9 @@ export function ReportKPIPage() {
   //
   // Ia hanya diambil setelah tipe report dan kedua tanggal terisi; tanpa itu permintaannya
   // pasti ditolak validasi, dan penolakan yang tidak diminta pengguna hanya mengisi log.
-  const adjusters = useReportKPIAdjusters(draft, isComplete(draft))
+  // Tanpa argumen, dan itu disengaja: daftarnya master dan terisi sejak layar dibuka —
+  // bukan menunggu isian lengkap. Lihat useReportKPIAdjusters.
+  const adjusters = useReportKPIAdjusters()
 
   const exportFile = useExportReportKPI()
 
@@ -117,7 +119,10 @@ export function ReportKPIPage() {
   }
 
   return (
-    <div className="space-y-6">
+    // Jarak tepi dan lebar maksimum MENGIKUTI modul lain — bandingkan
+    // `report-klaim/ReportKlaimPage.tsx`. Sebelumnya hanya `space-y-6`, sehingga isinya
+    // menempel ke sidebar dan terbaca berbeda dari layar sebelahnya.
+    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">Report KPI</h1>
         <p className="text-sm text-slate-600">
@@ -178,10 +183,15 @@ export function ReportKPIPage() {
             </p>
           ) : (
             <>
+              {/*
+                Hanya grid yang DIPILIH yang digambar — Pega pun satu grid, ditentukan
+                isian "Pilih Tipe Report". Menggambar keduanya sekaligus memaksa dua
+                tombol ekspor, dan itu yang dulu membuat layar ini berbeda.
+              */}
+              {active.variant !== VARIANT_DETAIL && (
               <DataTable<SummaryRow>
                 title={summaryGrid?.judul ?? 'Summary KPI Adjuster'}
                 label="Ringkasan KPI per adjuster"
-                description="Rata-rata seluruh kasus adjuster pada periode yang dipilih, dibulatkan dua desimal."
                 // Tipe report diambil dari penyaring yang DIJAWAB server, bukan dari isian
                 // yang sedang diketik: kolomnya harus cocok dengan baris yang sedang
                 // tampil, bukan dengan penyaring yang belum dikirim.
@@ -204,11 +214,12 @@ export function ReportKPIPage() {
                 }
                 emptyMessage={emptyMessage}
               />
+              )}
 
+              {active.variant === VARIANT_DETAIL && (
               <DataTable<DetailRow>
                 title={detailGrid?.judul ?? 'Detail KPI Adjuster'}
                 label="Rincian KPI per kasus survei"
-                description="Satu baris per kasus survei yang sudah dinilai."
                 columns={detailColumns(
                   detailGrid,
                   components,
@@ -237,6 +248,7 @@ export function ReportKPIPage() {
                   isLoading: detail.isFetching,
                 }}
               />
+              )}
             </>
           )}
 
@@ -290,20 +302,31 @@ function FilterForm({
     label: name,
   }))
 
-  const note = reportTypes.find((item) => item.kode === value.tipeReport)?.keterangan
-
   return (
     <form
-      className="space-y-4 rounded-kotak border border-slate-200 bg-white p-4"
+      className="rounded-kotak border border-slate-200 bg-white p-4"
       onSubmit={(event) => {
         event.preventDefault()
         onSearch()
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/*
+        SATU baris: kelima isian, Cari, lalu Export Data — seperti bilah penyaring Pega.
+        Sebelumnya isiannya digambar sebagai kisi empat kolom dengan tombolnya di baris
+        tersendiri, sehingga bilahnya dua kali lebih tinggi daripada layar lama.
+
+        `items-end` menjajarkan dasar isian dengan dasar tombol; tanpa itu tombolnya naik
+        sejajar label, bukan sejajar kotak isian.
+      */}
+      <div className="flex flex-wrap items-end gap-3">
+        {/*
+          Urutannya mengikuti harness Pega persis: Status Survey, Dari, Sampai, Adjuster,
+          lalu Tipe Report. Dibaca dari `Harness/ReportKPIHarness-Harness.xml` baris
+          10591, 10948, 11192, 11478, dan 11732 — bukan dari tangkapan layar.
+        */}
         <SelectField
-          id="kpi-tipe-report"
-          label="Pilih Tipe Report"
+          id="kpi-status-survey"
+          label="Pilih Status Survey"
           options={typeOptions}
           emptyText="--Pilih--"
           value={value.tipeReport}
@@ -311,20 +334,11 @@ function FilterForm({
           onChange={(event) => onChange({ ...value, tipeReport: event.target.value })}
         />
 
-        <SelectField
-          id="kpi-adjuster"
-          label="Pilih Adjuster"
-          options={adjusterOptions}
-          emptyText={adjustersLoading ? 'Memuat…' : 'Semua adjuster'}
-          value={value.adjuster}
-          error={violations['adjuster']}
-          onChange={(event) => onChange({ ...value, adjuster: event.target.value })}
-        />
-
         <FormField
           id="kpi-dari"
-          label="Periode — Dari"
+          label="Dari"
           type="date"
+          className="w-44"
           value={value.dari}
           failure={violations['dari']}
           onChange={(event) => onChange({ ...value, dari: event.target.value })}
@@ -332,49 +346,55 @@ function FilterForm({
 
         <FormField
           id="kpi-sampai"
-          label="Periode — Sampai"
+          label="Sampai"
           type="date"
+          className="w-44"
           value={value.sampai}
           failure={violations['sampai']}
           onChange={(event) => onChange({ ...value, sampai: event.target.value })}
         />
-      </div>
 
-      {/*
-        Keterangan tipe report digambar di sini, bukan hanya sebagai `title` dropdown: satu
-        pilihan — ALL — berperilaku berbeda dari dua lainnya, dan perbedaan itu tidak
-        terbaca dari namanya sendiri.
-      */}
-      {note && <p className="text-sm text-slate-600">{note}</p>}
+        <SelectField
+          id="kpi-adjuster"
+          label="Pilih Adjuster"
+          options={adjusterOptions}
+          // "All" apa adanya seperti layar lama (`pyNoSelectionText`), bukan terjemahan
+          // "Semua adjuster" — `D-13` menetapkan teks layar mengikuti Pega.
+          emptyText={adjustersLoading ? 'Memuat…' : 'All'}
+          value={value.adjuster}
+          error={violations['adjuster']}
+          onChange={(event) => onChange({ ...value, adjuster: event.target.value })}
+        />
 
-      <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Isian ini SEBELUMNYA tidak ada, dan ketiadaannya memaksa tab menggambar KEDUA
+          grid sekaligus beserta dua tombol ekspor. Pega menggambar satu grid, dipilih di
+          sini (`TempAdjComp.AcceptedNo`).
+        */}
+        <SelectField
+          id="kpi-tipe-report"
+          label="Pilih Tipe Report"
+          options={VARIANT_OPTIONS}
+          emptyText="--Pilih--"
+          value={value.variant}
+          error={violations['variant']}
+          onChange={(event) => onChange({ ...value, variant: event.target.value })}
+        />
+
         <Button type="submit" tone="utama">
           Cari
         </Button>
 
         {/*
-          DUA tombol ekspor, karena tabnya menggambar DUA grid. Layar lama punya satu tombol
-          "Export Data" dan satu grid yang sedang terlihat; di sini keduanya terlihat
-          sekaligus, sehingga satu tombol tidak dapat menyatakan yang mana.
+          SATU tombol, seperti Pega — karena yang diunduh sudah dinyatakan di "Pilih Tipe
+          Report". Sebelumnya ada dua tombol, dan itu akibat tidak adanya isian tersebut.
         */}
         <Button
-          onClick={() => onExport('ringkasan')}
+          onClick={() => onExport(value.variant === VARIANT_DETAIL ? 'rincian' : 'ringkasan')}
           disabled={!exportEnabled || exporting}
         >
-          Export Ringkasan
+          Export Data
         </Button>
-        <Button
-          onClick={() => onExport('rincian')}
-          disabled={!exportEnabled || exporting}
-        >
-          Export Rincian
-        </Button>
-
-        {!exportEnabled && (
-          <span className="text-sm text-slate-500">
-            Tekan Cari lebih dulu — berkas mengikuti penyaring yang sedang ditampilkan.
-          </span>
-        )}
       </div>
     </form>
   )
@@ -394,13 +414,31 @@ function summaryColumns(
   components: Component[],
   reportType: string,
 ): Column<SummaryRow>[] {
+  // `render` dipasang pada SELURUH kolom tetap, dan itu bukan hiasan.
+  //
+  // Tanpa `render`, DataTable menggambar sel kosong sebagai tanda hubung. Pada kolom yang
+  // memang TIDAK PERNAH punya sumber — `Status` di tipe tunggal, `NO KLAIM`, dan
+  // `STATUS SURVEY` — tanda hubung itu terbaca sebagai "nilainya hilang", padahal yang
+  // benar adalah "kolom ini memang kosong di Pega juga".
+  //
+  // Kesembilan kolom nilai TIDAK diperlakukan begitu: di sana tanda hubung justru bermakna,
+  // karena ia membedakan komponen yang belum dinilai dari komponen bernilai nol.
   const fixed: Column<SummaryRow>[] = columnsFor(grid, reportType).map((column) => ({
     key: column.kunci,
     title: column.judul,
-    value: (row) => (column.kunci === 'tipe' ? row.tipe : row.adjuster),
+    value: (row) => summaryCell(row, column.kunci),
+    render: (row) => summaryCell(row, column.kunci),
   }))
 
-  return [...fixed, ...scoreColumns<SummaryRow>(components)]
+  // KATEGORI digambar SESUDAH kesembilan komponen — itulah tempatnya di grid layar lama.
+  const trailing: Column<SummaryRow>[] = (grid?.kolom_akhir ?? []).map((column) => ({
+    key: column.kunci,
+    title: column.judul,
+    value: (row) => summaryCell(row, column.kunci),
+    render: (row) => summaryCell(row, column.kunci),
+  }))
+
+  return [...fixed, ...scoreColumns<SummaryRow>(components), ...trailing]
 }
 
 /** detailColumns menyusun kolom grid Detail dengan cara yang sama. */
@@ -413,9 +451,17 @@ function detailColumns(
     key: column.kunci,
     title: column.judul,
     value: (row) => detailCell(row, column.kunci),
+    render: (row) => detailCell(row, column.kunci),
   }))
 
-  return [...fixed, ...scoreColumns<DetailRow>(components)]
+  const trailing: Column<DetailRow>[] = (grid?.kolom_akhir ?? []).map((column) => ({
+    key: column.kunci,
+    title: column.judul,
+    value: (row) => detailCell(row, column.kunci),
+    render: (row) => detailCell(row, column.kunci),
+  }))
+
+  return [...fixed, ...scoreColumns<DetailRow>(components), ...trailing]
 }
 
 /**
@@ -451,17 +497,35 @@ function scoreColumns<T extends { nilai: Scores }>(components: Component[]): Col
   }))
 }
 
-/** detailCell mengambil isi satu sel tetap grid Detail. */
+/** summaryCell mengambil isi satu sel tetap grid Summary. */
+function summaryCell(row: SummaryRow, key: string): string {
+  switch (key) {
+    case 'adjuster':
+      return row.adjuster
+    case 'tipe':
+      return row.tipe
+    case 'kategori':
+      return row.kategori
+    default:
+      return ''
+  }
+}
+
+/**
+ * detailCell mengambil isi satu sel tetap grid Detail.
+ *
+ * Dua kunci sengaja TIDAK punya cabang — `no_klaim` dan `status_survey`. Keduanya ada di
+ * grid layar lama tetapi tidak ada di tabel sumbernya, sehingga kosong di Pega juga; ia
+ * jatuh ke `default` dan digambar kosong. Lihat `FieldClaimNumberAdjuster` di screen.go.
+ */
 function detailCell(row: DetailRow, key: string): string {
   switch (key) {
     case 'adjuster':
       return row.adjuster
     case 'no_case':
       return row.no_case
-    case 'tipe':
-      return row.tipe
-    case 'tanggal':
-      return row.tanggal === '' ? '—' : row.tanggal
+    case 'kategori':
+      return row.kategori
     default:
       return ''
   }
@@ -477,20 +541,31 @@ function scoreText(value: number | null | undefined): string {
 
 const emptyFilter: FilterInput = {
   tipeReport: '',
+  variant: '',
   adjuster: '',
   dari: '',
   sampai: '',
 }
 
+/**
+ * Pilihan isian "Pilih Tipe Report" — nilainya diambil APA ADANYA dari Pega.
+ *
+ * Keduanya terbaca sebagai perbandingan di export: `TempAdjComp.AcceptedNo=="DATA SUMMARY"`
+ * dan `=="DATA DETAIL"`. Nilainya ditulis persis begitu — berspasi dan berhuruf besar —
+ * karena ia dibandingkan sebagai teks.
+ */
+const VARIANT_SUMMARY = 'DATA SUMMARY'
+const VARIANT_DETAIL = 'DATA DETAIL'
+
+const VARIANT_OPTIONS = [
+  { value: VARIANT_SUMMARY, label: VARIANT_SUMMARY },
+  { value: VARIANT_DETAIL, label: VARIANT_DETAIL },
+]
+
 const emptyMessage =
   'Tidak ada penilaian pada penyaring ini. Bila Anda yakin seharusnya ada, ingat bahwa ' +
   'layar ini hanya MEMBACA: penilaian baru muncul setelah dihitung dari Pega. Periksa ' +
   'juga periodenya — yang disaring adalah tanggal penilaian, bukan tanggal kejadian.'
-
-/** isComplete menyatakan penyaring cukup lengkap untuk dikirim tanpa pasti ditolak. */
-function isComplete(filter: FilterInput): boolean {
-  return filter.tipeReport !== '' && filter.dari !== '' && filter.sampai !== ''
-}
 
 /** gridOf mengambil keterangan satu grid pada tab KPI Adjuster. */
 function gridOf(metadata: MetadataResponse | undefined, code: string): Grid | undefined {

@@ -403,3 +403,62 @@ func teamOfRows(rows []reportkpi.ClosureSpan) string {
 	}
 	return reportkpi.TeamOf(rows[0].Team)
 }
+
+// PICTeknikExported adalah berkas ekspor tab KPI PIC Teknik beserta penyaringnya.
+type PICTeknikExported struct {
+	Table  reportkpi.PICExportTable
+	Kind   reportkpi.PICExportKind
+	Filter reportkpi.PICTeknikQuery
+	Portal string
+}
+
+// PICTeknikExport menyusun berkas ekspor sesuai pilihan "Pilih Data KPI".
+//
+// # Kenapa daftar PIC diambil di sini, bukan di dalam kueri
+//
+// Kueri Pega menyaring `picteknik IN {ASIS:TempDateReport.UserTeknis}` — daftar yang
+// disusun activity SEBELUM kueri dijalankan, dari `GetDataPIC` pada lini yang sama.
+// Mengambilnya di sini menjaga satu hal yang mudah hilang bila kueri menyaring sendiri:
+// berkas yang diunduh memakai daftar PIC yang SAMA dengan kartu skor yang sedang terlihat.
+//
+// Tanpa itu, berkas dan layar dapat menampilkan himpunan orang yang berbeda pada penyaring
+// yang sama — dan selisihnya tidak akan terlihat sebagai galat, hanya sebagai baris yang
+// "kurang".
+func (s *Service) PICTeknikExport(
+	ctx context.Context,
+	portal string,
+	kind reportkpi.PICExportKind,
+	input reportkpi.PICQueryInput,
+	caller reportkpi.Caller,
+) (PICTeknikExported, error) {
+	query, err := reportkpi.NewPICTeknikQuery(input, caller)
+	if err != nil {
+		return PICTeknikExported{}, err
+	}
+
+	repo, err := s.repoSelector(portal)
+	if err != nil {
+		return PICTeknikExported{}, err
+	}
+
+	profiles, err := repo.PICs(ctx, query.Line)
+	if err != nil {
+		return PICTeknikExported{}, err
+	}
+	pics := make([]string, 0, len(profiles))
+	for _, profile := range profiles {
+		pics = append(pics, profile.OperatorID)
+	}
+
+	table, err := repo.PICExport(ctx, kind, query.Span(), pics)
+	if err != nil {
+		return PICTeknikExported{}, err
+	}
+
+	return PICTeknikExported{
+		Table:  table,
+		Kind:   kind,
+		Filter: query,
+		Portal: portal,
+	}, nil
+}

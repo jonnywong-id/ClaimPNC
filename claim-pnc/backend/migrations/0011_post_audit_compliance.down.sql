@@ -10,18 +10,28 @@
 --
 -- Yang hilang adalah POSISI penomorannya.
 --
--- Bila sequence ini dibuat ulang kelak, ia akan mulai lagi dari 100001 dan
--- **menerbitkan nomor yang sudah terpakai**. Tabelnya tidak punya primary key maupun
--- constraint unik, sehingga basis data TIDAK akan menolaknya — dua baris bernomor sama
--- akan hidup berdampingan, dan tab Post Audit menampilkan keduanya tanpa tanda apa pun.
+-- Bila sequence ini dibuat ulang kelak, ia akan mulai lagi dari 1 dan **menerbitkan nomor
+-- yang sudah terpakai**. Tabelnya tidak punya primary key maupun constraint unik, sehingga
+-- basis data TIDAK akan menolaknya — dua baris bernomor sama akan hidup berdampingan, dan
+-- tab Post Audit menampilkan keduanya tanpa tanda apa pun.
 --
 -- Karena itu, sebelum menjalankan ulang migrasi naik setelah turun, nilai awalnya WAJIB
--- disesuaikan lebih dulu:
+-- disesuaikan lebih dulu.
 --
---   SELECT MAX(TO_NUMBER(REGEXP_SUBSTR(CASEID, '\d+$')))
+-- # Kuerinya berubah bersama bentuk nomornya
+--
+-- Bentuk `CPL.YY.xxxx` (Work Owner, 2026-10-06) membuat pencarian nomor tertinggi TIDAK
+-- cukup mengambil angka terakhir saja: tahun berada di tengah, dan nomor urut TIDAK
+-- direset tiap tahun. Yang dicari karena itu nomor urut terbesar LINTAS TAHUN:
+--
+--   SELECT MAX(TO_NUMBER(REGEXP_SUBSTR(CASEID, '[0-9]+$')))
 --     FROM POOLDATA.T_CLAIM_COMPLIANCE_H
---    WHERE CASEID LIKE 'CPL-1_____';
+--    WHERE CASEID LIKE 'CPL.__.%';
 --
 -- lalu `START WITH` diisi satu lebih besar dari hasilnya.
+--
+-- Pola `'CPL.__.%'` sengaja TIDAK memakai `'CPL-%'`: keduanya hidup berdampingan di kolom
+-- yang sama, dan yang terbitan Pega (`CPL-1` … `CPL-19`) tidak boleh ikut terhitung —
+-- sequence ini tidak pernah menerbitkannya dan tidak boleh melanjutkan dari sana.
 
-DROP SEQUENCE POOLDATA.CPNC_POST_AUDIT_SEQ;
+DROP SEQUENCE POOLDATA.CLAIM_COMPLIENCE_SEQ;

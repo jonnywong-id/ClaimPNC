@@ -25,13 +25,26 @@
 --    Kueri lama memanggil fungsi basis data itu dua kali per baris, untuk kolom `"ClaimNo"`
 --    dan `"CloseClaimNote"`. `D-02` menetapkan aplikasi tidak memanggil stored procedure.
 --
---    Keduanya juga TIDAK ditampilkan layar ini: `Section/DashboardClaim_Section2-Section.xml`
---    menggambar enam kolom — No Klaim, No Polis, Nama Tertanggung, Nama Bisnis, Sumber
---    Bisnis, Nama Cabang. Jadi yang dihilangkan bukan data yang dibaca pengguna, melainkan
---    dua pemanggilan fungsi per baris yang hasilnya dibuang.
+--    KOREKSI (2026-10-06): alasan yang pernah tertulis di sini SALAH. Ia berbunyi "keduanya
+--    juga tidak ditampilkan layar ini" dengan rujukan `Section/DashboardClaim_Section2`.
+--    Section itu bukan grid Outstanding.
 --
---    Modul `inboxprogressclaim` sudah menggantikan fungsi yang sama dengan kueri biasa atas
---    `POOLDATA.GCNM_PROGRESS_CLAIM` bila kelak kolomnya memang diperlukan di sini.
+--    Grid Outstanding yang sebenarnya adalah `Section/InboxOutstandingClaim_Section`, dan ia
+--    MENGIKAT keduanya sebagai dua kolom:
+--
+--        GET_POSISI_PROGRESS_PNC(pyID, 'POSISI')   AS "ClaimNo"        -> Posisi Klaim
+--        GET_POSISI_PROGRESS_PNC(pyID, 'sts_prg2') AS "CloseClaimNote" -> Progress Klaim
+--
+--    (`RDB List/GcnmBrowseCase_SQL-SQL.xml`; caption "Posisi Klaim" dan "Progress Klaim" ada
+--    di section itu, dan `.ClaimNo`/`.CloseClaimNote` terikat di selnya.)
+--
+--    Jadi yang dihilangkan BUKAN dua pemanggilan yang hasilnya dibuang, melainkan **dua
+--    kolom yang dibaca pengguna**. Keduanya masih kurang.
+--
+--    `D-02` tetap melarang memanggil procedure-nya, sehingga penggantinya adalah kueri biasa
+--    atas `POOLDATA.GCNM_PROGRESS_CLAIM` — modul `inboxprogressclaim` sudah menggantikan
+--    fungsi yang sama untuk ragam `'POSISI'` dan `'sts_prg2'` lewat kueri `positions`, dan
+--    pola itu yang dipakai bila kolom ini dilengkapi.
 --
 -- 4. ALIAS MENYESATKAN DIBERI NAMA YANG BENAR
 --
@@ -81,6 +94,28 @@
 -- Mana yang benar adalah pertanyaan untuk Work Owner, dan jawabannya menyentuh KEDUA modul —
 -- bukan sesuatu yang diselaraskan sepihak dari sini. Dicatat di
 -- docs/keputusan-implementasi.md.
+--
+-- ============================================================================
+-- PERBEDAAN KEDUA YANG DIWARISI: "BELUM LUNAS" MEMBUANG STATUS KOSONG
+-- ============================================================================
+--
+-- Penyaring Status Pembayaran ditulis `A.STATUSCLAIM_1 <> '1163'` PERSIS seperti Pega
+-- (`Activity/GCNMGetManagerCase_Act-Act.xml:7485`). Di Oracle maupun PostgreSQL perbandingan
+-- itu menghasilkan NULL bila `STATUSCLAIM_1` kosong, sehingga klaim yang belum punya status
+-- klaim sama sekali TIDAK tampil pada pilihan "Belum Lunas" — padahal ia jelas belum lunas.
+--
+-- Diganti `(… <> '1163' OR … IS NULL)` akan memperbaikinya, dan justru karena itu TIDAK
+-- dilakukan di sini: ia menambah baris pada layar manajerial tanpa keputusan yang
+-- mendasarinya, dan selisihnya akan muncul pada gerbang 1 sebagai cacat yang tidak dapat
+-- dipetakan ke satu pun dari 13 butir `P-5`.
+--
+-- ============================================================================
+-- ALIAS SUB-KUERI MEMAKAI T, BUKAN B
+-- ============================================================================
+--
+-- Pega menulis sub-kueri EXISTS dengan alias `B`. Di sini `B` sudah dipakai
+-- `PC_ASSIGN_WORKLIST` pada kueri luar, sehingga alias yang sama akan menaungi tabel luar
+-- dan membuat `A.CLAIMID` merujuk sesuatu yang lain. Aliasnya diganti `T`; hasilnya identik.
 
 -- name: outstanding_count
 -- Menghitung SELURUH klaim berjalan yang cocok, bukan baris pada halaman ini.
@@ -89,13 +124,17 @@
 -- pengguna membaca satu angka pada kartu lalu menemukan jumlah baris yang lain saat
 -- menelusurinya — dan tidak ada galat yang muncul. `query_test.go` menjaganya baris per baris.
 --
--- COUNT(DISTINCT A.PZINSKEY), bukan COUNT(*): gabung ke PC_ASSIGN_WORKLIST menggandakan
--- baris untuk klaim yang punya lebih dari satu penugasan. Kueri lama memakai SELECT DISTINCT
--- dengan alasan yang sama.
+-- COUNT(DISTINCT A.PZINSKEY) DIPERTAHANKAN meski penggandaannya sudah tidak mungkin.
+--
+-- Alasan aslinya hilang pada 2026-10-08: gabung ke `PC_ASSIGN_WORKLIST` dulu menggandakan
+-- baris untuk klaim yang punya lebih dari satu penugasan, dan join itu kini tidak ada lagi
+-- karena kedua tabel menyatu di `T_CLAIMLIST_ADMIN` — satu klaim satu baris.
+--
+-- Tetap DISTINCT karena ia tidak lagi menyembunyikan apa pun: pada satu baris per klaim,
+-- COUNT(DISTINCT PZINSKEY) dan COUNT(*) memberi angka yang sama. Membuangnya menghemat
+-- tidak banyak dan menghilangkan jaring pengaman bila kelak ada join baru.
 SELECT COUNT(DISTINCT A.PZINSKEY)
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -104,8 +143,8 @@ SELECT COUNT(DISTINCT A.PZINSKEY)
    AND A.PYSTATUSWORK <> 'Resolved-Completed'
    AND A.PYSTATUSWORK <> 'Resolved-Rejected'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 IS NULL
         OR UPPER(A.POLICYNO) LIKE :2 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
@@ -117,6 +156,23 @@ SELECT COUNT(DISTINCT A.PZINSKEY)
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
         OR (:7 = 'PA' AND A.GROUPPANEL_1 = '002')
         OR (:8 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   AND (:9 IS NULL OR UPPER(A.POLICYNO) LIKE :10 ESCAPE '\')
+   AND (:11 IS NULL OR UPPER(A.PYID) LIKE :12 ESCAPE '\')
+   AND (:13 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :14 ESCAPE '\')
+   AND (:15 IS NULL
+        OR (:16 = 'SUDAH'
+            AND EXISTS (SELECT T.CLAIMID
+                          FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                         WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                           AND T.CLAIMID = A.PZINSKEY))
+        OR (:17 = 'BELUM'
+            AND NOT EXISTS (SELECT T.CLAIMID
+                              FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                             WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                               AND T.CLAIMID = A.PZINSKEY)))
+   AND (:18 IS NULL
+        OR (:19 = 'LUNAS' AND A.STATUSCLAIM_1 = '1163')
+        OR (:20 = 'BELUM' AND A.STATUSCLAIM_1 <> '1163'))
 
 -- name: outstanding_list
 -- Membaca satu halaman klaim berjalan.
@@ -144,11 +200,9 @@ SELECT DISTINCT
          WHERE s.LSC_ID = A.STATUSCLAIM_1) AS LABEL_STATUS_KLAIM,
        A.PYSTATUSWORK      AS STATUS_PROSES,
        CAST(A.DATEOFLOSS_1 AS DATE) AS TANGGAL_KEJADIAN,
-       A.RECEIVEDDATE_1    AS TANGGAL_LAPOR,
+       A.REPORTDATE_1    AS TANGGAL_LAPOR,
        A.PXCREATEDATETIME  AS TANGGAL_PENDAFTARAN
-  FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK A
-       INNER JOIN DATAPEGA.PC_ASSIGN_WORKLIST B
-               ON A.PZINSKEY = B.PXREFOBJECTKEY
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
@@ -157,8 +211,8 @@ SELECT DISTINCT
    AND A.PYSTATUSWORK <> 'Resolved-Completed'
    AND A.PYSTATUSWORK <> 'Resolved-Rejected'
    AND A.BRANCHNAME <> 'ASNET'
-   AND B.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-   AND B.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 IS NULL
         OR UPPER(A.POLICYNO) LIKE :2 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
@@ -170,5 +224,89 @@ SELECT DISTINCT
             AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
         OR (:7 = 'PA' AND A.GROUPPANEL_1 = '002')
         OR (:8 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   AND (:9 IS NULL OR UPPER(A.POLICYNO) LIKE :10 ESCAPE '\')
+   AND (:11 IS NULL OR UPPER(A.PYID) LIKE :12 ESCAPE '\')
+   AND (:13 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :14 ESCAPE '\')
+   AND (:15 IS NULL
+        OR (:16 = 'SUDAH'
+            AND EXISTS (SELECT T.CLAIMID
+                          FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                         WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                           AND T.CLAIMID = A.PZINSKEY))
+        OR (:17 = 'BELUM'
+            AND NOT EXISTS (SELECT T.CLAIMID
+                              FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                             WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                               AND T.CLAIMID = A.PZINSKEY)))
+   AND (:18 IS NULL
+        OR (:19 = 'LUNAS' AND A.STATUSCLAIM_1 = '1163')
+        OR (:20 = 'BELUM' AND A.STATUSCLAIM_1 <> '1163'))
  ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
-OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
+OFFSET :21 ROWS FETCH NEXT :22 ROWS ONLY
+
+-- name: pindah_pic_saring
+-- Memindahkan SELURUH klaim yang cocok dengan penyaring layar — "Select All" lintas halaman.
+--
+-- # Kenapa ini ada, dan bukan perulangan per klaim
+--
+-- "Select All" berarti seluruh hasil penyaring, bukan 25 baris pada halaman yang terbuka.
+-- Pada data hari ini itu 1.639 klaim. Mengirimkannya sebagai 1.639 permintaan terpisah
+-- membebani server dan membuat kegagalan di tengah meninggalkan sebagian berpindah dan
+-- sebagian tidak — keadaan yang tidak dapat dibedakan dari pemindahan yang berhasil.
+--
+-- Satu pernyataan, satu transaksi, satu jawaban berisi jumlah barisnya.
+--
+-- # WHERE-nya SALINAN PERSIS dari outstanding_count
+--
+-- Ia wajib memindahkan tepat klaim yang terlihat pengguna. Bila syaratnya menyimpang, tombol
+-- memindahkan himpunan yang BERBEDA dari yang tercentang di layar — dan tidak ada galat yang
+-- muncul; yang terjadi hanya klaim yang pindah tanpa ada yang memintanya.
+--
+-- `TestSelectAllMovesExactlyWhatTheListShows` menjaganya baris per baris.
+--
+-- Penandanya bergeser satu: `:1` dipakai operator tujuan, sehingga penyaringnya mulai di
+-- `:2`. Pergeseran itu satu-satunya perbedaan yang DIIZINKAN terhadap outstanding_count, dan
+-- penjaganya memperhitungkannya secara eksplisit — bukan dengan melonggarkan perbandingannya.
+UPDATE POOLDATA.T_CLAIMLIST_ADMIN
+   SET USERTEKNIS_1 = :1
+ WHERE PZINSKEY IN (
+       SELECT DISTINCT A.PZINSKEY
+         FROM POOLDATA.T_CLAIMLIST_ADMIN A
+              INNER JOIN POOLDATA.BUSINESS c
+                      ON A.BUSINESSCODE_1 = c.ID
+              INNER JOIN POOLDATA.BUSINESSGROUP d
+                      ON c.BUSINESSGROUPID = d.ID
+        WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+          AND A.PYSTATUSWORK <> 'Resolved-Completed'
+          AND A.PYSTATUSWORK <> 'Resolved-Rejected'
+          AND A.BRANCHNAME <> 'ASNET'
+          AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+          AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
+          AND (:2 IS NULL
+               OR UPPER(A.POLICYNO) LIKE :3 ESCAPE '\'
+               OR UPPER(A.PYID) LIKE :4 ESCAPE '\')
+          AND (:5 = 'ALL'
+               OR (:6 = 'NONMBU'
+                   AND A.GROUPPANEL_1 IN ('003', '004', '006')
+                   AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
+               OR (:7 = 'BONDING'
+                   AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
+               OR (:8 = 'PA' AND A.GROUPPANEL_1 = '002')
+               OR (:9 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+          AND (:10 IS NULL OR UPPER(A.POLICYNO) LIKE :11 ESCAPE '\')
+          AND (:12 IS NULL OR UPPER(A.PYID) LIKE :13 ESCAPE '\')
+          AND (:14 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :15 ESCAPE '\')
+          AND (:16 IS NULL
+               OR (:17 = 'SUDAH'
+                   AND EXISTS (SELECT T.CLAIMID
+                                 FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                                WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                                  AND T.CLAIMID = A.PZINSKEY))
+               OR (:18 = 'BELUM'
+                   AND NOT EXISTS (SELECT T.CLAIMID
+                                     FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                                    WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                                      AND T.CLAIMID = A.PZINSKEY)))
+          AND (:19 IS NULL
+               OR (:20 = 'LUNAS' AND A.STATUSCLAIM_1 = '1163')
+               OR (:21 = 'BELUM' AND A.STATUSCLAIM_1 <> '1163')))

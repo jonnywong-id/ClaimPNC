@@ -69,6 +69,16 @@ export type Grid = {
    * jawaban. Keduanya dipisah karena kesembilan komponen itu sama di kedua grid.
    */
   kolom: GridColumn[]
+
+  /**
+   * Kolom tetap SESUDAH kesembilan komponen.
+   *
+   * Hari ini hanya KATEGORI pada tab Adjuster dan NOTE pada tab Admin. Keduanya berada di
+   * ujung kanan grid layar lama, dan menaruhnya di `kolom` akan menggambarnya di DEPAN
+   * komponen — satu kolom bergeser, dan sembilan kolom angka di sebelahnya ikut terbaca
+   * salah.
+   */
+  kolom_akhir: GridColumn[]
 }
 
 /** Satu tab layar. */
@@ -94,6 +104,16 @@ export type AdminGroupOption = {
   keterangan?: string
 }
 
+/**
+ * Satu baris dropdown "Periode KPI" pada blok PA tab KPI Admin.
+ *
+ * `kode` dan `judul` sama — `YYYYMM` apa adanya, seperti layar lama menampilkannya.
+ */
+export type AdminPeriodOption = {
+  kode: string
+  judul: string
+}
+
 /** Jawaban GET /api/report-kpi/tab. */
 export type MetadataResponse = {
   tab: Tab[]
@@ -105,15 +125,11 @@ export type MetadataResponse = {
   kelompok_admin: AdminGroupOption[]
   selisih_terencana_admin: string[]
 
-  /**
-   * Nama koordinator sebagaimana ditulis di TEKS KUERI Pega, yang BERBEDA dari yang
-   * ditampilkan. Dipakai keterangan layar supaya penguji yang membandingkan layar ini
-   * dengan rule Pega tidak melaporkannya sebagai kekeliruan.
-   */
-  koordinator_di_kueri: string
-
   lini_bisnis: BusinessLineOption[]
   komponen_pic: PICComponent[]
+
+  /** Isi dropdown "Pilih Data KPI" — dikirim peladen, bukan ditulis di layar. */
+  data_kpi: PICExportKind[]
   selisih_terencana_pic: string[]
 
   /**
@@ -123,6 +139,15 @@ export type MetadataResponse = {
    * dapat dipertanyakan — dan ini pengecualian berbasis nama orang di dalam kode.
    */
   pic_dikecualikan_sla: string[]
+
+  /**
+   * Isi dropdown "Periode KPI" — penyaring blok PA pada tab KPI Admin.
+   *
+   * Dikirim peladen karena isinya diturunkan dari TAHUN BERJALAN, dan tahun yang berlaku
+   * harus tahun peladen. Menyusunnya di browser berarti jam klien yang salah setel
+   * diam-diam mengubah bulan yang dapat dipilih.
+   */
+  periode_kpi: AdminPeriodOption[]
 
   tabel_sumber: string
 
@@ -193,10 +218,25 @@ export type PICTeknikResponse = {
 }
 
 /** Isian penyaring tab KPI PIC Teknik sebagaimana dipegang layar. */
+/** Satu pilihan dropdown "Pilih Data KPI". */
+export type PICExportKind = {
+  kode: string
+  judul: string
+}
+
 export type PICFilterInput = {
   lini: string
   dari: string
   sampai: string
+
+  /**
+   * dataKPI memilih BERKAS mana yang diunduh — bukan apa yang tampil di layar.
+   *
+   * Di Pega ia isian tersendiri di sebelah tombol Export, dan nilainya "1"…"4".
+   * Kosong berarti bawaan ("1", Export KPI Progress), persis seperti
+   * @if(TempLaporan.City==0,"1",TempLaporan.City) pada activity-nya.
+   */
+  dataKPI: string
 }
 
 /** Kepala kartu skor — siapa yang dinilai. */
@@ -296,6 +336,9 @@ export type SummaryRow = {
   adjuster: string
   tipe: string
   nilai: Scores
+
+  /** Kolom KATEGORI. Kosong berarti nilainya tidak masuk satu pita pun. */
+  kategori: string
 }
 
 /** Satu baris grid Detail — satu kasus survei. */
@@ -307,6 +350,9 @@ export type DetailRow = {
   /** Berbentuk `YYYY-MM-DD`. Kosong berarti kolomnya kosong di basis data. */
   tanggal: string
   nilai: Scores
+
+  /** Kolom KATEGORI, dicari dengan cara yang sama seperti pada Summary. */
+  kategori: string
 }
 
 /** Keterangan halaman. */
@@ -335,7 +381,6 @@ export type DetailResponse = {
 /** Jawaban GET /api/report-kpi/adjuster/pilihan. */
 export type AdjusterListResponse = {
   adjuster: string[]
-  penyaring: Filter
   portal: string
 }
 
@@ -348,7 +393,32 @@ export type AdjusterListResponse = {
  * saya ketik" dari "yang sedang ditampilkan".
  */
 export type FilterInput = {
+  /**
+   * tipeReport memuat pilihan **"Pilih Status Survey"** di layar — ALL, FINAL, atau
+   * OUTSTANDING.
+   *
+   * # Kenapa namanya tidak cocok dengan labelnya
+   *
+   * Ia dikirim ke peladen sebagai parameter `tipe_report`, dan nama itu **kontrak**
+   * (`D-80`) — menggantinya memutuskan klien yang sudah ada. Yang dikoreksi 2026-10-08
+   * adalah LABELNYA: layar Pega menyebut isian ini "Pilih Status Survey"
+   * (`TempAdjComp.ASMFull`), sementara "Pilih Tipe Report" di Pega adalah isian LAIN —
+   * lihat `variant` di bawah.
+   *
+   * Jadi ketidakcocokan ini disengaja dan terbatas pada nama internal; yang dilihat
+   * pengguna sudah sama dengan Pega (`D-13`).
+   */
   tipeReport: string
+
+  /**
+   * variant memuat pilihan **"Pilih Tipe Report"** milik Pega: DATA SUMMARY atau
+   * DATA DETAIL (`TempAdjComp.AcceptedNo`).
+   *
+   * Ia menentukan grid mana yang digambar DAN berkas mana yang diunduh — di Pega satu
+   * tombol "Export Data" melayani keduanya, karena pilihannya sudah dinyatakan di sini.
+   */
+  variant: string
+
   adjuster: string
   dari: string
   sampai: string

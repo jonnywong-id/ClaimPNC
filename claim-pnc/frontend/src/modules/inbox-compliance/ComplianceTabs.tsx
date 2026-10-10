@@ -1,11 +1,11 @@
-import type { Tab } from './types'
+import type { Tab } from "./types";
 
 type Props = {
-  tabs: Tab[]
+  tabs: Tab[];
   /** Kode tab yang sedang terbuka. */
-  active: string
-  onSelect: (code: string) => void
-}
+  active: string;
+  onSelect: (code: string) => void;
+};
 
 /**
  * Bilah tab Inbox Compliance.
@@ -40,11 +40,15 @@ export function ComplianceTabs({ tabs, active, onSelect }: Props) {
       sebenarnya muat di ponsel, tetapi bentuknya dibuat sama dengan Inbox Admin supaya
       kedua layar antrean kerja tidak terasa dirakit dari dua aplikasi berbeda.
     */
-    <div className="overflow-x-auto" role="tablist" aria-label="Antrean Inbox Compliance">
+    <div
+      className="overflow-x-auto"
+      role="tablist"
+      aria-label="Antrean Inbox Compliance"
+    >
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
         {tabs.map((tab) => {
-          const selected = tab.kode === active
-          const pending = !tab.tersedia
+          const selected = tab.kode === active;
+          const pending = !tab.tersedia;
 
           return (
             <button
@@ -56,15 +60,15 @@ export function ComplianceTabs({ tabs, active, onSelect }: Props) {
               title={pending ? tab.penghalang : tab.keterangan}
               onClick={() => onSelect(tab.kode)}
               className={[
-                'rounded-t-kontrol border-b-2 px-3.5 py-2.5',
-                'text-sm font-medium whitespace-nowrap',
-                'transition-[color,border-color,background-color] duration-150 ease-halus',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                "rounded-t-kontrol border-b-2 px-3.5 py-2.5",
+                "text-sm font-medium whitespace-nowrap",
+                "transition-[color,border-color,background-color] duration-150 ease-halus",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                 selected
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
-                pending && !selected ? 'text-slate-400' : '',
-              ].join(' ')}
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+                pending && !selected ? "text-slate-400" : "",
+              ].join(" ")}
             >
               {tab.nama}
               {pending && (
@@ -77,9 +81,9 @@ export function ComplianceTabs({ tabs, active, onSelect }: Props) {
                 </span>
               )}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

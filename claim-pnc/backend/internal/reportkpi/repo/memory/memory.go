@@ -216,19 +216,17 @@ func (s *Store) Detail(
 	return reportkpi.DetailPage{Rows: rows, Total: total}, nil
 }
 
-// Adjusters mengambil nama adjuster yang punya baris pada penyaring yang berlaku.
-func (s *Store) Adjusters(_ context.Context, q reportkpi.Query) ([]string, error) {
+// Adjusters mengambil SELURUH nama adjuster yang dikenal contoh ini.
+//
+// Tanpa penyaring apa pun, meniru master adjuster eksternal — lihat seam reportkpi.Repo.
+// Pengisi SQL membacanya dari `POOLDATA.V_D_SURVEYORS`; di sini tidak ada master
+// tersendiri, sehingga nama diambil dari baris contoh yang ada.
+func (s *Store) Adjusters(_ context.Context) ([]string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	seen := map[string]bool{}
 	for _, row := range s.rows {
-		// Penyaring adjuster sengaja DIABAIKAN di sini — lihat usecase.Adjusters.
-		probe := q
-		probe.Adjuster = ""
-		if !matches(row, probe) {
-			continue
-		}
 		if name := strings.TrimSpace(row.Adjuster); name != "" {
 			seen[name] = true
 		}

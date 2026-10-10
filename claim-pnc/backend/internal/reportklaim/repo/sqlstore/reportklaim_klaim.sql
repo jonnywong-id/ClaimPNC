@@ -88,7 +88,7 @@ SELECT a.claimno                        AS "CaseID",
        a.postaudit_tf_analystdate       AS "IsBackCFS",
        a.cplpostaudit_validdate         AS "IsTransferPIC",
        COALESCE(a.cplvalid_date, a.postaudit_tf_analystdate) AS "CompliancePosAuditByr",
-       a.analysttransferdate            AS "KirimAnalystDate",
+       a.analyst_transferdate           AS "KirimAnalystDate",
        a.trf_to_investigator            AS "KirimInvestDate",
 
        d.acceptance_datecomitee         AS "AnaylstRemarks",
@@ -538,7 +538,14 @@ SELECT a.idpega   AS "CaseID",
  WHERE a.idpega IN (
          SELECT 'ASM-FW-GCNMFW-WORK ' ||
                 CASE WHEN s.serviceid LIKE '%/%'
-                     THEN COALESCE(SUBSTR(s.serviceid, 1, POSITION('/' IN s.serviceid) - 1), s.serviceid)
+                     -- INSTR, bukan POSITION. `09-DATABASE-STRATEGY.md` §4 menetapkan
+                     -- padanannya POSITION, dan padanan itu TIDAK DAPAT DIJALANKAN:
+                     -- Oracle 19c menolak `POSITION(x IN y)` dengan ORA-00907. Diuji
+                     -- langsung ke basis data 2026-10-09.
+                     --
+                     -- Ini pengecualian dialek yang disadari, sekelas sakelar generator
+                     -- nomor klaim (§3.1): padanan PostgreSQL-nya `strpos`/`position`.
+                     THEN COALESCE(SUBSTR(s.serviceid, 1, INSTR(s.serviceid, '/') - 1), s.serviceid)
                      ELSE s.serviceid
                 END
            FROM POOLDATA.CLAIM_SERVICE_LOG s
@@ -563,10 +570,15 @@ SELECT a.idpega   AS "CaseID",
 -- Asal: `RDB List/ExportDataCloseKlaimNONMBU-SQL.xml`, dijalankan
 -- `Activity/PNCReportDataClose_act-Act.xml`.
 --
--- Bind:
---   :1  tanggal tutup klaim dari    DATE
---   :2  tanggal tutup klaim sampai  DATE
---   :3  penutupan sementara         'true' | 'false'
+-- Bind — SATU nilai per KEMUNCULAN, bukan per nomor (lihat catatan di bawah):
+--   :1  penanda tutup sementara     'true' | 'false'
+--   :2  penanda yang sama, lagi     'true' | 'false'
+--   :3  tanggal tutup klaim dari    DATE
+--   :4  tanggal tutup klaim sampai  DATE
+--
+-- Driver Oracle mengikat menurut URUTAN KEMUNCULAN, bukan menurut nomor. Penandanya
+-- dibandingkan dua kali, jadi ia dikirim dua kali. Menomori keduanya `:1` dan mengirim
+-- tiga nilai membuat tanggalnya bergeser ke kemunculan yang salah — tanpa galat.
 --
 -- # Kenapa SATU kueri melayani dua panel
 --
@@ -751,7 +763,11 @@ SELECT a.sobname                                               AS "UserBusinessP
           FROM pooldata.t_claim_adjustment s
          WHERE s.claimid = z.pzinskey
            AND s.noakseptasi IS NOT NULL)                      AS "RWID",
-       p.sts_progress1                                         AS "AgingAmount",
+       -- "STS PROGRESS 1" adalah NAMA tahapan, dan namanya hidup di master
+       -- GCNM_MST_PROGRESS_KLAIM — tabel progres hanya menyimpan kodenya
+       -- (STATUS_PROGRESS1). Sumbernya pun menempuh dua tabel:
+       -- `WHERE G.STATUS_PROGRESS1 = I.ID_PROGRESS`.
+       mprog.sts_progress1                                        AS "AgingAmount",
        p.jsonstatus_progress2                                  AS "ProgresJSON",
        p.tgl_input                                             AS "TglUpdateProgres",
        p.keterangan                                            AS "pyNote",
@@ -789,7 +805,10 @@ SELECT a.sobname                                               AS "UserBusinessP
        z.registerdate_1                                        AS "TanggalRegistrasiTeks",
        b.finishregisterdate                                    AS "NewTelpTertanggung",
        z.closeclaimdate_1                                      AS "NewEmail",
-       z.closeclaimnote                                        AS "AlasanDokterRejectRCL",
+       -- Kolomnya ada di T_CLAIM_PNC, bukan di objek kerja Pega — objek kerja punya
+       -- CLOSECLAIMNOTE_1. Sumbernya menulisnya TANPA kualifikasi, dan Oracle
+       -- menyelesaikannya ke tabel yang punya nama persis itu.
+       b.closeclaimnote                                        AS "AlasanDokterRejectRCL",
        -- Kolom "Dominan Factor".
        --
        -- Sistem lama TIDAK mengambilnya lewat kueri ini: activity-nya menelusuri page list
@@ -821,14 +840,15 @@ SELECT a.sobname                                               AS "UserBusinessP
                              FROM pooldata.gcnm_progress_claim m
                             WHERE m.pnccaseid = a.noklaim
                               AND m.status_progress2 NOT IN ('2','24','60','59'))
+  LEFT JOIN pooldata.gcnm_mst_progress_klaim mprog ON mprog.id_progress = p.status_progress1
  WHERE a.group_panel IN ('003','004','006')
    AND a.groupbisnisid NOT IN ('09','11','16','25')
    AND a.stsklaim IN ('1','3')
    AND z.pystatuswork = 'Resolved-Completed'
-   AND ((:3 = 'true'  AND z.ispendingclose = 'true')
-     OR (:3 = 'false' AND (z.ispendingclose = 'false' OR z.ispendingclose IS NULL)))
-   AND CAST(z.closeclaimdate_1 AS DATE) >= :1
-   AND CAST(z.closeclaimdate_1 AS DATE) <= :2
+   AND ((:1 = 'true'  AND z.ispendingclose = 'true')
+     OR (:2 = 'false' AND (z.ispendingclose = 'false' OR z.ispendingclose IS NULL)))
+   AND CAST(z.closeclaimdate_1 AS DATE) >= :3
+   AND CAST(z.closeclaimdate_1 AS DATE) <= :4
  ORDER BY z.closeclaimdate_1 ASC
 
 -- name: report_fee_scale

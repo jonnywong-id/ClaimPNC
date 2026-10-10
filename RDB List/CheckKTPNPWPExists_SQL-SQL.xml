@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzRuleSetVersionPatch>41</pzRuleSetVersionPatch>
+<pxCreateDateTime>20250801T003302.769 GMT</pxCreateDateTime>
+<pxUpdateOperator>YOHANESBAPTISTA</pxUpdateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyStatus/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyValueChanged>false</pyValueChanged>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxMoveImportOperId>RIXTUSBAGUSRESA</pxMoveImportOperId>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyCircumstanceProp/>
+<pyShowJavaWindowName>GeneratedJava20261008T074511.652 GMT</pyShowJavaWindowName>
+<pyRequestType>CheckKTPNPWPExists_SQL</pyRequestType>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<pyRuleStarts/>
+<pyDescription/>
+<pxInstanceLockedBy/>
+<pxUpdateOpName>Yohanes Baptista Ago Patria</pxUpdateOpName>
+<pzRuleSetVersionMinor>05</pzRuleSetVersionMinor>
+<pxCommitDateTime>20250806T155257.000 GMT</pxCommitDateTime>
+<pyFormPost/>
+<pyCircumstanceVal/>
+<pxTabLabel>ASM-FW-GISFW-Data-Search ASM CheckKTPNPWPExists_SQL</pxTabLabel>
+<pyUsage/>
+<pxHostId>jboss1037</pxHostId>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-SEARCH ASM!CHECKKTPNPWPEXISTS_SQL #20250801T003302.769 GMT</pzOriginalInstanceKey>
+<pxInstanceLockedRuleSetVersion/>
+<pyDocumentTitle/>
+<pyLabel>CheckKTPNPWPExists_SQL</pyLabel>
+<pyRuleParamsStreamName/>
+<pxInstanceLockedCreateDateTime/>
+<pyMethodStatus/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDateProp/>
+<pyTemplateInputBox/>
+<pyClassName>ASM-FW-GISFW-Data-Search</pyClassName>
+<pyCircumstanceType/>
+<pySaveSQL/>
+<pyRWAccess>ASM</pyRWAccess>
+<pxInsName>ASM-FW-GISFW-DATA-SEARCH!ASM!CHECKKTPNPWPEXISTS_SQL</pxInsName>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxSiblingCount/>
+<pyIsFromManageChangeLP/>
+<pzChecksum>1375887369</pzChecksum>
+<pyCircumstanceDate/>
+<pxCreateOpName>Yohanes Baptista Ago Patria</pxCreateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pxSaveDateTime>20250801T003628.477 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GISFW-Data-Search ASM CheckKTPNPWPExists_SQL</pyRuleName>
+<pyRuleEnds/>
+<pxInstanceLockedDateTime/>
+<pyInterface/>
+<pyRuleFormStatusTime>20261008T074511.631 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedKey/>
+<pxUpdateDateTime>20250801T003628.474 GMT</pxUpdateDateTime>
+<pyHistoryObject/>
+<pyBrowseSQL>SELECT id AS "HASIL1"
+  FROM pooldata.t_mclient
+ WHERE ktp = '{ASIS:CekExists.HASIL1}' 
+OR npwp = '{ASIS:CekExists.HASIL2}'</pyBrowseSQL>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyDeletedObject/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyHandlerFlow/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyTemplate/>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-SEARCH ASM!CHECKKTPNPWPEXISTS_SQL #20250801T003302.769 GMT</pzInsKey>
+<pxCreateOperator>YOHANESBAPTISTA</pxCreateOperator>
+<pyRuleSetVersion>01-05-41</pyRuleSetVersion>
+<pxInsId>ASM-FW-GISFW-DATA-SEARCH!ASM!CHECKKTPNPWPEXISTS_SQL</pxInsId>
+<pyWindowTitle/>
+<pyWorkKey/>
+<pxMoveFromSystem/>
+<pyCircumstanceTemplate/>
+<pyOpenSQL/>
+<pyJavaStream/>
+<pyStepPageReference>RH_2</pyStepPageReference>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCircumstanceDefinition/>
+<pxMoveImportDateTime>20250806T155257.321 GMT</pxMoveImportDateTime>
+<pyStreamName/>
+<pySPRuleSetName/>
+<pxMoveImportOperName>RIXTUS KUSUMA</pxMoveImportOperName>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-SEARCH ASM!CHECKKTPNPWPEXISTS_SQL #20250801T003302.769 GMT</pzDocumentKey>
+<pzStatus>valid</pzStatus>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-DATA-SEARCH ASM!CHECKKTPNPWPEXISTS_SQL #20250801T003302.769 GMT</pzInsKey>
+<pyLabel>01-05-41 (Available)</pyLabel>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyCheckIn>false</pyCheckIn>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pyLaunch>true</pyLaunch>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRefresh>true</pyRefresh>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyAvailability>false</pyAvailability>
+<pySiblings>true</pySiblings>
+<pyRun>false</pyRun>
+<pyCompareVersion/>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyShowJava>false</pyShowJava>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyBack>true</pyBack>
+<pyRuleData>true</pyRuleData>
+<pyRestore>false</pyRestore>
+<pyPreview>false</pyPreview>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyForward>true</pyForward>
+<pyDelegates>false</pyDelegates>
+<pySaveAs>true</pySaveAs>
+<pySave>false</pySave>
+</pyToolBarSettings>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileKey/>
+<pyCFieldType/>
+<pyCFieldName/>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

@@ -5,107 +5,99 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
-import { SelectField, type SelectOption } from '@/components/SelectField'
 
-import { useAdminDetail, useAdminScorecard, useExportAdmin } from './api'
-import type {
-  AdminDetailRow,
-  AdminFilterInput,
-  Grid,
-  MetadataResponse,
-  Metric,
-  ScorecardResponse,
-} from './types'
+import { useAdminScorecard, useExportAdmin } from './api'
+import type { Grid, MetadataResponse, Metric, ScorecardResponse } from './types'
 
 /**
  * Tab **KPI Admin** — kinerja tim ADMIN REGISTRASI klaim.
  *
- * # Bentuknya berbeda dari tab Adjuster, dan itu mengikuti layar lama
+ * # Satu grid, bernama "Data KPI", berkolom 21
  *
- * Tab Adjuster menggambar dua TABEL. Tab ini menggambar satu KARTU SKOR — satu baris hasil
- * hitungan dengan belasan metrik — lalu grid rincian klaim di bawahnya. Kuerinya pun
- * begitu: satu mengembalikan tepat satu baris, satu lagi mengembalikan banyak.
+ * Koreksi 2026-10-09. Tab ini sebelumnya menggambar KARTU SKOR beserta grid "Rincian Klaim"
+ * di bawahnya. Keduanya salah terhadap layar lama:
  *
- * # Dua kelompok, dan keduanya BUKAN penyaring atas bentuk yang sama
+ *   - Pega menggambar **satu tabel datar satu baris** berkolom 21, bukan kartu. Susunannya
+ *     dibaca dari urutan `pyValue` grid pada `Section/ReportKPI_Section-Section.xml`, dan
+ *     cocok satu-ke-satu dengan urutan SELECT `RDB List/GetDataKPIAdmin-SQL.xml`.
+ *   - Grid rincian memang ada di section itu, tetapi ia milik blok PA yang TIDAK
+ *     ditampilkan, dan kolomnya persis kolom berkas **Export Detail Data**. Jadi ia layout
+ *     ekspor, bukan grid layar.
  *
- *   KLAIM NON MBU  membedakan LEADER dan MEMBER, mengukur satu tahap (registrasi)
- *   KLAIM PA       membedakan tahap REGISTRASI dan PEMBAYARAN, tanpa pembedaan orang
+ * Rinciannya tidak hilang: tombol Export Detail Data tetap mengunduhnya, dan kuerinya tidak
+ * disentuh sama sekali.
  *
- * Metrik dan kolomnya berbeda, dan yang menentukannya adalah keterangan dari server —
- * bukan percabangan di layar ini.
+ * # SATU bilah penyaring
+ *
+ * `ReportKPI_Section` memuat DUA bilah di dalam layout `KPI Admin`: `Dari`+`Sampai` dan
+ * `Periode KPI`, masing-masing dengan `Cari` dan `Export Detail Data` sendiri. Keduanya
+ * bertanda `pyVisible: ALWAYS`, dan yang kedua berada di dalam wadah ber-`pyLoadDeferred`.
+ *
+ * **Work Owner memeriksa Pega yang berjalan pada 2026-10-09 dan bilah kedua TIDAK ADA.**
+ * Wadah tertunda itu tidak pernah selesai dimuat; definisinya ada, tampilannya tidak — dan
+ * yang ditiru adalah layar yang dipakai orang (`D-13`).
+ *
+ * Kueri, dropdown periode, dan kartu skor PA di sisi peladen **tetap ada** dan teruji; yang
+ * hilang hanya jalan masuknya dari layar.
  */
 export function ReportKPIAdmin({ metadata }: { metadata: MetadataResponse | undefined }) {
-  const [draft, setDraft] = useState<AdminFilterInput>(emptyAdminFilter)
-  const [applied, setApplied] = useState<AdminFilterInput | null>(null)
-  const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState<AdminPeriod>(emptyAdminPeriod)
+  const [applied, setApplied] = useState<AdminPeriod | null>(null)
 
-  const active = applied ?? emptyAdminFilter
+  const filter = { ...(applied ?? emptyAdminPeriod), kelompok: GROUP_NONMBU }
   const searched = applied !== null
 
-  const scorecard = useAdminScorecard(active, searched)
-  const detail = useAdminDetail(active, page, searched)
+  const scorecard = useAdminScorecard(filter, searched)
   const exportFile = useExportAdmin()
 
-  const violations = violationsOf(scorecard.error ?? detail.error)
-  const grid = adminDetailGrid(metadata)
+  const violations = violationsOf(scorecard.error)
+  const grid = adminScorecardGrid(metadata)
 
-  const groupOptions: SelectOption[] = (metadata?.kelompok_admin ?? []).map((item) => ({
-    value: item.kode,
-    label: item.judul,
-  }))
-
-  const note = metadata?.kelompok_admin.find(
-    (item) => item.kode === draft.kelompok,
-  )?.keterangan
+  // Judul blok dipakai sebagai `aria-label` SAJA, tidak digambar — seluruh bagian Admin
+  // pada section Pega hanya memuat label isiannya, tanpa judul blok dan tanpa keterangan.
+  const title = metadata?.kelompok_admin.find((item) => item.kode === GROUP_NONMBU)?.judul
+  const rows = scorecard.data ? [scorecard.data] : []
 
   return (
-    <div className="space-y-6">
+    <section className="space-y-4" aria-label={title ?? GROUP_NONMBU}>
       <form
-        className="space-y-4 rounded-kotak border border-slate-200 bg-white p-4"
+        className="rounded-kotak border border-slate-200 bg-white p-4"
         onSubmit={(event) => {
           event.preventDefault()
           setApplied(draft)
-          setPage(1)
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SelectField
-            id="kpi-admin-kelompok"
-            label="Pilih Data KPI"
-            options={groupOptions}
-            emptyText="--Pilih--"
-            value={draft.kelompok}
-            error={violations['kelompok']}
-            onChange={(event) => setDraft({ ...draft, kelompok: event.target.value })}
-          />
-
+        {/* SATU baris: isian, Cari, lalu Export Detail Data — seperti Pega. */}
+        <div className="flex flex-wrap items-end gap-3">
           <FormField
             id="kpi-admin-dari"
-            label="Periode — Dari"
+            label="Dari"
             type="date"
+            className="w-44"
             value={draft.dari}
             failure={violations['dari']}
             onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
           />
-
           <FormField
             id="kpi-admin-sampai"
-            label="Periode — Sampai"
+            label="Sampai"
             type="date"
+            className="w-44"
             value={draft.sampai}
             failure={violations['sampai']}
             onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
           />
-        </div>
 
-        {note && <p className="text-sm text-slate-600">{note}</p>}
-
-        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" tone="utama">
             Cari
           </Button>
+
+          {/*
+            Berkasnya mengikuti penyaring yang SEDANG ditampilkan, sehingga tombolnya
+            dimatikan sebelum Cari ditekan — belum ada yang ditampilkan.
+          */}
           <Button
-            onClick={() => exportFile.mutate(active)}
+            onClick={() => exportFile.mutate(filter)}
             disabled={!searched || exportFile.isPending}
           >
             Export Detail Data
@@ -121,155 +113,110 @@ export function ReportKPIAdmin({ metadata }: { metadata: MetadataResponse | unde
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih data KPI dan periode, lalu tekan <strong>Cari</strong>. Layar lama pun
-          menolak tanpa periode — pesannya berbunyi &quot;Periode tanggal masih kosong&quot;.
-        </p>
-      ) : (
-        <>
-          {scorecard.isError ? (
-            <ErrorMessage
-              title="Kartu skor tidak dapat diambil"
-              description={messageOf(scorecard.error)}
-              tone="gangguan"
-            />
-          ) : (
-            <Scorecard
-              card={scorecard.data}
-              loading={scorecard.isPending}
-              coordinatorInQuery={metadata?.koordinator_di_kueri ?? ''}
-            />
-          )}
-
-          <DataTable<AdminDetailRow>
-            title="Rincian Klaim"
-            label="Rincian klaim yang ditangani tim admin"
-            columns={adminColumns(grid, active.kelompok)}
-            rows={detail.data?.baris ?? []}
-            rowKey={(row) => row.no_klaim}
-            isLoading={detail.isPending}
-            error={
-              detail.isError ? (
-                <ErrorMessage
-                  title="Rincian tidak dapat diambil"
-                  description={messageOf(detail.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
-            }
-            emptyMessage={adminEmptyMessage}
-            hideSearch
-            pagination={{
-              page: detail.data?.paginasi.halaman ?? 1,
-              size: detail.data?.paginasi.ukuran ?? 50,
-              total: detail.data?.paginasi.total ?? 0,
-              totalPage: detail.data?.paginasi.total_halaman ?? 0,
-              onPageChange: setPage,
-              isLoading: detail.isFetching,
-            }}
-          />
-        </>
+      {searched && (
+        <DataTable<ScorecardResponse>
+          title={grid?.judul ?? 'Data KPI'}
+          label="Penilaian KPI tim admin registrasi"
+          columns={adminColumns(grid, scorecard.data)}
+          rows={rows}
+          rowKey={(row) => row.identitas.kategori}
+          isLoading={scorecard.isPending}
+          error={
+            scorecard.isError ? (
+              <ErrorMessage
+                title="Data KPI tidak dapat diambil"
+                description={messageOf(scorecard.error)}
+                tone="gangguan"
+              />
+            ) : undefined
+          }
+          emptyMessage={adminEmptyMessage}
+          hideSearch
+        />
       )}
-    </div>
+    </section>
   )
 }
 
-/* ─────────────────────────── Kartu skor ─────────────────────────── */
+/* ─────────────────────────── Penyusun kolom ─────────────────────────── */
 
 /**
- * Kartu skor — kepala identitas, lalu metrik berurutan, lalu kesimpulan.
+ * adminColumns menyusun ke-21 kolom: identitas, lalu metrik, lalu NOTE.
  *
- * Ia digambar sebagai KARTU, bukan tabel satu baris. Tabel dengan empat belas kolom dan
- * satu baris memaksa pengguna menggulir menyamping untuk membaca satu penilaian — dan
- * kartu skor justru dibaca dari atas ke bawah.
+ * Kolom metriknya datang dari JAWABAN, bukan dari metadata — metriknya berbeda antar
+ * kelompok dan sebagiannya baru diketahui saat permintaan dijawab. Judul dan urutannya
+ * disusun `BuildScorecard` di sisi peladen, sehingga layar tidak dapat menyusunnya berbeda
+ * dari berkas ekspor.
  */
-function Scorecard({
-  card,
-  loading,
-  coordinatorInQuery,
-}: {
-  card: ScorecardResponse | undefined
-  loading: boolean
-  coordinatorInQuery: string
-}) {
-  if (loading && !card) {
-    return (
-      <div className="rounded-kotak border border-slate-200 bg-white p-4 text-sm text-slate-500">
-        Menghitung kartu skor…
-      </div>
-    )
+function adminColumns(
+  grid: Grid | undefined,
+  card: ScorecardResponse | undefined,
+): Column<ScorecardResponse>[] {
+  // `render` dipasang supaya sel kosong tergambar KOSONG, bukan sebagai tanda hubung.
+  //
+  // Yang terkena hari ini adalah kolom NOTE: rasio yang tidak dapat dihitung menghasilkan
+  // kesimpulan kosong, dan Pega menggambarnya sebagai sel kosong — bukan sebagai tanda yang
+  // terbaca seolah nilainya hilang.
+  const identity: Column<ScorecardResponse>[] = (grid?.kolom ?? []).map((column) => ({
+    key: column.kunci,
+    title: column.judul,
+    value: (row) => adminIdentityCell(row, column.kunci),
+    render: (row) => adminIdentityCell(row, column.kunci),
+  }))
+
+  const metrics: Column<ScorecardResponse>[] = (card?.metrik ?? []).map((metric) => ({
+    key: metric.kode,
+    title: metric.judul,
+    value: (row) => metricText(row.metrik.find((m) => m.kode === metric.kode)),
+
+    // Seluruh kolom metrik berisi angka; dirapatkan ke kanan supaya desimalnya sejajar.
+    alignRight: true,
+  }))
+
+  const trailing: Column<ScorecardResponse>[] = (grid?.kolom_akhir ?? []).map((column) => ({
+    key: column.kunci,
+    title: column.judul,
+    value: (row) => adminIdentityCell(row, column.kunci),
+    render: (row) => adminIdentityCell(row, column.kunci),
+  }))
+
+  return [...identity, ...metrics, ...trailing]
+}
+
+/**
+ * adminIdentityCell mengambil isi satu sel identitas.
+ *
+ * Perhatikan pasangan yang bersilangan: kolom **UNIT KERJA** diisi `identitas.kategori`,
+ * sedangkan kolom **BUSINESS** diisi `identitas.unit_kerja`. Penamaan internal kami memang
+ * tidak sejalan dengan judul layar lama, dan urutan SELECT kueri Pega yang memutuskannya.
+ */
+function adminIdentityCell(card: ScorecardResponse, key: string): string {
+  switch (key) {
+    case 'unit_kerja':
+      return card.identitas.kategori
+    case 'nama_koordinator':
+      return card.identitas.nama_koordinator
+    case 'business':
+      return card.identitas.unit_kerja
+    case 'nik':
+      return card.identitas.nik
+    case 'tanggal_efektif':
+      return card.tanggal_efektif
+    case 'note':
+      return card.achievement ?? ''
+    default:
+      return ''
   }
-  if (!card) return null
-
-  return (
-    <section className="space-y-4 rounded-kotak border border-slate-200 bg-white p-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">
-            {card.identitas.kategori}
-          </h2>
-          <p className="text-sm text-slate-600">
-            {card.identitas.nama_koordinator} · NIK {card.identitas.nik} ·{' '}
-            {card.identitas.unit_kerja}
-          </p>
-          <p className="text-sm text-slate-500">
-            Tanggal efektif: {card.tanggal_efektif}
-          </p>
-        </div>
-
-        {card.achievement && (
-          <span
-            className={[
-              'rounded-full px-3 py-1 text-sm font-medium',
-              // Warna BUKAN satu-satunya pembeda: teksnya sendiri menyebut hasilnya.
-              card.achievement === 'TERCAPAI TARGET'
-                ? 'bg-blue-50 text-blue-800'
-                : 'bg-amber-100 text-amber-900',
-            ].join(' ')}
-          >
-            {card.achievement}
-          </span>
-        )}
-      </header>
-
-      {/*
-        Keterangan nama koordinator. Ia digambar karena penguji yang membandingkan layar
-        ini dengan teks kueri Pega akan menemukan nama yang BERBEDA — dan tanpa keterangan
-        ini ia akan melaporkannya sebagai kekeliruan.
-      */}
-      {coordinatorInQuery !== '' &&
-        coordinatorInQuery !== card.identitas.nama_koordinator && (
-          <p className="text-xs text-slate-500">
-            Catatan: teks kueri Pega menyebut nama koordinator{' '}
-            <strong>{coordinatorInQuery}</strong>, tetapi activity-nya menimpanya dengan
-            nama di atas. Yang ditampilkan adalah yang benar-benar dilihat pengguna di
-            sistem lama.
-          </p>
-        )}
-
-      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-        {card.metrik.map((metric) => (
-          <div key={metric.kode} className="flex items-baseline justify-between gap-3">
-            <dt className="text-sm text-slate-600">{metric.judul}</dt>
-            <dd className="text-sm font-semibold tabular-nums text-slate-900">
-              {metricText(metric)}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  )
 }
 
 /**
  * metricText menggambar satu angka menurut bentuknya.
  *
- * Bentuknya datang dari server, bukan disimpulkan dari nama metriknya: satu kartu memuat
+ * Bentuknya datang dari server, bukan disimpulkan dari nama metriknya: satu baris memuat
  * cacah, persen, nilai 1–5, dan desimal sekaligus.
  */
-function metricText(metric: Metric): string {
-  if (metric.nilai === null) return '—'
+function metricText(metric: Metric | undefined): string {
+  if (!metric || metric.nilai === null) return '—'
 
   switch (metric.bentuk) {
     case 'cacah':
@@ -288,47 +235,32 @@ function round2(value: number): number {
 
 /* ─────────────────────────── Bantuan kecil ─────────────────────────── */
 
-const emptyAdminFilter: AdminFilterInput = { kelompok: '', dari: '', sampai: '' }
+/**
+ * AdminPeriod adalah penyaring layar: HANYA periode.
+ *
+ * Kelompoknya bukan isian pengguna — hanya NON MBU yang digambar, dan ia menambahkan
+ * kodenya sendiri saat memanggil peladen.
+ */
+export type AdminPeriod = { dari: string; sampai: string }
+
+const emptyAdminPeriod: AdminPeriod = { dari: '', sampai: '' }
+
+/**
+ * Kode kelompok admin, apa adanya seperti yang diterima peladen.
+ *
+ * Kelompok `PA` tetap dikenal peladen dan kuerinya teruji, tetapi bilah penyaringnya
+ * dicabut karena Pega tidak menampilkannya — lihat catatan di kepala berkas.
+ */
+const GROUP_NONMBU = 'NONMBU'
 
 const adminEmptyMessage =
   'Tidak ada klaim pada penyaring ini. Periksa periodenya — yang disaring adalah tanggal ' +
-  'registrasi klaim. Perhatikan pula bahwa hanya klaim yang dibuat oleh tim admin ' +
-  'kelompok ini yang dihitung; daftar petugasnya tertulis di dalam kueri, bukan di master.'
+  'registrasi klaim.'
 
-/** adminDetailGrid mengambil keterangan grid rincian dari metadata. */
-function adminDetailGrid(metadata: MetadataResponse | undefined): Grid | undefined {
+/** adminScorecardGrid mengambil keterangan grid "Data KPI" dari metadata. */
+function adminScorecardGrid(metadata: MetadataResponse | undefined): Grid | undefined {
   const tab = metadata?.tab.find((item) => item.kode === 'admin')
-  return tab?.grid.find((item) => item.kode === 'rincian-klaim')
-}
-
-/**
- * adminColumns menyusun kolom grid rincian untuk kelompok yang sedang dipilih.
- *
- * Penyaring kelompoknya TIDAK boleh dilewati: judul "Tgl Terima Dokumen" ada di kedua
- * kelompok tetapi menunjuk kolom basis data yang berbeda, sehingga tanpa penyaring layar
- * akan menggambar judul itu dua kali — dan salah satunya berisi tanggal yang salah.
- */
-function adminColumns(
-  grid: Grid | undefined,
-  group: string,
-): Column<AdminDetailRow>[] {
-  return (grid?.kolom ?? [])
-    .filter((column) => !column.hanya_kelompok || column.hanya_kelompok === group)
-    .map((column) => ({
-      key: column.kunci,
-      title: column.judul,
-      value: (row) => adminCellText(row, column.kunci),
-      alignRight: column.kunci.startsWith('aging_'),
-    }))
-}
-
-/** adminCellText mengambil isi satu sel; yang kosong digambar sebagai tanda hubung. */
-function adminCellText(row: AdminDetailRow, key: string): string {
-  const value = row[key as keyof AdminDetailRow]
-
-  if (value == null || value === '') return '—'
-  if (typeof value === 'number') return String(round2(value))
-  return value
+  return tab?.grid.find((item) => item.kode === 'kartu-skor')
 }
 
 function violationsOf(error: unknown): Record<string, string> {

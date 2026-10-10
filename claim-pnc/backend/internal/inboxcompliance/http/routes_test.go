@@ -366,7 +366,7 @@ func TestKirimKePostAuditTampilDiTabnya(t *testing.T) {
 	require.Equal(t, http.StatusCreated, response.StatusCode)
 
 	// Nomornya berasal dari rentang aplikasi baru, bukan dari rentang terbitan Pega.
-	require.Equal(t, "CPL-100001", content["nomor_case"])
+	require.Equal(t, "CPL.26.1", content["nomor_case"])
 
 	// Lalu tabnya dibuka seperti petugas membukanya.
 	listing, listed := server.call(
@@ -377,19 +377,28 @@ func TestKirimKePostAuditTampilDiTabnya(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, rows, 2, "baris contoh ditambah satu baris yang baru dikirim")
 
-	// Baris yang baru dikirim TIDAK berada di paling atas.
+	// Baris yang baru dikirim berada DI PALING ATAS — dan itu BERUBAH arah sejak bentuk
+	// nomornya menjadi `CPL.YY.xxxx` (Work Owner, 2026-10-06).
 	//
-	// Pengurutannya teks menurun, meniru Pega, dan `CPL-100001` lebih kecil daripada
-	// `CPL-19` sebagai teks — perbandingannya berhenti pada `0` lawan `9`. Urutan inilah
-	// yang akan dilihat petugas, dan ia ditulis di sini supaya tidak "dirapikan" menjadi
-	// urutan angka, yang akan menyimpang dari Pega.
+	// Pengurutannya tetap teks menurun, meniru Pega. Yang berubah pembandingnya: dalam
+	// himpunan karakter, tanda hubung (`-`, 0x2D) berada SEBELUM titik (`.`, 0x2E),
+	// sehingga `CPL.26.1` lebih besar daripada `CPL-19` dan jatuh lebih dulu pada urutan
+	// menurun.
+	//
+	// Pada bentuk lama (`CPL-100001`) hasilnya kebalikannya: perbandingan berhenti pada
+	// `0` lawan `9`, sehingga nomor baru justru terselip di antara baris lama dan petugas
+	// harus menggulir mencarinya.
+	//
+	// Jadi ini perbaikan yang DATANG SENDIRI dari bentuk nomornya, bukan dari perubahan
+	// pengurutan. Pengurutannya sendiri tidak disentuh — ia tetap urutan teks Pega, dan
+	// tidak boleh "dirapikan" menjadi urutan angka.
 	urutan := []string{}
 	for _, row := range rows {
 		urutan = append(urutan, row.(map[string]any)["nomor_case"].(string))
 	}
-	require.Equal(t, []string{"CPL-19", "CPL-100001"}, urutan)
+	require.Equal(t, []string{"CPL.26.1", "CPL-19"}, urutan)
 
-	baru, ok := rows[1].(map[string]any)
+	baru, ok := rows[0].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, "ASM-FW-GCNMFW-WORK PNC-900101", baru["no_klaim"])
 	require.Equal(t, "Tertanggung Contoh Satu", baru["nama_tertanggung"])

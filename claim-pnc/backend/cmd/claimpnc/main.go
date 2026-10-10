@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -372,6 +373,7 @@ import (
 	menumemory "claim-pnc/internal/menu/repo/memory"
 	menusql "claim-pnc/internal/menu/repo/sqlstore"
 	menuusecase "claim-pnc/internal/menu/usecase"
+	slinkojkpega "claim-pnc/internal/monitoringslinkojk/adapter/pegaslik"
 	slinkojkhttp "claim-pnc/internal/monitoringslinkojk/http"
 	slinkojkmemory "claim-pnc/internal/monitoringslinkojk/repo/memory"
 	slinkojksql "claim-pnc/internal/monitoringslinkojk/repo/sqlstore"
@@ -3202,6 +3204,17 @@ type storage struct {
 	// metadatanya dicatat.
 	dokumenPenunjangStorage dokumenpenunjang.Storage
 
+	// dokumenPenunjangKodeAkses adalah `PENYIMPANAN_DOKUMEN_KODE_AKSES`, bila diisi.
+	//
+	// Disimpan di sini supaya buildExtraServices dapat membacanya tanpa ikut menerima
+	// seluruh config — modul lain di berkas itu tidak membutuhkannya, dan menambah satu
+	// parameter config ke sana akan membuka pintu bagi modul berikutnya untuk membaca apa
+	// pun dari config langsung.
+	//
+	// Kosong berarti token sekali pakai diterbitkan per unggahan, seperti
+	// `GENERAL.GET_TOKEN_STORAGE`. RAHASIA: tidak pernah dicatat ke log.
+	dokumenPenunjangKodeAkses string
+
 	// dokumenPenunjangConverter adalah klien layanan konversi gambar.
 	//
 	// Layanan TERSENDIRI di alamat tersendiri, bukan bagian dari penyimpanan — dan
@@ -3245,12 +3258,18 @@ type storage struct {
 	// atas, supaya kuerinya tidak disalin ke dua modul yang kelak dapat menyimpang.
 	dashboardSelector dashboardclaim.RepoSelector
 
-	// dashboardTransfers memilih penyimpanan PERMINTAAN transfer milik satu portal.
+	// dashboardAssignments memindahkan PIC Teknik klaim pada basis data satu portal.
 	//
-	// Terpisah dari dashboardSelector meski keduanya melayani satu layar, dan pembelahannya
-	// mengikuti kepemilikan tabel: yang pertama membaca tabel milik Pega, yang kedua menulis
-	// tabel milik aplikasi ini sendiri (`P-1`).
-	dashboardTransfers dashboardclaim.TransferRepoSelector
+	// Terpisah dari dashboardTransfers karena menulis tabel milik pihak yang BERBEDA:
+	// yang satu tabel aplikasi ini, yang lain `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` milik Pega.
+	dashboardAssignments dashboardclaim.AssignmentWriterSelector
+
+	// dashboardPIC memilih pembaca daftar PIC Teknik milik satu portal.
+	//
+	// Ia melayani modal Transfer, yang di layar lama berupa DAFTAR petugas dengan tombol
+	// "Assign" per baris (`Section/PNCTransferManagement_sec-Section.xml`), bukan isian
+	// bebas. Daftarnya dibaca dari master `POOLDATA.MST_USER_TEKNIK`.
+	dashboardPIC dashboardclaim.TechnicalPICReaderSelector
 
 	// progressStatusSelector memilih penyimpanan master status progres milik satu portal.
 	//
@@ -4366,8 +4385,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	dashboardClaimService, err := dashboardclaimusecase.NewService(dashboardclaimusecase.Options{
 		RepoSelector: store.dashboardSelector,
 		ClosedClaim:  dashboardClosedReader,
-		Transfers:    store.dashboardTransfers,
-		IDs:          dashboardclaimmemory.IDGenerator{},
+		TechnicalPIC: store.dashboardPIC,
+		Assignments:  store.dashboardAssignments,
 		Clock:        clock.System{},
 	})
 	if err != nil {
@@ -4413,9 +4432,35 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	// Monitoring SLINK OJK (`MENU_ID 78`). MEMBACA SAJA — lihat slinkojkhttp.Mount.
+	// Monitoring SLINK OJK (`MENU_ID 78`).
 	slinkOJKService, err := slinkojkusecase.NewService(slinkojkusecase.Options{
 		RepoSelector: store.slinkOJKSelector,
+
+		// Pemanggil layanan pendaftaran klien untuk tombol "SLIK OJK".
+		//
+		// # Yang dipanggil BUKAN OJK
+		//
+		// `ASMRequestServiceCreateClient` pada aplikasi Pega `ASMFWInternalWork`. Nama
+		// tombolnya menyesatkan dan dipertahankan apa adanya (`D-13`). Kontraknya terbaca
+		// 2026-10-08 dari rule yang dikirim Work Owner — lihat paket pegaslik.
+		//
+		// # Alamat KOSONG adalah keadaan yang sah
+		//
+		// `D-75` menetapkan satu alamat per entitas, dan belum semua portal punya. Portal
+		// tanpa alamat menjawab 503 dengan sebabnya — bukan jatuh ke alamat bawaan, yang
+		// berarti mendaftarkan klien satu badan hukum ke sistem badan hukum lain (`R-20`).
+		//
+		// # Kredensial kosong mengirim TANPA otentikasi
+		//
+		// Itu keadaan layanannya hari ini (`pyUseAuthentication=false`). Keduanya tetap
+		// disediakan supaya keputusan Keamanan Informasi yang berbeda hanya mengubah satu
+		// nilai konfigurasi, bukan kode.
+		Sender: slinkojkpega.NewClient(slinkojkpega.Config{
+			BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN")),
+			Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN_PATH")),
+			User:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLIEN_PENGGUNA")),
+			Password: os.Getenv("PEGA_LAYANAN_KLIEN_SANDI"),
+		}),
 	})
 	if err != nil {
 		store.close()
@@ -5360,6 +5405,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return dokumenpenunjangsql.NewRepo(conn), nil
 		}
 		store.dokumenPenunjangStorage = buildDocumentStorage(cfg, logger)
+		store.dokumenPenunjangKodeAkses = cfg.DocumentStorage.AccessCode
 		store.dokumenPenunjangConverter = buildImageConverter(cfg, logger)
 
 		// Access group dibaca dari koneksi UTAMA, bukan dari pool portal — lihat komentar
@@ -5388,17 +5434,32 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			return dashboardclaimsql.NewRepo(conn), nil
 		}
 
-		// Permintaan transfer ditulis ke basis data entitas yang SAMA dengan klaimnya.
-		//
-		// Tabelnya dibuat migrasi `0014`, yang BELUM dijalankan DBA di lingkungan mana pun.
-		// Sampai itu terjadi, pencatatannya gagal dan layar menjawab 503 yang menyebutkan
-		// sebabnya — bukan 500 yang tidak menjelaskan apa-apa.
-		store.dashboardTransfers = func(alias string) (dashboardclaim.TransferRepo, error) {
+		// Daftar PIC Teknik dibaca dari basis data entitas yang SAMA dengan klaimnya:
+		// memindahkan klaim ke petugas entitas lain adalah kebocoran lintas badan hukum
+		// (`R-20`), bukan sekadar salah pilih.
+		store.dashboardPIC = func(alias string) (dashboardclaim.TechnicalPICReader, error) {
 			conn, err := pool.For(alias)
 			if err != nil {
 				return nil, err
 			}
-			return dashboardclaimsql.NewTransferRepo(conn), nil
+			return dashboardclaimsql.NewRepo(conn), nil
+		}
+
+		// Pemindahan PIC Teknik menulis tabel kerja Pega — satu-satunya tulisan aplikasi ini
+		// ke skema DATAPEGA.
+		//
+		// Ia menuntut hak yang diminta bersama `pindahpic.sql`:
+		//
+		//     GRANT UPDATE (USERTEKNIS_1) ON DATAPEGA.PC_ASM_FW_GCNMFW_WORK TO <akun aplikasi>;
+		//
+		// Tanpa hak itu pemindahannya gagal pada `UPDATE`-nya, bukan saat dirakit — dan
+		// galatnya diteruskan apa adanya supaya sebabnya terbaca di log.
+		store.dashboardAssignments = func(alias string) (dashboardclaim.AssignmentWriter, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return dashboardclaimsql.NewAssignmentWriter(conn), nil
 		}
 
 		// Permintaan ReOpen dan Copy Klaim ditulis ke basis data entitas yang SAMA dengan
@@ -5593,7 +5654,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 			if err != nil {
 				return nil, err
 			}
-			return reportkpisql.NewRepo(conn), nil
+			return reportkpisql.NewRepo(conn, anekaFor(anekaPool, alias)).WithLogger(logger), nil
 		}
 
 		// Report Klaim adalah satu-satunya modul yang menerima DUA koneksi: basis data
@@ -5903,11 +5964,16 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.dashboardSelector = func(string) (dashboardclaim.Repo, error) {
 			return dashboardMemory, nil
 		}
-		// Permintaan transfer ditampung di memori supaya tombolnya dapat dicoba tanpa Oracle
-		// DAN tanpa menunggu migrasi `0014`.
-		dashboardTransferMemory := dashboardclaimmemory.NewTransferStore()
-		store.dashboardTransfers = func(string) (dashboardclaim.TransferRepo, error) {
-			return dashboardTransferMemory, nil
+		// Pemindahan PIC Teknik dikerjakan di memori juga. Tanpa ini tombol Assign akan
+		// mencatat jejak tetapi daftarnya tidak berubah — berhasil yang tidak berbekas.
+		dashboardAssignMemory := dashboardclaimmemory.NewAssignmentWriter(dashboardMemory)
+		store.dashboardAssignments = func(string) (dashboardclaim.AssignmentWriter, error) {
+			return dashboardAssignMemory, nil
+		}
+		// Daftar PIC Teknik contoh, supaya modal Transfer dapat dicoba tanpa Oracle.
+		dashboardPICMemory := dashboardclaimmemory.NewPICReader()
+		store.dashboardPIC = func(string) (dashboardclaim.TechnicalPICReader, error) {
+			return dashboardPICMemory, nil
 		}
 		// Keempat tipe surveyor nyata ikut dimuat, sehingga layar Master Tipe Surveyors
 		// dapat dicoba lengkap tanpa Oracle.
@@ -8476,4 +8542,24 @@ func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxauto
 		panic(err)
 	}
 	return checker
+}
+
+// anekaFor mengambil koneksi KEDUA satu portal, atau nil bila tidak ada.
+//
+// Ketiadaannya BUKAN galat di sini: koneksi kedua memang boleh tidak terpasang, dan yang
+// menentukan akibatnya adalah repo yang menerimanya — Report Klaim mengosongkan kolom
+// yang bersumber dari sana, Report KPI menolak permintaan karena angkanya akan menilai
+// orang secara keliru.
+//
+// Keputusan itu sengaja TIDAK diambil di sini. Satu tempat yang memutuskan untuk semua
+// pemanggil akan memaksa kedua modul berperilaku sama, padahal taruhannya berbeda.
+func anekaFor(pool *db.Pool, alias string) *sql.DB {
+	if !pool.Has(alias) {
+		return nil
+	}
+	second, err := pool.For(alias)
+	if err != nil {
+		return nil
+	}
+	return second
 }

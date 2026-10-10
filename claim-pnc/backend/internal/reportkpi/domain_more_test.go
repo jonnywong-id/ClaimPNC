@@ -38,9 +38,11 @@ func TestFindAdminGroupIgnoresCase(t *testing.T) {
 
 func TestAdminIdentityFor(t *testing.T) {
 	nonMBU := reportkpi.AdminIdentityFor(reportkpi.AdminGroupNonMBU)
-	require.Equal(t, "MORASOTARDODOTARIGAN", nonMBU.Coordinator)
+	// Nama yang DIGAMBAR adalah yang tertulis di teks kueri, bukan yang ditulis activity.
+	// Dibalik pada 2026-10-09 setelah layar Pega yang berjalan diperiksa; lihat admin.go.
+	require.Equal(t, "YUSMIARSIH DYAHPUSPITA S", nonMBU.Coordinator)
 	require.Equal(t, "KLAIM NON MBU", nonMBU.Category)
-	require.NotEqual(t, reportkpi.CoordinatorInQuery, nonMBU.Coordinator)
+	require.NotEqual(t, reportkpi.CoordinatorInActivity, nonMBU.Coordinator)
 
 	pa := reportkpi.AdminIdentityFor(reportkpi.AdminGroupPA)
 	require.Equal(t, "KOORDINASI PA", pa.WorkUnit)
@@ -59,15 +61,18 @@ func TestBuildScorecardNonMBU(t *testing.T) {
 	card := reportkpi.BuildScorecard(reportkpi.AdminGroupNonMBU, rng, totals)
 	require.Equal(t, reportkpi.AdminGroupNonMBU, card.Group)
 	require.Equal(t, "01/03/2026 - 31/03/2026", card.EffectiveOn)
-	require.Equal(t, "MORASOTARDODOTARIGAN", card.Identity.Coordinator)
-	require.Len(t, card.Metrics, 14)
+	require.Equal(t, "YUSMIARSIH DYAHPUSPITA S", card.Identity.Coordinator)
+	require.Len(t, card.Metrics, 15)
 	require.Equal(t, reportkpi.MetricLeaderOverSLA, card.Metrics[0].Code)
 	require.Equal(t, reportkpi.NewScore(1), card.Metrics[0].Value)
 	require.Equal(t, reportkpi.FormatCount, card.Metrics[0].Format)
 	require.Equal(t, reportkpi.MetricLeaderWeight, card.Metrics[4].Code)
 	require.Equal(t, reportkpi.NewScore(reportkpi.AdminLeaderWeight), card.Metrics[4].Value)
 	require.Equal(t, reportkpi.NewScore(reportkpi.AdminMemberWeight), card.Metrics[10].Value)
-	require.Equal(t, reportkpi.MetricAchievementRatio, card.Metrics[13].Code)
+	// ACHIEVEMENT adalah tetapan `3/5*85`, dan ia berada SEBELUM rasio pencapaian.
+	require.Equal(t, reportkpi.MetricAchievementTarget, card.Metrics[13].Code)
+	require.Equal(t, reportkpi.NewScore(51), card.Metrics[13].Value)
+	require.Equal(t, reportkpi.MetricAchievementRatio, card.Metrics[14].Code)
 	require.Equal(t, reportkpi.AchievementReached, card.Achievement)
 
 	missed := reportkpi.BuildScorecard(reportkpi.AdminGroupNonMBU, rng,

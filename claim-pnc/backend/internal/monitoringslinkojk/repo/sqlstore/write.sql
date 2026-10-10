@@ -124,8 +124,8 @@ SELECT k.PYID                AS CLAIM_ID,
  WHERE (:2 IS NULL OR k.REGISTERDATE_1 >= :3)
    AND (:4 IS NULL OR k.REGISTERDATE_1 < :5)
    AND (:6 IS NULL
-        OR (:7 = 'INCLUDE' AND TRIM(k.BUSINESSTYPE) = :8)
-        OR (:9 = 'EXCLUDE' AND (TRIM(k.BUSINESSTYPE) <> :10 OR k.BUSINESSTYPE IS NULL)))
+        OR (:7 = 'INCLUDE' AND UPPER(TRIM(k.BUSINESSNAME)) LIKE :8)
+        OR (:9 = 'EXCLUDE' AND (UPPER(TRIM(k.BUSINESSNAME)) NOT LIKE :10 OR k.BUSINESSNAME IS NULL)))
  ORDER BY k.REGISTERDATE_1 DESC, o.CLAIMID, o.OBJECTID, o.CONTRACTNO
 
 -- ============================================================================
@@ -160,3 +160,36 @@ UPDATE POOLDATA.T_CLAIM_SLINK_INDIVIDU
        ID_TRANSACTION = :2
  WHERE ID = :3
    AND NO_KLAIM = :4
+
+-- ============================================================================
+-- DATA DEBITUR UNTUK PENDAFTARAN KLIEN
+-- ============================================================================
+--
+-- Muatan tombol "SLIK OJK" bukan isi laporan SLIK melainkan IDENTITAS debiturnya.
+--
+-- Sistem lama membacanya dari `pyWorkPagee.ClaimData.PolicyData.CIFData` — CIF pada
+-- snapshot polis. Di sini sumbernya `T_CLAIM_OBJECTLIST`, yang memuat kolom padanannya dan
+-- sudah dibaca kueri segmen F06 (`GetDataSlinkAllFOG-SQL.xml`).
+--
+-- Itu PILIHAN yang dicatat, bukan kesetaraan yang terbukti. Tiga field yang Pega kirim
+-- tidak punya padanan di sini: NIK (`ASMIDCard`), NPWP, dan nama ibu kandung. Ketiganya
+-- dibiarkan KOSONG — tidak diisi dari kolom lain yang kebetulan mirip.
+--
+-- Penerimanya hanya mewajibkan satu field per cabang, sehingga muatan yang lebih miskin
+-- tetap diterima. Yang hilang adalah kelengkapan, bukan keberhasilan.
+
+-- name: debtor_row
+SELECT o.OBJECTNAME      AS NAMA,
+       o.CUSTOMERTYPE    AS CUSTOMER_TYPE,
+       o.OBJECTGENDER    AS JENIS_KELAMIN,
+       o.DATEOFBIRTH     AS TANGGAL_LAHIR,
+       o.ASMADDRESS      AS ALAMAT,
+       o.ASMZIPCODE      AS KODE_POS,
+       o.TELFAXNUMBER    AS TELEPON
+  FROM POOLDATA.T_CLAIM_OBJECTLIST o
+  JOIN POOLDATA.T_CLAIMLIST_ADMIN k
+    ON k.PZINSKEY = o.CLAIMID
+ WHERE k.PYID = :1
+   AND o.CONTRACTNO = :2
+ ORDER BY o.OBJECTID
+ FETCH FIRST 1 ROWS ONLY

@@ -1,20 +1,20 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type FormEvent, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { ComplianceTabs } from './ComplianceTabs'
+import { ComplianceTabs } from "./ComplianceTabs";
 import {
   useInboxComplianceList,
   useInboxComplianceMetadata,
   useSendToPostAudit,
-} from './api'
-import type { PageInfo, Tab, TabColumn, WorkItem } from './types'
+} from "./api";
+import type { PageInfo, Tab, TabColumn, WorkItem } from "./types";
 
 /**
  * Inbox Compliance — menu `MENU_ID 47`, pengganti harness `inboxCompliance_Harness`.
@@ -47,28 +47,32 @@ import type { PageInfo, Tab, TabColumn, WorkItem } from './types'
  * daftar yang sama hidup di dua tempat.
  */
 export function InboxCompliancePage() {
-  const [activeTab, setActiveTab] = useState('')
-  const [page, setPage] = useState(1)
+  const [activeTab, setActiveTab] = useState("");
+  const [page, setPage] = useState(1);
 
   // Klaim yang sedang dikirim ke Post Audit, atau null bila formnya tertutup.
-  const [sending, setSending] = useState<WorkItem | null>(null)
-  const navigate = useNavigate()
+  const [sending, setSending] = useState<WorkItem | null>(null);
+  const navigate = useNavigate();
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useInboxComplianceMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useInboxComplianceMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = activeTab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = activeTab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tab yang belum dapat dilayani tidak dipanggil ke server. Memanggilnya tetap aman —
   // server menjawab 503 beserta penjelasannya — tetapi memanggil sesuatu yang sudah pasti
   // gagal hanya menambah galat di log tanpa menambah keterangan apa pun bagi pengguna.
-  const list = useInboxComplianceList(active, page, meta.isSuccess && tab?.tersedia === true)
+  const list = useInboxComplianceList(
+    active,
+    page,
+    meta.isSuccess && tab?.tersedia === true,
+  );
 
   function selectTab(code: string) {
-    setActiveTab(code)
-    setPage(1)
+    setActiveTab(code);
+    setPage(1);
   }
 
   if (portal === null) {
@@ -77,13 +81,13 @@ export function InboxCompliancePage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean kepatuhan milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Antrean kepatuhan milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -95,7 +99,7 @@ export function InboxCompliancePage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -166,22 +170,24 @@ export function InboxCompliancePage() {
         <SendPostAuditDialog claim={sending} onClose={() => setSending(null)} />
       )}
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Compliance</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Compliance
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Antrean pemeriksaan kepatuhan: klaim yang menunggu diperiksa, dan pemeriksaan Post
-          Audit yang belum ditindaklanjuti.
+          Antrean pemeriksaan kepatuhan: klaim yang menunggu diperiksa, dan
+          pemeriksaan Post Audit yang belum ditindaklanjuti.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -199,11 +205,11 @@ function PendingTab({ tab }: { tab: Tab }) {
     <div className="mt-4">
       <ErrorMessage
         title={`Tab ${tab.nama} belum menampilkan data`}
-        description={tab.penghalang ?? 'Sumber datanya belum tersedia.'}
+        description={tab.penghalang ?? "Sumber datanya belum tersedia."}
         tone="gangguan"
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -247,7 +253,7 @@ function PendingTab({ tab }: { tab: Tab }) {
  * dalam alamat.
  */
 function ClaimLink({ item, onOpen }: { item: WorkItem; onOpen: () => void }) {
-  const label = item.nomor_case || '—'
+  const label = item.nomor_case || "—";
 
   // Baris tanpa kunci teknis tidak dapat dibuka, dan ditampilkan sebagai teks biasa — bukan
   // tautan mati yang terlihat dapat diklik lalu berakhir di layar "tidak ditemukan".
@@ -255,8 +261,8 @@ function ClaimLink({ item, onOpen }: { item: WorkItem; onOpen: () => void }) {
   // Yang diperiksa adalah `referensi`, bukan `nomor_case`: itulah yang dikirim ke alamat
   // tujuan. Baris tab Post Audit punya `nomor_case` berbentuk `CPL-…` tetapi tidak punya
   // assignment yang dapat dibuka — lihat catatan di columnsFor.
-  if (item.referensi === '') {
-    return <span>{label}</span>
+  if (item.referensi === "") {
+    return <span>{label}</span>;
   }
 
   return (
@@ -267,7 +273,7 @@ function ClaimLink({ item, onOpen }: { item: WorkItem; onOpen: () => void }) {
     >
       {label}
     </button>
-  )
+  );
 }
 
 /**
@@ -284,13 +290,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -314,7 +320,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -327,35 +333,34 @@ function Pagination({
  *
  * # Kenapa ia ikut tersembunyi saat kolomnya disaring
  *
- * Satu-satunya catatan yang ada menjelaskan kolom **Aging**. Begitu tab Compliance
- * disamakan dengan layar Pega yang hanya menampilkan Nomor Case, kolom itu tidak lagi
- * digambar — dan catatan yang menerangkan kolom tak tampil bukan sekadar mubazir, ia
- * membuat pembacanya mencari kolom yang tidak ada.
+ * Satu-satunya catatan yang ada menjelaskan kolom **Lama Waktu Klaim**. Ia sempat
+ * disembunyikan bersama kolomnya, saat tab Compliance hanya menampilkan Nomor Case.
  *
- * Catatannya TIDAK dihapus dari server: isinya tetap benar tentang `aging_jam` yang masih
- * dikirim. Yang dilakukan di sini hanya menunda menampilkannya sampai kolomnya kembali,
- * dan keduanya dikendalikan sakelar yang sama — `KOLOM_TAMPIL`.
+ * Keduanya kembali pada 2026-10-07: kolomnya digambar lagi, sehingga catatannya kembali
+ * bermakna. Sakelar yang dulu menyembunyikan keduanya sudah dicabut.
  */
 function Notes({
   limitations,
   tab,
 }: {
-  limitations: string[]
-  tab: Tab | undefined
+  limitations: string[];
+  tab: Tab | undefined;
 }) {
-  if (limitations.length === 0) return null
-  if (tab && KOLOM_TAMPIL[tab.kode]) return null
+  if (limitations.length === 0) return null;
+  void tab;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
+      <h2 className="text-sm font-medium text-slate-800">
+        Yang perlu diketahui
+      </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
         {limitations.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 /**
@@ -382,19 +387,19 @@ function RowActions({
   tab,
   onSend,
 }: {
-  item: WorkItem
-  tab: Tab
-  onSend: () => void
+  item: WorkItem;
+  tab: Tab;
+  onSend: () => void;
 }) {
   return (
     <div className="flex justify-end gap-2">
-      {tab.kode === 'compliance' && (
-        <Button tone="kedua" onClick={onSend} disabled={item.referensi === ''}>
+      {tab.kode === "compliance" && (
+        <Button tone="kedua" onClick={onSend} disabled={item.referensi === ""}>
           Kirim ke Post Audit
         </Button>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -414,18 +419,18 @@ function SendPostAuditDialog({
   claim,
   onClose,
 }: {
-  claim: WorkItem
-  onClose: () => void
+  claim: WorkItem;
+  onClose: () => void;
 }) {
-  const [remarks, setRemarks] = useState('')
-  const send = useSendToPostAudit()
+  const [remarks, setRemarks] = useState("");
+  const send = useSendToPostAudit();
 
   function submit(event: FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
     send.mutate(
       { referensi: claim.referensi, catatan: remarks },
       { onSuccess: onClose },
-    )
+    );
   }
 
   return (
@@ -439,7 +444,10 @@ function SendPostAuditDialog({
         onSubmit={submit}
         className="w-full max-w-lg rounded-kartu bg-white p-5 shadow-lg"
       >
-        <h2 id="kirim-post-audit-judul" className="text-base font-semibold text-slate-900">
+        <h2
+          id="kirim-post-audit-judul"
+          className="text-base font-semibold text-slate-900"
+        >
           Kirim ke Post Audit
         </h2>
 
@@ -452,15 +460,17 @@ function SendPostAuditDialog({
         <dl className="mt-3 space-y-1 rounded-kontrol bg-slate-50 px-3 py-2 text-sm">
           <div className="flex gap-2">
             <dt className="w-32 shrink-0 text-slate-500">Nomor Case</dt>
-            <dd className="font-medium text-slate-900">{claim.nomor_case || '—'}</dd>
+            <dd className="font-medium text-slate-900">
+              {claim.nomor_case || "—"}
+            </dd>
           </div>
           <div className="flex gap-2">
             <dt className="w-32 shrink-0 text-slate-500">No Polis</dt>
-            <dd className="text-slate-900">{claim.no_polis || '—'}</dd>
+            <dd className="text-slate-900">{claim.no_polis || "—"}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="w-32 shrink-0 text-slate-500">Nama Tertanggung</dt>
-            <dd className="text-slate-900">{claim.nama_tertanggung || '—'}</dd>
+            <dd className="text-slate-900">{claim.nama_tertanggung || "—"}</dd>
           </div>
         </dl>
 
@@ -477,9 +487,9 @@ function SendPostAuditDialog({
           maxLength={4000}
           onChange={(event) => setRemarks(event.target.value)}
           className={[
-            'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-            'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-          ].join(' ')}
+            "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+            "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+          ].join(" ")}
         />
         {/*
           Catatan boleh kosong, dan itu dinyatakan — bukan dibiarkan pengguna menebaknya
@@ -507,61 +517,46 @@ function SendPostAuditDialog({
             punya constraint unik yang akan menolak baris kedua.
           */}
           <Button type="submit" disabled={send.isPending}>
-            {send.isPending ? 'Mengirim…' : 'Kirim'}
+            {send.isPending ? "Mengirim…" : "Kirim"}
           </Button>
         </div>
       </form>
     </div>
-  )
+  );
 }
 
 /**
- * Kolom yang BENAR-BENAR digambar, dari kolom yang disebut server.
+ * Seluruh kolom yang disebut server digambar apa adanya.
  *
- * # Kenapa tab Compliance hanya menampilkan satu kolom
+ * # Pembatasan satu kolom DICABUT (2026-10-07)
  *
- * Karena layar Pega yang berjalan hanya menampilkan satu: `Nomor Case`, sebagai tautan.
- * `D-13` menetapkan tampilan ditiru, dan Work Owner meminta keduanya disamakan setelah
- * membandingkan kedua layar berdampingan (2026-10-05).
+ * Tab Compliance sempat hanya menampilkan `Nomor Case`, karena pada 2026-10-05 layar Pega
+ * yang dibandingkan memang hanya menampilkan satu kolom.
  *
- * # Yang perlu diketahui sebelum ini "diperbaiki" kembali menjadi delapan kolom
+ * Catatan saat itu sudah menduga sebabnya — **personalisasi grid per pengguna**, yang Pega
+ * simpan di preferensi akun dan tidak ikut terekspor — dan menulis bahwa dugaan itu belum
+ * dibuktikan.
  *
- * Rule-nya TIDAK sejalan dengan layarnya. `Section/InputComplianceDtl_Section-Section.xml`
- * mengikat delapan properti — `.pyID`, `.Policy.PolicyNo`, `.Policy.QQName`,
- * `.Policy.Quotation.BusinessName`, `.Policy.Quotation.BranchName`, `.pyOrigUserID`,
- * `.ClaimData.TanggalBuatCompliance`, `.ClaimData.AgingKlaim` — dan ke-57 penanda
- * `pyVisible` di dalamnya bernilai `ALWAYS`, tanpa satu pun kondisi. Menurut rule, kedelapan
- * kolom itu selalu tampil.
+ * **Sekarang terbukti.** Work Owner membandingkan ulang dengan akun lain, dan Pega
+ * menampilkan KEDELAPAN kolomnya: Nomor Case · No Polis · Nama Tertanggung · Nama Bisnis ·
+ * Nama Cabang · Nama Admin · Tanggal Kirim Compliance · Lama Waktu Klaim.
  *
- * Dugaan terkuat atas selisihnya: **personalisasi grid per pengguna**, yang Pega simpan di
- * preferensi akun dan TIDAK ikut terekspor. Artinya petugas lain bisa jadi melihat kedelapan
- * kolomnya. Dugaan ini belum dibuktikan.
+ * Jadi rule-nya benar sejak awal — ke-57 penanda `pyVisible` pada
+ * `Section/InputComplianceDtl_Section-Section.xml` memang bernilai `ALWAYS`, tanpa satu
+ * pun kondisi. Yang keliru adalah menyimpulkan tampilan satu akun sebagai aturan.
  *
- * Karena itu kolomnya disembunyikan DI SINI saja, bukan dihapus: server tetap mengirimkan
- * kedelapan kolom beserta isinya, sehingga mengembalikannya cukup dengan menghapus satu
- * daftar di bawah — tanpa menyentuh kontrak API, kueri, maupun uji backend.
- *
- * Tab Post Audit TIDAK disaring: layar Pega-nya memang menampilkan ketujuh kolomnya.
- */
-const KOLOM_TAMPIL: Record<string, readonly string[] | undefined> = {
-  compliance: ['nomor_case'],
-}
-
-function columnsFor(
+ * Server tidak pernah berubah: ia selalu mengirim kedelapannya. Yang dicabut hanya
+ * penyaring di layar ini.
+ */ function columnsFor(
   tab: Tab,
   action: (row: WorkItem) => ReactNode,
   openClaim: (row: WorkItem) => void,
 ): Column<WorkItem>[] {
-  const allowed = KOLOM_TAMPIL[tab.kode]
-  const shown = allowed
-    ? tab.kolom.filter((column) => allowed.includes(column.kunci))
-    : tab.kolom
-
-  const columns: Column<WorkItem>[] = shown.map((column) => ({
+  const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
     key: column.kunci,
     title: column.judul,
     value: (row) => cellText(row, column),
-    alignRight: column.kunci === 'aging' || column.kunci === 'outstanding',
+    alignRight: column.kunci === "aging" || column.kunci === "outstanding",
 
     // Kolom Aging dan OutStanding TIDAK dapat diurutkan, dan itu disengaja.
     //
@@ -576,7 +571,7 @@ function columnsFor(
     //
     // Sementara itu barisnya sudah datang terurut dari server — menurut tanggal kirim,
     // yang untuk kedua antrean ini berarti yang paling BARU di atas.
-    noSort: column.kunci === 'aging' || column.kunci === 'outstanding',
+    noSort: column.kunci === "aging" || column.kunci === "outstanding",
 
     // Nomor Case digambar sebagai TAUTAN, meniru Pega — di sana nomornya sendiri yang
     // diklik untuk membuka pekerjaannya, bukan tombol terpisah di ujung baris.
@@ -589,25 +584,25 @@ function columnsFor(
     //
     // `value` tetap mengembalikan teksnya, sehingga pengurutan dan pencarian `DataTable`
     // tetap bekerja atas nomornya, bukan atas simpul React.
-    ...(column.kunci === 'nomor_case' && tab.kode === 'compliance'
+    ...(column.kunci === "nomor_case" && tab.kode === "compliance"
       ? {
           render: (row: WorkItem) => (
             <ClaimLink item={row} onOpen={() => openClaim(row)} />
           ),
         }
       : {}),
-  }))
+  }));
 
   columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
+    key: "aksi",
+    title: "",
+    value: () => "",
     render: action,
     noSort: true,
     alignRight: true,
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /**
@@ -621,30 +616,31 @@ function columnsFor(
  * hidup di dua tempat.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
+  const text = String(value);
 
-  if (isDate(text)) return formatDate(text)
+  if (isDate(text)) return formatDate(text);
 
   // Satu kolom membawa jamnya: Tanggal Kirim Audit Compliance. Tanggalnya diformat lewat
   // fungsi bersama yang sama, lalu jamnya ditempelkan — sehingga bentuk tanggalnya tetap
   // seragam dengan kolom lain, dan hanya jamnya yang ditambahkan.
-  const stamp = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/)
-  if (stamp && stamp[1] && stamp[2]) return `${formatDate(stamp[1])} ${stamp[2]}`
+  const stamp = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/);
+  if (stamp && stamp[1] && stamp[2])
+    return `${formatDate(stamp[1])} ${stamp[2]}`;
 
-  return text
+  return text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk kolom tanggal saja. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

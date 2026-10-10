@@ -60,7 +60,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
     },
     {
       key: 'nilai_klaim',
-      title: 'Nilai Klaim (Rp)',
+      title: 'Nilai Klaims',
       width: '12rem',
       alignRight: true,
       // Yang diurutkan adalah nilai POLOS, bukan yang sudah diformat: "1.000.000" dan
@@ -78,7 +78,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Data Klaim (opsional)</h3>
+          <h3 className="text-base font-semibold text-slate-900">Tambah Data</h3>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Daftar polis yang tercakup batch ini, diunggah sebagai berkas CSV. Kolom nilai
             klaim boleh dikosongkan — berkas contoh hanya memuat nomor polis, sama seperti
@@ -87,19 +87,26 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            tone="halus"
+          {/*
+            TAUTAN, bukan tombol — `Section/OutstandingMasterRecovery-Section.xml:2549`
+            mendaftarkan `DownloadFileCSVFormaatter` sebagai `pyUIElement: link` dengan
+            aksi `openUrlInWindow`. Menggambarnya sebagai tombol membuatnya tampak
+            sederajat dengan Upload Data Klaim, padahal bukan.
+          */}
+          <button
+            type="button"
             onClick={() => { template.mutate() }}
             disabled={template.isPending}
+            className="self-center text-sm font-medium text-blue-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-55"
           >
-            {template.isPending ? 'Menyiapkan…' : 'Unduh format'}
-          </Button>
+            {template.isPending ? 'Menyiapkan…' : 'Format File'}
+          </button>
           <Button
             tone="kedua"
             onClick={() => picker.current?.click()}
             disabled={disabled || read.isPending}
           >
-            {read.isPending ? 'Membaca…' : 'Unggah data klaim'}
+            {read.isPending ? 'Membaca…' : 'Upload Data Klaim'}
           </Button>
           {claimLine.length > 0 && (
             <Button tone="halus" onClick={() => onChange([])} disabled={disabled}>
@@ -151,28 +158,36 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
           </div>
         )}
 
-        {claimLine.length === 0 ? (
-          <p className="rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            Belum ada data klaim. Batch tetap dapat disimpan tanpa daftar ini.
-          </p>
-        ) : (
+        {/*
+          Grid SELALU digambar, termasuk saat kosong — sama seperti layar lama, yang
+          menampilkan kepala kolom "No Polis | Nilai Klaims" beserta tulisan
+          "Data Tidak Ada" di bawahnya, bukan kotak kosong.
+        */}
+        <DataTable
+          columns={columns}
+          rows={claimLine}
+          rowKey={(row) => `${row.nomor_polis}-${row.nilai_klaim}`}
+          searchLabel="Cari nomor polis"
+          showHeaderWhenEmpty
+          emptyMessage="Data Tidak Ada"
+        />
+
+        {claimLine.length > 0 && (
           <>
-            <DataTable
-              columns={columns}
-              rows={claimLine}
-              rowKey={(row) => `${row.nomor_polis}-${row.nilai_klaim}`}
-              searchLabel="Cari nomor polis"
-              emptyMessage="Tidak ada baris yang cocok."
-            />
             {/*
               Jumlah ditampilkan supaya petugas dapat membandingkannya dengan angka yang
               diketiknya sendiri di isian Pembayaran SEBELUM menyimpan. Sistem lama tidak
               punya penjumlahan ini sama sekali.
             */}
-            <div className="flex items-center justify-between rounded-kontrol bg-slate-50 px-4 py-3 text-sm">
-              <span className="text-slate-600">{claimLine.length} polis</span>
-              <span className="font-medium text-slate-900">
-                Jumlah nilai klaim: Rp {formatMoney(total)}
+            {/*
+              Baris "Total Klaim" ditulis SEPERTI BARIS GRID, bukan sebagai keterangan di
+              luar tabel. Itu yang dilakukan layar lama: barisnya duduk tepat di bawah
+              baris polis terakhir, dengan angkanya sejajar kolom Nilai Klaims.
+            */}
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-sm">
+              <span className="font-medium text-slate-900">Total Klaim</span>
+              <span className="font-mono font-medium tabular-nums text-slate-900">
+                {formatMoney(total)}
               </span>
             </div>
           </>

@@ -207,32 +207,28 @@ func TestHalamanDiLuarJangkauanKosongTanpaPanik(t *testing.T) {
 	require.Greater(t, result.Total, 0, "total tetap menyebut jumlah yang sebenarnya")
 }
 
-// Daftar adjuster TIDAK disaring oleh adjuster yang sedang dipilih.
+// Daftar adjuster TIDAK disaring apa pun.
 //
-// Kalau disaring, dropdown akan menyisakan satu pilihan saja dan pengguna tidak dapat
-// berpindah adjuster lagi.
-func TestDaftarAdjusterTidakMenyempitKarenaPilihanYangSedangAktif(t *testing.T) {
+// # Kenapa uji ini dibalik pada 2026-10-09
+//
+// Di tempat ini sebelumnya ada DUA uji yang menuntut sebaliknya: daftar menyempit
+// mengikuti periode, dan nama di luar periode tidak muncul. Keduanya mengunci perilaku
+// yang keliru.
+//
+// Rule Pega pengisinya — `RDB List/BrowseAdjsuterExternal-SQL.xml`, dipanggil
+// `Activity/GetFilterKPI-Act.xml` — membaca MASTER dan tidak menerima parameter satu pun.
+// Akibat perilaku lama terlihat di layar: pada periode tanpa baris penilaian, dropdown
+// kosong sama sekali, sementara Pega tetap menampilkan seluruh adjuster.
+func TestDaftarAdjusterTidakDisaringApaPun(t *testing.T) {
 	store := memory.NewSampleStore()
 
-	query := maret(t, reportkpi.TypeAll)
-	query.Adjuster = "PT TEPI CONTOH MANDIRI"
-
-	names, err := store.Adjusters(context.Background(), query)
+	names, err := store.Adjusters(context.Background())
 	require.NoError(t, err)
-	require.Greater(t, len(names), 1,
-		"daftar pilihan tidak boleh menyempit karena pilihan yang sedang aktif")
-}
+	require.Greater(t, len(names), 1)
 
-// Daftar adjuster IKUT menyempit mengikuti periode.
-//
-// Itulah yang menjaga janji pada selisih terencana: setiap pilihan yang muncul pasti
-// menghasilkan baris.
-func TestDaftarAdjusterMengikutiPeriode(t *testing.T) {
-	store := memory.NewSampleStore()
-
-	names, err := store.Adjusters(context.Background(), maret(t, reportkpi.TypeAll))
-	require.NoError(t, err)
-	require.NotContains(t, names, "PT LUAR CONTOH PERIODE")
+	// Nama yang baris penilaiannya berada di LUAR periode contoh tetap muncul. Inilah
+	// pembeda terhadap perilaku lama, dan inilah yang membuat dropdown tidak pernah kosong.
+	require.Contains(t, names, "PT LUAR CONTOH PERIODE")
 }
 
 // Penyimpanan kosong menghasilkan daftar KOSONG, bukan nil.
@@ -254,7 +250,7 @@ func TestPenyimpananKosongMenghasilkanDaftarKosong(t *testing.T) {
 	require.Empty(t, rincian.Rows)
 	require.Zero(t, rincian.Total)
 
-	names, err := store.Adjusters(context.Background(), query)
+	names, err := store.Adjusters(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, names)
 	require.Empty(t, names)

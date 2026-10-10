@@ -3,7 +3,10 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"log/slog"
 	"fmt"
+	"sync"
 
 	"claim-pnc/internal/reportkpi"
 )
@@ -14,10 +17,53 @@ import (
 // tertinggal — lihat doc paket `reportkpi`.
 type Repo struct {
 	db *sql.DB
+
+	// aneka adalah koneksi KEDUA portal yang sama (`ANEKA_<PORTAL_ALIAS>_*`), pengganti
+	// DB Link `@ASMD` selama `R-03` belum menyediakan API-nya.
+	//
+	// Ia BOLEH nil, dan ketiadaannya tidak disembunyikan: satu-satunya pembacanya
+	// (Holidays) menolak permintaan alih-alih menghitung tanpa kalender libur. Lihat
+	// alasannya di sana.
+	aneka *sql.DB
+
+	// logger menerima peringatan pemakaian jalur cadangan. Boleh nil.
+	logger *slog.Logger
+
+	// dbLinkWarned menjaga peringatan jalur cadangan hanya terbit sekali.
+	dbLinkWarned sync.Once
 }
 
-// NewRepo membentuk penyimpanan di atas satu koneksi portal.
-func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
+// NewRepo membentuk penyimpanan di atas koneksi portal dan koneksi keduanya.
+//
+// aneka boleh nil — lihat bidangnya.
+func NewRepo(db, aneka *sql.DB) *Repo { return &Repo{db: db, aneka: aneka} }
+
+// ErrHolidayCalendarUnavailable: koneksi kedua portal tidak terpasang, sehingga kalender
+// libur tidak dapat dibaca sama sekali.
+//
+// Ia DIBEDAKAN dari kegagalan kueri, karena tindak lanjutnya berbeda: yang ini dijawab
+// dengan memasang `ANEKA_<PORTAL_ALIAS>_*` di berkas konfigurasi, bukan dengan membaca
+// pesan Oracle.
+var ErrHolidayCalendarUnavailable = errors.New(
+	"reportkpi/sqlstore: koneksi kedua portal (ANEKA_<PORTAL_ALIAS>_*) tidak terpasang, " +
+		"sehingga kalender libur GENERAL.HRD_LBR tidak dapat dibaca")
+
+// ErrQueryFailed menandai kueri yang DITOLAK basis data saat dijalankan.
+//
+// # Kenapa ia perlu penanda sendiri
+//
+// Tanpanya, galat Oracle jatuh ke penulis galat umum dan sampai ke pengguna sebagai
+// "Terjadi kesalahan pada sistem" — kalimat yang tidak dapat dibedakan dari cacat
+// pemrograman mana pun, dan tidak menyebutkan satu pun hal yang dapat ditindaklanjuti.
+//
+// Itu benar-benar terjadi pada 2026-10-08: tombol Cari tab KPI PIC Teknik menjawab
+// kalimat itu, dan tab itu menjalankan DELAPAN kueri — sehingga kalimat itu tidak
+// menyebutkan satu pun dari delapan yang gagal. Penanda ini membawa nama kuerinya,
+// sehingga log menunjuk tepat satu.
+//
+// Pesan ORA-nya sendiri TETAP tidak dikirim ke klien: ia memuat nama tabel dan kolom
+// (`11-CROSSCUTTING.md` §1.2 aturan 5).
+var ErrQueryFailed = errors.New("reportkpi/sqlstore: kueri ditolak basis data")
 
 // Repo memenuhi seam yang dideklarasikan domain.
 var _ reportkpi.Repo = (*Repo)(nil)
@@ -27,9 +73,12 @@ func (r *Repo) Summary(
 	ctx context.Context,
 	q reportkpi.Query,
 ) ([]reportkpi.AdjusterSummary, error) {
+	// Tipe dan adjuster dikirim DUA KALI, dan itu disengaja — lihat catatan pada kueri
+	// `summary`. Driver mengikat menurut urutan kemunculan penanda, bukan nomornya.
+	jenis, adjuster := reportTypeBind(q.ReportType), nullableText(q.Adjuster)
 	rows, err := r.db.QueryContext(ctx, query("summary"),
-		reportTypeBind(q.ReportType),
-		nullableText(q.Adjuster),
+		jenis, jenis,
+		adjuster, adjuster,
 		q.Range.From,
 		q.Range.To,
 	)
@@ -74,9 +123,11 @@ func (r *Repo) Detail(
 ) (reportkpi.DetailPage, error) {
 	clean := page.Normalize()
 
+	// Tipe dan adjuster dikirim DUA KALI — lihat catatan pada kueri `summary`.
+	jenis, adjuster := reportTypeBind(q.ReportType), nullableText(q.Adjuster)
 	rows, err := r.db.QueryContext(ctx, query("detail"),
-		reportTypeBind(q.ReportType),
-		nullableText(q.Adjuster),
+		jenis, jenis,
+		adjuster, adjuster,
 		q.Range.From,
 		q.Range.To,
 		clean.Offset(),
@@ -126,13 +177,13 @@ func (r *Repo) Detail(
 	return result, nil
 }
 
-// Adjusters mengambil isi dropdown Adjuster.
-func (r *Repo) Adjusters(ctx context.Context, q reportkpi.Query) ([]string, error) {
-	rows, err := r.db.QueryContext(ctx, query("adjusters"),
-		reportTypeBind(q.ReportType),
-		q.Range.From,
-		q.Range.To,
-	)
+// Adjusters mengambil isi dropdown Adjuster dari master adjuster eksternal.
+//
+// Daftarnya TIDAK menerima penyaring, dan itu bukan penyederhanaan: rule Pega pengisinya
+// (`BrowseAdjsuterExternal`) memang tidak punya parameter satu pun. Lihat catatan pada
+// kueri `adjusters` untuk kekeliruan yang ini perbaiki.
+func (r *Repo) Adjusters(ctx context.Context) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, query("adjusters"))
 	if err != nil {
 		return nil, fmt.Errorf("reportkpi/sqlstore: membaca daftar adjuster: %w", err)
 	}
@@ -254,4 +305,30 @@ func isoDate(value sql.NullTime) string {
 		return ""
 	}
 	return value.Time.Format("2006-01-02")
+}
+
+// WithLogger memasang pencatat supaya pemakaian jalur cadangan dapat dilaporkan.
+//
+// Ia opsional: tanpa pencatat, repo tetap bekerja dan yang hilang hanya peringatannya.
+func (r *Repo) WithLogger(logger *slog.Logger) *Repo {
+	r.logger = logger
+	return r
+}
+
+// warnDBLinkOnce memperingatkan bahwa kalender libur diambil lewat DB Link, SEKALI saja
+// selama proses hidup.
+//
+// Sekali, bukan setiap permintaan: peringatan yang berulang ratusan kali sehari berhenti
+// dibaca, dan yang hendak disampaikan di sini adalah KEADAAN pemasangan — bukan peristiwa
+// per permintaan. Keadaan itu tidak berubah sampai aplikasi dijalankan ulang.
+func (r *Repo) warnDBLinkOnce() {
+	if r.logger == nil {
+		return
+	}
+	r.dbLinkWarned.Do(func() {
+		r.logger.Warn("kalender hari libur diambil lewat DB Link, bukan koneksi kedua",
+			slog.String("objek", "GENERAL.HRD_LBR@ASMD.SINARMAS.CO.ID"),
+			slog.String("sebab", "ANEKA_<PORTAL_ALIAS>_* belum terpasang"),
+			slog.String("akibat", "jalur ini TIDAK portabel dan akan mati saat pindah ke PostgreSQL (D-25)"))
+	})
 }

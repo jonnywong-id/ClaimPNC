@@ -190,3 +190,47 @@ type recordedSubmission struct {
 	Completed bool
 	Result    monitoringslinkojk.SubmissionResult
 }
+
+// LoadDebtor menyusun data debitur contoh dari baris segmen F06.
+//
+// Repo dalam memori dipakai pengembangan lokal dan pengujian transport. Nilainya diambil
+// dari baris yang memang ada, bukan dikarang: dengan begitu muatan yang terkirim saat
+// dicoba lokal punya bentuk yang sama dengan yang nanti dikirim di produksi.
+func (r *Repo) LoadDebtor(
+	_ context.Context,
+	claimID string,
+	contractNo string,
+) (monitoringslinkojk.Debtor, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, record := range r.rows[monitoringslinkojk.SegmentF06] {
+		if record.Row.Get("no_klaim") != claimID {
+			continue
+		}
+		if contractNo != "" && record.Row.Get("contract_no") != contractNo {
+			continue
+		}
+
+		debtor := monitoringslinkojk.Debtor{
+			CustomerType: monitoringslinkojk.CustomerPerson,
+			FirstName:    record.Row.Get("no_cif_debitur"),
+			Gender:       record.Row.Get("jenis_kelamin"),
+			DateOfBirth:  record.Row.Get("tanggal_lahir"),
+		}
+		if street := record.Row.Get("alamat"); street != "" {
+			debtor.Addresses = []monitoringslinkojk.DebtorAddress{{
+				Street:     street,
+				PostalCode: record.Row.Get("kode_pos"),
+				Primary:    true,
+				Phones: []monitoringslinkojk.DebtorPhone{{
+					Number: record.Row.Get("telepon"),
+				}},
+			}}
+		}
+		return debtor, nil
+	}
+
+	// Tidak ditemukan BUKAN galat — sama seperti pengisi SQL. Lihat di sana.
+	return monitoringslinkojk.Debtor{}, nil
+}

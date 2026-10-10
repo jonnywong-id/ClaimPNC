@@ -84,6 +84,14 @@ export type BarisKlaim = {
   /** Kolom "Claim status" — artinya, dari `V_STS_CLAIM.LSC_NOTE`. */
   status_klaim_label: string
 
+  /**
+   * Kolom "Posisi Klaim" dan "Progress Klaim".
+   *
+   * Keduanya **gabungan dipisah koma** — satu klaim dapat memegang beberapa posisi
+   * berjalan sekaligus, dan sistem lama menggabungkannya di dalam
+   * `GET_POSISI_PROGRESS_PNC`.
+   */
+
   status_proses: string
 }
 
@@ -162,6 +170,23 @@ export type KeteranganTile = {
  */
 export type PenyaringResponse = {
   lini_bisnis: Pilihan[]
+  /**
+   * Isi kedua dropdown panel penyaring, **datang dari server**.
+   *
+   * Nilainya dicocokkan dengan konstanta di dalam SQL, sehingga salah ketik satu huruf di
+   * sini akan menghasilkan penyaring yang tidak menyaring apa pun — tanpa galat. Karena itu
+   * daftarnya tidak ditulis ulang di layar.
+   */
+  status_transfer: Pilihan[]
+  status_bayar: Pilihan[]
+  /**
+   * Isi dropdown "Pilih Type User" pada Transfer All Case.
+   *
+   * Nilainya dibandingkan sebagai **teks** oleh `GCNMTransferDataKlaim_act` — `"Admin"`,
+   * `"PIC Teknik"`, `"Other"` — sehingga daftarnya datang dari server, bukan ditulis ulang
+   * di sini.
+   */
+  tipe_pengguna: Pilihan[]
   tile: KeteranganTile[]
   portal: string
 }
@@ -171,6 +196,25 @@ export type PenyaringDashboard = {
   lini_bisnis?: string
   cari?: string
   halaman?: number
+
+  /**
+   * Ketiga isian panel penyaring `Section/FilterDashboardClaim_sec-Section.xml`.
+   *
+   * Dinamai menurut ISINYA. Di layar lama namanya menyesatkan: Nopolis disimpan pada
+   * `TempInputFilter.CaseID`, dan PIC pada `TempInputFilter.ClaimID`.
+   */
+  nomor_polis?: string
+  nomor_klaim?: string
+  pic?: string
+
+  /**
+   * Kedua dropdown pada panel yang sama.
+   *
+   * Namanya pun menyesatkan di layar lama: status pembayaran disimpan pada
+   * `TempInputFilter.City`, status transfer pada `TempInputFilter.CityID`.
+   */
+  status_transfer?: string
+  status_bayar?: string
 }
 
 /** Satu baris tab **Inbox Tampungan PIC** — klaim yang belum punya PIC Teknik. */
@@ -199,7 +243,14 @@ export type TampunganResponse = {
 export type TabDashboard = 'dashboard' | 'tampungan'
 
 /** Lingkup permintaan transfer — tombol per baris, atau "Transfer All Case By UserID". */
-export type LingkupTransfer = 'baris' | 'massal'
+/**
+ * Lingkup transfer.
+ *
+ *   baris    tombol Transfer pada satu baris
+ *   massal   "Transfer All Case By UserID" — seluruh pekerjaan satu operator
+ *   saring   "Select All" — seluruh klaim yang cocok penyaring, lintas halaman
+ */
+export type LingkupTransfer = 'baris' | 'massal' | 'saring'
 
 /** Badan permintaan transfer. */
 export type PermintaanTransfer = {
@@ -212,7 +263,14 @@ export type PermintaanTransfer = {
   alasan?: string
 }
 
-/** Jawaban permintaan transfer. */
+/**
+ * Jawaban permintaan transfer.
+ *
+ * KOREKSI (2026-10-06): sebelumnya jawaban ini membawa `pelaksana_belum_ada`, karena transfer
+ * hanya MENCATAT permintaan dan pelaksanaannya diserahkan kepada Pega. Itu dicabut — tidak
+ * ada job Pega yang membaca tabel permintaan itu, sehingga permintaannya tidak pernah akan
+ * dijalankan. Sekarang transfer langsung memindahkan PIC Teknik klaimnya, seperti Pega.
+ */
 export type TransferResponse = {
   permintaan: {
     id: string
@@ -221,13 +279,19 @@ export type TransferResponse = {
     user_id_lama?: string
     user_id_baru: string
     status: string
+
+    /**
+     * Berapa klaim yang benar-benar berpindah.
+     *
+     * Pada lingkup `massal` angkanya tidak dapat diketahui di muka — "seluruh pekerjaan si A"
+     * bisa berarti satu klaim atau empat puluh — sehingga layar menyebutkannya setelah selesai.
+     */
+    jumlah_pindah: number
+
     pemohon: string
     pada: string
   }
   portal: string
-
-  /** Permintaan TERCATAT, tetapi penugasannya belum berpindah — Pega yang menjalankan. */
-  pelaksana_belum_ada: boolean
 }
 
 /**
@@ -260,4 +324,65 @@ export type HasilPermintaanKlaim = {
   nomor_klaim: string
   berhasil: boolean
   pesan?: string
+}
+
+/**
+ * Satu baris daftar **PIC Teknik** yang dapat menerima pemindahan klaim.
+ *
+ * Isi grid `Section/PNCTransferManagement_sec-Section.xml`, yang kolom tunggalnya berjudul
+ * **"Nama"** dan tombolnya **"Assign"**.
+ */
+export type BarisPIC = {
+  operator_id: string
+  nama: string
+  email: string
+  tim: string
+  /** COUNTER_QUOTA — pencacah beban yang dipakai pemilihan otomatis (`R-04`). */
+  beban: number
+}
+
+/** Jawaban daftar PIC Teknik. */
+export type PICResponse = {
+  pic: BarisPIC[]
+  halaman: KeteranganHalaman
+  portal: string
+}
+
+/**
+ * Jawaban **Ex Gratia** pada konfirmasi Copy Klaim.
+ *
+ * `Section/GCNMCopyClaimConfirmation-Section.xml` menanyakan *"Apakah klaim ini tipe Ex
+ * Gratia?"* lewat radio terikat `TempGratia.ExGratia`. Daftar nilainya tidak ikut di
+ * export, sehingga dipakai bentuk paling sedikit menduga: ya / tidak.
+ */
+export type JawabanExGratia = 'ya' | 'tidak'
+
+/**
+ * Rincian satu klaim — isi popup yang terbuka saat nomor klaim diklik.
+ *
+ * Menggantikan harness `ViewTempDetailClaim`, yang di Pega dibuka lewat `showHarness`
+ * bertarget `popup` dari kolom nomor klaim pada `DashboardClaimShow_Sec`.
+ */
+export type RincianKlaim = {
+  klaim_id: string
+  nomor_klaim: string
+  status_proses: string
+  status_klaim: string
+  pic_teknik: string
+  admin_pnc: string
+  didaftarkan_pada: string
+
+  /**
+   * Isi klaim apa adanya dari `POOLDATA.JSON_KLAIM.DATA_JSON`.
+   *
+   * Bentuknya BELUM PERNAH DIPERIKSA — DDL-nya tidak tersedia (`R-08`). Diketik `unknown`,
+   * bukan bentuk yang dikarang: tipe yang menyatakan bentuk belum terbukti membuat isian
+   * yang namanya ternyata berbeda hilang tanpa satu pun tanda, dan TypeScript justru
+   * menyatakannya benar.
+   *
+   * Pembacaannya lewat `ambil()`, yang membedakan "jalur tidak ada" dari "ada tetapi kosong".
+   */
+  dokumen: Record<string, unknown>
+
+  portal: string
 }

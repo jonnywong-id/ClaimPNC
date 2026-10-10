@@ -1,0 +1,297 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyPropertyMode>String</pyPropertyMode>
+<pyWorkKey/>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pzRuleSetVersionPatch>01</pzRuleSetVersionPatch>
+<pyErrorMessage/>
+<pyValueChanged>true</pyValueChanged>
+<pxSaveDateTime>20151124T104350.290 GMT</pxSaveDateTime>
+<pyPageClass/>
+<pxInstanceLockedRuleSetVersion/>
+<pxUpdateSystemID>pega</pxUpdateSystemID>
+<pyPropertyModeLabel>Text</pyPropertyModeLabel>
+<pxMoveImportDateTime>20191226T024553.568 GMT</pxMoveImportDateTime>
+<pyDescription>Created from Data Type Landing Page</pyDescription>
+<pzEntryCode>sTN</pzEntryCode>
+<pyRuleSet>GISFW</pyRuleSet>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pxInstanceLockedKey/>
+<pyFormPost/>
+<pzDocumentKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzDocumentKey>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pyIsJavaPage/>
+<pyTableSelector/>
+<pyFieldName/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyInterface/>
+<pxInstanceLockedDateTime/>
+<pyMethodStatus/>
+<pyPropertyName>ASMDistrict</pyPropertyName>
+<pyUsage>Created from Data Type Landing Page</pyUsage>
+<pyWindowTitle/>
+<pyRuleSetVersion>01-01-01</pyRuleSetVersion>
+<pySerializeJavaObject/>
+<pxCommitDateTime>20200312T080324.000 GMT</pxCommitDateTime>
+<pyIsReference>false</pyIsReference>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormStatusTime>20261008T041636.644 GMT</pyRuleFormStatusTime>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyRuleEnds/>
+<pySpecial>false</pySpecial>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyIsLightweight>false</pyIsLightweight>
+<pyBaseRule>false</pyBaseRule>
+<pxTabLabel>ASMDistrict</pxTabLabel>
+<pyIsAssociation/>
+<pyDataRetrievalType/>
+<pxCreateOpName>Febry</pxCreateOpName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyCircumstanceType/>
+<pyComparator/>
+<pyOldStreamName>pxTextInput</pyOldStreamName>
+<pyRuleParamsStreamName/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyTableProperty/>
+<pySPRuleSetName/>
+<pyRuleAccessWhen/>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedBy/>
+<pyColumnInclusion/>
+<pyExpectedSize/>
+<pyEditable/>
+<pyReflectStatus>true</pyReflectStatus>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleName>ASMDistrict</pyRuleName>
+<pyDocumentTitle/>
+<pyMaxLength/>
+<pyCircumstanceDate/>
+<pxCreateDateTime>20151124T104251.425 GMT</pxCreateDateTime>
+<pyTableAggregate/>
+<pyStringType>Text</pyStringType>
+<pyJavaStream/>
+<pyCircumstanceDateProp/>
+<pyShowJavaWindowName>GeneratedJava20261008T041636.665 GMT</pyShowJavaWindowName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyJavaObjectClass/>
+<pyOnInput/>
+<pyDeletedObject/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyFieldClass/>
+<pyGatewayClass/>
+<pyStreamName>pxTextInput</pyStreamName>
+<pxHostId>jboss2058</pxHostId>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyRuleStarts/>
+<pyBranchID/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pxInsName>DATA-ADDRESS!ASMDISTRICT</pxInsName>
+<pzInsKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pyDataObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOnObjChange/>
+<pxInstanceLockedRuleSet/>
+<pyTableOption/>
+<pyIsGateway/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyDataAccessInfo>Manual</pyDataAccessInfo>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxInstanceLockedCreateDateTime/>
+<pyIsManualReference/>
+<pyEditValidate/>
+<pyIsTransient/>
+<pyTemplateInputBox/>
+<pyHistoryObject/>
+<pxCreateOperator>febry@sinarmas.co.id</pxCreateOperator>
+<pxInsId>!ASMDISTRICT</pxInsId>
+<pyCircumstanceVal/>
+<pyLocalize>false</pyLocalize>
+<pyLabelOld>Kecamatan</pyLabelOld>
+<pxUpdateOpName>Febry</pxUpdateOpName>
+<pzChecksum>1388272697</pzChecksum>
+<pyRefLocalizedValue/>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pxUpdateDateTime>20151124T104350.289 GMT</pxUpdateDateTime>
+<pxUpdateOperator>febry@sinarmas.co.id</pxUpdateOperator>
+<pyColumnIndexed/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyClassName>Data-Address</pyClassName>
+<pyLabel>Kecamatan</pyLabel>
+<pyTableClass/>
+<pzIndexCount>15</pzIndexCount>
+<pyCircumstanceProp/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pzStatus>valid</pzStatus>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>@baseclass</pxObjClass>
+<pyLabel/>
+</rowdata>
+</pyListValues>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pyLabel/>
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pxSubscript>none</pxSubscript>
+</rowdata>
+</pyqualifierpagegroup>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList"/>
+<pxPages REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="ROC">
+<pyLabel/>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pxSubscript>ROC</pxSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="DP">
+<pxObjClass>Rule-Declare-Pages</pxObjClass>
+<pxSubscript>DP</pxSubscript>
+<pyLabel/>
+</rowdata>
+<rowdata REPEATINGINDEX="DT">
+<pxObjClass>Rule-Obj-Class</pxObjClass>
+<pyLabel/>
+<pxSubscript>DT</pxSubscript>
+</rowdata>
+</pxPages>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzIndexOwnerKey>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pxRuleClassName/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzIndexOwnerKey>
+<pyRuleName>none</pyRuleName>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pyRuleName>Data-Address</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>DATA-ADDRESS</pxRuleFamilyName>
+<pxRuleClassName>Data-Address</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLocalizedValue/>
+<pyStandardValue/>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+</pyPromptTableList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyRestore>false</pyRestore>
+<pyRefresh>true</pyRefresh>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyDelegates>false</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pyRun>false</pyRun>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCheckIn>false</pyCheckIn>
+<pyRuleResolution>true</pyRuleResolution>
+<pyFavorites>true</pyFavorites>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyBack>true</pyBack>
+<pyRecover>false</pyRecover>
+<pyPreview>true</pyPreview>
+<pyRuleData>true</pyRuleData>
+<pyDelete>false</pyDelete>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyCompareVersion/>
+<pySaveAs>true</pySaveAs>
+<pyForward>true</pyForward>
+<pyNew>true</pyNew>
+<pySave>false</pySave>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyVersionSecure>true</pyVersionSecure>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-PROPERTY DATA-ADDRESS ASMDISTRICT #20151124T104251.425 GMT</pzInsKey>
+<pyLabel>01-01-01 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyCaption/>
+<pyKeyValue/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+</rowdata>
+</pyTableKeys>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+</pagedata>

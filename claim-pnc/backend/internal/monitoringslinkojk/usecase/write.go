@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -365,6 +366,21 @@ func (s *Service) submitOne(
 		ClaimID:    strings.TrimSpace(claimID),
 		ContractNo: strings.TrimSpace(contractNo),
 	}
+
+	// Debitur dibaca SEBELUM barisnya dicatat.
+	//
+	// Urutannya disengaja: data yang tidak terbaca berarti pengiriman tidak pernah
+	// dimulai, dan itu tidak boleh meninggalkan baris pengiriman. Baris tanpa
+	// `id_transaction` artinya "sudah dicoba, tidak sampai" — arti yang berbeda.
+	debtor, err := repo.LoadDebtor(ctx, submission.ClaimID, submission.ContractNo)
+	if err != nil {
+		return submission, result, fmt.Errorf(
+			"monitoringslinkojk/usecase: baca data debitur: %w", err)
+	}
+
+	// Kunci idempotensinya nomor urut pengiriman itu sendiri — lihat Debtor.TransactionID.
+	debtor.TransactionID = strconv.FormatInt(id, 10)
+	submission.Debtor = debtor
 
 	if err := repo.RecordSubmission(ctx, submission); err != nil {
 		return submission, result, fmt.Errorf(

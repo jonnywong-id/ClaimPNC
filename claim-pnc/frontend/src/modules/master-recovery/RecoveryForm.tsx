@@ -11,13 +11,15 @@ import {
   type RecoveryPrincipal,
 } from '@/api/types'
 import { Button } from '@/components/Button'
+import { ComboField } from '@/components/ComboField'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 import { formatMoney, parseMoney, remainder } from '@/lib/money'
 
 import { ClaimLineUpload } from './ClaimLineUpload'
-import { useLookupPolicy, useSaveRecovery, useUploadPaymentProof } from './api'
+import { VirtualAccountPanel } from './VirtualAccountPanel'
+import { useSaveRecovery } from './api'
 
 /** Batas panjang; sama dengan masterrecovery.Max* di backend. */
 const MAX_PRINCIPAL_NAME = 200
@@ -123,12 +125,12 @@ type Props = {
  * | Judul kolom | nama properti Pega | nama yang dibaca manusia (`D-19`) |
  * | Layar sempit | digulir menyamping | tersusun satu kolom (`D-12`) |
  */
-export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
+export function RecoveryForm({ year, principal, onSaved }: Props) {
   const save = useSaveRecovery()
-  const lookup = useLookupPolicy()
-  const upload = useUploadPaymentProof()
 
   const [claimLine, setClaimLine] = useState<RecoveryClaimLine[]>([])
+
+  const [vaIssued, setVAIssued] = useState(false)
   const [paymentProof, setPaymentProof] = useState<{ id: string; nama: string } | null>(null)
 
   const {
@@ -161,16 +163,13 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
     control,
     name: ['nilai_klaim', 'pembayaran_sebelumnya', 'pembayaran'],
   })
-  const computedRemainder = useMemo(() => {
+  const sisa = useMemo(() => {
     const claimAmount = parseMoney(watched[0] ?? '') ?? 0
     const previousPayment = parseMoney(watched[1] ?? '') ?? 0
     const payment = parseMoney(watched[2] ?? '') ?? 0
     return remainder(claimAmount, previousPayment, payment)
   }, [watched])
 
-  // Nomor polis diawasi terpisah: ia dipakai tombol Cari, dan tombolnya harus mati selama
-  // isiannya masih kosong.
-  const policyNo = useWatch({ control, name: 'nomor_polis' }) ?? ''
   const year0 = year[0]
   const chosenYear = useWatch({ control, name: 'tahun' })
 
@@ -211,13 +210,18 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
     }
   }, [save.error, setError])
 
-  /** Memilih principal mengisi ketiga isian sekaligus, seperti autocomplete layar lama. */
-  function choosePrincipal(clientID: string) {
-    const chosen = principal.find((p) => p.client_id === clientID)
-    if (!chosen) return
-    setValue('nama_principal', chosen.nama_principal, { shouldValidate: true })
-    setValue('client_id', chosen.client_id, { shouldValidate: true })
-    setValue('nomor_virtual_account', chosen.nomor_virtual_account, { shouldValidate: true })
+  /**
+   * Nomor yang baru terbit langsung mengisi ketiga isian principal.
+   *
+   * Itu yang membuat blok "Generated New VA" berguna di dalam alur Tambah: petugas tidak
+   * perlu menyalin nomornya sendiri ke isian di bawah.
+   */
+  function onVAIssued(value: { client_id: string; nama_principal: string; nomor: string }) {
+    // Padanan Property-Set `TempRecovery.IBNR := "1"` pada activity Get VA.
+    setVAIssued(true)
+    setValue('nama_principal', value.nama_principal, { shouldValidate: true })
+    setValue('client_id', value.client_id, { shouldValidate: true })
+    setValue('nomor_virtual_account', value.nomor, { shouldValidate: true })
   }
 
   function send(values: ParsedValues) {
@@ -239,326 +243,197 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
           reset()
           setClaimLine([])
           setPaymentProof(null)
-          lookup.reset()
         },
       },
     )
   }
 
   const busy = save.isPending
-  const policy = lookup.data
 
   return (
     <form onSubmit={handleSubmit(send)} noValidate className="space-y-6" aria-label="Catat batch recovery">
       {save.isError && <SaveErrorMessage error={save.error} />}
 
-      {/* ── Principal ─────────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Principal</h3>
-          <p className="mt-1 text-sm text-slate-600">
-            Pihak penjamin yang mengembalikan dana, beserta rekening virtual tempat dana
-            diterima.
-          </p>
-        </div>
+      {/*
+        Upload Data Klaim berada PALING ATAS, bukan di bawah seperti sebelumnya.
 
-        <div className="space-y-5 p-5">
-          <SelectField
-            id="pilih-principal"
-            label="Pilih dari master"
-            emptyText="— isi manual di bawah —"
-            options={principal.map((p) => ({
-              value: p.client_id,
-              label: `${p.nama_principal} · ${p.nomor_virtual_account}`,
-            }))}
-            disabled={busy}
-            onChange={(event) => choosePrincipal(event.target.value)}
-          />
+        Itu susunan layar lama: menekan Tambah memunculkan kotak "Tambah Data" yang
+        isinya tombol **Upload Data Klaim** beserta grid "No Polis | Nilai Klaims" —
+        isian lainnya menyusul di bawahnya (`D-13`).
+      */}
+      <ClaimLineUpload claimLine={claimLine} onChange={setClaimLine} disabled={busy} />
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field
-              id="nama-principal"
-              label="Nama Principal"
-              placeholder="Contoh: PT CONTOH PENJAMINAN"
-              maxLength={MAX_PRINCIPAL_NAME}
-              autoComplete="off"
-              error={errors.nama_principal?.message}
-              disabled={busy}
-              {...register('nama_principal')}
-            />
-            <Field
-              id="client-id"
-              label="Client ID"
-              placeholder="Opsional"
-              maxLength={MAX_CLIENT_ID}
-              autoComplete="off"
-              error={errors.client_id?.message}
-              disabled={busy}
-              {...register('client_id')}
-            />
-          </div>
+      {/*
+        SISA FORM BARU MUNCUL SETELAH DATA KLAIM DIUNGGAH.
 
-          <Field
-            id="nomor-virtual-account"
-            label="Virtual Account Number"
-            placeholder="Opsional — terisi sendiri bila principal dipilih dari master"
-            maxLength={MAX_VIRTUAL_ACCOUNT}
-            autoComplete="off"
-            error={errors.nomor_virtual_account?.message}
-            disabled={busy}
-            {...register('nomor_virtual_account')}
-          />
-        </div>
-      </section>
+        Itu alur layar lama: menekan Tambah hanya memunculkan kotak "Tambah Data"
+        berisi tombol Upload Data Klaim dan grid "No Polis | Nilai Klaims" — tidak ada
+        satu pun isian lain di layar sampai data klaimnya masuk (`D-13`).
 
-      {/* ── Nilai ─────────────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Nilai</h3>
-          <p className="mt-1 text-sm text-slate-600">
-            Seluruhnya dalam rupiah utuh, tanpa sen. Sisa dihitung sendiri dan tidak dapat
-            diketik.
-          </p>
-        </div>
+        Gerbangnya BARIS KLAIM, bukan "tombol unggah pernah ditekan": berkas yang
+        seluruh barisnya ditolak tidak membuka apa pun, dan petugas melihat daftar
+        baris cacatnya lebih dulu — bukan form panjang yang menutupi pesan itu.
+      */}
+      {claimLine.length > 0 && (
+        <>
+          {/*
+            "Generated New VA" duduk TEPAT SESUDAH grid data klaim, sama seperti layar
+            lama — bukan sebagai tombol terpisah di kepala halaman.
+          */}
+          <VirtualAccountPanel onIssued={onVAIssued} />
 
-        <div className="space-y-5 p-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <SelectField
-              id="tahun"
-              label="Tahun"
-              options={year.map((value) => ({ value, label: value }))}
-              error={errors.tahun?.message}
-              disabled={busy}
-              {...register('tahun')}
-            />
-            <div>
-              <span className="block text-sm font-medium text-slate-700">Nomor Batch</span>
-              {/*
-                Digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
-                dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
-                mengkliknya; kotak ini jelas bukan tempat mengetik.
-              */}
-              <p className="mt-1.5 flex items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 font-mono text-sm text-slate-500">
-                {nextBatch ?? '—'}
-              </p>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Perkiraan. Nomor yang mengikat diterbitkan saat disimpan.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Field
-              id="nilai-klaim"
-              label="Nilai Klaim (Rp)"
-              inputMode="numeric"
-              placeholder="0"
-              autoComplete="off"
-              error={errors.nilai_klaim?.message}
-              disabled={busy}
-              {...register('nilai_klaim')}
-            />
-            <Field
-              id="pembayaran-sebelumnya"
-              label="Nilai Pembayaran Sebelumnya (Rp)"
-              inputMode="numeric"
-              placeholder="0"
-              autoComplete="off"
-              hint="Bila diisi, Sisa dihitung dari angka ini."
-              error={errors.pembayaran_sebelumnya?.message}
-              disabled={busy}
-              {...register('pembayaran_sebelumnya')}
-            />
-            <Field
-              id="pembayaran"
-              label="Pembayaran (Rp)"
-              inputMode="numeric"
-              placeholder="0"
-              autoComplete="off"
-              error={errors.pembayaran?.message}
-              disabled={busy}
-              {...register('pembayaran')}
-            />
-          </div>
 
           {/*
-            Sisa ditampilkan beserta RUMUS yang dipakai, bukan angkanya saja.
+            KESEPULUH ISIAN DI BAWAH BARU MUNCUL SETELAH VA TERBIT.
 
-            Cabang kedua aturan ini mengabaikan Pembayaran, dan itu tampak keliru bagi siapa
-            pun yang membacanya — termasuk petugas. Menyebutkan rumusnya membuat angka yang
-            muncul dapat dipertanggungjawabkan alih-alih tampak salah hitung.
+            Bukan tafsiran: container yang memuatnya di layar lama bersyarat
+            `TempRecovery.IBNR == 1`
+            (`Section/OutstandingMasterRecovery-Section.xml:9173`), dan nilai itu di-set
+            oleh activity tombol Get VA — `Activity/GeneratedVAClaimRecovery-Act.xml`
+            menjalankan Property-Set `TempRecovery.IBNR := "1"`.
+
+            Kolom IBNR dipakai di sana sebagai PENANDA langkah, bukan sebagai nilai IBNR
+            dalam arti asuransi. Di sini penandanya adalah nomor VA yang sudah terbit,
+            karena itulah yang sebenarnya dihasilkan langkah tersebut.
+
+            Urutan dan nama labelnya disalin apa adanya dari urutan kemunculan
+            `pyLabelFieldValue` pada section yang sama:
+
+                :9809  Nama Principal              autocomplete
+                :11154 Tahun                       dropdown
+                :11717 Client ID
+                :11893 Virtual Account Number
+                :12023 Nilai Klaim
+                :12902 Nilai Pembayaran Sebelumnya
+                :13256 Pembayaran
+                :13573 Sisa
+                :13786 Keterangan
+                :14055 Posisi Kasus
+
+            Tidak ada pengelompokan "Principal" / "Nilai" / "Keterangan" di layar lama —
+            isiannya satu runtun. Pengelompokan itu buatan saya dan dicabut (`D-13`).
           */}
-          <div className="rounded-kartu border border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-sm font-medium text-slate-700">Sisa</span>
-              <span
-                className={
-                  'font-mono text-xl font-semibold tabular-nums ' +
-                  (computedRemainder < 0 ? 'text-red-700' : 'text-slate-900')
-                }
-              >
-                Rp {formatMoney(computedRemainder)}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              {(parseMoney(watched[1] ?? '') ?? 0) === 0
-                ? 'Nilai Klaim − Pembayaran, karena pembayaran sebelumnya nol.'
-                : 'Nilai Klaim − Nilai Pembayaran Sebelumnya, mengikuti aturan sistem lama.'}
-            </p>
-            {computedRemainder < 0 && (
-              <p className="mt-2 text-xs font-medium text-red-700">
-                Sisa negatif — pembayaran melampaui nilai klaim. Periksa kembali angkanya
-                sebelum menyimpan.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+          {vaIssued && (
+            <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
+              <div className="space-y-5 p-5">
+                {/*
+                  Autocomplete, bukan dropdown terpisah: section memuat lima
+                  `pyUIElement: autocomplete` dan HANYA SATU `dropdown` — dan yang satu itu
+                  Tahun. Isian "Pilih dari master" buatan saya karena itu dicabut; daftar
+                  principal menjadi saran di sini, dan nilai di luar daftar tetap boleh
+                  diketik.
+                */}
+                <ComboField
+                  id="nama-principal"
+                  label="Nama Principal"
+                  options={principal.map((p) => p.nama_principal)}
+                  maxLength={MAX_PRINCIPAL_NAME}
+                  autoComplete="off"
+                  error={errors.nama_principal?.message}
+                  disabled={busy}
+                  {...register('nama_principal')}
+                />
 
-      {/* ── Keterangan ────────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Keterangan</h3>
-        </div>
-        <div className="grid gap-5 p-5 sm:grid-cols-2">
-          <Field
-            id="keterangan"
-            label="Keterangan"
-            placeholder="Contoh: pengembalian sebagian tahap 1"
-            maxLength={MAX_REMARK}
-            autoComplete="off"
-            error={errors.keterangan?.message}
-            disabled={busy}
-            {...register('keterangan')}
-          />
-          <Field
-            id="posisi-kasus"
-            label="Posisi Kasus"
-            placeholder="Contoh: dalam proses litigasi"
-            maxLength={MAX_CASE_POSITION}
-            autoComplete="off"
-            error={errors.posisi_kasus?.message}
-            disabled={busy}
-            {...register('posisi_kasus')}
-          />
-        </div>
-      </section>
+                <SelectField
+                  id="tahun"
+                  label="Tahun"
+                  options={year.map((y) => ({ value: y, label: y }))}
+                  error={errors.tahun?.message}
+                  disabled={busy}
+                  {...register('tahun')}
+                />
 
-      {/* ── Polis ─────────────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Polis Acuan (opsional)</h3>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Bila diisi, identitas lini bisnis, cabang, agen, dan marketing dicari dari nomor
-            ini dan ikut tersimpan. Batch tetap dapat disimpan tanpanya.
-          </p>
-        </div>
-
-        <div className="space-y-4 p-5">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[16rem] flex-1">
-              <Field
-                id="nomor-polis"
-                label="Nomor Polis"
-                placeholder="Opsional"
-                maxLength={MAX_POLICY_NO}
-                autoComplete="off"
-                error={errors.nomor_polis?.message}
-                disabled={busy}
-                {...register('nomor_polis')}
-              />
-            </div>
-            {/*
-              Nilainya dibaca dari form, bukan dari DOM. Membaca elemen langsung akan
-              melewati state React Hook Form — dan nilai yang dikirim pencarian lalu dapat
-              berbeda dari nilai yang tersimpan saat batch disimpan.
-            */}
-            <Button
-              tone="kedua"
-              disabled={busy || lookup.isPending || policyNo.trim() === ''}
-              onClick={() => lookup.mutate(policyNo.trim())}
-            >
-              {lookup.isPending ? 'Mencari…' : 'Cari identitas'}
-            </Button>
-          </div>
-
-          {lookup.isError && <PolicyErrorMessage error={lookup.error} />}
-
-          {policy && (
-            <dl className="grid gap-3 rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm sm:grid-cols-4">
-              {[
-                ['Lini bisnis', policy.id_lini_bisnis],
-                ['Cabang', policy.id_cabang],
-                ['Agen', policy.id_agen],
-                ['Marketing', policy.id_marketing],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs text-emerald-800">{label}</dt>
-                  <dd className="mt-0.5 font-mono text-sm font-medium text-emerald-950">
-                    {value || '—'}
-                  </dd>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field
+                    id="client-id"
+                    label="Client ID"
+                    maxLength={MAX_CLIENT_ID}
+                    autoComplete="off"
+                    error={errors.client_id?.message}
+                    disabled={busy}
+                    {...register('client_id')}
+                  />
+                  <Field
+                    id="nomor-virtual-account"
+                    label="Virtual Account Number"
+                    maxLength={MAX_VIRTUAL_ACCOUNT}
+                    autoComplete="off"
+                    error={errors.nomor_virtual_account?.message}
+                    disabled={busy}
+                    {...register('nomor_virtual_account')}
+                  />
                 </div>
-              ))}
-            </dl>
-          )}
-        </div>
-      </section>
 
-      {/* ── Bukti bayar ───────────────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">Bukti Bayar (opsional)</h3>
-          <p className="mt-1 text-sm text-slate-600">
-            Pindaian bukti transfer, paling besar 5 MB.
-          </p>
-        </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field
+                    id="nilai-klaim"
+                    label="Nilai Klaim"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    error={errors.nilai_klaim?.message}
+                    disabled={busy}
+                    {...register('nilai_klaim')}
+                  />
+                  <Field
+                    id="pembayaran-sebelumnya"
+                    label="Nilai Pembayaran Sebelumnya"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    error={errors.pembayaran_sebelumnya?.message}
+                    disabled={busy}
+                    {...register('pembayaran_sebelumnya')}
+                  />
+                </div>
 
-        <div className="space-y-4 p-5">
-          <label
-            htmlFor="bukti-bayar"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Berkas bukti bayar
-          </label>
-          <input
-            id="bukti-bayar"
-            type="file"
-            disabled={busy || upload.isPending}
-            className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-kontrol file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              upload.mutate(
-                { berkas: file },
-                {
-                  onSuccess: (answer) =>
-                    setPaymentProof({ id: answer.id_dokumen, nama: answer.nama_berkas }),
-                },
-              )
-              event.target.value = ''
-            }}
-          />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field
+                    id="pembayaran"
+                    label="Pembayaran"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    error={errors.pembayaran?.message}
+                    disabled={busy}
+                    {...register('pembayaran')}
+                  />
 
-          {upload.isPending && <p className="text-sm text-slate-500">Mengunggah…</p>}
-          {upload.isError && <UploadErrorMessage error={upload.error} />}
+                  {/*
+                    Sisa adalah ISIAN di layar lama (`:13573`), bukan keterangan di pojok —
+                    tetapi ia hasil hitungan dan tidak diketik siapa pun. Digambar terkunci
+                    supaya sejajar dengan isian di sebelahnya tanpa mengundang suntingan.
+                  */}
+                  <Field
+                    id="sisa"
+                    label="Sisa"
+                    value={formatMoney(sisa)}
+                    readOnly
+                    disabled={busy}
+                    hint="Dihitung sendiri; angka yang mengikat datang dari server."
+                  />
+                </div>
 
-          {paymentProof && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-kartu border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-emerald-900">{paymentProof.nama}</p>
-                <p className="mt-0.5 font-mono text-xs text-emerald-800">
-                  ID dokumen: {paymentProof.id}
-                </p>
+                <Field
+                  id="keterangan"
+                  label="Keterangan"
+                  maxLength={MAX_REMARK}
+                  autoComplete="off"
+                  error={errors.keterangan?.message}
+                  disabled={busy}
+                  {...register('keterangan')}
+                />
+
+                <Field
+                  id="posisi-kasus"
+                  label="Posisi Kasus"
+                  maxLength={MAX_CASE_POSITION}
+                  autoComplete="off"
+                  error={errors.posisi_kasus?.message}
+                  disabled={busy}
+                  {...register('posisi_kasus')}
+                />
               </div>
-              <Button tone="halus" onClick={() => setPaymentProof(null)} disabled={busy}>
-                Lepas
-              </Button>
-            </div>
+            </section>
           )}
-        </div>
-      </section>
 
-      <ClaimLineUpload claimLine={claimLine} onChange={setClaimLine} disabled={busy} />
 
       <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-5">
         <Button type="submit" tone="utama" disabled={busy}>
@@ -571,13 +446,14 @@ export function RecoveryForm({ nextBatch, year, principal, onSaved }: Props) {
             reset()
             setClaimLine([])
             setPaymentProof(null)
-            lookup.reset()
-            save.reset()
+              save.reset()
           }}
         >
           Kosongkan isian
         </Button>
-      </div>
+          </div>
+        </>
+      )}
     </form>
   )
 }
@@ -647,41 +523,4 @@ function parseSave(error: APIError): MessageContent | null {
   }
 }
 
-function PolicyErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof APIError && error.kode === ErrorCode.recoveryPolicyNotFound) {
-    return (
-      <ErrorMessage
-        title="Nomor polis tidak ditemukan"
-        description="Periksa kembali nomornya. Batch tetap dapat disimpan tanpa identitas polis — keempat kolomnya akan kosong."
-        tone="penolakan"
-      />
-    )
-  }
-  return (
-    <ErrorMessage
-      title="Identitas polis belum dapat dicari"
-      description="Pencarian menyeberang ke basis data lain dan sedang tidak dapat ditembak. Batch tetap dapat disimpan."
-      tone="gangguan"
-    />
-  )
-}
 
-function UploadErrorMessage({ error }: { error: unknown }) {
-  if (error instanceof APIError && error.kode === ErrorCode.validationFailed) {
-    const violation = error.violations()['bukti_bayar']
-    return (
-      <ErrorMessage
-        title="Berkas ditolak"
-        description={violation ?? error.message}
-        tone="penolakan"
-      />
-    )
-  }
-  return (
-    <ErrorMessage
-      title="Bukti bayar gagal diunggah"
-      description="Batch belum tersimpan. Coba unggah ulang; bila tetap gagal, simpan batch tanpa bukti bayar."
-      tone="gangguan"
-    />
-  )
-}

@@ -78,36 +78,49 @@ func (h *Handler) exportSummary(
 		return
 	}
 
-	// Kolomnya disaring menurut tipe report, sama seperti di layar: kolom TIPE hanya ada
-	// pada tipe ALL, karena hanya kueri ALL di Pega yang mengembalikannya.
-	columns := findGrid(reportkpi.GridSummary).ColumnsFor(result.Query.ReportType)
-	header := exportHeader(columns)
+	// Susunannya DARI PEGA, bukan dari grid layar.
+	//
+	// Keduanya memang berbeda di sini: kolom `Status` digambar di grid tetapi tidak ikut
+	// ke berkas, dan kolom terakhirnya tertulis `KATEGORY` di berkas. Lihat ExportSpec.
+	spec := reportkpi.ExportSummaryAdjuster()
 
-	h.beginDownload(w, exportFilename("ringkasan-kpi-adjuster", result.Query))
+	h.beginDownload(w, namaBerkasPega(spec.FileLabel))
 
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	if err := writer.Write(header); err != nil {
+	if err := writer.Write(spec.Headers); err != nil {
 		h.logExportFailure(r, err)
 		return
 	}
 
 	for i, row := range result.Rows {
 		if i >= exportLimit {
-			_ = writer.Write(truncationNotice(len(header), len(result.Rows)))
+			_ = writer.Write(truncationNotice(len(spec.Headers), len(result.Rows)))
 			return
 		}
 
-		cells := make([]string, 0, len(columns))
-		for _, column := range columns {
-			cells = append(cells, summaryCell(row, column.Key))
+		cells := make([]string, 0, len(spec.Fields))
+		for _, field := range spec.Fields {
+			cells = append(cells, summaryExportCell(row, field))
 		}
-		if err := writer.Write(append(cells, scoreCells(row.Scores)...)); err != nil {
+		if err := writer.Write(cells); err != nil {
 			h.logExportFailure(r, err)
 			return
 		}
 	}
+}
+
+// summaryExportCell mengambil satu sel berkas Summary menurut kunci datanya.
+//
+// Ia menangani kolom tetap DAN kesembilan komponen sekaligus, karena berkasnya tidak lagi
+// dirakit sebagai "kolom tetap lalu komponen" melainkan sebagai satu daftar berurutan —
+// persis seperti `CSVProperties` di Pega.
+func summaryExportCell(row reportkpi.AdjusterSummary, field string) string {
+	if score, found := row.Scores[field]; found {
+		return scoreCell(score)
+	}
+	return summaryCell(row, field)
 }
 
 // detailCell mengambil isi satu sel tetap grid Detail menurut nama kolomnya.
@@ -125,6 +138,8 @@ func detailCell(row reportkpi.AdjusterDetail, key string) string {
 		return string(row.ReportType)
 	case reportkpi.FieldScoredOn:
 		return row.ScoredOn
+	case reportkpi.FieldCategory:
+		return row.Category
 	default:
 		return ""
 	}
@@ -142,6 +157,8 @@ func summaryCell(row reportkpi.AdjusterSummary, key string) string {
 		return row.Adjuster
 	case reportkpi.FieldType:
 		return string(row.ReportType)
+	case reportkpi.FieldCategory:
+		return row.Category
 	default:
 		return ""
 	}
@@ -165,8 +182,9 @@ func (h *Handler) exportDetail(
 
 	// Grid Detail tidak punya kolom yang muncul-hilang, tetapi ia tetap menempuh
 	// ColumnsFor supaya kedua berkas ekspor disusun dengan cara yang sama.
-	columns := findGrid(reportkpi.GridDetail).ColumnsFor(first.Query.ReportType)
-	header := exportHeader(columns)
+	grid := findGrid(reportkpi.GridDetail)
+	columns := grid.ColumnsFor(first.Query.ReportType)
+	header := exportHeader(columns, grid.TrailingColumns)
 
 	h.beginDownload(w, exportFilename("rincian-kpi-adjuster", first.Query))
 
@@ -187,11 +205,15 @@ func (h *Handler) exportDetail(
 				return
 			}
 
-			cells := make([]string, 0, len(columns))
+			cells := make([]string, 0, len(header))
 			for _, column := range columns {
 				cells = append(cells, detailCell(row, column.Key))
 			}
-			if err := writer.Write(append(cells, scoreCells(row.Scores)...)); err != nil {
+			cells = append(cells, scoreCells(row.Scores)...)
+			for _, column := range grid.TrailingColumns {
+				cells = append(cells, detailCell(row, column.Key))
+			}
+			if err := writer.Write(cells); err != nil {
 				h.logExportFailure(r, err)
 				return
 			}
@@ -231,13 +253,18 @@ func findGrid(code string) reportkpi.Grid {
 // keduanya dibangun dari senarai kolom yang SAMA — bukan dari dua daftar yang kebetulan
 // sejalan. Dengan begitu kolom yang muncul-hilang menurut tipe report tidak dapat
 // menggeser isi berkas tanpa menggeser judulnya sekaligus.
-func exportHeader(columns []reportkpi.Column) []string {
-	header := make([]string, 0, len(columns)+len(reportkpi.Components()))
+func exportHeader(columns, trailing []reportkpi.Column) []string {
+	header := make([]string, 0, len(columns)+len(reportkpi.Components())+len(trailing))
 	for _, column := range columns {
 		header = append(header, column.Title)
 	}
 	for _, component := range reportkpi.Components() {
 		header = append(header, component.Label)
+	}
+	// Kolom akhir — hari ini hanya KATEGORI — ditulis SESUDAH kesembilan komponen,
+	// persis seperti urutannya di layar.
+	for _, column := range trailing {
+		header = append(header, column.Title)
 	}
 	return header
 }
@@ -253,13 +280,21 @@ func scoreCells(scores map[string]reportkpi.Score) []string {
 	cells := make([]string, 0, len(codes))
 	for _, code := range codes {
 		score, exists := scores[code]
-		if !exists || !score.Present {
+		if !exists {
 			cells = append(cells, "")
 			continue
 		}
-		cells = append(cells, strconv.FormatFloat(score.Value, 'f', -1, 64))
+		cells = append(cells, scoreCell(score))
 	}
 	return cells
+}
+
+// scoreCell menggambar SATU nilai komponen untuk berkas ekspor.
+func scoreCell(score reportkpi.Score) string {
+	if !score.Present {
+		return ""
+	}
+	return strconv.FormatFloat(score.Value, 'f', -1, 64)
 }
 
 // beginDownload memasang header unduhan.
@@ -289,6 +324,28 @@ func (h *Handler) flush(w http.ResponseWriter, writer *csv.Writer, r *http.Reque
 // berulang kali dengan penyaring berbeda, dan berkas yang namanya sama membuat dua
 // penyaring tidak dapat dibedakan setelah tersimpan — pada sebagian peramban yang
 // berikutnya bahkan menimpa yang sebelumnya.
+// namaBerkasPega menyusun nama unduhan dari nama berkas yang disetel Pega, apa adanya.
+//
+// # Kenapa periode dan tipe report TIDAK ditambahkan
+//
+// Karena Pega tidak menambahkannya. `FileName` pada pemanggilan `pxConvertResultsToCSV`
+// berisi teks tetap, dan `AppendTimeStampToFileName` bernilai `False`.
+//
+// Akibat yang diterima: dua unduhan dengan periode berbeda bernama SAMA, dan peramban
+// menambahkan `(1)` sendiri. Itu merepotkan, dan itulah yang dialami pengguna hari ini —
+// menamainya lebih baik berarti berkas lama dan baru tidak dapat dibandingkan berdampingan.
+//
+// Akhiran `.csv` ditambahkan karena peramban memerlukannya untuk membuka berkasnya dengan
+// program yang benar; Pega mengandalkan `Content-Type` saja.
+func namaBerkasPega(label string) string {
+	return label + ".csv"
+}
+
+// exportFilename menyusun nama unduhan untuk ekspor yang BELUM diselaraskan dengan Pega.
+//
+// Ia dipertahankan sementara untuk berkas yang susunannya belum dapat dipastikan — lihat
+// `docs/spesifikasi-ekspor-kpi-pega.md`. Begitu susunannya ditetapkan, pemakainya berpindah
+// ke namaBerkasPega dan fungsi ini hilang.
 func exportFilename(prefix string, query reportkpi.Query) string {
 	name := prefix + "-" + strings.ToLower(string(query.ReportType))
 	if query.Range.From != "" && query.Range.To != "" {

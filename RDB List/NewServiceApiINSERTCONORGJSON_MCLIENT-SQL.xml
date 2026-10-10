@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxInsName>ASM-FW-GISFW-INT-MCLIENT!ASM!NEWSERVICEAPIINSERTCONORGJSON_MCLIENT</pxInsName>
+<pyLabelOld>NewServiceApiINSERTCONORGJSON_MCLIENT</pyLabelOld>
+<pyWindowTitle/>
+<pyHistoryObject>false</pyHistoryObject>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-MCLIENT ASM!NEWSERVICEAPIINSERTCONORGJSON_MCLIENT #20190711T110638.786 GMT</pzInsKey>
+<pxOriginalCreateSystemID/>
+<pyCircumstanceVal/>
+<pyStatus/>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyIsFromManageChangeLP/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxUpdateDateTime>20190711T110755.743 GMT</pxUpdateDateTime>
+<pxMoveImportOperId>GERARDOADRIAN</pxMoveImportOperId>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyFormPost/>
+<pxOriginalRuleSet>GISFW</pxOriginalRuleSet>
+<pyShowJavaWindowName>GeneratedJava20261008T075017.694 GMT</pyShowJavaWindowName>
+<pyUsage/>
+<pxOriginalCreateDateTime/>
+<pyRuleParamsStreamName/>
+<pzRuleSetVersionPatch>08</pzRuleSetVersionPatch>
+<pyJavaStream/>
+<pxInstanceLockedBy/>
+<pxSiblingCount/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleSetVersion>01-02-08</pyRuleSetVersion>
+<pxCreateOperator>charlie1</pxCreateOperator>
+<pyOpenSQL/>
+<pxTabLabel>ASM-FW-GISFW-Int-MClient ASM NewServiceApiINSERTCONORGJSON_MCLIENT</pxTabLabel>
+<pzChecksum>1632307980</pzChecksum>
+<pyLabel>NewServiceApiINSERTCONORGJSON_MCLIENT</pyLabel>
+<pxUpdateOpName>charlie1</pxUpdateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyCircumstanceProp/>
+<pxMoveImportOperName>Gerardo Adrian</pxMoveImportOperName>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxInsId>ASM-FW-GISFW-INT-MCLIENT!ASM!NEWSERVICEAPIINSERTCONORGJSON_MCLIENT</pxInsId>
+<pySaveSQL/>
+<pyBaseRule>false</pyBaseRule>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxHostId>jboss2058</pxHostId>
+<pyMemo>NewServiceApiINSERTCONORGJSON_MCLIENT</pyMemo>
+<pxMoveFromSystem/>
+<pyHandlerFlow/>
+<pxInstanceLockedRuleSet/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyRuleStarts/>
+<pyInterface/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyWorkKey/>
+<pyValueChanged>false</pyValueChanged>
+<pyCircumstanceTemplate/>
+<pyDeletedObject/>
+<pyRuleFormStatusTime>20261008T075017.676 GMT</pyRuleFormStatusTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxOriginalCreateOpName/>
+<pyMethodStatus/>
+<pxSaveDateTime>20190711T110755.765 GMT</pxSaveDateTime>
+<pyRuleName>ASM-FW-GISFW-Int-MClient ASM NewServiceApiINSERTCONORGJSON_MCLIENT</pyRuleName>
+<pyTemplate/>
+<pyRequestType>NewServiceApiINSERTCONORGJSON_MCLIENT</pyRequestType>
+<pyRWAccess>ASM</pyRWAccess>
+<pyCircumstanceDate/>
+<pyDeleteSQL/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDefinition/>
+<pyCircumstanceType/>
+<pxMoveImportDateTime>20191226T024715.746 GMT</pxMoveImportDateTime>
+<pyDescription/>
+<pySPRuleSetName>charlie1@</pySPRuleSetName>
+<pyStreamName/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-MCLIENT ASM!NEWSERVICEAPIINSERTCONORGJSON_MCLIENT #20190711T110638.786 GMT</pzDocumentKey>
+<pyRuleEnds/>
+<pxUpdateOperator>charlie1</pxUpdateOperator>
+<pyDeleteMemo>TAMBAH UPDATE FLAT TABLENYA</pyDeleteMemo>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyDocumentTitle/>
+<pxCreateDateTime>20190711T110638.786 GMT</pxCreateDateTime>
+<pyClassName>ASM-FW-GISFW-Int-MClient</pyClassName>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pxCommitDateTime>20200312T080242.000 GMT</pxCommitDateTime>
+<pxInstanceLockedDateTime/>
+<pyRelativePath/>
+<pyTemplateInputBox/>
+<pxInstanceLockedKey/>
+<pxInstanceLockedRuleSetVersion/>
+<pySpecialtyComponentData/>
+<pyCircumstanceDateProp/>
+<pyBrowseSQL>DECLARE 
+  P_ID VARCHAR2(32767);
+  p_CONID VARCHAR2(32767);
+  P_JSONDATA CLOB;
+  O_MESSAGE VARCHAR2(32767);
+
+BEGIN 
+  P_ID := {InputData.HASIL1};
+  p_CONID :={InputData.HASIL1};
+  DBMS_LOB.CREATETEMPORARY(P_JSONDATA, true);
+  P_JSONDATA :=  {InputData.HASIL2};
+  POOLDATA.RDBMCLIENT ( P_ID,p_CONID, P_JSONDATA, {pxProcess.pzProductionLevel}, {OutputData.HASIL1 out});
+  COMMIT; 
+  
+END;</pyBrowseSQL>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxCreateOpName>charlie1</pxCreateOpName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSet>GISFW</pyRuleSet>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-MCLIENT ASM!INSERTCONORGJSON_MCLIENT #20190710T030633.077 GMT</pzOriginalInstanceKey>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyForward>true</pyForward>
+<pyShowJava>false</pyShowJava>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pySaveAs>true</pySaveAs>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRuleData>true</pyRuleData>
+<pyBranchOut>false</pyBranchOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySave>false</pySave>
+<pyCheckIn>false</pyCheckIn>
+<pyLaunch>true</pyLaunch>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRuleResolution>true</pyRuleResolution>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyAvailability>false</pyAvailability>
+<pyRefresh>true</pyRefresh>
+<pyFavorites>true</pyFavorites>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyRun>false</pyRun>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GISFW-INT-MCLIENT ASM!NEWSERVICEAPIINSERTCONORGJSON_MCLIENT #20190711T110638.786 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-08 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

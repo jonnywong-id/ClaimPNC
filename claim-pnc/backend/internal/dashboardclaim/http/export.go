@@ -149,68 +149,15 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ExportHolding menjawab GET /dashboard-claim/tampungan/unduh.
-func (h *Handler) ExportHolding(w http.ResponseWriter, r *http.Request) {
-	active, exists := portalhttp.ActivePortalFrom(r.Context())
-	if !exists {
-		h.writeError(w, r, portal.ErrNotStated)
-		return
-	}
-
-	filter, err := readFilter(r.URL.Query())
-	if err != nil {
-		h.writeError(w, r, err)
-		return
-	}
-	filter.Offset = 0
-	filter.Limit = exportBatchSize
-
-	page, err := h.service.Holding(r.Context(), usecase.Query{
-		PortalAlias: active.Alias, Filter: filter,
-	})
-	if err != nil {
-		h.writeError(w, r, err)
-		return
-	}
-
-	h.beginCSV(w, "dashboard-tampungan-pic")
-
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write(holdingExportHeader()); err != nil {
-		h.logStreamFailure(r, err)
-		return
-	}
-
-	written := 0
-	for {
-		for _, row := range page.Page.Rows {
-			if h.stopAtCap(writer, &written) {
-				return
-			}
-			if err := writer.Write(holdingExportRow(row, h.location)); err != nil {
-				h.logStreamFailure(r, err)
-				return
-			}
-		}
-		if len(page.Page.Rows) < filter.Limit {
-			return
-		}
-
-		filter.Offset += filter.Limit
-		writer.Flush()
-
-		page, err = h.service.Holding(r.Context(), usecase.Query{
-			PortalAlias: active.Alias, Filter: filter,
-		})
-		if err != nil {
-			h.logStreamFailure(r, err)
-			_ = writer.Write([]string{"-- UNDUHAN TERPOTONG: sisa baris tidak dapat dibaca --"})
-			return
-		}
-	}
-}
+// TIDAK ADA ExportHolding.
+//
+// Tab Inbox Tampungan PIC tidak punya tombol unduh di layar lama, dan rute
+// GET /dashboard-claim/tampungan/unduh beserta handler ini DICABUT 2026-10-07.
+//
+// Dibuktikan dua cara sebelum dicabut: Section/DashboardClaim_Section2-Section.xml memuat
+// NOL aksi openUrlInWindow — cara keempat ekspor tile dipanggil, yang muncul 4x di
+// DashboardClaim_Section1 — dan tidak ada satu pun activity Export* di export yang
+// menyentuh klaim ber-USERTEKNIS_1 IS NULL.
 
 // beginCSV menuliskan header respons unduhan.
 func (h *Handler) beginCSV(w http.ResponseWriter, prefix string) {

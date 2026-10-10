@@ -3,10 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
 
 import { useAjukanPermintaanKlaim } from './api'
-import type { BarisKlaim, HasilPermintaanKlaim, JenisPermintaanKlaim } from './types'
+import type {
+  BarisKlaim,
+  HasilPermintaanKlaim,
+  JawabanExGratia,
+  JenisPermintaanKlaim,
+} from './types'
 
 /**
  * Konfirmasi pengajuan **ReOpen** dan **Copy Klaim** atas baris yang dicentang.
@@ -15,16 +19,40 @@ import type { BarisKlaim, HasilPermintaanKlaim, JenisPermintaanKlaim } from './t
  * `GCNMCopyClaimConfirmation`, keduanya dipanggil sebagai `pyLocalAction` dari
  * `Section/InboxManagerReopen1_Sec-Section.xml`.
  *
- * # Isi modalnya tidak dapat ditiru, dan itu dinyatakan
+ * # Isi keduanya kini diketahui seluruhnya
  *
- * **Kedua flow action itu HILANG dari export** (`R-16`): tidak ada berkasnya di
- * `Flow Action/`. Yang terbaca hanya namanya, bukan isinya — sehingga tidak diketahui isian
- * apa yang dimintanya dan peringatan apa yang ditampilkannya.
+ * `GCNMReopenConfirmation` diterima **2026-10-08** — menutup pertanyaan terbuka yang sempat
+ * tercatat di sini. Isi kedua Section, terbaca apa adanya:
  *
- * Yang dibangun di sini karena itu adalah konfirmasi yang **paling sedikit menduga**:
- * menyebutkan apa yang akan terjadi, atas berapa klaim, dengan satu isian Alasan yang
- * opsional. Menebak isian lain berarti menolak pengajuan yang sah karena isian karangan
- * kita sendiri tidak diisi.
+ *	ReOpen      satu kalimat "Apakah anda yakin ingin Membuka klaim ini?" + DUA tombol.
+ *	            Tombolnya `closeContainer,refresh` (Ya) dan `closeContainer` (Tidak)
+ *	Copy Klaim  satu pertanyaan "Apakah klaim ini tipe Ex Gratia?" + `TempGratia.ExGratia`
+ *
+ * **Tidak ada isian catatan pada dialog ReOpen** — hanya tiga sel, dan tidak satu pun
+ * terikat properti. Dugaan sebelumnya bahwa ia mungkin punya `.ClaimData.CloseClaimNote`
+ * **terbantah**: isian itu memang ada, tetapi di `Section/ReopenClaim-sect.xml`, yang milik
+ * layar LAIN (dirujuk `Section/ClaimSurvey_sect.xml`). Keduanya berbeda meski kalimatnya
+ * nyaris sama — yang ini memakai huruf besar "Membuka", yang itu "membuka".
+ *
+ * **Tidak ada isian Alasan di keduanya.** Isian itu saya tambahkan sendiri saat isinya
+ * belum diketahui, dan sekarang dibuang: isian karangan yang tidak ada di layar lama akan
+ * muncul sebagai kolom kosong di jejak permintaan dan sebagai pertanyaan yang tidak pernah
+ * ditanyakan siapa pun kepada pengguna.
+ *
+ * # Satu kalimat yang SENGAJA ditambahkan
+ *
+ * Di bawah kalimat Pega, dialog ini menambahkan keterangan bahwa yang tercatat adalah
+ * **permintaannya** dan klaimnya belum berubah. Itu bukan teks layar lama, dan ia ada karena
+ * perilakunya memang berbeda: Pega menjalankan `SaveReOpenAct` seketika, sedangkan di sini
+ * permintaannya dicatat lebih dulu. Menghapus kalimat itu akan membuat pengguna menekan "Ya"
+ * sambil mengira klaimnya langsung terbuka.
+ *
+ * # Baris yang dikirim = baris yang dicentang
+ *
+ * `Activity/GCNMDataForSelectedByUser-Act.xml` — dipanggil Flow Action ReOpen — mengumpulkan
+ * baris ber-`.IsSelected` ke `TempDataSelected`, dengan prasyarat
+ * `@SizeOfPropertyList(TempDataSelected.pxResults)>0`. Tombol di layar kita karena itu
+ * `disabled` saat tidak ada baris tercentang.
  */
 export function DialogPermintaanKlaim({
   jenis,
@@ -35,7 +63,8 @@ export function DialogPermintaanKlaim({
   baris: BarisKlaim[]
   onTutup: () => void
 }) {
-  const [alasan, setAlasan] = useState('')
+  // Ex Gratia hanya ditanyakan pada Copy Klaim; ReOpen tidak punya isian sama sekali.
+  const [exGratia, setExGratia] = useState<JawabanExGratia>('tidak')
   const ajukan = useAjukanPermintaanKlaim()
   const tutupRef = useRef<HTMLButtonElement>(null)
 
@@ -56,7 +85,10 @@ export function DialogPermintaanKlaim({
     event.preventDefault()
     ajukan.mutate({
       jenis,
-      alasan,
+      // Jawaban Ex Gratia dititipkan pada `alasan` karena kontrak modul Inbox Close Claim
+      // belum punya field-nya sendiri. Ini TITIPAN, bukan pemodelan yang benar — lihat
+      // catatan pengembangan.
+      alasan: jenis === 'salin' ? 'Ex Gratia: ' + exGratia : '',
       baris: baris.map((row) => ({ klaim_id: row.klaim_id, nomor_klaim: row.nomor_klaim })),
     })
   }
@@ -100,7 +132,13 @@ export function DialogPermintaanKlaim({
             <div className="rounded-kontrol border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
               {jenis === 'reopen' ? (
                 <>
-                  Klaim yang dipilih akan diajukan untuk <strong>dibuka kembali</strong>.
+                  {/*
+                    Kalimat ini disalin APA ADANYA dari
+                    `Section/GCNMReopenConfirmation-Section.xml` (`D-13`), termasuk huruf
+                    besar pada "Membuka". Section-nya diterima 2026-10-08 dan isinya tepat
+                    tiga sel: kalimat ini dan dua tombol.
+                  */}
+                  Apakah anda yakin ingin <strong>Membuka</strong> klaim ini?
                 </>
               ) : (
                 <>
@@ -114,13 +152,35 @@ export function DialogPermintaanKlaim({
 
             <DaftarKlaim baris={baris} />
 
-            <Field
-              id="permintaan-alasan"
-              label="Alasan"
-              value={alasan}
-              onChange={(event) => setAlasan(event.target.value)}
-              hint="Opsional. Tercatat pada jejak permintaan."
-            />
+            {jenis === 'salin' ? (
+              <fieldset className="rounded-kontrol border border-slate-200 p-4">
+                {/*
+                  Pertanyaan dan radionya ada di layar lama: caption "Apakah klaim ini tipe
+                  Ex Gratia?" dengan kontrol pxRadioButtons terikat TempGratia.ExGratia.
+
+                  Daftar nilainya TIDAK ikut di export (Rule-Obj-FieldValue, R-16), jadi
+                  dipakai bentuk paling sedikit menduga: ya / tidak.
+                */}
+                <legend className="px-1 text-sm font-medium text-slate-900">
+                  Apakah klaim ini tipe Ex Gratia?
+                </legend>
+                <div className="mt-2 flex gap-6">
+                  {(['ya', 'tidak'] as const).map((nilai) => (
+                    <label key={nilai} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="ex-gratia"
+                        value={nilai}
+                        checked={exGratia === nilai}
+                        onChange={() => setExGratia(nilai)}
+                        className="h-4 w-4 border-slate-300 text-blue-600"
+                      />
+                      {nilai === 'ya' ? 'Ya' : 'Tidak'}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
 
             {ajukan.isError ? (
               <ErrorMessage
@@ -132,10 +192,11 @@ export function DialogPermintaanKlaim({
 
             <div className="flex justify-end gap-2">
               <Button tone="kedua" type="button" onClick={onTutup}>
-                Batal
+                {/* Layar lama memberi label "Tidak" pada tombol batal ReOpen. */}
+                {jenis === 'reopen' ? 'Tidak' : 'Batal'}
               </Button>
               <Button tone="utama" type="submit" disabled={ajukan.isPending}>
-                {ajukan.isPending ? 'Mengirim…' : `Ajukan ${judul}`}
+                {ajukan.isPending ? 'Mengirim…' : jenis === 'reopen' ? 'Ya' : 'Copy Klaim'}
               </Button>
             </div>
           </form>

@@ -15,9 +15,13 @@ export type ReportAction = {
 /**
  * Penyaring mana yang berlaku pada satu laporan.
  *
- * Layar memakainya untuk MENONAKTIFKAN isian yang tidak berpengaruh. Menampilkan seluruh
- * isian pada seluruh kartu membuat pengguna mengisi rentang tanggal untuk laporan yang
- * kuerinya tidak menerima tanggal sama sekali, lalu menyimpulkan hasilnya salah.
+ * Dua di antaranya menentukan letak isiannya, bukan sekadar aktif-tidaknya:
+ *
+ *	bisnis   → autocomplete yang di layar lama berada DI BARIS panel Klaim Per Bisnis
+ *	rincian  → kotak centang berlabel "Treaty", DI BARIS panel Akseptasi
+ *
+ * Keduanya memang bukan penyaring bersama. Menaruhnya di bilah atas membuat layar
+ * menjanjikan isian yang 27 dari 28 panel abaikan.
  */
 export type FilterUsage = {
   rentang_tanggal: boolean
@@ -33,7 +37,7 @@ export type ReportSource = {
   rule_sql?: string[]
 }
 
-/** Satu kartu laporan. */
+/** Satu baris laporan. */
 export type Report = {
   kode: string
   judul: string
@@ -46,40 +50,32 @@ export type Report = {
   sumber: ReportSource
 }
 
-/** Satu kelompok kartu. */
-export type ReportGroup = {
-  kode: string
-  judul: string
-  laporan: Report[]
-}
-
-/** Satu pilihan dropdown yang di layar berlabel "Treaty". */
+/** Satu pilihan dropdown "Bisnis" — lini bisnis. */
 export type BusinessLine = {
   nilai: string
   nama: string
 }
 
-/**
- * Satu pilihan dropdown "Status Compliance".
- *
- * `nilai` dan `nama` BERBEDA, dan keduanya dipakai: yang dikirim ke penyaring adalah
- * `nilai` ("0", "1", "2"), yang dibaca pengguna adalah `nama`. Mengirim namanya akan
- * membuat penyaringnya tidak pernah cocok.
- */
+/** Satu pilihan radio "Status Compliance". */
 export type ComplianceStatus = {
   nilai: string
   nama: string
 }
 
-/** Isi layar sebelum satu tombol pun ditekan. */
+/**
+ * Isi layar sebelum satu tombol pun ditekan.
+ *
+ * `laporan` DATAR dan sudah berurutan — urutan layar Pega. Layar tidak mengurutkannya
+ * ulang dan tidak mengelompokkannya: susunan itulah yang dihafal pengguna.
+ */
 export type CatalogResponse = {
   judul: string
-  kelompok: ReportGroup[]
+  laporan: Report[]
   lini_bisnis: BusinessLine[]
   status_compliance: ComplianceStatus[]
 }
 
-/** Satu pilihan autocomplete "Bisnis". */
+/** Satu pilihan autocomplete "Bisnis" pada panel Klaim Per Bisnis. */
 export type BusinessOption = {
   kode: string
   nama: string
@@ -90,7 +86,7 @@ export type BusinessOptionResponse = {
 }
 
 /**
- * Isian penyaring di atas layar.
+ * Isian penyaring.
  *
  * Tanggalnya berbentuk ISO `YYYY-MM-DD` — bentuk yang dihasilkan `<input type="date">`
  * dan yang tidak dapat dibaca dua arti, berbeda dari `dd/mm/yyyy` di dalam berkas.

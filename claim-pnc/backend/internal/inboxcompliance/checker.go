@@ -91,6 +91,143 @@ func FindChoice(value string) (Choice, bool) {
 	return Choice{}, false
 }
 
+// Comment adalah satu baris pada grid komentar — `.ClaimData.ComplianceList`, kelas
+// `ASM-FW-GCNMFW-Data-Compliance`.
+//
+// # Inilah tempat petugas Compliance menulis, bukan ComplianceRemark
+//
+// `Section/CompliancePNC-Section.xml` memasang dua kotak teks panjang yang mudah tertukar,
+// dan hanya SATU di antaranya dapat diisi:
+//
+//	.ClaimData.ComplianceRemark   "Keterangan dari Investigator"   pyEditOptions=Read-only
+//	.ComplianceList(n).Compliance "Komentar"                       dapat disunting, bergrid
+//
+// Yang pertama MENAMPILKAN catatan Investigator; yang kedua yang diisi petugas. Kekeliruan
+// itu sempat terbawa ke sini — form versi sebelumnya menjadikan ComplianceRemark kotak
+// isian — dan dikoreksi setelah Section-nya terbaca.
+type Comment struct {
+	// Index adalah urutan baris pada grid, mulai dari 1.
+	//
+	// Ia disimpan, bukan diturunkan dari urutan baca, karena grid Pega bernomor
+	// (`pyGridNumbering=true`) dan nomor itu yang dilihat petugas.
+	Index int
+
+	// Date adalah Tanggal Komentar — `.ComplianceDate`.
+	//
+	// Pada baris baru, Pega mengisinya dengan `@(Pega-RULES:DateTime).CurrentDateTime()`
+	// sebagai nilai bawaan yang MASIH dapat diubah petugas. Jadi ia bukan stempel waktu
+	// sistem: dua baris dapat bertanggal sama, dan baris kemarin dapat ditulis hari ini.
+	Date time.Time
+
+	// Text adalah isi komentarnya — `.Compliance`, kotak teks panjang.
+	Text string
+}
+
+// CommentInput adalah satu baris grid komentar sebagaimana dikirim layar.
+type CommentInput struct {
+	// Date kosong berarti layar tidak mengirim tanggal, dan nilai bawaan Pega dipakai —
+	// waktu saat keputusan disimpan.
+	Date *time.Time
+
+	// Text adalah isi komentarnya.
+	Text string
+}
+
+// Lini bisnis yang menentukan tombol mana yang muncul pada form Compliance Checker.
+//
+// Keduanya dibaca dari ekspresi yang benar-benar dieksekusi Pega, bukan dari labelnya:
+//
+//	When/IsPA-When.xml       pyLogic "A"       A: Policy.Quotation.GroupPanel = "002"
+//	When/IsTravel-When.xml   pyLogic "A OR B"  A: Policy.Quotation.GroupPanel = "005"
+//	                                           B: ClaimData.PolicyData.Quotation
+//	                                              .GroupPanel = "005"
+//
+// `IsTravel` memeriksa DUA jalur halaman lalu meng-OR-kannya karena snapshot polis di
+// klipboard Pega dapat berada di salah satu dari keduanya. Di sini nilainya satu kolom,
+// sehingga kedua cabang itu runtuh menjadi satu perbandingan — bukan penyederhanaan,
+// melainkan akibat tidak adanya dua klipboard.
+//
+// Satu jebakan yang sengaja TIDAK diikuti: `pyConditionString` pada `IsTravel` berbunyi
+// `Kode Bisnis = "77"`. Itu label tampilan yang BASI — ia hanya satu sementara kondisinya
+// dua, dan angka 77 tidak muncul di mana pun lagi dalam berkas itu. Yang dieksekusi adalah
+// `pyConditionValue1`, dan keduanya tegas `"005"`.
+const (
+	GroupPanelPersonalAccident = "002"
+	GroupPanelTravel           = "005"
+)
+
+// FormActions adalah tombol mana yang boleh tampil pada form Compliance Checker.
+//
+// # Pega punya DUA bilah tombol, bukan satu
+//
+// Kelima tombol yang sama muncul di dua tempat, dan syarat WADAH-nya saling melengkapi:
+//
+//	Section/CompliancePNC-Section.xml      layout S14, sel 76–80, wadah `!IsTravel`
+//	Section/ComplianceChecker-Section.xml  layout S4,  sel 15–19, wadah `IsTravel`
+//
+// Jadi setiap klaim selalu mendapat tepat satu bilah. Syarat per tombolnya identik di
+// keduanya:
+//
+//	Unggah Dokumen           pyVisible=ALWAYS
+//	Download Dokumen Reject  pyVisible=ALWAYS
+//	Simpan Data              pyVisible=ALWAYS
+//	Kirim ke Analyst         pyVisible=OTHER  pyCondition=IsPA
+//	Kirim ke PIC Teknik      pyVisible=OTHER  pyCondition=IsTravel
+//
+// # Koreksi atas versi pertama berkas ini
+//
+// Versi pertama membaca S14 SAJA, lalu menyimpulkan `!IsTravel` sebagai syarat ketiga
+// tombol umum — sehingga klaim Travel digambar TANPA tombol Simpan sama sekali, dan
+// kesimpulan itu bahkan sempat ditulis sebagai catatan lingkup penguji. Ia **salah**:
+// yang `!IsTravel` adalah wadahnya, bukan tombolnya, dan wadah pasangannya ada di section
+// induk yang saat itu saya kira hilang dari export (`R-16`). `CompliancePNC-Section.xml`
+// ADA, 374 KB.
+//
+// Pelajarannya dicatat karena berulang: **syarat wadah bukan syarat isi.** Membaca satu
+// layout tanpa induknya menghasilkan aturan yang terbalik justru pada lini yang paling
+// jarang diuji.
+type FormActions struct {
+	// UploadDocument — "Unggah Dokumen". Syarat Pega: selalu.
+	UploadDocument bool
+
+	// DownloadRejectLetter — "Download Dokumen Reject". Syarat Pega: selalu.
+	DownloadRejectLetter bool
+
+	// Save — "Simpan Data". Syarat Pega: selalu.
+	Save bool
+
+	// SendToAnalyst — "Kirim ke Analyst". Syarat Pega: `IsPA`.
+	SendToAnalyst bool
+
+	// SendToTechnician — "Kirim ke PIC Teknik". Syarat Pega: `IsTravel`.
+	//
+	// Tombolnya digambar, tetapi apa yang dikerjakannya BELUM dibangun: Data Transform
+	// `SendToPIC` yang dipanggilnya tidak ada di export (`R-16`), sehingga akibatnya pada
+	// klaim tidak dapat ditiru — hanya ditebak. Layar karena itu menggambar tombolnya dan
+	// menolak menjalankannya, bukan menyembunyikannya.
+	//
+	// Menyembunyikannya akan membuat petugas Travel mengira modulnya belum selesai;
+	// menjalankannya dengan tebakan akan memindahkan klaim ke tempat yang belum tentu
+	// benar. Yang pertama menyesatkan, yang kedua merusak data.
+	SendToTechnician bool
+}
+
+// ActionsFor menentukan tombol yang tampil untuk satu klaim.
+//
+// GroupPanel kosong — yang mungkin terjadi karena `find_compliance_claim` meng-`LEFT JOIN`
+// tabel klaim — membuat IsTravel dan IsPA sama-sama salah. Itu persis perilaku Pega:
+// `compareTwoValues("", "=", "005")` bernilai salah. Akibatnya klaim tanpa lini bisnis
+// mendapat ketiga tombol umum, dan tidak mendapat kedua tombol pengiriman.
+func ActionsFor(claim WorkItem) FormActions {
+	return FormActions{
+		UploadDocument:       true,
+		DownloadRejectLetter: true,
+		Save:                 true,
+		SendToAnalyst:        claim.GroupPanel == GroupPanelPersonalAccident,
+		SendToTechnician:     claim.GroupPanel == GroupPanelTravel,
+	}
+}
+
 // CheckerCase adalah satu klaim sebagaimana dibuka form Compliance Checker.
 //
 // Ia MEMBUNGKUS WorkItem alih-alih mengulang kolomnya: baris yang dibuka form ini adalah
@@ -106,6 +243,9 @@ type CheckerCase struct {
 	// pilihan 0" — dan keduanya memang berbeda, karena `0` berarti Fraud/Tolak.
 	Decision *Decision
 }
+
+// Actions adalah tombol yang tampil untuk klaim ini.
+func (c CheckerCase) Actions() FormActions { return ActionsFor(c.Claim) }
 
 // Decision adalah keputusan Compliance atas satu klaim.
 //
@@ -128,10 +268,25 @@ type Decision struct {
 	Choice string
 
 	// Note adalah `.ClaimData.NotePilihanCompliance`.
+	//
+	// Layar hanya menampilkannya ketika Choice bernilai ChoiceOther — syarat
+	// `.ClaimData.PilihanCompliance==3` pada selnya. Nilainya tetap DISIMPAN apa pun
+	// pilihannya, meniru Pega: di sana kondisinya sisi klien, sehingga isian yang
+	// tersembunyi tetap ikut tersimpan saat Obj-Save.
 	Note string
 
-	// Remarks adalah `.ClaimData.ComplianceRemark`, yang `SetComplianceResult` langkah 5
-	// salin ke `childPageCompliance.ComplianceRemarks`.
+	// Comments adalah grid komentar — `.ClaimData.ComplianceList`.
+	//
+	// Inilah tempat petugas menulis. Lihat catatan pada tipe Comment.
+	Comments []Comment
+
+	// Remarks adalah `.ClaimData.ComplianceRemark` — catatan **Investigator**, yang pada
+	// form ini READ-ONLY dan hanya ditampilkan.
+	//
+	// Ia tetap ikut disimpan pada keputusan karena `SetComplianceResult` langkah 5
+	// menyalinnya ke `childPageCompliance.ComplianceRemarks`, yang menjadi kolom "Catatan"
+	// pada tab Post Audit. Sumbernya KLAIM, bukan isian layar — karena itu ia tidak ada
+	// di DecisionInput.
 	Remarks string
 
 	// DecidedBy adalah login petugas yang memutuskan.
@@ -154,23 +309,38 @@ type Decision struct {
 	SentToPostAuditAt *time.Time
 }
 
-// StatusNote adalah keterangan yang masuk baris riwayat, meniru `InsertHistoryClaimPNC`
-// pada langkah 6–8 `SetComplianceResult`.
+// StatusNote adalah keterangan yang masuk baris riwayat — parameter `statusNote` pada
+// `Call InsertHistoryClaimPNC`, langkah 16–18 `SetComplianceResult`.
 //
-// Ketiga kalimatnya dibaca dari parameter `statusNote` ketiga langkah itu. Langkah 3.3
-// menangani `pilihan == 3`, dan keterangan langkah itu di Pega berbunyi "Set Status Post
-// Audit" — KELIRU, karena Post Audit adalah `2`. Nilai `3` berlabel "Lain-Lain" menurut
-// propertinya, dan itulah yang dipakai di sini.
+// Ketiga kalimatnya dibaca HARFIAH dari parameter langkah itu:
+//
+//	pilihan "0"  "Send by Compliance to Analyst and CPL Status is FRAUD"
+//	pilihan "1"  "Send by Compliance to Analyst and CPL Status is Valid"
+//	pilihan "2"  "Send by Compliance to Analyst and CPL Status is Post Audit"
+//
+// # Lain-Lain tidak punya kalimat, dan itu BUKAN kelalaian di sini
+//
+// Pega tidak punya langkah riwayat ber-syarat `pilihan == "3"` sama sekali, sehingga
+// memilih Lain-Lain **tidak menulis baris riwayat apa pun**. Itu perilaku Pega, dan
+// Work Owner memutuskan ditiru apa adanya (2026-10-07).
+//
+// Nilai kosong di sini berarti "tidak ada baris riwayat", dan pemanggil WAJIB
+// memperlakukannya begitu — bukan menulis baris berketerangan kosong.
+//
+// # Kekeliruan yang dikoreksi
+//
+// Versi sebelumnya mengarang kalimatnya sendiri — "Compliance FRAUD", "Compliance Valid",
+// dan seterusnya — beserta satu kalimat untuk Lain-Lain yang di Pega tidak ada. Ia ditulis
+// sebelum parameter langkahnya terbaca, dan ketiganya salah. Baris riwayat adalah jejak
+// audit; keterangan yang dikarang membuat jejak itu bercerita hal yang tidak terjadi.
 func (d Decision) StatusNote() string {
 	switch d.Choice {
 	case ChoiceFraud:
-		return "Compliance FRAUD"
+		return "Send by Compliance to Analyst and CPL Status is FRAUD"
 	case ChoiceValid:
-		return "Compliance Valid"
+		return "Send by Compliance to Analyst and CPL Status is Valid"
 	case ChoicePostAudit:
-		return "Compliance Post Audit"
-	case ChoiceOther:
-		return "Compliance Lain-Lain"
+		return "Send by Compliance to Analyst and CPL Status is Post Audit"
 	}
 	return ""
 }
@@ -183,12 +353,53 @@ type DecisionInput struct {
 	// Choice adalah nilai Pilihan Compliance yang dipilih.
 	Choice string
 
-	// Note adalah Note PilihanCompliance.
+	// Note adalah Note Lainya — `.ClaimData.NotePilihanCompliance`.
 	Note string
 
-	// Remarks adalah Catatan Dari Compliance.
-	Remarks string
+	// Comments adalah baris-baris grid komentar yang dikirim layar.
+	//
+	// Baris yang teksnya kosong DIBUANG, tidak ditolak: grid Pega menambah baris kosong
+	// setiap kali petugas menekan Enter, sehingga baris kosong di ujung adalah kejadian
+	// normal — bukan kesalahan yang perlu diadukan.
+	Comments []CommentInput
+
+	// Action menyatakan TOMBOL MANA yang ditekan. Lihat konstanta di bawah.
+	//
+	// Kosong diperlakukan sebagai ActionSave — bentuk yang paling tidak berakibat, dan
+	// yang menjaga klien lama tetap bekerja.
+	Action string
 }
+
+// Aksi pada form Compliance Checker — padanan tombol mana yang ditekan.
+//
+// # Kenapa keduanya DIBEDAKAN, dan kenapa itu penting
+//
+// Ketiga tombol Pega menjalankan hal yang berbeda, terbaca dari `pyActionSets` selnya:
+//
+//	sel 78  Simpan Data           save  +  InsertHistoryClaimPNC_compilance
+//	                              TANPA SetComplianceResult
+//	sel 79  Kirim ke Analyst      save  +  SetComplianceResult
+//	sel 80  Kirim ke PIC Teknik           SetComplianceResult
+//	                              +  InsertHistoryClaimPNC ("Send by Compliance to PIC Teknis")
+//
+// Yang memasang Ticket — dan karenanya memindahkan klaim keluar dari antrean Compliance —
+// hanyalah `SetComplianceResult`. Jadi **"Simpan Data" TIDAK memindahkan klaim.**
+//
+// Versi pertama modul ini menjalankan seluruh akibat pada satu jalur simpan, sehingga
+// menekan "Simpan Data" memindahkan klaim keluar dari antrean. Itu perilaku tombol
+// "Kirim", bukan "Simpan" — dan akibatnya tidak dapat dibatalkan petugas, karena formnya
+// tidak dapat dibuka lagi setelah klaimnya berpindah.
+const (
+	// ActionSave — "Simpan Data". Keputusan tersimpan, klaim TETAP di antrean.
+	ActionSave = "simpan"
+
+	// ActionSend — "Kirim ke Analyst" atau "Kirim ke PIC Teknik".
+	//
+	// SATU nilai untuk kedua tombol, karena `SetComplianceResult` yang sama dipanggil
+	// keduanya dan tujuannya ditentukan **lini bisnis**, bukan tombolnya. Lihat
+	// NewAssignmentMove.
+	ActionSend = "kirim"
+)
 
 // Panjang maksimum kedua kotak teks.
 //
@@ -206,15 +417,30 @@ type DecisionInput struct {
 //
 // Satuannya BYTE, bukan karakter — sama alasannya dengan RemarksMaxLength.
 const (
-	NoteMaxLength            = 4000
-	ComplianceRemarkMaxLength = 4000
+	NoteMaxLength = 4000
+
+	// CommentMaxLength DIBACA, bukan ditebak: `pyMaxLength` pada properti `Compliance`
+	// kelas `ASM-FW-GCNMFW-Data-Compliance` bernilai **512**, dikuatkan `pzEntryCode`
+	// `sTN512`.
+	//
+	// Angka itu BARU — catatan pengembangnya berbunyi "extend max lenght", diubah
+	// 8 April 2026 langsung di sistem produksi, dari versi 01-01-03 ke 01-03-15. Jadi
+	// ia memang pernah diperpanjang, dan dapat diperpanjang lagi.
+	CommentMaxLength = 512
 )
+
+// CommentMaxRows adalah batas jumlah baris grid komentar yang diterima satu permintaan.
+//
+// Grid Pega tidak membatasinya — `pyPageSize=20` hanya mengatur paginasi tampilan, bukan
+// jumlah baris. Batas ini DITAMBAHKAN, bukan dibaca: tanpa batas apa pun, satu permintaan
+// dapat mengirim sejuta baris dan menahan koneksi basis data selama penyisipannya.
+const CommentMaxRows = 200
 
 // Nama isian tambahan yang dapat ditunjuk pelanggaran pada form ini.
 const (
-	FieldChoice           = "pilihan"
-	FieldNote             = "note"
-	FieldComplianceRemark = "catatan_compliance"
+	FieldChoice   = "pilihan"
+	FieldNote     = "note"
+	FieldComments = "komentar"
 )
 
 // NewDecision membentuk keputusan yang sah dari isian layar, atau menyatakan apa yang salah.
@@ -231,7 +457,6 @@ func NewDecision(
 
 	choice := strings.TrimSpace(input.Choice)
 	note := strings.TrimSpace(input.Note)
-	remarks := strings.TrimSpace(input.Remarks)
 
 	// Pilihan WAJIB, dan ini satu-satunya kewajiban yang ditegakkan di sini.
 	//
@@ -263,13 +488,8 @@ func NewDecision(
 		})
 	}
 
-	if len(remarks) > ComplianceRemarkMaxLength {
-		violations = append(violations, Violation{
-			Field: FieldComplianceRemark,
-			Message: "Catatan terlalu panjang. Maksimum " +
-				strconv.Itoa(ComplianceRemarkMaxLength) + " karakter.",
-		})
-	}
+	comments, commentViolations := buildComments(input.Comments, decidedAt)
+	violations = append(violations, commentViolations...)
 
 	if len(violations) > 0 {
 		return Decision{}, NewValidationError(violations)
@@ -279,9 +499,13 @@ func NewDecision(
 		Reference: claim.Reference,
 		Choice:    choice,
 		Note:      note,
-		Remarks:   remarks,
+		Comments:  comments,
 		DecidedBy: decidedBy,
 		DecidedAt: decidedAt,
+
+		// Sumbernya KLAIM, bukan layar: `.ClaimData.ComplianceRemark` adalah catatan
+		// Investigator yang pada form ini read-only. Lihat catatan pada Decision.Remarks.
+		Remarks: claim.ComplianceRemarks,
 	}
 
 	// Kedua stempel waktu di bawah diisi DI SINI, bukan di basis data, karena keduanya
@@ -298,4 +522,62 @@ func NewDecision(
 	}
 
 	return decision, nil
+}
+
+// buildComments menyaring dan menomori baris grid komentar.
+//
+// # Tiga aturan, dan hanya yang ketiga yang ditambahkan
+//
+//  1. Baris berteks kosong DIBUANG tanpa diadukan. Grid Pega menambah baris setiap kali
+//     petugas menekan Enter, sehingga baris kosong di ujung adalah kejadian normal.
+//  2. Tanggal yang tidak dikirim diisi waktu keputusan — padanan nilai bawaan
+//     `@(Pega-RULES:DateTime).CurrentDateTime()` pada sel Tanggal Komentar.
+//  3. Jumlah baris dibatasi CommentMaxRows. Ini BUKAN aturan Pega; alasannya ada pada
+//     konstanta itu.
+//
+// Penomorannya mengikuti urutan setelah penyaringan, bukan sebelum: nomor yang dilihat
+// petugas pada grid Pega juga berurutan tanpa lubang.
+func buildComments(inputs []CommentInput, decidedAt time.Time) ([]Comment, []Violation) {
+	if len(inputs) > CommentMaxRows {
+		return nil, []Violation{{
+			Field: FieldComments,
+			Message: "Komentar terlalu banyak. Maksimum " +
+				strconv.Itoa(CommentMaxRows) + " baris sekali simpan.",
+		}}
+	}
+
+	var (
+		comments   []Comment
+		violations []Violation
+	)
+
+	for _, input := range inputs {
+		text := strings.TrimSpace(input.Text)
+		if text == "" {
+			continue
+		}
+
+		if len(text) > CommentMaxLength {
+			violations = append(violations, Violation{
+				Field: FieldComments,
+				Message: "Komentar baris ke-" + strconv.Itoa(len(comments)+1) +
+					" terlalu panjang. Maksimum " +
+					strconv.Itoa(CommentMaxLength) + " karakter.",
+			})
+			continue
+		}
+
+		date := decidedAt
+		if input.Date != nil {
+			date = *input.Date
+		}
+
+		comments = append(comments, Comment{
+			Index: len(comments) + 1,
+			Date:  date,
+			Text:  text,
+		})
+	}
+
+	return comments, violations
 }

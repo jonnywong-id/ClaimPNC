@@ -287,9 +287,43 @@ function buildColumns(columns: Column[]): TableColumn<CaseStudyRow>[] {
           width: '20rem',
         }
       : {}),
+
+    // Angka NEGATIF digambar merah. Lihat NumberCell.
+    ...(column.jenis === 'uang' || column.jenis === 'persen'
+      ? { render: (row: CaseStudyRow) => <NumberCell row={row} column={column} /> }
+      : {}),
   }))
 
   return result
+}
+
+/**
+ * Sel angka — merah bila nilainya negatif.
+ *
+ * # Kenapa warnanya diturunkan dari ANGKA, bukan dari teksnya
+ *
+ * Memeriksa tanda minus pada teks yang sudah diformat tampak lebih mudah, dan ia salah di
+ * dua arah: `formatRupiah` menempatkan minusnya setelah "Rp" pada sebagian lokal, dan nilai
+ * kosong yang digambar sebagai tanda pisah "—" akan terbaca sebagai minus. Yang diperiksa
+ * karena itu nilai mentahnya.
+ *
+ * # Warna BUKAN satu-satunya penanda
+ *
+ * Tanda minus tetap ada di dalam teksnya — warnanya hanya mempercepat mata menemukannya.
+ * Sekitar satu dari dua belas laki-laki mengalami buta warna merah-hijau; bagi mereka warna
+ * ini tidak menambah apa pun, dan angkanya tetap terbaca benar karena minusnya tidak
+ * dihilangkan.
+ *
+ * Nilai kosong dan nol digambar seperti biasa: nol bukan kerugian, dan "belum ada nilainya"
+ * bukan angka sama sekali.
+ */
+function NumberCell({ row, column }: { row: CaseStudyRow; column: Column }) {
+  const raw = row[column.kunci as keyof CaseStudyRow]
+  const text = cellText(row, column)
+
+  if (typeof raw !== 'number' || raw >= 0) return <>{text}</>
+
+  return <span className="font-medium text-red-600">{text}</span>
 }
 
 /**
