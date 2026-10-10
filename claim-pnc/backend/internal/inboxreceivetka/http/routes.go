@@ -183,6 +183,7 @@ func (h *Handler) Complete(w http.ResponseWriter, r *http.Request) {
 		completion.CompletedAt,
 		result.NotificationAttempted,
 		result.NotificationSent,
+		result.NotificationError,
 		active.Alias,
 	))
 }

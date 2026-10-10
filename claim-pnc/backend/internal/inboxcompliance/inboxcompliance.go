@@ -354,9 +354,9 @@ func (p Page) TotalPages() int {
 //
 // Pembedaan itu yang membuatnya tidak melanggar `P-1`: selama masa paralel setiap tabel
 // hanya boleh ditulis satu sistem, dan untuk tabel ini sistem itu adalah aplikasi baru.
-// Ketiga tabel warisan yang dibaca modul ini — `PC_ASM_FW_GCNMFW_WORK`,
-// `PC_ASSIGN_WORKBASKET`, `T_CLAIM_PNC` — tetap DIBACA saja, dan tidak ada operasi di seam
-// ini yang dapat mengubahnya.
+// Ketiga tabel warisan yang dibaca modul ini — `PC_ASSIGN_WORKBASKET`, `T_CLAIM_PNC`,
+// `T_CLAIMLIST_ADMIN` — tetap DIBACA saja, dan tidak ada operasi di seam ini yang dapat
+// mengubahnya.
 type Repo interface {
 	// List mengembalikan SATU HALAMAN baris beserta jumlah seluruh baris yang cocok.
 	//

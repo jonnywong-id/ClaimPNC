@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSession } from '@/app/session'
 import { formatPercent, formatRupiah, formatDate, rupiahToCents } from '@/components/format'
 
-import { ClaimPage } from './ClaimPage'
+import { ClaimPage, invalidEmails } from './ClaimPage'
 
 const CLAIM = {
   klaim: {
@@ -255,11 +255,13 @@ describe('layar kerja klaim', () => {
 
     expect(screen.getByRole('region', { name: 'DATA TERTANGGUNG KLAIM' })).toBeInTheDocument()
     expect(screen.getByLabelText(/No KTP/)).toBeInTheDocument()
-    expect(screen.getByText('Detail Ekspedisi')).toBeInTheDocument()
+    expect(screen.queryByText('Detail Ekspedisi')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Email Tertanggung')).toBeInTheDocument()
-    expect(screen.getByLabelText('Catatan Ke Analyst')).toBeInTheDocument()
     expect(screen.getByLabelText('Tanggal Terima Dokumen')).toBeInTheDocument()
-    expect(screen.getByText('Ex Gratia')).toBeInTheDocument()
+    // Bagian Estimasi — termasuk Ex Gratia dan Catatan Ke Analyst PA — tidak tampil di
+    // Input Register (Work Owner 2026-10-08).
+    expect(screen.queryByText('Ex Gratia')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Catatan Ke Analyst')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Remarks Recommendation')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Subject Email')).not.toBeInTheDocument()
 
@@ -267,6 +269,113 @@ describe('layar kerja klaim', () => {
     expect(screen.queryByLabelText('Tanggal Keluar Rawat Inap')).not.toBeInTheDocument()
     await userEvent.setup().click(screen.getByLabelText('Apakah Melakukan Rawat Inap ?'))
     expect(screen.getByLabelText('Tanggal Keluar Rawat Inap')).toBeInTheDocument()
+  })
+
+  // Work Owner 2026-10-09: Email Pelapor boleh berisi beberapa alamat, dipisah ";" atau ",".
+  it('Email Pelapor menerima beberapa alamat dipisah titik koma atau koma', () => {
+    expect(invalidEmails('')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id; b@contoh.co.id,c@contoh.co.id;')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id;;  ,b@contoh.co.id')).toEqual([])
+    expect(invalidEmails('a@contoh.co.id; bukan-email, c@contoh')).toEqual(['bukan-email', 'c@contoh'])
+  })
+
+  it('Next ditahan bila salah satu Email Pelapor tidak valid', async () => {
+    stubFetch(() => ({ body: CLAIM, status: 200 }))
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+    const email = await screen.findByLabelText('Email Pelapor')
+    expect(email).not.toHaveAttribute('type', 'email')
+    await user.clear(email)
+    await user.type(email, 'a@contoh.co.id;salah')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText(/Email Pelapor tidak valid: salah/)).toBeInTheDocument()
+  })
+
+  // Work Owner 2026-10-09: grid Objek pertanggungan dipaginasi 10 baris per halaman.
+  it('grid Objek pertanggungan menampilkan 10 objek per halaman', async () => {
+    const base = CLAIM.klaim.objek[0]!
+    const many = {
+      ...CLAIM,
+      klaim: {
+        ...CLAIM.klaim,
+        objek: Array.from({ length: 12 }, (_, n) => ({ ...base, id: `OBJ-${n + 1}`, nama: `Peserta ${n + 1}` })),
+      },
+    }
+    stubFetch(() => ({ body: many, status: 200 }))
+    const base2 = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(many), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base2(url, init))
+    mount(<ClaimPage />)
+
+    const grid = await screen.findByRole('table', { name: 'Objek pertanggungan beserta jaminannya' })
+    expect(within(grid).getByText('Peserta 10')).toBeInTheDocument()
+    expect(within(grid).queryByText('Peserta 11')).not.toBeInTheDocument()
+    expect(screen.getByText('1–10')).toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Halaman 2' }))
+    expect(within(grid).getByText('Peserta 12')).toBeInTheDocument()
+    expect(within(grid).queryByText('Peserta 1')).not.toBeInTheDocument()
+  })
+
+  // Work Owner 2026-10-08: Tanggal Terima Dokumen otomatis tanggal input, Tgl Terima HCDKP
+  // disembunyikan, dan Email Pelapor/Email Tertanggung mengikuti Email Pengkinian Data.
+  it('PA: Tanggal Terima Dokumen otomatis, tanpa HCDKP, telepon dan email mengikuti Pengkinian Data', async () => {
+    const pa = {
+      ...CLAIM,
+      klaim: { ...CLAIM.klaim, tanggal_terima_dokumen: '', polis: { ...CLAIM.klaim.polis, lini: '002', nama_lini: 'Personal Accident' } },
+    }
+    stubFetch(() => ({ body: pa, status: 200 }))
+    const base = globalThis.fetch
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      url === '/api/registrasi/klaim/klaim-1'
+        ? Promise.resolve(new Response(JSON.stringify(pa), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        : base(url, init))
+    mount(<ClaimPage />)
+
+    expect(await screen.findByLabelText('Tanggal Terima Dokumen')).not.toHaveValue('')
+    expect(screen.queryByLabelText('Tgl Terima HCDKP')).not.toBeInTheDocument()
+    // PA: Lokasi Kerugian/Kejadian tampil (tidak wajib) tanpa Negara dan Provinsi; Data
+    // registrasi lainnya tidak ditampilkan.
+    expect(screen.getByLabelText('Lokasi Kerugian/Kejadian')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Negara')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Provinsi')).not.toBeInTheDocument()
+    expect(screen.queryByText('Data registrasi lainnya')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nomor SLIK')).not.toBeInTheDocument()
+    // Objek pertanggungan PA: Tambah objek dan Hapus objek disembunyikan.
+    expect(screen.queryByRole('button', { name: 'Tambah objek' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Hapus objek/ })).not.toBeInTheDocument()
+    // Spreading PA: tombol Hapus treaty dan Tambah spreading disembunyikan (Work Owner 2026-10-09).
+    const openCoverage = screen.queryAllByRole('button', { name: /^Buka jaminan objek/ })
+    for (const b of openCoverage) await userEvent.setup().click(b)
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /^Buka spreading/ })[0]!)
+    const spreadingTable = screen.getAllByRole('table').find((t) => t.querySelector('caption')?.textContent?.startsWith('Spreading reasuransi'))!
+    expect(within(spreadingTable).getAllByLabelText('Jenis treaty').length).toBeGreaterThan(0)
+    expect(within(spreadingTable).queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tambah spreading' })).not.toBeInTheDocument()
+
+    await userEvent.setup().type(screen.getByLabelText('No. HP'), '081234567890')
+    expect(screen.getByLabelText('No. Telepon Pelapor')).toHaveValue('081234567890')
+
+    await userEvent.setup().type(screen.getByLabelText('Email'), 'peserta@contoh.example')
+    expect(screen.getByLabelText('Email Pelapor')).toHaveValue('peserta@contoh.example')
+    expect(screen.getByLabelText('Email Tertanggung')).toHaveValue('peserta@contoh.example')
+
+    // No KTP dan Pengkinian Data tersimpan ke T_CLAIM_PNC (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL).
+    await userEvent.setup().type(screen.getByLabelText(/No KTP/), '3171000000000001')
+    // Tanggal Keluar Rawat Inap tersimpan ke T_CLAIM_PNC.TANGGALSELESAIRAWATINAP.
+    await userEvent.setup().click(screen.getByLabelText('Apakah Melakukan Rawat Inap ?'))
+    await userEvent.setup().type(screen.getByLabelText('Tanggal Keluar Rawat Inap'), '08/06/2026')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(draftBody).not.toBeNull())
+    expect(draftBody).toMatchObject({
+      pengkinian_no_ktp: '3171000000000001',
+      pengkinian_no_hp: '081234567890',
+      pengkinian_email: 'peserta@contoh.example',
+      tanggal_keluar_rawat_inap: '2026-06-08',
+    })
   })
 
   it('mengirim uang sebagai sen dan share sebagai persen dikali sepuluh ribu', async () => {
@@ -288,7 +397,10 @@ describe('layar kerja klaim', () => {
     // Objek dan coverage terisi dari polis saat klaim dibuka; namanya ikut kembali supaya
     // tidak hilang saat disimpan.
     expect(objek[0]?.coverage[0]?.nama).toBe('All Risk')
-    expect(screen.getByLabelText('Nama coverage')).toHaveValue('All Risk')
+
+    // Jaminan tersembunyi sampai baris objeknya dibuka; nilainya tetap ikut terkirim.
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /^Buka jaminan objek/ })[0]!)
+    expect(screen.getByLabelText('Nama coverage jaminan 1 objek 1')).toHaveValue('All Risk')
   })
 
   // Sistem lama menampilkan satu pesan, lalu pesan berikutnya setelah disimpan ulang.
@@ -362,9 +474,6 @@ describe('layar kerja klaim', () => {
 
     expect(screen.getByLabelText('Kode Pos')).toHaveValue('55281')
 
-    await user.click(screen.getByLabelText('SUSPICIOUS'))
-    await user.type(screen.getByLabelText('Komentar Suspicious'), 'Dokumen janggal')
-
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(sentBody).not.toBeNull())
     expect(sentBody).toMatchObject({
@@ -376,8 +485,6 @@ describe('layar kerja klaim', () => {
         kelurahan: 'KEL. CATURTUNGGAL', kelurahan_id: '10004326',
         kode_pos: '55281',
       },
-      prinsip_mengenal_nasabah: '2',
-      komentar_suspicious: 'Dokumen janggal',
     })
   })
 
@@ -474,19 +581,21 @@ describe('tahap Input Estimasi', () => {
 
   let estimateBody: { url: string; body: unknown } | null = null
   let uploads: FormData[] = []
-  let itemOptions: { nama: string; kelompok: string; tsi_sen: number }[] = []
+  let itemOptions: { id?: string; nama: string; kelompok: string; tsi_sen: number }[] = []
+  let itemDefault = ''
 
   function stubEstimate(claim: unknown = AT_ESTIMATE) {
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
       let body: unknown = {}
       if (url === '/api/registrasi/alur') body = ALUR
-      else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions }
+      else if (url.includes('/pilihan-item')) body = { pilihan: itemOptions, bawaan: itemDefault }
       else if (url.endsWith('/survey')) body = RECORDS.survey
       else if (url.endsWith('/dokumen')) {
         if (init?.method === 'POST') uploads.push(init.body as FormData)
         body = RECORDS.dokumen
       }
       else if (url.endsWith('/progres')) body = RECORDS.progres
+      else if (url.endsWith('/aging')) body = { aging_amount: '1250000.00', tersedia: true }
       else if (url.startsWith('/api/registrasi/klaim/')) body = claim
       else if (url === '/api/registrasi/mata-uang') body = { pilihan: [{ id: 'IDR', nama: 'IDR' }, { id: '10001', nama: 'USD' }] }
       else if (url.startsWith('/api/registrasi/estimasi')) {
@@ -501,6 +610,7 @@ describe('tahap Input Estimasi', () => {
     estimateBody = null
     uploads = []
     itemOptions = []
+    itemDefault = ''
   })
 
   // Section InputEstimasiAdmin tidak punya tombol Next: tahap ditutup Kirim PIC Teknik
@@ -710,6 +820,8 @@ describe('tahap Input Estimasi', () => {
     await waitFor(() => expect(estimateBody).not.toBeNull())
     expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan')
     expect(estimateBody?.body).toMatchObject({ tugas_id: 'tugas-1', kembali: false })
+    // Layar InputSurveyor tidak punya Catatan ke PIC Teknis: catatan tersimpan dibiarkan.
+    expect(estimateBody?.body).not.toHaveProperty('catatan_pic_teknis')
   })
 
   // Choose Surveyor dirutekan ke PIC Teknik; bila tugas milik orang lain, Tambah dikunci
@@ -835,7 +947,7 @@ describe('tahap Input Estimasi', () => {
 
   // Transfer Komite mengirim alamat baris adjustment; baris yang sudah ditransfer menampilkan
   // status komite per jenjang dan tombolnya mati (IsKomiteTransfer).
-  it('Transfer Komite mengirim baris adjustment, dan baris tertransfer menampilkan status komite', async () => {
+  it('Transfer ke Komite membuka modal ClaimComitee_OC: Kirim Komite menyimpan isian lalu mentransfer baris', async () => {
     const base = AT_ESTIMATE.klaim.objek[0]!
     const line = {
       tipe_pembayaran: '1', nama_tipe_pembayaran: 'Final', mata_uang: 'IDR', kurs_e4: 10_000,
@@ -858,7 +970,10 @@ describe('tahap Input Estimasi', () => {
     let current = atSurveyor([line, { ...line, komite_id: 'KMTN-00001', status_akseptasi: '0' }])
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
       let body: unknown = {}
-      if (url.endsWith('/adjustment/komite')) {
+      if (url.endsWith('/jaminan/isian-komite')) {
+        sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
+        body = current
+      } else if (url.endsWith('/adjustment/komite')) {
         sent.push({ url, body: init?.body ? JSON.parse(init.body as string) : null })
         body = { klaim: current.klaim, komite: { id: 'KMTN-00002', nomor_klaim: 'PNCN.26.0001', status: 'berjalan', anggota: [] } }
       } else if (url === '/api/registrasi/komite/KMTN-00001') {
@@ -877,18 +992,29 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
-    const buttons = await screen.findAllByRole('button', { name: 'Transfer Komite' })
-    expect(buttons).toHaveLength(2)
-    expect(buttons[0]).toBeEnabled()
-    expect(buttons[1]).toBeDisabled()
+    // Tombol hanya tampil pada baris yang belum ditransfer (`.IsKomiteTransfer==''`).
+    const buttons = await screen.findAllByRole('button', { name: 'Transfer ke Komite' })
+    expect(buttons).toHaveLength(1)
+    expect(screen.getByText('Sudah ditransfer')).toBeInTheDocument()
     expect(await screen.findByText(/Komite KMTN-00001 · jenjang 1\/2 menunggu KOMITE01/)).toBeInTheDocument()
     expect(screen.getByText('Belum ditransfer')).toBeInTheDocument()
 
-    current = atSurveyor([line, line])
     await user.click(buttons[0]!)
-    await waitFor(() => expect(sent).toHaveLength(1))
-    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/adjustment/komite')
-    expect(sent[0]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, adjustment: 1 })
+    const dialog = await screen.findByRole('dialog', { name: 'Transfer Claim ke Komite' })
+    expect(within(dialog).getByLabelText('Kronologi Kejadian')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Polis Liability')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Penerima Klaim')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Kirim Analyst' })).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Kronologi Kejadian'), 'Gudang terbakar')
+
+    current = atSurveyor([line, line])
+    await user.click(within(dialog).getByRole('button', { name: 'Kirim Komite' }))
+    await waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[0]?.url).toBe('/api/registrasi/klaim/klaim-1/jaminan/isian-komite')
+    expect(sent[0]?.body).toMatchObject({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, kronologi_kejadian: 'Gudang terbakar' })
+    expect(sent[1]?.url).toBe('/api/registrasi/klaim/klaim-1/adjustment/komite')
+    expect(sent[1]?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, adjustment: 1 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   // Anggota grup PIC Teknik (M_LOGIN_GROUP_PNC) boleh mengerjakan tugas milik PIC lain:
@@ -980,6 +1106,41 @@ describe('tahap Input Estimasi', () => {
       nilai_propose_sen: 1_000_000_000, nilai_pengajuan_sen: 1_200_000_000, tipe_resiko: '1', persen_resiko: 100_000,
     })
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Adjustment baru' })).not.toBeInTheDocument())
+  })
+
+  // Input Estimasi hanya menampilkan objek yang punya baris di T_CLAIM_OBJECTCOVERAGE; objek
+  // tanpa coverage tetap ikut terkirim (kosong) supaya urutan objek klaim tidak bergeser.
+  it('Input Estimasi hanya menampilkan objek yang punya coverage', async () => {
+    const tanpaCoverage = { ...AT_ESTIMATE.klaim.objek[0]!, id: 'OBJ-KOSONG', nama: 'Objek Tanpa Coverage', coverage: [] }
+    stubEstimate({ ...AT_ESTIMATE, klaim: { ...AT_ESTIMATE.klaim, objek: [tanpaCoverage, ...AT_ESTIMATE.klaim.objek] } })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    await screen.findByRole('region', { name: 'Input Estimasi' })
+    expect(screen.queryByText('Objek Tanpa Coverage')).not.toBeInTheDocument()
+    expect(screen.getByText(AT_ESTIMATE.klaim.objek[0]!.nama)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan'))
+    const body = estimateBody?.body as { objek: { coverage: unknown[] }[] }
+    expect(body.objek).toHaveLength(2)
+    expect(body.objek[0]!.coverage).toEqual([])
+  })
+
+  // Catatan ke PIC Teknis (.ClaimData.Remark → T_CLAIM_PNC.REMARK) terisi dari klaim dan
+  // ikut terkirim saat Save.
+  it('Catatan ke PIC Teknis terisi dari klaim dan ikut tersimpan', async () => {
+    stubEstimate({ ...AT_ESTIMATE, klaim: { ...AT_ESTIMATE.klaim, catatan_pic_teknis: 'Catatan lama' } })
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const note = await screen.findByRole('textbox', { name: 'Catatan ke PIC Teknis' })
+    expect(note).toHaveValue('Catatan lama')
+    await user.clear(note)
+    await user.type(note, 'Mohon cek survei')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(estimateBody?.url).toBe('/api/registrasi/estimasi/simpan'))
+    expect(estimateBody?.body).toMatchObject({ catatan_pic_teknis: 'Mohon cek survei' })
   })
 
   it('Save memakai jalur simpan, Back mengirim kembali', async () => {
@@ -1138,6 +1299,7 @@ describe('tahap Input Estimasi', () => {
     await screen.findByRole('region', { name: 'Input Estimasi' })
     expect(screen.getByText('Catatan ke PIC Teknis')).toBeInTheDocument()
     expect(screen.getByText('TEKNIK01')).toBeInTheDocument()
+    expect(await screen.findByText('1.250.000')).toBeInTheDocument()
     expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Estimasi Pembayaran' })).toHaveAttribute('aria-selected', 'true')
     for (const label of ['Nama Objek', 'Lokasi Object', 'Nilai Klaim', 'Nilai Adjuster', 'Jaminan', 'Deskripsi Item']) {
@@ -1218,6 +1380,8 @@ describe('tahap Input Estimasi', () => {
   })
 
   // Lini Fire: Objek dipilih dari item properti polis, dan kelompoknya ikut terkirim.
+  // Objek adalah DROPDOWN item polis (Work Owner 2026-10-08): tidak dapat diketik bebas.
+  // Memilih item ikut mengisi kelompoknya.
   it('memilih Objek dari item properti polis Fire', async () => {
     itemOptions = [
       { nama: 'BUILDING', kelompok: 'BUILDING(S)', tsi_sen: 0 },
@@ -1227,13 +1391,59 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
     await waitFor(() => expect(screen.getByRole('option', { name: 'CONTENTS' })).toBeInTheDocument())
-    await user.selectOptions(screen.getByLabelText('Objek'), 'CONTENTS')
+    expect(field.tagName).toBe('SELECT')
+    await user.selectOptions(field, 'CONTENTS')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(estimateBody).not.toBeNull())
     expect(estimateBody?.body).toMatchObject({
       objek: [{ coverage: [{ item: [{ nama: 'CONTENTS', kelompok: 'OTHERS' }] }] }],
     })
+  })
+
+  it('Objek tidak dapat diisi bila polis tidak memiliki daftar item', async () => {
+    itemOptions = []
+    stubEstimate()
+    mount(<ClaimPage />)
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    expect(field).toBeDisabled()
+    expect(screen.getByRole('option', { name: '— tidak ada pilihan —' })).toBeInTheDocument()
+    expect(screen.getByText(/Polis tidak memiliki daftar item/)).toBeInTheDocument()
+  })
+
+  // Aneka, Marine Cargo, PA: satu-satunya pilihan "Others", dan item baru langsung bernama
+  // "Others" seperti item bawaan Pega (GetObjectFromTable).
+  it('item baru lini tanpa daftar item langsung bernama Others', async () => {
+    itemOptions = [{ id: '', nama: 'Others', kelompok: '', tsi_sen: 0 }]
+    itemDefault = 'Others'
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    await waitFor(() => expect(field).toHaveValue('Others'))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(estimateBody).not.toBeNull())
+    expect(estimateBody?.body).toMatchObject({
+      objek: [{ coverage: [{ item: [{ nama: 'Others' }] }] }],
+    })
+  })
+
+  // Travel: pilihan adalah manfaat plan; nama bawaan OTHERS tetap tampil walau tidak di daftar.
+  it('Travel memilih Objek dari manfaat plan coverage', async () => {
+    itemOptions = [{ id: '10919', nama: 'B.1. Kehilangan Bagasi', kelompok: '', tsi_sen: 0 }]
+    itemDefault = 'OTHERS'
+    stubEstimate()
+    mount(<ClaimPage />)
+    const user = userEvent.setup()
+
+    const field = await screen.findByRole('combobox', { name: 'Objek' })
+    await waitFor(() => expect(field).toHaveValue('OTHERS'))
+    await user.selectOptions(field, 'B.1. Kehilangan Bagasi')
+    expect(field).toHaveValue('B.1. Kehilangan Bagasi')
   })
 })

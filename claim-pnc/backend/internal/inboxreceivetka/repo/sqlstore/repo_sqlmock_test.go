@@ -30,6 +30,9 @@ func q(name string) string { return "^" + regexp.QuoteMeta(getQuery(name)) + "$"
 var (
 	taskColumns = []string{"REF", "CLAIMKEY", "NOKLAIM", "NOPOLIS", "TERTANGGUNG", "PESERTA", "DOL", "REGISTER"}
 	dol         = time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC)
+	// registered meniru DATE Oracle yang dikembalikan go-ora: berjam dan berzona sesi
+	// (WIB). Pemindai wajib menurunkannya menjadi tanggal kalender pada tengah malam UTC.
+	registered = time.Date(2026, 9, 1, 0, 0, 0, 0, time.FixedZone("WIB", 7*60*60))
 )
 
 func taskRows() *sqlmock.Rows { return sqlmock.NewRows(taskColumns) }
@@ -38,8 +41,8 @@ func TestListWithoutKeyword(t *testing.T) {
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("tka_inbox_list")).WithArgs(inboxreceivetka.ResolvedWorkStatus, inboxreceivetka.MaxRows+1).
 		WillReturnRows(taskRows().
-			AddRow(" R1 ", " K1 ", " PNC-1 ", " POL ", " PT A ", " Peserta ", dol, "20260901123000").
-			AddRow("R2", nil, "PNC-2", nil, nil, nil, nil, "bukan-tanggal").
+			AddRow(" R1 ", " K1 ", " PNC-1 ", " POL ", " PT A ", " Peserta ", dol, registered).
+			AddRow("R2", nil, "PNC-2", nil, nil, nil, nil, nil).
 			AddRow("R3", nil, "PNC-3", nil, nil, nil, nil, nil))
 	page, err := repo.List(context.Background(), inboxreceivetka.Filter{})
 	require.NoError(t, err)
@@ -52,7 +55,7 @@ func TestListWithoutKeyword(t *testing.T) {
 	require.Equal(t, "Peserta", first.ParticipantName)
 	require.Equal(t, dol, *first.DateOfLoss)
 	require.Equal(t, time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), *first.RegisteredOn)
-	require.Nil(t, page.Tasks[1].RegisteredOn, "tanggal registrasi yang tidak terbaca menjadi kosong")
+	require.Nil(t, page.Tasks[1].RegisteredOn, "tanggal registrasi kosong tetap kosong")
 	require.Nil(t, page.Tasks[1].DateOfLoss)
 	require.Nil(t, page.Tasks[2].RegisteredOn)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -254,7 +257,7 @@ func TestSampleRegisteredOn(t *testing.T) {
 	ctx := context.Background()
 	repo, mock := newMock(t)
 	mock.ExpectQuery(q("tka_inbox_sample_registered_on")).WillReturnRows(
-		sqlmock.NewRows([]string{"V"}).AddRow(" 20260901 ").AddRow(nil))
+		sqlmock.NewRows([]string{"V"}).AddRow(registered).AddRow(nil))
 	got, err := repo.SampleRegisteredOn(ctx)
 	require.NoError(t, err)
 	require.Equal(t, []string{"20260901", ""}, got)
@@ -266,15 +269,15 @@ func TestSampleRegisteredOn(t *testing.T) {
 	_, err = repo.SampleRegisteredOn(ctx)
 	require.ErrorContains(t, err, "membaca contoh tanggal registrasi")
 	mock.ExpectQuery(q("tka_inbox_sample_registered_on")).WillReturnRows(
-		sqlmock.NewRows([]string{"V"}).AddRow("x").RowError(0, errDB))
+		sqlmock.NewRows([]string{"V"}).AddRow(registered).RowError(0, errDB))
 	_, err = repo.SampleRegisteredOn(ctx)
 	require.ErrorIs(t, err, errDB)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestParseRegisterDate(t *testing.T) {
-	require.Nil(t, parseRegisterDate(sql.NullString{}))
-	require.Nil(t, parseRegisterDate(sql.NullString{String: "  ", Valid: true}))
-	got := parseRegisterDate(sql.NullString{String: "20261231", Valid: true})
-	require.Equal(t, time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC), *got)
+func TestCalendarDate(t *testing.T) {
+	require.Nil(t, calendarDate(sql.NullTime{}))
+	got := calendarDate(sql.NullTime{Time: time.Date(2026, 12, 31, 23, 30, 0, 0, time.FixedZone("WIB", 7*60*60)), Valid: true})
+	require.Equal(t, time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC), *got,
+		"tanggal kalender diambil dari zona sesi, bukan digeser ke UTC lebih dulu")
 }

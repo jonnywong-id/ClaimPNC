@@ -1,11 +1,18 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { simpanBerkas } from '@/api/client'
 import { centsToRupiah, formatRupiah, rupiahToCents, todayWIB } from '@/components/format'
 
-import { useCurrencies, useFaceSheet, useItemOptions, useSaveEstimate, violationsFrom } from './api'
+import {
+  useCurrencies,
+  useFaceSheet,
+  useItemOptions,
+  usePremiumAging,
+  useSaveEstimate,
+  violationsFrom,
+} from './api'
 import { DocumentTab, ProgressTab, SurveyTab } from './EstimateTabs'
 import { PLADialog } from './PLADialog'
 import {
@@ -77,7 +84,12 @@ const TYPE_OPTIONS = [
   { value: EstimationType.Adjuster, label: 'Estimasi Adjuster' },
 ]
 
-const TABS = ['Survey', 'Estimasi Pembayaran', 'Unggah Dokumen', 'Progress Claim & Komunikasi'] as const
+const TABS = [
+  'Survey',
+  'Estimasi Pembayaran',
+  'Unggah Dokumen',
+  'Progress Claim & Komunikasi',
+] as const
 type Tab = (typeof TABS)[number]
 
 const NOT_BUILT = 'Modul ini belum dibangun.'
@@ -137,27 +149,31 @@ function fromClaim(klaim: Claim): ItemForm[][][] {
   )
 }
 
-function toRequest(taskID: string, form: ItemForm[][][], kembali: boolean): EstimateRequest {
+function toRequest(
+  taskID: string,
+  form: ItemForm[][][],
+  kembali: boolean,
+  note?: string,
+): EstimateRequest {
   return {
     tugas_id: taskID,
     kembali,
+    ...(note !== undefined && { catatan_pic_teknis: note }),
     objek: form.map((coverages) => ({
       coverage: coverages.map((items) => ({
-        item: items.map(
-          (it): ObjectItem => ({
-            nama: it.nama,
-            deskripsi: it.deskripsi,
-            kelompok: it.kelompok,
-            estimasi: it.estimasi.map((e) => ({
-              tipe: e.tipe,
-              mata_uang: e.mata_uang,
-              tanggal: e.tanggal,
-              nilai_sen: rupiahToCents(e.nilai) || 0,
-              kurs_e4: 0,
-              nilai_idr_sen: 0,
-            })),
-          }),
-        ),
+        item: items.map((it): ObjectItem => ({
+          nama: it.nama,
+          deskripsi: it.deskripsi,
+          kelompok: it.kelompok,
+          estimasi: it.estimasi.map((e) => ({
+            tipe: e.tipe,
+            mata_uang: e.mata_uang,
+            tanggal: e.tanggal,
+            nilai_sen: rupiahToCents(e.nilai) || 0,
+            kurs_e4: 0,
+            nilai_idr_sen: 0,
+          })),
+        })),
       })),
     })),
   }
@@ -189,8 +205,12 @@ function currencyName(code: string, list: CurrencyOption[]): string {
  * InputSurveyor (`ClaimSurvey_sect`) — sehingga isiannya hidup di sini, bukan di salah satu
  * layar.
  */
-export function useEstimateEditor(klaim: Claim, tugas: Task) {
+export function useEstimateEditor(klaim: Claim, tugas: Task, options: { withNote?: boolean } = {}) {
   const [form, setForm] = useState<ItemForm[][][]>(() => fromClaim(klaim))
+  // Catatan ke PIC Teknis (`.ClaimData.Remark`) — hanya milik layar Input Estimasi. Layar
+  // InputSurveyor tidak mengirimnya, sehingga catatan tersimpan dibiarkan.
+  const [note, setNote] = useState(klaim.catatan_pic_teknis ?? '')
+  const sentNote = options.withNote ? note : undefined
   const save = useSaveEstimate(true)
   const faceSheet = useFaceSheet(klaim.id)
   // Jaminan yang dialog Print PLA-nya sedang terbuka.
@@ -203,7 +223,7 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
    */
   function downloadFaceSheet(i: number, j: number) {
     faceSheet.reset()
-    save.mutate(toRequest(tugas.id, form, false), {
+    save.mutate(toRequest(tugas.id, form, false, sentNote), {
       onSuccess: (result) => {
         afterSave(result)
         faceSheet.mutate(
@@ -212,7 +232,10 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
             onSuccess: (file) => {
               simpanBerkas(file)
               updateItems(i, j, (items) =>
-                items.map((it) => ({ ...it, estimasi: it.estimasi.map((e) => ({ ...e, terkunci: true })) })),
+                items.map((it) => ({
+                  ...it,
+                  estimasi: it.estimasi.map((e) => ({ ...e, terkunci: true })),
+                })),
               )
             },
           },
@@ -235,6 +258,7 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
 
   function afterSave(result: { klaim: Claim }) {
     setForm(fromClaim(result.klaim))
+    setNote(result.klaim.catatan_pic_teknis ?? '')
   }
 
   return {
@@ -247,10 +271,13 @@ export function useEstimateEditor(klaim: Claim, tugas: Task) {
     updateItem,
     afterSave,
     downloadFaceSheet,
+    note,
+    setNote,
     /** Permintaan simpan dari isian yang sedang tampil. */
-    request: (kembali: boolean) => toRequest(tugas.id, form, kembali),
+    request: (kembali: boolean) => toRequest(tugas.id, form, kembali, sentNote),
     /** Save tanpa menutup tahap. */
-    saveNow: () => save.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave }),
+    saveNow: () =>
+      save.mutate(toRequest(tugas.id, form, false, sentNote), { onSuccess: afterSave }),
     hasFaceSheet: () => claimHasFaceSheet(form),
   }
 }
@@ -268,21 +295,36 @@ export function EstimatePaymentTable({
   editor,
   currencyList,
   busy,
+  onlyWithCoverage = false,
 }: {
   klaim: Claim
   tugas: Task
   editor: EstimateEditor
   currencyList: CurrencyOption[]
   busy: boolean
+  /**
+   * Tampilkan hanya objek yang punya baris di POOLDATA.T_CLAIM_OBJECTCOVERAGE (coverage klaim
+   * dibaca dari tabel itu) — layar Input Estimasi, Work Owner 2026-10-08. Objek lain tetap
+   * ada di isian (urutan dan jumlahnya harus sama dengan klaim saat disimpan), hanya tidak
+   * digambar.
+   */
+  onlyWithCoverage?: boolean
 }) {
   const { form, updateItems, updateItem, downloadFaceSheet, plaFor, setPLAFor } = editor
+  const shown = klaim.objek
+    .map((o, i) => ({ o, i }))
+    .filter(({ o }) => !onlyWithCoverage || o.coverage.length > 0)
   return (
     <div className="mt-3">
-      {klaim.objek.length === 0 && (
-        <p className="text-sm text-slate-600">Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.</p>
+      {shown.length === 0 && (
+        <p className="text-sm text-slate-600">
+          {klaim.objek.length === 0
+            ? 'Klaim ini belum punya objek. Kembali ke Input Register untuk mengisinya.'
+            : 'Belum ada objek yang punya coverage. Kembali ke Input Register untuk mengisinya.'}
+        </p>
       )}
 
-      {klaim.objek.length > 0 && (
+      {shown.length > 0 && (
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">Objek klaim</caption>
           <thead>
@@ -297,19 +339,24 @@ export function EstimatePaymentTable({
             </tr>
           </thead>
           <tbody>
-            {klaim.objek.map((o, i) => {
+            {shown.map(({ o, i }, n) => {
               const totals = objectTotals(o)
               return (
                 <ObjectRows key={i}>
                   <tr className="bg-blue-100/70 align-top">
-                    <td className="p-2">{i + 1}</td>
+                    <td className="p-2">{n + 1}</td>
                     <td className="p-2">{o.nama || o.id}</td>
                     <td className="p-2">{o.lokasi || '—'}</td>
                     <td className="p-2">{currencyName(klaim.polis.mata_uang, currencyList)}</td>
                     <td className="p-2 text-right">{formatRupiah(totals.klaim)}</td>
                     <td className="p-2 text-right">{formatRupiah(totals.adjuster)}</td>
                     <td className="p-2">
-                      <button type="button" disabled title={NOT_BUILT} className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60">
+                      <button
+                        type="button"
+                        disabled
+                        title={NOT_BUILT}
+                        className="rounded border border-blue-300 px-2 text-blue-700 disabled:opacity-60"
+                      >
                         View
                       </button>
                     </td>
@@ -358,8 +405,8 @@ export function EstimatePaymentTable({
 }
 
 export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
-  const editor = useEstimateEditor(klaim, tugas)
-  const { form, save, faceSheet, afterSave } = editor
+  const editor = useEstimateEditor(klaim, tugas, { withNote: true })
+  const { save, faceSheet, afterSave } = editor
   const [tab, setTab] = useState<Tab>('Estimasi Pembayaran')
   const complete = useSaveEstimate(false)
   const currencies = useCurrencies()
@@ -383,7 +430,9 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             value={klaim.status_klaim}
             className="mt-1 block w-52 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm font-normal"
           >
-            <option value={klaim.status_klaim}>{klaim.status_klaim_nama || klaim.status_klaim || '—'}</option>
+            <option value={klaim.status_klaim}>
+              {klaim.status_klaim_nama || klaim.status_klaim || '—'}
+            </option>
           </select>
         </label>
         <div className="flex flex-wrap items-center gap-2">
@@ -403,7 +452,7 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             tone="utama"
             disabled={busy || !editor.hasFaceSheet()}
             title={editor.hasFaceSheet() ? undefined : 'Download Claim Face Sheet lebih dulu.'}
-            onClick={() => complete.mutate(toRequest(tugas.id, form, false), { onSuccess: afterSave })}
+            onClick={() => complete.mutate(editor.request(false), { onSuccess: afterSave })}
           >
             {complete.isPending ? 'Memproses…' : 'Kirim PIC Teknik'}
           </Button>
@@ -412,18 +461,24 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
       <label className="mt-4 block text-sm font-semibold text-slate-800">
         Catatan ke PIC Teknis
+        {/* `.ClaimData.Remark` → POOLDATA.T_CLAIM_PNC.REMARK (VARCHAR2 4000), tersimpan bersama
+            Save, Download Claim Face Sheet, Kirim PIC Teknik, dan Back. */}
         <textarea
-          disabled
           rows={4}
-          className="mt-1 block w-full rounded border border-slate-300 bg-slate-50 px-2 py-1 text-sm font-normal"
-          placeholder="Belum dapat disimpan: POOLDATA.T_CLAIM_PNC belum punya kolom untuk catatan ini."
+          maxLength={4000}
+          value={editor.note}
+          onChange={(e) => editor.setNote(e.target.value)}
+          disabled={busy}
+          className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm font-normal disabled:bg-slate-50"
         />
       </label>
 
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <dt className="text-sm font-semibold text-slate-800">Aging Amount</dt>
-          <dd className="text-sm text-slate-600">—</dd>
+          <dd className="text-sm text-slate-600">
+            <PremiumAgingValue claimID={klaim.id} />
+          </dd>
         </div>
         <div>
           <dt className="text-sm font-semibold text-slate-800">PIC Teknis</dt>
@@ -460,7 +515,9 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             onClick={() => setTab(t)}
             className={[
               'px-3 py-1.5 text-sm',
-              tab === t ? 'border-b-2 border-blue-600 font-semibold text-slate-900' : 'text-slate-600',
+              tab === t
+                ? 'border-b-2 border-blue-600 font-semibold text-slate-900'
+                : 'text-slate-600',
             ].join(' ')}
           >
             {t}
@@ -473,14 +530,29 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
 
       {tab === 'Estimasi Pembayaran' && (
-        <EstimatePaymentTable klaim={klaim} tugas={tugas} editor={editor} currencyList={currencyList} busy={busy} />
+        <EstimatePaymentTable
+          klaim={klaim}
+          tugas={tugas}
+          editor={editor}
+          currencyList={currencyList}
+          busy={busy}
+          onlyWithCoverage
+        />
       )}
 
       {failure && (
         <div className="mt-4">
           <ErrorMessage
-            title={faceSheet.error ? 'Claim Face Sheet belum dapat dibuat' : complete.error ? 'Klaim belum dapat dikirim ke PIC Teknik' : 'Estimasi belum dapat disimpan'}
-            description={violations.length > 0 ? violations.map((v) => v.pesan).join(' ') : errorText(failure)}
+            title={
+              faceSheet.error
+                ? 'Claim Face Sheet belum dapat dibuat'
+                : complete.error
+                  ? 'Klaim belum dapat dikirim ke PIC Teknik'
+                  : 'Estimasi belum dapat disimpan'
+            }
+            description={
+              violations.length > 0 ? violations.map((v) => v.pesan).join(' ') : errorText(failure)
+            }
             tone="penolakan"
           />
         </div>
@@ -500,21 +572,37 @@ export function EstimateForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         <Button
           tone="halus"
           disabled={busy}
-          onClick={() => complete.mutate(toRequest(tugas.id, form, true), { onSuccess: afterSave })}
+          onClick={() => complete.mutate(editor.request(true), { onSuccess: afterSave })}
         >
           Back
         </Button>
         <div className="flex gap-3">
-          <Button
-            tone="kedua"
-            disabled={busy}
-            onClick={editor.saveNow}
-          >
+          <Button tone="kedua" disabled={busy} onClick={editor.saveNow}>
             {save.isPending ? 'Menyimpan…' : 'Save'}
           </Button>
         </div>
       </div>
     </section>
+  )
+}
+
+/**
+ * Isi Aging Amount — `.PaymentData.AgingAmount` dari layanan premi, angka apa adanya
+ * (section Pega menampilkannya sebagai teks, tanpa lambang mata uang).
+ */
+function PremiumAgingValue({ claimID }: { claimID: string }) {
+  const aging = usePremiumAging(claimID)
+  if (aging.isPending) return <>Memuat…</>
+  if (aging.isError || !aging.data?.tersedia) return <>Premium service could not be reached.</>
+  const amount = aging.data.aging_amount
+  if (amount === null) return <>—</>
+  const value = Number(amount)
+  return (
+    <>
+      {Number.isFinite(value)
+        ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value)
+        : amount}
+    </>
   )
 }
 
@@ -549,8 +637,6 @@ function CoverageTable({
   onFaceSheet: (coverageIndex: number) => void
   onPrintPLA: (coverageIndex: number) => void
 } & Updaters) {
-  const options = useItemOptions(klaim.id, objek.id).data?.pilihan ?? []
-
   return (
     <table className="w-full border-collapse text-sm">
       <caption className="sr-only">Jaminan objek {objek.nama}</caption>
@@ -576,7 +662,11 @@ function CoverageTable({
                 <button
                   type="button"
                   disabled={busy || !hasUnprinted(form[j] ?? [])}
-                  title={hasUnprinted(form[j] ?? []) ? undefined : 'Tidak ada estimasi baru untuk dibuatkan Claim Face Sheet.'}
+                  title={
+                    hasUnprinted(form[j] ?? [])
+                      ? undefined
+                      : 'Tidak ada estimasi baru untuk dibuatkan Claim Face Sheet.'
+                  }
                   onClick={() => onFaceSheet(j)}
                   className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
                 >
@@ -607,9 +697,10 @@ function CoverageTable({
                   klaim={klaim}
                   prefix={`${i}-${j}`}
                   items={form[j] ?? []}
-                  options={options}
+                  objectID={objek.id}
+                  coverageID={c.id}
                   currencyList={currencyList}
-                  onAdd={() => updateItems(i, j, (items) => [...items, emptyItem('')])}
+                  onAdd={(name) => updateItems(i, j, (items) => [...items, emptyItem(name)])}
                   onRemove={(n) => updateItems(i, j, (items) => items.filter((_, ii) => ii !== n))}
                   onChange={(n, change) => updateItem(i, j, n, change)}
                 />
@@ -631,7 +722,8 @@ function ItemTable({
   klaim,
   prefix,
   items,
-  options,
+  objectID,
+  coverageID,
   currencyList,
   onAdd,
   onRemove,
@@ -640,12 +732,27 @@ function ItemTable({
   klaim: Claim
   prefix: string
   items: ItemForm[]
-  options: { nama: string; kelompok: string }[]
+  objectID: string
+  /** Kode coverage jaminan — plan untuk lini Travel. */
+  coverageID: string
   currencyList: CurrencyOption[]
-  onAdd: () => void
+  onAdd: (name: string) => void
   onRemove: (n: number) => void
   onChange: (n: number, change: (item: ItemForm) => ItemForm) => void
 }) {
+  const choices = useItemOptions(klaim.id, objectID, coverageID).data
+  const options = choices?.pilihan ?? []
+  const defaultName = choices?.bawaan ?? ''
+
+  // Item yang belum bernama dan belum tersimpan diberi nama bawaan, seperti item yang dibuat
+  // otomatis saat objek dibentuk di Pega ("Others" / "OTHERS"; Fire tanpa nama bawaan).
+  useEffect(() => {
+    if (defaultName === '') return
+    items.forEach((it, n) => {
+      if (it.nama === '' && it.tersimpan === 0) onChange(n, (x) => ({ ...x, nama: defaultName }))
+    })
+  }, [defaultName, items, onChange])
+
   return (
     <table className="w-full border-collapse text-sm">
       <caption className="sr-only">Item</caption>
@@ -656,7 +763,11 @@ function ItemTable({
           <th className="p-2">Deskripsi Item</th>
           <th className="p-2">Unggah Dokumen</th>
           <th className="p-2">
-            <button type="button" onClick={onAdd} className="rounded border border-blue-400 bg-white px-2 py-0.5 text-xs text-blue-700">
+            <button
+              type="button"
+              onClick={() => onAdd(defaultName)}
+              className="rounded border border-blue-400 bg-white px-2 py-0.5 text-xs text-blue-700"
+            >
               + Tambah
             </button>
           </th>
@@ -671,33 +782,54 @@ function ItemTable({
               <tr className="bg-blue-100/70 align-top">
                 <td className="p-2">{n + 1}</td>
                 <td className="p-2">
-                  {options.length > 0 ? (
+                  {/*
+                    Objek (.ObjectItemName) — DROPDOWN untuk seluruh lini, seperti
+                    ObjectItemList_sect (Work Owner 2026-10-09). Sumbernya per lini:
+                    - Fire: item properti polis (T_PROPERTYITEMLIST);
+                    - Travel: manfaat plan coverage (COVERAGETRAVEL);
+                    - Aneka, Marine Cargo, PA: "Others".
+                    Nilai tersimpan yang tidak ada di daftar tetap ditampilkan, supaya tidak
+                    hilang diam-diam saat disimpan ulang. Read-only setelah estimasi pertama item
+                    ini dibuatkan Claim Face Sheet
+                    (`pyReadOnlyCondition .EstimationList(1).PrintFaceClaim=='1'`).
+                  */}
+                  <>
                     <select
                       id={`${id}-objek`}
                       aria-label="Objek"
                       value={it.nama}
+                      disabled={
+                        it.estimasi[0]?.terkunci === true ||
+                        (options.length === 0 && it.nama === '')
+                      }
                       onChange={(e) => {
                         const pilihan = options.find((o) => o.nama === e.target.value)
-                        set((x) => ({ ...x, nama: e.target.value, kelompok: pilihan?.kelompok ?? '' }))
+                        set((x) => ({
+                          ...x,
+                          nama: e.target.value,
+                          kelompok: pilihan?.kelompok ?? '',
+                        }))
                       }}
-                      className="rounded border border-slate-400 bg-white px-1 py-0.5"
+                      className="rounded border border-slate-400 bg-white px-1 py-0.5 disabled:bg-slate-100 disabled:text-slate-600"
                     >
-                      <option value="">— pilih —</option>
+                      <option value="">
+                        {options.length === 0 ? '— tidak ada pilihan —' : '— pilih —'}
+                      </option>
+                      {it.nama !== '' && !options.some((o) => o.nama === it.nama) && (
+                        <option value={it.nama}>{it.nama}</option>
+                      )}
                       {options.map((o) => (
                         <option key={o.nama} value={o.nama}>
                           {o.nama}
                         </option>
                       ))}
                     </select>
-                  ) : (
-                    <input
-                      id={`${id}-objek`}
-                      aria-label="Objek"
-                      value={it.nama}
-                      onChange={(e) => set((x) => ({ ...x, nama: e.target.value }))}
-                      className="rounded border border-slate-400 bg-white px-1 py-0.5"
-                    />
-                  )}
+                    {options.length === 0 && (
+                      <p className="mt-1 max-w-[14rem] text-xs text-slate-500">
+                        Polis tidak memiliki daftar item untuk objek ini.
+                      </p>
+                    )}
+                  </>
                 </td>
                 <td className="p-2">
                   <textarea
@@ -709,7 +841,12 @@ function ItemTable({
                   />
                 </td>
                 <td className="p-2">
-                  <button type="button" disabled title={NOT_BUILT} className="rounded bg-slate-400 px-2 py-1 text-xs text-white disabled:opacity-60">
+                  <button
+                    type="button"
+                    disabled
+                    title={NOT_BUILT}
+                    className="rounded bg-slate-400 px-2 py-1 text-xs text-white disabled:opacity-60"
+                  >
                     Unggah Dokumen
                   </button>
                 </td>
@@ -728,7 +865,13 @@ function ItemTable({
               <tr>
                 <td />
                 <td colSpan={4} className="p-2">
-                  <EstimationTable klaim={klaim} prefix={id} item={it} currencyList={currencyList} set={set} />
+                  <EstimationTable
+                    klaim={klaim}
+                    prefix={id}
+                    item={it}
+                    currencyList={currencyList}
+                    set={set}
+                  />
                 </td>
               </tr>
             </ItemRows>
@@ -784,7 +927,10 @@ function EstimationTable({
         <tbody>
           {item.estimasi.map((e, m) => {
             const patch = (value: Partial<EstimationForm>) =>
-              set((x) => ({ ...x, estimasi: x.estimasi.map((row, r) => (r === m ? { ...row, ...value } : row)) }))
+              set((x) => ({
+                ...x,
+                estimasi: x.estimasi.map((row, r) => (r === m ? { ...row, ...value } : row)),
+              }))
             return (
               <tr key={m}>
                 <td className="py-1 pr-2">{m + 1}</td>
@@ -842,13 +988,17 @@ function EstimationTable({
                 <td className="py-1 pr-2 text-right text-slate-600">
                   {e.kurs_e4 ? (e.kurs_e4 / 10_000).toLocaleString('id-ID') : '—'}
                 </td>
-                <td className="py-1 pr-2 text-right text-slate-600">{e.kurs_e4 ? formatRupiah(e.nilai_idr_sen) : '—'}</td>
+                <td className="py-1 pr-2 text-right text-slate-600">
+                  {e.kurs_e4 ? formatRupiah(e.nilai_idr_sen) : '—'}
+                </td>
                 <td className="py-1">
                   {e.terkunci && <span className="text-xs text-slate-500">Sudah CFS</span>}
                   {m >= item.tersimpan && (
                     <button
                       type="button"
-                      onClick={() => set((x) => ({ ...x, estimasi: x.estimasi.filter((_, r) => r !== m) }))}
+                      onClick={() =>
+                        set((x) => ({ ...x, estimasi: x.estimasi.filter((_, r) => r !== m) }))
+                      }
                       className="text-xs text-red-700 underline"
                     >
                       Hapus estimasi
@@ -869,7 +1019,15 @@ function EstimationTable({
             ...x,
             estimasi: [
               ...x.estimasi,
-              { tipe: EstimationType.Claim, mata_uang: klaim.polis.mata_uang, tanggal: todayWIB(), nilai: '', kurs_e4: 0, nilai_idr_sen: 0, terkunci: false },
+              {
+                tipe: EstimationType.Claim,
+                mata_uang: klaim.polis.mata_uang,
+                tanggal: todayWIB(),
+                nilai: '',
+                kurs_e4: 0,
+                nilai_idr_sen: 0,
+                terkunci: false,
+              },
             ],
           }))
         }

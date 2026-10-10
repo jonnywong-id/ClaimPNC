@@ -369,4 +369,11 @@ var PlannedDifferences = []string{
 		"mengurutkan hasilnya sama sekali — dapat dibiarkan selama seluruh baris ditarik " +
 		"sekaligus, tetapi membuat satu baris muncul di dua halaman begitu hasilnya " +
 		"dipotong per halaman.",
+
+	"Sejak 2026-10-08 tabel objek kerja Pega tidak lagi dibaca (keputusan Work Owner). " +
+		"Kolom Business Name, Source of Business, Ceding Co Name, Insured Name, dan MasterID " +
+		"kini diambil dari dokumen klaim di POOLDATA.JSON_KLAIM, sehingga dapat terisi pada " +
+		"baris yang dulu kosong. Kolom \"Status\" dan \"Last Update Operator\" KOSONG dan " +
+		"\"Aging\" bernilai 0 karena tidak punya padanan di tabel pengganti, dan urutan baris kini " +
+		"mengikuti waktu penugasan, bukan waktu objek kerja dibuat.",
 }

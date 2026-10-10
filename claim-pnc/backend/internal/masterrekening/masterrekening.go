@@ -132,6 +132,11 @@ type Account struct {
 	// tanda "]" persis seperti yang ditampilkan layar lama.
 	CashierResponse string
 
+	// NotificationError adalah sebab surel peringatan Kasir gagal dikirim pada keputusan
+	// ini — TIDAK disimpan, hanya dibawa ke layar supaya dapat dilampirkan ke IT Support
+	// (Work Owner 2026-10-10).
+	NotificationError string
+
 	// ChangeFlag menandai baris yang lahir dari perubahan rekening klaim berjalan,
 	// bukan dari pendaftaran baru.
 	ChangeFlag string

@@ -7,7 +7,7 @@ import { DateField } from '@/components/DateField'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { NumberField } from '@/components/NumberField'
-import { centsToRupiah, formatDate, rupiahToCents } from '@/components/format'
+import { formatDate, todayWIB } from '@/components/format'
 
 import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
 import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
@@ -39,10 +39,13 @@ export function ClaimReportFormPage() {
   const berkas = useClaimReport(id)
   const simpan = useSaveClaimReport(id)
   const daftar = useRegisterClaim()
+  // Register Klaim menyimpan berkas lebih dulu. Bila Simpan yang gagal, pesannya juga
+  // ditampilkan di dekat tombol Register — pesan Simpan di atas form tidak terlihat dari
+  // tombol yang ada di bawah (RCVN.26.115, 2026-10-10).
+  const [registerAttempt, setRegisterAttempt] = useState(false)
   const polis = useLookupPolicy()
 
-  const [values, setValues] = useState<ClaimReportDetail>(EMPTY_DETAIL)
-  const [estimateText, setEstimateText] = useState('')
+  const [values, setValues] = useState<ClaimReportDetail>(withReceivedDefault(EMPTY_DETAIL))
   const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(null)
   const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null)
 
@@ -51,8 +54,7 @@ export function ClaimReportFormPage() {
   // Query menyegarkan datanya di latar belakang.
   useEffect(() => {
     if (!berkas.data?.isian) return
-    setValues(berkas.data.isian)
-    setEstimateText(centsToRupiah(berkas.data.isian.estimasi_kerugian))
+    setValues(withReceivedDefault(berkas.data.isian))
   }, [berkas.data])
 
   const [initialLookup, setInitialLookup] = useState(false)
@@ -191,7 +193,9 @@ export function ClaimReportFormPage() {
         onSubmit={(e) => {
           e.preventDefault()
           if (!editable) return
-          simpan.mutate({ ...values, estimasi_kerugian: rupiahToCents(estimateText) || 0 })
+          // Estimasi Kerugian tidak ditampilkan (Work Owner 2026-10-08); nilai tersimpannya
+          // ikut dikirim apa adanya lewat `values`, sehingga tidak terhapus.
+          simpan.mutate(values)
         }}
       >
         <Group title="Dokumen masuk">
@@ -307,7 +311,7 @@ export function ClaimReportFormPage() {
             label="Nama Tertanggung"
             value={values.tertanggung}
             onChange={(e) => set('tertanggung', e.target.value)}
-            maxLength={FIELD_LIMIT.nama}
+            maxLength={FIELD_LIMIT.tertanggung}
             error={violation['tertanggung']}
             disabled={!editable}
           />
@@ -316,7 +320,7 @@ export function ClaimReportFormPage() {
             label="Nama Bisnis"
             value={values.nama_bisnis}
             onChange={(e) => set('nama_bisnis', e.target.value)}
-            maxLength={FIELD_LIMIT.nama}
+            maxLength={FIELD_LIMIT.bisnis}
             error={violation['nama_bisnis']}
             disabled={!editable}
           />
@@ -329,22 +333,8 @@ export function ClaimReportFormPage() {
             error={violation['nomor_rujukan']}
             disabled={!editable}
           />
-          {/*
-            Uang diketik sebagai teks lalu diubah menjadi SEN saat dikirim. Memakai
-            <input type="number"> untuk rupiah membuat peramban menyimpannya sebagai
-            pecahan biner, dan `ADR-0016` menuntut presisi penuh.
-          */}
-          <Field
-            id="estimasi_kerugian"
-            label="Estimasi Kerugian"
-            value={estimateText}
-            onChange={(e) => setEstimateText(e.target.value)}
-            placeholder="2.500.000,00"
-            inputMode="decimal"
-            error={violation['estimasi_kerugian']}
-            disabled={!editable}
-            hint="Angka yang disebut pelapor; bukan nilai klaim."
-          />
+          {/* Estimasi Kerugian (InputReceiveDocument_sect) tidak ditampilkan — tidak dipakai,
+              keputusan Work Owner 2026-10-08. */}
           <TextArea
             id="sumber_laporan"
             label="Source Of Reports"
@@ -482,15 +472,30 @@ export function ClaimReportFormPage() {
             <Button
               type="button"
               tone="kedua"
-              disabled={!editable || daftar.isPending || policyBlocked}
-              onClick={() =>
-                daftar.mutate(
-                  { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
-                  { onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`) },
-                )
-              }
+              disabled={!editable || daftar.isPending || simpan.isPending || policyBlocked}
+              // Isian disimpan LEBIH DULU, baru klaim didaftarkan: klaim baru menyalin isi
+              // berkas yang TERSIMPAN — antara lain Kronologis Kejadian menjadi Deskripsi
+              // Laporan (CreateRegisterKlaimPNC_act langkah 14). Tanpa itu, kronologis yang
+              // baru diketik tetapi belum di-Simpan tidak ikut ke klaim.
+              onClick={() => {
+                setRegisterAttempt(true)
+                daftar.reset()
+                simpan.mutate(values, {
+                  onSuccess: () =>
+                    daftar.mutate(
+                      { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
+                      {
+                        onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`),
+                        // Berkas dimuat ulang: bila ternyata sudah menjadi klaim (layar
+                        // lama yang belum dimuat ulang), tombolnya hilang dengan sendirinya.
+                        onError: () => void berkas.refetch(),
+                      },
+                    ),
+                  onError: () => void berkas.refetch(),
+                })
+              }}
             >
-              {daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+              {simpan.isPending || daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
             </Button>
           )}
 
@@ -503,6 +508,15 @@ export function ClaimReportFormPage() {
           </Button>
         </div>
 
+        {registerAttempt && simpan.isError && (
+          <div className="mt-3">
+            <ErrorMessage
+              title="Klaim tidak didaftarkan: berkas tidak dapat disimpan"
+              description={messageOf(simpan.error)}
+              tone={toneOf(simpan.error)}
+            />
+          </div>
+        )}
         {daftar.isError && (
           <div className="mt-3">
             <ErrorMessage
@@ -522,6 +536,31 @@ export function ClaimReportFormPage() {
       </p>
     </FormFrame>
   )
+}
+
+
+/**
+ * withReceivedDefault mengisi Tanggal Terima Dokumen dengan tanggal hari ini bila berkas
+ * belum punya nilainya.
+ *
+ * # Kenapa bawaan, dan kenapa hanya saat kosong
+ *
+ * Berkas yang baru dibuat lahir KOSONG (`CreateNewCaseRCV`), dan tanggal yang hampir
+ * selalu benar untuk isian ini adalah hari berkasnya diterima — yaitu hari ini. Petugas
+ * tetap dapat mengoreksinya; ini bawaan, bukan penguncian.
+ *
+ * Nilai yang SUDAH tersimpan tidak pernah ditimpa. Menimpanya akan mengubah tanggal
+ * berkas lama setiap kali layarnya dibuka, dan perubahan itu tidak akan terlihat siapa
+ * pun sampai tersimpan.
+ *
+ * Tanggalnya diambil `todayWIB`, bukan `new Date()` apa adanya: pengguna di zona waktu
+ * lain tidak boleh mendapat tanggal yang berbeda dari tanggal yang dipakai server, dan
+ * aturan tanggal di sistem ini seluruhnya berbasis tanggal kalender WIB
+ * (`08-TECHNICAL-STRATEGY.md` bagian 4.4).
+ */
+function withReceivedDefault(detail: ClaimReportDetail): ClaimReportDetail {
+  if (detail.tanggal_terima_dokumen.trim() !== '') return detail
+  return { ...detail, tanggal_terima_dokumen: todayWIB() }
 }
 
 function FormFrame({

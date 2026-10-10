@@ -52,6 +52,12 @@ func TestTidakAdaKolomYangDipendekkanDariSumbernya(t *testing.T) {
 			"COMPLIANCEPOSAUDITBYR":  "tabel turunan adj — LOC + salvage",
 			"USERNAME":               "tabel turunan adj — nilai bersih",
 		},
+		"report_klaim_he": {
+			// Diukur di Oracle dev atas 49 klaim HE (2026-10-08): objek kerja Pega berisi
+			// lokasi pada 20 baris, T_CLAIM_PNC pada 29, dan 19 di antaranya bernilai sama.
+			// Kolomnya jadi LEBIH sering terisi, bukan berkurang.
+			"LOCATION": "T_CLAIM_PNC.LOCATION menggantikan sub-kueri ke PC_ASM_FW_GCNMFW_WORK.location_1",
+		},
 		"report_close_klaim_nonmbu": {
 			"PYNOTE":         "LEFT JOIN gcnm_progress_claim ber-MAX(id_update)",
 			"STATUSRECEIVER": "LEFT JOIN gcnm_progress_claim ber-MAX(id_update)",

@@ -196,22 +196,20 @@ func TestNoQueryComputesAgingWithDateArithmetic(t *testing.T) {
 }
 
 func TestEveryListQuerySelectsTheWorkCreationTime(t *testing.T) {
-	// Kolom berjudul "Status" pada grid Teknik terikat `CARI21` = `b.PXCREATEDATETIME`.
-	// Ia diambil KELIMA kueri karena ke-16 alias wajib sama di setiap kueri — pemindai yang
-	// satu melayani kelimanya.
+	// Kolom berjudul "Status" pada grid Teknik terikat `CARI21` = `b.PXCREATEDATETIME` —
+	// waktu OBJEK KERJA dibuat. Sejak 2026-10-08 tabel objek kerja tidak lagi dibaca dan
+	// waktunya tidak punya padanan terbukti (waktu penugasan hanya sama pada 14/25 objek
+	// kerja di dev). Ia karena itu dikirim NULL BERTIPE di kelima kueri — aliasnya tetap ada
+	// karena ke-15 alias wajib sama di setiap kueri dan pemindainya memakai `sql.NullTime`.
 	//
-	// Ia diambil sebagai NILAI WAKTU. `TO_CHAR` ada di daftar terlarang dan dijaga
-	// TestQueriesFollowPortableSQLDiscipline; bentuk yang dibaca pengguna disusun
-	// inboxclaimtreatynonprop.FormatPegaDateTime.
-	//
-	// Polanya mensyaratkan alias itu bertetangga langsung dengan kolomnya. Pemeriksaan
-	// longgar "memuat PXCREATEDATETIME" akan lulus hanya karena kolom Aging menghitung dari
-	// kolom yang sama.
-	selected := regexp.MustCompile(`(?i)\bB\.PXCREATEDATETIME\s+AS\s+WORK_CREATED_AT\b`)
+	// Uji ini menjaga dua hal: aliasnya tetap ada sebagai nilai waktu NULL, dan tidak ada
+	// kueri yang diam-diam menggantinya dengan waktu penugasan — yang terbaca masuk akal
+	// tetapi berarti lain.
+	selected := regexp.MustCompile(`(?i)CAST\(NULL AS TIMESTAMP\)\s+AS\s+WORK_CREATED_AT\b`)
 
 	for _, name := range listQueries {
 		require.Truef(t, selected.MatchString(query(name)),
-			"kueri %s tidak membawa b.PXCREATEDATETIME sebagai WORK_CREATED_AT", name)
+			"kueri %s tidak membawa WORK_CREATED_AT sebagai NULL bertipe", name)
 	}
 }
 
@@ -219,11 +217,15 @@ func TestOnlyAdminQueriesReadTheJSONMasterID(t *testing.T) {
 	// `GetInboxListCNP_SQL` tidak membawa `CARI23` sama sekali. Kalau kueri Teknik
 	// diam-diam ikut membacanya, kolomnya akan terisi di tab yang di sistem lama tidak
 	// pernah memilikinya — selisih yang tidak ada di daftar P-5.
+	//
+	// Yang dijaga adalah pembacaan dari DATA_JSON (CARI23). Sejak 2026-10-08 MASTER_ID
+	// (CARI19) ikut dipetik dari `$.IDMaster`, tetapi dari DATA_JSONBLOB — kolom lain.
+	const jsonMasterID = "JSON_VALUE(c.DATA_JSON, '$.IDMaster')"
 	for _, name := range adminQueries {
-		require.Containsf(t, query(name), "'$.IDMaster'",
+		require.Containsf(t, query(name), jsonMasterID,
 			"kueri %s tidak membawa ID Master dari blob JSON", name)
 	}
-	require.NotContains(t, query("list_technical"), "'$.IDMaster'")
+	require.NotContains(t, query("list_technical"), jsonMasterID)
 }
 
 func TestOnlyTBAQueriesFilterTheEmptyPolicy(t *testing.T) {
@@ -372,7 +374,8 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 	allowed := []string{
 		"DATAPEGA.PC_ASSIGN_WORKLIST",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
-		"DATAPEGA.PC_ASM_FW_GCNMFW_WORK",
+		// DATAPEGA.PC_ASM_FW_GCNMFW_WORK sengaja TIDAK ada lagi: tabel objek kerja Pega
+		// sudah tidak dipakai (keputusan Work Owner 2026-10-08).
 		"POOLDATA.JSON_KLAIM",
 	}
 
@@ -399,12 +402,36 @@ func TestQueriesNeverCrossDBLink(t *testing.T) {
 }
 
 func TestQueriesReadTheNonPropJSONColumn(t *testing.T) {
-	// `POOLDATA.JSON_KLAIM` punya DUA kolom JSON, dan layar Prop membaca yang BERBEDA.
-	// Menukar salah satunya tidak menghasilkan galat apa pun — ia hanya menampilkan
-	// tanggal dan ID master milik dokumen yang lain. Lihat catatan "DUA KOLOM JSON" di
-	// kepala berkas .sql.
+	// `POOLDATA.JSON_KLAIM` punya DUA kolom JSON. Menukar salah satunya tidak menghasilkan
+	// galat apa pun — ia hanya menampilkan nilai milik dokumen yang lain. Lihat catatan
+	// "DUA KOLOM JSON" di kepala berkas .sql.
+	//
+	// Sejak 2026-10-08 layar ini membaca KEDUANYA dengan pembagian yang tegas:
+	//   * Tanggal Kejadian (CARI22) tetap dari DATA_JSON, seperti rule lamanya;
+	//   * kolom yang dulu milik objek kerja `b` dipetik dari DATA_JSONBLOB — dokumen
+	//     ClaimData yang terisi (DATA_JSON kosong pada seluruh baris treaty di dev).
 	for _, name := range listQueries {
-		require.NotContainsf(t, strings.ToUpper(query(name)), "DATA_JSONBLOB",
-			"kueri %s membaca kolom JSON milik layar Prop, bukan milik layar ini", name)
+		text := query(name)
+		require.Containsf(t, text, "JSON_VALUE(c.DATA_JSON, '$.DateOfLoss')",
+			"kueri %s tidak lagi membaca Tanggal Kejadian dari DATA_JSON", name)
+		for _, path := range []string{
+			"'$.IDMaster'", "'$.QuotationData.BusinessName'", "'$.QuotationData.SobName'",
+			"'$.QuotationData.CedingCoName'", "'$.InsuredName'",
+		} {
+			require.Containsf(t, text, "JSON_VALUE(c.DATA_JSONBLOB, "+path+")",
+				"kueri %s tidak memetik %s dari DATA_JSONBLOB", name, path)
+		}
+	}
+}
+
+func TestNoQueryReadsTheRetiredPegaWorkTable(t *testing.T) {
+	// Keputusan Work Owner 2026-10-08: DATAPEGA.PC_ASM_FW_GCNMFW_WORK sudah tidak dipakai.
+	// Satu gabungan yang kembali ke sana akan berjalan di dev (tabelnya masih ada) tetapi
+	// gagal begitu tabelnya dicabut.
+	for name, text := range queries {
+		require.NotContainsf(t, strings.ToUpper(text), "PC_ASM_FW_GCNMFW_WORK",
+			"kueri %s masih membaca tabel objek kerja Pega", name)
+		require.NotContainsf(t, text, "b.",
+			"kueri %s masih merujuk alias objek kerja b", name)
 	}
 }

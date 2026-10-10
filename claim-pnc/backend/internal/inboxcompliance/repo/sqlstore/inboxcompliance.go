@@ -168,8 +168,8 @@ func (r *Repo) CheckTable(ctx context.Context) error {
 
 	if err := r.db.QueryRowContext(ctx, query("check_table")).Scan(&ignored); err != nil {
 		return fmt.Errorf(
-			"membaca DATAPEGA.PC_ASM_FW_GCNMFW_WORK, DATAPEGA.PC_ASSIGN_WORKBASKET, "+
-				"dan POOLDATA.T_CLAIM_PNC: %w", err)
+			"membaca DATAPEGA.PC_ASSIGN_WORKBASKET, POOLDATA.T_CLAIM_PNC, "+
+				"dan POOLDATA.T_CLAIMLIST_ADMIN: %w", err)
 	}
 
 	// ExecContext, BUKAN QueryRow().Scan().

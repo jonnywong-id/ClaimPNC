@@ -159,16 +159,21 @@ func TestListQueriesCarryAllThreeFilters(t *testing.T) {
 	for _, name := range append(append([]string{}, listQueries...), "tka_inbox_find_one") {
 		t.Run(name, func(t *testing.T) {
 			uppercase := strings.ToUpper(getQuery(name))
-			require.Contains(t, uppercase, "W.TKA_1 = '1'",
+			// SUMBER BARU (2026-10-08): penanda TKA dan tanggal lengkap sisi Pega dibaca dari
+			// snapshot TERAKHIR `JSON_KLAIM`, karena tabel objek kerja Pega tidak dipakai lagi.
+			require.Contains(t, uppercase, "JSON_VALUE(X.DATA_JSONBLOB, '$.TKA') = '1'",
 				"penyaring A: penanda klaim TKA")
-			require.Contains(t, uppercase, "W.TANGGALDOKLENGKAP IS NULL",
+			require.Contains(t, uppercase, "X.RN = 1",
+				"penyaring A dan B wajib dibaca dari snapshot terakhir, bukan sembarang versi")
+			require.Contains(t, uppercase,
+				"JSON_VALUE(X.DATA_JSONBLOB, '$.TANGGALDOKLENGKAP') IS NULL",
 				"penyaring B sisi Pega")
 			require.Contains(t, uppercase, "C.TGLDOKLENGKAP IS NULL",
 				"penyaring B sisi aplikasi ini — yang membuat barisnya hilang setelah Submit")
-			require.Contains(t, uppercase, "W.PYSTATUSWORK <>",
+			require.Contains(t, uppercase, "C0.STATUSWORK = :1",
 				"penyaring C: pekerjaan yang sudah selesai dibuang")
-			require.Contains(t, uppercase, "ASM-FW-GCNMFW-WORK-PNC",
-				"kueri wajib membatasi kelas kasus; satu tabel Pega memuat banyak kelas")
+			require.NotContains(t, uppercase, "PC_ASM_FW_GCNMFW_WORK",
+				"tabel objek kerja Pega tidak dipakai lagi (keputusan Work Owner 2026-10-08)")
 		})
 	}
 }
@@ -245,13 +250,14 @@ func TestScannedQueriesShareTheSameColumnOrder(t *testing.T) {
 
 // Urutan daftar WAJIB memakai tanggal registrasi, bukan kolom lain.
 //
-// Ia kolom yang SAMA dengan yang Report Definition pakai (`pySortOrder = 1`), dan
-// mengurutkannya sebagai teks benar karena formatnya `yyyymmdd` berlebar tetap.
+// Report Definition mengurutkan `.ClaimData.RegisterDate` (`pySortOrder = 1`). SUMBER BARU
+// (2026-10-08): padanannya `T_CLAIM_PNC.REGISTERDATE` (DATE), dengan kunci kasus sebagai
+// pemutus yang unik.
 func TestListQueriesOrderByRegistrationDate(t *testing.T) {
 	for _, name := range listQueries {
 		t.Run(name, func(t *testing.T) {
 			require.Contains(t, strings.ToUpper(getQuery(name)),
-				"ORDER BY W.REGISTERDATE_1, W.PYID",
+				"ORDER BY C.REGISTERDATE, X.IDPEGA",
 				"urutannya wajib sama dengan Report Definition, dengan pemutus yang unik")
 		})
 	}

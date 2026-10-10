@@ -60,6 +60,9 @@ import (
 	"claim-pnc/internal/inboxxol"
 	"claim-pnc/internal/inputacceptation"
 	"claim-pnc/internal/komite"
+	"claim-pnc/internal/konversicoins"
+	"claim-pnc/internal/konversicoverage"
+	"claim-pnc/internal/konversiobjectitemfire"
 	"claim-pnc/internal/laporanhasilai"
 	"claim-pnc/internal/masterautoclaim"
 	"claim-pnc/internal/masterbengkel"
@@ -92,6 +95,7 @@ import (
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/platform/emailserver"
 	"claim-pnc/internal/platform/httpserver"
 	"claim-pnc/internal/platform/logging"
 	"claim-pnc/internal/platform/random"
@@ -255,6 +259,9 @@ import (
 	komitememory "claim-pnc/internal/komite/repo/memory"
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	konversicoinshttp "claim-pnc/internal/konversicoins/http"
+	konversicoveragehttp "claim-pnc/internal/konversicoverage/http"
+	konversiobjectitemfirehttp "claim-pnc/internal/konversiobjectitemfire/http"
 	laporanhasilaihttp "claim-pnc/internal/laporanhasilai/http"
 	laporanhasilaimemory "claim-pnc/internal/laporanhasilai/repo/memory"
 	laporanhasilaisql "claim-pnc/internal/laporanhasilai/repo/sqlstore"
@@ -442,6 +449,13 @@ func run() error {
 		return err
 	}
 	defer assembly.close()
+
+	// Pekerjaan terjadwal hidup selama server hidup.
+	jobs, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	if err := startAutoPIC(jobs, cfg.AutoPIC, assembly.registrasi, logger); err != nil {
+		return err
+	}
 
 	spaFiles, err := spa.Files()
 	if err != nil {
@@ -1776,6 +1790,54 @@ func run() error {
 	//
 	// Identitasnya tetap dituntut ada. Susunan kolom laporan ke OJK beserta nomor CIF
 	// dan tanggal lahir debitur tidak boleh terbaca tanpa sesi.
+	// Konversi Coverage (`MENU_ID 87`) — alat bantu data uji: membaca dokumen coverage
+	// polis dari LIVE dan menulis tabel relasionalnya ke TEST. Koneksinya milik modul
+	// sendiri (KONVERSI_LIVE_* dan KONVERSI_TEST_*) dan baru dibuka saat pertama dijalankan.
+	konversiCoverageHandler := konversicoveragehttp.NewHandler(konversicoveragehttp.Options{
+		Config: konversicoverage.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoveragehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoveragehttp.Caller{}, false
+			}
+			return konversicoveragehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoverageHandler.Close()
+
+	// Konversi Object Item Fire (`MENU_ID 88`) — alat bantu data uji yang sama polanya:
+	// PropertyItemList polis Fire dari LIVE menjadi T_PROPERTYITEMLIST di TEST, sekaligus
+	// menyalin BLOB-nya. Memakai koneksi KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiObjectItemFireHandler := konversiobjectitemfirehttp.NewHandler(konversiobjectitemfirehttp.Options{
+		Config: konversiobjectitemfire.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversiobjectitemfirehttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversiobjectitemfirehttp.Caller{}, false
+			}
+			return konversiobjectitemfirehttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiObjectItemFireHandler.Close()
+
+	// Konversi Coins (`MENU_ID 89`) — alat bantu data uji yang sama polanya: CoinsList dokumen
+	// polis JSON_POLIS.DATA_JSONBLOB di LIVE menjadi T_COINSLIST di TEST. Memakai koneksi
+	// KONVERSI_LIVE_* / KONVERSI_TEST_* yang sama.
+	konversiCoinsHandler := konversicoinshttp.NewHandler(konversicoinshttp.Options{
+		Config: konversicoins.LoadConfig(),
+		GetCaller: func(ctx context.Context) (konversicoinshttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return konversicoinshttp.Caller{}, false
+			}
+			return konversicoinshttp.Caller{Login: baseCtx.User.Login}, true
+		},
+		Logger: logger,
+	})
+	defer konversiCoinsHandler.Close()
+
 	slinkOJKHandler := slinkojkhttp.NewHandler(slinkojkhttp.Options{
 		Service: assembly.monitoringSlinkOJK,
 		GetCaller: func(ctx context.Context) (slinkojkhttp.Caller, bool) {
@@ -2500,6 +2562,12 @@ func run() error {
 				// export (`R-16`).
 				slinkojkhttp.Mount(protected, slinkOJKHandler, activePortalDeps)
 
+				// Konversi Coverage — TIDAK di balik pemeriksaan portal: koneksinya ditentukan
+				// konfigurasi modul, bukan portal yang dipilih pengguna.
+				konversicoveragehttp.Mount(protected, konversiCoverageHandler)
+				konversiobjectitemfirehttp.Mount(protected, konversiObjectItemFireHandler)
+				konversicoinshttp.Mount(protected, konversiCoinsHandler)
+
 				// Inbox Salvage memuat nomor klaim DAN nilai uang — nilai pengajuan
 				// PIC, nilai request balai lelang, nilai penawaran. Rutenya menuntut
 				// portal karena alasan yang sama dengan modul inbox lain, dan satu
@@ -2988,6 +3056,11 @@ type assembly struct {
 
 // storage memegang seluruh repo yang sudah terpasang di atas sumbernya.
 type storage struct {
+	// emailServer membaca akun surel POOLDATA.M_EMAIL_SERVER_PNC dari portal utama — sumber
+	// host, port, alamat, dan sandi seluruh pengirim surel. Nil pada mode tanpa Oracle:
+	// pengirim lalu memakai SMTP_* dari .env.
+	emailServer *emailserver.Store
+
 	user    auth.UserRepo
 	session auth.SessionRepo
 	portal  portal.Repo
@@ -3741,7 +3814,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	receiveTKAService, err := inboxreceivetkausecase.NewService(
 		inboxreceivetkausecase.Options{
 			RepoSelector: store.receiveTKASelector,
-			Notifier:     buildReceiveTKANotifier(cfg, logger),
+			Notifier:     buildReceiveTKANotifier(cfg, store, logger),
 			Logger:       logger,
 		})
 	if err != nil {
@@ -3859,7 +3932,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 
 	xolService, err := masterxolusecase.NewService(masterxolusecase.Options{
 		RepoSelector: store.xolSelector,
-		Notifier:     buildXOLNotifier(cfg, logger),
+		Notifier:     buildXOLNotifier(cfg, store, logger),
 		Logger:       logger,
 	})
 	if err != nil {
@@ -4561,7 +4634,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	}
 
 	if store.legacy != nil {
-		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
+		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee, cfg.PATechnicalPIC, plaEmailSender{queue: pladlaService.queue})
 		if err != nil {
 			store.close()
 			return assembly{}, err
@@ -4841,18 +4914,11 @@ func buildAuctionHouse(cfg config.Config, logger *slog.Logger) inboxsalvage.Auct
 
 func buildReceiveTKANotifier(
 	cfg config.Config,
+	store storage,
 	logger *slog.Logger,
 ) inboxreceivetka.Notifier {
-	if !cfg.SMTP.TKAActive() {
-		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
-			slog.String("akibat",
-				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
-			slog.String("perbaikan",
-				"isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_TKA"))
-		return nil
-	}
-
-	return inboxreceivetkanotif.NewSender(inboxreceivetkanotif.Config{
+	smtpConfig := inboxreceivetkanotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -4860,7 +4926,33 @@ func buildReceiveTKANotifier(
 		From:     cfg.SMTP.From,
 		To:       cfg.SMTP.TKARecipients,
 		Timeout:  cfg.SMTP.Timeout,
-	})
+	}
+	if !smtpConfig.Complete() {
+		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
+			slog.String("akibat",
+				"tanggal tetap tersimpan, tetapi tidak ada yang diberi tahu lewat surel"),
+			slog.String("perbaikan", "isi SMTP_PENERIMA_TKA"))
+		return nil
+	}
+	return inboxreceivetkanotif.NewSender(smtpConfig)
+}
+
+// emailAccountSource adalah sumber akun surel POOLDATA.M_EMAIL_SERVER_PNC untuk seluruh
+// pengirim surel, atau nil pada mode tanpa Oracle (pengirim memakai SMTP_* dari .env).
+func emailAccountSource(store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.Account
+}
+
+// adminEmailAccountSource adalah sumber akun surel untuk modul yang di Pega memakai Email
+// Account "Admin-PNC" (PLA/DLA, peringatan Master Rekening) — EMAIL_ACCOUNT_ADMIN_PNC.
+func adminEmailAccountSource(cfg config.Config, store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.With(cfg.SMTP.AdminAccount).Account
 }
 
 // buildMasterRekening menyusun modul Master Rekening di balik seam-nya.
@@ -4887,21 +4979,23 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 		notifier      masterrekening.Notifier
 	)
 
-	if cfg.SMTP.Active() {
-		notifier = masterrekeningnotif.NewSender(masterrekeningnotif.Config{
-			Host:     cfg.SMTP.Host,
-			Port:     cfg.SMTP.Port,
-			User:     cfg.SMTP.User,
-			Password: cfg.SMTP.Password,
-			From:     cfg.SMTP.From,
-			To:       cfg.SMTP.AlertRecipients,
-			Timeout:  cfg.SMTP.Timeout,
-		})
+	alertConfig := masterrekeningnotif.Config{
+		Account:  adminEmailAccountSource(cfg, store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.AlertRecipients,
+		Timeout:  cfg.SMTP.Timeout,
+	}
+	if alertConfig.Complete() {
+		notifier = masterrekeningnotif.NewSender(alertConfig)
 	} else {
 		notifier = &masterrekeningnotif.Fake{}
 		logger.Warn("pengirim surel tiruan dipakai",
 			slog.String("akibat", "Tim IT TIDAK diberi tahu lewat surel bila pendaftaran ke Cashier gagal"),
-			slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan SMTP_PENERIMA_PERINGATAN"))
+			slog.String("perbaikan", "isi SMTP_PENERIMA_PERINGATAN"))
 	}
 
 	switch {
@@ -5044,6 +5138,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				"kolom laporan yang bersumber dari sana akan dikosongkan (R-03)")
 		}
 		primary := pool.Primary()
+		store.emailServer = emailserver.NewStore(primary, cfg.SMTP.EmailAccount)
 		store.legacy = sqlstore.NewLegacy(primary)
 		store.portal = portalsql.NewRepo(primary)
 		store.accountSelector = func(alias string) (masterrekening.Repo, masterrekening.BankRepo, error) {
@@ -7356,8 +7451,9 @@ func claimStatusSelectorMemory(primaryAlias string) masterstatus.RepoSelector {
 //
 // Tempat yang benar bagi daftar ini kelak adalah master Penerima Notifikasi (`F-4`), yang
 // belum dibangun.
-func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier {
+func buildXOLNotifier(cfg config.Config, store storage, logger *slog.Logger) masterxol.Notifier {
 	smtpConfig := masterxolnotif.Config{
+		Account:  emailAccountSource(store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -7372,7 +7468,7 @@ func buildXOLNotifier(cfg config.Config, logger *slog.Logger) masterxol.Notifier
 
 	logger.Warn("pemberitahuan komite Master XOL tidak dikirim: SMTP atau penerimanya belum lengkap",
 		slog.String("modul", "masterxol"),
-		slog.String("perbaikan", "isi SMTP_HOST, SMTP_PORT, SMTP_DARI, dan XOL_PENERIMA_KOMITE"))
+		slog.String("perbaikan", "isi XOL_PENERIMA_KOMITE"))
 	return masterxolnotif.NewFake()
 }
 
@@ -8633,4 +8729,20 @@ func anekaFor(pool *db.Pool, alias string) *sql.DB {
 		return nil
 	}
 	return second
+}
+
+// emailAccountLabel menyebut sumber akun surel untuk log, tanpa sandi.
+func emailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+}
+
+// adminEmailAccountLabel menyebut sumber akun surel Admin-PNC untuk log, tanpa sandi.
+func adminEmailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.With(cfg.SMTP.AdminAccount).AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 }

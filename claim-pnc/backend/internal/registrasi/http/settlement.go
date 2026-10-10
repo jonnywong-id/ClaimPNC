@@ -10,28 +10,30 @@ import (
 // SettlementDTO adalah satu baris grid Adjustment (AdjustmentList). Nilai uang dalam sen,
 // persen per 10.000 (100% = 1000000), kurs per 10.000.
 type SettlementDTO struct {
-	PaymentType      string `json:"tipe_pembayaran"`
-	PaymentTypeName  string `json:"nama_tipe_pembayaran"`
-	Currency         string `json:"mata_uang"`
-	RateE4           int64  `json:"kurs_e4"`
-	ProposeCents     int64  `json:"nilai_propose_sen"`
-	SubmittedCents   int64  `json:"nilai_pengajuan_sen"`
-	LOC              int64  `json:"loc"`
-	SalvageACents    int64  `json:"nilai_salvage_sen"`
-	SalvageBCents    int64  `json:"nilai_salvage_b_sen"`
-	InterimCents     int64  `json:"nilai_interim_sen"`
-	EstimationCents  int64  `json:"nilai_estimasi_sen"`
-	RiskType         string `json:"tipe_resiko"`
-	RiskPercent      int64  `json:"persen_resiko"`
-	RiskValueCents   int64  `json:"nilai_resiko_sen"`
-	GrossCents       int64  `json:"nilai_gross_sen"`
-	ShareASM         int64  `json:"share_asm"`
-	ValueCents       int64  `json:"nilai_asm_sen"`
-	AcceptedCents    int64  `json:"nilai_akseptasi_sen"`
-	Chronology       string `json:"kronologi"`
-	Notes            string `json:"catatan"`
-	AcceptanceStatus string `json:"status_akseptasi"`
-	AcceptedNo       string `json:"nomor_akseptasi"`
+	PaymentType     string `json:"tipe_pembayaran"`
+	PaymentTypeName string `json:"nama_tipe_pembayaran"`
+	Currency        string `json:"mata_uang"`
+	RateE4          int64  `json:"kurs_e4"`
+	ProposeCents    int64  `json:"nilai_propose_sen"`
+	SubmittedCents  int64  `json:"nilai_pengajuan_sen"`
+	// InsuredSubmittedCents adalah Nilai Pengajuan Tertanggung PA (PROPOSE_VALUE_TERTANGGUNG).
+	InsuredSubmittedCents int64  `json:"nilai_pengajuan_tertanggung_sen"`
+	LOC                   int64  `json:"loc"`
+	SalvageACents         int64  `json:"nilai_salvage_sen"`
+	SalvageBCents         int64  `json:"nilai_salvage_b_sen"`
+	InterimCents          int64  `json:"nilai_interim_sen"`
+	EstimationCents       int64  `json:"nilai_estimasi_sen"`
+	RiskType              string `json:"tipe_resiko"`
+	RiskPercent           int64  `json:"persen_resiko"`
+	RiskValueCents        int64  `json:"nilai_resiko_sen"`
+	GrossCents            int64  `json:"nilai_gross_sen"`
+	ShareASM              int64  `json:"share_asm"`
+	ValueCents            int64  `json:"nilai_asm_sen"`
+	AcceptedCents         int64  `json:"nilai_akseptasi_sen"`
+	Chronology            string `json:"kronologi"`
+	Notes                 string `json:"catatan"`
+	AcceptanceStatus      string `json:"status_akseptasi"`
+	AcceptedNo            string `json:"nomor_akseptasi"`
 
 	// AcceptanceLODStatus adalah STATUSAKSEPTASILOD: "" belum, "1" disetujui, "0" tidak.
 	AcceptanceLODStatus string `json:"status_akseptasi_lod"`
@@ -68,7 +70,8 @@ func settlementLineDTO(s registrasi.SettlementLine) SettlementDTO {
 	return SettlementDTO{
 		PaymentType: s.PaymentType, PaymentTypeName: registrasi.PaymentTypeName(s.PaymentType),
 		Currency: s.Currency, RateE4: int64(s.Rate), ProposeCents: int64(s.Propose), SubmittedCents: int64(s.Submitted),
-		SalvageBCents: int64(s.SalvageB), InterimCents: int64(s.Interim), EstimationCents: int64(s.Estimation),
+		InsuredSubmittedCents: int64(s.InsuredSubmitted),
+		SalvageBCents:         int64(s.SalvageB), InterimCents: int64(s.Interim), EstimationCents: int64(s.Estimation),
 		LOC: int64(s.LOC), SalvageACents: int64(s.SalvageA), RiskType: s.RiskType,
 		RiskPercent: int64(s.RiskPercent), RiskValueCents: int64(s.RiskValue),
 		GrossCents: int64(s.Gross), ShareASM: int64(s.ShareASM), ValueCents: int64(s.Value),
@@ -86,25 +89,27 @@ func settlementLineDTO(s registrasi.SettlementLine) SettlementDTO {
 
 // SettlementRequest adalah badan tombol Tambah. Objek dan jaminan berbasis 1.
 type SettlementRequest struct {
-	TaskID          string `json:"tugas_id"`
-	Object          int    `json:"objek"`
-	Coverage        int    `json:"jaminan"`
-	PaymentType     string `json:"tipe_pembayaran"`
-	Currency        string `json:"mata_uang"`
-	ProposeCents    int64  `json:"nilai_propose_sen"`
-	SubmittedCents  int64  `json:"nilai_pengajuan_sen"`
-	LOC             int64  `json:"loc"`
-	SalvageACents   int64  `json:"nilai_salvage_sen"`
-	SalvageBCents   int64  `json:"nilai_salvage_b_sen"`
-	RiskType        string `json:"tipe_resiko"`
-	RiskPercent     int64  `json:"persen_resiko"`
-	RiskValueCents  int64  `json:"nilai_resiko_sen"`
-	ProfessionalFee int64  `json:"professional_fee_sen"`
-	SurveyExpenses  int64  `json:"survey_expenses_sen"`
-	VAT             int64  `json:"vat"`
-	VATType         string `json:"tipe_vat"`
-	Chronology      string `json:"kronologi"`
-	Notes           string `json:"catatan"`
+	TaskID         string `json:"tugas_id"`
+	Object         int    `json:"objek"`
+	Coverage       int    `json:"jaminan"`
+	PaymentType    string `json:"tipe_pembayaran"`
+	Currency       string `json:"mata_uang"`
+	ProposeCents   int64  `json:"nilai_propose_sen"`
+	SubmittedCents int64  `json:"nilai_pengajuan_sen"`
+	// InsuredSubmittedCents adalah Nilai Pengajuan Tertanggung PA (PROPOSE_VALUE_TERTANGGUNG).
+	InsuredSubmittedCents int64  `json:"nilai_pengajuan_tertanggung_sen"`
+	LOC                   int64  `json:"loc"`
+	SalvageACents         int64  `json:"nilai_salvage_sen"`
+	SalvageBCents         int64  `json:"nilai_salvage_b_sen"`
+	RiskType              string `json:"tipe_resiko"`
+	RiskPercent           int64  `json:"persen_resiko"`
+	RiskValueCents        int64  `json:"nilai_resiko_sen"`
+	ProfessionalFee       int64  `json:"professional_fee_sen"`
+	SurveyExpenses        int64  `json:"survey_expenses_sen"`
+	VAT                   int64  `json:"vat"`
+	VATType               string `json:"tipe_vat"`
+	Chronology            string `json:"kronologi"`
+	Notes                 string `json:"catatan"`
 
 	// Adjustment adalah nomor baris (berbasis 1) yang diubah — hanya rute ubah.
 	Adjustment int `json:"adjustment,omitempty"`
@@ -116,7 +121,8 @@ func (b SettlementRequest) command(claimID string) usecase.SettlementCommand {
 		Input: registrasi.SettlementInput{
 			PaymentType: b.PaymentType, Currency: b.Currency,
 			Propose: registrasi.Money(b.ProposeCents), Submitted: registrasi.Money(b.SubmittedCents),
-			LOC: registrasi.Percent(b.LOC), SalvageB: registrasi.Money(b.SalvageBCents),
+			InsuredSubmitted: registrasi.Money(b.InsuredSubmittedCents),
+			LOC:              registrasi.Percent(b.LOC), SalvageB: registrasi.Money(b.SalvageBCents),
 			RiskValue: registrasi.Money(b.RiskValueCents),
 			SalvageA:  registrasi.Money(b.SalvageACents), RiskType: b.RiskType,
 			RiskPercent: registrasi.Percent(b.RiskPercent),

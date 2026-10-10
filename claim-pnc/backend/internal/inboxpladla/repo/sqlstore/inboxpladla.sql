@@ -1,3 +1,28 @@
+-- ============================================================================
+-- SUMBER BARU (2026-10-08) — tabel kerja Pega tidak dibaca lagi
+-- ============================================================================
+--
+-- Keputusan Work Owner: `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` sudah tidak dipakai. Seluruh daftar
+-- di berkas ini (dan di komunikasi.sql, detail.sql) dulu menggabungkannya hanya untuk dua
+-- kolom, dan keduanya kini dibaca dari baris klaim yang SUDAH menjadi sumber utama kueri:
+--
+--     STATUSCLAIM_1    ->  T_CLAIM_PNC.STATUSCLAIM
+--     ISPENDINGCLOSE   ->  T_CLAIM_PNC.ISPENDINGCLOSE
+--
+-- `T_CLAIMLIST_ADMIN` tidak dipakai: kedua kolom itu kosong 100% di sana, dan ia hanya
+-- memuat klaim di antrean Admin — bukan klaim yang sudah dikirimi PLA/DLA.
+--
+-- Akibat yang terukur (Oracle dev ASM, populasi klaim non-PA/non-Travel yang punya PLA/DLA
+-- terkirim, 262 klaim):
+--
+--   * Kode status berbeda dari tabel kerja pada 50 klaim (umumnya tabel kerja `1149`/`1147`
+--     sementara `T_CLAIM_PNC` `1138`). Kolom "Status" dan tabel ringkas "Status / Jumlah"
+--     karena itu dapat berbeda dari layar Pega untuk klaim-klaim itu.
+--   * `ISPENDINGCLOSE` berbeda pada 21 klaim; 20 di antaranya `false` lawan NULL yang
+--     artinya sama di sini. Yang bermakna: 6 klaim (seluruh tabel) yang di tabel kerja
+--     `true` tetapi NULL di `T_CLAIM_PNC` — klaim itu pindah dari daftar DLA (kode `1139`)
+--     ke daftar Close bila PLA-nya terkirim.
+
 -- name: reinsurer_codes
 -- Kode reasuradur milik satu login, terurut MENURUN.
 --
@@ -30,7 +55,7 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       w.STATUSCLAIM_1                   AS STATUS_CODE,
+       c.STATUSCLAIM                     AS STATUS_CODE,
        s.LSC_NOTE                        AS STATUS_LABEL,
        (SELECT p.NOPLA
           FROM POOLDATA.T_PLALIST p
@@ -45,10 +70,8 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLOSECLAIMNOTE                  AS CLOSE_NOTE,
        COUNT(*) OVER ()                  AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:2 IS NULL OR UPPER(c.CLAIMID) LIKE :3 ESCAPE '\')
@@ -84,14 +107,12 @@ OFFSET :6 ROWS FETCH NEXT :7 ROWS ONLY
 --
 -- Penyaringnya WAJIB sama persis dengan list_pla. Angka yang tidak cocok dengan tabel di
 -- bawahnya adalah hal pertama yang dilaporkan pengguna sebagai kerusakan.
-SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
+SELECT c.STATUSCLAIM                     AS STATUS_CODE,
        MAX(s.LSC_NOTE)                   AS STATUS_LABEL,
        COUNT(*)                          AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
    AND (:1 IS NULL OR UPPER(c.CLAIMID) LIKE :2 ESCAPE '\')
@@ -117,8 +138,8 @@ SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
                                           WHERE UPPER(TRIM(r.LOGIN)) = UPPER(TRIM(:4))
                                           ORDER BY r.REINSURERID DESC
                                           FETCH NEXT 1 ROWS ONLY))
- GROUP BY w.STATUSCLAIM_1
- ORDER BY w.STATUSCLAIM_1
+ GROUP BY c.STATUSCLAIM
+ ORDER BY c.STATUSCLAIM
 
 -- name: list_dla
 -- Klaim yang DLA-nya sudah dikirimkan kepada pemanggil.
@@ -130,8 +151,12 @@ SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
 -- melakukannya. Label statusnya ikut dicari untuk kode pengganti itu, bukan untuk kode
 -- aslinya; tanpa itu, baris yang digambar `1139` akan membawa keterangan status yang lain.
 --
--- Gabungan ke tabel kerja di sini INNER, bukan LEFT: `ISPENDINGCLOSE` dibaca dari sana,
--- dan kueri lamanya pun menuliskannya sebagai `b.claimid=z.pzinskey` di klausa FROM.
+-- Kueri lama Pega menggabungkan tabel kerja secara INNER (`b.claimid=z.pzinskey` di klausa
+-- FROM) karena `ISPENDINGCLOSE` dibaca dari sana. SUMBER BARU (2026-10-08): kolom itu kini
+-- dibaca dari `T_CLAIM_PNC.ISPENDINGCLOSE`, sehingga gabungan INNER itu HILANG — klaim yang
+-- tidak punya baris kerja Pega (mis. klaim PNCN) kini ikut. Diukur di Oracle dev: populasi
+-- PLA/DLA yang tidak punya baris kerja hanya 3 klaim, dan daftar DLA reasuradur teramai
+-- tetap 15 baris lama = 15 baris baru. Lihat catatan di kepala berkas.
 --
 -- Kueri lama memuat DUA sub-kueri EXISTS yang ISINYA SAMA PERSIS, digabung dengan `OR`.
 -- Duplikasi itu tidak mengubah hasil dan tidak dibawa.
@@ -143,12 +168,12 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
-            ELSE w.STATUSCLAIM_1 END     AS STATUS_CODE,
+       CASE WHEN c.ISPENDINGCLOSE = 'true' THEN '1139'
+            ELSE c.STATUSCLAIM END       AS STATUS_CODE,
        (SELECT s.LSC_NOTE
           FROM POOLDATA.M_STS_CLAIM s
-         WHERE s.LSC_ID = CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
-                               ELSE w.STATUSCLAIM_1 END) AS STATUS_LABEL,
+         WHERE s.LSC_ID = CASE WHEN c.ISPENDINGCLOSE = 'true' THEN '1139'
+                               ELSE c.STATUSCLAIM END) AS STATUS_LABEL,
        (SELECT p.NOPLA
           FROM POOLDATA.T_PLALIST p
          WHERE p.CLAIMID = c.CLAIMID
@@ -162,11 +187,9 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLOSECLAIMNOTE                  AS CLOSE_NOTE,
        COUNT(*) OVER ()                  AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-    ON w.PZINSKEY = c.CLAIMID
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND (c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-        OR (c.STATUSWORK = 'Resolved-Completed' AND w.ISPENDINGCLOSE = 'true'))
+        OR (c.STATUSWORK = 'Resolved-Completed' AND c.ISPENDINGCLOSE = 'true'))
    AND (:2 IS NULL OR UPPER(c.CLAIMID) LIKE :3 ESCAPE '\')
    AND EXISTS (SELECT 1
                  FROM POOLDATA.T_DLALIST a
@@ -189,19 +212,17 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 --
 -- Ia mengelompokkan kode yang SUDAH diganti, bukan kode aslinya. Mengelompokkan kode asli
 -- akan menghasilkan angka yang tidak dapat dicocokkan dengan kolom Status di bawahnya.
-SELECT CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
-            ELSE w.STATUSCLAIM_1 END     AS STATUS_CODE,
+SELECT CASE WHEN c.ISPENDINGCLOSE = 'true' THEN '1139'
+            ELSE c.STATUSCLAIM END       AS STATUS_CODE,
        MAX(s.LSC_NOTE)                   AS STATUS_LABEL,
        COUNT(*)                          AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-    ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
-                            ELSE w.STATUSCLAIM_1 END
+         ON s.LSC_ID = CASE WHEN c.ISPENDINGCLOSE = 'true' THEN '1139'
+                            ELSE c.STATUSCLAIM END
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND (c.STATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-        OR (c.STATUSWORK = 'Resolved-Completed' AND w.ISPENDINGCLOSE = 'true'))
+        OR (c.STATUSWORK = 'Resolved-Completed' AND c.ISPENDINGCLOSE = 'true'))
    AND (:1 IS NULL OR UPPER(c.CLAIMID) LIKE :2 ESCAPE '\')
    AND EXISTS (SELECT 1
                  FROM POOLDATA.T_DLALIST a
@@ -214,8 +235,8 @@ SELECT CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
                                       WHERE UPPER(TRIM(r.LOGIN)) = UPPER(TRIM(:3))
                                       ORDER BY r.REINSURERID DESC
                                       FETCH NEXT 1 ROWS ONLY))
- GROUP BY CASE WHEN w.ISPENDINGCLOSE = 'true' THEN '1139'
-               ELSE w.STATUSCLAIM_1 END
+ GROUP BY CASE WHEN c.ISPENDINGCLOSE = 'true' THEN '1139'
+               ELSE c.STATUSCLAIM END
  ORDER BY 1
 
 -- name: list_close
@@ -241,7 +262,7 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.REGISTERDATE                    AS REGISTER_DATE,
        c.DATEOFLOSS                      AS LOSS_DATE,
        c.PICTEKNIK                       AS PIC_TEKNIK,
-       w.STATUSCLAIM_1                   AS STATUS_CODE,
+       c.STATUSCLAIM                     AS STATUS_CODE,
        s.LSC_NOTE                        AS STATUS_LABEL,
        (SELECT p.NOPLA
           FROM POOLDATA.T_PLALIST p
@@ -256,13 +277,11 @@ SELECT c.CLAIMID                         AS CLAIM_KEY,
        c.CLOSECLAIMNOTE                  AS CLOSE_NOTE,
        COUNT(*) OVER ()                  AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND c.STATUSWORK = 'Resolved-Completed'
-   AND (w.ISPENDINGCLOSE <> 'true' OR w.ISPENDINGCLOSE IS NULL)
+   AND (c.ISPENDINGCLOSE <> 'true' OR c.ISPENDINGCLOSE IS NULL)
    AND (:2 IS NULL OR UPPER(c.CLAIMID) LIKE :3 ESCAPE '\')
    AND EXISTS (SELECT 1
                  FROM POOLDATA.T_PLALIST a
@@ -280,17 +299,15 @@ OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY
 -- Tabel ringkas "Status / Jumlah" untuk daftar Close.
 --
 -- Bind: :1 penanda pencarian · :2 pola pencarian · :3 login
-SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
+SELECT c.STATUSCLAIM                     AS STATUS_CODE,
        MAX(s.LSC_NOTE)                   AS STATUS_LABEL,
        COUNT(*)                          AS TOTAL_ROWS
   FROM POOLDATA.T_CLAIM_PNC c
-  LEFT JOIN DATAPEGA.PC_ASM_FW_GCNMFW_WORK w
-         ON w.PZINSKEY = c.CLAIMID
   LEFT JOIN POOLDATA.M_STS_CLAIM s
-         ON s.LSC_ID = w.STATUSCLAIM_1
+         ON s.LSC_ID = c.STATUSCLAIM
  WHERE c.GROUPPANEL NOT IN ('002', '005')
    AND c.STATUSWORK = 'Resolved-Completed'
-   AND (w.ISPENDINGCLOSE <> 'true' OR w.ISPENDINGCLOSE IS NULL)
+   AND (c.ISPENDINGCLOSE <> 'true' OR c.ISPENDINGCLOSE IS NULL)
    AND (:1 IS NULL OR UPPER(c.CLAIMID) LIKE :2 ESCAPE '\')
    AND EXISTS (SELECT 1
                  FROM POOLDATA.T_PLALIST a
@@ -301,5 +318,46 @@ SELECT w.STATUSCLAIM_1                   AS STATUS_CODE,
                   AND a.REINSCODE IN (SELECT r.REINSURERID
                                         FROM POOLDATA.T_REINSURER r
                                        WHERE UPPER(TRIM(r.LOGIN)) = UPPER(TRIM(:3))))
- GROUP BY w.STATUSCLAIM_1
- ORDER BY w.STATUSCLAIM_1
+ GROUP BY c.STATUSCLAIM
+ ORDER BY c.STATUSCLAIM
+
+-- name: xol_summary
+-- Grid "DATA PLA DLA XOL KLAIM" — ringkasan pemberitahuan XOL yang SUDAH terkirim.
+--
+-- Bind: :1 login (bagian DLA) · :2 login (bagian PLA)
+--
+-- # Loginnya DITURUNKAN DARI PEMANGGIL, dan di sinilah ia berbeda dari Pega
+--
+-- Kueri lama merangkai `Local.loginreas`, yang `Activity/SetDataPLADLA-Act.xml` tetapkan
+-- SATU KALI ke nama satu reasuradur tertentu dan tidak pernah ditimpa. Akibatnya setiap
+-- reasuradur yang membuka layar itu melihat ringkasan XOL milik mitra lain.
+--
+-- Itu kebocoran data antar pihak ketiga, bukan keanehan yang layak ditiru. `D-15` melarang
+-- nilai bisnis ditulis tetap, dan di sini pelanggarannya bukan sekadar soal kerapian.
+-- Selisihnya dinyatakan di PlannedDifferences.
+SELECT YEAR_OF                           AS YEAR_OF,
+       CAUSE_OF_LOSS                     AS CAUSE_OF_LOSS,
+       ADVICE_KIND                       AS ADVICE_KIND,
+       LAST_INSERT                       AS LAST_INSERT
+  FROM (SELECT d.TAHUN            AS YEAR_OF,
+               d.CAUSEOFLOSS      AS CAUSE_OF_LOSS,
+               'DLA'              AS ADVICE_KIND,
+               MAX(d.TGLINSERT)   AS LAST_INSERT
+          FROM POOLDATA.T_DLA_XOL d
+         WHERE d.SENDDATE IS NOT NULL
+           AND d.IDREAS IN (SELECT r.REINSURERID
+                              FROM POOLDATA.T_REINSURER r
+                             WHERE UPPER(TRIM(r.LOGIN)) = UPPER(TRIM(:1)))
+         GROUP BY d.TAHUN, d.CAUSEOFLOSS
+         UNION
+        SELECT p.TAHUN            AS YEAR_OF,
+               p.CAUSEOFLOSS      AS CAUSE_OF_LOSS,
+               'PLA'              AS ADVICE_KIND,
+               MAX(p.TGLINSERT)   AS LAST_INSERT
+          FROM POOLDATA.T_PLA_XOL p
+         WHERE p.SENDDATE IS NOT NULL
+           AND p.IDREAS IN (SELECT r.REINSURERID
+                              FROM POOLDATA.T_REINSURER r
+                             WHERE UPPER(TRIM(r.LOGIN)) = UPPER(TRIM(:2)))
+         GROUP BY p.TAHUN, p.CAUSEOFLOSS)
+ ORDER BY ADVICE_KIND, YEAR_OF DESC

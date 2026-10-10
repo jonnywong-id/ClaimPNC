@@ -111,4 +111,12 @@ func (s *FaceSheetStore) SaveRevision(ctx context.Context, r registrasi.FaceShee
 	return nil
 }
 
+// AddTechnicalPICJob memenuhi registrasi.FaceSheetSource.
+func (s *FaceSheetStore) AddTechnicalPICJob(ctx context.Context, operatorID string) error {
+	if _, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("cfs_tambah_beban_pic"), operatorID); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menambah beban PIC Teknik %q: %w", operatorID, err)
+	}
+	return nil
+}
+
 var _ registrasi.FaceSheetSource = (*FaceSheetStore)(nil)

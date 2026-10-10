@@ -51,6 +51,7 @@ type Service struct {
 	causeOfLoss            registrasi.CauseOfLossDirectory
 	items                  registrasi.PolicyItemSource
 	currency               registrasi.CurrencyDirectory
+	diagnosis              registrasi.DiagnosisDirectory
 	options                registrasi.ItemOptionSource
 	records                registrasi.ClaimRecordSource
 	faceSheet              registrasi.FaceSheetSource
@@ -62,6 +63,8 @@ type Service struct {
 	acceptanceNoteRenderer registrasi.AcceptanceNoteRenderer
 	cashierAccountCheck    bool
 	acceptanceMultiLevel   string
+	defaultPATechnicalPIC  string
+	plaSender              registrasi.PLASender
 	cashier                registrasi.CashierStore
 	cashierGateway         registrasi.CashierGateway
 	lodRenderer            registrasi.LODRenderer
@@ -80,6 +83,7 @@ type Service struct {
 	id                     registrasi.IDGenerator
 	unit                   registrasi.UnitOfWork
 	clock                  clock.Clock
+	unassigned             registrasi.UnassignedTasks
 
 	validateOnReturn bool
 }
@@ -108,6 +112,10 @@ type Options struct {
 	// CurrencyDirectory membaca pilihan Mata Uang tahap Input Estimasi.
 	CurrencyDirectory registrasi.CurrencyDirectory
 
+	// Diagnosis mencari kode diagnosa modal "Transfer Claim ke Komite" (PA). Boleh kosong:
+	// pencarian lalu tidak menemukan apa pun.
+	Diagnosis registrasi.DiagnosisDirectory
+
 	// ItemOptions membaca pilihan Objek item estimasi dari polis.
 	ItemOptions registrasi.ItemOptionSource
 
@@ -134,6 +142,14 @@ type Options struct {
 	// komitenya beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG) — di Pega Operator ID
 	// tetap di AcceptationLOD_PreAct langkah 15. Kosong: anggota terakhir yang menyetujui.
 	AcceptanceMultiLevelCommittee string
+	// DefaultPATechnicalPIC adalah PIC Teknik klaim PA yang belum punya PIC, dipakai Transfer
+	// ke Analyst (PreClaimComitee_OC langkah 21). Kosong: router memilih PIC PA dengan beban
+	// paling sedikit.
+	DefaultPATechnicalPIC string
+
+	// PLASender mengirim PLA lewat email — tombol SEND ALL PLA. Nil: tombolnya menjawab
+	// ErrPLASendUnavailable.
+	PLASender registrasi.PLASender
 	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
 	// mengirim pembayaran ke sistem Kasir.
 	Cashier        registrasi.CashierStore
@@ -179,6 +195,11 @@ type Options struct {
 	IDGenerator registrasi.IDGenerator
 	UnitOfWork  registrasi.UnitOfWork
 	Clock       clock.Clock
+
+	// UnassignedTasks dipakai agent PIC Teknik otomatis (AssignUnassignedTechnicalPIC).
+	// SATU-SATUNYA seam yang boleh kosong: tanpanya agent menolak berjalan, layanan lain tidak
+	// terpengaruh.
+	UnassignedTasks registrasi.UnassignedTasks
 
 	// ValidateOnReturn menentukan apakah tombol Back ikut melewati gerbang validasi.
 	//
@@ -273,6 +294,7 @@ func NewService(o Options) (*Service, error) {
 		causeOfLoss:            o.CauseOfLoss,
 		items:                  o.PolicyItems,
 		currency:               o.CurrencyDirectory,
+		diagnosis:              o.Diagnosis,
 		options:                o.ItemOptions,
 		records:                o.ClaimRecords,
 		faceSheet:              o.FaceSheet,
@@ -284,6 +306,8 @@ func NewService(o Options) (*Service, error) {
 		acceptanceNoteRenderer: o.AcceptanceNoteRenderer,
 		cashierAccountCheck:    o.CashierAccountCheck,
 		acceptanceMultiLevel:   o.AcceptanceMultiLevelCommittee,
+		defaultPATechnicalPIC:  o.DefaultPATechnicalPIC,
+		plaSender:              o.PLASender,
 		cashier:                o.Cashier,
 		cashierGateway:         o.CashierGateway,
 		lodRenderer:            o.LODRenderer,
@@ -302,6 +326,7 @@ func NewService(o Options) (*Service, error) {
 		id:                     o.IDGenerator,
 		unit:                   o.UnitOfWork,
 		clock:                  o.Clock,
+		unassigned:             o.UnassignedTasks,
 		validateOnReturn:       o.ValidateOnReturn,
 	}, nil
 }

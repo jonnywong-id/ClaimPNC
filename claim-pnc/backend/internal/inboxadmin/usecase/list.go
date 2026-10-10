@@ -116,6 +116,9 @@ func (s *Service) List(
 	if err != nil {
 		return Listed{}, err
 	}
+	if query.Scope, _, err = s.resolveScope(ctx, repo, query.Caller, input.Region); err != nil {
+		return Listed{}, err
+	}
 
 	rows, err := repo.List(ctx, query)
 	if err != nil {
@@ -139,6 +142,11 @@ func (s *Service) List(
 	now := s.clock.Now()
 	for i := range rows {
 		rows[i] = rows[i].WithAging(now)
+	}
+
+	// Ukuran halaman tab berlaku hanya bila pemanggil tidak menyebutnya sendiri.
+	if page.Size < 1 && query.Tab.PageSize > 0 {
+		page.Size = query.Tab.PageSize
 	}
 
 	return Listed{Page: inboxadmin.Slice(rows, page), Query: query}, nil

@@ -358,6 +358,20 @@ describe('grid Adjustment', () => {
     expect(within(coverage).getAllByRole('columnheader').slice(0, 5).map((h) => h.textContent)).toEqual(['', 'Nama Coverage', 'Penyebab Kerugian', 'Mata Uang', 'TSI'])
   })
 
+  it('lini PA hanya menampilkan objek yang punya coverage', () => {
+    const base = claim()
+    const covered = base.objek[0]!
+    const pa = claim(
+      { objek: [{ ...covered, nama: 'PESERTA TANPA COVERAGE', coverage: [] }, { ...covered, nama: 'PESERTA BERCOVERAGE' }] },
+      { lini: '002', jenis_bisnis: 'PA' },
+    )
+    wrap(<SurveyorForm klaim={pa} tugas={task({ tindakan_keluar: 'InputSurveyorPA' })} />)
+
+    const summary = screen.getByRole('table', { name: 'Adjustment dan akseptasi' })
+    expect(summary).not.toHaveTextContent('PESERTA TANPA COVERAGE')
+    expect(summary).toHaveTextContent('PESERTA BERCOVERAGE')
+  })
+
   // TrfKomiteButton (IsPA): Transfer ke Analyst pada setiap jaminan yang belum ditandai, tahap Estimation PA.
   it('lini PA tahap Estimation menampilkan Transfer ke Analyst pada jaminan yang belum ditandai', () => {
     const base = claim({ tahap_kini: 'estimasi-pa' }, { lini: '002', jenis_bisnis: 'PA' })

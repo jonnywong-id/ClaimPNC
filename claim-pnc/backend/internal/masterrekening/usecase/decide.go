@@ -183,7 +183,7 @@ func (l *Service) registerWithCashier(
 	// Kode "9" adalah satu-satunya kegagalan yang di sistem lama memicu surel ke PIC
 	// (SendEmailAlertRekening, prasyarat CekStatus.pxResults(1).ResponseCode == "9").
 	if !result.Succeeded && result.Code == "9" {
-		l.recordCashierFailure(ctx, r, result.Message, result.Code, oleh, logger)
+		r.NotificationError = l.recordCashierFailure(ctx, r, result.Message, result.Code, oleh, logger)
 	}
 
 	l.saveCashierTrace(ctx, r, logger)
@@ -219,7 +219,7 @@ func (l *Service) recordCashierFailure(
 	code string,
 	oleh Committee,
 	logger *slog.Logger,
-) {
+) string {
 	if logger != nil {
 		logger.Warn("pendaftaran rekening ke Kasir gagal",
 			slog.String("nomor_rekening", r.Number),
@@ -228,7 +228,7 @@ func (l *Service) recordCashierFailure(
 		)
 	}
 	if l.notifier == nil {
-		return
+		return ""
 	}
 	peringatan := masterrekening.Alert{
 		Account:   r,
@@ -236,10 +236,14 @@ func (l *Service) recordCashierFailure(
 		Code:      code,
 		DecidedBy: masterrekening.Recipients{Name: oleh.Name, Email: oleh.Email},
 	}
-	if err := l.notifier.WarnCashierFailure(ctx, peringatan); err != nil && logger != nil {
-		logger.Error("gagal mengirim peringatan kegagalan Cashier",
-			slog.String("nomor_rekening", r.Number),
-			slog.String("galat", err.Error()),
-		)
+	if err := l.notifier.WarnCashierFailure(ctx, peringatan); err != nil {
+		if logger != nil {
+			logger.Error("gagal mengirim peringatan kegagalan Cashier",
+				slog.String("nomor_rekening", r.Number),
+				slog.String("galat", err.Error()),
+			)
+		}
+		return err.Error()
 	}
+	return ""
 }

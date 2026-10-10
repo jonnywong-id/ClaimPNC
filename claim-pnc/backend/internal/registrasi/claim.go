@@ -308,6 +308,19 @@ type InsuredItem struct {
 	// DateOfBirth teks apa adanya: yyyymmdd atau dd/mm/yyyy.
 	Job         string
 	DateOfBirth string
+
+	// IDCard dan ParticipantStatus adalah KTP/Paspor dan Status peserta Travel — kolom grid
+	// objek IsTravel di InputRegisterDetail. Baca saja, dari T_PERSONLIST polis.
+	IDCard            string
+	ParticipantStatus string
+
+	// VehicleModel, VehicleBrand, VehicleType, dan ChassisNumber adalah Model, Merk, Nama
+	// Tipe, dan Nomor Chasis objek Heavy Equipment — kolom grid objek IsHE di
+	// InputRegisterDetail. Baca saja, dari T_ANEKALIST polis (GetListObjectAneka).
+	VehicleModel  string
+	VehicleBrand  string
+	VehicleType   string
+	ChassisNumber string
 }
 
 // Coverage adalah satu jaminan yang dipakai pada sebuah objek.
@@ -331,6 +344,11 @@ type Coverage struct {
 	// USERBUSINESSPA). Jaminan yang sudah ditandai tidak menampilkan tombol itu lagi. Penyimpanan
 	// hanya MENGISI penanda ini, tidak pernah mengosongkannya.
 	AnalystTransferred bool
+
+	// Committee adalah isian modal "Transfer Claim ke Komite" (lihat CommitteeNote). Dibaca
+	// bersama klaim, tetapi ditulis hanya lewat ClaimRepo.SaveCommitteeNote — Save tidak
+	// menyentuhnya, supaya penyimpanan lain tidak mengosongkannya.
+	Committee CommitteeNote
 }
 
 // CauseOfLossPA adalah kode penyebab kerugian yang menjadi bagian kunci duplikasi
@@ -353,7 +371,9 @@ type Spreading struct {
 	// penghapusan fisik; baris tetap ada dan tidak ikut dihitung.
 	Removed bool
 
-	// FacOfferItem terisi untuk treaty Fac Out. Kosongnya adalah galat kelengkapan.
+	// FacOfferItem — Objek Fac Offer. TIDAK dipakai dan tidak diperiksa (Work Owner
+	// 2026-10-08: POOLDATA.T_FACOFFER.JSONDATA sudah tidak dipakai, dan proteksi Object Name
+	// Fac Out dihapus). Medannya hanya diteruskan apa adanya dari permintaan.
 	FacOfferItem string
 }
 
@@ -403,6 +423,10 @@ type Claim struct {
 	ReportDate   time.Time
 	DateReceived time.Time
 
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (`.ClaimData.TanggalSelesaiRawatInap`)
+	// — POOLDATA.T_CLAIM_PNC.TANGGALSELESAIRAWATINAP (DATE). Kosong: tidak rawat inap.
+	DischargeDate time.Time
+
 	Location   string
 	Chronology string
 	Reporter   Reporter
@@ -430,6 +454,19 @@ type Claim struct {
 	SubjectEmail         string
 	SalvageStatus        string
 
+	// TechnicalPICNote — "Catatan ke PIC Teknis" layar Input Estimasi, `.ClaimData.Remark`
+	// (POOLDATA.T_CLAIM_PNC.REMARK).
+	TechnicalPICNote string
+
+	// InsuredUpdate adalah isian "Pengkinian Data" dan No KTP bagian DATA TERTANGGUNG KLAIM
+	// Input Register PA — lihat InsuredUpdate.
+	InsuredUpdate InsuredUpdate
+
+	// ReportType adalah Jenis Laporan Input Register (`.ClaimData.ReportType`) —
+	// POOLDATA.T_CLAIM_PNC.REPORTTYPE, kode 1 Direct · 2 Via Email · 3 Via Fax · 4 Via Pos /
+	// Kurir · 5 Via Telephone · 6 Via Portal (Work Owner 2026-10-09).
+	ReportType string
+
 	EstimateValue Money
 	Currency      string
 
@@ -442,6 +479,10 @@ type Claim struct {
 
 	// TechnicalPIC adalah PIC teknik yang menerima klaim setelah registrasi.
 	TechnicalPIC string
+
+	// TKI adalah `ClaimData.TKI` — POOLDATA.T_CLAIM_PNC.STS_TKI bernilai "1". Hanya dibaca:
+	// ia memilih petugas PA pada GETDATA_PICTEKNIK (lihat technicalpic.go).
+	TKI bool
 
 	// LargeLossNoticed menandai Notice of Large Losses sudah pernah terbit untuk klaim
 	// ini — `ClaimData.FlagNOLL` di sistem lama.
@@ -575,4 +616,21 @@ func (k Claim) HighestTSI() Money {
 
 func equalFold(a, b string) bool {
 	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
+}
+
+// FillPolicyCurrency mengisi mata uang polis yang kosong dengan mata uang klaim.
+//
+// Ada polis — terukur 2026-10-07 pada polis PA klaim PNCN.26.37 — yang TIDAK membawa mata
+// uang sama sekali: T_GENERAL.CURRENCY kosong dan dokumen JSON_POLIS-nya tidak ada. Mata
+// uang polis dipakai sebagai kurs TSI pada Adjustment, juga pada estimasi, PLA, DLA, dan
+// nota akseptasi; nilai kosong membuat setiap pencarian kurs ditolak (`D-48`).
+//
+// Mata uang klaim (.ClaimData.Currency) adalah pilihan terbaik yang tersisa: di Pega ia
+// berbawaan mata uang polis, dan untuk polis tanpa mata uang layar Input Register mengisinya
+// dengan IDR. Arahnya kebalikan dari bawaan Pega, dan hanya berlaku bila polis kosong —
+// mata uang polis yang terisi tidak pernah ditimpa.
+func (c *Claim) FillPolicyCurrency() {
+	if strings.TrimSpace(c.Policy.Currency) == "" {
+		c.Policy.Currency = strings.TrimSpace(c.Currency)
+	}
 }

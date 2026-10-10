@@ -259,9 +259,12 @@ export function ReceiveTKAInboxPage() {
   const [sending, setSending] = useState<string | null>(null)
 
   /* Hasil penyimpanan terakhir, ditampilkan di atas tabel. */
-  const [saved, setSaved] = useState<{ claim: string; notified: boolean; attempted: boolean } | null>(
-    null,
-  )
+  const [saved, setSaved] = useState<{
+    claim: string
+    notified: boolean
+    attempted: boolean
+    error?: string | undefined
+  } | null>(null)
   const [failure, setFailure] = useState<MessageContent | null>(null)
 
   function submitRow(row: ReceiveTKATask) {
@@ -280,6 +283,7 @@ export function ReceiveTKAInboxPage() {
             claim: result.nomor_klaim,
             notified: result.pemberitahuan_terkirim,
             attempted: result.pemberitahuan_dicoba,
+            error: result.pemberitahuan_galat,
           })
           // Draf barisnya dibuang: barisnya sudah hilang dari daftar, dan menyisakan
           // tanggalnya akan membuatnya muncul kembali bila nomor klaim yang sama kelak
@@ -500,6 +504,11 @@ export function ReceiveTKAInboxPage() {
               {' '}
               Namun pemberitahuannya <span className="font-medium">gagal dikirim</span> —
               tanggalnya tetap aman, tetapi penerimanya perlu dikabari secara lain.
+              {saved.error && (
+                <span className="mt-2 block break-words font-mono text-xs">
+                  Rincian untuk IT Support: {saved.error}
+                </span>
+              )}
             </span>
           )}
           {!saved.attempted && ' Pemberitahuan lewat surel belum aktif di lingkungan ini.'}

@@ -86,6 +86,10 @@ type CoverageDTO struct {
 	// AnalystTransferred: jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya
 	// dikirim server; tombolnya tidak tampil lagi pada jaminan ini.
 	AnalystTransferred bool `json:"sudah_transfer_analis,omitempty"`
+
+	// Committee adalah isian modal "Transfer Claim ke Komite" — hanya dikirim server; diubah
+	// lewat POST /klaim/{id}/jaminan/isian-komite.
+	Committee *CommitteeNoteDTO `json:"isian_komite,omitempty"`
 }
 
 // InsuredItemDTO adalah satu objek pertanggungan.
@@ -99,6 +103,15 @@ type InsuredItemDTO struct {
 	// dapat dibaca.
 	Job         string `json:"pekerjaan,omitempty"`
 	DateOfBirth string `json:"tanggal_lahir,omitempty"`
+
+	// KTP/Paspor dan Status peserta Travel; Model, Merk, Nama Tipe, dan Nomor Chasis objek
+	// HE. Seluruhnya baca saja dari tabel objek polis, kosong bila tidak berlaku.
+	IDCard            string `json:"ktp_paspor,omitempty"`
+	ParticipantStatus string `json:"status_peserta,omitempty"`
+	VehicleModel      string `json:"model,omitempty"`
+	VehicleBrand      string `json:"merk,omitempty"`
+	VehicleType       string `json:"nama_tipe,omitempty"`
+	ChassisNumber     string `json:"nomor_chasis,omitempty"`
 }
 
 // ReporterDTO adalah orang yang melaporkan kejadian.
@@ -198,6 +211,8 @@ type ClaimDTO struct {
 	DateOfLoss   string `json:"tanggal_kejadian"`
 	ReportDate   string `json:"tanggal_lapor"`
 	DateReceived string `json:"tanggal_terima_dokumen"`
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate string `json:"tanggal_keluar_rawat_inap"`
 
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
@@ -211,6 +226,17 @@ type ClaimDTO struct {
 	RemarkRecommendation string `json:"rekomendasi"`
 	SubjectEmail         string `json:"subjek_email"`
 	SalvageStatus        string `json:"status_salvage"`
+
+	// TechnicalPICNote adalah Catatan ke PIC Teknis (T_CLAIM_PNC.REMARK).
+	TechnicalPICNote string `json:"catatan_pic_teknis"`
+
+	// No KTP dan Pengkinian Data Input Register PA (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL).
+	UpdateIDCard string `json:"pengkinian_no_ktp"`
+	UpdatePhone  string `json:"pengkinian_no_hp"`
+	UpdateEmail  string `json:"pengkinian_email"`
+
+	// ReportType adalah Jenis Laporan (T_CLAIM_PNC.REPORTTYPE).
+	ReportType string `json:"jenis_laporan"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`
@@ -295,6 +321,8 @@ type RegisterRequest struct {
 	DateOfLoss   string `json:"tanggal_kejadian"`
 	ReportDate   string `json:"tanggal_lapor"`
 	DateReceived string `json:"tanggal_terima_dokumen"`
+	// DischargeDate adalah Tanggal Keluar Rawat Inap PA (TANGGALSELESAIRAWATINAP).
+	DischargeDate string `json:"tanggal_keluar_rawat_inap"`
 
 	Location   string      `json:"lokasi"`
 	Chronology string      `json:"kronologi"`
@@ -308,6 +336,14 @@ type RegisterRequest struct {
 	RemarkRecommendation string `json:"rekomendasi"`
 	SubjectEmail         string `json:"subjek_email"`
 	SalvageStatus        string `json:"status_salvage"`
+
+	// No KTP dan Pengkinian Data Input Register PA.
+	UpdateIDCard string `json:"pengkinian_no_ktp"`
+	UpdatePhone  string `json:"pengkinian_no_hp"`
+	UpdateEmail  string `json:"pengkinian_email"`
+
+	// ReportType adalah Jenis Laporan (T_CLAIM_PNC.REPORTTYPE).
+	ReportType string `json:"jenis_laporan"`
 
 	EstimateValueCents int64  `json:"nilai_estimasi_sen"`
 	Currency           string `json:"mata_uang"`

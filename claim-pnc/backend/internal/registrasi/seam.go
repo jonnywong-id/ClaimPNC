@@ -27,6 +27,11 @@ type ClaimRepo interface {
 	// terhitung, dan pencarian mencakup klaim yang dibuat KEDUA sistem selama masa
 	// paralel — nomor `PNC-xxxx` dari Pega maupun `PNCN.YY.xxxx` dari sini.
 	FindDuplicates(ctx context.Context, key []DuplicateKey, exceptID string) ([]DuplicateClaim, error)
+
+	// SaveCommitteeNote menuliskan isian modal "Transfer Claim ke Komite" satu jaminan.
+	// object dan coverage berbasis 1 (URUTAN_OBJEK, URUTAN). InitialName dan CommitteeDate
+	// tidak ditulis.
+	SaveCommitteeNote(ctx context.Context, claimID string, object, coverage int, n CommitteeNote) error
 }
 
 // TaskRepo adalah seam ke penyimpanan tugas.
@@ -124,6 +129,15 @@ type Assigner interface {
 	//
 	// Untuk tahap Workbasket, ia mengembalikan nama antreannya dan tidak memilih orang.
 	Assign(ctx context.Context, stage Stage, claim Claim, caller string) (Assignee, error)
+}
+
+// AttendanceSource adalah seam ke absensi PIC — Connect REST `ServiceGetDataAbsenPIC`
+// (`GET .../HCC/Absen/attendance/{PIC}/{yyyyMMdd}?caseId=`).
+//
+// Galat dikembalikan apa adanya; pemanggil memperlakukannya seperti Pega (step 15.6 menelan
+// galat penguraian), yaitu sebagai absensi kosong.
+type AttendanceSource interface {
+	Attendance(ctx context.Context, operator string, date time.Time, claimNumber string) (Attendance, error)
 }
 
 // NotificationKind menamai peristiwa yang layak diberitahukan ke luar modul.
@@ -256,8 +270,9 @@ type IDGenerator interface {
 //
 // Ia sempat saya isi dari `TANGGALTERIMADOKUMEN`. Itu keliru dua kali: kolom itu menyimpan
 // `ReceivedDate`, dan `ReceivedDate` memberi makan `ReportDate` — bukan `DateReceived`.
-// Akibatnya Tanggal Lapor tertinggal kosong, padahal aturan "Tanggal Lapor ≤ DOL + 7 hari"
-// bersandar padanya.
+// Akibatnya Tanggal Lapor tertinggal kosong, padahal aturan "Tanggal Kejadian ≤ Tanggal
+// Lapor ≤ Tanggal Terima Dokumen" bersandar padanya. (Batas tujuh hari yang semula ikut
+// disebut di sini DICABUT 2026-10-06 — lihat registrasi/validation.go.)
 type ClaimReportSnapshot struct {
 	// DateOfLoss ← ReceiveDocument.TglKejadian
 	DateOfLoss time.Time
@@ -393,4 +408,20 @@ func SingleCauseOfLoss(options []CauseOfLossOption) (CauseOfLossOption, bool) {
 		return CauseOfLossOption{}, false
 	}
 	return options[0], true
+}
+
+// UnassignedTasks adalah seam agent `AutoPICAgent` (`TransferAllCaseNotAssigned`): tugas yang
+// diparkir di antrean ServicePNC karena klaimnya belum punya PIC Teknik.
+type UnassignedTasks interface {
+	// UnassignedTechnicalTasks adalah `BrowseCaseNotAssigned`: tugas terbuka milik
+	// ServicePNC yang klaimnya belum ber-PIC Teknik (kosong atau `-`) dan bernomor polis.
+	UnassignedTechnicalTasks(ctx context.Context) ([]Task, error)
+
+	// LockUnassigned mengunci satu tugas di dalam transaksi, bila tugas itu masih terbuka dan
+	// masih milik ServicePNC; selain itu ErrTaskNotFound. Kunci inilah yang membuat dua
+	// instans aplikasi tidak memproses klaim yang sama dua kali.
+	LockUnassigned(ctx context.Context, taskID string) (Task, error)
+
+	// Reassign memindahkan tugas terbuka dari ServicePNC ke operator itu.
+	Reassign(ctx context.Context, taskID, to string) error
 }

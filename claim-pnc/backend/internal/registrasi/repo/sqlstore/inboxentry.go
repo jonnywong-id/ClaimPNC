@@ -69,7 +69,7 @@ func (s *InboxEntryStore) Mirror(ctx context.Context, e registrasi.InboxEntry) e
 		"daftar_kerja_perbarui", update,
 		"daftar_kerja_sisip", insert,
 	); err != nil {
-		return fmt.Errorf("registrasi/sqlstore: menulis daftar kerja %s: %w", key, err)
+		return fmt.Errorf("registrasi/sqlstore: menulis daftar kerja %s ke POOLDATA.T_CLAIMLIST_ADMIN: %w", key, err)
 	}
 	return nil
 }

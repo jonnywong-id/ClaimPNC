@@ -72,10 +72,14 @@ type SettlementLine struct {
 	Currency    string       // CURRENCY
 	Rate        ExchangeRate // CURRENCYVALUE — "Nilai Dalam IDR", kurs tanggal kejadian (`D-48`)
 
-	Propose   Money   // TOTAL_CLAIM — ProposeAdjustmentValue, "Total Klaim"
-	Submitted Money   // PROPOSE_VALUE — ProposeValue, "Nilai Pengajuan Tertanggung"
-	LOC       Percent // LOC — "Lack Of Document (%)"
-	SalvageA  Money   // NILAI_SALVAGE_A — SalvageValueA
+	Propose   Money // TOTAL_CLAIM — ProposeAdjustmentValue, "Total Klaim"
+	Submitted Money // PROPOSE_VALUE — ProposeValue, "Nilai Pengajuan Tertanggung" (PA: "Nilai Pengajuan")
+	// InsuredSubmitted adalah ProposeValueTertanggung, "Nilai Pengajuan Tertanggung" kontainer
+	// IsPA — PROPOSE_VALUE_TERTANGGUNG (Work Owner 2026-10-09). Hanya dicatat; tidak ikut
+	// menghitung nilai mana pun.
+	InsuredSubmitted Money
+	LOC              Percent // LOC — "Lack Of Document (%)"
+	SalvageA         Money   // NILAI_SALVAGE_A — SalvageValueA
 
 	// SalvageB (SalvageValue, "Nilai Salvage B") dan Interim (InterimPayment, "Nilai
 	// Interim") mengurangi gross tipe Final dan Interim. Keduanya tidak punya kolom di
@@ -176,16 +180,18 @@ type SettlementInput struct {
 	PaymentType string
 	Currency    string
 	Propose     Money // Total Klaim
-	Submitted   Money // Nilai Pengajuan Tertanggung
-	LOC         Percent
-	SalvageA    Money
-	SalvageB    Money
-	RiskType    string
-	RiskPercent Percent
-	RiskValue   Money // diisi petugas hanya untuk tipe resiko 3 (Lainnya)
-	Fee         AdjusterFee
-	Chronology  string
-	Notes       string
+	Submitted   Money // Nilai Pengajuan Tertanggung (PA: Nilai Pengajuan)
+	// InsuredSubmitted adalah Nilai Pengajuan Tertanggung PA (PROPOSE_VALUE_TERTANGGUNG).
+	InsuredSubmitted Money
+	LOC              Percent
+	SalvageA         Money
+	SalvageB         Money
+	RiskType         string
+	RiskPercent      Percent
+	RiskValue        Money // diisi petugas hanya untuk tipe resiko 3 (Lainnya)
+	Fee              AdjusterFee
+	Chronology       string
+	Notes            string
 }
 
 // SettlementContext adalah bahan dari klaim yang dipakai menghitung dan memeriksa baris.
@@ -357,6 +363,7 @@ func ComputeSettlementLine(in SettlementInput, sc SettlementContext) SettlementL
 	case proposeBased(pt):
 		line.Propose = in.Propose
 		line.Submitted = in.Submitted
+		line.InsuredSubmitted = in.InsuredSubmitted
 		line.LOC = in.LOC
 		line.SalvageA = in.SalvageA
 		line.SalvageB = in.SalvageB
@@ -429,7 +436,12 @@ func NewSettlementLine(in SettlementInput, sc SettlementContext) (SettlementLine
 
 	// Tahap InputSurveyor baru dapat dicapai sesudah CFS, tetapi aturannya dijaga di sini
 	// juga: adjustment dibentuk dari estimasi yang sudah dikunci.
-	if !sc.Claim.HasFaceSheet() {
+	//
+	// PA sebelum jaminannya ditransfer ke Analyst tidak diperiksa: Claim Face Sheet adalah
+	// bagian Analyst, bukan PIC Admin yang mengisi adjustment di tahap Estimation (Work Owner
+	// 2026-10-09).
+	paBeforeAnalyst := sc.Claim.Policy.Line == LinePersonalAccident && !sc.Coverage.AnalystTransferred
+	if !paBeforeAnalyst && !sc.Claim.HasFaceSheet() {
 		v.add(ViolationSettlementFaceSheet, "adjustment", msgSettlementNeedsSheet)
 		return SettlementLine{}, v.err()
 	}

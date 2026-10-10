@@ -37,10 +37,9 @@ import (
 //
 // Di sistem lama, layar ini membedakan perilaku bagi `GCNMFW:CaseManager` dan
 // `GCNMFW:PncManagerAdmin` — keduanya melewati penyaring cabang dan memperoleh pemilih
-// korwil. Pembedaan itu belum dibawa, dan tidak dapat dibawa sampai sumber peran ada.
-// Akibatnya untuk sekarang SELURUH pengguna berperilaku seperti manajer: tanpa penyaring
-// cabang. Itu sejalan dengan keputusan Work Owner 2026-09-20 yang menunda penyaring cabang
-// sampai API pengganti DB Link HRD tersedia (`R-03`).
+// kanwil. Sejak 2026-10-07 pembedaan itu DIBAWA: peran dibaca dari
+// POOLDATA.M_LOGIN_GROUP_PNC, cabang petugas lewat DB Link HRD yang sama dengan Pega.
+// Aturannya di inboxadmin/scope.go; ia mencabut penundaan Work Owner 2026-09-20.
 //
 // # Kenapa jalurnya tanpa /v1
 //
@@ -54,5 +53,13 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 
 		perPortal.Get("/inbox-admin/tab", h.Metadata)
 		perPortal.Get("/inbox-admin", h.List)
+		perPortal.Get("/inbox-admin/jumlah", h.Counts)
+		perPortal.Get("/inbox-admin/batas", h.Viewer)
+
+		// Tiga tombol ekspor CSV — seluruhnya membaca saja, dan seluruhnya data milik
+		// satu badan hukum, sehingga ikut di balik pemeriksaan portal (`R-20`).
+		perPortal.Get("/inbox-admin/ekspor/lod", h.ExportLOD)
+		perPortal.Get("/inbox-admin/ekspor/hasil-auto-claim", h.ExportAutoClaim)
+		perPortal.Get("/inbox-admin/ekspor/klaim-gagal", h.ExportAutoClaimFailures)
 	})
 }

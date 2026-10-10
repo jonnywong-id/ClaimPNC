@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/oraerror"
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
 )
@@ -37,9 +38,14 @@ const (
 	CodeDocumentDelete       = "hapus_dokumen_gagal"
 	CodeMalformedRequest     = "permintaan_cacat"
 	CodeInternalError        = "galat_internal"
-	CodePremiumUnavailable   = "status_premi_tidak_terbaca"
-	CodeCashierUnavailable   = "kasir_tidak_terhubung"
-	CodeCashierRejected      = "kasir_menolak"
+	// CodeDatabaseError: penyimpanan/pembacaan tabel ditolak Oracle; pesannya memuat galat
+	// Oracle apa adanya (Work Owner 2026-10-10).
+	CodeDatabaseError      = "galat_basis_data"
+	CodePremiumUnavailable = "status_premi_tidak_terbaca"
+	CodeCashierUnavailable = "kasir_tidak_terhubung"
+	CodePLASendUnavailable = "kirim_pla_tidak_tersedia"
+	CodeCashierNoReply     = "kasir_tidak_menjawab"
+	CodeCashierRejected    = "kasir_menolak"
 )
 
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
@@ -229,6 +235,21 @@ func mapError(err error) (int, ErrorResponse) {
 			Message: "Tindakan itu tidak berlaku pada tahap ini.",
 		}
 
+	case errors.Is(err, usecase.ErrCashierNoReply):
+		// Kasir menerima permintaan tetapi tidak menjawab: pembayaran MUNGKIN sudah diproses.
+		// Baris tidak ditandai terkirim; petugas diminta memeriksa Kasir sebelum mengulang.
+		return http.StatusGatewayTimeout, ErrorResponse{
+			Code: CodeCashierNoReply,
+			Message: "The cashier system did not reply in time. The transfer may already have been received by the cashier — " +
+				"check it in the cashier system before trying again, so the payment is not sent twice.",
+		}
+
+	case errors.Is(err, usecase.ErrPLASendUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodePLASendUnavailable,
+			Message: "PLA email sending is not configured on this server. Report it to the administrator.",
+		}
+
 	case errors.Is(err, usecase.ErrCashierUnavailable):
 		// Kasir tidak menjawab atau alamatnya belum terdaftar: tidak ada yang ditandai terkirim.
 		return http.StatusBadGateway, ErrorResponse{
@@ -258,6 +279,11 @@ func mapError(err error) (int, ErrorResponse) {
 		}
 
 	default:
+		// Galat Oracle ditampilkan apa adanya beserta tabelnya, bukan pesan umum — supaya
+		// petugas dapat melaporkannya (Work Owner 2026-10-10). Lihat platform/oraerror.
+		if message, ok := oraerror.Describe(err); ok {
+			return http.StatusInternalServerError, ErrorResponse{Code: CodeDatabaseError, Message: message}
+		}
 		return http.StatusInternalServerError, ErrorResponse{
 			Code:    CodeInternalError,
 			Message: "Terjadi kesalahan pada sistem.",

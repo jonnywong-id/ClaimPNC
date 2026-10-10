@@ -152,13 +152,13 @@ func TestMenuIsGroupedAndOrderedBySequence(t *testing.T) {
 
 	groups, ok := content["menu"].([]any)
 	require.True(t, ok)
-	require.Len(t, groups, 3, "group IT memegang MASTER, INBOX, dan VIEW")
+	require.Len(t, groups, 4, "group IT memegang MASTER, INBOX, VIEW, dan UTILITY")
 
 	var names []string
 	for _, g := range groups {
 		names = append(names, g.(map[string]any)["nama"].(string))
 	}
-	require.Equal(t, []string{"MASTER", "INBOX", "VIEW"}, names)
+	require.Equal(t, []string{"MASTER", "INBOX", "VIEW", "UTILITY"}, names)
 }
 
 // Submenu tersusun di bawah induknya lewat MENU_ID_LEADER, dan urutannya mengikuti

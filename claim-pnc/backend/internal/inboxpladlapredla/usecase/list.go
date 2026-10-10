@@ -459,6 +459,21 @@ func (s *Service) SendAdvice(
 	claimKey string,
 	adviceNo string,
 ) (SendResult, error) {
+	return s.SendAdviceWith(ctx, portalAlias, caller, tabCode, claimKey, adviceNo, nil)
+}
+
+// SendAdviceWith sama dengan SendAdvice, ditambah berkas yang dilampirkan di DEPAN lampiran
+// klaim — dipakai SEND ALL PLA untuk melampirkan PDF PLA-nya sendiri, padanan berkas kategori
+// PLA hasil `AttachAsPDFC` yang dilampirkan `UpdateDetailPLA2` (Obj-Browse + ASMCollectAttachments).
+func (s *Service) SendAdviceWith(
+	ctx context.Context,
+	portalAlias string,
+	caller inboxpladlapredla.Caller,
+	tabCode string,
+	claimKey string,
+	adviceNo string,
+	extra []inboxpladlapredla.Attachment,
+) (SendResult, error) {
 	var hasil SendResult
 
 	cleanCaller := caller.Clean()
@@ -529,6 +544,9 @@ func (s *Service) SendAdvice(
 		ctx, claimKey, inboxpladlapredla.AttachmentCategory(tab))
 	if err != nil {
 		return hasil, fmt.Errorf("mengambil lampiran: %w", err)
+	}
+	if len(extra) > 0 {
+		lampiran = append(append([]inboxpladlapredla.Attachment{}, extra...), lampiran...)
 	}
 
 	// --- 4. kirim suratnya --------------------------------------------------------

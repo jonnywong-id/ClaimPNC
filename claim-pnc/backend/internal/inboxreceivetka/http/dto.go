@@ -189,6 +189,10 @@ type CompleteResponse struct {
 	// `Commit` sehingga kegagalannya membatalkan seluruh pekerjaan. Lihat usecase.Complete.
 	NotificationSent bool `json:"pemberitahuan_terkirim"`
 
+	// NotificationError adalah sebab pemberitahuan gagal dikirim, untuk dilampirkan ke IT
+	// Support. Tidak memuat kredensial.
+	NotificationError string `json:"pemberitahuan_galat,omitempty"`
+
 	Portal string `json:"portal"`
 }
 
@@ -273,6 +277,7 @@ func toCompleteResponse(
 	claimNumber string,
 	completedAt time.Time,
 	attempted, sent bool,
+	notificationError string,
 	portalAlias string,
 ) CompleteResponse {
 	return CompleteResponse{
@@ -280,6 +285,7 @@ func toCompleteResponse(
 		CompletedAt:           completedAt.Format(dateLayout),
 		NotificationAttempted: attempted,
 		NotificationSent:      sent,
+		NotificationError:     notificationError,
 		Portal:                portalAlias,
 	}
 }

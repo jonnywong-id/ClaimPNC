@@ -75,9 +75,30 @@ SELECT LSC_NOTE FROM POOLDATA.V_STS_CLAIM WHERE LSC_ID = :1
 
 -- name: item_pilihan_properti
 --
--- Pilihan Objek pada item estimasi lini Fire: PropertyItemList objek polis ini.
--- Objek Fire dikenali lewat OBJECTNO, sama seperti polis_objek_property.
-SELECT TO_CLOB(PROPERTYITEMLIST)
-  FROM POOLDATA.T_PROPERTYLIST
- WHERE NOPOLIS = :1 AND PRODKE = :2 AND TO_CHAR(OBJECTNO) = :3
-   AND (FLAGDELETE IS NULL OR FLAGDELETE = 0)
+-- Pilihan Objek pada item estimasi lini Fire: item properti objek polis ini, dari tabel
+-- relasional POOLDATA.T_PROPERTYITEMLIST. Kolom JSON T_PROPERTYLIST.PROPERTYITEMLIST tidak
+-- dibaca lagi (Work Owner, 2026-10-09).
+--
+-- ID objek klaim Fire adalah OBJECTNO, sedangkan T_PROPERTYITEMLIST dikunci INDEXOBJECT,
+-- sehingga objeknya dicari lewat T_PROPERTYLIST. Objek tanpa baris di tabel ini berarti
+-- polis tidak punya daftar item (terukur 2026-10-09: 318 dari 20.305 objek Fire terisi).
+SELECT i.ITEMTYPE, i.PROPERTYITEMGROUP, i.TSIOBJECTITEM
+  FROM POOLDATA.T_PROPERTYITEMLIST i
+  JOIN POOLDATA.T_PROPERTYLIST p
+    ON p.NOPOLIS = i.NOPOLIS AND p.PRODKE = i.PRODKE AND p.INDEXOBJECT = i.INDEXOBJECT
+ WHERE i.NOPOLIS = :1 AND i.PRODKE = :2 AND p.OBJECTNO = :3
+   AND (p.FLAGDELETE IS NULL OR p.FLAGDELETE <> '1')
+   AND (i.FLAGDELETE IS NULL OR i.FLAGDELETE <> '1')
+ ORDER BY i.PROPERTYITEMCODE, i.ITEMTYPE
+
+-- name: item_pilihan_travel
+--
+-- Pilihan Objek pada item estimasi lini Travel: manfaat plan dari master
+-- POOLDATA.COVERAGETRAVEL — padanan `SearchCoverageTravel_RD` (Param.plan = kode coverage
+-- Travel). PLANID adalah PLANTRAVEL.ID (terukur 2026-10-09: 4.057 dari 4.057 baris cocok),
+-- dan ID-nya menjadi ObjectItemID item. LIMIT (CoverageDetailLimit) tidak dibaca: isinya teks
+-- berformat campuran seperti "1500,000", dan TSIperCoverage tidak disimpan aplikasi ini.
+SELECT c.ID, c.INDCOVERAGENAME
+  FROM POOLDATA.COVERAGETRAVEL c
+ WHERE c.PLANID = :1
+ ORDER BY c.ID

@@ -47,6 +47,10 @@ type EstimateRequest struct {
 	TaskID string              `json:"tugas_id"`
 	Return bool                `json:"kembali"`
 	Object []EstimateObjectDTO `json:"objek"`
+
+	// TechnicalPICNote adalah Catatan ke PIC Teknis. Tidak dikirim (null) berarti catatan
+	// yang tersimpan dibiarkan — layar Input Surveyor memakai endpoint yang sama tanpa isian ini.
+	TechnicalPICNote *string `json:"catatan_pic_teknis"`
 }
 
 // CurrencyDTO adalah satu pilihan Mata Uang.
@@ -77,7 +81,7 @@ func itemDTO(items []registrasi.ObjectItem) []ObjectItemDTO {
 }
 
 func estimateCommand(b EstimateRequest) (usecase.EstimateCommand, error) {
-	command := usecase.EstimateCommand{TaskID: strings.TrimSpace(b.TaskID), Return: b.Return}
+	command := usecase.EstimateCommand{TaskID: strings.TrimSpace(b.TaskID), Return: b.Return, TechnicalPICNote: b.TechnicalPICNote}
 	for _, o := range b.Object {
 		var coverages [][]usecase.ObjectItemInput
 		for _, c := range o.Coverage {
@@ -163,6 +167,7 @@ func (h *Handler) CompleteEstimate(w http.ResponseWriter, r *http.Request) {
 
 // ItemOptionDTO adalah satu pilihan Objek item estimasi.
 type ItemOptionDTO struct {
+	ID       string `json:"id"`
 	Name     string `json:"nama"`
 	Group    string `json:"kelompok"`
 	TSICents int64  `json:"tsi_sen"`
@@ -171,23 +176,64 @@ type ItemOptionDTO struct {
 // ItemOptionsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/pilihan-item.
 type ItemOptionsResponse struct {
 	Option []ItemOptionDTO `json:"pilihan"`
+	// Default adalah nama item bawaan untuk item baru ("Others"/"OTHERS"; kosong untuk Fire).
+	Default string `json:"bawaan"`
 }
 
-// ItemOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-item?objek=….
+// ItemOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-item?objek=…&coverage=….
+// coverage adalah kode coverage jaminan — plan untuk lini Travel.
 func (h *Handler) ItemOptions(w http.ResponseWriter, r *http.Request, claimID string) {
 	if _, ok := h.callerOf(w, r); !ok {
 		return
 	}
-	option, err := h.service.ItemOptions(r.Context(), claimID, r.URL.Query().Get("objek"))
+	query := r.URL.Query()
+	choices, err := h.service.ItemOptions(r.Context(), claimID, query.Get("objek"), query.Get("coverage"))
 	if err != nil {
 		h.failure(w, r, err)
 		return
 	}
-	body := make([]ItemOptionDTO, 0, len(option))
-	for _, o := range option {
-		body = append(body, ItemOptionDTO{Name: o.Name, Group: o.Group, TSICents: int64(o.TSI)})
+	body := make([]ItemOptionDTO, 0, len(choices.Option))
+	for _, o := range choices.Option {
+		body = append(body, ItemOptionDTO{ID: o.ID, Name: o.Name, Group: o.Group, TSICents: int64(o.TSI)})
 	}
-	h.writeResponse(w, r, http.StatusOK, ItemOptionsResponse{Option: body})
+	h.writeResponse(w, r, http.StatusOK, ItemOptionsResponse{Option: body, Default: choices.Default})
+}
+
+// CoverageOptionsResponse adalah jawaban GET /api/registrasi/klaim/{klaimID}/pilihan-coverage.
+type CoverageOptionsResponse struct {
+	Option []CoverageDTO `json:"pilihan"`
+}
+
+// CoverageOptions menangani GET /api/registrasi/klaim/{klaimID}/pilihan-coverage?objek=… —
+// isi dropdown "Tambah coverage": coverage polis milik objek itu beserta TSI dan
+// spreading-nya, sehingga memilih satu coverage mengisi seluruh barisnya.
+func (h *Handler) CoverageOptions(w http.ResponseWriter, r *http.Request, claimID string) {
+	if _, ok := h.callerOf(w, r); !ok {
+		return
+	}
+	option, err := h.service.CoverageOptions(r.Context(), claimID, r.URL.Query().Get("objek"))
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	body := make([]CoverageDTO, 0, len(option))
+	for _, c := range option {
+		cov := CoverageDTO{
+			ID:          c.ID,
+			Name:        c.Name,
+			CauseOfLoss: c.CauseOfLoss,
+			TSICents:    int64(c.TSI),
+			Spreading:   make([]SpreadingDTO, 0, len(c.Spreading)),
+		}
+		for _, s := range c.Spreading {
+			cov.Spreading = append(cov.Spreading, SpreadingDTO{
+				TreatyKind: s.TreatyKind, Name: s.Name, Share: Percent(s.Share),
+				Removed: s.Removed, FacOfferItem: s.FacOfferItem,
+			})
+		}
+		body = append(body, cov)
+	}
+	h.writeResponse(w, r, http.StatusOK, CoverageOptionsResponse{Option: body})
 }
 
 // Currencies menangani GET /api/registrasi/mata-uang.

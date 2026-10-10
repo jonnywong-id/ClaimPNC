@@ -92,14 +92,21 @@ type Config struct {
 	Session         Session
 	HCQ             HCQ
 	Cashier         Cashier
+	AttendancePIC   AttendancePIC
+	AutoPIC         AutoPIC
 	VirtualAccount  VirtualAccount
 	// AcceptanceCommittee adalah Nama Komite Akseptasi yang terisi pada form AcceptationLOD
 	// bila komite adjustment beranggota dua atau lebih (AKSEPTASI_KOMITE_BERJENJANG). Pega
 	// menuliskan satu Operator ID di dalam rule (AcceptationLOD_PreAct langkah 15); di sini
 	// ia pengaturan (D-15). Kosong: anggota komite terakhir yang menyetujui.
 	AcceptanceCommittee string
-	SMTP                SMTP
-	DocumentStorage     DocumentStorage
+	// PATechnicalPIC adalah PIC Teknik bawaan klaim PA yang belum punya PIC Teknik
+	// (PIC_TEKNIK_PA_BAWAAN). Pega menuliskan satu Operator ID di dalam rule
+	// (PreClaimComitee_OC langkah 21: UserTeknis kosong -> ESTHERSIMBOLON); di sini ia
+	// pengaturan (D-15). Kosong: PIC PA dengan beban paling sedikit.
+	PATechnicalPIC  string
+	SMTP            SMTP
+	DocumentStorage DocumentStorage
 
 	// AuctionHouse memuat alamat layanan balai lelang SimasBid.
 	//
@@ -258,12 +265,47 @@ type Cashier struct {
 	Password    string
 	Timeout     time.Duration
 
+	// TransferTimeout adalah batas waktu Transfer Kasir (KASIR_TRANSFER_BATAS_WAKTU, bawaan
+	// 2 menit) — terpisah dari Timeout pendaftaran rekening karena Kasir memproses
+	// pembayaran sebelum menjawab.
+	TransferTimeout time.Duration
+
 	// CheckAccount menyalakan pemeriksaan "No Rekening terdaftar di sistem Kasir"
 	// (`GetDataBankMaster` langkah 5–7) saat penerima klaim disimpan. Pega melewatinya di
 	// server dev dengan MEMBANDINGKAN NAMA SERVER; di sini pengaturan eksplisit
 	// KASIR_CEK_REKENING (Steering §3.4). Bawaannya menyala di staging dan produksi.
 	CheckAccount bool
 }
+
+// AttendancePIC adalah layanan absensi PIC — Connect REST `ServiceGetDataAbsenPIC`
+// (`.../prweb/PRRestService/HCC/Absen/attendance/{PIC}/{yyyyMMdd}`), dipakai memilih PIC
+// Teknik. Rule Pega memuat alamat tetap dan auth profile `servicehcd`; keduanya TIDAK
+// disalin (ADR-0025): alamat dasar dari ABSEN_PIC_URL, kredensial dari ABSEN_PIC_USER /
+// ABSEN_PIC_PASSWORD.
+//
+// Boleh kosong. Tanpa alamat, setiap kandidat PIC dianggap hadir — sama dengan Pega saat
+// layanannya tidak menjawab.
+type AttendancePIC struct {
+	BaseURL  string
+	User     string
+	Password string
+	Timeout  time.Duration
+}
+
+// AutoPIC adalah agent PIC Teknik otomatis — padanan entri `AutoPICAgent`
+// (`TransferAllCaseNotAssigned`) pada `Agents/TATReportAgent-Agents.xml`.
+//
+// MATI SECARA BAKU (keputusan Work Owner 2026-10-09): agent ini mengubah PIC Teknik dan
+// pemilik tugas klaim sungguhan, sehingga ia hanya menyala bila AGEN_PIC_OTOMATIS_AKTIF diisi
+// "true". Jamnya dari AGEN_PIC_OTOMATIS_JAM, bawaan "08:15" seperti Pega; boleh lebih dari
+// satu, dipisah koma ("08:15,13:00"). Zona waktunya WIB.
+type AutoPIC struct {
+	Enabled bool
+	Times   string
+}
+
+// Active menyatakan alamat layanan absensi sudah diisi.
+func (a AttendancePIC) Active() bool { return strings.TrimSpace(a.BaseURL) != "" }
 
 // Aktif menyatakan konfigurasi ini cukup untuk menghubungi Kasir.
 func (k Cashier) Active() bool {
@@ -456,6 +498,17 @@ func (a AuctionHouse) Active() bool {
 // dari jaringan tepercaya tanpa autentikasi. Bila keduanya diisi, kredensialnya HANYA
 // dikirim setelah STARTTLS berhasil — penolakannya ada di kode, bukan di konfigurasi.
 type SMTP struct {
+	// EmailAccount adalah EMAIL_ACCOUNT di POOLDATA.M_EMAIL_SERVER_PNC yang dipakai seluruh
+	// modul pengirim surel (EMAIL_ACCOUNT, bawaan ClaimPNC — Work Owner 2026-10-10). Bila
+	// basis data portal utama tersedia, host, port, alamat, dan sandi dibaca dari tabel itu;
+	// Host sampai From di bawah hanya dipakai pada mode tanpa Oracle.
+	EmailAccount string
+
+	// AdminAccount adalah EMAIL_ACCOUNT untuk surel yang di Pega dikirim lewat Email Account
+	// `"Admin-PNC"`: PLA/DLA (SEND ALL PLA, Inbox PLA/DLA) dan peringatan Master Rekening
+	// (EMAIL_ACCOUNT_ADMIN_PNC, bawaan Admin-PNC — Work Owner 2026-10-10).
+	AdminAccount string
+
 	Host     string
 	Port     int
 	User     string
@@ -673,6 +726,18 @@ func Load() (Config, error) {
 	if err != nil {
 		issues = append(issues, err)
 	}
+	// Transfer Kasir terpisah dari pendaftaran rekening: Kasir memproses pembayaran sebelum
+	// menjawab, dan 30 detik terbukti terlalu pendek (2026-10-07, jawaban tidak datang).
+	cashierTransferTimeout, err := getDuration("KASIR_TRANSFER_BATAS_WAKTU", 2*time.Minute)
+	if err != nil {
+		issues = append(issues, err)
+	}
+	// 10 detik, bukan 300 detik seperti rule Pega: absensi dibaca di dalam transaksi Claim
+	// Face Sheet, dan layanan yang menggantung tidak boleh menahan kunci baris selama itu.
+	attendanceTimeout, err := getDuration("ABSEN_PIC_BATAS_WAKTU", 10*time.Second)
+	if err != nil {
+		issues = append(issues, err)
+	}
 	// 30 detik: layanan penerbit VA sendiri berbicara ke bank, sehingga jawabannya wajar
 	// lebih lambat daripada pemanggilan internal biasa.
 	virtualAccountTimeout, err := getDuration("VIRTUAL_ACCOUNT_BATAS_WAKTU", 30*time.Second)
@@ -785,12 +850,23 @@ func Load() (Config, error) {
 			Timeout:  hcqTimeout,
 		},
 		Cashier: Cashier{
-			RegisterURL:  strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
-			UpdateURL:    strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
-			User:         strings.TrimSpace(os.Getenv("KASIR_USER")),
-			Password:     os.Getenv("KASIR_PASSWORD"),
-			Timeout:      cashierTimeout,
-			CheckAccount: cashierCheckAccount(env),
+			RegisterURL:     strings.TrimSpace(os.Getenv("KASIR_URL_DAFTAR_REKENING")),
+			UpdateURL:       strings.TrimSpace(os.Getenv("KASIR_URL_PERBARUI_REKENING")),
+			User:            strings.TrimSpace(os.Getenv("KASIR_USER")),
+			Password:        os.Getenv("KASIR_PASSWORD"),
+			Timeout:         cashierTimeout,
+			TransferTimeout: cashierTransferTimeout,
+			CheckAccount:    cashierCheckAccount(env),
+		},
+		AutoPIC: AutoPIC{
+			Enabled: strings.EqualFold(strings.TrimSpace(os.Getenv("AGEN_PIC_OTOMATIS_AKTIF")), "true"),
+			Times:   get("AGEN_PIC_OTOMATIS_JAM", "08:15"),
+		},
+		AttendancePIC: AttendancePIC{
+			BaseURL:  strings.TrimSpace(os.Getenv("ABSEN_PIC_URL")),
+			User:     strings.TrimSpace(os.Getenv("ABSEN_PIC_USER")),
+			Password: os.Getenv("ABSEN_PIC_PASSWORD"),
+			Timeout:  attendanceTimeout,
 		},
 		// Bawaannya `tiruan`, dan itu disengaja: menyalakannya menerbitkan rekening
 		// sungguhan. Lihat VirtualAccount untuk alasan lengkapnya.
@@ -801,6 +877,7 @@ func Load() (Config, error) {
 			Timeout:  virtualAccountTimeout,
 		},
 		AcceptanceCommittee: strings.TrimSpace(os.Getenv("AKSEPTASI_KOMITE_BERJENJANG")),
+		PATechnicalPIC:      strings.TrimSpace(os.Getenv("PIC_TEKNIK_PA_BAWAAN")),
 		DocumentStorage: DocumentStorage{
 			BaseURL:        get("PENYIMPANAN_DOKUMEN_ALAMAT", DefaultDocumentStorageURL),
 			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
@@ -816,6 +893,8 @@ func Load() (Config, error) {
 			Timeout:  auctionHouseTimeout,
 		},
 		SMTP: SMTP{
+			EmailAccount:    get("EMAIL_ACCOUNT", "ClaimPNC"),
+			AdminAccount:    get("EMAIL_ACCOUNT_ADMIN_PNC", "Admin-PNC"),
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),

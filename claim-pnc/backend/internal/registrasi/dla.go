@@ -231,6 +231,14 @@ type FacOffer struct {
 	Property       []FacObject
 	Aneka          []FacObject
 	Cargo          []FacObject
+	// Person adalah PersonList (PA/Travel); Coverage-nya dari ASMCoverage. Dipakai PLA
+	// FAC OUT (`DownloadFireLossAdvice_act` langkah 23.1.1.6.2).
+	Person []FacObject
+
+	// FlatShare adalah T_FACOFFER.PCT_SHAREREAS (persen) untuk baris yang JSONDATA-nya
+	// kosong — hanya dipakai PLA FAC OUT sebagai jalur cadangan. Kosong bila baris punya
+	// JSONDATA.
+	FlatShare string
 }
 
 // FacObject adalah satu baris PropertyList / AnekaList / CargoList sebuah FacOffer.
@@ -252,6 +260,13 @@ type FacCoverage struct {
 	TSISublimit  string
 	ShareOffered string
 	Percent      string
+	// SpreadFacOut adalah TSISpreaded baris SpreadingList ber-TreatyType 10015 di dalam
+	// coverage FacOffer ini (yang terakhir); kosong bila tidak ada.
+	SpreadFacOut string
+	// Sublimit (persen) dan SumTSISpreaded dipakai PLA FAC OUT (`PLAFacout_Act` 3.1.2.1 dan
+	// 3.2.1).
+	Sublimit       string
+	SumTSISpreaded string
 }
 
 // TreatyReinsurer adalah satu baris `SelectTreatyReinsurer`.

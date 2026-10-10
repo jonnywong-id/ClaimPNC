@@ -123,7 +123,7 @@ func TestPropagationEstimate(t *testing.T) {
 		name:    "ItemOptions",
 		prepare: prepare,
 		op: func(l environment, s any) error {
-			_, err := l.service.ItemOptions(bg, s.(registrasi.Task).ClaimID, "OBJ-1")
+			_, err := l.service.ItemOptions(bg, s.(registrasi.Task).ClaimID, "OBJ-1", "")
 			return err
 		},
 	})

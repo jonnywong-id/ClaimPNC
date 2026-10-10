@@ -37,6 +37,7 @@ package notification
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"html"
@@ -47,10 +48,17 @@ import (
 	"time"
 
 	"claim-pnc/internal/masterxol"
+	"claim-pnc/internal/platform/emailserver"
 )
 
 // Config adalah parameter sambungan SMTP beserta penerimanya.
 type Config struct {
+	// Account membaca akun server surel dari POOLDATA.M_EMAIL_SERVER_PNC (EMAIL_ACCOUNT)
+	// setiap kali surel dikirim — pengganti Email Account Pega (Work Owner 2026-10-10).
+	// Bila terisi, Host, Port, User, Password, dan From diambil dari akun itu; User dan From
+	// sama-sama EMAIL_ADDRESS. Nil: isian di atas yang dipakai (mode tanpa Oracle).
+	Account func(ctx context.Context) (emailserver.Account, error)
+
 	Host string
 	Port int
 
@@ -79,9 +87,8 @@ type Config struct {
 // lengkap — dan menyatakannya lengkap akan menyembunyikan konfigurasi yang belum selesai
 // di balik pengiriman yang tidak pernah sampai ke siapa pun.
 func (c Config) Complete() bool {
-	return strings.TrimSpace(c.Host) != "" &&
-		c.Port > 0 &&
-		strings.TrimSpace(c.From) != "" &&
+	return (c.Account != nil ||
+		strings.TrimSpace(c.Host) != "" && c.Port > 0 && strings.TrimSpace(c.From) != "") &&
 		len(c.to()) > 0
 }
 
@@ -106,8 +113,28 @@ type Sender struct {
 // NewSender membentuk pengirim SMTP.
 func NewSender(c Config) *Sender { return &Sender{cfg: c} }
 
+// withAccount mengembalikan pengirim berkonfigurasi akun M_EMAIL_SERVER_PNC terbaru, atau
+// pengirim itu sendiri bila Account tidak dipasang.
+func (s *Sender) withAccount(ctx context.Context) (*Sender, error) {
+	if s.cfg.Account == nil {
+		return s, nil
+	}
+	account, err := s.cfg.Account(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("masterxol/notification: akun surel: %w", err)
+	}
+	c := s.cfg
+	c.Host, c.Port = account.Host, account.Port
+	c.User, c.Password, c.From = account.Address, account.Password, account.Address
+	return &Sender{cfg: c}, nil
+}
+
 // NotifyCommitteeSubmission mengirim satu surel pemberitahuan ke mailbox komite.
 func (s *Sender) NotifyCommitteeSubmission(ctx context.Context, submission masterxol.CommitteeSubmission) error {
+	s, err := s.withAccount(ctx)
+	if err != nil {
+		return err
+	}
 	if !s.cfg.Complete() {
 		return errors.New("masterxol/notification: SMTP belum dikonfigurasi")
 	}
@@ -148,7 +175,7 @@ func (s *Sender) send(ctx context.Context, to []string, message []byte) error {
 	// kemunculannya, sementara 16 dari 31 lokasi memakai port 587 (`R-17`).
 	secured := false
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(nil); err != nil {
+		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host}); err != nil {
 			return fmt.Errorf("masterxol/notification: menegakkan TLS: %w", err)
 		}
 		secured = true

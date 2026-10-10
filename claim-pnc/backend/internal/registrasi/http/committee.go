@@ -2,6 +2,7 @@ package registrasihttp
 
 import (
 	"net/http"
+	"time"
 
 	"claim-pnc/internal/registrasi"
 	"claim-pnc/internal/registrasi/usecase"
@@ -52,6 +53,9 @@ type CommitteeTransferRequest struct {
 	Object     int    `json:"objek"`
 	Coverage   int    `json:"jaminan"`
 	Adjustment int    `json:"adjustment"`
+
+	// ReceiverID adalah Penerima Klaim modal Transfer Claim ke Komite (lini Travel); boleh kosong.
+	ReceiverID string `json:"penerima_klaim,omitempty"`
 }
 
 // CommitteeTransferResponse adalah klaim sesudah transfer beserta kasus komitenya.
@@ -72,6 +76,7 @@ func (h *Handler) TransferCommittee(w http.ResponseWriter, r *http.Request, clai
 	}
 	result, err := h.service.TransferCommittee(r.Context(), usecase.CommitteeTransferCommand{
 		ClaimID: claimID, TaskID: body.TaskID, Object: body.Object, Coverage: body.Coverage, Adjustment: body.Adjustment,
+		ReceiverID: body.ReceiverID,
 	}, caller)
 	if err != nil {
 		h.failure(w, r, err)
@@ -168,4 +173,68 @@ func (h *Handler) DecideCommittee(w http.ResponseWriter, r *http.Request, caseID
 		return
 	}
 	h.writeResponse(w, r, http.StatusOK, committeeDTO(c))
+}
+
+// CommitteeNoteDTO adalah isian modal "Transfer Claim ke Komite" satu jaminan — lihat
+// registrasi.CommitteeNote. Inisial dan tanggal komite hanya dikirim server.
+type CommitteeNoteDTO struct {
+	Circumstances       string `json:"kronologi_kejadian"`
+	ExtentOfLoss        string `json:"jumlah_kerugian"`
+	LegalLiability      string `json:"polis_liability"`
+	Remarks             string `json:"remarks"`
+	RemarkInvestigation string `json:"remarks_investigasi"`
+	Diagnose            string `json:"diagnosa"`
+	DiagnoseCode        string `json:"kode_diagnosa"`
+	DiagnoseDesc        string `json:"desc_diagnosa"`
+	Receiver            string `json:"penerima_klaim"`
+	InitialName         string `json:"inisial,omitempty"`
+	CommitteeDate       string `json:"tanggal_komite,omitempty"`
+}
+
+// CommitteeNoteRequest adalah badan POST /api/registrasi/klaim/{id}/jaminan/isian-komite.
+// Objek dan jaminan berbasis 1.
+type CommitteeNoteRequest struct {
+	TaskID   string `json:"tugas_id"`
+	Object   int    `json:"objek"`
+	Coverage int    `json:"jaminan"`
+	CommitteeNoteDTO
+}
+
+func committeeNoteDTO(n registrasi.CommitteeNote) CommitteeNoteDTO {
+	d := CommitteeNoteDTO{
+		Circumstances: n.Circumstances, ExtentOfLoss: n.ExtentOfLoss, LegalLiability: n.LegalLiability,
+		Remarks: n.Remarks, RemarkInvestigation: n.RemarkInvestigation, Diagnose: n.Diagnose,
+		DiagnoseCode: n.DiagnoseCode, DiagnoseDesc: n.DiagnoseDesc, Receiver: n.Receiver,
+		InitialName: n.InitialName,
+	}
+	if !n.CommitteeDate.IsZero() {
+		d.CommitteeDate = n.CommitteeDate.Format(time.RFC3339)
+	}
+	return d
+}
+
+// SaveCommitteeNote menangani POST /api/registrasi/klaim/{klaimID}/jaminan/isian-komite.
+func (h *Handler) SaveCommitteeNote(w http.ResponseWriter, r *http.Request, claimID string) {
+	caller, ok := h.callerOf(w, r)
+	if !ok {
+		return
+	}
+	var body CommitteeNoteRequest
+	if !h.readBody(w, r, &body) {
+		return
+	}
+	claim, err := h.service.SaveCommitteeNote(r.Context(), usecase.CommitteeNoteCommand{
+		ClaimID: claimID, TaskID: body.TaskID, Object: body.Object, Coverage: body.Coverage,
+		Note: registrasi.CommitteeNote{
+			Circumstances: body.Circumstances, ExtentOfLoss: body.ExtentOfLoss,
+			LegalLiability: body.LegalLiability, Remarks: body.Remarks,
+			RemarkInvestigation: body.RemarkInvestigation, Diagnose: body.Diagnose,
+			DiagnoseCode: body.DiagnoseCode, DiagnoseDesc: body.DiagnoseDesc, Receiver: body.Receiver,
+		},
+	}, caller)
+	if err != nil {
+		h.failure(w, r, err)
+		return
+	}
+	h.writeResponse(w, r, http.StatusOK, ClaimResponse{Claim: claimDTO(claim)})
 }

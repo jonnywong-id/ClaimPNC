@@ -274,6 +274,17 @@ func TestUnreadablePaginationFallsBackToDefaults(t *testing.T) {
 
 	paging := decode(t, recorder)["paginasi"].(map[string]any)
 	require.Equal(t, float64(1), paging["halaman"])
+	// Tab Outstanding punya ukuran halamannya sendiri: 10 baris.
+	require.Equal(t, float64(10), paging["ukuran"])
+}
+
+func TestTabWithoutOwnPageSizeUsesDefault(t *testing.T) {
+	server := buildServer(t, serverOptions{getCaller: knownCaller(memory.SampleOwner)})
+
+	recorder := get(t, server, "/api/inbox-admin?tab="+inboxadmin.TabAllCaseAdmin)
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	paging := decode(t, recorder)["paginasi"].(map[string]any)
 	require.Equal(t, float64(inboxadmin.DefaultPageSize), paging["ukuran"])
 }
 

@@ -88,3 +88,16 @@ func (c *Cashier) Transfer(_ context.Context, _, service string, payload registr
 	c.Services = append(c.Services, service)
 	return c.Reply, c.Err
 }
+
+// CashierHistory mengembalikan log yang tercatat untuk satu nomor akseptasi.
+func (c *Cashier) CashierHistory(_ context.Context, acceptedNo string) ([]registrasi.CashierHistoryEntry, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out []registrasi.CashierHistoryEntry
+	for _, e := range c.Logs {
+		if e.AcceptedNo == acceptedNo {
+			out = append(out, registrasi.CashierHistoryEntry{PIC: e.PIC, Status: e.Status, Reason: e.Reason})
+		}
+	}
+	return out, nil
+}

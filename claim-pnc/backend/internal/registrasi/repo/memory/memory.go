@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -86,7 +87,19 @@ func (p *Store) Run(ctx context.Context, work func(context.Context) error) error
 // Save menuliskan klaim beserta seluruh pohon di bawahnya.
 func (p *Store) Save(ctx context.Context, k registrasi.Claim) error {
 	defer p.key(ctx)()
-	p.claim[k.ID] = copyClaim(k)
+	fresh := copyClaim(k)
+	// Seperti coverage_perbarui: Save tidak menulis isian komite; yang tersimpan dipertahankan.
+	if old, ok := p.claim[k.ID]; ok {
+		for i := range fresh.InsuredItem {
+			for j := range fresh.InsuredItem[i].Coverage {
+				fresh.InsuredItem[i].Coverage[j].Committee = registrasi.CommitteeNote{}
+				if i < len(old.InsuredItem) && j < len(old.InsuredItem[i].Coverage) {
+					fresh.InsuredItem[i].Coverage[j].Committee = old.InsuredItem[i].Coverage[j].Committee
+				}
+			}
+		}
+	}
+	p.claim[k.ID] = fresh
 	return nil
 }
 
@@ -100,6 +113,25 @@ func (p *Store) Get(ctx context.Context, id string) (registrasi.Claim, error) {
 	result := copyClaim(k)
 	result.ClaimStatusName = registrasi.ClaimStatusNames[result.ClaimStatus]
 	return result, nil
+}
+
+// SaveCommitteeNote menuliskan isian modal "Transfer Claim ke Komite" satu jaminan; InitialName
+// dan CommitteeDate yang tersimpan dipertahankan.
+func (p *Store) SaveCommitteeNote(ctx context.Context, claimID string, object, coverage int, n registrasi.CommitteeNote) error {
+	defer p.key(ctx)()
+	k, ok := p.claim[claimID]
+	if !ok {
+		return registrasi.ErrClaimNotFound
+	}
+	if object < 1 || object > len(k.InsuredItem) || coverage < 1 || coverage > len(k.InsuredItem[object-1].Coverage) {
+		return fmt.Errorf("%w: jaminan %d/%d tidak ada", registrasi.ErrInvalidAction, object, coverage)
+	}
+	k = copyClaim(k)
+	cov := &k.InsuredItem[object-1].Coverage[coverage-1]
+	n.InitialName, n.CommitteeDate = cov.Committee.InitialName, cov.Committee.CommitteeDate
+	cov.Committee = n
+	p.claim[claimID] = k
+	return nil
 }
 
 // GetByNumber mengembalikan klaim berdasarkan nomor klaimnya.
@@ -344,3 +376,46 @@ var (
 	_ registrasi.Notifier      = (*Store)(nil)
 	_ registrasi.TaskRepo      = taskRepo{}
 )
+
+// ── UnassignedTasks ───────────────────────────────────────────────────────────────
+
+// UnassignedTechnicalTasks memenuhi registrasi.UnassignedTasks.
+func (p *Store) UnassignedTechnicalTasks(ctx context.Context) ([]registrasi.Task, error) {
+	defer p.key(ctx)()
+	var result []registrasi.Task
+	for _, t := range sortTasks(p.task) {
+		if !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+			continue
+		}
+		c, ok := p.claim[t.ClaimID]
+		if !ok || registrasi.HasTechnicalPIC(c) || c.Policy.Number == "" {
+			continue
+		}
+		result = append(result, t)
+	}
+	return result, nil
+}
+
+// LockUnassigned memenuhi registrasi.UnassignedTasks.
+func (p *Store) LockUnassigned(ctx context.Context, taskID string) (registrasi.Task, error) {
+	defer p.key(ctx)()
+	t, ok := p.task[taskID]
+	if !ok || !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+		return registrasi.Task{}, registrasi.ErrTaskNotFound
+	}
+	return t, nil
+}
+
+// Reassign memenuhi registrasi.UnassignedTasks.
+func (p *Store) Reassign(ctx context.Context, taskID, to string) error {
+	defer p.key(ctx)()
+	t, ok := p.task[taskID]
+	if !ok || !t.Open() || t.Owner != registrasi.OperatorUnassigned {
+		return registrasi.ErrTaskAlreadyClaimed
+	}
+	t.Owner = to
+	p.task[taskID] = t
+	return nil
+}
+
+var _ registrasi.UnassignedTasks = (*Store)(nil)

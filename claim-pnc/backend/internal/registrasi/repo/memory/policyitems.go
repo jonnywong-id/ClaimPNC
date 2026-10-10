@@ -56,3 +56,14 @@ func (p *PolicyItems) ItemOptions(_ context.Context, policy registrasi.Policy, _
 		{Name: "BUSINESS INTERRUPTION", Group: "CONSEQUENTIAL LOSS", TSI: registrasi.Rupiah(500_000_000)},
 	}, nil
 }
+
+// TravelBenefits mengembalikan manfaat contoh untuk plan Travel contoh.
+func (p *PolicyItems) TravelBenefits(_ context.Context, plan string) ([]registrasi.ItemOption, error) {
+	if plan != "10001" {
+		return nil, nil
+	}
+	return []registrasi.ItemOption{
+		{ID: "10919", Name: "B.1. Kehilangan atau Kerusakan Bagasi & Harta Benda Pribadi"},
+		{ID: "10920", Name: "B.2. Keterlambatan Bagasi"},
+	}, nil
+}

@@ -41,8 +41,13 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/estimasi", h.CompleteEstimate)
 		sub.Post("/estimasi/simpan", h.SaveEstimate)
 		sub.Get("/mata-uang", h.Currencies)
+		// Cari Kode / Desc Diagnose modal Transfer Claim ke Komite (PA).
+		sub.Get("/diagnosa", h.SearchDiagnosis)
 		sub.Get("/klaim/{klaimID}/pilihan-item", func(w http.ResponseWriter, r *http.Request) {
 			h.ItemOptions(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Get("/klaim/{klaimID}/pilihan-coverage", func(w http.ResponseWriter, r *http.Request) {
+			h.CoverageOptions(w, r, chi.URLParam(r, "klaimID"))
 		})
 
 		// Tab pendamping tahap Input Estimasi. Ketiganya hanya membaca tabel warisan.
@@ -71,6 +76,10 @@ func Mount(r chi.Router, h *Handler) {
 		// Tombol Print PLA: menerbitkan PLA koasuransi dan mengunduh dokumennya.
 		sub.Post("/klaim/{klaimID}/pla/daftar", func(w http.ResponseWriter, r *http.Request) {
 			h.ListPLA(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Tombol SEND ALL PLA: mengirim PLA yang belum terkirim lewat email.
+		sub.Post("/klaim/{klaimID}/pla/kirim", func(w http.ResponseWriter, r *http.Request) {
+			h.SendAllPLA(w, r, chi.URLParam(r, "klaimID"))
 		})
 		sub.Post("/klaim/{klaimID}/pla/catatan", func(w http.ResponseWriter, r *http.Request) {
 			h.SavePLANotes(w, r, chi.URLParam(r, "klaimID"))
@@ -114,7 +123,17 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/akseptasi", func(w http.ResponseWriter, r *http.Request) {
 			h.AcceptSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Unggah File Penunjang pada satu baris adjustment (local action UploadDokumen_Adj).
+		sub.Post("/klaim/{klaimID}/adjustment/file-penunjang", func(w http.ResponseWriter, r *http.Request) {
+			h.UploadSupportingFiles(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor).
+		sub.Get("/klaim/{klaimID}/adjustment/riwayat", func(w http.ResponseWriter, r *http.Request) {
+			h.SettlementHistory(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Get("/klaim/{klaimID}/aging", func(w http.ResponseWriter, r *http.Request) {
+			h.PremiumAging(w, r, chi.URLParam(r, "klaimID"))
+		})
 		sub.Post("/klaim/{klaimID}/adjustment/hitung", func(w http.ResponseWriter, r *http.Request) {
 			h.PreviewSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
@@ -132,6 +151,10 @@ func Mount(r chi.Router, h *Handler) {
 		// Transfer Komite pada baris Adjustment, dan putusan anggota komite.
 		sub.Post("/klaim/{klaimID}/adjustment/komite", func(w http.ResponseWriter, r *http.Request) {
 			h.TransferCommittee(w, r, chi.URLParam(r, "klaimID"))
+		})
+		// Isian modal "Transfer Claim ke Komite" (ClaimComitee_OC) satu jaminan.
+		sub.Post("/klaim/{klaimID}/jaminan/isian-komite", func(w http.ResponseWriter, r *http.Request) {
+			h.SaveCommitteeNote(w, r, chi.URLParam(r, "klaimID"))
 		})
 		sub.Get("/komite", h.PendingCommittees)
 		sub.Get("/komite/{komiteID}", func(w http.ResponseWriter, r *http.Request) {

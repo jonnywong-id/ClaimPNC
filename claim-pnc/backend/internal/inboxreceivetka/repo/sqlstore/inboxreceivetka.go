@@ -10,11 +10,14 @@ import (
 	"claim-pnc/internal/inboxreceivetka"
 )
 
-// registerDateLayout adalah bentuk teks kolom `REGISTERDATE_1`.
+// registerDateLayout adalah bentuk teks tanggal registrasi yang dikembalikan
+// SampleRegisteredOn.
 //
-// Kolomnya `VARCHAR2(32)`, bukan tanggal, dan isinya terverifikasi berformat `yyyymmdd`
-// pada data produksi (`20230510`, `20240319`). Penguraiannya dilakukan DI SINI, bukan di
-// dalam SQL: `TO_DATE` adalah fungsi yang `D-20` larang dari kueri portabel.
+// SUMBER BARU (2026-10-08): kolomnya kini `T_CLAIM_PNC.REGISTERDATE` bertipe DATE, bukan
+// `REGISTERDATE_1` teks `yyyymmdd` milik tabel objek kerja Pega yang tidak dipakai lagi.
+// Bentuk teks ini tetap dipertahankan untuk SampleRegisteredOn supaya pemeriksaan
+// `claimpnc -periksa` tidak perlu berubah. Pemformatannya di Go, bukan di SQL: `TO_CHAR`
+// dilarang `D-20`.
 const registerDateLayout = "20060102"
 
 // Repo membaca daftar Inbox Receive TKA dan menuliskan tanggal kelengkapan dokumennya.
@@ -102,8 +105,8 @@ func (r *Repo) List(
 //
 // Hanya `POOLDATA.T_CLAIM_PNC.TGLDOKLENGKAP`. Tabel engine Pega TIDAK disentuh sama sekali.
 //
-// Pega menyimpan nilai sebenarnya di BLOB kasus dan menyalinnya ke kolom
-// `PC_ASM_FW_GCNMFW_WORK.TANGGALDOKLENGKAP`. Menulis kolom itu langsung akan tertimpa tanpa
+// Pega menyimpan nilai sebenarnya di BLOB kasus (snapshotnya di `POOLDATA.JSON_KLAIM`;
+// sebelum 2026-10-08 juga disalin ke kolom tabel objek kerja). Menulis salinannya langsung akan tertimpa tanpa
 // satu pun tanda begitu Pega menyimpan kasusnya lagi — dan pekerjaan yang tampil di layar
 // ini semuanya masih berjalan, sehingga Pega pasti akan menyentuhnya lagi.
 //
@@ -254,8 +257,9 @@ func (r *Repo) checkStatement(ctx context.Context, name, what string) error {
 
 // CountWaiting mencacah seluruh pekerjaan yang menunggu, tanpa dipotong.
 //
-// Angkanya dapat dibandingkan LANGSUNG dengan jumlah baris pada layar Pega: keduanya kini
-// memakai tabel dan penyaring yang sama.
+// SUMBER BARU (2026-10-08): angkanya TIDAK LAGI sama dengan jumlah baris layar Pega —
+// penanda TKA kini dibaca dari snapshot `JSON_KLAIM`, yang terisi pada lebih banyak kasus
+// daripada kolom `TKA_1` Pega. Lihat kepala inboxreceivetka.sql.
 func (r *Repo) CountWaiting(ctx context.Context) (int, error) {
 	return r.count(ctx, "tka_inbox_count_waiting")
 }
@@ -277,10 +281,12 @@ func (r *Repo) CountMissingParticipant(ctx context.Context) (int, error) {
 	return r.count(ctx, "tka_inbox_count_missing_participant")
 }
 
-// SampleRegisteredOn mengembalikan sampai dua puluh nilai `REGISTERDATE_1` yang berbeda.
+// SampleRegisteredOn mengembalikan sampai dua puluh tanggal registrasi yang berbeda, dalam
+// bentuk teks `yyyymmdd`.
 //
-// Dipakai `claimpnc -periksa` untuk memastikan format `yyyymmdd` berlaku pada seluruh
-// daftar, bukan hanya pada dua baris yang sempat diperiksa tangan.
+// Dipakai `claimpnc -periksa`. SUMBER BARU (2026-10-08): kolomnya kini DATE, sehingga
+// nilainya selalu terbaca; yang masih berarti diperiksa hanyalah bahwa contohnya ada.
+// Bentuk teksnya dipertahankan supaya pemeriksaan itu tidak perlu berubah.
 func (r *Repo) SampleRegisteredOn(ctx context.Context) ([]string, error) {
 	rows, err := r.db.QueryContext(ctx, getQuery("tka_inbox_sample_registered_on"))
 	if err != nil {
@@ -291,12 +297,16 @@ func (r *Repo) SampleRegisteredOn(ctx context.Context) ([]string, error) {
 
 	var result []string
 	for rows.Next() {
-		var value sql.NullString
+		var value sql.NullTime
 		if err := rows.Scan(&value); err != nil {
 			return nil, fmt.Errorf(
 				"inboxreceivetka/sqlstore: membaca contoh tanggal registrasi: %w", err)
 		}
-		result = append(result, strings.TrimSpace(value.String))
+		if !value.Valid {
+			result = append(result, "")
+			continue
+		}
+		result = append(result, value.Time.Format(registerDateLayout))
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf(
@@ -359,7 +369,7 @@ func scanTask(row rowScanner) (inboxreceivetka.Task, error) {
 		insuredName     sql.NullString
 		participantName sql.NullString
 		dateOfLoss      sql.NullTime
-		registeredOn    sql.NullString
+		registeredOn    sql.NullTime
 	)
 
 	if err := row.Scan(
@@ -378,33 +388,22 @@ func scanTask(row rowScanner) (inboxreceivetka.Task, error) {
 		InsuredName:     strings.TrimSpace(insuredName.String),
 		ParticipantName: strings.TrimSpace(participantName.String),
 		DateOfLoss:      nullableTime(dateOfLoss),
-		RegisteredOn:    parseRegisterDate(registeredOn),
+		RegisteredOn:    calendarDate(registeredOn),
 	}, nil
 }
 
-// parseRegisterDate mengurai kolom `REGISTERDATE_1` menjadi tanggal.
+// calendarDate mengubah tanggal registrasi menjadi tanggal kalender pada tengah malam UTC.
 //
-// Kolomnya TEKS, bukan tanggal — `VARCHAR2(32)` berisi `yyyymmdd`. Bentuk yang tidak
-// dikenali menghasilkan nil, BUKAN galat dan BUKAN tanggal karangan: satu baris yang
-// formatnya menyimpang tidak boleh menggagalkan seluruh daftar, dan menebaknya akan
-// menampilkan lama menunggu yang salah tanpa satu pun tanda.
-//
-// `claimpnc -periksa` yang memperlihatkan berapa sering itu terjadi.
-func parseRegisterDate(value sql.NullString) *time.Time {
-	trimmed := strings.TrimSpace(value.String)
-	if !value.Valid || trimmed == "" {
+// SUMBER BARU (2026-10-08): kolomnya kini `T_CLAIM_PNC.REGISTERDATE` bertipe DATE. Bentuk
+// keluarannya SENGAJA sama dengan penguraian teks `yyyymmdd` versi lama — tanggal saja,
+// tengah malam UTC — sehingga perhitungan Aging di layar tidak bergeser oleh zona waktu
+// sesi basis data. Jamnya dibuang karena kolom Pega asalnya memang tidak membawa jam.
+func calendarDate(value sql.NullTime) *time.Time {
+	if !value.Valid {
 		return nil
 	}
-	// Sebagian nilai Pega membawa bagian jam di belakangnya (`yyyymmddThhmmss...`);
-	// delapan karakter pertama sudah memuat tanggalnya.
-	if len(trimmed) > 8 {
-		trimmed = trimmed[:8]
-	}
-	moment, err := time.Parse(registerDateLayout, trimmed)
-	if err != nil {
-		return nil
-	}
-	return &moment
+	day := time.Date(value.Time.Year(), value.Time.Month(), value.Time.Day(), 0, 0, 0, 0, time.UTC)
+	return &day
 }
 
 // nullableTime mengubah kolom tanggal yang dapat kosong menjadi pointer.

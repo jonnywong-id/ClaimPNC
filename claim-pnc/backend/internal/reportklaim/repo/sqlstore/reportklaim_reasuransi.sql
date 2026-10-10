@@ -140,16 +140,25 @@ SELECT b.claimno      AS "CaseID",
 -- itu, sehingga yang tersisip adalah sisa dari laporan yang dijalankan sebelumnya.
 -- Alasan lengkapnya di catalog_reasuransi.go.
 --
--- Keempat anak-kueri ke `datapega.pc_asm_fw_gcnmfw_work` diganti satu JOIN: keduanya
+-- (Riwayat) Keempat anak-kueri ke `datapega.pc_asm_fw_gcnmfw_work` diganti satu JOIN: keduanya
 -- membaca baris YANG SAMA, dan empat anak-kueri berarti empat kali pembacaan tabel yang
 -- dibaca 116 rule Pega. Hasilnya identik karena `pzinskey` unik.
+--
+-- SUMBER BARU (2026-10-08): JOIN `w` ke objek kerja Pega diganti `T_CLAIM_PNC` (`c`),
+-- dengan cadangan `T_CLAIMLIST_ADMIN` (`k`, baris Work-PNC). Pemetaan:
+--   POLICYNO -> c.NOPOLIS · QQNAME -> c.QQNAME · DATEOFLOSS_1 -> c.DATEOFLOSS (DATE) ·
+--   USERTEKNIS_1 -> c.PICTEKNIK · PYID -> ekor x.CLAIMID tanpa prefix Pega.
+-- Diukur atas 1.533 baris PLA (Oracle dev): T_CLAIM_PNC memuat klaimnya pada 1.416 baris
+-- dan nilainya sama dengan objek kerja pada 1.400 (PICTEKNIK 1.396). Sisa 117 baris
+-- (4 klaim) belum ada di T_CLAIM_PNC tetapi ada di T_CLAIMLIST_ADMIN — itu gunanya `k`.
+-- PYID dari CLAIMID cocok 1.532/1.532. Jumlah baris tidak berubah (keduanya LEFT JOIN).
 SELECT v.nopla        AS "City",
        v.nilaipla     AS "Amount",
-       w.policyno     AS "AlasanKlaim",
-       w.qqname       AS "Keyword",
-       w.dateofloss_1 AS "Other",
+       COALESCE(c.nopolis, k.policyno) AS "AlasanKlaim",
+       COALESCE(c.qqname, k.qqname)    AS "Keyword",
+       COALESCE(c.dateofloss, CAST(k.dateofloss_1 AS DATE)) AS "Other",
        x.plareinsurer AS "CityID",
-       w.pyid         AS "CaseID",
+       REPLACE(x.claimid, 'ASM-FW-GCNMFW-WORK ', '') AS "CaseID",
        x.tglpla       AS "District",
        x.tglkirim     AS "DistrictID",
        x.tglterimapla AS "Country",
@@ -157,10 +166,13 @@ SELECT v.nopla        AS "City",
          WHEN x.iskirim IS NULL THEN 'Belum Dikirim'
          WHEN x.iskirim = '1'   THEN 'Sudah Dikirim'
        END            AS "CountryID",
-       w.userteknis_1 AS "UserTeknis"
+       COALESCE(c.picteknik, k.userteknis_1) AS "UserTeknis"
   FROM POOLDATA.t_plalist x
   JOIN POOLDATA.VIEW_PLALIST v ON x.nopla = v.nopla
-  LEFT JOIN datapega.pc_asm_fw_gcnmfw_work w ON w.pzinskey = x.claimid
+  LEFT JOIN POOLDATA.t_claim_pnc c ON c.claimid = x.claimid
+  LEFT JOIN POOLDATA.t_claimlist_admin k
+         ON k.pzinskey = x.claimid
+        AND k.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
  WHERE CAST(x.tglpla AS DATE) >= :1
    AND CAST(x.tglpla AS DATE) <= :2
  ORDER BY x.tglpla ASC

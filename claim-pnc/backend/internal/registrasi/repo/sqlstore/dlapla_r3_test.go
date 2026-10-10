@@ -397,21 +397,24 @@ func TestPLASaveAndIssuedRoundTrip(t *testing.T) {
 	require.Equal(t, "-1.50", doc.EstimasiList[0].ASMCount)
 	require.Equal(t, "1000000.00", doc.EstimasiList[0].ResultPLA)
 
-	mock.ExpectQuery(be4Q("pla_terbit")).WithArgs("K1", "O", "1", "0", registrasi.PLATypeCoins).
-		WillReturnRows(sqlmock.NewRows(be4Cols(8)).
-			AddRow(" P1 ", " B ", " C1 ", at, "n", " IDR ", body, " e@x ").
-			AddRow("P2", "C", "C2", at, "", "IDR", nil, nil))
+	mock.ExpectQuery(be4Q("pla_terbit")).WithArgs("K1", "O", "1", "0", registrasi.PLATypeCoins, registrasi.PLATypeFacOut,
+		registrasi.PLATypeBPPDAN, registrasi.PLATypeEQPool).
+		WillReturnRows(sqlmock.NewRows(be4Cols(10)).
+			AddRow(" P1 ", " B ", " C1 ", at, "n", " IDR ", body, " e@x ", "COINS", "1").
+			AddRow("P2", "C", "C2", at, "", "IDR", nil, nil, "COINS", "0"))
 	got, err := s.Issued(ctx, "K1", "O", 1, 0)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, "P1", got[0].Number)
 	require.Equal(t, "e@x", got[0].Info.Email)
+	require.True(t, got[0].Sent)
+	require.False(t, got[1].Sent)
 	require.Len(t, got[0].Amount, 1)
 	require.Equal(t, p.Amount[0].Result, got[0].Amount[0].Result)
 	require.Equal(t, p.Amount[0].Share, got[0].Amount[0].Share)
 	require.Empty(t, got[1].Amount)
 
-	r3RowFailures(t, mock, "pla_terbit", 8, func() error {
+	r3RowFailures(t, mock, "pla_terbit", 10, func() error {
 		_, err := s.Issued(ctx, "K1", "O", 1, 0)
 		return err
 	})
@@ -468,6 +471,13 @@ func TestPLAUpdateNoteSignatureAndEmails(t *testing.T) {
 	mock.ExpectExec(be4Q("pla_catatan")).WillReturnError(be4Boom)
 	require.ErrorContains(t, s.UpdateNote(ctx, "K1", "P1", 2, "baru"), "menyimpan catatan PLA P1")
 
+	mock.ExpectExec(be4Q("pla_email")).WithArgs("a@contoh.co.id", "K1", "P1", "2").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.UpdateEmail(ctx, "K1", "P1", 2, "a@contoh.co.id"))
+	mock.ExpectExec(be4Q("pla_email")).WithArgs(nil, "K1", "P1", "2").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.UpdateEmail(ctx, "K1", "P1", 2, ""))
+	mock.ExpectExec(be4Q("pla_email")).WillReturnError(be4Boom)
+	require.ErrorContains(t, s.UpdateEmail(ctx, "K1", "P1", 2, "x"), "menyimpan email PLA P1")
+
 	png := []byte{0x89, 'P', 'N', 'G'}
 	mock.ExpectQuery(be4Q("pla_ttd")).WithArgs("T1").
 		WillReturnRows(sqlmock.NewRows(be4Cols(2)).AddRow(" BUDI ", `{"TTDWeb":"`+base64.StdEncoding.EncodeToString(png)+`"}`))
@@ -518,4 +528,77 @@ func TestMoneyAndPercentText(t *testing.T) {
 	require.Equal(t, "-0.05", moneyText(-5))
 	require.Equal(t, "33.33", percentText(333_333))
 	require.Equal(t, "100.00", percentText(registrasi.PercentFull))
+}
+
+// PLA FAC OUT menyimpan SharePLA dan PercentPLA sebagai NILAI uang (PLAHTML_FACOUT), lalu
+// terbaca kembali sebagai FacShare dan FacBase.
+func TestPLAFacOutSaveAndIssuedRoundTrip(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewPLAStore(db)
+	ctx := context.Background()
+	at := time.Date(2026, 6, 9, 3, 0, 0, 0, time.UTC)
+	p := registrasi.PLA{
+		ClaimID: "K1", ObjectID: "O", CoverageSeq: 1, Number: "H1", Recipient: "REAS", RecipientCode: "R1",
+		Type: registrasi.PLATypeFacOut, Date: at, PolicyCurrency: "IDR",
+		Amount: []registrasi.PLAAmount{{Currency: "IDR", Reserve: 25_505_000_00, Base: 12_752_500_00,
+			Result: 2_550_500_00, FacShare: 314_000_00, FacBase: 1_570_000_00}},
+	}
+	var body string
+	mock.ExpectExec(be4Q("pla_sisip")).WithArgs(
+		"K1", "O", "1", "H1", "REAS", "0", registrasi.PLATypeFacOut, sqlmock.AnyArg(),
+		"", "R1", "IDR", nil, nil, nil, r3Capture(&body)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, s.Save(ctx, p))
+	var doc plaJSON
+	require.NoError(t, json.Unmarshal([]byte(body), &doc))
+	require.Equal(t, "314000.00", doc.EstimasiList[0].SharePLA)
+	require.Equal(t, "1570000.00", doc.EstimasiList[0].PercentPLA)
+	require.Equal(t, "2550500.00", doc.EstimasiList[0].ResultPLA)
+
+	mock.ExpectQuery(be4Q("pla_terbit")).
+		WillReturnRows(sqlmock.NewRows(be4Cols(10)).AddRow("H1", "REAS", "R1", at, "", "IDR", body, nil, "FACOUT", "0"))
+	got, err := s.Issued(ctx, "K1", "O", 1, 0)
+	require.NoError(t, err)
+	require.Equal(t, registrasi.PLATypeFacOut, got[0].Type)
+	require.Equal(t, p.Amount[0].FacShare, got[0].Amount[0].FacShare)
+	require.Equal(t, p.Amount[0].FacBase, got[0].Amount[0].FacBase)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// FacOffers PLA: baris ber-JSONDATA diurai; baris tanpa JSONDATA memakai kolom datar; baris
+// tanpa keduanya dilewati.
+func TestPLAFacOffersJSONAndFlatFallback(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewPLAStore(db)
+	body := `{"FacOfferList":[{"ReinsurerID":"R1","ReinsurerName":"REAS JSON","PropertyList":[{"ObjectNo":"1","CoverageList":[{"Coverage":"C","TSISublimit":"100","FacOutObjectList":[{"ShareOffered":"10"}],"SpreadingList":[{"TreatyType":"10015","TSISpreaded":"12"}]}]}]}]}`
+	mock.ExpectQuery(be4Q("pla_fac_offer")).WithArgs("POL", "1").
+		WillReturnRows(sqlmock.NewRows(be4Cols(4)).
+			AddRow("R1", "REAS JSON", "5", body).
+			AddRow("R2", " AON ", "3", nil).
+			AddRow("R3", "TANPA DATA", nil, nil))
+	got, err := s.FacOffers(context.Background(), " POL ", "1")
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Equal(t, "REAS JSON", got[0].ReinsurerName)
+	require.Empty(t, got[0].FlatShare)
+	require.Equal(t, "12", got[0].Property[0].Coverage[0].SpreadFacOut)
+	require.Equal(t, registrasi.FacOffer{ReinsurerID: "R2", ReinsurerName: "AON", FlatShare: "3"}, got[1])
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// SpreadingTSI menjumlahkan TSISPREADED baris FAC OUT dan seluruh baris objek-coverage.
+func TestPLASpreadingTSI(t *testing.T) {
+	db, mock := be4DB(t)
+	s := NewPLAStore(db)
+	mock.ExpectQuery(be4Q("pla_spreading_tsi")).
+		WithArgs("POL", "1", "100829", "006", "40", "006", "POL", "1", "40").
+		WillReturnRows(sqlmock.NewRows(be4Cols(2)).
+			AddRow("10001", "1782838988.8625").
+			AddRow("10015", "1782838988.8625"))
+	facOut, total, err := s.SpreadingTSI(context.Background(), registrasi.SpreadingTSIQuery{
+		PolicyNumber: " POL ", ProdKe: "1", GroupPanel: "006", ObjectID: "40", Coverage: "100829"})
+	require.NoError(t, err)
+	require.Equal(t, "1782838988.8625", facOut.FloatString(4))
+	require.Equal(t, "3565677977.7250", total.FloatString(4))
+	require.NoError(t, mock.ExpectationsWereMet())
 }

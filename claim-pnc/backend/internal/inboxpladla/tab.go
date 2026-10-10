@@ -162,7 +162,8 @@ type Tab struct {
 	// menunggu penutupan.
 	//
 	// **Tab PLA & DLA saja.** `CASE WHEN z.ISPENDINGCLOSE='true' THEN '1139' ELSE
-	// z.statusclaim_1 END`. Daftar lain memakai kode aslinya.
+	// z.statusclaim_1 END` di Pega; kini kedua kolom dibaca dari `T_CLAIM_PNC` (SUMBER BARU
+	// 2026-10-08). Daftar lain memakai kode aslinya.
 	PendingCloseBecomes1139 bool
 
 	// HasDetailAction menyatakan barisnya punya tombol **"Detail Claim"**.

@@ -36,6 +36,11 @@ SELECT id   AS code,
 --
 -- `BUSINESSCODE='10043'` adalah penyaring lini HE itu sendiri; ia tetap literal karena
 -- ia bagian dari identitas laporan ini, bukan pilihan pengguna.
+--
+-- SUMBER BARU (2026-10-08): kolom "Location" dulu anak-kueri ke objek kerja Pega
+-- (`PC_ASM_FW_GCNMFW_WORK.location_1`), kini `T_CLAIM_PNC.LOCATION` (`a`) langsung.
+-- Terukur di Oracle dev untuk 49 klaim HE: objek kerja berisi lokasi pada 20, T_CLAIM_PNC
+-- pada 29, dan 19 nilainya sama — kolom ini jadi lebih sering terisi, bukan berkurang.
 SELECT a.claimno    AS "ClaimNo",
        a.nopolis    AS "PolicyNo",
        a.picteknik  AS "PICRekanan",
@@ -44,7 +49,7 @@ SELECT a.claimno    AS "ClaimNo",
        a.qqname     AS "UserName",
        b.causeofloss AS "CauseOfLoss",
        a.sobname    AS "BusinessName",
-       (SELECT w.location_1 FROM DATAPEGA.PC_ASM_FW_GCNMFW_WORK w WHERE w.pzinskey = a.claimid) AS "Location",
+       a.location   AS "Location",
        (SELECT SUM(t.price)          FROM POOLDATA.T_CLAIM_TREATMENT t WHERE t.claimid = a.claimid AND t.treatmenttype = '1') AS "AlasanKlaim",
        (SELECT AVG(t.diskon)         FROM POOLDATA.T_CLAIM_TREATMENT t WHERE t.claimid = a.claimid AND t.treatmenttype = '1') AS "AlasanTerlambat",
        (SELECT SUM(t.treatmentvalue) FROM POOLDATA.T_CLAIM_TREATMENT t WHERE t.claimid = a.claimid AND t.treatmenttype = '1') AS "City",
@@ -94,25 +99,54 @@ SELECT a.claimno    AS "ClaimNo",
 --
 -- Yang berubah karena itu bukan isinya, melainkan bahwa ketiadaannya kini TERCATAT di
 -- kolomTanpaSumber dan terkunci uji.
+--
+-- # Objek kerja Pega tidak dibaca lagi (2026-10-08)
+--
+-- ("Perubahan nama tabel untuk Inbox.xlsx", baris 17.)
+--
+--   a  berkas penerimaan dokumen  -> `T_CLAIMLIST_ADMIN` baris ber-PXOBJCLASS ReceiveDocument;
+--                                    ia membawa KURIR, PNCCASEID, KODECABANG_1, dan kolom polis
+--   b  klaim pasangannya          -> `T_CLAIM_PNC`, disambung `b.RCVID = a.PYID`.
+--
+-- Sambungan lamanya `a.PNCCASEID = b.PYID` TIDAK dapat dipakai: `PNCCASEID` pada baris berkas
+-- penerimaan di T_CLAIMLIST_ADMIN kosong di SELURUH 143 baris (diukur 2026-10-08). Arah
+-- sebaliknya terisi — `T_CLAIM_PNC.RCVID` menyimpan nomor berkas penerimaan asal klaim, dan
+-- sama dengan `PNCCASEID` objek kerja klaim pada 501 dari 503 klaim yang punya keduanya.
+--
+-- Kolom IDPEGA (nomor klaim) karena itu dibaca dari `b`: ekor `CLAIMID` tanpa prefix
+-- `ASM-FW-GCNMFW-WORK `, yaitu nomor case Pega persis — bukan `CLAIMNO`, yang pada 15 klaim
+-- berbeda dari nomor case-nya sendiri.
+--
+--   b.CLOSECLAIMDATE_1 -> CLOSECLAIMDATE · b.CLOSECLAIMNOTE_1 -> CLOSECLAIMNOTE ·
+--   b.USERTEKNIS_1 -> PICTEKNIK
+--
+-- Kode status klaim kini dibaca dari baris `b` itu sendiri. Kueri lama mencarinya lagi ke
+-- `T_CLAIM_PNC` lewat `CLAIMNO = PYID` dalam subkueri skalar — yang GAGAL (ORA-01427) bila
+-- satu CLAIMNO muncul dua kali, dan diukur ada satu yang begitu.
+--
+-- AKIBAT YANG HARUS DISADARI: `T_CLAIMLIST_ADMIN` hanya memuat berkas penerimaan yang MASIH
+-- di antrean Admin — artinya yang BELUM diregistrasi menjadi klaim. Laporan ini justru
+-- menampilkan berkas yang SUDAH menjadi klaim. Diukur 2026-10-08: dari 112 berkas Auto
+-- Service di tabel itu, hanya 1 yang punya klaim. Laporan ini karena itu nyaris kosong selama
+-- T_CLAIMLIST_ADMIN tidak menyimpan berkas yang sudah keluar antrean.
 SELECT a.pxcreatedatetime AS "EDMDATE",
        a.pyid             AS "EDMNO",
-       a.pnccaseid        AS "IDPEGA",
+       COALESCE(a.pnccaseid, REPLACE(b.claimid, 'ASM-FW-GCNMFW-WORK ', '')) AS "IDPEGA",
        a.policyno         AS "NOPOLIS",
        b.qqname           AS " QQNAME",
        a.dateofloss_1     AS "STARTDATE",
        a.businessname     AS "SOBNAME",
-       b.closeclaimdate_1 AS "ENDDATE",
-       b.closeclaimnote_1 AS "BUSINESSCODE",
+       b.closeclaimdate   AS "ENDDATE",
+       b.closeclaimnote   AS "BUSINESSCODE",
        (SELECT z.branchname FROM branch z WHERE z.id = a.kodecabang_1) AS "MARKETINGNAME",
        (SELECT v.lsc_note
           FROM pooldata.v_sts_claim v
-         WHERE v.lsc_id = (SELECT p.statusclaim FROM pooldata.t_claim_pnc p WHERE p.claimno = b.pyid)) AS "CLIENTID",
-       b.userteknis_1     AS "WARRANTYNO"
-  FROM datapega.pc_asm_fw_gcnmfw_work a
-  JOIN datapega.pc_asm_fw_gcnmfw_work b ON a.pnccaseid = b.pyid
+         WHERE v.lsc_id = b.statusclaim) AS "CLIENTID",
+       b.picteknik        AS "WARRANTYNO"
+  FROM pooldata.t_claimlist_admin a
+  JOIN pooldata.t_claim_pnc b ON b.rcvid = a.pyid AND b.claimno IS NOT NULL
  WHERE a.kurir = 'Auto Service'
    AND a.pxobjclass = 'ASM-FW-GCNMFW-Work-ReceiveDocument'
-   AND b.pxobjclass = 'ASM-FW-GCNMFW-Work-PNC'
  ORDER BY a.pxcreatedatetime ASC
 
 

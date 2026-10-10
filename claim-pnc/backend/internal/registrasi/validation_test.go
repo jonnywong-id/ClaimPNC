@@ -65,6 +65,27 @@ func TestValidClaimPassesEveryRule(t *testing.T) {
 	require.NoError(t, registrasi.Validate(validClaim(), parts()))
 }
 
+// Lokasi wajib di Input Register (pyRequired=always); spasi saja tetap dianggap kosong.
+func TestLocationRequired(t *testing.T) {
+	for _, location := range []string{"", "   "} {
+		k := validClaim()
+		k.Location = location
+		g := violations(t, registrasi.Validate(k, parts()))
+		require.True(t, g.Has(registrasi.ViolationLocationEmpty))
+	}
+}
+
+// PA: bagian Lokasi tidak ditampilkan di Input Register, sehingga lokasi kosong tidak ditolak.
+func TestLocationNotRequiredForPA(t *testing.T) {
+	k := validClaim()
+	k.Location = ""
+	k.Policy.Line = registrasi.LinePersonalAccident
+	err := registrasi.Validate(k, parts())
+	if err != nil {
+		require.False(t, violations(t, err).Has(registrasi.ViolationLocationEmpty))
+	}
+}
+
 // TestDateOrdering menguji ketiga aturan urutan pada kasus batas: sama persis, dan
 // selisih satu hari ke arah yang salah.
 func TestDateOrdering(t *testing.T) {
@@ -216,14 +237,18 @@ func TestTravelDocumentReceiptLimit(t *testing.T) {
 	})
 }
 
-// TestSevenDayReportLimit menjaga operator yang terbaca dari source tetap seperti
-// adanya.
+// TestReportDateSevenDayLimitLifted menjaga pencabutan batas tujuh hari tetap tercabut.
 //
-// Pesan di sistem lama berbunyi "tidak boleh lebih dari 7 hari", tetapi kondisinya
-// menolak SEJAK hari ke-7. Selisih antara pesan dan aturan itu dibawa apa adanya
-// (`P-5`), dan uji ini yang menjaganya tetap terlihat.
-func TestSevenDayReportLimit(t *testing.T) {
-	create := func(line registrasi.LineOfBusiness, delta int) registrasi.Claim {
+// Langkah 20 sistem lama menolak Tanggal Lapor yang berjarak tujuh hari atau lebih dari
+// Tanggal Kejadian. Work Owner mencabutnya pada 2026-10-06 karena Pega sendiri sudah tidak
+// menegakkannya lagi.
+//
+// Uji ini sengaja berpasangan: yang pertama membuktikan jarak jauh DITERIMA, yang kedua
+// membuktikan aturan Tanggal Lapor yang LAIN tidak ikut tercabut. Tanpa yang kedua,
+// pencabutan ini dapat melebar diam-diam menjadi "tanggal lapor tidak diperiksa sama
+// sekali".
+func TestReportDateSevenDayLimitLifted(t *testing.T) {
+	report := func(line registrasi.LineOfBusiness, delta int) registrasi.Claim {
 		k := validClaim()
 		k.Policy.Line = line
 		k.DateOfLoss = date(2026, time.March, 1)
@@ -233,26 +258,24 @@ func TestSevenDayReportLimit(t *testing.T) {
 	}
 	b := registrasi.Parts{Now: date(2026, time.June, 1)}
 
-	t.Run("hari ke-6 diterima", func(t *testing.T) {
-		err := registrasi.Validate(create(registrasi.LineFire, 6), b)
-		if err != nil {
-			g := violations(t, err)
-			require.False(t, g.Has(registrasi.ViolationReportedAfter7Days))
+	t.Run("jarak berapa pun diterima", func(t *testing.T) {
+		for _, delta := range []int{6, 7, 8, 30, 90} {
+			err := registrasi.Validate(report(registrasi.LineFire, delta), b)
+			require.NoError(t, err, "jarak %d hari seharusnya diterima", delta)
 		}
 	})
 
-	t.Run("hari ke-7 ditolak", func(t *testing.T) {
-		g := violations(t, registrasi.Validate(create(registrasi.LineFire, 7), b))
-		require.True(t, g.Has(registrasi.ViolationReportedAfter7Days))
+	t.Run("tanggal lapor tetap tidak boleh mendahului kejadian", func(t *testing.T) {
+		g := violations(t, registrasi.Validate(report(registrasi.LineFire, -1), b))
+		require.True(t, g.Has(registrasi.ViolationReportDateBeforeLoss))
 	})
 
-	t.Run("lini Personal Accident dikecualikan", func(t *testing.T) {
-		k := create(registrasi.LinePersonalAccident, 30)
-		err := registrasi.Validate(k, b)
-		if err != nil {
-			g := violations(t, err)
-			require.False(t, g.Has(registrasi.ViolationReportedAfter7Days))
-		}
+	t.Run("tanggal lapor tetap tidak boleh melewati hari ini", func(t *testing.T) {
+		k := report(registrasi.LineFire, 0)
+		k.ReportDate = date(2026, time.July, 1)
+		k.DateReceived = k.ReportDate
+		g := violations(t, registrasi.Validate(k, b))
+		require.True(t, g.Has(registrasi.ViolationReportDateInFuture))
 	})
 }
 
@@ -289,12 +312,39 @@ func TestSLIKNumberRequiredForCreditGuarantee(t *testing.T) {
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 
-func TestItemWithoutCoverageRejected(t *testing.T) {
+// Cukup SATU objek terisi — coverage dengan spreading 100% (Work Owner, 2026-10-07).
+// Objek lain yang belum terisi tidak memblokir registrasi.
+func TestOnlyOneFilledItemIsRequired(t *testing.T) {
 	k := validClaim()
-	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{ID: "OBJ-2", Name: "Mesin"})
 
+	// Objek tanpa coverage sama sekali: boleh.
+	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{ID: "OBJ-2", Name: "Mesin"})
+	// Objek dengan coverage yang spreading-nya belum 100% dan Penyebab Kerugian kosong: boleh.
+	k.InsuredItem = append(k.InsuredItem, registrasi.InsuredItem{
+		ID: "OBJ-3", Name: "Gudang",
+		Coverage: []registrasi.Coverage{{
+			ID: "CVG-3", TSI: registrasi.Rupiah(1_000_000),
+			Spreading: []registrasi.Spreading{{TreatyKind: "10008", Name: "T", Share: 400_000}},
+		}},
+	})
+	require.NoError(t, registrasi.Validate(k, parts()))
+}
+
+func TestNoItemWithCoverageRejected(t *testing.T) {
+	k := validClaim()
+	for i := range k.InsuredItem {
+		k.InsuredItem[i].Coverage = nil
+	}
 	g := violations(t, registrasi.Validate(k, parts()))
 	require.True(t, g.Has(registrasi.ViolationItemWithoutCoverage))
+}
+
+// Penyebab Kerugian tetap wajib pada objek yang TERISI.
+func TestCauseOfLossStillRequiredOnFilledItem(t *testing.T) {
+	k := validClaim()
+	k.InsuredItem[0].Coverage[0].CauseOfLoss = ""
+	g := violations(t, registrasi.Validate(k, parts()))
+	require.True(t, g.Has(registrasi.ViolationCauseOfLossEmpty))
 }
 
 func TestEstimateMayNotExceedTSI(t *testing.T) {
@@ -358,14 +408,12 @@ func TestRemovedSpreadingNotCounted(t *testing.T) {
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 
-func TestFacOutRequiresFacOfferItem(t *testing.T) {
+// Objek Fac Offer tidak digunakan (Work Owner 2026-10-08): spreading FAC-OUT tanpa Objek Fac
+// Offer tetap lolos validasi.
+func TestFacOutDoesNotRequireFacOfferItem(t *testing.T) {
 	k := validClaim()
 	k.InsuredItem[0].Coverage[0].Spreading[1].TreatyKind = registrasi.TreatyFacOut
 
-	g := violations(t, registrasi.Validate(k, parts()))
-	require.True(t, g.Has(registrasi.ViolationFacOfferIncomplete))
-
-	k.InsuredItem[0].Coverage[0].Spreading[1].FacOfferItem = "Gudang A"
 	require.NoError(t, registrasi.Validate(k, parts()))
 }
 

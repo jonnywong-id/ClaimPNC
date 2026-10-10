@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -134,10 +135,53 @@ func TestItemOptionsComeFromThePolicy(t *testing.T) {
 	l := setup(t)
 	claim, _ := l.upToInputEstimate(t)
 
-	options, err := l.service.ItemOptions(context.Background(), claim.ID, claim.InsuredItem[0].ID)
+	choices, err := l.service.ItemOptions(context.Background(), claim.ID, claim.InsuredItem[0].ID, "")
 	require.NoError(t, err)
-	require.NotEmpty(t, options)
-	require.Equal(t, "BUILDING AND CONTENTS", options[0].Name)
+	require.NotEmpty(t, choices.Option)
+	require.Equal(t, "BUILDING AND CONTENTS", choices.Option[0].Name)
+	require.Empty(t, choices.Default, "Fire tidak punya nama item bawaan")
+}
+
+// Lini tanpa daftar item (Aneka, Marine Cargo, PA): satu-satunya pilihan "Others", seperti
+// item bawaan `GetObjectFromTable`.
+func TestItemOptionsOutsideFireAndTravelAreOthers(t *testing.T) {
+	l := setup(t)
+	claim, _ := l.upToInputRegister(t, paPolicy)
+
+	choices, err := l.service.ItemOptions(context.Background(), claim.ID, "1", "")
+	require.NoError(t, err)
+	require.Equal(t, []registrasi.ItemOption{{Name: "Others"}}, choices.Option)
+	require.Equal(t, "Others", choices.Default)
+}
+
+// Lini Travel: pilihan Objek adalah manfaat plan, plan = kode coverage jaminan.
+func TestItemOptionsForTravelComeFromThePlan(t *testing.T) {
+	l := setup(t)
+	claim, _ := l.upToInputRegister(t, "POL-TRV-0003")
+
+	choices, err := l.service.ItemOptions(context.Background(), claim.ID, "1", "10001")
+	require.NoError(t, err)
+	require.Equal(t, "OTHERS", choices.Default)
+	require.Len(t, choices.Option, 2)
+	require.Equal(t, "10919", choices.Option[0].ID)
+
+	choices, err = l.service.ItemOptions(context.Background(), claim.ID, "1", "99999")
+	require.NoError(t, err)
+	require.Empty(t, choices.Option, "plan tanpa manfaat")
+}
+
+func TestDefaultItemNamePerLine(t *testing.T) {
+	cases := map[string]registrasi.Policy{
+		"":       {Line: registrasi.LineFire},
+		"OTHERS": {Line: registrasi.LineTravel},
+		"Others": {Line: registrasi.LineMarineCargo},
+	}
+	for want, p := range cases {
+		require.Equal(t, want, registrasi.DefaultItemName(p), "%+v", p)
+	}
+	require.Equal(t, "Others", registrasi.DefaultItemName(registrasi.Policy{BusinessType: "Aneka"}))
+	require.Equal(t, "Others", registrasi.DefaultItemName(registrasi.Policy{Line: registrasi.LinePersonalAccident}))
+	require.True(t, registrasi.ItemFromTravelPlan(registrasi.Policy{BusinessType: " travel "}))
 }
 
 // Status Klaim dibawa dengan namanya dari master, seperti layar Pega ("Register").
@@ -183,4 +227,38 @@ func TestSaveEstimateAlsoWorksAtInputSurveyor(t *testing.T) {
 
 	_, err = l.service.CompleteEstimate(ctx, command, l.caller)
 	require.ErrorIs(t, err, registrasi.ErrInvalidAction)
+}
+
+// Catatan ke PIC Teknis tersimpan bersama isian estimasi (T_CLAIM_PNC.REMARK); permintaan
+// tanpa catatan (nil) membiarkan catatan yang tersimpan.
+func TestEstimateSavesTechnicalPICNote(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	_, task := l.upToInputEstimate(t)
+
+	command := oneEstimate(task.ID, registrasi.Rupiah(10), 1)
+	note := "  Mohon cek dokumen survei  "
+	command.TechnicalPICNote = &note
+	_, err := l.service.SaveEstimate(ctx, command, l.caller)
+	require.NoError(t, err)
+	stored, err := l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, "Mohon cek dokumen survei", stored.TechnicalPICNote)
+
+	_, err = l.service.SaveEstimate(ctx, oneEstimate(task.ID, registrasi.Rupiah(10), 1), l.caller)
+	require.NoError(t, err)
+	stored, err = l.store.Get(ctx, task.ClaimID)
+	require.NoError(t, err)
+	require.Equal(t, "Mohon cek dokumen survei", stored.TechnicalPICNote)
+}
+
+// Catatan yang tidak muat di kolom REMARK (4000) ditolak.
+func TestEstimateRejectsTooLongTechnicalPICNote(t *testing.T) {
+	l := setup(t)
+	_, task := l.upToInputEstimate(t)
+	command := oneEstimate(task.ID, registrasi.Rupiah(10), 1)
+	note := strings.Repeat("a", registrasi.TechnicalPICNoteMax+1)
+	command.TechnicalPICNote = &note
+	_, err := l.service.SaveEstimate(context.Background(), command, l.caller)
+	violation(t, err, registrasi.ViolationTechnicalPICNoteTooLong)
 }

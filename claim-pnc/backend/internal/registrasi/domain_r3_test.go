@@ -221,6 +221,16 @@ func TestNewSettlementLineRejections(t *testing.T) {
 	_, err := registrasi.NewSettlementLine(registrasi.SettlementInput{PaymentType: registrasi.PaymentFinal}, noSheet)
 	require.Equal(t, []registrasi.ViolationCode{registrasi.ViolationSettlementFaceSheet}, violationCodes(t, err))
 
+	// PA sebelum transfer ke Analyst: Claim Face Sheet tidak dituntut (Work Owner 2026-10-09);
+	// pemeriksaan isian lain tetap berjalan. Sesudah transfer, Claim Face Sheet kembali dituntut.
+	paNoSheet := noSheet
+	paNoSheet.Claim = faceSheetClaim(registrasi.LinePersonalAccident, registrasi.Coverage{})
+	_, err = registrasi.NewSettlementLine(registrasi.SettlementInput{PaymentType: registrasi.PaymentInterim}, paNoSheet)
+	require.NotContains(t, violationCodes(t, err), registrasi.ViolationSettlementFaceSheet)
+	paNoSheet.Coverage.AnalystTransferred = true
+	_, err = registrasi.NewSettlementLine(registrasi.SettlementInput{PaymentType: registrasi.PaymentInterim}, paNoSheet)
+	require.Equal(t, []registrasi.ViolationCode{registrasi.ViolationSettlementFaceSheet}, violationCodes(t, err))
+
 	// Isian kosong: propose, pengajuan, dan tipe resiko sekaligus.
 	_, err = registrasi.NewSettlementLine(registrasi.SettlementInput{PaymentType: registrasi.PaymentFinal}, sc)
 	codes := violationCodes(t, err)

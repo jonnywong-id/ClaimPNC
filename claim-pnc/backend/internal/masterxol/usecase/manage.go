@@ -166,6 +166,7 @@ func (s *Service) Save(ctx context.Context, portalAlias string, master masterxol
 		Remark:       saved.RemarkPIC,
 		SubmittedBy:  caller,
 	}
+	warning := masterxol.ShareWarning(saved)
 	if err := s.notifier.NotifyCommitteeSubmission(ctx, submission); err != nil {
 		logging.From(ctx, s.logger).Error("pemberitahuan pengajuan komite gagal dikirim",
 			slog.String("modul", "masterxol"),
@@ -173,9 +174,13 @@ func (s *Service) Save(ctx context.Context, portalAlias string, master masterxol
 			slog.String("master", saved.ID),
 			slog.String("galat", err.Error()),
 		)
+		// Ditampilkan di layar supaya dapat dilampirkan ke IT Support (Work Owner
+		// 2026-10-10). Penyimpanannya tetap berhasil.
+		warning = append(warning, "Data tersimpan, tetapi surel pemberitahuan ke komite "+
+			"gagal dikirim. Rincian untuk IT Support: "+err.Error())
 	}
 
-	return SaveResult{Master: saved, Warning: masterxol.ShareWarning(saved)}, nil
+	return SaveResult{Master: saved, Warning: warning}, nil
 }
 
 // DeleteMaster menghapus satu induk beserta seluruh anaknya.

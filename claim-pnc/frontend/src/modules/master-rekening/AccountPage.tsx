@@ -140,7 +140,10 @@ export function AccountPage() {
     setHalaman(1)
   }
 
-  const columns = columnsFor(tab, openEdit)
+  // Surel peringatan Kasir yang gagal dikirim pada keputusan terakhir — ditampilkan di
+  // tingkat halaman karena barisnya hilang dari tab setelah diputuskan.
+  const [notice, setNotice] = useState<string | null>(null)
+  const columns = columnsFor(tab, openEdit, setNotice)
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -179,6 +182,16 @@ export function AccountPage() {
       {formOpen && (
         <div className="my-6">
           <AccountForm account={beingEdited} onClose={closeForm} />
+        </div>
+      )}
+
+      {notice && (
+        <div className="mt-6">
+          <ErrorMessage
+            tone="gangguan"
+            title="Keputusan tersimpan, tetapi surel peringatan ke Tim IT gagal dikirim"
+            description={`Rincian untuk IT Support: ${notice}`}
+          />
         </div>
       )}
 
@@ -276,7 +289,11 @@ export function AccountPage() {
  *    setiap tab sudah tersaring ke satu status, sehingga kolomnya akan berisi nilai
  *    yang sama di seluruh baris.
  */
-function columnsFor(tab: TabId, onEdit: (account: Account) => void): Column<Account>[] {
+function columnsFor(
+  tab: TabId,
+  onEdit: (account: Account) => void,
+  onNotice: (message: string | null) => void,
+): Column<Account>[] {
   const base: Column<Account>[] = [
     {
       key: 'nomor_rekening',
@@ -385,7 +402,7 @@ function columnsFor(tab: TabId, onEdit: (account: Account) => void): Column<Acco
           width: '18rem',
           noSort: true,
           value: () => '',
-          render: (a) => <CommitteeAction account={a} />,
+          render: (a) => <CommitteeAction account={a} onNotice={onNotice} />,
         }
       : {
           key: 'aksi',
@@ -442,18 +459,28 @@ function Teks({ nilai }: { nilai: string }) {
  * pengaju mengulang pengajuan yang sama persis, karena tidak ada yang memberitahunya
  * apa yang salah.
  */
-function CommitteeAction({ account }: { account: Account }) {
+function CommitteeAction({
+  account,
+  onNotice,
+}: {
+  account: Account
+  onNotice: (message: string | null) => void
+}) {
   const decide = useDecideAccount()
   const [note, setNote] = useState(account.catatan)
   const id = `catatan-${account.kode_bank}-${account.nomor_rekening}`
 
   const send = (status: typeof AccountStatus.disetujui | typeof AccountStatus.ditolak) => {
-    decide.mutate({
-      kodeBank: account.kode_bank,
-      nomorRekening: account.nomor_rekening,
-      status,
-      catatan: note,
-    })
+    onNotice(null)
+    decide.mutate(
+      {
+        kodeBank: account.kode_bank,
+        nomorRekening: account.nomor_rekening,
+        status,
+        catatan: note,
+      },
+      { onSuccess: (saved) => onNotice(saved.pemberitahuan_galat ?? null) },
+    )
   }
 
   return (

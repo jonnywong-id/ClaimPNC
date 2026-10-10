@@ -10,9 +10,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"claim-pnc/internal/inboxlaporanklaim"
 	"claim-pnc/internal/platform/clock"
@@ -31,6 +33,70 @@ func ownTable(err error) error {
 		return fmt.Errorf("%w: %v", inboxlaporanklaim.ErrStorageNotReady, err)
 	}
 	return err
+}
+
+// cutBytes memotong teks ke paling banyak max byte tanpa memecah satu karakter UTF-8 —
+// kolom VARCHAR2 tabel lama diukur dalam byte.
+func cutBytes(text string, max int) string {
+	if len(text) <= max {
+		return text
+	}
+	cut := max
+	for cut > 0 && !utf8.RuneStart(text[cut]) {
+		cut--
+	}
+	return strings.TrimSpace(text[:cut])
+}
+
+// tooLongPattern membaca ORA-12899: value too large for column "OWNER"."TABEL"."KOLOM"
+// (actual: N, maximum: M).
+var tooLongPattern = regexp.MustCompile(`ORA-12899:.*"([A-Z0-9_]+)"\s*\(actual:\s*(\d+),\s*maximum:\s*(\d+)\)`)
+
+// columnField memetakan kolom berkas ke isian form dan labelnya.
+var columnField = map[string][2]string{
+	"NAMAPELAPOR":          {"nama_pelapor", "Nama Pengirim / Pelapor Dokumen"},
+	"REPORTERNAME":         {"nama_pelapor", "Nama Pengirim / Pelapor Dokumen"},
+	"EMAILPENGIRIM":        {"email_pelapor", "Email Pengirim"},
+	"TLPPENGIRIM":          {"telepon_pelapor", "No. HP Pengirim"},
+	"NO_HP":                {"telepon_pelapor", "No. HP Pengirim"},
+	"NAMAKURIRASM":         {"nama_kurir", "Nama Kurir ASM"},
+	"NOPOLIS":              {"nomor_polis", "Nomor Polis"},
+	"NAMATERTANGGUNG":      {"tertanggung", "Nama Tertanggung"},
+	"QQNAME":               {"tertanggung", "Nama Tertanggung"},
+	"NOREFERENSI":          {"nomor_rujukan", "No. Referensi/Placing Slip"},
+	"LOKASIKEJADIAN":       {"lokasi_kejadian", "Lokasi Kejadian"},
+	"LOCATION":             {"lokasi_kejadian", "Lokasi Kejadian"},
+	"SUBJECTEMAIL":         {"subjek_email", "Subject Email"},
+	"KRONOLOGIKEJADIAN":    {"kronologis", "Kronologis Kejadian"},
+	"KRONOLOGI":            {"kronologis", "Kronologis Kejadian"},
+	"RINCIANKERUSAKAN":     {"rincian_kerusakan", "Rincian Kerusakan"},
+	"ALASANBLMTRANSFER":    {"alasan", "Keterangan Belum Transfer"},
+	"KETERANGANBLMREGIST":  {"keterangan_belum_registrasi", "Keterangan Belum Registrasi"},
+	"GROUPPANEL":           {"group_panel", "Group Panel"},
+	"EMAILTERTANGGUNG":     {"email_tertanggung", "Email Tertanggung"},
+	"SIMPENGENDARA":        {"sim_pengendara", "SIM Pengendara"},
+	"RESOURCES":            {"sumber_laporan", "Source Of Reports"},
+	"TANGGALTERIMADOKUMEN": {"tanggal_terima_dokumen", "Tanggal Terima Dokumen"},
+}
+
+// valueTooLarge menerjemahkan ORA-12899 menjadi pelanggaran isian yang menyebut isiannya dan
+// batasnya, bukan galat sistem (RCVN.26.90/.91, 2026-10-10). Nil bila galatnya bukan itu.
+func valueTooLarge(err error) error {
+	if err == nil {
+		return nil
+	}
+	m := tooLongPattern.FindStringSubmatch(err.Error())
+	if m == nil {
+		return nil
+	}
+	field, label := "", m[1]
+	if f, ok := columnField[m[1]]; ok {
+		field, label = f[0], f[1]
+	}
+	return &inboxlaporanklaim.ValidationError{Violation: []inboxlaporanklaim.Violation{{
+		Field:   field,
+		Message: fmt.Sprintf("%s terlalu panjang: %s karakter, paling banyak %s.", label, m[2], m[3]),
+	}}}
 }
 
 // isDuplicateKey menyatakan apakah penyisipan gagal karena nomornya sudah dipakai.
@@ -314,7 +380,8 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		emptyToNil(report.ReporterPhone),
 		emptyToNil(report.CourierName),
 		emptyToNil(report.PolicyNumber),
-		emptyToNil(report.InsuredName),
+		// Kolomnya 100 byte; nama lengkap tetap di T_CLAIM_PNC.QQNAME (upsertClaimRow).
+		emptyToNil(cutBytes(report.InsuredName, inboxlaporanklaim.StoredInsuredNameLength)),
 		emptyToNil(report.ReferenceNumber),
 		int64(report.EstimateValue),
 		emptyToNil(report.LossLocation),
@@ -330,7 +397,10 @@ func (r *Repo) Update(ctx context.Context, report inboxlaporanklaim.ClaimReport)
 		report.ID,
 	)
 	if err != nil {
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q: %w", report.ID, ownTable(err))
+		if tooLong := valueTooLarge(err); tooLong != nil {
+			return tooLong
+		}
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyimpan %q ke POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", report.ID, ownTable(err))
 	}
 
 	// Driver yang tidak dapat melaporkan jumlah baris tidak boleh diartikan sebagai
@@ -388,14 +458,20 @@ func upsertClaimRow(ctx context.Context, tx *sql.Tx, report inboxlaporanklaim.Cl
 	}
 
 	result, err := tx.ExecContext(ctx, getQuery("claim_report_pnc_update"), args...)
+	if tooLong := valueTooLarge(err); tooLong != nil {
+		return tooLong
+	}
 	if err != nil {
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: memperbarui baris %q di T_CLAIM_PNC: %w", report.ID, err)
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: memperbarui baris %q di POOLDATA.T_CLAIM_PNC: %w", report.ID, err)
 	}
 	if affected, err := result.RowsAffected(); err == nil && affected > 0 {
 		return nil
 	}
 	if _, err := tx.ExecContext(ctx, getQuery("claim_report_pnc_insert"), args...); err != nil {
-		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan baris %q di T_CLAIM_PNC: %w", report.ID, err)
+		if tooLong := valueTooLarge(err); tooLong != nil {
+			return tooLong
+		}
+		return fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan baris %q di POOLDATA.T_CLAIM_PNC: %w", report.ID, err)
 	}
 	return nil
 }
@@ -483,7 +559,7 @@ func (r *Repo) insertOnce(
 		saved.ID, saved.CreatedAt, saved.BranchCode,
 		saved.CreatedBy, emptyToNil(saved.ReporterName),
 	); err != nil {
-		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan %q: %w", saved.ID, ownTable(err))
+		return inboxlaporanklaim.ClaimReport{}, fmt.Errorf("inboxlaporanklaim/sqlstore: menyisipkan %q ke POOLDATA.T_CLAIM_RECIVEDCLAIM: %w", saved.ID, ownTable(err))
 	}
 
 	// Barisnya di T_CLAIM_PNC lahir bersama berkasnya, di transaksi yang sama. Bila

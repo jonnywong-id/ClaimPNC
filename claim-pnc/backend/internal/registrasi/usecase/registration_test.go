@@ -68,14 +68,22 @@ type environment struct {
 	accounts   *memory.Accounts
 	areas      *memory.AreaDirectory
 	pucl       *memory.PUCL
+	faceSheet  *memory.FaceSheet
 	caller     usecase.Caller
 }
 
 func setup(t *testing.T, roles ...string) environment {
 	t.Helper()
+	return setupWith(t, nil, roles...)
+}
+
+// setupWith sama dengan setup, tetapi opsinya dapat diubah tweak sebelum layanan dibentuk.
+func setupWith(t *testing.T, tweak func(*usecase.Options), roles ...string) environment {
+	t.Helper()
 
 	clock := clock.FixedAt(time.Date(2026, time.June, 10, 3, 0, 0, 0, time.UTC))
 	store := memory.NewStore()
+	faceSheet := memory.NewFaceSheet()
 	parameter := memory.NewParameter()
 	link := memory.NewClaimReportLink()
 	policyItems := memory.NewPolicyItems(memory.SamplePolicyItems())
@@ -92,9 +100,10 @@ func setup(t *testing.T, roles ...string) environment {
 	areas := memory.NewAreaDirectory()
 	pucl := memory.NewPUCL()
 
-	service, err := usecase.NewService(usecase.Options{
+	options := usecase.Options{
 		ClaimRepo:              store,
 		TaskRepo:               store.TaskRepo(),
+		UnassignedTasks:        store,
 		PolicyRepo:             memory.NewPolicyStore(memory.SamplePolicies(clock.Now())...),
 		NumberIssuer:           memory.NewNumberIssuer(),
 		Parameter:              parameter,
@@ -109,7 +118,7 @@ func setup(t *testing.T, roles ...string) environment {
 		CurrencyDirectory:      memory.CurrencyDirectory{},
 		ItemOptions:            policyItems,
 		ClaimRecords:           records,
-		FaceSheet:              memory.NewFaceSheet(),
+		FaceSheet:              faceSheet,
 		FaceSheetRenderer:      facesheetpdf.Renderer{},
 		PLA:                    pla,
 		PLARenderer:            plapdf.Renderer{},
@@ -135,10 +144,15 @@ func setup(t *testing.T, roles ...string) environment {
 		IDGenerator:            memory.IDGenerator{},
 		UnitOfWork:             store,
 		Clock:                  clock,
-	})
+	}
+	if tweak != nil {
+		tweak(&options)
+	}
+	service, err := usecase.NewService(options)
 	require.NoError(t, err)
 
 	return environment{
+		faceSheet:  faceSheet,
 		service:    service,
 		store:      store,
 		parameter:  parameter,

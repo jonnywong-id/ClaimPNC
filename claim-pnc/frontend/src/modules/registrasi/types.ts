@@ -64,6 +64,36 @@ export type Coverage = {
   adjustment?: Settlement[]
   /** Jaminan sudah ditandai Transfer ke Analyst (ISANALISTRANSFER) — hanya dikirim server. */
   sudah_transfer_analis?: boolean
+  /** Isian modal "Transfer Claim ke Komite" (ClaimComitee_OC) — hanya dikirim server. */
+  isian_komite?: CommitteeNote
+}
+
+/** Satu kode diagnosa (sm.m_diagnosis) — hasil Cari Kode / Desc Diagnose. */
+export type DiagnosisOption = {
+  kode: string
+  deskripsi: string
+}
+
+export type DiagnosisResponse = {
+  pilihan: DiagnosisOption[]
+}
+
+/**
+ * Isian modal "Transfer Claim ke Komite" satu jaminan — kolom analisis
+ * T_CLAIM_OBJECTCOVERAGE. Inisial dan tanggal komite hanya dikirim server.
+ */
+export interface CommitteeNote {
+  kronologi_kejadian: string
+  jumlah_kerugian: string
+  polis_liability: string
+  remarks: string
+  remarks_investigasi: string
+  diagnosa: string
+  kode_diagnosa: string
+  desc_diagnosa: string
+  penerima_klaim: string
+  inisial?: string
+  tanggal_komite?: string
 }
 
 /** Kode Tipe Pembayaran (PAYMENTTYPE). */
@@ -92,6 +122,8 @@ export type Settlement = {
   kurs_e4: number
   nilai_propose_sen: Cents
   nilai_pengajuan_sen: Cents
+  /** Nilai Pengajuan Tertanggung PA (T_CLAIM_ADJUSTMENT.PROPOSE_VALUE_TERTANGGUNG). */
+  nilai_pengajuan_tertanggung_sen?: Cents
   loc: PercentE4
   nilai_salvage_sen: Cents
   nilai_salvage_b_sen: Cents
@@ -138,7 +170,13 @@ export type Committee = {
   status: 'berjalan' | 'disetujui' | 'ditolak'
   /** Operator jenjang yang sedang ditunggu. */
   menunggu?: string
-  anggota: { jenjang: number; komite: string; keputusan: string; catatan: string; tanggal_putusan?: string }[]
+  anggota: {
+    jenjang: number
+    komite: string
+    keputusan: string
+    catatan: string
+    tanggal_putusan?: string
+  }[]
 }
 
 /** Badan tombol Transfer Komite. Indeks berbasis 1. */
@@ -147,6 +185,8 @@ export type CommitteeTransferRequest = {
   objek: number
   jaminan: number
   adjustment: number
+  /** Penerima Klaim modal Transfer Claim ke Komite (Travel); kosong = TEMPRECEIVER tersimpan. */
+  penerima_klaim?: string
 }
 
 export type CommitteeTransferResponse = {
@@ -192,6 +232,8 @@ export type SettlementRequest = {
   mata_uang: string
   nilai_propose_sen: Cents
   nilai_pengajuan_sen: Cents
+  /** Nilai Pengajuan Tertanggung PA (T_CLAIM_ADJUSTMENT.PROPOSE_VALUE_TERTANGGUNG). */
+  nilai_pengajuan_tertanggung_sen?: Cents
   loc: PercentE4
   nilai_salvage_sen: Cents
   nilai_salvage_b_sen: Cents
@@ -237,13 +279,22 @@ export type EstimateRequest = {
   tugas_id: string
   kembali: boolean
   objek: { coverage: { item: ObjectItem[] }[] }[]
+  /** Catatan ke PIC Teknis; tidak dikirim berarti catatan tersimpan dibiarkan. */
+  catatan_pic_teknis?: string
 }
 
 export type CurrencyOption = { id: string; nama: string }
 
 /** Pilihan Objek item estimasi — item properti polis Fire. Lini lain: daftar kosong. */
-export type ItemOption = { nama: string; kelompok: string; tsi_sen: Cents }
-export type ItemOptionsResponse = { pilihan: ItemOption[] }
+/** id: ObjectItemID pilihan (manfaat plan Travel); kosong untuk lini lain. */
+export type ItemOption = { id: string; nama: string; kelompok: string; tsi_sen: Cents }
+/** bawaan: nama item untuk item baru ("Others"/"OTHERS"); kosong untuk Fire. */
+export type ItemOptionsResponse = { pilihan: ItemOption[]; bawaan: string }
+/**
+ * Pilihan dropdown "Tambah coverage" — coverage polis milik satu objek, dibaca dari
+ * POOLDATA.T_COVERAGELIST_CARGO/ANEKA/FIRE/PERSON sesuai lini bisnis polis.
+ */
+export type CoverageOptionsResponse = { pilihan: Coverage[] }
 export type CurrenciesResponse = { pilihan: CurrencyOption[] }
 
 export type InsuredItem = {
@@ -254,6 +305,14 @@ export type InsuredItem = {
   /** Pekerjaan dan tanggal lahir (YYYY-MM-DD) peserta PA — T_PERSONLIST polis, baca saja. */
   pekerjaan?: string
   tanggal_lahir?: string
+  /** KTP/Paspor dan Status peserta Travel — T_PERSONLIST polis, baca saja. */
+  ktp_paspor?: string
+  status_peserta?: string
+  /** Model, Merk, Nama Tipe, Nomor Chasis objek HE — T_ANEKALIST polis, baca saja. */
+  model?: string
+  merk?: string
+  nama_tipe?: string
+  nomor_chasis?: string
 }
 
 /** Satu penerima klaim. */
@@ -321,7 +380,13 @@ export type Policy = {
 }
 
 /** Satu baris grid Telephone dan Email (CIFData ASMTelfax). */
-export type InsuredPhone = { jenis: string; nama_jenis: string; kode: string; nomor: string; ekstensi: string }
+export type InsuredPhone = {
+  jenis: string
+  nama_jenis: string
+  kode: string
+  nomor: string
+  ekstensi: string
+}
 
 /** Satu alamat tertanggung dari CIF polis (CIFData.AddressList). */
 export type InsuredAddress = {
@@ -419,6 +484,8 @@ export type Claim = {
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
+  /** Tanggal Keluar Rawat Inap PA (T_CLAIM_PNC.TANGGALSELESAIRAWATINAP); kosong: tidak rawat inap. */
+  tanggal_keluar_rawat_inap?: string
   lokasi: string
   kronologi: string
   pelapor: Reporter
@@ -435,6 +502,15 @@ export type Claim = {
   nomor_slik: string
   ex_gratia: boolean
   user_teknis: string
+  /** Catatan ke PIC Teknis layar Input Estimasi (T_CLAIM_PNC.REMARK). */
+  catatan_pic_teknis?: string
+  /** No KTP dan Pengkinian Data Input Register PA (PENGKINIAN_NO_KTP, _NO_HP, _EMAIL). */
+  pengkinian_no_ktp?: string
+  pengkinian_no_hp?: string
+  pengkinian_email?: string
+  /** Jenis Laporan (T_CLAIM_PNC.REPORTTYPE): 1 Direct · 2 Via Email · 3 Via Fax · 4 Via Pos /
+   * Kurir · 5 Via Telephone · 6 Via Portal. */
+  jenis_laporan?: string
   rcv_id: string
   objek: InsuredItem[]
   /** ClaimData.ReceiverClaim — penerima klaim (T_CLAIM_RECEIVER). */
@@ -523,6 +599,8 @@ export type RegisterRequest = {
   tanggal_kejadian: string
   tanggal_lapor: string
   tanggal_terima_dokumen: string
+  /** Tanggal Keluar Rawat Inap PA (T_CLAIM_PNC.TANGGALSELESAIRAWATINAP); kosong: tidak rawat inap. */
+  tanggal_keluar_rawat_inap?: string
   lokasi: string
   kronologi: string
   pelapor: Reporter
@@ -530,6 +608,12 @@ export type RegisterRequest = {
   prinsip_mengenal_nasabah: string
   komentar_suspicious: string
   email_lod: string
+  /** No KTP dan Pengkinian Data Input Register PA. */
+  pengkinian_no_ktp?: string
+  pengkinian_no_hp?: string
+  pengkinian_email?: string
+  /** Jenis Laporan (T_CLAIM_PNC.REPORTTYPE). */
+  jenis_laporan?: string
   rekomendasi: string
   subjek_email: string
   status_salvage: string
@@ -629,6 +713,8 @@ export type FaceSheetRequest = {
 export type PLARequest = FaceSheetRequest & {
   nomor?: string
   catatan?: Record<string, string>
+  /** Isian Email per nomor PLA (`.pyEmailAddress`); hanya nomor yang dikirim yang diubah. */
+  email?: Record<string, string>
 }
 
 /** Satu baris grid layar PrintPLA_dtl. */
@@ -639,12 +725,28 @@ export type PLARow = {
   catatan: string
   email: string
   tanggal: string
+  /** T_PLALIST.ISKIRIM = '1' — sudah dikirim lewat email (SEND ALL PLA). */
+  terkirim?: boolean
 }
 
 export type PLAListResponse = {
   revisi_cfs: number
   baru_terbit: number
   pla: PLARow[]
+}
+
+/** Hasil SEND ALL PLA untuk satu PLA. */
+export type PLASendOutcome = {
+  nomor: string
+  terkirim: boolean
+  dilewati: boolean
+  /** Sebab gagal — untuk dilampirkan ke IT Support. */
+  galat?: string
+}
+
+export type PLASendResponse = {
+  hasil: PLASendOutcome[]
+  daftar: PLAListResponse
 }
 
 /**
@@ -711,3 +813,26 @@ export type DLAListResponse = {
   peringatan: string[]
   dla: DLARow[]
 }
+
+/** Satu baris grid Status Penerimaan Komite (InputAdjustment_sect, .ComiteeClaim). */
+export type CommitteeStatusRow = {
+  jenjang: number
+  nama_komite: string
+  /** 0 menunggu, 1 setuju, 2 tolak. */
+  status: string
+  tanggal: string
+  komentar: string
+}
+
+/** Satu baris grid Histori Transfer Kasir (InputAdjustment_sect, TempDataLogKasir). */
+export type CashierHistoryRow = {
+  pic_teknik: string
+  tanggal: string
+  status_kasir: string
+  komentar: string
+}
+
+export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: CashierHistoryRow[] }
+
+/** Jawaban GET /klaim/{id}/aging — `.PaymentData.AgingAmount` dari layanan premi. */
+export type PremiumAgingResponse = { aging_amount: string | null; tersedia: boolean }

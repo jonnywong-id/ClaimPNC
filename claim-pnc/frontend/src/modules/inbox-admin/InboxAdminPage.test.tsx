@@ -266,15 +266,16 @@ describe('penyaring', () => {
     expect(screen.queryByLabelText('Business')).not.toBeInTheDocument()
   })
 
-  it('menggambar dropdown lini bisnis hanya pada tab yang mendukungnya', async () => {
+  it('menggambar dropdown Bisnis di tingkat layar, dan pilihannya bertahan saat berpindah tab', async () => {
+    // Di Pega dropdown Bisnis berada di atas daftar Status Register, bukan milik satu
+    // antrean — ia menyaring jumlah seluruh antrean sekaligus.
     stubDefaultFetch([ROW], TAB_ALL)
     await renderLoaded()
 
-    // Tab bawaan tidak mendukungnya.
-    expect(screen.queryByLabelText('Business')).not.toBeInTheDocument()
-
+    const select = screen.getByLabelText('Bisnis')
+    await userEvent.selectOptions(select, 'ALL')
     await userEvent.click(screen.getByRole('tab', { name: 'ALL' }))
-    expect(await screen.findByLabelText('Business')).toBeInTheDocument()
+    expect(screen.getByLabelText('Bisnis')).toHaveValue('ALL')
   })
 
   it('mengirim kata kunci ke server, bukan menyaring di peramban', async () => {
@@ -299,8 +300,7 @@ describe('penyaring', () => {
     await userEvent.type(screen.getByLabelText('Cari'), 'PNC-9001')
     await userEvent.click(screen.getByRole('tab', { name: 'ALL' }))
 
-    expect(await screen.findByLabelText('Business')).toBeInTheDocument()
-    expect(screen.getByLabelText('Cari')).toHaveValue('')
+    expect(await screen.findByLabelText('Cari')).toHaveValue('')
 
     await vi.waitFor(() => {
       expect(lastListCall()?.url).not.toContain('cari=')
@@ -341,6 +341,20 @@ describe('isi tabel', () => {
 })
 
 describe('tombol Lihat Detail Klaim', () => {
+  it('berada di kolom paling kanan pada tabel rapat, dan tanggal diringkas', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const baris = await screen.findByRole('row', { name: /PNC-9001/ })
+    const sel = within(baris).getAllByRole('cell')
+    expect(within(sel[sel.length - 1]!).getByRole('button', { name: 'Lihat Detail Klaim' })).toBeInTheDocument()
+    const tabel = baris.closest('table') as HTMLTableElement
+    const judul = within(tabel).getAllByRole('columnheader')
+    expect(judul[judul.length - 1]).toHaveTextContent('Aksi')
+    expect(tabel.className).toContain('text-xs')
+    expect(within(baris).getByText('12/03/2026')).toBeInTheDocument()
+  })
+
   it('membawa kunci klaim ke layar rincian', async () => {
     stubDefaultFetch()
     await renderLoaded()

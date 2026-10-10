@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { InboxAdminPage } from './InboxAdminPage'
+import { InboxAdminPage, detailPath } from './InboxAdminPage'
 import type { MetadataResponse, Tab, WorkItem } from './types'
 
 /** Uji tambahan Inbox Admin: galat, lini bisnis, paginasi, dan tombol rincian. Nilai KARANGAN. */
@@ -167,9 +167,11 @@ it('menyaring per lini bisnis dan menjelaskan kekosongannya', async () => {
   // Tab yang dinonaktifkan tanpa alasan memakai keterangan baku.
   expect(screen.getByText(/"Not Answered" tidak dibawa ke sistem baru — tidak dipakai\./)).toBeInTheDocument()
 
-  await user.selectOptions(screen.getByLabelText('Business'), 'PA')
-  // Tab bawaan dipilih server, sehingga parameter tab tidak dikirim.
-  await waitFor(() => expect(calls.at(-1)).toBe(`${PATH}?bisnis=PA`))
+  await user.selectOptions(screen.getByLabelText('Bisnis'), 'PA')
+  // Tab bawaan dipilih server, sehingga parameter tab tidak dikirim. Daftar Status Register
+  // ikut dihitung ulang dengan lini bisnis yang sama.
+  await waitFor(() => expect(calls).toContain(`${PATH}?bisnis=PA`))
+  await waitFor(() => expect(calls).toContain(`${PATH}/jumlah?bisnis=PA`))
   expect(await screen.findByText('Tidak ada baris pada lini bisnis yang dipilih.')).toBeInTheDocument()
 })
 
@@ -201,11 +203,87 @@ it('membuka rincian dengan case ID bila referensi kosong, dan mematikan tombol t
   const user = userEvent.setup()
   renderPage()
 
-  const table = await screen.findByRole('table')
+  // Tabel TERAKHIR: yang pertama adalah daftar Status Register.
+  await screen.findAllByRole('button', { name: 'Lihat Detail Klaim' })
+  const table = screen.getAllByRole('table').at(-1)!
   const buttons = within(table).getAllByRole('button', { name: 'Lihat Detail Klaim' })
   expect(buttons[1]).toBeDisabled()
   expect(within(table).getAllByText('3 hari').length).toBeGreaterThan(0)
 
   await user.click(buttons[0]!)
   expect(await screen.findByText('Rincian PNC-7')).toBeInTheDocument()
+})
+
+it('menampilkan Export LOD hanya di tab Branch Claim, dan tombol Auto Claim di setiap tab', async () => {
+  const branch: Tab = { ...TAB_ALL, kode: '12', nama: 'Branch Claim' }
+  stubFetch(() => page([]), { body: { ...META, tab: [TAB_ALL, branch] } })
+  const user = userEvent.setup()
+  renderPage()
+
+  expect(await screen.findByRole('button', { name: 'Export Hasil Auto Claim' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Export Klaim Gagal' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Export LOD' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('tab', { name: /Branch Claim/ }))
+  expect(await screen.findByRole('button', { name: 'Export LOD' })).toBeInTheDocument()
+})
+
+it('mengunduh ekspor lewat rute ekspor modul', async () => {
+  stubFetch(() => page([]))
+  vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} }))
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByRole('button', { name: 'Export Klaim Gagal' }))
+  await waitFor(() => expect(calls).toContain(`${PATH}/ekspor/klaim-gagal`))
+})
+
+it('menampilkan jumlah setiap antrean pada daftar Status Register', async () => {
+  const outstanding: Tab = { ...TAB_ALL, kode: '3', nama: 'Outstanding' }
+  stubFetch(
+    (url) =>
+      url.startsWith(`${PATH}/jumlah`)
+        ? { body: { jumlah: [{ kode: '3', nama: 'Outstanding', jumlah: 561, gagal: false }], portal: 'ASM' } }
+        : page([]),
+    { body: { ...META, tab: [outstanding] } },
+  )
+  renderPage()
+
+  const tab = await screen.findByRole('tab', { name: /Outstanding/ })
+  const rowOfTab = tab.closest('tr')!
+  expect(await within(rowOfTab).findByText('561')).toBeInTheDocument()
+})
+
+it('menampilkan Pilih Kanwil bagi manajer dan mengirim kanwil pilihannya', async () => {
+  stubFetch((url) =>
+    url.startsWith(`${PATH}/batas`)
+      ? { body: { manajer: true, cabang: '', kanwil: [{ kode: '1', label: 'Kanwil 1' }], portal: 'ASM' } }
+      : page([]),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.selectOptions(await screen.findByLabelText('Pilih Kanwil'), '1')
+  await waitFor(() => expect(calls).toContain(`${PATH}?kanwil=1`))
+  await waitFor(() => expect(calls).toContain(`${PATH}/jumlah?kanwil=1`))
+})
+
+it('menyebut cabang yang membatasi antrean petugas cabang, tanpa dropdown kanwil', async () => {
+  stubFetch((url) =>
+    url.startsWith(`${PATH}/batas`)
+      ? { body: { manajer: false, cabang: '100351', kanwil: [], portal: 'ASM' } }
+      : page([]),
+  )
+  renderPage()
+
+  expect(await screen.findByText(/dibatasi cabang Anda \(100351\)/)).toBeInTheDocument()
+  expect(screen.queryByLabelText('Pilih Kanwil')).not.toBeInTheDocument()
+})
+
+it('membuka klaim PNCN langsung di halaman klaim registrasi, klaim Pega ke View Claim', () => {
+  expect(detailPath({ case_id: 'PNCN.26.35', referensi: 'PNCN.26.35' })).toBe('/registrasi/klaim/PNCN.26.35')
+  expect(detailPath({ case_id: 'PNC-1865', referensi: 'ASM-FW-GCNMFW-WORK PNC-1865' })).toBe(
+    '/view-claim/ASM-FW-GCNMFW-WORK%20PNC-1865',
+  )
+  expect(detailPath({ case_id: '', referensi: '' })).toBeNull()
 })

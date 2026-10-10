@@ -32,6 +32,9 @@ type faults struct {
 	mu    sync.Mutex
 	armed map[string]int
 	fired bool
+
+	// faceSheet adalah isi Claim Face Sheet terakhir yang diserahkan ke renderer.
+	faceSheet registrasi.FaceSheet
 }
 
 func (f *faults) arm(key string, skip int) {
@@ -307,6 +310,13 @@ func (w fPLA) UpdateNote(ctx context.Context, c, n string, rev int, note string)
 	return w.PLASource.UpdateNote(ctx, c, n, rev, note)
 }
 
+func (w fPLA) PASignature(ctx context.Context, id string) (string, []byte, error) {
+	if err := w.f.hit("PLA.PASignature"); err != nil {
+		return "", nil, err
+	}
+	return w.PLASource.PASignature(ctx, id)
+}
+
 func (w fPLA) Signature(ctx context.Context, e string) (string, []byte, error) {
 	if err := w.f.hit("PLA.Signature"); err != nil {
 		return "", nil, err
@@ -558,6 +568,9 @@ func (w fFSRender) Render(d registrasi.FaceSheet) ([]byte, error) {
 	if err := w.f.hit("Render.FaceSheet"); err != nil {
 		return nil, err
 	}
+	w.f.mu.Lock()
+	w.f.faceSheet = d
+	w.f.mu.Unlock()
 	return w.FaceSheetRenderer.Render(d)
 }
 
