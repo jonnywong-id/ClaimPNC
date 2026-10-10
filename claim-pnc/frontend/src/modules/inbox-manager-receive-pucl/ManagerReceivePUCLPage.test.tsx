@@ -88,10 +88,6 @@ const TAB_RCLPUCL: Tab = {
 const METADATA: MetadataResponse = {
   tab: [TAB_RECEIVE, TAB_RCLPUCL],
   tab_bawaan: '1',
-  selisih_terencana: [
-    'Kolom "Jenis Klaim" diturunkan dari Group Panel, bukan dibaca dari isian aslinya.',
-    'Kolom "Jumlah Lembar Dokumen" selalu kosong.',
-  ],
   portal: 'ASM',
 }
 
@@ -308,13 +304,17 @@ describe('bentuk layar', () => {
     expect(screen.getByText(/seluruh/i)).toBeInTheDocument()
   })
 
-  it('menampilkan selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      await screen.findByText(/Jenis Klaim.*diturunkan dari Group Panel/),
-    ).toBeInTheDocument()
+      screen.queryByText(/Jenis Klaim.*diturunkan dari Group Panel/),
+    ).not.toBeInTheDocument()
   })
 })
 

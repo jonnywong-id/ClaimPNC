@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyCircumstanceType/>
+<pyTemporaryObject/>
+<pyCircumstanceTemplate/>
+<pxHostId>jboss10372</pxHostId>
+<pxMoveFromSystem/>
+<pyRuleStarts/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyBrowseSQL>select currency as "Currency",X.GROUPBUSINESS as "BusinessID",sum(x.AKSEPVALUE) as "OwnRiskValue",
+sum(x.SALVAGEVALUE) AS "DeductibleValue"
+,(select A.NOTE from POOLDATA.BUSINESSGROUP a where A.ID = X.GROUPBUSINESS) as "BusinessName" from POOLDATA.XOL_TABLE_ALL_KLAIM x 
+where X.AKSEPVALUE != 0 and X.GROUPBUSINESS in ({ASIS:TempXOL.OccupationCode}) and TO_CHAR(TO_DATE (X.DOL, 'dd/mm/yyyy'),'dd/mm/yyyy') = {TempXOL.YearofQuartal} and X.CAUSEOFLOSS = {TempXOL.CauseOfLoss} 
+group by X.CURRENCY,X.GROUPBUSINESS UNION ALL
+select A.CURRENCYID,A.BUSINESSID,SUM (PAIDCLAIMAMOUNTSHARE),0,'Treaty Inward' FROM POOLDATA.T_CLAIM_INWARD_XOL a
+ WHERE    TO_CHAR (TO_DATE (a.dateofloss, 'dd/mm/yyyy'), 'dd/mm/yyyy') = {TempXOL.YearofQuartal} and A.CAUSEOFLOSS = {TempXOL.CauseOfLoss} group by A.BUSINESSID,CURRENCYID</pyBrowseSQL>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GET_CACULATEXOLBYCURRENCY</pxInsId>
+<pyRuleEnds/>
+<pyIsFromManageChangeLP/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyRelativePath/>
+<pyStatus/>
+<pyRuleFormStatusTime>20261008T014048.257 GMT</pyRuleFormStatusTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pySpecialtyComponentData/>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM Get_caculateXOLByCurrency</pxTabLabel>
+<pxMergeSynchronized>20240717T101450.492 GMT</pxMergeSynchronized>
+<pyMemo>done</pyMemo>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRWAccess>GCNM</pyRWAccess>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyCircumstanceDateProp/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pzChecksum>262592656</pzChecksum>
+<pyHandlerFlow/>
+<pxInstanceLockedDateTime/>
+<pyTemplate/>
+<pyCircumstanceProp/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyFormPost/>
+<pyWindowTitle/>
+<pxSiblingCount/>
+<pyDocumentTitle/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETPLA_SRB #20220921T082837.717 GMT</pzOriginalInstanceKey>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM Get_caculateXOLByCurrency</pyRuleName>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pxInstanceLockedRuleSetVersion/>
+<pyMethodStatus/>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedRuleSet/>
+<pyUsage/>
+<pyDeletedObject/>
+<pyCheckInRuleSet/>
+<pyLabel>Get_caculate XOL by currency</pyLabel>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxCreateDateTime>20240901T080109.510 GMT</pxCreateDateTime>
+<pyInterface/>
+<pyRequestType>Get_caculateXOLByCurrency</pyRequestType>
+<pyDescription/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedBy/>
+<pyCircumstanceDate/>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyStreamName/>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pxOriginalCreateOperator/>
+<pxInstanceLockedCreateDateTime/>
+<pyShowJavaWindowName>GeneratedJava20261008T014048.276 GMT</pyShowJavaWindowName>
+<pySaveSQL/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyJavaStream/>
+<pyCircumstanceVal/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyLabelOld>Get_caculate XOL by currency</pyLabelOld>
+<pxOriginalCreateSystemID/>
+<pyBaseRule>false</pyBaseRule>
+<pxUpdateDateTime>20240901T081452.774 GMT</pxUpdateDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyWorkKey/>
+<pxMoveImportDateTime>20241223T123621.147 GMT</pxMoveImportDateTime>
+<pyDeleteSQL/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20240901T080109.510 GMT</pzDocumentKey>
+<pySPRuleSetName>GCNMFW</pySPRuleSetName>
+<pxOriginalCreateOpName/>
+<pxInstanceLockedKey/>
+<pxSaveDateTime>20240901T081452.784 GMT</pxSaveDateTime>
+<pyTemplateInputBox/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20240901T080109.510 GMT</pzInsKey>
+<pyOpenSQL/>
+<pyCircumstanceDefinition/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!GET_CACULATEXOLBYCURRENCY</pxInsName>
+<pzStatus>valid</pzStatus>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileKey/>
+</rowdata>
+</pyCustomFields>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyToolBarSettings>
+<pySave>false</pySave>
+<pyRun>false</pyRun>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyRuleData>true</pyRuleData>
+<pyCheckIn>false</pyCheckIn>
+<pyCheckOut>true</pyCheckOut>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySiblings>true</pySiblings>
+<pyDelete>false</pyDelete>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyBranchOut>false</pyBranchOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyPreview>false</pyPreview>
+<pyShowJava>false</pyShowJava>
+<pyPropertyPane>false</pyPropertyPane>
+<pyRefresh>true</pyRefresh>
+<pyCompareVersion/>
+<pyForward>true</pyForward>
+<pyVersionSecure>true</pyVersionSecure>
+<pyDelegates>false</pyDelegates>
+<pyBack>true</pyBack>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyAvailability>false</pyAvailability>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20240901T080109.510 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20240717T101443.301 GMT</pzInsKey>
+<pyLabel>01-03-07 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20221125T060406.133 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>3</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMenuTooltip/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GET_CACULATEXOLBYCURRENCY #20220930T072115.500 GMT</pzInsKey>
+<pyLabel>01-02-01 (Available)</pyLabel>
+<pxListSubscript>4</pxListSubscript>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

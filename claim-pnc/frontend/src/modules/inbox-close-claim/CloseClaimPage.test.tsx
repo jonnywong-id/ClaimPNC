@@ -48,7 +48,6 @@ function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
     permintaan_terbaca: true,
     boleh_mengajukan: true,
     pelaksana_belum_ada: true,
-    selisih_terencana: ['Kolom "Lama Waktu Klaim" berisi umur klaim dalam hari.'],
     ...partial,
   }
 }
@@ -195,11 +194,18 @@ it('menandai lama klaim yang dihitung sampai hari ini', async () => {
   expect(await screen.findByText('900 hari*')).toBeVisible()
 })
 
-it('menyatakan selisih terencana kepada pengguna', async () => {
+// Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+//
+// Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+// adalah ia berhenti menjadi isi layar. Uji ini menjaga agar ia tidak kembali diam-diam.
+it('tidak lagi menggambar panel selisih terencana', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
-  expect(await screen.findByText(/Tiga hal yang berbeda dari layar lama/)).toBeVisible()
+  // Ditunggu sampai daftarnya benar-benar tergambar — tanpa itu, panel yang belum sempat
+  // muncul akan lolos uji ini tanpa membuktikan apa pun.
+  await screen.findByRole('table')
+  expect(screen.queryByText(/Tiga hal yang berbeda dari layar lama/)).not.toBeInTheDocument()
 })
 
 /**

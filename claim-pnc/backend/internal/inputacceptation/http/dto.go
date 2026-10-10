@@ -78,9 +78,6 @@ type DetailResponse struct {
 
 	Groups []GroupDTO `json:"kelompok"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal yang
 	// sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -196,15 +193,12 @@ func toDetailResponse(
 		})
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
 
 	return DetailResponse{
 		ClaimID:            detail.ClaimID,
 		StatusWork:         detail.StatusWork,
 		LastUpdateOperator: detail.LastUpdateOperator,
 		Groups:             groups,
-		PlannedDifferences: differences,
 		Portal:             portalAlias,
 	}
 }

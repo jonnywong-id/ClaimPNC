@@ -214,10 +214,6 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 		KolomLaporan []struct {
 			Kunci string `json:"kunci"`
 		} `json:"kolom_laporan"`
-		Selisih []struct {
-			Ringkas string `json:"ringkas"`
-			Rincian string `json:"rincian"`
-		} `json:"selisih_terencana"`
 		Portal string `json:"portal"`
 	}
 	require.NoError(t, json.Unmarshal(res.Body.Bytes(), &body))
@@ -229,8 +225,6 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 	require.NotEmpty(t, body.Tab[0].Kolom)
 	require.Equal(t, inboxrclpucl.DefaultTab, body.TabBawaan)
 	require.Len(t, body.KolomLaporan, len(inboxrclpucl.DailyReportColumns))
-	require.Len(t, body.Selisih, len(inboxrclpucl.PlannedDifferences))
-	require.NotEmpty(t, body.Selisih[0].Rincian)
 	require.Equal(t, testPortal, body.Portal)
 }
 

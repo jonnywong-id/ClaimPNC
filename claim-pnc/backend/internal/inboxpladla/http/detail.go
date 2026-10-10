@@ -222,14 +222,6 @@ func mapDetailError(err error) (int, ErrorResponse, bool) {
 			Message: notAvailable.Reason(),
 		}, true
 
-	case errors.Is(err, inboxpladla.ErrNotAClaimList):
-		return http.StatusUnprocessableEntity, ErrorResponse{
-			Code: CodeNotAClaimList,
-			Message: "Tampilan \"DATA PLA DLA XOL KLAIM\" tidak menampilkan klaim satu " +
-				"per satu, sehingga ia tidak punya daftar maupun tabel ringkas. " +
-				"Bukalah tampilan itu lewat bilah tab.",
-		}, true
-
 	case errors.Is(err, inboxpladla.ErrAdviceKindUnknown):
 		return http.StatusUnprocessableEntity, ErrorResponse{
 			Code:    CodeAdviceKindUnknown,

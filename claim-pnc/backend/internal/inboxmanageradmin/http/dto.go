@@ -117,9 +117,6 @@ type MetadataResponse struct {
 	// tidak dikenal".
 	CallerLineBusiness string `json:"lini_bisnis_anda"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal
 	// yang sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -213,8 +210,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	lines := make([]string, 0, len(meta.ExpectedLineBusinesses))
 	lines = append(lines, meta.ExpectedLineBusinesses...)
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
 
 	return MetadataResponse{
 		Tabs:                   toTabListDTO(meta.Tabs),
@@ -222,7 +217,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		AllTabs:                toTabListDTO(meta.AllTabs),
 		ExpectedLineBusinesses: lines,
 		CallerLineBusiness:     meta.CallerLineBusiness,
-		PlannedDifferences:     differences,
 		Portal:                 portalAlias,
 	}
 }

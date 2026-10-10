@@ -15,14 +15,17 @@ import { InboxPLADLAPreDLAPage } from './InboxPLADLAPreDLAPage'
  * berlaku pada data uji persis seperti pada dokumen.
  */
 
+// Keenam kolom ini adalah kepala grid Pega apa adanya — judul dan jumlahnya
+// (`Section/InboxPLA_sect-Section.xml:4334,4515,4628,4775,4894,5079`). Sampai
+// 2026-10-10 fixture ini memuat tujuh kolom berjudul bahasa Indonesia, termasuk
+// "PIC Teknik" yang tidak ada di satu pun grid Pega.
 const KOLOM_ANTREAN = [
-  { kunci: 'no_klaim', judul: 'No Klaim', tanggal: false },
-  { kunci: 'no_polis', judul: 'No Polis', tanggal: false },
-  { kunci: 'nama_tertanggung', judul: 'Nama Tertanggung', tanggal: false },
-  { kunci: 'tanggal_register', judul: 'Tanggal Register', tanggal: true },
-  { kunci: 'tanggal_kejadian', judul: 'Tanggal Kejadian', tanggal: true },
-  { kunci: 'pic_teknik', judul: 'PIC Teknik', tanggal: false },
-  { kunci: 'tanggal_advice', judul: 'Tanggal PLA', tanggal: true },
+  { kunci: 'no_klaim', judul: 'CLAIM NO', tanggal: false },
+  { kunci: 'no_polis', judul: 'POLICY NO', tanggal: false },
+  { kunci: 'nama_tertanggung', judul: 'QQ NAME', tanggal: false },
+  { kunci: 'tanggal_register', judul: 'REGISTER DATE', tanggal: true },
+  { kunci: 'tanggal_kejadian', judul: 'DATE OF LOSS', tanggal: true },
+  { kunci: 'tanggal_advice', judul: 'DATE OF PLA', tanggal: true },
 ]
 
 const KOLOM_RINCIAN = [
@@ -84,7 +87,6 @@ const METADATA = {
     },
   ],
   daftar_bawaan: 'pla',
-  selisih_terencana: ['Tombol "Send" belum tersedia.'],
   portal: 'ASM',
 }
 
@@ -233,9 +235,13 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               catatan: '',
               email: '',
               no_akseptasi: '',
+              dapat_dikirim: true,
             },
             {
               // Dokumen yang SUDAH terkirim — tombol Send tidak digambar padanya.
+              //
+              // Peladen yang memutuskannya, bukan layar: syaratnya berbeda antara tab
+              // PLA dan DLA, dan keduanya dibaca dari section Pega.
               no_advice: 'PLA/2026/0002',
               reasuradur: 'Reasuransi Contoh B',
               tipe: 'ORS',
@@ -247,6 +253,7 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               catatan: '',
               email: '',
               no_akseptasi: '',
+              dapat_dikirim: false,
             },
           ],
           portal: 'ASM',
@@ -328,6 +335,39 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     }
   })
 
+  /**
+   * Susunan layar depan mengikuti layar lama baris per baris (`D-13`).
+   *
+   * Keempat hal yang diperiksa di sini adalah tepat yang dilaporkan BERBEDA dari Pega
+   * pada 2026-10-10: tombol ekspor yang terdampar di kepala grid, judul daftar yang
+   * hilang, pencacah yang hanya ada di kaki, dan kolom tanpa nomor urut.
+   */
+  it('menyusun layar depan seperti Pega: ekspor di atas penyaring, judul daftar, pencacah, nomor urut', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP, BARIS_TANPA_TANGGAL]))
+    tampilkan()
+
+    await screen.findByText('PNC-1001')
+
+    // Judul daftar di atas grid — `pyTitle` "Inbox PLA".
+    expect(screen.getByRole('heading', { name: 'Inbox PLA', level: 2 })).toBeInTheDocument()
+
+    // Pencacah "Total Data :", bukan hanya nomor halaman.
+    expect(screen.getByRole('status')).toHaveTextContent('Total Data : 2')
+
+    // "Export To Excel" mendahului panel penyaing di DOM — itulah urutannya di Pega.
+    // Diperiksa lewat posisi dokumen, bukan lewat kelas tata letak: yang dijaga adalah
+    // urutan bacanya, dan itu pula yang dialami pengguna papan ketik.
+    const ekspor = screen.getByRole('button', { name: 'Export To Excel' })
+    const cari = screen.getByRole('button', { name: 'CARI DATA' })
+    expect(ekspor.compareDocumentPosition(cari) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    // Kolom paling kiri menomori baris halaman ini, dimulai dari satu.
+    const tabel = screen.getByRole('table', { name: 'Antrean PLA' })
+    const baris = within(tabel).getAllByRole('row')
+    expect(within(baris[1] as HTMLElement).getAllByRole('cell')[0]).toHaveTextContent('1')
+    expect(within(baris[2] as HTMLElement).getAllByRole('cell')[0]).toHaveTextContent('2')
+  })
+
   it('menggambar tanggal advice yang kosong sebagai tanda hubung, bukan tanggal', async () => {
     installFetch(jawabanBiasa([BARIS_TANPA_TANGGAL]))
     tampilkan()
@@ -339,7 +379,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     // Tanggal register dan tanggal kejadian tetap tergambar; hanya tanggal advice yang
     // kosong. Itu yang membuktikan sel kosongnya bukan akibat seluruh baris gagal
     // diformat.
-    expect(within(row as HTMLElement).getByText(/05 Feb 2026/)).toBeInTheDocument()
+    expect(within(row as HTMLElement).getByText('05/02/2026')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument()
   })
 
@@ -481,11 +521,14 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
 
     await screen.findByText('Detail PLA List')
 
-    // Keduanya ADA di Pega: Upload di ATAS grid rincian, Send di BAWAHnya.
+    // Keduanya ADA di Pega: Upload di ATAS grid rincian, Send di DALAM barisnya.
     expect(
       screen.getByRole('button', { name: 'Upload File Penunjang' }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+
+    // Satu, bukan dua: dari kedua dokumen klaim ini, satu sudah terkirim dan karena itu
+    // tidak bertombol. Lihat uji syarat tampilnya di bawah.
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
   })
 
   it('MENGIRIM surat saat Send ditekan, dan menyebut hasilnya', async () => {
@@ -568,7 +611,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     expect(screen.getByText(/mencoba lagi aman/)).toBeInTheDocument()
   })
 
-  it('menggambar SEND pada SETIAP baris, termasuk yang sudah terkirim', async () => {
+  it('TIDAK menggambar SEND pada dokumen yang sudah terkirim', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
@@ -578,14 +621,53 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
       name: /Rincian PLA klaim PNC-1001/,
     })
 
-    // Dua dokumen, salah satunya sudah terkirim — dan keduanya tetap punya tombol.
+    // Dua dokumen, salah satunya sudah terkirim — dan hanya yang belum punya tombol.
     //
-    // Pega menyembunyikannya pada dokumen terkirim (`.MARKETING != '1'`). Penyembunyian
-    // itu sengaja tidak dibawa atas keputusan Work Owner 2026-09-27, sehingga kolom
-    // "Terkirim" menjadi satu-satunya penanda.
+    // Syarat tampilnya dibawa dari `Section/InboxPLA_sect-Section.xml:13238`
+    // (`.MARKETING != '1'`, dengan `MARKETING` sebagai alias `ISKIRIM`). Sejak tombol ini
+    // benar-benar MENGIRIM SURAT, menggambarnya pada dokumen terkirim berarti menawarkan
+    // surat kedua ke reasuradur yang sama.
+    //
+    // Keputusannya datang dari peladen lewat `dapat_dikirim`, bukan dihitung layar —
+    // tab DLA memakai syarat yang lebih ketat (`.MARKETING == ''`).
     expect(within(panel).getByText('PLA/2026/0001')).toBeInTheDocument()
     expect(within(panel).getByText('PLA/2026/0002')).toBeInTheDocument()
-    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+  })
+
+  // Peladen LAMA tidak mengirim `dapat_dikirim`, dan tombolnya tidak boleh lenyap.
+  //
+  // Tanpa cadangan, kegagalan ini tidak menghasilkan satu pun galat: panelnya tampil
+  // utuh, hanya tanpa satu pun tombol Send. Yang melihatnya akan menyimpulkan tombolnya
+  // dicabut.
+  it('tetap menggambar SEND ketika peladen belum mengirim dapat_dikirim', async () => {
+    installFetch((call) => {
+      const jawaban = jawabanBiasa([BARIS_LENGKAP])(call)
+
+      if (call.url.includes('/klaim/') && !call.url.includes('/kirim')) {
+        const body = jawaban.body as { baris: Record<string, unknown>[] }
+        return {
+          ...jawaban,
+          body: {
+            ...body,
+            baris: body.baris.map(({ dapat_dikirim: _, ...sisa }) => sisa),
+          },
+        }
+      }
+
+      return jawaban
+    })
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+
+    const panel = await screen.findByRole('region', {
+      name: /Rincian PLA klaim PNC-1001/,
+    })
+
+    // Cadangannya memakai syarat tab PLA — yang lebih longgar dari keduanya — sehingga
+    // dokumen terkirim TETAP tidak bertombol. Itu bagian yang tidak boleh longgar.
+    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(1)
   })
 
   it('mengirim SATU dokumen, bukan seluruh dokumen klaim', async () => {
@@ -829,16 +911,18 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     expect(screen.queryByRole('button', { name: 'Rincian' })).toBeNull()
   })
 
-  it('menggambar selisih terencana yang dikirim server', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
+    await screen.findByText('PNC-1001')
     expect(
-      await screen.findByText(/Perbedaan yang disengaja terhadap layar Pega \(1\)/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('Tombol "Send" belum tersedia.'),
-    ).toBeInTheDocument()
+      screen.queryByText(/Perbedaan yang disengaja terhadap layar Pega/),
+    ).not.toBeInTheDocument()
   })
 
   it('menjelaskan portal yang belum dipilih, bukan menyebutnya kerusakan', async () => {

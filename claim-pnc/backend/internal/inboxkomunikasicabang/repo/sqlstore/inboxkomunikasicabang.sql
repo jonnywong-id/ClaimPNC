@@ -141,20 +141,10 @@
 -- YANG SENGAJA TIDAK BERUBAH — termasuk yang tampak seperti cacat
 -- ============================================================================
 --
--- * PENCACAH MEMERIKSA DUA KOLOM, GRID HANYA SATU.
---   `GetCountKomunikasiCabangAnswered` menyaring `REPLYFROM IS NOT NULL AND REPLYMESSAGE IS
---   NOT NULL`; kedua kueri grid hanya memeriksa `REPLYMESSAGE`. Akibatnya percakapan yang
---   dibalas TANPA penjawab tercatat MUNCUL di tabel tetapi TIDAK terhitung di pencacah mana
---   pun — bukan di "Answered" karena `REPLYFROM` kosong, bukan pula di "Not Answered" karena
---   `REPLYMESSAGE` terisi.
---
---   Keduanya dibawa apa adanya (`P-5`). Menyeragamkannya akan mengubah angka yang dilihat
---   pengguna hari ini, dan itu selisih yang belum diputuskan siapa pun.
---
--- * PENCACAH TIDAK MENYARING PENGIRIM DAN PESAN.
---   Kedua kueri pencacah tidak memuat `SENDER IS NOT NULL` maupun `MESSAGE IS NOT NULL`,
---   padahal kedua kueri grid memilikinya. Baris yang pengirimnya kosong karena itu ikut
---   terhitung tetapi tidak tampil. Dibawa apa adanya, sebab yang sama.
+-- CATATAN. Dua butir tentang PENYARING PENCACAH dihapus dari daftar ini pada 2026-10-09.
+-- Keduanya menerangkan mengapa pencacah menghitung populasi yang berbeda dari gridnya, dan
+-- menyebutnya "sengaja tidak berubah". Work Owner memutuskan keduanya DISELARASKAN; lihat
+-- bagian KEDUA PENCACAH MENGHITUNG POPULASI YANG SAMA DENGAN GRIDNYA di bawah.
 --
 -- * `CASEID` DIBANDINGKAN PERSIS, BUKAN DENGAN `LIKE`.
 --   Nilai penutupnya `CABANG SELESAI` BERAWALAN `CABANG`, sehingga penyaring berbasis awalan
@@ -233,31 +223,62 @@ SELECT k.KOMUNIKASIID        AS CONVERSATION_ID,
  ORDER BY k.CREATEDATEREPLY DESC, k.KOMUNIKASIID DESC
 OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 
+-- ============================================================================
+-- KEDUA PENCACAH MENGHITUNG POPULASI YANG SAMA DENGAN GRIDNYA
+-- ============================================================================
+--
+-- Kueri pencacah di Pega menyaring BERBEDA dari kueri gridnya sendiri:
+--
+--   GetCountKomunikasiCabangAnswered      REPLYFROM IS NOT NULL AND REPLYMESSAGE IS NOT NULL
+--   GetCountKomunikasiCabangNotAnswered   REPLYFROM IS NULL     AND REPLYMESSAGE IS NULL
+--
+-- Keduanya tidak memeriksa `SENDER` maupun `MESSAGE`, padahal kedua grid memeriksanya; dan
+-- keduanya memeriksa `REPLYFROM` yang tidak diperiksa grid mana pun.
+--
+-- Sampai 2026-10-09 perbedaan itu direplikasi apa adanya dan dinyatakan lewat
+-- PlannedDifferences. Akibatnya terlihat di layar yang berjalan: tabel "Status Register"
+-- menyebut `Not Answered 1`, dan baris itu — yang dapat diklik — membuka grid bertuliskan
+-- `Total Data : 0`.
+--
+-- Work Owner memutuskan pada 2026-10-09 agar keduanya DISELARASKAN. Angka yang dapat diklik
+-- adalah sebuah JANJI tentang apa yang akan terbuka, dan janji yang meleset lebih buruk
+-- daripada selisih dengan layar lama: ia membuat pembacanya meragukan seluruh angka di
+-- layar, bukan hanya yang satu itu.
+--
+-- Penyaring yang berlaku sekarang SAMA PERSIS dengan gridnya, termasuk `SENDER IS NOT NULL`
+-- dan `MESSAGE IS NOT NULL`, dan hanya `REPLYMESSAGE` yang membedakan kedua pencacah.
+-- `REPLYFROM` tidak lagi dipakai menyaring di mana pun.
+--
+-- Konsekuensinya pada data berjalan: percakapan yang salah satu kolom balasannya terisi
+-- SENDIRIAN dulu tidak terhitung di mana pun — sekarang ia terhitung mengikuti gridnya.
+-- Dan percakapan tanpa pengirim atau tanpa isi pesan dulu terhitung tetapi tidak pernah
+-- tampil — sekarang tidak terhitung, sama seperti tidak tampilnya.
+
 -- name: count_answered
 -- Pencacah "Answered" pada diagram di atas grid.
--- — RDB List/GetCountKomunikasiCabangAnswered-SQL.xml
---
--- DUA kolom balasan diperiksa, berbeda dari kueri grid yang hanya memeriksa satu. Lihat
--- catatan di kepala berkas.
+-- — RDB List/GetCountKomunikasiCabangAnswered-SQL.xml, diselaraskan dengan list_answered
 --
 -- Bind: :1 kanal percakapan · :2 kode cabang (tujuan) · :3 kode cabang (asal)
 SELECT COUNT(*) AS TOTAL_ROWS
   FROM POOLDATA.M_KOMUNIKASI_PNC k
  WHERE k.CASEID = :1
    AND (k.COMMUNICATE_TO = :2 OR k.COMMUNICATE_FROM = :3)
-   AND k.REPLYFROM IS NOT NULL
+   AND k.SENDER IS NOT NULL
+   AND k.MESSAGE IS NOT NULL
    AND k.REPLYMESSAGE IS NOT NULL
 
 -- name: count_not_answered
 -- Pencacah "Not Answered" pada diagram di atas grid.
--- — RDB List/GetCountKomunikasiCabangNotAnswered-SQL.xml
+-- — RDB List/GetCountKomunikasiCabangNotAnswered-SQL.xml, diselaraskan dengan
+--   list_not_answered
 --
 -- Bind: :1 kanal percakapan · :2 kode cabang (tujuan) · :3 kode cabang (asal)
 SELECT COUNT(*) AS TOTAL_ROWS
   FROM POOLDATA.M_KOMUNIKASI_PNC k
  WHERE k.CASEID = :1
    AND (k.COMMUNICATE_TO = :2 OR k.COMMUNICATE_FROM = :3)
-   AND k.REPLYFROM IS NULL
+   AND k.SENDER IS NOT NULL
+   AND k.MESSAGE IS NOT NULL
    AND k.REPLYMESSAGE IS NULL
 
 -- name: detail_header

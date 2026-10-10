@@ -116,7 +116,7 @@ var reinsurerScopedQueries = func() []string {
 	all := append([]string{}, listQueries...)
 	all = append(all, countQueries...)
 	all = append(all, detailQueries...)
-	return append(all, "xol_summary", "detail_reply")
+	return append(all, "detail_reply")
 }()
 
 // loadQueries membaca seluruh berkas .sql yang disematkan dan memecahnya per nama.
@@ -151,6 +151,13 @@ func loadQueries() map[string]string {
 // basis data: yang dibaca DBA adalah berkasnya, bukan jejak di basis data.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""

@@ -141,7 +141,6 @@ export type KeteranganResponse = {
   tipe_report: string[];
   kuartal: string[];
   ukuran_halaman: number;
-  selisih_terencana: string[];
   keterbatasan: string[];
 };
 

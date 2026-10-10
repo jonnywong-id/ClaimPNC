@@ -50,36 +50,46 @@ func TestEveryTabHasRowsInTheSampleData(t *testing.T) {
 	}
 }
 
-// Daftar Salvage Outstanding menyaring `STSSALVAGE` yang KOSONG, dan MENGELUARKAN klaim
-// yang sudah selesai. Hanya daftar ini yang menyaring status kerja.
-func TestOutstandingListsOnlyClaimsWithNoSalvageMarkAndExcludesFinishedOnes(t *testing.T) {
+// Daftar Salvage Outstanding menyaring `STSSALVAGE` 3 atau 5, dan MENGELUARKAN klaim yang
+// sudah selesai. Hanya daftar ini yang menyaring status kerja.
+func TestOutstandingListsOnlyMarkedClaimsAndExcludesFinishedOnes(t *testing.T) {
 	store := memory.NewSampleStore()
 	page := list(t, store, inboxsalvage.TabOutstanding, "")
 
 	numbers := claimNumbers(page)
-	require.Contains(t, numbers, "PNC-2041")
-	require.Contains(t, numbers, "PNC-2042")
+	require.Contains(t, numbers, "PNC-2044", "ditandai Ekonomis dan masih berjalan")
+	require.Contains(t, numbers, "PNC-2045", "ditandai Ekonomis dan masih berjalan")
+	require.Contains(t, numbers, "PNC-2046", "ditandai TBA dan masih berjalan")
 
-	// Klaim yang belum punya pengajuan sama sekali juga masuk — penandanya kosong, dan
-	// itulah satu-satunya yang disaring daftar ini.
-	require.Contains(t, numbers, memory.SampleClaimWithoutSalvage)
-
-	// PNC-2043 penandanya kosong PULA, tetapi status kerjanya sudah selesai.
+	// PNC-2043 ditandai TBA PULA, tetapi status kerjanya sudah selesai.
 	require.NotContains(t, numbers, "PNC-2043",
 		"klaim yang sudah selesai dikeluarkan dari daftar ini")
+
+	// Klaim yang BELUM ditandai sama sekali tidak termasuk. Inilah premis yang dicabut
+	// 2026-10-08, dan di sinilah ia akan tertangkap bila kembali.
+	require.NotContains(t, numbers, memory.SampleClaimWithoutSalvage,
+		"klaim tanpa penanda salvage BUKAN milik daftar ini")
+
+	// Penanda di luar 3 dan 5 juga tidak termasuk.
+	require.NotContains(t, numbers, "PNC-2047", "penanda 4 punya daftarnya sendiri")
+	require.NotContains(t, numbers, "PNC-2048", "penanda 1 punya daftarnya sendiri")
 
 	require.Len(t, page.Items, 3)
 }
 
-// Inilah selisih yang DIREPLIKASI (`P-5`), dan uji ini menjaganya tetap ada.
+// Pencacah "Outstanding" dan daftarnya menghasilkan angka yang SAMA.
 //
-// Pencacah "Outstanding" menghitung `STSSALVAGE` 3 atau 5, sementara daftarnya menampilkan
-// yang penandanya KOSONG. Keduanya menghitung populasi yang BERBEDA, dan pada data contoh
-// keduanya kebetulan berjumlah sama — sehingga yang diuji adalah barisnya, bukan angkanya.
+// # Premis uji ini pernah salah DUA KALI, dan diperbaiki 2026-10-08
 //
-// Bila seseorang "memperbaikinya", uji inilah yang gagal lebih dulu, bukan pengguna yang
-// melaporkannya.
-func TestOutstandingCounterAndItsListDisagreeOnPurpose(t *testing.T) {
+// Mula-mula ia menyatakan pencacahnya menghitung `STSSALVAGE` 3 atau 5 sementara daftarnya
+// menghitung yang kosong — selisih yang dianggap replikasi `P-5`. Lalu ia menyatakan
+// pencacahnya menghitung SELURUH klaim terbuka. Keduanya dibantah pengukuran terhadap layar
+// Pega sungguhan; lihat inboxsalvage.OutstandingSalvageStatuses.
+//
+// Yang menjadikan kekeliruan itu bertahan adalah uji yang mengunci NILAI tanpa menjaga
+// RELASI. Karena itu uji ini menjaga relasinya: angka pencacah sama dengan jumlah baris
+// daftarnya, apa pun datanya.
+func TestOutstandingCounterMatchesItsOwnList(t *testing.T) {
 	store := memory.NewSampleStore()
 
 	counts, err := store.Counts(context.Background(), callerPIC())
@@ -92,22 +102,14 @@ func TestOutstandingCounterAndItsListDisagreeOnPurpose(t *testing.T) {
 		}
 	}
 
-	listed := list(t, store, inboxsalvage.TabOutstanding, "").Total
+	daftar := list(t, store, inboxsalvage.TabOutstanding, "")
 
-	require.Equal(t, 3, counter, "pencacah menghitung STSSALVAGE 3 atau 5")
-	require.Equal(t, 3, listed, "daftarnya menampilkan STSSALVAGE yang kosong")
-
-	// Angkanya sama, ISINYA tidak. Inilah yang membuktikan keduanya menghitung populasi
-	// yang berbeda — dan yang akan gagal bila salah satunya diam-diam disamakan dengan
-	// yang lain.
-	numbers := claimNumbers(list(t, store, inboxsalvage.TabOutstanding, ""))
-	require.NotContains(t, numbers, "PNC-2044",
-		"klaim ber-STSSALVAGE 3 dihitung pencacah tetapi TIDAK ditampilkan daftarnya")
-	require.Contains(t, numbers, memory.SampleClaimWithoutSalvage,
-		"klaim tanpa penanda ditampilkan daftarnya tetapi TIDAK dihitung pencacah")
+	require.Positive(t, counter, "pencacahnya tidak boleh nol pada data contoh")
+	require.Equal(t, daftar.Total, counter,
+		"angka di tabel ringkas HARUS sama dengan jumlah baris daftarnya — keduanya "+
+			"mencacah populasi yang sama sejak keputusan Work Owner 2026-10-08")
 }
 
-// Daftar "Request Balai Lelang" menyaring menurut PIC. Data contoh memuat baris milik DUA
 // PIC yang berbeda, sehingga penyaring yang lupa dipasang terlihat sebagai baris tambahan —
 // bukan sebagai daftar kosong, yang dapat lolos tanpa disadari.
 func TestRequestBalaiLelangShowsOnlyTheCallersOwnRows(t *testing.T) {

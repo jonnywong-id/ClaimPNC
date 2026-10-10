@@ -15,7 +15,7 @@ import (
 // teks SQL, daftar alias di query.go, dan pemindai di inboxpladla.go.
 
 func TestEveryQueryNamedInTheCodeExists(t *testing.T) {
-	names := []string{"reinsurer_codes", "xol_summary", "detail_reply"}
+	names := []string{"reinsurer_codes", "detail_reply"}
 	names = append(names, listQueries...)
 	names = append(names, countQueries...)
 	names = append(names, detailQueries...)
@@ -443,7 +443,6 @@ func TestEachQueryUsesTheExpectedNumberOfBinds(t *testing.T) {
 		"count_pla":       4, // 2 penyaring + 2 login
 		"count_dla":       3, // 2 penyaring + 1 login
 		"count_close":     3, // 2 penyaring + 1 login
-		"xol_summary":     2, // login dua kali, satu per bagian union
 
 		"list_komunikasi_recipient":  7, // login + 2 penyaring + status + login + halaman
 		"list_komunikasi_sender":     7,
@@ -489,10 +488,6 @@ func TestEachQueryUsesTheExpectedNumberOfBinds(t *testing.T) {
 // terhadap Oracle, ia tidak akan terlihat sampai seorang mitra membuka layarnya.
 func TestGoBuildsAsManyArgumentsAsTheSQLBinds(t *testing.T) {
 	for _, tab := range inboxpladla.Tabs() {
-		if !tab.IsClaimList() {
-			continue
-		}
-
 		list, count, err := queriesFor(tab)
 		require.NoError(t, err, "%s", tab.Code)
 

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"claim-pnc/internal/inboxrcl"
 )
 
 // namedQueries adalah kelima kueri BACA di inboxrcl.sql. Kueri keputusan (decision.sql) —
@@ -64,6 +66,40 @@ func TestKeempatPenyaringReportDefinitionAda(t *testing.T) {
 	require.Contains(t, text, "TRIM(P.RCL_PUCL) IN (:3, :4)", "penyaring D — RCL dan MSIG")
 }
 
+// TestPenyaringTahapMengeluarkanKlaimYangSudahLewatDokter mengunci penyaring E.
+//
+// Sejak `ASSIGNED_OPERATOR_ID` selalu berisi user teknis (Work Owner 2026-10-07), kolom itu
+// tidak lagi berubah saat dokter memutuskan — sehingga ia tidak dapat lagi mengeluarkan klaim
+// dari antrean ini. Tanpa penyaring tahap, klaim menetap di Inbox RCL selamanya.
+func TestPenyaringTahapMengeluarkanKlaimYangSudahLewatDokter(t *testing.T) {
+	for _, name := range []string{"list_tasks", "claim_detail"} {
+		text := strings.ToUpper(query(name))
+
+		require.Containsf(t, text, "FROM CPNC_TUGAS T", "kueri %s: penyaring E", name)
+		require.Containsf(t, text, "T.SELESAI_PADA IS NULL",
+			"kueri %s: hanya tugas yang masih terbuka", name)
+		require.Containsf(t, text, "TRIM(T.TAHAP) =",
+			"kueri %s: tahapnya dibandingkan lewat bind, bukan literal", name)
+	}
+}
+
+// TestKlaimPegaTidakIkutTersaringPenyaringTahap — klaim yang lahir di Pega TIDAK punya satu
+// baris pun di `CPNC_TUGAS`. `EXISTS` sendirian akan menghapus seluruhnya dari layar ini;
+// cabang `NOT EXISTS` yang menjaganya.
+func TestKlaimPegaTidakIkutTersaringPenyaringTahap(t *testing.T) {
+	for _, name := range []string{"list_tasks", "claim_detail"} {
+		require.Containsf(t, strings.ToUpper(query(name)), "OR NOT EXISTS",
+			"kueri %s: cabang klaim tanpa tugas", name)
+	}
+}
+
+// TestTahapRCLDokterSamaDenganModulRegistrasi — nilainya ditulis modul Registrasi ke kolom
+// `CPNC_TUGAS.TAHAP` yang sama. Keduanya sengaja tidak saling impor; uji inilah yang
+// menjaga keduanya tetap sepakat.
+func TestTahapRCLDokterSamaDenganModulRegistrasi(t *testing.T) {
+	require.Equal(t, "rcl-dokter", inboxrcl.StageRCLDoctor)
+}
+
 // TestDetailMemakaiPenyaringYangSamaDenganDaftar — layar kerja hanya terbuka bagi klaim yang
 // memang tampil di antrean pemanggil; klaim milik dokter lain tidak terbaca.
 func TestDetailMemakaiPenyaringYangSamaDenganDaftar(t *testing.T) {
@@ -89,12 +125,12 @@ func TestUrutanMenurunDenganPemutusSeri(t *testing.T) {
 func TestPaginasiDikerjakanBasisData(t *testing.T) {
 	text := strings.ToUpper(query("list_tasks"))
 
-	require.Contains(t, text, "OFFSET :8 ROWS FETCH NEXT :9 ROWS ONLY")
+	require.Contains(t, text, "OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY")
 	require.Contains(t, text, "COUNT(*) OVER ()")
 }
 
 func TestPencarianDimatikanSaatKataKunciNULL(t *testing.T) {
-	require.Contains(t, strings.ToUpper(query("list_tasks")), ":5 IS NULL")
+	require.Contains(t, strings.ToUpper(query("list_tasks")), ":6 IS NULL")
 }
 
 // TestOperatorDariMLoginPNC — pemanggil dicari di POOLDATA.M_LOGIN_PNC (login aktif).
@@ -110,7 +146,7 @@ func TestOperatorDariMLoginPNC(t *testing.T) {
 // TestSetiapPenandaBindMunculTepatSekaliDanBerurutan mengunci ORA-01008 (2026-09-27): godror
 // mengikat menurut URUTAN KEMUNCULAN, bukan nomornya.
 func TestSetiapPenandaBindMunculTepatSekaliDanBerurutan(t *testing.T) {
-	expected := map[string]int{"list_tasks": 9, "claim_detail": 5, "operator_for": 2}
+	expected := map[string]int{"list_tasks": 10, "claim_detail": 6, "operator_for": 2}
 
 	for name, count := range expected {
 		markers := regexp.MustCompile(`:\d+`).FindAllString(query(name), -1)

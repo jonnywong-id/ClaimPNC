@@ -284,7 +284,7 @@ func TestMetadataSendsBothActionColumnsForEveryTab(t *testing.T) {
 	}
 }
 
-func TestMetadataKeepsTheLiteralButtonHeading(t *testing.T) {
+func TestMetadataSendsNoHeadingForActionColumns(t *testing.T) {
 	server := newTestServer(t, branchLogin)
 
 	_, body := server.call(t, http.MethodGet, "/api/inbox-komunikasi-cabang/tab", "ASM")
@@ -300,7 +300,7 @@ func TestMetadataKeepsTheLiteralButtonHeading(t *testing.T) {
 			if !inboxkomunikasicabang.IsAction(key) {
 				continue
 			}
-			require.Equal(t, "Button", column["judul"])
+			require.Empty(t, column["judul"])
 		}
 	}
 }
@@ -318,6 +318,34 @@ func TestListAnswersWithTheTabShapeSoTheScreenDrawsTheSameColumns(t *testing.T) 
 
 	require.Contains(t, keys, inboxkomunikasicabang.FieldActionDetail)
 	require.Contains(t, keys, inboxkomunikasicabang.FieldActionFinish)
+}
+
+func TestSenderCellPutsTheOperatorBeforeTheOrigin(t *testing.T) {
+	// `Section/PengirimKomunikasi-Section.xml` menggambar `.UserTeknis` LEBIH DULU, baru
+	// `.UserName` — di layar Pega selnya berbunyi `JONNY ( PUSAT )`, bukan sebaliknya.
+	//
+	// Sampai 2026-10-09 modul ini merakitnya terbalik, dan tidak ada satu pun uji yang
+	// memakunya. Uji ini menutup celah itu: kedua bahannya tetap dikirim terpisah, sehingga
+	// urutan yang tertukar tidak menghasilkan galat apa pun — hanya sel yang terbaca aneh.
+	server := newTestServer(t, branchLogin)
+
+	_, body := server.call(t, http.MethodGet, "/api/inbox-komunikasi-cabang", "ASM")
+
+	rows, _ := body["baris"].([]any)
+	require.NotEmpty(t, rows, "penyimpanan contoh harus memberi baris bagi petugas cabang 1001")
+
+	for _, item := range rows {
+		row, _ := item.(map[string]any)
+
+		origin, _ := row["asal"].(string)
+		operator, _ := row["operator_pengirim"].(string)
+		if origin == "" || operator == "" {
+			continue
+		}
+
+		require.Equal(t, operator+" ("+origin+")", row["pengirim"],
+			"sel Pengirim(Dari) wajib berbunyi `operator (asal)`")
+	}
 }
 
 func TestListCarriesTheConversationNumberEachButtonNeeds(t *testing.T) {

@@ -1226,6 +1226,36 @@ bukan tabel Pega. Permintaannya kini:
 3. **Tim Pega** — rule mana yang menulis `NamaDokterRCL` dan `TanggalAnalystSendRCL`
    (dugaan `RouterRCLDokter`, hilang dari export), supaya pengisi tahu kapan nilainya sah.
 
+**Pembaruan 2026-10-06 — property `NamaDokterRCL` diterima, satu pertanyaan tertutup.**
+Work Owner menyerahkan `Property/NamaDokterRCL`. Isinya menutup pertanyaan **dari mana
+dropdown "Nama Dokter" pada modal Kirim RCL/PUCL mengambil pilihannya**: ia
+`pyTableOption = PromptList` dengan `pyPromptTableList` berisi **tepat dua baris pada
+property itu sendiri** — `WAHYUKRISTANTI` dan `MARGARETHAROSAGUNAWAN` (label
+"MARGARETHA ROSA GUNAWAN") — bukan kueri ke tabel mana pun.
+
+Itu **membatalkan** dugaan sebelumnya bahwa daftarnya dibaca dari `T_ACCESS_GROUP_PNC`.
+Dugaan itu masuk akal — penyaring D Inbox RCL memang mencocokkan `NAMADOKTERRCL_1` dengan
+identitas lama pemanggil — tetapi keliru, dan akibatnya layar menampilkan dropdown kosong.
+
+**Yang masih diminta ke Tim Pega tidak berubah:** butir 3 di atas menanyakan **penulis**
+nilainya pada objek kerja, bukan isi dropdown-nya. Property ini tidak menjawabnya.
+
+**Satu pertanyaan baru, ke Work Owner — bukan ke Tim Pega.** Kedua nama itu hardcode
+di dalam rule, bagian dari 24 Operator ID yang `D-15` tetapkan menjadi master data
+(`F-4`). Yang perlu dipastikan: apakah kedua orang itu masih dokter RCL yang berlaku, dan
+siapa yang berwenang menambah atau menghapus daftarnya setelah `F-4` ada.
+
+> **Terjawab sebagian — Work Owner, 2026-10-06: "masih".** Kedua nama itu **masih dokter
+> RCL yang berlaku**. Daftarnya karena itu direplikasi sebagai perilaku yang **benar**,
+> bukan perilaku lama yang ditiru sambil menunggu koreksi. Pertanyaannya diajukan karena
+> property-nya dibuat 2018 dan terakhir disunting 2020 — cukup lama untuk orang berpindah
+> tugas.
+>
+> **Masih terbuka:** siapa yang berwenang menambah atau menghapus dokter setelah `F-4`
+> ada. Selama belum dijawab, menambah dokter RCL menempuh **perubahan kode dan rilis**,
+> bukan layar master. Itu konsekuensi yang perlu disebut saat `F-4` dirancang — bukan
+> ditemukan saat ada dokter baru yang harus segera menerima klaim.
+
 ### 6.13 Inbox Service Center — dua artefak, ke Tim Pega dan DBA
 
 Modul `MENU_ID 46` sudah dibangun dan berjalan dari export susulan 2026-09-28. Dua artefak

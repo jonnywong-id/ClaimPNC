@@ -42,7 +42,6 @@ const TAB_BLOCKED: Tab = {
 const META: MetadataResponse = {
   tab: [TAB_RECEIVE, TAB_BLOCKED, { ...TAB_BLOCKED, kode: '4', nama: 'Tanpa Pemilik' }],
   tab_bawaan: '1',
-  selisih_terencana: [],
   portal: 'ASM',
 }
 // Tab terhalang pertama menyebut pemiliknya; yang kedua tidak.

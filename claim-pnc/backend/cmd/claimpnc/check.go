@@ -4117,22 +4117,31 @@ func checkInboxProgressClaim(
 	print("            belum punya API pengganti (R-03).")
 }
 
-// checkInboxAnalystDoctor memastikan tabel DAN dua kolom yang dibaca layar Inbox Analyst
+// checkInboxAnalystDoctor memastikan tabel DAN seluruh kolom yang dibaca layar Inbox Analyst
 // Doctor terjangkau.
 //
 // # Kenapa modul ini diperiksa dalam DUA langkah, tidak seperti modul lain
 //
-// Karena dua hal yang berbeda dapat gagal di sini, dan yang kedua SUDAH DIDUGA akan gagal:
+// Karena dua hal yang berbeda dapat gagal di sini, dan keduanya menuntut tindakan yang
+// berbeda pula:
 //
 //	tabel   hak SELECT belum diberikan — sama seperti modul lain
-//	kolom   nama kolomnya belum dikonfirmasi DBA — khas modul ini
+//	kolom   ada nama kolom yang tidak ada di tabelnya — khas modul ini
+//
+// # Yang pernah terjadi, dan kenapa pemeriksaan ini akhirnya menangkapnya
 //
 // `Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai `.ClaimData.isComplianceTransfer`
 // dan `.ClaimData.AnalystDoctorRemaks` sebagai `unexposed` — keduanya hidup di dalam blob
-// Pega, bukan sebagai kolom SQL. Nama kolom yang dipakai mengikuti konvensi `_1` yang berlaku
-// pada properti `ClaimData` lain, dan konvensi itu belum dibuktikan untuk kedua nama ini.
+// Pega, bukan sebagai kolom SQL. Kueri modul ini sempat menebak nama kolomnya dengan
+// mengikuti konvensi `_1`, dan tebakan itu TERNYATA SALAH: katalog Oracle membuktikan
+// `ISCOMPLIANCETRANSFER_1` maupun `ANALYSTDOCTORREMAKS_1` tidak ada (2026-10-09). Selama itu
+// berlaku, layarnya gagal ORA-00904 pada setiap permintaan.
 //
-// Inilah satu-satunya tempat keadaan itu diketahui SEBELUM ada pengguna yang membuka
+// Penyaringnya kini memakai `PC_ASSIGN_WORKLIST.PXTASKLABEL = 'Analyst Doctor'` — nama tahap
+// pada `Flow/Register_Flow.xml` `Assignment13` — dan kolom "Komentar dari PIC Teknis" tidak
+// lagi diambil dari SQL.
+//
+// Inilah satu-satunya tempat keadaan semacam itu diketahui SEBELUM ada pengguna yang membuka
 // layarnya. Tanpa pemeriksaan ini, yang pertama menemukannya adalah petugas medis yang
 // layarnya gagal dimuat.
 func checkInboxAnalystDoctor(
@@ -4150,19 +4159,21 @@ func checkInboxAnalystDoctor(
 	print("  [ok]    Tabel Inbox Analyst Doctor dapat dibaca")
 
 	if err := repo.CheckColumns(ctx); err != nil {
-		print("  [BELUM] Kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 tidak ada: %v", err)
-		print("            INI SUDAH DIDUGA. Kedua properti Pega-nya ditandai `unexposed`,")
-		print("            sehingga keduanya tidak punya kolom SQL yang terbukti. Yang")
-		print("            pertama adalah PENYARING UTAMA layar ini; tanpanya layar tidak")
-		print("            dapat dipakai sama sekali terhadap Oracle.")
-		print("            Yang diminta ke DBA — satu kueri katalog:")
-		print("              SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS")
-		print("               WHERE OWNER = 'DATAPEGA' AND TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'")
-		print("                 AND (COLUMN_NAME LIKE '%%COMPLIANCE%%'")
-		print("                      OR COLUMN_NAME LIKE '%%ANALYSTDOCTOR%%');")
+		print("  [BELUM] Ada kolom antrean Analyst Doctor yang tidak ada: %v", err)
+		print("            Galat Oracle di atas MENYEBUT nama kolom yang salah; mulailah")
+		print("            dari sana. Yang dibaca layar ini:")
+		print("              PC_ASM_FW_GCNMFW_WORK  PYID, POLICYNO, QQNAME, BRANCHNAME,")
+		print("                                     PYORIGUSERID, USERTEKNIS_1,")
+		print("                                     PXCREATEDATETIME, PYSTATUSWORK")
+		print("              PC_ASSIGN_WORKLIST     PXTASKLABEL, PXASSIGNEDOPERATORID")
 		return
 	}
-	print("  [ok]    Kolom ISCOMPLIANCETRANSFER_1 dan ANALYSTDOCTORREMAKS_1 ada")
+	print("  [ok]    Seluruh kolom antrean Analyst Doctor ada")
+	print("            Antrean dikenali dari PXTASKLABEL = 'Analyst Doctor', nama tahap pada")
+	print("            Flow/Register_Flow.xml Assignment13 — bukan dari isComplianceTransfer,")
+	print("            yang ternyata tidak punya kolom di basis data ini.")
+	print("            Kolom \"Komentar dari PIC Teknis\" karena itu SELALU kosong; mengisinya")
+	print("            menuntut kolom baru dari DBA, bukan tebakan nama.")
 	print("            Catatan: antrean ini disaring dengan Operator ID pemanggil, sehingga")
 	print("            pengguna tanpa tugas Analyst Doctor melihatnya kosong — dan itu")
 	print("            jawaban yang benar, bukan kerusakan.")
@@ -6659,11 +6670,6 @@ func checkPLADLAReinsurer(
 	page := inboxpladla.Pagination{Page: 1, Size: 5}
 
 	for _, tab := range inboxpladla.Tabs() {
-		// Tampilan XOL tidak punya daftar klaim — ia diperiksa tersendiri di bawah.
-		if !tab.IsClaimList() {
-			continue
-		}
-
 		query, err := inboxpladla.NewQuery(
 			inboxpladla.QueryInput{Tab: tab.Code}, caller, probe)
 		if err != nil {
@@ -6687,13 +6693,6 @@ func checkPLADLAReinsurer(
 			print("  [BELUM] Ringkasan status %q tidak dapat dihitung: %v", tab.Name, err)
 		}
 	}
-
-	if _, err := repo.XOL(ctx, login); err != nil {
-		print("  [BELUM] Ringkasan XOL tidak dapat dibaca: %v", err)
-		print("            Periksa POOLDATA.T_PLA_XOL dan T_DLA_XOL.")
-		return
-	}
-	print("  [ok]    Ringkasan XOL dapat dibaca")
 
 	checkPLADLADetail(ctx, repo, login, probe, print)
 }

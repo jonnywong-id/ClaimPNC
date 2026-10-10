@@ -288,3 +288,20 @@ export function DownloadIcon(props: Props) {
     </Base>
   )
 }
+
+/**
+ * Map — penanda baris yang MEMBUKA daftar lain.
+ *
+ * Dipakai pada tabel ringkas "Status Register" layar Inbox Komunikasi Cabang, tempat Pega
+ * menggambar ikon map di depan setiap baris untuk menyatakan baris itu dapat dibuka.
+ *
+ * Artinya dibawa `aria-expanded` pada tombolnya, bukan oleh ikon ini — karena itu ia tetap
+ * `aria-hidden` seperti seluruh ikon lain di berkas ini.
+ */
+export function FolderIcon(props: Props) {
+  return (
+    <Base {...props}>
+      <path d="M4 7.5a1.5 1.5 0 0 1 1.5-1.5h3.3l2 2h7.7A1.5 1.5 0 0 1 20 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-10Z" />
+    </Base>
+  )
+}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -52,21 +52,24 @@ const PORTAL_LIST = {
 }
 
 /**
- * Kedua kolom TOMBOL, identik di kedua tab dan berjudul "Button" apa adanya.
+ * Kedua kolom TOMBOL, identik di kedua tab dan TANPA judul.
  *
  * Keduanya ada di KEDUA grid layar lama, sebagai kolom DI DALAM grid — bukan di bilah aksi.
+ * `pyCaption Button` pada export-nya ternyata nama kontrol di perancang Pega, bukan teks
+ * yang dirender: di layar yang berjalan kedua sel judulnya kosong.
  *
- * Kedua tab tetap berbeda jumlah kolom ISIAN-nya (tiga dan lima), karena pada tab "Belum
- * Dijawab" kolom balasan dan penjawab dijamin kosong oleh penyaring `REPLYMESSAGE IS NULL`.
+ * Kedua tab tetap berbeda jumlah kolom ISIAN-nya (tiga dan lima), karena pada tab
+ * "Not Answered" kolom balasan dan penjawab dijamin kosong oleh penyaring
+ * `REPLYMESSAGE IS NULL`.
  */
 const KOLOM_TOMBOL: Tab['kolom'] = [
-  { kunci: 'aksi_detail', judul: 'Button' },
-  { kunci: 'aksi_selesai', judul: 'Button' },
+  { kunci: 'aksi_detail', judul: '' },
+  { kunci: 'aksi_selesai', judul: '' },
 ]
 
 const TAB_BELUM: Tab = {
   kode: '1',
-  nama: 'Belum Dijawab',
+  nama: 'Not Answered',
   keterangan: 'Percakapan yang pesannya belum dibalas sama sekali.',
   kolom: [
     { kunci: 'tanggal', judul: 'Tanggal' },
@@ -78,7 +81,7 @@ const TAB_BELUM: Tab = {
 
 const TAB_SUDAH: Tab = {
   kode: '2',
-  nama: 'Sudah Dijawab',
+  nama: 'Answered',
   keterangan: 'Percakapan yang sudah dibalas. Diurutkan dari balasan TERBARU.',
   kolom: [
     { kunci: 'tanggal', judul: 'Tanggal' },
@@ -98,10 +101,6 @@ const METADATA: MetadataResponse = {
     { kunci: 'tanggal', judul: 'Tanggal' },
     { kunci: 'tujuan', judul: 'Tujuan' },
     { kunci: 'status_register', judul: 'Status Register' },
-  ],
-  selisih_terencana: [
-    'Kedua daftar dipisahkan menjadi TAB. Layar lama menggambar keduanya bertumpuk.',
-    'Urutan kedua tab BERLAWANAN, dan itu perilaku layar lama apa adanya.',
   ],
   portal: 'ASM',
 }
@@ -136,7 +135,7 @@ const CABANG_TIDAK_TERBACA: BranchScope = {
  * yang di-commit, dan larangan itu berlaku untuk data uji sama seperti untuk dokumen.
  *
  * `jawaban_terakhir` dan `penjawab` sengaja KOSONG: begitulah yang selalu dikirim server
- * pada tab "Belum Dijawab".
+ * pada tab "Not Answered".
  */
 const BARIS: Conversation = {
   komunikasi: 'KOM-9001',
@@ -236,7 +235,7 @@ function stubDefaultFetch(branch: BranchScope = CABANG_TERBACA) {
     if (url === MESSAGE_PATH) {
       return jsonResponse(201, {
         komunikasi: 'KOM-9100',
-        pesan: 'Pesan terkirim. Ia muncul di tab "Belum Dijawab" milik kantor pusat.',
+        pesan: 'Pesan terkirim. Ia muncul di tab "Not Answered" milik kantor pusat.',
         portal: 'ASM',
       })
     }
@@ -299,7 +298,7 @@ function renderPage() {
 async function renderLoaded(branch: BranchScope = CABANG_TERBACA) {
   stubDefaultFetch(branch)
   renderPage()
-  await screen.findByRole('tab', { name: /Belum Dijawab/ })
+  await screen.findByRole('tab', { name: /Not Answered/ })
 }
 
 function lastListCall(): Call | undefined {
@@ -326,20 +325,20 @@ describe('bentuk layar', () => {
   it('menggambar kedua tab', async () => {
     await renderLoaded()
 
-    expect(screen.getByRole('tab', { name: /Belum Dijawab/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Sudah Dijawab/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Not Answered/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /^Answered/ })).toBeInTheDocument()
   })
 
-  it('membuka tab "Belum Dijawab" lebih dulu, karena itulah pekerjaan yang menunggu', async () => {
+  it('membuka tab "Not Answered" lebih dulu, karena itulah pekerjaan yang menunggu', async () => {
     await renderLoaded()
 
-    expect(screen.getByRole('tab', { name: /Belum Dijawab/ })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: /Not Answered/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
   })
 
-  it('menggambar TIGA kolom pada tab "Belum Dijawab", tanpa kolom balasan', async () => {
+  it('menggambar TIGA kolom pada tab "Not Answered", tanpa kolom balasan', async () => {
     await renderLoaded()
 
     // Ditunggu, bukan dibaca serentak: bilah tab tiba bersama jawaban `/tab`, sedangkan
@@ -358,10 +357,10 @@ describe('bentuk layar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('menggambar LIMA kolom setelah berpindah ke tab "Sudah Dijawab"', async () => {
+  it('menggambar LIMA kolom setelah berpindah ke tab "Answered"', async () => {
     await renderLoaded()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^Answered/ }))
 
     expect(
       await screen.findByRole('columnheader', { name: 'Jawaban Terakhir' }),
@@ -378,8 +377,8 @@ describe('bentuk layar', () => {
     // Angkanya tiba bersama jawaban DAFTAR, bukan bersama bentuk layar — lencananya sengaja
     // tidak digambar selama pencacahnya belum diketahui, supaya "0" sementara tidak
     // menyatakan tidak ada pekerjaan pada tab yang mungkin penuh.
-    expect(await screen.findByRole('tab', { name: /Belum Dijawab.*4/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Sudah Dijawab.*2/ })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: /Not Answered.*4/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /^Answered.*2/ })).toBeInTheDocument()
   })
 })
 
@@ -413,7 +412,7 @@ describe('perpindahan tab', () => {
   it('mengirim kode tab yang diminta ke peladen', async () => {
     await renderLoaded()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^Answered/ }))
     await screen.findByRole('columnheader', { name: 'Jawaban Terakhir' })
 
     const url = new URL(lastListCall()?.url ?? '', 'https://uji.invalid')
@@ -423,7 +422,7 @@ describe('perpindahan tab', () => {
   it('menggambar catatan tab bila ada', async () => {
     await renderLoaded()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^Answered/ }))
 
     expect(await screen.findByText(/BALASAN TERAKHIR/)).toBeInTheDocument()
   })
@@ -442,7 +441,7 @@ describe('kolom tombol', () => {
       screen.getByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
     ).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Sudah Dijawab/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /^Answered/ }))
 
     expect(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9002/ }),
@@ -452,12 +451,51 @@ describe('kolom tombol', () => {
     ).toBeInTheDocument()
   })
 
-  it('mempertahankan judul kolom "Button" apa adanya seperti layar lama', async () => {
-    // Dua kolom berjudul sama memang tidak membantu, tetapi `D-13` menetapkan teks layar
-    // mengikuti Pega. Yang ditambahkan adalah nama yang dibaca pembaca layar, bukan judulnya.
+  it('tidak memberi judul pada kedua kolom tombol, seperti layar lama', async () => {
+    // Sampai 2026-10-09 keduanya berjudul "BUTTON" di layar, karena `pyCaption Button`
+    // dibawa apa adanya. Tangkapan layar Pega yang berjalan membuktikan kedua sel judulnya
+    // kosong — `D-13` menyangkut teks yang DILIHAT pengguna.
+    //
+    // Yang menggantikan judulnya bagi pembaca layar adalah nama lengkap pada tombolnya
+    // sendiri, dan uji di atas sudah memakunya.
     await renderLoaded()
 
-    expect(await screen.findAllByRole('columnheader', { name: 'Button' })).toHaveLength(2)
+    expect(screen.queryByRole('columnheader', { name: 'Button' })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('menulis tanggal seperti grid Pega, bukan sebagai cap waktu mentah', async () => {
+    // Basis data mengirim RFC3339 lengkap dengan offset. Sampai 2026-10-09 sel "Tanggal"
+    // menampilkannya apa adanya — `2026-09-28T16:58:56+07:00` — karena penjaganya hanya
+    // mengenali bentuk `YYYY-MM-DD`. Grid Pega di sebelahnya menulis `28/09/26 16:58`.
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url === BRANCH_PATH) return jsonResponse(200, BRANCH_LIST)
+      return jsonResponse(200, {
+        tab: TAB_BELUM,
+        baris: [{ ...BARIS, tanggal: '2026-09-28T16:58:56+07:00' }],
+        paginasi: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
+        ringkasan: { belum_dijawab: 4, sudah_dijawab: 2, total: 6 },
+        batas_cabang: CABANG_TERBACA,
+        portal: 'ASM',
+      })
+    })
+    renderPage()
+
+    expect(await screen.findByText('28/09/26 16:58')).toBeInTheDocument()
+    expect(screen.queryByText(/2026-09-28T16:58:56/)).not.toBeInTheDocument()
+  })
+
+  it('menomori barisnya, seperti kolom nomor pada grid Pega', async () => {
+    await renderLoaded()
+
+    const table = await screen.findByRole('table', { name: /Percakapan Not Answered/ })
+    const rows = within(table).getAllByRole('row')
+
+    // rows[0] baris judul; baris pertama data bernomor 1.
+    expect(rows[1]).toHaveTextContent('1')
   })
 
   it('sel Pesan TIDAK lagi menjadi tautan pembuka', async () => {
@@ -546,7 +584,7 @@ describe('kolom tombol', () => {
       })
     })
     renderPage()
-    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+    await screen.findByRole('tab', { name: /Not Answered/ })
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Selesai Komunikasi percakapan KOM-9001/ }),
@@ -585,38 +623,79 @@ describe('tombol bilah atas', () => {
 })
 
 describe('detail komunikasi', () => {
-  it('membuka panel utas saat sel Pesan diklik', async () => {
+  it('membuka POPUP, bukan panel yang mendorong daftarnya ke bawah', async () => {
+    // Di Pega ia dialog melayang berjudul "DETAIL KOMUNIKASI CABANG" dengan tombol silang
+    // di pojok, dan daftarnya tetap terlihat di belakangnya.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    expect(await screen.findByRole('region', { name: /Detail komunikasi/ })).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', {
+      name: /Detail Komunikasi Cabang/i,
+    })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(
+      within(dialog).getByRole('button', { name: /Tutup Detail Komunikasi Cabang/ }),
+    ).toBeInTheDocument()
   })
 
-  it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', async () => {
-    // Sampai 2026-09-24 utas dibaca dari tabel percakapan, sehingga layar detail selalu
-    // menampilkan tepat SATU ucapan — betapapun panjang percakapannya — dengan balasannya
-    // digambar sebagai blok di dalamnya.
-    //
-    // Keterangan Work Owner mengoreksinya: utas dibaca dari tabel RIWAYAT, tempat setiap
-    // pesan dan setiap balasan menempati barisnya sendiri.
+  it('menggambar utasnya sebagai grid Tanggal · Pengirim · Pesan', async () => {
+    // Bentuk `Section/BalasKomunikasiCabang-Section.xml`: tiga kolom bernomor baris. Sampai
+    // 2026-10-10 ia digambar sebagai utas percakapan — bentuk yang lebih enak dibaca tetapi
+    // bukan bentuk acuannya, dan Work Owner memintanya diseragamkan.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    // Pencarian DIBATASI pada panel detail: kalimat yang sama muncul pula di sel "Pesan"
-    // pada grid di atasnya, dan pencarian seluruh halaman akan menemukan dua.
-    const panel = await screen.findByRole('region', { name: /Detail komunikasi/ })
+    // Pencarian DIBATASI pada popup: kalimat yang sama muncul pula di sel "Pesan" pada grid
+    // di belakangnya, dan pencarian seluruh halaman akan menemukan dua.
+    const dialog = within(
+      await screen.findByRole('dialog', { name: /Detail Komunikasi Cabang/i }),
+    )
 
-    expect(panel.textContent).toContain('Mohon lengkapi berita acara')
-    expect(panel.textContent).toContain('Berita acara sudah diunggah')
+    expect(dialog.getByRole('columnheader', { name: 'Tanggal' })).toBeInTheDocument()
+    expect(dialog.getByRole('columnheader', { name: 'Pengirim' })).toBeInTheDocument()
+    expect(dialog.getByRole('columnheader', { name: 'Pesan' })).toBeInTheDocument()
 
-    // Dua ucapan = dua baris daftar, bukan satu baris berisi keduanya.
-    expect(panel.querySelectorAll('ol > li')).toHaveLength(2)
+    // Dua ucapan = dua baris data, bukan satu baris berisi keduanya. rows[0] baris judul.
+    const rows = dialog.getAllByRole('row')
+    expect(rows).toHaveLength(3)
+    expect(rows[1]).toHaveTextContent('Mohon lengkapi berita acara')
+    expect(rows[2]).toHaveTextContent('Berita acara sudah diunggah')
+
+    // Kolom nomor baris, seperti di grid Pega.
+    expect(rows[1]).toHaveTextContent('1')
+    expect(rows[2]).toHaveTextContent('2')
+  })
+
+  it('menutup popup saat Escape ditekan', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+    await screen.findByRole('dialog', { name: /Detail Komunikasi Cabang/i })
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(
+      screen.queryByRole('dialog', { name: /Detail Komunikasi Cabang/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('memakai isian SATU BARIS untuk balasan, seperti pxTextInput di Pega', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+
+    const field = await screen.findByLabelText('Masukkan Balasan')
+    expect(field.tagName).toBe('INPUT')
   })
 
   it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', async () => {
@@ -637,7 +716,7 @@ describe('detail komunikasi', () => {
       })
     })
     renderPage()
-    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+    await screen.findByRole('tab', { name: /Not Answered/ })
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
@@ -738,7 +817,7 @@ describe('detail komunikasi', () => {
       })
     })
     renderPage()
-    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+    await screen.findByRole('tab', { name: /Not Answered/ })
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
@@ -766,12 +845,14 @@ describe('keterangan yang wajib terlihat', () => {
     expect(screen.queryByText(/Yang masih dikerjakan lewat Pega/)).not.toBeInTheDocument()
   })
 
-  it('menggambar selisih terencana dari peladen', async () => {
+  // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
+  //
+  // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
+  // adalah ia berhenti menjadi isi layar.
+  it('tidak lagi menggambar panel selisih terencana', async () => {
     await renderLoaded()
 
-    expect(
-      await screen.findByText(/Kedua daftar dipisahkan menjadi TAB/),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Kedua daftar dipisahkan menjadi TAB/)).not.toBeInTheDocument()
   })
 
   it('menyebutkan kolom berkas unduhan sebelum diunduh', async () => {
@@ -941,7 +1022,7 @@ describe('kirim pesan', () => {
       })
     })
     renderPage()
-    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+    await screen.findByRole('tab', { name: /Not Answered/ })
 
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
     await screen.findByRole('form', { name: /Kirim pesan baru/ })
@@ -974,11 +1055,123 @@ describe('kirim pesan', () => {
       })
     })
     renderPage()
-    await screen.findByRole('tab', { name: /Belum Dijawab/ })
+    await screen.findByRole('tab', { name: /Not Answered/ })
 
     await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
     await userEvent.selectOptions(await screen.findByLabelText('Tujuan'), 'CABANG')
 
     expect(await screen.findByText(/Tidak ada cabang yang dapat dipilih/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * Kepala layar: grafik donat dan tabel ringkas "Status Register".
+ *
+ * Keduanya ada di `Section/InboxKomunikasi-Section.xml` berdampingan, diisi
+ * `PNCCountKomunikasiCabang_Act`. Versi pertama modul ini tidak menggambarnya sama sekali;
+ * uji di bawah menjaga keduanya tetap ada beserta sifat yang membuatnya berguna — urutan
+ * barisnya, dan kemampuannya memindahkan daftar.
+ */
+describe('ringkasan status register', () => {
+  /** Tabel ringkasnya, dicari lewat nama supaya tidak tertukar dengan grid percakapan. */
+  function summaryTable(): HTMLElement {
+    return screen.getByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    })
+  }
+
+  it('menggambar kedua kolom Pega apa adanya', async () => {
+    await renderLoaded()
+
+    const table = within(await screen.findByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    }))
+
+    expect(table.getByRole('columnheader', { name: 'Status Register' })).toBeInTheDocument()
+    expect(table.getByRole('columnheader', { name: 'Jumlah' })).toBeInTheDocument()
+  })
+
+  it('menggambar kedua baris beserta pencacahnya', async () => {
+    await renderLoaded()
+
+    const table = within(await screen.findByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    }))
+
+    // Angkanya dibaca DI DALAM barisnya, bukan lewat `getByText`: lencana di bilah tab
+    // menggambar kedua angka yang sama, dan pencarian global akan menemukan keduanya.
+    expect(
+      within(table.getByRole('row', { name: /^Answered/ })).getByText('2'),
+    ).toBeInTheDocument()
+    expect(
+      within(table.getByRole('row', { name: /Not Answered/ })).getByText('4'),
+    ).toBeInTheDocument()
+  })
+
+  it('mengurutkan barisnya seperti Pega — Answered lebih dulu', async () => {
+    // Urutan langkah pencacahnya di `PNCCountKomunikasiCabang_Act`: langkah 10 mencacah
+    // yang sudah dijawab, langkah 13 yang belum. Bilah tab berurutan SEBALIKNYA karena ia
+    // antrean pekerjaan — perbedaan itu disengaja, dan uji ini yang menjaganya.
+    await renderLoaded()
+
+    await screen.findByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    })
+    const rows = within(summaryTable()).getAllByRole('row')
+
+    // rows[0] adalah baris judul.
+    expect(rows[1]).toHaveTextContent('Answered')
+    expect(rows[2]).toHaveTextContent('Not Answered')
+  })
+
+  it('memindahkan daftar saat salah satu barisnya ditekan', async () => {
+    // Di Pega setiap baris ringkasnya membuka daftarnya. Baris yang hanya menampilkan
+    // angka akan menambah tabel yang tidak melakukan apa pun di atas tabel yang melakukan
+    // segalanya.
+    await renderLoaded()
+
+    const table = within(await screen.findByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    }))
+    await userEvent.click(table.getByRole('button', { name: 'Answered' }))
+
+    expect(screen.getByRole('tab', { name: /^Answered/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    // Kolom yang hanya ada di tab "Answered" — pembuktian bahwa yang berpindah bukan
+    // sekadar penandanya, melainkan daftarnya.
+    expect(
+      await screen.findByRole('columnheader', { name: 'Jawaban Terakhir' }),
+    ).toBeInTheDocument()
+  })
+
+  it('menandai baris daftar yang sedang terbuka', async () => {
+    await renderLoaded()
+
+    const table = within(await screen.findByRole('table', {
+      name: /Ringkasan jumlah percakapan per status register/i,
+    }))
+
+    expect(table.getByRole('button', { name: 'Not Answered' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(table.getByRole('button', { name: 'Answered' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('membacakan isi grafik, bukan sekadar menggambarnya', async () => {
+    // Grafik tanpa nama hanya terbaca sebagai gambar tanpa isi. Yang dibacakan angkanya,
+    // bukan bentuknya — itulah yang dicari orang yang membukanya.
+    await renderLoaded()
+
+    const chart = await screen.findByRole('img', {
+      name: /Sebaran status register komunikasi/i,
+    })
+    expect(chart).toHaveAccessibleName(/Answered 2/)
+    expect(chart).toHaveAccessibleName(/Not Answered 4/)
   })
 })

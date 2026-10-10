@@ -29,6 +29,18 @@ func TestPenandaAntreanTidakTertukarDenganCompliance(t *testing.T) {
 		inboxanalystdoctor.TransferAnalystDoctor)
 }
 
+// TestLabelTahapPenugasanSamaDenganNamaDiFlow mengunci penyaring utama layar ini.
+//
+// Nilainya BUKAN pilihan bebas: ia harus sama persis dengan `pyMOName` pada
+// `Flow/Register_Flow.xml` `Assignment13`, karena Pega menyimpan nama itu apa adanya sebagai
+// `PC_ASSIGN_WORKLIST.PXTASKLABEL`. Satu spasi atau satu huruf besar yang berbeda membuat
+// antrean SELALU kosong — dan antrean kosong tidak pernah dilaporkan siapa pun sebagai
+// kerusakan.
+func TestLabelTahapPenugasanSamaDenganNamaDiFlow(t *testing.T) {
+	require.Equal(t, "Analyst Doctor", inboxanalystdoctor.TaskLabelAnalystDoctor,
+		"pyMOName Assignment13 pada Flow/Register_Flow.xml")
+}
+
 // TestHanyaResolvedCompletedYangDikecualikan menjaga perbedaan terhadap Inbox Outstanding.
 //
 // `InboxAnalystDoctor_RD` menyaring `!= "Resolved-Completed"` SAJA. Menambahkan

@@ -88,15 +88,6 @@ export type MetadataResponse = {
   tab_bawaan: string
   label_cari: string
   petunjuk_cari: string
-
-  /**
-   * Hal yang SENGAJA berbeda dari layar lama.
-   *
-   * Dipisah dari `keterbatasan` karena keduanya menjawab pertanyaan berbeda: yang ini
-   * "mengapa angkanya tidak sama dengan Pega", yang itu "mengapa tombolnya tidak ada".
-   */
-  selisih_terencana: string[]
-
   /** Hal yang belum berjalan penuh beserta alasannya, siap ditampilkan apa adanya. */
   keterbatasan: string[]
 

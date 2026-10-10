@@ -130,9 +130,21 @@ type TabDTO struct {
 	// menghasilkan apa-apa — keterangan yang tidak ada di Pega, dan yang ketiadaannya
 	// membuat perilaku ini terbaca sebagai kerusakan.
 	SearchExact bool `json:"pencarian_cocok_persis"`
+	// Notice TIDAK LAGI DIKIRIM (2026-10-08).
+	//
+	// Ia dulu digambar sebagai bilah kuning di atas grid. Isinya bukan galat dan bukan
+	// peringatan — ia keterangan bahwa sebuah selisih terhadap Pega memang DISENGAJA —
+	// sementara warnanya mengatakan sebaliknya kepada setiap orang yang membuka daftar.
+	//
+	// Keputusan Work Owner 2026-10-08: yang bukan galat tidak digambar. Ia mengikuti
+	// pencabutan PlannedDifferences dari jawaban ini (2026-10-06) atas alasan yang sama,
+	// dan isian ini dicabut dengan cara yang sama pula: dihapus dari kontrak, bukan
+	// dikirim lalu diabaikan layar.
+	//
+	// Keterangannya TIDAK hilang dari sistem. `inboxsalvage.Tab.Notice` tetap hidup di
+	// domain, tempat uji kesetaraan gerbang 1 memetakannya ke butir `P-5` (`D-54`) — dan
+	// `TestEveryNoticeExplainsItselfInsteadOfPointingElsewhere` tetap menjaga isinya.
 
-	// Notice adalah keterangan yang berlaku pada daftar ini saja.
-	Notice string `json:"catatan_daftar,omitempty"`
 
 	// DetailKey menyatakan dengan APA panel rincian dibuka pada daftar ini.
 	//
@@ -171,7 +183,6 @@ func toTabDTO(tab inboxsalvage.Tab) TabDTO {
 		Columns:       columns,
 		SearchLabel:   tab.SearchLabel,
 		SearchExact:   tab.SearchExact,
-		Notice:        tab.Notice,
 		DetailKey:     string(inboxsalvage.DetailKeyOf(tab.Family)),
 		OpensEditForm: tab.OpensEditForm,
 	}
@@ -196,13 +207,6 @@ type MetadataResponse struct {
 	CurrencyOptions []StatusOptionDTO `json:"pilihan_mata_uang"`
 
 	UploadColumns []string `json:"kolom_berkas_unggahan"`
-
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	//
-	// Ia DIKIRIM ke layar, bukan hanya tercatat di kode. Selisih yang hanya tercatat di
-	// komentar akan dilaporkan berulang kali sebagai kerusakan oleh orang yang
-	// membandingkan layar baru dengan Pega berdampingan.
-	PlannedDifferences []string `json:"selisih_terencana"`
 
 	// Portal adalah alias entitas yang sedang dijawab.
 	//
@@ -234,7 +238,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		StatusOptions:      options,
 		CurrencyOptions:    currencies,
 		UploadColumns:      meta.UploadColumns,
-		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }
@@ -405,14 +408,51 @@ type CreateResponse struct {
 
 	// Message adalah kalimat yang ditampilkan ke pengguna.
 	//
-	// Ia menyebut apa yang TIDAK terjadi pula — pengajuan tidak dikirim ke balai lelang
-	// dan tidak ada email yang terkirim. Tanpa itu, pengguna akan menunggu jawaban balai
-	// lelang yang tidak pernah datang.
+	// Ia menyebut apa yang BENAR-BENAR terjadi pada ketiga akibat sampingan Submit —
+	// pengiriman ke balai lelang, surel pemberitahuan, dan lampiran — bukan kalimat tetap.
+	// Lihat Handler.Create.
 	Message string `json:"pesan"`
+
+	// Auction menyatakan hasil pengiriman ke balai lelang.
+	//
+	// # Kenapa ia dikirim sebagai OBJEK, bukan dilarutkan ke dalam pesan
+	//
+	// Karena layar perlu memperlakukannya berbeda: pengiriman yang DITOLAK menuntut
+	// tindakan petugas, sementara pengiriman yang belum dikonfigurasi menuntut tindakan
+	// Tim Infra. Kalimat yang sama untuk keduanya memaksa layar mengurai teks untuk
+	// membedakannya — dan teks adalah hal pertama yang berubah.
+	Auction AuctionResultDTO `json:"balai_lelang"`
+
+	// Notification menyatakan hasil pengiriman surel pemberitahuan.
+	Notification NotificationResultDTO `json:"pemberitahuan"`
 
 	Portal string `json:"portal"`
 }
 
+// AuctionResultDTO adalah hasil pengiriman satu pengajuan ke balai lelang.
+type AuctionResultDTO struct {
+	// Attempted bernilai salah bila pengiriman memang belum dikonfigurasi di lingkungan
+	// ini — bukan bila ia dicoba lalu gagal.
+	Attempted bool `json:"dicoba"`
+
+	// Accepted bernilai benar hanya bila balai lelang MENERIMA pengajuan ini.
+	Accepted bool `json:"diterima"`
+
+	// AuctionID adalah nomor dari balai lelang, bila ada.
+	AuctionID string `json:"id_balai_lelang,omitempty"`
+
+	// Message adalah jawaban balai lelang, atau sebab kegagalannya.
+	Message string `json:"keterangan,omitempty"`
+}
+
+// NotificationResultDTO adalah hasil pengiriman surel pemberitahuan.
+type NotificationResultDTO struct {
+	// Attempted bernilai salah bila surel memang belum dikonfigurasi di lingkungan ini.
+	Attempted bool `json:"dicoba"`
+
+	// Sent bernilai benar bila surelnya benar-benar terkirim.
+	Sent bool `json:"terkirim"`
+}
 // UploadResponse adalah hasil pembacaan berkas "Upload Detail Salvage".
 //
 // Ia TIDAK menyimpan apa pun — lihat inboxsalvage.ParseUpload. Yang dikembalikan adalah

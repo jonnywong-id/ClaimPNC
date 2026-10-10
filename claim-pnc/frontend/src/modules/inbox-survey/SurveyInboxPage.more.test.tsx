@@ -83,7 +83,6 @@ const KETERANGAN: KeteranganResponse = {
   tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
   kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: [],
   keterbatasan: [],
 }
 

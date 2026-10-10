@@ -89,6 +89,238 @@ export function formatDateTimeWIB(iso: string | undefined): string {
 }
 
 /**
+ * formatPegaDateTime menulis waktu menjadi `dd/MM/yy H:mm` — bentuk kolom tanggal pada
+ * GRID Pega, mis. `28/09/26 16:58` dan `28/09/26 9:58`.
+ *
+ * # Jamnya TIDAK diberi nol di depan
+ *
+ * Grid Pega menulis `9:58`, bukan `09:58` — terbaca pada grid Detail Komunikasi Cabang yang
+ * memuat jam satu digit. Sel grid pada layar daftar tidak dapat membuktikannya sendiri
+ * karena jamnya kebetulan dua digit.
+ *
+ * Menitnya TETAP ber-nol (`2:46`, bukan `2:4`); itu bukan ketidakkonsistenan melainkan
+ * bentuk jam yang lazim.
+ *
+ * # Kenapa bentuknya berbeda dari formatDateTimeWIB di atas
+ *
+ * Keduanya memang berbeda di layar lama: isian baca saja pada form menulis tahun EMPAT
+ * digit (`30/09/2026 7:59`), sedangkan sel grid menulis DUA digit. Menyatukannya akan
+ * membuat salah satu layar berbeda dari acuannya, dan `D-13` menuntut keduanya mengikuti
+ * layarnya masing-masing.
+ *
+ * # Zona waktu: hanya digeser bila sumbernya MENYEBUTKAN zona
+ *
+ * Nilai dari basis data datang sebagai RFC3339 lengkap dengan offset
+ * (`2026-09-28T16:58:56+07:00`), dan itu sebuah TITIK WAKTU yang harus diterjemahkan ke
+ * WIB. Nilai tanpa zona (`2026-09-28 16:58`) BUKAN titik waktu — ia sudah waktu dinding,
+ * dan menggesernya tujuh jam akan menggeser angkanya menjadi salah.
+ *
+ * Kelas kesalahan itu persis yang melahirkan ratusan penyesuaian tujuh jam di sistem lama.
+ * Ia tidak akan lahir kembali di sini: yang menentukan digeser atau tidak adalah ADA
+ * TIDAKNYA zona pada teksnya, bukan tebakan.
+ *
+ * Teks yang tidak dapat dibaca dikembalikan APA ADANYA, bukan menjadi tanda pisah — nilai
+ * mentah yang terbaca aneh masih dapat ditelusuri, sedangkan `—` menghapus jejaknya.
+ */
+export function formatPegaDateTime(value: string): string {
+  const text = value.trim()
+  if (text === '') return ''
+
+  // Dipecah sendiri, bukan lewat `new Date(...)`, supaya nilai tanpa zona tidak ikut
+  // ditafsirkan peramban sebagai waktu lokal atau UTC — dua tafsir yang berbeda tujuh jam.
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
+      text,
+    )
+  if (!parts) return text
+
+  const [, year, month, day, hour, minute, zone] = parts
+
+  // Tanpa jam, yang ada hanyalah tanggalnya. Menambahkan "00:00" akan mengarang ketelitian
+  // yang tidak ada di sumbernya.
+  if (hour === undefined || minute === undefined) {
+    return `${day}/${month}/${year?.slice(2)}`
+  }
+
+  if (zone === undefined) {
+    // Nol di depan DIBUANG dari jamnya, termasuk pada nilai yang sumbernya sudah ber-nol:
+    // yang menentukan bentuknya adalah layar, bukan cara basis data menuliskannya.
+    return `${day}/${month}/${year?.slice(2)} ${Number(hour)}:${minute}`
+  }
+
+  const instant = new Date(text)
+  if (Number.isNaN(instant.getTime())) return text
+
+  const wib = new Date(instant.getTime() + 7 * 60 * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  return (
+    `${pad(wib.getUTCDate())}/${pad(wib.getUTCMonth() + 1)}/` +
+    `${String(wib.getUTCFullYear()).slice(2)} ` +
+    `${wib.getUTCHours()}:${pad(wib.getUTCMinutes())}`
+  )
+}
+
+/**
+ * formatPegaElapsed menuliskan sebuah titik waktu sebagai LAMANYA sampai sekarang —
+ * "21 hours ago", "1 day 1 hour ago", "1 year 5 months ago".
+ *
+ * # Apa yang ditiru
+ *
+ * `pyDateTimeFormat = DateTime-Frame`, format waktu relatif **bawaan Pega**. Ia bukan rule
+ * buatan sendiri, sehingga penyusunnya tidak ada di export mana pun — kodenya ada di
+ * platform, yang tidak ikut dalam export rule aplikasi. Yang dapat dibaca dari export
+ * hanyalah KOLOM MANA yang memakainya; bunyinya harus diambil dari layar yang berjalan.
+ *
+ * Di Inbox RCL/PUCL ia dipakai tepat pada satu kolom: "Lama Klaim"
+ * (`Section/InboxCetakSuratPUCLRCL_Section-Section.xml` — satu-satunya `DateTime-Frame` di
+ * seluruh berkas itu). Belasan section Inbox lain memakai format yang sama.
+ *
+ * # Bentuknya, dan mana yang benar-benar TERAMATI
+ *
+ * Tangkapan layar Pega yang berjalan pada 2026-10-10 memperlihatkan dua baris sekaligus,
+ * dan keduanya mengikat bentuk di bawah:
+ *
+ *	09/10/26 17:05  →  "21 hours ago"        selisih 21 jam 15 menit
+ *	09/10/26 12:45  →  "1 day 1 hour ago"    selisih 1 hari 1 jam 35 menit
+ *
+ * Dari keduanya tiga hal dapat dipastikan:
+ *
+ *   - Cabang HARI menuliskan DUA satuan — hari beserta sisa jamnya. Bukan "1 day ago".
+ *   - Cabang JAM menuliskan SATU satuan saja; sisa menitnya dibuang, tidak dibulatkan.
+ *   - Bentuk jamaknya BENAR per satuan: "1 day 1 hour" bersisian dengan "21 hours".
+ *
+ * Cabang tahun mengikuti pengamatan terpisah di layar Post Audit — "1 year 5 months ago"
+ * (lihat `inboxcompliance.FormatElapsed` di backend, yang menulis ulang format yang sama
+ * untuk kolom OutStanding). Cabang bulan dan menit masih REKONSTRUKSI: belum ada baris
+ * yang cukup baru di layar Pega untuk membandingkannya.
+ *
+ * # Kenapa di sini, bukan di backend seperti kolom Aging Compliance
+ *
+ * Karena nilai yang dikirim modul ini memang sebuah TANGGAL, bukan durasi — kolom
+ * `LAMAKLAIM_1` bertipe `TIMESTAMP(6)`, dan judul "Lama Klaim" menyesatkan sejak di Pega.
+ * Membiarkannya tanggal pada kontrak API menjaga dua hal: berkas ekspornya tetap memuat
+ * tanggal yang dapat diurutkan Excel, dan teks "21 hours ago" tidak membeku pada saat
+ * jawabannya dibuat — ia dihitung ulang setiap kali layar digambar, persis seperti di Pega.
+ *
+ * # Zona waktu
+ *
+ * Nilai tanpa zona diperlakukan sebagai jam dinding WIB, sama seperti `formatPegaDateTime`
+ * — backend sudah menggesernya ke WIB sebelum mengirim. Nilai BER-zona dibaca apa adanya
+ * sebagai titik waktu. Yang menentukan digeser atau tidak adalah ada tidaknya zona pada
+ * teksnya, bukan tebakan: kelas kesalahan itulah yang melahirkan ratusan penyesuaian tujuh
+ * jam di sistem lama.
+ *
+ * Teks yang tidak dapat dibaca dikembalikan APA ADANYA — nilai mentah yang terbaca aneh
+ * masih dapat ditelusuri, sedangkan teks kosong menghapus jejaknya. Waktu di MASA DEPAN
+ * menghasilkan teks kosong, bukan "0 minutes ago" yang menyatakan hal yang tidak benar.
+ */
+export function formatPegaElapsed(value: string, now: Date = new Date()): string {
+  const text = value.trim()
+  if (text === '') return ''
+
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
+      text,
+    )
+  if (!parts) return text
+
+  const [, year, month, day, hour = '00', minute = '00', second = '00', zone] = parts
+
+  // Titik waktu sumbernya. Tanpa zona, angkanya adalah jam dinding WIB — maka instannya
+  // tujuh jam lebih awal daripada angka yang sama dibaca sebagai UTC.
+  const start =
+    zone === undefined
+      ? Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour),
+          Number(minute),
+          Number(second),
+        ) -
+        7 * 60 * 60_000
+      : new Date(text).getTime()
+
+  if (Number.isNaN(start)) return text
+
+  const elapsed = now.getTime() - start
+  if (elapsed < 0) return ''
+
+  // Tahun dan bulan dihitung secara KALENDER, bukan dengan membagi selisih milidetik.
+  // Membaginya akan memakai "bulan" sepanjang 30 hari yang tidak ada di kalender mana pun,
+  // dan hasilnya meleset makin jauh seiring rentangnya memanjang.
+  const a = wibParts(start)
+  const b = wibParts(now.getTime())
+
+  let months = (b.year - a.year) * 12 + (b.month - a.month)
+  if (b.day < a.day || (b.day === a.day && b.timeOfDay < a.timeOfDay)) months--
+
+  if (months >= 12) {
+    const years = Math.floor(months / 12)
+    const restMonth = months % 12
+
+    // Sisa nol tidak ditulis. "1 year 0 months ago" bukan bentuk yang ditulis pemformat
+    // waktu relatif mana pun, dan ia hanya muncul tepat pada hari ulang tahun sebuah baris.
+    return restMonth === 0
+      ? `${plural(years, 'year')} ago`
+      : `${plural(years, 'year')} ${plural(restMonth, 'month')} ago`
+  }
+
+  if (months >= 1) return `${plural(months, 'month')} ago`
+
+  const hours = Math.floor(elapsed / 3_600_000)
+
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    const restHour = hours % 24
+
+    return restHour === 0
+      ? `${plural(days, 'day')} ago`
+      : `${plural(days, 'day')} ${plural(restHour, 'hour')} ago`
+  }
+
+  if (hours >= 1) return `${plural(hours, 'hour')} ago`
+
+  return `${plural(Math.floor(elapsed / 60_000), 'minute')} ago`
+}
+
+/**
+ * wibParts memecah sebuah instan menjadi bagian kalender WIB.
+ *
+ * Pergeserannya dilakukan di satu tempat ini, bukan di setiap pemanggil — sama alasannya
+ * dengan seam Clock di backend (`F-5`).
+ */
+function wibParts(epochMs: number): {
+  year: number
+  month: number
+  day: number
+  timeOfDay: number
+} {
+  const wib = new Date(epochMs + 7 * 60 * 60_000)
+  return {
+    year: wib.getUTCFullYear(),
+    month: wib.getUTCMonth(),
+    day: wib.getUTCDate(),
+    timeOfDay: wib.getUTCHours() * 60 + wib.getUTCMinutes(),
+  }
+}
+
+/**
+ * plural menuliskan sebuah jumlah beserta satuannya dalam bentuk Inggris yang benar.
+ *
+ * Kelima satuan yang dipakai — minute, hour, day, month, year — seluruhnya beraturan,
+ * sehingga menambahkan "s" sudah cukup. Tidak ada gunanya menarik pustaka pluralisasi
+ * untuk lima kata.
+ *
+ * Teksnya berbahasa Inggris karena itulah yang selama ini dibaca petugas di kolom ini
+ * (`D-13`), bukan karena bahasa Indonesia dihindari.
+ */
+function plural(count: number, unit: string): string {
+  return count === 1 ? `1 ${unit}` : `${count} ${unit}s`
+}
+
+/**
  * rupiahToCents membaca angka yang diketik pengguna menjadi sen.
  *
  * Pemisah ribuan titik dan desimal koma diterima, karena itu yang diketik orang di

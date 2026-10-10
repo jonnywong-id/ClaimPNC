@@ -2,6 +2,7 @@ package inboxpladla_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,9 +28,9 @@ func codes() []string { return []string{"R901", "R900"} }
 // Ketiga yang terakhir pada baris kedua tidak pernah dibangun sampai 2026-09-28, dan
 // ketiadaannya tidak terlihat dari layar: tampilan yang tidak punya tab tidak pernah
 // diminta siapa pun.
-func TestTheScreenOffersSevenViews(t *testing.T) {
+func TestTheScreenOffersSixViews(t *testing.T) {
 	tabs := inboxpladla.Tabs()
-	require.Len(t, tabs, 7)
+	require.Len(t, tabs, 6)
 
 	got := []string{}
 	for _, tab := range tabs {
@@ -38,20 +39,15 @@ func TestTheScreenOffersSevenViews(t *testing.T) {
 	require.Equal(t, []string{
 		"pla", "dla", "close",
 		"not-answered", "not-replied-from-asm", "replied-from-asm",
-		"xol",
 	}, got)
 }
 
-// Keenam daftar klaim memakai kolom yang SAMA; XOL punya kolomnya sendiri.
+// Keenam daftar memakai kolom yang SAMA.
 func TestEveryViewDescribesItself(t *testing.T) {
 	for _, tab := range inboxpladla.Tabs() {
 		require.NotEmpty(t, tab.Name, "%s", tab.Code)
 		require.NotEmpty(t, tab.Description, "%s", tab.Code)
 
-		if !tab.IsClaimList() {
-			require.Len(t, tab.Columns, 4, "%s kolomnya bergeser", tab.Code)
-			continue
-		}
 		require.Len(t, tab.Columns, 9, "%s kolomnya bergeser", tab.Code)
 	}
 }
@@ -119,25 +115,25 @@ func TestTheCommunicationListsFilterOnConversationsOnly(t *testing.T) {
 	}
 }
 
-// Tampilan XOL BUKAN daftar klaim, dan layar mengetahuinya dari SERVER.
+// Tampilan XOL TIDAK ditawarkan, dan itu bukan kelalaian.
 //
-// Alternatifnya — layar mencocokkan `kode === 'xol'` — ditolak dengan alasan yang sama
-// seperti senarai kolom: inventaris tampilan adalah hasil pembacaan export, dan
-// menyalinnya ke layar berarti keputusan yang sama hidup di dua tempat.
-func TestTheXOLViewIsNotAClaimList(t *testing.T) {
-	xol, found := inboxpladla.FindTab("xol")
-	require.True(t, found)
+// Sectionnya memang memuat wadah berjudul "DATA PLA DLA XOL KLAIM", tetapi wadah itu
+// bersyarat `pyContainerVisibleWhen = TempView.CityID==7` sementara `CityID` hanya pernah
+// diisi dari `.CityID` sebuah baris tabel "Status / Jumlah" — dan tabel itu berisi enam
+// baris. Literal `7` nol kemunculan sebagai nilai `tipe` di seluruh export.
+//
+// Ia sempat dibawa sebagai tab ketujuh, lalu sebagai panel permanen. Uji ini yang
+// menahannya kembali: menambahkan tab ketujuh membuatnya merah.
+func TestTheXOLViewIsNotOfferedAtAll(t *testing.T) {
+	_, found := inboxpladla.FindTab("xol")
+	require.False(t, found, "tampilan XOL tidak boleh ditawarkan")
 
-	require.False(t, xol.IsClaimList())
-	require.Equal(t, inboxpladla.ViewXOL, xol.Kind)
-	require.False(t, xol.HasDetailAction,
-		"tampilan XOL tidak menggambar klaim, sehingga tidak punya tombol rincian")
+	tabs := inboxpladla.Tabs()
+	require.Len(t, tabs, 6, "layar ini punya ENAM daftar")
 
-	for _, tab := range inboxpladla.Tabs() {
-		if tab.Code == "xol" {
-			continue
-		}
-		require.True(t, tab.IsClaimList(), "%s", tab.Code)
+	for _, tab := range tabs {
+		require.NotEqual(t, "xol", tab.Code)
+		require.Len(t, tab.Columns, 9, "%s kolomnya bergeser", tab.Code)
 		require.True(t, tab.HasDetailAction, "%s", tab.Code)
 	}
 }
@@ -276,17 +272,15 @@ func TestPaginationIsCorrectedRatherThanRejected(t *testing.T) {
 		inboxpladla.Pagination{Page: 2, Size: 9999}.Normalize())
 }
 
-// Selisih terencana menyebut kebocoran XOL yang TIDAK dibawa.
+// Selisih terbesar layar ini adalah satu TAMPILAN UTUH yang tidak dibawa.
 //
-// Ia yang paling penting dibaca di antara seluruh selisih modul ini: di Pega setiap
-// reasuradur melihat ringkasan XOL milik satu mitra tertentu.
-func TestPlannedDifferencesNameTheXOLLeakThatWasNotCarriedOver(t *testing.T) {
-	joined := ""
-	for _, item := range inboxpladla.PlannedDifferences {
-		joined += item + "\n"
-	}
+// Ia harus terbaca pengguna di kaki layar, bukan hanya tercatat di kode: mitra yang
+// terbiasa mencari "DATA PLA DLA XOL KLAIM" di Pega perlu tahu mengapa ia tidak ada —
+// dan jawabannya bukan "belum dibangun" melainkan "di Pega pun ia tidak pernah tergambar".
+func TestPlannedDifferencesSayTheXOLViewIsNotCarriedOver(t *testing.T) {
+	joined := strings.Join(inboxpladla.PlannedDifferences, "\n")
 
-	require.Contains(t, joined, "XOL")
-	require.Contains(t, joined, "login Anda sendiri")
-	require.Contains(t, joined, "D-15")
+	require.Contains(t, joined, "DATA PLA DLA XOL KLAIM")
+	require.Contains(t, joined, "TIDAK dibawa")
+	require.Contains(t, joined, "CityID==7")
 }

@@ -14,9 +14,15 @@ describe('usePrintLOD', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('memuat ulang klaim sesudah LOD berhasil dicetak', async () => {
+    // Badannya STRING, bukan `new Blob([...])`.
+    //
+    // Response milik undici menolak Blob bentukan jsdom, dan penolakannya terjadi DI DALAM
+    // `try` pembungkus fetch di `unduhBerkas` — sehingga ia tertelan dan muncul sebagai
+    // NetworkError, seolah tiruannya tidak terpasang. Seluruh uji unduhan di
+    // `src/api/client.test.ts` memakai badan string karena sebab yang sama.
     vi.stubGlobal('fetch', () =>
       Promise.resolve(
-        new Response(new Blob(['%PDF']), {
+        new Response('%PDF', {
           status: 200,
           headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="LOD.pdf"' },
         }),

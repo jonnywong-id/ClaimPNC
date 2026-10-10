@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -54,13 +55,34 @@ func TestPengirimanUlangRCLPUCLMencabutPenandaSiklusSebelumnya(t *testing.T) {
 		}
 	}
 
-	// Penanda bind tidak boleh bertambah: `rclpucl.go` memakai SATU daftar argumen untuk
-	// UPDATE dan INSERT, dan go-ora mengikat menurut urutan KEMUNCULAN penanda. Satu bind
-	// tambahan menggeser seluruh sisanya tanpa galat sintaks.
-	if jumlah := strings.Count(body, ":"); jumlah != 25 {
-		t.Errorf("surat_rclpucl_perbarui memuat %d penanda bind, seharusnya 25.\n"+
-			"Pengosongan kedua kolom di atas ditulis sebagai literal NULL justru supaya "+
-			"urutan bind tidak bergeser.", jumlah)
+	// UPDATE dan INSERT wajib SEPADAN jumlah bind-nya.
+	//
+	// `rclpucl.go` memakai SATU daftar argumen untuk keduanya — `update` menutup dengan
+	// CLAIMID, `insert` membukanya — dan go-ora mengikat menurut urutan KEMUNCULAN penanda,
+	// bukan menurut nomornya. Satu bind yang bertambah di satu kueri saja menggeser seluruh
+	// sisanya **tanpa galat sintaks**: nilainya masuk ke kolom yang salah.
+	//
+	// Angkanya sengaja TIDAK dipatok konstanta. Patokan 25 pernah menahan penambahan kolom
+	// yang sah (`NAMA_DOKTER_RCL`, 2026-10-07) dan memaksa uji ini disunting bersama setiap
+	// kolom baru — padahal yang benar-benar dijaga adalah kesepadanannya, bukan angkanya.
+	// Dihitung dengan pola `:angka`, bukan dengan mencacah aksara `:` — prosa di kepala
+	// kueri pun memuat titik dua, dan mencacahnya menghasilkan angka yang tidak berarti.
+	penanda := regexp.MustCompile(`:\d+`)
+	perbarui := len(penanda.FindAllString(body, -1))
+	sisip := len(penanda.FindAllString(loadQuery("surat_rclpucl_sisip"), -1))
+	if perbarui != sisip {
+		t.Errorf("surat_rclpucl_perbarui memuat %d penanda bind, surat_rclpucl_sisip %d.\n"+
+			"Keduanya memakai satu daftar argumen yang sama; selisih ini menggeser nilai ke "+
+			"kolom yang salah tanpa galat sintaks.", perbarui, sisip)
+	}
+
+	// Dan pengosongan kedua kolom siklus tetap LITERAL, bukan bind — itu yang menjaga
+	// keduanya sepadan tanpa menambah argumen di sisi Go.
+	for _, kolom := range []string{"PUCL_APPROVE", "TGL_CETAK_DOKUMEN_PUCL"} {
+		if strings.Contains(body, kolom+"           = :") || strings.Contains(body, kolom+" = :") {
+			t.Errorf("%s dikosongkan lewat penanda bind; tulis NULL sebagai literal supaya "+
+				"daftar argumen UPDATE dan INSERT tetap satu", kolom)
+		}
 	}
 }
 

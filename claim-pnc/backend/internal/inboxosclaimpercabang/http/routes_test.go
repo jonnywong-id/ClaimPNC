@@ -143,14 +143,7 @@ func TestListReturnsTheBranchRowsAndItsTitle(t *testing.T) {
 	require.Equal(t, testPortal, body["portal"],
 		"layar memakai ini untuk memastikan jawabannya milik portal yang sedang dipilih")
 	require.Equal(t, float64(inboxosclaimpercabang.AgingThreshold), body["ambang_aging"])
-
-	// `selisih_terencana` wajib ADA dan berupa senarai — meski kosong sejak seluruh
-	// butirnya dicabut Work Owner (2026-10-10). Yang dijaga bukan isinya melainkan
-	// BENTUKNYA: bila ia hilang atau terkirim sebagai `null`, layar yang memetakannya akan
-	// jatuh dan membawa gridnya serta.
-	selisih, ada := body["selisih_terencana"]
-	require.True(t, ada, "kunci selisih_terencana harus tetap dikirim")
-	require.IsType(t, []any{}, selisih, "selisih_terencana harus senarai, bukan null")
+	require.NotContains(t, body, "selisih_terencana")
 }
 
 func TestListMarksTheRowsThatNeedAttention(t *testing.T) {

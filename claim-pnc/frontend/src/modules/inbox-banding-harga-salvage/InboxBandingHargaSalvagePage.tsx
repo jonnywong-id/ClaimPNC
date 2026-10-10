@@ -294,10 +294,6 @@ export function InboxBandingHargaSalvagePage() {
         </>
       )}
 
-      <Notes
-        title="Yang sengaja berbeda dari layar lama"
-        lines={meta.data?.selisih_terencana ?? []}
-      />
       <Notes title="Yang belum tersedia" lines={meta.data?.keterbatasan ?? []} />
     </PageFrame>
   )

@@ -141,16 +141,9 @@ const METADATA: MetadataResponse = {
       keterangan: 'Keduanya sekaligus. Satu adjuster tampil dua baris — dan itu bukan baris ganda.',
     },
   ],
-  selisih_terencana: [
-    'Layar ini MEMBACA saja. Di Pega, menekan Cari menghitung ulang lalu menyimpannya.',
-    'Nilai komponen yang kosong ditampilkan sebagai tanda hubung, bukan sebagai 0.',
-  ],
   kelompok_admin: [
     { kode: 'NONMBU', judul: 'NON MBU' },
     { kode: 'PA', judul: 'PA' },
-  ],
-  selisih_terencana_admin: [
-    'Pembagian dijaga NULLIF: periode tanpa klaim menghasilkan nilai kosong, bukan galat.',
   ],
   koordinator_di_kueri: 'YUSMIARSIH DYAHPUSPITA S',
 
@@ -171,9 +164,6 @@ const METADATA: MetadataResponse = {
     { kode: 'analisa_klaim', judul: 'Analisa Klaim (max 10 hari)' },
     { kode: 'akseptasi_klaim', judul: 'Akseptasi Klaim ( 1 hari )' },
     { kode: 'sla_klaim', judul: 'SLA Klaim', tangga_menurun: true },
-  ],
-  selisih_terencana_pic: [
-    'NILAI BERLAWANAN ARAH PADA DUA KOMPONEN — direplikasi dari Pega.',
   ],
   pic_dikecualikan_sla: ['BAMBANGSETIADJIGUNAWAN', 'DANIELLISWANDI'],
 
@@ -591,17 +581,18 @@ describe('selisih terencana', () => {
     expect(screen.queryByText('POOLDATA.DETAIL_KPI_ADJUSTER')).not.toBeInTheDocument()
   })
 
-  // Keterangannya tetap SAMPAI ke layar lewat `/tab`, hanya tidak digambar.
+  // Keputusan Work Owner 2026-10-06: keterangan selisih TIDAK lagi dikirim ke layar.
   //
-  // Itu yang membedakan "dihapus dari tampilan" dari "dihapus dari kontrak" — dan yang
-  // kedua akan menghilangkan rekaman yang dituntut `D-54`.
-  it('tetap menerima keterangan selisih dari server meski tidak menggambarnya', async () => {
+  // Daftarnya tetap hidup di kode Go — `D-54` masih menuntutnya sebagai pemetaan selisih ke
+  // butir `P-5` pada uji kesetaraan gerbang 1 — tetapi ia artefak pengembang, bukan isi
+  // layar. Yang dijaga di sini: medannya tidak kembali diam-diam ke dalam respons.
+  it('tidak lagi menerima keterangan selisih dari server', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
     const tab = lastCallStartingWith(TAB_PATH)
     expect(tab).toBeDefined()
-    expect(METADATA.selisih_terencana.length).toBeGreaterThan(0)
+    expect(METADATA).not.toHaveProperty('selisih_terencana')
   })
 })
 

@@ -107,13 +107,43 @@ func TestPerjanjianYangTidakAdaDitolak(t *testing.T) {
 	require.ErrorIs(t, err, inboxxol.ErrMasterNotFound)
 }
 
-func TestPerjanjianWajibDipilih(t *testing.T) {
-	_, err := layanan(t).SummarizeClaims(context.Background(), portalUtama, pemanggil, "   ")
+// TestTanpaPerjanjianMengakumulasiSeluruhnya menguji perilaku bawaan grid.
+//
+// `Activity/GetClaimXOL-Act.xml` step 4 me-loop `MstXOL.pxResults` tanpa batas awal
+// maupun akhir, dan meng-APPEND hasil tiap perjanjian ke satu daftar. Jadi grid itu
+// GABUNGAN seluruh perjanjian — bukan satu perjanjian terpilih, dan memang tidak ada
+// pemilih perjanjian di layar lama.
+//
+// Versi sebelumnya menuntut `id_master` dan menolak permintaan tanpa itu. Akibatnya grid
+// selalu kosong, karena layar tidak punya apa pun untuk dikirim.
+func TestTanpaPerjanjianMengakumulasiSeluruhnya(t *testing.T) {
+	overview, err := layanan(t).SummarizeClaims(context.Background(), portalUtama, pemanggil, "   ")
+	require.NoError(t, err)
+	require.NotEmpty(t, overview.Rows)
 
-	var validation *inboxxol.ValidationError
-	require.ErrorAs(t, err, &validation)
-	require.Len(t, validation.Violations, 1)
-	require.Equal(t, inboxxol.FieldMasterID, validation.Violations[0].Field)
+	// Tiap baris menyebut perjanjian asalnya. Tanpa itu rincian di baliknya tidak tahu
+	// tahun, kurs, dan group business mana yang berlaku baginya.
+	for _, row := range overview.Rows {
+		require.NotEmpty(t, row.MasterID)
+	}
+}
+
+// Menyebut perjanjian tetap menyaring ke perjanjian itu saja — jalur yang dipakai
+// rincian di balik satu baris.
+func TestMenyebutPerjanjianMenyaringKeSatuPerjanjian(t *testing.T) {
+	service := layanan(t)
+
+	semua, err := service.SummarizeClaims(context.Background(), portalUtama, pemanggil, "")
+	require.NoError(t, err)
+
+	satu, err := service.SummarizeClaims(context.Background(), portalUtama, pemanggil, "XOL-001")
+	require.NoError(t, err)
+
+	require.Equal(t, "XOL-001", satu.Master.ID)
+	require.LessOrEqual(t, len(satu.Rows), len(semua.Rows))
+	for _, row := range satu.Rows {
+		require.Equal(t, "XOL-001", row.MasterID)
+	}
 }
 
 // TestRincianMenyatukanKlaimSendiriDanTreatyInward menguji penyusunan DLAList pada

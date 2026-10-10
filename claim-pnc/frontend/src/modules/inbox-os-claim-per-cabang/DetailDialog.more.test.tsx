@@ -58,7 +58,6 @@ function detail(cob: string): DetailResponse {
       { nama_user: '', tanggal_proses: '', pesan: '', tanggal_balas: '', jawaban: '', internal: false },
     ],
     cabang: { kode: '1', nama: 'CABANG' },
-    selisih_terencana: [],
     portal: 'ASM',
   }
 }

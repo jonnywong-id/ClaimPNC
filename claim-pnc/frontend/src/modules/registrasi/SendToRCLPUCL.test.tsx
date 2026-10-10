@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,7 +33,19 @@ const ALASAN = [
   { id: '001', nama: 'Dikecualikan polis', deskripsi: 'Perawatan yang Anda ajukan dikecualikan dalam polis.' },
 ]
 // Bentuknya meniru `OLD_OPERATOR_ID` yang sebenarnya: huruf besar, boleh berspasi.
-const DOKTER = [{ id: 'DOKTERCONTOHSATU' }, { id: 'DOKTER CONTOH DUA' }]
+// `pyPromptTableList` property `NamaDokterRCL` — yang DIHARAPKAN tergambar.
+//
+// Ini bukan fixture jaringan: layar tidak memintanya ke mana pun. Ia salinan kedua dari
+// daftar yang sama, sengaja ditulis ulang di sini supaya uji benar-benar menguji isinya.
+// Mengimpor `RCL_DOCTORS` dari komponennya akan membuat uji ini lulus apa pun isinya,
+// termasuk daftar kosong — persis cacat yang dilaporkan.
+//
+// Baris kedua sengaja yang `id`-nya BERBEDA dari `nama`: hanya daftar seperti itu yang
+// menangkap tertukarnya nilai simpan dengan label.
+const DOKTER = [
+  { id: 'WAHYUKRISTANTI', nama: 'WAHYUKRISTANTI' },
+  { id: 'MARGARETHAROSAGUNAWAN', nama: 'MARGARETHA ROSA GUNAWAN' },
+]
 
 function installFetch(kirim: () => Response = () => json(200, { klaim: { id: 'klaim-1' }, tugas: null })) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
@@ -43,7 +55,8 @@ function installFetch(kirim: () => Response = () => json(200, { klaim: { id: 'kl
       return Promise.resolve(json(200, { pilihan: pucl ? PERIHAL_PUCL : PERIHAL_RCL }))
     }
     if (url.startsWith('/api/registrasi/rclpucl/alasan')) return Promise.resolve(json(200, { pilihan: ALASAN }))
-    if (url.startsWith('/api/registrasi/rclpucl/dokter')) return Promise.resolve(json(200, { pilihan: DOKTER }))
+    // `/rclpucl/dokter` sengaja TIDAK dilayani: daftar dokter tidak datang dari jaringan.
+    // Memanggilnya jatuh ke 404 di bawah, dan uji "tidak pernah meminta" menangkapnya.
     if (url.endsWith('/kirim-rclpucl')) return Promise.resolve(kirim())
     return Promise.resolve(json(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ditemukan.' }))
   })
@@ -130,27 +143,44 @@ describe('susunan modal mengikuti SectionPUCL', () => {
 
   // DROPDOWN, bukan isian bebas: nilainya harus cocok dengan identitas lama yang disaring
   // Inbox RCL, dan nama yang diketik bebas gagal mencocokkannya tanpa satu pesan galat.
-  it('Nama Dokter adalah dropdown berisi identitas dari server', async () => {
-    const user = userEvent.setup()
+  //
+  // Isinya diperiksa SEKETIKA, tanpa `waitFor`: daftarnya tidak datang dari jaringan, jadi
+  // ia sudah tergambar pada render pertama. `waitFor` di sini justru akan menyembunyikan
+  // kemunduran — ia tetap lulus seandainya daftarnya kembali menjadi panggilan jaringan.
+  it('Nama Dokter adalah dropdown berisi kedua nama prompt list', () => {
     open('002')
-    await user.click(screen.getByRole('radio', { name: 'RCL' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'RCL' }))
 
     const dokter = screen.getByLabelText('Nama Dokter')
     expect(dokter.tagName).toBe('SELECT')
-    await waitFor(() =>
-      expect(within(dokter).getByRole('option', { name: DOKTER[0]!.id })).toBeInTheDocument(),
-    )
     // Pilihan kosong "----- PILIH -----" mendahului, persis seperti dropdown Pega-nya.
-    expect(within(dokter).getAllByRole('option')[0]).toHaveValue('')
-    expect(within(dokter).getByRole('option', { name: DOKTER[1]!.id })).toBeInTheDocument()
+    const opsi = within(dokter).getAllByRole('option')
+    expect(opsi[0]).toHaveValue('')
+    expect(opsi).toHaveLength(1 + DOKTER.length)
+    expect(opsi.slice(1).map((o) => [(o as HTMLOptionElement).value, o.textContent])).toEqual(
+      DOKTER.map((d) => [d.id, d.nama]),
+    )
   })
 
-  // Daftarnya tidak ditarik pada jalur yang tidak menggambarnya.
-  it('tidak meminta daftar dokter pada jalur PUCL', async () => {
+  // Daftar dokter TIDAK PERNAH diminta ke jaringan, pada jalur mana pun.
+  //
+  // Ini yang mengunci perbaikannya. Versi sebelumnya menariknya dari server, kuerinya
+  // tidak mengembalikan satu baris pun, dan dropdown-nya kosong di layar tanpa satu pesan
+  // galat — dua kali dilaporkan Work Owner. Daftar tetap tidak punya keadaan gagal.
+  it('tidak pernah meminta daftar dokter ke jaringan', async () => {
     const user = userEvent.setup()
     open('002')
+
+    // Jalur RCL menggambar dropdown-nya…
+    await user.click(screen.getByRole('radio', { name: 'RCL' }))
+    expect(within(screen.getByLabelText('Nama Dokter')).getAllByRole('option')).toHaveLength(
+      1 + DOKTER.length,
+    )
+
+    // …dan jalur PUCL tidak menggambarnya sama sekali.
     await user.click(screen.getByRole('radio', { name: 'PUCL' }))
     await waitFor(() => expect(screen.getByText(ALASAN[0]!.nama)).toBeInTheDocument())
+
     expect(calls.some((c) => c.url.startsWith('/api/registrasi/rclpucl/dokter'))).toBe(false)
   })
 })
@@ -234,7 +264,7 @@ describe('Kirim', () => {
     await user.type(screen.getByLabelText('Keterangan Isi'), 'Mohon melengkapi berkas.')
     await user.type(screen.getByLabelText('Keterangan Penutup'), 'Terima kasih.')
     await waitFor(() =>
-      expect(within(screen.getByLabelText('Nama Dokter')).getByRole('option', { name: DOKTER[0]!.id })).toBeInTheDocument(),
+      expect(within(screen.getByLabelText('Nama Dokter')).getByRole('option', { name: DOKTER[0]!.nama })).toBeInTheDocument(),
     )
     await user.selectOptions(screen.getByLabelText('Nama Dokter'), DOKTER[0]!.id)
     await user.click(screen.getByRole('button', { name: 'Kirim' }))
@@ -259,7 +289,7 @@ describe('Kirim', () => {
     // Dipilih saat jalur RCL, lalu jalurnya diubah menjadi PUCL.
     await user.click(screen.getByRole('radio', { name: 'RCL' }))
     await waitFor(() =>
-      expect(within(screen.getByLabelText('Nama Dokter')).getByRole('option', { name: DOKTER[0]!.id })).toBeInTheDocument(),
+      expect(within(screen.getByLabelText('Nama Dokter')).getByRole('option', { name: DOKTER[0]!.nama })).toBeInTheDocument(),
     )
     await user.selectOptions(screen.getByLabelText('Nama Dokter'), DOKTER[0]!.id)
     await user.click(screen.getByRole('radio', { name: 'PUCL' }))

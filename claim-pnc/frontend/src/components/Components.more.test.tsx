@@ -16,6 +16,8 @@ import {
   centsToRupiah,
   formatDate,
   formatDateTimeWIB,
+  formatPegaDateTime,
+  formatPegaElapsed,
   formatPercent,
   formatRupiah,
   rupiahToCents,
@@ -298,6 +300,101 @@ describe('format', () => {
     expect(formatDateTimeWIB('2026-09-30T20:05:00Z')).toBe('01/10/2026 3:05')
     expect(formatDateTimeWIB(undefined)).toBe('')
     expect(formatDateTimeWIB('bukan waktu')).toBe('bukan waktu')
+  })
+
+  it('menulis waktu grid Pega sebagai dd/MM/yy H:mm', () => {
+    // Bentuk sel "Tanggal" pada grid Pega: tahun DUA digit, dan jam TANPA nol di depan —
+    // terbaca pada grid Detail Komunikasi Cabang yang memuat `28/09/26 9:58`.
+    expect(formatPegaDateTime('2026-09-28T16:58:56+07:00')).toBe('28/09/26 16:58')
+    expect(formatPegaDateTime('2026-09-30T00:59:00Z')).toBe('30/09/26 7:59')
+    expect(formatPegaDateTime('2026-09-30T20:05:00Z')).toBe('01/10/26 3:05')
+  })
+
+  it('TIDAK menggeser waktu yang tidak menyebutkan zonanya', () => {
+    // Nilai tanpa zona sudah berupa waktu dinding. Menggesernya tujuh jam adalah kelas
+    // kesalahan yang melahirkan ratusan penyesuaian manual di sistem lama.
+    expect(formatPegaDateTime('2026-09-28 16:58')).toBe('28/09/26 16:58')
+    expect(formatPegaDateTime('2026-09-28 16:58:56')).toBe('28/09/26 16:58')
+  })
+
+  it('membuang nol di depan jam meski sumbernya menuliskannya', () => {
+    // Yang menentukan bentuknya adalah layar, bukan cara basis data menuliskan nilainya.
+    expect(formatPegaDateTime('2026-09-28 09:58')).toBe('28/09/26 9:58')
+    expect(formatPegaDateTime('2026-09-29 02:46')).toBe('29/09/26 2:46')
+    // Menitnya TETAP ber-nol.
+    expect(formatPegaDateTime('2026-09-28 09:05')).toBe('28/09/26 9:05')
+  })
+
+  it('tidak mengarang jam pada nilai yang hanya memuat tanggal', () => {
+    expect(formatPegaDateTime('2026-09-28')).toBe('28/09/26')
+  })
+
+  it('mengembalikan teks yang tidak terbaca apa adanya', () => {
+    // Nilai mentah yang terbaca aneh masih dapat ditelusuri; tanda pisah menghapus jejaknya.
+    expect(formatPegaDateTime('bukan waktu')).toBe('bukan waktu')
+    expect(formatPegaDateTime('')).toBe('')
+    expect(formatPegaDateTime('   ')).toBe('')
+  })
+
+  /*
+    formatPegaElapsed menulis ulang `pyDateTimeFormat = DateTime-Frame`, format waktu
+    relatif BAWAAN Pega. Penyusunnya tidak ada di export mana pun — kodenya ada di platform
+    — sehingga bentuknya hanya dapat diambil dari layar yang berjalan.
+
+    Kedua kasus pertama TERAMATI langsung pada tangkapan layar Inbox RCL/PUCL 2026-10-10;
+    selebihnya rekonstruksi.
+  */
+  it('menulis cabang JAM dengan satu satuan, seperti terbaca di layar Pega', () => {
+    // 09/10/26 17:05 tampil "21 hours ago" saat itu kira-kira pukul 14.20 — jadi sisa
+    // menitnya DIBUANG, bukan dibulatkan menjadi 21.
+    const sekarang = new Date('2026-10-10T07:20:00Z') // 14:20 WIB
+
+    expect(formatPegaElapsed('2026-10-09 17:05:00', sekarang)).toBe('21 hours ago')
+    expect(formatPegaElapsed('2026-10-10 13:20:00', sekarang)).toBe('1 hour ago')
+  })
+
+  it('menulis cabang HARI dengan dua satuan — hari beserta sisa jamnya', () => {
+    // 09/10/26 12:45 tampil "1 day 1 hour ago" pada layar yang sama. Bukan "1 day ago":
+    // cabang ini memang menuliskan dua satuan.
+    const sekarang = new Date('2026-10-10T07:20:00Z') // 14:20 WIB
+
+    expect(formatPegaElapsed('2026-10-09 12:45:00', sekarang)).toBe('1 day 1 hour ago')
+    expect(formatPegaElapsed('2026-10-08 09:00:00', sekarang)).toBe('2 days 5 hours ago')
+  })
+
+  it('tidak menulis sisa NOL pada cabang hari maupun tahun', () => {
+    // "1 day 0 hours ago" bukan bentuk yang ditulis pemformat waktu relatif mana pun.
+    const sekarang = new Date('2026-10-10T07:20:00Z')
+
+    expect(formatPegaElapsed('2026-10-09 14:20:00', sekarang)).toBe('1 day ago')
+    expect(formatPegaElapsed('2024-10-10 14:20:00', sekarang)).toBe('2 years ago')
+  })
+
+  it('menulis tahun beserta bulannya, seperti terbaca di layar Post Audit', () => {
+    // "1 year 5 months ago" — satu-satunya kasus tahun yang teramati, dan bentuk jamaknya
+    // BENAR per satuan: "1 year" tunggal bersisian dengan "5 months" jamak.
+    expect(
+      formatPegaElapsed('2025-04-22 13:46:00', new Date('2026-09-24T02:57:00Z')),
+    ).toBe('1 year 5 months ago')
+  })
+
+  it('menggeser nilai BER-zona dan tidak menggeser yang tanpa zona', () => {
+    // Kelas kesalahan yang melahirkan ratusan penyesuaian tujuh jam di sistem lama: yang
+    // menentukan digeser atau tidak adalah ada tidaknya zona pada teksnya.
+    const sekarang = new Date('2026-10-10T07:20:00Z') // 14:20 WIB
+
+    expect(formatPegaElapsed('2026-10-10T06:20:00Z', sekarang)).toBe('1 hour ago')
+    expect(formatPegaElapsed('2026-10-10 13:20:00', sekarang)).toBe('1 hour ago')
+  })
+
+  it('mengosongkan waktu di masa depan dan melewatkan teks yang tidak terbaca', () => {
+    const sekarang = new Date('2026-10-10T07:20:00Z')
+
+    // Baris bertanggal masa depan memang ada di data warisan. "0 minutes ago" akan
+    // menyatakan hal yang tidak benar.
+    expect(formatPegaElapsed('2026-10-11 09:00:00', sekarang)).toBe('')
+    expect(formatPegaElapsed('', sekarang)).toBe('')
+    expect(formatPegaElapsed('bukan waktu', sekarang)).toBe('bukan waktu')
   })
 
   it('menghitung tanggal hari ini menurut WIB', () => {

@@ -100,11 +100,7 @@ export type MetadataResponse = {
   tab_bawaan: string
   komponen: Component[]
   tipe_report: ReportTypeOption[]
-  selisih_terencana: string[]
-
   kelompok_admin: AdminGroupOption[]
-  selisih_terencana_admin: string[]
-
   /**
    * Nama koordinator sebagaimana ditulis di TEKS KUERI Pega, yang BERBEDA dari yang
    * ditampilkan. Dipakai keterangan layar supaya penguji yang membandingkan layar ini
@@ -114,8 +110,6 @@ export type MetadataResponse = {
 
   lini_bisnis: BusinessLineOption[]
   komponen_pic: PICComponent[]
-  selisih_terencana_pic: string[]
-
   /**
    * Petugas yang DIKECUALIKAN dari penilaian SLA di sistem lama.
    *

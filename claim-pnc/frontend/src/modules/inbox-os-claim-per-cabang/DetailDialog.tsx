@@ -159,7 +159,6 @@ export function DetailDialog({
               />
             </Section>
 
-            <DetailPlannedDifferences lines={detail.data.selisih_terencana} />
           </div>
         ) : null}
       </div>
@@ -724,30 +723,6 @@ const MESSAGE_COLUMNS: Column<DetailMessage>[] = [
   },
   { key: 'jawaban', title: 'Jawaban', value: (row) => row.jawaban || '—' },
 ]
-
-/**
- * DetailPlannedDifferences menampilkan selisih POPUP terhadap layar Pega.
- *
- * Daftarnya berbeda dari milik layar daftar, dan itu disengaja: catatan tentang
- * "Total Sum Insured" tidak berlaku di grid, dan catatan tentang paginasi tidak berlaku di
- * sini (`D-54`).
- */
-function DetailPlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <details className="rounded-kartu border border-slate-200 bg-slate-50 p-4 text-sm">
-      <summary className="cursor-pointer font-medium text-slate-700">
-        Perbedaan yang disengaja terhadap layar lama
-      </summary>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </details>
-  )
-}
 
 /**
  * isNotFound membedakan "klaim tidak ditemukan" dari gangguan lain.

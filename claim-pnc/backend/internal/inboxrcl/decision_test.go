@@ -85,7 +85,14 @@ func TestTidakSetujuKembaliKeAnalystDenganAlasanDokter(t *testing.T) {
 	require.Equal(t, StatusKlaimActive, out.StatusKlaim, "RCLSendKomiteReject_act langkah 1")
 	require.Equal(t, "", out.StatusCase, "langkah 16")
 	require.True(t, out.AnalystSentAt.IsZero(), "langkah 16 mengosongkan TanggalAnalystSendRCL")
-	require.Equal(t, now, out.SentToPUCLAt, "langkah 8 tetap berlaku")
+
+	// Baris ini DIBALIK pada 2026-10-06, dan bentuk lamanya patut dicatat: ia berbunyi
+	// `require.Equal(t, now, out.SentToPUCLAt, "langkah 8 tetap berlaku")` — membaca
+	// langkah 8 sendiri-sendiri, tanpa menanyakan kolom mana yang dibaca penyaring C.
+	// Dengan begitu ia MENGUNCI cacat yang dilaporkan: klaim tetap di Inbox RCL sesudah
+	// Tidak Setuju. Uji yang hijau tidak berarti perilakunya benar.
+	require.True(t, out.SentToPUCLAt.IsZero(),
+		"TGL_KIRIM_PUCL adalah penyaring C Inbox RCL — langkah 16 harus mengosongkannya")
 	require.Equal(t, loss, out.ClaimAgeFrom, "langkah 3 — tanggal kejadian")
 	require.Equal(t, printedA, out.LetterPrintedAt, "tanggal cetak dipertahankan")
 	require.Equal(t, "Diagnosa dijamin.", out.DoctorReason)
@@ -93,6 +100,41 @@ func TestTidakSetujuKembaliKeAnalystDenganAlasanDokter(t *testing.T) {
 	require.Equal(t, TicketSendToAnalyst, out.Ticket, "langkah 21 menimpa RCLDokter langkah 20")
 	require.Equal(t, StageSendToAnalyst, out.NextStage)
 	require.Equal(t, QueueWorklist, out.NextQueue)
+}
+
+// GEJALA YANG DILAPORKAN: sesudah Tidak Setuju, klaim harus KELUAR dari Inbox RCL —
+// termasuk ketika pemilik berikutnya adalah orang yang sama.
+//
+// # Kenapa "orang yang sama" bukan kasus mengada-ada
+//
+// Penyaring Inbox RCL adalah `A AND B AND C AND D`. Sesudah Tidak Setuju, B dan D tidak
+// berubah sama sekali, sehingga yang dapat mengeluarkan klaim hanya A (pemilik berpindah)
+// atau C (tanggal dikosongkan). Bila analis dan PIC Teknik adalah akun yang sama — lumrah
+// di lingkungan uji, dan mungkin di cabang kecil — A TETAP cocok, dan C menjadi
+// satu-satunya yang tersisa.
+//
+// Uji ini karena itu tidak memeriksa pemiliknya sama sekali. Ia memeriksa bahwa keputusan
+// itu sendiri sudah cukup untuk mengeluarkan klaim dari antrean dokter.
+func TestTidakSetujuMengeluarkanKlaimDariInboxRCLApaPunPemilikBerikutnya(t *testing.T) {
+	for _, keputusan := range []Decision{DecisionDisagree, DecisionBackMSIG} {
+		mode := ModeRCL
+		if keputusan == DecisionBackMSIG {
+			mode = ModeMSIG
+		}
+
+		out, err := Plan(PUCLState{Mode: mode, StatusCase: "0", DateOfLoss: loss}, keputusan, "", now)
+		require.NoError(t, err)
+
+		// Penyaring C `InboxRCLDokter_RD`: `TGL_KIRIM_PUCL IS NOT NULL`. Kosong berarti
+		// barisnya gugur, siapa pun pemiliknya.
+		require.Truef(t, out.SentToPUCLAt.IsZero(),
+			"%s: penyaring C harus gugur — tanpa ini klaim tetap di Inbox RCL", keputusan)
+
+		// Dan ia memang kembali ke analis, bukan sekadar menghilang.
+		require.Equal(t, StageSendToAnalyst, out.NextStage)
+		require.Equal(t, TicketSendToAnalyst, out.Ticket)
+		require.Equal(t, StatusClaimAnalyst, out.StatusClaim)
+	}
 }
 
 // Langkah 16, 18, 21 — Back pada mode MSIG. Riwayat MSIG tidak ditulis.

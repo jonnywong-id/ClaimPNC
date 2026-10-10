@@ -68,31 +68,42 @@ type SendToRCLPUCLCommand struct {
 // adalah nama ticket yang MENEMPEL pada kedua tahap tujuan — `SendtoPUCL` pada
 // Assignment6 dan `RCLDokter` pada Assignment12.
 //
-//	PUCL          -> SendtoPUCL   antrean bersama RCL/PUCL
-//	RCL           -> RCLDokter    Assignment12
-//	Notification  -> SendtoPUCL   antrean bersama RCL/PUCL
+//	PUCL          -> SendtoPUCL   antrean bersama RCL/PUCL, LANGSUNG
+//	RCL           -> RCLDokter    Assignment12, singgah di dokter lebih dulu
+//	Notification  -> RCLDokter    Assignment12, singgah di dokter lebih dulu
 //
 // **RCL** menuju RCLDokter karena tiga hal sejalan: cabang Otherwise `Decision7` memang
 // Assignment12, nama ticket tahap itu persis "RCLDokter", dan isian "Nama Dokter" modal
 // ini tersimpan di `T_CLAIMLIST_ADMIN.NAMADOKTERRCL_1` — kolom yang dipakai MENYARING
 // layar Inbox RCL (`MENU_ID 62`), inbox milik dokter itu.
 //
-// **Notification** menuju antrean RCL/PUCL, dan ini penyimpulan yang paling lemah di
-// berkas ini. Dasarnya: alur Register tidak punya tahap bernama Notification, kode `3`
-// tidak menyentuh dokter mana pun, dan seluruh penanganannya hidup DI DALAM layar Inbox
-// RCL/PUCL — `inboxrclpucl` memodelkannya sebagai `TrackCodeNotification`, kuerinya
-// tidak menyaring jalur sama sekali, dan lampiran suratnya diatur
-// `Section/SectionLampiranSuratPUCL-Section.xml` dengan kondisi
-// `RCL_PUCL = 3 && MSIG = 'MSIG'`.
+// **Notification menuju RCLDokter juga — dikoreksi 2026-10-07.**
 //
-// Yang menjadi ketegangannya: bila klaim sampai ke keputusan `Decision7` lewat tombol
-// Submit biasa, kode `3` jatuh ke cabang Otherwise — RCLDokter, bukan RCL/PUCL. Kedua
-// jalur itu memang berbeda di Pega, dan yang ditiru di sini adalah jalur tombolnya.
+// Bentuk sebelumnya mengirimnya langsung ke antrean RCL/PUCL, dan berkas ini menyebut
+// sendiri penyimpulan itu "yang paling lemah". Work Owner mempertanyakannya, dan
+// pemeriksaan ulang ke export mematahkannya lewat TIGA artefak yang sejalan:
+//
+//	Section/RCLDokter-Section.xml      layar kerja dokter digambar untuk
+//	                                   `RCL_PUCL = 1` DAN `RCL_PUCL = 3` — bukan 1 saja
+//	Section/SectionPUCL-sect.xml       isian "Nama Dokter" tampil bila
+//	                                   `RCL_PUCL != 2 && IsPA` — jadi 1 dan 3, bukan 2
+//	InboxRCLDokter_RD penyaring D      `.ClaimData.NamaDokterRCL = Param.assign`
+//
+// Ketiganya memisahkan jalur yang sama: **2 sendirian di satu sisi, 1 dan 3 di sisi lain**.
+// Hanya jalur yang dapat mengisi "Nama Dokter" yang dapat memenuhi penyaring D, dan jalur
+// PUCL tidak pernah menampilkan isiannya.
+//
+// Penyaring D itu juga yang mematahkan dugaan lama bahwa kode `3` "tidak menyentuh dokter
+// mana pun": ia menyentuhnya lewat kolom yang sama dengan kode `1`.
+//
+// Sesudah dokter memutuskan, Notification tetap berakhir di antrean RCL/PUCL — tombol
+// Submit pada mode MSIG memasang Ticket `SendtoPUCL` (`inboxrcl.Plan`). Yang berubah hanya
+// **singgahannya**, bukan tujuan akhirnya.
 func TicketSendToRCLPUCL(track int) (string, bool) {
 	switch track {
-	case registrasi.PUCLTrackPUCL, registrasi.PUCLTrackNotification:
+	case registrasi.PUCLTrackPUCL:
 		return "SendtoPUCL", true
-	case registrasi.PUCLTrackRCL:
+	case registrasi.PUCLTrackRCL, registrasi.PUCLTrackNotification:
 		return "RCLDokter", true
 	}
 	return "", false
@@ -166,18 +177,46 @@ func (l *Service) SendToRCLPUCL(ctx context.Context, p SendToRCLPUCLCommand, by 
 	if err != nil {
 		return CompleteResult{}, fmt.Errorf("registrasi/usecase: menentukan penerima tahap %q: %w", target.ID, err)
 	}
+
+	// PEMILIK TUGAS RCLDokter ADALAH **USER TEKNIS** KLAIM — keputusan Work Owner
+	// 2026-10-07, yang menutup pertanyaan yang sebelumnya ditahan di sini.
+	//
+	// # Pertanyaan yang ditutupnya
+	//
+	// Di Pega, `RouterRCLDokter` berbunyi `Param.AssignTo := ClaimData.NamaDokterRCL`.
+	// Menirunya menuntut nama dokter dapat dicocokkan penyaring A Inbox RCL:
+	//
+	//	UPPER(TRIM(ASSIGNED_OPERATOR_ID)) = UPPER(<LOGIN_ID pemanggil di M_LOGIN_PNC>)
+	//
+	// Yang tersedia untuk ditulis hanyalah `pyStandardValue` prompt list — bentuk
+	// `OPERATOR_ID` lama, ruang nama yang BERBEDA dari `M_LOGIN_PNC.LOGIN_ID`, dan
+	// kecocokannya tidak pernah terbukti. Selama itu belum terjawab, tugasnya diparkir di
+	// `ServicePNC` dan `ASSIGNED_OPERATOR_ID` diisi analis — yang berakibat klaim berjalur
+	// RCL mendarat di Inbox RCL analis sendiri.
+	//
+	// Jawabannya membuat pemetaan itu tidak lagi dibutuhkan: pemiliknya **PIC Teknik**,
+	// yang memang sudah login sah di aplikasi ini. Nama dokter yang dipilih di modal tetap
+	// disimpan sebagai keterangan (`NAMADOKTERRCL_1`), tetapi ia bukan lagi yang
+	// memindahkan klaim.
+	//
+	// Ketiga tempat harus menyebut orang yang SAMA, atau klaimnya terlihat di satu layar
+	// dan hilang di layar lain:
+	//
+	//	TC_PNC_PUCL.ASSIGNED_OPERATOR_ID  penyaring Inbox RCL — PUCLLetter.AssignedOperator
+	//	CPNC_TUGAS.PEMILIK                tugas berjalan      — Assigner RouterRCLDokter
+	//	T_CLAIMLIST_ADMIN.PXASSIGNEDOPERATORID  My Inbox      — turunan tugas di atas
+
 	fresh := registrasi.NewTask(l.id.New(), claim, target, recipients, now)
 
-	// Jalur RCL harus benar-benar TERLIHAT di Inbox RCL, dan layar itu menyaring dengan
-	// `NAMADOKTERRCL_1`. Isian "Nama Dokter" sendiri hanya tampil pada lini PA, sehingga
-	// pada lini lain ia selalu kosong — dan surat yang menulis kolom itu kosong akan
-	// membuat klaimnya tidak muncul di inbox siapa pun.
+	// Dokter TIDAK dipilih — isian itu hanya tampil pada lini PA, sehingga pada lini lain
+	// ia selalu kosong. Surat yang menulis `NAMADOKTERRCL_1` kosong akan membuat klaimnya
+	// tidak dapat ditelusuri ke siapa pun.
 	//
-	// Yang diisi karena itu PEMILIK tugas RCLDokter, orang yang sama dengan yang ditulis
-	// ke `PXASSIGNEDOPERATORID` oleh mirrorInbox. Dengan begitu kedua penyaring layar itu
-	// menunjuk orang yang sama, bukan saling meniadakan.
+	// Yang diisi karena itu pemilik barisnya — nilai yang sama dengan
+	// `ASSIGNED_OPERATOR_ID`, sehingga kolom nama dokter dan pemilik klaim selalu menunjuk
+	// pihak yang sama, apa pun jalurnya.
 	if letter.EntersRCLInbox() && letter.DoctorName == "" {
-		letter.DoctorName = recipients.Operator
+		letter.DoctorName = letter.AssignedOperator()
 	}
 
 	from := task.Stage
@@ -244,10 +283,14 @@ func (l *Service) PUCLRejectReasons(ctx context.Context, keyword string, limit i
 //
 // Isiannya hanya tampil pada jalur RCL atau Notification lini PA — penyaring itu dipegang
 // layar, bukan di sini, karena yang menentukannya adalah Group Panel klaim yang sedang
-// dibuka. Yang dijaga di sini adalah ISI daftarnya: ia selalu himpunan nilai yang dapat
-// dicocokkan penyaring Inbox RCL, apa pun jalurnya.
-func (l *Service) RCLDoctorOptions(ctx context.Context) ([]registrasi.RCLDoctorOption, error) {
-	return l.puclOptions.RCLDoctors(ctx)
+// dibuka.
+//
+// Tanpa ctx dan tanpa error: isinya `pyPromptTableList` property `NamaDokterRCL`, daftar
+// tetap dua baris yang tidak menyentuh basis data sama sekali. Mempertahankan bentuk
+// lamanya — yang dapat gagal — berarti layar tetap harus menggambar "gagal dimuat" untuk
+// keadaan yang tidak bisa terjadi lagi.
+func (l *Service) RCLDoctorOptions() []registrasi.RCLDoctorOption {
+	return registrasi.RCLDoctorOptions()
 }
 
 // jejak merangkai keputusan yang dilewati menjadi satu baris jejak audit. Tanpa ini,
@@ -331,8 +374,11 @@ func buildPUCLLetter(p SendToRCLPUCLCommand, claim registrasi.Claim) (registrasi
 		SourceName:   claim.Policy.SourceOfBusinessName,
 		GroupPanel:   string(claim.Policy.Line),
 		TechnicalPIC: claim.TechnicalPIC,
-		ClaimStatus:  string(StatusClaimAnalyst),
-		DateOfLoss:   claim.DateOfLoss,
+		// Admin klaim — `ClaimData.UserAdmin`, tersimpan di `T_CLAIM_PNC.ADMINKLAIM`.
+		// Pemilik `ASSIGNED_OPERATOR_ID` pada jalur PUCL; lihat PUCLLetter.AssignedOperator.
+		ClaimAdmin:  claim.CreatedBy,
+		ClaimStatus: string(StatusClaimAnalyst),
+		DateOfLoss:  claim.DateOfLoss,
 	}
 	letter.ObjectID, letter.CoverageIndex, letter.AdjustmentIndex = lastAdjustmentOf(claim)
 
@@ -380,14 +426,35 @@ func buildPUCLLetter(p SendToRCLPUCLCommand, claim registrasi.Claim) (registrasi
 		}
 	}
 
+	// "Nama Dokter" diperiksa SEKALI LAGI dalam satuan byte.
+	//
+	// Kolom penampungnya di `TC_PNC_PUCL` berukuran 255 **byte**, sedangkan batas di atas
+	// menghitung **karakter**. Pada AL32UTF8 keduanya tidak sama: nama ber-aksara non-ASCII
+	// dapat memenuhi batas karakter dan tetap menembus kolomnya. Tanpa pemeriksaan kedua
+	// ini, galatnya muncul sebagai ORA-12899 hanya pada nama tertentu — dan hanya pada
+	// jalur RCL/Notification, karena jalur PUCL mengosongkan isian ini.
+	if n := len(letter.DoctorName); n > registrasi.MaxPUCLDoctorNameBytes {
+		broken = append(broken, registrasi.Violation{
+			Code: registrasi.ViolationNoteTooLong, Field: "nama_dokter",
+			Message: fmt.Sprintf("Nama Dokter paling banyak %d byte; isian ini %d byte.",
+				registrasi.MaxPUCLDoctorNameBytes, n),
+		})
+	}
+
 	if len(broken) > 0 {
 		return registrasi.PUCLLetter{}, &registrasi.ValidationError{Violation: broken}
 	}
 
-	// "Nama Dokter" hanya tampil pada jalur RCL lini PA. Isian yang datang di luar itu
-	// DIBUANG, bukan ditolak: layar tidak menampilkannya, sehingga nilainya tidak
-	// pernah datang dari pengguna yang sadar mengisinya.
-	if !(p.Track == registrasi.PUCLTrackRCL && claim.Policy.Line == registrasi.LinePersonalAccident) {
+	// "Nama Dokter" tampil bila `RCL_PUCL != 2 && IsPA` — jalur RCL **atau Notification**
+	// pada lini PA, bukan jalur RCL saja (`SectionPUCL-sect.xml:2149`). Isian yang datang
+	// di luar itu DIBUANG, bukan ditolak: layar tidak menampilkannya, sehingga nilainya
+	// tidak pernah datang dari pengguna yang sadar mengisinya.
+	//
+	// Syarat ini sempat berbunyi `p.Track == PUCLTrackRCL`, yang MEMBUANG nama dokter pada
+	// jalur Notification — padahal layar menampilkan isiannya di sana dan analis memang
+	// mengisinya (`showDoctorName` di `SendToRCLPUCL.tsx` mencakup kedua jalur). Ia ikut
+	// menjadi sebab gejala yang dilaporkan Work Owner pada 2026-10-07.
+	if !(letter.EntersRCLInbox() && claim.Policy.Line == registrasi.LinePersonalAccident) {
 		letter.DoctorName = ""
 	}
 	return letter, nil

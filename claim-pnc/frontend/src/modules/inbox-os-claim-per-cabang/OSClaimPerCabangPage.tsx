@@ -190,7 +190,6 @@ export function OSClaimPerCabangPage() {
       {list.data && (
         <>
           <RedRuleLegend threshold={list.data.ambang_aging} />
-          <PlannedDifferences lines={list.data.selisih_terencana} />
         </>
       )}
 
@@ -453,30 +452,6 @@ function RedRuleLegend({ threshold }: { threshold: number }) {
       berumur lebih dari {threshold} hari, atau yang progresnya tidak berubah pada tiga
       catatan terakhir.
     </p>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah tabel.
- *
- * Ia dikirim server dan digambar di sini — bukan disimpan sebagai komentar kode — supaya
- * pengguna yang membandingkan kedua layar berdampingan memperoleh jawaban alih-alih
- * melaporkannya sebagai kerusakan (`D-54`).
- */
-function PlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <h2 className="text-sm font-semibold text-slate-800">
-        Yang berbeda dari layar lama
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

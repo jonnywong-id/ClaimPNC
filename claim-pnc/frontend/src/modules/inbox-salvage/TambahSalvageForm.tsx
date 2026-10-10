@@ -16,6 +16,7 @@ import {
   useUploadSalvageDetail,
 } from './api'
 import type {
+  CatatanSimpan,
   CoveragePilihan,
   CreateRequest,
   DetailItem,
@@ -74,7 +75,14 @@ type Props = {
   currencyOptions: StatusOption[]
   uploadColumns: string[]
   onClose: () => void
-  onSaved: (message: string) => void
+
+  /**
+   * Dipanggil sesudah pengajuan tersimpan.
+   *
+   * Ia membawa CATATAN, bukan sekadar teks, karena Submit kini punya akibat sampingan yang
+   * dapat gagal sendiri-sendiri — lihat CatatanSimpan.
+   */
+  onSaved: (catatan: CatatanSimpan) => void
 
   /**
    * Isian yang sudah diketahui. Tanpa ini form dibuka kosong — jalur tombol "Tambah".
@@ -348,7 +356,24 @@ export function TambahSalvageForm({
       },
       {
         onSuccess: (result) => {
-          onSaved(result.pesan)
+          onSaved({
+            pesan: result.pesan,
+
+            // Perhatian dibutuhkan bila salah satu akibat sampingan TIDAK berhasil.
+            //
+            // Ketiga keadaannya diperlakukan sama di sini — belum dikonfigurasi, ditolak,
+            // dan gagal kirim — karena yang ditentukan hanyalah WARNA bilahnya, dan bagi
+            // pembaca ketiganya berarti hal yang sama: ada yang belum selesai. Yang
+            // membedakan tindakannya adalah kalimat di dalamnya.
+            //
+            // Keduanya dibaca dengan `?.` dan jatuh ke PERLU PERHATIAN bila jawabannya
+            // tidak memuatnya. Hijau adalah pernyataan bahwa semuanya sampai; menyatakannya
+            // atas jawaban yang tidak menyebutkan apa-apa berarti menjaminkan hal yang
+            // tidak diketahui.
+            perluPerhatian:
+              result.balai_lelang?.diterima !== true ||
+              result.pemberitahuan?.terkirim !== true,
+          })
           onClose()
         },
       },

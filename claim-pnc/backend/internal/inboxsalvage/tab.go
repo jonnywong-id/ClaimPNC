@@ -169,14 +169,19 @@ type Tab struct {
 	// SalvageStatus adalah nilai `T_CLAIM_PNC.STSSALVAGE` yang disaring.
 	//
 	// Hanya berlaku pada FamilyClaim dan FamilyClaimObject. Kosong berarti tab ini tidak
-	// menyaring kolom itu dengan nilai — lihat SalvageStatusIsNull dan CustomClaimFilter.
+	// menyaring kolom itu dengan nilai — lihat OutstandingSalvage dan CustomClaimFilter.
 	SalvageStatus string
 
-	// SalvageStatusIsNull menyatakan tab ini menyaring `STSSALVAGE IS NULL`.
+	// OutstandingSalvage menyatakan tab ini menyaring `STSSALVAGE` 3 atau 5 — salvage
+	// yang sudah dinilai Ekonomis atau TBA tetapi belum selesai dijual.
+	//
+	// Sampai 2026-10-08 ia menyaring `STSSALVAGE IS NULL`, dan itu KELIRU: daftarnya
+	// memuat 465 baris sementara Pega memuat 145. Lihat catatan pada `list_claim` di
+	// inboxsalvage.sql, beserta bukti yang membantah export.
 	//
 	// Ia terpisah dari SalvageStatus karena "kosong berarti tidak menyaring" dan "menyaring
 	// yang kosong" adalah dua hal yang berbeda, dan keduanya muncul di layar ini.
-	SalvageStatusIsNull bool
+	OutstandingSalvage bool
 
 	// BuybackFilter menyatakan tab ini memakai penyaring buyback alih-alih `STSSALVAGE`.
 	//
@@ -420,27 +425,29 @@ var tabs = []Tab{
 	{
 		Code: TabOutstanding,
 		Name: "Salvage Outstanding",
-		Description: "Klaim yang BELUM ditandai punya salvage sama sekali — `STSSALVAGE` " +
-			"masih kosong. Inilah awal perjalanannya: begitu petugas menandainya " +
-			"Ekonomis, TBA, Tidak Ekonomis, atau Tidak Ada, klaimnya berpindah sendiri ke " +
-			"daftar yang bersangkutan.",
-		Family:              FamilyClaim,
-		Columns:             outstandingColumns(),
-		SalvageStatusIsNull: true,
-		SearchLabel:         searchByClaimNo,
-		LegacyTipe:          "1",
+		Description: "Klaim yang salvage-nya SUDAH ditandai tetapi penanganannya BELUM " +
+			"selesai — STSSALVAGE 3 (Ekonomis) atau 5 (TBA), dan pekerjaan klaimnya " +
+			"masih berjalan. Inilah yang masih menunggu tindakan: begitu klaimnya " +
+			"ditutup, barisnya hilang dari sini sementara tetap terhitung di daftar " +
+			"Ekonomis atau TBA.",
+		Family:             FamilyClaim,
+		Columns:            outstandingColumns(),
+		OutstandingSalvage: true,
+		SearchLabel:        searchByClaimNo,
+		LegacyTipe:         "1",
 
-		Notice: "Angka pada baris \"Outstanding\" di tabel ringkas TIDAK sama dengan " +
-			"jumlah baris di sini, dan itu bukan kerusakan. Pencacahnya menghitung klaim " +
-			"ber-`STSSALVAGE` 3 atau 5 — yakni yang sudah ditandai Ekonomis atau TBA — " +
-			"sementara daftar ini justru menampilkan yang penandanya masih KOSONG. " +
-			"Keduanya menghitung populasi yang berbeda di Pega pula; lihat keterangan " +
-			"selisih terencana.",
+		// TANPA catatan selisih — dan itu keputusan, bukan kelalaian.
+		//
+		// Sampai 2026-10-08 daftar ini memikul catatan yang menerangkan mengapa angka
+		// pada tabel ringkas berbeda dengan jumlah barisnya. Sejak pencacahnya disetel
+		// mencacah populasi yang SAMA (`Tab.OutstandingSalvage` beserta
+		// `CountRow.ExcludesClosedWork`), selisihnya tidak ada lagi — dan catatan yang
+		// menerangkan selisih yang tidak ada justru membuat pembacanya mencari-cari.
 	},
 	{
 		Code: TabEkonomis,
 		Name: "Ekonomis",
-		Description: "Klaim yang salvage-nya dinilai MASIH BERNILAI JUAL — `STSSALVAGE` = 3. " +
+		Description: "Klaim yang salvage-nya dinilai MASIH BERNILAI JUAL — STSSALVAGE = 3. " +
 			"Dari sini pengajuannya dibuat lewat tombol Tambah.",
 		Family:        FamilyClaimObject,
 		Columns:       claimObjectColumns(),
@@ -451,7 +458,7 @@ var tabs = []Tab{
 	{
 		Code: TabTBA,
 		Name: "TBA",
-		Description: "Klaim yang keputusan salvage-nya DITUNDA — `STSSALVAGE` = 5. " +
+		Description: "Klaim yang keputusan salvage-nya DITUNDA — STSSALVAGE = 5. " +
 			"TBA singkatan dari to be advised.",
 		Family:        FamilyClaimObject,
 		Columns:       claimObjectColumns(),
@@ -462,7 +469,7 @@ var tabs = []Tab{
 	{
 		Code: TabTidakEkonomis,
 		Name: "Tidak Ekonomis",
-		Description: "Klaim yang salvage-nya dinilai TIDAK BERNILAI JUAL — `STSSALVAGE` = 4. " +
+		Description: "Klaim yang salvage-nya dinilai TIDAK BERNILAI JUAL — STSSALVAGE = 4. " +
 			"Barangnya ada, tetapi biaya menjualnya melebihi hasilnya.",
 		Family:        FamilyClaimObject,
 		Columns:       claimObjectColumns(),
@@ -474,7 +481,7 @@ var tabs = []Tab{
 		Code: TabTidakAdaSalvage,
 		Name: "Tidak Ada Salvage",
 		Description: "Klaim yang dinyatakan TIDAK punya barang sisa sama sekali — " +
-			"`STSSALVAGE` = 1.",
+			"STSSALVAGE = 1.",
 		Family:        FamilyClaimObject,
 		Columns:       claimObjectColumns(),
 		SalvageStatus: "1",
@@ -485,7 +492,7 @@ var tabs = []Tab{
 		Code: TabBuyback,
 		Name: "Salvage Buyback",
 		Description: "Klaim yang salvage-nya DIBELI KEMBALI tertanggung. Penyaringnya " +
-			"berbeda dari kelima daftar sekelasnya: ia tidak melihat `STSSALVAGE` sama " +
+			"berbeda dari kelima daftar sekelasnya: ia tidak melihat STSSALVAGE sama " +
 			"sekali, melainkan mencari klaim yang punya baris adjustment ber-nilai " +
 			"salvage terisi.",
 		Family:        FamilyClaimObject,
@@ -511,7 +518,7 @@ var tabs = []Tab{
 	{
 		Code: TabBalaiLelang,
 		Name: "Salvage Balai Lelang",
-		Description: "Pengajuan yang SUDAH dikirim ke balai lelang — `STSTRANSFER` = 1. " +
+		Description: "Pengajuan yang SUDAH dikirim ke balai lelang — STSTRANSFER = 1. " +
 			"Kolom \"Status Lelang\" di sini menyatakan apakah barangnya sudah laku.",
 		Family:         FamilySalvage,
 		Columns:        salvageColumns(),
@@ -523,7 +530,7 @@ var tabs = []Tab{
 		Code:         TabChecker,
 		HiddenReason: HiddenManagerOnly,
 		Name:         "Checker",
-		Description: "Pengajuan yang menunggu KEPUTUSAN checker — `STSTRANSFER` = 3. " +
+		Description: "Pengajuan yang menunggu KEPUTUSAN checker — STSTRANSFER = 3. " +
 			"Inilah antrean tempat nilai pengajuan PIC dibandingkan dengan nilai request " +
 			"balai lelang sebelum disetujui atau ditolak.",
 		Family:         FamilySalvage,
@@ -541,7 +548,7 @@ var tabs = []Tab{
 	{
 		Code: TabRejectedChecker,
 		Name: "Rejected Checker",
-		Description: "Pengajuan yang DIKEMBALIKAN checker kepada PIC — `STSTRANSFER` = 4. " +
+		Description: "Pengajuan yang DIKEMBALIKAN checker kepada PIC — STSTRANSFER = 4. " +
 			"Ia menunggu PIC memperbaiki pengajuannya, bukan menunggu keputusan.",
 		Family:         FamilySalvage,
 		Columns:        rejectedColumns(),
@@ -557,7 +564,7 @@ var tabs = []Tab{
 		HiddenReason: HiddenNotOnScreen,
 		Name:         "Request Balai Lelang",
 		Description: "Pengajuan yang balai lelangnya MEMINTA nilai berbeda — " +
-			"`STSTRANSFER` = 7. Hanya baris milik Anda sendiri yang tampil di sini.",
+			"STSTRANSFER = 7. Hanya baris milik Anda sendiri yang tampil di sini.",
 		Family:         FamilySalvage,
 		Columns:        requestColumns(),
 		TransferStatus: "7",
@@ -577,7 +584,7 @@ var tabs = []Tab{
 		Code:         TabSalvageDiterima,
 		HiddenReason: HiddenManagerOnly,
 		Name:         "Salvage Diterima",
-		Description: "Pengajuan yang DISETUJUI checker — `STSTRANSFER` = 3. Penyaringnya " +
+		Description: "Pengajuan yang DISETUJUI checker — STSTRANSFER = 3. Penyaringnya " +
 			"sama persis dengan daftar Checker; di layar lama keduanya memang dua pintu " +
 			"masuk ke baris yang sama.",
 		Family:         FamilySalvage,
@@ -589,14 +596,14 @@ var tabs = []Tab{
 		LegacyTipe:     "15",
 
 		Notice: "Daftar ini berisi baris yang SAMA PERSIS dengan daftar \"Checker\" — " +
-			"keduanya menyaring `STSTRANSFER` = 3. Itu bukan kekeliruan penyalinan: di " +
+			"keduanya menyaring STSTRANSFER = 3. Itu bukan kekeliruan penyalinan: di " +
 			"layar lama keduanya memang dua pintu masuk ke satu kumpulan baris yang sama.",
 	},
 	{
 		Code:         TabSalvageDitolak,
 		HiddenReason: HiddenManagerOnly,
 		Name:         "Salvage Ditolak",
-		Description: "Pengajuan yang DITOLAK checker — `STSTRANSFER` = 5. Berbeda dari " +
+		Description: "Pengajuan yang DITOLAK checker — STSTRANSFER = 5. Berbeda dari " +
 			"Rejected Checker, penolakan di sini menutup pengajuannya.",
 		Family:         FamilySalvage,
 		Columns:        rejectedColumns(),
@@ -606,9 +613,11 @@ var tabs = []Tab{
 		SearchByPIC:    true,
 		LegacyTipe:     "16",
 
-		Notice: "Daftar ini SELALU KOSONG di Pega, dan di sini tidak. Lihat keterangan " +
-			"selisih terencana: di layar lama tidak ada satu pun kueri yang dijalankan " +
-			"untuknya, sehingga barisnya tidak pernah muncul meski datanya ada.",
+		// Rujukan ke panel selisih terencana dicabut — lihat catatan pada daftar
+		// Outstanding di atas.
+		Notice: "Daftar ini SELALU KOSONG di Pega, dan di sini tidak. Di layar lama " +
+			"tidak ada satu pun kueri yang dijalankan untuknya, sehingga barisnya tidak " +
+			"pernah muncul meski datanya ada.",
 	},
 }
 
@@ -731,11 +740,10 @@ func TabForLegacy(tipe, tipe2 string) (Tab, bool) {
 // pemetaan itu, sudah tertulis di muka alih-alih dicari setelah selisihnya muncul.
 var PlannedDifferences = []string{
 	"Angka pada baris \"Outstanding\" di tabel ringkas TIDAK sama dengan jumlah baris " +
-		"daftar Salvage Outstanding. Pencacahnya menghitung `STSSALVAGE` 3 atau 5, " +
-		"sementara daftarnya menampilkan `STSSALVAGE` yang masih kosong. Keduanya " +
-		"memang menghitung populasi yang berbeda di Pega: penyaring lama ditulis dua " +
-		"kali pada activity yang sama — sekali sebagai 3-atau-5, lalu ditimpa menjadi " +
-		"kosong — dan hanya yang kedua yang sampai ke daftar. Keputusan Work Owner " +
+		"daftar Salvage Outstanding. Pencacahnya menghitung SELURUH klaim yang masih " +
+		"terbuka di dalam lingkup layar, sementara daftarnya hanya menampilkan yang " +
+		"penanda salvage-nya masih kosong. Keduanya memang menghitung populasi yang " +
+		"berbeda di Pega. Keputusan Work Owner " +
 		"2026-09-25: direplikasi apa adanya (`P-5`), karena angkanya dibaca orang " +
 		"setiap hari.",
 
@@ -763,12 +771,6 @@ var PlannedDifferences = []string{
 		"daftarnya. Pencacahnya menghitung `STSTRANSFER` 1 atau 6, sementara daftarnya " +
 		"tidak menyaring status apa pun sehingga memuat SELURUH pengajuan. Ia selisih " +
 		"ketiga sejenis pada layar ini, dan direplikasi dengan alasan yang sama (`P-5`).",
-
-	"Grafik lingkaran di samping tabel ringkas TIDAK dibangun. Activity pencacah lama " +
-		"menyusun dua daftar sekaligus — satu untuk tabel, satu untuk grafik — dan " +
-		"keduanya berbeda: baris bernilai nol dibuang dari grafik tetapi tetap tergambar " +
-		"di tabel. Yang dibangun adalah tabelnya, karena itulah yang memuat angka dan " +
-		"tautan ke daftarnya.",
 
 	"Daftar \"Salvage Ditolak\" BERISI baris, dan di Pega selalu kosong. Activity " +
 		"pemuat daftar lama menyebutkan tipe 3, 4, 5, 2, 11, dan 15 pada langkah " +
@@ -834,16 +836,66 @@ var PlannedDifferences = []string{
 		"keadaan, serta nama surveyor — tidak satu pun ada di tabel. Ekspor rincian itu " +
 		"belum dibangun.",
 
-	"Tombol \"Approve\", \"Reject\", dan \"Send To BalaiLelang\" belum tersedia. " +
-		"Ketiganya MENULIS, dan dua di antaranya menembak sistem di luar aplikasi ini — " +
-		"balai lelang SimasBid dan penyimpanan berkas. Tombolnya tetap digambar supaya " +
+	"Tombol \"Approve\" dan \"Reject\" pada grid Checker belum tersedia. Keduanya " +
+		"MENULIS keputusan atas nilai uang, dan keputusan itu menuntut kewenangan yang " +
+		"belum dapat ditegakkan sampai `F-3` selesai. Tombolnya tetap digambar supaya " +
 		"keberadaannya terlihat, dan penekanannya menjawab alasan, bukan halaman kosong.",
 
-	"Tombol \"Submit\" pada form Tambah menyimpan ke basis data, tetapi TIDAK " +
-		"menjalankan empat langkah lain yang dijalankan layar lama: mengunggah berkas ke " +
-		"penyimpanan eksternal, mengirim data ke balai lelang SimasBid, mengirim email, " +
-		"dan menyisipkan salinan JSON klaim. Akibatnya pengajuan yang dibuat di sini " +
-		"TIDAK sampai ke SimasBid, dan tidak ada email yang terkirim.",
+	"Tombol \"Send To BalaiLelang\" pada grid Checker — PENGIRIMAN ULANG satu pengajuan " +
+		"yang sudah tersimpan — belum tersedia. Yang sudah dibangun adalah pengiriman " +
+		"OTOMATIS saat Submit, bukan pengiriman ulang atas perintah. Keduanya berbeda: " +
+		"yang pertama terjadi sekali pada pengajuan yang baru lahir, yang kedua dapat " +
+		"dijalankan berkali-kali atas pengajuan yang `STSTRANSFER`-nya sudah berisi " +
+		"jawaban sebelumnya.",
+
+	"Tombol \"Submit\" pada form Tambah kini MENGIRIM pengajuan ke balai lelang SimasBid " +
+		"dan MENGIRIM surel pemberitahuan, sama seperti langkah 19 dan 23 " +
+		"`SetStsSalvagePNC_act`. Keduanya berjalan SESUDAH penyimpanan dan di LUAR " +
+		"transaksinya (`09-API-STRATEGY.md` §8.2), sehingga kegagalan salah satunya tidak " +
+		"pernah membatalkan pengajuan yang sudah tersimpan — yang terjadi sebagai " +
+		"gantinya adalah jawaban yang menyebutkan apa yang tidak terjadi.",
+
+	"Dua dari empat langkah `SetStsSalvagePNC_act` tetap TIDAK dijalankan: mengunggah " +
+		"berkas ke penyimpanan eksternal (langkah 14, `UploadDocumentToGoogleStorage`) " +
+		"dan menyisipkan salinan JSON klaim (langkah 26). Lampiran salvage TETAP " +
+		"tersimpan — lewat modal \"Upload file\", ke dalam Oracle sebagai base64 " +
+		"(`D-16` dikecualikan untuk jalur ini) — yang tidak terjadi hanyalah penyalinannya " +
+		"ke penyimpanan di luar basis data.",
+
+	"Badan surel pemberitahuan DISUSUN, bukan disalin. Rule HTML pemasoknya di sistem " +
+		"lama, `SendEmailRejectedApprovetochecker`, TIDAK ADA di export (`R-16`) — yang " +
+		"terbaca hanyalah subjeknya, `\"Pengajuan Salvage an \" + QQName`, yang dipakai " +
+		"apa adanya. Isinya mengikuti pola surel salvage lain yang memang terbaca " +
+		"(`HTML/NotifikasiSalvageRequest-HTML.xml`): sapaan, satu kalimat pembuka, lalu " +
+		"tabel berlabel.",
+
+	"Penerima surel TIDAK lagi berupa dua alamat yang tertanam di dalam rule — salah " +
+		"satunya akun Gmail PRIBADI di jalur produksi " +
+		"(`Activity/SetStsSalvagePNC_act-Act.xml:1757-1760`). Penggantinya mailbox " +
+		"fungsional dari konfigurasi (`D-15`, `D-67`). Isian \"Email\" pada form " +
+		"MENAMBAH penerima, tidak menggantikannya: bila ia menggantikan, satu isian yang " +
+		"dikosongkan membuat surel tidak sampai ke siapa pun tanpa satu pun tanda.",
+
+	"Pengiriman ke balai lelang dilakukan SEKALI per pengajuan, bukan sekali per barang. " +
+		"Sistem lama mengirim per barang — `Lelang.IDObject` berisi ID detail salvage pada " +
+		"portal non-Insurtech. Alasan mengubahnya: `STSTRANSFER` hanya punya SATU nilai " +
+		"untuk seluruh pengajuan, sehingga keadaan setengah terkirim tidak dapat " +
+		"dinyatakan sama sekali — pengiriman per barang menyembunyikan cacat itu alih-alih " +
+		"menutupnya.",
+
+	"Lampiran BELUM ikut dikirim ke balai lelang. Sistem lama menyertakannya di dalam " +
+		"badan permintaan (`Lelang.DocumentList`) dan sekali lagi lewat " +
+		"`SendFilePendukungLelangKeSimasBit`. Keduanya menuntut membaca kembali isi " +
+		"berkas dari `POOLDATA.SALAVAGEDOCUMENT`, dan struktur tabel itu belum diketahui " +
+		"— isi `POOLDATA.InsertSalvageDocument` tidak ada di export, yang terbaca hanya " +
+		"argumennya.",
+
+	"Alamat balai lelang TIDAK punya nilai bawaan. Satu-satunya alamat yang terbaca dari " +
+		"export menunjuk host SANDBOX di dalam ruleset produksi, dengan " +
+		"`pyUseAuthentication=false` (`R-18`). Menjadikannya nilai bawaan berarti satu " +
+		"lingkungan yang lupa mengisinya akan diam-diam mengirim pengajuan nyata ke " +
+		"lingkungan uji pihak lain. Bila `SIMASBID_ALAMAT` kosong, layar menyatakan " +
+		"pengiriman tidak aktif alih-alih berpura-pura mengirim.",
 
 	"Cacat `IDSALVAGE` yang tertimpa kosong saat pengajuan DIUBAH sudah diperbaiki. " +
 		"Procedure lama menulis `IDSALVAGE = idsalvage` pada cabang pembaruan, " +
@@ -1031,7 +1083,10 @@ var PlannedDifferences = []string{
 		"irisan \"Waive Salvage\" yang tidak punya baris di tabel, sementara tabelnya " +
 		"memuat \"Tidak Ada Salvage\" dan \"Salvage Buyback\" yang tidak punya irisan di " +
 		"grafik. Selisih itu TIDAK direplikasi: grafik dan tabel yang berdampingan dan " +
-		"menyebut hal berbeda memaksa pembacanya memilih mana yang dipercaya.",
+		"menyebut hal berbeda memaksa pembacanya memilih mana yang dipercaya. Yang " +
+		"tetap berbeda hanyalah baris bernilai nol: ia tidak punya irisan yang dapat " +
+		"digambar sehingga hilang dari grafik dan legendanya, dan angkanya tetap " +
+		"terbaca di tabel sebelahnya.",
 
 	"Isian \"Mata Uang\" adalah daftar pilihan yang dibaca dari `POOLDATA.CURRENCY` — " +
 		"tabel yang sama yang dibaca Report Definition `SelectCurrency_RD`, sumber " +
@@ -1043,8 +1098,9 @@ var PlannedDifferences = []string{
 		"`TempCurrencySalvage` dari `T_CLAIM_ADJUSTMENT`, tetapi kolom \"Mata Uang\" " +
 		"pada form ini tidak membacanya — dropdown-nya bersumber Report Definition " +
 		"`SelectCurrency_RD`, dan page itu hanya dideklarasikan di section tanpa satu " +
-		"pun kontrol yang terikat padanya. Kolom \"Mata Uang\" karena itu masih kotak " +
-		"teks bebas, belum daftar pilihan.",
+		"pun kontrol yang terikat padanya. Konsekuensinya dibawa serta: pilihan yang " +
+		"ditawarkan adalah SELURUH mata uang di master, bukan mata uang yang dipakai " +
+		"klaim itu.",
 
 	"Grid \"Detail History Salvage\" pada form Tambah memakai pemetaan " +
 		"`STSTRANSFER` yang BERBEDA dari \"Posisi Salvage\" pada panel rincian, meski " +

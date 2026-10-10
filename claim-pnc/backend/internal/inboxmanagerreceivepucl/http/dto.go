@@ -105,9 +105,6 @@ type MetadataResponse struct {
 	Tabs       []TabDTO `json:"tab"`
 	DefaultTab string   `json:"tab_bawaan"`
 
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
-
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal
 	// yang sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
 	Portal string `json:"portal"`
@@ -314,13 +311,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-	differences := make([]string, 0, len(meta.PlannedDifferences))
-	differences = append(differences, meta.PlannedDifferences...)
 
 	return MetadataResponse{
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
-		PlannedDifferences: differences,
 		Portal:             portalAlias,
 	}
 }

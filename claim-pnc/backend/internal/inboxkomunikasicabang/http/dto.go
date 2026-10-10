@@ -41,8 +41,23 @@ type ConversationDTO struct {
 	//
 	// Karena bentuknya ditetapkan `Section/PengirimKomunikasi-Section.xml`, dan tempat
 	// pembacaan section itu tercatat adalah backend. Merakitnya di layar berarti pola
-	// `asal (operator)` hidup di dua tempat, dan yang satu akan tertinggal saat yang lain
+	// `operator (asal)` hidup di dua tempat, dan yang satu akan tertinggal saat yang lain
 	// diperbaiki.
+	//
+	// # Urutannya DIKOREKSI pada 2026-10-09
+	//
+	// Sampai tanggal itu ia dirakit `asal (operator)` — `PUSAT (JONNY)`. Itu keliru.
+	// Section menggambar `.UserTeknis` LEBIH DULU, baru `.UserName`, dan tangkapan layar
+	// Pega yang berjalan menunjukkan `JONNY ( PUSAT )`.
+	//
+	// Pemetaannya terbaca dari `PNCGetInboxKomunikasiCabang_Act` sendiri: `.UserName`
+	// dibandingkan dengan `"1"` dan `"PUSAT"` pada langkah 5 — ia ASAL, bukan nama orang.
+	// Yang tersisa, `.UserTeknis`, adalah `SENDER`.
+	//
+	// Kolom "Penjawab(Dari)" TIDAK ikut dikoreksi karena ia memang sudah benar: di sana
+	// `.UserAdmin` (nama penjawab) digambar lebih dulu, baru `.UserTeknisEmail` (tujuan).
+	// Kedua kolom karena itu SAMA susunannya — nama di depan, asal/tujuan di dalam kurung —
+	// dan catatan lama yang menyebut keduanya "terbalik" lahir dari kekeliruan yang sama.
 	//
 	// Kedua bahannya tetap dikirim terpisah di bawah, supaya layar dapat menyorot salah
 	// satunya bila kelak dibutuhkan tanpa harus mengurai teks yang sudah jadi.
@@ -65,9 +80,9 @@ type ConversationDTO struct {
 
 	// Replier adalah kolom "Penjawab(Dari)", SUDAH dirakit.
 	//
-	// Bentuknya `nama (tujuan)` mengikuti `Section/PenjawabKomunikasi-Section.xml`.
-	// Perhatikan susunannya TERBALIK dari kolom pengirim — yang satu menaruh asal di depan,
-	// yang satu menaruh nama di depan. Itu bentuk kedua section-nya apa adanya (`D-13`).
+	// Bentuknya `nama (tujuan)` mengikuti `Section/PenjawabKomunikasi-Section.xml`, yang
+	// menggambar `.UserAdmin` lebih dulu lalu `.UserTeknisEmail` — sama susunannya dengan
+	// kolom pengirim di atas.
 	Replier string `json:"penjawab"`
 
 	// Recipient adalah TUJUAN pesan — "PUSAT" atau "CABANG".
@@ -166,9 +181,6 @@ type MetadataResponse struct {
 
 	// ExportColumns adalah kolom berkas ekspor.
 	ExportColumns []ColumnDTO `json:"kolom_ekspor"`
-
-	// PlannedDifferences adalah selisih terhadap Pega yang sudah diputuskan.
-	PlannedDifferences []string `json:"selisih_terencana"`
 
 	// Portal ikut dikirim supaya layar dapat memastikan jawabannya memang milik portal yang
 	// sedang dipilih — bukan sisa cache portal sebelumnya (`R-20`).
@@ -323,7 +335,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		Tabs:               tabs,
 		DefaultTab:         meta.DefaultTab,
 		ExportColumns:      toColumnDTOs(meta.ExportColumns),
-		PlannedDifferences: meta.PlannedDifferences,
 		Portal:             portalAlias,
 	}
 }
@@ -379,7 +390,7 @@ func toConversationDTO(item inboxkomunikasicabang.Conversation) ConversationDTO 
 	return ConversationDTO{
 		ID:             item.ID,
 		CreatedAt:      item.CreatedAt,
-		Sender:         joinWithParenthesis(item.SenderOrigin, item.SenderOperator),
+		Sender:         joinWithParenthesis(item.SenderOperator, item.SenderOrigin),
 		SenderOrigin:   item.SenderOrigin,
 		SenderOperator: item.SenderOperator,
 		Message:        item.Message,

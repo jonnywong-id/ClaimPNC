@@ -472,16 +472,14 @@ func (h *Handler) PUCLReasons(w http.ResponseWriter, r *http.Request) {
 }
 
 // RCLDoctors menangani GET /api/registrasi/rclpucl/dokter.
+//
+// Tidak dapat gagal: isinya daftar tetap pada property `NamaDokterRCL`, bukan kueri.
 func (h *Handler) RCLDoctors(w http.ResponseWriter, r *http.Request) {
-	doctors, err := h.service.RCLDoctorOptions(r.Context())
-	if err != nil {
-		h.failure(w, r, err)
-		return
-	}
+	doctors := h.service.RCLDoctorOptions()
 
 	response := RCLDoctorResponse{Pilihan: make([]RCLDoctorDTO, 0, len(doctors))}
 	for _, o := range doctors {
-		response.Pilihan = append(response.Pilihan, RCLDoctorDTO{ID: o.ID})
+		response.Pilihan = append(response.Pilihan, RCLDoctorDTO{ID: o.ID, Nama: o.Label})
 	}
 	h.writeResponse(w, r, http.StatusOK, response)
 }

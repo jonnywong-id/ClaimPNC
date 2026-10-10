@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/inboxanalystdoctor"
 )
@@ -44,12 +45,14 @@ func (r *Repo) List(
 	}
 
 	rows, err := r.db.QueryContext(ctx, query("list_tasks"),
-		inboxanalystdoctor.TransferAnalystDoctor,
+		inboxanalystdoctor.TaskLabelAnalystDoctor,
 		operator,
 		inboxanalystdoctor.StatusKerjaSelesai,
-		keyword(clean.Search),
-		clean.Offset,
-		clean.Limit,
+		keyword(clean.Search),     // :4 penyaring pencarian aktif?
+		likePattern(clean.Search), // :5 pola untuk Nomor Case
+		likePattern(clean.Search), // :6 pola untuk No Polis — nilainya sama
+		clean.Offset,              // :7
+		clean.Limit,               // :8
 	)
 	if err != nil {
 		return inboxanalystdoctor.Page{}, fmt.Errorf("menjalankan kueri list_tasks: %w", err)
@@ -84,6 +87,35 @@ func keyword(value string) any {
 	return value
 }
 
+// likePattern membentuk pola LIKE untuk kedua kolom yang dicari.
+//
+// # Kenapa polanya dibentuk di Go, bukan dirangkai di SQL
+//
+// Versi sebelumnya menulis `LIKE '%' || UPPER(:4) || '%'` dan memakai `:4` yang sama pada
+// TIGA tempat. Driver go-ora menghitung setiap kemunculan `:n` sebagai satu variabel yang
+// harus diikat, sehingga kueri menuntut delapan ikatan sementara pemanggil mengirim enam —
+// dan Oracle menjawab ORA-01008. Membentuk polanya di sini membuat tiap penanda muncul
+// tepat sekali.
+//
+// # Kenapa huruf besar
+//
+// Karena sisi SQL memakai `UPPER(...)`. Perbandingan yang hanya satu sisinya diseragamkan
+// tidak pernah cocok, dan gagalnya DIAM: pengguna mengetik huruf kecil lalu diberi tahu
+// klaimnya tidak ada.
+//
+// # Kenapa di-escape
+//
+// Supaya pencarian "100%" tidak berubah menjadi pola yang mencocokkan apa saja. ESCAPE-nya
+// dinyatakan di sisi SQL. Pola ini sama dengan `inboxcloseclaim.likePattern`.
+func likePattern(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	escaped := strings.NewReplacer(`\`, `\`, `%`, `\%`, `_`, `\_`).Replace(trimmed)
+	return "%" + strings.ToUpper(escaped) + "%"
+}
+
 // scanTask membaca satu baris hasil beserta jumlah seluruh baris yang menyertainya.
 //
 // Urutan pembacaan di sini WAJIB sama dengan urutan kolom pada kueri dan dengan taskColumns
@@ -99,7 +131,6 @@ func scanTask(rows *sql.Rows) (inboxanalystdoctor.AnalystDoctorTask, int, error)
 		branchName       sql.NullString
 		adminName        sql.NullString
 		technicalPIC     sql.NullString
-		technicalPICNote sql.NullString
 		registeredAt     sql.NullTime
 		processStatus    sql.NullString
 		assignedOperator sql.NullString
@@ -120,7 +151,6 @@ func scanTask(rows *sql.Rows) (inboxanalystdoctor.AnalystDoctorTask, int, error)
 		&branchName,
 		&adminName,
 		&technicalPIC,
-		&technicalPICNote,
 		&registeredAt,
 		&processStatus,
 		&assignedOperator,
@@ -136,7 +166,6 @@ func scanTask(rows *sql.Rows) (inboxanalystdoctor.AnalystDoctorTask, int, error)
 	task.BranchName = branchName.String
 	task.AdminName = adminName.String
 	task.TechnicalPIC = technicalPIC.String
-	task.TechnicalPICNote = technicalPICNote.String
 	task.ProcessStatus = processStatus.String
 	task.AssignedOperator = assignedOperator.String
 
@@ -160,7 +189,7 @@ func (r *Repo) CheckTables(ctx context.Context) error {
 	return nil
 }
 
-// CheckColumns memastikan kedua kolom yang BELUM terkonfirmasi DBA memang ada.
+// CheckColumns memastikan SETIAP kolom yang dibaca kueri daftar memang ada.
 //
 // # Kenapa ia terpisah dari CheckTables
 //
@@ -168,18 +197,29 @@ func (r *Repo) CheckTables(ctx context.Context) error {
 // yang salah mengirim orang yang memperbaikinya ke arah yang keliru:
 //
 //	CheckTables gagal   -> hak baca, atau tabelnya memang tidak ada di koneksi itu
-//	CheckColumns gagal  -> nama kolomnya salah; properti Pega-nya tidak terekspos
+//	CheckColumns gagal  -> ada nama kolom yang tidak ada di tabelnya
 //
-// Yang kedua adalah keadaan yang DIDUGA akan terjadi sampai DBA menjawab, dan pesan galatnya
-// karena itu menyebut apa yang harus diminta — bukan sekadar menyatakan kegagalan.
+// # Kenapa ia memeriksa SELURUH kolom, bukan yang paling meragukan saja
+//
+// Versi sebelumnya hanya memeriksa dua kolom tebakan — `ISCOMPLIANCETRANSFER_1` dan
+// `ANALYSTDOCTORREMAKS_1` — lalu berhenti di situ. Keduanya ternyata memang tidak ada
+// (terverifikasi ke katalog Oracle 2026-10-09), dan karena pemeriksaannya berhenti pada
+// temuan pertama, kolom lain tidak pernah sempat terperiksa sama sekali.
+//
+// Pemeriksaan yang menyerah pada temuan pertama menyembunyikan temuan kedua. Kini seluruh
+// kolom yang benar-benar dipakai ikut di-parse Oracle dalam satu kueri.
 func (r *Repo) CheckColumns(ctx context.Context) error {
-	var transfer, note int
-	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(&transfer, &note); err != nil {
+	var probe [10]int
+	targets := []any{
+		&probe[0], &probe[1], &probe[2], &probe[3], &probe[4],
+		&probe[5], &probe[6], &probe[7], &probe[8], &probe[9],
+	}
+	if err := r.db.QueryRowContext(ctx, query("check_columns")).Scan(targets...); err != nil {
 		return fmt.Errorf(
-			"kolom ISCOMPLIANCETRANSFER_1 / ANALYSTDOCTORREMAKS_1 pada "+
-				"DATAPEGA.PC_ASM_FW_GCNMFW_WORK tidak dapat dibaca. Kedua properti Pega-nya "+
-				"ditandai `unexposed`, sehingga nama kolomnya masih menunggu konfirmasi DBA "+
-				"— lihat kepala inboxanalystdoctor.sql: %w", err)
+			"kolom antrean Analyst Doctor tidak lengkap pada "+
+				"DATAPEGA.PC_ASM_FW_GCNMFW_WORK atau DATAPEGA.PC_ASSIGN_WORKLIST. "+
+				"Galat Oracle menyebut nama kolom yang salah — lihat kepala "+
+				"inboxanalystdoctor.sql: %w", err)
 	}
 	return nil
 }

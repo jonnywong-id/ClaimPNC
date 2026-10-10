@@ -151,7 +151,6 @@ const keteranganResponse: KeteranganResponse = {
   tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
   kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
   keterbatasan: ['Empat kueri tab layar lama hilang dari export.'],
 }
 

@@ -145,7 +145,6 @@ function Loaded({ data, claimID }: { data: DetailResponse; claimID: string }) {
         onSubmit={send}
       />
 
-      <PlannedDifferences lines={data.selisih_terencana} />
 
       <p className="mt-6 text-xs text-slate-500">
         Terakhir diubah oleh {data.operator_pengubah || '—'}.
@@ -408,30 +407,6 @@ function SubmitBar({
         </p>
       )}
     </div>
-  )
-}
-
-/**
- * Selisih terhadap Pega yang sudah diputuskan, ditampilkan di bawah layar.
- *
- * Isinya datang dari SERVER, bukan ditulis tetap di sini. Tanpa catatan ini, sembilan isian
- * yang selalu kosong dan Submit yang menolak akan dilaporkan berulang kali sebagai kerusakan
- * oleh orang yang membandingkan kedua layar berdampingan.
- */
-function PlannedDifferences({ lines }: { lines: string[] }) {
-  if (lines.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">
-        Yang berbeda dari layar lama, dan itu disengaja
-      </h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

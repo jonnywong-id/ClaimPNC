@@ -77,8 +77,6 @@ export type MetadataResponse = {
    * pun petunjuk kenapa.
    */
   lini_bisnis_anda: string
-
-  selisih_terencana: string[]
 }
 
 /** Satu pencacah di kepala layar. */

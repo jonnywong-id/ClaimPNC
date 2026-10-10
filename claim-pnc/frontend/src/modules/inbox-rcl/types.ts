@@ -42,7 +42,6 @@ export type KolomLayar = {
 export type KeteranganResponse = {
   portal: string
   kolom: KolomLayar[]
-  selisih_terencana: string[]
   keterbatasan: string[]
   ukuran_halaman: number
 }

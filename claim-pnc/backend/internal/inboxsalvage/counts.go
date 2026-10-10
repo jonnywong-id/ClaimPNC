@@ -27,15 +27,24 @@ const (
 //
 // # Kenapa ia tidak sekadar memakai penyaring tabnya
 //
-// Karena di Pega pun tidak. Dua baris menghitung populasi yang BERBEDA dari daftar yang
+// Karena di Pega pun tidak. Satu baris menghitung populasi yang BERBEDA dari daftar yang
 // dibukanya:
 //
-//	"Outstanding"  pencacah: STSSALVAGE 3 atau 5     daftar: STSSALVAGE kosong
-//	"Checker"      pencacah: STSTRANSFER 3 atau 5    daftar: STSTRANSFER 3
+//	"Checker"  pencacah: STSTRANSFER 3 atau 5    daftar: STSTRANSFER 3
 //
-// Keputusan Work Owner 2026-09-25: keduanya direplikasi apa adanya, karena angkanya
-// berjalan dan dibaca orang setiap hari. Menurunkan pencacah dari penyaring tab akan
-// "memperbaiki" keduanya diam-diam.
+// Keputusan Work Owner 2026-09-25: direplikasi apa adanya, karena angkanya berjalan dan
+// dibaca orang setiap hari. Menurunkan pencacah dari penyaring tab akan "memperbaiki"-nya
+// diam-diam.
+//
+// # Baris "Outstanding" justru DISAMAKAN dengan daftarnya (2026-10-08)
+//
+// Ia dulu ikut daftar di atas — pencacah dan daftarnya menghitung populasi berbeda. Itu
+// dicabut: Pega sendiri tidak konsisten di sana (ringkasan 234, daftarnya 145), dan tidak
+// ada rule di export yang menghasilkan 234. Work Owner memilih angka ringkasan sama dengan
+// jumlah baris yang keluar saat diklik. Lihat ExcludesClosedWork.
+//
+// Ketiadaan penyaring itu adalah cacat yang diperbaiki 2026-10-08: sebelumnya angka
+// Outstanding selalu lebih besar daripada angka Pega di layar yang sama.
 type CountRow struct {
 	// Label adalah teks kolom "Status Salvage", disalin harfiah dari
 	// `Activity/GCNMCountSalvage_act-Act.xml`.
@@ -51,8 +60,27 @@ type CountRow struct {
 	// SalvageStatuses adalah nilai `STSSALVAGE` yang dihitung, untuk CountFromClaim.
 	SalvageStatuses []string
 
-	// SalvageStatusIsNull menyatakan yang dihitung adalah `STSSALVAGE IS NULL`.
-	SalvageStatusIsNull bool
+	// ExcludesClosedWork menyatakan hitungan ini MEMBUANG klaim yang pekerjaannya sudah
+	// selesai — `STATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')`.
+	//
+	// Hanya baris "Outstanding" yang memakainya, dan ia yang membuat pencacahnya
+	// menghitung POPULASI YANG SAMA PERSIS dengan daftar yang dibukanya.
+	//
+	// # Kenapa hanya satu baris
+	//
+	// Keempat baris sekeluarganya — Ekonomis, TBA, Tidak Ekonomis, Tidak Ada Salvage —
+	// dihitung TANPA penyaring status kerja, dan angka keempatnya sudah cocok dengan Pega.
+	// Menambahkan penyaring itu ke mereka akan merusak yang sudah benar.
+	//
+	// # Kenapa pencacah dan daftarnya DISAMAKAN (2026-10-08)
+	//
+	// Pega tidak konsisten di sini: ringkasannya berbunyi 234 sementara daftar yang dibuka
+	// baris itu berbunyi 145. Tidak ada satu pun rule di export yang menghasilkan 234.
+	//
+	// Keputusan Work Owner: samakan dengan daftarnya. Angka ringkasan menjadi jumlah baris
+	// yang benar-benar keluar saat diklik. Konsekuensinya diterima — angka ringkasan kita
+	// berbeda dari Pega — dan dicatat, bukan disamarkan.
+	ExcludesClosedWork bool
 
 	// TransferStatuses adalah nilai `STSTRANSFER` yang dihitung, untuk CountFromSalvage.
 	TransferStatuses []string
@@ -115,12 +143,16 @@ func AllCountRows() []CountRow { return allCountRows() }
 func allCountRows() []CountRow {
 	return []CountRow{
 		{
-			// `CountSalvage_sql11OS` — dan perhatikan ia menghitung STSSALVAGE 3 atau 5,
-			// bukan yang kosong seperti daftarnya.
+			// Populasi yang SAMA PERSIS dengan daftarnya: STSSALVAGE 3 atau 5, dan masih
+			// terbuka. Lihat ExcludesClosedWork.
 			Label:           "Outstanding",
 			Tab:             TabOutstanding,
 			Source:          CountFromClaim,
-			SalvageStatuses: []string{"3", "5"},
+			SalvageStatuses: OutstandingSalvageStatuses,
+
+			// SATU-SATUNYA baris yang menyaring status kerja — lihat
+			// ExcludesClosedWork.
+			ExcludesClosedWork: true,
 		},
 		{
 			Label:           "Ekonomis",

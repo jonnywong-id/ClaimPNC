@@ -31343,3 +31343,722 @@ rule aslinya tiba, **kueri** itu yang diganti.
 bergantung cakupan pemanggil, sedangkan `/keterangan` di-cache selamanya oleh layar.
 
 Terkait: `84.32` · `K-105.32` · `D-13` · `R-16`
+
+## 172. Inbox Salvage — Submit kini BENAR-BENAR mengirim ke balai lelang dan mengirim surel (2026-10-08)
+
+Sampai hari ini jawaban Submit berbunyi tetap: *"Yang BELUM terjadi: pengajuan ini tidak dikirim ke balai lelang, tidak ada
+email yang terkirim, dan berkas lampiran belum tersimpan."* Ketiganya kini **tidak lagi benar**, dan kalimat tetap itu bukan
+sekadar usang — ia berbahaya: petugas yang membacanya akan mengirim ulang pengajuan yang sudah sampai.
+
+**Butir ketiga sudah tidak benar sejak sebelum sesi ini.** Lampiran salvage tersimpan lewat modal "Upload file"
+(`Handler.AttachDocuments`), ke `TEMP_DATA_ATTACHFILE`, `DATA_ATTACHFILE`, histori, dan penaut `SALAVAGEDOCUMENT`. Kalimat
+itu tertinggal. Ia kini tidak disebut lagi di jawaban Submit sama sekali — modal itu menjawab sendiri berapa dokumen yang
+tersimpan, dan menyebutnya di tempat lain berarti menjawab pertanyaan yang tidak diajukan.
+
+**Dua butir pertama dibangun pada sesi ini**, mengikuti langkah 19 dan 23 `Activity/SetStsSalvagePNC_act-Act.xml`:
+
+| Seam | Pengisi nyata | Padanan Pega |
+|---|---|---|
+| `inboxsalvage.AuctionHouse` | `simasbid.Client` + `simasbid.Recorder` | `Insert_salvageToSimasBid` → `SendData_SalvageSimasBid` |
+| `inboxsalvage.Notifier` | `notification.Sender` + `notification.Recorder` | `UploadingFileUntukSendByEmail` |
+
+Keduanya berjalan **sesudah** penyimpanan dan **di luar transaksinya** (`09-API-STRATEGY.md` §8.2), sehingga kegagalan
+salah satunya tidak pernah membatalkan pengajuan yang sudah tersimpan. Yang menggantikan kegagalan diam-diam adalah
+**jawaban yang menyebutkannya**: `createMessage` menyusun kalimatnya dari apa yang benar-benar terjadi pada permintaan itu,
+dan bilah di layar berubah **kuning** bila ada yang belum selesai. Bilah hijau yang berbunyi "GAGAL terkirim" adalah isyarat
+bercampur, dan isyarat semacam itu yang membuat orang berhenti membaca bilah pemberitahuan.
+
+**Jawaban balai lelang DICATAT pada barisnya** — `STSTRANSFER` menjadi `'1'` bila jawabannya memuat "Sukses", `'9'` bila
+tidak, dan `IDSIMASBID` diisi bila ada. Penilaiannya (`AuctionReceipt.Accepted`) ada di **domain**, bukan di pengisi seam:
+ia menentukan di daftar mana baris itu muncul, dan membiarkan tiap pengisi menilainya sendiri berarti klien HTTP dan tiruan
+pengujian dapat berbeda tanpa pernah tertangkap.
+
+**`SIMASBID_ALAMAT` TIDAK punya nilai bawaan**, berbeda dari `PENYIMPANAN_DOKUMEN_ALAMAT`. Satu-satunya alamat yang terbaca
+dari export menunjuk host **sandbox** di dalam ruleset produksi dengan autentikasi mati (`R-18`); menjadikannya bawaan
+berarti satu lingkungan yang lupa mengisinya akan diam-diam mengirim pengajuan nyata ke lingkungan uji pihak lain. Kosong =
+pengiriman tidak aktif, dan layar mengatakannya.
+
+**Penerima surel yang di-hardcode tidak dibawa.** `SetStsSalvagePNC_act:1757-1760` memasang dua alamat tetap, salah satunya
+akun Gmail **pribadi** di jalur produksi — pola yang `D-15` larang dan `D-67` tegaskan tidak ikut. Penggantinya
+`SMTP_PENERIMA_SALVAGE`, mailbox fungsional. Isian "Email" pada form **menambah** penerima, tidak menggantikan: kalau ia
+menggantikan, satu isian yang dikosongkan membuat surel tidak sampai ke siapa pun tanpa satu pun tanda.
+
+**Empat hal yang TIDAK dibangun, dan sebabnya:**
+
+1. **Badan surel disusun, bukan disalin.** Rule HTML-nya, `SendEmailRejectedApprovetochecker`, tidak ada di export
+   (`R-16`). Yang terbaca hanya subjeknya (`"Pengajuan Salvage an " + QQName`), dan itu dipakai apa adanya.
+2. **Lampiran belum ikut dikirim ke balai lelang.** Sistem lama menyertakannya di `Lelang.DocumentList`; membacanya kembali
+   menuntut struktur `POOLDATA.SALAVAGEDOCUMENT`, dan isi `POOLDATA.InsertSalvageDocument` tidak ada di export — yang
+   terbaca hanya argumennya.
+3. **Pengiriman per PENGAJUAN, bukan per barang.** Sistem lama mengirim per barang. `STSTRANSFER` hanya punya satu nilai
+   untuk seluruh pengajuan, sehingga keadaan setengah terkirim tidak dapat dinyatakan sama sekali — pengiriman per barang
+   menyembunyikan cacat itu, tidak menutupnya.
+4. **Tombol "Send To BalaiLelang" pada grid Checker** — pengiriman ULANG atas perintah — tetap belum ada. Yang dibangun
+   adalah pengiriman otomatis saat Submit. Keduanya berbeda: yang kedua dijalankan berkali-kali atas baris yang
+   `STSTRANSFER`-nya sudah berisi jawaban sebelumnya, dan aturan penimpaannya belum diputuskan.
+
+## 173. Inbox Salvage — daftar baru digambar SETELAH sebuah status diklik (2026-10-08)
+
+Sampai hari ini layar jatuh ke `daftar_bawaan` dan langsung menggambar daftar Salvage Outstanding. Akibatnya tabel ringkas
+"Status Salvage / Jumlah" di atasnya terbaca seperti hiasan, padahal ia **satu-satunya navigasi** layar ini sejak bilah tab
+dicabut (2026-10-03) — dan petugas yang membuka layar langsung dihadapkan pada satu daftar yang belum tentu ia cari.
+
+**Keputusan Work Owner 2026-10-08:** ringkasan dulu, daftarnya menyusul setelah diklik. Itu bentuk layar Pega apa adanya,
+tempat barisnyalah yang mengirim `Param.tipe`/`Param.tipe2`. Daftarnya muncul **di bawah** ringkasan, dan ringkasannya
+**tetap tampil** — berpindah daftar tetap satu klik, dan angka pembandingnya selalu di depan mata.
+
+**Tiga akibat yang ditangani, bukan dibiarkan:**
+
+1. **Daftar TIDAK ditembak selama belum dipilih** — `enabled: false` pada permintaannya, bukan sekadar gridnya
+   disembunyikan. Permintaan yang tetap berjalan di balik layar membebani basis data untuk jawaban yang tidak pernah
+   dilihat siapa pun, dan kueri modul ini menyentuh puluhan juta baris.
+
+2. **Tambah dan Refresh naik ke kepala layar.** Keduanya hidup di dalam toolbar grid, dan akan ikut hilang bersamanya —
+   menyisakan layar baru-buka tanpa satu pun tombol, termasuk satu-satunya jalan membuat pengajuan. Letaknya di kanan
+   judul mengikuti layar Pega (`D-13`). **Export Data TIDAK ikut naik**, dan itu bukan kelalaian: ia mengunduh salinan
+   daftar yang sedang dilihat, sehingga tanpa daftar ia tidak punya arti.
+
+3. **Ringkasan yang gagal atau kosong tidak boleh menjadi jalan buntu.** Ini ditemukan saat mengerjakan, bukan saat
+   merencanakan: sejak tabel ringkas menjadi satu-satunya pintu masuk, ringkasan yang tidak tergambar berarti tidak ada
+   yang dapat diklik — dan kalimat "pilih salah satu Status Salvage" menunjuk ke tempat kosong. Lebih buruk daripada
+   keadaan sebelumnya, bukan lebih baik. Karena itu `daftar_bawaan` **tetap dipakai, di satu keadaan saja**: ketika
+   `/ringkas` gagal atau mengembalikan nol baris. Pada keadaan normal ia tidak pernah tersentuh.
+
+**Barisnya kini menyatakan dirinya dapat dibuka.** Tanda panah di kiri nama status berputar saat daftarnya terbuka, dan
+`aria-expanded` membawa arti yang sama kepada pembaca layar. Panahnya digambar sebagai **SVG, bukan karakter `▶`** —
+glif di dalam aliran teks ikut terbawa `textContent`, ikut tersalin saat orang menyalin nama statusnya, dan ikut muncul
+di setiap perbandingan teks.
+
+**Catatan untuk yang menambah daftar baru:** daftar yang tidak disebut satu baris pencacah pun kini **tidak dapat dibuka
+siapa pun**. Yang menjaganya ada di sisi server — `TestEveryVisibleListIsReachableFromACounterRow` menolak keadaan itu —
+dan sejak perubahan ini pelanggarannya tidak lagi tertutup oleh `daftar_bawaan`.
+
+## 174. Inbox XOL — "INSERT DOL DAN COL" BENAR-BENAR menyimpan, dan `P-1` dilanggar secara sadar (2026-10-08)
+
+Sampai hari ini tombol **Simpan** pada modal "INSERT DOL DAN COL" selalu dijawab `409` beserta sebabnya: kewenangan
+menulis `POOLDATA.XOL_TABLE_ALL_KLAIM` masih ada di Pega selama masa paralel (`P-1`, batas Work Owner 2026-09-20).
+
+**Keputusan Work Owner 2026-10-08:** aksinya dipindahkan. Rute `POST /inbox-xol/dol-col` kini menyisipkan.
+
+**Tidak ada yang ditebak.** Seluruh rantai rule-nya ada di export:
+
+	Section/InboxClaimXOL-Section.xml:10863           tombol Simpan → activity di bawah
+	Activity/InsertDateAndCauseLossXOL-Act.xml        pemeriksaan dan pemetaan nilainya
+	RDB List/DeleteDataInXOLSummarybasedondol-SQL.xml tab Save — sisipannya
+
+### Satu simpan BUKAN satu baris
+
+Ini hal yang paling mudah salah dibaca, dan akibatnya pada angka. Activity-nya memecah daftar group business perjanjian
+yang dipilih menjadi page list, lalu **mengulang** `RDB-Save` untuk setiap anggotanya. Perjanjian berisi lima group
+business menghasilkan **lima baris**. Jawaban servernya karena itu membawa `jumlah_baris`, dan layar menyebutkannya —
+pengguna berhak tahu berapa banyak yang ditulis atas namanya.
+
+Perjanjian **tanpa satu pun group business** menghasilkan nol baris. Di sistem lama itu lewat tanpa pesan: tombolnya
+terlihat berhasil dan gridnya tetap kosong. Di sini ia **ditolak** beserta sebabnya. Itu satu-satunya tempat perilakunya
+berbeda dari Pega, dan bedanya ke arah yang terbaca.
+
+### Yang DITERIMA bersamanya
+
+1. **`P-1` dilanggar secara sadar untuk satu tabel.** Selama Pega masih hidup, `XOL_TABLE_ALL_KLAIM` kini ditulis **dua
+   sistem**. Aksi yang sama dijalankan di kedua aplikasi menghasilkan dua baris.
+
+2. **Sisipannya tidak memeriksa duplikat** — itu perilaku Pega, dibawa apa adanya (`P-5`). Menyimpan kombinasi Tanggal
+   Kejadian × Penyebab Kerugian yang sama dua kali menghasilkan dua baris, dan grid **menjumlahkan keduanya**. Dua hal
+   meredamnya di sisi layar: isian dikosongkan setelah berhasil, dan cache grid dibatalkan sehingga baris barunya
+   langsung terlihat. Keduanya mengurangi peluang, bukan menutupnya. Mengubahnya menjadi hapus-lalu-sisip adalah
+   keputusan Work Owner — ia membuang baris yang sudah ada.
+
+### "Remove All Data" TIDAK ikut pindah, dan rutenya dipisah
+
+Sebelumnya kedua tombol menembak jalur yang sama, `POST /inbox-xol/dol-col`, karena keduanya ditolak dan tabelnya sama.
+Sejak jalur itu benar-benar **menyisipkan**, membiarkannya berarti menekan "Remove All Data" lalu memperoleh baris
+**baru**. Penghapusan karena itu pindah ke `POST /inbox-xol/dol-col/hapus`, dan jalur itulah yang masih menolak.
+
+Penolakannya bukan karena `P-1` semata: **jalur Pega yang benar-benar menjalankan DELETE itu belum tertelusuri.** Rule
+`DeleteDataInXOLSummarybasedondol` memang memuat `delete POOLDATA.XOL_TABLE_ALL_KLAIM …` di tab Browse-nya, tetapi tab
+itu tidak dijalankan di layar ini — `InsertDateAndCauseLossXOL` hanya memanggil `RDB-Save`, dan satu-satunya activity
+lain yang dipanggil section ini, `ToFlaggingDataXOLByRequest`, berisi **Property-Set dan Page-New saja**. Memindahkan
+penghapusan atas dasar tebakan berarti membuang baris produksi tanpa tahu aturan aslinya.
+
+### Date Of Loss: isian teks → `DateField`
+
+Keluhan kedua pada hari yang sama: *"Date Of Loss masih harus ketik dulu buat bisa pilih tanggal"*. Benar — isiannya
+`Field` berplaceholder `dd/mm/yyyy`, **tanpa kalender sama sekali**. Sejak perubahan ini ia memakai komponen bersama
+`DateField`, yang membawa tombol kalender di sisi kanan dan tetap menerima ketikan bagi yang lebih cepat mengetik.
+
+Nilainya ISO (`YYYY-MM-DD`) selama di layar, lalu diubah menjadi `DD/MM/YYYY` **tepat saat dikirim** — bentuk kolom
+`DOL`, dan bentuk yang sama dengan `tanggal_kejadian` di seluruh kontrak modul ini. Konversinya dilakukan di komponen
+modalnya, terlihat, bukan disembunyikan di dalam hook.
+
+**Satu pemeriksaan yang TIDAK ada di Pega ditambahkan:** keterbacaan tanggalnya. Di Pega isiannya kalender yang tidak
+dapat diketik, sehingga ia cukup memeriksa kosong atau tidak. Di sini isiannya dapat diketik, dan `31/02/2024` yang
+lolos akan tersimpan sebagai baris yang `TO_DATE(DOL,'dd/mm/yyyy')` tolak **selamanya** — tidak pernah muncul di grid
+mana pun, tanpa satu pun pesan galat.
+
+### Yang tetap tidak ditulis
+
+`T_PLA_XOL`, `T_DLA_XOL`, dan `MST_XOL_PNC`. Daftar izin di `repo/sqlstore/query_test.go` berupa izin **per kueri**,
+bukan pencabutan larangan: kueri tulis berikutnya tetap menggagalkan uji sampai seseorang menuliskan alasannya di sana.
+
+## 174. Inbox Salvage — bilah kuning "catatan daftar" dicabut, dan cacat yang ditutupinya (2026-10-08)
+
+**Keputusan Work Owner:** yang bukan galat tidak digambar. Bilah kuning di atas grid dicabut dari layar.
+
+Isinya bukan galat dan bukan peringatan — ia keterangan bahwa sebuah selisih terhadap Pega memang **disengaja**. Digambar
+kuning, ia terbaca sebaliknya: setiap kali sebuah daftar dibuka, petugas disodori kotak berwarna peringatan yang
+memberitahunya bahwa tidak ada yang perlu dikhawatirkan. Ia mengikuti pencabutan panel selisih terencana (2026-10-06) atas
+alasan yang sama.
+
+Isiannya dicabut dari **kontrak**, bukan dikirim lalu diabaikan layar — sama seperti `PlannedDifferences` sebelumnya.
+`inboxsalvage.Tab.Notice` tetap hidup di domain, tempat uji kesetaraan gerbang 1 memetakannya ke butir `P-5` (`D-54`).
+
+### Cacat yang selama ini DITUTUPI bilah itu
+
+Mencabutnya membuat satu uji gagal — `menjelaskan kekosongan pada daftar yang pencariannya cocok persis` — dan kegagalannya
+membuka cacat yang lebih tua: **`DataTable` selalu menimpa `emptyMessage` dari pemanggil begitu kotak pencarian terisi.**
+
+Akibatnya kalimat yang disusun `emptyMessageFor` untuk menjelaskan *"kenapa pencarian saya tidak menghasilkan apa-apa pada
+daftar yang mencocokkan persis"* **tidak pernah sampai ke layar** — justru pada satu-satunya keadaan yang menjadi alasan ia
+ditulis. Ia kode mati sejak lahir. Ujinya lulus selama ini karena menemukan frasa "COCOK PERSIS" **di bilah kuning**, bukan
+di pesan kekosongan.
+
+### Kenapa perbaikannya ADITIF, bukan mengubah perilaku bersama
+
+`DataTable` dipakai **14 modul** yang mengirim `serverSearch` sekaligus `emptyMessage`. Mengubah perilakunya untuk semuanya
+sebagai efek samping permintaan satu layar bukan keputusan yang boleh diambil diam-diam — sebagian dari mereka mengirim
+`emptyMessage` berbunyi "Belum ada data", yang akan salah bila digambar saat pencarian terisi.
+
+Yang ditambahkan karena itu isian **opsional** `searchEmptyMessage`. Yang tidak mengisinya menerima perilaku lama **persis**:
+
+    emptyText = hasSearch ? (searchEmptyMessage ?? kalimat bawaan) : emptyMessage
+    emptyHint = hasSearch && searchEmptyMessage === undefined ? saran bawaan : undefined
+
+Dengan `searchEmptyMessage` kosong, kedua baris itu menghasilkan ekspresi yang sama persis dengan sebelumnya. Hanya Inbox
+Salvage yang menyalakannya.
+
+Saran bawaan *"coba kata kunci yang lebih pendek"* ikut padam saat isian itu diisi: pada daftar yang mencocokkan persis,
+kata kunci yang lebih pendek justru yang salah.
+
+**Terverifikasi:** ketiga belas modul pemakai `DataTable` lainnya dijalankan ulang — 540 uji, 27 berkas, seluruhnya lulus.
+
+### Catatan operasional
+
+Keluhan yang memicu sesi ini — backtick dan rujukan "lihat keterangan selisih terencana" yang masih tergambar — **bukan
+cacat kode**. Sumbernya sudah bersih sejak §172; yang berjalan adalah `claimpnc.exe` bangunan **6 Okt 09:29**, dua hari
+lebih tua daripada perbaikannya. Teks tab hidup di dalam binary Go, bukan di basis data, sehingga perubahannya menuntut
+**bangun ulang dan start ulang** — menyegarkan peramban tidak cukup.
+
+## 175. Inbox Salvage — angka "Outstanding" tidak cocok dengan Pega: satu penyaring hilang (2026-10-08)
+
+**Dilaporkan Work Owner:** angka Outstanding berbeda dari Pega; sembilan baris lainnya sudah cocok.
+
+**Sebabnya terbukti dari pembandingan kedua kueri baris demi baris.** Pencacah Outstanding di Pega adalah
+`RDB List/CountSalvage_sql11OS-SQL.xml`:
+
+    SELECT COUNT (1) AS "CaseID"
+      FROM POOLDATA.T_CLAIM_PNC a
+     WHERE STATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')
+       AND GROUPPANEL IN ('003','004','006','009')
+       AND BUSINESSCODE NOT IN ('10145', '10168')
+       AND (A.STSSALVAGE='3' OR A.STSSALVAGE='5')
+
+Kueri kita (`count_claim_status`) memuat ketiga syarat terakhir tetapi **tidak memuat `STATUSWORK`**. Akibatnya baris
+Outstanding ikut menghitung klaim yang sudah `Resolved-Completed` atau `Resolved-Rejected`, sehingga angkanya **selalu
+lebih besar** daripada angka Pega di layar yang sama.
+
+### Kenapa hanya Outstanding yang meleset
+
+Karena di Pega hanya baris itu yang menyaring `STATUSWORK`. Penelusuran `Activity/GCNMCountSalvage_act-Act.xml`
+membuktikannya: hanya empat rule SQL yang mengisi seluruh tabel ringkas, dan dari keempatnya hanya `CountSalvage_sql11OS`
+yang memuat penyaring tersebut. Keempat baris sekeluarga Outstanding — Ekonomis, TBA, Tidak Ekonomis, Tidak Ada Salvage —
+dihitung lewat SQL yang **dirangkai sebagai teks di dalam activity**, dan **nol** di antaranya memuat `STATUSWORK`.
+
+Itu persis yang dilaporkan: satu meleset, sembilan cocok.
+
+### Perbaikannya per baris, bukan menyeluruh
+
+Kueri baru `count_claim_status_open_work` dipakai **hanya** oleh baris Outstanding, ditandai isian baru
+`CountRow.ExcludesClosedWork`. Keempat baris lain tetap memakai `count_claim_status` apa adanya.
+
+Menyeragamkannya akan memperbaiki satu angka dan **merusak empat** yang hari ini sudah cocok. `P-5` menuntut hasil yang
+sama dengan Pega, bukan hasil yang paling masuk akal — dan di sini keduanya memang berbeda.
+
+### Yang TIDAK berubah, dan sebabnya
+
+**Daftar Outstanding sudah benar.** `GcnmSalvageData_OS_SQL` dibaca utuh: penyaringnya disuntikkan saat jalan lewat
+`{ASIS:tempQuery.NewEmail}`, dan langkah "Data OS" pada `SetDataSalavage_act` mengisinya `"and STSSALVAGE IS NULL"` —
+persis kueri kita, dengan `STATUSWORK` yang sama. Kolomnya pun sama (CLAIMNO, PICTEKNIK, BUSINESSNAME, DATEOFLOSS).
+
+Jadi daftar menyaring `STSSALVAGE IS NULL` sementara pencacahnya menghitung `3 atau 5` — selisih yang sudah tercatat dan
+memang ada di Pega.
+
+### Dua hal yang ditemukan dan sengaja TIDAK diubah
+
+1. **Pega tidak mengurutkan daftar OS sama sekali.** `GcnmSalvageData_OS_SQL` tanpa `ORDER BY`; kita memakai
+   `ORDER BY CLAIMNO`. Himpunan barisnya sama, urutannya bisa berbeda — sehingga halaman 1 dapat memuat klaim yang
+   berbeda. Meniru ketiadaan `ORDER BY` berarti meniru hasil yang tidak ditentukan, dan paginasi di atas hasil tak
+   terurut tidak stabil antarhalaman. Dicatat sebagai selisih, bukan diperbaiki.
+
+2. **Pencarian di Pega MEMBUANG penyaring `STSSALVAGE`.** `CariDataSalvageOS_act` menimpa `tempQuery.NewEmail` dengan
+   `"AND CLAIMNO LIKE '%…%'"`, sehingga mencari di daftar Outstanding mengembalikan klaim apa pun — termasuk yang sudah
+   ditandai Ekonomis atau TBA. Kita mempertahankan penyaringnya. Membawa perilaku itu berarti membawa cacat; keputusan
+   membawanya atau tidak diserahkan ke Work Owner.
+
+**Penjaga:** dua uji baru. Satu mengunci bahwa **hanya** baris Outstanding yang bertanda `ExcludesClosedWork`; satu lagi
+membuktikan penandanya benar-benar berakibat — klaim ber-`Resolved-*` tidak ikut terhitung, sementara baris Ekonomis tetap
+menghitungnya. Keduanya diuji gagal lebih dulu dengan penanda dimatikan, lalu hijau setelah dipulihkan.
+
+## 176. Inbox Salvage — Outstanding: §175 SALAH, dan apa yang dibuktikan angkanya (2026-10-08)
+
+**§175 keliru dan dikoreksi di sini.** Ia menambahkan penyaring `STATUSWORK` pada pencacah Outstanding dengan premis bahwa
+pencacah itu menghitung `STSSALVAGE` 3 atau 5. Premis itu **dibantah angka Work Owner**, dan perbaikannya justru membuat
+angkanya makin jauh.
+
+### Bukti yang membantahnya — aritmetis, bukan selera
+
+Perbandingan layar Pega dengan layar kita, data yang sama, saat yang sama:
+
+| Baris | Pega | Kita (sesudah §175) |
+|---|---:|---:|
+| **Outstanding** | **234** | **145** |
+| Ekonomis | 2 | 2 |
+| Rejected Checker | 2 | 2 |
+| Balai Lelang | 116 | 116 |
+| Tidak Ekonomis | 9 | 9 |
+| TBA | 164 | 164 |
+| Tidak Ada Salvage | 63 | 63 |
+| Salvage Buyback | 18 | 18 |
+| Histori Salvage | 124 | 124 |
+
+Baris Ekonomis mencacah `STSSALVAGE='3'` dan menghasilkan **2**. Baris TBA mencacah `'5'` dan menghasilkan **164**. Maka
+"3 atau 5" **tidak mungkin melebihi 166**, sementara Pega menampilkan **234**. Kedelapan baris lain cocok persis, sehingga
+datanya memang sebanding dan selisihnya bukan soal waktu pengambilan.
+
+**Kesimpulan: rule yang BERJALAN di Pega bukan rule yang ada di export.** Itu `R-09` — sistem sumber masih aktif berubah.
+
+Penelusuran ulang memastikan export-nya sendiri terbaca benar: dengan memakai `pyStepPageReference` sebagai batas langkah
+(bukan posisi baris), **langkah 9 `GCNMCountSalvage_act` = `CountSalvage_sql11OS`, berdeskripsi "OS"**, dan hanya langkah
+10 dan 11 yang menulis literal `"Outstanding"` — keduanya membaca hasil langkah 9. Jadi export memang menunjuk ke rule
+3-atau-5; export-nya yang usang, bukan pembacaannya.
+
+### Penggantinya, dan kenapa ia yang dipilih
+
+`RDB List/GetCountSalvage_OS-SQL.xml` — **seluruh klaim yang masih terbuka di dalam lingkup layar**, tanpa penyaring
+`STSSALVAGE` sama sekali:
+
+    SELECT COUNT (*) FROM POOLDATA.T_CLAIM_PNC
+     WHERE STATUSWORK NOT IN ('Resolved-Completed','Resolved-Rejected')
+       AND GROUPPANEL IN ('003','004','006','009')
+       AND BUSINESSCODE NOT IN ('10145', '10168')
+
+Empat alasan:
+
+1. **Satu-satunya rule di export yang DAPAT menghasilkan 234.** Setiap pencacah berbasis `STSSALVAGE` terbatas pada
+   angka baris sekeluarganya, dan seluruhnya di bawah 234.
+2. Namanya **"OS"** — Outstanding.
+3. Ia mengisi `Pagination.TotalData` justru ketika `Param.tipe == 1` (`SetDataSalavage_act`), dan **tipe 1 adalah tab
+   Outstanding** — `LegacyTipe` kita pun `"1"`.
+4. Lingkupnya sama persis dengan daftar Outstanding, hanya tanpa penyaring `STSSALVAGE`.
+
+### Ini HIPOTESIS yang dapat diperiksa, dan dinyatakan begitu
+
+Saya tidak dapat menjalankan kueri terhadap basis data Pega, sehingga keempat alasan di atas adalah penguat — bukan bukti
+langsung. **Cara memeriksanya satu langkah:** buka daftar Outstanding di Pega dan baca total paginasinya. Menurut export,
+total itu dihitung `GetCountSalvage_OS`. Bila ia berbunyi **234**, hipotesis ini terbukti.
+
+Bila tidak, yang perlu diganti hanya kueri `count_claim_open` beserta penanda `CountRow.CountsEveryOpenClaim` — keduanya
+berdiri sendiri dan tidak menyentuh kedelapan baris yang sudah cocok.
+
+### Pelajaran yang dicatat, bukan disembunyikan
+
+§175 lahir dari membaca export lalu **berhenti di situ**. Angka yang tersedia tidak pernah diuji terhadap premisnya —
+padahal satu pembagian sederhana (Ekonomis + TBA = 166 < 234) sudah cukup membantahnya sebelum satu baris kode pun
+diubah. Uji yang ditulis bersamanya pun mengunci premis yang salah, sehingga ia tidak menjaga apa pun; ia hanya membuat
+kekeliruannya lebih sulit diperbaiki.
+
+Karena itu uji penggantinya memasukkan **relasi antarbaris**, bukan hanya nilai: `TestOutstandingIsNotDerivedFromTheSalvageMark`
+menuntut Outstanding MELEBIHI jumlah Ekonomis dan TBA pada data ujinya — persis keadaan yang membuktikan ia tidak
+diturunkan dari `STSSALVAGE`, dan persis keadaan yang §175 langgar.
+
+**Tiga uji baru, seluruhnya dibuktikan gagal lebih dulu** dengan penanda dimatikan, lalu hijau setelah dipulihkan.
+Satu uji lama di `repo/memory` dan satu assertion di `teks_pengguna_test.go` ikut dikoreksi, karena keduanya mengunci
+premis §175.
+
+## 177. Inbox Salvage — daftar Outstanding: himpunannya sama, URUTANNYA yang berbeda (2026-10-08)
+
+**Dilaporkan Work Owner:** jumlah barisnya sudah sama (145 di kedua sistem) tetapi baris yang tampil berbeda.
+
+### Yang diperiksa lebih dulu: apakah himpunannya memang sama
+
+Kedua kueri dibandingkan klausa demi klausa, dan **predikatnya identik**:
+
+| | Pega (`GcnmSalvageData_OS_SQL`) | Kita (`list_claim`) |
+|---|---|---|
+| Status kerja | `STATUSWORK NOT IN (2 nilai)` | sama |
+| Group panel | `IN ('003','004','006','009')` | sama |
+| Business code | `NOT IN ('10145','10168')` | sama |
+| Penanda salvage | `and STSSALVAGE IS NULL` (suntikan `{ASIS:tempQuery.NewEmail}`, langkah "Data OS") | sama |
+| **Urutan** | **tidak ada `ORDER BY` sama sekali** | `ORDER BY CLAIMNO` |
+
+Predikat identik ditambah total identik (145) berarti **himpunan barisnya sama**. Yang berbeda hanya urutan tampilnya —
+dan satu-satunya sumber perbedaan itu adalah `ORDER BY` yang hanya kita miliki.
+
+### Kenapa urutan Pega TIDAK ditiru
+
+Karena ia bukan urutan. Tanpa `ORDER BY`, urutan baris ditentukan jalur akses Oracle: ia dapat berbeda antar pemuatan,
+berubah setelah baris diperbarui, dan tidak dapat ditiru dengan sengaja.
+
+Meniru ketiadaannya ditawarkan kepada Work Owner **beserta akibatnya**: paginasi Oracle di atas hasil tak terurut tidak
+dijamin stabil — satu baris dapat muncul dua kali di halaman berbeda atau terlewat sama sekali — dan ia **tetap** tidak
+menjamin hasil yang sama dengan Pega. Pilihan itu ditolak.
+
+**Keputusan Work Owner 2026-10-08: Tanggal Kejadian, terbaru dulu.**
+
+### Dua hal yang ikut, dan keduanya wajib
+
+1. **Pemecah seri `CLAIMNO`.** Tanggal kejadian berulang — pada data yang dibandingkan, tiga klaim berbagi 13/06/2025.
+   Mengurutkan hanya dengan tanggal membuat urutan di dalam satu tanggal tidak ditentukan, yang mengembalikan persis
+   ketidakstabilan paginasi yang hendak dihindari.
+
+2. **`NULLS LAST` yang tegas.** Bawaan Oracle untuk `DESC` adalah `NULLS FIRST`, sehingga klaim tanpa tanggal kejadian
+   akan menempati puncak daftar — kebalikan dari yang diminta. PostgreSQL 17+ menerima sintaks yang sama, sehingga
+   `D-20` tidak dilanggar.
+
+### Lingkupnya SATU daftar saja
+
+Hanya `list_claim` dan `list_claim_search` yang berubah. Keempat kueri keluarga klaim lainnya —
+`list_claim_object`, `list_claim_object_search`, `list_claim_buyback`, `list_claim_buyback_search` — **tetap**
+`ORDER BY CLAIMNO`, karena Work Owner menyatakan kedelapan daftar lain sudah cocok dengan Pega. Mengubah urutannya akan
+merusak yang sudah benar.
+
+### Yang TETAP tidak akan sama, dan itu disadari
+
+Halaman pertama kita tidak akan identik dengan halaman pertama Pega, karena Pega tidak punya urutan untuk disamai.
+Yang berubah: urutan kita kini **bermakna dan stabil**, dan secara kebetulan menjadi lebih dekat — klaim bertanggal 2025
+yang mengisi halaman pertama Pega kini juga berada di halaman pertama kita.
+
+**Penjaga:** empat uji di `repo/memory` — urutan terbaru-dulu, pemecah seri pada tanggal yang sama, tanggal kosong di
+urutan terakhir, dan daftar keluarga lain yang TIDAK ikut berubah. Dua di antaranya dibuktikan gagal lebih dulu dengan
+urutannya dikembalikan ke nomor klaim.
+
+---
+
+## 178. Inbox Salvage — Outstanding: penyaringnya `STSSALVAGE` 3 atau 5, dan pencacahnya mengikuti daftarnya (2026-10-08)
+
+**Menggantikan §175 dan §176 seluruhnya, dan mengoreksi satu kalimat di §177.** Keduanya ditulis pada hari yang sama,
+keduanya salah, dan keduanya salah karena sebab yang sama: angka diturunkan dari bacaan export, lalu diuji terhadap
+dirinya sendiri. Yang akhirnya menyelesaikannya adalah **tiga angka dari layar yang berjalan** — dua dari Work Owner,
+satu dari perhitungan kita.
+
+### Apa yang dilaporkan
+
+> *"tolong perbaik di tampilan awal Jumlah nya ada 145 pas diklik jadi 465"*
+
+Angka pada tabel ringkas **145**, jumlah baris daftar yang dibukanya **465**. Selisih tiga kali lipat pada satu baris
+yang sama.
+
+### Keempat angka, berdampingan
+
+| Yang diukur | Angka |
+|---|---:|
+| Daftar Outstanding di **Pega** | **145** |
+| Tabel ringkas di **Pega** | 234 |
+| Tabel ringkas kita (rumus §175) | **145** |
+| Daftar kita (`STSSALVAGE IS NULL` + masih terbuka) | 465 |
+
+Dua angka cocok: **145 = 145**, dari dua perhitungan yang saling bebas. Rumus yang §175 pasang pada **pencacah** —
+`STSSALVAGE` 3 atau 5, dan pekerjaannya masih berjalan — ternyata rumus **daftarnya**.
+
+### Pemeriksaan kedua, dari arah yang berbeda
+
+Angka yang cocok bisa kebetulan. Work Owner memeriksanya sekali lagi atas permintaan: satu klaim yang tampil pada
+daftar Outstanding Pega **juga tampil pada daftar TBA**. TBA menyaring `STSSALVAGE='5'`. Klaim yang sudah bertanda
+tidak akan pernah lolos penyaring "belum bertanda".
+
+Dua bukti yang saling bebas, satu kesimpulan: **daftar Outstanding di Pega memuat klaim yang SUDAH ditandai 3 atau 5,
+bukan yang belum ditandai sama sekali.**
+
+### Export menunjuk ke arah sebaliknya, dan export-nya yang basi
+
+`Activity/SetDataSalavage_act-Act.xml` memasang penyaring ini **dua kali**, keduanya dijaga prasyarat
+`Param.tipe==1` yang sama:
+
+```
+langkah 14  tempQuery.NewEmail := "and (STSSALVAGE='3' or STSSALVAGE='5')"
+langkah 26  tempQuery.NewEmail := "and STSSALVAGE IS NULL"
+langkah 38  menjalankan GcnmSalvageData_OS_SQL
+```
+
+Dibaca apa adanya, langkah 26 menimpa langkah 14 dan yang sampai ke daftar adalah `IS NULL`. Itulah dasar bentuk kita
+selama ini — dan itulah yang menghasilkan 465.
+
+Pengukuran membantahnya. Yang berlaku adalah **perilaku sistem yang berjalan**, bukan berkas XML-nya. Ini persis yang
+diperingatkan **`R-09`**: 124 activity berubah pada 2026, dan Pega terus bergerak selama migrasi berlangsung. Export
+untuk layar ini sudah tertinggal.
+
+### Yang diputuskan Work Owner
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Apakah klaim yang tampil di Outstanding Pega juga ada di TBA? | **Ada di TBA** |
+| Angka ringkasan mengikuti yang mana? | **Samakan dengan daftarnya (145)** |
+
+Jawaban kedua berarti **angka ringkasan kita akan berbeda dengan Pega** — 145 berbanding 234. Diterima secara sadar:
+angka 234 **tidak dapat diturunkan dari rule mana pun di export**, sementara angka yang sama dengan daftarnya dapat
+dijelaskan, diuji, dan dibaca tanpa penjelasan tambahan. Satu layar yang menjawab pertanyaannya sendiri lebih berguna
+daripada satu layar yang meniru angka yang tidak dipahami siapa pun.
+
+### Yang berubah
+
+| Tempat | Perubahan |
+|---|---|
+| `list_claim`, `list_claim_search` | `AND c.STSSALVAGE IS NULL` → `AND c.STSSALVAGE IN ('3', '5')` |
+| `count_claim_open` | diganti `count_claim_outstanding` — penanda yang sama, **ditambah** penyaring status pekerjaan |
+| `CountRow.CountsEveryOpenClaim` | diganti `CountRow.ExcludesClosedWork` |
+| `Tab.SalvageStatusIsNull` | diganti `Tab.OutstandingSalvage` |
+| `inboxsalvage.OutstandingSalvageStatuses` | **baru** — satu tempat yang memuat `{"3","5"}` beserta buktinya |
+| Keterangan dan catatan daftar Outstanding | ditulis ulang; **catatan selisihnya dicabut**, karena selisihnya tidak ada lagi |
+
+Catatan daftar dicabut, bukan dibiarkan: keterangan yang menerangkan selisih yang tidak ada membuat pembacanya
+mencari-cari sesuatu yang tidak akan ditemukannya.
+
+### Penjaganya menjaga RELASI, bukan nilai — dan inilah pelajarannya
+
+Premis yang keliru bertahan dua hari **karena uji yang menjaganya mengunci nilai**. `TestOutstandingCounterAndItsList
+DisagreeOnPurpose` menyatakan pencacah lebih besar daripada daftarnya; ia lulus pada setiap premis yang salah, karena
+yang diperiksanya adalah hasil dari premis itu sendiri.
+
+Penggantinya menjaga hubungan antar angka, yang tidak dapat lulus bersama premis yang salah:
+
+| Uji | Yang dijaga |
+|---|---|
+| `TestOutstandingCounterMatchesItsOwnList` | angka ringkasan **sama dengan** jumlah baris daftarnya, apa pun datanya |
+| `TestOutstandingNeverExceedsEkonomisPlusTBA` | Outstanding adalah **himpunan bagian** Ekonomis ∪ TBA — relasi yang mustahil dipenuhi premis §176 |
+| `TestOutstandingListFiltersTheSameSalvageMarksAsItsCounter` | nilai tetap di teks SQL **sama dengan** `OutstandingSalvageStatuses` yang diikat pencacah |
+| `TestOnlyTheOutstandingCounterFiltersWorkStatus` | hanya baris ini yang menyaring status pekerjaan — delapan lainnya sudah cocok dengan Pega |
+
+Uji ketiga menutup sumber cacat yang sebenarnya: satu aturan, dua tempat penulisan. Nilainya tetap ditulis tetap di
+SQL — ia domain tertutup milik aturan bisnis, sama seperti `GROUPPANEL` — tetapi tidak lagi dapat bergeser diam-diam
+dari pencacahnya.
+
+Data contoh ikut diperbaiki: `PNC-2043` kini **ditandai TBA dan sudah selesai**, sehingga ia satu-satunya baris yang
+membedakan daftar Outstanding dari daftar TBA. Tanpanya, penyaring status pekerjaan dapat dicabut tanpa satu pun uji
+yang gagal.
+
+### Koreksi atas §177
+
+§177 menyatakan *"jumlah barisnya sudah sama (145 di kedua sistem, karena predikatnya memang identik)"*. Kalimat itu
+**tidak benar pada saat ditulis**: predikatnya belum identik, dan jumlah baris daftar kita 465. Yang sama saat itu
+hanyalah angka **pencacah** kita dengan angka **daftar** Pega — dua hal yang berbeda, yang kebetulan bernilai sama, dan
+kebetulan itulah yang menuntun ke jawaban yang benar. Keputusan urutan pada §177 sendiri **tetap berlaku**.
+
+### Yang harus dilakukan sebelum angkanya diperiksa
+
+Proses `go run` wajib **dihentikan dan dijalankan ulang**. Dua kali dalam penelusuran ini angka yang dilaporkan berasal
+dari biner lama: perubahan sumber tidak sampai ke layar, dan analisis dijalankan atas angka yang sudah usang.
+
+---
+
+## 179. Inbox Analyst Doctor gagal dimuat — dua kolom tebakan yang memang tidak ada (2026-10-09)
+
+**Laporan Work Owner:** layar Inbox Analyst Doctor menjawab *"Antrean tidak dapat dimuat —
+Terjadi kesalahan pada sistem"*, dan bilah "Total Data : 0".
+
+### 179.1 Sebabnya, dibuktikan ke katalog Oracle
+
+Kueri daftarnya menyaring `w.ISCOMPLIANCETRANSFER_1` dan mengambil `w.ANALYSTDOCTORREMAKS_1`.
+Kedua nama itu **tebakan** yang mengikuti konvensi `_1`, karena
+`Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai kedua propertinya sendiri
+`<pzPropertyType>unexposed</pzPropertyType>` — properti tak terekspos hidup di dalam blob
+Pega, bukan sebagai kolom SQL. Kepala berkas `.sql`-nya sendiri sudah menulis
+`** PERLU KONFIRMASI **` di kedua baris itu.
+
+Tebakannya diuji langsung:
+
+```sql
+SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS
+ WHERE TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'
+   AND (COLUMN_NAME LIKE '%COMPLIANCE%' OR COLUMN_NAME LIKE '%ANALYST%'
+        OR COLUMN_NAME LIKE '%REMAK%');
+```
+
+Hasilnya **satu baris**: `ANALYSTTRANSFERDATE_1`. Keduanya memang tidak ada, sehingga kueri
+gagal ORA-00904 pada **setiap** permintaan.
+
+**Ini sudah pernah tercatat.** §147.3 menulisnya dari arah lain sewaktu membaca `PUCLPost`:
+*"Kolom ISCOMPLIANCETRANSFER_1 yang dipakai kueri inboxanalystdoctor tidak ada di basis data
+ini. Modul itu tidak akan berjalan di lingkungan ini."* Catatan itu benar; yang kurang
+hanyalah tindakannya. Temuan yang dicatat tetapi tidak ditindaklanjuti berakhir sebagai
+laporan pengguna.
+
+### 179.2 Penggantinya: penugasannya sendiri, bukan penanda di dalam blob
+
+Yang menempatkan klaim di antrean ini bukan penanda di blob melainkan **penugasannya**.
+`Flow/Register_Flow.xml` `Assignment13`:
+
+```xml
+<pyMOName>Analyst Doctor</pyMOName>
+<pyImplementation>WorkList</pyImplementation>
+<pyRouteTo>Operator</pyRouteTo>
+```
+
+Pega menyimpan `pyMOName` sebuah assignment sebagai `PC_ASSIGN_WORKLIST.PXTASKLABEL`.
+Kesepadanan itu **bukan dugaan** — ia terbaca dari data: setiap label `Register_Flow` yang
+ada di basis data sama persis dengan `pyMOName` salah satu assignment di flow itu (Input
+Register · Input Estimasi · Estimation · Choose Surveyor · View Polis · Send To Analis ·
+RCLDokter).
+
+Label itu aman dipakai: dari keenam flow di export, **hanya `Register_Flow`** yang memuat
+assignment bernama "Analyst Doctor". Polanya pun bukan hal baru — `inboxadmin` sudah
+menyaring `B.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')`.
+
+Penyaringnya karena itu menjadi `a.PXTASKLABEL = :1`.
+
+### 179.3 Selisih yang ditimbulkannya — dinyatakan di layar, bukan disamarkan
+
+| | menyaring |
+|---|---|
+| Pega | klaim yang **pernah** ditandai transfer ke Analyst Doctor |
+| Sekarang | klaim yang **sedang** berada di tahap Analyst Doctor |
+
+Keduanya berimpit selama klaimnya masih menunggu penilaian medis, dan berbeda untuk klaim
+yang penandanya masih menunjuk Analyst Doctor tetapi penugasannya sudah berpindah. Untuk
+sebuah Inbox, bacaan kedua justru yang benar menurut `D-79`: barisnya adalah pekerjaan yang
+menunggu, dan barisnya hilang begitu tugasnya berpindah. Ia masuk `PlannedDifferences`.
+
+### 179.4 Kolom "Komentar dari PIC Teknis" tidak lagi diambil dari SQL
+
+`.ClaimData.AnalystDoctorRemaks` tidak punya kolom, dan dua calon penggantinya **ditolak**:
+
+| Calon | Kenapa ditolak |
+|---|---|
+| `KOMENTARANALISATOR_1` | properti `.ClaimData.KomentarAnalisator`, milik jalur PUCL (`Activity/PUCLPost-Act.xml`) — bukan penilaian medis |
+| alias di rule SQL lama | `a.QQNAME AS "AnalystDoctorRemaks"` dan `a.clientname AS "AnalystDoctorRemaks"` muncul di belasan rule menunjuk kolom berbeda-beda. Itu alias **menyesatkan** (utang teknis §4.2), bukan bukti tempat penyimpanan |
+
+Kolomnya tetap digambar, isinya kosong, dan layar menyatakan alasannya. Yang berubah: ia
+tidak lagi menjatuhkan seluruh halaman hanya untuk mendapatkannya.
+
+### 179.5 `-periksa` diperbaiki supaya tidak berhenti di temuan pertama
+
+`check_columns` sebelumnya hanya memeriksa dua kolom tebakan lalu **berhenti**. Karena
+keduanya tidak ada, kolom lain tidak pernah sempat terperiksa sama sekali — pemeriksaan yang
+menyerah pada temuan pertama menyembunyikan temuan kedua.
+
+Kini ia mem-parse **seluruh sepuluh kolom** yang benar-benar dipakai, dalam satu kueri
+`WHERE 1 = 0`, termasuk `PXTASKLABEL`.
+
+### 179.6 Yang menjaganya tidak kambuh
+
+| Uji | Isi |
+|---|---|
+| `TestKolomYangTerbuktiTidakAdaTidakDipakaiLagi` | tidak ada kueri yang menyebut `ISCOMPLIANCETRANSFER` atau `ANALYSTDOCTORREMAKS` |
+| `TestAntreanDikenaliDariLabelTahapPenugasan` | `a.PXTASKLABEL = :1` ada di kueri daftar |
+| `TestLabelTahapPenugasanSamaDenganNamaDiFlow` | nilainya persis `"Analyst Doctor"` |
+| `TestKueriPeriksaKolomMenutupSeluruhKolomYangDipakai` | kesepuluh kolom ikut diperiksa |
+
+Ketiga kueri sudah dijalankan ke Oracle `DEV_PEGA83G` dan lolos parse. Dengan label "Analyst
+Doctor", antreannya **kosong** di lingkungan ini — tidak ada satu pun baris
+`PC_ASSIGN_WORKLIST` bertahap itu — dan kosong adalah jawaban yang benar, bukan galat.
+
+---
+
+## 180. Inbox Analyst Doctor — galat KEDUA: penanda bind berulang (ORA-01008) (2026-10-09)
+
+**Laporan Work Owner:** setelah §179, layar **masih** menjawab *"Antrean tidak dapat dimuat —
+Terjadi kesalahan pada sistem."*
+
+### 180.1 Dua hal yang benar sekaligus
+
+**Pertama, proses yang berjalan sudah basi.** `claimpnc.exe` start 15:57; berkas `.sql`
+berubah 16:29. `go run` memuat SQL saat start, jadi proses itu masih menjalankan kueri lama.
+Perbaikan §179 memang belum pernah dieksekusi.
+
+**Kedua — dan ini yang penting — ada galat kedua** yang selama ini tersembunyi di belakang
+ORA-00904. Diuji dengan menjalankan repo baru langsung ke Oracle:
+
+```
+CheckTables  : ok
+CheckColumns : ok
+List(ESTHERSIMBOLON): ORA-01008: not all variables bound, position 606
+```
+
+Jadi memperbaiki §179 saja **tidak akan menyembuhkan layarnya**.
+
+### 180.2 Sebabnya: satu penanda bind tidak boleh muncul dua kali
+
+Kueri lama menulis:
+
+```sql
+AND (:4 IS NULL
+     OR UPPER(w.PYID)    LIKE '%' || UPPER(:4) || '%'
+     OR UPPER(w.POLICYNO) LIKE '%' || UPPER(:4) || '%')
+```
+
+`:4` muncul **tiga kali**, dan pemanggil mengirim enam argumen.
+
+Perilaku driver diuji langsung, bukan diasumsikan:
+
+| Kueri | Argumen | Hasil |
+|---|---|---|
+| `SELECT :1, :1, :2 FROM DUAL` | 2 (`x`, `y`) | **ORA-01008** |
+| `SELECT :1, :1, :2 FROM DUAL` | 3 (`x`, `x`, `y`) | ok — `A=x B=x C=y` |
+
+**go-ora mengikat per KEMUNCULAN, bukan per NOMOR.** Delapan kemunculan menuntut delapan
+argumen, berapa pun nomor tertingginya.
+
+### 180.3 Perbaikannya mengikuti pola yang sudah ada
+
+`inboxcloseclaim.sql:171-176` sudah memakai pola yang benar: satu penanda per kemunculan,
+wildcard dibentuk di Go, `ESCAPE '\'` di sisi SQL.
+
+```sql
+AND (:4 IS NULL
+     OR UPPER(w.PYID)     LIKE :5 ESCAPE '\'
+     OR UPPER(w.POLICYNO) LIKE :6 ESCAPE '\')
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
+```
+
+`likePattern` disalin dari `inboxcloseclaim` — ia juga meng-escape `%`, `_`, dan `\`,
+sehingga pencarian "100%" tidak lagi berubah menjadi pola yang mencocokkan apa saja.
+
+### 180.4 Bukti bahwa jalurnya kini utuh
+
+Dijalankan ke Oracle `DEV_PEGA83G` lewat `Repo.List` yang sesungguhnya:
+
+| Kasus | Hasil |
+|---|---|
+| `CheckTables`, `CheckColumns` | ok |
+| `List` tanpa pencarian | ok, 0 baris |
+| `List` dengan `"PNC-"`, `"100%"`, `"_"` | ok, 0 baris — tidak ada yang gagal |
+| kueri yang sama dengan label `Send To Analis` | **3 baris terbaca dan terpindai**, total 133 |
+
+Yang terakhir dipakai karena tahap "Analyst Doctor" memang kosong di lingkungan ini; ia
+membuktikan jalur delapan-bind benar-benar mengembalikan dan memindai baris.
+
+### 180.5 Cacat yang sama ada di modul lain — BELUM diperbaiki
+
+Sapuan atas seluruh berkas `.sql`: **sekitar 30 kueri di 15 modul** memakai penanda berulang.
+Satu di antaranya diuji langsung:
+
+```
+inboxsurvey list_tasks (My Work), 8 argumen, 14 kemunculan
+  -> ORA-01008: not all variables bound, position 1418
+```
+
+Daftar terberatnya: `inboxprogressclaim pic_summary` (nomor=5, kemunculan=29) ·
+`inboxsurvey list_tasks` (8/14) · `inboxadmin list_unregistered` (3/10) ·
+`inboxadmin list_all` dan `list_branch_claim` (2/8) · `reportkpi detail` (6/8) ·
+`reportklaim report_tat`, `report_pla`, `report_dla`, `report_komite` (3/7) ·
+`inboxxol claim_list` (3/5).
+
+**Di luar lingkup permintaan ini dan sengaja tidak disentuh** — perbaikannya menyentuh 15
+modul dan menuntut pengujian sendiri. Diangkat ke Work Owner sebagai pekerjaan tersendiri.
+
+### 180.6 Yang menjaganya tidak kambuh
+
+`TestPenandaBindTidakPernahBerulang` menuntut setiap penanda muncul **tepat sekali** dan
+penomorannya menaik tanpa lubang, pada SELURUH kueri modul ini. Uji ini tidak ada sebelumnya,
+dan itulah sebabnya cacatnya lolos: ia tidak terlihat saat membaca kode, tidak tertangkap
+`go vet`, dan tidak tertangkap uji sqlmock — hanya muncul saat kueri benar-benar dijalankan.
+
+Ditambah `TestLikePatternMembungkusDanMelepasKarakterKhusus` untuk escape wildcard.

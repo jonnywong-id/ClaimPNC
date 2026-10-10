@@ -222,7 +222,7 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 	// adalah percakapan yang alamatnya sudah ada.
 	h.writeJSON(w, r, http.StatusOK, ActionResponse{
 		ID: strings.TrimSpace(chi.URLParam(r, "komunikasi")),
-		Message: "Balasan tersimpan. Percakapan ini berpindah ke tab \"Sudah Dijawab\", " +
+		Message: "Balasan tersimpan. Percakapan ini berpindah ke tab \"Answered\", " +
 			"dan cabang tujuan melihatnya sebagai jawaban terakhir.",
 		Portal: active.Alias,
 	})

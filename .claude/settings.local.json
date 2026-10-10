@@ -60,7 +60,20 @@
       "Bash(curl -s -o /dev/null -w \"health=%{http_code}\\\\n\" http://localhost:8080/health/ready)",
       "Bash(curl -s -X POST -w \"\\\\ntolak=%{http_code}\\\\n\" \"http://localhost:8080/api/inbox-rcl-pucl/klaim/PNCN.26.32/tindakan/tolak\")",
       "Bash(curl -s --noproxy '*' -o /dev/null -w \"health=%{http_code}\\\\n\" http://127.0.0.1:8080/health/ready)",
-      "Bash(curl -s --noproxy '*' -X POST -w \"tolak=%{http_code}\\\\n\" \"http://127.0.0.1:8080/api/inbox-rcl-pucl/klaim/PNCN.26.32/tindakan/tolak\")"
+      "Bash(curl -s --noproxy '*' -X POST -w \"tolak=%{http_code}\\\\n\" \"http://127.0.0.1:8080/api/inbox-rcl-pucl/klaim/PNCN.26.32/tindakan/tolak\")",
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(go test *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(grep -n *)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./frontend/package.json'\\).scripts,null,1\\)\\)\")",
+      "Bash(npm run *)",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(netstat -ano)",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\\\"ProcessId=16568\\\\\" | Select-Object -ExpandProperty CommandLine\")",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\\\"ProcessId=16568\\\\\" | Select-Object ProcessId,ParentProcessId | Format-List; Get-CimInstance Win32_Process -Filter \\\\\"Name='go.exe'\\\\\" | Select-Object ProcessId,CommandLine | Format-List\")",
+      "Bash(taskkill //PID 3148 //T //F)"
     ]
   }
 }
