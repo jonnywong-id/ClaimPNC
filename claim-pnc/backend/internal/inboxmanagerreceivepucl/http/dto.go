@@ -59,6 +59,11 @@ type WorkItemDTO struct {
 	ClaimAge string `json:"lama_klaim"`
 
 	ExpiryStatus string `json:"status_kadaluarsa"`
+
+	// ClaimScreenReady menyatakan nomor case baris ini dapat dibuka. Layar memakainya untuk
+	// memutuskan sel digambar sebagai tautan atau sebagai teks biasa — lihat
+	// inboxmanagerreceivepucl.WorkItem.
+	ClaimScreenReady bool `json:"layar_klaim_siap"`
 }
 
 // ColumnDTO adalah satu kolom grid.
@@ -86,9 +91,15 @@ type TabDTO struct {
 	// layar kerja penerimaan dokumen.
 	//
 	// Ia dikirim sebagai DATA, bukan disimpulkan layar dari kode tab, supaya perilaku klik
-	// ditetapkan di satu tempat — di sanalah buktinya dibaca. Hanya tab Receive yang begitu;
-	// di layar lama pun perilaku klik hanya dipasang pada kedua grid Receive.
+	// ditetapkan di satu tempat — di sanalah buktinya dibaca. Hanya tab Receive yang begitu.
 	OpensReceiveDocument bool `json:"buka_layar_kerja"`
+
+	// OpensClaimScreen menyatakan nomor case pada tab ini adalah TAUTAN yang membuka layar
+	// kerja klaim RCL/PUCL. Hanya tab RCL/PUCL yang begitu.
+	//
+	// Kedua penanda tidak pernah benar bersamaan: satu sel membuka tepat satu layar, dan
+	// kelas objek kerjanyalah yang menentukan layar mana.
+	OpensClaimScreen bool `json:"buka_layar_klaim"`
 
 	// Ketiga isian berikut menyatakan tab yang digambar tetapi belum dapat diisi.
 	//
@@ -159,6 +170,10 @@ type WriteActionDTO struct {
 	Label    string `json:"label"`
 	Activity string `json:"activity_pega"`
 	Owner    string `json:"pemilik"`
+
+	// AtTop menyatakan tombol ini digambar di ATAS isian, seperti di layar lama. Ia dikirim
+	// sebagai data karena letaknya dibaca dari section — di sanalah buktinya.
+	AtTop bool `json:"di_atas"`
 }
 
 // DocumentResponse adalah jawaban GET
@@ -216,6 +231,7 @@ func toWriteActionListDTO(
 			Label:    action.Label,
 			Activity: action.Activity,
 			Owner:    action.Owner,
+			AtTop:    action.AtTop,
 		})
 	}
 	return result
@@ -269,6 +285,7 @@ func toWorkItemDTO(item inboxmanagerreceivepucl.WorkItem) WorkItemDTO {
 		LetterPrintedAt:      item.LetterPrintedAt,
 		ClaimAge:             item.ClaimAge,
 		ExpiryStatus:         item.ExpiryStatus,
+		ClaimScreenReady:     item.ClaimScreenReady,
 	}
 }
 
@@ -298,6 +315,7 @@ func toTabDTO(tab inboxmanagerreceivepucl.Tab) TabDTO {
 		Columns:              columns,
 		FromWorkbasket:       tab.FromWorkbasket,
 		OpensReceiveDocument: tab.OpensReceiveDocument,
+		OpensClaimScreen:     tab.OpensClaimScreen,
 		Blocked:              tab.Blocked,
 		BlockedReason:        tab.BlockedReason,
 		BlockedOwner:         tab.BlockedOwner,
@@ -311,11 +329,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		Portal:             portalAlias,
+		Tabs:       tabs,
+		DefaultTab: meta.DefaultTab,
+		Portal:     portalAlias,
 	}
 }
 

@@ -237,6 +237,10 @@ func SampleRows() []Row {
 				LetterPrintedAt: "16/09/2026",
 				ClaimAge:        "8",
 				ExpiryStatus:    "Belum Kadaluarsa",
+
+				// Klaim ini PUNYA baris di tabel datar RCL/PUCL, sehingga nomor
+				// case-nya digambar sebagai tautan.
+				ClaimScreenReady: true,
 			},
 			WorkClass:        claim,
 			FromWorkbasket:   true,
@@ -260,6 +264,11 @@ func SampleRows() []Row {
 				TrackStatus:  "Dalam Proses",
 				ClaimAge:     "5",
 				ExpiryStatus: "Belum Kadaluarsa",
+
+				// Klaim ini BELUM punya baris di `POOLDATA.TC_PNC_PUCL`. Ia ada contohnya
+				// dengan sengaja: baris seperti inilah yang dulu digambar sebagai tautan
+				// yang pasti gagal. Nomor case-nya kini teks biasa.
+				ClaimScreenReady: false,
 			},
 			WorkClass:        claim,
 			FromWorkbasket:   true,

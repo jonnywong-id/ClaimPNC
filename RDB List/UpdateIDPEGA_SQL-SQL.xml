@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyOpenSQL/>
+<pxInstanceLockedCreateDateTime/>
+<pxInstanceLockedBy>REONARDH</pxInstanceLockedBy>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyMethodStatus/>
+<pyStatus/>
+<pyFormPost/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxInstanceLockedRuleSetVersion/>
+<pySPRuleSetName/>
+<pyWorkKey/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxMoveImportDateTime/>
+<pyBrowseSQL>UPDATE POOLDATA.DATA_ATTACHFILE
+SET IDPEGA = {curWorkPage.pzInsKey}
+WHERE IDPEGA =  {pyWorkPage.pzInsKey}</pyBrowseSQL>
+<pyCircumstanceTemplate/>
+<pzRuleSetVersionPatch>15</pzRuleSetVersionPatch>
+<pyUsage/>
+<pyRuleFormStatusTime>20261010T060344.759 GMT</pyRuleFormStatusTime>
+<pyRuleName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM UpdateIDPEGA_SQL</pyRuleName>
+<pxInstanceLockedRuleSet/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyWindowTitle/>
+<pyDescription/>
+<pyTemplateInputBox/>
+<pyRequestType>UpdateIDPEGA_SQL</pyRequestType>
+<pxUpdateDateTime>20260312T094418.828 GMT</pxUpdateDateTime>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pxMoveFromSystem/>
+<pyDeletedObject/>
+<pxUpdateOperator>MICHELLEWILLIAM</pxUpdateOperator>
+<pxHostId>jboss1040</pxHostId>
+<pyDisplayMode>basic</pyDisplayMode>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyRuleEnds/>
+<pxInsName>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!UPDATEIDPEGA_SQL</pxInsName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyClassName>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE</pyClassName>
+<pxMoveImportOperId/>
+<pyHandlerFlow/>
+<pyCircumstanceDate/>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!UPDATEIDPEGA_SQL #20260312T094130.013 GMT</pzDocumentKey>
+<pyDocumentTitle/>
+<pxSaveDateTime>20260316T024718.841 GMT</pxSaveDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject/>
+<pxCreateOpName>MICHELLEWILLIAM</pxCreateOpName>
+<pySaveSQL/>
+<pxCreateDateTime>20260312T094130.013 GMT</pxCreateDateTime>
+<pyRuleStarts/>
+<pxInsId>ASM-FW-GCNMFW-INT-DATA_ATTACHFILE!GCNM!UPDATEIDPEGA_SQL</pxInsId>
+<pyCircumstanceVal/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxCreateOperator>MICHELLEWILLIAM</pxCreateOperator>
+<pxUpdateSystemID>pegaprodasm83</pxUpdateSystemID>
+<pxInstanceLockedDateTime>20260316T024718.841 GMT</pxInstanceLockedDateTime>
+<pyInterface/>
+<pzChecksum>-725514485</pzChecksum>
+<pxInstanceLockedKey/>
+<pyJavaStream/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!UPDATEIDPEGA_SQL #20260312T094130.013 GMT</pzInsKey>
+<pySpecialtyComponentData/>
+<pyStreamName/>
+<pyCircumstanceDefinition/>
+<pyTemplate/>
+<pxSiblingCount/>
+<pyRuleParamsStreamName/>
+<pyValueChanged>false</pyValueChanged>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxTabLabel>ASM-FW-GCNMFW-Int-DATA_ATTACHFILE GCNM UpdateIDPEGA_SQL</pxTabLabel>
+<pxUpdateOpName>MICHELLEWILLIAM</pxUpdateOpName>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteSQL/>
+<pyCircumstanceDateProp/>
+<pyShowJavaWindowName>GeneratedJava20261010T060344.781 GMT</pyShowJavaWindowName>
+<pxCreateSystemID>pegaprodasm83</pxCreateSystemID>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!UPDATEIDPEGA_SQL #20260312T094130.013 GMT</pzOriginalInstanceKey>
+<pyCircumstanceType/>
+<pyIsFromManageChangeLP/>
+<pxCommitDateTime>20260316T024718.000 GMT</pxCommitDateTime>
+<pyCircumstanceProp/>
+<pyRuleSetVersion>01-03-15</pyRuleSetVersion>
+<pxMoveImportOperName/>
+<pyLabel>UpdateIDPEGA_SQL</pyLabel>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldType/>
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-DATA_ATTACHFILE GCNM!UPDATEIDPEGA_SQL #20260312T094130.013 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyBranchOut>false</pyBranchOut>
+<pyLaunch>true</pyLaunch>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyFavorites>true</pyFavorites>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pySave>false</pySave>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyCheckIn>false</pyCheckIn>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyVersionSecure>false</pyVersionSecure>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyDelegates>false</pyDelegates>
+<pyNew>true</pyNew>
+<pyBack>true</pyBack>
+<pyRun>false</pyRun>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyDelete>false</pyDelete>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyPreview>false</pyPreview>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyPropertyPane>false</pyPropertyPane>
+</pyToolBarSettings>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+</pagedata>

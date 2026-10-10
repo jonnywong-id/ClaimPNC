@@ -104,7 +104,10 @@ func TestDocumentReturnsDetailGroupsActionsAndLogs(t *testing.T) {
 		context.Background(), "ASM", caller, " ASM-FW-GCNMFW-WORK RCV-900001 ")
 	require.NoError(t, err)
 	require.Equal(t, "RCV-900001", doc.Detail.CaseID)
-	require.Equal(t, inboxmanagerreceivepucl.DocumentFieldGroupList(), doc.Groups)
+
+	// Bentuk layar disusun UNTUK BERKAS INI, bukan daftar tetap: sebagian isian punya syarat
+	// tampil yang bergantung pada Group Panel dan nomor polis berkas yang sedang dibuka.
+	require.Equal(t, inboxmanagerreceivepucl.DocumentFieldGroupsFor(doc.Detail), doc.Groups)
 	require.Equal(t, inboxmanagerreceivepucl.DocumentWriteActionList(), doc.Actions)
 	require.Contains(t, logs.String(), "layar kerja penerimaan dokumen dibuka")
 }

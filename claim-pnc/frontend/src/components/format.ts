@@ -152,6 +152,55 @@ export function formatPegaDateTime(value: string): string {
 }
 
 /**
+ * formatPegaFormDate menulis waktu menjadi `dd/MM/yyyy` atau `dd/MM/yyyy HH:mm` — bentuk
+ * isian tanggal pada FORM Pega, mis. "29/01/2020" dan "29/01/2020 11:58".
+ *
+ * # Kenapa ia ada di samping kedua pembantu di atas
+ *
+ * Ketiganya memang berbeda di layar lama, dan `D-13` menuntut setiap layar mengikuti
+ * acuannya sendiri:
+ *
+ *   formatPegaDateTime      sel GRID              `28/09/26 16:58`   tahun 2 digit
+ *   formatDateTimeWIB       isian baca saja       `30/09/2026 7:59`  jam tanpa nol depan
+ *   formatPegaFormDate      isian tanggal di form `29/01/2020`       waktu hanya bila ada
+ *
+ * Yang membedakannya dari `formatDateTimeWIB`: ia TIDAK mengarang jam untuk nilai yang
+ * hanya berisi tanggal. Isian "Tanggal Input Dokumen" di Pega ditulis tanpa jam sama
+ * sekali, dan menambahkan "0:00" akan mengarang ketelitian yang tidak ada di sumbernya.
+ *
+ * Aturan zona waktunya sama persis dengan `formatPegaDateTime`, dan alasannya pun sama:
+ * yang menentukan digeser atau tidak adalah ADA TIDAKNYA zona pada teksnya, bukan tebakan.
+ * Teks yang tidak dapat dibaca dikembalikan apa adanya — nilai `09/10/2026` yang memang
+ * sudah disimpan sebagai teks oleh procedure Pega karena itu lolos tanpa disentuh.
+ */
+export function formatPegaFormDate(value: string): string {
+  const text = value.trim()
+  if (text === '') return ''
+
+  const parts =
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
+      text,
+    )
+  if (!parts) return text
+
+  const [, year, month, day, hour, minute, zone] = parts
+
+  if (hour === undefined || minute === undefined) return `${day}/${month}/${year}`
+  if (zone === undefined) return `${day}/${month}/${year} ${hour}:${minute}`
+
+  const instant = new Date(text)
+  if (Number.isNaN(instant.getTime())) return text
+
+  const wib = new Date(instant.getTime() + 7 * 60 * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  return (
+    `${pad(wib.getUTCDate())}/${pad(wib.getUTCMonth() + 1)}/${wib.getUTCFullYear()} ` +
+    `${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}`
+  )
+}
+
+/**
  * rupiahToCents membaca angka yang diketik pengguna menjadi sen.
  *
  * Pemisah ribuan titik dan desimal koma diterima, karena itu yang diketik orang di

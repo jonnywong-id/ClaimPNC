@@ -1091,7 +1091,6 @@ Menggantikan harness `ReceiveDoucument_Harness` (`MENU_ID 56`). Seluruh rutenya 
 |---|---|---|
 | `GET` | `/api/inbox-manager-receive-pucl/tab` | ketiga tab beserta kolomnya dan selisih terencana |
 | `GET` | `/api/inbox-manager-receive-pucl` | satu halaman daftar. Saringan: `tab`, `halaman`, `ukuran` |
-| `GET` | `/api/inbox-manager-receive-pucl/ekspor` | unduhan CSV, susunan kolom mengikuti `tab` |
 | `POST` | `/api/inbox-manager-receive-pucl/tindakan` | **selalu 501** — lihat di bawah |
 
 **Tiga tab, dua antrean, dua kelas objek kerja yang berbeda:**

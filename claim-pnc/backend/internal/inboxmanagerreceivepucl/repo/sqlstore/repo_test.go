@@ -27,7 +27,7 @@ var workItemColumns = []string{
 	"REFERENCE", "CASE_ID", "POLICY_NUMBER", "CLAIM_NUMBER", "INSURED_NAME", "LOSS_DATE",
 	"GROUP_PANEL", "SENDER_NAME", "DOCUMENT_RECEIVED_AT", "SHEET_COUNT", "INBOX_ENTRY_AT",
 	"ANALYST_NOTE", "TRACK", "TRACK_STATUS", "LETTER_PRINTED_AT", "CLAIM_AGE",
-	"EXPIRY_STATUS", "TOTAL_ROWS",
+	"EXPIRY_STATUS", "CLAIM_SCREEN_READY", "TOTAL_ROWS",
 }
 
 func TestListReceiveScansRowsAndDerivesClaimType(t *testing.T) {
@@ -38,9 +38,9 @@ func TestListReceiveScansRowsAndDerivesClaimType(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(workItemColumns).
 			AddRow("K1", "RCV-1", "POL", "PNCN.26.1", "Nama", "2026-09-01",
 				inboxmanagerreceivepucl.GroupPanelPA, "Pengirim", "03/09/2026", nil,
-				"2026-09-03", nil, nil, nil, nil, nil, nil, 7).
+				"2026-09-03", nil, nil, nil, nil, nil, nil, "1", 7).
 			AddRow("K2", "RCV-2", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-				nil, nil, nil, nil, 7))
+				nil, nil, nil, nil, nil, 7))
 
 	page, err := repo.List(context.Background(), sampleQuery(t, inboxmanagerreceivepucl.TabReceive),
 		inboxmanagerreceivepucl.Pagination{Page: 2, Size: 50})
@@ -137,6 +137,7 @@ func TestDocumentScansEveryColumnInOrder(t *testing.T) {
 		CaseID:           "v-CASE_ID",
 		ClaimNumber:      "v-CLAIM_NUMBER",
 		ClaimType:        inboxmanagerreceivepucl.ClaimTypeOf("006"),
+		GroupPanel:       "006",
 		WorkStatus:       "v-WORK_STATUS",
 		CreatedAt:        "v-CREATED_AT",
 		ReceivedAt:       "v-RECEIVED_AT",

@@ -17,6 +17,7 @@ import {
   formatDate,
   formatDateTimeWIB,
   formatPegaDateTime,
+  formatPegaFormDate,
   formatPercent,
   formatRupiah,
   rupiahToCents,
@@ -325,6 +326,31 @@ describe('format', () => {
     expect(formatPegaDateTime('bukan waktu')).toBe('bukan waktu')
     expect(formatPegaDateTime('')).toBe('')
     expect(formatPegaDateTime('   ')).toBe('')
+  })
+
+  it('menulis isian tanggal pada FORM Pega bertahun empat digit', () => {
+    // Bentuk isian "Tanggal Terima Dokumen" di layar kerja: `29/01/2020 11:58`. Berbeda
+    // dari sel grid di atas, yang tahunnya dua digit.
+    expect(formatPegaFormDate('2020-01-29T11:58:00+07:00')).toBe('29/01/2020 11:58')
+    expect(formatPegaFormDate('2026-09-30T00:59:00Z')).toBe('30/09/2026 07:59')
+  })
+
+  it('tidak mengarang jam pada isian form yang hanya memuat tanggal', () => {
+    // "Tanggal Input Dokumen" ditulis Pega tanpa jam sama sekali. Menambahkan "0:00"
+    // mengarang ketelitian yang tidak ada di sumbernya.
+    expect(formatPegaFormDate('2020-01-29')).toBe('29/01/2020')
+  })
+
+  it('meloloskan nilai form yang memang sudah berupa teks tanggal', () => {
+    // Satu kolom penerimaan dokumen disimpan sebagai TEKS `dd/MM/yyyy` oleh procedure yang
+    // mengisinya. Ia harus lolos tanpa disentuh, bukan berubah menjadi teks yang salah.
+    expect(formatPegaFormDate('09/10/2026')).toBe('09/10/2026')
+    expect(formatPegaFormDate('ANYWHERE IN INDONESIA')).toBe('ANYWHERE IN INDONESIA')
+    expect(formatPegaFormDate('')).toBe('')
+  })
+
+  it('TIDAK menggeser isian form yang tidak menyebutkan zonanya', () => {
+    expect(formatPegaFormDate('2020-01-29 11:58')).toBe('29/01/2020 11:58')
   })
 
   it('menghitung tanggal hari ini menurut WIB', () => {

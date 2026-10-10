@@ -107,6 +107,21 @@ type Tab struct {
 	// kerja yang BERBEDA, karena kelas objek kerjanya berbeda. Lihat ReceiveDocument.
 	OpensReceiveDocument bool
 
+	// OpensClaimScreen menyatakan mengklik nomor case pada tab ini membuka LAYAR KERJA
+	// KLAIM RCL/PUCL — bukan layar penerimaan dokumen.
+	//
+	// Hanya tab RCL/PUCL begitu. Keduanya tidak pernah bernilai benar bersamaan: satu sel
+	// nomor case membuka tepat satu layar, dan kelas objek kerjanyalah yang menentukan
+	// layar mana.
+	//
+	// # Kenapa tujuannya memakai NOMOR CASE, bukan kunci teknis
+	//
+	// Karena layar tujuannya sudah pindah ke tabel milik aplikasi ini. Modul `inboxrclpucl`
+	// membaca `POOLDATA.TC_PNC_PUCL` dan kuncinya `CLAIMID`, yang berisi nomor case telanjang
+	// (`PNC-2266`) — bukan `PZINSKEY` yang berisi `ASM-FW-GCNMFW-WORK PNC-2266`. Mengirim
+	// kunci teknis ke sana menghasilkan "tidak ditemukan" untuk klaim yang sebenarnya ada.
+	OpensClaimScreen bool
+
 	// FromWorkbasket menyatakan barisnya diambil dari antrean BERSAMA
 	// (DATAPEGA.PC_ASSIGN_WORKBASKET), bukan dari penugasan per orang
 	// (DATAPEGA.PC_ASSIGN_WORKLIST).
@@ -217,8 +232,9 @@ var tabs = []Tab{
 		Description: "Klaim yang ditolak (RCL) atau diproses ulang (PUCL) dan masih " +
 			"menunggu keputusan. Antrean bersama, bukan penugasan per orang.",
 
-		Columns:        rclpuclColumns,
-		FromWorkbasket: true,
+		Columns:          rclpuclColumns,
+		FromWorkbasket:   true,
+		OpensClaimScreen: true,
 	},
 }
 
@@ -281,9 +297,13 @@ var PlannedDifferences = []string{
 		"sebagai teks biasa, dan di ujung baris ditambahkan kolom tombol \"Lihat Detail\" " +
 		"yang tidak ada di Pega sama sekali. Kolom itu dihapus.",
 
-	"Tab \"RCL/PUCL\" TIDAK punya tautan pada nomor case-nya. Di layar lama pun tidak: " +
-		"perilaku klik hanya dipasang pada kedua grid Receive. Nomor case di tab itu karena " +
-		"itu digambar sebagai teks biasa.",
+	"Mengklik nomor case di tab \"RCL/PUCL\" membuka layar kerja klaim RCL/PUCL. Itu yang " +
+		"terjadi di Pega: sel `.pyID` pada grid itu bertanda `pyUIElement = link`, dan " +
+		"mengkliknya menjalankan `SetAssignmentInboxPUCL_act` dengan `inskey = .pzInsKey` " +
+		"pada kelas `ASM-FW-GCNMFW-Work-PNC`, lalu Open Assignment — susunan yang sama persis " +
+		"dengan tab Receive, hanya kelas objek kerjanya yang berbeda. Yang berbeda di sini: " +
+		"tujuannya dialamatkan dengan NOMOR CASE, bukan kunci teknis, karena layar tujuannya " +
+		"sudah membaca `POOLDATA.TC_PNC_PUCL` yang kuncinya `CLAIMID`.",
 
 	"Tab RCL/PUCL menyaring antrean bersama `RCLPUCL`. Report Definition yang memasok " +
 		"grid itu di Pega (`InboxRCLPUCL_RD`) tidak punya gabungan sama sekali dan hanya " +

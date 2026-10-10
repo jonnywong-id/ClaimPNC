@@ -3,14 +3,11 @@ package inboxmanagerreceivepuclhttp
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -248,7 +245,7 @@ func TestHandlersWithoutPortalContextAnswerNotStated(t *testing.T) {
 
 	for name, handle := range map[string]http.HandlerFunc{
 		"metadata": h.Metadata, "list": h.List, "document": h.Document,
-		"export": h.Export, "reject": h.RejectWrite,
+		"reject": h.RejectWrite,
 	} {
 		rec := httptest.NewRecorder()
 		handle(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
@@ -266,145 +263,6 @@ func TestReadCallerWithoutReaderIsUnknown(t *testing.T) {
 	_, known = h.readCaller(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.False(t, known)
 }
-
-func TestExportWritesCSVOfCurrentTab(t *testing.T) {
-	f := newFixture(t, memory.NewSampleStore(), "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor?tab=1", "ASM")
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "text/csv; charset=utf-8", rec.Header().Get("Content-Type"))
-	require.Contains(t, rec.Header().Get("Content-Disposition"), `filename="receive.csv"`)
-	require.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
-
-	records, err := csv.NewReader(rec.Body).ReadAll()
-	require.NoError(t, err)
-	tab, _ := inboxmanagerreceivepucl.FindTab(inboxmanagerreceivepucl.TabReceive)
-	require.Equal(t, exportHeader(tab), records[0])
-	require.Greater(t, len(records), 1)
-	require.Contains(t, records[1][0], "RCV-")
-}
-
-func TestExportRCLPUCLFilename(t *testing.T) {
-	f := newFixture(t, memory.NewSampleStore(), "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor?tab=2", "ASM")
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Contains(t, rec.Header().Get("Content-Disposition"), `filename="rcl-pucl.csv"`)
-}
-
-func TestExportFirstPageErrorIsAnsweredAsJSON(t *testing.T) {
-	f := newFixture(t, memory.NewSampleStore(), "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor?tab=7", "ASM")
-	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-	require.Equal(t, CodeValidationFail, decode(t, rec)["kode"])
-}
-
-func TestExportPagesUntilTotalAndStopsOnLaterError(t *testing.T) {
-	item := inboxmanagerreceivepucl.WorkItem{CaseID: "RCV-1"}
-	repo := &scriptedRepo{
-		pages: []inboxmanagerreceivepucl.Page{
-			{Items: []inboxmanagerreceivepucl.WorkItem{item}, Total: 3},
-			{Items: []inboxmanagerreceivepucl.WorkItem{item}, Total: 3},
-		},
-		err: errors.New("halaman ketiga gagal"),
-	}
-	f := newFixture(t, repo, "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor", "ASM")
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, 3, repo.calls)
-
-	records, err := csv.NewReader(rec.Body).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, 3, "judul + dua baris yang sempat terbaca")
-	require.Contains(t, f.logs.String(), "ekspor inbox manager receive/PUCL terputus")
-}
-
-func TestExportStopsWhenPageIsEmpty(t *testing.T) {
-	repo := &scriptedRepo{pages: []inboxmanagerreceivepucl.Page{{Total: 10}}}
-	f := newFixture(t, repo, "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor", "ASM")
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, 1, repo.calls)
-	records, err := csv.NewReader(rec.Body).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, 1)
-}
-
-func TestExportMarksTruncationAtLimit(t *testing.T) {
-	items := make([]inboxmanagerreceivepucl.WorkItem, exportLimit+1)
-	for i := range items {
-		items[i] = inboxmanagerreceivepucl.WorkItem{CaseID: fmt.Sprintf("RCV-%d", i)}
-	}
-	// Satu halaman raksasa cukup untuk menyentuh batas pada potongan pertama.
-	repo := &scriptedRepo{pages: []inboxmanagerreceivepucl.Page{{Items: items, Total: len(items)}}}
-	f := newFixture(t, repo, "penyelia")
-
-	rec := f.do(t, http.MethodGet, "/inbox-manager-receive-pucl/ekspor", "ASM")
-	require.Equal(t, http.StatusOK, rec.Code)
-	records, err := csv.NewReader(rec.Body).ReadAll()
-	require.NoError(t, err)
-	require.Len(t, records, exportLimit+2)
-	require.Equal(t,
-		fmt.Sprintf("-- Terpotong pada %d baris dari %d yang cocok. Persempit penyaringnya. --",
-			exportLimit, exportLimit+1),
-		records[len(records)-1][0])
-}
-
-// failingWriter menolak setiap penulisan badan.
-type failingWriter struct {
-	header http.Header
-	status int
-}
-
-func (f *failingWriter) Header() http.Header       { return f.header }
-func (f *failingWriter) WriteHeader(status int)    { f.status = status }
-func (f *failingWriter) Write([]byte) (int, error) { return 0, errors.New("klien terputus") }
-
-func TestExportLogsFailureWhenClientDisconnects(t *testing.T) {
-	f := newFixture(t, memory.NewSampleStore(), "penyelia")
-
-	req := httptest.NewRequest(http.MethodGet, "/inbox-manager-receive-pucl/ekspor", nil)
-	req.Header.Set(portalhttp.HeaderPortal, "ASM")
-	w := &failingWriter{header: http.Header{}}
-	f.router.ServeHTTP(w, req)
-
-	require.Contains(t, f.logs.String(), "ekspor inbox manager receive/PUCL terputus")
-	require.Contains(t, f.logs.String(), "klien terputus")
-}
-
-func TestExportHelpers(t *testing.T) {
-	require.Equal(t, "inbox-manager-receive-pucl.csv",
-		exportFilename(inboxmanagerreceivepucl.Tab{Code: "9"}))
-	require.Empty(t, exportTruncationNotice(0, 5))
-	require.Len(t, exportTruncationNotice(3, 5), 3)
-
-	item := inboxmanagerreceivepucl.WorkItem{
-		CaseID: "a", PolicyNumber: "b", ClaimNumber: "c", InsuredName: "d", LossDate: "e",
-		ClaimType: "f", SenderName: "g", DocumentReceivedDate: "h", DocumentSheetCount: "i",
-		InboxEntryAt: "j", AnalystNote: "k", Track: "l", TrackStatus: "m",
-		LetterPrintedAt: "n", ClaimAge: "o", ExpiryStatus: "p",
-	}
-	keys := []string{
-		inboxmanagerreceivepucl.FieldCaseID, inboxmanagerreceivepucl.FieldPolicyNumber,
-		inboxmanagerreceivepucl.FieldClaimNumber, inboxmanagerreceivepucl.FieldInsuredName,
-		inboxmanagerreceivepucl.FieldLossDate, inboxmanagerreceivepucl.FieldClaimType,
-		inboxmanagerreceivepucl.FieldSenderName, inboxmanagerreceivepucl.FieldDocumentReceivedDate,
-		inboxmanagerreceivepucl.FieldDocumentSheetCount, inboxmanagerreceivepucl.FieldInboxEntryAt,
-		inboxmanagerreceivepucl.FieldAnalystNote, inboxmanagerreceivepucl.FieldTrack,
-		inboxmanagerreceivepucl.FieldTrackStatus, inboxmanagerreceivepucl.FieldLetterPrintedAt,
-		inboxmanagerreceivepucl.FieldClaimAge, inboxmanagerreceivepucl.FieldExpiryStatus,
-	}
-	var got []string
-	for _, key := range keys {
-		got = append(got, cellValue(item, key))
-	}
-	require.Equal(t, strings.Split("a b c d e f g h i j k l m n o p", " "), got)
-	require.Empty(t, cellValue(item, "tidak-dikenal"))
-}
-
 func TestPositiveNumber(t *testing.T) {
 	require.Equal(t, 7, positiveNumber("7"))
 	require.Equal(t, 0, positiveNumber("-1"))

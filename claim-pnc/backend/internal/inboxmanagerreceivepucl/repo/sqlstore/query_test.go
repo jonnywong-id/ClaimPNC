@@ -370,6 +370,14 @@ func TestQueriesTouchOnlyTheExpectedTables(t *testing.T) {
 		"DATAPEGA.PC_ASSIGN_WORKLIST",
 		"DATAPEGA.PC_ASSIGN_WORKBASKET",
 		"POOLDATA.T_CLAIM_RECIVEDCLAIM",
+
+		// Dibaca HANYA di dalam `EXISTS`, dan hanya untuk menjawab apakah layar kerja klaim
+		// dapat dibuka untuk sebuah baris. Tidak satu pun kolomnya dibawa ke hasil.
+		//
+		// Ia tabel milik aplikasi ini, bukan milik Pega, sehingga membacanya tidak
+		// menyentuh `P-1`. Ditambahkan 2026-10-10 setelah tautan tab RCL/PUCL mendarat di
+		// "klaim tidak ditemukan" untuk klaim yang belum punya baris di sana.
+		"POOLDATA.TC_PNC_PUCL",
 	}
 
 	table := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+([A-Z_]+\.[A-Z_]+)`)

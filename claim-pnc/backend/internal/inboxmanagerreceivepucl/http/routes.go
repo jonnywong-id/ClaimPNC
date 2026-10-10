@@ -77,10 +77,15 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// masih dimiliki Pega (`P-1`).
 		perPortal.Get("/inbox-manager-receive-pucl/dokumen/{referensi}", h.Document)
 
-		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun, dan menjadikannya GET
-		// membuat unduhannya dapat dipicu tautan biasa — termasuk dibuka ulang dari
-		// riwayat peramban dengan penyaring yang sama.
-		perPortal.Get("/inbox-manager-receive-pucl/ekspor", h.Export)
+		// TIDAK ADA rute ekspor, dan itu keputusan — bukan kelalaian.
+		//
+		// Versi sebelumnya menyediakannya beserta tombol "Export Data" di layar. Layar lama
+		// tidak punya tombol itu sama sekali: tidak ada satu pun activity ekspor yang
+		// dirujuk `Harness/ReceiveDoucument_Harness-Harness.xml` maupun
+		// `Section/InboxManagerReceive_Section-Section.xml`. Keduanya dicabut atas keputusan
+		// Work Owner 2026-10-10 — `D-13` menetapkan tampilan mengikuti Pega, dan tombol yang
+		// tidak pernah ada di sana membuat petugas yang membandingkan kedua layar
+		// berdampingan mencari padanannya.
 
 		// Aksi tulis sistem lama. Rutenya ADA supaya tindakan di layar menjawab dengan
 		// alasan, bukan dengan "halaman tidak ditemukan" — lihat Handler.RejectWrite.
