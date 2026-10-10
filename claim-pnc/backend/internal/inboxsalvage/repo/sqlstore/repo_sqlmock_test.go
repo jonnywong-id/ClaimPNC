@@ -382,6 +382,10 @@ func TestDetailReadsHeaderItemsAndHistory(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(historyColumns).
 			AddRow("2026-09-01 08:00:00", " PNC-1 ", " PIC ", " 100 ", "2", "1", " 77 "))
 
+	// Jalur ID PENGAJUAN membaca pilihan autocomplete pula — daftar "Rejected Checker"
+	// membuka FORM lewat jalur ini, bukan panel baca.
+	expectClaimChoices(mock)
+
 	detail, err := repo.Detail(context.Background(), " 77 ")
 	require.NoError(t, err)
 
@@ -413,6 +417,11 @@ func TestDetailReadsHeaderItemsAndHistory(t *testing.T) {
 		SalvageID: "77", InputDate: "2026-09-01", ClaimNo: "PNC-1", PIC: "PIC",
 		MinimumValue: "100", Position: inboxsalvage.HistoryAccepted,
 	}}, detail.History)
+
+	require.Equal(t, []inboxsalvage.ObjectChoice{{ID: "1", Name: "Gudang Blok C"}},
+		detail.ObjectChoices, "pilihan objek ikut terbawa, bukan sekadar terbaca")
+	require.Equal(t, []inboxsalvage.CoverageChoice{{ID: "10005", Name: "Property All Risk"}},
+		detail.CoverageChoices)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -542,11 +551,29 @@ func expectEmptyHistory(mock sqlmock.Sqlmock) {
 		WillReturnRows(sqlmock.NewRows(historyColumns))
 }
 
+// expectClaimChoices memasang harapan untuk KEDUA kueri pilihan autocomplete.
+//
+// Keduanya selalu berjalan berpasangan dan berurutan — claimChoices membaca objek lebih
+// dulu, lalu coverage — sehingga memisahkannya di sisi uji hanya menggandakan kesempatan
+// salah urut tanpa membuktikan apa pun tambahan.
+func expectClaimChoices(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(exact("claim_objects")).
+		WithArgs(PegaWorkKeyPrefix, "PNC-1").
+		WillReturnRows(sqlmock.NewRows([]string{"OBJECT_ID", "OBJECT_NAME"}).
+			AddRow(" 1 ", " Gudang Blok C "))
+
+	mock.ExpectQuery(exact("claim_coverages")).
+		WithArgs(PegaWorkKeyPrefix, "PNC-1").
+		WillReturnRows(sqlmock.NewRows([]string{"COVERAGE_ID", "COVERAGE_NAME"}).
+			AddRow(" 10005 ", " Property All Risk "))
+}
+
 func TestDetailByClaimWithoutSubmissionReturnsTheClaimOnly(t *testing.T) {
 	repo, mock := newMock(t)
 
 	expectClaimHeader(mock)
 	expectEmptyHistory(mock)
+	expectClaimChoices(mock)
 	mock.ExpectQuery(exact("latest_salvage_of_claim")).
 		WithArgs("PNC-1").
 		WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow(nil))
@@ -569,6 +596,7 @@ func TestDetailByClaimTreatsNoRowsFromTheAggregateAsNoSubmission(t *testing.T) {
 
 	expectClaimHeader(mock)
 	expectEmptyHistory(mock)
+	expectClaimChoices(mock)
 	mock.ExpectQuery(exact("latest_salvage_of_claim")).
 		WillReturnRows(sqlmock.NewRows([]string{"ID"}))
 
@@ -586,6 +614,7 @@ func TestDetailByClaimWithSubmissionKeepsTheClaimFields(t *testing.T) {
 		WithArgs("PNC-1").
 		WillReturnRows(sqlmock.NewRows(historyColumns).
 			AddRow("2026-09-01", "PNC-1", "P", "1", "6", "0", "9"))
+	expectClaimChoices(mock)
 	mock.ExpectQuery(exact("latest_salvage_of_claim")).
 		WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow(" 9 "))
 	mock.ExpectQuery(exact("detail_header")).
@@ -618,6 +647,7 @@ func TestDetailByClaimFallsBackToTheClaimWhenTheSubmissionVanished(t *testing.T)
 
 	expectClaimHeader(mock)
 	expectEmptyHistory(mock)
+	expectClaimChoices(mock)
 	mock.ExpectQuery(exact("latest_salvage_of_claim")).
 		WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow("9"))
 	mock.ExpectQuery(exact("detail_header")).
@@ -672,6 +702,7 @@ func TestDetailByClaimReportsEveryFailure(t *testing.T) {
 		repo, mock := newMock(t)
 		expectClaimHeader(mock)
 		expectEmptyHistory(mock)
+		expectClaimChoices(mock)
 		mock.ExpectQuery(exact("latest_salvage_of_claim")).WillReturnError(errBoom)
 
 		_, err := repo.DetailByClaim(context.Background(), "PNC-1")
@@ -684,6 +715,7 @@ func TestDetailByClaimReportsEveryFailure(t *testing.T) {
 		repo, mock := newMock(t)
 		expectClaimHeader(mock)
 		expectEmptyHistory(mock)
+		expectClaimChoices(mock)
 		mock.ExpectQuery(exact("latest_salvage_of_claim")).
 			WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow("9"))
 		mock.ExpectQuery(exact("detail_header")).WillReturnError(errBoom)
@@ -697,6 +729,7 @@ func TestDetailByClaimReportsEveryFailure(t *testing.T) {
 		repo, mock := newMock(t)
 		expectClaimHeader(mock)
 		expectEmptyHistory(mock)
+		expectClaimChoices(mock)
 		mock.ExpectQuery(exact("latest_salvage_of_claim")).
 			WillReturnRows(sqlmock.NewRows([]string{"ID"}).AddRow("9"))
 		mock.ExpectQuery(exact("detail_header")).
@@ -853,6 +886,13 @@ func TestCreateInsertsTheSubmissionAndItsItemsInOneTransaction(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// Menyunting MENGGANTI daftar barang — termasuk menggantinya dengan daftar KOSONG.
+//
+// Penghapusannya berjalan meski form tidak membawa satu barang pun, dan itu bukan
+// kelalaian melainkan arti "mengganti": pengguna yang mengosongkan daftarnya memang
+// bermaksud mengosongkannya. Pernyataan di bawah mengunci urutannya — hapus lebih dulu,
+// sisip kemudian — karena urutan terbalik akan membuang barang yang baru saja disimpan,
+// dan barisnya membawa nilai uang.
 func TestCreateUpdateKeepsTheSalvageIDAndSkipsItemsWhenThereAreNone(t *testing.T) {
 	repo, mock := newMock(t)
 
@@ -860,6 +900,9 @@ func TestCreateUpdateKeepsTheSalvageIDAndSkipsItemsWhenThereAreNone(t *testing.T
 	mock.ExpectExec(exact("update_salvage")).
 		WithArgs(insertBinds("17")...).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(exact("delete_salvage_detail")).
+		WithArgs("PNC-1", "17").
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
 	id, err := repo.Create(context.Background(), newForm(inboxsalvage.FormModeUpdate, "17"))
@@ -958,6 +1001,8 @@ func TestCreateRollsBackOnEveryFailure(t *testing.T) {
 		repo, mock := newMock(t)
 		mock.ExpectBegin()
 		mock.ExpectExec(exact("update_salvage")).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(exact("delete_salvage_detail")).
+			WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectCommit().WillReturnError(errBoom)
 
 		_, err := repo.Create(context.Background(), newForm(inboxsalvage.FormModeUpdate, "5"))

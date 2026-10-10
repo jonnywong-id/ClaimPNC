@@ -3,19 +3,16 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { TabBar } from '@/components/TabBar'
 
 import {
   useEksporReas,
-  useReasCounts,
   useReasList,
+  useReasListCounts,
   useReasMetadata,
-  useReasXOL,
   type ParameterDaftar,
 } from './api'
 import { DetailKlaimPanel } from './DetailKlaimPanel'
 import { StatusSummary } from './StatusSummary'
-import { XOLPanel } from './XOLPanel'
 import { bukanReasuradur, formatTanggal, pesanGalat, pesanMuat } from './pesan'
 import type { Baris, Daftar } from './types'
 
@@ -30,7 +27,7 @@ import type { Baris, Daftar } from './types'
  * masuk.** Login pemanggil dicocokkan ke `POOLDATA.T_REINSURER.LOGIN`, dan hasil
  * pencocokan itulah yang menentukan klaim mana yang terlihat.
  *
- * # TUJUH tampilan, bukan tiga
+ * # ENAM daftar, dan di Pega tabel "Status / Jumlah" adalah navigasinya
  *
  * Seluruhnya dikendalikan satu nilai di Pega — `TempView.CityID`, yang `SetDataPLADLA`
  * terima sebagai `param.tipe`:
@@ -38,14 +35,27 @@ import type { Baris, Daftar } from './types'
  *	PLA                       PLA sudah dikirimkan kepada Anda, DLA belum
  *	PLA & DLA                 DLA sudah dikirimkan kepada Anda
  *	CLOSE CLAIM               klaimnya sudah selesai dan tidak menunggu penutupan
- *	Komunikasi Masuk          ada pesan untuk Anda yang belum Anda jawab
- *	Terkirim — Belum Dijawab  pesan yang Anda kirim dan belum dijawab
- *	Terkirim — Sudah Dijawab  pesan yang Anda kirim dan sudah dijawab
- *	DATA PLA DLA XOL KLAIM    ringkasan XOL, bukan daftar klaim
+ *	NOT ANSWERED              ada pesan untuk Anda yang belum Anda jawab
+ *	NOT REPLIED FROM ASM      pesan yang Anda kirim dan belum dijawab
+ *	REPLIED FROM ASM          pesan yang Anda kirim dan sudah dijawab
  *
- * Ketiga daftar komunikasi dan tampilan XOL sebagai TAB baru dibangun 2026-09-28. Yang
- * terakhir sebelumnya digambar permanen di kaki halaman; di Pega ia tampilan tersendiri
- * (`pyContainerVisibleWhen = TempView.CityID==7`).
+ * Layar Pega TIDAK punya bilah tab — `pyLayoutFormat>TABBED` nol kemunculan di
+ * `Section/InboxDLAReas_sect-Section.xml`. Yang berpindah daftar adalah ANGKA pada tabel
+ * "Status / Jumlah": selnya ber-`pyFormat=pxLink` dengan aksi `refresh` yang membawa
+ * kode daftarnya. Bilah tab yang sempat dipakai di sini dicabut 2026-10-09.
+ *
+ * # Kenapa "DATA PLA DLA XOL KLAIM" TIDAK ada di sini
+ *
+ * `SetDataPLADLA` memang punya cabang `param.tipe=="7"` yang mengisi `DataKomiteXOL`, dan
+ * sectionnya memang punya wadah berjudul "DATA PLA DLA XOL KLAIM". Tetapi wadah itu
+ * bersyarat `pyContainerVisibleWhen = TempView.CityID==7`, dan `CityID` HANYA pernah
+ * diisi dari `.CityID` sebuah baris tabel "Status / Jumlah" — literal `7` nol kemunculan
+ * sebagai nilai `tipe` di seluruh export. Tabelnya sendiri berisi enam baris.
+ *
+ * Artinya di Pega tampilan itu **tidak pernah dapat tergambar**: ia kode mati. Ia sempat
+ * dibangun di sini sebagai tab ketujuh (2026-09-28) lalu sebagai panel permanen
+ * (2026-10-09 pagi), dan keduanya memberi akses kepada sesuatu yang layar lama tidak
+ * pernah tampilkan. Dicabut 2026-10-09 atas keputusan Work Owner.
  *
  * # JANGAN tertukar dengan "Inbox PLA, DLA, Pre DLA" (`MENU_ID 44`)
  *
@@ -88,39 +98,24 @@ export function InboxPLADLAReasPage() {
   const aktif = tab || meta.data?.daftar_bawaan || ''
   const daftarAktif = daftar.find((item) => item.kode === aktif)
 
-  // Tampilan XOL bukan daftar klaim: ia tidak punya baris, tidak punya tabel ringkas,
-  // dan tidak disaring kotak pencarian. Penandanya datang dari SERVER — layar tidak
-  // mencocokkan kodenya sendiri.
-  const tampilanXOL = daftarAktif?.jenis === 'xol'
-
   const parameter: ParameterDaftar = useMemo(
     () => ({ tab: aktif, page, cari: dicari }),
     [aktif, page, dicari],
   )
 
-  const siapDaftar = aktif !== '' && !tampilanXOL
+  const siapDaftar = aktif !== ''
   const list = useReasList(parameter, siapDaftar)
-  const ringkas = useReasCounts(parameter, siapDaftar)
   const ekspor = useEksporReas()
 
-  // Grid XOL baru diambil SETELAH daftarnya berhasil.
+  // Tabel "Status / Jumlah" TIDAK menerima daftar yang sedang terbuka.
   //
-  // Menunggu keberhasilan, bukan sekadar memeriksa belum-ada-galat, dan perbedaannya
-  // nyata: keduanya berangkat bersamaan pada render pertama, ketika galat daftarnya
-  // belum tiba. Pemanggil yang bukan mitra terdaftar akan menerima DUA penolakan untuk
-  // satu sebab yang sama — dan yang kedua digambar sebagai kerusakan di tengah halaman
-  // yang sudah menjelaskan sebabnya di atas.
-  //
-  // Biayanya satu perjalanan yang tertunda sesaat; yang ditukar dengannya adalah
-  // permintaan yang sudah pasti ditolak tidak pernah dikirim sama sekali.
-  const ditolak = bukanReasuradur(list.error)
+  // Ia menyebut keenamnya sekaligus — itulah yang membuatnya dapat dipakai berpindah —
+  // sehingga berpindah daftar tidak membuatnya dihitung ulang. Yang mengubahnya hanyalah
+  // pencarian, karena angkanya memang menyusut bersama tabel di sebelahnya.
+  const ringkas = useReasListCounts(dicari, siapDaftar)
 
-  // Grid XOL diambil hanya ketika tampilannya BENAR-BENAR dibuka.
-  //
-  // Sebelumnya ia diambil pada setiap pembukaan layar karena panelnya digambar permanen.
-  // Sejak ia menjadi tampilan tersendiri — seperti di Pega — gabungan dua tabel XOL tidak
-  // lagi dijalankan untuk pengguna yang tidak pernah membukanya.
-  const xol = useReasXOL(tampilanXOL)
+  // Penolakan "bukan mitra terdaftar" dikenali dari galat daftarnya.
+  const ditolak = bukanReasuradur(list.error)
 
   function pilihDaftar(kode: string) {
     setTab(kode)
@@ -166,11 +161,8 @@ export function InboxPLADLAReasPage() {
   // Ia bukan kegagalan sementara yang layak dicoba ulang: selama pendaftarannya belum
   // diubah, jawabannya akan sama. Menggambar tabel, tombol ekspor, dan bilah tab di
   // bawahnya hanya menawarkan hal-hal yang seluruhnya akan ditolak.
-  // Penolakan dapat datang dari daftar MAUPUN dari grid XOL — keduanya menolak dengan
-  // sebab yang sama, dan yang mana yang menjawab lebih dulu bergantung pada tab mana yang
-  // sedang terbuka.
-  if (ditolak || bukanReasuradur(xol.error)) {
-    const pesan = pesanMuat(ditolak ? list.error : xol.error)
+  if (ditolak) {
+    const pesan = pesanMuat(list.error)
     return (
       <Bingkai>
         <ErrorMessage
@@ -184,36 +176,20 @@ export function InboxPLADLAReasPage() {
 
   return (
     <Bingkai>
-      <TabBar
-        tabs={daftar.map((item) => ({
-          kode: item.kode,
-          nama: item.nama,
-          keterangan: item.keterangan,
-        }))}
-        active={aktif}
-        onSelect={pilihDaftar}
-        label="Tahap pemberitahuan"
-      />
-
       {daftarAktif && (
         <p className="text-sm text-slate-600">{daftarAktif.keterangan}</p>
       )}
 
-      {tampilanXOL ? (
-        <XOLPanel
-          kolom={daftarAktif?.kolom ?? meta.data?.kolom_xol ?? []}
-          rows={xol.data?.baris ?? []}
-          isLoading={xol.isLoading}
-          isError={xol.isError}
-          error={xol.error}
-        />
-      ) : (
-        <>
-          <StatusSummary
-            rows={ringkas.data?.baris ?? []}
-            isLoading={ringkas.isLoading}
-          />
+      {/*
+        Grid di KIRI, tabel "Status / Jumlah" di KANAN — susunan Pega apa adanya.
 
+        Ia menumpuk pada layar sempit, dan itu bukan penyimpangan: `D-12` menuntut layar
+        ini tetap terpakai di tablet, dan tabel dua kolom yang dipaksa berdampingan di
+        lebar 768px akan memeras gridnya sampai tidak terbaca. Pada lebar desktop —
+        tempat layar ini sebenarnya dipakai — susunannya sama dengan layar lama.
+      */}
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-start">
+        <div className="min-w-0 flex-1 space-y-5">
           <DataTable<Baris>
             columns={kolomDaftar(daftarAktif, rincian, setRincian)}
             rows={list.data?.baris ?? []}
@@ -276,17 +252,35 @@ export function InboxPLADLAReasPage() {
               tone="gangguan"
             />
           )}
+        </div>
 
-          {rincian && (
-            <DetailKlaimPanel
-              kunciKlaim={rincian.kunci_klaim}
-              nomorKlaim={rincian.no_klaim}
-              onClose={() => setRincian(null)}
-            />
+        <div className="w-full xl:w-96 xl:shrink-0">
+          <StatusSummary
+            rows={ringkas.data?.baris ?? []}
+            active={aktif}
+            isLoading={ringkas.isLoading}
+            onSelect={pilihDaftar}
+          />
+
+          {ringkas.isError && (
+            <div className="mt-3">
+              <ErrorMessage
+                title="Jumlah tiap daftar tidak dapat dihitung"
+                description={pesanGalat(ringkas.error)}
+                tone="gangguan"
+              />
+            </div>
           )}
-        </>
-      )}
+        </div>
+      </div>
 
+      {rincian && (
+        <DetailKlaimPanel
+          kunciKlaim={rincian.kunci_klaim}
+          nomorKlaim={rincian.no_klaim}
+          onClose={() => setRincian(null)}
+        />
+      )}
     </Bingkai>
   )
 }

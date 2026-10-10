@@ -31463,3 +31463,209 @@ kebetulan itulah yang menuntun ke jawaban yang benar. Keputusan urutan pada §17
 
 Proses `go run` wajib **dihentikan dan dijalankan ulang**. Dua kali dalam penelusuran ini angka yang dilaporkan berasal
 dari biner lama: perubahan sumber tidak sampai ke layar, dan analisis dijalankan atas angka yang sudah usang.
+
+---
+
+## 179. Inbox Analyst Doctor gagal dimuat — dua kolom tebakan yang memang tidak ada (2026-10-09)
+
+**Laporan Work Owner:** layar Inbox Analyst Doctor menjawab *"Antrean tidak dapat dimuat —
+Terjadi kesalahan pada sistem"*, dan bilah "Total Data : 0".
+
+### 179.1 Sebabnya, dibuktikan ke katalog Oracle
+
+Kueri daftarnya menyaring `w.ISCOMPLIANCETRANSFER_1` dan mengambil `w.ANALYSTDOCTORREMAKS_1`.
+Kedua nama itu **tebakan** yang mengikuti konvensi `_1`, karena
+`Report Definition/InboxAnalystDoctor_RD-RD.xml` menandai kedua propertinya sendiri
+`<pzPropertyType>unexposed</pzPropertyType>` — properti tak terekspos hidup di dalam blob
+Pega, bukan sebagai kolom SQL. Kepala berkas `.sql`-nya sendiri sudah menulis
+`** PERLU KONFIRMASI **` di kedua baris itu.
+
+Tebakannya diuji langsung:
+
+```sql
+SELECT COLUMN_NAME, DATA_TYPE, NUM_DISTINCT FROM ALL_TAB_COLUMNS
+ WHERE TABLE_NAME = 'PC_ASM_FW_GCNMFW_WORK'
+   AND (COLUMN_NAME LIKE '%COMPLIANCE%' OR COLUMN_NAME LIKE '%ANALYST%'
+        OR COLUMN_NAME LIKE '%REMAK%');
+```
+
+Hasilnya **satu baris**: `ANALYSTTRANSFERDATE_1`. Keduanya memang tidak ada, sehingga kueri
+gagal ORA-00904 pada **setiap** permintaan.
+
+**Ini sudah pernah tercatat.** §147.3 menulisnya dari arah lain sewaktu membaca `PUCLPost`:
+*"Kolom ISCOMPLIANCETRANSFER_1 yang dipakai kueri inboxanalystdoctor tidak ada di basis data
+ini. Modul itu tidak akan berjalan di lingkungan ini."* Catatan itu benar; yang kurang
+hanyalah tindakannya. Temuan yang dicatat tetapi tidak ditindaklanjuti berakhir sebagai
+laporan pengguna.
+
+### 179.2 Penggantinya: penugasannya sendiri, bukan penanda di dalam blob
+
+Yang menempatkan klaim di antrean ini bukan penanda di blob melainkan **penugasannya**.
+`Flow/Register_Flow.xml` `Assignment13`:
+
+```xml
+<pyMOName>Analyst Doctor</pyMOName>
+<pyImplementation>WorkList</pyImplementation>
+<pyRouteTo>Operator</pyRouteTo>
+```
+
+Pega menyimpan `pyMOName` sebuah assignment sebagai `PC_ASSIGN_WORKLIST.PXTASKLABEL`.
+Kesepadanan itu **bukan dugaan** — ia terbaca dari data: setiap label `Register_Flow` yang
+ada di basis data sama persis dengan `pyMOName` salah satu assignment di flow itu (Input
+Register · Input Estimasi · Estimation · Choose Surveyor · View Polis · Send To Analis ·
+RCLDokter).
+
+Label itu aman dipakai: dari keenam flow di export, **hanya `Register_Flow`** yang memuat
+assignment bernama "Analyst Doctor". Polanya pun bukan hal baru — `inboxadmin` sudah
+menyaring `B.PXTASKLABEL IN ('Input Register', 'Input Estimasi', 'Estimation')`.
+
+Penyaringnya karena itu menjadi `a.PXTASKLABEL = :1`.
+
+### 179.3 Selisih yang ditimbulkannya — dinyatakan di layar, bukan disamarkan
+
+| | menyaring |
+|---|---|
+| Pega | klaim yang **pernah** ditandai transfer ke Analyst Doctor |
+| Sekarang | klaim yang **sedang** berada di tahap Analyst Doctor |
+
+Keduanya berimpit selama klaimnya masih menunggu penilaian medis, dan berbeda untuk klaim
+yang penandanya masih menunjuk Analyst Doctor tetapi penugasannya sudah berpindah. Untuk
+sebuah Inbox, bacaan kedua justru yang benar menurut `D-79`: barisnya adalah pekerjaan yang
+menunggu, dan barisnya hilang begitu tugasnya berpindah. Ia masuk `PlannedDifferences`.
+
+### 179.4 Kolom "Komentar dari PIC Teknis" tidak lagi diambil dari SQL
+
+`.ClaimData.AnalystDoctorRemaks` tidak punya kolom, dan dua calon penggantinya **ditolak**:
+
+| Calon | Kenapa ditolak |
+|---|---|
+| `KOMENTARANALISATOR_1` | properti `.ClaimData.KomentarAnalisator`, milik jalur PUCL (`Activity/PUCLPost-Act.xml`) — bukan penilaian medis |
+| alias di rule SQL lama | `a.QQNAME AS "AnalystDoctorRemaks"` dan `a.clientname AS "AnalystDoctorRemaks"` muncul di belasan rule menunjuk kolom berbeda-beda. Itu alias **menyesatkan** (utang teknis §4.2), bukan bukti tempat penyimpanan |
+
+Kolomnya tetap digambar, isinya kosong, dan layar menyatakan alasannya. Yang berubah: ia
+tidak lagi menjatuhkan seluruh halaman hanya untuk mendapatkannya.
+
+### 179.5 `-periksa` diperbaiki supaya tidak berhenti di temuan pertama
+
+`check_columns` sebelumnya hanya memeriksa dua kolom tebakan lalu **berhenti**. Karena
+keduanya tidak ada, kolom lain tidak pernah sempat terperiksa sama sekali — pemeriksaan yang
+menyerah pada temuan pertama menyembunyikan temuan kedua.
+
+Kini ia mem-parse **seluruh sepuluh kolom** yang benar-benar dipakai, dalam satu kueri
+`WHERE 1 = 0`, termasuk `PXTASKLABEL`.
+
+### 179.6 Yang menjaganya tidak kambuh
+
+| Uji | Isi |
+|---|---|
+| `TestKolomYangTerbuktiTidakAdaTidakDipakaiLagi` | tidak ada kueri yang menyebut `ISCOMPLIANCETRANSFER` atau `ANALYSTDOCTORREMAKS` |
+| `TestAntreanDikenaliDariLabelTahapPenugasan` | `a.PXTASKLABEL = :1` ada di kueri daftar |
+| `TestLabelTahapPenugasanSamaDenganNamaDiFlow` | nilainya persis `"Analyst Doctor"` |
+| `TestKueriPeriksaKolomMenutupSeluruhKolomYangDipakai` | kesepuluh kolom ikut diperiksa |
+
+Ketiga kueri sudah dijalankan ke Oracle `DEV_PEGA83G` dan lolos parse. Dengan label "Analyst
+Doctor", antreannya **kosong** di lingkungan ini — tidak ada satu pun baris
+`PC_ASSIGN_WORKLIST` bertahap itu — dan kosong adalah jawaban yang benar, bukan galat.
+
+---
+
+## 180. Inbox Analyst Doctor — galat KEDUA: penanda bind berulang (ORA-01008) (2026-10-09)
+
+**Laporan Work Owner:** setelah §179, layar **masih** menjawab *"Antrean tidak dapat dimuat —
+Terjadi kesalahan pada sistem."*
+
+### 180.1 Dua hal yang benar sekaligus
+
+**Pertama, proses yang berjalan sudah basi.** `claimpnc.exe` start 15:57; berkas `.sql`
+berubah 16:29. `go run` memuat SQL saat start, jadi proses itu masih menjalankan kueri lama.
+Perbaikan §179 memang belum pernah dieksekusi.
+
+**Kedua — dan ini yang penting — ada galat kedua** yang selama ini tersembunyi di belakang
+ORA-00904. Diuji dengan menjalankan repo baru langsung ke Oracle:
+
+```
+CheckTables  : ok
+CheckColumns : ok
+List(ESTHERSIMBOLON): ORA-01008: not all variables bound, position 606
+```
+
+Jadi memperbaiki §179 saja **tidak akan menyembuhkan layarnya**.
+
+### 180.2 Sebabnya: satu penanda bind tidak boleh muncul dua kali
+
+Kueri lama menulis:
+
+```sql
+AND (:4 IS NULL
+     OR UPPER(w.PYID)    LIKE '%' || UPPER(:4) || '%'
+     OR UPPER(w.POLICYNO) LIKE '%' || UPPER(:4) || '%')
+```
+
+`:4` muncul **tiga kali**, dan pemanggil mengirim enam argumen.
+
+Perilaku driver diuji langsung, bukan diasumsikan:
+
+| Kueri | Argumen | Hasil |
+|---|---|---|
+| `SELECT :1, :1, :2 FROM DUAL` | 2 (`x`, `y`) | **ORA-01008** |
+| `SELECT :1, :1, :2 FROM DUAL` | 3 (`x`, `x`, `y`) | ok — `A=x B=x C=y` |
+
+**go-ora mengikat per KEMUNCULAN, bukan per NOMOR.** Delapan kemunculan menuntut delapan
+argumen, berapa pun nomor tertingginya.
+
+### 180.3 Perbaikannya mengikuti pola yang sudah ada
+
+`inboxcloseclaim.sql:171-176` sudah memakai pola yang benar: satu penanda per kemunculan,
+wildcard dibentuk di Go, `ESCAPE '\'` di sisi SQL.
+
+```sql
+AND (:4 IS NULL
+     OR UPPER(w.PYID)     LIKE :5 ESCAPE '\'
+     OR UPPER(w.POLICYNO) LIKE :6 ESCAPE '\')
+OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
+```
+
+`likePattern` disalin dari `inboxcloseclaim` — ia juga meng-escape `%`, `_`, dan `\`,
+sehingga pencarian "100%" tidak lagi berubah menjadi pola yang mencocokkan apa saja.
+
+### 180.4 Bukti bahwa jalurnya kini utuh
+
+Dijalankan ke Oracle `DEV_PEGA83G` lewat `Repo.List` yang sesungguhnya:
+
+| Kasus | Hasil |
+|---|---|
+| `CheckTables`, `CheckColumns` | ok |
+| `List` tanpa pencarian | ok, 0 baris |
+| `List` dengan `"PNC-"`, `"100%"`, `"_"` | ok, 0 baris — tidak ada yang gagal |
+| kueri yang sama dengan label `Send To Analis` | **3 baris terbaca dan terpindai**, total 133 |
+
+Yang terakhir dipakai karena tahap "Analyst Doctor" memang kosong di lingkungan ini; ia
+membuktikan jalur delapan-bind benar-benar mengembalikan dan memindai baris.
+
+### 180.5 Cacat yang sama ada di modul lain — BELUM diperbaiki
+
+Sapuan atas seluruh berkas `.sql`: **sekitar 30 kueri di 15 modul** memakai penanda berulang.
+Satu di antaranya diuji langsung:
+
+```
+inboxsurvey list_tasks (My Work), 8 argumen, 14 kemunculan
+  -> ORA-01008: not all variables bound, position 1418
+```
+
+Daftar terberatnya: `inboxprogressclaim pic_summary` (nomor=5, kemunculan=29) ·
+`inboxsurvey list_tasks` (8/14) · `inboxadmin list_unregistered` (3/10) ·
+`inboxadmin list_all` dan `list_branch_claim` (2/8) · `reportkpi detail` (6/8) ·
+`reportklaim report_tat`, `report_pla`, `report_dla`, `report_komite` (3/7) ·
+`inboxxol claim_list` (3/5).
+
+**Di luar lingkup permintaan ini dan sengaja tidak disentuh** — perbaikannya menyentuh 15
+modul dan menuntut pengujian sendiri. Diangkat ke Work Owner sebagai pekerjaan tersendiri.
+
+### 180.6 Yang menjaganya tidak kambuh
+
+`TestPenandaBindTidakPernahBerulang` menuntut setiap penanda muncul **tepat sekali** dan
+penomorannya menaik tanpa lubang, pada SELURUH kueri modul ini. Uji ini tidak ada sebelumnya,
+dan itulah sebabnya cacatnya lolos: ia tidak terlihat saat membaca kode, tidak tertangkap
+`go vet`, dan tidak tertangkap uji sqlmock — hanya muncul saat kueri benar-benar dijalankan.
+
+Ditambah `TestLikePatternMembungkusDanMelepasKarakterKhusus` untuk escape wildcard.

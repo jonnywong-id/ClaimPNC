@@ -240,6 +240,18 @@ type Props<T> = {
    * panel lain — Inbox Auto Claim adalah yang pertama (permintaan Work Owner 2026-09-29).
    */
   dense?: boolean
+
+  /**
+   * Garis pemisah ANTARKOLOM pada tampilan meja — grid berkotak, bukan berbaris.
+   *
+   * Opt-in, sama alasannya dengan `dense`: layar yang sudah ada tidak berubah. Dipakai grid
+   * yang harus terbaca sama dengan grid Pega, yang menggambar kotak penuh — Inbox Komunikasi
+   * Cabang adalah yang pertama (permintaan Work Owner 2026-10-09).
+   *
+   * Hanya berlaku pada tampilan meja. Di tampilan kartu setiap sel sudah menjadi barisnya
+   * sendiri, dan garis vertikal di sana memisahkan sesuatu yang tidak bersebelahan.
+   */
+  gridLines?: boolean
 }
 
 type SortOrder = { key: string; direction: 'asc' | 'desc' }
@@ -345,6 +357,7 @@ export function DataTable<T>({
   showHeaderWhenEmpty = false,
   expandedRow,
   dense = false,
+  gridLines = false,
 }: Props<T>) {
   const [localQuery, setLocalQuery] = useState('')
   const [sort, setSort] = useState<SortOrder | null>(null)
@@ -523,6 +536,7 @@ export function DataTable<T>({
                       dense ? 'px-3 py-2.5' : 'px-5 py-3',
                       'text-xs font-semibold uppercase tracking-wide text-slate-600',
                       k.alignRight ? 'text-right' : '',
+                      gridLines ? 'md:border-r md:border-slate-200 md:last:border-r-0' : '',
                     ].join(' ')}
                   >
                     {/*
@@ -613,6 +627,9 @@ export function DataTable<T>({
                             'flex items-baseline gap-3 px-5 py-1.5',
                             'md:table-cell md:py-3.5 md:align-middle',
                             k.alignRight ? 'md:text-right' : '',
+                            gridLines
+                              ? 'md:border-r md:border-slate-200 md:last:border-r-0'
+                              : '',
                           ].join(' ')}
                         >
                           {/*

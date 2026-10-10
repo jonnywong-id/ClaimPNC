@@ -116,8 +116,11 @@ type Conversation struct {
 	// SenderOperator adalah pengirimnya — `SENDER`, berisi Operator ID.
 	//
 	// Bersama SenderOrigin ia menyusun sel "Pengirim(Dari)", yang di
-	// `Section/PengirimKomunikasi-Section.xml` digambar sebagai `UserName (UserTeknis)` —
-	// asal, lalu operator di dalam kurung.
+	// `Section/PengirimKomunikasi-Section.xml` digambar sebagai `UserTeknis (UserName)` —
+	// OPERATOR lebih dulu, asalnya di dalam kurung: `JONNY ( PUSAT )`.
+	//
+	// Urutan itu dikoreksi pada 2026-10-09; sampai saat itu ia dirakit terbalik. Lihat
+	// catatan pada `http.Conversation.Sender`.
 	SenderOperator string
 
 	// Message — kolom **"Pesan"** <- `MESSAGE`.

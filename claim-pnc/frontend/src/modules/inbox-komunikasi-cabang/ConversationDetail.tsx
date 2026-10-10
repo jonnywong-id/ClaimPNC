@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { formatPegaDateTime } from '@/components/format'
 
 import { useKomunikasiCabangDetail, useKomunikasiCabangReply } from './api'
 import type { Attachment, ThreadMessage } from './types'
@@ -135,7 +136,7 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
               {message.pengirim || '—'}
             </span>
             <span className="text-xs tabular-nums text-slate-500">
-              {message.tanggal || '—'}
+              {formatPegaDateTime(message.tanggal) || '—'}
             </span>
           </div>
 
@@ -198,7 +199,7 @@ function Attachments({ items }: { items: Attachment[] }) {
                 ].join(' ')}
               >
                 {item.sudah_diunggah
-                  ? `Sudah Upload · ${item.tanggal_unggah}`
+                  ? `Sudah Upload · ${formatPegaDateTime(item.tanggal_unggah)}`
                   : 'Belum Upload'}
               </span>
             </li>

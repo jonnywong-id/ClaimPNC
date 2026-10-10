@@ -25,7 +25,7 @@
 //
 //	Harness/InboxPLADLA-Harness.xml             rangka layar
 //	Section/InboxDLAReas_sect-Section.xml       isi layar — 4 grid + 1 bagan
-//	Activity/SetDataPLADLA-Act.xml              pemuat ketiga daftar + grid XOL
+//	Activity/SetDataPLADLA-Act.xml              pemuat keenam daftar
 //	Activity/GetDataDLAReas_Act-Act.xml         rincian DLA satu klaim
 //	Activity/ExportDataPLADLAReas-Act.xml       tombol Export To Excel
 //	RDB List/GetPNCList_PLA1-SQL.xml            daftar PLA
@@ -47,21 +47,30 @@
 // Ini satu-satunya layar yang sudah dibangun tempat identitas pemanggil MENYARING, bukan
 // sekadar dicatat.
 //
-// # SATU CACAT BERSIFAT KEBOCORAN DATA, DAN IA TIDAK DIBAWA
+// # TAMPILAN "DATA PLA DLA XOL KLAIM" TIDAK DIBAWA — IA KODE MATI DI PEGA
 //
-// Grid "DATA PLA DLA XOL KLAIM" di Pega TIDAK memakai login pemanggil. Ia memakai nilai
-// yang ditulis tetap di dalam activity:
+// Sectionnya memang memuat wadah berjudul itu, dan `SetDataPLADLA` memang punya cabang
+// `param.tipe=="7"` yang mengisi `DataKomiteXOL`. Tetapi wadahnya bersyarat:
 //
-//	Activity/SetDataPLADLA-Act.xml   Local.loginreas = "TUGUREASURANSIINDONESIA"
+//	Section/InboxDLAReas_sect-Section.xml   pyContainerVisibleWhen = TempView.CityID==7
 //
-// Nilai itu diberikan tepat satu kali dan tidak pernah ditimpa. Akibatnya SETIAP
-// reasuradur yang membuka layar ini melihat ringkasan XOL milik satu reasuradur tertentu
-// — bukan miliknya sendiri.
+// dan `TempView.CityID` HANYA pernah diisi dari `param.tipe`, yang pada gilirannya hanya
+// pernah berisi `.CityID` sebuah baris tabel "Status / Jumlah" atau `TempView.CityID`
+// sendiri. Literal `7` nol kemunculan sebagai nilai `tipe` di seluruh export, dan tabel
+// ringkasnya berisi ENAM baris.
 //
-// Itu bukan keanehan yang layak ditiru: ia memperlihatkan data satu mitra kepada mitra
-// lain. Di sini nilainya diturunkan dari login pemanggil, sama seperti ketiga kueri
-// lainnya, sejalan dengan `D-15` yang melarang nilai bisnis ditulis tetap. Selisihnya
-// dinyatakan di PlannedDifferences, bukan disamarkan.
+// Artinya tampilan itu tidak pernah dapat tergambar di Pega. Ia sempat dibangun di sini
+// sebagai tab ketujuh lalu sebagai panel permanen, dan keduanya memberi akses kepada
+// sesuatu yang layar lama tidak pernah tampilkan; dicabut 2026-10-09 atas keputusan Work
+// Owner.
+//
+// Satu alasan tambahan yang membuat pencabutannya bukan kerugian: kueri XOL-nya di Pega
+// TIDAK memakai login pemanggil melainkan nilai yang ditulis tetap di dalam activity —
+//
+//	Activity/SetDataPLADLA-Act.xml   Local.loginreas = <satu login mitra, ditulis tetap>
+//
+// diberikan tepat sekali dan tidak pernah ditimpa. Seandainya tampilannya dapat dibuka,
+// setiap mitra akan melihat ringkasan XOL milik mitra itu, bukan miliknya sendiri.
 //
 // # DUA KUERI MEMILIH SATU KODE REASURADUR, SATU KUERI MEMILIH SEMUANYA
 //
@@ -199,25 +208,42 @@ type StatusCount struct {
 	Total int
 }
 
-// XOLRow adalah satu baris grid **"DATA PLA DLA XOL KLAIM"**.
+// ListCount adalah satu baris tabel **"Status / Jumlah"** di samping daftar.
 //
-// Isinya ringkasan pemberitahuan XOL yang SUDAH terkirim kepada reasuradur pemanggil,
-// dikelompokkan per tahun dan per penyebab kerugian.
+// # Ia mencacah DAFTAR, bukan status klaim
 //
-// Aliasnya di Pega menyesatkan seluruhnya — `tahun` beralias `"City"`, `causeofloss`
-// beralias `"CityID"`, dan tanggalnya beralias `"NoteKasir"`.
-type XOLRow struct {
-	// Year — kolom **"Tahun"** <- `T_PLA_XOL.TAHUN` / `T_DLA_XOL.TAHUN`.
-	Year string
+// Inilah tabel yang benar-benar digambar Pega, dan isinya bukan status klaim melainkan
+// keenam DAFTAR layar ini beserta jumlah klaim di masing-masingnya:
+//
+//	PLA · PLA & DLA · CLOSE CLAIM · NOT ANSWERED · NOT REPLIED FROM ASM · REPLIED FROM ASM
+//
+// Terbaca langsung dari `Activity/GetLostAdjuster_act-Act.xml`, yang menyusun barisnya
+// satu per satu: `.CauseOfLoss` diisi NAMA DAFTAR (`"NOT ANSWERED"`,
+// `"NOT REPLIED FROM ASM"`, `"REPLIED FROM ASM"`, …), `.CityID` kode daftarnya, dan
+// `.City` jumlahnya. Aliasnya menyesatkan seluruhnya — tidak satu pun berhubungan dengan
+// penyebab kerugian maupun kota.
+//
+// # Ia BUKAN StatusCount, dan keduanya menjawab pertanyaan yang berbeda
+//
+// StatusCount mencacah status klaim DI DALAM satu daftar yang sedang terbuka. Pega tidak
+// menggambar hal itu di layar ini sama sekali. Keduanya sengaja dibiarkan berdampingan:
+// yang satu menjawab "berapa klaim di tiap daftar" dan dipakai sebagai navigasi, yang
+// lain menjawab "status apa saja isi daftar ini".
+//
+// # Kenapa angkanya DAPAT DIKLIK
+//
+// Karena di Pega pun begitu, dan itulah satu-satunya navigasi layar ini: sel "Jumlah"
+// ber-`pyFormat=pxLink` dengan aksi `refresh` yang membawa `.CityID`
+// (`Section/InboxDLAReas_sect-Section.xml`). Layar lama TIDAK punya bilah tab.
+type ListCount struct {
+	// Code adalah kode daftarnya, sama isinya dengan Tab.Code.
+	Code string
 
-	// CauseOfLoss — kolom **"Penyebab Kerugian"** <- `CAUSEOFLOSS`.
-	CauseOfLoss string
+	// Name adalah nama daftar seperti tertulis di Pega.
+	Name string
 
-	// Kind adalah `"PLA"` atau `"DLA"` — konstanta di dalam kueri, bukan kolom.
-	Kind string
-
-	// LastInsertDate — kolom **"Tanggal Terakhir"** <- `MAX(TGLINSERT)`.
-	LastInsertDate string
+	// Total adalah jumlah klaim pada daftar itu, mengikuti pencarian yang sedang aktif.
+	Total int
 }
 
 // Caller adalah identitas pemanggil.
@@ -372,11 +398,11 @@ var ErrRowNotFound = errors.New("inboxpladla: klaim tidak ditemukan")
 // tidak dinyatakan akan dilaporkan sebagai kerusakan oleh orang yang membandingkan kedua
 // layar berdampingan.
 var PlannedDifferences = []string{
-	"Grid \"DATA PLA DLA XOL KLAIM\" kini mengikuti login Anda sendiri. Di Pega ia " +
-		"ditulis tetap ke satu reasuradur (`SetDataPLADLA` menetapkan " +
-		"`Local.loginreas` sekali dan tidak pernah menimpanya), sehingga setiap " +
-		"reasuradur melihat ringkasan XOL milik mitra lain. Itu kebocoran data antar " +
-		"mitra, bukan keanehan yang layak ditiru (`D-15`).",
+	"Tampilan \"DATA PLA DLA XOL KLAIM\" TIDAK dibawa sama sekali. Sectionnya memang " +
+		"memuat wadah berjudul itu, tetapi wadahnya bersyarat " +
+		"`pyContainerVisibleWhen = TempView.CityID==7` sementara `CityID` hanya pernah " +
+		"diisi dari baris tabel \"Status / Jumlah\" — dan tabel itu berisi enam baris, " +
+		"tidak satu pun bernilai 7. Di Pega tampilan itu tidak pernah dapat tergambar.",
 
 	"Kolom \"Status\" kini menyertakan ARTI kodenya, bukan angka saja. Kueri lama hanya " +
 		"mengambil kodenya; `R-06` sudah tertutup dan ke-33 artinya tersedia di master.",
@@ -395,21 +421,11 @@ var PlannedDifferences = []string{
 	"Grid PLA dan DLA pada layar rincian hanya menampilkan pemberitahuan MILIK ANDA yang " +
 		"sudah terkirim. Di Pega gridnya dimuat dari objek kerja klaim, sehingga ia " +
 		"memuat pemberitahuan SELURUH mitra pada klaim itu — beserta nilai masing-" +
-		"masing. Itu jenis kebocoran yang sama dengan grid XOL, dan ia tidak dibawa.",
+		"masing. Itu kebocoran antar mitra, dan ia tidak dibawa.",
 
 	"Dokumen disaring pula menurut LOGIN Anda (`T_DOC_REAS.LOGIN`). `GetDokumenReas` " +
 		"tidak memakai kolom itu — ia menyaring nomor pemberitahuan saja. Penyaring " +
 		"tambahan ini diputuskan Work Owner pada 2026-09-28.",
-
-	"Kolom pertama grid XOL berjudul \"Tahun\", bukan \"Date Of Loss\" seperti di Pega. " +
-		"Isinya memang TAHUN (`T_PLA_XOL.TAHUN`), dan judul lama menyatakan hal yang " +
-		"bukan isinya.",
-
-	"Tombol \"Export To Excel\" TIDAK digambar pada tampilan \"DATA PLA DLA XOL KLAIM\". " +
-		"Di Pega ia tampil di sana — wadahnya bersyarat `TempView.CityID!=''` — tetapi " +
-		"`ExportDataPLADLAReas` menyalin daftar KLAIM, bukan ringkasan XOL. Tombol yang " +
-		"tergambar di tampilan yang tidak dapat diekspornya hanya menjanjikan berkas " +
-		"yang tidak akan sesuai isinya.",
 
 	"Balasan komunikasi menolak percakapan yang SUDAH dijawab. `ReplyKomunikasi` tidak " +
 		"memagarinya, dan tanpa pagar itu balasan kedua menimpa balasan pertama pada " +
@@ -455,17 +471,6 @@ type Repo interface {
 	// berubah saat pengguna berpindah halaman, sehingga layar dapat menyimpannya lebih
 	// lama.
 	Counts(ctx context.Context, query Query) ([]StatusCount, error)
-
-	// XOL mengembalikan isi grid "DATA PLA DLA XOL KLAIM" milik reasuradur pemanggil.
-	//
-	// Ia TIDAK menerima Query: gridnya tidak disaring nomor klaim maupun tab mana pun di
-	// Pega, dan menambahkan penyaring yang tidak ada di sana akan mengubah isinya.
-	//
-	// Yang diterimanya adalah LOGIN, bukan kode reasuradur, karena kueri Pega pun
-	// menerjemahkannya di dalam SQL (`IDREAS IN (SELECT reinsurerid … WHERE login = …)`).
-	// Menerjemahkannya di Go lebih dulu akan menambah satu perjalanan ke basis data tanpa
-	// mengubah hasilnya.
-	XOL(ctx context.Context, login string) ([]XOLRow, error)
 
 	// ============================================================================
 	// LAYAR RINCIAN — tombol "Detail Claim"

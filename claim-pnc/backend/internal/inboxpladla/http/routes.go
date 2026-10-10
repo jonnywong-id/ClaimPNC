@@ -52,12 +52,10 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// setiap kali halaman berganti.
 		perPortal.Get("/inbox-pla-dla/ringkas", h.Counts)
 
-		// Grid "DATA PLA DLA XOL KLAIM".
-		//
-		// Rute tersendiri pula, dan alasannya lebih kuat lagi: isinya tidak disaring tab
-		// maupun kata kunci sama sekali. Menggabungkannya akan menjalankan gabungan dua
-		// tabel XOL setiap kali pengguna mengetik satu huruf di kotak pencarian.
-		perPortal.Get("/inbox-pla-dla/xol", h.XOL)
+		// Tabel "Status / Jumlah" — satu baris per DAFTAR, dan inilah tabel yang
+		// benar-benar ada di Pega. Rute tersendiri karena isinya tidak berubah saat
+		// pengguna berpindah daftar: ia menyebut keenamnya sekaligus.
+		perPortal.Get("/inbox-pla-dla/ringkas-daftar", h.ListCounts)
 
 		// Ekspor adalah GET, bukan POST. Ia tidak mengubah apa pun.
 		perPortal.Get("/inbox-pla-dla/ekspor", h.Export)
@@ -68,7 +66,7 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		//
 		// Jalurnya memuat SEGMEN `klaim` supaya ia tidak bertabrakan dengan rute tetap
 		// di atasnya. Tanpa segmen itu, `/inbox-pla-dla/{kunci}` akan menangkap
-		// `daftar`, `ringkas`, `xol`, dan `ekspor` sebagai kunci klaim pada urutan
+		// `daftar`, `ringkas`, `ringkas-daftar`, `xol`, dan `ekspor` sebagai kunci klaim pada
 		// pendaftaran tertentu — kelas kerusakan yang hanya muncul ketika rutenya
 		// bertambah. Presedennya ada di modul `inboxpladlapredla`.
 		//

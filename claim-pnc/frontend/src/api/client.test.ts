@@ -459,7 +459,14 @@ describe('unduhBerkas', () => {
 
     const plain = (await catchError(unduhBerkas('/kosong'))) as APIError
     expect(plain.kode).toBe('galat_internal')
-    expect(plain.message).toBe('Berkas tidak dapat diunduh.')
+
+    // Pesan cadangannya MENYEBUTKAN kode HTTP-nya, dan angka itulah yang membedakan
+    // "rutenya salah" (404) dari "kuerinya gagal" (500) dan "sesinya habis" (401) tanpa
+    // membuka perkakas pengembang. Diperiksa terpisah dari kalimatnya: pernyataan yang
+    // hanya mencocokkan awalan kalimat akan tetap lolos meskipun angkanya hilang lagi.
+    expect(plain.message).toContain('Berkas tidak dapat diunduh.')
+    expect(plain.message).toContain('500')
+    expect(plain.status).toBe(500)
   })
 
   it('melempar NetworkError ketika fetch gagal', async () => {

@@ -16,6 +16,7 @@ import {
   centsToRupiah,
   formatDate,
   formatDateTimeWIB,
+  formatPegaDateTime,
   formatPercent,
   formatRupiah,
   rupiahToCents,
@@ -298,6 +299,32 @@ describe('format', () => {
     expect(formatDateTimeWIB('2026-09-30T20:05:00Z')).toBe('01/10/2026 3:05')
     expect(formatDateTimeWIB(undefined)).toBe('')
     expect(formatDateTimeWIB('bukan waktu')).toBe('bukan waktu')
+  })
+
+  it('menulis waktu grid Pega sebagai dd/MM/yy HH:mm', () => {
+    // Bentuk sel "Tanggal" pada grid Pega: `28/09/26 16:58` — tahun DUA digit dan jam
+    // ber-nol di depan, berbeda dari isian baca saja pada form di atas.
+    expect(formatPegaDateTime('2026-09-28T16:58:56+07:00')).toBe('28/09/26 16:58')
+    expect(formatPegaDateTime('2026-09-30T00:59:00Z')).toBe('30/09/26 07:59')
+    expect(formatPegaDateTime('2026-09-30T20:05:00Z')).toBe('01/10/26 03:05')
+  })
+
+  it('TIDAK menggeser waktu yang tidak menyebutkan zonanya', () => {
+    // Nilai tanpa zona sudah berupa waktu dinding. Menggesernya tujuh jam adalah kelas
+    // kesalahan yang melahirkan ratusan penyesuaian manual di sistem lama.
+    expect(formatPegaDateTime('2026-09-28 16:58')).toBe('28/09/26 16:58')
+    expect(formatPegaDateTime('2026-09-28 16:58:56')).toBe('28/09/26 16:58')
+  })
+
+  it('tidak mengarang jam pada nilai yang hanya memuat tanggal', () => {
+    expect(formatPegaDateTime('2026-09-28')).toBe('28/09/26')
+  })
+
+  it('mengembalikan teks yang tidak terbaca apa adanya', () => {
+    // Nilai mentah yang terbaca aneh masih dapat ditelusuri; tanda pisah menghapus jejaknya.
+    expect(formatPegaDateTime('bukan waktu')).toBe('bukan waktu')
+    expect(formatPegaDateTime('')).toBe('')
+    expect(formatPegaDateTime('   ')).toBe('')
   })
 
   it('menghitung tanggal hari ini menurut WIB', () => {

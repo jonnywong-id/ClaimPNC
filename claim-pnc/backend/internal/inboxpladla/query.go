@@ -15,17 +15,6 @@ var (
 
 	// ErrWriteNotAvailable berarti aksi yang belum dibangun diminta.
 	ErrWriteNotAvailable = errors.New("inboxpladla: tindakan ini belum tersedia")
-
-	// ErrNotAClaimList berarti daftar klaim diminta pada tampilan yang bukan daftar klaim.
-	//
-	// Satu-satunya yang bukan adalah **DATA PLA DLA XOL KLAIM**. Ia menggambar ringkasan
-	// per tahun dan per penyebab kerugian — bukan klaim satu per satu — sehingga
-	// permintaan daftar padanya tidak punya jawaban yang masuk akal.
-	//
-	// Ia ditolak dengan pesan, bukan dijawab daftar kosong: daftar kosong akan terbaca
-	// sebagai "belum ada pemberitahuan XOL untuk Anda", padahal yang terjadi adalah
-	// permintaannya salah alamat.
-	ErrNotAClaimList = errors.New("inboxpladla: tampilan ini bukan daftar klaim")
 )
 
 // Action adalah tindakan yang diminta salah satu tombol yang belum dibangun.

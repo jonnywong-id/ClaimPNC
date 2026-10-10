@@ -14,25 +14,12 @@ export type Kolom = {
 }
 
 /**
- * Bentuk sebuah tampilan.
- *
- * Layar Pega punya TUJUH tampilan yang dikendalikan satu nilai (`TempView.CityID`), dan
- * tidak semuanya menggambar hal yang sama: enam menggambar daftar klaim, yang ketujuh
- * menggambar ringkasan XOL dengan kolom dan sumber yang berbeda.
- *
- * Penandanya datang dari SERVER. Layar tidak menyimpulkannya sendiri dari kode tab —
- * kesimpulan yang disalin ke layar akan tertinggal saat tampilannya bertambah.
- */
-export type JenisTampilan = 'daftar-klaim' | 'xol'
-
-/**
  * Tabel asal sebuah daftar klaim.
  *
  * Dipakai menjelaskan daftar yang KOSONG: "belum ada pemberitahuan" dan "belum ada
  * komunikasi" adalah dua sebab berbeda. Ia datang dari server, bukan disimpulkan dari
  * awalan kode tab — kesimpulan itu pecah diam-diam saat kodenya berubah.
  *
- * Kosong pada tampilan XOL.
  */
 export type SumberDaftar = 'pemberitahuan' | 'komunikasi' | ''
 
@@ -41,7 +28,6 @@ export type Daftar = {
   kode: string
   nama: string
   keterangan: string
-  jenis: JenisTampilan
   sumber: SumberDaftar
   kolom: Kolom[]
 
@@ -82,15 +68,21 @@ export type RingkasStatus = {
   jumlah: number
 }
 
-/** Satu baris grid "DATA PLA DLA XOL KLAIM". */
-export type BarisXOL = {
-  tahun: string
-  penyebab_kerugian: string
-  /** `"PLA"` atau `"DLA"`. */
-  jenis: string
-  tanggal_terakhir: string
-}
 
+/**
+ * Satu baris tabel **"Status / Jumlah"** — satu DAFTAR, bukan satu status klaim.
+ *
+ * Inilah tabel yang benar-benar ada di Pega, dan di layar lama ia satu-satunya navigasi:
+ * selnya ber-`pyFormat=pxLink` dengan aksi refresh yang membawa kode daftarnya.
+ *
+ * Medannya bernama `status` meskipun isinya nama daftar — judul kolom Pega ditiru apa
+ * adanya (`D-13`), dan kontraknya mengikuti judul itu.
+ */
+export type RingkasDaftar = {
+  kode: string
+  status: string
+  jumlah: number
+}
 export type Paginasi = {
   halaman: number
   ukuran: number
@@ -101,7 +93,6 @@ export type Paginasi = {
 export type MetadataResponse = {
   daftar: Daftar[]
   daftar_bawaan: string
-  kolom_xol: Kolom[]
   portal: string
 }
 
@@ -118,11 +109,11 @@ export type RingkasResponse = {
   portal: string
 }
 
-export type XOLResponse = {
-  baris: BarisXOL[]
+
+export type RingkasDaftarResponse = {
+  baris: RingkasDaftar[]
   portal: string
 }
-
 /* ==========================================================================
  * LAYAR RINCIAN — tombol "Detail Claim"
  * ========================================================================== */

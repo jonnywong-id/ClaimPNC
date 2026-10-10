@@ -216,7 +216,7 @@ describe('menambah', () => {
     await screen.findByText('EXPERT')
 
     await pengguna.click(screen.getByRole('button', { name: /tambah/i }))
-    await pengguna.type(screen.getByLabelText('Tipe Surveyor'), 'ADJUSTER INDEPENDEN')
+    await pengguna.type(screen.getByLabelText('Deskripsi'), 'ADJUSTER INDEPENDEN')
     await pengguna.click(screen.getByRole('button', { name: /^simpan$/i }))
 
     await waitFor(() => {
@@ -261,7 +261,7 @@ describe('menambah', () => {
     await screen.findByText('EXPERT')
 
     await pengguna.click(screen.getByRole('button', { name: /tambah/i }))
-    await pengguna.type(screen.getByLabelText('Tipe Surveyor'), 'EXPERT')
+    await pengguna.type(screen.getByLabelText('Deskripsi'), 'EXPERT')
     await pengguna.click(screen.getByRole('button', { name: /^simpan$/i }))
 
     expect(await screen.findByText(/sudah dipakai/i)).toBeInTheDocument()
@@ -292,7 +292,7 @@ describe('menambah', () => {
     await screen.findByText('EXPERT')
 
     await pengguna.click(screen.getByRole('button', { name: /tambah/i }))
-    await pengguna.type(screen.getByLabelText('Tipe Surveyor'), 'TIPE BARU')
+    await pengguna.type(screen.getByLabelText('Deskripsi'), 'TIPE BARU')
     await pengguna.click(screen.getByRole('button', { name: /^simpan$/i }))
 
     expect(await screen.findByText(/paling panjang 100 karakter/i)).toBeInTheDocument()
@@ -317,7 +317,7 @@ describe('mengubah', () => {
     expect(screen.queryByLabelText(/^kode$/i)).not.toBeInTheDocument()
     expect(within(form).queryByText(/dibuat sistem/i)).not.toBeInTheDocument()
 
-    const isian = screen.getByLabelText('Tipe Surveyor')
+    const isian = screen.getByLabelText('Deskripsi')
     await pengguna.clear(isian)
     await pengguna.type(isian, 'TENAGA AHLI')
     await pengguna.click(screen.getByRole('button', { name: /^simpan$/i }))
@@ -338,7 +338,7 @@ describe('mengubah', () => {
 
     await pengguna.click(screen.getByRole('button', { name: /ubah tipe surveyor LOSS ADJUSTER/i }))
 
-    expect(screen.getByLabelText('Tipe Surveyor')).toHaveValue('LOSS ADJUSTER')
+    expect(screen.getByLabelText('Deskripsi')).toHaveValue('LOSS ADJUSTER')
   })
 })
 

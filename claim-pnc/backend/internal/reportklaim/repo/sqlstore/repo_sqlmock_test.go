@@ -65,10 +65,32 @@ func TestStreamRunsEveryPlanWithItsArguments(t *testing.T) {
 		code := reportklaim.Code(raw)
 		t.Run(raw, func(t *testing.T) {
 			db, mock := newDB(t)
-			repo := NewRepo(db, nil)
+
+			// Laporan Mitra MENYARING barisnya lewat koneksi kedua, sehingga ia
+			// satu-satunya rencana yang tidak dapat dijalankan dengan `aneka` nil.
+			//
+			// Ia tidak dikecualikan dari loop ini: yang diperiksa loop ini adalah
+			// "setiap rencana menjalankan kuerinya dengan argumennya", dan itu
+			// berlaku untuk Mitra pula. Yang ditambahkan hanyalah prasyaratnya.
+			columns, values := []string{"KOLOM"}, []driver.Value{"isi"}
+			var aneka *sql.DB
+			if code == reportklaim.CodeMitra {
+				var anekaMock sqlmock.Sqlmock
+				aneka, anekaMock = newDB(t)
+				anekaMock.ExpectQuery(q("report_mitra_logins")).
+					WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow(" budi "))
+				t.Cleanup(func() { require.NoError(t, anekaMock.ExpectationsWereMet()) })
+
+				// Barisnya harus LOLOS penyaring, kalau tidak pernyataan di bawah
+				// gagal karena alasan yang keliru. Ditulis beda huruf dan berspasi
+				// dengan sengaja — pencocokannya memang dinormalkan.
+				columns, values = append(columns, "QQNAME"), append(values, "BUDI")
+			}
+
+			repo := NewRepo(db, aneka)
 			p := plans[code]
 			mock.ExpectQuery(q(p.query(filter))).WithArgs(toDriver(p.args(filter))...).
-				WillReturnRows(sqlmock.NewRows([]string{"KOLOM"}).AddRow("isi"))
+				WillReturnRows(sqlmock.NewRows(columns).AddRow(values...))
 			var rows []reportklaim.Row
 			require.NoError(t, repo.Stream(context.Background(), reportklaim.Report{Code: code}, filter, collect(&rows)))
 			require.Len(t, rows, 1)
@@ -146,7 +168,10 @@ func TestStreamFailures(t *testing.T) {
 	mock.ExpectQuery(q("report_klaim_harian")).WillReturnError(errDB)
 	err = repo.Stream(ctx, report, filter, collect(new([]reportklaim.Row)))
 	require.ErrorIs(t, err, errDB)
-	require.ErrorContains(t, err, "menjalankan laporan")
+	// Diperiksa sebagai SENTINEL, bukan sebagai teks: justru pembedaan inilah yang
+	// dituju ErrQueryFailed — lapisan transport menjawabnya dengan kode tersendiri,
+	// sementara kata-katanya boleh berubah kapan saja.
+	require.ErrorIs(t, err, ErrQueryFailed)
 
 	stop := errors.New("berhenti")
 	mock.ExpectQuery(q("report_klaim_harian")).WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("1").AddRow("2"))
@@ -278,5 +303,85 @@ func TestCheckSourceReadsHolidayCalendar(t *testing.T) {
 	state = repo.CheckSource(ctx)
 	require.False(t, state.HolidayReadable)
 	require.ErrorIs(t, state.HolidayError, errDB)
+	require.NoError(t, anekaMock.ExpectationsWereMet())
+}
+
+// ── Penyaring baris laporan Mitra ───────────────────────────────────────────────
+
+// Ketiga jalur penolakan mitraKeep diperiksa satu per satu.
+//
+// Laporan ini satu-satunya yang menyaring BARIS lewat koneksi kedua, dan kehilangan
+// penyaringnya tidak membuatnya kehilangan kolom — ia berubah ISI: berkas yang terbit
+// memuat SELURUH petugas, bukan petugas mitra. Kegagalan seperti itu tidak terlihat
+// sebagai galat oleh siapa pun yang menerima berkasnya.
+func TestMitraKeepRefusesRatherThanWidenTheReport(t *testing.T) {
+	ctx := context.Background()
+	filter := reportklaim.Filter{From: from, To: to}
+
+	t.Run("koneksi kedua tidak ada", func(t *testing.T) {
+		db, _ := newDB(t)
+		_, err := mitraKeep(ctx, NewRepo(db, nil), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "ANEKA_")
+	})
+
+	t.Run("pembacaan gagal", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).WillReturnError(errDB)
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Daftar KOSONG secara teknis sah, dan justru itu yang membuatnya berbahaya: ia
+	// menghasilkan berkas tanpa satu baris pun, yang tidak dapat dibedakan dari "memang
+	// tidak ada penugasan pada periode itu".
+	t.Run("daftar kosong", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.ErrorContains(t, err, "kosong")
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+
+	// Baris yang isinya hanya spasi tidak boleh terhitung sebagai login: ia akan
+	// meloloskan setiap baris laporan yang kolom QQNAME-nya juga kosong.
+	t.Run("baris berisi spasi saja tidak dihitung", func(t *testing.T) {
+		db, _ := newDB(t)
+		aneka, anekaMock := newDB(t)
+		anekaMock.ExpectQuery(q("report_mitra_logins")).
+			WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow("   ").AddRow(nil))
+
+		_, err := mitraKeep(ctx, NewRepo(db, aneka), filter)
+		require.ErrorIs(t, err, ErrMitraListUnavailable)
+		require.NoError(t, anekaMock.ExpectationsWereMet())
+	})
+}
+
+// Pencocokan login DINORMALKAN huruf besar dan spasinya.
+//
+// Kedua kolom yang dibandingkan — `userassign` di laporan dan `login_aplikasi` di daftar
+// mitra — berada di DUA basis data yang berbeda, dan tidak ada apa pun yang menjamin
+// keseragaman penulisannya.
+func TestMitraKeepMatchesLoginsCaseAndSpaceInsensitively(t *testing.T) {
+	db, _ := newDB(t)
+	aneka, anekaMock := newDB(t)
+	anekaMock.ExpectQuery(q("report_mitra_logins")).
+		WillReturnRows(sqlmock.NewRows([]string{"LOGIN"}).AddRow(" budi "))
+
+	keep, err := mitraKeep(context.Background(), NewRepo(db, aneka), reportklaim.Filter{})
+	require.NoError(t, err)
+
+	require.True(t, keep(reportklaim.Row{"QQNAME": "BUDI"}))
+	require.True(t, keep(reportklaim.Row{"QQNAME": "  Budi  "}))
+	require.False(t, keep(reportklaim.Row{"QQNAME": "SITI"}), "bukan mitra, dibuang")
+	require.False(t, keep(reportklaim.Row{"QQNAME": ""}), "kosong bukan mitra")
+	require.False(t, keep(reportklaim.Row{}), "tanpa kolom QQNAME pun bukan mitra")
 	require.NoError(t, anekaMock.ExpectationsWereMet())
 }

@@ -76,6 +76,13 @@ func loadAllQueries() map[string]string {
 
 func splitByName(body string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	body = strings.ReplaceAll(body, "\r\n", "\n")
 	result := map[string]string{}
 	name := ""
 	var lines []string

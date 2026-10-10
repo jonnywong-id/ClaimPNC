@@ -143,6 +143,23 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
   return (call) => {
     if (call.url.includes('/daftar')) return { body: METADATA }
 
+    // Diperiksa SEBELUM `/ringkas`, karena `includes` akan menangkapnya pula.
+    if (call.url.includes('/ringkas-daftar')) {
+      return {
+        body: {
+          baris: [
+            { kode: 'pla', status: 'PLA', jumlah: 3 },
+            { kode: 'pla-dla', status: 'PLA & DLA', jumlah: 0 },
+            { kode: 'close', status: 'CLOSE CLAIM', jumlah: 0 },
+            { kode: 'not-answered', status: 'NOT ANSWERED', jumlah: 2 },
+            { kode: 'not-replied', status: 'NOT REPLIED FROM ASM', jumlah: 0 },
+            { kode: 'replied', status: 'REPLIED FROM ASM', jumlah: 0 },
+          ],
+          portal: 'ASM',
+        },
+      }
+    }
+
     if (call.url.includes('/ringkas')) {
       return {
         body: {
@@ -227,46 +244,90 @@ afterEach(() => {
 })
 
 describe('layar Inbox PLA DLA milik reasuradur', () => {
-  it('menggambar SELURUH tampilan beserta kolom yang dikirim server', async () => {
+  it('menggambar SELURUH daftar beserta kolom yang dikirim server', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
-    // Judulnya diambil APA ADANYA dari Pega (`D-13`) — termasuk "PLA & DLA" dan
-    // "CLOSE CLAIM", yang sebelum 2026-09-28 dinamai "DLA" dan "Close".
-    expect(await screen.findByRole('tab', { name: 'PLA' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'PLA & DLA' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'CLOSE CLAIM' })).toBeInTheDocument()
+    // Layar ini TIDAK punya bilah tab, dan itu mengikuti Pega: tabel "Status / Jumlah"
+    // adalah satu-satunya navigasinya. Bilah tab sempat dipakai di sini dan dicabut
+    // 2026-10-09 atas permintaan Work Owner.
+    expect(await screen.findByText('PNC-2001')).toBeInTheDocument()
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
 
-    // Ketiga daftar komunikasi dan tampilan XOL baru dibangun 2026-09-28. Sebelumnya
-    // keempatnya ada di Pega tanpa satu pun tab yang menuju ke sana.
-    expect(
-      screen.getByRole('tab', { name: 'NOT ANSWERED' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('tab', { name: /DATA PLA DLA XOL KLAIM/ }),
-    ).toBeInTheDocument()
+    // Keenam daftar disebut di tabel, dengan judul Pega apa adanya (`D-13`).
+    const ringkas = screen.getByRole('region', {
+      name: 'Status dan jumlah klaim per daftar',
+    })
+    for (const nama of [
+      'PLA',
+      'PLA & DLA',
+      'CLOSE CLAIM',
+      'NOT ANSWERED',
+      'NOT REPLIED FROM ASM',
+      'REPLIED FROM ASM',
+    ]) {
+      expect(within(ringkas).getByRole('rowheader', { name: nama })).toBeInTheDocument()
+    }
 
+    // Dicari DI DALAM gridnya: tabel "Status / Jumlah" punya kolom bernama "Status"
+    // pula, dan pencarian di seluruh halaman menemukan keduanya.
+    const grid = screen.getByRole('table', { name: /Daftar PLA/ })
     for (const kolom of KOLOM) {
       expect(
-        await screen.findByRole('columnheader', { name: new RegExp(kolom.judul) }),
+        within(grid).getByRole('columnheader', { name: new RegExp(kolom.judul) }),
       ).toBeInTheDocument()
     }
   })
 
-  it('menggambar tabel ringkas Status / Jumlah', async () => {
+  it('menggambar tabel Status / Jumlah sebagai tabel, bukan sebagai chip', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
     const ringkas = await screen.findByRole('region', {
-      name: 'Ringkasan jumlah klaim per status',
+      name: 'Status dan jumlah klaim per daftar',
     })
 
-    expect(within(ringkas).getByText('Status / Jumlah')).toBeInTheDocument()
-    expect(within(ringkas).getByText('Register')).toBeInTheDocument()
+    // Ditunggu sampai angkanya tiba. Wadahnya tergambar seketika — ia memang harus
+    // selalu ada — sehingga menemukan wadahnya saja belum berarti barisnya sudah ada.
+    await within(ringkas).findByRole('rowheader', { name: 'PLA' })
 
-    // Dicari DI DALAM panel ringkasnya. Angka "3" juga muncul di bilah halaman dan di
-    // tempat lain; pencarian di seluruh halaman akan menemukan yang salah.
-    expect(within(ringkas).getByText('3')).toBeInTheDocument()
+    // Kedua judul kolomnya ditiru dari Pega apa adanya.
+    expect(
+      within(ringkas).getByRole('columnheader', { name: 'Status' }),
+    ).toBeInTheDocument()
+    expect(
+      within(ringkas).getByRole('columnheader', { name: 'Jumlah' }),
+    ).toBeInTheDocument()
+
+    // Baris ber-JUMLAH NOL tetap digambar.
+    //
+    // Pega menggambar keenamnya meski seluruh angkanya nol — tangkapan layar Work Owner
+    // 2026-10-09 memperlihatkan persis itu. Versi sebelumnya menyembunyikan SELURUH
+    // tabelnya saat tak ada baris, sehingga pada keadaan itu ia tidak tergambar sama
+    // sekali.
+    expect(within(ringkas).getAllByRole('row')).toHaveLength(7) // 1 kepala + 6 daftar
+    expect(
+      within(ringkas).getByRole('button', { name: /^0 klaim pada daftar PLA & DLA$/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('berpindah daftar lewat ANGKA pada tabel, bukan lewat tab', async () => {
+    installFetch(jawabanBiasa([BARIS]))
+    tampilkan()
+
+    await screen.findByText('PNC-2001')
+
+    // Di Pega sel "Jumlah" ber-`pyFormat=pxLink` dengan aksi refresh yang membawa kode
+    // daftarnya. Inilah perilaku yang ditiru.
+    await userEvent.click(
+      screen.getByRole('button', { name: /klaim pada daftar NOT ANSWERED$/ }),
+    )
+
+    await waitFor(() => {
+      expect(
+        calls.some((call) => call.url.includes('daftar=not-answered')),
+      ).toBe(true)
+    })
   })
 
   it('menggambar kode status ketika artinya tidak ada di master', async () => {
@@ -277,44 +338,36 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     expect(await screen.findByText('9999')).toBeInTheDocument()
   })
 
-  it('menggambar grid XOL hanya setelah tampilannya DIPILIH', async () => {
+  // Tampilan "DATA PLA DLA XOL KLAIM" TIDAK digambar, dan permintaannya tidak dikirim.
+  //
+  // Di Pega wadahnya bersyarat `pyContainerVisibleWhen = TempView.CityID==7`, sementara
+  // `CityID` hanya pernah diisi dari `.CityID` sebuah baris tabel "Status / Jumlah" —
+  // dan tabel itu berisi enam baris. Literal `7` nol kemunculan sebagai nilai `tipe` di
+  // seluruh export, sehingga tampilan itu tidak pernah dapat tergambar di layar lama.
+  //
+  // Ia sempat dibawa sebagai tab ketujuh lalu sebagai panel permanen; keduanya dicabut
+  // 2026-10-09. Uji ini yang menahannya kembali.
+  it('TIDAK menggambar tampilan XOL, dan tidak memintanya', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
     await screen.findByText('PNC-2001')
 
-    // Sebelum tabnya dibuka, gridnya TIDAK tergambar dan permintaannya tidak dikirim.
-    //
-    // Di Pega pun begitu: wadahnya bersyarat `TempView.CityID==7`. Sebelum 2026-09-28
-    // panel ini digambar permanen di kaki halaman, sehingga gabungan dua tabel XOL
-    // dijalankan pada setiap pembukaan layar — termasuk bagi mitra yang tidak pernah
-    // membukanya.
-    expect(calls.some((call) => call.url.includes('/xol'))).toBe(false)
-
-    await userEvent.click(
-      screen.getByRole('tab', { name: /DATA PLA DLA XOL KLAIM/ }),
-    )
-
-    expect(await screen.findByText('Kebakaran')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(calls.some((call) => call.url.includes('/xol'))).toBe(true)
-    })
-
-    // Keterangan ini yang memberi tahu mitra mengapa angkanya berbeda dari Pega.
     expect(
-      screen.getByText(/Di Pega ia ditulis tetap ke satu mitra/),
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: 'DATA PLA DLA XOL KLAIM' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Di Pega ia ditulis tetap ke satu mitra/)).not.toBeInTheDocument()
+    expect(calls.some((call) => call.url.includes('/xol'))).toBe(false)
   })
 
-  it('mengambil ringkasan lewat permintaan TERSENDIRI dari daftarnya', async () => {
+  it('mengambil tabel Status / Jumlah lewat permintaan TERSENDIRI', async () => {
     installFetch(jawabanBiasa([BARIS]))
     tampilkan()
 
     await screen.findByText('PNC-2001')
 
     await waitFor(() => {
-      expect(calls.some((call) => call.url.includes('/ringkas'))).toBe(true)
+      expect(calls.some((call) => call.url.includes('/ringkas-daftar'))).toBe(true)
     })
   })
 

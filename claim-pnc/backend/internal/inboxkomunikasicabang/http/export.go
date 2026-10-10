@@ -171,7 +171,7 @@ func exportCell(item inboxkomunikasicabang.Conversation, key string) string {
 	case inboxkomunikasicabang.FieldCreatedAt:
 		return item.CreatedAt
 	case inboxkomunikasicabang.FieldSender:
-		return joinWithParenthesis(item.SenderOrigin, item.SenderOperator)
+		return joinWithParenthesis(item.SenderOperator, item.SenderOrigin)
 	case inboxkomunikasicabang.FieldRecipient:
 		return item.RecipientOrigin
 	case inboxkomunikasicabang.FieldMessage:

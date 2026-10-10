@@ -97,6 +97,18 @@ func (s *Store) List(
 }
 
 // matches meniru ketiga penyaring Report Definition ditambah kotak cari.
+//
+// # Kenapa ia masih memakai TransferFlag, sementara jalur Oracle tidak
+//
+// Karena keduanya menjawab pertanyaan yang sama dengan bahan yang berbeda. Di sini barisnya
+// memang punya penandanya — ia data contoh yang kita susun sendiri. Di Oracle penanda itu
+// TIDAK punya kolom sama sekali (terverifikasi 2026-10-09), sehingga antreannya dikenali
+// dari `PC_ASSIGN_WORKLIST.PXTASKLABEL` — lihat kepala
+// `repo/sqlstore/inboxanalystdoctor.sql`.
+//
+// Yang DILIHAT pengguna sama: baris yang muncul adalah tugas penilaian medis miliknya.
+// Perbedaannya hanya pada klaim yang penandanya menunjuk tahap ini tetapi penugasannya sudah
+// berpindah — keadaan yang tidak dapat dibentuk pada data contoh.
 func matches(record Record, operator, search string) bool {
 	if record.TransferFlag != inboxanalystdoctor.TransferAnalystDoctor {
 		return false

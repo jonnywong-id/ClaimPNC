@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -95,7 +96,7 @@ func TestUrutanMenurunDenganPemutusSeri(t *testing.T) {
 // TestPaginasiDikerjakanBasisData menjaga halaman dipotong sebelum baris meninggalkannya.
 func TestPaginasiDikerjakanBasisData(t *testing.T) {
 	require.Contains(t, strings.ToUpper(query("list_tasks")),
-		"OFFSET :5 ROWS FETCH NEXT :6 ROWS ONLY")
+		"OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY")
 }
 
 // TestJumlahBarisDihitungFungsiJendela menjaga satu perjalanan, bukan dua.
@@ -121,24 +122,70 @@ func TestSeluruhNilaiLewatParameterBinding(t *testing.T) {
 	for _, marker := range markers {
 		seen[marker] = true
 	}
-	for _, expected := range []string{":1", ":2", ":3", ":4", ":5", ":6"} {
+	for _, expected := range []string{":1", ":2", ":3", ":4", ":5", ":6", ":7", ":8"} {
 		require.Truef(t, seen[expected], "penanda bind %s tidak dipakai", expected)
 	}
 
 	require.NotContains(t, text, "{ASIS", "perangkaian gaya Pega tidak boleh terbawa")
 
-	// SATU-SATUNYA perangkaian yang diizinkan adalah pola wildcard `LIKE`, dan yang
-	// dirangkai di sana hanyalah tanda persen — nilainya tetap lewat bind.
+	// TIDAK ADA perangkaian sama sekali di kueri ini, termasuk untuk wildcard LIKE.
 	//
-	// Pemeriksaannya dilakukan dengan MEMBUANG pola yang sah lebih dulu, lalu menuntut tidak
-	// ada `||` yang tersisa. Sekadar melarang `' ||` akan menolak pola yang benar sekaligus
-	// meloloskan `|| TempFilter.Nama ||` yang justru berbahaya.
-	const wildcard = "'%' || UPPER(:4) || '%'"
-	require.Contains(t, text, wildcard)
+	// Pola `'%' || UPPER(:4) || '%'` sempat dipakai di sini, dan ia membawa cacat yang
+	// berbeda dari injeksi: `:4` menjadi muncul TIGA kali, sementara driver menghitung
+	// setiap kemunculan sebagai satu variabel yang harus diikat. Hasilnya ORA-01008.
+	// Wildcard-nya kini dibentuk `likePattern` di Go.
+	require.NotContains(t, text, "||",
+		"tidak boleh ada perangkaian apa pun ke teks SQL; wildcard dibentuk di Go")
+}
 
-	rest := strings.ReplaceAll(text, wildcard, "")
-	require.NotContains(t, rest, "||",
-		"selain pola wildcard LIKE, tidak boleh ada perangkaian apa pun ke teks SQL")
+// TestPenandaBindTidakPernahBerulang adalah uji yang menangkap cacat kedua layar ini.
+//
+// `database/sql` mengirim argumen menurut POSISI, dan driver go-ora menghitung setiap
+// kemunculan `:n` sebagai satu variabel yang harus diikat — bukan sebagai rujukan ke
+// variabel yang sama. Satu penanda yang ditulis dua kali karena itu menuntut lebih banyak
+// ikatan daripada yang dikirim pemanggil, dan Oracle menjawab:
+//
+//	ORA-01008: not all variables bound
+//
+// Cacat ini TIDAK terlihat dari membaca kode, tidak tertangkap `go vet`, dan tidak
+// tertangkap uji sqlmock — ia hanya muncul saat kueri benar-benar dijalankan. Di layar ini
+// ia bahkan tersembunyi di belakang ORA-00904 sampai penyebab pertamanya diperbaiki.
+//
+// Yang diperiksa: setiap penanda muncul TEPAT SEKALI, dan penomorannya menaik tanpa lubang.
+func TestPenandaBindTidakPernahBerulang(t *testing.T) {
+	for name := range queries {
+		markers := regexp.MustCompile(`:\d+`).FindAllString(query(name), -1)
+
+		counted := map[string]int{}
+		for _, marker := range markers {
+			counted[marker]++
+		}
+		for marker, times := range counted {
+			require.Equalf(t, 1, times,
+				"kueri %s memakai penanda %s sebanyak %d kali; "+
+					"setiap kemunculan menuntut satu ikatan tersendiri (ORA-01008)",
+				name, marker, times)
+		}
+
+		for i := 1; i <= len(markers); i++ {
+			require.Containsf(t, markers, ":"+strconv.Itoa(i),
+				"kueri %s melompati penanda :%d", name, i)
+		}
+	}
+}
+
+// TestLikePatternMembungkusDanMelepasKarakterKhusus menjaga kotak cari tetap jujur.
+//
+// Tanpa escape, pencarian "100%" berubah menjadi pola yang mencocokkan APA SAJA — pengguna
+// mengira ia menemukan sesuatu, padahal ia hanya mematikan penyaringnya sendiri.
+func TestLikePatternMembungkusDanMelepasKarakterKhusus(t *testing.T) {
+	require.Equal(t, "", likePattern("   "),
+		"kata kunci kosong tidak boleh menjadi pola yang cocok dengan semuanya")
+	require.Equal(t, "%PNC-1%", likePattern(" pnc-1 "),
+		"pola diseragamkan huruf besar karena sisi SQL memakai UPPER(...)")
+	require.Equal(t, `%100\%%`, likePattern("100%"))
+	require.Equal(t, `%A\_B%`, likePattern("a_b"))
+	require.Equal(t, `%C\D%`, likePattern(`c\d`))
 }
 
 // TestPencarianDimatikanSaatKataKunciNULL menjaga kotak cari kosong tidak memaksa pemindaian.
@@ -178,15 +225,49 @@ func TestKueriPeriksaTidakMembacaSatuBarisPun(t *testing.T) {
 	}
 }
 
-// TestKueriPeriksaKolomMenyebutKeduaKolomYangBelumTerkonfirmasi.
+// TestKueriPeriksaKolomMenutupSeluruhKolomYangDipakai.
 //
-// Inilah satu-satunya tempat yang memberi tahu operator bahwa kedua kolom itu belum ada,
-// SEBELUM ada pengguna yang membuka layarnya.
-func TestKueriPeriksaKolomMenyebutKeduaKolomYangBelumTerkonfirmasi(t *testing.T) {
+// Versi sebelumnya memeriksa DUA kolom tebakan lalu berhenti. Keduanya ternyata memang tidak
+// ada, dan karena pemeriksaannya berhenti pada temuan pertama, kolom lain tidak pernah
+// sempat terperiksa sama sekali.
+func TestKueriPeriksaKolomMenutupSeluruhKolomYangDipakai(t *testing.T) {
 	text := strings.ToUpper(query("check_columns"))
 
-	require.Contains(t, text, "ISCOMPLIANCETRANSFER_1")
-	require.Contains(t, text, "ANALYSTDOCTORREMAKS_1")
+	for _, column := range []string{
+		"W.PYID", "W.POLICYNO", "W.QQNAME", "W.BRANCHNAME", "W.PYORIGUSERID",
+		"W.USERTEKNIS_1", "W.PXCREATEDATETIME", "W.PYSTATUSWORK",
+		"A.PXTASKLABEL", "A.PXASSIGNEDOPERATORID",
+	} {
+		require.Containsf(t, text, column,
+			"kolom %s dipakai kueri daftar tetapi tidak ikut diperiksa", column)
+	}
+}
+
+// TestKolomYangTerbuktiTidakAdaTidakDipakaiLagi adalah uji yang mencegah kambuhnya cacat ini.
+//
+// `ISCOMPLIANCETRANSFER_1` dan `ANALYSTDOCTORREMAKS_1` adalah nama TEBAKAN yang mengikuti
+// konvensi `_1`. Katalog Oracle membuktikan keduanya tidak ada, dan selama keduanya dipakai,
+// layar ini gagal ORA-00904 pada SETIAP permintaan — bukan sesekali, dan bukan hanya untuk
+// sebagian pengguna.
+//
+// Menyalin kueri dari modul lain adalah cara paling mudah mengembalikannya tanpa sengaja.
+func TestKolomYangTerbuktiTidakAdaTidakDipakaiLagi(t *testing.T) {
+	for name := range queries {
+		text := strings.ToUpper(query(name))
+		require.NotContainsf(t, text, "ISCOMPLIANCETRANSFER",
+			"kueri %s memakai kolom yang terbukti tidak ada di Oracle", name)
+		require.NotContainsf(t, text, "ANALYSTDOCTORREMAKS",
+			"kueri %s memakai kolom yang terbukti tidak ada di Oracle", name)
+	}
+}
+
+// TestAntreanDikenaliDariLabelTahapPenugasan mengunci pengganti penyaring utamanya.
+//
+// `Flow/Register_Flow.xml` `Assignment13` menamai tahap itu "Analyst Doctor", dan Pega
+// menyimpan nama itu sebagai `PXTASKLABEL`. Tanpa penyaring ini, kueri mengembalikan SELURUH
+// tugas worklist milik pemanggil sebagai tugas medis — tanpa satu pun galat.
+func TestAntreanDikenaliDariLabelTahapPenugasan(t *testing.T) {
+	require.Contains(t, strings.ToUpper(query("list_tasks")), "A.PXTASKLABEL = :1")
 }
 
 // TestKomentarTidakIkutDikirimKeBasisData menjaga pemecah berkas .sql bekerja.

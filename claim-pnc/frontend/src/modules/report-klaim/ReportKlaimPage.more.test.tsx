@@ -49,6 +49,15 @@ const CATALOG = {
     },
   ],
   lini_bisnis: [{ nilai: '002', nama: 'Personal Accident' }],
+
+  // Ketiganya saja, mengikuti ComplianceStatusOptions di peladen. Nilai "3"
+  // ("Lain-Lain") ADA di data tetapi sengaja TIDAK ditawarkan penyaring ini, sehingga
+  // fixture yang memuatnya akan menguji alamat yang tidak mungkin dihasilkan layar.
+  status_compliance: [
+    { nilai: '0', nama: 'Fraud / ditolak' },
+    { nilai: '1', nama: 'Valid / Bayar' },
+    { nilai: '2', nama: 'Post Audit / Bayar' },
+  ],
 }
 
 type Answer = Response | Promise<Response> | 'putus' | 'aneh' | undefined
@@ -134,12 +143,14 @@ describe('ekspor', () => {
     show()
 
     const tombol = await screen.findByRole('button', { name: 'Export Compliance' })
-    await userEvent.type(screen.getByLabelText('Status Compliance'), '3')
+    // Ia SELECT, bukan isian teks: userEvent.type tidak mengubah nilainya sama sekali,
+    // dan penyaringnya lalu hilang dari alamat tanpa satu pun galat.
+    await userEvent.selectOptions(screen.getByLabelText('Status Compliance'), '2')
     await userEvent.click(screen.getByRole('checkbox', { name: 'Tampilkan kolom rincian' }))
     await userEvent.click(tombol)
 
     await waitFor(() =>
-      expect(urls).toContain('/api/report-klaim/compliance/ekspor?status_compliance=3&rincian=1'),
+      expect(urls).toContain('/api/report-klaim/compliance/ekspor?status_compliance=2&rincian=1'),
     )
   })
 

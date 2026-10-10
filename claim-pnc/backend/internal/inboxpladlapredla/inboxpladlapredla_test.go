@@ -491,3 +491,109 @@ func TestAnUnknownActionStillAnswersAsNotAvailable(t *testing.T) {
 	require.ErrorIs(t, rejected, inboxpladlapredla.ErrWriteNotAvailable,
 		"pemanggil yang hanya memeriksa sentinelnya tidak boleh ikut berubah")
 }
+
+// Syarat tampilnya tombol "SEND" BERBEDA antara tab PLA dan tab DLA.
+//
+// Keduanya terbaca langsung dari sectionnya:
+//
+//	`Section/InboxPLA_sect-Section.xml:13238`  `.MARKETING != '1'`
+//	`Section/InboxDLA_sect-Section.xml:11972`  `.MARKETING == ''`
+//
+// `MARKETING` adalah alias untuk `ISKIRIM` (`iskirim AS MARKETING` pada kedua kueri
+// rincian). Uji ini yang akan gagal bila seseorang "merapikan" keduanya menjadi satu
+// syarat — penyeragaman yang tidak menghasilkan galat apa pun, hanya tombol kirim surat
+// yang muncul di tempat Pega tidak pernah menampilkannya.
+func TestSendButtonVisibilityDiffersBetweenPLAAndDLA(t *testing.T) {
+	pla, found := inboxpladlapredla.FindTab("pla")
+	require.True(t, found)
+	dla, found := inboxpladlapredla.FindTab("dla")
+	require.True(t, found)
+
+	// Belum terkirim sama sekali — kedua tab bertombol.
+	require.True(t, pla.ShowSendButton(""))
+	require.True(t, dla.ShowSendButton(""))
+
+	// Sudah terkirim — kedua tab TIDAK bertombol. Inilah inti permintaannya.
+	require.False(t, pla.ShowSendButton("1"))
+	require.False(t, dla.ShowSendButton("1"))
+
+	// `ISKIRIM = '0'` — di sinilah keduanya berpisah.
+	require.True(t, pla.ShowSendButton("0"),
+		"PLA memakai `!= '1'`, sehingga '0' tetap bertombol")
+	require.False(t, dla.ShowSendButton("0"),
+		"DLA memakai `== ''`, sehingga '0' TIDAK bertombol")
+}
+
+// Tab Pre DLA tidak punya tombol "SEND" dalam keadaan apa pun.
+//
+// Ia bahkan tidak punya grid rinciannya. Tombol yang menandai Pre-DLA terkirim ada di
+// panel "Print Pre DLA" dan bernama lain — "Kirim Pre DLA" — dan ia tidak mengirim surat.
+func TestPreDLAHasNoSendButtonAtAll(t *testing.T) {
+	pre, found := inboxpladlapredla.FindTab("pre-dla")
+	require.True(t, found)
+
+	require.Equal(t, inboxpladlapredla.SendNever, pre.SendVisible)
+
+	for _, sent := range []string{"", "0", "1", "X"} {
+		require.False(t, pre.ShowSendButton(sent), "ISKIRIM %q", sent)
+	}
+}
+
+// Setiap kolom panel "Print Pre DLA" harus menunjuk medan yang BENAR-BENAR dikirim.
+//
+// Kolom "Tgl Kirim" pernah menunjuk `tanggal_dokumen`, medan yang tidak ada pada baris
+// panel ini — dan akibatnya tidak terlihat sebagai galat: tanggalnya hanya kosong pada
+// setiap baris. Uji ini menjaga kunci kolom tetap sejalan dengan bentuk barisnya.
+func TestPrintPanelColumnsPointAtFieldsTheRowActuallyCarries(t *testing.T) {
+	pre, found := inboxpladlapredla.FindTab("pre-dla")
+	require.True(t, found)
+
+	// Medan yang benar-benar ada pada PreDLADocumentDTO.
+	carried := map[string]bool{
+		inboxpladlapredla.FieldAdviceNo:      true,
+		inboxpladlapredla.FieldReinsurer:     true,
+		inboxpladlapredla.FieldAdviceType:    true,
+		inboxpladlapredla.FieldSentDate:      true,
+		inboxpladlapredla.FieldSent:          true,
+		inboxpladlapredla.FieldAttachmentKey: true,
+	}
+
+	require.NotEmpty(t, pre.PrintColumns)
+	for _, column := range pre.PrintColumns {
+		require.True(t, carried[column.Key],
+			"kolom %q menunjuk medan %q yang tidak pernah dikirim",
+			column.Title, column.Key)
+	}
+}
+
+// Grid rincian mengikuti URUTAN kolom Pega: tanggal terima mendahului tanggal kirim.
+//
+// Urutannya bukan selera. Petugas membaca grid ini berdampingan dengan layar lama selama
+// masa paralel, dan dua tanggal bersebelahan yang tertukar adalah kesalahan baca yang
+// tidak meninggalkan jejak apa pun.
+func TestDetailGridKeepsPegaColumnOrder(t *testing.T) {
+	for _, code := range []string{"pla", "dla"} {
+		tab, found := inboxpladlapredla.FindTab(code)
+		require.True(t, found)
+
+		posisi := map[string]int{}
+		for index, column := range tab.DocumentColumns {
+			posisi[column.Key] = index
+		}
+
+		require.Less(t,
+			posisi[inboxpladlapredla.FieldDocDate],
+			posisi[inboxpladlapredla.FieldReceivedDate],
+			"%s: tanggal dokumen mendahului tanggal terima", code)
+
+		require.Less(t,
+			posisi[inboxpladlapredla.FieldReceivedDate],
+			posisi[inboxpladlapredla.FieldSentDate],
+			"%s: TGL Terima mendahului SENT DATE di Pega", code)
+
+		require.Less(t,
+			posisi[inboxpladlapredla.FieldSentDate],
+			posisi[inboxpladlapredla.FieldEmail],
+			"%s: Email berada setelah kedua tanggal", code)
+	}
+}

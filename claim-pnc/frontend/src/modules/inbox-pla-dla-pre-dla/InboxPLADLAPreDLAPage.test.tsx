@@ -232,9 +232,13 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               catatan: '',
               email: '',
               no_akseptasi: '',
+              dapat_dikirim: true,
             },
             {
               // Dokumen yang SUDAH terkirim — tombol Send tidak digambar padanya.
+              //
+              // Peladen yang memutuskannya, bukan layar: syaratnya berbeda antara tab
+              // PLA dan DLA, dan keduanya dibaca dari section Pega.
               no_advice: 'PLA/2026/0002',
               reasuradur: 'Reasuransi Contoh B',
               tipe: 'ORS',
@@ -246,6 +250,7 @@ function jawabanBiasa(baris: unknown[]): (call: Call) => Reply {
               catatan: '',
               email: '',
               no_akseptasi: '',
+              dapat_dikirim: false,
             },
           ],
           portal: 'ASM',
@@ -480,11 +485,14 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
 
     await screen.findByText('Detail PLA List')
 
-    // Keduanya ADA di Pega: Upload di ATAS grid rincian, Send di BAWAHnya.
+    // Keduanya ADA di Pega: Upload di ATAS grid rincian, Send di DALAM barisnya.
     expect(
       screen.getByRole('button', { name: 'Upload File Penunjang' }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+
+    // Satu, bukan dua: dari kedua dokumen klaim ini, satu sudah terkirim dan karena itu
+    // tidak bertombol. Lihat uji syarat tampilnya di bawah.
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
   })
 
   it('MENGIRIM surat saat Send ditekan, dan menyebut hasilnya', async () => {
@@ -567,7 +575,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     expect(screen.getByText(/mencoba lagi aman/)).toBeInTheDocument()
   })
 
-  it('menggambar SEND pada SETIAP baris, termasuk yang sudah terkirim', async () => {
+  it('TIDAK menggambar SEND pada dokumen yang sudah terkirim', async () => {
     installFetch(jawabanBiasa([BARIS_LENGKAP]))
     tampilkan()
 
@@ -577,14 +585,53 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
       name: /Rincian PLA klaim PNC-1001/,
     })
 
-    // Dua dokumen, salah satunya sudah terkirim — dan keduanya tetap punya tombol.
+    // Dua dokumen, salah satunya sudah terkirim — dan hanya yang belum punya tombol.
     //
-    // Pega menyembunyikannya pada dokumen terkirim (`.MARKETING != '1'`). Penyembunyian
-    // itu sengaja tidak dibawa atas keputusan Work Owner 2026-09-27, sehingga kolom
-    // "Terkirim" menjadi satu-satunya penanda.
+    // Syarat tampilnya dibawa dari `Section/InboxPLA_sect-Section.xml:13238`
+    // (`.MARKETING != '1'`, dengan `MARKETING` sebagai alias `ISKIRIM`). Sejak tombol ini
+    // benar-benar MENGIRIM SURAT, menggambarnya pada dokumen terkirim berarti menawarkan
+    // surat kedua ke reasuradur yang sama.
+    //
+    // Keputusannya datang dari peladen lewat `dapat_dikirim`, bukan dihitung layar —
+    // tab DLA memakai syarat yang lebih ketat (`.MARKETING == ''`).
     expect(within(panel).getByText('PLA/2026/0001')).toBeInTheDocument()
     expect(within(panel).getByText('PLA/2026/0002')).toBeInTheDocument()
-    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+  })
+
+  // Peladen LAMA tidak mengirim `dapat_dikirim`, dan tombolnya tidak boleh lenyap.
+  //
+  // Tanpa cadangan, kegagalan ini tidak menghasilkan satu pun galat: panelnya tampil
+  // utuh, hanya tanpa satu pun tombol Send. Yang melihatnya akan menyimpulkan tombolnya
+  // dicabut.
+  it('tetap menggambar SEND ketika peladen belum mengirim dapat_dikirim', async () => {
+    installFetch((call) => {
+      const jawaban = jawabanBiasa([BARIS_LENGKAP])(call)
+
+      if (call.url.includes('/klaim/') && !call.url.includes('/kirim')) {
+        const body = jawaban.body as { baris: Record<string, unknown>[] }
+        return {
+          ...jawaban,
+          body: {
+            ...body,
+            baris: body.baris.map(({ dapat_dikirim: _, ...sisa }) => sisa),
+          },
+        }
+      }
+
+      return jawaban
+    })
+    tampilkan()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'PNC-1001' }))
+
+    const panel = await screen.findByRole('region', {
+      name: /Rincian PLA klaim PNC-1001/,
+    })
+
+    // Cadangannya memakai syarat tab PLA — yang lebih longgar dari keduanya — sehingga
+    // dokumen terkirim TETAP tidak bertombol. Itu bagian yang tidak boleh longgar.
+    expect(within(panel).getAllByRole('button', { name: 'Send' })).toHaveLength(1)
   })
 
   it('mengirim SATU dokumen, bukan seluruh dokumen klaim', async () => {

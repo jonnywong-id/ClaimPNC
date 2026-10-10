@@ -222,35 +222,6 @@ func TestCountsFailures(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestXOLBindsTheLoginTwice(t *testing.T) {
-	repo, mock := newMock(t)
-	columns := []string{"YEAR", "CAUSE", "KIND", "LAST"}
-
-	mock.ExpectQuery(exact("xol_summary")).WithArgs("REAS", "REAS").
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(" 2026 ", " Banjir ", " PLA ", day))
-
-	rows, err := repo.XOL(context.Background(), " REAS ")
-	require.NoError(t, err)
-	require.Equal(t, []inboxpladla.XOLRow{{
-		Year: "2026", CauseOfLoss: "Banjir", Kind: "PLA", LastInsertDate: "2026-01-15",
-	}}, rows)
-
-	mock.ExpectQuery(exact("xol_summary")).WillReturnError(errDB)
-	_, err = repo.XOL(context.Background(), "REAS")
-	require.ErrorIs(t, err, errDB)
-
-	mock.ExpectQuery(exact("xol_summary")).
-		WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("x"))
-	_, err = repo.XOL(context.Background(), "REAS")
-	require.ErrorContains(t, err, "memindai baris")
-
-	mock.ExpectQuery(exact("xol_summary")).
-		WillReturnRows(sqlmock.NewRows(columns).AddRow("1", "2", "3", day).RowError(0, errDB))
-	_, err = repo.XOL(context.Background(), "REAS")
-	require.ErrorContains(t, err, "membaca hasil")
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
 func TestClaimHeaderMapsTheRowAndHidesForeignClaims(t *testing.T) {
 	repo, mock := newMock(t)
 	columns := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}

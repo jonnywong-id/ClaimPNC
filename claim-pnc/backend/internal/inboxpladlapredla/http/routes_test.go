@@ -426,9 +426,22 @@ func TestExportWritesTheVisibleList(t *testing.T) {
 		titles = append(titles, column.Title)
 	}
 	require.Equal(t, titles, records[0])
-	require.Len(t, records, 2, "hanya PNC-1001 yang lolos penyaring tab DLA")
+
+	// Dua klaim lolos penyaring tab DLA, dan keduanya lolos karena alasan yang berbeda:
+	// PNC-1001 ber-`ISKIRIM` KOSONG, PNC-1008 ber-`ISKIRIM = '0'`. Penyaringnya menerima
+	// keduanya (`ISKIRIM IS NULL OR ISKIRIM = '0'`).
+	require.Len(t, records, 3, "PNC-1001 dan PNC-1008 lolos penyaring tab DLA")
 	require.Contains(t, records[1], "PNC-1001")
 	require.Contains(t, records[1], "POL-2026-0001")
+
+	// Kolom "Tanggal DLA" PNC-1008 KOSONG, dan itu bukan data yang hilang.
+	//
+	// Sub-kueri tanggalnya menyaring `ISKIRIM IS NULL` saja — lebih sempit daripada
+	// penyaring keanggotaan barisnya. Klaim yang seluruh dokumennya ber-`'0'` karena itu
+	// masuk daftar tanpa tanggal. Itu perilaku Pega (`P-5`).
+	require.Contains(t, records[2], "PNC-1008")
+	require.Equal(t, "", records[2][len(records[2])-1],
+		"tanggal advice PNC-1008 kosong karena seluruh dokumennya ber-ISKIRIM='0'")
 }
 
 func TestExportRejectsBeforeWritingAnything(t *testing.T) {
@@ -534,5 +547,62 @@ func TestExportStopsWhenTheConnectionBreaks(t *testing.T) {
 		require.Equal(t, "text/csv; charset=utf-8", header.Get("Content-Type"))
 		require.Contains(t, h.log.String(), "koneksi putus")
 		require.Equal(t, []int{1}, repo.pages, "ekspor berlanjut setelah koneksi putus")
+	}
+}
+
+// Jawaban grid rincian MENYATAKAN baris mana yang bertombol "SEND".
+//
+// Layar tidak menyimpulkannya sendiri dari `terkirim`: syaratnya berbeda antara kedua tab,
+// dan perbedaan itu hasil pembacaan section — bukan pilihan tampilan.
+//
+//	tab PLA  ISKIRIM bukan "1"   -> bertombol
+//	tab DLA  ISKIRIM KOSONG      -> bertombol
+//
+// Syaratnya ditulis sebagai blok di atas, bukan sebagai prosa. Ditulis mengalir, bentuk
+// string kosong Pega dua tanda petik berurutan diubah gofmt menjadi tanda kutip tipografis
+// — dan syarat yang berubah bentuk tidak lagi menyatakan apa yang dibaca dari section.
+func TestDocumentsStateWhichRowsCarryTheSendButton(t *testing.T) {
+	h := newHarness(t, nil, nil)
+
+	// PNC-1001 — satu PLA belum terkirim, satu sudah.
+	_, body := h.get(t, keyPath("klaim", claimKey, "?daftar=pla"))
+	rows := body["baris"].([]any)
+	require.Len(t, rows, 2)
+
+	belum := rows[0].(map[string]any)
+	require.Equal(t, "", belum["terkirim"])
+	require.Equal(t, true, belum["dapat_dikirim"])
+
+	sudah := rows[1].(map[string]any)
+	require.Equal(t, "1", sudah["terkirim"])
+	require.Equal(t, false, sudah["dapat_dikirim"],
+		"dokumen yang sudah terkirim tidak boleh bertombol SEND")
+}
+
+// `ISKIRIM = '0'` bertombol di tab PLA tetapi TIDAK di tab DLA.
+//
+// Itu kejanggalan Pega yang dibawa apa adanya, dan ia hanya terlihat pada nilai yang satu
+// ini. Uji ini menembak keduanya lewat HTTP supaya penyeragaman di lapisan mana pun —
+// domain, DTO, atau layar — akan tertangkap di sini.
+func TestSentFlagZeroIsSendableOnPLAButNotOnDLA(t *testing.T) {
+	h := newHarness(t, nil, nil)
+	const key = "ASM-FW-GCNMFW-WORK PNC-1008"
+
+	_, body := h.get(t, keyPath("klaim", key, "?daftar=pla"))
+	for _, baris := range body["baris"].([]any) {
+		row := baris.(map[string]any)
+		require.Equal(t, "0", row["terkirim"])
+		require.Equal(t, true, row["dapat_dikirim"],
+			"PLA memakai `!= '1'`, sehingga '0' tetap bertombol")
+	}
+
+	_, body = h.get(t, keyPath("klaim", key, "?daftar=dla"))
+	rows := body["baris"].([]any)
+	require.NotEmpty(t, rows)
+	for _, baris := range rows {
+		row := baris.(map[string]any)
+		require.Equal(t, "0", row["terkirim"])
+		require.Equal(t, false, row["dapat_dikirim"],
+			"DLA memakai `== ''`, sehingga '0' TIDAK bertombol")
 	}
 }

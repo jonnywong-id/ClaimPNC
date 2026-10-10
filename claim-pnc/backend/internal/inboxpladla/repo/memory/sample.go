@@ -84,7 +84,7 @@ func NewSampleStoreFor(login string) *Store {
 	store := NewStore()
 	store.Seed(
 		sampleClaims(), sampleAdvices(),
-		sampleReinsurers(clean), sampleXOL(), sampleLabels(),
+		sampleReinsurers(clean), sampleLabels(),
 	)
 	store.SeedMessages(sampleMessages(clean))
 	store.SeedDocuments(sampleDocuments(clean))
@@ -347,43 +347,6 @@ func sampleAdvices() []Advice {
 			ClaimKey: workKey("PNC-2008"), Kind: "pla", No: "PLA/2026/2008",
 			ReinsCode: "R900", Revision: 0,
 			Sent: sent1, SentDate: date1, Email: mail1,
-		},
-	}
-}
-
-// sampleXOL adalah ringkasan XOL contoh.
-//
-// Satu baris milik reasuradur LAIN, dan satu baris BELUM terkirim. Keduanya ada supaya
-// penyaringnya benar-benar teruji — termasuk penyaring reasuradur, yang di Pega justru
-// tidak mengikuti pemanggil sama sekali.
-func sampleXOL() []XOL {
-	return []XOL{
-		{
-			Kind: "PLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Kebakaran", Sent: true,
-			InsertDate: day(2026, time.February, 1),
-		},
-		{
-			Kind: "PLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Kebakaran", Sent: true,
-			InsertDate: day(2026, time.February, 10),
-		},
-		{
-			Kind: "DLA", ReinsCode: "R100", Year: "2025",
-			CauseOfLoss: "Banjir", Sent: true,
-			InsertDate: day(2025, time.December, 20),
-		},
-		{
-			// Milik reasuradur lain — tidak boleh terlihat.
-			Kind: "PLA", ReinsCode: "R900", Year: "2026",
-			CauseOfLoss: "Gempa", Sent: true,
-			InsertDate: day(2026, time.March, 1),
-		},
-		{
-			// Belum terkirim — `SENDDATE IS NULL`.
-			Kind: "DLA", ReinsCode: "R100", Year: "2026",
-			CauseOfLoss: "Pencurian", Sent: false,
-			InsertDate: day(2026, time.March, 5),
 		},
 	}
 }

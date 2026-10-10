@@ -51,17 +51,21 @@ const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
  * ARAH: layar ini menampilkan dokumen yang belum dikirim, layar itu menampilkan dokumen
  * yang sudah dikirim — dan yang membacanya reasuradur, bukan petugas internal.
  *
- * # Layar BACA-SAJA, dan itu keputusan Work Owner 2026-09-26
+ * # Tiga tombol sudah MENULIS; dua belum dibangun
  *
- * Tombol yang MENULIS belum dibangun — "Send", "Upload File Penunjang", "Kirim Pre DLA",
- * dan unduh lampiran. "Send" di Pega mengirim surat beserta lampirannya lewat email LALU
- * menandai dokumennya terkirim; mengerjakan penandaan tanpa pengirimannya akan membuat
- * barisnya hilang dari antrean padahal tidak satu pun surat sampai.
+ * Yang sudah bekerja: **"Send"** mengirim surat PLA/DLA beserta lampirannya ke reasuradur
+ * lalu menandai dokumennya terkirim · **"Kirim Pre DLA"** menandai satu Pre-DLA terkirim ·
+ * **"Print Pre DLA"** membuka panelnya.
  *
- * "Print Pre DLA" TIDAK termasuk: ia MEMBUKA panel, dan panelnya sudah dibangun. Yang
- * belum dibangun adalah dua tombol di dalamnya.
+ * Yang belum: **"Upload File Penunjang"** dan **unduh lampiran**, keduanya menunggu
+ * penyimpanan dokumen (`D-16`). Menekannya menjawab alasannya, bukan "halaman tidak
+ * ditemukan".
  *
- * Ketiadaannya digambar di kaki layar sebagai selisih terencana, bukan disamarkan.
+ * # Tombol "Send" TIDAK digambar pada setiap baris
+ *
+ * Syarat tampilnya dibawa dari Pega dan dihitung peladen — lihat `DocumentPanel`. Baris
+ * yang dokumennya sudah terkirim tidak bertombol, sehingga surat kedua ke reasuradur yang
+ * sama tidak dapat dipicu dari layar ini.
  *
  * # Susunan layar
  *

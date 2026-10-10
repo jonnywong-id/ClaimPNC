@@ -1,79 +1,126 @@
-import type { RingkasStatus } from './types'
+import type { RingkasDaftar } from './types'
 
 type Props = {
-  rows: RingkasStatus[]
+  rows: RingkasDaftar[]
+  active: string
   isLoading: boolean
+  onSelect: (kode: string) => void
 }
 
 /**
- * StatusSummary adalah tabel ringkas **"Status / Jumlah"** di atas daftar.
+ * StatusSummary adalah tabel **"Status / Jumlah"** di samping daftar.
  *
- * # Apa yang digantikan
+ * # Ia NAVIGASI, bukan hiasan
  *
- * Grid `TempPLADLA.pxResults` beserta bagan di sebelahnya pada
- * `Section/InboxDLAReas_sect-Section.xml`.
+ * Di Pega layar ini tidak punya bilah tab sama sekali: tabel inilah satu-satunya cara
+ * berpindah daftar. Sel "Jumlah" ber-`pyFormat=pxLink` dengan aksi `refresh` yang membawa
+ * `.CityID` — kode daftarnya (`Section/InboxDLAReas_sect-Section.xml`).
+ *
+ * # Barisnya DAFTAR, bukan status klaim
+ *
+ * `Activity/GetLostAdjuster_act-Act.xml` menyusunnya satu per satu, dan `.CauseOfLoss`
+ * diisi NAMA DAFTAR — `"NOT ANSWERED"`, `"NOT REPLIED FROM ASM"`, `"REPLIED FROM ASM"`,
+ * dan seterusnya. Aliasnya menyesatkan seluruhnya; tidak satu pun berhubungan dengan
+ * penyebab kerugian.
+ *
+ * Versi sebelumnya menggambar cacahan STATUS KLAIM di dalam daftar yang sedang terbuka —
+ * hal yang tidak ada di layar Pega mana pun — dan menggambarnya sebagai chip, bukan
+ * tabel. Keduanya dikoreksi 2026-10-09 atas permintaan Work Owner.
+ *
+ * # Kenapa barisnya digambar meski jumlahnya NOL
+ *
+ * Karena Pega menggambarnya. Tangkapan layar yang menyertai permintaan memperlihatkan
+ * keenam barisnya dengan angka nol seluruhnya — dan itu memang bentuk yang benar: tabel
+ * yang menghilangkan barisnya saat kosong membuat pengguna menyimpulkan daftarnya tidak
+ * ada, bukan bahwa daftarnya sedang kosong.
+ *
+ * Versi sebelumnya `return null` saat tak ada baris, sehingga pada keadaan di tangkapan
+ * layar itu tabelnya **tidak tergambar sama sekali**.
  *
  * # Kenapa TANPA bagan
  *
- * Pega menggambar bagan batang di samping tabelnya. Ia tidak dibawa, dan alasannya bukan
- * kemalasan: bagannya menggambarkan hal yang SAMA dengan tabel di sebelahnya — jumlah
- * klaim per status — pada daftar yang biasanya berisi kurang dari sepuluh status. Bagan
- * atas sepuluh angka tidak menjelaskan apa pun yang tidak sudah terbaca dari angkanya,
- * dan ia menambah satu pustaka bagan ke dalam bundel.
- *
- * Bila kelak jumlah statusnya bertambah banyak sehingga tabelnya sulit dibaca sekilas,
- * bagannya layak ditambahkan — dan itu keputusan tersendiri.
- *
- * # Kenapa barisnya TIDAK dapat diklik
- *
- * Berbeda dari tabel ringkas Inbox Salvage, baris di sini tidak menuju daftar mana pun:
- * status bukan tab, dan tidak ada daftar terpisah per status di Pega. Membuatnya dapat
- * diklik akan menjanjikan penyaringan yang tidak ada.
+ * Pega menggambar bagan batang di sampingnya. Ia tidak dibawa: bagannya menggambarkan hal
+ * yang sama dengan enam angka di sebelahnya, dan enam angka tidak menjadi lebih terbaca
+ * karena digambar sebagai batang. Ia juga menambah satu pustaka bagan ke dalam bundel.
  */
-export function StatusSummary({ rows, isLoading }: Props) {
-  if (isLoading) {
-    return (
-      <p className="text-sm text-slate-600">Menghitung ringkasan status…</p>
-    )
-  }
-
-  if (rows.length === 0) return null
-
-  const total = rows.reduce((jumlah, baris) => jumlah + baris.jumlah, 0)
-
+export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
   return (
     <section
-      className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
-      aria-label="Ringkasan jumlah klaim per status"
+      className="rounded-kartu border border-slate-200 bg-white shadow-lembut"
+      aria-label="Status dan jumlah klaim per daftar"
     >
-      <h2 className="text-sm font-semibold text-slate-900">Status / Jumlah</h2>
+      <table className="w-full border-collapse text-sm">
+        <caption className="sr-only">
+          Jumlah klaim pada setiap daftar. Pilih angkanya untuk membuka daftar itu.
+        </caption>
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th
+              scope="col"
+              className="px-4 py-2.5 text-left font-semibold text-slate-700"
+            >
+              Status
+            </th>
+            <th
+              scope="col"
+              className="px-4 py-2.5 text-left font-semibold text-slate-700"
+            >
+              Jumlah
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading && (
+            <tr>
+              <td colSpan={2} className="px-4 py-3 text-slate-600">
+                Menghitung jumlah tiap daftar…
+              </td>
+            </tr>
+          )}
 
-      <ul className="mt-3 flex flex-wrap gap-2">
-        {rows.map((baris) => (
-          <li
-            key={baris.kode_status}
-            className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2"
-          >
-            <span className="block text-xs text-slate-600">
-              {/*
-                Label yang kosong digantikan KODENYA, bukan dibiarkan kosong.
+          {!isLoading &&
+            rows.map((baris) => {
+              const terbuka = baris.kode === active
+              return (
+                <tr
+                  key={baris.kode}
+                  className={`border-b border-slate-100 last:border-b-0 ${
+                    terbuka ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <th
+                    scope="row"
+                    className={`px-4 py-2.5 text-left font-normal ${
+                      terbuka ? 'font-semibold text-blue-900' : 'text-slate-800'
+                    }`}
+                  >
+                    {baris.status}
+                  </th>
+                  <td className="px-4 py-2.5">
+                    {/*
+                      Angkanya TOMBOL, bukan tautan `<a>`.
 
-                Kode status yang tidak ada di master memang terjadi — domainnya 33 kode
-                dan data lama memuat kode di luar itu. Sel kosong akan membuat barisnya
-                tampak rusak; kodenya masih dapat ditelusuri.
-              */}
-              {baris.status || `Kode ${baris.kode_status || '—'}`}
-            </span>
-            <span className="block text-base font-semibold text-slate-900">
-              {baris.jumlah}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-3 text-xs text-slate-500">
-        Jumlah seluruhnya {total} klaim, mengikuti pencarian yang sedang aktif.
-      </p>
+                      Ia tidak menuju alamat mana pun — ia mengganti isi grid di sebelahnya,
+                      persis seperti aksi `refresh` di Pega. Menggambarnya sebagai `<a>`
+                      tanpa `href` yang sah akan menjanjikan hal yang tidak ia lakukan:
+                      membuka di tab baru, menyalin alamat, dan dibaca pembaca layar
+                      sebagai tautan.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => { onSelect(baris.kode) }}
+                      aria-label={`${baris.jumlah} klaim pada daftar ${baris.status}`}
+                      aria-current={terbuka ? 'true' : undefined}
+                      className="rounded-kontrol px-1 font-semibold text-blue-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {baris.jumlah}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+        </tbody>
+      </table>
     </section>
   )
 }

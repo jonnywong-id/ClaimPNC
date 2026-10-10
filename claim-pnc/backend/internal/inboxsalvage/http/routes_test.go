@@ -658,6 +658,21 @@ func (brokenRepo) DetailByClaim(context.Context, string) (inboxsalvage.Detail, e
 	return inboxsalvage.Detail{}, errBoom
 }
 
+// Currencies gagal seperti sisanya.
+//
+// Kegagalannya SENGAJA tidak membuat layar tertutup — Repo.Currencies menyatakan
+// pemanggil memperlakukannya sebagai keadaan yang dapat ditoleransi. Ganda ini karena
+// itu sekaligus menguji jalur toleransi itu, bukan hanya jalur 500.
+func (brokenRepo) Currencies(context.Context) ([]inboxsalvage.CurrencyOption, error) {
+	return nil, errBoom
+}
+
+func (brokenRepo) AttachDocument(
+	context.Context, inboxsalvage.DocumentUpload,
+) (inboxsalvage.AttachedDocument, error) {
+	return inboxsalvage.AttachedDocument{}, errBoom
+}
+
 func (brokenRepo) Create(context.Context, inboxsalvage.Form) (string, error) {
 	return "", errBoom
 }

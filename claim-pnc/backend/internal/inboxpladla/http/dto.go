@@ -94,14 +94,6 @@ type TabDTO struct {
 	Description string      `json:"keterangan"`
 	Columns     []ColumnDTO `json:"kolom"`
 
-	// Kind menyatakan BENTUK tampilannya — daftar klaim atau ringkasan XOL.
-	//
-	// Ia dikirim SERVER, bukan disimpulkan layar dari kodenya, dengan alasan yang sama
-	// seperti senarai kolom: inventaris tampilan adalah hasil pembacaan export, dan
-	// menyalinnya ke layar berarti keputusan yang sama hidup di dua tempat — dengan yang
-	// di layar tertinggal saat tampilannya bertambah.
-	Kind string `json:"jenis"`
-
 	// Source menyatakan TABEL ASAL daftarnya — pemberitahuan atau percakapan.
 	//
 	// Ia dikirim karena layar membutuhkannya untuk menjelaskan daftar yang KOSONG:
@@ -111,7 +103,7 @@ type TabDTO struct {
 	//
 	// Sebelumnya layar menyimpulkannya dari AWALAN kode tab. Itu pecah begitu kodenya
 	// berubah mengikuti judul sebenarnya — dan pecahnya tidak menghasilkan galat, hanya
-	// kalimat yang salah. Kosong pada tampilan XOL.
+	// kalimat yang salah.
 	Source string `json:"sumber"`
 
 	// HasDetailAction menyatakan barisnya punya tombol "Detail Claim".
@@ -124,7 +116,6 @@ func toTabDTO(tab inboxpladla.Tab) TabDTO {
 		Name:            tab.Name,
 		Description:     tab.Description,
 		Columns:         toColumnDTOs(tab.Columns),
-		Kind:            string(tab.Kind),
 		Source:          string(tab.Source),
 		HasDetailAction: tab.HasDetailAction,
 	}
@@ -134,9 +125,6 @@ func toTabDTO(tab inboxpladla.Tab) TabDTO {
 type MetadataResponse struct {
 	Tabs       []TabDTO `json:"daftar"`
 	DefaultTab string   `json:"daftar_bawaan"`
-
-	// XOLColumns adalah kolom grid "DATA PLA DLA XOL KLAIM".
-	XOLColumns []ColumnDTO `json:"kolom_xol"`
 
 	// Portal adalah alias entitas yang sedang dijawab.
 	Portal string `json:"portal"`
@@ -149,10 +137,9 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		XOLColumns:         toColumnDTOs(meta.XOLColumns),
-		Portal:             portalAlias,
+		Tabs:       tabs,
+		DefaultTab: meta.DefaultTab,
+		Portal:     portalAlias,
 	}
 }
 
@@ -224,31 +211,37 @@ func toCountsResponse(
 	return CountsResponse{Rows: rows, Portal: portalAlias}
 }
 
-// XOLRowDTO adalah satu baris grid "DATA PLA DLA XOL KLAIM".
-type XOLRowDTO struct {
-	Year           string `json:"tahun"`
-	CauseOfLoss    string `json:"penyebab_kerugian"`
-	Kind           string `json:"jenis"`
-	LastInsertDate string `json:"tanggal_terakhir"`
+// ListCountDTO adalah satu baris tabel "Status / Jumlah" — satu DAFTAR, bukan satu status
+// klaim.
+//
+// Nama medannya sengaja `status` dan `jumlah`, mengikuti judul kolom di Pega apa adanya
+// (`D-13`), meskipun isinya nama daftar. Mengubahnya menjadi `nama` akan membuat kontrak
+// ini tidak lagi terbaca sebagai layar yang digantikannya.
+type ListCountDTO struct {
+	Code  string `json:"kode"`
+	Name  string `json:"status"`
+	Total int    `json:"jumlah"`
 }
 
-// XOLResponse adalah isi grid XOL.
-type XOLResponse struct {
-	Rows   []XOLRowDTO `json:"baris"`
-	Portal string      `json:"portal"`
+// ListCountsResponse adalah isi tabel "Status / Jumlah".
+type ListCountsResponse struct {
+	Rows   []ListCountDTO `json:"baris"`
+	Portal string         `json:"portal"`
 }
 
-func toXOLResponse(rows []inboxpladla.XOLRow, portalAlias string) XOLResponse {
-	out := make([]XOLRowDTO, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, XOLRowDTO{
-			Year:           row.Year,
-			CauseOfLoss:    row.CauseOfLoss,
-			Kind:           row.Kind,
-			LastInsertDate: row.LastInsertDate,
+func toListCountsResponse(
+	counts []inboxpladla.ListCount,
+	portalAlias string,
+) ListCountsResponse {
+	rows := make([]ListCountDTO, 0, len(counts))
+	for _, count := range counts {
+		rows = append(rows, ListCountDTO{
+			Code:  count.Code,
+			Name:  count.Name,
+			Total: count.Total,
 		})
 	}
-	return XOLResponse{Rows: out, Portal: portalAlias}
+	return ListCountsResponse{Rows: rows, Portal: portalAlias}
 }
 
 // ============================================================================

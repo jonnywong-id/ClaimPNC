@@ -33,15 +33,20 @@ func query(name string) string {
 	return text
 }
 
-// taskColumns adalah ke-12 alias yang dikembalikan kueri daftar.
+// taskColumns adalah ke-11 alias yang dikembalikan kueri daftar.
 //
 // Urutannya WAJIB sama dengan urutan kolom di inboxanalystdoctor.sql dan dengan urutan
 // pemindai scanTask. Ia ditulis lengkap di sini pula supaya ketiga tempat itu dapat diuji
 // kesesuaiannya di query_test.go — satu kolom yang bergeser akan memindahkan nomor polis ke
 // kolom nama tertanggung tanpa menghasilkan galat apa pun.
+//
+// TECHNICAL_PIC_NOTE tidak ada di sini sejak 2026-10-09: kolom "Komentar dari PIC Teknis"
+// tidak punya kolom SQL sama sekali, dan mengambilnya dari nama yang ditebak membuat
+// SELURUH halaman gagal ORA-00904. Kolomnya tetap digambar di layar, isinya kosong, dan
+// alasannya dinyatakan di sana.
 var taskColumns = []string{
 	"REFERENCE", "CASE_ID", "POLICY_NUMBER", "INSURED_NAME", "BRANCH_NAME",
-	"ADMIN_NAME", "TECHNICAL_PIC", "TECHNICAL_PIC_NOTE", "REGISTERED_AT",
+	"ADMIN_NAME", "TECHNICAL_PIC", "REGISTERED_AT",
 	"PROCESS_STATUS", "ASSIGNED_OPERATOR", "TOTAL_ROWS",
 }
 
@@ -77,6 +82,13 @@ func loadQueries() map[string]string {
 // supaya yang dikirim ke basis data hanyalah SQL-nya.
 func splitByName(content string) map[string]string {
 	const marker = "-- name:"
+
+	// Carriage return dibuang lebih dulu: core.autocrlf=true membuat berkas .sql yang
+	// sama berisi LF di satu mesin dan CRLF di mesin lain. Tanpa ini setiap baris SQL
+	// berakhir `\r` yang ikut terkirim ke Oracle -- yang menerimanya sebagai spasi putih,
+	// sehingga kuerinya tidak pernah gagal dan selisihnya hanya muncul saat SQL dicetak
+	// ke log atau dibandingkan dengan teks yang diharapkan.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 
 	result := map[string]string{}
 	name := ""

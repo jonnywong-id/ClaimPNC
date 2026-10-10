@@ -39145,3 +39145,587 @@ mengunci agar patokannya tidak kembali melampaui kolomnya.
 **Fixture uji saya sendiri salah pada percobaan pertama** — 100 × `é` hanya 200 byte, tidak menembus 255, sehingga
 kasusnya tidak menguji apa yang dinamainya. Yang menangkapnya dua `require` yang memeriksa premis fixture itu SEBELUM
 dipakai. Tanpa keduanya, uji itu akan "lulus" dengan alasan yang salah — persis pola yang berulang di §150 dan §151.
+
+---
+
+## 154. Syarat tampil tombol "SEND" dibawa kembali — dan ia BERBEDA antara tab PLA dan DLA (2026-10-09)
+
+**Permintaan Work Owner.** *"perbaiki Inbox PLA, DLA, Pre DLA untuk tampilan nya dan untuk Kondisi pas klik send itu ada
+visibility nya tolong cek ulang section InboxPLA_sect"* — disertai tangkapan layar Pega yang memperlihatkan grid
+"Detail PLA List": baris ber-`SENT DATE` terisi **tanpa** tombol, baris ber-`SENT DATE` kosong **dengan** tombol.
+
+### 154.1 Yang terbaca dari section
+
+| Tab | `berkas:baris` | Syarat |
+|---|---|---|
+| PLA | `Section/InboxPLA_sect-Section.xml:13238` | `.MARKETING != '1'` |
+| DLA | `Section/InboxDLA_sect-Section.xml:11972` | `.MARKETING == ''` |
+| Print Pre DLA | `Section/PrintPreDLA-Section.xml:3303` | `.IsDLA != '1'` |
+
+`MARKETING` adalah **alias untuk `ISKIRIM`** — `RDB List/GetPLAList-SQL.xml` menuliskannya `iskirim AS MARKETING`,
+dan `GetDLAList-SQL.xml` sama. Aliasnya tidak menyatakan isinya sama sekali; ia penanda terkirim, bukan apa pun
+tentang pemasaran. Begitu pula `IsDLA` pada panel Print Pre DLA, yang isinya `NVL(ISKIRIM,'0')`.
+
+**Temuan yang tidak dicari dan paling berharga di sesi ini: kedua tab TIDAK memakai syarat yang sama.** Keduanya
+berbeda pada satu nilai, `ISKIRIM = '0'`:
+
+| `ISKIRIM` | PLA | DLA |
+|---|---|---|
+| kosong | bertombol | bertombol |
+| `'0'` | **bertombol** | **TIDAK** |
+| `'1'` | tidak | tidak |
+
+Itu janggal, dan kejanggalannya nyata akibatnya: penyaring antrean DLA menerima `'0'` sebagai "belum terkirim"
+(`ISKIRIM IS NULL OR ISKIRIM = '0'`), sehingga baris seperti itu **masuk antrean tetapi tidak dapat dikirim dari
+layar ini**. Ia dibawa apa adanya (`P-5`) — menyeragamkannya mengubah dokumen mana yang dapat dikirim ke pihak LUAR
+perusahaan, dan itu keputusan Work Owner, bukan penyeragaman sepihak. Diangkat sebagai pertanyaan terbuka.
+
+### 154.2 Kenapa penyembunyiannya pernah dicabut, dan kenapa ia kembali
+
+Catatan di `DocumentPanel.tsx` menyebut pencabutannya atas keputusan Work Owner 2026-09-27, dengan alasan yang pada
+waktunya benar: tombolnya **belum mengirim apa pun** — ia hanya menjawab alasan. Sejak Send benar-benar mengirim surat
+(`UpdateDetailPLA2` ditulis ulang di Go, lihat `send.go`), alasan itu gugur: menggambar tombolnya pada dokumen yang
+sudah sampai ke reasuradur berarti menawarkan **surat kedua** yang tidak dapat ditarik kembali.
+
+### 154.3 Keputusannya dihitung PELADEN, bukan layar
+
+`Tab.ShowSendButton(sent string) bool` di domain, dikirim per baris sebagai `dapat_dikirim`. Alasannya bukan kerapian:
+syaratnya berbeda per tab, dan layar yang menyimpulkannya sendiri dari `terkirim` akan menyamakan keduanya **tanpa
+menghasilkan satu pun galat** — hanya tombol kirim surat yang muncul di tempat Pega tidak pernah menampilkannya.
+
+Medannya OPSIONAL di sisi layar, dengan cadangan `terkirim !== '1'`. Peladen yang berjalan bisa lebih tua daripada
+berkas layar, dan tanpa cadangan SELURUH tombol Send lenyap — kegagalan yang tampil sebagai layar normal tanpa tombol.
+Cadangannya sengaja memakai syarat yang **lebih longgar**: menyembunyikan tombol yang sah tidak dapat ditindaklanjuti
+siapa pun, sedangkan dokumen terkirim tetap tidak bertombol pada kedua jalur — di situlah surat kedua terkirim.
+
+### 154.4 Cacat tampilan yang ditemukan sambil jalan: kolom "Tgl Kirim" panel Print Pre DLA tidak pernah terisi
+
+`Tab.PrintColumns` menunjuk `FieldDocDate` (`tanggal_dokumen`), sementara `PreDLADocumentDTO` **tidak punya medan itu**
+— ia mengirim `tanggal_kirim`. Selnya mengambil medan yang tidak ada dan menggambar tanda hubung pada **setiap** baris.
+
+Tidak ada galat, tidak ada peringatan tipe (kunci kolom bertipe `string`), dan panelnya terlihat utuh — hanya satu
+kolom yang selalu kosong. Alias Pega-nya sendiri yang mengundang ketertukaran: `TGLKIRIM` beralias `"TglDLA"`.
+
+Diperbaiki menjadi `FieldSentDate`, dan dikunci uji `TestPrintPanelColumnsPointAtFieldsTheRowActuallyCarries` yang
+mencocokkan SETIAP kunci kolom dengan medan yang benar-benar dikirim barisnya.
+
+### 154.5 Urutan kolom grid rincian dikembalikan ke urutan Pega
+
+Pega menaruh **TGL Terima sebelum SENT DATE**; implementasinya terbalik, dan menyisipkan "Terkirim" di tengah:
+
+| | Pega | Sebelumnya | Sekarang |
+|---|---|---|---|
+| PLA | … PLA DATE · TGL Terima PLA · SENT DATE · Email | … Tanggal PLA · **Terkirim** · Tanggal Kirim · Tanggal Terima · Email | … Tanggal PLA · Tanggal Terima · Tanggal Kirim · **Terkirim** · Email |
+| DLA | … DLA DATE · Tgl Terima DLA · SENT DATE · EMAIL | … Tanggal DLA · **Terkirim** · Tanggal Kirim · Tanggal Terima · Email | … Tanggal DLA · Tanggal Terima · Tanggal Kirim · **Terkirim** · Email |
+
+Urutannya bukan selera: petugas membaca grid ini **berdampingan dengan layar lama** selama masa paralel, dan dua
+tanggal bersebelahan yang tertukar adalah kesalahan baca yang tidak meninggalkan jejak apa pun. "Terkirim" tetap
+DITAMBAHKAN — Pega tidak punya kolom itu — tetapi dipindahkan ke sebelah "Tanggal Kirim", karena keduanya menyatakan
+fakta yang sama.
+
+### 154.6 Catatan yang sudah tidak benar lagi, diperbaiki
+
+Tiga tempat masih menyebut layar ini BACA-SAJA, padahal Send, Kirim Pre DLA, dan Print Pre DLA sudah bekerja:
+docblock `InboxPLADLAPreDLAPage.tsx`, komentar rute `App.tsx`, dan kepala `DocumentPanel.tsx`. Ketiganya disesuaikan.
+Yang benar-benar belum dibangun tinggal dua, keduanya menunggu penyimpanan dokumen (`D-16`): "Upload File Penunjang"
+dan unduh lampiran.
+
+### 154.7 Uji
+
+Backend +6 · frontend +1, satu diubah arah pernyataannya.
+
+- `TestSendButtonVisibilityDiffersBetweenPLAAndDLA` — mengunci perbedaan `'0'` antara kedua tab. Ia yang akan gagal
+  bila seseorang "merapikan" keduanya menjadi satu syarat.
+- `TestPreDLAHasNoSendButtonAtAll` — nilai NOL `SendVisibility` berarti tidak bertombol, sehingga tab yang tidak
+  menyebutkannya tidak diam-diam mewarisi syarat tab lain.
+- `TestSentFlagZeroIsSendableOnPLAButNotOnDLA` — menembak keduanya lewat HTTP, sehingga penyeragaman di lapisan mana
+  pun tertangkap.
+- `TestDetailGridKeepsPegaColumnOrder`, `TestPrintPanelColumnsPointAtFieldsTheRowActuallyCarries`.
+- Frontend: `tetap menggambar SEND ketika peladen belum mengirim dapat_dikirim` — menguji cadangannya, bukan hanya
+  jalur bahagianya.
+
+Data contoh ditambah **satu baris DLA ber-`ISKIRIM='0'`** pada PNC-1008, yang sudah punya dua PLA ber-`'0'`. Tanpa
+pasangan itu, perbedaan §154.1 hanya hidup di uji dan tidak pernah terlihat siapa pun yang menjalankan aplikasinya.
+
+Satu uji ekspor ikut berubah karenanya — PNC-1008 kini lolos penyaring tab DLA, sehingga CSV-nya tiga baris, bukan
+dua. Pernyataannya tidak dilonggarkan melainkan DIPERTAJAM: baris PNC-1008 diperiksa berkolom tanggal KOSONG, yang
+merekam kejanggalan Pega bahwa sub-kueri tanggalnya menyaring `ISKIRIM IS NULL` saja — lebih sempit daripada
+penyaring keanggotaan barisnya.
+
+### 154.8 Yang MENUNGGU keputusan Work Owner
+
+1. **Apakah syarat tab DLA diseragamkan dengan PLA?** Hari ini baris DLA ber-`ISKIRIM='0'` masuk antrean tetapi tidak
+   dapat dikirim dari layar ini — persis seperti Pega. Menyeragamkannya satu baris perubahan, tetapi ia mengubah
+   dokumen mana yang dapat dikirim ke pihak luar.
+2. **Kolom "File Penunjang"** ada di kedua grid Pega dan belum digambar di sini; tempatnya kini diisi "Catatan". Ia
+   menunggu penyimpanan dokumen (`D-16`), sama dengan tombol unggahnya.
+
+---
+
+## 155. Gerbang CI dipulihkan — dan yang paling berbahaya adalah uji yang TIDAK BERJALAN (2026-10-09)
+
+Sesi ini tidak menambah fitur. Ia memulihkan gerbang yang `07-TECHNICAL-STRATEGY.md` §6 nyatakan memblokir merge,
+dan seluruh kerusakannya adalah tinggalan commit sebelumnya — bukan akibat pekerjaan §154.
+
+### 155.1 Yang paling perlu diingat dari sesi ini
+
+**Dua paket uji `inboxsalvage` GAGAL KOMPILASI.** Akibatnya bukan "dua uji merah" melainkan **seluruh uji di kedua
+paket itu tidak pernah berjalan sama sekali**, entah sejak kapan. `go test ./...` melaporkannya sebagai `[build
+failed]` — satu baris, mudah terlewat di antara puluhan baris `ok`.
+
+Begitu keduanya dapat dikompilasi, **tiga kegagalan sungguhan muncul** yang selama ini tersembunyi di baliknya.
+Salah satunya menguji pencarian pada klaim yang **tidak pernah ada di tab bawaan** — ia tidak akan pernah lolos,
+dan tidak ada yang tahu.
+
+> Uji yang tidak dapat dikompilasi lebih berbahaya daripada uji yang merah: yang merah berteriak, yang tidak
+> terkompilasi hanya hilang dari hitungan.
+
+### 155.2 CRLF: satu uji merah, 76 tempat cacat
+
+`TestTheReplyStatementIsPortable` merah karena SQL ter-`embed` berisi carriage return. Sebabnya bukan di modul itu:
+repository ber-`core.autocrlf=true` **tanpa `.gitattributes`**, sehingga git menyimpan LF tetapi memeriksa-keluar
+CRLF di Windows — dan `//go:embed` menanam apa adanya dari pohon kerja.
+
+**Artinya teks SQL yang tertanam BERBEDA antara binary yang dibangun di Windows dan di Linux.** Oracle
+memperlakukan carriage return sebagai spasi putih sehingga kuerinya tidak pernah gagal; selisihnya hanya muncul
+saat SQL dicetak ke log atau dibandingkan dengan teks yang diharapkan.
+
+Pemuat `.sql` yang sama disalin ke **76 paket**. Satu di antaranya — `inboxsurvey` — **sudah memperbaikinya**
+beberapa waktu lalu, lengkap dengan catatan yang menjelaskan sebabnya, tetapi perbaikannya tidak pernah
+disebarkan. Yang 75 lagi tetap cacat dan hanya tidak ketahuan karena hanya satu uji yang memeriksa SQL berbaris
+banyak.
+
+Normalisasi `strings.ReplaceAll` terhadap CRLF kini dipasang di **seluruhnya**, termasuk `portal/repo/sqlstore`
+yang bentuk pemuatnya berbeda dan karena itu luput dari sapuan pertama.
+
+**Satu berkas sempat rusak oleh perbaikannya sendiri**: skrip penyisip memproses escape dua kali, sehingga lambang
+carriage return tertulis sebagai karakter CR sungguhan. Ia ketahuan karena `go build` gagal — bukan karena
+diperiksa. Pemeriksaan yang dijalankan sesudahnya membandingkan **variabel yang dinormalkan dengan variabel yang
+dipecah** pada setiap berkas, karena build yang hijau belum membuktikan normalisasinya mengenai sasaran yang benar.
+
+### 155.3 Satu regresi — dan arah perbaikannya BERLAWANAN dengan dugaan pertama
+
+Lima uji `daftar-tipe-dokumen` merah karena label `Jenis Dokumen` tidak ditemukan. Pola yang sama dengan
+`master-tipe-surveyors` di sesi yang sama, dan di sana ujinya memang usang.
+
+Di sini **tidak**. Komentar tepat di atas isiannya menyatakan:
+
+> Label "Jenis Dokumen" DITIRU APA ADANYA dari `Section/ListDocumentType-Section.xml`, dan ia sengaja BERBEDA dari
+> header kolom gridnya yang berbunyi "Tipe Dokumen".
+
+sementara kodenya menuliskan `label="Tipe Dokumen"`. Komentar dan kode saling bertentangan. Pemeriksaan ke
+sumbernya memutuskannya: `Section/ListDocumentType-Section.xml` memuat **"Jenis Dokumen" 2×, "Tipe Dokumen" 0×**.
+
+**Yang diperbaiki kodenya, bukan ujinya.** Ujinya benar; ia menangkap penyimpangan dari `D-13` dan diabaikan.
+
+Arah sebaliknya ikut diverifikasi alih-alih diasumsikan: `Section/BrowseSuveryors-Section.xml` memuat
+**"Deskripsi" 5×, "Tipe Surveyor" 0×**, sehingga pada modul itu kodenya yang benar dan ujinya yang usang.
+
+> Label yang tidak cocok antara uji dan kode TIDAK menentukan sendiri siapa yang salah. Yang menentukan adalah
+> section Pega-nya.
+
+### 155.4 Pohon bayangan frontend yang hidup kembali
+
+18 berkas berbahasa Indonesia tidak terjangkau dari `main.tsx` dan memerahkan `tsc --noEmit` dengan 14 galat.
+Riwayatnya seragam untuk **seluruhnya**: lahir `a2f792b` (16 Sep) → **dihapus `1782b62` "perubahan bahasa"**
+(18 Sep, penggantian nama `D-80`) → **hidup lagi `e75b364`** (6 Okt).
+
+Penggantian nama sengaja membuangnya; sebuah commit berikutnya mengembalikannya, dan berkas-berkas itu tidak lagi
+dapat dikompilasi karena modul bersama yang diimpornya kini mengekspor nama Inggris. Dihapus atas persetujuan
+Work Owner; kembaran Inggris setiap berkas sudah ada dan dipakai `App.tsx`.
+
+**Analisis keterjangkauan pertama saya terlalu longgar**: sebuah uji yang mengimpor modul bersama yang hidup ikut
+"menghidupkan" subjek yatimnya, sehingga `PemilihPortal.tsx` sempat tidak terdaftar sebagai yatim. Diperketat
+menjadi "uji hidup bila SUBJEKNYA terjangkau".
+
+**Tiga yatim yang TIDAK dihapus**, dan ketiganya diperiksa satu per satu alih-alih diduga:
+`inbox-komite/DecisionPanel.tsx` (ujinya menyatakan "tidak terpasang, tetapi jalurnya dipertahankan") ·
+`test/setup.ts` (ditunjuk `vite.config.ts`) · `vite-env.d.ts` (deklarasi ambient).
+
+### 155.5 Dua jebakan yang pantas diingat
+
+**Dua tanda petik tunggal berurutan di dalam doc comment Go diubah gofmt menjadi tanda kutip tipografis.** Pada
+`routes_test.go` §154 itu mengubah syarat `.MARKETING` sama-dengan-string-KOSONG menjadi tanda kutip, yakni
+memalsukan isi section. Enam kemunculan lain di modul yang sama aman karena berada di blok kode ber-tab atau di
+badan fungsi. Syaratnya kini ditulis sebagai blok, bukan prosa.
+
+**`new Response(new Blob([...]))` ditolak undici** di lingkungan uji, dan penolakannya terjadi DI DALAM `try`
+pembungkus `fetch`, sehingga tertelan dan muncul sebagai `NetworkError` — seolah tiruannya tidak terpasang.
+Seluruh uji unduhan di `src/api/client.test.ts` memakai badan string karena sebab yang sama.
+
+### 155.6 Uji yang DITAMBAH, bukan sekadar diperbaiki
+
+Tiga kemampuan ternyata tidak punya uji sama sekali, dan ketiganya menelan kegagalan secara sengaja — kelas
+perilaku yang paling perlu dikunci karena ketiadaannya tidak menimbulkan galat apa pun:
+
+| Yang diuji | Kenapa ia penting |
+|---|---|
+| `Service.Metadata` saat pembacaan mata uang gagal | satu-satunya tempat di `inboxsalvage` yang menelan galat basis data; tanpa uji, ia dapat berubah menjadi galat sungguhan atau menjadi hening tanpa jejak |
+| `Service.Metadata` saat portal tidak dapat dipilih | cabang BERBEDA dari yang di atas; satu pernyataan saja membiarkan salah satunya berubah tanpa ketahuan |
+| `mitraKeep` — keempat jalur penolakannya | laporan Mitra menyaring BARIS lewat koneksi kedua; kehilangan penyaringnya tidak membuatnya kehilangan kolom — ia berubah ISI, dan berkas yang terbit memuat SELURUH petugas |
+
+Ditambah dua pengerasan: pernyataan galat `reportklaim` dinaikkan dari cocok-teks menjadi `errors.Is` terhadap
+sentinel `ErrQueryFailed` — justru pembedaan itulah yang dituju sentinelnya — dan uji daftar `inboxsalvage` kini
+**memeriksa premis fixture-nya SEBELUM memakainya**, pola yang §150, §151, dan §154 sebut berulang.
+
+Satu fixture ikut dibetulkan isinya: uji ekspor `report-klaim` menegaskan alamat ber-`status_compliance` bernilai
+`3`, padahal `3` ("Lain-Lain") ADA di data tetapi **sengaja tidak ditawarkan** penyaringnya — alamat yang tidak
+mungkin dihasilkan layar. Isiannya pun sudah menjadi `<select>`, sehingga `userEvent.type` tidak mengubahnya sama
+sekali dan penyaringnya hilang dari alamat tanpa satu pun galat.
+
+### 155.7 Hasil
+
+| Gerbang | Sebelum | Sesudah |
+|---|---|---|
+| `go build ./...` | hijau | hijau |
+| `go vet ./...` | **2 paket gagal kompilasi** | bersih |
+| `go test ./...` | **2 gagal build + 4 uji merah** | lolos seluruhnya |
+| `tsc --noEmit` | **14 galat di 7 berkas** | bersih |
+| `vitest run` | **49 uji merah di 9 berkas** | 163 berkas · 2.812 uji, lolos seluruhnya |
+| `npm run lint` | **6 error** | **6 error — tidak berubah** (lihat §155.8 butir 3) |
+
+Angka `vitest` sesudahnya dihitung dari lari penuh, bukan dari modul yang diperbaiki saja. Gerbang lint sengaja
+dibiarkan apa adanya dan bukan diabaikan: keenam errornya ada di modul yang sedang dikerjakan orang lain.
+
+### 155.8 Yang TIDAK dikerjakan, dan sebabnya
+
+1. **`.gitattributes` backend tidak ditambahkan — meskipun jawabannya sudah ada di repositori ini.**
+   `claim-pnc/frontend/.gitattributes` sudah memuat `* text=auto eol=lf`, dengan alasan yang tertulis di
+   berkasnya sendiri: *"supaya gofmt/Prettier di CI tidak gagal karena CRLF"*. Pohon **backend tidak punya
+   padanannya**, dan persis di situlah CRLF §155.2 hidup.
+
+   Menambahkannya akan menormalkan ulang seluruh pohon kerja backend — diff sebesar repositori, bercampur dengan
+   perubahan sesi ini. Normalisasi di pemuat sudah membuat SQL tertanam identik di setiap platform, yang
+   merupakan sasarannya; `.gitattributes` menutup sisanya (gofmt, pembandingan berkas) dan **pantas diambil
+   sebagai commit tersendiri**, mengikuti preseden frontend.
+
+2. **`gofmt -l` masih menandai berkas ber-CRLF.** Seluruhnya CRLF-saja, nol selisih format sungguhan — diperiksa
+   dengan membandingkan keluaran `gofmt` dan isi berkas setelah carriage return dibuang dari keduanya.
+   Menjalankan `gofmt -w` akan menulis ulang berkas-berkas itu menjadi LF dan menghasilkan diff yang tidak
+   berisi satu pun perubahan kode. Di CI Linux (checkout LF) gerbang ini hijau apa adanya. Butir 1 adalah
+   perbaikan yang sebenarnya.
+
+3. **Gerbang `npm run lint` MERAH — 6 error, dan tak satu pun berasal dari sesi ini.**
+
+   Perlu dicatat sebagai kekeliruan saya sendiri: saya sempat menyimpulkan konfigurasi ESLint **tidak ada**,
+   karena `npx eslint src` menjawab *"couldn't find an eslint.config.* file"*. Itu salah — konfigurasinya ada di
+   `tools/lint/eslint.config.js` dengan instalasi terpisah, dan dijalankan `npm run lint` sesudah
+   `npm run lint:install`, persis seperti `.gitlab-ci.yml` melakukannya. Perintah saya yang keliru, bukan
+   gerbangnya yang hilang.
+
+   | Berkas | Baris | Aturan |
+   |---|---|---|
+   | `inbox-xol/ClaimPanel.tsx` | 621 | `sonarjs/no-alphabetical-sort` |
+   | `inbox-xol/InboxXOLPanels.more.test.tsx` | 365, 376 | `sonarjs/no-clear-text-protocols` |
+   | `master-pic-teknik/TechnicianForm.tsx` | 267 | `sonarjs/no-alphabetical-sort` |
+   | `master-pic-teknik/TechnicianForm.tsx` | 281, 286 | `sonarjs/no-all-duplicated-branches` |
+
+   Keduanya modul yang digarap commit-commit terakhir (`perbaikan inbox xol dan salvage`), **bukan berkas yang
+   disentuh sesi ini** — karena itu sengaja tidak diperbaiki di sini: menyunting modul yang sedang dikerjakan
+   orang lain menukar satu konflik dengan konflik lain.
+
+   Dua di antaranya pantas diperiksa isinya, bukan sekadar dibungkam: `aria-label` dan judul `<h3>` pada
+   `TechnicianForm` sama-sama berbentuk `editing ? 'Memperbaharui Data' : 'Memperbaharui Data'` — **kedua
+   cabangnya identik**. Nilainya tampak benar (komentar di atasnya menyatakan judul diambil dari `pyTitle` Pega
+   apa adanya, dan Pega memakai judul yang sama untuk tambah maupun ubah), sehingga yang berlebih adalah
+   percabangannya, bukan teksnya. Tetapi percabangan yang tidak pernah bercabang biasanya sisa niat yang belum
+   selesai, dan itu keputusan pemilik modulnya.
+
+   Ditambah **897 warning**, yang tidak memerahkan gerbang hari ini dan tidak dihitung di sini.
+
+---
+
+## 156. Inbox PLA/DLA dikembalikan ke bentuk Pega — dan tabel ringkasnya ternyata mencacah hal yang salah (2026-10-09)
+
+**Permintaan Work Owner.** *"Tampilan Inbox PLA DLA masih belum berubah, tolong ikuti seperti yang di pega"* —
+disertai dua tangkapan layar berdampingan: versi Go dengan tujuh tab dan grid kosong, dan Pega dengan tabel
+**Status / Jumlah** di kanan grid berisi enam baris berangka nol seluruhnya.
+
+### 156.1 Tiga hal berbeda, bukan satu
+
+Tabel ringkasnya sudah ada di `StatusSummary.tsx`, dan tetap tidak tampak di layar. Sebabnya tiga, bertumpuk:
+
+| # | Keadaan | Akibat |
+|---|---|---|
+| 1 | `if (rows.length === 0) return null` | pada keadaan di tangkapan layar — semua nol — tabelnya **tidak tergambar sama sekali** |
+| 2 | Digambar sebagai **chip** berjajar, bukan tabel dua kolom | bentuknya tidak pernah sama dengan Pega meski datanya ada |
+| 3 | Isinya mencacah **status klaim di dalam daftar yang terbuka** | barisnya "Register", "Paid", … — **bukan** enam nama daftar yang Pega tampilkan |
+
+Ketiganya diperbaiki. Yang ketiga yang paling mahal, dan ia tidak akan ketahuan dari tangkapan layar saja.
+
+### 156.2 Tabel Pega mencacah DAFTAR, dan angkanya adalah NAVIGASI
+
+Terbaca langsung dari rule, bukan disimpulkan dari gambar:
+
+| Bukti | Isi |
+|---|---|
+| `Section/InboxDLAReas_sect-Section.xml` | repeat `TempPLADLA.pxResults`, `pyRepeatDirection=TreeGrid` — itu yang menjelaskan ikon folder di tangkapan layar |
+| kolom 1 "Status" | `.CauseOfLoss` |
+| kolom 2 "Jumlah" | `.City`, `pyControlDisplayTitle=Link`, **`pyFormat=pxLink`**, aksi `refresh` membawa `.CityID` |
+| `Activity/GetLostAdjuster_act-Act.xml` | mengisi `.CauseOfLoss` dengan **NAMA DAFTAR** — `"NOT ANSWERED"`, `"NOT REPLIED FROM ASM"`, `"REPLIED FROM ASM"`, … |
+
+Aliasnya menyesatkan seluruhnya: tidak satu pun berhubungan dengan penyebab kerugian maupun kota.
+
+**Dan layar Pega tidak punya bilah tab sama sekali** — `pyLayoutFormat>TABBED` nol kemunculan di section itu.
+Tabel inilah satu-satunya navigasinya, dan "DATA PLA DLA XOL KLAIM" adalah `pyTitle` di dalam section yang sama,
+bukan tampilan tersendiri.
+
+> Catatan pada `StatusSummary.tsx` yang berbunyi *"baris di sini tidak menuju daftar mana pun: status bukan tab,
+> dan tidak ada daftar terpisah per status di Pega"* **keliru pada kedua klausanya**. Ia ditulis dengan percaya
+> diri dan bertahan sampai Work Owner menunjukkan layarnya.
+
+### 156.3 Yang dipilih Work Owner: persis Pega
+
+Tiga pilihan diajukan — persis Pega (tab dibuang), tab tetap + tabel ditambahkan, atau sekadar memperbaiki bentuk
+tabelnya. Dipilih **persis Pega**.
+
+Akibatnya: bilah tab dicabut, tabel "Status / Jumlah" menjadi navigasi di kanan grid, dan panel XOL kembali
+digambar permanen di kaki halaman — membatalkan perubahan 2026-09-28 yang menjadikannya tab ketujuh.
+
+### 156.4 Angkanya dihitung dengan MEMANGGIL daftarnya, bukan dengan kueri baru
+
+`Service.ListCounts` memanggil `Repo.List` satu kali per daftar dengan ukuran halaman 1, lalu membaca `Total`.
+Keenam kueri daftar sudah membawa `COUNT(*) OVER ()`, sehingga satu baris saja sudah mengembalikan jumlah
+seluruhnya.
+
+**Kenapa bukan kueri hitung tersendiri.** Karena berkas `.sql` modul ini sudah memperingatkannya sendiri untuk
+`count_pla`: *"Penyaringnya WAJIB sama persis dengan list_pla. Angka yang tidak cocok dengan tabel di bawahnya
+adalah hal pertama yang dilaporkan pengguna sebagai kerusakan."* Peringatan itu dipatuhi dengan **tidak menulis
+kueri ketujuh yang harus dijaga tetap sejalan dengan enam yang lain**.
+
+Biayanya enam perjalanan ke basis data. Diterima: Pega memuat SELURUH baris keenam daftar ke klipboard untuk
+menghitung tabel yang sama, sehingga ini tidak lebih mahal daripada layar lama.
+
+Satu uji mengunci janji itu — `TestListCountsAgreeWithTheListItself` membandingkan tiap angka dengan
+`List(...).Page.Total` daftar yang sama.
+
+### 156.5 `Counts` yang lama TIDAK dihapus
+
+Endpoint `/ringkas` beserta kueri `count_pla`/`count_dla`/`count_close` dibiarkan utuh, meskipun layar tidak lagi
+memanggilnya. Ia menjawab pertanyaan yang sah — "status apa saja isi daftar ini" — hanya saja Pega tidak
+menggambarnya di layar ini.
+
+Menghapusnya bukan bagian dari yang disetujui, dan keputusannya milik Work Owner. **Diangkat sebagai pertanyaan
+terbuka:** apakah `/ringkas` dipertahankan, atau dibuang bersama ketiga kuerinya.
+
+### 156.6 Dua hal yang ditemukan sambil jalan
+
+**Nama aksesibel tombolnya terbaca `"0klaim pada daftar PLA & DLA"`** — tanpa spasi. Angka digambar sebagai teks
+dan keterangannya sebagai `<span className="sr-only">` berawalan spasi; spasi itu hilang saat nama aksesibel
+dihitung. Itu yang diucapkan pembaca layar, bukan sekadar masalah uji. Diperbaiki dengan `aria-label` tersendiri
+pada tombolnya, bukan dengan melonggarkan pernyataan ujinya.
+
+**Judul "DATA PLA DLA XOL KLAIM" sempat tergambar dua kali** — `XOLPanel` sudah membawanya lewat `title` pada
+DataTable-nya, dan pembungkus berjudul yang saya tambahkan menggandakannya. Ketahuan dari uji, bukan dari membaca.
+
+### 156.7 Kekeliruan saya sendiri pada sesi ini
+
+Satu penggantian blok `sed` memakai rentang **terbalik** (`sed '296,292d'`). GNU sed memperlakukannya dengan
+menghapus **tepat satu baris** — bukan menolak, bukan pula menghapus rentangnya — sehingga `return (` milik
+fungsi `Bingkai` hilang diam-diam dan blok baru tersisip di tempat yang salah.
+
+Yang menyelamatkannya adalah memeriksa `git diff --stat` sampai **kosong** sebelum mengulang, bukan sekadar
+melihat berkasnya "kelihatan benar". Pelajarannya: nomor baris yang dihitung dari dua `grep` terpisah harus
+dicetak dan dibaca sebelum dipakai menghapus.
+
+### 156.8 Uji
+
+**Backend +6.** `TestListCountsNamesEverySixListsEvenTheEmptyOnes` (barisnya lengkap meski nol — persis keadaan di
+tangkapan layar) · `TestListCountsLeavesTheXOLViewOut` · `TestListCountsAgreeWithTheListItself` ·
+`TestListCountsCarryTheSearchIntoEveryList` · `TestListCountsRejectAnUnknownCaller` ·
+`TestListCountsAnswerEverySixListsWithTheirCodes` (lewat HTTP).
+
+**Frontend:** tiga uji bertab diganti empat yang menguji bentuk Pega — tabel benar-benar `<table>` berkolom
+"Status" dan "Jumlah", tujuh baris (satu kepala + enam daftar) **termasuk yang berangka nol**, perpindahan daftar
+lewat angka, dan panel XOL sebagai bagian tetap yang pengambilannya tetap ditunda sampai daftarnya berhasil.
+
+### 156.9 Yang BELUM dikerjakan
+
+1. **Bagan batang di samping tabel** tidak dibawa. Ia menggambarkan hal yang sama dengan enam angka di sebelahnya,
+   dan enam angka tidak menjadi lebih terbaca karena digambar sebagai batang.
+2. **Ikon folder** pada tiap baris tidak ditiru. Ia akibat `pyRepeatDirection=TreeGrid` di Pega — barisnya dapat
+   dikembangkan di sana — sementara di sini barisnya tidak punya anak. Menggambar ikon folder yang tidak dapat
+   dibuka menjanjikan hal yang tidak ada.
+3. **Nasib endpoint `/ringkas`** — lihat §156.5.
+
+### 156.10 "Alamat API tidak dikenal" — binary lama, dan ini KEDUA kalinya
+
+Setelah perubahan di atas selesai dan seluruh gerbang hijau, layar tetap menjawab:
+
+> Jumlah tiap daftar tidak dapat dihitung — Alamat API tidak dikenal: `/api/inbox-pla-dla/ringkas-daftar`
+
+Kalimat itu terbaca persis seperti salah ketik alamat di sisi frontend, dan di situlah waktu paling mudah
+terbuang. Sebabnya bukan itu.
+
+**Bukti yang mempersempitnya, berurutan:**
+
+| Langkah | Hasil |
+|---|---|
+| Uji daftar rute baru (`routes_registry_test.go`) | **hijau** — rute terdaftar di `Mount` |
+| Umur binary yang BERJALAN | `2026-10-08 21:07` — mendahului perubahan hari ini |
+| Proses yang melayani | `go run ./cmd/claimpnc`, PID anak di `Temp/go-build…/b001/exe` |
+
+Jadi yang berjalan bukan kode ini. Peladen dihentikan dan dijalankan ulang dengan perintah yang sama; seluruh
+konfigurasinya dari `.env`, sehingga tidak ada yang ditebak.
+
+**Pembuktian sesudahnya — dan satu jebakan di dalamnya.** `curl` ke localhost menjawab **403 dari squid**: ada
+proxy perusahaan di jalur, sehingga permintaannya tidak pernah sampai ke peladen. Setiap alamat menjawab 403 yang
+sama, dan 403 itu **menyamarkan** perbedaan yang sedang dicari. Dengan `--noproxy '*'`:
+
+| Alamat | Jawaban |
+|---|---|
+| `/api/inbox-pla-dla/jelas-tidak-ada` | **404** `rute_tidak_ditemukan` |
+| `/api/inbox-pla-dla/ringkas-daftar` | **401** `sesi_tidak_sah` |
+
+401, bukan 404 — rutenya ada, ia hanya menuntut sesi. Itulah pembuktian yang sebenarnya; "peladen menyala" saja
+tidak membuktikan rutenya terlayani.
+
+> Memeriksa API lokal dengan `curl` di mesin ini WAJIB memakai `--noproxy '*'`. Tanpa itu yang dijawab adalah
+> proxy, bukan aplikasi — dan jawabannya seragam untuk alamat yang ada maupun yang tidak.
+
+**Kenapa ini dicatat padahal bukan cacat kode.** Karena ia terulang. `inboxrclpucl/http/routes_registry_test.go`
+sudah merekam kejadian yang sama pada 2026-10-01 dengan rute `kirim-analyst`, beserta kalimat yang tepat:
+*"Uji ini tidak dapat menangkap binary lama — tidak ada uji yang bisa — tetapi ia MEMPERSEMPIT penyebabnya
+menjadi satu kemungkinan."*
+
+Uji itu hanya ada di satu modul. Kini ada pula di `inboxpladla`, sehingga dari **76 paket http di repo ini
+baru 2 yang memilikinya** — 74 sisanya dapat mengulang jam yang sama. Menyebarkannya diajukan sebagai pekerjaan tersendiri, bukan diselipkan di sini.
+
+---
+
+## 157. "DATA PLA DLA XOL KLAIM" dicabut — ia kode mati di Pega, dan saya membawanya dua kali (2026-10-09)
+
+**Pertanyaan Work Owner.** *"DATA PLA DLA XOL KLAIM ini kenapa muncul datanya dari mana di pega tidak ada
+tampilanya tolong analisa lagi untuk harnes InboxPLADLA-Harnes.xml"* — dan pertanyaan kedua, bahwa daftar
+**NOT REPLIED FROM ASM** menampilkan 1 di Pega tetapi 0 di sini.
+
+### 157.1 Rantai bukti yang menutup pertanyaan pertama
+
+| Mata rantai | Isi |
+|---|---|
+| Wadah XOL | `Section/InboxDLAReas_sect-Section.xml` → `pyContainerVisibleWhen = TempView.CityID==7` |
+| `TempView.CityID` diisi | hanya dari `param.tipe` — tujuh tempat di export, seluruhnya dari parameter |
+| `tipe` diisi | hanya `.CityID` sebuah baris tabel "Status / Jumlah", atau `TempView.CityID` sendiri |
+| literal `7` sebagai `tipe` | **nol kemunculan** di seluruh export |
+| Tabel "Status / Jumlah" | **enam baris** — terlihat langsung di tangkapan layar Pega Work Owner |
+
+`SetDataPLADLA` memang punya precondition untuk `param.tipe` **1 sampai 7**, dan cabang `=="7"` itulah yang
+mengisi `DataKomiteXOL`. Rancangannya memang tujuh tampilan. Tetapi **tidak ada satu pun jalan yang membuat
+`CityID` bernilai 7**, sehingga tampilan ketujuh itu tidak pernah tergambar.
+
+> Ia kode mati di Pega. Dan saya membawanya **dua kali**: sebagai tab ketujuh (2026-09-28) lalu sebagai panel
+> permanen (§156, pagi ini). Keduanya memberi mitra reasuransi akses kepada sesuatu yang layar lama tidak pernah
+> tampilkan.
+
+Dicabut seluruhnya atas keputusan Work Owner: panel, hook, tipe, rute `/xol`, `Repo.XOL`, `Service.XOL`, kueri
+`xol_summary`, kolomnya, data contohnya, dan tab ketujuhnya. Layar kini **enam daftar**, sama dengan Pega.
+
+### 157.2 Dua klaim saya di §156 yang ternyata SALAH
+
+**Pertama: `GetLostAdjuster_act` bukan pengisi tabel ringkas ini.** §156.2 menyatakan ia yang menyusun baris
+"Status / Jumlah", karena ia satu-satunya berkas di export yang memuat teks `"NOT REPLIED FROM ASM"`. Ia memang
+memuatnya — tetapi ia mengisi **`TempALLLostAdjuster`**, bukan `TempPLADLA`, dan labelnya berderet
+**CONFIRMATION · OUTSTANDING · INVOICE · NOT ANSWERED · NOT REPLIED FROM ASM · REPLIED FROM ASM**. Itu layar
+**Lost Adjuster**, yang berbagi tiga nama daftar komunikasi dengan layar ini.
+
+Pencocokan teks menemukan berkas yang memuat kata yang sama, bukan berkas yang mengisi halaman yang sama. Yang
+seharusnya saya periksa — dan akhirnya saya periksa — adalah `pyPageListProperty` dari repeat yang membungkus
+header kolomnya:
+
+	baris 4560  TempPLADLA.pxResults       <- tabel "Status / Jumlah"  (header Status 4780, Jumlah 4906)
+	baris 8597  TempDataPLADLA.pxResults   <- grid klaim
+	baris 14291 DataKomiteXOL.pxResults    <- grid XOL, di dalam wadah CityID==7
+
+**Kedua: tidak ada satu pun rule di export yang mengisi `TempPLADLA`.** Tabel ringkas Pega jelas terisi di sistem
+nyata — tangkapan layarnya memperlihatkan enam baris — tetapi pengisinya **tidak ada di export** (`R-16`).
+Artinya jumlah per daftar di sini **tidak dapat dibandingkan baris-per-baris dengan Pega** sampai rule itu tiba.
+Yang dapat dijamin hanyalah angkanya cocok dengan daftarnya sendiri, dan itulah yang `ListCounts` lakukan.
+
+### 157.3 Pertanyaan kedua: 1 di Pega, 0 di sini — bukan cacat kueri
+
+Logika peran dan status saya **cocok persis** dengan Pega. Terbaca dari tiga cabang `SetDataPLADLA`:
+
+| tipe | `TempView.District` (penyaring peran) | `TempView.DistrictID` (status) |
+|---|---|---|
+| 4 — NOT ANSWERED | `and c.COMMUNICATE_TO='<login>'` | `"0"` |
+| 5 — NOT REPLIED FROM ASM | `and c.sender='<login>'` | `"0"` |
+| 6 — REPLIED FROM ASM | `and c.sender='<login>'` | `"1"` |
+
+Keduanya disisipkan ke `BrowseCommunicationReas` sebagai teks (`{ASIS:TempView.District}`). Fragmen kedua,
+`{ASIS:tempQuery.UserTeknisEmail}`, menyisip **kosong** — `tempQuery` hanya dideklarasikan dan dibuang, tidak
+pernah diisi. Dan tidak ada penyaring kode reasuradur di kedua sisi.
+
+Jadi selisihnya bukan di SQL melainkan di **identitas**:
+
+	.env  REAS_LOGIN_PENGEMBANGAN=JONNY
+	      REAS_MITRA_PENGEMBANGAN=TUGUREASURANSIINDONESIA
+
+Di pengembangan, login `JONNY` **dipinjamkan** menjadi mitra itu untuk layar ini. Pega menghitung pesan kiriman
+`JONNY`; layar ini menghitung kiriman `TUGUREASURANSIINDONESIA`. Dua populasi berbeda, keduanya benar menurut
+kuerinya masing-masing.
+
+Untuk membandingkan dengan Pega, `REAS_MITRA_PENGEMBANGAN` harus diarahkan ke mitra yang sama dengan yang
+dipakai di Pega — atau Pega dibuka sebagai mitra itu.
+
+Catatan yang pantas disimpan: nilai yang dipinjam itu **bukan kebetulan**. `SetDataPLADLA` menetapkan
+`Local.loginreas` ke login mitra yang sama, ditulis tetap di dalam activity — dan dari situlah setelan
+pengembangan ini berasal.
+
+### 157.4 Uji yang MENAHAN pencabutannya
+
+Pencabutan tanpa pagar akan terulang — ia sudah terulang sekali. Tiga uji dipasang:
+
+| Uji | Yang ditahannya |
+|---|---|
+| `TestTheXOLViewIsNotOfferedAtAll` | `FindTab("xol")` harus tidak ditemukan, dan `Tabs()` harus **enam** |
+| `TestPlannedDifferencesSayTheXOLViewIsNotCarriedOver` | selisihnya harus terbaca pengguna di kaki layar, menyebut `CityID==7` |
+| frontend `TIDAK menggambar tampilan XOL, dan tidak memintanya` | tidak ada judulnya, dan **tidak ada permintaan `/xol`** |
+
+Ditambah `routes_registry_test.go` yang kini **tidak** memuat `/xol` — menambahkannya kembali tanpa alasan akan
+gagal pada uji pertama.
+
+### 157.5 Kekeliruan saya sendiri pada sesi ini
+
+Empat penggantian blok `perl`/`sed` meleset dan ketiganya tertangkap oleh kompilator atau uji, bukan oleh
+pembacaan:
+
+1. Regex `Kind` ikut membuang medan `Kind` pada `AdviceRowDTO` — medan sah yang berarti "PLA atau DLA".
+   Dipulihkan dari `git show HEAD:`.
+2. `perl` dengan `${bs}` di dalam pola gagal mengurai; literal `"\n"` sempat tertulis sebagai string yang
+   terpotong dua baris.
+3. Hapusan blok memotong **ekor uji di atasnya** (`menggambar kode status ketika artinya tidak ada di master`),
+   dan uji baru tersisip di tengahnya.
+4. `tr '\\' '/'` pada daftar jalur Windows memakan backslash-nya, sehingga pemeriksaan gofmt melaporkan 21
+   berkas "perlu format" yang seluruhnya nama jalur rusak.
+
+Pelajarannya sama dengan §156.7: nomor baris dan batas blok yang dihitung dari grep **harus dicetak dan dibaca**
+sebelum dipakai menghapus. Yang menyelamatkan keempatnya adalah `go build`, `go vet`, dan suite uji — bukan
+ketelitian membaca.
+
+### 157.6 Hasil
+
+| Gerbang | Hasil |
+|---|---|
+| `go build ./...` · `go vet ./...` | bersih |
+| `go test ./...` | lolos seluruhnya |
+| `tsc --noEmit` | bersih |
+| `vitest run` penuh | 163 berkas · 2.813 uji lolos |
+| `npm run lint` | 6 error — **tidak berubah**; peringatan turun 897 -> 895 |
+
+Jumlah uji frontend TIDAK turun meski satu tampilan dicabut: uji yang menguji keberadaan panel XOL diganti uji
+yang menguji KETIADAANNYA, bukan dihapus. Pencabutan tanpa penggantian itu akan membuat panel yang kembali tidak
+tertangkap apa pun.
+
+Verifikasi langsung ke peladen yang berjalan, dengan `--noproxy '*'`:
+
+	/api/inbox-pla-dla/ringkas-daftar   401 sesi_tidak_sah      <- rute ada
+	/api/inbox-pla-dla/xol              404 rute_tidak_ditemukan <- rute tercabut
+
+### 157.7 Yang BELUM dijawab
+
+1. **Pengisi `TempPLADLA` tidak ada di export** (`R-16`). Sampai rule itu tiba, isi tabel "Status / Jumlah" di
+   Pega tidak dapat dibandingkan baris-per-baris dengan di sini.
+2. **Kolom "Tahun" pada grid XOL** sempat terlihat memuat tanggal penuh (`27/09/2018`) alih-alih tahun. Gridnya
+   sudah dicabut, sehingga ia tidak lagi persoalan layar ini — tetapi bila kelak `T_PLA_XOL.TAHUN` dipakai di
+   tempat lain, isinya perlu diperiksa dulu.
+3. **Endpoint `/ringkas`** (cacah status klaim di dalam satu daftar) tetap ada tanpa pemakai — lihat §156.5.

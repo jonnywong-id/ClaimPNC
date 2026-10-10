@@ -41,7 +41,6 @@ type flakyRepo struct {
 	inboxpladla.Repo
 	failListAt int
 	calls      *int
-	failXOL    bool
 }
 
 func (f flakyRepo) List(
@@ -52,13 +51,6 @@ func (f flakyRepo) List(
 		return inboxpladla.Page{}, errBoom
 	}
 	return f.Repo.List(ctx, q, p)
-}
-
-func (f flakyRepo) XOL(ctx context.Context, login string) ([]inboxpladla.XOLRow, error) {
-	if f.failXOL {
-		return nil, errBoom
-	}
-	return f.Repo.XOL(ctx, login)
 }
 
 type fixture struct {
@@ -176,7 +168,6 @@ func TestMetadataDescribesTheScreen(t *testing.T) {
 	require.Equal(t, inboxpladla.DefaultTab, body.DefaultTab)
 	require.Equal(t, "ASM", body.Portal)
 	require.Len(t, body.Tabs, len(inboxpladla.Tabs()))
-	require.NotEmpty(t, body.XOLColumns)
 	require.Equal(t, inboxpladla.TabPLA, body.Tabs[0].Code)
 	require.NotEmpty(t, body.Tabs[0].Columns)
 }
@@ -240,10 +231,10 @@ func TestListErrorsAreMappedToTheirCodes(t *testing.T) {
 			inboxpladlahttp.CodeNotAReinsurer},
 		{"tab tidak dikenal", "/api/inbox-pla-dla?daftar=entah", partner,
 			http.StatusUnprocessableEntity, inboxpladlahttp.CodeValidationFail},
-		{"tampilan xol", "/api/inbox-pla-dla?daftar=xol", partner,
-			http.StatusUnprocessableEntity, inboxpladlahttp.CodeNotAClaimList},
-		{"ringkas xol", "/api/inbox-pla-dla/ringkas?daftar=xol", partner,
-			http.StatusUnprocessableEntity, inboxpladlahttp.CodeNotAClaimList},
+		// "xol" BUKAN lagi tab. Ia ditolak sebagai tab tak dikenal, sama seperti
+		// kode karangan mana pun 2014 tampilan itu kode mati di Pega dan tidak dibawa.
+		{"tampilan xol tidak ada lagi", "/api/inbox-pla-dla?daftar=xol", partner,
+			http.StatusUnprocessableEntity, inboxpladlahttp.CodeValidationFail},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -269,26 +260,22 @@ func TestCountsAndXOLAnswerWithTheirRows(t *testing.T) {
 	require.NotEmpty(t, counts.Rows)
 	require.Positive(t, counts.Rows[0].Total)
 
+	// Rute /xol dicabut bersama tampilannya.
 	recorder = f.do(t, http.MethodGet, "/api/inbox-pla-dla/xol", partner, "")
-	require.Equal(t, http.StatusOK, recorder.Code)
-	xol := decode[inboxpladlahttp.XOLResponse](t, recorder)
-	require.NotEmpty(t, xol.Rows)
-	require.NotEmpty(t, xol.Rows[0].Year)
-
-	recorder = f.do(t, http.MethodGet, "/api/inbox-pla-dla/xol", "", "")
-	require.Equal(t, http.StatusConflict, recorder.Code)
+	require.Equal(t, http.StatusNotFound, recorder.Code)
 }
 
 func TestAnUnrecognizedErrorGoesToTheFallbackOrBecomes500(t *testing.T) {
 	calls := 0
-	repo := flakyRepo{Repo: memory.NewSampleStore(), calls: &calls, failXOL: true}
+	repo := flakyRepo{Repo: memory.NewSampleStore(), calls: &calls, failListAt: 1}
 
 	withFallback := newFixture(t, repo, true)
-	recorder := withFallback.do(t, http.MethodGet, "/api/inbox-pla-dla/xol", partner, "")
+	recorder := withFallback.do(t, http.MethodGet, "/api/inbox-pla-dla?daftar=pla", partner, "")
 	require.Equal(t, http.StatusTeapot, recorder.Code)
 
+	calls = 0
 	without := newFixture(t, repo, false)
-	recorder = without.do(t, http.MethodGet, "/api/inbox-pla-dla/xol", partner, "")
+	recorder = without.do(t, http.MethodGet, "/api/inbox-pla-dla?daftar=pla", partner, "")
 	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 	require.Equal(t, inboxpladlahttp.CodeInternalError,
 		decode[inboxpladlahttp.ErrorResponse](t, recorder).Code)
@@ -297,7 +284,7 @@ func TestAnUnrecognizedErrorGoesToTheFallbackOrBecomes500(t *testing.T) {
 
 func TestAPortalThatIsNotReadyReachesThePortalErrorWriter(t *testing.T) {
 	f := sampleFixture(t)
-	request := httptest.NewRequest(http.MethodGet, "/api/inbox-pla-dla/xol", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/inbox-pla-dla?daftar=pla", nil)
 	request.Header.Set(portalhttp.HeaderPortal, "ASI")
 	request.Header.Set(headerLogin, partner)
 	recorder := httptest.NewRecorder()
@@ -535,7 +522,7 @@ func bigStore(total int) *memory.Store {
 	}
 	store := memory.NewStore()
 	store.Seed(claims, advices,
-		[]memory.Reinsurer{{Code: "R100", Login: partner}}, nil, nil)
+		[]memory.Reinsurer{{Code: "R100", Login: partner}}, nil)
 	return store
 }
 
@@ -566,7 +553,7 @@ func TestExportFetchesEveryPage(t *testing.T) {
 
 func TestExportOfAnEmptyListWritesOnlyTheHeader(t *testing.T) {
 	store := memory.NewStore()
-	store.Seed(nil, nil, []memory.Reinsurer{{Code: "R100", Login: partner}}, nil, nil)
+	store.Seed(nil, nil, []memory.Reinsurer{{Code: "R100", Login: partner}}, nil)
 
 	recorder := newFixture(t, store, true).do(t, http.MethodGet,
 		"/api/inbox-pla-dla/ekspor?daftar=close", partner, "")
@@ -610,4 +597,39 @@ func TestAWriteFailureDuringExportIsLogged(t *testing.T) {
 		require.Equal(t, "text/csv; charset=utf-8", writer.header.Get("Content-Type"))
 		require.Contains(t, f.logs.String(), "ekspor inbox PLA/DLA reasuradur terputus")
 	}
+}
+
+// Tabel "Status / Jumlah" menjawab KEENAM daftar sekaligus, bukan daftar yang terbuka.
+//
+// Inilah tabel yang digambar Pega, dan ia satu-satunya navigasi layar lama — karena itu
+// barisnya harus lengkap, bernama, dan membawa kode yang dapat dipakai berpindah daftar.
+func TestListCountsAnswerEverySixListsWithTheirCodes(t *testing.T) {
+	f := sampleFixture(t)
+
+	recorder := f.do(t, http.MethodGet, "/api/inbox-pla-dla/ringkas-daftar", partner, "")
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	body := decode[inboxpladlahttp.ListCountsResponse](t, recorder)
+	require.Len(t, body.Rows, 6)
+
+	for _, row := range body.Rows {
+		require.NotEmpty(t, row.Code, "kodenya dipakai layar untuk berpindah daftar")
+		require.NotEmpty(t, row.Name, "namanya digambar di kolom Status")
+		require.GreaterOrEqual(t, row.Total, 0)
+	}
+
+	// Kata kunci pencarian ikut disaring, dan barisnya TETAP enam.
+	recorder = f.do(t, http.MethodGet,
+		"/api/inbox-pla-dla/ringkas-daftar?cari=TIDAK-ADA", partner, "")
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	kosong := decode[inboxpladlahttp.ListCountsResponse](t, recorder)
+	require.Len(t, kosong.Rows, 6, "daftar yang kosong tetap disebut")
+	for _, row := range kosong.Rows {
+		require.Zero(t, row.Total)
+	}
+
+	// Pemanggil tanpa portal ditolak, bukan dijawab enam angka nol.
+	recorder = f.do(t, http.MethodGet, "/api/inbox-pla-dla/ringkas-daftar", "", "")
+	require.Equal(t, http.StatusConflict, recorder.Code)
 }

@@ -94,9 +94,32 @@ type DocumentDTO struct {
 
 	// AcceptanceNo hanya terisi pada DLA.
 	AcceptanceNo string `json:"no_akseptasi"`
+
+	// CanSend menyatakan baris ini digambar bertombol "SEND".
+	//
+	// # Kenapa ia dikirim, bukan disimpulkan layar dari `terkirim`
+	//
+	// Karena syaratnya BERBEDA antara kedua tab, dan perbedaannya hasil pembacaan section
+	// Pega — bukan pilihan tampilan:
+	//
+	//	tab PLA  `.MARKETING != '1'`   kosong dan `'0'` tetap bertombol
+	//	tab DLA  `.MARKETING == ''`    hanya yang KOSONG bertombol
+	//
+	// Layar yang menyimpulkannya sendiri akan menyamakan keduanya, dan penyamaan itu
+	// tidak menghasilkan satu pun galat — hanya tombol yang muncul di tempat Pega tidak
+	// pernah menampilkannya, pada layar yang mengirim surat ke luar perusahaan.
+	//
+	// # Ia BUKAN janji bahwa pengirimannya akan berhasil
+	//
+	// Baris bertombol masih dapat ditolak peladen: alamat reasuradur yang kosong dijawab
+	// penolakan, persis seperti Pega menjawab "Email Reinsurer Kosong".
+	CanSend bool `json:"dapat_dikirim"`
 }
 
-func toDocumentDTO(item inboxpladlapredla.Document) DocumentDTO {
+func toDocumentDTO(
+	tab inboxpladlapredla.Tab,
+	item inboxpladlapredla.Document,
+) DocumentDTO {
 	return DocumentDTO{
 		AdviceNo:     item.AdviceNo,
 		Reinsurer:    item.Reinsurer,
@@ -109,6 +132,7 @@ func toDocumentDTO(item inboxpladlapredla.Document) DocumentDTO {
 		Notes:        item.Notes,
 		Email:        item.Email,
 		AcceptanceNo: item.AcceptanceNo,
+		CanSend:      tab.ShowSendButton(item.Sent),
 	}
 }
 
@@ -262,9 +286,9 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		Portal:             portalAlias,
+		Tabs:       tabs,
+		DefaultTab: meta.DefaultTab,
+		Portal:     portalAlias,
 	}
 }
 
@@ -339,7 +363,7 @@ func toDocumentsResponse(
 ) DocumentsResponse {
 	rows := make([]DocumentDTO, 0, len(documented.Items))
 	for _, item := range documented.Items {
-		rows = append(rows, toDocumentDTO(item))
+		rows = append(rows, toDocumentDTO(documented.Tab, item))
 	}
 
 	return DocumentsResponse{
