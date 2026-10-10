@@ -94,6 +94,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			Page: positiveNumber(query.Get("halaman")),
 			Size: positiveNumber(query.Get("ukuran")),
 		},
+		// Satu-satunya masukan pengguna yang sampai ke kueri layar ini. Ia dipangkas di
+		// sini, di-escape di repositori, dan diikat sebagai parameter — tidak pernah
+		// dirangkai ke dalam teks SQL.
+		strings.TrimSpace(query.Get("cari")),
 	)
 	if err != nil {
 		h.writeError(w, r, err)

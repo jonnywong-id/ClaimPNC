@@ -51,6 +51,13 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// dapat dipicu tautan biasa — termasuk dibuka ulang dari riwayat peramban.
 		perPortal.Get("/inbox-os-claim-per-cabang/ekspor", h.Export)
 
+		// Panel ringkasan. Rute terpisah dari daftar karena keduanya berubah pada irama yang
+		// berbeda — daftar berganti halaman, panel tidak — dan karena kegagalan salah satunya
+		// tidak boleh mengosongkan yang lain.
+		//
+		// Didaftarkan SEBELUM `/{nomor}` supaya jalur harfiahnya tidak tertelan parameter.
+		perPortal.Get("/inbox-os-claim-per-cabang/ringkasan", h.Summary)
+
 		// Popup Detail. Ia didaftarkan SETELAH `/ekspor` dengan sengaja: chi mencocokkan
 		// jalur harfiah lebih dulu daripada parameter, tetapi menaruhnya berurutan begini
 		// membuat urutan itu terbaca oleh siapa pun yang menyuntingnya kemudian.

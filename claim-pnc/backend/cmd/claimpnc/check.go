@@ -6425,9 +6425,24 @@ func checkOSClaimPerCabang(
 		print("            salah satu kueri kehilangan penyaring cabang atau outstanding.")
 		return
 	}
-	print("  [ok]    Popup Detail klaim %s: %d objek · %d catatan progres · %d pesan adjuster",
-		sample, len(detail.Objects), len(detail.ProgressHistory),
-		len(detail.AdjusterMessages))
+	// Coverage dihitung terpisah karena ia isi panel yang TERBUKA ketika baris objek
+	// diklik. Tanpa angkanya, kueri coverage dapat mengembalikan nol baris tanpa satu pun
+	// tanda — dan panelnya akan tampak "memang tidak ada isinya".
+	coverages, items, estimations, spreadings, coMembers := 0, 0, 0, 0, 0
+	for _, o := range detail.Objects {
+		coverages += len(o.Coverages)
+		for _, c := range o.Coverages {
+			items += len(c.Items)
+			spreadings += len(c.Spreadings)
+			coMembers += len(c.CoMembers)
+			for _, it := range c.Items {
+				estimations += len(it.Estimations)
+			}
+		}
+	}
+	print("  [ok]    Popup Detail klaim %s: %d objek (%d coverage · %d item · %d estimasi · %d spreading · %d co-member) · %d catatan progres · %d pesan adjuster",
+		sample, len(detail.Objects), coverages, items, estimations, spreadings, coMembers,
+		len(detail.ProgressHistory), len(detail.AdjusterMessages))
 
 	// Popup TIDAK boleh menjawab klaim cabang lain. Diuji dengan nomor yang memang ada,
 	// tetapi diminta atas nama cabang yang berbeda — satu-satunya bentuk kebocoran `R-20`
@@ -6442,6 +6457,8 @@ func checkOSClaimPerCabang(
 	} else {
 		print("  [ok]    Popup Detail menolak klaim yang bukan milik cabang pemanggil")
 	}
+
+	checkOSClaimPerCabangSummary(ctx, repo, resolved, print)
 }
 
 // checkPLADLAQueue menjalankan ketiga kueri daftar modul Inbox PLA, DLA, Pre DLA.
@@ -7374,4 +7391,51 @@ func firstTreatyClaimID(ctx context.Context, queue *inboxclaimtreatypropsql.Repo
 		return ""
 	}
 	return page.Items[0].ClaimID
+}
+
+// checkOSClaimPerCabangSummary menjalankan kedua kueri panel ringkasan.
+//
+// Terpisah dari checkOSClaimPerCabang supaya kegagalan panel terbaca sebagai kegagalan PANEL,
+// bukan kegagalan daftar — keduanya rute yang berbeda dan salah satunya dapat mati sendiri.
+func checkOSClaimPerCabangSummary(
+	ctx context.Context,
+	repo *inboxosclaimpercabangsql.Repo,
+	branch inboxosclaimpercabang.Branch,
+	print func(string, ...any),
+) {
+	q := inboxosclaimpercabang.Query{Branch: branch}
+
+	rows, err := repo.SummaryRows(ctx, q)
+	if err != nil {
+		print("  [GAGAL] Kueri ringkasan OS per cabang gagal: %v", err)
+		return
+	}
+
+	summary := inboxosclaimpercabang.Summarize(rows, time.Now())
+	print("  [ok]    Ringkasan cabang %s: %d berkas · estimasi %s · %d umur di atas 2 tahun",
+		branch.Code, summary.TotalClaims, summary.EstimationTotal.String(),
+		summary.OverTwoYears)
+
+	pita := ""
+	for _, b := range summary.Buckets {
+		pita += fmt.Sprintf("%s %d · ", b.Label, b.Claims)
+	}
+	print("  [info]  Sebaran umur: %s", strings.TrimSuffix(pita, " · "))
+	print("  [info]  %d COB · %d sumber bisnis", len(summary.ByCOB), len(summary.BySource))
+
+	// Porsi treaty OR diperiksa terpisah: ia satu-satunya bagian panel yang menyentuh DB Link.
+	total, terbaca, err := repo.TreatyOR(ctx, q)
+	switch {
+	case err != nil:
+		print("  [BELUM] Total treaty OR tidak dapat dibaca: %v", err)
+		print("            Hanya satu kartu angka yang terdampak; panelnya tetap jalan.")
+	case !terbaca:
+		print("  [BELUM] Total treaty OR tidak terbaca")
+	case total.MinorUnits() == 0:
+		print("  [info]  Total treaty OR cabang ini Rp 0 — WAJAR, bukan cacat.")
+		print("            treaty_loss@asmd hanya memuat 19 baris berawalan PNC- dari 10.152,")
+		print("            dan Pega menghitungnya dengan rumus serta penyaring yang sama.")
+	default:
+		print("  [ok]    Total treaty OR cabang %s: %s", branch.Code, total.String())
+	}
 }

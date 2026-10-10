@@ -13,8 +13,10 @@ import (
 // namedQueries adalah kesebelas kueri yang wajib ada di berkas .sql.
 var namedQueries = []string{
 	"list_tasks", "count_tabs",
+	"list_tasks_full", "count_tabs_full",
 	"resolve_surveyor", "resolve_members",
-	"kpi_by_adjuster", "kpi_by_year",
+	"kpi_by_adjuster", "kpi_by_adjuster_all", "kpi_by_year",
+	"kpi_by_quarter_year", "kpi_detail", "kpi_years",
 	"check_tables", "check_columns", "check_new_columns", "check_filled_columns",
 	"check_kpi",
 }
@@ -35,7 +37,14 @@ func TestTidakAdaKueriTakTerpakaiDiBerkasSQL(t *testing.T) {
 // `STEP_RANK` hidup di dalam tampilan sebaris yang memilih langkah terakhir tiap berkas
 // survei; ia disaring `WHERE STEP_RANK = 1` dan tidak pernah sampai ke pemanggil. Tanpa
 // pengecualian ini, ia terbaca sebagai kolom hasil dan seluruh perbandingan urutan bergeser.
-var helperAliases = map[string]bool{"STEP_RANK": true}
+var helperAliases = map[string]bool{
+	"STEP_RANK": true,
+
+	// `CAST(NULL AS VARCHAR2(101))` pada varian terbatas membuat regex alias ikut
+	// menangkap "AS VARCHAR2". Itu TIPE, bukan nama kolom hasil.
+	"VARCHAR":  true,
+	"VARCHAR2": true,
+}
 
 // aliasesOf mengambil alias `AS X` yang benar-benar menjadi kolom hasil, berurutan.
 func aliasesOf(text string) []string {
@@ -56,7 +65,7 @@ func aliasesOf(text string) []string {
 func availableTabs() []inboxsurvey.Tab {
 	result := []inboxsurvey.Tab{}
 	for _, tab := range inboxsurvey.Tabs() {
-		if tab.Available() {
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
 			result = append(result, tab)
 		}
 	}
@@ -374,7 +383,7 @@ func TestHanyaTabTersediaPunyaCabangDiKueriDaftar(t *testing.T) {
 	for _, tab := range inboxsurvey.Tabs() {
 		penanda := "'" + string(tab) + "'"
 
-		if tab.Available() {
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
 			require.Containsf(t, text, penanda,
 				"tab %q tersedia tetapi tidak punya cabang di kueri daftar", tab)
 			continue
@@ -392,13 +401,13 @@ func TestSetiapTabTakTersediaMenyebutSebabnya(t *testing.T) {
 	hasUnavailable := false
 
 	for _, tab := range inboxsurvey.Tabs() {
-		if tab.Available() {
-			require.Emptyf(t, inboxsurvey.UnavailableReason(tab),
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
+			require.Emptyf(t, (inboxsurvey.Readiness{}).UnavailableReason(tab),
 				"tab %q tersedia tetapi menyebut alasan tak tersedia", tab)
 			continue
 		}
 		hasUnavailable = true
-		require.NotEmptyf(t, inboxsurvey.UnavailableReason(tab),
+		require.NotEmptyf(t, (inboxsurvey.Readiness{}).UnavailableReason(tab),
 			"tab %q belum tersedia tetapi tidak menyebut sebabnya", tab)
 	}
 
@@ -415,7 +424,7 @@ func TestSetiapTabTakTersediaMenyebutSebabnya(t *testing.T) {
 // layar di sana membuat setiap pengguna melihat layar tanpa isi lebih dulu — dan kesan itu
 // bertahan meski tiga tab lain berisi.
 func TestTabBawaanYangDipakaiLayarDapatDihitung(t *testing.T) {
-	require.True(t, inboxsurvey.DefaultAvailableTab().Available(),
+	require.True(t, (inboxsurvey.Readiness{}).TabAvailable((inboxsurvey.Readiness{}).DefaultAvailableTab()),
 		"tab bawaan layar tidak dapat dihitung")
 }
 
@@ -460,7 +469,7 @@ func TestPembatasCakupanDipasangDiKeduaSisi(t *testing.T) {
 // berubah menjadi papan peringkat yang tidak pernah diminta siapa pun.
 func TestKPIDisaringCakupanJuga(t *testing.T) {
 	for _, name := range []string{"kpi_by_adjuster", "kpi_by_year"} {
-		require.Containsf(t, strings.ToUpper(query(name)), "INSTR(:1",
+		require.Containsf(t, strings.ToUpper(query(name)), "INSTR(:SCOPE",
 			"kueri %s tidak menyaring cakupan", name)
 	}
 }
@@ -604,5 +613,172 @@ func TestKeterisianDiukurUntukKelimaKolom(t *testing.T) {
 		require.Containsf(t, text, "COUNT(S."+column+")",
 			"kolom %s sudah ada di POOLDATA.T_SURVEYORLIST tetapi keterisiannya tidak diukur",
 			column)
+	}
+}
+
+// TestKeduaVarianKueriDaftarPunyaAliasYangSama mengunci syarat yang membuat SATU pemindai cukup.
+//
+// `list_tasks` dan `list_tasks_full` dibaca `scanTask` yang sama. Satu alias yang bergeser di
+// salah satunya memindahkan nomor polis ke kolom nama tertanggung — keduanya teks, sehingga
+// tidak ada satu pun galat yang muncul.
+//
+// Inilah alasan varian terbatas tetap mengembalikan `REFERENCE_NUMBER` sebagai
+// `CAST(NULL AS VARCHAR2(101))`: bentuknya harus sama walau isinya belum ada.
+func TestKeduaVarianKueriDaftarPunyaAliasYangSama(t *testing.T) {
+	require.Equal(t, taskColumns, aliasesOf(query("list_tasks")))
+	require.Equal(t, taskColumns, aliasesOf(query("list_tasks_full")))
+}
+
+// TestAliasKueriHitungTabPenuhMengikutiUrutanTab mengunci pasangan kolom dengan tab.
+//
+// `count_tabs_full` mengembalikan KETUJUH angka, dan repo membacanya berurutan terhadap tab
+// yang tersedia. Satu kolom yang bergeser menukar jumlah tab Invoice dengan tab Close — dua
+// angka yang sama-sama masuk akal.
+func TestAliasKueriHitungTabPenuhMengikutiUrutanTab(t *testing.T) {
+	require.Equal(t, countColumnsFull, aliasesOf(query("count_tabs_full")))
+	require.Len(t, countColumnsFull, len(inboxsurvey.Tabs()))
+}
+
+// TestVarianTerbatasTidakMenyebutSatuPunKolomBaru adalah penjaga ORA-00904.
+//
+// Portal yang belum di-`ALTER` menjalankan varian terbatas. Menyebut satu saja kolom baru di
+// sana menjatuhkan SELURUH layar saat parse — sebelum satu baris pun dibaca.
+//
+// Yang diperiksa `s.<kolom>`, bukan namanya saja: sejak penggantian nama 2026-10-05
+// `ADJUSTER_PIC` juga nama ALIAS yang memang harus ada.
+func TestVarianTerbatasTidakMenyebutSatuPunKolomBaru(t *testing.T) {
+	text := strings.ToUpper(query("list_tasks"))
+
+	for _, kolom := range []string{
+		"ADJUSTERACCEPT", "ADJUSTER_PIC", "REFNO", "PYSTATUSWORK", "RESCHEDULE_LOCATION",
+	} {
+		require.NotContainsf(t, text, "S."+kolom,
+			"varian terbatas membaca s.%s — akan ORA-00904 di portal yang belum ALTER", kolom)
+	}
+	require.NotContains(t, strings.ToUpper(query("count_tabs")), "S.ADJUSTERACCEPT")
+}
+
+// TestVarianPenuhMembacaKelimaKolom adalah kebalikannya.
+//
+// Varian penuh hanya dipakai bila kelima kolom siap, dan di sana ia WAJIB benar-benar
+// membacanya — kalau tidak, menghidupkan tab tidak mengubah apa pun.
+func TestVarianPenuhMembacaKelimaKolom(t *testing.T) {
+	daftar := strings.ToUpper(query("list_tasks_full"))
+	hitung := strings.ToUpper(query("count_tabs_full"))
+
+	for _, kolom := range []string{"ADJUSTERACCEPT", "REFNO", "PYSTATUSWORK",
+		"ADJUSTER_PIC", "RESCHEDULE_LOCATION"} {
+		require.Containsf(t, daftar, "S."+kolom, "varian penuh tidak membaca s.%s", kolom)
+	}
+	require.Contains(t, hitung, "S.ADJUSTERACCEPT")
+	require.Contains(t, hitung, "S.PYSTATUSWORK")
+
+	// Keempat tab yang selama ini ditahan WAJIB punya cabangnya sendiri.
+	for _, tab := range []string{"'outstanding'", "'all'", "'invoice'", "'close'"} {
+		require.Containsf(t, query("list_tasks_full"), ":tab = "+tab,
+			"varian penuh tidak punya cabang untuk tab %s", tab)
+	}
+}
+
+// bindNames mengembalikan nama parameter yang dipakai sebuah kueri, setelah baris komentar
+// dibuang — komentar justru menyebut nama-nama itu, dan membiarkannya ikut terbaca akan
+// membuat uji di bawah selalu lulus.
+func bindNames(text string) map[string]bool {
+	out := map[string]bool{}
+	for _, m := range regexp.MustCompile(`:([a-z][a-z_]*)`).FindAllStringSubmatch(tanpaKomentar(text), -1) {
+		out[m[1]] = true
+	}
+	return out
+}
+
+// tanpaKomentar membuang setiap baris komentar SQL.
+func tanpaKomentar(text string) string {
+	var body []string
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "--") {
+			continue
+		}
+		body = append(body, line)
+	}
+	return strings.Join(body, "\n")
+}
+
+// TestTidakAdaPenandaBindBerangka adalah uji paling penting di berkas ini.
+//
+// # Kenapa penomoran berangka TIDAK boleh dipakai di modul ini
+//
+// Driver aplikasi ini `github.com/sijms/go-ora/v2`. Untuk argumen TANPA NAMA ia menaruh
+// argumen ke-x pada posisi ke-x (`command.go:1992-2002`) dan mengirimnya sebagai bind
+// POSISIONAL — dan Oracle menghitung **setiap kemunculan** penanda sebagai bind tersendiri,
+// bukan setiap angka yang berbeda.
+//
+// Kueri modul ini menyebut penanda yang sama berkali-kali: `:tab` muncul 7 kali pada varian
+// penuh, `:work_done` 8 kali. Dengan bind posisional, 12 argumen untuk 35 kemunculan
+// menghasilkan **ORA-01008: not all variables bound** — dan itulah yang menjatuhkan layar ini
+// pada 2026-10-07.
+//
+// Dengan `sql.Named`, go-ora menempuh `useNamedParameters()` yang mencocokkan per NAMA dan
+// menandai kemunculan berulang sendiri (`command.go:1822-1847`).
+//
+// # Kenapa memperbaiki URUTAN angkanya tidak cukup
+//
+// Upaya pertama hari itu menomori ulang `:1`…`:12` menurut urutan kemunculan. Itu memperbaiki
+// hal yang berbeda — pemetaan argumen ke placeholder — dan tidak menyentuh sebabnya, karena
+// jumlah kemunculannya tetap 35. Layarnya tetap gagal.
+//
+// Yang menjawab bukan pembacaan kode yang lebih teliti, melainkan menjalankan kuerinya
+// terhadap basis data sungguhan. Lihat probe_test.go.
+func TestTidakAdaPenandaBindBerangka(t *testing.T) {
+	angka := regexp.MustCompile(`:\d+`)
+	for name, text := range queries {
+		require.Emptyf(t, angka.FindAllString(tanpaKomentar(text), -1),
+			"kueri %s memakai penanda bind BERANGKA. Modul ini memakai parameter BERNAMA "+
+				"(`:scope`, `:tab`) karena penandanya berulang, dan penanda berulang pada bind "+
+				"posisional menghasilkan ORA-01008.", name)
+	}
+}
+
+// TestSetiapParameterKueriDipasokRepo mengikat sisi SQL dengan sisi Go.
+//
+// Uji di atas menjaga bentuk penandanya; uji ini menjaga tidak ada nama yang disebut kueri
+// tetapi tidak pernah dikirim repo, maupun sebaliknya. Keduanya terpisah dengan sengaja: nama
+// yang tidak dipasok menghasilkan "parameter X is not defined in parameter list" saat
+// permintaan dilayani — bukan saat uji dijalankan.
+func TestSetiapParameterKueriDipasokRepo(t *testing.T) {
+	// Nama yang BENAR-BENAR dikirim inboxsurvey.go dan directory.go, ditulis ulang di sini
+	// dengan sengaja: menurunkannya dari kode yang sama tidak membuktikan apa pun.
+	dipasok := map[string][]string{
+		"list_tasks": {"scope", "tab", "login", "msg_open", "msg_answered", "search", "skip", "take"},
+		"list_tasks_full": {"scope", "tab", "work_done", "work_rejected", "adjuster_confirmed",
+			"invoice_fee", "login", "msg_open", "msg_answered", "search", "skip", "take"},
+		"count_tabs": {"login", "msg_open", "msg_answered", "scope"},
+		"count_tabs_full": {"work_done", "work_rejected", "adjuster_confirmed", "invoice_fee",
+			"login", "msg_open", "msg_answered", "scope"},
+		"resolve_surveyor":    {"login"},
+		"resolve_members":     {"leader_login"},
+		"kpi_by_adjuster":     {"scope", "kpi_type"},
+		"kpi_by_adjuster_all": {"scope"},
+		"kpi_by_year":         {"scope", "year", "quarter"},
+		"kpi_by_quarter_year": {"scope", "year"},
+		"kpi_detail":          {"scope", "year", "quarter"},
+		"kpi_years":           {"scope"},
+	}
+
+	for name, names := range dipasok {
+		punya := map[string]bool{}
+		for _, n := range names {
+			punya[n] = true
+		}
+
+		for dipakai := range bindNames(queries[name]) {
+			require.Truef(t, punya[dipakai],
+				"kueri %s memakai :%s, tetapi repo tidak pernah mengirimnya — go-ora menolak "+
+					"dengan \"parameter %s is not defined in parameter list\"",
+				name, dipakai, dipakai)
+		}
+		for _, n := range names {
+			require.Containsf(t, bindNames(queries[name]), n,
+				"repo mengirim :%s ke kueri %s yang tidak memakainya", n, name)
+		}
 	}
 }

@@ -27,28 +27,76 @@ func TestTabsReturnsACopyInOrder(t *testing.T) {
 	require.Equal(t, inboxsurvey.TabOutstanding, inboxsurvey.Tabs()[0])
 }
 
-func TestUnavailableReasonAndAvailability(t *testing.T) {
-	for _, tab := range []inboxsurvey.Tab{
-		inboxsurvey.TabOutstanding, inboxsurvey.TabAll, inboxsurvey.TabInvoice,
-	} {
-		require.Contains(t, inboxsurvey.UnavailableReason(tab), "ADJUSTERACCEPT")
-		require.False(t, tab.Available())
-	}
-	require.Contains(t, inboxsurvey.UnavailableReason(inboxsurvey.TabClose), "PYSTATUSWORK")
-	require.False(t, inboxsurvey.TabClose.Available())
-
-	for _, tab := range []inboxsurvey.Tab{
-		inboxsurvey.TabNotAnswered, inboxsurvey.TabNotReplied, inboxsurvey.TabReplied,
-	} {
-		require.Empty(t, inboxsurvey.UnavailableReason(tab))
-		require.True(t, tab.Available())
+// siap adalah kesiapan portal yang kelima kolomnya sudah ada DAN terisi.
+func siap() inboxsurvey.Readiness {
+	return inboxsurvey.Readiness{
+		AdjusterAccept: true, WorkStatus: true, Reference: true,
+		AdjusterPIC: true, SurveyLocation: true,
 	}
 }
 
+func TestUnavailableReasonAndAvailability(t *testing.T) {
+	// Portal yang belum siap — keadaan produksi per 2026-10-07.
+	var belum inboxsurvey.Readiness
+
+	for _, tab := range []inboxsurvey.Tab{
+		inboxsurvey.TabOutstanding, inboxsurvey.TabAll,
+		inboxsurvey.TabInvoice, inboxsurvey.TabClose,
+	} {
+		require.Contains(t, belum.UnavailableReason(tab), "ADJUSTERACCEPT")
+		require.Contains(t, belum.UnavailableReason(tab), "RESCHEDULE_LOCATION")
+		require.False(t, belum.TabAvailable(tab))
+	}
+
+	// Ketiga tab komunikasi tidak pernah ditahan — ia tidak menyentuh satu pun kolom itu.
+	for _, tab := range []inboxsurvey.Tab{
+		inboxsurvey.TabNotAnswered, inboxsurvey.TabNotReplied, inboxsurvey.TabReplied,
+	} {
+		require.Empty(t, belum.UnavailableReason(tab))
+		require.True(t, belum.TabAvailable(tab))
+	}
+}
+
+// TestPortalSiapMembukaKetujuhTab adalah separuh yang hilang sampai 2026-10-07.
+//
+// Sebelum itu ketersediaan tab adalah KONSTANTA, sehingga keadaan "kolomnya sudah terisi" tidak
+// dapat diuji sama sekali — dan ketika `pega_dev83` benar-benar terisi, layar tetap menyatakan
+// seluruh barisnya kosong. Tidak ada uji yang gagal, karena tidak ada uji yang dapat gagal.
+func TestPortalSiapMembukaKetujuhTab(t *testing.T) {
+	ready := siap()
+
+	for _, tab := range inboxsurvey.Tabs() {
+		require.Truef(t, ready.TabAvailable(tab), "tab %s", tab)
+		require.Emptyf(t, ready.UnavailableReason(tab), "tab %s", tab)
+	}
+	require.True(t, ready.Complete())
+}
+
+// TestSebagianSiapTetapMenahanSeluruhnya mengunci sifat biner Complete.
+//
+// Kueri varian penuh menyebut KELIMA kolom sekaligus. Satu saja yang belum ada menghasilkan
+// ORA-00904 saat parse — sebelum satu baris pun dibaca. Jadi "sebagian siap" harus diperlakukan
+// sama dengan "belum siap", bukan dihidupkan sebagian.
+func TestSebagianSiapTetapMenahanSeluruhnya(t *testing.T) {
+	ready := siap()
+	ready.Reference = false
+
+	require.False(t, ready.Complete())
+	require.False(t, ready.TabAvailable(inboxsurvey.TabOutstanding))
+	require.Contains(t, ready.UnavailableReason(inboxsurvey.TabOutstanding), "REFNO")
+	require.NotContains(t, ready.UnavailableReason(inboxsurvey.TabOutstanding), "ADJUSTERACCEPT")
+}
+
 func TestDefaultAvailableTabSkipsBlockedTabs(t *testing.T) {
+	var belum inboxsurvey.Readiness
+
 	// Tab bawaan dan tiga tab sesudahnya terhalang; yang pertama tersedia adalah tab
 	// komunikasi.
-	require.Equal(t, inboxsurvey.TabNotAnswered, inboxsurvey.DefaultAvailableTab())
+	require.Equal(t, inboxsurvey.TabNotAnswered, belum.DefaultAvailableTab())
+
+	// Begitu portalnya siap, tab bawaan kembali menjadi Outstanding — tanpa satu baris pun
+	// disunting, yang sebelum 2026-10-07 tidak benar.
+	require.Equal(t, inboxsurvey.DefaultTab, siap().DefaultAvailableTab())
 }
 
 func TestTabValid(t *testing.T) {
@@ -84,17 +132,126 @@ func TestFilterNormalize(t *testing.T) {
 	}, inboxsurvey.Filter{Tab: inboxsurvey.TabReplied, Limit: 999, Offset: 30}.Normalize())
 }
 
-func TestKPIKindAndFilterNormalize(t *testing.T) {
-	require.True(t, inboxsurvey.KPIFinal.Valid())
-	require.True(t, inboxsurvey.KPIQuarterly.Valid())
-	require.True(t, inboxsurvey.KPIOutstanding.Valid())
-	require.False(t, inboxsurvey.KPIKind("x").Valid())
+// TestPilihanPanelKPISamaDenganPega mengunci isi kedua dropdown.
+//
+// Nilainya diambil `Activity/GetFilterKPI-Act.xml` apa adanya — `TipeData` dan `TipeExport` —
+// dan dikirim ke layar tanpa diterjemahkan, karena nilai yang sama itulah yang dibandingkan
+// kueri terhadap kolom `tipe`.
+func TestPilihanPanelKPISamaDenganPega(t *testing.T) {
+	require.Equal(t, []inboxsurvey.SurveyStatus{
+		inboxsurvey.SurveyStatusAll,
+		inboxsurvey.SurveyStatusOutstanding,
+		inboxsurvey.SurveyStatusFinal,
+	}, inboxsurvey.SurveyStatuses())
 
-	require.Equal(t,
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIOutstanding, Category: "A", Year: "2026"},
-		inboxsurvey.KPIFilter{Kind: "x", Category: " A ", Year: " 2026 "}.Normalize())
-	require.Equal(t, inboxsurvey.KPIFinal,
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal}.Normalize().Kind)
+	require.Equal(t, []inboxsurvey.ReportType{
+		inboxsurvey.ReportSummary,
+		inboxsurvey.ReportDetail,
+	}, inboxsurvey.ReportTypes())
+
+	require.Equal(t, []string{"1", "2", "3", "4"}, inboxsurvey.Quarters())
+}
+
+// TestKeduaIsianPanelKPIWajib menjaga keduanya tidak pernah dipilihkan untuk pengguna.
+//
+// Layar lama menandai Status Survey dan Tipe Report dengan bintang merah. Memilihkan salah
+// satunya berarti menjalankan laporan yang tidak diminta siapa pun, lalu menampilkan angkanya
+// seolah itu yang dicari — dan angka yang masuk akal tidak pernah dilaporkan sebagai salah.
+func TestKeduaIsianPanelKPIWajib(t *testing.T) {
+	err := inboxsurvey.KPIFilter{}.Check()
+	require.ErrorIs(t, err, inboxsurvey.ErrKPIFilterIncomplete)
+	require.Contains(t, err.Error(), "Status Survey")
+	require.Contains(t, err.Error(), "Tipe Report")
+
+	// Kesalahan dikumpulkan SELURUHNYA, bukan satu per satu — pengguna tidak perlu menekan
+	// Cari dua kali untuk mengetahui dua hal.
+	err = inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusAll}.Check()
+	require.ErrorIs(t, err, inboxsurvey.ErrKPIFilterIncomplete)
+	require.NotContains(t, err.Error(), "Status Survey")
+
+	require.NoError(t, inboxsurvey.KPIFilter{
+		Status: inboxsurvey.SurveyStatusAll,
+		Report: inboxsurvey.ReportSummary,
+	}.Check())
+}
+
+// TestBentukHasilMengikutiKombinasiIsian mengunci percabangan `GetReportKPIAdjuster`.
+//
+// Kelima bentuk berasal dari rule yang berbeda, dan setiap baris artinya berbeda pula. Satu
+// cabang yang salah menghasilkan tabel yang terlihat benar dan menjawab pertanyaan lain.
+func TestBentukHasilMengikutiKombinasiIsian(t *testing.T) {
+	bentuk := func(status inboxsurvey.SurveyStatus, tipe inboxsurvey.ReportType, kuartal string) inboxsurvey.KPIShape {
+		return inboxsurvey.KPIFilter{Status: status, Report: tipe, Quarter: kuartal}.Shape()
+	}
+
+	require.Equal(t, inboxsurvey.ShapePerAdjuster,
+		bentuk(inboxsurvey.SurveyStatusFinal, inboxsurvey.ReportSummary, ""))
+
+	// Status ALL BUKAN "tanpa penyaring": Pega menggabungkan dua blok dan memberi label
+	// kategorinya, sehingga satu adjuster muncul DUA kali dengan angka masing-masing.
+	require.Equal(t, inboxsurvey.ShapePerAdjusterStatus,
+		bentuk(inboxsurvey.SurveyStatusAll, inboxsurvey.ReportSummary, ""))
+
+	require.Equal(t, inboxsurvey.ShapePerYear,
+		bentuk(inboxsurvey.SurveyStatusFinal, inboxsurvey.ReportSummary, "3"))
+	require.Equal(t, inboxsurvey.ShapePerQuarterYear,
+		bentuk(inboxsurvey.SurveyStatusFinal, inboxsurvey.ReportSummary, inboxsurvey.QuarterAll))
+
+	// DATA DETAIL mengalahkan seluruh kombinasi lain — ia rule tersendiri.
+	for _, kuartal := range []string{"", "2", inboxsurvey.QuarterAll} {
+		require.Equal(t, inboxsurvey.ShapeDetail,
+			bentuk(inboxsurvey.SurveyStatusAll, inboxsurvey.ReportDetail, kuartal))
+	}
+}
+
+// TestKuartalALLBerbedaDariKuartalKosong menutup salah paham yang mudah terjadi.
+//
+// Keduanya sama-sama "bukan satu kuartal", tetapi menempuh rule yang BERBEDA: kosong berarti
+// kendalinya tidak dipakai sama sekali, "ALL" berarti keempat kuartal diminta sekaligus.
+func TestKuartalALLBerbedaDariKuartalKosong(t *testing.T) {
+	require.False(t, inboxsurvey.KPIFilter{Quarter: inboxsurvey.QuarterAll}.QuarterChosen())
+	require.False(t, inboxsurvey.KPIFilter{}.QuarterChosen())
+	require.True(t, inboxsurvey.KPIFilter{Quarter: "4"}.QuarterChosen())
+}
+
+// TestKendaliKuartalMengikutiStatusSurvey meniru `pyVisibleWhen` panel KPI apa adanya.
+func TestKendaliKuartalMengikutiStatusSurvey(t *testing.T) {
+	require.True(t, inboxsurvey.SurveyStatusAll.QuarterApplies())
+	require.True(t, inboxsurvey.SurveyStatusFinal.QuarterApplies())
+	require.False(t, inboxsurvey.SurveyStatusOutstanding.QuarterApplies())
+
+	// Nilai yang tertinggal dari pilihan sebelumnya dibuang bersama kendalinya. Tanpa ini,
+	// hasilnya tersaring kuartal yang tidak terlihat di mana pun pada layar.
+	clean := inboxsurvey.KPIFilter{
+		Status:  inboxsurvey.SurveyStatusOutstanding,
+		Report:  inboxsurvey.ReportSummary,
+		Quarter: "2",
+		Year:    "2026",
+	}.Normalize()
+	require.Empty(t, clean.Quarter)
+	require.Empty(t, clean.Year)
+	require.Equal(t, inboxsurvey.ShapePerAdjuster, clean.Shape())
+}
+
+// TestStatusALLMenempuhKueriTersendiri menutup salah paham yang sempat saya bangun sendiri.
+//
+// "ALL" adalah pilihan di layar, BUKAN nilai yang pernah ada di kolom `tipe` — dan ia juga
+// BUKAN "tanpa penyaring". Pega menjalankan kueri lain yang menggabungkan dua blok dan memberi
+// label kategorinya masing-masing.
+//
+// Bedanya nyata: "tanpa penyaring" merata-ratakan kedua kategori menjadi SATU angka per
+// adjuster; Pega memberi DUA baris dengan angka masing-masing. Angka pertama tidak pernah ada
+// di layar lama, dan ia terlihat sangat masuk akal — itu yang membuatnya berbahaya.
+func TestStatusALLMenempuhKueriTersendiri(t *testing.T) {
+	require.Equal(t, inboxsurvey.ShapePerAdjusterStatus, inboxsurvey.KPIFilter{
+		Status: inboxsurvey.SurveyStatusAll, Report: inboxsurvey.ReportSummary,
+	}.Shape())
+
+	require.Empty(t, inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusAll}.CategoryValue())
+	require.Equal(t, "FINAL",
+		inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusFinal}.CategoryValue())
+	require.Equal(t, "OUTSTANDING",
+		inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusOutstanding}.CategoryValue())
 }
 
 // TestAppointmentNoMemotongPrefixKelasPega mengunci kolom "Appointment No".

@@ -28,6 +28,7 @@ func list(t *testing.T, login string, tab inboxsurvey.Tab) inboxsurvey.Page {
 		context.Background(),
 		identity(t, login),
 		inboxsurvey.Filter{Tab: tab, Limit: 100},
+		inboxsurvey.Readiness{},
 	)
 	require.NoError(t, err)
 	return page
@@ -155,7 +156,7 @@ func TestTabYangBelumTersediaMengembalikanHalamanKosong(t *testing.T) {
 	hasUnavailable := false
 
 	for _, tab := range inboxsurvey.Tabs() {
-		if tab.Available() {
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
 			continue
 		}
 		hasUnavailable = true
@@ -196,6 +197,7 @@ func TestTabTidakDikenalJatuhKeBawaan(t *testing.T) {
 		context.Background(),
 		identity(t, memory.SampleLeaderLogin),
 		inboxsurvey.Filter{Tab: "tab-yang-tidak-ada", Limit: 100},
+		inboxsurvey.Readiness{},
 	)
 	require.NoError(t, err)
 
@@ -213,14 +215,14 @@ func TestPencarianMenyentuhClaimNo(t *testing.T) {
 
 	byClaim, err := store.List(context.Background(), who, inboxsurvey.Filter{
 		Tab: inboxsurvey.TabNotAnswered, Search: "0107", Limit: 100,
-	})
+	}, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"PNCN.26.0107"}, numbers(byClaim))
 
 	// Huruf kecil harus tetap cocok dengan nomor klaim berhuruf besar.
 	lowerCase, err := store.List(context.Background(), who, inboxsurvey.Filter{
 		Tab: inboxsurvey.TabNotAnswered, Search: "pncn.26.0107", Limit: 100,
-	})
+	}, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"PNCN.26.0107"}, numbers(lowerCase),
 		"pencarian harus tidak peka huruf besar-kecil")
@@ -278,13 +280,13 @@ func TestJumlahTabSepadanDenganIsiTabnya(t *testing.T) {
 	store := memory.NewSampleStore()
 	who := identity(t, memory.SampleLeaderLogin)
 
-	counts, err := store.Counts(context.Background(), who)
+	counts, err := store.Counts(context.Background(), who, inboxsurvey.Readiness{})
 	require.NoError(t, err)
 
 	// Hanya tab TERSEDIA yang dihitung — bukan ketujuhnya.
 	tersedia := 0
 	for _, tab := range inboxsurvey.Tabs() {
-		if tab.Available() {
+		if (inboxsurvey.Readiness{}).TabAvailable(tab) {
 			tersedia++
 		}
 	}
@@ -292,7 +294,7 @@ func TestJumlahTabSepadanDenganIsiTabnya(t *testing.T) {
 
 	for _, count := range counts {
 		page, err := store.List(context.Background(), who,
-			inboxsurvey.Filter{Tab: count.Tab, Limit: 100})
+			inboxsurvey.Filter{Tab: count.Tab, Limit: 100}, inboxsurvey.Readiness{})
 		require.NoError(t, err)
 
 		require.Equalf(t, page.Total, count.Total,
@@ -305,7 +307,7 @@ func TestKPIDisaringCakupan(t *testing.T) {
 	rows, err := memory.NewSampleStore().KPI(
 		context.Background(),
 		identity(t, memory.SampleLeaderLogin),
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal},
+		inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusFinal, Report: inboxsurvey.ReportSummary},
 	)
 	require.NoError(t, err)
 
@@ -323,7 +325,7 @@ func TestKPIMenghitungRataRataBukanJumlah(t *testing.T) {
 	rows, err := memory.NewSampleStore().KPI(
 		context.Background(),
 		identity(t, memory.SampleLeaderLogin),
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal},
+		inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusFinal, Report: inboxsurvey.ReportSummary},
 	)
 	require.NoError(t, err)
 
@@ -336,16 +338,15 @@ func TestKPIMenghitungRataRataBukanJumlah(t *testing.T) {
 	t.Fatal("baris KPI milik leader tidak ditemukan")
 }
 
-// TestRingkasanFinalMenolakKategoriLain.
+// TestStatusSurveyMenyaringKategori.
 //
-// KPIFinal dan KPIQuarterly keduanya mematok `tipe = 'FINAL'` di dalam rule-nya sendiri.
-// Menerima kategori dari layar akan membuat layar menampilkan angka yang di Pega tidak pernah
-// dapat ditampilkan.
-func TestRingkasanFinalMenolakKategoriLain(t *testing.T) {
+// Status Survey FINAL menyaring `tipe = 'FINAL'`; baris berkategori OUTSTANDING tidak boleh
+// ikut terhitung. Rata-rata leader tetap 85 — bukan bercampur dengan baris kategori lain.
+func TestStatusSurveyMenyaringKategori(t *testing.T) {
 	rows, err := memory.NewSampleStore().KPI(
 		context.Background(),
 		identity(t, memory.SampleLeaderLogin),
-		inboxsurvey.KPIFilter{Kind: inboxsurvey.KPIFinal, Category: "OUTSTANDING"},
+		inboxsurvey.KPIFilter{Status: inboxsurvey.SurveyStatusFinal, Report: inboxsurvey.ReportSummary},
 	)
 	require.NoError(t, err)
 

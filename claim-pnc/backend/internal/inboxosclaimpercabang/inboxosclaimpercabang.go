@@ -295,6 +295,17 @@ type Query struct {
 	// kode cabang rinci pada sesi pemanggil lewat `Repo.BranchOf`, dan itulah satu-satunya
 	// batas data layar ini.
 	Branch Branch
+
+	// Search menyaring baris menurut NOMOR KLAIM atau NOMOR POLIS. Kosong berarti seluruh
+	// baris cabang itu.
+	//
+	// Ia TIDAK pernah mempersempit batas data — `Branch` tetap berlaku lebih dulu. Mencari
+	// nomor klaim cabang lain tetap menghasilkan nol baris, dan itu disengaja (`R-20`).
+	//
+	// Ia juga TIDAK dipakai ekspor maupun panel ringkasan. Keduanya menjawab pertanyaan
+	// "bagaimana keadaan cabang saya", bukan "di mana klaim ini" — ringkasan yang ikut
+	// tersaring akan selalu menyebut satu berkas dan berhenti berarti.
+	Search string
 }
 
 // Branch adalah satu cabang, sebagaimana dikenali data klaim.
@@ -350,43 +361,94 @@ func (c Caller) Clean() Caller {
 	}
 }
 
-// PlannedDifferences adalah selisih terhadap layar Pega yang sudah diputuskan.
+// PlannedDifferences adalah selisih terhadap layar Pega yang ditampilkan kepada pengguna.
 //
-// Ia dikirim ke layar, bukan disimpan sebagai komentar, supaya pengguna yang membandingkan
-// kedua layar berdampingan memperoleh jawaban alih-alih melaporkannya sebagai kerusakan
-// (`D-54`: setiap selisih wajib terpetakan ke butir `P-5`, atau menunggu persetujuan).
+// # Ia KOSONG sejak 2026-10-10, dan itu keputusan — bukan kelalaian
+//
+// Kedelapan butir yang pernah ada dibahas Work Owner satu per satu, dan seluruhnya dicabut.
+// Alasan tiap pencabutan ditulis di bawah, berurut, supaya tidak ada yang menambahkannya
+// kembali mengira butirnya terlewat.
+//
+// # Yang TIDAK hilang karena daftar ini kosong
+//
+// Selisihnya sendiri. `D-54` menuntut setiap selisih **diklasifikasikan pada uji kesetaraan**
+// terhadap 13 butir `P-5` — ia tidak pernah menuntut selisih itu ditampilkan di layar.
+// Menampilkannya adalah kebiasaan proyek ini (19 dari 77 modul), bukan kewajiban.
+//
+// Rincian tiap selisih beserta angkanya tetap hidup di dua tempat: komentar di berkas .sql
+// dan `docs/catatan-pengembangan.md`.
+//
+// # Mekanismenya sengaja TIDAK dibongkar
+//
+// Senarai, DTO, dan komponen layarnya dibiarkan utuh. Komponen layar menggambar NOL ketika
+// senarainya kosong, sehingga menambahkan satu butir kelak cukup satu baris di sini.
 var PlannedDifferences = []string{
-	"Kolom \"Reserve Claim ASM Share\" menampilkan jumlah estimasi apa adanya — tanpa " +
-		"kurs dan tanpa porsi ASM. Berkas ekspor menghitungnya dengan keduanya, sehingga " +
-		"angkanya berbeda dari yang di layar. Keduanya sama dengan sistem lama.",
-	"Daftar dibagi per halaman di server. Layar lama memuat seluruh baris sekaligus, " +
-		"sehingga jumlah baris yang tampak sekali layar berbeda.",
-	"Umur klaim dihitung terhadap tanggal WIB, bukan terhadap jam server basis data. " +
-		"Klaim yang terdaftar menjelang tengah malam karena itu dapat berbeda satu hari " +
-		"dari layar lama.",
-	"Penanda progres mandek memakai tiga catatan progres terakhir menurut waktunya saja. " +
-		"Sistem lama memakai urutan penyimpanan fisik baris sebagai pemisah ketika dua " +
-		"catatan berwaktu sama, dan urutan itu tidak dapat direproduksi di luar Oracle.",
+	// 0. "Kolom Reserve Claim ASM Share kini benar-benar porsi ASM." DICABUT 2026-10-10 —
+	//    Work Owner menilai kolomnya sudah benar, sehingga tidak perlu diumumkan di layar.
+	//
+	//    Ia tetap SELISIH terhadap Pega, dan selisih itu tidak hilang karena catatannya
+	//    dicabut: layar lama menampilkan `SUM(estimationvalue)` apa adanya, di sini
+	//    `SUM(estimationvalue * kursvalue) * SHAREASM/100`. Pada data 2026-10-10 ia
+	//    mengubah angka 74 klaim bermata uang asing dan 305 klaim ber-SHAREASM bukan 100%.
+	//
+	//    Yang dicabut hanya TAMPILANNYA. Pencatatannya tetap: `D-54` menuntut selisih
+	//    diklasifikasikan pada uji kesetaraan `S-8`, bukan ditampilkan kepada pengguna, dan
+	//    rinciannya ada di kepala berkas .sql serta di catatan pengembangan.
 
-	// Selisih yang paling besar akibatnya, dan karena itu ditulis paling tegas. Ia bukan
-	// perbedaan angka melainkan perbedaan ARTI layar, dan pengguna yang tidak diberi tahu akan
-	// menyimpulkan klaimnya hilang.
-	"Sumber klaim outstanding dipindahkan ke POOLDATA.T_CLAIMLIST_ADMIN, dan tabel itu " +
-		"memuat kumpulan klaim yang BERBEDA dari sebelumnya — bukan lebih sedikit, melainkan " +
-		"berbeda. Diukur pada data hari ini: 443 dari 953 klaim outstanding yang tampil. " +
-		"Dari 517 yang tidak tampil, 167 sedang di tahap Send To Analis, 136 di Estimation, " +
-		"81 di Choose Surveyor, 45 tanpa penugasan terbuka, 37 di View Polis, dan 19 di " +
-		"Send To PIC Teknik.",
+	// ENAM butir lain dicabut atas keputusan Work Owner 2026-10-10, dan seluruhnya dicatat
+	// di sini supaya tidak ditambahkan kembali oleh orang yang mengira butirnya terlewat.
+	//
+	// 1. "Daftar dibagi per halaman di server." DICABUT — ia bukan selisih hasil.
+	//    Layar lama PUN berhalaman: `pyPageMode = Next Previous`, `pyPageSize = 20`. Yang
+	//    berbeda hanya TEMPAT pemotongannya — klipboard Pega versus basis data — dan ukuran
+	//    halamannya, 20 versus 25. Work Owner menilai keduanya urusan tampilan semata, dan
+	//    menetapkan ukuran 25 tetap dipakai.
+	//
+	// 2. "Umur klaim dihitung terhadap tanggal WIB." DICABUT — ia TIDAK BENAR. Diukur
+	//    langsung ke Oracle pada 2026-10-10: `SYSTIMESTAMP = +07:00`, `DBTIMEZONE = +07:00`.
+	//    Jadi `TRUNC(SYSDATE)` milik kueri lama memang sudah tanggal WIB, sama persis dengan
+	//    yang dihitung `AgingDaysSince`. WIB tidak mengenal waktu musim panas, sehingga
+	//    keduanya sama sepanjang tahun — tidak ada klaim yang dapat berbeda satu hari.
+	//
+	//    Butir itu lahir dari kehati-hatian yang tidak pernah diperiksa. Menyatakan selisih
+	//    yang tidak ada sama buruknya dengan menyembunyikan selisih yang ada: pembacanya
+	//    berhenti memercayai daftar ini.
+	// 7. "Penanda progres mandek." DICABUT 2026-10-10 — ia tidak pernah terlihat pengguna.
+	//
+	//    Baris digambar merah bila umurnya melewati ambang ATAU progresnya mandek. Setelah
+	//    pemisahnya diganti `ID_UPDATE DESC`, selisih terhadap Pega tinggal 2 klaim — dan
+	//    keduanya SUDAH merah karena umur. Diukur: 0 baris yang warnanya berbeda, dan 0
+	//    baris merah palsu (turun dari 23).
+	//
+	//    Pada kedua klaim itu pilihan kita justru lebih tepat: `ROWID` adalah alamat
+	//    penyimpanan fisik yang dapat berpindah dan tidak punya arti bisnis, sedangkan
+	//    `ID_UPDATE` adalah nomor urut pencatatan per klaim — dan "tiga catatan terakhir"
+	//    memang berarti urutan pencatatan, bukan urutan penyimpanan.
+	//
+	//    Rincian pengukuran dan alasan teknisnya ada di kepala berkas .sql, bagian
+	//    PROGRESS_STALLED.
 
-	"Kolom \"Nama Insured\" terisi di sini. Di layar lama kolom itu digambar tetapi SELALU " +
-		"kosong — tidak satu pun rule mengisinya, meski berkas ekspor layar yang sama " +
-		"memuat nama tertanggung dari sumber yang sekarang dipakai kolom ini.",
+	// 3. "Sumber klaim outstanding dipindahkan ke POOLDATA.T_CLAIMLIST_ADMIN." DICABUT —
+	//    Work Owner menyatakan perpindahannya memang dikehendaki dan bukan persoalan
+	//    (2026-10-10). Selisih jumlah klaim yang pernah diukur — 443 dari 953 — adalah
+	//    keadaan tabel yang BELUM terisi penuh, bukan perilaku tetap; pengisiannya disusun
+	//    di `docs/backfill-t-claimlist-admin.md` dan menunggu DBA (`D-63`). Angka
+	//    pengukurannya tetap tersimpan di sana dan di catatan pengembangan.
+	//
+	// 4. "Kotak cari nomor klaim dan nomor polis adalah kemampuan baru." DICABUT — Work
+	//    Owner menyatakan penambahannya memang diminta dan tidak perlu diumumkan di layar.
+	//
+	// 5. "Cabang ditentukan dari kode cabang rinci HCQ." DICABUT — idem; perubahan sumber
+	//    cabang memang dikehendaki. Penolakan bagi pengguna tanpa kode cabang tetap dijawab
+	//    dengan pesan tersendiri (`ErrBranchUnknown`), bukan dengan daftar kosong, sehingga
+	//    pengguna tetap tahu sebabnya tanpa perlu daftar ini.
 
-	// Dinyatakan supaya petugas yang tahu cabangnya tetapi tertolak tidak menyimpulkan
-	// haknya dicabut.
-	"Cabang ditentukan dari kode cabang rinci yang dikirim sistem autentikasi HCQ, bukan dari " +
-		"kolom telepon operator seperti sistem lama. Petugas yang di HCQ belum punya kode " +
-		"cabang rinci karena itu ditolak dengan pesan, bukan diberi daftar kosong.",
+	// 6. "Kolom Nama Insured terisi di sini." DICABUT — Work Owner menyatakan kolom yang
+	//    terisi memang yang dikehendaki (2026-10-10). Sumbernya sama dengan yang sudah
+	//    dipakai berkas ekspor layar ini sejak dulu: `POOLDATA.T_GENERAL.theinsured`.
+	//    Kueri daftar Pega tidak memilihnya sama sekali — nol kemunculan `theinsured`,
+	//    `InsuredName`, maupun `qqname` — sehingga kolomnya digambar tetapi selalu kosong.
+
 }
 
 // Pagination menyatakan halaman keberapa yang diminta dan sebesar apa.

@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { callAPI } from '@/api/client'
+import { HEADER_PORTAL, callAPI } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
@@ -9,6 +9,7 @@ import type {
   JumlahTabResponse,
   KPIResponse,
   KeteranganResponse,
+  TahunKPIResponse,
 } from './types'
 
 const PATH = '/api/inbox-survey'
@@ -46,10 +47,14 @@ const keys = {
   kpi: (
     portal: string | null,
     token: string | null,
-    jenis: string,
-    kategori: string,
+    status: string,
+    tipe: string,
+    kuartal: string,
     tahun: string,
-  ) => ['inbox-survey', 'kpi', portal, token, jenis, kategori, tahun] as const,
+  ) => ['inbox-survey', 'kpi', portal, token, status, tipe, kuartal, tahun] as const,
+
+  tahunKPI: (portal: string | null, token: string | null) =>
+    ['inbox-survey', 'kpi-tahun', portal, token] as const,
 }
 
 /**
@@ -173,25 +178,134 @@ export function useDaftarSurvei(tab: string, cari: string, lewati: number) {
  * memilikinya. Menembaknya saat pengguna masih di tab INBOX berarti satu galat yang tidak
  * pernah dilihat siapa pun — tetapi tetap tercatat di log.
  */
-export function useKPISurvei(
-  jenis: string,
-  kategori: string,
-  tahun: string,
-  aktif: boolean,
-) {
+export function useKPISurvei(f: IsianKPI, aktif: boolean) {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
-  const params = new URLSearchParams()
-  if (jenis) params.set('jenis', jenis)
-  if (kategori.trim()) params.set('kategori', kategori.trim())
-  if (tahun.trim()) params.set('tahun', tahun.trim())
-
   return useQuery({
-    queryKey: keys.kpi(portal, token, jenis, kategori.trim(), tahun.trim()),
-    queryFn: () => callAPI<KPIResponse>(`${PATH}/kpi?${params.toString()}`, { token, portal }),
+    queryKey: keys.kpi(portal, token, f.status, f.tipe, f.kuartal, f.tahun.trim()),
+    queryFn: () =>
+      callAPI<KPIResponse>(`${PATH}/kpi?${paramKPI(f).toString()}`, { token, portal }),
     enabled: aktif && token !== null && portal !== null,
     staleTime: 0,
     placeholderData: (previous) => previous,
   })
+}
+
+/**
+ * Hook isi dropdown **Tahun Kuartal**.
+ *
+ * # Kenapa rute tersendiri, bukan bagian keterangan layar
+ *
+ * Karena isinya bergantung pada CAKUPAN pemanggil, sedangkan keterangan layar tidak menyentuh
+ * basis data sama sekali dan di-cache selamanya. Menyatukannya akan membuat daftar tahun milik
+ * pengguna sebelumnya ikut terbawa setelah pergantian pengguna.
+ *
+ * Ditembak begitu tab KPI dibuka — dropdown yang baru terisi setelah pencarian pertama bukan
+ * dropdown, melainkan kotak teks yang menyamar.
+ */
+export function useTahunKPI(aktif: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.tahunKPI(portal, token),
+    queryFn: () => callAPI<TahunKPIResponse>(`${PATH}/kpi/tahun`, { token, portal }),
+    enabled: aktif && token !== null && portal !== null,
+    staleTime: Infinity,
+  })
+}
+
+/** IsianKPI adalah keempat kendali panel KPI, sama dengan layar lama. */
+export type IsianKPI = {
+  status: string
+  tipe: string
+  kuartal: string
+  tahun: string
+}
+
+/**
+ * paramKPI menyusun parameter kueri dari isian.
+ *
+ * Dipakai BERSAMA oleh tombol Cari dan tombol Export Data — satu tempat, karena keduanya
+ * wajib menghasilkan permintaan yang sama. `ExportKPILoginAdjuster` di Pega pun menjalankan
+ * kueri yang sama dengan `GetReportKPIAdjuster`; berkas yang isinya berbeda dari layar tidak
+ * dapat dicocokkan siapa pun yang membukanya nanti.
+ *
+ * Isian kosong TIDAK dikirim. Server membacanya sebagai "belum dipilih" dan menjawab 422 —
+ * jawaban yang benar, dan yang berbeda dari "dipilih, tetapi kosong".
+ */
+export function paramKPI(f: IsianKPI): URLSearchParams {
+  const params = new URLSearchParams()
+  if (f.status) params.set('status_survei', f.status)
+  if (f.tipe) params.set('tipe_report', f.tipe)
+  if (f.kuartal) params.set('kuartal', f.kuartal)
+  if (f.tahun.trim()) params.set('tahun', f.tahun.trim())
+  return params
+}
+
+/**
+ * Hook tombol **Export Data** pada panel KPI.
+ *
+ * # Kenapa lewat `fetch` dan `blob`, bukan `<a href>` biasa
+ *
+ * Karena rutenya menuntut dua header — token sesi dan portal aktif — dan tautan biasa tidak
+ * membawa keduanya. Tanpa header portal, permintaannya DITOLAK, bukan dilayani portal utama
+ * sebagai cadangan (`R-20`).
+ *
+ * # Kenapa memakai isian yang sama dengan tombol Cari
+ *
+ * `Activity/ExportKPILoginAdjuster-Act.xml` menjalankan kueri yang sama dengan tombol Cari,
+ * lalu melewatkan hasilnya ke `pxConvertResultsToCSV`. Berkasnya karena itu berisi persis
+ * yang terlihat di layar — dan isian yang berbeda akan menghasilkan berkas yang tidak dapat
+ * dicocokkan dengan apa pun.
+ */
+export function useEksporKPI() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: async (f: IsianKPI) => {
+      const header: Record<string, string> = {}
+      if (token) header['Authorization'] = `Bearer ${token}`
+      if (portal) header[HEADER_PORTAL] = portal
+
+      const response = await fetch(`${PATH}/kpi/ekspor?${paramKPI(f).toString()}`, {
+        headers: header,
+      })
+      if (!response.ok) {
+        // Galat dijawab sebagai JSON selama satu byte pun badan belum terkirim; sesudah itu
+        // tidak bisa lagi. Yang dibaca di sini kasus pertama.
+        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
+        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+      }
+
+      simpanBerkas(await response.blob(), namaBerkas(response) ?? 'kpi-adjuster.csv')
+    },
+  })
+}
+
+/** Nama berkas dari header `Content-Disposition`, bila ada. */
+function namaBerkas(response: Response): string | null {
+  const disposition = response.headers.get('Content-Disposition')
+  if (!disposition) return null
+  return /filename="([^"]+)"/.exec(disposition)?.[1] ?? null
+}
+
+/**
+ * simpanBerkas menyimpan blob lewat tautan sementara.
+ *
+ * URL objeknya DICABUT setelah dipakai. Tanpa itu, blob-nya tetap dipegang peramban sampai
+ * tab ditutup — dan pada layar yang dipakai sepanjang hari, setiap ekspor menumpuk memori
+ * yang tidak pernah dilepas.
+ */
+function simpanBerkas(blob: Blob, nama: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = nama
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }

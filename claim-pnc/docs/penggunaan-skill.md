@@ -12617,3 +12617,58 @@ Penjaga yang ditambahkan mencerminkan pelajaran itu: tiap uji varian kini menega
 milik varian lain **tidak** muncul. Tanpa penegasan negatif, dua varian dapat runtuh menjadi
 satu sambil tetap lulus — persis bentuk cacat yang baru saja terjadi.
 >>>>>>> dev
+
+## Open Protection tipe '8' — penerapan ke klaim (2026-10-05)
+
+Tidak ada skill Matt Pocock yang dipanggil. Yang dipakai disiplinnya, bukan perkakasnya:
+
+| Disiplin | Penerapannya di sesi ini |
+|---|---|
+| **domain-modeling** — silangkan pernyataan dengan kode | Pemetaan `CAUSEOFLOSS`/`CAUSEOFLOSSID` ke `DESCRIPTION`/`D_COL_ID` **tidak diterima dari nama kolomnya**. Ia disilangkan dengan dua bukti: data produksi `PNC-1452` dan kueri `GetCauseofLossDesc`. Hanya satu pemasangan konsisten dengan keduanya |
+| **domain-modeling** — istilah yang tertukar | Penelusuran lanjutan menemukan pemetaan `.IDMasterTONP` / `.CauseOfLossID` **terbalik** di dokumentasi sendiri. Perilakunya benar; dokumennya yang salah, dan justru dokumen itulah yang berbahaya |
+| **codebase-design** — seam dan kedalaman | Aturan "kapan sebuah keputusan mengubah coverage" diletakkan di domain (`CauseOfLossToApply`), bukan di SQL maupun di adapter. Adapter hanya menjalankan |
+| **codebase-design** — antarmuka yang sulit disalahgunakan | `decodeChangeDetail` yang semula tujuh parameter string berurutan diganti satu struct bernama. Dua string yang tertukar tidak ditolak kompilator, dan akibatnya perubahan diterapkan ke baris yang salah |
+| **grilling** — periksa premis sebelum membangun di atasnya | Sebelum menambah tampilan baris coverage ke layar akseptasi, panel Pega dibaca lebih dulu. Ternyata ia hanya memuat dua label — jadi penambahan itu **tidak dikerjakan**, karena ia di luar `P-5` |
+
+### Kesalahan sendiri pada sesi ini
+
+| Kesalahan | Cara ketahuannya |
+|---|---|
+| Mengira perlu menambahkan tampilan baris coverage ke layar akseptasi atas nama "petugas harus tahu apa yang diubah" | Dibaca dulu `AcceptProtectionSection`: Pega hanya menampilkan "Cause Of Loss Sebelumnya" dan "Cause Of Loss". Rencana ditarik sebelum satu baris pun ditulis |
+| `node -e` dengan string bertanda kutip dan tab gagal diam-diam saat menyunting berkas uji | Terlihat saat hasilnya diperiksa — satu penggantian tidak terjadi dan `detailRow` belum berubah. Sisanya dikerjakan dengan Edit, bukan skrip |
+
+### Catatan perkakas
+
+`go vet` sempat mengembalikan `unlinkat ... directory is not empty` — galat direktori sementara Windows, bukan
+temuan. Dijalankan ulang dan bersih. Angka apa pun dari jalannya yang pertama tidak dipakai.
+
+---
+
+## Inbox OS Claim per Cabang — panel ringkasan di atas grid (2026-10-08)
+
+Tidak ada skill Matt Pocock yang dipanggil. Yang dipakai disiplinnya, bukan perkakasnya:
+
+| Disiplin | Penerapannya di sesi ini | Hasil yang diturunkan |
+|---|---|---|
+| **grilling** — ukur premisnya sebelum membangun di atasnya | Permintaan "ambil reserve OR dari data export, di-sum" dijawab dengan menghitung isi `treaty_loss@asmd` LEBIH DULU: 19 baris berawalan `PNC-` dari 10.152, hanya **1 cabang dari 50** yang akan menampilkan angka bukan nol | Permintaan tetap dipenuhi apa adanya, tetapi kartu **Reserve klaim tertahan** dibangun berdampingan supaya panel tidak terdiri dari satu angka yang selalu nol. Panel juga menyebut Rp 0 itu wajar, bukan cacat |
+| **grilling** — ukur, jangan asumsikan | Sebelum memutuskan agregasi di Go atau di SQL, ukuran terbesar satu cabang dihitung: 83 klaim outstanding, rata-rata 9,2 | Agregasi di Go — aman untuk ukuran itu, dan aturan umur tetap hidup di satu tempat |
+| **codebase-design** — satu aturan satu tempat | Pengelompokan umur TIDAK disalin ke SQL meski di sana lebih ringkas. `CAST(x AS DATE)` tidak memotong jam di Oracle, perangkap yang sudah pernah ditemui modul ini | `Summarize()` memakai `AgingDaysSince` yang sama dengan grid, sehingga panel dan grid tidak dapat berbeda |
+| **codebase-design** — seam, dan apa yang boleh gagal sendirian | Penjaga `hanya ekspor yang boleh menyentuh @asmd` ternyata menolak kueri treaty yang baru. Alih-alih melonggarkannya, aturannya **diganti dengan yang lebih tepat**: kueri yang menyentuh DB Link harus dapat gagal sendirian tanpa mengosongkan layar | Satu penjaga diganti, dan satu penjaga KEDUA ditambahkan supaya dasar pengecualiannya tidak hilang diam-diam bila porsi treaty kelak digabungkan ke `summary_rows` |
+| **domain-modeling** — bedakan dua hal yang tampak sama | "Rp 0" dan "tidak terbaca" dipisahkan sebagai dua keadaan, bukan satu | `ReserveORAvailable`. Tanpanya, DB Link padam tampil persis seperti jawaban nol yang sah |
+| **domain-modeling** — nama yang tidak dapat tertukar | Permintaan Work Owner mengecualikan "diam lebih dari 180 hari". Angka 180 sudah dipakai layar ini untuk hal LAIN, yakni `ambang_aging` | Pengecualian itu dicatat alasannya, bukan sekadar dilewati — kartu bernama sama yang menghitung hal berbeda adalah salah baca yang tidak pernah menghasilkan galat |
+
+### Kesalahan sendiri pada sesi ini
+
+| Kesalahan | Cara ketahuannya | Yang diubah karenanya |
+|---|---|---|
+| `SummaryPanel` menjatuhkan SELURUH halaman — termasuk grid — ketika `/ringkasan` menjawab 200 dengan bentuk yang lain | **Bukan** oleh uji yang menguji panel. Satu uji paginasi gagal dengan pesan yang tidak menyinggung ringkasan sama sekali: `Unable to find an element with the text: PNC-9001` | Panel memeriksa BENTUK jawabannya, bukan hanya galatnya. Janji "panel gagal tidak mengosongkan grid" sebelumnya hanya berlaku untuk galat yang tertangkap |
+| Stub `/ringkasan` ditaruh di dalam `stubFetch`, mendahului `answer` milik uji itu sendiri | Jawaban ringkasan khusus milik sebuah uji tidak pernah dijalankan | Dipindahkan ke `stubDefaultFetch`, dan uji yang memakai `stubFetch` langsung menyediakan stubnya sendiri |
+
+### Catatan perkakas
+
+`gofmt -w` kembali mengubah berkas ke LF padahal pohon kerja CRLF (`core.autocrlf=true`).
+Dikembalikan dengan node. Ini pengulangan ketiga; langkah "periksa akhiran baris sesudah gofmt"
+sebaiknya dianggap wajib, bukan diingat sewaktu-waktu.
+
+Uji frontend dijalankan SATU proses pada satu waktu. Dua proses vitest serentak menghasilkan
+kegagalan semu di modul yang tidak disentuh sama sekali.

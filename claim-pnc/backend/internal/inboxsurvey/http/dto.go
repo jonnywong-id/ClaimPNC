@@ -132,12 +132,14 @@ type IdentityDTO struct {
 type MetadataResponse struct {
 	Portal string `json:"portal"`
 
-	Kolom      []ColumnDTO `json:"kolom"`
-	Tab        []TabDTO    `json:"tab"`
-	KolomKPI   []ColumnDTO `json:"kolom_kpi"`
-	TabBawaan  string      `json:"tab_bawaan"`
-	JenisKPI   []string    `json:"jenis_kpi"`
-	UkuranHala int         `json:"ukuran_halaman"`
+	Kolom        []ColumnDTO `json:"kolom"`
+	Tab          []TabDTO    `json:"tab"`
+	KolomKPI     []ColumnDTO `json:"kolom_kpi"`
+	TabBawaan    string      `json:"tab_bawaan"`
+	StatusSurvei []string    `json:"status_survei"`
+	TipeReport   []string    `json:"tipe_report"`
+	Kuartal      []string    `json:"kuartal"`
+	UkuranHala   int         `json:"ukuran_halaman"`
 
 	// SelisihTerencana adalah perbedaan yang DISENGAJA terhadap layar Pega (`D-54`).
 	SelisihTerencana []string `json:"selisih_terencana"`
@@ -182,8 +184,15 @@ type CountResponse struct {
 
 // KPIRowDTO adalah satu baris ringkasan KPI.
 type KPIRowDTO struct {
-	// Kelompok berisi nama adjuster, atau TAHUN pada ringkasan kuartal.
+	// Kelompok berisi nama adjuster, atau TAHUN pada bentuk berkuartal.
 	Kelompok string `json:"kelompok"`
+
+	// Ketiganya terisi HANYA pada bentuk yang memakainya; pada bentuk lain selalu kosong.
+	// Mana yang berlaku dinyatakan KolomAwal pada jawaban, bukan ditebak layar dari isinya.
+	Status  string `json:"status"`
+	Kuartal string `json:"kuartal"`
+	Bulan   string `json:"bulan"`
+	CaseID  string `json:"case_id"`
 
 	PenjadwalanSurvey   float64 `json:"penjadwalan_survey"`
 	ImmediateAdvice     float64 `json:"immediate_advice"`
@@ -196,14 +205,27 @@ type KPIRowDTO struct {
 	Nilai               float64 `json:"nilai"`
 }
 
+// TahunKPIResponse adalah isi dropdown "Tahun Kuartal".
+type TahunKPIResponse struct {
+	Portal string   `json:"portal"`
+	Tahun  []string `json:"tahun"`
+}
+
 // KPIResponse adalah ringkasan KPI adjuster.
 type KPIResponse struct {
 	Portal   string      `json:"portal"`
 	Identity IdentityDTO `json:"identitas"`
 
-	Jenis    string `json:"jenis"`
-	Kategori string `json:"kategori"`
-	Tahun    string `json:"tahun"`
+	StatusSurvei string `json:"status_survei"`
+	TipeReport   string `json:"tipe_report"`
+	Kuartal      string `json:"kuartal"`
+	Tahun        string `json:"tahun"`
+
+	// Bentuk menyatakan APA yang menjadi satu baris — lihat inboxsurvey.KPIShape.
+	Bentuk string `json:"bentuk"`
+
+	// KolomAwal adalah kolom kunci di depan kesembilan angka, sesuai Bentuk.
+	KolomAwal []ColumnDTO `json:"kolom_awal"`
 
 	Data []KPIRowDTO `json:"data"`
 }
@@ -253,17 +275,15 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Portal:     portalAlias,
-		Kolom:      columns,
-		Tab:        tabList,
-		KolomKPI:   kpi,
-		TabBawaan:  string(meta.DefaultTab),
-		UkuranHala: meta.PageSize,
-		JenisKPI: []string{
-			string(inboxsurvey.KPIOutstanding),
-			string(inboxsurvey.KPIFinal),
-			string(inboxsurvey.KPIQuarterly),
-		},
+		Portal:           portalAlias,
+		Kolom:            columns,
+		Tab:              tabList,
+		KolomKPI:         kpi,
+		TabBawaan:        string(meta.DefaultTab),
+		UkuranHala:       meta.PageSize,
+		StatusSurvei:     statusValues(),
+		TipeReport:       reportValues(),
+		Kuartal:          inboxsurvey.Quarters(),
 		SelisihTerencana: meta.PlannedDifferences,
 		Keterbatasan:     meta.Limitations,
 	}
@@ -366,6 +386,10 @@ func toKPIResponse(scored usecase.Scored, portalAlias string) KPIResponse {
 	for _, row := range scored.Rows {
 		data = append(data, KPIRowDTO{
 			Kelompok:            row.Group,
+			Status:              row.Status,
+			Kuartal:             row.Quarter,
+			Bulan:               row.Month,
+			CaseID:              row.CaseID,
 			PenjadwalanSurvey:   row.SurveyScheduling,
 			ImmediateAdvice:     row.ImmediateAdvice,
 			PreliminaryAdvice:   row.PreliminaryAdvice,
@@ -378,13 +402,23 @@ func toKPIResponse(scored usecase.Scored, portalAlias string) KPIResponse {
 		})
 	}
 
+	shape := scored.Filter.Shape()
+
+	awal := make([]ColumnDTO, 0, 4)
+	for _, c := range usecase.KPILeadingColumns(shape) {
+		awal = append(awal, ColumnDTO{Kunci: c.Key, Judul: c.Title, Tersedia: true})
+	}
+
 	return KPIResponse{
-		Portal:   portalAlias,
-		Identity: toIdentityDTO(scored.Identity),
-		Jenis:    string(scored.Filter.Kind),
-		Kategori: scored.Filter.Category,
-		Tahun:    scored.Filter.Year,
-		Data:     data,
+		Portal:       portalAlias,
+		Identity:     toIdentityDTO(scored.Identity),
+		StatusSurvei: string(scored.Filter.Status),
+		TipeReport:   string(scored.Filter.Report),
+		Kuartal:      scored.Filter.Quarter,
+		Tahun:        scored.Filter.Year,
+		Bentuk:       string(shape),
+		KolomAwal:    awal,
+		Data:         data,
 	}
 }
 
@@ -401,4 +435,26 @@ func formatDate(t time.Time, loc *time.Location) string {
 		loc = time.UTC
 	}
 	return t.In(loc).Format("2006-01-02")
+}
+
+// statusValues dan reportValues mengubah pilihan domain menjadi teks untuk layar.
+//
+// Nilainya dikirim APA ADANYA — "ALL", "OUTSTANDING", "FINAL", "DATA SUMMARY",
+// "DATA DETAIL" — persis seperti isi `TipeData.pxResults().DESCRIPTION` dan
+// `TipeExport.pxResults().DESCRIPTION` di Pega. Menerjemahkannya menjadi kode pendek akan
+// membuat nilai yang dikirim layar berbeda dari yang dibandingkan kuerinya.
+func statusValues() []string {
+	out := make([]string, 0, 3)
+	for _, s := range inboxsurvey.SurveyStatuses() {
+		out = append(out, string(s))
+	}
+	return out
+}
+
+func reportValues() []string {
+	out := make([]string, 0, 2)
+	for _, r := range inboxsurvey.ReportTypes() {
+		out = append(out, string(r))
+	}
+	return out
 }

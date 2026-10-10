@@ -31007,3 +31007,339 @@ dapat dihapus. Syarat tombol Delete kini hanya `.UserInput == OperatorID.pyUserI
 berkasnya tersimpan di penyimpanan; bagian `.exp <= 60.0` tidak dibawa. Bila `InputParamUpload_act` kelas
 `ASM-FW-GCNMFW-Int-V_LST_DET_TYPE_DOC` kelak diterima dan Work Owner ingin syarat waktunya, cukup `CanDeleteAttachment`.
 >>>>>>> 8c044828a6c3c599fb3c27f46a681b058d681890
+
+## 172. Penerapan perubahan Cause Of Loss ke klaim (2026-10-05)
+
+### 172.1 Sasarannya sepasang kunci, bukan nama
+
+**Keputusan.** Baris coverage yang diubah ditunjuk `OBJECT_ID` + `OBJECT_COVERAGE_ID`, disimpan sebagai dua
+kolom baru pada `T_CLAIM_OPENPROTECTION`.
+
+**Alasan.** Pada klaim `PNC-1452`, `JackHugh / Resiko A` muncul tiga kali dengan Penyebab Kerugian berbeda.
+Pencarian berbasis nama akan menyorot — dan mengubah — baris yang salah dua dari tiga kali. Pasangan ini kunci
+barisnya di `T_CLAIM_OBJECTCOVERAGE`, bentuk yang sama dipakai `T_CLAIM_SPREADING`, dan Pega pun
+mengindeksnya begitu (`ObjectList(Local.objectid).ObjectCoverageList(Local.coverageid)`).
+
+**Konsekuensi diterima.** Seluruh baris warisan Pega tidak punya kedua kolom itu — sasarannya hidup di dalam
+blob properti work object. Menyetujui baris warisan tipe '8' karena itu **tidak menerapkan apa pun**, dan itu
+bukan galat: persetujuannya tetap sah. Menolaknya akan membuat seluruh antrean warisan tipe '8' tidak dapat
+diputuskan siapa pun.
+
+### 172.2 Yang disimpan kode, deskripsinya dicari saat menerapkan
+
+**Keputusan.** `OLD_DATA` dan `NEW_DATA` berisi `D_COL_ID`. Teks penyebab kerugian dibaca dari
+`POOLDATA.D_CAUSE_OF_LOSS` di dalam transaksi akseptasi, bukan dibawa dari permintaan.
+
+**Dasar.** Work Owner 2026-10-05: *"old data new data simpan idcol aja"*.
+
+**Akibat yang diinginkan.** Permintaan yang dibuat bulan lalu lalu disetujui hari ini menuliskan teks yang
+berlaku **hari ini**. Perbandingan "dari apa menjadi apa" tidak pernah bergantung pada teks yang dapat
+berubah di master.
+
+**Selisih dari Pega.** `InsertOpenProtectionCase` membawa `.ClaimDataProtect.CauseOfLoss` (teks) dan
+`.CauseOfLossID` (kode) bersama-sama di dalam permintaan. Konsekuensinya di sini: kode yang **dihapus** dari
+master antara meminta dan menyetujui membuat keputusan **dibatalkan** (`ErrUnknownCauseOfLoss`, 409),
+sedangkan Pega tetap menuliskannya memakai teks lama. Itu memang yang dikehendaki — menuliskan penyebab
+kerugian yang sudah tidak berlaku lebih buruk daripada menolaknya.
+
+### 172.3 Kode tak dikenal MEMBATALKAN, bukan menulis kode saja
+
+**Keputusan.** Deskripsi yang tidak ditemukan — atau ditemukan tetapi kosong — menggagalkan transaksi.
+
+**Alasan.** `T_CLAIM_OBJECTCOVERAGE` menyimpan kode dan teks berdampingan. Menuliskan kode tanpa teks
+menghasilkan baris yang namanya berkata satu hal dan kodenya berkata hal lain — persis keadaan yang panel
+pemilih ini dibuat untuk mencegahnya. Karena itu pencariannya `SELECT` tersendiri, bukan subkueri skalar di
+dalam `UPDATE`: subkueri yang tidak mengembalikan baris menghasilkan `CAUSEOFLOSS = NULL` **tanpa satu pun
+gejala**.
+
+**Dibedakan dari `ErrClaimNotSynced`.** Keduanya 409 dan keduanya membatalkan keputusan, tetapi pekerjaan
+perbaikannya berbeda — yang satu di master, yang lain di data klaim. Pesan yang sama untuk keduanya membuat
+yang pertama dicoba hampir pasti yang salah.
+
+### 172.4 Pesan `ErrClaimNotSynced` tidak lagi menyebut DOL saja
+
+**Keputusan.** Pesannya menyebut "data klaim yang hendak diubah tidak ditemukan", dengan kedua sebabnya.
+
+**Alasan.** Galat yang sama kini muncul ketika baris coverage yang ditunjuk sudah dibuang dari klaim. Pesan
+lama menyuruh petugas memeriksa Tanggal Kejadian — hal yang sama sekali tidak berhubungan.
+
+### 172.5 `STS_AKTIF` master penyebab kerugian tetap tidak disaring
+
+**Keputusan.** Baik dropdown maupun pencarian deskripsi tidak menyaringnya.
+
+**Alasan.** `BrowseCOLByBisnis_Sql` dan `detail_list` milik modul detailpenyebab juga tidak. Menambahkannya
+adalah **perubahan perilaku**: penyebab kerugian yang dinonaktifkan hilang dari dropdown, dan permintaan lama
+yang memakainya tidak lagi dapat disunting maupun disetujui. Bila itu dikehendaki, ia butir `P-5` tersendiri —
+bukan keputusan yang diselipkan ke dalam kueri.
+
+### 172.6 Koreksi pemetaan properti Pega pada dokumentasi
+
+**Keputusan.** `docs/peta-penamaan.md` dan komentar `ProtectionForm.tsx` dikoreksi; **kode tidak diubah**.
+
+Pemetaan yang benar, terbukti tiga kali:
+
+| Label Pega | Properti | Arti |
+|---|---|---|
+| "Cause Of Loss Dipilih" | `.ClaimDataProtect.IDMasterTONP` | **lama** |
+| "Next Cause Of Loss" | `.ClaimDataProtect.CauseOfLossID` | **baru**, dan inilah yang ditulis ke klaim |
+
+Bukti: binding `pyLabelFieldValue`/`pyValue` pada `InputProtectionSection` ·
+`InsertOpenProtectionCase-Act.xml:2956`,`:3003` menulis `.CauseOfLoss*` ke klaim ·
+`:3069` menyusun catatan `"Cause Of Loss Sebelum : " + .IDMasterTONP`.
+
+**Kenapa dikoreksi meski perilakunya sudah benar.** Baris itulah yang berbahaya: pembaca berikutnya dapat
+"menyesuaikan" kode agar cocok dengan tabel yang salah, dan akibatnya adalah kode penyebab kerugian **lama**
+yang dituliskan kembali ke klaim — perubahan yang tampak berhasil tetapi tidak mengubah apa pun.
+
+### K-105.27 Ketersediaan tab dibaca dari basis data, bukan ditulis tangan
+
+**Tanggal** 2026-10-07 · **Pemicu** Work Owner: *"kenapa dia bilang masih kosong"* · **Sifat**
+perubahan rancangan
+
+**Apa yang terjadi.** `pega_dev83` sudah terisi penuh lewat backfill, dan layar tetap menyatakan
+*"seluruh barisnya masih kosong"*. Tidak ada uji yang gagal — karena tidak ada uji yang **dapat**
+gagal: ketersediaan tab adalah `switch` konstanta yang tidak pernah menanyakan apa pun.
+
+**Tiga klaim saya yang keliru, dan ketiganya sempat saya katakan ke Work Owner:**
+
+| Klaim | Kenyataannya |
+|---|---|
+| "penyaring berkas tutup sudah terpasang" | **tidak ada** — `PYSTATUSWORK` hanya di komentar |
+| "tab menyala sendiri begitu kolomnya terisi" | tidak — `Available()` konstanta |
+| "penanda `· pengganti` hilang sendiri" | tidak — `Substitute: true` ditulis tangan |
+
+**Yang lebih besar daripada yang terlihat.** Mengganti `Available()` saja **tidak cukup**: kueri
+hanya punya cabang untuk tiga tab komunikasi, dan `count_tabs` hanya menghitung tiga. Tab yang
+dinyatakan tersedia akan mengembalikan daftar kosong dan angka yang tertukar.
+
+**Yang diputuskan.**
+
+1. **`inboxsurvey.Readiness`** menggantikan konstanta — lima bendera, dibaca dari katalog kolom
+   DAN keterisiannya. Kolom yang ada tetapi kosong dinyatakan **belum siap**.
+2. **PER PORTAL**, bukan sekali saat aplikasi menyala. `D-75` menetapkan satu basis data per
+   entitas, dan per hari ini `pega_dev83` sudah punya kolomnya sementara produksi belum.
+3. **Dua varian kueri** — `list_tasks_full` dan `count_tabs_full` — dipilih
+   `Readiness.Complete()`. Bukan satu kueri bercabang, karena kolom yang belum ada menghasilkan
+   **ORA-00904 saat parse**, dan tidak ada `CASE WHEN` yang dapat menghindarinya.
+4. **Kesiapan diserahkan sebagai parameter**, bukan diintip repo. Repo yang mengintip sendiri
+   menjalankan dua kueri katalog tambahan pada setiap permintaan, dan membuat setiap ujinya
+   menuntut dua ekspektasi yang tidak ada hubungannya dengan yang diuji.
+5. **Nol berarti TIDAK SIAP.** Pemeriksaan yang gagal mengembalikan `Readiness{}` — perilaku
+   paling berhati-hati. Salah ke arah "siap" membaca kolom yang mungkin tidak ada.
+
+**Kenapa `Complete()` biner, bukan lima bendera terpisah.** Varian penuh menyebut kelima kolom
+sekaligus; satu saja yang belum ada menjatuhkan kuerinya. Dan kelimanya tiba bersama — satu
+`ALTER`, satu backfill — sehingga "sebagian siap" bersifat sementara.
+
+**Satu bentuk yang perlu diperhatikan pembaca kode.** Varian terbatas tetap mengembalikan kolom
+`REFERENCE_NUMBER` sebagai `CAST(NULL AS VARCHAR2(101))`. Bentuk kedua varian **wajib sama
+persis** supaya keduanya dibaca `scanTask` yang satu — kalau tidak, satu kolom bergeser dan nomor
+polis masuk ke kolom nama tertanggung tanpa galat apa pun.
+
+**Pelajarannya.** Konstanta yang menyatakan keadaan dunia luar akan **selalu** basi, dan basinya
+tidak dapat ditangkap uji mana pun — karena ujinya menguji konstanta yang sama. Yang menangkapnya
+adalah orang yang melihat layarnya. Itu kali kedua dalam rangkaian ini.
+
+**Bukti** `pega_dev83` per 2026-10-07: 279 baris, kelima kolom terisi · produksi: kolomnya belum
+ada
+
+### K-105.28 · Angka bind dinomori menurut urutan kemunculan, dan ditegakkan uji
+
+**Keputusan.** Setiap penanda bind `:n` di `inboxsurvey.sql` dinomori menurut **urutan
+kemunculannya di teks kueri**, dan daftar argumen Go disusun pada urutan yang sama. Dua uji
+menegakkannya secara mekanis.
+
+**Sebab.** Bukan gaya penulisan — syarat kebenaran. `go-ora/v2` mengirim argumen tanpa nama
+sebagai bind **posisional** (`command.go:1992-2002`), dan Oracle memetakan posisi ke placeholder
+menurut urutan kemunculan. `:9` tidak berarti "argumen kesembilan".
+
+**Mengapa uji, bukan konvensi tertulis.** Karena kegagalannya punya dua bentuk, dan yang kedua
+tidak terlihat:
+
+| Bentuk | Gejala |
+|---|---|
+| Tipe tidak cocok | ORA-01722 seketika — menjatuhkan dirinya sendiri |
+| **Tipe cocok** | **tanpa galat, hasil salah** — `list_tasks` mengosongkan tiga tab sejak awal |
+
+Konvensi tertulis hanya menolong bentuk pertama. Bentuk kedua hanya dapat ditangkap mesin,
+karena tidak ada satu pun gejala yang sampai ke manusia.
+
+**Yang ditolak.** Memakai satu daftar argumen dasar lalu menambahinya untuk varian penuh. Itu
+yang melahirkan cacatnya: urutan kemunculan kedua varian memang berbeda, dan memaksa keduanya
+berbagi awalan yang sama adalah akar masalahnya, bukan kerapiannya.
+
+**Yang diterima sebagai konsekuensi.** Daftar argumen tidak lagi terbaca sebagai urutan logis
+("cakupan dulu, baru tab"). Pada `count_tabs`, cakupan surveyor justru argumen **terakhir**,
+karena `INSTR(...)` ada di `WHERE`, sesudah seluruh `SUM`. Itu membingungkan saat dibaca, dan
+komentar per baris yang menebus harganya.
+
+**Berlaku di luar modul ini.** Sapuan 810 kueri menemukan **10 kueri di 6 modul lain** dengan
+cacat yang sama, **tiga di antaranya `UPDATE`** — `mark_advice_sent_pla`, `mark_advice_sent_dla`,
+`update_salvage`. Pada kueri baca akibatnya hasil salah; pada `UPDATE` akibatnya nilai salah
+tersimpan permanen. Dilaporkan ke Work Owner, **tidak disentuh** — di luar lingkup modul ini.
+
+Terkait: `84.27` · `D-20`
+
+### K-105.29 · Catatan migrasi tidak ditampilkan di layar
+
+**Keputusan.** Kedua panel di bawah layar — "Perbedaan yang disengaja terhadap layar lama" dan
+"Yang perlu diketahui" — **dihapus dari tampilan** (Work Owner, 2026-10-07, opsi 3 dari tiga
+yang diajukan).
+
+**Sebab.** Surveyor membuka layar ini untuk mengerjakan survei. Catatan migrasi ditulis untuk
+tim, dan menaruhnya di layar operasional membuat pemakai memikul beban membaca sesuatu yang
+tidak menolongnya mengerjakan apa pun.
+
+**Yang TIDAK ikut dihapus, dan pembedanya.** Keterangan **operasional** tetap tampil:
+
+| Tetap | Dihapus |
+|---|---|
+| sebab sebuah tab belum dapat dibuka | daftar perbedaan terhadap Pega |
+| sebab jumlah per tab tidak dapat diambil | daftar keterbatasan yang berlaku hari ini |
+
+Pembedanya pertanyaan yang dijawab. Yang kiri menjawab *"kenapa layar ini begini sekarang"* —
+pertanyaan pemakai; tanpa itu tab yang mati terbaca sebagai kerusakan diam. Yang kanan menjawab
+*"apa bedanya dengan Pega"* — pertanyaan tim.
+
+**Yang TIDAK diubah: bentuk jawaban API.** `selisih_terencana` dan `keterbatasan` tetap dikirim
+server. Dua alasan:
+
+1. **Konsistensi.** ~30 layar lain memakai bentuk jawaban yang sama. Mengubah satu modul saja
+   membuatnya menyimpang sendirian, dan penyimpangan itu tidak terbaca sebagai keputusan.
+2. **Dapat dikembalikan dengan satu baris**, bila kelak diputuskan ditaruh di balik tombol.
+
+Supaya tidak terbaca sebagai kelalaian, ketiadaannya **ditulis di tempat panelnya dulu berada**,
+bukan dibiarkan senyap — dan uji `tidak menampilkan catatan perbedaan terhadap Pega meski server
+mengirimnya` memastikan datanya tetap datang sementara layarnya tetap tidak menampilkannya. Bila
+respons tiruannya ikut dikosongkan, uji itu akan lulus karena alasan yang salah.
+
+**Yang dilaporkan, tidak dikerjakan.** Pola yang sama dipakai **~30 layar lain**. Apakah
+seluruhnya ikut dibersihkan adalah keputusan Work Owner, bukan keputusan modul ini.
+
+Terkait: `D-13` · `84.26` · `K-105.27`
+
+### K-105.30 · Parameter bernama, bukan `:n` — dan probe basis data sebagai alat diagnosis
+
+**Keputusan.** Seluruh kueri modul ini memakai **parameter bernama** (`:scope`, `:tab`,
+`:login`) dengan `sql.Named` di sisi Go. Penanda berangka `:n` **dilarang** di modul ini, dan
+`TestTidakAdaPenandaBindBerangka` menegakkannya.
+
+**Sebab.** go-ora menghitung **setiap kemunculan** penanda sebagai bind tersendiri bila
+argumennya tanpa nama. Kueri modul ini menyebut penanda yang sama berkali-kali — `:tab` 7 kali,
+`:work_done` 8 kali — sehingga 12 argumen untuk 35 kemunculan menghasilkan
+**ORA-01008: not all variables bound**. Enam dari delapan kueri terkena, termasuk kedua kueri
+KPI.
+
+**Yang disupersede.** `K-105.28` menetapkan penomoran menurut urutan kemunculan. Itu
+memperbaiki cacat yang nyata — pemetaan argumen ke placeholder — tetapi **bukan sebab kegagalan
+layar**, dan tidak cukup. Entri itu tidak disunting; yang berlaku adalah entri ini.
+
+**Yang ditolak.** Memberi nomor berbeda untuk setiap kemunculan, seperti yang dilakukan modul
+Master Login. Itu benar dan berjalan, tetapi `list_tasks_full` akan menuntut **35 argumen**
+untuk 12 nilai, dengan nilai yang sama ditulis berulang — daftar yang tidak mungkin dibaca
+ulang dengan benar oleh siapa pun.
+
+**Konsekuensi yang diterima.** Modul ini memakai gaya penanda yang **berbeda** dari ~800 kueri
+lain di backend. Itu ketidakseragaman yang nyata. Yang membenarkannya: kueri di sini bercabang
+tujuh tab di dalam satu pernyataan, sehingga penanda berulang tidak terhindarkan — dan pada
+bentuk seperti itu penomoran berangka bukan pilihan gaya melainkan cacat yang menunggu waktu.
+
+**Alat yang ditambahkan: `probe_test.go`.** Dilewati secara baku; dijalankan dengan
+`PROBE_INBOXSURVEY=1`. Ia menjalankan kedelapan kueri terhadap basis data sungguhan dan
+mencetak galat Oracle apa adanya — tanpa nilai baris, hostname, maupun kredensial (`D-69`).
+
+Alasannya tercatat: dua kali sebab kegagalan ditebak dari membaca kode dan dua kali meleset,
+sementara probe menjawabnya dalam satu kali jalan. Membaca kode membuktikan apa yang
+**mungkin** salah; menjalankan kueri membuktikan apa yang **benar-benar** salah.
+
+Terkait: `84.29` · `K-105.28` (disupersede sebagian) · `D-20`
+
+### K-105.31 · Panel KPI mengikuti bentuk layar Pega, bukan bentuk kuerinya
+
+**Keputusan.** Tab KPI dibongkar dari tiga sub-tab menjadi empat kendali + tombol **Cari** dan
+**Export Data**, sama dengan `Section/InboxSurvey_section-Section.xml` (Work Owner,
+2026-10-07, opsi "Samakan penuh dengan Pega").
+
+**Sebab.** Sub-tab lama diturunkan dari **tiga rule SQL**, bukan dari layarnya — memodelkan
+backend sebagai antarmuka. Akibatnya satu dimensi penuh (Tipe Report) hilang tanpa pernah
+tercatat sebagai selisih, dan `D-13` dilanggar tanpa disadari.
+
+**Yang ditolak.**
+
+| Ditolak | Alasan |
+|---|---|
+| Mempertahankan sub-tab dan menambal yang hilang | tetap tidak sama dengan Pega, dan menambah dimensi di atas pemodelan yang salah |
+| Memuat tabel begitu tab dibuka | layar lama tidak memuat apa pun sampai Cari ditekan; memuat sendiri menjalankan laporan yang belum diminta |
+| `DATA DETAIL` dijawab tabel kosong | terbaca "tidak ada datanya" — tidak benar, dan tidak pernah dilaporkan sebagai kerusakan |
+| Menyusun CSV di peramban | `D-11` menetapkan dokumen dibuat aplikasi; di peramban hanya baris yang terunduh yang ikut |
+
+**Konsekuensi yang diterima.** Panel KPI kini menuntut **dua pilihan sebelum menampilkan apa
+pun**. Itu lebih banyak langkah daripada versi sebelumnya — dan memang begitu layar lamanya.
+
+**Yang masih terhalang.** `GetDetailKPIAdjusterKuartal` dan `GetSummaryKPIAdjusterALLKuartal`
+**tidak ada di export** (`R-16`). Jalur DATA DETAIL karena itu menolak dengan 422 yang
+menyebutkan sebabnya, dan harus diminta ke Tim Pega.
+
+Terkait: `84.30` · `D-13` · `D-11` · `R-16`
+
+### K-105.32 · Lima bentuk hasil KPI, dan `ALL` bukan "tanpa penyaring"
+
+**Keputusan.** Panel KPI menjalankan **lima kueri** yang dipilih `KPIFilter.Shape()`, meniru
+percabangan `Activity/GetReportKPIAdjuster-Act.xml`. Kolom kunci tabel dikirim server
+(`kolom_awal`) karena jumlah dan artinya berganti menurut bentuk.
+
+**Yang dikoreksi dari `K-105.31`.** Status Survey `ALL` di sana diterjemahkan menjadi "tanpa
+penyaring `tipe`". Itu salah: `GetSummaryKPIAdjusterALL` menggabungkan dua blok dengan
+`UNION ALL`, masing-masing berlabel kategorinya — **dua baris per adjuster**, bukan satu baris
+rata-rata gabungan.
+
+Selisihnya tidak terlihat sebagai kerusakan. Tidak ada galat, tabelnya terisi, angkanya masuk
+akal — dan angka itu tidak pernah ada di layar lama. Entri `K-105.31` tidak disunting; yang
+berlaku adalah entri ini.
+
+**Yang dicabut.** `ErrReportDetailUnavailable` dan `CodeReportDetailUnavailable`. Rule
+penyusunnya diterima, sehingga penolakan itu tidak lagi punya dasar.
+
+**Satu penyederhanaan yang diambil secara sadar.** `GetSummaryKPIAdjusterALLKuartal` menyusun
+**empat blok UNION** yang identik kecuali daftar bulan dan label kuartalnya. Di sini ia menjadi
+satu `GROUP BY ... , TO_CHAR(TANGGAL,'Q')`. Hasilnya sama baris per baris — label yang
+ditempelkan Pega persis nilai yang dihasilkan `'Q'` — dan empat blok membaca tabel yang sama
+empat kali untuk menghasilkan yang dihasilkan satu pengelompokan.
+
+**Satu keanehan yang dipertahankan.** Ketiga jalur berkuartal mematok `tipe='FINAL'`, sehingga
+Status Survey tidak berpengaruh di sana. `P-5`.
+
+**Masih terbuka.** `TempKuartal.pxResults` dan `TahunKPI.pxResults` tidak diisi di mana pun
+dalam export (`R-16`). Pilihan kuartal direkonstruksi dari percabangan rule; Tahun Kuartal
+masih kotak teks, sedangkan di Pega ia dropdown.
+
+Terkait: `84.31` · `K-105.31` (dikoreksi sebagian) · `P-5` · `R-16`
+
+### K-105.33 · Ikuti Pega pada dua hal yang sempat saya sederhanakan
+
+**Keputusan.** Work Owner, 2026-10-08: *"ikutin pega saja"*. Dua penyimpangan yang saya tandai
+sendiri di `K-105.32` dikembalikan.
+
+| Hal | Sempat | Sekarang |
+|---|---|---|
+| `kpi_by_quarter_year` | satu `GROUP BY ... , TO_CHAR(TANGGAL,'Q')` | **empat blok UNION**, sama dengan rule |
+| Tahun Kuartal | kotak teks | **dropdown**, sama dengan `TahunKPI.pxResults` |
+
+**Harga yang diterima.** Empat blok membaca tabel yang sama empat kali untuk menghasilkan yang
+dihasilkan satu pengelompokan. Itu diterima: penyederhanaan yang *kelihatannya* setara adalah
+tempat perbedaan bersembunyi, dan perbedaan yang bersembunyi tidak akan muncul pada uji
+kesetaraan.
+
+**Satu hal yang tetap rekonstruksi, dan ditandai begitu.** `TahunKPI.pxResults` dan
+`TempKuartal.pxResults` tidak diisi di mana pun dalam export (`R-16`). Yang terbaca hanyalah
+**bentuknya** — dropdown dengan `--Pilih--`. Isinya diturunkan dari data: tahun yang benar-benar
+ada pada baris milik cakupan pemanggil (`kpi_years`).
+
+Itu bukan pembacaan Pega, dan tidak diklaim begitu. Yang dijamin: daftar tidak pernah
+menawarkan tahun berhasil-kosong, dan tidak pernah menyembunyikan tahun yang datanya ada. Bila
+rule aslinya tiba, **kueri** itu yang diganti.
+
+**Rute baru** `GET /api/inbox-survey/kpi/tahun` — terpisah dari `/keterangan` karena isinya
+bergantung cakupan pemanggil, sedangkan `/keterangan` di-cache selamanya oleh layar.
+
+Terkait: `84.32` · `K-105.32` · `D-13` · `R-16`

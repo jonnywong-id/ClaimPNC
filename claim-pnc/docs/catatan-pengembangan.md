@@ -23515,6 +23515,1291 @@ Sisiran itu layak dijadikan langkah tetap sebelum menyatakan sebuah modul selesa
 setelah ditanya.
 
 
+### 42.14 Serahan ketiga — panel ringkasan di atas grid (2026-10-08)
+
+Work Owner mengirim gambar rancangan dasbor dan memintanya diterapkan ke layar ini, dengan dua
+pengecualian yang disebut langsung: **"abaikan diam lebih dari 180 hari dan menunggu polis
+terbitnya"**. Keduanya tidak dibangun, dan bukan karena terlewat.
+
+Penolakan "diam lebih dari 180 hari" punya alasan tambahan yang perlu dicatat: angka itu sudah
+dipakai layar ini untuk hal LAIN — `ambang_aging`, yakni umur sejak registrasi yang membuat baris
+digambar merah. Kartu bernama sama yang menghitung hal berbeda akan menjadi sumber salah baca
+yang tidak menghasilkan satu pun galat.
+
+#### Dua pertanyaan yang diajukan, dan jawabannya
+
+| # | Pertanyaan | Jawaban Work Owner |
+|---|---|---|
+| 1 | Panel diletakkan di atas grid, atau menggantikannya sebagai tab tersendiri | **"Di atas grid (disarankan)"** |
+| 2 | Ukuran uang yang dijadikan angka utama | **"reserve OR ini bisa ambil dari data export OR ga? di sum untuk semua row nya jadi total reserve OR cabang masing-masing"** |
+
+#### Jawaban 2 dipenuhi, tetapi hasilnya hampir pasti Rp 0 — dan itu diukur lebih dulu
+
+Kolom OR yang dimaksud berasal dari `treaty_loss@asmd`. Sebelum dibangun, isinya dihitung:
+
+| Yang dihitung | Hasil |
+|---|---|
+| Baris `treaty_loss@asmd` seluruhnya | **10.152** |
+| Yang `no_klaim LIKE 'PNC-%'` | **19** |
+| Klaim berbeda yang diwakilinya | **17** |
+| Yang nilai OR-nya bukan nol | **12** |
+| Cabang (dari 50) yang akan menampilkan angka bukan nol | **1** |
+
+Rumus dan penyaringnya **disalin apa adanya dari kueri ekspor Pega**, sehingga kolom OR pada
+berkas ekspor lama pun sudah bernilai nol untuk hampir setiap cabang. Jadi Rp 0 di sini **bukan
+cacat implementasi, melainkan keadaan datanya** — dan panel menyebutkannya demikian.
+
+Karena satu kartu yang selalu nol tidak memberi tahu apa pun, kartu **Reserve klaim tertahan**
+(jumlah estimasi) dibangun berdampingan sebagai angka yang benar-benar bergerak. Keduanya
+ditampilkan, bukan salah satunya, supaya permintaan Work Owner tetap dipenuhi apa adanya tanpa
+menjadikan panel kosong.
+
+#### Rp 0 dibedakan dari "tidak terbaca"
+
+`ReserveORAvailable` memisahkan keduanya. Tanpa pemisahan ini, DB Link yang sedang padam akan
+tampil persis sama dengan jawaban Rp 0 yang sah — dan gangguan jaringan menjadi tidak terlihat
+selamanya. Saat tidak terbaca, panel menulis sambungan treaty sedang bermasalah, bukan angka.
+
+#### Keputusan desain
+
+| Keputusan | Alasan |
+|---|---|
+| **Rute terpisah `GET …/ringkasan`**, bukan menumpang pada jawaban daftar | Panel tidak berubah saat pengguna berpindah halaman. Menyatukannya berarti menghitung ulang seluruh ringkasan cabang pada SETIAP klik halaman |
+| Keduanya dimuat **terpisah**; panel gagal tidak mengosongkan grid, dan sebaliknya | Daftar klaim tetap berguna sepenuhnya tanpa ringkasan |
+| Pengelompokan umur **dihitung di Go**, bukan di SQL | Aturan umur sudah hidup di satu tempat (`AgingDaysSince`). Menyalinnya ke SQL berarti dua tempat yang dapat berbeda diam-diam — dan `CAST(x AS DATE)` **tidak** memotong jam di Oracle, persis perangkap yang sudah pernah ditemui modul ini |
+| Agregasi di Go **aman untuk ukuran datanya** | Cabang terbesar memuat 83 klaim outstanding, rata-rata 9,2. Diukur, bukan diasumsikan |
+| Batas pita: **183 / 365 / 730 hari** | Setengah tahun, satu tahun, dua tahun — dinyatakan sebagai konstanta bernama, bukan angka telanjang di tengah percabangan |
+| Pemeriksaan identitas dan cabang **sama persis dengan daftar** | Panel memuat nilai uang satu cabang; pemeriksaannya tidak boleh lebih longgar daripada gridnya (`R-20`) |
+| Sumber bisnis digambar sebagai **daftar, bukan tabel** | Judul kolomnya akan bertabrakan dengan "Sumbis" milik grid, sehingga uji dapat cocok dengan tabel yang salah dan tetap lulus meski kolom gridnya hilang |
+
+#### Penjaga DB Link saya sendiri disempitkan — dan alasannya dicatat
+
+Modul ini punya uji `TestOnlyExportTouchesTheDatabaseLink`: hanya kueri ekspor yang boleh
+menyentuh `@asmd`, karena `D-25` menetapkan DB Link kelak diganti API dan layar tidak boleh
+padam bersama link. Kueri `summary_treaty_or` **melanggarnya**.
+
+Penjaganya tidak dihapus, melainkan diganti aturan yang lebih tepat —
+`TestOnlyIsolatedQueriesTouchTheDatabaseLink`. Syaratnya bukan lagi "hanya ekspor", melainkan:
+**kueri yang menyentuh link harus dapat gagal sendirian tanpa mengosongkan layar.**
+`summary_treaty_or` memenuhinya karena dibaca terpisah dari `summary_rows` dan galatnya ditelan
+menjadi `ReserveORAvailable = false`.
+
+Supaya pengecualian itu tidak kehilangan dasarnya diam-diam, ditambahkan penjaga kedua —
+`TestTreatyORIsReadApartFromTheRestOfTheSummary` — yang gagal bila porsi treaty kelak
+digabungkan ke `summary_rows` demi menghemat satu perjalanan. Penggabungan itu akan membuat
+seluruh panel padam bersama DB Link.
+
+#### Cacat yang ditemukan pada diri sendiri: panel menjatuhkan SELURUH halaman
+
+Satu uji paginasi tiba-tiba gagal dengan pesan yang tidak menyinggung ringkasan sama sekali —
+`Unable to find an element with the text: PNC-9001`. Sebabnya: uji itu menjawab `/ringkasan`
+dengan bentuk daftar. `sebaran_umur` bernilai `undefined`, `.map` melempar saat render, dan
+**lemparan itu menjatuhkan seluruh halaman termasuk gridnya**.
+
+Jadi janji "panel yang gagal tidak mengosongkan grid" hanya berlaku untuk galat yang
+**tertangkap**. Jawaban 200 yang bentuknya lain — rute salah arah, atau peladen versi lama —
+menembusnya. `SummaryPanel` kini memeriksa bentuk jawabannya, bukan hanya galatnya, dan ada uji
+tersendiri untuk kasus itu.
+
+Yang perlu dicatat: cacat ini **tidak ditemukan oleh uji yang menguji panel**. Ia tersingkap
+lewat uji lain yang gagal karena sebab yang tampak tidak berhubungan.
+
+#### Perubahan API dan komponen
+
+| | |
+|---|---|
+| Rute baru | `GET /api/inbox-os-claim-per-cabang/ringkasan` — di balik portal dan sesi, sama dengan ketiga rute lain |
+| Kueri baru | `summary_rows`, `summary_treaty_or` — keduanya hanya membaca |
+| Berkas backend baru | `summary.go` (domain), `repo/sqlstore/summary.go`, `repo/memory/summary.go`, `usecase/summary.go`, `http/summary.go` |
+| Seam bertambah | `SummaryRows`, `TreatyOR` pada `Repo` |
+| Frontend baru | `SummaryPanel.tsx` — `SummaryPanel`, `Tile`, `AgeBar`, `SourceList`, `GroupTable` |
+| Tipe baru | `AgeBucket`, `SummaryGroup`, `SummaryResponse` |
+| Dependensi | **tidak ada yang ditambahkan** |
+
+#### Bukti
+
+Terhadap Oracle sungguhan (`PENYIMPANAN=oracle -periksa`), cabang 100538: **108 berkas**,
+estimasi `1174720261.00`, **59 berumur di atas 2 tahun**, sebaran **7 · 9 · 33 · 59** yang
+berjumlah tepat 108. Total treaty OR **Rp 0**, dengan keterangan sebabnya dicetak berdampingan.
+
+`go build` bersih · `go vet ./internal/inboxosclaimpercabang/...` bersih · **kelima paket backend
+modul ini ok** · `tsc --noEmit` bersih · **55 uji frontend modul ini lulus**.
+
+Kegagalan uji di luar modul ini — `inboxpladla`, `inboxservicecenter`, `portal`, `reportklaim`,
+dan `inboxsalvage` — **tidak disentuh**. Keempat yang pertama ada di berkas yang tidak tercantum
+di `git status`, jadi tidak berubah dari HEAD; `inboxsalvage` sedang dikerjakan sesi lain.
+
+
+### 42.15 Cabang untuk pengujian selama HCQ belum berjalan (2026-10-08)
+
+Work Owner bertanya di mana data cabang ditaruh untuk pengujian, karena layanan HCQ belum
+berjalan. Rantainya ditelusuri lebih dulu sebelum menjawab:
+
+```
+HCQ EmpResponse.Placement.DetailBranchCode
+  → auth.Profile.DetailBranchCode
+  → auth.User.DetailBranchCode        (disimpan di CPNC_PENGGUNA.KODE_CABANG_DETAIL)
+  → inboxosclaimpercabanghttp.Caller.DetailBranchCode
+  → Repo.BranchOf   — terjemahan lewat POOLDATA.BRANCH.OLDID
+  → kode 6 digit yang menyaring klaim
+```
+
+**Mengubah `CPNC_PENGGUNA` lewat SQL tidak bertahan.** `auth.User.RefreshFrom` menimpa
+`DetailBranchCode` **setiap kali pengguna masuk** (`internal/auth/user.go:76`), tanpa syarat.
+Nilai yang diisi tangan akan terhapus pada login berikutnya — dan terhapusnya diam-diam, karena
+yang terlihat kemudian hanyalah pesan "cabang tidak dikenali" yang tampak seperti cacat layar.
+
+Satu-satunya tempat yang bertahan adalah **daftar pengguna tiruan**,
+`internal/auth/provider/fake.go` → `SampleList()`. Nilai bawaan `IDENTITAS_ADAPTER` memang
+`fake` (`internal/platform/config/config.go:572`), sehingga login sudah berjalan tanpa HCQ —
+yang kosong selama ini **hanya cabangnya**.
+
+#### Yang diisi, dan kenapa cabangnya dibuat berbeda
+
+| Pengguna | `DetailBranchCode` | Cabang |
+|---|---|---|
+| `adminpnc` | `078` | 100099 CILEGON |
+| `pictekniks` | `007` | 100059 BANDUNG |
+| `jonny` | `078` | 100099 CILEGON |
+| `brokercontoh` | **sengaja kosong** | — |
+
+Dua cabang berbeda, bukan satu. Dengan satu cabang, layar akan tampak benar **meski
+penyaringnya tidak bekerja sama sekali**; dengan dua, penolakan lintas cabang (`R-20`) dapat
+dibuktikan dengan berganti pengguna. `brokercontoh` dibiarkan kosong karena
+`POOLDATA.M_LOGIN_PNC` memang tidak punya satu pun kolom cabang — dan kekosongan itu satu-satunya
+cara mencoba pesan "cabang tidak dikenali" tanpa menyunting apa pun.
+
+#### Keduanya dibuktikan ada, bukan diasumsikan
+
+Probe sekali pakai dijalankan terhadap Oracle lalu **dihapus**:
+
+```
+OLDID=007   ID=100059   NAMA=BANDUNG    outstanding=52
+OLDID=078   ID=100099   NAMA=CILEGON    outstanding=85
+```
+
+Keduanya nyata, keduanya berisi. Tanpa pemeriksaan ini, kode cabang yang salah akan menghasilkan
+layar kosong yang tidak dapat dibedakan dari cacat implementasi.
+
+Pasangan yang sama sudah lebih dulu dipakai penyimpanan contoh di memori
+(`repo/memory.NewSampleStore`), sehingga satu nilai ini bekerja pada `PENYIMPANAN=oracle` maupun
+tanpa basis data sama sekali.
+
+#### Tiga koreksi setelah layar dicoba Work Owner (2026-10-08)
+
+**1. Tombol "Muat data baru" terbaca seperti MATI.** Saya membuatnya sebagai `<button>` mentah
+dengan `text-slate-700` di atas latar putih, bukan memakai `Button` bersama. Akibatnya ia
+tampak nonaktif padahal aktif. Diganti `<Button tone="kedua">` — dan nada itu memang yang
+dokumentasinya sendiri mencontohkan **"Refresh"**. Tombol "Coba lagi" pada keadaan galat ikut
+diganti, karena ia juga tombol mentah buatan sendiri.
+
+Pelajarannya bukan soal warna: pustaka komponen baku (`U-2`) ada justru untuk mencegah kelas
+cacat ini, dan saya melewatinya tanpa alasan.
+
+**2. "OR" di sini Own Retention, bukan porsi treaty OR.** Work Owner meminta kartu uang
+dinamai **"Reserve OR ASM tertahan"** mengikuti rancangan yang ia berikan. Dua bacaan mungkin,
+dan keduanya menghasilkan angka yang jauh berbeda:
+
+| Bacaan | Nilainya | Untuk cabang KANTOR PUSAT |
+|---|---|---|
+| Reserve retensi sendiri (kolom grid) | `reserves` | Rp 1.000.000 |
+| Porsi treaty OR | `reserves × share ASM × bagian OR` | **Rp 0** |
+
+Yang menyelesaikannya adalah rancangan itu sendiri: rinciannya memuat **"Reserve OR ASM per
+COB" sebesar Rp 71,4 jt dan Rp 26,5 jt**. Porsi treaty OR tidak mungkin sebesar itu — tabel
+treaty hanya memuat 19 baris berawalan `PNC-` dari 10.152, sehingga hanya 1 dari 50 cabang yang
+angkanya bukan nol. Jadi yang dimaksud adalah **reserve retensi sendiri**, dan "OR" di sini
+**Own Retention**. Kata "tertahan" pada labelnya memperkuat bacaan itu.
+
+Karena itu yang berubah **hanya namanya**, bukan angkanya: kartu "Reserve klaim tertahan" →
+**"Reserve OR ASM tertahan"**, dan "Reserve klaim per COB" → **"Reserve OR ASM per COB"**.
+Kartu **"Reserve treaty OR" dihapus**.
+
+Satu uji baru menjaga penghapusan itu, karena `total_reserve_or` masih ada di jawaban API dan
+mudah "dikembalikan" oleh orang yang melihatnya menganggur.
+
+**3. Baris objek DAPAT dibuka — kesimpulan pertama saya SALAH, dan Work Owner yang
+mengoreksinya.**
+
+Saya menyatakan popup Pega tidak dapat membuka objek, atas dasar `pyExpandable = false` pada
+keduabelas kemunculannya di `Section/DetailKlaimCabang_Sect-Section.xml`. **Pemeriksaan itu
+mencari penanda yang salah.** Work Owner mengirim tangkapan layar *Layout Properties* Pega yang
+menunjukkan `Row editing = Master-detail`, `Display of details = Expandable rows`, dan
+`Detail flow action = ViewObjectItem`.
+
+Diperiksa ulang, dan buktinya ada di berkas yang sama sepanjang waktu:
+
+| Penanda | Nilai | Baris |
+|---|---|---|
+| `pyRowEditing` | **`masterDetail`** pada ketiga varian grid objek | `:5616`, `:7193`, `:9798` |
+| `pyEditAction` | **`ViewObjectItem`** | `:5625`, `:7179`, `:9815` |
+| `pyCustomTemplateName` | `pzGridExpandPaneTemplate` | `:5573`, `:7206`, `:9795` |
+| `pyRowEditing` grid progres & komunikasi | `readOnly` — keduanya memang **tidak** dapat dibuka | `:13162`, `:19741` |
+
+`pyExpandable` ternyata penanda yang berbeda, dan nilainya `false` tidak menyangkal apa pun.
+**Pelajarannya: ketiadaan bukti pada penanda yang saya pilih sendiri bukan bukti ketiadaan.**
+Sebelum menyatakan sebuah kemampuan tidak ada, penanda yang dipakai harus lebih dulu diuji
+menyala pada kasus yang jelas punya kemampuan itu — langkah yang tidak saya lakukan.
+
+**Hierarki yang sebenarnya, tiga tingkat:**
+
+```
+Objek Pertanggungan   masterDetail -> ViewObjectItem
+  └─ Coverage         masterDetail -> ViewObjectCoverageObjectItem
+       └─ Rincian item · conveyance · batas coverage detail
+```
+
+`Flow Action/ViewObjectItem-FlowAction.xml` merender
+`Section/ViewObjectCoverage-Section.xml`, yang menggambar `.ObjectCoverageList` dengan **tepat
+tiga** properti: `.Currency`, `.SumTSI`, `.CoverageNote`.
+
+**Tingkat kedua dibangun.** Ia bukan penambahan melainkan **penyamaan `P-5`** — justru
+ketiadaannya yang selama ini menyimpang.
+
+| Lapisan | Yang ditambahkan |
+|---|---|
+| Kueri | `detail_object_coverages` — SELURUH coverage satu klaim dalam satu kueri, dikelompokkan di Go menurut `OBJECT_ID`. Satu kueri per baris yang dibuka akan menjadi N+1 pada layar yang memang dibuka-tutup berkali-kali |
+| Domain | `DetailCoverage`; `DetailObject` bertambah `ID` dan `Coverages` |
+| API | `objek[].id` dan `objek[].coverage[]` — `{id, mata_uang, sum_tsi, keterangan}` |
+| Layar | `expandedRow` pada `DataTable` — komponen bersama **sudah** mendukungnya, dan modul lain sudah memakainya |
+
+**Keputusan yang menyertainya:**
+
+- **Hanya tiga kolom.** Nama coverage dan `TOTALESTIMASIJAMINAN` ada di tabelnya, tetapi layar
+  lama tidak menggambarnya. Menambahkannya adalah penambahan, bukan penyamaan.
+- **`DIHAPUS_PADA IS NULL`** (`D-66`), sejalan dengan modul lain yang membaca tabel ini.
+- **Kunci baris pindah ke `OBJECTID`**, dari gabungan kolom tampilan. Nama objek dapat berulang
+  pada satu klaim, dan sejak baris dapat dibuka, kunci yang bertabrakan berarti dua baris
+  terbuka menampilkan coverage yang sama.
+- **Objek tanpa coverage tidak dapat dibuka** — `expandedRow` mengembalikan `null`. Baris yang
+  terbuka menjadi panel kosong lebih buruk daripada baris yang tidak dapat dibuka.
+
+**Satu perangkap yang modul ini sudah dokumentasikan, dan saya masuki juga.** Nilai `SUMTSI`
+sempat dibaca `money.FromSQLValue`, padahal kuerinya sudah mengembalikan satuan terkecil lewat
+`ROUND(... * 100)` — hasilnya **seratus kali lipat**. Modul ini punya `minorUnits()` tepat untuk
+itu, lengkap dengan komentar yang memperingatkannya. Yang menangkapnya uji, bukan pembacaan.
+
+**Koreksi kedua, beberapa menit kemudian: kolom coverage SALAH.** Work Owner mengirim
+tangkapan layar Pega yang sedang berjalan (contoh lini Fire). Dua hal langsung terlihat keliru
+pada serahan pertama:
+
+| Hal | Yang saya buat | Yang benar |
+|---|---|---|
+| Judul kolom | Mata Uang · Sum TSI · **Keterangan** | **Coverage** · Mata Uang · **TSI** |
+| Sumber kolom pertama | `REMARKS` | **`COVERAGENAME`** |
+
+Sebabnya nama properti Pega menyesatkan: `.CoverageNote` terdengar seperti catatan, tetapi
+kolom yang digambarnya berjudul **"Coverage"** dan berisi **nama jaminan**. Ketiga judul itu
+ada apa adanya di `Section/ViewObjectCoverage-Section.xml` (`>Coverage<`, `>Mata Uang<`,
+`>TSI<`) — saya tidak mencarinya pada serahan pertama, dan menebak dari nama propertinya.
+
+Dipastikan ke data, bukan ditebak lagi:
+
+| Yang diukur | Hasil |
+|---|---|
+| Nilai contoh dari layar lama (`FLEXAS`) di `COVERAGENAME` | **358 baris** |
+| Nilai yang sama di `REMARKS` | **0 baris** |
+| `COVERAGENAME` terisi | 9.534 dari 9.704 |
+| `REMARKS` terisi | 249 dari 9.704 |
+
+Kolom yang hampir selalu kosong mustahil menjadi kolom pertama sebuah grid.
+
+**Koreksi ketiga: mata uang menampilkan KODE, dan TSI diberi awalan "Rp".** Work Owner
+menyandingkan tangkapan layar Pega dengan layar ini untuk klaim yang sama, dan dua selisih
+langsung terlihat:
+
+| Kolom | Pega | Yang saya buat |
+|---|---|---|
+| Mata Uang | `IDR` | **`10026`** |
+| TSI | `2.800.000` | **`Rp 2.800.000`** |
+
+**Mata uang.** `T_CLAIM_OBJECTCOVERAGE.CURRENCY` menyimpan **kode internal**, bukan simbol.
+Masternya `POOLDATA.CURRENCY` — **bukan** `M_CURRENCY`, yang ber-ID sama tetapi kolom simbolnya
+**kosong pada seluruh 35 barisnya**. Diukur: `10026` → `IDR`, `10001` → `USD`, dan dari 9.704
+baris coverage hanya **satu** yang kodenya tidak cocok (7.217 lainnya memang NULL sejak awal).
+Ditempuh `LEFT JOIN` supaya kode yang kosong tetap menampilkan barisnya.
+
+Dua kandidat lain diperiksa dan gugur: `TYPECURRENCY` dikunci **nama** (`INDONESIAN RUPIAH`),
+bukan kode — nol baris coverage cocok padanya. `M_CURRENCY.JSONDATA` memang memuat simbolnya,
+tetapi membaca JSON untuk sesuatu yang sudah tersedia sebagai kolom di tabel lain adalah jalan
+memutar.
+
+**Awalan "Rp" dibuang.** Layar lama menggambar angkanya polos, dan mata uangnya sudah menjadi
+kolom tersendiri. Menempelkan "Rp" pada baris ber-`USD` salah secara terang. Dipakai
+`formatRupiah(..., { withoutSymbol: true })` yang memang sudah ada di pemformat bersama.
+
+**Tingkat ketiga BELUM dibangun**, dan tangkapan layar itu memperlihatkan isinya jauh lebih
+besar daripada dugaan semula — bukan satu grid, melainkan **empat**:
+
+```
+Coverage
+  └─ Object Item                Object Item · Deskripsi Item
+       └─ Estimasi              Estimasi Ke · Tanggal Estimasi · Tipe Estimasi ·
+                                Mata Uang · Nilai Kurs (IDR) · Nilai Estimasi
+  └─ List Spreading             Tipe Treaty · Currency · Estimasi Value ·
+                                Pembagian Persentase (%) · Result Value
+  └─ CO MEMBER                  Asuransi · Currency · Estimasi Value ·
+                                Pembagian Persentase (%) · Result Value
+```
+
+**Tingkat ketiga dan keempat SUDAH dibangun (2026-10-09).** `Object Item` dan `Estimasi` kini
+tergambar di bawah coverage, sekaligus begitu coverage dibuka — layar lama tidak
+menyembunyikannya di balik klik tambahan. Rinciannya di §42.17.
+
+Keempatnya penyamaan `P-5`, bukan penambahan. Sumber datanya **sudah diidentifikasi** dari
+katalog:
+
+| Grid | Tabel | Kunci |
+|---|---|---|
+| Object Item | `POOLDATA.T_CLAIM_OBJECTITEMLIST` | `CLAIMID` + `OBJECTID` + `COVERAGE`; kolom `OBJECTNAME`, `DESKRIPSIOBJECT` |
+| Estimasi | `POOLDATA.T_CLAIM_ESTIMASI` | ditambah `OBJECTITEMID`; kolom `ESTIMASIID`, `ESTIMATIONDATE`, `ESTIMATIONTYPE`, `KURSID`, `KURSVALUE`, `ESTIMATIONVALUE` |
+| List Spreading | `POOLDATA.T_CLAIM_SPREADING` | `CLAIMID` + `OBJECTID` + `OBJECTCOVERAGEID`; kolom `TREATYNAME`, `TREATYTYPE`, `SHAREPERCENTAGE` |
+| CO MEMBER | `POOLDATA.T_COINSLIST` | **`NOPOLIS` + `PRODKE`, bukan klaim** — ia data tingkat POLIS |
+
+**Dua hal yang harus dijawab sebelum dibangun, dan keduanya tidak boleh ditebak:**
+
+1. **Grid Object Item pada contoh Work Owner menampilkan satu baris berisi sel KOSONG**,
+   sedangkan `T_CLAIM_OBJECTITEMLIST` **nol baris** untuk cabang klaim itu. Jadi baris yang
+   tampak di Pega datang dari tempat lain — kemungkinan dibentuk dari `OBJECTITEMID` pada
+   baris estimasi. Membangunnya sekarang berarti menebak sumbernya.
+2. **Kolom "Estimasi Value" dan "Result Value" pada Spreading/CO Member adalah hasil
+   hitungan**, bukan kolom tersimpan. Rumusnya harus dibaca dari rule, bukan disimpulkan dari
+   nama kolom — kesalahan yang sudah dua kali terjadi pada sesi ini (`.CoverageNote` dan
+   `CURRENCY`).
+
+**Bukti terhadap Oracle sungguhan:** `-periksa` kini mencetak
+`Popup Detail klaim <contoh>: 1 objek (1 coverage) · 4 catatan progres · 0 pesan adjuster`.
+Hitungan coverage sengaja ikut dicetak: tanpa angkanya, kueri yang mengembalikan nol baris tidak
+meninggalkan satu pun tanda, dan panelnya akan tampak "memang tidak ada isinya".
+
+### 42.17 Popup Detail — tingkat Object Item dan Estimasi dibangun (2026-10-09)
+
+Keduanya penyamaan `P-5`: layar lama memilikinya, implementasi kami tidak.
+
+| Lapisan | Yang ditambahkan |
+|---|---|
+| Kueri | `detail_object_items`, `detail_estimations` |
+| Domain | `DetailItem`, `DetailEstimation`; `DetailCoverage` bertambah `Items` |
+| API | `coverage[].object_item[].estimasi[]` |
+| Layar | `ItemTable`, `EstimationTable` bersarang di bawah `CoverageTable` |
+
+**Barisnya dibentuk dari ESTIMASI, bukan dari tabel item.** Diukur:
+`T_CLAIM_OBJECTITEMLIST` memuat **1 baris di seluruh tabel**, sedangkan `T_CLAIM_ESTIMASI`
+memuat 51.532 baris dengan `OBJECTITEMID` terisi seluruhnya; dari 22.004 klaim ber-estimasi,
+hanya **1** yang punya baris item. Menariknya dari tabel item akan menghasilkan nol baris untuk
+hampir setiap klaim — padahal layar lama menampilkannya, dengan sel nama dan deskripsi kosong.
+Contoh PA dari Work Owner memperlihatkan persis itu.
+
+`OBJECTITEMID` adalah **nomor urut item di dalam satu coverage**, bukan kode jenis: 51.370 dari
+51.532 baris bernilai `1`. Karena itu pengelompokan memakai **kunci gabungan** objek + coverage
++ item; kunci tunggal akan menempelkan estimasi ke induk yang salah.
+
+**Nilai negatif dibawa apa adanya** — contoh Fire memuat `100 / -100 / 200 / -200 / 100`, yakni
+koreksi yang saling meniadakan. Menyaringnya membuat jumlahnya tidak pernah cocok.
+
+Bukti terhadap Oracle: `Popup Detail klaim <contoh>: 1 objek (1 coverage · 1 item · 1 estimasi)`.
+
+### 42.18 List Spreading dan CO MEMBER — terhenti pada satu hal yang tidak boleh ditebak
+
+Work Owner bertanya apakah rule-nya belum ada. **Rule-nya ADA** —
+`Section/ViewDetSpreadingObj_SC-Section.xml`, 363 KB, seluruh labelnya lengkap. Yang menghambat
+bukan artefak yang hilang.
+
+#### Pemetaan kolom → properti, dan kenapa ia tidak terbaca dari namanya
+
+| Grid | Kolom layar | Properti |
+|---|---|---|
+| List Spreading | Tipe Treaty | `.TreatyType` |
+| | Currency | `.Currency` |
+| | **Estimasi Value** | **`.ClaimKomite`** |
+| | Pembagian Persentase (%) | `.SharePercentage` |
+| | **Result Value** | **`.KmtSpred`** |
+| CO MEMBER | Asuransi | `.CoinsName` |
+| | **Currency** | **`.ASIS`** |
+| | **Estimasi Value** | **`.pyTotalShippingCost`** |
+| | Pembagian Persentase (%) | `.PercentShare` |
+| | **Result Value** | `.TSIShare` |
+
+`.pyTotalShippingCost` adalah properti **bawaan Pega** untuk ongkos kirim, dipakai ulang
+menampung nilai estimasi koasuransi. Ini utang teknis 4.2 dalam bentuknya yang paling ekstrem.
+
+#### Rumusnya, dari `Activity/CalculatedSpredingForClaimKomite-Act.xml`
+
+```
+SpreadingList.ClaimKomite        = Local.nilaiklaim
+SpreadingList.KmtSpred           = tempQS.TSI * local.qs_pct
+                                   * (local.sharePercentageASM / 100) * Local.nilaiklaim / 100
+CoMember.pyTotalShippingCost     = Local.grossvalue
+CoMember.TSIShare                = .PercentShare * Local.grossvalue / 100
+CoMember.ASIS                    = Local.currencyshare
+```
+
+dengan
+
+```
+Local.nilaiklaim         = AdjustmentValue, atau SalvageValue bila PaymentType = 3,
+                           atau AdjusterFeeValue bila PaymentType = 4 atau 7
+Local.grossvalue         = AdjustmentList(Param.idadjustment).GrossValue
+Local.sharePercentageASM = AdjustmentList(Param.idadjustment).ShareASM
+```
+
+#### Kesimpulan "butuh adjustment" itu SALAH — dan Work Owner yang mengoreksinya
+
+Dari activity di atas saya menyimpulkan kedua grid memerlukan satu baris **adjustment**, lalu
+mengajukan pertanyaan "adjustment mana yang dipakai popup". Work Owner membalas: *"kan yang
+ditunjukkan nilai estimasi, jadi ga sampai adjustment?"*
+
+**Beliau benar.** `CalculatedSpredingForClaimKomite` adalah activity milik layar **Komite** —
+dan saya sendiri sudah menemukan bahwa popup ini **tidak memanggilnya**, lalu tetap memakainya
+sebagai dasar. Itu kesalahan penalaran, bukan kekurangan data.
+
+Yang mengisi popup adalah **`Activity/GetObjectFromTable-Act.xml`**, dan di sana daftarnya
+melekat pada **coverage**:
+
+```
+pyWorkPage.ClaimData.ObjectList(<LAST>).ObjectCoverageList(<LAST>).SpreadingList
+```
+
+Tidak ada adjustment sama sekali. Kunci tabelnya pun sejalan — `T_CLAIM_SPREADING` berkunci
+`CLAIMID + OBJECTID + OBJECTCOVERAGEID`.
+
+Kedua pertanyaan terbuka yang sempat diajukan ke Tim Pega karena itu **gugur**.
+
+#### Model akhir, dan bagaimana tiap bagiannya dibuktikan
+
+| Kolom | Asal | Bukti |
+|---|---|---|
+| Tipe Treaty | `TREATYNAME` | isinya `ORS`, `QS`, **`FAC-OUT`**, `FSPL`, `OR` — dan `FAC-OUT` itulah yang tertulis di contoh Work Owner. `TREATYTYPE` berisi kode (`10007`) |
+| Pembagian Persentase (%) | `SHAREPERCENTAGE` | berjumlah **tepat 100** pada 7.108 dari 7.112 kelompok coverage |
+| Currency | mata uang coverage induknya | — |
+| **Estimasi Value** | **jumlah estimasi coverage itu** | contoh Fire: estimasi `100 −100 200 −200 100` = **100**, dan layar lama menuliskan `100,00` |
+| **Result Value** | **Estimasi Value × share / 100** | contoh Fire: `100,00 × 100% = 100,00` ✓ |
+
+Dua hal yang menguatkan: **`TSISPREADED` dan `PREMIUMSPREADED` NULL pada seluruh 7.115 baris**,
+sehingga nilai uangnya memang tidak tersimpan dan harus dihitung; dan bentuk `× share / 100`
+sama persis dengan rumus pada jalur Komite (`TSIShare = .PercentShare * Local.grossvalue / 100`),
+hanya basisnya berbeda.
+
+**CO MEMBER berkunci POLIS**, bukan klaim (`T_COINSLIST.NOPOLIS + PRODKE`), sehingga satu daftar
+berlaku untuk seluruh coverage; yang berbeda hanya nilai uangnya.
+
+#### Aritmetika persentase TANPA float
+
+Persentase dibawa sebagai **bilangan bulat berskala 10.000** (`100%` → `1000000`), dan
+perkaliannya memakai pembagi `1.000.000` dengan pembulatan ke sen terdekat. Menempuh `float64`
+akan menghasilkan selisih sen yang tidak dapat direproduksi (`I-12`). Pembulatannya menyadari
+nilai **negatif** — estimasi dapat bernilai minus, dan membulatkan ke arah nol akan menggeser
+koreksi yang seharusnya saling meniadakan.
+
+#### Bukti terhadap Oracle
+
+```
+Popup Detail klaim <contoh>: 1 objek (1 coverage · 1 item · 1 estimasi
+                             · 0 spreading · 0 co-member) · 4 catatan progres · 0 pesan adjuster
+```
+
+Angka nol itu **data, bukan join rusak** — diperiksa terpisah: klaim contoh itu memang nol baris
+spreading. Pada klaim yang memilikinya, kuerinya mengembalikan `BPPDAN 0,2000%` + `OR 99,8000%`
+= tepat 100%. Kueri co-member tersambung ke **25 klaim**, dan sharenya juga berjumlah 100%.
+
+#### Lima koreksi setelah Work Owner mencoba popupnya
+
+**1. Baris coverage HARUS diklik dulu.** Serahan pertama menggambar Object Item, Estimasi,
+Spreading, dan CO MEMBER **sekaligus** begitu objek dibuka, dengan komentar "layar lama tidak
+menyembunyikannya". **Komentar itu keliru** — saya sendiri sudah menemukan bahwa
+`ViewObjectCoverage` pun `pyRowEditing = masterDetail` dengan aksi
+`ViewObjectCoverageObjectItem`, lalu mengabaikannya.
+
+Work Owner menangkapnya dengan alasan yang tepat: satu objek dapat punya **lebih dari satu
+coverage**, dan menggambar semuanya sekaligus menumpahkan seluruh isi klaim tanpa diminta.
+Baris coverage kini dapat dibuka-tutup, satu pada satu waktu, sama seperti baris objek.
+
+**2. Kolom "Tanggal Estimasi" — TIGA kali salah, dan yang kedua paling berbahaya.**
+
+| Percobaan | Akibatnya di layar |
+|---|---|
+| `ESTIMATIONDATE` saja | **kosong** — ia terisi pada 32 dari 51.535 baris |
+| `INSERTDATE` | **terisi tanggal HARI INI** — tampak benar, padahal salah |
+| **`COALESCE(ESTIMATIONDATE, coverage.CREATEDATETIME)`** | cocok persis dengan layar lama |
+
+Ditambah satu cacat di sisi layar: `formatDate` menerima **tanggal saja** dan mengembalikan
+tanda pisah untuk cap waktu berjam. Kolomnya kini digambar **apa adanya**, sama seperti kolom
+tanggal pada grid Riwayat Progress dan Komunikasi Adjuster di sebelahnya.
+
+**`INSERTDATE` layak dicatat khusus.** Ia terisi pada **seluruh** 51.535 baris, sehingga
+kolomnya tampak benar dan uji pun lolos — padahal isinya **kapan baris itu ditulis ulang job
+konversi**, bukan tanggal estimasi. Pada klaim contoh Work Owner nilainya hari pemeriksaan
+berjalan, sementara layar lama menuliskan `08/05/23 11:45`. Kalau Work Owner tidak menyandingkan
+keduanya, kesalahan ini tidak akan pernah terlihat — kolom yang terisi tidak mengundang
+kecurigaan.
+
+**Cara sumber yang benar ditemukan.** Dipindai **121 kolom tanggal** milik seluruh tabel
+POOLDATA yang berkunci `CLAIMID`, lalu diperiksa mana yang memuat menit itu untuk klaim
+tersebut. Hasilnya tepat satu: `T_CLAIM_OBJECTCOVERAGE.CREATEDATETIME`.
+
+Tetapi ia tidak cukup sendirian — contoh Fire memperlihatkan **lima waktu berbeda** pada satu
+coverage, sedangkan `CREATEDATETIME` tentu sama untuk semuanya. Diukur pada coverage yang
+estimasinya banyak: saat `ESTIMATIONDATE` terisi, ia memang berbeda per baris (`09:00` versus
+`19:00`) sementara `CREATEDATETIME` keduanya sama. Karena itu `ESTIMATIONDATE` didahulukan, dan
+`CREATEDATETIME` menjadi penadah — keterisiannya **9.750 dari 9.750**, sehingga kolom ini tidak
+akan pernah kosong lagi.
+
+Dibuktikan: untuk klaim yang Work Owner buka, ekspresi itu menghasilkan **`2023-05-08
+11:45:14`** — cocok persis dengan `08/05/23 11:45` di layar lama.
+
+Catatan yang menyertainya: **`ESTIMATIONTYPE` terisi pada 8.490 dari 51.535 baris**, sehingga
+kolom "Tipe Estimasi" yang kosong pada contoh PA memang BENAR — bukan cacat.
+
+**3. Judul "Asuransi" dan "Currency" menempel** menjadi `AsuransiCurrency` pada grid CO MEMBER.
+Sel judulnya tidak punya jarak kanan. Ditambahkan, dan sel datanya ikut.
+
+**4. Afordans baris coverage — dua kali bolak-balik (2026-10-09).**
+
+Work Owner: *"bisa ga dibuat coveragenya kelihatan kalaubisa di pencet, kalau warnanya sama
+gitu kayak gabisa dipencet"*. Saya menjawabnya dengan **dua** hal sekaligus: menyamakan warna
+sorot/terbuka dengan `DataTable`, **dan** menambahkan segitiga ▶ yang berputar saat terbuka.
+
+Yang kedua tidak diminta, dan Work Owner mengoreksinya: *"coveragenya gabsa buat kayak objek
+sblm dipencet aja kah, gausah panah"* — disertai tangkapan layar grid **Objek Pertanggungan**
+sebagai pembanding. Grid itu memang dapat dibuka dan **tidak** memakai penanda apa pun; yang
+menyatakan "dapat dipencet" hanyalah sorotan birunya.
+
+Jadi masalah sebenarnya bukan "tidak ada penanda", melainkan **baris coverage tidak ikut
+tersorot sama sekali** — `hover:bg-blue-50/50` saya pasang bersyarat `isi`, sedangkan
+`DataTable` memasangnya pada **setiap** baris dan hanya `cursor-pointer` yang bersyarat.
+Begitu syaratnya disamakan, segitiganya tidak diperlukan.
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Sorotan biru | hanya baris yang dapat dibuka | **setiap** baris, seperti `DataTable` |
+| Penunjuk tangan | baris yang dapat dibuka | tidak berubah |
+| Segitiga ▶ | ada | **dibuang** |
+
+Sekalian dibuang atas permintaan yang sama (*"ama kayaknya COVERAGE nya gausah juga"*): kepala
+kecil **"Coverage"** di atas tabelnya. Kolom pertama tabel itu sudah bernama `Coverage`, dan
+layar lama tidak memberinya judul kedua — jadi ia memang tambahan saya, bukan bawaan Pega.
+
+**Pelajarannya:** ketika sebuah komponen terasa "tidak seperti yang lain", periksa dulu apakah
+saya menyimpang dari komponen bersamanya — bukan langsung menambah elemen baru. Penyimpangannya
+satu kata (`isi ?`), dan tambahan yang saya buat justru menjauhkannya lebih jauh lagi.
+
+**5. Alas baris coverage dibuat PUTIH (2026-10-09).**
+
+Work Owner: *"coverage sblm pencet apakah tidak bisa seputih object?"*. Penyebabnya bukan di
+baris coverage, melainkan di **panel yang menampungnya**: `DataTable` menggambar panel terbuka
+dengan `bg-slate-50/70` — abu-abu — sehingga tabel coverage di dalamnya ikut kelabu dan
+terbaca seolah mati.
+
+`DataTable` **tidak** diubah: warna itu dipakai belasan layar lain, dan mengubahnya di sana
+adalah perubahan di luar lingkup modul ini. Yang diberi alas putih berbingkai adalah tabel
+coverage-nya sendiri — pola yang sudah dipakai `ShareTable` dan `EstimationTable` di bawahnya.
+
+#### Satu lini bisnis per klaim — dijawab Work Owner (2026-10-09)
+
+> *"1 PNC pasti salah satu bisnis (ANEKA, FIRE, PA, TRAVEL) tidak mungkin lebih dari 1"*
+
+Ini menutup pertanyaan yang belum pernah saya ajukan terbuka: dapatkah satu klaim menuntut
+**dua** varian kolom objek sekaligus. Tidak. Karena itu varian dipilih **sekali** dari
+`ringkasan.cob`, bukan per baris objek — dan bentuk datanya sejalan, karena `cob` diturunkan
+dari satu kolom `T_CLAIM_PNC.GROUPPANEL`.
+
+**Dua hal yang diukur dan tidak sejalan dengan daftar empat itu.** Dilaporkan, bukan diserap
+diam-diam. Diukur pada populasi layar ini — klaim yang `pystatuswork`-nya belum selesai,
+**1.117 baris**:
+
+| GROUPPANEL | COB | Jumlah |
+|---|---|---:|
+| `002` | PA | 378 |
+| `006` | Fire | 319 |
+| `003` | Aneka | 246 |
+| **kosong** | — | **123** |
+| `005` | Travel | 33 |
+| **`004`** | **Marine Cargo** | **18** |
+
+1. **Marine Cargo ada** — 18 klaim, bukan nol.
+2. **123 klaim tidak punya GROUPPANEL sama sekali**, sehingga kolom COB-nya kosong di grid.
+
+Keduanya **tidak mengubah perilaku**: Aneka, Marine Cargo, dan yang kosong jatuh ke varian
+kolom yang sama. Yang kosong bahkan sejalan dengan Pega — `IsFire` di sana tanpa syarat apa
+pun, jadi ia memang varian bawaan.
+
+Yang perlu jawaban Work Owner: **123 klaim tanpa GROUPPANEL** itu benar atau cacat data. Kalau
+cacat, kolom COB pada layar ini kosong untuk sekitar **11%** barisnya.
+
+#### Berkas ekspor BELUM sama dengan Pega — dan sebabnya artefak yang hilang (2026-10-09)
+
+Work Owner menyandingkan ekspor Pega dengan ekspor Go dan bertanya apakah sudah sama. **Belum**,
+dan sebabnya bukan satu melainkan dua hal yang berdiri sendiri.
+
+**1. Format: `.xlsx` di Pega, `.csv` di sini — disengaja, dan berlaku seluruh aplikasi.**
+
+`Activity/ExportDataOSCabang-Act.xml` langkah 4 memanggil `MSOGenerateExcelFile`, jadi berkas
+lamanya `.xlsx`. Di sini CSV, karena ia dapat **dialirkan potong demi potong** sehingga memori
+tetap datar pada 50.000 baris — yang tidak mungkin dilakukan penghasil `.xlsx`, yang harus
+menyusun seluruh lembar di memori lebih dulu.
+
+Ini **bukan keputusan modul ini**: **29 titik ekspor** di seluruh aplikasi mengeluarkan CSV, dan
+`excelize` **bukan dependensi** sama sekali. Tetapi dua hal perlu dicatat jujur:
+
+- `08-TECHNICAL-STRATEGY.md` menyebut **`excelize`** sebagai pustaka Excel. Jadi CSV **menyimpang
+  dari Steering**, dan penyimpangan itu tidak pernah dinyatakan di mana pun.
+- Ia juga **tidak ada di `PlannedDifferences`**, sehingga `D-54` belum terpenuhi untuk butir ini.
+
+**2. Judul dan urutan kolom berbeda — karena templat Excel-nya TIDAK ADA di export.**
+
+Langkah 4 memakai parameter:
+
+```
+TemplateRFB = excel!SummaryOSCabang!xlsx
+```
+
+Artinya judul kolom, urutannya, dan pemformatan angkanya **hidup di dalam berkas `.xlsx`
+templat itu**, bukan di rule XML mana pun. Templat itu **tidak ada di export** — tidak ada
+direktori berkas biner sama sekali, dan `find -iname "*.xlsx"` nol hasil. Satu butir `R-16`
+lagi, dan yang ini tidak pernah terdaftar.
+
+Karena templatnya tidak terbaca, judul kolom di sini diambil dari **alias SQL** — satu-satunya
+sumber yang ada. Dan terhadap SQL itu, **ekspor Go cocok persis**:
+
+| Bagian | SQL `GetDataOutstandingperCabangExport-SQL.xml` | Ekspor Go |
+|---|---:|---:|
+| Kolom dasar | 13 (`CABANG` … `Coins`) | 13 ✓ |
+| Kolom treaty | 24 (`OR` … `FACOBINDT`) | 24 ✓ |
+| Kolom ekor | 11 (`TanggalTerlambat` … `Kronologis`) | 11 ✓ |
+| **Total** | **48** | **48 ✓** |
+
+Urutannya juga sama persis, termasuk `c.branchcode` yang di SQL **tanpa alias** — itu sebabnya
+"Kode Cabang" sempat terlihat seperti kolom tambahan; ia bukan.
+
+Jadi selisihnya bukan antara Go dan SQL, melainkan antara **SQL dan templat**. Templat itulah
+yang menamai ulang dan menyusun ulang — misalnya `District` menjadi "Business Group Detail",
+`InsuredName` menjadi "Nama Tertanggung", `ReserveClaimFull` menjadi "Reserve Risk 100%", dan
+`Keterangan` menjadi "Note dari PIC".
+
+**3. Satu cacat yang salah pada rancangan mana pun: nomor polis terbaca `1,2E+13`.**
+
+Pada tangkapan layar ekspor Go, kolom Policy No tampil sebagai **notasi ilmiah**. Excel
+mengubah untai angka panjang di CSV menjadi bilangan, dan nomor polis 13 digit melewati batas
+15 angka bermakna sehingga **digit terakhirnya hilang** — bukan sekadar tampil ringkas. Ekspor
+Pega tidak kena karena `.xlsx` membawa tipe selnya sendiri.
+
+Ini cacat, bukan selisih yang disengaja, dan ia berlaku pada **setiap** modul yang mengekspor
+nomor polis sebagai CSV.
+
+**Yang menunggu keputusan Work Owner**, karena ketiganya mengubah pekerjaan secara berbeda:
+menyamakan judul dan urutan ke templat (butuh berkas templatnya, atau baris judulnya sebagai
+teks — **bukan** tangkapan layar, karena membaca urutan kolom dari gambar beresolusi rendah
+adalah persis kelas kesalahan yang sudah dua kali terjadi di sesi ini), beralih ke `.xlsx`
+sungguhan, atau tetap CSV dengan nomor polis dipaksa menjadi teks.
+
+#### Tiga perapian panel ringkasan (2026-10-09)
+
+Ketiganya permintaan Work Owner atas tangkapan layar, dan ketiganya kecil tetapi punya sebab:
+
+| Yang diminta | Yang dikerjakan | Sebabnya |
+|---|---|---|
+| "tulisnya harusnya 9 Oktober 2026" | `formatDate(data.posisi)` | Kolom Registration Date pada grid sudah memakai bentuk panjang. Satu layar yang menuliskan tanggal dengan dua cara memaksa pembacanya menerjemahkan salah satunya setiap kali |
+| "karena cuma 3 summary, kotaknya ukurannya disesuaikan" | `lg:grid-cols-4` → `lg:grid-cols-3` | Kartunya memang tiga sejak kartu "Reserve treaty OR" dibuang; kisi berkolom empat menyisakan satu petak kosong yang terbaca seperti kartu gagal muat |
+| "gedein aja fontnya" pada keterangan pita umur | `text-xs` → `text-sm`, penanda warna `2.5` → `3`, jarak antarpita dilebarkan | Keempat pita muat satu baris dengan sisa ruang. Ukuran terkecil hanya masuk akal saat ruangnya sempit — di sini ia justru membuat angka yang paling sering dibaca menjadi yang terkecil di layar |
+
+Uji baru menjaga butir pertama: `2026-09-28` harus tergambar sebagai `28 September 2026`, dan
+bentuk ISO-nya **tidak boleh** ada di layar.
+
+---
+
+### 42.19 Pencarian nomor klaim dan nomor polis (2026-10-09)
+
+Permintaan Work Owner: *"sama mungkin bisa tambahkan fitur cari no klaim/nopolis untuk tabel
+dibawah summary"*.
+
+#### Ia KEMAMPUAN BARU, bukan pemindahan
+
+`Harness/OutstandingKlaimperCabang_Harness-Harness.xml` tidak memuat satu pun isian penyaring,
+dan `GetDataOutstandingperCabang-SQL.xml` tidak menerima parameter apa pun selain kode cabang.
+Jadi tidak ada perilaku Pega yang ditiru di sini — selisihnya dinyatakan di
+`PlannedDifferences`, bukan disembunyikan (`D-54`).
+
+#### Disaring PELADEN, dan itu yang menentukan hampir seluruh bentuknya
+
+Daftarnya sudah dipotong basis data (`OFFSET … FETCH NEXT`). Menyaring di peramban karena itu
+hanya menjangkau halaman yang sedang tampil — pengguna akan diberi tahu "tidak ada" untuk baris
+yang sebenarnya ada di halaman berikutnya, **tanpa satu pun tanda bahwa itu terjadi**.
+
+Bentuk akhirnya:
+
+```sql
+   AND (:2 IS NULL
+        OR UPPER(c.claimno) LIKE :3 ESCAPE '\'
+        OR UPPER(c.nopolis) LIKE :4 ESCAPE '\')
+```
+
+`COUNT(*) OVER ()` ikut tersaring dengan sendirinya, sehingga jumlah baris yang dilaporkan
+adalah jumlah yang **cocok** — bukan jumlah seluruh cabang. Tanpa itu, paginasi akan
+menjanjikan halaman berikutnya yang isinya kosong.
+
+Polanya disusun di Go, bukan dirangkai ke dalam teks SQL: `\`, `%`, dan `_` di-escape, lalu
+dibungkus `%…%` dan dihurufbesarkan — bentuk yang **sama persis** dengan modul Inbox
+Outstanding. Pencarian yang berperilaku berbeda di dua layar adalah hal yang tidak dapat
+dijelaskan kepada penggunanya.
+
+#### Tiga hal yang sengaja TIDAK ikut tersaring
+
+| Yang tidak ikut | Sebabnya |
+|---|---|
+| **Panel ringkasan** | Ia menjawab *"bagaimana keadaan cabang saya"*. Bila ikut tersaring, ia akan selalu menyebut satu berkas dan berhenti berarti |
+| **Berkas ekspor** | Berkasnya memang berkas pemantauan satu cabang, seperti di Pega. Pola yang sama sudah dipakai modul Inbox Outstanding, yang bahkan berhenti mengirim penyaringnya supaya kode tidak menjanjikan hal yang tidak terjadi |
+| **Batas data cabang** | Mencari nomor klaim cabang lain tetap nol baris. Diuji tersendiri, karena kegagalan di sini adalah kebocoran data antar cabang (`R-20`) — bukan hasil yang aneh |
+
+Satu akibat yang mudah terlewat: tombol **Export To Excel** sempat mati ketika pencarian nihil,
+karena ia membaca jumlah baris daftar. Ia kini membaca jumlah dari **panel ringkasan**, yang
+tidak ikut tersaring — tombol yang mati padahal berkasnya masih penuh akan dibaca sebagai
+ekspor yang rusak.
+
+#### Pengurutan kolom hilang — dan ternyata itu MENDEKATKAN ke Pega, bukan menjauhi
+
+`DataTable` mematikan pengurutan ketika `serverSearch` dipakai. Saya melaporkannya kepada Work
+Owner sebagai **harga yang dibayar**, dan menawarkan mengembalikannya lewat `ORDER BY`
+berdaftar-putih di peladen.
+
+Work Owner bertanya balik: *"kalau di pega seperti apa?"* — pertanyaan yang seharusnya saya
+jawab lebih dulu, sebelum menyebutnya kehilangan.
+
+**Jawabannya: Pega tidak punya pengurutan di layar ini.**
+
+`Harness/OutstandingKlaimperCabang_Harness-Harness.xml` memuat **satu** grid, dan sakelar
+grid-nya:
+
+```xml
+<pyGridSorting>false</pyGridSorting>
+```
+
+Ke-61 `pyColumnSorting` bernilai `true` di bawahnya tidak mengubah apa pun — itu daftar izin
+personalisasi per kolom, dan sakelar grid yang mati mendahuluinya.
+
+**Diuji silang supaya `false` itu tidak dibaca sebagai bawaan** — kesalahan yang persis sama
+dengan `pyExpandable` beberapa hari lalu. Inbox lain di export yang sama:
+
+| Harness | `pyGridSorting` |
+|---|---|
+| `InboxRegister_Harness` | `true` × 6 |
+| `PNCInboxAdmin` | `true` × 9 |
+| `InboxSurvey_Harness` | `true` × 8 |
+| `InboxKomite_Harness` | `true` × 7, `false` × 1 |
+| **`OutstandingKlaimperCabang_Harness`** | **`false` × 1 — satu-satunya grid** |
+
+Jadi layar ini memang **sengaja** tanpa pengurutan.
+
+**Artinya pengurutan yang sempat ada di sini adalah TAMBAHAN saya, bukan pemindahan** — bawaan
+`DataTable` yang ikut menyala karena tidak pernah dimatikan. Ia juga menyesatkan: daftarnya
+dipotong `OFFSET … FETCH NEXT`, sehingga "urutkan menurut Aging menurun" hanya mengurutkan
+halaman yang sedang tampil.
+
+Dan ia **tidak pernah dinyatakan di `PlannedDifferences`** — kemampuan tambahan yang tidak
+tercatat, tepat yang `D-54` ada untuk mencegahnya. Hilangnya menutup dua hal sekaligus.
+
+**Koreksi atas laporan saya:** tidak ada harga yang dibayar, dan tidak ada yang perlu
+dikembalikan. Bila kelak pengurutan diminta, ia **kemampuan baru** yang dikerjakan peladen dan
+dinyatakan sebagai selisih — bukan pemulihan sesuatu yang pernah ada di Pega.
+
+#### Jejak perubahan
+
+| Lapisan | Perubahan |
+|---|---|
+| SQL | kueri `list` — tiga bind baru, `OFFSET`/`FETCH` bergeser ke `:5`/`:6` |
+| Domain | `Query.Search` |
+| Repositori SQL | `searchPattern`, `nilIfEmpty` |
+| Repositori memori | penyaring di `List` saja — **bukan** di `matching`, yang dipakai bersama ekspor |
+| Usecase | `Service.List(…, search string)` |
+| Transport | parameter `cari` |
+| Frontend | `useOSClaimPerCabangList(page, search)`, `buildPath` memakai `URLSearchParams`, `serverSearch` pada grid |
+
+Alamat permintaan disusun `URLSearchParams`, bukan dirangkai tangan: nomor polis dapat memuat
+`&` atau spasi, dan perangkaian tangan akan memotong pencariannya di karakter itu tanpa galat.
+
+#### Cacat yang lolos sampai ke layar Work Owner: suntingan masuk ke kueri yang SALAH
+
+Serahan pertama fitur ini **mengosongkan layar** — *"Daftar tidak dapat dimuat. Terjadi
+kesalahan pada sistem."* Oracle menjawab **`ORA-01006: bind variable does not exist`**.
+
+**Sebabnya.** Penyaring pencarian disunting ke dalam kueri **`list_export`**, bukan `list`.
+Keduanya berakhir dengan teks yang **identik**:
+
+```sql
+ WHERE c.registerdate IS NOT NULL
+   AND c.branchcode = :1
+ ORDER BY c.registerdate ASC, c.claimno ASC
+OFFSET :2 ROWS FETCH NEXT :3 ROWS ONLY
+```
+
+Supaya suntingannya unik, saya menambahkan baris sesudahnya — `-- name: dominant_factors` —
+sebagai penanda. Penanda itu memang unik, tetapi ia menunjuk **akhir `list_export`**, bukan
+akhir `list`. Hasilnya: `List` mengirim enam argumen ke pernyataan berbind tiga, dan
+`ListForExport` mengirim tiga argumen ke pernyataan berbind enam. Keduanya rusak sekaligus.
+
+**Kenapa seluruh uji lolos.** Uji sqlmock menyusun harapannya dari `query("list")` yang sama,
+lalu membandingkan daftar argumen dengan daftar yang ditulis tangan di ujinya sendiri:
+
+```go
+mock.ExpectQuery(exactQuery("list")).WithArgs("100100", nil, "", "", 20, 10)
+```
+
+Tidak ada satu pun pihak di sana yang pernah membaca **berapa bind yang benar-benar ada di
+dalam teks SQL-nya**. Uji itu konsisten dengan dirinya sendiri, dan karena itu tidak dapat
+menangkap kelas cacat ini — bukan karena kurang teliti, melainkan karena ia memang tidak
+menguji hal itu.
+
+**Penjaga yang ditambahkan.** `TestEveryQueryBindsExactlyTheNumbersItsCallerPasses` membaca
+teks SQL-nya langsung, menghitung nomor bind yang ada, dan membandingkannya dengan jumlah
+argumen yang dikirim pemanggil — `list` enam, `list_export` tiga. Ia juga menolak nomor yang
+**melompat**, karena menambah bind di tengah tanpa menggeser yang sesudahnya adalah cara
+paling mudah merusak kueri ini.
+
+Penjaganya diuji dengan sengaja dirusak lebih dulu: diubah menjadi `5`, ia gagal dengan
+*"kueri list memakai 6 bind, bukan 5"*. Penjaga yang tidak pernah terbukti menggigit tidak
+dapat disebut penjaga.
+
+**Diverifikasi terhadap Oracle sungguhan**, bukan hanya terhadap sqlmock:
+
+| Kasus | Hasil |
+|---|---|
+| `list` tanpa pencarian | 1 baris |
+| `list` cari `PNC` | 1 baris |
+| `list` cari nomor klaim penuh | 1 baris |
+| `list` cari `ZZZZ` | **0 baris** |
+| `list_export` tetap tiga bind | 1 baris |
+
+**Pelajarannya:** penanda keunikan untuk suntingan harus diambil dari **isi yang disunting**,
+bukan dari baris di sekitarnya — apalagi pada berkas yang memuat dua kueri yang sengaja
+dibuat mirip. Dan satu uji terhadap basis data sungguhan menangkap apa yang seluruh uji
+tiruan tidak dapat tangkap.
+
+#### Dua hal lain yang ditemukan saat mengerjakannya
+
+1. **`emptyMessage` yang saya tulis untuk keadaan "pencarian nihil" ternyata kode mati.**
+   `DataTable` sudah menggantinya sendiri dengan *"Tidak ada baris yang cocok dengan …"*.
+   Versi saya dibuang; dua layar yang menyebut keadaan sama dengan dua kalimat berbeda adalah
+   hal yang tidak perlu ada.
+
+2. **`gofmt` nyaris mengubah arti sebuah komentar.** Komentar saya memuat `LIKE ''` — SQL untuk
+   untai kosong — dan pemformat komentar dokumentasi Go mengubah dua apostrof menjadi tanda
+   kutip tipografis `”`. Tertangkap hanya karena `gofmt -d` dijalankan atas salinan ber-LF;
+   di pohon kerja ber-CRLF, `gofmt -l` menandai **1.196 dari 1.933** berkas sehingga tidak ada
+   satu pun sinyal yang dapat dibaca. Komentarnya ditulis ulang tanpa apostrof ganda.
+
+   Sekalian ditemukan: satu uji detail dari serahan sebelumnya memang belum rapi — perataan
+   `struct literal`-nya. Itu diperbaiki, dan akhiran barisnya dikembalikan ke CRLF.
+
+### 42.20 Pembahasan daftar "Yang berbeda dari layar lama" (2026-10-10)
+
+Work Owner meminta kedelapan butirnya dibahas satu per satu. Hasilnya: **dua dicabut**, satu
+terbukti **cacat warisan yang perlu keputusan**, dan sisanya diterima.
+
+#### Dua butir dicabut
+
+**1. "Daftar dibagi per halaman di server" — bukan selisih hasil, hanya tampilan.**
+
+Layar lama **pun** berhalaman: `pyPageMode = Next Previous`, `pyPageSize = 20`. Yang berbeda
+hanya **tempat pemotongannya** — klipboard Pega versus basis data — dan ukurannya, 20 versus
+25. Work Owner: *"catatan 6 cuma ui, hapus saja catatannya"*, dan ukuran **25 tetap dipakai**.
+
+Kalimat saya sebelumnya — *"layar lama memuat seluruh baris sekaligus, sehingga jumlah baris
+yang tampak sekali layar berbeda"* — separuhnya benar dan separuhnya menyesatkan: benar soal
+pengambilannya, keliru soal yang terlihat pengguna.
+
+**2. "Umur klaim dihitung terhadap tanggal WIB" — TIDAK BENAR.**
+
+Work Owner bertanya: *"seharusnya jam server juga menggunakan WIB?"* — dan jawabannya ya.
+Diukur langsung ke Oracle:
+
+```
+SYSTIMESTAMP = 2026-10-10 13:47:35 +07:00
+DBTIMEZONE   = +07:00
+```
+
+Jadi `TRUNC(SYSDATE)` milik kueri lama memang **sudah** tanggal WIB, sama persis dengan yang
+dihitung `AgingDaysSince`. WIB tidak mengenal waktu musim panas, sehingga keduanya sama
+sepanjang tahun — tidak ada klaim yang dapat berbeda satu hari.
+
+Butir itu lahir dari kehati-hatian yang **tidak pernah saya periksa**. Menyatakan selisih yang
+tidak ada sama buruknya dengan menyembunyikan selisih yang ada: pembacanya berhenti memercayai
+daftarnya. Alasan pencabutan kedua butir dicatat sebagai komentar di `PlannedDifferences`,
+bukan hanya dihapus, supaya tidak ditambahkan kembali.
+
+#### Satu butir yang ternyata cacat warisan, dan menunggu keputusan
+
+Pertanyaan Work Owner: *"maksudnya tanpa kurs dan porsi asm apa ya"*. Jawabannya dibaca dari
+kuerinya:
+
+| | Rumus | Artinya |
+|---|---|---|
+| **Kolom layar** | `SUM(estimationvalue)` | jumlah estimasi apa adanya |
+| **Kolom ekspor** | `SUM(estimationvalue × kursvalue) × shareasm/100` | sudah rupiah, dan tinggal bagian ASM |
+
+Keduanya **sama persis dengan Pega** — jadi ini bukan selisih terhadap sistem lama, melainkan
+peringatan bahwa dua tempat di layar yang sama memberi angka berbeda.
+
+**Ukurannya bukan teoretis** (data 2026-10-10, 1.141 klaim outstanding):
+
+| | |
+|---|---|
+| Baris estimasi berkurs ≠ 1 | 552 dari 51.560 |
+| **Klaim outstanding terdampak kurs** | **74** — angka di layar BUKAN rupiah |
+| **Klaim ber-`SHAREASM` ≠ 100%** | **305 (27%)** — angka di layar memuat porsi koasuransi |
+
+Padahal nama kolomnya **"Reserve Claim ASM Share"**, dan isinya bukan porsi ASM. Namanya
+warisan Pega dan dibawa apa adanya (`D-13`). **Menunggu keputusan Work Owner:** diperbaiki —
+dan masuk daftar perbaikan eksplisit seperti 13 butir `D-49` — atau dibiarkan.
+
+#### Butir yang masih perlu diukur
+
+Penanda progres mandek. Pemisah ketika dua catatan berjam sama:
+
+| | |
+|---|---|
+| Pega | `ORDER BY tgl_input DESC, **rowid** DESC`, lalu `PIVOT` membandingkan `r1 = r2 = r3` |
+| Di sini | `ORDER BY tgl_input DESC`, lalu `COUNT(DISTINCT status_progress1) = 1` |
+
+`ROWID` adalah alamat fisik baris di Oracle — bukan data, dan tidak ada di PostgreSQL. Berapa
+klaim yang benar-benar berbeda karenanya **belum diukur**; pengukurannya dihentikan Work Owner
+di tengah jalan.
+
+### 42.21 Dua perbaikan yang menyentuh angka (2026-10-10)
+
+Hasil pembahasan butir per butir. Dari delapan catatan, **lima dicabut** atas keputusan Work
+Owner, **dua diperbaiki**, dan satu tetap.
+
+#### (a) "Reserve Claim ASM Share" kini benar-benar porsi ASM
+
+Keputusan Work Owner: *"tolong samakan layar dengan ekspor, harusnya x kurs value"*.
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Kolom grid | `SUM(estimationvalue)` | `SUM(estimationvalue × kursvalue) × SHAREASM/100` |
+| Panel ringkasan | idem | idem |
+
+Keduanya diubah **bersamaan**, dan itu bukan kerapian: panel menyatakan dirinya *"Dijumlahkan
+dari kolom Reserve Claim ASM Share di bawah"*. Rumus yang berbeda membuat kalimat itu bohong.
+
+**Ini selisih terhadap Pega yang disengaja**, sejenis 13 butir `D-49`, dan karena itu tetap
+dinyatakan di `PlannedDifferences` meski butir lain dicabut. Akibatnya terukur pada 1.141 klaim
+outstanding: **74 klaim** berubah karena kurs, **305 klaim** berubah karena porsi ASM.
+
+**Dua tempat sengaja TIDAK ikut diubah** karena elemen berbeda dan tidak diminta: `detail_header`
+("Total Reserve" pada popup) dan `summary_treaty_or`. Keduanya tetap seperti Pega.
+
+#### (b) Penanda progres mandek — pemisahnya diganti, dan catatan lama dikoreksi
+
+Permintaan Work Owner: *"tolong bantu cek jika memang query nya masih salah/tidak sesuai ya"*.
+
+Diperiksa, dan jawabannya: **masih berbeda**. Pega memakai
+`ORDER BY tgl_input DESC, rowid DESC`; di sini hanya `tgl_input DESC`. **271 klaim** punya dua
+catatan progres atau lebih yang waktunya sama persis, sehingga pemisah itu benar-benar terpakai.
+
+**Catatan serahan sebelumnya keliru.** Ia menolak `ID_UPDATE` sebagai pengganti dengan alasan
+*"1.374 nilai berbeda untuk 20.615 baris, jadi ia bukan pengenal baris"* — menguji keunikan di
+**seluruh tabel**, padahal jendelanya `PARTITION BY pnccaseid` sehingga yang dibutuhkan hanya
+keunikan **di dalam satu klaim**. Diuji ulang dengan pertanyaan yang benar: pasangan
+`(pnccaseid, ID_UPDATE)` yang kembar berjumlah **0**. Ia pencacah per klaim.
+
+Hasil pengukuran terhadap Oracle:
+
+| Urutan | Ditandai | Hanya di Pega | Hanya di kita |
+|---|---:|---:|---:|
+| `tgl_input DESC` (sebelumnya) | 129 | 3 | **23** |
+| **`tgl_input DESC, ID_UPDATE DESC`** | **107** | **2** | **0** |
+| `tgl_input DESC, POSISIID DESC` | 131 | 1 | 23 |
+| `tgl_input DESC, ID_UPDATE ASC` | 131 | 1 | 23 |
+| Pega (`rowid DESC`) | 109 | — | — |
+
+Yang dipakai `ID_UPDATE DESC`: **nol** klaim ditandai merah padahal Pega tidak — turun dari 23.
+Tersisa dua klaim yang Pega tandai dan kita tidak, dan itu dinyatakan di `PlannedDifferences`.
+
+**Pelajaran dari kesalahan itu:** sebuah kolom ditolak karena diuji dengan pertanyaan yang salah,
+lalu penolakannya ditulis sebagai fakta di komentar — dan bertahan sampai Work Owner meminta
+pemeriksaan ulang. Uji keunikan harus mengikuti **jendela yang dipakai**, bukan seluruh tabel.
+
+##### Akibat kedua klaim sisa di layar: NOL
+
+Work Owner bertanya lanjut: *"jadi apakah (b) masih masalah?"* Diperiksa sampai ke layarnya.
+
+Kedua klaim itu **tampil** di layar, dan **kedua-duanya sudah digambar merah karena umurnya
+melewati ambang**. Baris merah punya dua syarat — umur **atau** progres mandek — dan syarat
+pertama sudah terpenuhi pada keduanya.
+
+Jadi **tidak ada satu baris pun yang warnanya berbeda** dari layar lama. Yang berbeda hanya
+keterangan pada `title` baris, dan layar lama tidak punya keterangan itu sama sekali.
+
+Saya sempat mempertahankan butirnya dengan alasan "nol itu kebetulan". Work Owner menekan lagi:
+*"merah adalah karena umur melewati ambang atau progres mandek, masalahnya sekarang kenapa?"* —
+dan pertanyaan itu benar. Tidak ada masalah; yang tersisa hanya **mekanisme** yang tidak
+identik, dan mekanisme tidak terlihat pengguna.
+
+**Lebih dari itu, pilihan di sini justru lebih tepat.** `ROWID` adalah alamat penyimpanan
+fisik — dapat berpindah saat Oracle merapikan tabel, dan tanpa arti bisnis. `ID_UPDATE` adalah
+nomor urut pencatatan per klaim. Aturannya berbunyi *"tiga catatan progres **terakhir**"*, dan
+itu urutan pencatatan, bukan urutan penyimpanan. Jadi pada dua klaim yang berbeda itu, yang
+memilih tiga catatan yang benar adalah kueri baru — bukan kueri lama.
+
+Butirnya **dicabut**. Angka pengukurannya tinggal di komentar `.sql`.
+
+#### Butir terakhir pun dicabut — panelnya hilang dari layar
+
+Work Owner: *"Reserve Claim ASM Share kan sudah benar, catatannya tidak usah diperlihatkan di
+layar lagi"*. Daftarnya kini **kosong**, dan komponen layarnya menggambar nol ketika kosong —
+jadi panel "Yang berbeda dari layar lama" tidak muncul lagi sama sekali.
+
+**Yang TIDAK hilang karenanya: selisihnya sendiri.** `D-54` menuntut setiap selisih
+**diklasifikasikan pada uji kesetaraan `S-8`** terhadap 13 butir `P-5` — ia tidak pernah
+menuntut selisih itu ditampilkan kepada pengguna. Menampilkannya kebiasaan proyek ini (19 dari
+77 modul), bukan kewajiban. Rincian tiap selisih beserta angkanya tetap hidup di komentar
+`.sql` dan di berkas ini.
+
+**Tiga uji yang menuntut daftar itu BERISI ternyata keliru**, dan ketiganya lolos
+berbulan-bulan dengan alasan yang salah — *"`D-54` menuntut setiap selisih dinyatakan"*:
+
+| Uji | Dulu | Sekarang |
+|---|---|---|
+| `TestPlannedDifferencesAreStated` | `NotEmpty` | `NotNil` + tiap butir tidak kosong |
+| `TestListCarriesThePlannedDifferences` | `NotEmpty` | diteruskan apa adanya, dan bukan `nil` |
+| `TestListReturnsTheBranchRowsAndItsTitle` | `NotEmpty` | kuncinya ada dan berupa senarai |
+
+Ketiganya kini menjaga **bentuk**, bukan isi. Alasannya: uji yang menuntut isi akan memaksa
+orang berikutnya menambahkan butir karangan hanya supaya ujinya hijau — dan daftar berisi
+butir karangan membuat butir sungguhan ikut diabaikan.
+
+Yang tetap dijaga: senarainya **tidak boleh `nil`**. `nil` diserialkan JSON sebagai `null`, dan
+layar yang memanggil `.map` atasnya akan jatuh membawa gridnya serta — persis kelas cacat yang
+pernah mengosongkan panel ringkasan.
+
+**Mekanismenya sengaja tidak dibongkar.** Senarai, DTO, dan komponen layarnya dibiarkan utuh,
+sehingga menambahkan satu butir kelak cukup satu baris.
+
+**Yang BELUM dibahas:** popup Detail masih menampilkan **5 butir** di daftarnya sendiri
+(`DetailPlannedDifferences`). Ia tidak ikut dicabut karena tidak diminta.
+
+#### Penjaga "kueri tidak boleh menulis" kena positif palsu
+
+`ID_UPDATE` memuat kata `UPDATE`, dan `TestQueriesNeverWrite` membacanya sebagai perintah
+menulis. Penjaganya diubah dari pencocokan potongan teks menjadi pencocokan **kata utuh**
+(`\bUPDATE\b` — garis bawah termasuk karakter kata, jadi `ID_UPDATE` tidak cocok).
+
+Dan penjaganya kini **membuktikan dirinya sendiri** lebih dulu: ia memeriksa bahwa polanya tetap
+menangkap `UPDATE … SET` dan `DELETE FROM`, serta tidak menangkap nama kolomnya. Melonggarkan
+pola demi satu positif palsu mudah dilakukan sampai polanya tidak menangkap apa pun — dan
+ujinya tetap hijau sementara penjaganya sudah mati.
+
+#### Lima catatan yang dicabut
+
+| Catatan | Alasan |
+|---|---|
+| Daftar dibagi per halaman | Pega pun berhalaman (`pyPageSize = 20`); hanya tampilan. Ukuran 25 tetap dipakai |
+| Umur terhadap tanggal WIB | **Tidak benar** — `DBTIMEZONE = +07:00`, jadi tidak ada selisih |
+| Sumber `T_CLAIMLIST_ADMIN` | Perpindahannya memang dikehendaki; selisih jumlah klaim adalah keadaan tabel yang belum terisi penuh |
+| Kotak cari | Penambahannya memang diminta |
+| Cabang dari kode HCQ | Perubahan sumber cabang memang dikehendaki |
+
+Alasan tiap pencabutan ditulis sebagai komentar di `PlannedDifferences`, bukan sekadar dihapus —
+supaya tidak ditambahkan kembali oleh orang yang mengira butirnya terlewat.
+
+Panel kini tersisa **dua butir**, keduanya selisih nyata terhadap Pega.
+
+#### Satu hal yang tetap berupa simpulan
+
+**"Estimasi Value = jumlah estimasi coverage"** adalah simpulan, bukan bacaan langsung dari
+rule — dasarnya kecocokan persis pada contoh Fire. Ia dinyatakan di `DetailPlannedDifferences`,
+bukan disembunyikan.
+
+**Catatan atas cara kerja.** Ekstraksi pertama pemetaan di atas **salah**: pola teks berjendela
+memasangkan `PropertiesName` satu blok dengan `PropertiesValue` blok tetangganya, sehingga
+"Estimasi Value" sempat terbaca sebagai `.BRANCH_NAME`. Ketahuan karena hasilnya tidak masuk
+akal — kolom mata uang terisi nomor klaim. Diulang dengan mengurai **per blok `rowdata`**, dan
+hasilnya koheren. Pelajarannya sama dengan dua koreksi sebelumnya di sesi ini: hasil yang
+janggal diperiksa ulang, bukan dilaporkan.
+
+#### Temuan yang muncul saat menyiapkan akun uji: pengguna non-karyawan TIDAK AKAN PERNAH dapat memakai layar ini
+
+Work Owner menanyakan akun `JONNY`. Penelusuran ke sumber identitas menemukan ia **ada
+sungguhan** — `POOLDATA.M_LOGIN_PNC`, aktif, `LINE_BUSINESS = NONMBU` — sehingga ia dapat masuk
+**tanpa HCQ sama sekali** lewat provider lokal. Rantai identitas memang meneruskan ke sumber
+lokal meski HCQ padam (`provider/chain.go:66-69`: keberhasilan dikembalikan sebelum pemeriksaan
+`anyDown`).
+
+Tetapi provider lokal hanya mengembalikan **empat** hal — `Identity`, `Name`, `Kind`, `Login`
+(`provider/local.go:87-92`). **Tidak ada cabang**, karena `M_LOGIN_PNC` memang tidak punya satu
+pun kolom cabang.
+
+Akibatnya bukan soal pengujian, melainkan soal rancangan:
+
+> **Setiap pengguna non-karyawan selalu berujung "cabang tidak dikenali" pada layar yang batas
+> datanya cabang — di produksi sekalipun, bahkan setelah HCQ berjalan.** Non-karyawan tidak
+> pernah melewati HCQ, sehingga `DetailBranchCode` mereka tidak akan pernah terisi dari mana pun.
+
+Ini **konsisten dengan yang sudah didokumentasikan** (`Caller.DetailBranchCode` menyatakan
+kekosongan itu sah dan dijawab pesan, bukan daftar kosong). Yang BARU adalah kenyataan bahwa
+akun yang Work Owner sebut sendiri termasuk golongan itu.
+
+**BELUM DIPUTUSKAN — pertanyaan terbuka** (pemilik: **Work Owner**):
+
+1. Apakah pengguna non-karyawan memang **tidak seharusnya** membuka Inbox OS Claim per Cabang?
+   Bila ya, tidak ada yang perlu diubah — pesannya sudah benar.
+2. Bila tidak, dari mana cabang mereka diambil? `M_LOGIN_PNC` tidak memuatnya, sehingga
+   jawabannya menuntut sumber baru.
+
+Pertanyaan ini **tidak dijawab sendiri**, dan tidak ada kode yang ditulis untuk menebaknya.
+
+#### PERBAIKAN: cabang kini dibaca dari master HRD lokal (2026-10-08)
+
+Work Owner mencoba masuk sebagai `JONNY` dan tetap mendapat "Cabang Anda belum terdaftar",
+lalu menyatakan keberatan yang tepat: **kalau datanya ada, kenapa aplikasi bilang tidak ada?**
+
+Keberatan itu benar, dan penyebabnya bukan ketiadaan data melainkan **data yang tidak pernah
+dibaca**. Dua sumber ditemukan, dan hanya satu yang layak dipakai:
+
+| Sumber | Punya cabang JONNY? | Dipakai? |
+|---|---|---|
+| `POOLDATA.M_SPV_KLAIMMBU` | ya — `CABANG_ID 100081` | **tidak** — namanya MBU, yakni master lini motor; memakainya berarti meminjam master lini lain. Hanya **1 dari 30** login aktif `M_LOGIN_PNC` ada di sana, dan **95 login** punya lebih dari satu cabang sehingga pemilihannya ambigu |
+| **`POOLDATA.V_HRD_M_MST`** | ya — `LCA_ID = 001` | **ya** |
+
+`V_HRD_M_MST` dipilih karena tiga alasan yang dapat diperiksa:
+
+1. **Ia master HRD**, yakni sumber yang memang berwenang atas cabang seseorang — bukan master
+   milik lini bisnis tertentu.
+2. **Ia LOKAL, bukan lewat DB Link**, sehingga tidak terhalang `R-03`. Ini membedakannya dari
+   `HRDASM.V_HRD_MST@ASMD` yang `D-25` rencanakan diganti API.
+3. **`LCA_ID` berada di ruang kode yang SAMA dengan `DetailBranchCode`**, yakni
+   `POOLDATA.BRANCH.OLDID` — jadi tidak perlu terjemahan kedua. Diukur langsung:
+   mencocokkan `LCA_ID` ke `BRANCH.ID` menghasilkan **0 dari 27.966** baris; ke `OLDID` cocok.
+
+Ketiga sumber **saling menguatkan** pada nilai yang sama: `M_SPV_KLAIMMBU` → `100081`,
+`V_HRD_M_MST.LCA_ID` → `001`, dan contoh respons HCQ di `hcq_test.go` → `DetailBranchCode "001"`
+/ `NewBranchCode "100081"` / `KANTOR PUSAT`.
+
+**Yang diubah** — kueri `local_login_find_active` menambah satu `LEFT JOIN`:
+
+```sql
+  FROM POOLDATA.M_LOGIN_PNC L
+       LEFT JOIN POOLDATA.V_HRD_M_MST H
+              ON UPPER(TRIM(H.LOGIN_APLIKASI)) = UPPER(TRIM(L.LOGIN_ID))
+```
+
+`LEFT JOIN`, bukan `JOIN`. Broker dan surveyor independen memang **tidak ada** di HRD, dan
+mereka harus tetap dapat masuk — yang mereka dapat tetap cabang kosong, dan itu benar.
+
+**Dibuktikan terhadap Oracle sungguhan**, bukan hanya lewat uji tiruan:
+
+```
+kredensial salah -> provider: login lokal tidak cocok      (kueri parse, keamanan tak berubah)
+login=JONNY  nama=JONNY WONG  DetailBranchCode="001"       (cabang terbawa)
+login=<non-karyawan lain>     DetailBranchCode=""          (tetap kosong, sebagaimana mestinya)
+```
+
+**Yang TIDAK ikut diisi:** `BranchCode` dan `Branch`. Alasannya sama dengan pada daftar tiruan —
+`BranchCode` punya pembaca yang **menuliskannya ke basis data** (modul Archive Dokumen Klaim,
+kolom `KODECABANG`), dan mengisinya mengubah perilaku modul yang tidak diminta berubah.
+
+**Akibat yang perlu disadari:** JONNY kini berlabuh di KANTOR PUSAT, yang hanya punya **1**
+klaim outstanding. Jadi layarnya akan terisi — tetapi tipis. Itu kenyataan datanya, bukan cacat.
+
+#### Sumber pemetaan pengguna→cabang yang SUDAH ADA, ditemukan saat mencari jawabannya
+
+Pencarian katalog menemukan **130 tabel** di `POOLDATA`/`GENERAL` yang memuat kolom pengguna
+**dan** kolom cabang sekaligus. Satu di antaranya berbentuk master, bukan log:
+
+```
+POOLDATA.M_SPV_KLAIMMBU
+  LOGIN_APLIKASI · CABANG_ID · JN_SPV · STS_PRIMARY · STS_AKTIF
+```
+
+Kedua puluh baris `JONNY` di sana menunjuk cabang yang **sama** — `CABANG_ID 100081`
+(`OLDID 001`, KANTOR PUSAT). Kedua puluhnya berbeda hanya pada `JN_SPV`, yakni jenis
+kewenangan, **bukan** cabang.
+
+Dua hal yang membuat temuan ini bernilai lebih dari sekadar data uji:
+
+1. **Angkanya cocok persis dengan contoh respons HCQ** yang Work Owner berikan pada
+   2026-09-16 dan yang tersimpan di `provider/hcq_test.go` — `BranchCode "001"`,
+   `DetailBranchCode "001"`, `NewBranchCode "100081"`, `BranchName "KANTOR PUSAT"`. Dua sumber
+   yang berdiri sendiri menunjuk nilai yang sama.
+2. **Bentuknya persis yang dibutuhkan pertanyaan terbuka nomor 2** — pemetaan login ke cabang,
+   lengkap dengan penanda `STS_PRIMARY` dan `STS_AKTIF`. Ia **bukan jawaban**, karena namanya
+   menyebut **MBU** (motor) sedangkan modul ini Non-MBU, dan memakainya berarti meminjam master
+   milik lini lain. Tetapi ia membuktikan pola itu **sudah hidup** di sistem ini, sehingga
+   jawabannya tidak perlu dirancang dari nol.
+
+Diajukan ke Work Owner sebagai bahan, bukan sebagai keputusan.
+
+#### Catatan: JONNY tidak terikat satu cabang
+
+Klaim yang ditugaskan kepadanya maupun yang dibuatnya tersebar di **sepuluh cabang berbeda**,
+bukan satu. Itu sejalan dengan perannya sebagai pengguna kantor pusat. Layar ini dirancang
+sekitar **satu cabang per pengguna**, sehingga pengguna lintas cabang memang tidak terlayani
+bentuk itu — hal lain yang layak ditimbang Work Owner bersama kedua pertanyaan di atas.
+
+KANTOR PUSAT sendiri hanya punya **1** klaim outstanding, sehingga ia bukan cabang yang berguna
+untuk mencoba layar. Karena itu akun uji `jonny` diberi `078` CILEGON (85 klaim), dengan cabang
+sebenarnya dicatat di komentar `fake.go` supaya tidak hilang.
+
+#### Pertanyaan Work Owner yang mengubah keputusan: "apakah akan merusak modul lain?"
+
+Pertanyaan itu diajukan setelah perubahan pertama selesai, dan **jawabannya mengubah
+perubahannya**. Pada serahan pertama saya mengisi TIGA field demi "kewajaran" profil —
+`Branch`, `BranchCode`, dan `DetailBranchCode`. Penelusuran pembacanya menunjukkan ketiganya
+tidak sama luas akibatnya:
+
+| Field | Pembacanya | Akibat mengisinya |
+|---|---|---|
+| `DetailBranchCode` | **satu** — `cmd/claimpnc/main.go:1856`, modul OS Claim per Cabang | terbatas pada modul yang memang membutuhkannya |
+| `BranchCode` | modul **Archive Dokumen Klaim** (`main.go:2015`) | mengisi kolom **`KODECABANG`** — sebuah **tulisan ke Oracle**, berubah dari NULL menjadi kode cabang saat pengembang mengarsipkan dokumen |
+| `Branch` | **nol** — tidak dibaca satu baris kode pun, tidak dikirim ke frontend | tidak berakibat apa-apa, dan karena itu juga tidak berguna |
+
+Kedua yang terakhir **dibatalkan**. Yang tersisa hanya `DetailBranchCode`, sehingga jangkauan
+perubahan ini persis sama dengan modul yang meminta — nol modul lain.
+
+`BranchCode` layak dicatat khusus karena akibatnya **tidak terlihat di layar**: ia tidak
+mengubah apa pun yang tampak, hanya apa yang tertulis. Kalau tidak ditelusuri, ia akan lolos
+sebagai "tambahan yang tampaknya tidak berbahaya" — dan justru kelas itulah yang paling sulit
+ditemukan belakangan.
+
+Ketidaklengkapan profil tiruan ini **disengaja**, dan alasannya ditulis di dalam `fake.go`
+sendiri supaya tidak "dirapikan" kembali oleh orang berikutnya yang melihatnya tampak bolong.
+
+#### Penghalang yang tersingkap saat mencoba akun uji: `CPNC_PENGGUNA` belum ada di Oracle
+
+Work Owner meminta akun `JONNY` dianggap bercabang BANDUNG sejenak, untuk meninjau tampilan
+dengan data yang berisi. Saat hendak mengarahkannya ke **data nyata** (`PENYIMPANAN=oracle`,
+52 klaim di BANDUNG), `-periksa` menolak:
+
+```
+[BELUM] CPNC_PENGGUNA tidak dapat dibaca: ORA-00942: table or view does not exist
+```
+
+**Akibatnya jauh lebih luas daripada layar ini.** `CPNC_PENGGUNA` adalah tempat aplikasi
+menyimpan catatan penggunanya sendiri, dan `auth` menulisnya pada **setiap** login. Tanpa
+tabel itu, `PENYIMPANAN=oracle` membuat **login gagal untuk siapa pun** — bukan hanya modul
+ini. Itulah sebabnya lingkungan pengembangan berjalan dengan `PENYIMPANAN=memori`, dan
+mengapa **tidak satu pun layar pernah dilihat di atas data nyata**.
+
+Migrasinya sudah ada di repo (`migrations/0001`), tetapi menjalankannya menempuh `D-63`:
+permintaan tertulis tim pengembang → persetujuan Work Owner → pelaksanaan DBA.
+
+**Diajukan sebagai tindakan, bukan catatan.** Selama ini belum dijalankan, setiap peninjauan
+tampilan terbatas pada penyimpanan contoh — dan data contoh tidak pernah memunculkan kasus
+tepi yang justru paling sering menjadi sumber selisih (lihat §6.1 Testing Strategy, yang
+memilih salinan data produksi justru karena alasan itu).
+
+#### Catatan atas Isolasi Protektif
+
+`provider/fake.go` adalah bagian modul **Login**, yang termasuk dilarang diubah. Yang dikerjakan
+di sini **penambahan nilai pada perlengkapan pengembangan**, bukan perubahan perilaku maupun
+refactor: tidak ada satu pun jalur produksi yang tersentuh — `NewFake` menolak berjalan di
+produksi (`ErrFakeInProduction`), dan `IDENTITAS_ADAPTER=hcq` tidak melewati berkas ini sama
+sekali.
+
+`go build` bersih · **seluruh uji `internal/auth/...`, `internal/archivedokumenklaim/...`, dan
+`internal/inboxosclaimpercabang/...` lulus** tanpa satu pun uji diubah. Modul arsip sengaja ikut
+dijalankan karena ia pembaca `BranchCode`, yakni satu-satunya modul lain yang sempat tersentuh.
+
+
 ## 48. Sesi kedua puluh empat — modul Inbox Komunikasi Cabang (2026-09-24)
 
 Permintaan Work Owner: *"lanjutkan untuk penambahan modul Inbox Komunikasi Cabang, cek secara
@@ -38836,3 +40121,762 @@ InsertJsonClaimNonMBU_act, RunConvertJSONKLAIM (procedure, `D-02`), dan email pe
 Kueri diuji kering ke Oracle dalam transaksi ROLLBACK (2026-10-04): kelimanya sah. Uji: `usecase/closure_test.go` (5),
 `sqlstore/closure_test.go`, `CloseClaim.test.tsx` (3).
 >>>>>>> 8c044828a6c3c599fb3c27f46a681b058d681890
+
+## 147. Open Protection tipe '8' benar-benar mengubah Penyebab Kerugian klaim (2026-10-05)
+
+Sumber: `Section/InputProtectionSection-Section.xml`, `Section/AcceptProtectionSection-Section.xml`,
+`Activity/InsertOpenProtectionCase-Act.xml:2956`/`:3003`/`:3069`, `RDB List/GetCauseofLossDesc-SQL.xml`,
+`Database/PEGA_CONVERT_JSONKLAIM_PNC.prc:658`.
+
+Sebelum ini, permintaan tipe '8' tersimpan dan dapat disetujui — tetapi **klaimnya tidak berubah sama sekali**.
+Persetujuan tercatat, Penyebab Kerugian tetap yang lama, dan tidak ada gejala apa pun.
+
+### Yang hilang: sasarannya
+
+Satu klaim punya banyak objek, tiap objek banyak coverage. Pada klaim `PNC-1452` kueri coverage mengembalikan:
+
+```
+1  1  JackHugh  Resiko A    ILLNESS
+1  2  JackHugh  Resiko A    STORM
+1  3  JackHugh  Katastropi  WINDSTORM
+1  4  JackHugh  Resiko A    HURRICANE
+```
+
+`JackHugh / Resiko A` muncul **tiga kali**. Nama tidak menunjuk baris, sehingga permintaan tidak punya cara
+menyatakan baris mana yang dimaksud. Dua kolom diminta dan sudah ditambahkan Work Owner 2026-10-05 —
+`OBJECT_ID` dan `OBJECT_COVERAGE_ID` pada `T_CLAIM_OPENPROTECTION`, `VARCHAR2(30 BYTE)`, sama dengan tipe
+kolom asalnya di `T_CLAIM_OBJECTCOVERAGE`.
+
+### Sisi permintaan
+
+| Pega | Di sini |
+|---|---|
+| panel tipe '8' berisi tabel **Object Name · Coverage Name · Cause of Loss** dengan tombol Pilih per baris | `CoveragePicker.tsx` lewat `DataTable` baku; kunci baris pasangan `id_objek`-`id_coverage`, **bukan nama** |
+| "Next Cause Of Loss" terikat `.ClaimDataProtect.CauseOfLossID`, dipilih dari master | dropdown `D_CAUSE_OF_LOSS` disaring lini bisnis klaim lewat `D_CAUSE_OF_LOSS_BUSINESS` (`EXISTS`, bukan `JOIN` — satu penyebab pada tiga lini akan muncul tiga kali bila di-join) |
+| "Cause Of Loss Dipilih" terikat `.ClaimDataProtect.IDMasterTONP` | terisi dari baris yang ditekan Pilih, bukan dari coverage pertama klaim |
+
+`OLD_DATA` dan `NEW_DATA` menyimpan **`D_COL_ID` saja** (Work Owner: *"old data new data simpan idcol aja"*).
+
+### Sisi akseptasi
+
+`Activity/InsertOpenProtectionCase-Act.xml` menulis ke **satu baris terindeks**:
+
+```
+TempPNCOPEN.ClaimData.ObjectList(Local.objectid).ObjectCoverageList(Local.coverageid).CauseOfLoss   := .ClaimDataProtect.CauseOfLoss
+TempPNCOPEN.ClaimData.ObjectList(Local.objectid).ObjectCoverageList(Local.coverageid).CauseOfLossID := .ClaimDataProtect.CauseOfLossID
+```
+
+Ditiru: `claim_apply_cause_of_loss` meng-`UPDATE` `T_CLAIM_OBJECTCOVERAGE` dikunci `CLAIMID` + `OBJECTID` +
+`OBJECTCOVERAGEID`, **kedua kolom sekaligus** (Work Owner: *"ingat ganti cause of loss itu ganti causeoflossid
+juga"*), menyaring `DIHAPUS_PADA IS NULL`. Berjalan dalam transaksi yang sama dengan keputusannya.
+
+Deskripsinya dicari lebih dulu lewat `cause_of_loss_describe`. Pasangan kolomnya dibuktikan, bukan ditebak:
+data produksi `PNC-1452` memberi `CAUSEOFLOSSID=12003` / `CAUSEOFLOSS=WINDSTORM`, dan `GetCauseofLossDesc`
+berbunyi `SELECT DESCRIPTION ... WHERE D_COL_ID={...}` — hanya satu pemasangan yang konsisten dengan keduanya.
+
+**Tidak dibawa:** Pega mengubah Penyebab Kerugian juga saat permintaan **ditolak** (prakondisinya hanya
+`Local.typeprotection=="8"`, status persetujuan tidak diperiksa). Selisih terencana `P-5`, segolongan `R-19` —
+sama dengan yang sudah berlaku pada DOL.
+
+**Selisih disengaja:** Pega membawa teks penyebab kerugian di dalam permintaan; di sini hanya kodenya, teksnya
+dicari saat menerapkan. Akibatnya kode yang dihapus dari master antara meminta dan menyetujui membuat
+keputusannya **ditolak** (`ErrUnknownCauseOfLoss`, 409), sedangkan Pega tetap menuliskannya memakai teks lama.
+
+**Tidak ditambahkan:** layar akseptasi tidak menampilkan baris coverage mana yang diubah — panel Pega pun hanya
+memuat "Cause Of Loss Sebelumnya" dan "Cause Of Loss". Menambahkannya adalah perbaikan di luar `P-5`.
+
+### Koreksi dokumentasi yang ditemukan sambil jalan
+
+`docs/peta-penamaan.md` dan komentar `ProtectionForm.tsx` memasangkan `.CauseOfLossID` dengan nilai *sebelum*
+dan `.IDMasterTONP` dengan nilai *sesudah*. Itu **kebalikan** dari sistem lama. Perilaku kode sudah benar;
+yang keliru hanya pemetaannya — dan justru itu berbahaya, karena pembaca berikutnya dapat menyesuaikan kode
+agar cocok dengan tabel yang salah, lalu menuliskan kode **lama** kembali ke klaim. Keduanya dikoreksi beserta
+tiga buktinya.
+
+### Uji
+
+Domain `CauseOfLossToApply` (8 kasus) · `ChangeDetail.Empty` · adapter sqlmock: penerapan beserta kelima
+argumennya, tiga keadaan yang tidak boleh menyentuh coverage, enam jalur gagal · repo memori (4) · disiplin SQL
+untuk tiga kueri sisi klaim — termasuk `claim_apply_loss_date` yang selama ini tidak teruji sama sekali ·
+pemetaan galat HTTP (2) · frontend 15 uji.
+
+### 84.24 Kueri pengisian disiapkan — `MERGE`, bukan migrasi aplikasi (2026-10-07)
+
+Disusun sebagai `docs/backfill-t-surveyorlist.md`, **bukan** sebagai berkas di
+`backend/migrations/`. Pembedaannya bukan kerapian:
+
+`POOLDATA.T_SURVEYORLIST` **dimiliki Pega** selama masa paralel (`P-1`). Menaruh kuerinya di
+folder migrasi akan menyiratkan aplikasi Go yang menjalankannya — padahal modul ini dikunci
+hanya-baca (`TestSeluruhKueriHanyaMembaca`), dan jalurnya `D-63`: permintaan tertulis →
+persetujuan Work Owner → pelaksanaan DBA.
+
+#### Kenapa `MERGE`, bukan `UPDATE … SET kolom = (SELECT …)`
+
+Dua sebab, dan yang kedua lebih penting:
+
+1. `UPDATE` bersubquery menjalankan **lima subquery berkorelasi per baris** — 88.000 pembacaan
+   untuk 17.641 baris.
+2. Pada **4 baris yatim** yang tidak punya objek kerja, subquery mengembalikan `NULL` dan
+   **mengosongkan** kolom yang seharusnya tidak disentuh. `MERGE … WHEN MATCHED` hanya menyentuh
+   yang berpasangan.
+
+Yang kedua adalah cacat diam: ia tidak gagal, hanya menghapus.
+
+#### Yang ikut disiapkan, dan kenapa bukan hanya kuerinya
+
+| Bagian | Sebabnya |
+|---|---|
+| Periksa SEBELUM | tanpa angka awal, benar-tidaknya backfill tidak dapat dibuktikan |
+| Periksa SESUDAH — dua kueri | 4a membuktikan jumlahnya, 4b membuktikan isinya. Jumlah benar dengan isi tertukar antar kolom lolos 4a dan tertangkap 4b |
+| Rollback | `P-4` mewajibkan setiap tiket yang menyentuh skema punya rollback yang tidak kosong |
+| Varian "langkah terakhir saja" | urutannya **harus sama persis** dengan kueri modul, termasuk `LPAD` dan `NULLS LAST` |
+
+#### Peringatan yang paling perlu sampai ke Tim Pega
+
+**Jangan menyisipkan baris** ke `T_SURVEYORLIST` untuk mencatat perubahan status. Tabel itu
+memberi makan KPI adjuster — tiga rule membacanya — sehingga baris tambahan **mengubah angka
+kinerja orang**. Menambah kolom aman; menambah baris tidak.
+
+Dan backfill sendirian basi dalam hitungan hari: `INSERT_SURVEYORLIST` tidak pernah terpanggil
+saat objek kerja berubah. Tiga cara pemutakhiran diusulkan beserta kelemahan masing-masing —
+pilihannya milik Tim Pega, bukan saya.
+
+---
+
+## 148. My Inbox — kueri pemindahan data Pega disiapkan (2026-10-07)
+
+Layar My Inbox berfungsi, tetapi menampilkan **sekitar sepertiga** klaim yang ada di Pega, dan
+kedua tab status dokumennya selalu nol. Keduanya bukan cacat kode — sumber datanya memang belum
+terisi. Berkas yang disusun: `docs/backfill-t-claimlist-admin.md`.
+
+### 148.1 Angka yang mengubah premis
+
+Dibaca langsung dari katalog Oracle portal ASM, bukan dari dokumen:
+
+| | Tertulis di `kolom-t-claimlist-admin.md` | **Terukur** |
+|---|---|---|
+| Bentuk `T_CLAIMLIST_ADMIN` | 40 kolom · 1.014 baris | **59 kolom · 1.049 baris** |
+| Klaim PNC di `PC_ASM_FW_GCNMFW_WORK` | — | **2.647** |
+| Belum dipindahkan | — | **1.770** |
+| Assignment per klaim | "34 per klaim" | **263.903 klaim punya tepat satu**; hanya **64** klaim PNC bercabang |
+
+Angka "34 per klaim" keliru karena membagi **seluruh** worklist dengan klaim PNC saja. §D.6
+dokumen itu memang sudah mengakui daftar kolomnya tidak pernah dibaca dari katalog — yang terjadi
+adalah angka yang tidak pernah diperiksa dipakai berulang sebagai premis.
+
+### 148.2 Yang paling kasatmata bukan jumlah barisnya
+
+`DOKUMENLENGKAP_1` **kosong di seluruh 1.049 baris** yang ada. Jadi tab **Complete documents** dan
+**Documents not complete** sama-sama nol — bukan karena tidak ada klaimnya, melainkan karena
+kolomnya belum pernah diisi. Kueri pemeriksa sesudah pengisian sengaja menyorot kolom ini: ia yang
+membedakan "baris bertambah" dari "layarnya ikut benar".
+
+### 148.3 Tiga kolom tanpa sumber senama — dan hanya satu yang terbukti
+
+| Kolom | Hasil pengujian |
+|---|---|
+| `BUSINESSGROUPID` | **TERBUKTI** — `BUSINESS.BUSINESSGROUPID` lewat `BUSINESS.ID = BUSINESSCODE_1`, **1.049 dari 1.049 cocok**. Jalur yang sama dipakai `ExportDataDetailKlaim-SQL.xml` |
+| `STATUSPROGRESS1` | `GET_POSISI_PROGRESS_PNC` ada dan `VALID`, tetapi **hanya 89 dari 200 cocok** — fungsinya mengembalikan posisi sekarang, kolomnya snapshot yang sudah bergerak |
+| `AGING` | **TIDAK dapat direkonstruksi** — nol dari 970 pada ketiga rumus "hari sampai hari ini" yang dicoba. Dibiarkan `NULL` |
+
+`AGING` dibiarkan kosong **aman untuk modul ini**: kolom "Total Aging" dihitung Go dari
+`REGISTERDATE_1`, bukan dari kolom itu. Rumusnya dijadikan pertanyaan terbuka untuk DBA, bukan
+ditebak — menebaknya akan menghasilkan angka yang terlihat masuk akal dan salah.
+
+### 148.4 Assignment mana — pilihan, bukan temuan
+
+64 klaim PNC punya lebih dari satu assignment terbuka, sedangkan tabel tujuan satu baris per
+klaim. Perilaku pengisi yang ada **tidak dapat direkonstruksi**: dari 53 klaim bercabang yang
+sudah ada, **24 cocok dengan yang terbaru, 18 dengan yang terlama, 11 dengan keduanya tidak**.
+
+Skrip memakai **terbaru**, dan itu ditulis terang-terangan sebagai pilihan yang menunggu
+persetujuan — bukan sebagai aturan yang ditemukan.
+
+### 148.5 `LEFT JOIN`, bukan `INNER` — koreksi terhadap kueri Pega lama
+
+Kueri Pega memakai `INNER JOIN` ke worklist, sehingga klaim tanpa assignment terbuka **hilang dari
+layar** meski di Pega tetap ada. Skrip ini memakai `LEFT JOIN`: klaim itu tetap ikut dengan ketiga
+kolom assignment `NULL`.
+
+Subkueri berperingkat (`ROW_NUMBER`), bukan join langsung — join langsung akan **menggandakan** 64
+klaim bercabang itu, dan penggandaannya tidak menghasilkan galat apa pun.
+
+### 148.6 Kenapa hanya menyisipkan
+
+`WHEN NOT MATCHED` saja. **Siapa yang mengisi `T_CLAIMLIST_ADMIN` hari ini belum diketahui** —
+tabel itu nol kemunculan di seluruh export Pega (2.634 XML, 55 `.prc`, 8 `.fnc`). Ikut memperbarui
+baris yang ada berarti dua penulis atas satu tabel (`P-1`), dan tabrakannya tidak menghasilkan
+galat — hanya data yang berubah sendiri.
+
+Akibat yang diterima dan ditulis terbuka: **1.049 baris lama tetap kosong kolomnya.** Blok
+pembaruannya disediakan terpisah di §6.5, dengan larangan menjalankannya sebelum pertanyaan itu
+terjawab.
+
+### 148.7 Letak berkas — `backfill-*.md`, bukan `ddl/*.sql`
+
+Sempat ditulis sebagai `docs/ddl/pindah_t_claimlist_admin_my_inbox.sql`, lalu dipindahkan.
+Pembedaannya nyata: `ddl/*.sql` berisi **tabel baru milik Go**, sedangkan ini **operasi DBA sekali
+jalan atas tabel yang bukan milik Go** — persis sifat `backfill-t-surveyorlist.md`. Menaruhnya di
+`ddl/` akan menyiratkan aplikasi Go yang menjalankannya.
+
+### 148.8 Lima pertanyaan yang dibawa, bukan dijawab sendiri
+
+Siapa pengisi tabel sekarang · dari mana `AGING` · apakah "assignment terbaru" benar ·
+`STATUSPROGRESS1` diisi atau dikosongkan · **dan siapa yang memutakhirkan setelahnya.**
+
+Yang terakhir paling mudah terlewat, dan persis seperti `T_SURVEYORLIST`: pengisian sekali jalan
+**basi dalam hitungan hari** bila tidak ada yang memutakhirkannya, dan My Inbox akan tertinggal
+lagi seiring Pega terus membuat klaim baru.
+
+### 148.9 Perkakas pembacaan dihapus
+
+Seluruh angka dibaca memakai perkakas sementara di `cmd/tmpkatalog`, yang **dihapus** setelah
+pembacaan selesai. Tidak ada satu pun nilai data nasabah yang disalin ke berkas yang di-commit
+(`D-69`) — yang tertulis hanyalah jumlah, nama kolom, dan nama objek database.
+
+### 84.25 Dua lingkungan, angka berbeda 63× — dan dokumen yang tidak membedakannya (2026-10-07)
+
+Backfill dijalankan di **`pega_dev83`**, bukan produksi, karena kolomnya **belum ada di
+produksi**. Itu urutan yang benar — tetapi ia membongkar cacat pada dokumen saya: seluruh angka
+ditulis tanpa penanda lingkungan, seolah hanya ada satu.
+
+| | `pega_dev83` | Produksi |
+|---|---:|---:|
+| Baris `T_SURVEYORLIST` | 279 | 17.641 |
+| Berkas survei | 188 | 2.448 |
+| Langkah per berkas | **1,48** | **7,21** |
+| Baris yatim | 1 | 4 |
+| Kelima kolom ada? | ya | **belum** |
+
+#### Dua koreksi yang diperlukan
+
+1. `permintaan-kolom-t-surveyorlist.md` menyatakan "kelima kolom sudah ada" — **benar di dev,
+   salah di produksi**. `ALTER`-nya masih dibutuhkan di sana, lengkap dengan DDL-nya.
+2. `backfill-t-surveyorlist.md` memuat angka produksi sebagai pembanding `§2b`. Memakainya di
+   dev akan membuat backfill yang benar terbaca gagal.
+
+Keduanya jenis kekeliruan yang sama dengan `ADJUSTERACCEPT_1` versus `ADJUSTERACCEPT`: **benar
+dalam satu konteks, salah di konteks sebelahnya, dan tidak ada yang menandai konteksnya.**
+
+#### Apa yang dev TIDAK dapat buktikan
+
+Penggandaan baris di dev **1,48×**, di produksi **7,21×**. Penyaring langkah terakhir memang
+teruji di dev, tetapi 279 baris alih-alih 188 **masih terlihat masuk akal** — sedangkan 17.641
+alih-alih 2.448 tidak. Dev membuktikan penyaringnya jalan; ia tidak membuktikan benar pada kasus
+berat, dan berkas terburuk di produksi punya **176 langkah**.
+
+Dicatat di §0a dokumen backfill, beserta kewajiban menjalankan ulang §2 di produksi untuk
+memperoleh angka dasarnya sendiri.
+
+#### Kabar baik yang pertama kali terukur
+
+Kolom sumber di `PC_ASM_FW_GCNMFW_WORK` **memang terisi** — `PYSTATUSWORK` dan
+`RESCHEDULELOCATION_1` 100%, `ADJUSTERACCEPT_1` 93%. Sampai hari ini belum pernah ada bukti
+bahwa backfill akan menghasilkan sesuatu; sekarang ada.
+
+### 148.10 Koreksi: seluruh angka itu angka DEV (2026-10-07)
+
+Work Owner menanyakan di lingkungan mana pengukuran dilakukan. Diperiksa, bukan dijawab dari
+ingatan: `backend/.env` menunjuk service **`DEV_PEGA83G`**, mode `development`.
+
+Jadi 2.647 · 1.049 · 1.770 — dan 444 / 403 / 30 — seluruhnya **angka DEV**. Dokumen menulis
+"katalog Oracle portal ASM" tanpa menyebut lingkungannya, dan itu **menyesatkan**: pembacanya dapat
+menyangka itu angka produksi, lalu memakai `2647 · 1049 · 1770` sebagai patokan di sana.
+
+Diperbaiki di empat tempat: baris **Lingkungan angka** di kepala berkas · peringatan di §1 ·
+"Harapannya" di §6.1 diganti pembedaan DEV/produksi · §8 ditulis ulang menjadi **dua sumbu** —
+lingkungan (§8.1) dan portal (§8.2), karena keduanya sama-sama menuntut angka dihitung ulang tetapi
+bukan hal yang sama.
+
+Satu akibat yang hampir terlewat: **tabel cadangan rollback §6.4 harus dibuat terpisah di setiap
+lingkungan.** Nama yang sama di DEV tidak melindungi produksi, dan kekeliruan itu baru terasa
+justru saat rollback dibutuhkan.
+
+Nama service DEV sengaja ditulis dan itu tidak melanggar `D-69`: ia bukan hostname maupun alamat
+produksi, melainkan penanda lingkungan yang justru **wajib terbaca** supaya angkanya tidak tertukar.
+
+### 148.11 Akibat "hanya menyisipkan" ditakar — 30, bukan 1.049
+
+Kueri Go memperlakukan `NULL` sebagai belum lengkap (mengikuti Pega), sehingga seluruh 1.049 baris
+lama jatuh ke tab "Documents not complete". Pertanyaannya bukan berapa yang kosong, melainkan
+**berapa yang salah golong**.
+
+| Nilai sebenarnya di Pega | Jumlah | Akibat |
+|---|---:|---|
+| kosong juga di Pega | **444** | tidak ada selisih |
+| `0` | **403** | tidak ada selisih |
+| `1` | **30** | **salah golong** |
+| tidak terhitung | 172 | belum ditelusuri |
+
+**30, bukan 1.049.** Itu yang membuat penahanan cabang `WHEN MATCHED` dapat diterima: cukup kecil
+untuk dibereskan belakangan setelah kepemilikan tabel jelas, tanpa membuat layar menyesatkan secara
+berarti.
+
+Dua temuan sampingan, keduanya tidak saya duga:
+
+1. **444 klaim kosong juga di Pega.** Jadi tab "Documents not complete" memang memuat klaim yang
+   statusnya **tidak pernah ditetapkan** — di kedua sistem. Bukan akibat migrasi.
+2. **172 baris tidak terhitung** (877 dari 1.049). Bila sebagian ternyata **tidak punya padanan di
+   `PC_ASM_FW_GCNMFW_WORK`**, itu berarti ada baris yang tidak berasal dari objek kerja Pega — dan
+   itu petunjuk pertama yang nyata untuk pertanyaan "siapa yang mengisi tabel ini". Ditambahkan
+   sebagai §7 butir 6 beserta kueri pemilahnya.
+
+Keduanya muncul karena akibatnya diukur, bukan dikira — padahal mudah sekali menuliskan "1.049
+baris lama tetap salah" dan berhenti di situ.
+
+### 84.26 Layar menyatakan kolom kosong padahal sudah terisi (2026-10-07)
+
+Work Owner menjalankan backfill di `pega_dev83`, membuka layar, dan bertanya:
+*"kenapa dia bilang masih kosong"*.
+
+Karena layar itu **tidak pernah memeriksa basis data**. Ketersediaan tab adalah `switch`
+konstanta, dan kalimatnya ditulis tangan sejak awal.
+
+#### Tiga klaim saya yang keliru
+
+Ketiganya sempat saya katakan ke Work Owner sebagai jaminan:
+
+| Saya bilang | Kenyataannya |
+|---|---|
+| penyaring berkas tutup sudah terpasang | **tidak ada** — `PYSTATUSWORK` hanya di komentar |
+| tab menyala sendiri begitu kolom terisi | tidak — konstanta |
+| penanda `· pengganti` hilang sendiri | tidak — ditulis tangan |
+
+#### Dan ternyata lebih besar daripada yang terlihat
+
+Mengganti `Available()` saja **tidak cukup**. Kueri hanya punya cabang untuk tiga tab komunikasi,
+dan `count_tabs` hanya menghitung tiga. Tab yang dinyatakan tersedia akan mengembalikan daftar
+kosong dan angka yang tertukar — lebih buruk daripada tab yang jujur ditahan.
+
+#### Yang dikerjakan
+
+```
+inboxsurvey.Readiness      lima bendera, dibaca dari katalog kolom DAN keterisiannya
+list_tasks_full            varian penuh: 4 cabang tab baru, 3 kolom sumber sebenarnya
+count_tabs_full            tujuh angka, bukan tiga
+Repo.Readiness(ctx)        seam baru — per portal, karena D-75
+```
+
+Kesiapan **diserahkan sebagai parameter** ke `List` dan `Counts`, bukan diintip repo sendiri.
+Repo yang mengintip menjalankan dua kueri katalog tambahan pada setiap permintaan, dan membuat
+setiap ujinya menuntut dua ekspektasi yang tidak ada hubungannya dengan yang diuji.
+
+#### Satu bentuk yang mudah dikira keliru
+
+Varian terbatas tetap mengembalikan `CAST(NULL AS VARCHAR2(101)) AS REFERENCE_NUMBER`. Itu
+**tempat kosong yang disengaja**: kedua varian dibaca `scanTask` yang satu, jadi bentuknya wajib
+sama walau isinya belum ada. Satu kolom yang bergeser memindahkan nomor polis ke kolom nama
+tertanggung — keduanya teks, tanpa galat.
+
+#### Pelajarannya
+
+Konstanta yang menyatakan **keadaan dunia luar** akan selalu basi, dan basinya tidak dapat
+ditangkap uji mana pun — ujinya menguji konstanta yang sama. Yang menangkapnya orang yang melihat
+layarnya.
+
+Itu kali kedua dalam rangkaian ini: yang pertama "Appointment No berisi SRV-xxx". Rincian di
+`K-105.27`.
+
+### 84.27 Angka bind tidak berarti urutan argumen (2026-10-07)
+
+Work Owner menjalankan backfill, layar menyalakan ketujuh tab, lalu **dua-duanya gagal** —
+hitungan tab dan daftarnya. Pertanyaannya: *"kenapa ya"*.
+
+#### Yang saya duga, dan ternyata bukan
+
+Saya menduga kolom hilang: ORA-00904 terjadi saat parse, jadi satu kolom yang tidak ada
+menjatuhkan seluruh kueri — cocok dengan gejalanya. Work Owner menjalankan pemeriksaan katalog
+atas **26 kolom** di 4 tabel. Hasilnya **kosong**. Dugaannya gugur.
+
+#### Sebab sebenarnya, dibaca dari sumber driver
+
+`github.com/sijms/go-ora/v2`, `command.go:1992-2002`:
+
+```go
+useNamedPars := len(namedArgs) > 0
+for x := 0; x < len(namedArgs); x++ {
+    par, err := stmt.NewParam(namedArgs[x].Name, ...)   // Name KOSONG untuk arg ordinal
+    if len(par.Name) == 0 && useNamedPars { useNamedPars = false }
+    stmt.setParam(x, *par)                               // ← POSISI x
+}
+```
+
+Argumen dari `database/sql` tidak bernama, jadi dikirim sebagai bind **posisional**. Oracle
+memetakan posisi ke placeholder menurut **urutan kemunculannya di teks** — bukan menurut angka
+yang ditulis. **`:9` tidak berarti "argumen kesembilan".**
+
+Empat kueri melanggar:
+
+```
+list_tasks        [1,2,4,3,5,6,7,8]
+count_tabs        [3,2,4,1]
+list_tasks_full   [1,2,11,12,9,10,4,3,5,6,7,8]
+count_tabs_full   [7,8,5,6,3,2,4,1]
+```
+
+Pada `list_tasks_full`, posisi ke-11 adalah `OFFSET :7 ROWS` dan menerima `"Resolved-Completed"`
+→ **ORA-01722**.
+
+#### Yang lebih buruk daripada galatnya
+
+`list_tasks` sudah menukar posisi 3 dan 4 **sejak awal**: `login` masuk ke pembanding
+`KOMUNIKASISTATUS`, status pesan masuk ke pembanding `SENDER`. Hasilnya **nol baris, tanpa satu
+pun galat**. Ketiga tab komunikasi tidak pernah menampilkan apa pun, dan layar kosong terbaca
+sebagai "tidak ada pekerjaan".
+
+Galat menjatuhkan dirinya sendiri. Yang tanpa galat tidak.
+
+#### Modul ini mengabaikan peringatan yang sudah ditulis modul lain
+
+`masterlogin/repo/sqlstore/masterlogin.sql` sudah mencatatnya:
+
+> *"tidak semua driver memetakan parameter bernomor ke posisi argumen dengan cara yang sama"*
+
+Modul itu memakai tiga parameter berbeda untuk nilai yang sama justru karena itu. Modul survei
+tidak mengikutinya, dan membayarnya dengan tiga tab yang diam-diam kosong.
+
+#### Yang dikerjakan
+
+Keempat kueri dinomori ulang menurut urutan kemunculan, dengan dua kondisi di dalam `EXISTS`
+ditukar urutannya supaya penomorannya tetap wajar dibaca. Daftar argumen Go disusun
+**sendiri-sendiri per varian**, bukan satu daftar dasar yang ditambahi — urutan keduanya memang
+berbeda, dan menyamakannya justru yang keliru.
+
+Dua uji baru menegakkannya secara mekanis:
+`TestAngkaBindMengikutiUrutanKemunculan` dan `TestJumlahArgumenSepadanDenganJumlahBind`.
+
+#### Sepuluh kueri modul lain kena hal yang sama — DILAPORKAN, TIDAK DISENTUH
+
+Sapuan atas **810 kueri berbind** di seluruh backend:
+
+| Modul | Kueri | Urutan |
+|---|---|---|
+| `inboxadmin` | `list_unregistered` · `list_request_survey` · `list_all_case_admin` | `[3,1,2]` · `[2,1]` · `[2,1]` |
+| **`inboxpladlapredla`** | **`mark_advice_sent_pla`** · **`mark_advice_sent_dla`** | `[3,1,2]` |
+| `inboxprogressclaim` | `pic_summary` | `[4,5,3,2,1]` |
+| **`inboxsalvage`** | **`update_salvage`** | `[…,9,11,…,22,10]` |
+| `inboxxol` | `breakdown_treaty_inward` | `[3,1,2]` |
+| `reportklaim` | `report_close_klaim_nonmbu` · `report_komite_nonmbu` | `[3,1,2]` |
+
+**Tiga yang ditebalkan MENULIS.** Pada kueri baca akibatnya hasil yang salah; pada `UPDATE`
+akibatnya **nilai salah tersimpan di baris yang salah**, dan tidak ada apa pun yang
+membatalkannya. Itu kelas yang berbeda, dan layak didahulukan.
+
+Tidak saya sentuh — di luar lingkup modul ini.
+
+### 84.28 Dua panel catatan migrasi dihapus dari layar (2026-10-07)
+
+Work Owner bertanya *"ini catatannya emang sengaja ditulis di layar kah"*, lalu memilih **opsi 3**:
+tidak ditampilkan sama sekali.
+
+Jawabannya memang sengaja — keduanya datang dari metadata server supaya layar tidak pernah
+mengaku bisa sesuatu yang belum bisa, dan itu yang membuat pertanyaan "kenapa masih kosong"
+kemarin muncul alih-alih angka salah yang diterima diam-diam. Tetapi keberatannya tepat: itu
+tulisan untuk tim, dan pembacanya di layar ini surveyor.
+
+| Berkas | Perubahan |
+|---|---|
+| `SurveyInboxPage.tsx` | dua `<Catatan>` dihapus, komponennya ikut dihapus karena tidak terpakai lagi; komentar menggantikan tempatnya supaya ketiadaannya terbaca sebagai keputusan |
+| `SurveyInboxPage.test.tsx` | uji "menampilkan…" **dibalik** menjadi "tidak menampilkan…", ditambah satu uji bahwa keterangan operasional TETAP tampil |
+
+**Uji dibalik, bukan dihapus.** Menghapusnya akan membuat panel itu bisa kembali tanpa ada yang
+menahan. Respons tiruannya sengaja tetap memuat `selisih_terencana` dan `keterbatasan`: kalau
+datanya ikut dikosongkan, ujinya lulus karena alasan yang salah.
+
+Verifikasi: `tsc --noEmit` bersih, 28 uji modul lulus.
+
+**Dilaporkan, tidak dikerjakan:** pola yang sama ada di **~30 layar lain**. Rinciannya di
+`K-105.29`.
+
+### 84.29 Perbaikan bind pertama salah sasaran; sebab sebenarnya ORA-01008 (2026-10-07)
+
+`84.27` menyimpulkan sebab layar gagal adalah **urutan** penomoran bind, lalu menomori ulang
+keempat kueri. Work Owner menjalankan ulang: **masih gagal**.
+
+Itu tebakan kedua yang meleset hari itu. Yang pertama "kolom hilang", dibantah pemeriksaan
+katalog Work Owner atas 26 kolom. Yang kedua "urutan angka", dibantah layarnya sendiri.
+
+#### Berhenti menebak
+
+Dibuat `probe_test.go` — uji yang dilewati secara baku, dijalankan dengan
+`PROBE_INBOXSURVEY=1`, yang menjalankan kedelapan kueri terhadap basis data **sungguhan** dan
+mencetak galat Oracle apa adanya. Tanpa satu pun nilai baris, nama, hostname, atau kredensial
+(`D-69`); cakupan surveyornya sengaja dibuat tidak cocok dengan nama siapa pun.
+
+Jawabannya datang dalam satu kali jalan:
+
+```
+count_tabs         GAGAL: ORA-01008: not all variables bound
+list_tasks         GAGAL: ORA-01008: not all variables bound  (position 1501)
+count_tabs_full    GAGAL: ORA-01008: not all variables bound
+list_tasks_full    GAGAL: ORA-01008: not all variables bound  (position 1963)
+```
+
+#### Sebab sebenarnya
+
+go-ora **tidak menyatukan penanda yang sama**. `:tab` yang muncul 7 kali menuntut **7 nilai**,
+bukan satu. Hitungannya:
+
+| Kueri | kemunculan | unik |
+|---|---:|---:|
+| `list_tasks` | 14 | 8 |
+| `count_tabs` | 7 | 4 |
+| `kpi_by_adjuster` | 5 | 3 |
+| `kpi_by_year` | 5 | 3 |
+| `list_tasks_full` | **35** | 12 |
+| `count_tabs_full` | **23** | 8 |
+
+**Enam dari delapan kueri rusak** — termasuk kedua kueri KPI, yang belum pernah dilaporkan
+rusak karena tabnya jarang dibuka.
+
+Menomori ulang urutannya memperbaiki hal yang berbeda — pemetaan argumen ke placeholder — dan
+tidak menyentuh sebabnya sama sekali, karena jumlah kemunculannya tetap 35.
+
+#### Yang dikerjakan
+
+Seluruh penanda diganti **parameter bernama**: `:scope`, `:tab`, `:login`, `:work_done`, dan
+seterusnya; sisi Go memakai `sql.Named`. go-ora menempuh jalur yang berbeda untuk argumen
+bernama — `useNamedParameters()` mencocokkan per nama dan menandai kemunculan berulang sendiri
+(`command.go:1822-1847`).
+
+Probe dijalankan ulang:
+
+```
+count_tabs OK · list_tasks OK · count_tabs_full OK · list_tasks_full OK
+kpi_by_adjuster OK · kpi_by_year OK · check_new_columns OK · check_filled_columns OK
+```
+
+Uji `TestAngkaBindMengikutiUrutanKemunculan` dicabut — ia menjaga aturan yang sudah tidak
+berlaku. Penggantinya `TestTidakAdaPenandaBindBerangka` (melarang `:n` sama sekali di modul ini)
+dan `TestSetiapParameterKueriDipasokRepo` (setiap nama yang disebut kueri benar-benar dikirim
+repo, dan sebaliknya).
+
+#### Pelajarannya
+
+Dua kali sebab ditebak dari membaca kode, dua kali meleset — dan tebakan kedua bahkan
+menghasilkan perbaikan nyata atas cacat lain, sehingga terasa seperti jawaban. Yang menjawab
+adalah **menjalankan kuerinya terhadap basis datanya**. Probe-nya murah; saya terlambat
+membuatnya.
+
+#### Yang TIDAK saya sentuh
+
+`go test ./...` menunjukkan kegagalan pada `inboxpladla` dan `inboxsalvage` yang **sudah ada
+sebelum sesi ini** — `git status` membuktikan keduanya tidak termasuk berkas yang saya ubah.
+Dilaporkan, tidak diperbaiki.
+
+Daftar 10 kueri modul lain pada `84.27` **tetap berlaku dan bertambah berat**: ukuran yang
+dipakai di sana adalah urutan angka, sedangkan ukuran yang sebenarnya menentukan adalah
+**penanda berulang**. Jumlah modul terdampak kemungkinan jauh lebih besar.
+
+### 84.30 Tab KPI dibongkar — tiga sub-tab menjadi panel Pega (2026-10-07)
+
+Work Owner menempelkan tangkapan layar Pega berdampingan dengan layar kita dan bertanya
+*"kenapa berbeda"*. Jawabannya: **keputusan saya yang menyimpang dari `D-13`.**
+
+#### Yang saya lakukan, dan kenapa salah
+
+Saya memodelkan **tiga rule SQL** sebagai tiga sub-tab:
+
+```
+Outstanding KPI Adjuster  ← GetSummaryKPIAdjuster
+Data Final KPI Adjuster   ← GetSummaryKPIAdjusterALL
+Data Final per Tahun      ← GetSummaryKPIAdjusterKuartal
+```
+
+Itu memodelkan **backend**, bukan layarnya. Pega tidak pernah menampilkan ketiganya sebagai
+pilihan; ia menurunkannya dari kombinasi dua dropdown.
+
+#### Layar Pega yang sebenarnya
+
+`Section/InboxSurvey_section-Section.xml` + `Activity/GetFilterKPI-Act.xml`:
+
+| Kendali | Property | Nilai | Tampil bila |
+|---|---|---|---|
+| Status Survey * | `TempAdjComp.ASMFull` | `ALL` · `OUTSTANDING` · `FINAL` | selalu |
+| Tipe Report * | `TempAdjComp.AcceptedNo` | `DATA SUMMARY` · `DATA DETAIL` | selalu |
+| Kuartal | `TempAdjComp.Initial` | `1`–`4` | `ASMFull=='ALL'\|\|=='FINAL'` |
+| Tahun Kuartal | `TempAdjComp.IsDLA` | tahun | idem |
+| **Cari** | → `GetReportKPIAdjuster` | | |
+| **Export Data** | → `ExportKPILoginAdjuster` | | |
+
+Itu menjelaskan tangkapan layar Work Owner: dua kendali bawah tersembunyi karena Status Survey
+masih `--Pilih--`.
+
+#### Empat hal yang hilang karena sub-tab
+
+1. **Tipe Report tidak ada sama sekali** — layar kita selalu menghasilkan bentuk SUMMARY.
+2. **Status Survey `ALL` tidak dapat dipilih.**
+3. **Kuartal hilang** — kita hanya punya Tahun.
+4. **Export Data tidak ada.**
+
+#### Yang dikerjakan
+
+| Lapis | Perubahan |
+|---|---|
+| Domain | `KPIKind` (3 nilai) → `SurveyStatus` × `ReportType` + `Quarter` + `Year`; `Check()`, `QuarterApplies()`, `CategoryValue()`, `GroupedByYear()` |
+| Galat | `ErrKPIFilterIncomplete` · `ErrReportDetailUnavailable`, keduanya 422 |
+| SQL | penyaring `TO_CHAR(d.TANGGAL,'Q')` ditambahkan ke kedua kueri KPI |
+| HTTP | `status_survei` · `tipe_report` · `kuartal` · `tahun`; rute baru `/kpi/ekspor` (CSV, `D-11`) |
+| Layar | tiga sub-tab dibuang; empat kendali + Cari + Export Data; tabel baru muncul **setelah** Cari |
+
+#### Dua keputusan yang layak diperhatikan
+
+**`ALL` dikirim sebagai NULL, bukan teks "ALL".** "ALL" adalah pilihan di layar, bukan nilai
+yang pernah ada di kolom `tipe`. Mengirimnya apa adanya akan menyaring terhadap nilai yang
+tidak pernah cocok — tabel kosong, tanpa galat.
+
+**`DATA DETAIL` ditolak 422, bukan dijawab tabel kosong.** Ia laporan berbeda
+(`GetDetailKPIAdjusterKuartal`), dan rule-nya tidak ada di export (`R-16`), sama seperti
+`GetSummaryKPIAdjusterALLKuartal`. Pilihannya tetap ditampilkan supaya layar sama dengan Pega;
+yang berbeda hanya jawabannya.
+
+#### Yang berubah pada uji
+
+Enam uji KPI mengunci perilaku lama — muat sendiri saat tab dibuka, tiga sub-tab. Seluruhnya
+**ditulis ulang**, bukan dihapus, dan dua uji baru ditambahkan: tombol mati sampai kedua isian
+wajib terisi, dan Kuartal hanya muncul pada ALL/FINAL.
+
+Verifikasi: `go build` · `go vet` · 5 paket backend **ok** · `tsc --noEmit` bersih ·
+**30 uji frontend lulus**.
+
+### 84.31 Dua rule KPI diterima — dan keduanya mengoreksi yang saya bangun (2026-10-08)
+
+Work Owner menambahkan `GetDetailKPIAdjusterKuartal` dan `GetSummaryKPIAdjusterALLKuartal` ke
+export. Membacanya menunjukkan panel KPI **lebih bercabang daripada dugaan saya**, dan salah
+satu cabangnya saya bangun **salah** sehari sebelumnya.
+
+#### Cacat yang saya bangun sendiri
+
+`84.30` menetapkan Status Survey `ALL` berarti **tanpa penyaring** `tipe`. Itu keliru.
+`GetSummaryKPIAdjusterALL-SQL.xml` ternyata:
+
+```sql
+SELECT adjuster, 'OUTSTANDING' "StatusWork", round(avg(...),2) ...
+ WHERE tipe='OUTSTANDING' GROUP BY adjuster
+UNION ALL
+SELECT adjuster, 'FINAL', round(avg(...),2) ...
+ WHERE tipe='FINAL' GROUP BY adjuster
+```
+
+**Dua baris per adjuster, masing-masing berlabel kategorinya.** Yang saya bangun menghasilkan
+**satu** baris yang merata-ratakan kedua kategori menjadi satu angka — angka yang tidak pernah
+ada di layar lama.
+
+Dan ia terlihat sangat masuk akal. Tidak ada galat, tidak ada tabel kosong, tidak ada yang
+akan melaporkannya. Itu jenis cacat yang hanya ketahuan bila rule-nya dibaca.
+
+#### Ketiga `{ASIS:}` akhirnya terbaca
+
+Ketiganya dirangkai sebagai teks SQL di `GetReportKPIAdjuster-Act.xml`:
+
+| Fragmen | Isinya | Arti |
+|---|---|---|
+| `TempAdjComp.UploadLOD` | `and adjuster='<nama>'` | penyaring adjuster |
+| `Filter.Province` | `and to_char(tanggal,'yyyy') = '<IsDLA>'` | **Tahun Kuartal** |
+| `Filter.ProdKe` | `and to_char(tanggal,'mm') in ('07','08','09')` | **Kuartal** |
+
+Ketiganya menjadi parameter; yang pertama diganti penyaring **cakupan**, bukan satu nama.
+
+#### Lima bentuk hasil, bukan satu
+
+| Status | Kuartal | Tipe Report | Rule | Satu baris = |
+|---|---|---|---|---|
+| OUTSTANDING/FINAL | — | SUMMARY | `GetSummaryKPIAdjuster` | adjuster |
+| **ALL** | — | SUMMARY | `GetSummaryKPIAdjusterALL` | **adjuster × kategori** |
+| apa pun | 1–4 | SUMMARY | `GetSummaryKPIAdjusterKuartal` | tahun |
+| apa pun | **ALL** | SUMMARY | `GetSummaryKPIAdjusterALLKuartal` | **kuartal × tahun** |
+| apa pun | apa pun | **DETAIL** | `GetDetailKPIAdjusterKuartal` | **berkas** |
+
+`QuarterAll` ternyata pilihan yang nyata — terbaca dari `Initial==""||Initial=="ALL"` pada
+percabangan, berbeda dari kosong.
+
+#### Yang dikerjakan
+
+- `KPIShape` di domain, lima nilai, menirukan percabangan `GetReportKPIAdjuster`.
+- **Lima kueri** menggantikan dua, berbentuk kolom seragam (5 kunci + 9 angka) supaya dibaca
+  `scanKPI` yang satu.
+- `kpi_by_quarter_year` memakai **satu `GROUP BY`** menggantikan empat blok UNION Pega —
+  hasilnya sama baris per baris, dan `TO_CHAR(TANGGAL,'Q')` menghasilkan label yang persis
+  sama dengan konstanta yang ditempelkan Pega.
+- `ErrReportDetailUnavailable` **dicabut** — DATA DETAIL kini berjalan.
+- Kolom kunci tabel datang dari jawaban (`kolom_awal`), bukan ditebak layar dari isian.
+
+#### Satu keanehan yang DIPERTAHANKAN
+
+Ketiga jalur berkuartal mematok `tipe='FINAL'` di dalam rule-nya masing-masing — Status Survey
+tidak berpengaruh di sana, bahkan ketika dipilih OUTSTANDING. `P-5` menetapkan perilakunya yang
+dibawa, bukan yang masuk akal.
+
+#### Verifikasi
+
+Probe terhadap Oracle sungguhan: **kesembilan kueri OK**, termasuk kelima bentuk KPI.
+`go build` · `go vet` · 5 paket backend **ok** · `tsc --noEmit` bersih · **30 uji frontend lulus**.
+
+#### Yang masih belum terbaca
+
+`TempKuartal.pxResults` dan `TahunKPI.pxResults` — isi kedua dropdown — **tidak diisi di mana
+pun dalam export** (`R-16`). Yang dipakai sekarang: kuartal `1`–`4` ditambah `ALL`, keduanya
+terbaca dari percabangan rule-nya sendiri, dan Tahun Kuartal tetap kotak teks. Bentuk aslinya
+dropdown; isinya belum diketahui.
+
+### 84.32 Dua penyimpangan saya dari Pega dikembalikan (2026-10-08)
+
+Work Owner: **"ikutin pega saja"**. Dua hal yang saya tandai sendiri sebagai menyimpang
+di `84.31`, keduanya dikembalikan.
+
+#### 1. Empat blok UNION, bukan satu `GROUP BY`
+
+`GetSummaryKPIAdjusterALLKuartal` menyusun empat blok UNION yang identik kecuali daftar
+bulannya dan label kuartalnya. Saya menyederhanakannya menjadi satu
+`GROUP BY … , TO_CHAR(TANGGAL,'Q')` — hasilnya sama baris per baris, dengan satu kali baca
+alih-alih empat.
+
+Dikembalikan ke bentuk empat blok. **Harganya nyata:** tabel dibaca empat kali. **Yang
+dibelinya juga nyata:** bila kelak salah satu blok Pega ternyata berbeda dari saudaranya —
+daftar bulan tidak simetris, penyaring tambahan di satu blok — perbedaan itu terbawa dengan
+sendirinya, bukan hilang ke dalam penyederhanaan yang *kelihatannya* setara.
+
+`UNION`, bukan `UNION ALL`, sama dengan rule aslinya. Keempat blok tidak pernah menghasilkan
+baris kembar karena labelnya berbeda, sehingga pilihan itu tidak mengubah hasil; ia ditiru
+supaya tidak ada satu pun keputusan yang berbeda tanpa alasan.
+
+#### 2. Tahun Kuartal menjadi dropdown
+
+Di Pega ia `pySourceName = TahunKPI.pxResults` dengan `--Pilih--` di puncaknya — sebuah
+dropdown. Saya membuatnya kotak teks karena isinya tidak terbaca.
+
+Sekarang dropdown. Isinya direkonstruksi dari data lewat kueri baru `kpi_years`: tahun yang
+**benar-benar ada** pada baris milik cakupan pemanggil, disaring cakupan sama seperti seluruh
+kueri KPI lain.
+
+| Yang terbaca dari export | Yang direkonstruksi |
+|---|---|
+| bentuknya dropdown, `--Pilih--` di puncak | isinya |
+
+Daftar itu tidak pernah menawarkan tahun yang hasilnya pasti kosong, dan tidak pernah
+menyembunyikan tahun yang datanya ada. Bila rule pengisi aslinya kelak tiba dan ternyata
+berbeda — rentang tetap, atau tahun berjalan ditambah lima ke belakang — **kuerinya** yang
+diganti, bukan layarnya.
+
+#### Yang menyertainya
+
+- Seam `Repo` bertambah `KPIYears`; dipenuhi `sqlstore` dan `memory`.
+- Rute baru `GET /api/inbox-survey/kpi/tahun`, **terpisah** dari `/keterangan`: isinya
+  bergantung pada cakupan pemanggil, sedangkan `/keterangan` tidak menyentuh basis data dan
+  di-cache selamanya oleh layar. Menyatukannya akan membuat daftar tahun pengguna sebelumnya
+  ikut terbawa setelah pergantian pengguna.
+- Ditembak begitu tab KPI dibuka — dropdown yang baru terisi setelah pencarian pertama bukan
+  dropdown, melainkan kotak teks yang menyamar.
+
+#### Satu uji yang harus dipertajam karenanya
+
+`tidak menembak KPI sampai tombol Cari ditekan` memakai `url.includes('/kpi')`, dan itu kini
+ikut menangkap `/kpi/tahun` yang memang **benar** ditembak saat tab dibuka. Pembedanya
+dipertajam menjadi `/kpi?`, dan ditambahkan satu ekspektasi bahwa `/kpi/tahun` justru **harus**
+tertembak. Tanpa itu, ujinya akan menolak perilaku yang benar.
+
+#### Verifikasi
+
+Probe terhadap Oracle sungguhan: **kesepuluh kueri OK**, termasuk bentuk empat-UNION dan
+`kpi_years`. `go build` · `go vet` · 5 paket backend **ok** · `tsc --noEmit` bersih ·
+**30 uji frontend lulus**.

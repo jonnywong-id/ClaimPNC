@@ -136,10 +136,19 @@ export type KeteranganResponse = {
   tab: TabLayar[];
   kolom_kpi: KolomLayar[];
   tab_bawaan: string;
-  jenis_kpi: string[];
+  /** Pilihan dropdown panel KPI, apa adanya dari `GetFilterKPI` di Pega. */
+  status_survei: string[];
+  tipe_report: string[];
+  kuartal: string[];
   ukuran_halaman: number;
   selisih_terencana: string[];
   keterbatasan: string[];
+};
+
+/** Isi dropdown "Tahun Kuartal". */
+export type TahunKPIResponse = {
+  portal: string;
+  tahun: string[];
 };
 
 /** Satu halaman antrean. */
@@ -178,8 +187,19 @@ export type JumlahTabResponse = {
 
 /** Satu baris ringkasan KPI. */
 export type BarisKPI = {
-  /** Nama adjuster, atau TAHUN pada ringkasan kuartal. */
+  /** Nama adjuster, atau TAHUN pada bentuk berkuartal. */
   kelompok: string;
+
+  /**
+   * Keempatnya terisi HANYA pada bentuk yang memakainya; pada bentuk lain selalu kosong.
+   *
+   * Mana yang berlaku dinyatakan `kolom_awal` pada jawaban — layar TIDAK menebaknya dari
+   * isinya. Menebak berarti kolom yang kebetulan kosong akan hilang dari tabel.
+   */
+  status: string;
+  kuartal: string;
+  bulan: string;
+  case_id: string;
 
   penjadwalan_survey: number;
   immediate_advice: number;
@@ -196,8 +216,16 @@ export type BarisKPI = {
 export type KPIResponse = {
   portal: string;
   identitas: IdentitasSurveyor;
-  jenis: string;
-  kategori: string;
+  status_survei: string;
+  tipe_report: string;
+  kuartal: string;
   tahun: string;
+
+  /** Bentuk hasil — menentukan APA yang menjadi satu baris. */
+  bentuk: string;
+
+  /** Kolom kunci di depan kesembilan angka, sesuai bentuk. */
+  kolom_awal: KolomLayar[];
+
   data: BarisKPI[];
 };

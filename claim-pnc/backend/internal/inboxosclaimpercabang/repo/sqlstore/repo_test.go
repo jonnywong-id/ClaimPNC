@@ -113,7 +113,11 @@ func TestListMapsRowsAndPaginatesInTheDatabase(t *testing.T) {
 		AddRow("B", "100100", nil, nil, nil, nil, "PNC-2", nil, nil, nil, nil, nil,
 			nil, nil, nil, nil, nil, nil, nil, nil, int64(42))
 	// Halaman 3 ukuran 10 berarti melewati 20 baris.
-	mock.ExpectQuery(exactQuery("list")).WithArgs("100100", 20, 10).WillReturnRows(rows)
+	// Tiga bind di tengah adalah kotak cari yang kosong: NULL berarti "tampilkan semua",
+	// dan kedua pola dibiarkan kosong karena cabang `IS NULL` sudah memutus perbandingannya.
+	mock.ExpectQuery(exactQuery("list")).
+		WithArgs("100100", nil, "", "", 20, 10).
+		WillReturnRows(rows)
 
 	page, err := repo.List(context.Background(), branchQuery,
 		inboxosclaimpercabang.Pagination{Page: 3, Size: 10})
@@ -154,7 +158,7 @@ func TestListMapsRowsAndPaginatesInTheDatabase(t *testing.T) {
 
 func TestListEmptyReturnsEmptySlice(t *testing.T) {
 	repo, mock := newMockRepo(t)
-	mock.ExpectQuery(exactQuery("list")).WithArgs("100100", 0, 25).
+	mock.ExpectQuery(exactQuery("list")).WithArgs("100100", nil, "", "", 0, 25).
 		WillReturnRows(sqlmock.NewRows(listColumns))
 
 	page, err := repo.List(context.Background(), branchQuery, inboxosclaimpercabang.Pagination{})
@@ -523,8 +527,35 @@ func TestFindDetailReadsHeaderThenEveryChild(t *testing.T) {
 
 	expectHeader(mock, at)
 	mock.ExpectQuery(exactQuery("detail_objects")).WithArgs("K1").
-		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D", "E", "F"}).
-			AddRow("Objek", "Lokasi", "Kerja", at, "KTP", "AKTIF"))
+		WillReturnRows(sqlmock.NewRows([]string{"ID", "A", "B", "C", "D", "E", "F"}).
+			AddRow(" OBJ-1 ", "Objek", "Lokasi", "Kerja", at, "KTP", "AKTIF"))
+	// Coverage SELURUH klaim dibaca sekali, lalu dikelompokkan menurut objeknya. Baris
+	// bertuan objek lain sengaja ikut dikirim: pengelompokannya harus membuangnya, bukan
+	// menempelkannya ke objek pertama yang ada.
+	mock.ExpectQuery(exactQuery("detail_object_coverages")).WithArgs("K1").
+		WillReturnRows(sqlmock.NewRows([]string{"OBJ", "ID", "NAME", "CUR", "TSI"}).
+			AddRow("OBJ-1", " CV-1 ", " FLEXAS ", " IDR ", int64(250000)).
+			AddRow("OBJ-9", "CV-9", "GEMPA", "USD", int64(100)))
+	// Object Item dan Estimasi dibaca dengan kueri tersendiri, lalu dirangkai dari dalam ke
+	// luar. Baris bertuan coverage lain sengaja ikut dikirim pada keduanya: pengelompokannya
+	// memakai kunci GABUNGAN, dan kunci tunggal akan menempelkannya ke induk yang salah —
+	// `OBJECTITEMID` bernilai `1` pada hampir seluruh baris nyata.
+	mock.ExpectQuery(exactQuery("detail_object_items")).WithArgs("K1").
+		WillReturnRows(sqlmock.NewRows([]string{"OBJ", "CVG", "ITEM", "NAMA", "DESK"}).
+			AddRow("OBJ-1", "CV-1", " 1 ", " BUILDINGS ", " Gudang utama ").
+			AddRow("OBJ-9", "CV-9", "1", "LAIN", "Milik coverage lain"))
+	mock.ExpectQuery(exactQuery("detail_estimations")).WithArgs("K1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"OBJ", "CVG", "ITEM", "SEQ", "TGL", "TIPE", "CUR", "KURS", "NILAI"}).
+			AddRow("OBJ-1", "CV-1", "1", " 1 ", at, " Claim ", " IDR ", int64(100), int64(10000)).
+			AddRow("OBJ-1", "CV-1", "1", "2", at, "Claim", "IDR", int64(100), int64(-4000)).
+			AddRow("OBJ-9", "CV-9", "1", "1", at, "Claim", "USD", int64(100), int64(500)))
+	mock.ExpectQuery(exactQuery("detail_coverage_spreading")).WithArgs("K1").
+		WillReturnRows(sqlmock.NewRows([]string{"OBJ", "CVG", "TREATY", "SHARE"}).
+			AddRow("OBJ-1", "CV-1", " FAC-OUT ", int64(1000000)))
+	mock.ExpectQuery(exactQuery("detail_coverage_comember")).WithArgs("K1").
+		WillReturnRows(sqlmock.NewRows([]string{"NAMA", "SHARE"}).
+			AddRow(" ASURANSI CONTOH ", int64(510000)))
 	// Riwayat progres dikunci nomor klaim, bukan CLAIMID.
 	mock.ExpectQuery(exactQuery("detail_progress")).WithArgs("PNC-1").
 		WillReturnRows(sqlmock.NewRows([]string{"A", "B", "C", "D", "E", "F", "G", "H"}).
@@ -552,9 +583,51 @@ func TestFindDetailReadsHeaderThenEveryChild(t *testing.T) {
 	require.Equal(t, "CATATAN", detail.ProgressNote)
 
 	require.Equal(t, []inboxosclaimpercabang.DetailObject{{
+		ID:   "OBJ-1",
 		Name: "Objek", Location: "Lokasi", Job: "Kerja", DateOfBirth: &at,
 		IDCard: "KTP", ParticipantStatus: "AKTIF",
-	}}, detail.Objects)
+		Coverages: []inboxosclaimpercabang.DetailCoverage{{
+			ObjectID: "OBJ-1", ID: "CV-1", Name: "FLEXAS", Currency: "IDR",
+			SumTSI: money.FromMinorUnits(250000),
+			Items: []inboxosclaimpercabang.DetailItem{{
+				ObjectID: "OBJ-1", CoverageID: "CV-1", ID: "1",
+				Name: "BUILDINGS", Description: "Gudang utama",
+				Estimations: []inboxosclaimpercabang.DetailEstimation{
+					{
+						ObjectID: "OBJ-1", CoverageID: "CV-1", ItemID: "1",
+						Sequence: "1", RecordedAt: &at, Type: "Claim", Currency: "IDR",
+						Rate:  money.FromMinorUnits(100),
+						Value: money.FromMinorUnits(10000),
+					},
+					{
+						// Nilai NEGATIF dibawa apa adanya — koreksi yang saling
+						// meniadakan memang terjadi di data nyata.
+						ObjectID: "OBJ-1", CoverageID: "CV-1", ItemID: "1",
+						Sequence: "2", RecordedAt: &at, Type: "Claim", Currency: "IDR",
+						Rate:  money.FromMinorUnits(100),
+						Value: money.FromMinorUnits(-4000),
+					},
+				},
+			}},
+			// Jumlah estimasi coverage ini 10000 + (-4000) = 6000 satuan terkecil.
+			// Share 100% menghasilkan nilai yang sama; share 51% menghasilkan 3060.
+			Spreadings: []inboxosclaimpercabang.DetailSpreading{{
+				ObjectID: "OBJ-1", CoverageID: "CV-1",
+				TreatyName: "FAC-OUT", Currency: "IDR",
+				EstimationValue:    money.FromMinorUnits(6000),
+				SharePercentScaled: 1000000,
+				ResultValue:        money.FromMinorUnits(6000),
+			}},
+			CoMembers: []inboxosclaimpercabang.DetailCoMember{{
+				ObjectID: "OBJ-1", CoverageID: "CV-1",
+				InsurerName: "ASURANSI CONTOH", Currency: "IDR",
+				EstimationValue:    money.FromMinorUnits(6000),
+				SharePercentScaled: 510000,
+				ResultValue:        money.FromMinorUnits(3060),
+			}},
+		}},
+	}}, detail.Objects,
+		"baris anak milik coverage lain tidak boleh ikut menempel")
 	require.Equal(t, []inboxosclaimpercabang.DetailProgress{{
 		RecordedAt: &at, ClaimNumber: "PNC-1", Status1: "S1", Status2: "S2",
 		EnteredBy: "USER", Status: "OPEN", Note: "N",
@@ -626,11 +699,26 @@ type childStep struct {
 	row  []driver.Value
 }
 
-// detailChildren adalah keempat kueri anak berurutan, masing-masing dengan baris sah.
+// detailChildren adalah kelima kueri anak berurutan, masing-masing dengan baris sah.
 func detailChildren(at time.Time) []childStep {
 	return []childStep{
-		{"detail_objects", []driver.Value{"K1"}, []string{"A", "B", "C", "D", "E", "F"},
-			[]driver.Value{"O", "L", "J", at, "K", "S"}},
+		{"detail_objects", []driver.Value{"K1"}, []string{"ID", "A", "B", "C", "D", "E", "F"},
+			[]driver.Value{"OBJ-1", "O", "L", "J", at, "K", "S"}},
+		{"detail_object_coverages", []driver.Value{"K1"},
+			[]string{"OBJ", "ID", "NAME", "CUR", "TSI"},
+			[]driver.Value{"OBJ-1", "CV-1", "FLEXAS", "IDR", int64(100)}},
+		{"detail_object_items", []driver.Value{"K1"},
+			[]string{"OBJ", "CVG", "ITEM", "NAMA", "DESK"},
+			[]driver.Value{"OBJ-1", "CV-1", "1", "BUILDINGS", "Gudang"}},
+		{"detail_estimations", []driver.Value{"K1"},
+			[]string{"OBJ", "CVG", "ITEM", "SEQ", "TGL", "TIPE", "CUR", "KURS", "NILAI"},
+			[]driver.Value{"OBJ-1", "CV-1", "1", "1", at, "Claim", "IDR", int64(100), int64(100)}},
+		{"detail_coverage_spreading", []driver.Value{"K1"},
+			[]string{"OBJ", "CVG", "TREATY", "SHARE"},
+			[]driver.Value{"OBJ-1", "CV-1", "ORS", int64(1000000)}},
+		{"detail_coverage_comember", []driver.Value{"K1"},
+			[]string{"NAMA", "SHARE"},
+			[]driver.Value{"ASURANSI CONTOH", int64(1000000)}},
 		{"detail_progress", []driver.Value{"PNC-1"}, []string{"A", "B", "C", "D", "E", "F", "G", "H"},
 			[]driver.Value{at, "PNC-1", "", "", "", at, "", ""}},
 		{"detail_messages", []driver.Value{"K1", "K1"}, []string{"A", "B", "C", "D", "E", "F"},

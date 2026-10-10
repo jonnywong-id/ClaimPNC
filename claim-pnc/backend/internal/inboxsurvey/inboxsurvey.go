@@ -125,6 +125,7 @@ package inboxsurvey
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -369,6 +370,68 @@ func Tabs() []Tab {
 // UnavailableReason menyatakan kenapa sebuah tab BELUM dapat dihitung, atau kosong bila ia
 // dapat dihitung.
 //
+// Readiness menyatakan kolom mana yang BENAR-BENAR dapat dipakai pada satu portal.
+//
+// # Kenapa ia ada, dan kenapa ia menggantikan konstanta
+//
+// Sampai 2026-10-07, ketersediaan tab adalah **konstanta di dalam kode**: sebuah `switch` yang
+// selalu mengembalikan kalimat "kolomnya masih kosong". Akibatnya layar menyatakan hal yang
+// tidak lagi benar begitu kolomnya terisi — dan tidak ada cara mengetahuinya selain menyunting
+// kode.
+//
+// Itu benar-benar terjadi: `pega_dev83` sudah terisi penuh pada 2026-10-07, dan layar tetap
+// menyatakan seluruh barisnya kosong.
+//
+// # Kenapa PER PORTAL, bukan sekali saat aplikasi menyala
+//
+// `D-75` menetapkan **satu basis data per entitas**. Kolom yang sudah ada di satu portal belum
+// tentu ada di portal lain — dan itu bukan kemungkinan teoretis: per 2026-10-07 kelimanya ada
+// di dev dan **belum ada di produksi**.
+//
+// Satu nilai global karena itu akan salah pada salah satu portal, dan salahnya tidak kelihatan:
+// portal yang kolomnya belum ada akan mencoba membacanya dan menjatuhkan seluruh layar dengan
+// ORA-00904, atau sebaliknya menahan tab yang sebenarnya sudah siap.
+//
+// # Nol berarti TIDAK SIAP, dan itu sisi yang aman
+//
+// Bila pemeriksaannya gagal — hak akses kurang, basis data tidak terjangkau — seluruh field
+// bernilai `false`, dan layar kembali ke perilaku hari ini: tab ditahan beserta sebabnya.
+// Tidak pernah sebaliknya, karena kesalahan ke arah "siap" berarti membaca kolom yang mungkin
+// tidak ada.
+type Readiness struct {
+	// AdjusterAccept menggerakkan tab Outstanding, ALL, dan Invoice.
+	AdjusterAccept bool
+
+	// WorkStatus menggerakkan tab Close dan penyaring berkas yang sudah tutup.
+	WorkStatus bool
+
+	// Reference menggerakkan kolom "Reference No" dan setengah kotak cari.
+	Reference bool
+
+	// AdjusterPIC menentukan kolom "PIC Loss Adjuster" memakai sumber sebenarnya atau pengganti.
+	AdjusterPIC bool
+
+	// SurveyLocation menentukan hal yang sama untuk kolom "Location".
+	SurveyLocation bool
+}
+
+// Complete menyatakan KELIMA kolom siap, sehingga kueri varian penuh dapat dipakai.
+//
+// # Kenapa satu bendera menentukan kuerinya, bukan lima
+//
+// Kueri varian penuh menyebut kelima kolom sekaligus. Satu saja yang belum ada menghasilkan
+// **ORA-00904 saat parse** — sebelum satu baris pun dibaca, dan tidak dapat dihindari dengan
+// percabangan apa pun di dalam SQL. Jadi pilihannya memang biner: pakai varian penuh, atau
+// tidak sama sekali.
+//
+// Kelimanya pun tiba bersama-sama — satu `ALTER`, satu backfill — sehingga keadaan "sebagian
+// siap" bersifat sementara dan tidak layak dilayani kueri tersendiri. Pada keadaan itu modul
+// bertahan di varian terbatas, yang selalu benar.
+func (r Readiness) Complete() bool {
+	return r.AdjusterAccept && r.WorkStatus && r.Reference &&
+		r.AdjusterPIC && r.SurveyLocation
+}
+
 // # Kenapa ini ada, dan kenapa tabnya tetap digambar
 //
 // Keempat tab di bawah bergantung pada kolom yang BELUM DAPAT DIPERCAYA. Per 2026-09-30
@@ -391,24 +454,52 @@ func Tabs() []Tab {
 // pernah persis begitu: teks lama masih menyebut `ADJUSTERACCEPT_1` (nama Pega, berakhiran
 // `_1`) padahal kolom yang ditambahkan bernama `ADJUSTERACCEPT`, sehingga kolom yang SUDAH ada
 // terbaca sebagai belum ada.
-func UnavailableReason(t Tab) string {
+func (r Readiness) UnavailableReason(t Tab) string {
 	switch t {
-	case TabOutstanding, TabAll, TabInvoice:
-		return "Kolom ADJUSTERACCEPT sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
-			"barisnya masih kosong. Menghitung tab ini sekarang akan menampilkan seluruh " +
-			"antrean sebagai belum dikonfirmasi adjuster."
-
-	case TabClose:
-		return "Kolom PYSTATUSWORK sudah ada di POOLDATA.T_SURVEYORLIST tetapi seluruh " +
-			"barisnya masih kosong, sehingga berkas yang sudah tutup belum dapat dibedakan."
+	case TabOutstanding, TabAll, TabInvoice, TabClose:
+		if r.Complete() {
+			return ""
+		}
+		return "Belum dapat dihitung. " + r.missing() +
+			" Menghitungnya sekarang akan menghasilkan angka yang terlihat wajar dan salah."
 
 	default:
+		// Ketiga tab komunikasi tidak menyentuh satu pun kolom itu. Ia berjalan sejak hari
+		// pertama dan tidak pernah ditahan.
 		return ""
 	}
 }
 
-// Available menyatakan apakah tab ini dapat dihitung dari data yang ada hari ini.
-func (t Tab) Available() bool { return UnavailableReason(t) == "" }
+// missing menyebut kolom mana yang menahan, supaya pesannya menunjuk ke pekerjaan yang nyata.
+//
+// Pesan "belum tersedia" tanpa menyebut sebabnya akan membuat pembacanya menebak — dan pada
+// modul ini sebabnya bisa dua hal yang DIPERBAIKI ORANG BERBEDA: kolom ditambahkan DBA lewat
+// `ALTER`, isinya ditulis Tim Pega lewat jalur pemutakhiran.
+func (r Readiness) missing() string {
+	var names []string
+	for _, c := range []struct {
+		ready bool
+		name  string
+	}{
+		{r.AdjusterAccept, "ADJUSTERACCEPT"},
+		{r.WorkStatus, "PYSTATUSWORK"},
+		{r.Reference, "REFNO"},
+		{r.AdjusterPIC, "ADJUSTER_PIC"},
+		{r.SurveyLocation, "RESCHEDULE_LOCATION"},
+	} {
+		if !c.ready {
+			names = append(names, c.name)
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	return "Kolom berikut pada POOLDATA.T_SURVEYORLIST belum dapat dipakai — belum ada, atau " +
+		"ada tetapi seluruh barisnya masih kosong: " + strings.Join(names, ", ") + "."
+}
+
+// TabAvailable menyatakan apakah tab ini dapat dihitung dari data yang ada HARI INI.
+func (r Readiness) TabAvailable(t Tab) bool { return r.UnavailableReason(t) == "" }
 
 // DefaultAvailableTab mengembalikan tab bawaan yang BENAR-BENAR dapat dihitung.
 //
@@ -418,14 +509,15 @@ func (t Tab) Available() bool { return UnavailableReason(t) == "" }
 // Membuka layar pada tab yang pasti kosong akan membuat kesan pertama setiap pengguna adalah
 // layar tanpa isi — dan kesan itu bertahan meski enam tab lain berisi.
 //
-// Begitu kolomnya tiba, fungsi ini kembali mengembalikan DefaultTab dengan sendirinya, tanpa
-// satu baris pun disunting.
-func DefaultAvailableTab() Tab {
-	if DefaultTab.Available() {
+// Begitu kolomnya terisi, fungsi ini kembali mengembalikan DefaultTab dengan sendirinya — dan
+// sejak 2026-10-07 kalimat itu benar secara harfiah, karena Readiness dibaca dari basis data.
+// Sebelumnya ia konstanta, dan "dengan sendirinya" berarti "setelah seseorang menyunting kode".
+func (r Readiness) DefaultAvailableTab() Tab {
+	if r.TabAvailable(DefaultTab) {
 		return DefaultTab
 	}
 	for _, t := range tabOrder {
-		if t.Available() {
+		if r.TabAvailable(t) {
 			return t
 		}
 	}
@@ -804,6 +896,18 @@ type KPIRow struct {
 	// kosong adalah dua field yang akan tertukar.
 	Group string
 
+	// Status terisi HANYA pada ShapePerAdjusterStatus — label 'OUTSTANDING' atau 'FINAL'
+	// yang dibawa masing-masing blok UNION.
+	Status string
+
+	// Quarter terisi HANYA pada ShapePerQuarterYear — label '1'…'4'.
+	Quarter string
+
+	// Month dan CaseID terisi HANYA pada ShapeDetail. Keduanya tidak pernah muncul pada
+	// bentuk ringkasan mana pun, karena di sana barisnya bukan berkas.
+	Month  string
+	CaseID string
+
 	SurveyScheduling      float64 // PENJADWALAN SURVEY
 	ImmediateAdvice       float64 // IMMEDIATE ADVICE
 	PreliminaryAdvice     float64 // PRELIMINARY ADVICE
@@ -815,62 +919,229 @@ type KPIRow struct {
 	Value                 float64 // NILAI
 }
 
-// KPIKind memilih ringkasan KPI mana yang diminta.
-type KPIKind string
+// SurveyStatus adalah isian **Status Survey** pada panel KPI.
+//
+// Di Pega ia `TempAdjComp.ASMFull`, dan pilihannya diisi `Activity/GetFilterKPI-Act.xml`
+// menjadi `TipeData.pxResults().DESCRIPTION` — tiga nilai, dalam urutan ini.
+//
+// Nilainya dipakai apa adanya sebagai penyaring kolom `tipe` di
+// `POOLDATA.DETAIL_KPI_ADJUSTER`, kecuali `ALL` yang berarti TANPA penyaring.
+type SurveyStatus string
 
-// Ketiga bentuk ringkasan, masing-masing dari rule-nya sendiri.
+// Ketiga pilihan Status Survey, pada urutan yang sama dengan GetFilterKPI.
 const (
-	// KPIOutstanding — `GetSummaryKPIAdjuster-SQL.xml`.
-	//
-	// Kategorinya diserahkan pemanggil (`where tipe = {TempAdjComp.ASMFull}`), sehingga ia
-	// yang paling longgar dari ketiganya.
-	KPIOutstanding KPIKind = "outstanding"
-
-	// KPIFinal — `GetSummaryKPIAdjusterALL-SQL.xml`, `where tipe = 'FINAL'`.
-	KPIFinal KPIKind = "final"
-
-	// KPIQuarterly — `GetSummaryKPIAdjusterKuartal-SQL.xml`.
-	//
-	// Sama-sama `tipe = 'FINAL'`, tetapi dikelompokkan `to_char(tanggal,'yyyy')` — per
-	// TAHUN, meski namanya menyebut kuartal. Nama rule-nya menyesatkan sejak di Pega;
-	// perilakunya yang dibawa, bukan namanya.
-	KPIQuarterly KPIKind = "kuartal"
+	SurveyStatusAll         SurveyStatus = "ALL"
+	SurveyStatusOutstanding SurveyStatus = "OUTSTANDING"
+	SurveyStatusFinal       SurveyStatus = "FINAL"
 )
 
-// KPITypeFinal adalah nilai `tipe` yang dipatok dua dari tiga ringkasan.
-const KPITypeFinal = "FINAL"
-
-// KPIFilter adalah penyaring ringkasan KPI.
-type KPIFilter struct {
-	Kind KPIKind
-
-	// Category adalah nilai kolom `tipe` untuk KPIOutstanding.
-	//
-	// Diabaikan oleh KPIFinal dan KPIQuarterly, yang keduanya mematok `'FINAL'`. Kosong
-	// berarti seluruh kategori.
-	Category string
-
-	// Year menyaring `to_char(tanggal,'yyyy')`. Kosong berarti seluruh tahun.
-	Year string
+// SurveyStatuses mengembalikan ketiganya untuk mengisi dropdown.
+func SurveyStatuses() []SurveyStatus {
+	return []SurveyStatus{SurveyStatusAll, SurveyStatusOutstanding, SurveyStatusFinal}
 }
 
-// Valid menyatakan apakah jenis ringkasan ini dikenal.
-func (k KPIKind) Valid() bool {
-	switch k {
-	case KPIOutstanding, KPIFinal, KPIQuarterly:
+// Valid menyatakan apakah nilai ini salah satu dari ketiganya.
+func (s SurveyStatus) Valid() bool {
+	switch s {
+	case SurveyStatusAll, SurveyStatusOutstanding, SurveyStatusFinal:
 		return true
 	default:
 		return false
 	}
 }
 
-// Normalize mengembalikan penyaring KPI dengan nilai yang dijamin masuk akal.
+// ReportType adalah isian **Tipe Report** pada panel KPI.
+//
+// Di Pega ia `TempAdjComp.AcceptedNo`, diisi `GetFilterKPI` menjadi
+// `TipeExport.pxResults().DESCRIPTION`.
+type ReportType string
+
+// Kedua pilihan Tipe Report.
+const (
+	// ReportSummary — ringkasan rata-rata penilaian. Inilah yang dapat dibangun hari ini.
+	ReportSummary ReportType = "DATA SUMMARY"
+
+	// ReportDetail — laporan baris per BERKAS, dan angkanya MENTAH: tidak dirata-ratakan
+	// sama sekali.
+	//
+	// Ia laporan yang berbeda, bukan tampilan lain dari angka yang sama.
+	// `RDB List/GetDetailKPIAdjusterKuartal-SQL.xml` memilih `caseid`, bulan, tahun, dan
+	// nama adjuster berikut kesembilan nilainya apa adanya — tanpa `group by` sama sekali.
+	//
+	// Rule-nya sempat TIDAK ADA di export dan jalur ini ditolak; ia diterima 2026-10-07,
+	// bersama `GetSummaryKPIAdjusterALLKuartal`.
+	ReportDetail ReportType = "DATA DETAIL"
+)
+
+// ReportTypes mengembalikan keduanya untuk mengisi dropdown.
+func ReportTypes() []ReportType { return []ReportType{ReportSummary, ReportDetail} }
+
+// Valid menyatakan apakah nilai ini salah satu dari keduanya.
+func (r ReportType) Valid() bool {
+	return r == ReportSummary || r == ReportDetail
+}
+
+// Quarters mengembalikan keempat kuartal untuk mengisi dropdown.
+//
+// Di Pega ia `TempAdjComp.Initial`, dan `GetReportKPIAdjuster` mencabangkannya dengan
+// `@contains(TempAdjComp.Initial,"1")` … `"4"`.
+func Quarters() []string { return []string{"1", "2", "3", "4"} }
+
+// KPIFilter adalah penyaring panel KPI, satu field per kendali di layar Pega.
+type KPIFilter struct {
+	// Status — kendali "Status Survey". WAJIB; layar lama menandainya bintang merah.
+	Status SurveyStatus
+
+	// Report — kendali "Tipe Report". WAJIB.
+	Report ReportType
+
+	// Quarter — kendali "Kuartal", `"1"`…`"4"`. Kosong berarti seluruh kuartal.
+	Quarter string
+
+	// Year — kendali "Tahun Kuartal". Kosong berarti seluruh tahun.
+	Year string
+}
+
+// QuarterApplies menyatakan apakah kendali Kuartal dan Tahun Kuartal ditampilkan.
+//
+// Meniru `pyVisibleWhen` panel KPI apa adanya:
+//
+//	TempAdjComp.ASMFull=='ALL'||TempAdjComp.ASMFull=='FINAL'
+//
+// Itu sebabnya tangkapan layar Pega hanya memperlihatkan DUA kendali ketika Status Survey
+// masih `--Pilih--`: dua lainnya memang belum muncul.
+func (s SurveyStatus) QuarterApplies() bool {
+	return s == SurveyStatusAll || s == SurveyStatusFinal
+}
+
+// QuarterAll adalah pilihan "seluruh kuartal" pada kendali Kuartal.
+//
+// Terbaca dari percabangan `Activity/GetReportKPIAdjuster-Act.xml`, yang membedakan
+// `@contains(Initial,"1")`…`"4"` dari `Initial==""||Initial=="ALL"`. Isi daftar pilihannya
+// sendiri — `TempKuartal.pxResults` — TIDAK ADA di export (`R-16`); yang terbaca hanyalah
+// nilai yang benar-benar dicabangkan.
+const QuarterAll = "ALL"
+
+// CategoryValue adalah nilai yang dikirim ke penyaring kolom `tipe`.
+//
+// `ALL` mengembalikan string kosong, dan repo menerjemahkannya menjadi kueri yang BERBEDA —
+// bukan menjadi "tanpa penyaring". Lihat Shape: `GetSummaryKPIAdjusterALL` menggabungkan dua
+// blok `tipe='OUTSTANDING'` dan `tipe='FINAL'` dengan UNION ALL, masing-masing membawa label
+// statusnya sendiri.
+//
+// Perbedaannya bukan akademis. "Tanpa penyaring" menghasilkan SATU baris per adjuster yang
+// merata-ratakan kedua kategori menjadi satu angka; Pega menghasilkan DUA baris per adjuster
+// dengan angka masing-masing. Angka yang pertama tidak pernah ada di layar lama.
+func (f KPIFilter) CategoryValue() string {
+	if f.Status == SurveyStatusAll {
+		return ""
+	}
+	return string(f.Status)
+}
+
+// QuarterChosen menyatakan kendali Kuartal benar-benar menunjuk satu kuartal.
+//
+// Kosong dan "ALL" sama-sama berarti BUKAN satu kuartal, dan keduanya menempuh jalur yang
+// berbeda — lihat Shape.
+func (f KPIFilter) QuarterChosen() bool {
+	return f.Quarter != "" && f.Quarter != QuarterAll
+}
+
+// KPIShape adalah BENTUK hasil — apa yang menjadi satu baris.
+//
+// Ia bukan pilihan tampilan melainkan akibat langsung dari kueri mana yang dijalankan, dan
+// setiap kuerinya menghasilkan baris yang berbeda artinya.
+type KPIShape string
+
+// Kelima bentuk, masing-masing dari rule Pega-nya sendiri.
+const (
+	// ShapePerAdjuster — `GetSummaryKPIAdjuster`, `where tipe = {ASMFull}`, `group by adjuster`.
+	ShapePerAdjuster KPIShape = "per-adjuster"
+
+	// ShapePerAdjusterStatus — `GetSummaryKPIAdjusterALL`, UNION ALL dua blok yang
+	// masing-masing membawa label `'OUTSTANDING'` dan `'FINAL'`. DUA baris per adjuster.
+	ShapePerAdjusterStatus KPIShape = "per-adjuster-status"
+
+	// ShapePerYear — `GetSummaryKPIAdjusterKuartal`, `group by to_char(tanggal,'yyyy')`,
+	// dengan penyaring bulan satu kuartal.
+	ShapePerYear KPIShape = "per-tahun"
+
+	// ShapePerQuarterYear — `GetSummaryKPIAdjusterALLKuartal`, empat blok UNION yang
+	// masing-masing memberi label kuartal. EMPAT baris per tahun.
+	ShapePerQuarterYear KPIShape = "per-kuartal-tahun"
+
+	// ShapeDetail — `GetDetailKPIAdjusterKuartal`. Satu baris per BERKAS, dan angkanya
+	// MENTAH — tidak dirata-ratakan sama sekali.
+	ShapeDetail KPIShape = "detail"
+)
+
+// Shape memilih bentuk hasil dari kombinasi isian, meniru percabangan
+// `Activity/GetReportKPIAdjuster-Act.xml`.
+//
+//	Tipe Report   Kuartal      Status        -> bentuk
+//	DATA DETAIL   apa pun      apa pun          ShapeDetail
+//	DATA SUMMARY  1..4         apa pun          ShapePerYear
+//	DATA SUMMARY  ALL          apa pun          ShapePerQuarterYear
+//	DATA SUMMARY  kosong       ALL              ShapePerAdjusterStatus
+//	DATA SUMMARY  kosong       OUTSTANDING/FINAL ShapePerAdjuster
+//
+// # Satu keanehan yang DIPERTAHANKAN
+//
+// Ketiga jalur berkuartal mematok `tipe='FINAL'` DI DALAM rule-nya masing-masing — Status
+// Survey tidak ikut berpengaruh di sana, bahkan ketika dipilih OUTSTANDING. Itu perilaku
+// sistem lama, dan `P-5` menetapkan perilakunya yang dibawa, bukan yang masuk akal.
+func (f KPIFilter) Shape() KPIShape {
+	switch {
+	case f.Report == ReportDetail:
+		return ShapeDetail
+	case f.QuarterChosen():
+		return ShapePerYear
+	case f.Quarter == QuarterAll:
+		return ShapePerQuarterYear
+	case f.Status == SurveyStatusAll:
+		return ShapePerAdjusterStatus
+	default:
+		return ShapePerAdjuster
+	}
+}
+
+// Check memeriksa kedua isian wajib, dan mengumpulkan SELURUH kesalahannya sekaligus.
+//
+// Dikumpulkan, bukan berhenti pada yang pertama: layar lama menandai kedua kendali dengan
+// bintang merah dan menolak keduanya bersamaan, dan mengembalikan satu per satu akan membuat
+// pengguna menekan Cari dua kali untuk mengetahui dua hal.
+func (f KPIFilter) Check() error {
+	var missing []string
+
+	if !f.Status.Valid() {
+		missing = append(missing, "Status Survey")
+	}
+	if !f.Report.Valid() {
+		missing = append(missing, "Tipe Report")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("%w: %s", ErrKPIFilterIncomplete, strings.Join(missing, " dan "))
+	}
+	return nil
+}
+
+// Normalize merapikan isian tanpa menebak yang kosong.
+//
+// Tidak ada nilai bawaan untuk Status Survey maupun Tipe Report — keduanya WAJIB di layar
+// lama, dan memilihkan salah satunya berarti menjalankan laporan yang tidak diminta siapa pun.
 func (f KPIFilter) Normalize() KPIFilter {
-	f.Category = strings.TrimSpace(f.Category)
+	f.Status = SurveyStatus(strings.ToUpper(strings.TrimSpace(string(f.Status))))
+	f.Report = ReportType(strings.ToUpper(strings.TrimSpace(string(f.Report))))
+	f.Quarter = strings.TrimSpace(f.Quarter)
 	f.Year = strings.TrimSpace(f.Year)
 
-	if !f.Kind.Valid() {
-		f.Kind = KPIOutstanding
+	// Kuartal dan Tahun Kuartal dibuang ketika kendalinya memang tidak ditampilkan. Tanpa
+	// ini, nilai yang tertinggal dari pilihan sebelumnya akan ikut menyaring diam-diam —
+	// pengguna melihat Status Survey "OUTSTANDING" dan hasil yang tersaring kuartal yang
+	// tidak terlihat di mana pun.
+	if !f.Status.QuarterApplies() {
+		f.Quarter = ""
+		f.Year = ""
 	}
 	return f
 }
@@ -891,17 +1162,42 @@ type Repo interface {
 	// dari Filter dengan sengaja: ia bukan penyaring yang dipilih pengguna melainkan batas
 	// kewenangan, dan menaruhnya di dalam Filter akan membuatnya terlihat seperti sesuatu
 	// yang boleh dikosongkan.
-	List(ctx context.Context, identity SurveyorIdentity, f Filter) (Page, error)
+	List(ctx context.Context, identity SurveyorIdentity, f Filter, ready Readiness) (Page, error)
 
 	// Counts menghitung isi KETUJUH tab sekaligus.
 	//
 	// Satu method, bukan tujuh: `CountOSLostAdjuster` menghitung seluruh keranjang dalam
 	// SATU kueri lewat tujuh `SUM(CASE WHEN …)`. Memecahnya menjadi tujuh perjalanan akan
 	// membaca tabel yang sama tujuh kali untuk menggambar satu bilah tab.
-	Counts(ctx context.Context, identity SurveyorIdentity) ([]TabCount, error)
+	Counts(ctx context.Context, identity SurveyorIdentity, ready Readiness) ([]TabCount, error)
 
 	// KPI mengambil ringkasan KPI adjuster.
 	KPI(ctx context.Context, identity SurveyorIdentity, f KPIFilter) ([]KPIRow, error)
+
+	// KPIYears mengisi dropdown "Tahun Kuartal".
+	//
+	// Ia TERPISAH dari KPI karena dibutuhkan SEBELUM tombol Cari ditekan — dropdown yang
+	// kosong sampai pencarian pertama bukan dropdown, melainkan kotak teks yang menyamar.
+	//
+	// Isinya direkonstruksi dari data; lihat kueri kpi_years untuk alasannya.
+	KPIYears(ctx context.Context, identity SurveyorIdentity) ([]string, error)
+
+	// Readiness melaporkan kolom mana yang benar-benar dapat dipakai di portal ini.
+	//
+	// # Kenapa ia di sini, bukan di seam tersendiri
+	//
+	// Karena jawabannya milik basis data portal yang SAMA dengan yang dibaca List dan Counts.
+	// Seam terpisah akan membuka kemungkinan keduanya menunjuk basis data berbeda — dan
+	// akibatnya adalah tab yang dinyatakan siap lalu dihitung terhadap tabel yang belum punya
+	// kolomnya (ORA-00904, seluruh layar mati).
+	//
+	// # Galat TIDAK dikembalikan
+	//
+	// Pemeriksaan yang gagal mengembalikan Readiness kosong, yaitu "tidak ada yang siap" —
+	// perilaku yang sama dengan sebelum kolomnya tiba. Mengembalikan galat akan menjatuhkan
+	// layar hanya karena pemeriksaan ketersediaan gagal, padahal enam tab lain tetap dapat
+	// dihitung tanpa satu pun kolom itu.
+	Readiness(ctx context.Context) Readiness
 }
 
 // Directory adalah seam jembatan identitas — login menjadi identitas surveyor.

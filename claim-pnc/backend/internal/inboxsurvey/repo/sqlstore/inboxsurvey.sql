@@ -302,6 +302,36 @@
 --
 -- CATATAN PENANDA BIND. Berkas ini memakai gaya Oracle `:n`, sama seperti seluruh modul lain.
 -- Ia BELUM portabel ke PostgreSQL yang memakai `$n`.
+--
+--
+-- ============================================================================
+-- ANGKA BIND WAJIB MENGIKUTI URUTAN KEMUNCULANNYA — INI BUKAN KERAPIAN
+-- ============================================================================
+--
+-- Driver yang dipakai aplikasi ini adalah `github.com/sijms/go-ora/v2`. Untuk argumen yang
+-- datang dari `database/sql` tanpa nama, ia menaruh setiap argumen pada POSISI ke-x
+-- (`command.go:1992-2002`, `stmt.setParam(x, *par)`) dan mengirimnya sebagai bind POSISIONAL.
+-- Oracle memetakan posisi itu ke placeholder menurut URUTAN KEMUNCULANNYA di teks kueri —
+-- BUKAN menurut angka yang tertulis.
+--
+-- Artinya `:9` tidak berarti "argumen kesembilan". Ia berarti "placeholder yang ke sekian
+-- muncul". Bila keduanya berbeda, argumen masuk ke tempat yang salah.
+--
+-- Akibatnya dua macam, dan yang kedua jauh lebih berbahaya:
+--
+--   1. Tipe tidak cocok  -> galat seketika. `OFFSET :7 ROWS` yang kebagian "Resolved-Completed"
+--      menghasilkan ORA-01722, dan layar menampilkan "tidak dapat dimuat".
+--   2. Tipe cocok        -> TANPA GALAT, hasilnya salah. Itu yang terjadi pada `list_tasks`
+--      sampai 2026-10-07: login tertukar dengan status pesan, sehingga ketiga tab komunikasi
+--      SELALU kosong dan tidak seorang pun melaporkannya sebagai kerusakan.
+--
+-- Karena itu setiap kueri di berkas ini dinomori menurut urutan kemunculan, dan
+-- `TestAngkaBindMengikutiUrutanKemunculan` menegakkannya secara mekanis. Bila sebuah kondisi
+-- dipindahkan, angkanya ikut berubah — ujinya yang memberi tahu, bukan pengguna.
+--
+-- Modul Master Login sudah mencatat bahaya yang sama lebih dulu: "tidak semua driver memetakan
+-- parameter bernomor ke posisi argumen dengan cara yang sama". Modul ini tidak mengikutinya,
+-- dan membayarnya dengan tiga tab yang diam-diam kosong.
 
 -- name: list_tasks
 -- Satu halaman satu tab, satu baris per BERKAS SURVEI.
@@ -310,17 +340,19 @@
 -- `ADJUSTERACCEPT` atau `PYSTATUSWORK` dicegat lebih dulu di Go (`Tab.Available`).
 --
 -- Bind:
---   :1  cakupan nama surveyor, berbentuk `|NAMA SATU|NAMA DUA|`  (lihat CATATAN 1)
---   :2  tab yang dibuka — nilai inboxsurvey.Tab
---   :3  login pemanggil, dipakai ketiga tab komunikasi
---   :4  KOMUNIKASISTATUS terbuka        -> "0"
---   :5  KOMUNIKASISTATUS sudah dijawab  -> "1"
---   :6  kata kunci pencarian, atau NULL bila kotak carinya kosong
---   :7  offset
---   :8  jumlah baris
+--   :scope  cakupan nama surveyor, berbentuk `|NAMA SATU|NAMA DUA|`  (lihat CATATAN 1)
+--   :tab  tab yang dibuka — nilai inboxsurvey.Tab
+--   :login  login pemanggil, dipakai ketiga tab komunikasi
+--   :msg_open  KOMUNIKASISTATUS terbuka        -> "0"
+--   :msg_answered  KOMUNIKASISTATUS sudah dijawab  -> "1"
+--   :search  kata kunci pencarian, atau NULL bila kotak carinya kosong
+--   :skip  offset
+--   :take  jumlah baris
 SELECT s.CASEID            AS SURVEY_ID,
        s.PNCCASEID         AS CLAIM_ID,
        s.INDEX_SURVEY      AS SURVEY_INDEX,
+       CAST(NULL AS VARCHAR2(101))
+                           AS REFERENCE_NUMBER,
        c.CLAIMNO           AS CLAIM_NUMBER,
        c.NOPOLIS           AS POLICY_NUMBER,
        c.QQNAME            AS INSURED_NAME,
@@ -346,29 +378,29 @@ SELECT s.CASEID            AS SURVEY_ID,
        INNER JOIN POOLDATA.T_CLAIM_PNC c
                ON c.CLAIMID = s.PNCCASEID
  WHERE s.STEP_RANK = 1
-   AND INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
-   AND ((:2 = 'belum-dijawab'
+   AND INSTR(:scope, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
+   AND ((:tab = 'belum-dijawab'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :4
-                        AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:3))))
-     OR (:2 = 'belum-dibalas-asm'
+                        AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_open))
+     OR (:tab = 'belum-dibalas-asm'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :4
-                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:3))))
-     OR (:2 = 'sudah-dibalas-asm'
+                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_open))
+     OR (:tab = 'sudah-dibalas-asm'
          AND EXISTS (SELECT 1
                        FROM POOLDATA.M_KOMUNIKASI_PNC kom
                       WHERE kom.CASEID = s.CASEID
-                        AND kom.KOMUNIKASISTATUS = :5
-                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:3)))))
-   AND (:6 IS NULL
-        OR UPPER(c.CLAIMNO) LIKE '%' || UPPER(:6) || '%')
+                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_answered)))
+   AND (:search IS NULL
+        OR UPPER(c.CLAIMNO) LIKE '%' || UPPER(:search) || '%')
  ORDER BY s.TGLINPUT DESC NULLS LAST, s.CASEID DESC
-OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
+OFFSET :skip ROWS FETCH NEXT :take ROWS ONLY
 
 -- name: count_tabs
 -- Jumlah berkas survei pada ketiga tab komunikasi, dalam satu perjalanan.
@@ -381,30 +413,31 @@ OFFSET :7 ROWS FETCH NEXT :8 ROWS ONLY
 -- menyebut angka yang tidak sesuai isi tabnya — dan itu meruntuhkan kepercayaan pada seluruh
 -- layar.
 --
--- Bind:
---   :1  cakupan nama surveyor
---   :2  login pemanggil
---   :3  KOMUNIKASISTATUS terbuka        -> "0"
---   :4  KOMUNIKASISTATUS sudah dijawab  -> "1"
+-- Bind — ANGKANYA MENGIKUTI URUTAN KEMUNCULAN, bukan urutan yang enak dibaca. Lihat banner
+-- berkas ini; menukar urutan kondisi di bawah berarti menukar arti angkanya.
+--   :login  login pemanggil
+--   :msg_open  KOMUNIKASISTATUS terbuka        -> "0"
+--   :msg_answered  KOMUNIKASISTATUS sudah dijawab  -> "1"
+--   :scope  cakupan nama surveyor
 SELECT SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :3
-                                AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:2)))
+                                AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_open)
                 THEN 1 ELSE 0 END)
           AS COUNT_NOT_ANSWERED,
        SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :3
-                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:2)))
+                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_open)
                 THEN 1 ELSE 0 END)
           AS COUNT_NOT_REPLIED,
        SUM(CASE WHEN EXISTS (SELECT 1
                                FROM POOLDATA.M_KOMUNIKASI_PNC kom
                               WHERE kom.CASEID = s.CASEID
-                                AND kom.KOMUNIKASISTATUS = :4
-                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:2)))
+                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_answered)
                 THEN 1 ELSE 0 END)
           AS COUNT_REPLIED
   FROM (SELECT t.*,
@@ -415,7 +448,7 @@ SELECT SUM(CASE WHEN EXISTS (SELECT 1
        INNER JOIN POOLDATA.T_CLAIM_PNC c
                ON c.CLAIMID = s.PNCCASEID
  WHERE s.STEP_RANK = 1
-   AND INSTR(:1, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
+   AND INSTR(:scope, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
 
 -- name: resolve_surveyor
 -- Jembatan identitas: login pemanggil menjadi identitas surveyor.
@@ -428,13 +461,13 @@ SELECT SUM(CASE WHEN EXISTS (SELECT 1
 -- ditambah `NAMA`, yang di Pega diambil `GetLoginMemberSurveyor` dari tabel yang sama.
 --
 -- Bind:
---   :1  login pemanggil
+--   :login  login pemanggil
 SELECT m.LOGIN        AS SURVEYOR_LOGIN,
        m.NAMA         AS SURVEYOR_NAME,
        m.LOGINLEADER  AS LEADER_LOGIN,
        m.STSLOGIN     AS LOGIN_STATUS
   FROM POOLDATA.MST_LOGIN_SURVEYOR m
- WHERE UPPER(TRIM(m.LOGIN)) = UPPER(TRIM(:1))
+ WHERE UPPER(TRIM(m.LOGIN)) = UPPER(TRIM(:login))
 
 -- name: resolve_members
 -- Nama seluruh surveyor yang berada di bawah seorang leader.
@@ -443,26 +476,77 @@ SELECT m.LOGIN        AS SURVEYOR_LOGIN,
 -- dari `GetLoginLeaderSurveyor` yang membandingkannya dengan `OperatorID.pyUserIdentifier`.
 --
 -- Bind:
---   :1  login leader
+--   :leader_login  login leader
 SELECT m.NAMA AS SURVEYOR_NAME
   FROM POOLDATA.MST_LOGIN_SURVEYOR m
- WHERE UPPER(TRIM(m.LOGINLEADER)) = UPPER(TRIM(:1))
+ WHERE UPPER(TRIM(m.LOGINLEADER)) = UPPER(TRIM(:leader_login))
+
+-- ============================================================================
+-- LIMA KUERI KPI, DAN KENAPA LIMA
+-- ============================================================================
+--
+-- Panel KPI layar lama menjalankan rule yang BERBEDA menurut kombinasi isiannya, dan setiap
+-- rule menghasilkan baris yang artinya berbeda pula. Ini bukan lima tampilan dari satu
+-- himpunan angka:
+--
+--	kpi_by_adjuster         GetSummaryKPIAdjuster            satu baris per ADJUSTER
+--	kpi_by_adjuster_all     GetSummaryKPIAdjusterALL         DUA baris per adjuster
+--	kpi_by_year             GetSummaryKPIAdjusterKuartal     satu baris per TAHUN
+--	kpi_by_quarter_year     GetSummaryKPIAdjusterALLKuartal  EMPAT baris per tahun
+--	kpi_detail              GetDetailKPIAdjusterKuartal      satu baris per BERKAS
+--
+-- Pemilihnya `inboxsurvey.KPIFilter.Shape()`, yang meniru percabangan
+-- `Activity/GetReportKPIAdjuster-Act.xml`.
+--
+--
+-- # Ketiga `{ASIS:...}` warisan dan penggantinya
+--
+-- Ketiga rule aslinya menempelkan penyaringnya sebagai TEKS SQL — pola yang
+-- `03-CURRENT-ARCHITECTURE.md` §4.5 catat sebagai celah injeksi:
+--
+--	TempAdjComp.UploadLOD  := "and adjuster='" + TempAdjComp.NameOfBank + "'"
+--	Filter.Province        := "and to_char(tanggal,'yyyy') = '" + TempAdjComp.IsDLA + "'"
+--	Filter.ProdKe          := "and to_char(tanggal,'mm') in ('07','08','09')"
+--
+-- Ketiganya menjadi parameter di sini. Yang pertama diganti penyaring CAKUPAN berbasis
+-- `INSTR` — bukan satu nama, melainkan daftar nama yang boleh dilihat pemanggil, karena
+-- tabel ini memuat penilaian SELURUH adjuster dan tanpa penyaring itu tab ini berubah
+-- menjadi papan peringkat yang tidak pernah diminta siapa pun.
+--
+--
+-- # Satu keanehan yang DIPERTAHANKAN
+--
+-- Ketiga jalur berkuartal mematok `tipe='FINAL'` DI DALAM rule-nya masing-masing — Status
+-- Survey tidak berpengaruh di sana, bahkan ketika dipilih OUTSTANDING. `P-5` menetapkan
+-- perilakunya yang dibawa, bukan yang masuk akal.
+--
+--
+-- # `to_number` dibawa apa adanya
+--
+-- Adanya fungsi itu di sistem lama menyiratkan kolomnya bertipe TEKS. Menghilangkannya akan
+-- gagal ORA-01722 pada baris pertama yang bukan angka — dan kegagalan itu justru keterangan
+-- yang berguna.
+--
+--
+-- # Bentuk kolom KELIMA kueri DISERAGAMKAN
+--
+-- Keempat kolom pertama selalu `GROUP_KEY`, `STATUS_KEY`, `QUARTER_KEY`, `MONTH_KEY`,
+-- `CASE_KEY`, diikuti kesembilan angka — kolom yang tidak berlaku diisi NULL. Dengan begitu
+-- kelimanya dibaca `scanKPI` yang SATU, dan satu kolom yang bergeser tidak dapat memindahkan
+-- angka ke kolom tetangganya tanpa ada yang menyadarinya.
 
 -- name: kpi_by_adjuster
--- Ringkasan KPI dikelompokkan per adjuster.
+-- Ringkasan per ADJUSTER untuk satu nilai `tipe`.
 --
--- Penerjemahan `GetSummaryKPIAdjuster-SQL.xml` dan `GetSummaryKPIAdjusterALL-SQL.xml`, yang
--- berbeda hanya pada penyaring `tipe`.
+-- Penerjemahan `GetSummaryKPIAdjuster-SQL.xml`, yang menerima `tipe` dari layar
+-- (`where tipe = {TempAdjComp.ASMFull}`) — satu-satunya dari kelimanya yang begitu.
 --
--- `to_number` dibawa apa adanya: adanya fungsi itu di sistem lama menyiratkan kolomnya
--- bertipe TEKS. Menghilangkannya akan gagal ORA-01722 pada baris pertama yang bukan angka —
--- dan kegagalan itu justru keterangan yang berguna.
---
--- Bind:
---   :1  cakupan nama surveyor
---   :2  nilai kolom `tipe`, atau NULL untuk seluruh kategori
---   :3  tahun, atau NULL untuk seluruh tahun
+-- Bind: :scope cakupan nama adjuster · :kpi_type nilai kolom `tipe`
 SELECT d.ADJUSTER                                    AS GROUP_KEY,
+       CAST(NULL AS VARCHAR2(20))                    AS STATUS_KEY,
+       CAST(NULL AS VARCHAR2(4))                     AS QUARTER_KEY,
+       CAST(NULL AS VARCHAR2(4))                     AS MONTH_KEY,
+       CAST(NULL AS VARCHAR2(64))                    AS CASE_KEY,
        ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
        ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
        ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2) AS PRELIMINARY_ADVICE,
@@ -473,21 +557,91 @@ SELECT d.ADJUSTER                                    AS GROUP_KEY,
        ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2)       AS FINAL_REPORT,
        ROUND(AVG(TO_NUMBER(d.NILAI)), 2)             AS VALUE_SCORE
   FROM POOLDATA.DETAIL_KPI_ADJUSTER d
- WHERE INSTR(:1, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
-   AND (:2 IS NULL OR UPPER(TRIM(d.TIPE)) = UPPER(TRIM(:2)))
-   AND (:3 IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :3)
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = UPPER(TRIM(:kpi_type))
  GROUP BY d.ADJUSTER
  ORDER BY d.ADJUSTER
 
+-- name: kpi_by_adjuster_all
+-- Ringkasan per adjuster untuk KEDUA kategori sekaligus — Status Survey "ALL".
+--
+-- Penerjemahan `GetSummaryKPIAdjusterALL-SQL.xml` apa adanya: DUA blok `UNION ALL`, masing-
+-- masing memakai `tipe` tetapnya sendiri dan membawa label kategorinya sebagai kolom.
+--
+-- # Kenapa BUKAN satu kueri tanpa penyaring `tipe`
+--
+-- Karena hasilnya berbeda, bukan sekadar disusun berbeda. Satu kueri tanpa penyaring
+-- menghasilkan SATU baris per adjuster yang merata-ratakan kedua kategori menjadi satu
+-- angka; Pega menghasilkan DUA baris dengan angka masing-masing. Angka yang pertama tidak
+-- pernah ada di layar lama, dan ia terlihat sangat masuk akal — itu yang membuatnya
+-- berbahaya.
+--
+-- `UNION ALL`, bukan `UNION`: dua baris yang kebetulan sama angkanya tetap dua baris, karena
+-- keduanya menyatakan kategori yang berbeda.
+--
+-- Bind: :scope cakupan nama adjuster
+SELECT GROUP_KEY, STATUS_KEY, QUARTER_KEY, MONTH_KEY, CASE_KEY,
+       SURVEY_SCHEDULING, IMMEDIATE_ADVICE, PRELIMINARY_ADVICE, INTERIM_REPORT,
+       PROGRESS_UPDATE, COMMUNICATION_RESPONSE, PROPOSE_ADJUSTMENT, FINAL_REPORT, VALUE_SCORE
+  FROM (SELECT d.ADJUSTER                                    AS GROUP_KEY,
+               'OUTSTANDING'                                 AS STATUS_KEY,
+               CAST(NULL AS VARCHAR2(4))                     AS QUARTER_KEY,
+               CAST(NULL AS VARCHAR2(4))                     AS MONTH_KEY,
+               CAST(NULL AS VARCHAR2(64))                    AS CASE_KEY,
+               ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
+               ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
+               ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2) AS PRELIMINARY_ADVICE,
+               ROUND(AVG(TO_NUMBER(d.INTERIM)), 2)           AS INTERIM_REPORT,
+               ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2)          AS PROGRESS_UPDATE,
+               ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2)        AS COMMUNICATION_RESPONSE,
+               ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2)           AS PROPOSE_ADJUSTMENT,
+               ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2)       AS FINAL_REPORT,
+               ROUND(AVG(TO_NUMBER(d.NILAI)), 2)             AS VALUE_SCORE
+          FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+         WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+           AND UPPER(TRIM(d.TIPE)) = 'OUTSTANDING'
+         GROUP BY d.ADJUSTER
+        UNION ALL
+        SELECT d.ADJUSTER,
+               'FINAL',
+               CAST(NULL AS VARCHAR2(4)),
+               CAST(NULL AS VARCHAR2(4)),
+               CAST(NULL AS VARCHAR2(64)),
+               ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2),
+               ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2),
+               ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2),
+               ROUND(AVG(TO_NUMBER(d.INTERIM)), 2),
+               ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2),
+               ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2),
+               ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2),
+               ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2),
+               ROUND(AVG(TO_NUMBER(d.NILAI)), 2)
+          FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+         WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+           AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+         GROUP BY d.ADJUSTER) gabungan
+ ORDER BY GROUP_KEY, STATUS_KEY
+
 -- name: kpi_by_year
--- Ringkasan KPI dikelompokkan per TAHUN.
+-- Ringkasan per TAHUN untuk SATU kuartal.
 --
 -- Penerjemahan `GetSummaryKPIAdjusterKuartal-SQL.xml`. Namanya menyebut kuartal,
--- pengelompokannya `to_char(tanggal,'yyyy')` — per TAHUN. Perilakunya yang dibawa, bukan
--- namanya (`P-5`).
+-- pengelompokannya `to_char(tanggal,'yyyy')` — per TAHUN; kuartalnya ada di PENYARING, bukan
+-- di pengelompokan. Perilakunya yang dibawa, bukan namanya (`P-5`).
 --
--- Bind: sama dengan kpi_by_adjuster.
+-- `tipe='FINAL'` dipatok di dalam rule aslinya, sehingga Status Survey tidak berpengaruh di
+-- jalur ini. Dipertahankan apa adanya.
+--
+-- Kuartal diterjemahkan menjadi `TO_CHAR(TANGGAL,'Q')` — satu predikat, bukan daftar bulan.
+-- Keduanya memilih baris yang sama persis, dan `'Q'` berlaku sama di Oracle dan PostgreSQL
+-- (`D-20`), sementara daftar bulan harus dirangkai dari luar.
+--
+-- Bind: :scope · :year tahun atau NULL · :quarter "1".."4" atau NULL
 SELECT TO_CHAR(d.TANGGAL, 'yyyy')                    AS GROUP_KEY,
+       CAST(NULL AS VARCHAR2(20))                    AS STATUS_KEY,
+       CAST(NULL AS VARCHAR2(4))                     AS QUARTER_KEY,
+       CAST(NULL AS VARCHAR2(4))                     AS MONTH_KEY,
+       CAST(NULL AS VARCHAR2(64))                    AS CASE_KEY,
        ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
        ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
        ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2) AS PRELIMINARY_ADVICE,
@@ -498,11 +652,181 @@ SELECT TO_CHAR(d.TANGGAL, 'yyyy')                    AS GROUP_KEY,
        ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2)       AS FINAL_REPORT,
        ROUND(AVG(TO_NUMBER(d.NILAI)), 2)             AS VALUE_SCORE
   FROM POOLDATA.DETAIL_KPI_ADJUSTER d
- WHERE INSTR(:1, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
-   AND (:2 IS NULL OR UPPER(TRIM(d.TIPE)) = UPPER(TRIM(:2)))
-   AND (:3 IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :3)
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND (:quarter IS NULL OR TO_CHAR(d.TANGGAL, 'Q') = :quarter)
  GROUP BY TO_CHAR(d.TANGGAL, 'yyyy')
  ORDER BY TO_CHAR(d.TANGGAL, 'yyyy') DESC
+
+-- name: kpi_by_quarter_year
+-- Ringkasan KEEMPAT kuartal sekaligus, per tahun — pilihan Kuartal "ALL".
+--
+-- Penerjemahan `GetSummaryKPIAdjusterALLKuartal-SQL.xml` **apa adanya**: empat blok `UNION`,
+-- masing-masing menyaring tiga bulan dan membawa label kuartalnya sebagai konstanta.
+--
+-- # Kenapa empat blok, padahal satu `GROUP BY` cukup
+--
+-- Versi sebelumnya berkas ini memakai satu `GROUP BY ... , TO_CHAR(TANGGAL,'Q')`, yang
+-- menghasilkan baris yang sama persis dengan biaya satu kali baca alih-alih empat. Bentuk itu
+-- **dikembalikan** atas keputusan Work Owner 2026-10-08: ikuti Pega.
+--
+-- Harganya nyata dan diterima: tabelnya dibaca empat kali. Yang dibeli juga nyata — bila kelak
+-- salah satu blok Pega ternyata berbeda dari ketiga saudaranya (daftar bulan yang tidak
+-- simetris, penyaring tambahan di satu blok), perbedaan itu akan terbawa dengan sendirinya,
+-- bukan hilang ke dalam penyederhanaan yang kelihatannya setara.
+--
+-- `UNION`, bukan `UNION ALL` — sama dengan rule aslinya. Keempat blok tidak pernah
+-- menghasilkan baris kembar karena labelnya berbeda, sehingga pilihan itu tidak mengubah
+-- hasilnya; ia ditiru supaya tidak ada satu pun keputusan yang berbeda tanpa alasan.
+--
+-- Bind: :scope · :year tahun atau NULL
+SELECT TO_CHAR(d.TANGGAL, 'yyyy')                    AS GROUP_KEY,
+       CAST(NULL AS VARCHAR2(20))                    AS STATUS_KEY,
+       '1'                                           AS QUARTER_KEY,
+       CAST(NULL AS VARCHAR2(4))                     AS MONTH_KEY,
+       CAST(NULL AS VARCHAR2(64))                    AS CASE_KEY,
+       ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2)         AS SURVEY_SCHEDULING,
+       ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2)   AS IMMEDIATE_ADVICE,
+       ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2) AS PRELIMINARY_ADVICE,
+       ROUND(AVG(TO_NUMBER(d.INTERIM)), 2)           AS INTERIM_REPORT,
+       ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2)          AS PROGRESS_UPDATE,
+       ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2)        AS COMMUNICATION_RESPONSE,
+       ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2)           AS PROPOSE_ADJUSTMENT,
+       ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2)       AS FINAL_REPORT,
+       ROUND(AVG(TO_NUMBER(d.NILAI)), 2)             AS VALUE_SCORE
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND TO_CHAR(d.TANGGAL, 'mm') IN ('01', '02', '03')
+ GROUP BY TO_CHAR(d.TANGGAL, 'yyyy')
+UNION
+SELECT TO_CHAR(d.TANGGAL, 'yyyy'),
+       CAST(NULL AS VARCHAR2(20)),
+       '2',
+       CAST(NULL AS VARCHAR2(4)),
+       CAST(NULL AS VARCHAR2(64)),
+       ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2),
+       ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.INTERIM)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2),
+       ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2),
+       ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2),
+       ROUND(AVG(TO_NUMBER(d.NILAI)), 2)
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND TO_CHAR(d.TANGGAL, 'mm') IN ('04', '05', '06')
+ GROUP BY TO_CHAR(d.TANGGAL, 'yyyy')
+UNION
+SELECT TO_CHAR(d.TANGGAL, 'yyyy'),
+       CAST(NULL AS VARCHAR2(20)),
+       '3',
+       CAST(NULL AS VARCHAR2(4)),
+       CAST(NULL AS VARCHAR2(64)),
+       ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2),
+       ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.INTERIM)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2),
+       ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2),
+       ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2),
+       ROUND(AVG(TO_NUMBER(d.NILAI)), 2)
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND TO_CHAR(d.TANGGAL, 'mm') IN ('07', '08', '09')
+ GROUP BY TO_CHAR(d.TANGGAL, 'yyyy')
+UNION
+SELECT TO_CHAR(d.TANGGAL, 'yyyy'),
+       CAST(NULL AS VARCHAR2(20)),
+       '4',
+       CAST(NULL AS VARCHAR2(4)),
+       CAST(NULL AS VARCHAR2(64)),
+       ROUND(AVG(TO_NUMBER(d.SURVEYLAP)), 2),
+       ROUND(AVG(TO_NUMBER(d.IMMEDIATEADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.PRELIMINARYADVICE)), 2),
+       ROUND(AVG(TO_NUMBER(d.INTERIM)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROGRESS)), 2),
+       ROUND(AVG(TO_NUMBER(d.KOMUNIKASI)), 2),
+       ROUND(AVG(TO_NUMBER(d.PROPOSE)), 2),
+       ROUND(AVG(TO_NUMBER(d.FINALREPORT)), 2),
+       ROUND(AVG(TO_NUMBER(d.NILAI)), 2)
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND TO_CHAR(d.TANGGAL, 'mm') IN ('10', '11', '12')
+ GROUP BY TO_CHAR(d.TANGGAL, 'yyyy')
+ ORDER BY 1 DESC, 3
+
+-- name: kpi_years
+-- Isi dropdown **Tahun Kuartal**.
+--
+-- # Kenapa ia ada, dan kenapa isinya rekonstruksi
+--
+-- Layar lama mengisi kendali itu dari `TahunKPI.pxResults` — sebuah page list yang TIDAK
+-- PERNAH diisi di mana pun dalam export (`R-16`), sama seperti `TempKuartal.pxResults`. Yang
+-- terbaca hanyalah BENTUKNYA: `pySourceName = TahunKPI.pxResults` dengan `--Pilih--` di
+-- puncaknya, yaitu sebuah dropdown.
+--
+-- Isinya karena itu direkonstruksi dari data: tahun yang BENAR-BENAR ada pada baris milik
+-- cakupan pemanggil. Itu daftar yang tidak pernah menawarkan tahun yang hasilnya pasti kosong,
+-- dan tidak pernah menyembunyikan tahun yang datanya ada.
+--
+-- Bila rule pengisi aslinya kelak tiba dan ternyata berbeda — misalnya rentang tetap, atau
+-- tahun berjalan ditambah lima ke belakang — kueri inilah yang diganti, bukan layarnya.
+--
+-- Disaring CAKUPAN, sama seperti seluruh kueri KPI lain: tabel ini memuat penilaian seluruh
+-- adjuster, dan daftar tahun pun tidak boleh membocorkan keberadaan data orang lain.
+--
+-- Bind: :scope
+SELECT DISTINCT TO_CHAR(d.TANGGAL, 'yyyy') AS YEAR_KEY
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND d.TANGGAL IS NOT NULL
+ ORDER BY YEAR_KEY DESC
+
+-- name: kpi_detail
+-- Laporan DATA DETAIL — satu baris per BERKAS, angkanya MENTAH.
+--
+-- Penerjemahan `GetDetailKPIAdjusterKuartal-SQL.xml`. Tidak ada satu pun `AVG` di sini, dan
+-- tidak ada `GROUP BY`: setiap baris tabel menjadi satu baris laporan.
+--
+-- Itu yang membuatnya laporan BERBEDA, bukan tampilan lain dari ringkasan. Angka 85 pada
+-- ringkasan adalah rata-rata; angka 85 di sini adalah nilai satu berkas.
+--
+-- Rule aslinya mengalias kolomnya menjadi properti klipboard yang tidak ada hubungannya
+-- dengan isinya — `to_char(tanggal,'mm') as "Password"`, `adjuster as "UserTeknisGroup"`.
+-- Alias itu TIDAK dibawa; kolomnya disebut nama aslinya (`03-CURRENT-ARCHITECTURE.md` §4.2).
+--
+-- Bind: :scope · :year · :quarter
+SELECT d.ADJUSTER                   AS GROUP_KEY,
+       CAST(NULL AS VARCHAR2(20))   AS STATUS_KEY,
+       TO_CHAR(d.TANGGAL, 'Q')      AS QUARTER_KEY,
+       TO_CHAR(d.TANGGAL, 'mm')     AS MONTH_KEY,
+       d.CASEID                     AS CASE_KEY,
+       TO_NUMBER(d.SURVEYLAP)       AS SURVEY_SCHEDULING,
+       TO_NUMBER(d.IMMEDIATEADVICE) AS IMMEDIATE_ADVICE,
+       TO_NUMBER(d.PRELIMINARYADVICE) AS PRELIMINARY_ADVICE,
+       TO_NUMBER(d.INTERIM)         AS INTERIM_REPORT,
+       TO_NUMBER(d.PROGRESS)        AS PROGRESS_UPDATE,
+       TO_NUMBER(d.KOMUNIKASI)      AS COMMUNICATION_RESPONSE,
+       TO_NUMBER(d.PROPOSE)         AS PROPOSE_ADJUSTMENT,
+       TO_NUMBER(d.FINALREPORT)     AS FINAL_REPORT,
+       TO_NUMBER(d.NILAI)           AS VALUE_SCORE
+  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
+ WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
+   AND UPPER(TRIM(d.TIPE)) = 'FINAL'
+   AND (:year IS NULL OR TO_CHAR(d.TANGGAL, 'yyyy') = :year)
+   AND (:quarter IS NULL OR TO_CHAR(d.TANGGAL, 'Q') = :quarter)
+ ORDER BY d.TANGGAL DESC NULLS LAST, d.CASEID
 
 -- name: check_tables
 -- Dipakai perintah `-periksa`: memastikan ketiga tabel terbaca dari koneksi yang dipakai.
@@ -616,3 +940,179 @@ SELECT COUNT(d.ADJUSTER)          AS PROBE_ADJUSTER,
        COUNT(d.NILAI)             AS PROBE_VALUE
   FROM POOLDATA.DETAIL_KPI_ADJUSTER d
  WHERE 1 = 0
+
+-- name: list_tasks_full
+-- Kembaran `list_tasks` untuk portal yang KELIMA kolomnya sudah ada DAN terisi.
+--
+-- # Kenapa dua kueri, bukan satu yang bercabang
+--
+-- Kolom yang belum ada tidak dapat disebut sama sekali. `ADJUSTERACCEPT` pada portal yang belum
+-- di-ALTER menghasilkan ORA-00904 SAAT PARSE — sebelum satu baris pun dibaca, dan tanpa
+-- memedulikan `CASE WHEN` apa pun yang membungkusnya. Tidak ada bentuk percabangan di dalam SQL
+-- yang dapat menghindarinya.
+--
+-- Pemilihnya `inboxsurvey.Readiness.Complete()`, dibaca dari katalog kolom portal yang
+-- bersangkutan. `D-75` menetapkan satu basis data per entitas, sehingga portal yang sudah
+-- di-ALTER dan yang belum HIDUP BERDAMPINGAN — per 2026-10-07 persis begitu: `pega_dev83`
+-- sudah, produksi belum.
+--
+-- # Yang BERBEDA dari list_tasks
+--
+--   1. Kolom "Reference No" terisi dari `s.REFNO`, bukan tempat kosong
+--   2. Kolom "Location" dari `s.RESCHEDULE_LOCATION`, bukan `s.LOCATION_SURVEY`
+--   3. Kolom "PIC Loss Adjuster" dari `s.ADJUSTER_PIC`, bukan `s.SURVEYOR_NAME`
+--   4. EMPAT cabang tab tambahan: Outstanding, ALL, Invoice, Close
+--   5. Ketiga tab komunikasi ikut menyaring berkas yang sudah tutup
+--   6. Kotak cari mencari pada Claim No DAN Reference No — seperti layar lama
+--
+-- Daftar alias dan urutannya SAMA PERSIS dengan `list_tasks`, sehingga keduanya dibaca
+-- `scanTask` yang satu. Satu alias yang bergeser di salah satunya akan memindahkan nomor polis
+-- ke kolom nama tertanggung, tanpa galat apa pun.
+--
+-- Bind — ANGKANYA MENGIKUTI URUTAN KEMUNCULAN, bukan urutan yang enak dibaca. Lihat banner
+-- berkas ini; memindahkan satu cabang tab berarti menggeser arti seluruh angka sesudahnya.
+--   :scope  cakupan nama surveyor, berbentuk |NAMA SATU|NAMA DUA|
+--   :tab  tab yang dibuka — nilai inboxsurvey.Tab
+--   :work_done  status kerja SELESAI   ·  :work_rejected  status kerja DITOLAK
+--   :adjuster_confirmed  nilai ADJUSTERACCEPT yang berarti sudah dikonfirmasi
+--   :invoice_fee  nilai STS_SURVEY untuk tab Invoice
+--   :login  login pemanggil
+--   :msg_open  status pesan TERBUKA   ·  :msg_answered  status pesan SUDAH DIBALAS
+--   :search kata cari, boleh NULL
+--   :skip offset                 ·  :take jumlah baris
+SELECT s.CASEID               AS SURVEY_ID,
+       s.PNCCASEID            AS CLAIM_ID,
+       s.INDEX_SURVEY         AS SURVEY_INDEX,
+       s.REFNO                AS REFERENCE_NUMBER,
+       c.CLAIMNO              AS CLAIM_NUMBER,
+       c.NOPOLIS              AS POLICY_NUMBER,
+       c.QQNAME               AS INSURED_NAME,
+       c.BUSINESSNAME         AS CLASS_OF_BUSINESS,
+       (SELECT cov.CAUSEOFLOSS
+          FROM POOLDATA.T_CLAIM_OBJECTCOVERAGE cov
+         WHERE cov.CLAIMID = s.PNCCASEID
+         FETCH NEXT 1 ROW ONLY)
+                              AS CAUSE_OF_LOSS,
+       s.RESCHEDULE_LOCATION  AS LOCATION,
+       c.PICTEKNIK            AS TECHNICAL_PIC,
+       s.ADJUSTER_PIC         AS ADJUSTER_PIC,
+       c.DATEOFLOSS           AS DATE_OF_LOSS,
+       s.TGLINPUT             AS CREATED_AT,
+       c.LEADER_MEMBER        AS ASM_STATUS,
+       s.SURVEYTYPE           AS SURVEYOR_TYPE,
+       COUNT(*) OVER ()       AS TOTAL_ROWS
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
+   AND INSTR(:scope, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0
+   AND ((:tab = 'outstanding'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND s.ADJUSTERACCEPT IS NULL)
+     OR (:tab = 'all'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND s.ADJUSTERACCEPT = :adjuster_confirmed)
+     OR (:tab = 'invoice'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND s.ADJUSTERACCEPT = :adjuster_confirmed
+         AND s.STS_SURVEY = :invoice_fee)
+     OR (:tab = 'close'
+         AND s.PYSTATUSWORK = :work_done)
+     OR (:tab = 'belum-dijawab'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND EXISTS (SELECT 1
+                       FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                      WHERE kom.CASEID = s.CASEID
+                        AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_open))
+     OR (:tab = 'belum-dibalas-asm'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND EXISTS (SELECT 1
+                       FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                      WHERE kom.CASEID = s.CASEID
+                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_open))
+     OR (:tab = 'sudah-dibalas-asm'
+         AND s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+         AND EXISTS (SELECT 1
+                       FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                      WHERE kom.CASEID = s.CASEID
+                        AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                        AND kom.KOMUNIKASISTATUS = :msg_answered)))
+   AND (:search IS NULL
+        OR UPPER(c.CLAIMNO) LIKE '%' || UPPER(:search) || '%'
+        OR UPPER(s.REFNO)   LIKE '%' || UPPER(:search) || '%')
+ ORDER BY s.TGLINPUT DESC NULLS LAST, s.CASEID DESC
+OFFSET :skip ROWS FETCH NEXT :take ROWS ONLY
+
+-- name: count_tabs_full
+-- Kembaran `count_tabs` untuk portal yang kelima kolomnya sudah siap.
+--
+-- Mengembalikan KETUJUH angka dalam SATU kueri, bukan tujuh perjalanan — sama seperti
+-- `CountOSLostAdjuster` di Pega menghitung ketujuh keranjang sekaligus.
+--
+-- URUTAN KOLOMNYA WAJIB sama dengan urutan tab pada `inboxsurvey.Tabs()`:
+--
+--   Outstanding · Invoice · Close · ALL · belum-dijawab · belum-dibalas · sudah-dibalas
+--
+-- Repo membacanya berurutan terhadap tab yang tersedia. Satu kolom yang bergeser akan menukar
+-- jumlah tab Invoice dengan tab Close — dua angka yang sama-sama masuk akal, sehingga
+-- tertukarnya tidak akan disadari siapa pun.
+--
+-- Bind — ANGKANYA MENGIKUTI URUTAN KEMUNCULAN, bukan urutan yang enak dibaca. Lihat banner
+-- berkas ini; memindahkan satu SUM berarti menggeser arti seluruh angka sesudahnya.
+--   :work_done kerja selesai · :work_rejected kerja ditolak · :adjuster_confirmed adjuster dikonfirmasi · :invoice_fee status Invoice Fee
+--   :login login · :msg_open pesan terbuka · :msg_answered pesan dibalas · :scope cakupan nama surveyor
+SELECT SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND s.ADJUSTERACCEPT IS NULL
+                THEN 1 ELSE 0 END)
+          AS COUNT_OUTSTANDING,
+       SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND s.ADJUSTERACCEPT = :adjuster_confirmed
+                 AND s.STS_SURVEY = :invoice_fee
+                THEN 1 ELSE 0 END)
+          AS COUNT_INVOICE,
+       SUM(CASE WHEN s.PYSTATUSWORK = :work_done
+                THEN 1 ELSE 0 END)
+          AS COUNT_CLOSE,
+       SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND s.ADJUSTERACCEPT = :adjuster_confirmed
+                THEN 1 ELSE 0 END)
+          AS COUNT_ALL,
+       SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND EXISTS (SELECT 1
+                               FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                              WHERE kom.CASEID = s.CASEID
+                                AND UPPER(TRIM(kom.SENDER)) <> UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_open)
+                THEN 1 ELSE 0 END)
+          AS COUNT_NOT_ANSWERED,
+       SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND EXISTS (SELECT 1
+                               FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                              WHERE kom.CASEID = s.CASEID
+                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_open)
+                THEN 1 ELSE 0 END)
+          AS COUNT_NOT_REPLIED,
+       SUM(CASE WHEN s.PYSTATUSWORK NOT IN (:work_done, :work_rejected)
+                 AND EXISTS (SELECT 1
+                               FROM POOLDATA.M_KOMUNIKASI_PNC kom
+                              WHERE kom.CASEID = s.CASEID
+                                AND UPPER(TRIM(kom.SENDER)) = UPPER(TRIM(:login))
+                                AND kom.KOMUNIKASISTATUS = :msg_answered)
+                THEN 1 ELSE 0 END)
+          AS COUNT_REPLIED
+  FROM (SELECT t.*,
+               ROW_NUMBER() OVER (PARTITION BY t.CASEID
+                                  ORDER BY LPAD(TRIM(t.INDEX_SURVEY), 10, '0') DESC NULLS LAST,
+                                           t.TGLINPUT DESC NULLS LAST) AS STEP_RANK
+          FROM POOLDATA.T_SURVEYORLIST t) s
+       INNER JOIN POOLDATA.T_CLAIM_PNC c
+               ON c.CLAIMID = s.PNCCASEID
+ WHERE s.STEP_RANK = 1
+   AND INSTR(:scope, '|' || UPPER(TRIM(s.SURVEYOR_NAME)) || '|') > 0

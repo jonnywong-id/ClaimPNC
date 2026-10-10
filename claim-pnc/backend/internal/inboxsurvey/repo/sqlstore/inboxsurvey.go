@@ -48,27 +48,54 @@ func (r *Repo) List(
 	ctx context.Context,
 	identity inboxsurvey.SurveyorIdentity,
 	f inboxsurvey.Filter,
+	ready inboxsurvey.Readiness,
 ) (inboxsurvey.Page, error) {
 	clean := f.Normalize()
 
 	result := inboxsurvey.Page{Tasks: []inboxsurvey.SurveyTask{}}
 
-	if !clean.Tab.Available() {
+	if !ready.TabAvailable(clean.Tab) {
 		return result, nil
 	}
 
-	rows, err := r.db.QueryContext(ctx, query("list_tasks"),
-		scopeValue(identity.Scope),
-		string(clean.Tab),
-		identity.Login,
-		inboxsurvey.CommunicationOpen,
-		inboxsurvey.CommunicationAnswered,
-		keyword(clean.Search),
-		clean.Offset,
-		clean.Limit,
-	)
+	// Parameter BERNAMA, bukan `:1`/`:2`. Lihat banner inboxsurvey.sql — ringkasnya: kueri ini
+	// menyebut penanda yang sama berkali-kali (`:tab` 7 kali pada varian penuh), dan go-ora
+	// menghitung SETIAP KEMUNCULAN sebagai bind tersendiri bila argumennya tanpa nama. Dengan
+	// bind posisional, 12 argumen untuk 35 kemunculan menghasilkan ORA-01008.
+	//
+	// Dengan `sql.Named`, go-ora menempuh `useNamedParameters()` yang mencocokkan per NAMA dan
+	// menandai kemunculan berulang sendiri (`command.go:1822-1847`). Urutan argumen di bawah
+	// karena itu tidak lagi menentukan apa pun — dan itu memang yang diinginkan.
+	name, args := "list_tasks", []any{
+		sql.Named("scope", scopeValue(identity.Scope)),
+		sql.Named("tab", string(clean.Tab)),
+		sql.Named("login", identity.Login),
+		sql.Named("msg_open", inboxsurvey.CommunicationOpen),
+		sql.Named("msg_answered", inboxsurvey.CommunicationAnswered),
+		sql.Named("search", keyword(clean.Search)),
+		sql.Named("skip", clean.Offset),
+		sql.Named("take", clean.Limit),
+	}
+	if ready.Complete() {
+		name, args = "list_tasks_full", []any{
+			sql.Named("scope", scopeValue(identity.Scope)),
+			sql.Named("tab", string(clean.Tab)),
+			sql.Named("work_done", inboxsurvey.StatusWorkCompleted),
+			sql.Named("work_rejected", inboxsurvey.StatusWorkRejected),
+			sql.Named("adjuster_confirmed", inboxsurvey.AdjusterConfirmed),
+			sql.Named("invoice_fee", inboxsurvey.StatusInvoiceFee),
+			sql.Named("login", identity.Login),
+			sql.Named("msg_open", inboxsurvey.CommunicationOpen),
+			sql.Named("msg_answered", inboxsurvey.CommunicationAnswered),
+			sql.Named("search", keyword(clean.Search)),
+			sql.Named("skip", clean.Offset),
+			sql.Named("take", clean.Limit),
+		}
+	}
+
+	rows, err := r.db.QueryContext(ctx, query(name), args...)
 	if err != nil {
-		return inboxsurvey.Page{}, fmt.Errorf("menjalankan kueri list_tasks: %w", err)
+		return inboxsurvey.Page{}, fmt.Errorf("menjalankan kueri %s: %w", name, err)
 	}
 	defer rows.Close()
 
@@ -101,33 +128,52 @@ func (r *Repo) List(
 func (r *Repo) Counts(
 	ctx context.Context,
 	identity inboxsurvey.SurveyorIdentity,
+	ready inboxsurvey.Readiness,
 ) ([]inboxsurvey.TabCount, error) {
-	row := r.db.QueryRowContext(ctx, query("count_tabs"),
-		scopeValue(identity.Scope),
-		identity.Login,
-		inboxsurvey.CommunicationOpen,
-		inboxsurvey.CommunicationAnswered,
-	)
+
+	// Parameter bernama; alasannya sama dengan List. Di sini kebutuhannya bahkan lebih jelas:
+	// `:work_done` muncul 8 kali dan `:scope` sekali, dan bind posisional menuntut 23 nilai
+	// untuk 8 hal.
+	name, columns, args := "count_tabs", countColumns, []any{
+		sql.Named("login", identity.Login),
+		sql.Named("msg_open", inboxsurvey.CommunicationOpen),
+		sql.Named("msg_answered", inboxsurvey.CommunicationAnswered),
+		sql.Named("scope", scopeValue(identity.Scope)),
+	}
+	if ready.Complete() {
+		name, columns, args = "count_tabs_full", countColumnsFull, []any{
+			sql.Named("work_done", inboxsurvey.StatusWorkCompleted),
+			sql.Named("work_rejected", inboxsurvey.StatusWorkRejected),
+			sql.Named("adjuster_confirmed", inboxsurvey.AdjusterConfirmed),
+			sql.Named("invoice_fee", inboxsurvey.StatusInvoiceFee),
+			sql.Named("login", identity.Login),
+			sql.Named("msg_open", inboxsurvey.CommunicationOpen),
+			sql.Named("msg_answered", inboxsurvey.CommunicationAnswered),
+			sql.Named("scope", scopeValue(identity.Scope)),
+		}
+	}
+
+	row := r.db.QueryRowContext(ctx, query(name), args...)
 
 	// Ketiganya dibaca sebagai NullInt64, bukan int.
 	//
 	// `SUM(...)` atas himpunan KOSONG mengembalikan NULL di Oracle, bukan nol — dan itu
 	// persis keadaan seorang surveyor yang belum punya pekerjaan sama sekali. Membaca
 	// langsung ke int akan menjatuhkan seluruh bilah tab pada pengguna baru.
-	counts := make([]sql.NullInt64, len(countColumns))
-	targets := make([]any, len(countColumns))
+	counts := make([]sql.NullInt64, len(columns))
+	targets := make([]any, len(columns))
 	for i := range counts {
 		targets[i] = &counts[i]
 	}
 
 	if err := row.Scan(targets...); err != nil {
-		return nil, fmt.Errorf("membaca hasil kueri count_tabs: %w", err)
+		return nil, fmt.Errorf("membaca hasil kueri %s: %w", name, err)
 	}
 
-	result := make([]inboxsurvey.TabCount, 0, len(countColumns))
+	result := make([]inboxsurvey.TabCount, 0, len(columns))
 	next := 0
 	for _, tab := range inboxsurvey.Tabs() {
-		if !tab.Available() {
+		if !ready.TabAvailable(tab) {
 			continue
 		}
 		if next >= len(counts) {
@@ -135,8 +181,8 @@ func (r *Repo) Counts(
 			// kueri dan domain sudah tidak sejalan, dan diam-diam memotong daftarnya akan
 			// menampilkan angka milik tab lain pada tab ini.
 			return nil, fmt.Errorf(
-				"kueri count_tabs mengembalikan %d kolom, sementara ada lebih banyak tab tersedia",
-				len(counts),
+				"kueri %s mengembalikan %d kolom, sementara ada lebih banyak tab tersedia",
+				name, len(counts),
 			)
 		}
 		result = append(result, inboxsurvey.TabCount{
@@ -150,9 +196,18 @@ func (r *Repo) Counts(
 
 // KPI mengambil ringkasan KPI adjuster.
 //
-// Jenis ringkasan menentukan kueri mana yang dijalankan DAN nilai `tipe` yang dikirim:
-// KPIFinal dan KPIQuarterly keduanya mematok `'FINAL'` di sistem lama, sedangkan
-// KPIOutstanding menerimanya dari pemanggil.
+// # Isian layar menentukan kueri, bukan sebaliknya
+//
+// Panel KPI Pega punya empat kendali — Status Survey, Tipe Report, Kuartal, Tahun Kuartal —
+// dan `Activity/GetReportKPIAdjuster-Act.xml` menurunkan laporan mana yang dijalankan dari
+// kombinasinya. Dua yang menentukan di sini:
+//
+//	Status Survey  -> nilai penyaring kolom `tipe`; "ALL" berarti TANPA penyaring
+//	Kuartal/Tahun  -> begitu salah satunya diisi, pengelompokan berpindah ke per TAHUN
+//
+// Tipe Report sudah dicegat lebih dulu di KPIFilter.Check — "DATA DETAIL" ditolak karena rule
+// penyusunnya tidak ada di export (`R-16`), dan menjawabnya dengan tabel kosong akan terbaca
+// sebagai "tidak ada datanya".
 func (r *Repo) KPI(
 	ctx context.Context,
 	identity inboxsurvey.SurveyorIdentity,
@@ -160,16 +215,50 @@ func (r *Repo) KPI(
 ) ([]inboxsurvey.KPIRow, error) {
 	clean := f.Normalize()
 
-	name := "kpi_by_adjuster"
-	if clean.Kind == inboxsurvey.KPIQuarterly {
-		name = "kpi_by_year"
+	// Kuerinya dipilih BENTUK hasil, dan bentuk itu diturunkan domain dari kombinasi isian
+	// (lihat inboxsurvey.KPIFilter.Shape). Repo tidak memutuskannya sendiri: keputusan itu
+	// meniru percabangan `GetReportKPIAdjuster`, dan percabangan bisnis hidup di domain.
+	//
+	// Setiap bentuk membawa parameternya sendiri. Mengirim parameter yang tidak disebut
+	// kuerinya akan ditolak go-ora dengan "parameter X is not defined in parameter list".
+	scope := sql.Named("scope", scopeValue(identity.Scope))
+
+	var (
+		name string
+		args []any
+	)
+	switch clean.Shape() {
+	case inboxsurvey.ShapePerAdjusterStatus:
+		name, args = "kpi_by_adjuster_all", []any{scope}
+
+	case inboxsurvey.ShapePerYear:
+		name, args = "kpi_by_year", []any{
+			scope,
+			sql.Named("year", keyword(clean.Year)),
+			sql.Named("quarter", keyword(clean.Quarter)),
+		}
+
+	case inboxsurvey.ShapePerQuarterYear:
+		name, args = "kpi_by_quarter_year", []any{
+			scope,
+			sql.Named("year", keyword(clean.Year)),
+		}
+
+	case inboxsurvey.ShapeDetail:
+		name, args = "kpi_detail", []any{
+			scope,
+			sql.Named("year", keyword(clean.Year)),
+			sql.Named("quarter", keyword(clean.Quarter)),
+		}
+
+	default:
+		name, args = "kpi_by_adjuster", []any{
+			scope,
+			sql.Named("kpi_type", clean.CategoryValue()),
+		}
 	}
 
-	rows, err := r.db.QueryContext(ctx, query(name),
-		scopeValue(identity.Scope),
-		keyword(kpiCategory(clean)),
-		keyword(clean.Year),
-	)
+	rows, err := r.db.QueryContext(ctx, query(name), args...)
 	if err != nil {
 		return nil, fmt.Errorf("menjalankan kueri %s: %w", name, err)
 	}
@@ -190,17 +279,36 @@ func (r *Repo) KPI(
 	return result, nil
 }
 
-// kpiCategory memutuskan nilai kolom `tipe` yang dikirim ke kueri.
+// KPIYears mengambil tahun yang benar-benar ada pada baris milik cakupan pemanggil.
 //
-// KPIFinal dan KPIQuarterly keduanya mematok `'FINAL'` — itu tertulis di dalam rule-nya
-// sendiri (`where tipe='FINAL'`), bukan diserahkan pemanggil. Menerima kategori dari layar
-// untuk kedua jenis itu akan membuat layar dapat menampilkan angka yang di Pega tidak pernah
-// dapat ditampilkan.
-func kpiCategory(f inboxsurvey.KPIFilter) string {
-	if f.Kind == inboxsurvey.KPIOutstanding {
-		return f.Category
+// Tahun KOSONG dilewati, bukan dikembalikan sebagai pilihan kosong: dropdown yang memuat
+// baris tanpa label tidak dapat dipilih dengan sengaja oleh siapa pun.
+func (r *Repo) KPIYears(
+	ctx context.Context,
+	identity inboxsurvey.SurveyorIdentity,
+) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, query("kpi_years"),
+		sql.Named("scope", scopeValue(identity.Scope)))
+	if err != nil {
+		return nil, fmt.Errorf("menjalankan kueri kpi_years: %w", err)
 	}
-	return inboxsurvey.KPITypeFinal
+	defer rows.Close()
+
+	result := []string{}
+	for rows.Next() {
+		var year sql.NullString
+		if err := rows.Scan(&year); err != nil {
+			return nil, fmt.Errorf("membaca baris kueri kpi_years: %w", err)
+		}
+		if trimmed := strings.TrimSpace(year.String); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("menelusuri hasil kueri kpi_years: %w", err)
+	}
+
+	return result, nil
 }
 
 // scopeValue menyusun cakupan nama surveyor menjadi satu teks berpembatas.
@@ -263,6 +371,7 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 		surveyID        sql.NullString
 		claimID         sql.NullString
 		surveyIndex     sql.NullString
+		referenceNumber sql.NullString
 		claimNumber     sql.NullString
 		policyNumber    sql.NullString
 		insuredName     sql.NullString
@@ -291,13 +400,15 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	// seperti Pega memotongnya dari kunci objek kerja. Memindainya sebagai kolom tersendiri
 	// akan membuat dua sumber untuk satu nilai, dan keduanya bisa berbeda.
 	//
-	// ReferenceNumber juga tidak dipindai — asalnya belum diketahui. `REFNO` bukan asalnya;
-	// lihat `inboxsurvey.SurveyTask.ReferenceNumber`. Ia tetap ada sebagai field agar kolomnya
-	// tergambar di layar sebagai isian yang belum terbawa.
+	// ReferenceNumber DIPINDAI dari kedua varian kueri, dan itulah sebabnya varian terbatas
+	// tetap mengembalikan kolomnya sebagai `CAST(NULL AS VARCHAR2(101))`. Bentuk kedua varian
+	// WAJIB sama persis supaya keduanya dapat dibaca pemindai yang satu ini — kalau tidak,
+	// satu kolom bergeser dan nomor polis masuk ke kolom nama tertanggung tanpa galat apa pun.
 	if err := rows.Scan(
 		&surveyID,
 		&claimID,
 		&surveyIndex,
+		&referenceNumber,
 		&claimNumber,
 		&policyNumber,
 		&insuredName,
@@ -318,6 +429,7 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 	task.SurveyID = surveyID.String
 	task.ClaimID = claimID.String
 	task.SurveyIndex = surveyIndex.String
+	task.ReferenceNumber = referenceNumber.String
 	task.ClaimNumber = claimNumber.String
 	task.PolicyNumber = policyNumber.String
 	task.InsuredName = insuredName.String
@@ -352,13 +464,21 @@ func scanTask(rows *sql.Rows) (inboxsurvey.SurveyTask, int, error) {
 // NULL menjadi nol di sini — pada angka RATA-RATA, nol adalah bacaan yang benar untuk "tidak
 // ada nilai", berbeda dari kolom Aging yang menyatakan jumlah hari.
 func scanKPI(rows *sql.Rows) (inboxsurvey.KPIRow, error) {
+	// LIMA kolom kunci di depan, lalu sembilan angka. Kelima kueri KPI berbentuk sama
+	// persis — kolom yang tidak berlaku diisi NULL di SQL — supaya seluruhnya dibaca
+	// fungsi yang SATU ini. Satu kolom yang bergeser di salah satu kueri akan memindahkan
+	// angka ke kolom tetangganya, dan dua angka penilaian yang tertukar sama-sama masuk akal.
 	var (
-		groupKey sql.NullString
-		numbers  = make([]sql.NullFloat64, len(kpiColumns)-1)
+		groupKey   sql.NullString
+		statusKey  sql.NullString
+		quarterKey sql.NullString
+		monthKey   sql.NullString
+		caseKey    sql.NullString
+		numbers    = make([]sql.NullFloat64, len(kpiColumns)-len(kpiKeyColumns))
 	)
 
 	targets := make([]any, 0, len(kpiColumns))
-	targets = append(targets, &groupKey)
+	targets = append(targets, &groupKey, &statusKey, &quarterKey, &monthKey, &caseKey)
 	for i := range numbers {
 		targets = append(targets, &numbers[i])
 	}
@@ -369,6 +489,10 @@ func scanKPI(rows *sql.Rows) (inboxsurvey.KPIRow, error) {
 
 	return inboxsurvey.KPIRow{
 		Group:                 groupKey.String,
+		Status:                statusKey.String,
+		Quarter:               quarterKey.String,
+		Month:                 monthKey.String,
+		CaseID:                caseKey.String,
 		SurveyScheduling:      numbers[0].Float64,
 		ImmediateAdvice:       numbers[1].Float64,
 		PreliminaryAdvice:     numbers[2].Float64,

@@ -96,9 +96,65 @@ func NewSampleStore() *Store {
 			detail: inboxosclaimpercabang.Detail{
 				Occupation:      "PERKANTORAN",
 				TotalSumInsured: money.FromRupiah(5_000_000),
+				// Objek PERTAMA punya dua coverage, objek kedua tidak punya sama sekali.
+				// Perbedaan itu disengaja: panel yang terbuka harus terbukti menampilkan
+				// coverage milik objeknya sendiri, dan harus terbukti menangani objek yang
+				// memang kosong tanpa menampilkan panel yang menyesatkan.
 				Objects: []inboxosclaimpercabang.DetailObject{
-					{Name: "GUDANG A", Location: "JL CONTOH NO 1, CILEGON"},
-					{Name: "GUDANG B", Location: "JL CONTOH NO 2, CILEGON"},
+					{
+						ID:       "OBJ-9001-1",
+						Name:     "GUDANG A",
+						Location: "JL CONTOH NO 1, CILEGON",
+						Coverages: []inboxosclaimpercabang.DetailCoverage{
+							{
+								ObjectID: "OBJ-9001-1", ID: "CVG-1",
+								Currency: "IDR",
+								SumTSI:   money.FromRupiah(3_000_000),
+								Name:     "Kebakaran bangunan",
+								// Satu item dengan DUA estimasi yang saling meniadakan —
+								// bentuk yang benar-benar ada di data nyata, dan yang
+								// membuktikan nilai negatif ikut digambar.
+								Items: []inboxosclaimpercabang.DetailItem{{
+									ObjectID: "OBJ-9001-1", CoverageID: "CVG-1", ID: "1",
+									Name:        "BUILDINGS",
+									Description: "Bangunan gudang utama",
+									Estimations: []inboxosclaimpercabang.DetailEstimation{
+										{
+											ObjectID: "OBJ-9001-1", CoverageID: "CVG-1",
+											ItemID: "1", Sequence: "1",
+											RecordedAt: moment(2024, time.January, 20, 9),
+											Type:       "Claim",
+											Currency:   "IDR",
+											Rate:       money.FromRupiah(1),
+											Value:      money.FromRupiah(3_000_000),
+										},
+										{
+											ObjectID: "OBJ-9001-1", CoverageID: "CVG-1",
+											ItemID: "1", Sequence: "2",
+											RecordedAt: moment(2024, time.January, 21, 10),
+											Type:       "Claim",
+											Currency:   "IDR",
+											Rate:       money.FromRupiah(1),
+											Value:      money.FromRupiah(-500_000),
+										},
+									},
+								}},
+							},
+							{
+								ObjectID: "OBJ-9001-1", ID: "CVG-2",
+								Currency: "USD",
+								SumTSI:   money.FromRupiah(2_000_000),
+								Name:     "Gempa bumi",
+								Items:    []inboxosclaimpercabang.DetailItem{},
+							},
+						},
+					},
+					{
+						ID:        "OBJ-9001-2",
+						Name:      "GUDANG B",
+						Location:  "JL CONTOH NO 2, CILEGON",
+						Coverages: []inboxosclaimpercabang.DetailCoverage{},
+					},
 				},
 				ProgressHistory: []inboxosclaimpercabang.DetailProgress{
 					{
@@ -178,11 +234,21 @@ func NewSampleStore() *Store {
 				TotalSumInsured: money.FromRupiah(50_000),
 				Objects: []inboxosclaimpercabang.DetailObject{
 					{
+						ID:                "OBJ-9002-1",
 						Name:              "BUDI CONTOH",
 						DateOfBirth:       day(1990, time.March, 17),
 						IDCard:            "3200000000000001",
 						ParticipantStatus: "KARYAWAN",
 						Job:               "TEKNISI",
+						Coverages: []inboxosclaimpercabang.DetailCoverage{
+							{
+								ObjectID: "OBJ-9002-1", ID: "CVG-3",
+								Currency: "IDR",
+								SumTSI:   money.FromRupiah(50_000),
+								Name:     "Kecelakaan diri",
+								Items:    []inboxosclaimpercabang.DetailItem{},
+							},
+						},
 					},
 				},
 				ProgressHistory: []inboxosclaimpercabang.DetailProgress{

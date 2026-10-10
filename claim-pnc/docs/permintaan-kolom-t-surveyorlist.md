@@ -11,12 +11,34 @@
 
 ---
 
-## 1. Ringkas — SELURUH kolom sudah ada, isinya belum
+## 1. Ringkas — kolom ada di DEV, belum di PRODUKSI
 
-Per **2026-10-03** kelima kolom yang diminta sudah ditambahkan ke `POOLDATA.T_SURVEYORLIST`.
-**Seluruhnya masih kosong**, dan karena itu belum satu pun manfaat di bawah terwujud.
+| Lingkungan | Kelima kolom ada? | Terisi? |
+|---|:---:|:---:|
+| `pega_dev83` | ✅ sejak 2026-10-03, dinamai ulang 2026-10-05 | ❌ |
+| **Produksi** | ❌ **`ALTER` belum dijalankan** | — |
 
-**Tidak ada `ALTER` lagi yang diminta.** Yang tersisa hanyalah §2 — pengisiannya.
+Jadi permintaan ini **belum selesai**: `ALTER`-nya masih dibutuhkan di produksi. Yang sudah
+selesai hanyalah di dev.
+
+**Seluruhnya masih kosong** di kedua lingkungan, dan karena itu belum satu pun manfaat di bawah
+terwujud.
+
+**Yang masih diminta:** `ALTER` yang sama dijalankan **di produksi**, lalu pengisiannya di kedua
+lingkungan. Kuerinya sudah disiapkan di
+**[`backfill-t-surveyorlist.md`](backfill-t-surveyorlist.md)**.
+
+```sql
+ALTER TABLE POOLDATA.T_SURVEYORLIST ADD (
+  ADJUSTERACCEPT      VARCHAR2(32 BYTE),
+  REFNO               VARCHAR2(101 BYTE),
+  PYSTATUSWORK        VARCHAR2(32 CHAR),
+  ADJUSTER_PIC        VARCHAR2(150),
+  RESCHEDULE_LOCATION VARCHAR2(1500 CHAR)
+);
+```
+
+Kelimanya **nullable tanpa default** — persis seperti di `pega_dev83`.
 
 Dua permintaan **dicoret** sepanjang jalan karena kolomnya ternyata sudah ada di tempat lain;
 cara gugurnya dicatat di §4 karena lebih berguna daripada daftarnya.

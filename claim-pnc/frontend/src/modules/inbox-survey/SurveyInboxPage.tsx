@@ -6,16 +6,19 @@ import { useSelectedPortal } from '@/app/portal'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { SelectField } from '@/components/SelectField'
 import { ReloadIcon } from '@/components/Icon'
 import { TabBar, type TabItem } from '@/components/TabBar'
 
 import {
   PAGE_SIZE,
   useDaftarSurvei,
+  useEksporKPI,
   useJumlahTabSurvei,
   useKPISurvei,
   useKeteranganSurvei,
+  useTahunKPI,
+  type IsianKPI,
 } from './api'
 import type {
   BarisKPI,
@@ -27,6 +30,15 @@ import type {
 
 /** Dua tab besar pada harness: INBOX dan KPI. */
 type Bagian = 'inbox' | 'kpi'
+
+/**
+ * Keadaan awal keempat kendali panel KPI — seluruhnya KOSONG.
+ *
+ * Tidak ada yang dipilihkan untuk pengguna. Status Survey dan Tipe Report ditandai wajib di
+ * layar lama, dan memilihkan salah satunya berarti menjalankan laporan yang tidak diminta
+ * siapa pun, lalu menampilkan angkanya seolah itu yang dicari.
+ */
+const ISIAN_KPI_KOSONG: IsianKPI = { status: '', tipe: '', kuartal: '', tahun: '' }
 
 /**
  * My Work — menu `MENU_ID 50`, pengganti harness `InboxSurvey_Harness`.
@@ -71,13 +83,25 @@ export function SurveyInboxPage() {
   const [cari, setCari] = useState('')
   const [lewati, setLewati] = useState(0)
 
-  const [jenisKPI, setJenisKPI] = useState('outstanding')
-  const [tahunKPI, setTahunKPI] = useState('')
+  /*
+    DUA keadaan untuk panel KPI, bukan satu — dan pemisahannya yang membuat tombol Cari
+    berarti sesuatu.
+
+      isianKPI   apa yang sedang dipilih di layar; berubah setiap kali dropdown disentuh
+      dicariKPI  apa yang BENAR-BENAR diminta; berubah hanya saat Cari ditekan
+
+    Satu keadaan saja akan membuat tabelnya memuat ulang pada setiap perubahan dropdown —
+    perilaku yang berbeda dari layar lama, dan yang menjalankan laporan yang belum diminta.
+  */
+  const [isianKPI, setIsianKPI] = useState<IsianKPI>(ISIAN_KPI_KOSONG)
+  const [dicariKPI, setDicariKPI] = useState<IsianKPI | null>(null)
 
   const keterangan = useKeteranganSurvei()
   const jumlahTab = useJumlahTabSurvei()
   const daftar = useDaftarSurvei(tab, cari, lewati)
-  const kpi = useKPISurvei(jenisKPI, '', tahunKPI, bagian === 'kpi')
+  const kpi = useKPISurvei(dicariKPI ?? ISIAN_KPI_KOSONG, bagian === 'kpi' && dicariKPI !== null)
+  const ekspor = useEksporKPI()
+  const tahunKPI = useTahunKPI(bagian === 'kpi')
 
   /**
    * Tab bawaan datang dari SERVER, bukan ditulis tetap di sini.
@@ -208,11 +232,18 @@ export function SurveyInboxPage() {
       ) : (
         <BagianKPI
           kolom={keterangan.data?.kolom_kpi ?? []}
-          jenisTersedia={keterangan.data?.jenis_kpi ?? []}
-          jenis={jenisKPI}
-          onPilihJenis={setJenisKPI}
-          tahun={tahunKPI}
-          onUbahTahun={setTahunKPI}
+          pilihanStatus={keterangan.data?.status_survei ?? []}
+          pilihanTipe={keterangan.data?.tipe_report ?? []}
+          pilihanKuartal={keterangan.data?.kuartal ?? []}
+          pilihanTahun={tahunKPI.data?.tahun ?? []}
+          isian={isianKPI}
+          onUbah={setIsianKPI}
+          onCari={() => { setDicariKPI(isianKPI) }}
+          onEkspor={() => { ekspor.mutate(isianKPI) }}
+          sedangMengekspor={ekspor.isPending}
+          galatEkspor={ekspor.isError ? (ekspor.error as Error).message : null}
+          sudahDicari={dicariKPI !== null}
+          kolomAwal={kpi.data?.kolom_awal ?? []}
           baris={kpi.data?.data ?? []}
           sedangMemuat={kpi.isPending}
           sedangMengambil={kpi.isFetching}
@@ -221,11 +252,22 @@ export function SurveyInboxPage() {
         />
       )}
 
-      <Catatan
-        judul="Perbedaan yang disengaja terhadap layar lama"
-        baris={keterangan.data?.selisih_terencana ?? []}
-      />
-      <Catatan judul="Yang perlu diketahui" baris={keterangan.data?.keterbatasan ?? []} />
+      {/*
+        TIDAK ADA panel catatan migrasi di layar ini.
+
+        `selisih_terencana` dan `keterbatasan` masih dikirim server — bentuk jawabannya
+        sengaja dibiarkan sama dengan ~30 layar lain — tetapi TIDAK ditampilkan di sini
+        (Work Owner, 2026-10-07). Surveyor membuka layar ini untuk mengerjakan survei, bukan
+        untuk membaca apa yang berbeda dari Pega.
+
+        Isinya tidak hilang: ia hidup di `docs/catatan-pengembangan.md` dan
+        `docs/keputusan-implementasi.md`, tempat pembacanya memang tim.
+
+        YANG TETAP TAMPIL, dan tidak boleh ikut dihapus, adalah keterangan OPERASIONAL:
+        sebab sebuah tab belum dapat dibuka, dan sebab jumlah per tab tidak dapat diambil.
+        Keduanya menjawab "kenapa layar ini begini sekarang" — pertanyaan pemakai, bukan
+        catatan migrasi.
+      */}
     </PageFrame>
   )
 }
@@ -412,21 +454,41 @@ function BagianInbox({
   )
 }
 
-/** Judul jenis ringkasan KPI, dipasangkan dengan nilai yang dikirim server. */
-const JUDUL_JENIS_KPI: Record<string, string> = {
-  outstanding: 'Outstanding KPI Adjuster',
-  final: 'Data Final KPI Adjuster',
-  kuartal: 'Data Final per Tahun',
-}
-
-/** Bagian KPI — ringkasan penilaian adjuster. */
+/**
+ * Bagian KPI — panel penyaring dan ringkasan penilaian adjuster.
+ *
+ * # Bentuknya mengikuti layar lama, bukan mengikuti kuerinya
+ *
+ * `Section/InboxSurvey_section-Section.xml` memuat EMPAT kendali dan DUA tombol:
+ *
+ *	Status Survey*  TempAdjComp.ASMFull     ALL · OUTSTANDING · FINAL
+ *	Tipe Report*    TempAdjComp.AcceptedNo  DATA SUMMARY · DATA DETAIL
+ *	Kuartal         TempAdjComp.Initial     1 · 2 · 3 · 4
+ *	Tahun Kuartal   TempAdjComp.IsDLA       tahun
+ *	[Cari]          GetReportKPIAdjuster
+ *	[Export Data]   ExportKPILoginAdjuster
+ *
+ * Tidak ada sub-tab sama sekali; dua dropdown yang memilih laporan mana yang dijalankan.
+ *
+ * Versi sebelumnya layar ini menampilkan TIGA sub-tab yang diturunkan dari tiga rule SQL —
+ * memodelkan backend, bukan layarnya. Akibatnya Tipe Report hilang sama sekali, Status
+ * Survey `ALL` tidak dapat dipilih, Kuartal tidak ada, dan Export Data tidak ada. Dibongkar
+ * atas keputusan Work Owner 2026-10-07; rinciannya di `84.30`.
+ */
 function BagianKPI({
   kolom,
-  jenisTersedia,
-  jenis,
-  onPilihJenis,
-  tahun,
-  onUbahTahun,
+  pilihanStatus,
+  pilihanTipe,
+  pilihanKuartal,
+  pilihanTahun,
+  isian,
+  onUbah,
+  onCari,
+  onEkspor,
+  sedangMengekspor,
+  galatEkspor,
+  sudahDicari,
+  kolomAwal,
   baris,
   sedangMemuat,
   sedangMengambil,
@@ -434,86 +496,183 @@ function BagianKPI({
   onMuatUlang,
 }: {
   kolom: KolomLayar[]
-  jenisTersedia: string[]
-  jenis: string
-  onPilihJenis: (nilai: string) => void
-  tahun: string
-  onUbahTahun: (nilai: string) => void
+  pilihanStatus: string[]
+  pilihanTipe: string[]
+  pilihanKuartal: string[]
+  pilihanTahun: string[]
+  isian: IsianKPI
+  onUbah: (nilai: IsianKPI) => void
+  onCari: () => void
+  onEkspor: () => void
+  sedangMengekspor: boolean
+  galatEkspor: string | null
+  sudahDicari: boolean
+  kolomAwal: KolomLayar[]
   baris: BarisKPI[]
   sedangMemuat: boolean
   sedangMengambil: boolean
   galat: string | null
   onMuatUlang: () => void
 }) {
-  // Kolom pertama berganti arti menurut jenis ringkasannya: nama adjuster pada dua yang
-  // pertama, TAHUN pada yang ketiga. Judulnya ikut berganti supaya kolomnya tidak terbaca
-  // sebagai nama orang yang kebetulan berupa angka.
-  const judulKelompok = jenis === 'kuartal' ? 'TAHUN' : 'ADJUSTER'
+  /*
+    Kendali Kuartal dan Tahun Kuartal mengikuti `pyVisibleWhen` panel KPI apa adanya:
 
-  const tabs: TabItem[] = jenisTersedia.map((j) => ({
-    kode: j,
-    nama: JUDUL_JENIS_KPI[j] ?? j,
-  }))
+      TempAdjComp.ASMFull=='ALL'||TempAdjComp.ASMFull=='FINAL'
+
+    Itu sebabnya layar Pega hanya memperlihatkan DUA kendali ketika Status Survey masih
+    `--Pilih--`: dua lainnya memang belum muncul.
+  */
+  const kuartalBerlaku = isian.status === 'ALL' || isian.status === 'FINAL'
+
+  /*
+    Kolom kunci tabel datang dari JAWABAN, bukan dari isian yang sedang dipilih.
+
+    Bedanya nyata: mengubah dropdown tanpa menekan Cari tidak boleh mengganti judul kolom
+    tabel yang masih menampilkan hasil sebelumnya. Jawaban membawa `kolom_awal` milik hasil
+    yang sedang tampil, sehingga judul dan isinya tidak pernah berasal dari dua keadaan yang
+    berbeda.
+  */
+
+  function ubah(bagian: Partial<IsianKPI>) {
+    const berikut = { ...isian, ...bagian }
+
+    // Nilai yang tertinggal dari pilihan sebelumnya dibuang bersama kendalinya. Tanpa ini,
+    // hasilnya tersaring kuartal yang tidak terlihat di mana pun pada layar. Backend
+    // melakukan pembuangan yang sama — ini supaya LAYARNYA pun tidak berbohong.
+    if (berikut.status !== 'ALL' && berikut.status !== 'FINAL') {
+      berikut.kuartal = ''
+      berikut.tahun = ''
+    }
+    onUbah(berikut)
+  }
+
+  const lengkap = isian.status !== '' && isian.tipe !== ''
 
   return (
     <>
-      <div className="mt-4">
-        <TabBar
-          tabs={tabs}
-          active={jenis}
-          onSelect={onPilihJenis}
-          label="Jenis ringkasan KPI adjuster"
-        />
-      </div>
+      <section className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-4 shadow-lembut">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="w-52">
+            <SelectField
+              id="kpi-status-survei"
+              label="Status Survey *"
+              emptyText="--Pilih--"
+              options={pilihanStatus.map((v) => ({ value: v, label: v }))}
+              value={isian.status}
+              onChange={(event) => ubah({ status: event.target.value })}
+            />
+          </div>
 
-      <div className="mt-4 w-32">
-        {/*
-          `Field`, bukan `<input>` buatan sendiri.
+          <div className="w-52">
+            <SelectField
+              id="kpi-tipe-report"
+              label="Tipe Report *"
+              emptyText="--Pilih--"
+              options={pilihanTipe.map((v) => ({ value: v, label: v }))}
+              value={isian.tipe}
+              onChange={(event) => ubah({ tipe: event.target.value })}
+            />
+          </div>
 
-          Alasannya bukan kerapian. `src/styles.css:281` menempelkan permukaan gelap lewat
-          selector `input[class~="bg-white"]`, dan isian tanpa kelas itu KELUAR dari tema —
-          ia tampil transparan di tema gelap. `Field` membawanya, berikut `htmlFor` yang
-          benar dan cincin fokus yang sama dengan seluruh isian lain di aplikasi ini.
-        */}
-        <Field
-          id="kpi-tahun"
-          label="Tahun"
-          type="text"
-          inputMode="numeric"
-          value={tahun}
-          onChange={(event) => onUbahTahun(event.target.value)}
-          placeholder="semua"
-          hint="Kosongkan untuk seluruh tahun."
-        />
-      </div>
+          {kuartalBerlaku && (
+            <>
+              <div className="w-40">
+                <SelectField
+                  id="kpi-kuartal"
+                  label="Kuartal"
+                  emptyText="--Pilih--"
+                  options={[
+                    // "ALL" adalah pilihan yang BERBEDA dari "--Pilih--": ia meminta keempat
+                    // kuartal sekaligus, dan menempuh rule lain (`GetSummaryKPIAdjusterALLKuartal`).
+                    { value: 'ALL', label: 'ALL' },
+                    ...pilihanKuartal.map((v) => ({ value: v, label: v })),
+                  ]}
+                  value={isian.kuartal}
+                  onChange={(event) => ubah({ kuartal: event.target.value })}
+                />
+              </div>
 
-      <div className="mt-4">
-        <DataTable<BarisKPI>
-          columns={buildKPIColumns(kolom, judulKelompok)}
-          rows={baris}
-          rowKey={(row) => row.kelompok}
-          title={JUDUL_JENIS_KPI[jenis] ?? 'Ringkasan KPI Adjuster'}
-          label="Ringkasan KPI adjuster"
-          description="Rata-rata penilaian, dibulatkan dua desimal — sama dengan layar lama."
-          isLoading={sedangMemuat}
-          emptyMessage="Belum ada penilaian KPI untuk cakupan Anda."
-          actions={
-            <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
-              <ReloadIcon className="h-4 w-4" />
-              {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
+              <div className="w-40">
+                {/*
+                  Dropdown, bukan kotak teks — `pySourceName = TahunKPI.pxResults` dengan
+                  `--Pilih--` di puncaknya. Isinya direkonstruksi dari tahun yang benar-benar
+                  ada pada data milik cakupan pemanggil: rule pengisi aslinya tidak ada di
+                  export (`R-16`), dan daftar yang menawarkan tahun tanpa data hanya
+                  menghasilkan tabel kosong yang terbaca sebagai kerusakan.
+                */}
+                <SelectField
+                  id="kpi-tahun-kuartal"
+                  label="Tahun Kuartal"
+                  emptyText="--Pilih--"
+                  options={pilihanTahun.map((v) => ({ value: v, label: v }))}
+                  value={isian.tahun}
+                  onChange={(event) => ubah({ tahun: event.target.value })}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center gap-2 self-end pb-1">
+            <Button onClick={onCari} disabled={!lengkap || sedangMengambil}>
+              {sedangMengambil ? 'Mencari…' : 'Cari'}
             </Button>
-          }
-          error={
-            galat ? (
-              <ErrorMessage
-                title="Ringkasan KPI tidak dapat dimuat"
-                description={galat}
-                tone="gangguan"
-              />
-            ) : undefined
-          }
-        />
-      </div>
+            <Button tone="halus" onClick={onEkspor} disabled={!lengkap || sedangMengekspor}>
+              {sedangMengekspor ? 'Menyiapkan…' : 'Export Data'}
+            </Button>
+          </div>
+        </div>
+
+        {!lengkap && (
+          <p className="mt-3 text-xs text-slate-600">
+            Pilih Status Survey dan Tipe Report lebih dulu, lalu tekan Cari.
+          </p>
+        )}
+
+        {galatEkspor !== null && (
+          <div className="mt-3">
+            <ErrorMessage
+              title="Berkas ekspor tidak dapat diambil"
+              description={galatEkspor}
+              tone="gangguan"
+            />
+          </div>
+        )}
+      </section>
+
+      {/*
+        Tabel BARU muncul setelah Cari ditekan — sama dengan layar lama, yang tidak memuat
+        apa pun sampai tombolnya ditekan. Menampilkan tabel kosong sebelum itu akan terbaca
+        sebagai "tidak ada datanya", padahal belum ada yang diminta.
+      */}
+      {sudahDicari && (
+        <div className="mt-4">
+          <DataTable<BarisKPI>
+            columns={buildKPIColumns(kolomAwal, kolom)}
+            rows={baris}
+            rowKey={(row) => row.kelompok}
+            title="Ringkasan KPI Adjuster"
+            label="Ringkasan KPI adjuster"
+            description="Rata-rata penilaian, dibulatkan dua desimal — sama dengan layar lama."
+            isLoading={sedangMemuat}
+            emptyMessage="Belum ada penilaian KPI untuk pilihan Anda."
+            actions={
+              <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
+                <ReloadIcon className="h-4 w-4" />
+                {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
+              </Button>
+            }
+            error={
+              galat ? (
+                <ErrorMessage
+                  title="Ringkasan KPI tidak dapat dimuat"
+                  description={galat}
+                  tone="gangguan"
+                />
+              ) : undefined
+            }
+          />
+        </div>
+      )}
     </>
   )
 }
@@ -539,16 +698,32 @@ function buildColumns(
 }
 
 /** Menyusun kesepuluh kolom tabel KPI — satu kelompok dan sembilan angka. */
-function buildKPIColumns(kolom: KolomLayar[], judulKelompok: string): Column<BarisKPI>[] {
-  const hasil: Column<BarisKPI>[] = [
-    {
-      key: 'kelompok',
-      title: judulKelompok,
-      width: '14rem',
-      value: (row) => row.kelompok,
-      render: (row) => <Teks nilai={row.kelompok} />,
-    },
-  ]
+function buildKPIColumns(
+  kolomAwal: KolomLayar[],
+  kolom: KolomLayar[],
+): Column<BarisKPI>[] {
+  const hasil: Column<BarisKPI>[] = []
+
+  /*
+    Kolom KUNCI datang dari server beserta judulnya, bukan disusun di sini.
+
+    Alasannya bukan kerapian: jumlah dan artinya berganti menurut BENTUK hasil — satu baris
+    bisa berarti seorang adjuster, seorang adjuster pada satu kategori, satu tahun, satu
+    kuartal pada satu tahun, atau satu berkas. Menyusunnya di layar berarti daftar yang sama
+    hidup di dua tempat, dan yang satu akan tertinggal saat yang lain diperbaiki.
+  */
+  for (const k of kolomAwal) {
+    const ambil = kunciKPI[k.kunci]
+    if (!ambil) continue
+
+    hasil.push({
+      key: k.kunci,
+      title: k.judul,
+      width: '12rem',
+      value: (row) => ambil(row),
+      render: (row) => <Teks nilai={ambil(row)} />,
+    })
+  }
 
   for (const k of kolom) {
     const ambil = angkaKPI[k.kunci]
@@ -565,6 +740,21 @@ function buildKPIColumns(kolom: KolomLayar[], judulKelompok: string): Column<Bar
     })
   }
   return hasil
+}
+
+/**
+ * Pengambil kolom KUNCI, dikunci dengan `kunci` yang dikirim server pada `kolom_awal`.
+ *
+ * Kunci yang tidak dikenal DILEWATI, bukan digambar kosong — kolom baru menuntut keputusan
+ * tampilan yang belum diambil, dan kolom kosong tanpa keterangan lebih buruk daripada kolom
+ * yang belum ada.
+ */
+const kunciKPI: Record<string, ((row: BarisKPI) => string) | undefined> = {
+  kelompok: (row) => row.kelompok,
+  status: (row) => row.status,
+  kuartal: (row) => row.kuartal,
+  bulan: (row) => row.bulan,
+  case_id: (row) => row.case_id,
 }
 
 /** Pengambil kesembilan angka KPI, dikunci dengan `kunci` yang dikirim server. */
@@ -821,30 +1011,6 @@ function PageFrame({
       </header>
       {children}
     </div>
-  )
-}
-
-/**
- * Catatan di bawah layar.
- *
- * Datang dari SERVER, bukan ditulis tetap di sini, supaya hilang dengan sendirinya begitu
- * penghalangnya hilang. Pada layar ini daftarnya panjang — empat kolom adjuster belum ada di
- * basis data, empat kueri tab layar lama hilang dari export, dan satu pemetaan kolom masih
- * menunggu DBA — sehingga menuliskannya di sini berarti menyunting layar setiap kali satu
- * penghalang selesai.
- */
-function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
-  if (baris.length === 0) return null
-
-  return (
-    <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">{judul}</h2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
-        {baris.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

@@ -14,6 +14,17 @@ import (
 type LocalLogin struct {
 	LoginID   string
 	LoginName string
+
+	// DetailBranchCode adalah kode cabang RINCI pengguna, bila ia ditemukan di master
+	// HRD lokal `POOLDATA.V_HRD_M_MST` (kolom `LCA_ID`).
+	//
+	// Kosong untuk pengguna non-karyawan yang sebenarnya — broker dan surveyor
+	// independen tidak ada di HRD, dan mereka memang tidak punya cabang.
+	//
+	// Nilainya berada di ruang kode yang SAMA dengan `DetailBranchCode` dari HCQ, yakni
+	// `POOLDATA.BRANCH.OLDID`, sehingga ia dapat dipakai apa adanya. Lihat catatan pada
+	// kueri `local_login_find_active`.
+	DetailBranchCode string
 }
 
 // LoginListRepo adalah seam ke tabel POOLDATA.M_LOGIN_PNC.
@@ -89,6 +100,11 @@ func (l *Local) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 		Name:     strings.TrimSpace(rows.LoginName),
 		Kind:     auth.NonEmployee,
 		Login:    strings.TrimSpace(rows.LoginID),
+
+		// Cabang diisi HANYA bila master HRD lokal memuatnya. Kosong tetap sah dan
+		// tidak menghalangi masuk — yang terjadi kemudian adalah penolakan pada layar
+		// yang memang berbatas cabang, bukan kegagalan login.
+		DetailBranchCode: strings.TrimSpace(rows.DetailBranchCode),
 	}
 	if err := profile.Check(); err != nil {
 		return auth.Profile{}, err

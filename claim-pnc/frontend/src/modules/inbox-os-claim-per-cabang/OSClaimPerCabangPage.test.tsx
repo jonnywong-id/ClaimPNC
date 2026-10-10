@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ import { AppRoute } from '@/app/App'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { ListResponse, WorkItem } from './types'
+import type { ListResponse, WorkItem, SummaryResponse } from './types'
 
 const PATH = '/api/inbox-os-claim-per-cabang'
 const EXPORT_PATH = `${PATH}/ekspor`
@@ -108,9 +108,13 @@ function listResponse(rows: WorkItem[], total = rows.length): ListResponse {
     cabang: { kode: '100099', nama: 'CILEGON' },
     paginasi: { halaman: 1, ukuran: 25, total, total_halaman: Math.max(1, Math.ceil(total / 25)) },
     ambang_aging: 180,
+    // Dua butir contoh, diambil dari daftar yang BENAR-BENAR dikirim peladen. Keduanya
+    // sempat berisi butir yang kemudian dicabut Work Owner (paginasi dan umur WIB), dan
+    // uji yang memakai butir yang sudah tidak ada akan tetap hijau sambil mendokumentasikan
+    // layar yang tidak pernah muncul.
     selisih_terencana: [
-      'Daftar dibagi per halaman di server.',
-      'Umur klaim dihitung terhadap tanggal WIB.',
+      'Kolom "Nama Insured" terisi di sini.',
+      'Kotak cari nomor klaim dan nomor polis adalah kemampuan baru.',
     ],
     portal: 'ASM',
   }
@@ -119,6 +123,62 @@ function listResponse(rows: WorkItem[], total = rows.length): ListResponse {
 type Call = { url: string; init: RequestInit | undefined }
 
 let calls: Call[] = []
+
+/**
+ * Jawaban panel ringkasan. Angkanya KARANGAN, dan sengaja konsisten dengan ketiga baris
+ * contoh: 3 berkas, dan jumlah nilainya sama dengan jumlah kolom Reserve Claim ASM Share.
+ *
+ * Konsistensi itu yang diuji — panel yang angkanya tidak cocok dengan grid di bawahnya
+ * adalah kelas cacat yang tidak menghasilkan galat apa pun.
+ */
+/** emptySummary adalah ringkasan cabang yang memang tidak punya klaim berjalan. */
+function emptySummary(): SummaryResponse {
+  return {
+    posisi: '2026-09-28',
+    total_berkas: 0,
+    total_estimasi: '0.00',
+    total_reserve_or: '0.00',
+    total_reserve_or_terbaca: true,
+    umur_di_atas_2_tahun: 0,
+    sebaran_umur: [
+      { label: 'Sampai 6 bulan', berkas: 0, nilai: '0.00' },
+      { label: '6–12 bulan', berkas: 0, nilai: '0.00' },
+      { label: '1–2 tahun', berkas: 0, nilai: '0.00' },
+      { label: 'Di atas 2 tahun', berkas: 0, nilai: '0.00' },
+    ],
+    per_cob: [],
+    per_sumber_bisnis: [],
+    cabang: { kode: '100099', nama: 'CILEGON' },
+    portal: 'ASM',
+  }
+}
+
+function summaryResponse(): SummaryResponse {
+  return {
+    posisi: '2026-09-28',
+    total_berkas: 3,
+    total_estimasi: '2000000.00',
+    total_reserve_or: '0.00',
+    total_reserve_or_terbaca: true,
+    umur_di_atas_2_tahun: 1,
+    sebaran_umur: [
+      { label: 'Sampai 6 bulan', berkas: 2, nilai: '1750000.00' },
+      { label: '6–12 bulan', berkas: 0, nilai: '0.00' },
+      { label: '1–2 tahun', berkas: 0, nilai: '0.00' },
+      { label: 'Di atas 2 tahun', berkas: 1, nilai: '250000.00' },
+    ],
+    per_cob: [
+      { nama: 'PA', berkas: 1, nilai: '1500000.00', umur_di_atas_2_tahun: 0 },
+      { nama: 'Aneka', berkas: 1, nilai: '250000.00', umur_di_atas_2_tahun: 1 },
+    ],
+    per_sumber_bisnis: [
+      { nama: 'BANK CONTOH CILEGON', berkas: 1, nilai: '250000.00', umur_di_atas_2_tahun: 1 },
+      { nama: '(tanpa keterangan)', berkas: 1, nilai: '0.00', umur_di_atas_2_tahun: 0 },
+    ],
+    cabang: { kode: '100099', nama: 'CILEGON' },
+    portal: 'ASM',
+  }
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -141,6 +201,13 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
 /** Peladen tiruan yang menjawab daftar dan berkas ekspor. */
 function stubDefaultFetch(rows: WorkItem[] = [TUA, MANDEK, TENANG]) {
   stubFetch((url) => {
+    if (url.startsWith(`${PATH}/ringkasan`)) {
+      // Ringkasan dibuat SEJALAN dengan daftarnya. Sejak tombol ekspor membaca jumlah
+      // dari ringkasan — karena berkasnya memang seluruh cabang, bukan hasil pencarian —
+      // ringkasan yang menyebut tiga berkas sementara daftarnya kosong adalah keadaan
+      // yang tidak pernah terjadi di produksi, dan uji yang memakainya menguji hantu.
+      return jsonResponse(200, rows.length === 0 ? emptySummary() : summaryResponse())
+    }
     if (url.startsWith(EXPORT_PATH)) {
       return new Response('Cabang\nCILEGON\n', {
         status: 200,
@@ -165,6 +232,21 @@ function renderPage() {
       </MemoryRouter>
     </QueryClientProvider>,
   )
+}
+
+/**
+ * gridTable mengembalikan tabel GRID, bukan tabel panel ringkasan di atasnya.
+ *
+ * Sejak panel ringkasan ada, layar memuat lebih dari satu tabel — dan beberapa judul
+ * kolomnya sengaja sama ("COB"). Pencarian global karena itu dapat cocok dengan tabel yang
+ * salah, dan uji kolom grid akan tetap lulus meski kolomnya hilang.
+ */
+function gridTable(): HTMLElement {
+  const tabel = screen
+    .getAllByRole('table')
+    .find((t) => t.textContent?.includes('PNC-9001'))
+  if (!tabel) throw new Error('tabel grid tidak ditemukan di layar')
+  return tabel
 }
 
 /** renderLoaded menggambar layar lalu MENUNGGU barisnya tiba. */
@@ -212,11 +294,17 @@ describe('kolom grid', () => {
     stubDefaultFetch()
     await renderLoaded()
 
+    // Dicari DI DALAM tabel grid, bukan di seluruh layar. Panel ringkasan di atas punya
+    // tabelnya sendiri yang berjudul kolom "COB" juga, dan pencarian global akan cocok
+    // dengan yang itu meski kolom gridnya hilang.
+    const grid = within(gridTable())
+
     for (const title of [
       'Cabang',
       'Sumbis',
       'COB',
       'Policy No',
+      'Nama Insured',
       'Claim No',
       'Registration Date',
       'DOL',
@@ -229,7 +317,7 @@ describe('kolom grid', () => {
       'PIC',
       'Aging (Hari)',
     ]) {
-      expect(screen.getByRole('columnheader', { name: title })).toBeInTheDocument()
+      expect(grid.getByRole('columnheader', { name: title })).toBeInTheDocument()
     }
   })
 
@@ -258,8 +346,13 @@ describe('kolom grid', () => {
     stubDefaultFetch([TUA])
     await renderLoaded()
 
+    // Teks desimal kanonik tidak boleh bocor ke MANA PUN di layar — panel maupun grid.
     expect(screen.queryByText('250000.00')).not.toBeInTheDocument()
-    expect(screen.getByText('Rp 250.000')).toBeInTheDocument()
+
+    // Yang diperiksa barisnya, bukan seluruh layar: panel ringkasan di atas menampilkan
+    // angka yang sama, dan pencarian global akan cocok dengan yang itu meski selnya kosong.
+    const baris = screen.getByRole('row', { name: /PNC-9001/ })
+    expect(within(baris).getByText('Rp 250.000')).toBeInTheDocument()
   })
 
   it('menggambar tanggal kosong sebagai tanda pisah, bukan tanggal awal zaman', async () => {
@@ -340,6 +433,7 @@ describe('penandaan baris merah', () => {
 describe('paginasi', () => {
   it('meminta halaman berikutnya ke server, bukan memotong di peramban', async () => {
     stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, summaryResponse())
       if (url.startsWith(EXPORT_PATH)) return jsonResponse(200, {})
       return jsonResponse(200, listResponse([TUA], 60))
     })
@@ -368,12 +462,28 @@ describe('tombol ekspor', () => {
     expect(ekspor?.url).not.toContain('token-uji')
   })
 
+  it('TETAP hidup saat pencarian nihil, karena berkasnya seluruh cabang', async () => {
+    // Berkas ekspor tidak mengikuti kotak cari. Mematikan tombolnya karena pencarian
+    // nihil akan mematikan tombol yang sebenarnya masih menghasilkan berkas penuh —
+    // pengguna menyimpulkan ekspornya rusak.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, summaryResponse())
+      return jsonResponse(200, listResponse([]))
+    })
+    renderPage()
+
+    await screen.findByText(/Tidak ada klaim berjalan di cabang ini/)
+    expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeEnabled()
+  })
+
   it('dimatikan saat tidak ada yang dapat diekspor', async () => {
     // Berkas kosong yang tetap terunduh tidak dapat dibedakan pengguna dari ekspor yang
     // gagal diam-diam.
     stubDefaultFetch([])
     renderPage()
-    await screen.findByText(/Tidak ada klaim berjalan di cabang ini/)
+    // `findAllByText`: kalimat yang sama muncul DUA kali pada cabang yang benar-benar
+    // kosong — sekali di panel sebaran umur, sekali di gridnya.
+    await screen.findAllByText(/Tidak ada klaim berjalan di cabang ini/)
 
     expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeDisabled()
   })
@@ -414,7 +524,7 @@ describe('selisih terencana', () => {
 
     const section = screen.getByRole('heading', { name: /Yang berbeda dari layar lama/ })
       .parentElement as HTMLElement
-    expect(within(section).getByText(/Daftar dibagi per halaman di server/)).toBeInTheDocument()
+    expect(within(section).getByText(/Nama Insured/)).toBeInTheDocument()
   })
 })
 
@@ -456,4 +566,202 @@ it('mengisi kolom Nama Insured, yang di layar lama selalu kosong', async () => {
   await renderLoaded()
 
   expect(screen.getAllByText('PT CONTOH SATU').length).toBeGreaterThan(0)
+})
+
+describe('panel ringkasan', () => {
+  it('menggambar kartu angka, sebaran umur, dan kedua rincian', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByText('Reserve OR ASM tertahan')
+    screen.getByText('Berkas outstanding')
+    screen.getByText('Umur di atas 2 tahun')
+
+    screen.getByText('Umur berkas sejak registrasi')
+    screen.getByText('Reserve OR ASM per COB')
+    screen.getByText('Sumber bisnis')
+
+    screen.getByText(/Posisi/)
+  })
+
+  it('menuliskan tanggal posisi dalam bentuk panjang, bukan ISO', async () => {
+    // Satu layar yang menuliskan tanggal dengan dua cara memaksa pembacanya menerjemahkan
+    // salah satunya setiap kali. Kolom Registration Date pada grid sudah memakai bentuk
+    // panjang, jadi kepala panel mengikutinya.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByText('28 September 2026')
+    expect(screen.queryByText('2026-09-28')).not.toBeInTheDocument()
+  })
+
+  it('TIDAK menggambar kartu porsi treaty OR', async () => {
+    // Porsi treaty OR dibuang atas permintaan Work Owner (2026-10-08), dan penghapusannya
+    // dijaga di sini karena ia mudah "dikembalikan" oleh orang yang melihat `total_reserve_or`
+    // masih ada di jawaban API.
+    //
+    // Keduanya memang mudah tertukar: "Reserve OR ASM" yang DITAMPILKAN adalah reserve
+    // retensi sendiri, sedangkan porsi treaty OR adalah angka lain yang hampir selalu Rp 0.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(screen.queryByText('Reserve treaty OR')).not.toBeInTheDocument()
+    expect(screen.queryByText(/sambungan ke sistem treaty/i)).not.toBeInTheDocument()
+  })
+
+  it('menampilkan keempat pita umur, termasuk yang kosong', async () => {
+    // Pita kosong TETAP muncul di keterangan. Batang yang pitanya hilang berubah bentuk dari
+    // hari ke hari, dan pembacanya tidak dapat tahu apakah pita itu nol atau tidak ada.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    for (const label of [
+      'Sampai 6 bulan',
+      '6–12 bulan',
+      '1–2 tahun',
+      'Di atas 2 tahun',
+    ]) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+  })
+
+  it('tetap menggambar panel ketika porsi treaty OR tidak terbaca', async () => {
+    // Porsi treaty OR tidak lagi ditampilkan, sehingga kegagalan membacanya TIDAK boleh
+    // mempengaruhi apa pun di layar. Dulu ia menggerakkan satu kartu; sekarang ia harus
+    // lewat tanpa jejak.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) {
+        return jsonResponse(200, {
+          ...summaryResponse(),
+          total_reserve_or_terbaca: false,
+        })
+      }
+      return jsonResponse(200, listResponse([TUA]))
+    })
+    renderPage()
+
+    await screen.findByText('Reserve OR ASM tertahan')
+    expect(screen.queryByText(/sambungan ke sistem treaty/i)).not.toBeInTheDocument()
+  })
+
+  it('tetap menggambar grid ketika ringkasan gagal dimuat', async () => {
+    // Keduanya dimuat terpisah justru supaya ini mungkin: panel yang gagal tidak boleh
+    // menghilangkan daftar klaim, yang masih berguna sepenuhnya tanpa ringkasan.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) {
+        return jsonResponse(500, { kode: 'galat_internal', pesan: 'Terjadi kesalahan.' })
+      }
+      return jsonResponse(200, listResponse([TUA]))
+    })
+    await renderLoaded()
+
+    await screen.findByText(/Ringkasan tidak dapat dimuat/)
+    expect(gridTable().textContent).toContain('PNC-9001')
+  })
+
+  it('tetap menggambar grid ketika ringkasan berhasil tetapi bentuknya lain', async () => {
+    // Berbeda dari uji di atas: di sini peladen menjawab 200, sehingga tidak ada galat yang
+    // bisa ditangkap — bentuknyalah yang salah. Tanpa penjagaan, `sebaran_umur` bernilai
+    // undefined, `.map` melempar saat render, dan lemparan itu MENJATUHKAN SELURUH HALAMAN
+    // termasuk gridnya. Kelas cacat ini pernah benar-benar terjadi, dan baru ketahuan karena
+    // satu uji paginasi ikut gagal dengan pesan yang tidak menyinggung ringkasan sama sekali.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, { posisi: '2026-09-28' })
+      return jsonResponse(200, listResponse([TUA]))
+    })
+    await renderLoaded()
+
+    await screen.findByText(/Ringkasan tidak dapat dimuat/)
+    expect(gridTable().textContent).toContain('PNC-9001')
+  })
+
+  it('meminta ringkasan TERPISAH dari daftar, sekali saja saat layar dibuka', async () => {
+    // Panel tidak berubah saat pengguna berpindah halaman. Menyatukannya dengan daftar
+    // berarti menghitung ulang seluruh ringkasan cabang pada setiap klik halaman.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const ringkasan = calls.filter((c) => c.url.startsWith(`${PATH}/ringkasan`))
+    expect(ringkasan).toHaveLength(1)
+  })
+})
+
+describe('pencarian nomor klaim dan nomor polis', () => {
+  it('mengirim ketikan ke peladen sebagai parameter cari, bukan menyaring di peramban', async () => {
+    // Inilah inti perilakunya. Penyaringan di peramban hanya menjangkau halaman yang
+    // sedang terbuka, sehingga pengguna diberi tahu "tidak ada" untuk baris yang
+    // sebenarnya ada di halaman berikutnya — dan gagalnya tanpa satu pun tanda.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, summaryResponse())
+      const cari = new URL(url, 'https://x').searchParams.get('cari')
+      return jsonResponse(200, listResponse(cari === null ? [TUA, MANDEK, TENANG] : [TENANG]))
+    })
+    renderPage()
+    await screen.findByText('PNC-9001')
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: /Cari No Klaim \/ No Polis/ }),
+      'PNC-9003',
+    )
+
+    await waitFor(() => expect(screen.queryByText('PNC-9001')).not.toBeInTheDocument())
+    screen.getByText('PNC-9003')
+
+    const dicari = calls.filter((c) => c.url.includes('cari='))
+    expect(dicari.length).toBeGreaterThan(0)
+    expect(dicari[dicari.length - 1]?.url).toContain('cari=PNC-9003')
+  })
+
+  it('mengembalikan daftar ke halaman pertama saat pencarian berubah', async () => {
+    // Tanpa ini, mencari dari halaman empat menampilkan tabel kosong yang tampak rusak
+    // padahal hasilnya ada di halaman satu.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, summaryResponse())
+      const q = new URL(url, 'https://x').searchParams
+      const halaman = Number(q.get('halaman') ?? '1')
+      return jsonResponse(
+        200,
+        listResponse([{ ...TUA, no_klaim: `PNC-H${halaman}` }], 80),
+      )
+    })
+    renderPage()
+    await screen.findByText('PNC-H1')
+
+    await userEvent.click(screen.getByRole('button', { name: /Berikutnya/ }))
+    await screen.findByText('PNC-H2')
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: /Cari No Klaim \/ No Polis/ }),
+      '9',
+    )
+
+    await screen.findByText('PNC-H1')
+    const terakhir = calls[calls.length - 1]?.url ?? ''
+    expect(terakhir).not.toContain('halaman=2')
+  })
+
+  it('menyebut pencariannya saat hasilnya nihil, bukan menyebut cabangnya kosong', async () => {
+    // "Tidak ada klaim berjalan di cabang ini" saat kotak cari terisi adalah pernyataan
+    // yang keliru — yang kosong hasil pencariannya, bukan cabangnya.
+    stubFetch((url) => {
+      if (url.startsWith(`${PATH}/ringkasan`)) return jsonResponse(200, summaryResponse())
+      const cari = new URL(url, 'https://x').searchParams.get('cari')
+      return jsonResponse(200, listResponse(cari === null ? [TUA] : []))
+    })
+    renderPage()
+    await screen.findByText('PNC-9001')
+
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: /Cari No Klaim \/ No Polis/ }),
+      'ZZZ',
+    )
+
+    // Pesannya datang dari `DataTable`, bukan dari layar ini — komponen bersama sudah
+    // menggantinya saat kotak cari terisi, dan menuliskan versi sendiri di sini akan
+    // membuat dua layar menyebut keadaan yang sama dengan dua kalimat berbeda.
+    await screen.findByText(/Tidak ada baris yang cocok dengan/)
+    expect(
+      screen.queryByText('Tidak ada klaim berjalan di cabang ini.'),
+    ).not.toBeInTheDocument()
+  })
 })

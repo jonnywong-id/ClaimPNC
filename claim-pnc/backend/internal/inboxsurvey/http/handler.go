@@ -112,7 +112,11 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(h.service.Metadata(), active.Alias))
+	// Keterangan layar dibaca PER PORTAL sejak 2026-10-07: ketersediaan tab bergantung pada
+	// kolom yang ada dan terisi di basis data portal itu, bukan pada konstanta di kode.
+	meta := h.service.Metadata(r.Context(), active.Alias)
+
+	h.writeJSON(w, r, http.StatusOK, toMetadataResponse(meta, active.Alias))
 }
 
 // List menangani GET /api/inbox-survey.
@@ -178,9 +182,10 @@ func (h *Handler) KPI(w http.ResponseWriter, r *http.Request) {
 		active.Alias,
 		caller,
 		inboxsurvey.KPIFilter{
-			Kind:     inboxsurvey.KPIKind(query.Get("jenis")),
-			Category: query.Get("kategori"),
-			Year:     query.Get("tahun"),
+			Status:  inboxsurvey.SurveyStatus(query.Get("status_survei")),
+			Report:  inboxsurvey.ReportType(query.Get("tipe_report")),
+			Quarter: query.Get("kuartal"),
+			Year:    query.Get("tahun"),
 		},
 	)
 	if err != nil {
@@ -189,6 +194,26 @@ func (h *Handler) KPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, r, http.StatusOK, toKPIResponse(scored, active.Alias))
+}
+
+// KPIYears menangani GET /api/inbox-survey/kpi/tahun — isi dropdown "Tahun Kuartal".
+//
+// Rute TERSENDIRI, bukan bagian /keterangan: isinya bergantung pada identitas pemanggil,
+// sedangkan /keterangan tidak menyentuh basis data sama sekali dan di-cache selamanya oleh
+// layar. Menyatukannya akan membuat daftar tahun milik pengguna sebelumnya ikut terbawa.
+func (h *Handler) KPIYears(w http.ResponseWriter, r *http.Request) {
+	active, caller, ready := h.begin(w, r)
+	if !ready {
+		return
+	}
+
+	years, err := h.service.KPIYears(r.Context(), active.Alias, caller)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	h.writeJSON(w, r, http.StatusOK, TahunKPIResponse{Portal: active.Alias, Tahun: years})
 }
 
 // begin menjalankan dua pemeriksaan yang sama bagi ketiga rute berdata.

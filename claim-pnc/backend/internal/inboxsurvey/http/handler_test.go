@@ -35,16 +35,28 @@ func (c fixedClock) Now() time.Time { return c.at }
 // brokenRepo selalu gagal dengan galat yang bukan milik modul.
 type brokenRepo struct{}
 
-func (brokenRepo) List(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Filter) (inboxsurvey.Page, error) {
+func (brokenRepo) List(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Filter, inboxsurvey.Readiness) (inboxsurvey.Page, error) {
 	return inboxsurvey.Page{}, errors.New("rahasia basis data")
 }
 
-func (brokenRepo) Counts(context.Context, inboxsurvey.SurveyorIdentity) ([]inboxsurvey.TabCount, error) {
+func (brokenRepo) Counts(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.Readiness) ([]inboxsurvey.TabCount, error) {
 	return nil, errors.New("rahasia basis data")
 }
 
 func (brokenRepo) KPI(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey.KPIFilter) ([]inboxsurvey.KPIRow, error) {
 	return nil, errors.New("rahasia basis data")
+}
+
+// Readiness pada repo yang rusak mengembalikan kesiapan KOSONG, bukan galat.
+//
+// Itu memang kontraknya: kegagalan membaca ketersediaan tidak boleh menjatuhkan layar,
+// melainkan jatuh ke perilaku paling berhati-hati.
+func (brokenRepo) KPIYears(context.Context, inboxsurvey.SurveyorIdentity) ([]string, error) {
+	return nil, errors.New("rahasia basis data")
+}
+
+func (brokenRepo) Readiness(context.Context) inboxsurvey.Readiness {
+	return inboxsurvey.Readiness{}
 }
 
 type fixture struct {
@@ -118,8 +130,12 @@ func TestMetadataEndpoint(t *testing.T) {
 	rec, body := f.get(t, "/inbox-survey/keterangan", "ASM")
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "ASM", body["portal"])
-	require.Equal(t, string(inboxsurvey.DefaultAvailableTab()), body["tab_bawaan"])
-	require.Equal(t, []any{"outstanding", "final", "kuartal"}, body["jenis_kpi"])
+	require.Equal(t, string((inboxsurvey.Readiness{}).DefaultAvailableTab()), body["tab_bawaan"])
+	// Nilainya dikirim APA ADANYA, persis isi TipeData dan TipeExport di Pega — bukan kode
+	// pendek. Nilai yang sama itulah yang dibandingkan kueri terhadap kolom `tipe`.
+	require.Equal(t, []any{"ALL", "OUTSTANDING", "FINAL"}, body["status_survei"])
+	require.Equal(t, []any{"DATA SUMMARY", "DATA DETAIL"}, body["tipe_report"])
+	require.Equal(t, []any{"1", "2", "3", "4"}, body["kuartal"])
 	require.EqualValues(t, inboxsurvey.DefaultLimit, body["ukuran_halaman"])
 	require.Len(t, body["kolom"], 13)
 	require.Len(t, body["kolom_kpi"], 9)
@@ -159,17 +175,36 @@ func TestCountsAndKPIEndpoints(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.NotEmpty(t, body["tab"])
 
-	rec, body = f.get(t, "/inbox-survey/kpi?jenis=final&kategori=%20A%20&tahun=2026", "ASM")
+	rec, body = f.get(t,
+		"/inbox-survey/kpi?status_survei=FINAL&tipe_report=DATA+SUMMARY&kuartal=1&tahun=2026",
+		"ASM")
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "final", body["jenis"])
-	require.Equal(t, "A", body["kategori"])
+	require.Equal(t, "FINAL", body["status_survei"])
+	require.Equal(t, "DATA SUMMARY", body["tipe_report"])
+	require.Equal(t, "1", body["kuartal"])
 	require.Equal(t, "2026", body["tahun"])
+}
+
+// TestPanelKPIMenolakIsianYangBelumLengkap mengunci jawaban 422, bukan tabel kosong.
+func TestPanelKPIMenolakIsianYangBelumLengkap(t *testing.T) {
+	f := newFixture(t, nil, memory.SampleLeaderLogin, true)
+
+	rec, body := f.get(t, "/inbox-survey/kpi", "ASM")
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	require.Equal(t, CodeKPIFilterIncomplete, body["kode"])
+
+	// DATA DETAIL menghasilkan BENTUK yang berbeda, bukan penolakan — rule-nya sudah ada.
+	rec, body = f.get(t,
+		"/inbox-survey/kpi?status_survei=ALL&tipe_report=DATA+DETAIL", "ASM")
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "detail", body["bentuk"])
 }
 
 func TestUnknownCallerAnswersConflict(t *testing.T) {
 	f := newFixture(t, nil, "", true)
 
-	for _, path := range []string{"/inbox-survey", "/inbox-survey/jumlah-tab", "/inbox-survey/kpi"} {
+	for _, path := range []string{"/inbox-survey", "/inbox-survey/jumlah-tab",
+		"/inbox-survey/kpi?status_survei=ALL&tipe_report=DATA+SUMMARY"} {
 		rec, body := f.get(t, path, "ASM")
 		require.Equal(t, http.StatusConflict, rec.Code, path)
 		require.Equal(t, CodeCallerUnknown, body["kode"], path)
@@ -186,7 +221,8 @@ func TestOutsiderAnswersForbidden(t *testing.T) {
 
 func TestRepoFailureUsesFallbackThenInternalError(t *testing.T) {
 	withFallback := newFixture(t, brokenRepo{}, memory.SampleLeaderLogin, true)
-	for _, path := range []string{"/inbox-survey", "/inbox-survey/jumlah-tab", "/inbox-survey/kpi"} {
+	for _, path := range []string{"/inbox-survey", "/inbox-survey/jumlah-tab",
+		"/inbox-survey/kpi?status_survei=ALL&tipe_report=DATA+SUMMARY"} {
 		rec, body := withFallback.get(t, path, "ASM")
 		require.Equal(t, http.StatusTeapot, rec.Code, path)
 		require.Equal(t, "cadangan", body["kode"], path)

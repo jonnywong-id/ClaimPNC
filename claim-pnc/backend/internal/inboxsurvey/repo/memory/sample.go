@@ -324,8 +324,9 @@ var SampleRecords = []Record{
 var SampleKPI = []KPIRecord{
 	{
 		Adjuster: SampleLeaderName,
-		Category: inboxsurvey.KPITypeFinal,
+		Category: string(inboxsurvey.SurveyStatusFinal),
 		Year:     "2026",
+		Quarter:  "1",
 		Row: inboxsurvey.KPIRow{
 			SurveyScheduling: 90, ImmediateAdvice: 80, PreliminaryAdvice: 85,
 			InterimReport: 75, ProgressUpdate: 70, CommunicationResponse: 95,
@@ -334,8 +335,9 @@ var SampleKPI = []KPIRecord{
 	},
 	{
 		Adjuster: SampleLeaderName,
-		Category: inboxsurvey.KPITypeFinal,
+		Category: string(inboxsurvey.SurveyStatusFinal),
 		Year:     "2026",
+		Quarter:  "1",
 		Row: inboxsurvey.KPIRow{
 			SurveyScheduling: 80, ImmediateAdvice: 70, PreliminaryAdvice: 75,
 			InterimReport: 65, ProgressUpdate: 60, CommunicationResponse: 85,
@@ -344,8 +346,9 @@ var SampleKPI = []KPIRecord{
 	},
 	{
 		Adjuster: SampleMemberName,
-		Category: inboxsurvey.KPITypeFinal,
+		Category: string(inboxsurvey.SurveyStatusFinal),
 		Year:     "2025",
+		Quarter:  "3",
 		Row: inboxsurvey.KPIRow{
 			SurveyScheduling: 70, ImmediateAdvice: 65, PreliminaryAdvice: 68,
 			InterimReport: 60, ProgressUpdate: 55, CommunicationResponse: 72,
@@ -358,6 +361,7 @@ var SampleKPI = []KPIRecord{
 		Adjuster: SampleLeaderName,
 		Category: "OUTSTANDING",
 		Year:     "2026",
+		Quarter:  "1",
 		Row: inboxsurvey.KPIRow{
 			SurveyScheduling: 10, ImmediateAdvice: 10, PreliminaryAdvice: 10,
 			InterimReport: 10, ProgressUpdate: 10, CommunicationResponse: 10,
@@ -368,8 +372,9 @@ var SampleKPI = []KPIRecord{
 		// Milik adjuster DI LUAR cakupan. Bila penyaring cakupan hilang pada KPI, baris ini
 		// ikut terhitung — dan papan penilaian menjadi bocor.
 		Adjuster: SampleNearMissName,
-		Category: inboxsurvey.KPITypeFinal,
+		Category: string(inboxsurvey.SurveyStatusFinal),
 		Year:     "2026",
+		Quarter:  "1",
 		Row: inboxsurvey.KPIRow{
 			SurveyScheduling: 100, ImmediateAdvice: 100, PreliminaryAdvice: 100,
 			InterimReport: 100, ProgressUpdate: 100, CommunicationResponse: 100,

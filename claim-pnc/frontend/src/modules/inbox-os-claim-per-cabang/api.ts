@@ -4,7 +4,7 @@ import { callAPI, HEADER_PORTAL } from '@/api/client'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { DetailResponse, ListResponse } from './types'
+import type { DetailResponse, ListResponse, SummaryResponse } from './types'
 
 const PATH = '/api/inbox-os-claim-per-cabang'
 
@@ -21,10 +21,12 @@ const PATH = '/api/inbox-os-claim-per-cabang'
  * sisa daftar milik yang pertama.
  */
 const keys = {
-  list: (portal: string | null, token: string | null, page: number) =>
-    ['inbox-os-claim-per-cabang', 'daftar', portal, token, page] as const,
+  list: (portal: string | null, token: string | null, page: number, search: string) =>
+    ['inbox-os-claim-per-cabang', 'daftar', portal, token, page, search] as const,
   detail: (portal: string | null, token: string | null, nomor: string | null) =>
     ['inbox-os-claim-per-cabang', 'detail', portal, token, nomor] as const,
+  summary: (portal: string | null, token: string | null) =>
+    ['inbox-os-claim-per-cabang', 'ringkasan', portal, token] as const,
 }
 
 /**
@@ -44,13 +46,15 @@ const keys = {
  * puluhan juta baris (`D-10`) itu bukan pola yang dibawa; halaman di sini benar-benar
  * dipotong basis data dengan `OFFSET … FETCH NEXT`.
  */
-export function useOSClaimPerCabangList(page: number) {
+export function useOSClaimPerCabangList(page: number, search = '') {
   const token = useSession((state) => state.token)
   const portal = useSelectedPortal((state) => state.alias)
 
+  const cari = search.trim()
+
   return useQuery({
-    queryKey: keys.list(portal, token, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(page), { token, portal }),
+    queryKey: keys.list(portal, token, page, cari),
+    queryFn: () => callAPI<ListResponse>(buildPath(page, cari), { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -106,9 +110,23 @@ export function useExportOSClaimPerCabang() {
   })
 }
 
-/** buildPath menyusun alamat permintaan daftar beserta halamannya. */
-function buildPath(page: number): string {
-  return page > 1 ? `${PATH}?halaman=${page}` : PATH
+/**
+ * buildPath menyusun alamat permintaan daftar beserta halaman dan kotak carinya.
+ *
+ * Keduanya ditulis lewat `URLSearchParams`, bukan dirangkai sendiri: nomor polis dapat memuat
+ * `&`, `#`, atau spasi, dan perangkaian tangan akan memotong pencariannya di karakter itu
+ * tanpa satu pun galat.
+ *
+ * Parameter yang kosong TIDAK dikirim, supaya alamat tanpa penyaring tetap sama persis
+ * seperti sebelumnya — cache peladen dan pembacaan log tidak berubah karenanya.
+ */
+function buildPath(page: number, search: string): string {
+  const params = new URLSearchParams()
+  if (page > 1) params.set('halaman', String(page))
+  if (search) params.set('cari', search)
+
+  const query = params.toString()
+  return query ? `${PATH}?${query}` : PATH
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
@@ -171,5 +189,25 @@ export function useOSClaimPerCabangDetail(nomorKlaim: string | null) {
     // Isi popup jarang berubah selama satu sesi membaca, dan popup yang sama sering dibuka
     // ulang bolak-balik dari daftar.
     staleTime: 30 * 1000,
+  })
+}
+
+/**
+ * Hook panel ringkasan.
+ *
+ * Permintaan TERPISAH dari daftar, dan itu disengaja: panel tidak berubah saat pengguna
+ * berpindah halaman, sehingga menyatukannya berarti menghitung ulang seluruh ringkasan
+ * cabang pada setiap klik halaman. Terpisah pula kegagalannya — panel yang gagal dimuat
+ * tidak mengosongkan grid di bawahnya.
+ */
+export function useOSClaimPerCabangSummary() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: keys.summary(portal, token),
+    queryFn: () => callAPI<SummaryResponse>(`${PATH}/ringkasan`, { token, portal }),
+    enabled: token !== null && portal !== null,
+    staleTime: 15 * 1000,
   })
 }

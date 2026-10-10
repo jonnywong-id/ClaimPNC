@@ -85,8 +85,14 @@ func (r *Repo) List(
 		Pagination: clean,
 	}
 
+	// Pola pencariannya dihitung SEKALI lalu diikat dua kali — nomor klaim dan nomor polis.
+	// Ia pola, bukan potongan SQL: keduanya tetap melewati pengikatan parameter, sehingga
+	// apa pun yang diketik pengguna tidak dapat menjadi bagian dari perintahnya.
+	pattern := searchPattern(q.Search)
+
 	rows, err := r.db.QueryContext(ctx, query("list"),
-		q.Branch.Code, clean.Offset(), clean.Size)
+		q.Branch.Code, nilIfEmpty(pattern), pattern, pattern,
+		clean.Offset(), clean.Size)
 	if err != nil {
 		return inboxosclaimpercabang.Page{}, fmt.Errorf("menjalankan kueri list: %w", err)
 	}
@@ -528,6 +534,39 @@ func minorUnitsFromText(text string) (money.Money, error) {
 			"nilai uang %q bukan bilangan bulat satuan terkecil: %w", text, err)
 	}
 	return money.FromMinorUnits(units), nil
+}
+
+// searchPattern menyusun pola LIKE dari apa yang diketik pengguna.
+//
+// Kedua sisinya diseragamkan menjadi HURUF BESAR — di sini dan di SQL. Bila hanya satu sisi
+// yang diseragamkan, pencarian tidak pernah cocok dan gagalnya diam: pengguna mengetik huruf
+// kecil lalu diberi tahu klaimnya tidak ada.
+//
+// Karakter khusus LIKE di-escape supaya nomor polis yang memuat `%` atau `_` tidak berubah
+// menjadi pola yang mencocokkan apa saja. `ESCAPE` dinyatakan di sisi SQL.
+//
+// Bentuknya disamakan dengan modul Inbox Outstanding, bukan ditulis ulang dengan gaya
+// sendiri — pencarian yang berperilaku berbeda di dua layar adalah hal yang tidak dapat
+// dijelaskan kepada penggunanya.
+func searchPattern(search string) string {
+	trimmed := strings.TrimSpace(search)
+	if trimmed == "" {
+		return ""
+	}
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(trimmed)
+	return "%" + strings.ToUpper(escaped) + "%"
+}
+
+// nilIfEmpty mengubah untai kosong menjadi NULL, supaya penyaring "NULL berarti semua" pada
+// SQL bekerja.
+//
+// Untai kosong TIDAK dapat menggantikannya: pola LIKE yang kosong tidak cocok dengan apa
+// pun, sehingga kotak cari yang dikosongkan justru akan mengosongkan tabel.
+func nilIfEmpty(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }
 
 // nullableTime mengubah tanggal yang boleh kosong menjadi penunjuk.

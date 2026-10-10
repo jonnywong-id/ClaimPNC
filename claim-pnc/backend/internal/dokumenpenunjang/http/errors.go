@@ -98,6 +98,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 		case errors.Is(err, dokumenpenunjang.ErrLinkTakTerjangkau):
 			// 502: yang gagal database ASMD di ujung DB link, bukan aplikasi ini. Belum ada
 			// berkas yang terkirim, sehingga mengulang aman.
+			catatGalatHulu(logger, r, err)
 			writeJSON(w, r, http.StatusBadGateway, ErrorResponse{
 				Code: CodeUpstream,
 				Message: "Basis data penyimpanan dokumen (DB link ASMD) sedang tidak dapat dihubungi. " +
@@ -112,6 +113,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			// Pesannya menyebut jenis berkasnya, karena itulah yang membedakan: berkas
 			// selain PNG/JPG/JPEG/PDF tidak menempuh konversi sama sekali, dan pengguna
 			// yang tidak tahu itu akan mengira seluruh unggah sedang mati.
+			catatGalatHulu(logger, r, err)
 			writeJSON(w, r, http.StatusBadGateway, ErrorResponse{
 				Code: CodeUpstream,
 				Message: "Layanan konversi gambar sedang tidak dapat dihubungi, sehingga " +
@@ -123,6 +125,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 		case errors.Is(err, dokumenpenunjang.ErrUnggahGagal):
 			// 502: yang gagal layanan di hulu, bukan kita. Belum ada yang tersimpan,
 			// sehingga mengulang aman — dan pesannya mengatakan itu.
+			catatGalatHulu(logger, r, err)
 			writeJSON(w, r, http.StatusBadGateway, ErrorResponse{
 				Code: CodeUpstream,
 				Message: "Layanan penyimpanan dokumen sedang tidak dapat dihubungi. " +
@@ -131,6 +134,7 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			return
 
 		case errors.Is(err, dokumenpenunjang.ErrMetadataGagal):
+			catatGalatHulu(logger, r, err)
 			writeJSON(w, r, http.StatusInternalServerError, ErrorResponse{
 				Code: CodeHalfDone,
 				Message: "Berkas sudah terkirim ke penyimpanan tetapi catatannya gagal disimpan, " +
@@ -160,6 +164,38 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 			Message: "Terjadi kesalahan pada sistem.",
 		})
 	}
+}
+
+// catatGalatHulu mencatat kegagalan layanan di hulu BESERTA sebab aslinya.
+//
+// # Cacat yang ini perbaiki
+//
+// Keempat cabang hulu — DB link ASMD, konversi, penyimpanan, dan pencatatan metadata —
+// `return` sebelum baris pencatatan di akhir fungsi. Akibatnya galat yang dibungkus
+// **dibuang seluruhnya**: server tidak mencatat apa pun, dan yang tersisa hanyalah pesan
+// umum di layar.
+//
+// Yang hilang bukan detail sepele. Ia memuat satu-satunya keterangan yang membedakan dua
+// keadaan yang penanganannya berbeda jauh:
+//
+//	"menghubungi layanan penyimpanan: dial tcp ... "   layanannya TIDAK TERJANGKAU
+//	"layanan menjawab 503"                             terjangkau, sedang tidak melayani
+//	"respons tidak memuat URLImage (ErrorCode: ...)"   terjangkau, MENOLAK berkasnya
+//
+// Yang pertama urusan jaringan, yang ketiga urusan berkas atau kredensial. Tanpa baris ini
+// keduanya terlihat persis sama — dan penelusurannya dimulai dari tempat yang salah.
+//
+// # Kenapa hanya ke log, bukan ke pengguna
+//
+// Pesan hulu dapat memuat apa saja, termasuk gema muatan kita sendiri — yang berisi berkas
+// nasabah. `httpstorage` sudah menjaga agar isi respons tidak ikut terbawa; yang sampai ke
+// sini hanyalah kode status, nama field, dan pesan layanan. Itu aman untuk log operator,
+// tidak untuk peramban (`11-CROSSCUTTING` §1.2 butir 5).
+func catatGalatHulu(logger *slog.Logger, r *http.Request, err error) {
+	logging.From(r.Context(), logger).Error("unggah dokumen gagal di layanan hulu",
+		slog.String("jalur", r.URL.Path),
+		slog.String("galat", err.Error()),
+	)
 }
 
 // writeBadRequest menjawab permintaan yang cacat bentuknya.

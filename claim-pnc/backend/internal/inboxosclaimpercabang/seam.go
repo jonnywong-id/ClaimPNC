@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"claim-pnc/internal/platform/clock"
+	"claim-pnc/internal/platform/money"
 )
 
 // Repo adalah seam ke daftar klaim outstanding SATU portal entitas.
@@ -72,6 +73,29 @@ type Repo interface {
 	// Ia tetap berhalaman. Ekspor menulis tiap potong langsung ke jawaban, sehingga memori
 	// tetap datar berapa pun jumlah barisnya.
 	ListForExport(ctx context.Context, query Query, page Pagination) (ExportPage, error)
+
+	// SummaryRows mengembalikan baris sempit SELURUH klaim outstanding satu cabang, untuk
+	// diringkas panel di atas grid.
+	//
+	// Ia TIDAK berhalaman, dan itu disengaja: ringkasan atas sebagian baris adalah ringkasan
+	// yang salah. Biayanya kecil dan terukur — outstanding per cabang paling banyak 83 baris,
+	// rerata 9,2 (diukur atas 50 cabang, 469 klaim).
+	//
+	// Penyaringnya WAJIB sama persis dengan List. Bila berbeda, kartu angka di atas tidak
+	// cocok dengan jumlah baris grid di bawahnya, dan pengguna tidak punya cara menjelaskan
+	// selisihnya.
+	SummaryRows(ctx context.Context, query Query) ([]SummaryRow, error)
+
+	// TreatyOR mengembalikan total porsi treaty OR seluruh klaim outstanding satu cabang.
+	//
+	// Terpisah dari SummaryRows karena ia SATU-SATUNYA pembacaan modul ini yang menyentuh DB
+	// Link saat layar dibuka. Pemisahan itu yang membuat `@asmd` yang padam mengosongkan satu
+	// kartu angka, bukan seluruh panel.
+	//
+	// Nilai kedua false berarti totalnya tidak dapat dibaca. Itu BUKAN sama dengan nol: nol
+	// adalah jawaban yang sah dan memang lazim di sini — `treaty_loss@asmd` hanya memuat 19
+	// baris berawalan `PNC-` dari 10.152 — sedangkan tidak terbaca menuntut tindakan lain.
+	TreatyOR(ctx context.Context, query Query) (money.Money, bool, error)
 
 	// FindDetail mengambil seluruh isi popup untuk SATU klaim milik cabang pada query.
 	//

@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppRoute } from '@/app/App'
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import type { DetailResponse, ListResponse, WorkItem } from './types'
+import type { DetailResponse, ListResponse, WorkItem, SummaryResponse } from './types'
 
 const PATH = '/api/inbox-os-claim-per-cabang'
 
@@ -90,12 +90,71 @@ const DETAIL_ANEKA: DetailResponse = {
   },
   objek: [
     {
+      id: 'OBJ-1',
       nama: 'GUDANG A',
       lokasi: 'JL CONTOH NO 1',
       pekerjaan: '',
       tanggal_lahir: '',
       ktp_paspor: '',
       status_peserta: '',
+      coverage: [
+        {
+          id: 'CVG-1',
+          coverage: 'FLEXAS',
+          mata_uang: 'IDR',
+          tsi: '3000000.00',
+          object_item: [
+            {
+              id: '1',
+              object_item: 'BUILDINGS',
+              deskripsi_item: 'Bangunan gudang',
+              estimasi: [
+                {
+                  estimasi_ke: '1',
+                  tanggal_estimasi: '2024-01-20 09:00',
+                  tipe_estimasi: 'Claim',
+                  mata_uang: 'IDR',
+                  nilai_kurs: '1.00',
+                  nilai_estimasi: '3000000.00',
+                },
+                {
+                  // Nilai NEGATIF — koreksi yang saling meniadakan, ada di data nyata.
+                  estimasi_ke: '2',
+                  tanggal_estimasi: '2024-01-21 10:00',
+                  tipe_estimasi: 'Claim',
+                  mata_uang: 'IDR',
+                  nilai_kurs: '1.00',
+                  nilai_estimasi: '-500000.00',
+                },
+              ],
+            },
+          ],
+          list_spreading: [
+            {
+              tipe_treaty: 'FAC-OUT',
+              currency: 'IDR',
+              estimasi_value: '2500000.00',
+              pembagian_persentase: '100.0000',
+              result_value: '2500000.00',
+            },
+          ],
+          // CO MEMBER sengaja KOSONG: kedua contoh dari Work Owner memperlihatkan
+          // "Data Tidak Ada", dan tabelnya TETAP harus tergambar.
+          co_member: [],
+        },
+      ],
+    },
+    {
+      // Objek KEDUA sengaja tanpa coverage: baris seperti ini tidak boleh dapat dibuka,
+      // supaya tidak ada yang mengundang diklik lalu membuka panel kosong.
+      id: 'OBJ-2',
+      nama: 'GUDANG B',
+      lokasi: 'JL CONTOH NO 2',
+      pekerjaan: '',
+      tanggal_lahir: '',
+      ktp_paspor: '',
+      status_peserta: '',
+      coverage: [],
     },
   ],
   riwayat_progres: [
@@ -132,12 +191,14 @@ const DETAIL_PA: DetailResponse = {
   ringkasan: { ...DETAIL_ANEKA.ringkasan, no_klaim: 'PNC-9002', cob: 'PA', occupation: '' },
   objek: [
     {
+      id: 'OBJ-PA-1',
       nama: 'BUDI CONTOH',
       lokasi: '',
       pekerjaan: 'TEKNISI',
       tanggal_lahir: '1990-03-17',
       ktp_paspor: '3200000000000001',
       status_peserta: 'KARYAWAN',
+      coverage: [],
     },
   ],
   komunikasi_adjuster: [],
@@ -147,6 +208,40 @@ const DETAIL_PA: DetailResponse = {
 const DETAIL_TRAVEL: DetailResponse = {
   ...DETAIL_PA,
   ringkasan: { ...DETAIL_PA.ringkasan, cob: 'Travel' },
+}
+
+/**
+ * Jawaban panel ringkasan. Angkanya KARANGAN, dan sengaja konsisten dengan ketiga baris
+ * contoh: 3 berkas, dan jumlah nilainya sama dengan jumlah kolom Reserve Claim ASM Share.
+ *
+ * Konsistensi itu yang diuji — panel yang angkanya tidak cocok dengan grid di bawahnya
+ * adalah kelas cacat yang tidak menghasilkan galat apa pun.
+ */
+function summaryResponse(): SummaryResponse {
+  return {
+    posisi: '2026-09-28',
+    total_berkas: 3,
+    total_estimasi: '2000000.00',
+    total_reserve_or: '0.00',
+    total_reserve_or_terbaca: true,
+    umur_di_atas_2_tahun: 1,
+    sebaran_umur: [
+      { label: 'Sampai 6 bulan', berkas: 2, nilai: '1750000.00' },
+      { label: '6–12 bulan', berkas: 0, nilai: '0.00' },
+      { label: '1–2 tahun', berkas: 0, nilai: '0.00' },
+      { label: 'Di atas 2 tahun', berkas: 1, nilai: '250000.00' },
+    ],
+    per_cob: [
+      { nama: 'PA', berkas: 1, nilai: '1500000.00', umur_di_atas_2_tahun: 0 },
+      { nama: 'Aneka', berkas: 1, nilai: '250000.00', umur_di_atas_2_tahun: 1 },
+    ],
+    per_sumber_bisnis: [
+      { nama: 'BANK CONTOH CILEGON', berkas: 1, nilai: '250000.00', umur_di_atas_2_tahun: 1 },
+      { nama: '(tanpa keterangan)', berkas: 1, nilai: '0.00', umur_di_atas_2_tahun: 0 },
+    ],
+    cabang: { kode: '100099', nama: 'CILEGON' },
+    portal: 'ASM',
+  }
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -161,6 +256,8 @@ function stubServer(details: Record<string, Response | (() => Response)> = {}) {
   vi.stubGlobal('fetch', (url: string) => {
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
     if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
+    if (url.startsWith(`${PATH}/ringkasan`))
+      return Promise.resolve(jsonResponse(200, summaryResponse()))
 
     for (const [nomor, answer] of Object.entries(details)) {
       if (url === `${PATH}/${nomor}`) {
@@ -313,6 +410,8 @@ it('hanya mengirim NOMOR klaim, tidak ada nilai uang maupun umur', async () => {
     seen.push(url)
     if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
     if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
+    if (url.startsWith(`${PATH}/ringkasan`))
+      return Promise.resolve(jsonResponse(200, summaryResponse()))
     if (url === `${PATH}/PNC-9001`) return Promise.resolve(jsonResponse(200, DETAIL_ANEKA))
     return Promise.resolve(jsonResponse(200, listResponse([ANEKA, PA])))
   })
@@ -377,4 +476,125 @@ it('menyatakan selisih terencana milik POPUP, bukan milik daftar', async () => {
 
   // Selisih milik DAFTAR tidak boleh ikut tampil di popup.
   expect(dialog.textContent).not.toContain('Daftar dibagi per halaman di server.')
+})
+
+describe('baris objek dapat dibuka', () => {
+  // Layar lama MEMANG punya kemampuan ini, dan pembacaan pertama kami keliru menyimpulkan
+  // sebaliknya. Mekanismenya bukan `pyExpandable` melainkan master-detail:
+  //
+  //   Section/DetailKlaimCabang_Sect-Section.xml
+  //     pyRowEditing = masterDetail    (:5616, :7193, :9798)
+  //     pyEditAction = ViewObjectItem  (:5625, :7179, :9815)
+  //
+  // Karena kekeliruan itu sempat dinyatakan sebagai fakta, perilakunya dijaga uji — bukan
+  // hanya diperbaiki sekali lalu dipercaya bertahan.
+
+  it('membuka coverage milik objek yang diklik', async () => {
+    stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
+
+    const dialog = await openDetail('PNC-9001')
+    const box = within(dialog)
+
+    // Sebelum dibuka, isi coverage belum tergambar sama sekali.
+    expect(box.queryByText('FLEXAS')).toBeNull()
+
+    await userEvent.click(box.getByText('GUDANG A'))
+
+    expect(await box.findByText('FLEXAS')).toBeInTheDocument()
+
+    // "IDR" muncul di DUA tingkat — coverage dan estimasi — sehingga pencarian global
+    // menjadi ambigu. Yang diperiksa barisnya sendiri.
+    const barisCoverage = box.getByText('FLEXAS').closest('tr') as HTMLElement
+    expect(barisCoverage).not.toBeNull()
+    expect(within(barisCoverage).getByText('IDR')).toBeInTheDocument()
+    // TANPA 'Rp' — layar lama menggambar angkanya polos, dan mata uangnya kolom tersendiri.
+    expect(within(barisCoverage).getByText('3.000.000')).toBeInTheDocument()
+    expect(box.queryByText('Rp 3.000.000')).toBeNull()
+  })
+
+  it('membuka Object Item dan Estimasi hanya setelah COVERAGE diklik', async () => {
+    // Baris coverage dapat dibuka, sama seperti baris objek di atasnya — `ViewObjectCoverage`
+    // pun `pyRowEditing = masterDetail` dengan aksi `ViewObjectCoverageObjectItem`.
+    //
+    // Serahan sebelumnya menggambar seluruh isinya sekaligus begitu objek dibuka. Pada klaim
+    // bercoverage banyak itu menumpahkan semuanya tanpa diminta, dan Work Owner menangkapnya.
+    stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
+
+    const dialog = await openDetail('PNC-9001')
+    const box = within(dialog)
+    await userEvent.click(box.getByText('GUDANG A'))
+
+    // Coverage sudah tampak, tetapi ISINYA belum.
+    expect(await box.findByText('FLEXAS')).toBeInTheDocument()
+    expect(box.queryByText('BUILDINGS')).toBeNull()
+    expect(box.queryByText('Estimasi Ke')).toBeNull()
+
+    await userEvent.click(box.getByText('FLEXAS'))
+
+    expect(await box.findByText('BUILDINGS')).toBeInTheDocument()
+    expect(box.getByText('Bangunan gudang')).toBeInTheDocument()
+
+    for (const judul of [
+      'Object Item',
+      'Deskripsi Item',
+      'Estimasi Ke',
+      'Tanggal Estimasi',
+      'Tipe Estimasi',
+      'Nilai Kurs (IDR)',
+      'Nilai Estimasi',
+    ]) {
+      expect(box.getByText(judul)).toBeInTheDocument()
+    }
+
+    // Nilai NEGATIF digambar apa adanya. Contoh Fire dari layar lama memuat pasangan yang
+    // saling meniadakan; menyaringnya akan membuat jumlahnya tidak pernah cocok.
+    expect(box.getByText('-500.000')).toBeInTheDocument()
+
+    // Tanggal estimasi WAJIB tergambar, tidak boleh "—". Serahan sebelumnya mengambilnya
+    // dari `ESTIMATIONDATE`, yang terisi pada 32 dari 51.535 baris saja — sehingga kolomnya
+    // kosong di layar untuk hampir setiap klaim. Sumbernya kini `INSERTDATE`.
+    //
+    // Dicari DI DALAM barisnya: tanggal lain bertahun sama ada di riwayat progres dan di
+    // komunikasi adjuster, sehingga pencarian global cocok dengan baris yang salah.
+    const barisEstimasi = box.getByText('BUILDINGS').closest('table') as HTMLElement
+    expect(within(barisEstimasi).getByText('2024-01-20 09:00')).toBeInTheDocument()
+  })
+
+  it('menggambar List Spreading dan CO MEMBER, termasuk yang kosong', async () => {
+    // Tabel yang kosong TETAP digambar dengan "Data Tidak Ada" — begitulah layar lama
+    // menyatakannya, dan kedua contoh dari Work Owner memperlihatkannya persis demikian.
+    // Menghilangkan tabelnya akan membuat pengguna mengira bagian itu tidak ada.
+    stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
+
+    const dialog = await openDetail('PNC-9001')
+    const box = within(dialog)
+    await userEvent.click(box.getByText('GUDANG A'))
+    await userEvent.click(await box.findByText('FLEXAS'))
+
+    expect(await box.findByText('List Spreading')).toBeInTheDocument()
+    expect(box.getByText('CO MEMBER')).toBeInTheDocument()
+
+    expect(box.getByText('FAC-OUT')).toBeInTheDocument()
+    // Persentase berdesimal EMPAT, mengikuti layar lama.
+    expect(box.getByText('100.0000%')).toBeInTheDocument()
+
+    expect(box.getByText('Data Tidak Ada')).toBeInTheDocument()
+    expect(box.queryByText('3000000.00')).toBeNull()
+  })
+
+  it('TIDAK dapat dibuka pada objek yang tidak punya coverage', async () => {
+    // Baris yang terbuka menjadi panel kosong lebih buruk daripada baris yang tidak dapat
+    // dibuka: yang pertama membuat pengguna mengira datanya hilang.
+    stubServer({ 'PNC-9001': jsonResponse(200, DETAIL_ANEKA) })
+
+    const dialog = await openDetail('PNC-9001')
+    const box = within(dialog)
+
+    const barisKosong = box.getByText('GUDANG B').closest('tr')
+    expect(barisKosong).not.toBeNull()
+    expect(barisKosong).not.toHaveAttribute('aria-expanded')
+
+    const barisBerisi = box.getByText('GUDANG A').closest('tr')
+    expect(barisBerisi).toHaveAttribute('aria-expanded', 'false')
+  })
 })
