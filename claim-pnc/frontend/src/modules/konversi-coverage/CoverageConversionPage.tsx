@@ -5,7 +5,7 @@ import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { TextAreaField } from '@/components/TextAreaField'
 
-import { useJalankan, useKeterangan } from './api'
+import { BatchError, useJalankan, useKeterangan } from './api'
 import type { HasilPolis, InfoKoneksi, Laporan } from './types'
 
 /**
@@ -33,6 +33,7 @@ export function CoverageConversionPage() {
   const [busy, setBusy] = useState<'uji' | 'jalan' | null>(null)
   const [report, setReport] = useState<Laporan | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   // Daftar bawaan dari KONVERSI_POLIS mengisi kotak sekali, selama pengguna belum mengetik.
   useEffect(() => {
@@ -54,13 +55,16 @@ export function CoverageConversionPage() {
     }
     setBusy(ujiCoba ? 'uji' : 'jalan')
     setError(null)
+    setReport(null)
     try {
-      setReport(await run(text, ujiCoba))
+      setReport(await run(text, ujiCoba, (done, total) => setProgress({ done, total })))
     } catch (e) {
-      setReport(null)
-      setError(e instanceof APIError ? e.message : 'Konversi gagal dijalankan.')
+      // Kelompok sebelum yang gagal sudah selesai — laporannya tetap ditampilkan.
+      setReport(e instanceof BatchError ? e.partial : null)
+      setError(e instanceof BatchError || e instanceof APIError ? e.message : 'Konversi gagal dijalankan.')
     } finally {
       setBusy(null)
+      setProgress(null)
     }
   }
 
@@ -105,10 +109,10 @@ export function CoverageConversionPage() {
         />
         <div className="flex flex-wrap gap-2">
           <Button tone="kedua" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(true)}>
-            {busy === 'uji' ? 'Menjalankan uji coba…' : 'Uji Coba'}
+            {busy === 'uji' ? `Menjalankan uji coba… ${progressText(progress)}` : 'Uji Coba'}
           </Button>
           <Button tone="utama" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(false)}>
-            {busy === 'jalan' ? 'Mengonversi…' : 'Jalankan Konversi'}
+            {busy === 'jalan' ? `Mengonversi… ${progressText(progress)}` : 'Jalankan Konversi'}
           </Button>
         </div>
       </section>
@@ -117,6 +121,11 @@ export function CoverageConversionPage() {
       {report && <ReportView report={report} />}
     </div>
   )
+}
+
+/** Kemajuan per kelompok polis, mis. "30/96". */
+function progressText(progress: { done: number; total: number } | null): string {
+  return progress ? `${progress.done}/${progress.total}` : ''
 }
 
 function ConnectionCard({ title, info, loading }: { title: string; info: InfoKoneksi | undefined; loading: boolean }) {
