@@ -733,24 +733,31 @@ SELECT POOLDATA.ATTACHFILE_SEQ.NEXTVAL
 --      IMAGEID, CATEGORY, SUB_CATEGORY, IDPEGA)
 --   values (tDATAID, sysdate, tINPUTOPERATOR, ...)
 --
--- SATU KOLOM DITAMBAHKAN: `ATTACHFILE`.
+-- TIDAK ADA KOLOM YANG DITAMBAHKAN. Daftar kolomnya himpunan bagian dari yang disisipkan
+-- prosedur aslinya, dan `IMAGEID` termasuk di dalamnya.
 --
--- Prosedur yang dipakai layar Master Bengkel tidak menulisnya, dan jalur unggahnya tidak
--- pernah mengisi `IMAGEID` — sehingga berkas yang diunggah di sistem lama tidak tersimpan
--- di mana pun. Kolomnya sendiri ADA dan memang dibaca: `GetAttachmentFromDB_Sql`
--- mengambilnya lewat `base64encode(attachfile)`, dan varian temp prosedur yang sama
--- (`Database/TEMP_SET_ATTACHMENT_64BIT.prc:30-31`) memang mengisinya.
+-- Yang berbeda adalah kolom itu benar-benar DIISI di sini. Pada jalur Master Bengkel
+-- sistem lama ia selalu kosong, sehingga berkas yang diunggah tidak tersimpan di mana pun:
+-- `RDB List/SaveAttachmentToDB_Sql` memanggil prosedurnya dengan sembilan masukan dan
+-- `ATTACHFILE` BUKAN salah satunya, sementara `IMAGEID` yang disediakan tidak pernah
+-- bernilai. `GetAttachmentFromDB_Sql`, yang membaca `base64encode(attachfile)`, karena itu
+-- selalu menemukan kosong.
 --
--- Jadi yang dipakai di sini adalah pola Pega sendiri, bukan karangan. Selisihnya
--- dinyatakan di muka: dokumen terbitan sistem baru punya isi, dokumen terbitan Pega tidak.
+-- Isi berkasnya dikirim ke layanan penyimpanan internal lewat jalur `InsertDokumenPNC`
+-- (modul `dokumenpenunjang`, `D-16`) — jalur yang sama dipakai Master Sparepart, Master
+-- Panel, Open Protection, dan registrasi. Yang tersimpan di baris ini hanyalah kuncinya.
 --
--- TIGA KOLOM SENGAJA DIBIARKAN KOSONG:
+-- `ATTACHFILE` SENGAJA TIDAK DITULIS. Menyimpan isinya di sini berarti berkas yang sama ada
+-- di dua tempat, dan yang satu pasti menyimpang lebih dulu.
 --
---	IMAGEID                 kunci layanan penyimpanan; jalur ini tidak memakainya
+-- DUA KOLOM SENGAJA DIBIARKAN KOSONG:
+--
 --	CATEGORY, SUB_CATEGORY  `Section/UploadDocument` tidak punya isian untuk keduanya
 --
--- `IDPEGA` juga kosong: ia `pyWorkPage.pzInsKey`, kunci teknis Pega yang `D-22` larang
--- dibawa ke data bisnis.
+-- `IDPEGA` DIISI ID bengkel, bukan kunci teknis Pega dan bukan pula dibiarkan kosong. Pega
+-- menaruh `pyWorkPage.pzInsKey` di sana — kunci yang `D-22` larang dibawa — tetapi
+-- mengosongkannya membuat baris lampiran yatim tidak dapat ditelusuri milik siapa. Pilihan
+-- yang sama diambil Master Sparepart dan Master Panel.
 --
 -- Baris `C_COUNTER_ATTACHMENT` yang prosedur lama sisipkan TIDAK direplikasi. Prosedur itu
 -- memakainya hanya untuk membaca kembali nilai yang baru saja disusunnya; tidak ada satu
@@ -760,9 +767,9 @@ SELECT POOLDATA.ATTACHFILE_SEQ.NEXTVAL
 -- CURRENT_TIMESTAMP menggantikan `sysdate` — padanan portabel, sesuai disiplin modul ini.
 INSERT INTO POOLDATA.DATA_ATTACHFILE
        (DATAID, INPUTDATE, INPUTOPERATOR, ATTACHNAME, ATTACHNOTE,
-        ATTACHMIMETYPE, ATTACHFILE)
+        ATTACHMIMETYPE, IMAGEID, IDPEGA)
 VALUES (:1, CURRENT_TIMESTAMP, :2, :3, :4,
-        :5, :6)
+        :5, :6, :7)
 
 -- name: bengkel_set_document
 --
@@ -786,10 +793,16 @@ UPDATE POOLDATA.BENGKEL_HE
 --          ATTACHNAME, ATTACHMIMETYPE, ATTACHNOTE, INPUTDATE, SUB_CATEGORY, IMAGEID
 --     from pooldata.data_attachfile where dataid = ?
 --
--- `pooldata.base64encode(...)` TIDAK dibawa. Ia function basis data, dan `D-02` menetapkan
--- tidak ada pemanggilan objek basis data dari aplikasi; isinya dibaca sebagai byte lalu
--- disandikan di Go bila transportnya memang membutuhkannya. Hasil akhirnya sama, dan satu
--- ketergantungan pada objek yang source-nya tidak pernah kita lihat hilang.
+-- `ATTACHFILE` dan `pooldata.base64encode(...)` keduanya TIDAK dibawa, dan sebabnya satu:
+-- isi berkas tidak tinggal di tabel ini. Ia ada di layanan penyimpanan, dan yang menunjuk
+-- ke sana adalah `IMAGEID`. Menarik kolom isinya hanya akan mengambil CLOB yang selalu
+-- kosong pada baris terbitan modul ini, dan selalu kosong pula pada baris terbitan Pega.
+--
+-- Lepasnya `base64encode` sekaligus menutup satu ketergantungan pada objek basis data yang
+-- source-nya tidak pernah kita lihat — sejalan `D-02`.
+--
+-- `IMAGEID` justru menjadi kolom terpenting di sini: ia yang membedakan dokumen yang
+-- berkasnya benar-benar ada dari dokumen warisan yang hanya metadata.
 --
 -- `SUB_CATEGORY` tidak ikut dibaca: jalur ini tidak pernah mengisinya, sehingga menariknya
 -- hanya menambah kolom yang selalu kosong.
@@ -799,6 +812,6 @@ SELECT DATAID,
        ATTACHMIMETYPE,
        INPUTOPERATOR,
        INPUTDATE,
-       ATTACHFILE
+       IMAGEID
   FROM POOLDATA.DATA_ATTACHFILE
  WHERE TRIM(DATAID) = :1

@@ -104,10 +104,10 @@ func TestRowsOutsideTheGateAreExcluded(t *testing.T) {
 		laporanhasilai.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
-	require.Equal(t, 6, result.Page.Total,
+	require.Equal(t, 6, result.Total,
 		"tiga baris contoh seharusnya tersaring keluar")
 
-	for _, row := range result.Page.Rows {
+	for _, row := range result.Rows {
 		require.NotEqual(t, "PNCN.26.0005", row.ClaimNumber, "baris tanpa tanggal komite lolos")
 		require.NotEqual(t, "PNCN.26.0006", row.ClaimNumber, "baris kasus belum selesai lolos")
 		require.NotEqual(t, "PNCN.25.0099", row.ClaimNumber, "baris di luar rentang lolos")
@@ -127,8 +127,8 @@ func TestClaimNumberIsBlankOnLaterCommitteeSteps(t *testing.T) {
 	require.NoError(t, err)
 
 	// Baris ketiga pada urutan KOMITE_ID, KOMITEKE adalah jenjang kedua KMT-000101.
-	require.GreaterOrEqual(t, len(result.Page.Rows), 3)
-	third := result.Page.Rows[2]
+	require.GreaterOrEqual(t, len(result.Rows), 3)
+	third := result.Rows[2]
 	require.Equal(t, "KMT-000101|2|OBJ-01|CVG-01", third.ID)
 	require.Equal(t, "", third.ClaimNumber, "nomor klaim seharusnya dikosongkan")
 }
@@ -145,64 +145,10 @@ func TestOneRowPerAIAssessment(t *testing.T) {
 		laporanhasilai.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
-	require.Equal(t, "KMT-000101|1|OBJ-01|CVG-01", result.Page.Rows[0].ID)
-	require.Equal(t, "KMT-000101|1|OBJ-02|CVG-01", result.Page.Rows[1].ID)
-	require.Equal(t, "DITERIMA", result.Page.Rows[0].AIStatus)
-	require.Equal(t, "DITOLAK", result.Page.Rows[1].AIStatus)
-}
-
-// TestSummaryCountsTheWholeFilterNotThePage adalah uji terpenting di berkas ini.
-//
-// Activity lama mencacah dengan menelusuri seluruh hasil yang sudah ada di klipboard. Di
-// sini barisnya dipaginasi, sehingga pencacahan yang ikut dipaginasi akan menghitung satu
-// halaman dan menyebutnya total — dan angkanya akan BERUBAH setiap pengguna berpindah
-// halaman, tanpa satu pun di layar yang menjelaskan kenapa.
-func TestSummaryCountsTheWholeFilterNotThePage(t *testing.T) {
-	service := serviceWithSample(t)
-
-	firstPage, err := service.Search(context.Background(), "asm", wholeSeptember(),
-		laporanhasilai.Pagination{Page: 1, Size: 2})
-	require.NoError(t, err)
-	require.Len(t, firstPage.Page.Rows, 2, "halaman seharusnya memuat dua baris")
-
-	wholeSet, err := service.Search(context.Background(), "asm", wholeSeptember(),
-		laporanhasilai.Pagination{Page: 1, Size: 100})
-	require.NoError(t, err)
-
-	require.Equal(t, wholeSet.Summary, firstPage.Summary,
-		"ringkasan seharusnya tidak bergantung pada halaman yang sedang terbuka")
-}
-
-// TestSummaryNumbersFollowTheLegacyRule mengunci arti setiap angka ringkasan.
-//
-// Enam baris lolos penyaring:
-//
-//	AI       DITERIMA 3 · DITOLAK 2 · kosong 1
-//	Komite   kode 1 → 4 · kode 2 → 1 · kode 0 → 1
-func TestSummaryNumbersFollowTheLegacyRule(t *testing.T) {
-	service := serviceWithSample(t)
-
-	result, err := service.Search(context.Background(), "asm", wholeSeptember(),
-		laporanhasilai.Pagination{Page: 1, Size: 100})
-	require.NoError(t, err)
-
-	ai := result.Summary.AI
-	require.Equal(t, "AI", ai.Subject)
-	require.Equal(t, 3, ai.Accepted)
-	require.Equal(t, 2, ai.Rejected)
-	require.Equal(t, 1, ai.Pending, "baris ber-AI Status kosong masuk Menunggu")
-	require.Equal(t, 5, ai.Total(), "Total tidak menyertakan yang menunggu")
-
-	committee := result.Summary.Committee
-	require.Equal(t, "Komite", committee.Subject)
-	require.Equal(t, 4, committee.Accepted)
-	require.Equal(t, 1, committee.Rejected)
-	require.Equal(t, 1, committee.Pending)
-	require.Equal(t, 5, committee.Total())
-
-	require.Equal(t, result.Page.Total, ai.Rows(),
-		"pencacah ringkasan dan pencacah paginasi harus membaca himpunan yang sama")
-	require.Equal(t, result.Page.Total, committee.Rows())
+	require.Equal(t, "KMT-000101|1|OBJ-01|CVG-01", result.Rows[0].ID)
+	require.Equal(t, "KMT-000101|1|OBJ-02|CVG-01", result.Rows[1].ID)
+	require.Equal(t, "DITERIMA", result.Rows[0].AIStatus)
+	require.Equal(t, "DITOLAK", result.Rows[1].AIStatus)
 }
 
 // TestFiveColumnsStayEmpty mengunci keputusan Work Owner 2026-09-26.
@@ -216,7 +162,7 @@ func TestFiveColumnsStayEmpty(t *testing.T) {
 		laporanhasilai.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
-	for _, row := range result.Page.Rows {
+	for _, row := range result.Rows {
 		require.Empty(t, row.ObjectName, "Object Name seharusnya kosong")
 		require.Empty(t, row.AcceptNote, "Note AI Terima seharusnya kosong")
 		require.Empty(t, row.RejectNote, "Note AI Tolak seharusnya kosong")
@@ -238,8 +184,8 @@ func TestPageBeyondRangeIsEmptyButKeepsTheTotal(t *testing.T) {
 		laporanhasilai.Pagination{Page: 99, Size: 50})
 	require.NoError(t, err)
 
-	require.Empty(t, result.Page.Rows)
-	require.Equal(t, 6, result.Page.Total)
+	require.Empty(t, result.Rows)
+	require.Equal(t, 6, result.Total)
 }
 
 // TestNarrowRangeExcludesTheEdges membuktikan rentangnya benar-benar menyaring.
@@ -255,7 +201,7 @@ func TestNarrowRangeExcludesTheEdges(t *testing.T) {
 	}, laporanhasilai.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
-	require.Equal(t, 3, result.Page.Total)
+	require.Equal(t, 3, result.Total)
 }
 
 // TestUpperBoundIncludesTheWholeLastDay membuktikan batas atas tidak memotong hari terakhir.
@@ -271,7 +217,7 @@ func TestUpperBoundIncludesTheWholeLastDay(t *testing.T) {
 	}, laporanhasilai.Pagination{Page: 1, Size: 100})
 	require.NoError(t, err)
 
-	require.Equal(t, 1, result.Page.Total, "baris pada tanggal batas atas seharusnya ikut")
+	require.Equal(t, 1, result.Total, "baris pada tanggal batas atas seharusnya ikut")
 }
 
 // TestEnsurePortalReadySeparatesTwoFailures membuktikan kesiapan portal dapat diperiksa

@@ -140,3 +140,71 @@ func TestMaxNameLengthMatchesFrontendForm(t *testing.T) {
 	require.Equal(t, 100, masterkategorisparepart.MaxNameLength,
 		"bila MaxNameLength berubah, PartCategoryForm.tsx harus ikut berubah")
 }
+
+// NextKey memakai maksimum NUMERIK, dan itu SELISIH YANG DIRENCANAKAN terhadap Pega.
+//
+// `nvl(max(PART_CATEGORY_ID),0)+1` milik Pega mengambil maksimum LEKSIKOGRAFIS, karena
+// kolomnya VARCHAR2(10). Selama kuncinya baru sampai "9" itu tidak terlihat; begitu "10"
+// ada, `max()` menjawab "9" lagi dan menerbitkan 10 untuk kedua kalinya.
+//
+// Basis data pengembangan pada 2026-10-04 berisi "1".."9" — tepat satu penambahan sebelum
+// cacat itu muncul. Uji ini yang menahan perilaku Pega dari ditiru kembali.
+func TestNextKeyUsesNumericMaximum(t *testing.T) {
+	for _, one := range []struct {
+		name     string
+		existing []string
+		want     string
+	}{
+		{"tabel kosong", nil, "1"},
+		{"satu digit", []string{"1", "2", "9"}, "10"},
+		{
+			// Inilah kasusnya. Maksimum leksikografis "9" akan menerbitkan 10 — kunci yang
+			// SUDAH dipakai.
+			"menyeberangi sepuluh",
+			[]string{"1", "9", "10"},
+			"11",
+		},
+		{"tiga digit", []string{"9", "100", "10"}, "101"},
+		{"kunci berspasi", []string{" 7 "}, "8"},
+		{"kunci janggal dilewati", []string{"3", "bukan angka", ""}, "4"},
+		{"seluruhnya janggal", []string{"A", "B"}, "1"},
+	} {
+		t.Run(one.name, func(t *testing.T) {
+			got, err := masterkategorisparepart.NextKey(one.existing)
+			require.NoError(t, err)
+			require.Equal(t, one.want, got)
+		})
+	}
+}
+
+// Kunci yang tidak muat di VARCHAR2(10) ditolak di sini, bukan oleh basis data.
+func TestNextKeyRejectsKeyWiderThanColumn(t *testing.T) {
+	_, err := masterkategorisparepart.NextKey([]string{"9999999999"})
+	require.ErrorContains(t, err, "melebihi 10 karakter")
+
+	// Tepat pada batasnya masih diterima.
+	got, err := masterkategorisparepart.NextKey([]string{"999999998"})
+	require.NoError(t, err)
+	require.Equal(t, "999999999", got)
+	require.Len(t, got, masterkategorisparepart.MaxIDWidth-1)
+}
+
+// SortKey adalah padanan `LPAD(TRIM(PART_CATEGORY_ID), 10, '0')` pada berkas .sql.
+//
+// Ia ada supaya adapter SQL dan adapter memori mengurutkan dengan aturan yang sama persis;
+// uji ini mengunci bentuknya.
+func TestSortKeyOrdersNumerically(t *testing.T) {
+	require.Equal(t, "0000000002", masterkategorisparepart.SortKey("2"))
+	require.Equal(t, "0000000010", masterkategorisparepart.SortKey(" 10 "))
+
+	// Yang menentukan: urutan teks atas hasil SortKey harus sama dengan urutan angka.
+	require.Less(t, masterkategorisparepart.SortKey("9"), masterkategorisparepart.SortKey("10"))
+	require.Less(t, masterkategorisparepart.SortKey("10"), masterkategorisparepart.SortKey("100"))
+
+	// Tanpa SortKey, perbandingan teks apa adanya justru terbalik — itulah sebabnya
+	// `ORDER BY PART_CATEGORY_ID` tidak dipakai.
+	require.Greater(t, "9", "10")
+
+	// Kunci yang lebih panjang dari lebar kolom dikembalikan apa adanya.
+	require.Equal(t, "12345678901", masterkategorisparepart.SortKey("12345678901"))
+}

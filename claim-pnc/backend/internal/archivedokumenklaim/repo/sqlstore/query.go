@@ -62,8 +62,7 @@ const resultColumns = `ARCHIVE_ID, CLAIM_NUMBER, POLICY_NUMBER, INSURED_NAME, LO
 // menghitung `:n` dari teks kuerinya — membuat kesalahan terbaca saat kompilasi berupa
 // nama yang tidak terdaftar, alih-alih berupa galat bind saat dijalankan.
 var listQueryParams = map[string]int{
-	"search_keyword":      3,
-	"search_input_date":   2,
+	"search_archive":      10,
 	"pending_all":         0,
 	"pending_exclude_one": 1,
 	"pending_exclude_two": 2,

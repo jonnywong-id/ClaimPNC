@@ -62,6 +62,41 @@ func (r *Repo) List(
 	return result, nil
 }
 
+// Update mengubah surel satu baris.
+//
+// # Jumlah baris terpengaruh DIPERIKSA, bukan diabaikan
+//
+// `UPDATE` yang tidak menyentuh satu baris pun **berhasil** menurut basis data. Tanpa
+// pemeriksaan ini, layar akan mengatakan "tersimpan" atas baris yang sudah tidak ada —
+// dan pada tabel ini baris memang dapat hilang di belakang layar: alur PLA/DLA menulis ke
+// tabel yang sama lewat `Database/UPDATEREAS.prc`.
+//
+// Driver yang tidak mendukung `RowsAffected` mengembalikan galat; dalam keadaan itu
+// perubahannya TIDAK dianggap gagal — pernyataannya sendiri sudah berhasil, dan menolaknya
+// akan menampilkan kegagalan palsu.
+//
+// # Lebih dari satu baris terpengaruh BUKAN galat di sini
+//
+// Kunci alaminya tidak dijaga constraint apa pun yang diketahui (`R-08`), sehingga baris
+// kembar mungkin ada — `reas_count_duplicate_key` mencacahnya. Bila itu terjadi, `UPDATE`
+// ini menyentuh seluruhnya sekaligus, persis seperti `UPDATEREAS` di sistem lama. Menolaknya
+// di sini akan membuat baris kembar tidak dapat diperbaiki dari layar sama sekali.
+func (r *Repo) Update(ctx context.Context, key masterreas.Key, email string) error {
+	clean := key.Clean()
+
+	result, err := r.db.ExecContext(ctx, getQuery("reas_update"),
+		strings.TrimSpace(email), clean.ReinsurerID, clean.ReinsurerName, clean.Type)
+	if err != nil {
+		return fmt.Errorf("masterreas/sqlstore: memperbarui %q/%q/%q: %w",
+			clean.ReinsurerID, clean.ReinsurerName, clean.Type, err)
+	}
+
+	if affected, err := result.RowsAffected(); err == nil && affected == 0 {
+		return masterreas.ErrNotFound
+	}
+	return nil
+}
+
 // CountAll mencacah seluruh baris. Dipakai `claimpnc -periksa`.
 func (r *Repo) CountAll(ctx context.Context) (int, error) {
 	return r.count(ctx, "reas_count_all")

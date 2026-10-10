@@ -9,19 +9,21 @@ import { useSession } from '@/app/session'
 import { PartTypePage } from './PartTypePage'
 
 /**
- * Uji tambahan Master Tipe Sparepart: galat muat, simpan, dan keputusan; pengurutan.
+ * Uji tambahan Master Tipe Sparepart: galat muat, galat simpan, dan pengurutan.
  * Seluruh nilai KARANGAN (`D-69`).
+ *
+ * TIDAK ada uji keputusan borongan: layar ini tidak punya tombol Approve/Reject sama
+ * sekali, mengikuti ketiga tab Pega yang nol tombol (koreksi Work Owner 2026-10-04).
  */
 
 const APPROVED = {
   id_tipe_sparepart: '1',
   nama_tipe_sparepart: 'FUEL FILTER',
   id_kategori_sparepart: '1',
-  nama_kategori_sparepart: 'ENGINE',
   status: '1',
   status_label: 'Approve',
 }
-const APPROVED_B = { ...APPROVED, id_tipe_sparepart: '2', nama_tipe_sparepart: 'AIR FILTER', id_kategori_sparepart: '3', nama_kategori_sparepart: 'BODY' }
+const APPROVED_B = { ...APPROVED, id_tipe_sparepart: '2', nama_tipe_sparepart: 'AIR FILTER', id_kategori_sparepart: '3' }
 const PENDING = [
   { ...APPROVED, id_tipe_sparepart: '4', nama_tipe_sparepart: 'TRACK ROLLER', status: '0' },
   { ...APPROVED, id_tipe_sparepart: '5', nama_tipe_sparepart: 'IDLER', status: '0' },
@@ -75,13 +77,6 @@ function show() {
     <QueryClientProvider client={client}>
       <PartTypePage />
     </QueryClientProvider>,
-  )
-}
-
-function tab(name: string) {
-  return within(screen.getByRole('navigation', { name: 'Tab Master Tipe Sparepart' })).getByRole(
-    'button',
-    { name },
   )
 }
 
@@ -149,101 +144,19 @@ describe('galat simpan', () => {
     expect(calls.find((c) => c.method === 'PUT')?.url).toBe('/api/master/tipe-sparepart/1')
   })
 
-  it('menyebut kategori yatim dengan kode saat namanya tidak ada', async () => {
+  it('menyebut kategori yatim dengan kodenya pada dropdown', async () => {
     installFetch((call) =>
       call.method === 'GET' && call.url.startsWith('/api/master/tipe-sparepart?')
-        ? { body: { tipe_sparepart: [{ ...APPROVED, id_kategori_sparepart: '99', nama_kategori_sparepart: '' }], portal: 'ASM' } }
+        ? { body: { tipe_sparepart: [{ ...APPROVED, id_kategori_sparepart: '99' }], portal: 'ASM' } }
         : null,
     )
     const user = userEvent.setup()
     show()
 
     await user.click(await screen.findByRole('button', { name: 'Ubah' }))
-    expect(await screen.findByRole('option', { name: '99 — kategori tidak ditemukan' })).toBeInTheDocument()
-  })
-})
-
-describe('keputusan borongan', () => {
-  it('menyetujui dua baris, mengabarkan hasilnya, lalu membuang centang', async () => {
-    installFetch((call) =>
-      call.method === 'POST' && call.url.endsWith('/keputusan')
-        ? { body: { jumlah_berubah: 2, status: '1', status_label: 'Approve', portal: 'ASM' } }
-        : null,
-    )
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-    await user.click(await screen.findByLabelText('Pilih TRACK ROLLER'))
-    await user.click(screen.getByLabelText('Pilih IDLER'))
-    // Centang kedua kali melepas pilihannya, lalu dipilih lagi.
-    await user.click(screen.getByLabelText('Pilih IDLER'))
-    expect(screen.getByText('1 tipe')).toBeInTheDocument()
-    await user.click(screen.getByLabelText('Pilih IDLER'))
-
-    await user.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-    expect(await screen.findByText(/2 tipe sparepart dipindahkan ke/)).toBeInTheDocument()
-    expect(calls.find((c) => c.url.endsWith('/keputusan'))?.body).toEqual({
-      id_tipe_sparepart: ['4', '5'],
-      status: '1',
-    })
-    expect(screen.getByText('Centang tipe yang akan diputuskan.')).toBeInTheDocument()
-  })
-
-  it('menolak baris terpilih, dan Bersihkan membuang pilihan', async () => {
-    installFetch((call) =>
-      call.url.endsWith('/keputusan')
-        ? { body: { jumlah_berubah: 1, status: '2', status_label: 'Reject', portal: 'ASM' } }
-        : null,
-    )
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-    await user.click(await screen.findByLabelText('Pilih TRACK ROLLER'))
-    await user.click(screen.getByRole('button', { name: 'Bersihkan' }))
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-
-    await user.click(screen.getByLabelText('Pilih TRACK ROLLER'))
-    await user.click(screen.getByRole('button', { name: 'Reject terpilih' }))
-    await waitFor(() => expect(calls.find((c) => c.url.endsWith('/keputusan'))?.body).toEqual({
-      id_tipe_sparepart: ['4'],
-      status: '2',
-    }))
-  })
-
-  it.each([
-    [{ status: 400, body: { kode: 'status_tidak_dikenal', pesan: 'Status tidak dikenal.' } }, 'Status tidak dikenal.'],
-    [{ fail: true }, 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'],
-  ])('menyatakan keputusan yang gagal %#', async (reply, text) => {
-    installFetch((call) => (call.url.endsWith('/keputusan') ? reply : null))
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-    await user.click(await screen.findByLabelText('Pilih TRACK ROLLER'))
-    await user.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    expect(await screen.findByText('Keputusan belum tersimpan')).toBeInTheDocument()
-    // NetworkError bukan APIError, sehingga pesannya yang umum.
-    expect(screen.getByText(text)).toBeInTheDocument()
-  })
-
-  it('menulis Menyimpan selama keputusan dikirim', async () => {
-    installFetch((call) => (call.url.endsWith('/keputusan') ? { hold: true } : null))
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-    await user.click(await screen.findByLabelText('Pilih TRACK ROLLER'))
-    await user.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    expect(await screen.findByRole('button', { name: 'Menyimpan…' })).toBeDisabled()
-    expect(screen.getByLabelText('Pilih TRACK ROLLER')).toBeDisabled()
+    expect(
+      await screen.findByRole('option', { name: '99 — kategori tidak lagi tersedia' }),
+    ).toBeInTheDocument()
   })
 })
 
@@ -258,9 +171,7 @@ describe('daftar', () => {
     await user.click(within(table).getByRole('button', { name: 'Nama Tipe Sparepart' }))
     expect(first()).toContain('AIR FILTER')
     await user.click(within(table).getByRole('button', { name: 'ID Kategori Sparepart' }))
-    expect(first()).toContain('ENGINE')
-    await user.click(within(table).getByRole('button', { name: 'Kategori Sparepart' }))
-    expect(first()).toContain('BODY')
+    expect(first()).toContain('FUEL FILTER')
     await user.click(within(table).getByRole('button', { name: 'ID Tipe Sparepart' }))
     expect(first()).toContain('FUEL FILTER')
 

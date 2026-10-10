@@ -54,6 +54,10 @@ import { AutoClaimForm, type AutoClaimFormValues } from './AutoClaimForm'
  *	Waiting Approval    9     Update        —                 (tidak ada sama sekali)
  *	Komite Approval     8     Update        Approve · Reject  (stsapprove="1" / "2")
  *
+ * Kolom "tombol baris" di atas adalah nama PEGA. Di layar ini ia bernama "Ubah", dan
+ * "Detail" pada Waiting Approval — lihat `TABS.actionLabel` dan catatan di atas kolom
+ * `aksi`.
+ *
  * Tab Komite tidak punya kolom KOMITE karena seluruh barisnya memang milik pemanggil,
  * dan tab Waiting Approval tidak punya tombol simpan apa pun — ia baca saja.
  *
@@ -76,6 +80,8 @@ const TABS = [
     canSave: true,
     /** Form menampilkan Approve dan Reject. */
     canDecide: false,
+    /** Nama tombol pada setiap baris. Lihat catatan di atas kolom `aksi`. */
+    actionLabel: 'Ubah',
     description: 'Sumber bisnis yang sudah disetujui komite dan dipakai pembuatan klaim otomatis.',
   },
   {
@@ -86,6 +92,7 @@ const TABS = [
     showCommittee: true,
     canSave: true,
     canDecide: false,
+    actionLabel: 'Ubah',
     description: 'Pengajuan yang ditolak komite. Dapat diperbaiki lalu diajukan ulang.',
   },
   {
@@ -96,6 +103,15 @@ const TABS = [
     showCommittee: true,
     canSave: false,
     canDecide: false,
+    /**
+     * Baca saja, sehingga tombolnya menjanjikan "Detail" — bukan "Ubah".
+     *
+     * Ini satu-satunya tab yang formnya tidak punya tombol simpan apa pun, dan
+     * `canSave: false` di atas sudah menegakkannya. Yang diperbaiki di sini adalah
+     * JANJI tombolnya: nama "Ubah" mengundang pengguna membuka form untuk mengubah
+     * sesuatu, lalu tidak menemukan satu pun tombol simpan di dalamnya.
+     */
+    actionLabel: 'Detail',
     description:
       'Seluruh pengajuan yang belum diputuskan, siapa pun penyetujunya. Baca saja — yang memutuskan adalah komite yang ditunjuk.',
   },
@@ -107,6 +123,7 @@ const TABS = [
     showCommittee: false,
     canSave: false,
     canDecide: true,
+    actionLabel: 'Ubah',
     description: 'Menunggu keputusan Anda sebagai komite.',
   },
 ] as const
@@ -301,36 +318,85 @@ export function AutoClaimPage() {
   // tidak punya — seluruh barisnya memang milik pemanggil, sehingga kolomnya tidak
   // memberi tahu apa pun.
   //
-  // KOLOM AKSI TANPA JUDUL, sama seperti Pega. Sel judul yang kosong tidak memberi nama
-  // pada kolomnya bagi pembaca layar; yang menutupinya adalah tombol di dalam tiap sel,
-  // yang bernama "Update" dan menyebut inisial barisnya.
+  // KOLOM AKSI BERJUDUL "Aksi" — BERBEDA DARI PEGA, keputusan Work Owner 2026-10-03.
+  //
+  // JUDUL INI SUDAH TIGA KALI BERGANTI DALAM SATU HARI. Urutannya, supaya tidak ada yang
+  // "memperbaikinya" kembali karena mengira salah satunya kelalaian:
+  //
+  //	1. "untuk header kolomnya samakan penulisan semuanya"   -> "AKSI"
+  //	2. "karakternya bukan huruf besar semua tapi 'Aksi'"     -> "Aksi"
+  //	3. "untuk Aksi ubah menjadi AKSI"                        -> "AKSI"
+  //	4. "dari AKSI ke Aksi"                                   -> "Aksi"   <-- BERLAKU
+  //
+  // Dasar yang membuat "Aksi" masuk akal, dan patut diketahui siapa pun yang menyentuhnya
+  // lagi: kesembilan judul kolom lain kapital karena LITERAL PEGA-nya memang kapital
+  // (`<b>INISIAL<b>`). Kolom aksi **tidak punya literal Pega sama sekali** — Pega
+  // membiarkan sel judulnya kosong — sehingga ia satu-satunya judul yang kita tetapkan
+  // sendiri, dan bentuk bakunya di seluruh aplikasi adalah "Aksi" (31 pemakaian).
+  //
+  // Catatan tampilan: `DataTable` mengapitalkan SETIAP judul kolom lewat CSS, jadi
+  // perubahan ini tidak mengubah satu piksel pun di layar — yang berubah teks sumbernya,
+  // dan itu nyata bagi berkas uji serta pembaca layar.
+  //
+  // Pega membiarkan sel judulnya kosong. Versi pertama layar ini menyalinnya apa adanya,
+  // dan itu menjadikan Master Auto Claim SATU-SATUNYA layar di aplikasi ini yang kolom
+  // aksinya tanpa judul — dua puluh layar lain sudah punya judul. Judul yang kosong juga
+  // tidak memberi nama pada kolomnya bagi pembaca layar.
+  //
+  // SELURUH JUDUL KOLOM DITULIS KAPITAL — keputusan Work Owner 2026-10-03.
+  //
+  // Dengan begitu penulisannya di kode SAMA PERSIS dengan apa yang tampil di layar, dan
+  // sama persis pula dengan judul grid Pega yang memang ditulis kapital
+  // (`<b>INISIAL<b>`, `<b>NAMA PENERIMA<b>`, …). Membaca kode ini di samping
+  // `Section/BrowseAutoKlaim-Section.xml` karena itu tidak menuntut penerjemahan apa pun.
+  //
+  // Ia BERBEDA dari modul lain, yang menulis judul kolomnya Title Case (`ID Bengkel`,
+  // `Login Aplikasi`, `Aksi`). Perbedaan itu diketahui dan diterima; yang diminta adalah
+  // kapital, dan ia diterapkan ke SELURUH judul kolom layar ini — bukan sebagian.
+  //
+  // Tampilan tidak berubah sama sekali: `DataTable` sudah memasang kelas `uppercase` pada
+  // setiap `<th>` di seluruh aplikasi. Yang berubah adalah teks sumbernya, dan itu nyata
+  // bagi dua pembaca — berkas uji (`textContent` mengembalikan teks asli, bukan hasil
+  // `text-transform`) dan pembaca layar, yang membacakan teks DOM apa adanya.
+  //
+  // NAMA TOMBOLNYA BERBEDA DARI PEGA, dan itu diputuskan Work Owner 2026-10-03. Pega
+  // menamainya "Update" di keempat tab; di sini ia "Ubah", mengikuti modul Go lain yang
+  // sudah ada. Satu aplikasi tidak boleh memakai dua kata untuk aksi yang sama hanya
+  // karena modulnya berbeda.
+  //
+  // KECUALI di tab Waiting Approval, tempat ia bernama "Detail". Tab itu baca saja, dan
+  // "Ubah" akan menjanjikan sesuatu yang tidak ada tombolnya di dalam form. Nama per tab
+  // ada di `TABS.actionLabel`, bukan di sini, supaya satu tempat saja yang menentukannya.
   //
   // CLIENT ID dan NAMA CLIENT TIDAK ada di grid ini, dan itu benar: keempat header yang
   // memuatnya (`INISIAL`, `SUMBER BISNIS`, `CLIENT ID`, `NAMA CLIENT`) milik dua grid
   // pencarian DI DALAM FORM, bukan grid daftar. Keduanya tetap dibaca API — lihat
   // `auto_claim_list` pada berkas .sql.
   const columns: Column<AutoClaim>[] = [
-    { key: 'inisial', title: 'Inisial', width: '72px', value: (row) => row.inisial },
-    { key: 'nama_penerima', title: 'Nama penerima', width: '177px', value: (row) => row.nama_penerima },
-    { key: 'nama_bank', title: 'Bank penerima', width: '167px', value: (row) => row.nama_bank },
-    { key: 'no_rekening', title: 'No rekening', width: '105px', value: (row) => row.no_rekening },
-    { key: 'alamat_penerima', title: 'Alamat penerima', width: '139px', value: (row) => row.alamat_penerima },
-    { key: 'email_lapor', title: 'Email lapor', width: '163px', value: (row) => row.email_lapor },
-    { key: 'pct_max', title: 'PCT max', width: '60px', value: (row) => row.pct_max },
+    { key: 'inisial', title: 'INISIAL', width: '72px', value: (row) => row.inisial },
+    { key: 'nama_penerima', title: 'NAMA PENERIMA', width: '177px', value: (row) => row.nama_penerima },
+    { key: 'nama_bank', title: 'BANK PENERIMA', width: '167px', value: (row) => row.nama_bank },
+    { key: 'no_rekening', title: 'NO REKENING', width: '105px', value: (row) => row.no_rekening },
+    { key: 'alamat_penerima', title: 'ALAMAT PENERIMA', width: '139px', value: (row) => row.alamat_penerima },
+    { key: 'email_lapor', title: 'EMAIL LAPOR', width: '163px', value: (row) => row.email_lapor },
+    { key: 'pct_max', title: 'PCT MAX', width: '60px', value: (row) => row.pct_max },
     { key: 'pic_lapor', title: 'PIC', width: '90px', value: (row) => row.pic_lapor },
     ...(active.showCommittee
-      ? [{ key: 'komite', title: 'Komite', width: '115px', value: (row: AutoClaim) => row.komite }]
+      ? [{ key: 'komite', title: 'KOMITE', width: '115px', value: (row: AutoClaim) => row.komite }]
       : []),
     {
       key: 'aksi',
-      title: '',
+      title: 'Aksi',
       width: '93px',
       noSort: true,
-      alignRight: true,
+      // Rata TENGAH, bukan rata kanan — permintaan Work Owner 2026-10-03. Rata kanan
+      // menempelkan tombolnya ke tepi tabel; di tengah ia duduk di dalam lebar kolomnya
+      // sendiri (93px) dan sejajar dengan judulnya.
+      alignCenter: true,
       value: () => '',
       render: (row) => (
         <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Update
+          {active.actionLabel}
         </Button>
       ),
     },
@@ -479,7 +545,23 @@ export function AutoClaimPage() {
             rows={list.data.auto_claim}
             rowKey={(row) => row.inisial}
             description="Sumber: POOLDATA.M_AUTO_CLAIM_PNC"
-            emptyMessage={`Belum ada baris pada tab ${active.label}.`}
+            // Teks Pega apa adanya (D-13) — itulah yang tertulis di grid layar lama.
+            emptyMessage="Data Tidak Ada"
+            /*
+              Kepala kolom tetap digambar meski tidak ada satu baris pun — mengikuti Pega,
+              permintaan Work Owner 2026-10-03.
+
+              Dasarnya ada di keempat section: masing-masing memasang
+              `pyFieldValueForNoRows = GridNoResultsOnLoad`, yaitu grid beserta kepala
+              kolomnya TETAP tergambar dan pesan "tidak ada baris" muncul DI DALAMNYA —
+              bukan menggantikan seluruh tabel dengan gambar kotak kosong.
+
+              Dinyalakan untuk KEEMPAT tab, bukan hanya Reject dan Komite Approval yang
+              hari ini kebetulan kosong. Setelannya ada di keempat section Pega, dan
+              membatasinya ke dua tab hanya akan memunculkan kembali ketidakseragaman yang
+              sama begitu tab lain ikut kosong.
+            */
+            showHeaderWhenEmpty
           />
         )}
       </section>

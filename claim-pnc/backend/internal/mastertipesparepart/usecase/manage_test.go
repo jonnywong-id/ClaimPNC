@@ -79,8 +79,12 @@ func TestListSeparatesEachTab(t *testing.T) {
 	}
 }
 
-// Nama kategori ikut terbaca pada setiap baris — inilah yang di Pega datang dari JOIN.
-func TestListJoinsCategoryName(t *testing.T) {
+// Setiap baris membawa ID kategori induknya — dan HANYA ID-nya.
+//
+// Grid Pega menggambar tiga kolom, dan yang ketiga `.District` = PART_CATEGORY_ID. Nama
+// kategorinya tidak ada di grid mana pun (koreksi Work Owner 2026-10-04), sehingga kueri
+// daftarnya pun tanpa JOIN.
+func TestListCarriesCategoryIDOnly(t *testing.T) {
 	service, _ := newSampleService(t)
 
 	list, err := service.List(context.Background(), portalAlias,
@@ -88,17 +92,16 @@ func TestListJoinsCategoryName(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, list)
 	for _, row := range list {
-		require.Equal(t, "UNDERCARRIAGE", row.CategoryName,
-			"baris %q seharusnya membawa nama kategori induknya", row.Name)
+		require.Equal(t, "3", row.CategoryID,
+			"baris %q seharusnya membawa ID kategori induknya", row.Name)
 	}
 }
 
-// Baris YATIM tetap terlihat, dengan nama kategori KOSONG.
+// Baris YATIM — kategorinya tidak ada di master kategori — tetap terlihat.
 //
-// Inilah satu-satunya selisih perilaku yang disengaja pada jalur baca modul ini: di Pega
-// baris seperti ini HILANG dari daftar karena inner join-nya
-// (`BrowseMasterSparepartTypeClaimHE_sql`), sehingga ia tidak dapat dilihat maupun
-// diperbaiki siapa pun. Lihat banner pada berkas .sql.
+// Itu bukan selisih terhadap Pega melainkan peniruannya: kueri grid Pega tidak ber-JOIN
+// sama sekali, sehingga tidak ada apa pun yang dapat membuang barisnya. Yang terhalang
+// hanyalah MENYIMPANNYA, karena dropdown hanya menawarkan kategori yang disetujui.
 func TestListKeepsRowWhoseCategoryIsMissing(t *testing.T) {
 	service, _ := newSampleService(t)
 
@@ -112,16 +115,16 @@ func TestListKeepsRowWhoseCategoryIsMissing(t *testing.T) {
 			orphan = &list[i]
 		}
 	}
-	require.NotNil(t, orphan, "baris yatim wajib TETAP terlihat, tidak boleh dibuang seperti di Pega")
+	require.NotNil(t, orphan, "baris yatim wajib tetap terlihat; kueri grid tidak ber-JOIN")
 	require.Equal(t, "99", orphan.CategoryID)
-	require.Empty(t, orphan.CategoryName, "nama kategorinya kosong, bukan dikarang")
 }
 
-// Pencarian menyentuh nama tipe DAN nama kategorinya.
+// Pencarian menyentuh NAMA TIPE saja.
 //
-// Yang kedua DITAMBAHKAN terhadap sistem lama, dan ia yang membuat "apa saja tipe di
-// HYDRAULIC" dapat dijawab tanpa memindai seluruh daftar.
-func TestListSearchesTypeNameAndCategoryName(t *testing.T) {
+// Versi pertama ikut mencari nama kategori lewat JOIN; itu dicabut bersama kolomnya.
+// Mencari kolom yang tidak ditampilkan membuat hasil pencarian tidak dapat dijelaskan dari
+// layar — barisnya cocok pada sesuatu yang tidak terlihat.
+func TestListSearchesTypeNameOnly(t *testing.T) {
 	service, _ := newSampleService(t)
 	ctx := context.Background()
 
@@ -130,10 +133,12 @@ func TestListSearchesTypeNameAndCategoryName(t *testing.T) {
 	require.Len(t, byType, 1)
 	require.Equal(t, "TURBOCHARGER", byType[0].Name)
 
+	// "ENGINE" adalah nama KATEGORI dua baris disetujui, dan bukan nama tipe satu pun.
+	// Pencarian karena itu tidak boleh menjaringnya.
 	byCategory, err := service.List(ctx, portalAlias,
 		mastertipesparepart.StatusApproved, "engine")
 	require.NoError(t, err)
-	require.Len(t, byCategory, 2, "kedua tipe di bawah ENGINE harus terjaring lewat nama kategori")
+	require.Empty(t, byCategory, "nama kategori tidak ikut dicari")
 }
 
 func TestChoicesReturnsApprovedCategoriesOnly(t *testing.T) {
@@ -162,8 +167,6 @@ func TestCreateStartsPendingWithIssuedID(t *testing.T) {
 	require.Equal(t, mastertipesparepart.StatusPending, saved.Status)
 	require.Equal(t, "8", saved.ID, "ID berikutnya setelah contoh berkunci 1..7")
 	require.Equal(t, approvedCategory, saved.CategoryID)
-	require.Equal(t, "HYDRAULIC", saved.CategoryName,
-		"nama kategori diisi tanpa pembacaan kedua")
 }
 
 // Kategori yang tidak ada ditolak — pemeriksaan yang DITAMBAHKAN terhadap sistem lama.
@@ -276,7 +279,6 @@ func TestSaveMovesTypeToAnotherCategory(t *testing.T) {
 		mastertipesparepart.Input{Name: "FUEL FILTER", CategoryID: "3"}, actor(), nil)
 	require.NoError(t, err)
 	require.Equal(t, "3", updated.CategoryID)
-	require.Equal(t, "UNDERCARRIAGE", updated.CategoryName)
 
 	stored, err := repo.Get(ctx, "1")
 	require.NoError(t, err)
@@ -310,9 +312,8 @@ func TestSaveRejectsEmptyKey(t *testing.T) {
 
 // Baris YATIM hanya dapat disimpan ulang setelah kategorinya diperbaiki.
 //
-// Ia akibat langsung dari LEFT JOIN: barisnya kini terlihat, tetapi penyimpanannya tetap
-// menuntut kategori yang sah. Tanpa LEFT JOIN, baris ini tidak dapat diperbaiki sama
-// sekali karena tidak pernah muncul di layar.
+// Barisnya terlihat di grid — kueri grid tidak ber-JOIN — tetapi penyimpanannya menuntut
+// kategori yang sah, karena dropdown hanya menawarkan kategori yang disetujui.
 func TestSaveOnOrphanRowRequiresValidCategory(t *testing.T) {
 	service, _ := newSampleService(t)
 	ctx := context.Background()
@@ -323,7 +324,7 @@ func TestSaveOnOrphanRowRequiresValidCategory(t *testing.T) {
 
 	fixed, err := service.Save(ctx, portalAlias, "7", newInput("SPROCKET"), actor(), nil)
 	require.NoError(t, err)
-	require.Equal(t, "HYDRAULIC", fixed.CategoryName)
+	require.Equal(t, approvedCategory, fixed.CategoryID)
 }
 
 func TestDecideRejectsUnknownStatus(t *testing.T) {

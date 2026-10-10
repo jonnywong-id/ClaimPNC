@@ -161,9 +161,77 @@ func (s *Store) Dashboard(
 		if panels[i].Rows == nil {
 			panels[i].Rows = []inboxmanager.DashboardRow{}
 		}
+
+		// Kolom tahun grid silang disimpulkan dari kunci sel yang BUKAN kolom tetap.
+		// Dengan begitu penyimpanan memori menggambar bentuk yang sama dengan SQL tanpa
+		// perlu menyimpan daftar tahun tersendiri.
+		panels[i].Columns = append(
+			append([]inboxmanager.Column{}, panels[i].Columns...),
+			extraColumns(panels[i])...,
+		)
 	}
 
-	return inboxmanager.DashboardView{Panels: panels}, nil
+	view := inboxmanager.DashboardView{Panels: panels}
+	if q.Tab.Code == inboxmanager.TabOutstanding {
+		view.Filters = sampleFilters()
+	}
+	return view, nil
+}
+
+// extraColumns menyebut kolom yang hanya diketahui dari isinya, terurut.
+func extraColumns(panel inboxmanager.Panel) []inboxmanager.Column {
+	declared := map[string]bool{}
+	for _, column := range panel.Columns {
+		declared[column.Key] = true
+	}
+
+	found := map[string]bool{}
+	for _, row := range panel.Rows {
+		for key := range row.Cells {
+			if !declared[key] {
+				found[key] = true
+			}
+		}
+	}
+
+	keys := make([]string, 0, len(found))
+	for key := range found {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	result := make([]inboxmanager.Column, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, inboxmanager.Column{Key: key, Title: key})
+	}
+	return result
+}
+
+// sampleFilters meniru kedua penyaring dashboard Outstanding.
+func sampleFilters() []inboxmanager.FilterView {
+	return []inboxmanager.FilterView{
+		{
+			Key:   inboxmanager.FilterReinsurer,
+			Label: "Reinsurer",
+			Options: []inboxmanager.FilterOption{
+				{Label: "All"},
+				{Value: "LEADER", Label: "Leader"},
+				{Value: "MEMBER", Label: "Member"},
+				{Value: "FAC-IN", Label: "Fac In"},
+			},
+		},
+		{
+			Key:   inboxmanager.FilterCategoryOS,
+			Label: "Kategori OS",
+			Options: []inboxmanager.FilterOption{
+				{Label: "All"},
+				{Value: "REGISTRASI", Label: "REGISTRASI"},
+				{Value: "SURVEY", Label: "SURVEY"},
+				{Value: "ACCEPTATION", Label: "ACCEPTATION"},
+				{Value: "CLAIM COMMITTEE", Label: "CLAIM COMMITTEE"},
+			},
+		},
+	}
 }
 
 // Queue mengembalikan seluruh baris sebuah antrean.

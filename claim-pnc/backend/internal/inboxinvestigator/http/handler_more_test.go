@@ -22,6 +22,9 @@ func plainService(t *testing.T) *inboxinvestigatorusecase.Service {
 		RepoSelector: func(string) (inboxinvestigator.Repo, error) {
 			return memory.NewSampleRepo(), nil
 		},
+		InvestigationSelector: func(string) (inboxinvestigator.InvestigationRepo, error) {
+			return memory.NewInvestigationRepo(), nil
+		},
 	})
 	require.NoError(t, err)
 	return service

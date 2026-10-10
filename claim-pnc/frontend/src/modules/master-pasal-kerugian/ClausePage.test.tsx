@@ -157,6 +157,22 @@ describe('daftar', () => {
     }
   })
 
+  // Kolom kelima — "Aksi" — adalah satu-satunya judul yang TIDAK menyalin Pega, sehingga
+  // ia diuji terpisah dari keempat di atas. Tanpa uji ini, judulnya mudah kembali menjadi
+  // kosong saat kolomnya disunting: sel aksi tidak punya teks yang dapat dicari, jadi
+  // tidak ada uji lain yang akan gagal karenanya.
+  //
+  // Pemusatannya TIDAK diuji di sini — ia perilaku `DataTable` yang berlaku untuk setiap
+  // kolom berjudul "Aksi", dan sudah dijaga `DataTable.more.test.tsx`. Mengujinya ulang di
+  // tiap layar berarti satu kesepakatan diperiksa di tiga puluh tempat.
+  it('memberi judul "Aksi" pada kolom tombol', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+  })
+
   // Urutan kolom diambil dari label pada `Section/BrowsePasalDeatailMaster-Section.xml`.
   // "ISI PASAL" menunjuk `.DESCRIPTION` sedangkan "Deskripsi" menunjuk `.OLD_D_COL_ID` —
   // terbalik dari dugaan yang wajar, dan justru itu yang mudah tertukar saat menyalin.

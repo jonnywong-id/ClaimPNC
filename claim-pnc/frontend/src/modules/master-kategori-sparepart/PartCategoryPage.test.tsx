@@ -241,82 +241,77 @@ describe('daftar master kategori sparepart', () => {
   })
 })
 
-describe('keputusan persetujuan', () => {
-  // Kolom centang HANYA ada di tab Waiting Approval: baris yang sudah diputuskan tidak
-  // menunggu keputusan siapa pun.
-  it('menggambar kolom pilih hanya pada tab Waiting Approval', async () => {
+describe('tanpa keputusan persetujuan — sama seperti Pega', () => {
+  /*
+    Blok ini menjaga sebuah KETIADAAN, dan itu disengaja.
+
+    Versi pertama layar ini menggambar centang beserta tombol "Approve terpilih" dan
+    "Reject terpilih" pada tab Waiting Approval. Pembacaan ulang ketiga section tab Pega
+    pada 2026-10-04 membuktikan ketiganya identik — grid, UBAH, Save — dan tidak satu pun
+    memuat kontrol keputusan:
+
+        MasterKategoriSparepartHEApprove   tombol: UBAH, Save
+        MasterKategoriSparepartHEReject    tombol: UBAH, Save
+        MasterKategoriSparepartHEApproval  tombol: UBAH, Save
+
+    Keputusannya ada di `ApprovalMasterKategoriSparepartHE` (Inbox Manager), per baris,
+    tanpa `pySelected` dan tanpa `SetApprovalAllMaster`.
+
+    Uji ini yang menahan kontrol itu dari kembali masuk tanpa bukti baru.
+  */
+  it('tidak menggambar kolom pilih pada tab mana pun', async () => {
     installFetch(defaultReply())
     show()
     await screen.findByRole('table')
 
-    expect(
-      within(screen.getByRole('table')).queryByRole('columnheader', { name: 'Pilih' }),
-    ).not.toBeInTheDocument()
-
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('ELECTRICAL')
-    expect(
-      within(screen.getByRole('table')).getByRole('columnheader', { name: 'Pilih' }),
-    ).toBeInTheDocument()
+    for (const name of ['Approve', 'Reject', 'Waiting Approval']) {
+      await userEvent.click(tab(name))
+      await screen.findByRole('table')
+      expect(
+        within(screen.getByRole('table')).queryByRole('columnheader', { name: 'Pilih' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    }
   })
 
-  it('mematikan tombol keputusan selama belum ada yang dicentang', async () => {
-    installFetch(defaultReply())
-    show()
-    await screen.findByRole('table')
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('ELECTRICAL')
-
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-  })
-
-  it('mengirim satu permintaan untuk seluruh baris yang dicentang', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: { jumlah_berubah: 1, status: '1', status_label: 'Approve', portal: 'ASM' },
-      })),
-    )
-    show()
-    await screen.findByRole('table')
-    await userEvent.click(tab('Waiting Approval'))
-    await screen.findByText('ELECTRICAL')
-
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ELECTRICAL' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    await waitFor(() => {
-      const decision = calls.find((c) =>
-        c.url.startsWith('/api/master/kategori-sparepart/keputusan'),
-      )
-      expect(decision).toBeDefined()
-      expect(decision?.method).toBe('POST')
-      expect(decision?.body).toEqual({ id_kategori_sparepart: ['4'], status: '1' })
-    })
-
-    expect(
-      await screen.findByText(/1 kategori sparepart dipindahkan ke/),
-    ).toBeInTheDocument()
-  })
-
-  // Centang dibuang saat berpindah tab: baris yang dipilih milik tab sebelumnya, dan
-  // menyimpannya berarti keputusan dapat mengenai baris yang tidak sedang dilihat siapa pun.
-  it('membuang centang saat berpindah tab', async () => {
+  it('tidak menggambar tombol keputusan pada tab Waiting Approval', async () => {
     installFetch(defaultReply())
     show()
     await screen.findByRole('table')
     await userEvent.click(tab('Waiting Approval'))
     await screen.findByText('ELECTRICAL')
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ELECTRICAL' }))
-    expect(screen.getByText('1 kategori')).toBeInTheDocument()
+    for (const name of ['Approve terpilih', 'Reject terpilih', 'Bersihkan']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+  })
 
-    await userEvent.click(tab('Approve'))
-    await screen.findByText('ENGINE')
+  // Tab Waiting Approval tidak memuat keterangan apa pun di luar grid.
+  //
+  // Sempat ada satu paragraf yang menjelaskan bahwa keputusan diambil dari Inbox Manager;
+  // ia DIHAPUS atas permintaan Work Owner 2026-10-04. Layar Pega pun tidak memuat kalimat
+  // semacam itu, dan tab ini kini murni daftar — sama seperti kedua tab lainnya.
+  it('tidak menggambar keterangan tambahan pada tab Waiting Approval', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
     await userEvent.click(tab('Waiting Approval'))
     await screen.findByText('ELECTRICAL')
 
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
+    expect(screen.queryByText(/Inbox Manager/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tidak diambil dari layar ini/)).not.toBeInTheDocument()
+  })
+
+  it('tidak menembak endpoint keputusan sama sekali', async () => {
+    installFetch(defaultReply())
+    show()
+    await screen.findByRole('table')
+    await userEvent.click(tab('Waiting Approval'))
+    await screen.findByText('ELECTRICAL')
+
+    expect(
+      calls.filter((c) => c.url.includes('/keputusan')),
+    ).toHaveLength(0)
   })
 })
 

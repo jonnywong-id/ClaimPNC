@@ -72,8 +72,150 @@ package masterreas
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 )
+
+// MaxEmailLength adalah panjang maksimum Email.
+//
+// ASUMSI YANG DISADARI, bukan angka dari DDL: `POOLDATA.T_REINSURER` tidak ada DDL-nya di
+// export (`R-08`), dan layar lamanya tidak dapat dibaca karena section gridnya hilang
+// (`R-16`).
+//
+// Batasnya tetap dipasang karena tanpa itu penolakan datang dari basis data sebagai
+// ORA-12899 — galat teknis yang tidak menuntun pengguna ke mana pun. Seratus dipilih agar
+// sama dengan batas surel pada modul master lain di aplikasi ini.
+const MaxEmailLength = 100
+
+// Galat modul ini. Transport yang memetakannya ke kode HTTP; domain tidak tahu HTTP.
+var (
+	// ErrNotFound: baris yang hendak diubah tidak ada.
+	//
+	// Pada modul ini ia lebih mungkin terjadi daripada di modul master lain: kunci alaminya
+	// TIGA kolom, dan baris reasuransi dapat berubah di belakang layar oleh alur PLA/DLA
+	// yang menulis ke tabel yang sama (`Database/UPDATEREAS.prc`).
+	ErrNotFound = errors.New("masterreas: member reas tidak ditemukan")
+)
+
+// Violation adalah satu isian yang tidak lolos pemeriksaan.
+type Violation struct {
+	// Field adalah nama isian dalam bentuk yang dikenali layar, bukan nama kolom basis
+	// data — layar yang menyorot isiannya memakai nilai ini.
+	Field   string
+	Message string
+}
+
+// ValidationError memuat SELURUH pelanggaran sekaligus, bukan yang pertama saja (`P-5`).
+type ValidationError struct {
+	Violation []Violation
+}
+
+func (g *ValidationError) Error() string {
+	parts := make([]string, 0, len(g.Violation))
+	for _, p := range g.Violation {
+		parts = append(parts, p.Field+": "+p.Message)
+	}
+	return "masterreas: isian tidak sah (" + strings.Join(parts, "; ") + ")"
+}
+
+// Input adalah nilai yang dikirim pengguna dari form ubah.
+//
+// # SATU isian, dan itu bukan penyederhanaan
+//
+// `Database/UPDATEREAS.prc` pada baris yang SUDAH ADA hanya menyentuh satu kolom:
+//
+//	UPDATE POOLDATA.T_REINSURER SET EMAIl = tEMAIl
+//	 WHERE REINSURERID = tREINSID AND REINSURERNAME = tREINSNAME AND TYPE = tTYPE
+//
+// `LOGIN`, `COUNTRY`, dan `COUNTRYID` hanya ditulis pada jalur **sisip**, tidak pernah pada
+// jalur ubah. Menawarkan keduanya sebagai isian berarti menambah kewenangan yang sistem lama
+// tidak pernah punya — dan `LOGIN` bukan kolom sembarangan: ia menentukan klaim mana yang
+// dilihat seorang mitra reasuransi (lihat Member.Login).
+//
+// Ketiga kolom kunci TIDAK ada di sini. Ia dikirim terpisah sebagai Key; lihat Repo.Update.
+type Input struct {
+	Email string
+}
+
+// Clean memangkas spasi di kedua ujung isian.
+//
+// Dipisahkan dari Check supaya nilai yang TERSIMPAN adalah nilai yang sudah dipangkas —
+// bukan nilai mentah yang lolos pemeriksaan karena kebetulan spasinya ikut terhitung.
+func (i Input) Clean() Input {
+	return Input{Email: strings.TrimSpace(i.Email)}
+}
+
+// Check menjalankan seluruh aturan isian dan mengembalikan SEMUA pelanggarannya.
+//
+// Nil berarti isian sah. Input sudah harus melewati Clean lebih dulu.
+//
+// # Surel WAJIB terisi, dan itu DITAMBAHKAN terhadap sistem lama
+//
+// `UPDATEREAS` tidak memeriksa apa pun — ia menerima surel kosong dan menuliskannya. Akibat
+// yang ditimbulkannya tidak terlihat sebagai galat: dokumen PLA/DLA tetap terbit, tetap
+// tercatat terkirim, dan tidak pernah sampai ke siapa pun.
+//
+// Baris lama yang surelnya SUDAH kosong tetap DIBACA apa adanya dan tetap tampil di daftar;
+// penolakan hanya terjadi saat seseorang menyimpan baris itu dengan surel kosong.
+//
+// # Bentuk surel TIDAK diperiksa
+//
+// Tidak ada satu pun rule di export yang memeriksanya. Menambahkan pemeriksaan bentuk
+// berarti menolak alamat yang selama ini diterima sistem lama, dan itu selisih perilaku yang
+// tidak diminta siapa pun (`P-5`). Yang diperiksa hanyalah keberadaannya.
+func (i Input) Check() error {
+	var violation []Violation
+
+	switch {
+	case i.Email == "":
+		violation = append(violation, Violation{
+			Field:   "email",
+			Message: "Email wajib diisi.",
+		})
+	case len(i.Email) > MaxEmailLength:
+		violation = append(violation, Violation{
+			Field:   "email",
+			Message: fmt.Sprintf("Email paling panjang %d karakter.", MaxEmailLength),
+		})
+	}
+
+	if len(violation) > 0 {
+		return &ValidationError{Violation: violation}
+	}
+	return nil
+}
+
+// Key adalah kunci alami satu baris — KETIGA kolomnya.
+//
+// Ia tipe tersendiri, bukan tiga argumen berjajar, karena ketiganya harus bergerak bersama.
+// Tiga string berurutan adalah undangan untuk tertukar: `REINSURERID` dan `TYPE` sama-sama
+// pendek, dan kompilator tidak akan menolong bila keduanya bertukar tempat.
+//
+// Lihat Member.NaturalKey untuk asal kuncinya.
+type Key struct {
+	ReinsurerID   string
+	ReinsurerName string
+	Type          string
+}
+
+// Clean memangkas spasi di ketiga bagian kunci.
+func (k Key) Clean() Key {
+	return Key{
+		ReinsurerID:   strings.TrimSpace(k.ReinsurerID),
+		ReinsurerName: strings.TrimSpace(k.ReinsurerName),
+		Type:          strings.TrimSpace(k.Type),
+	}
+}
+
+// IsEmpty menyatakan kunci tidak cukup untuk menunjuk satu baris.
+//
+// `Type` BOLEH kosong — baris yang lahir dari `GetListDataLoginReas` disisipkan tanpa kolom
+// itu sama sekali, sehingga kunci ber-Type kosong adalah kunci yang sah. Yang tidak boleh
+// kosong adalah kode dan nama reasuransinya.
+func (k Key) IsEmpty() bool {
+	return k.ReinsurerID == "" || k.ReinsurerName == ""
+}
 
 // FallbackType adalah nilai TYPE yang diperlakukan sistem lama sebagai baris CADANGAN.
 //
@@ -270,19 +412,45 @@ func (f Filter) Clean() Filter {
 // basis data entitas — pemisahan antarentitas ada di tingkat koneksi, bukan di tingkat
 // kueri (`ADR-0030` Opsi 1).
 //
-// # Hanya List, dan itu disengaja
+// # List dan Update saja — tanpa Insert, tanpa Delete
 //
-// **Tanpa Insert, tanpa Update, tanpa Delete.** Alasannya ada di banner paket: satu-satunya
-// penulis tabel ini di sistem lama adalah alur PLA/DLA lewat `UPDATEREAS`, dan layar master
-// tidak pernah memanggilnya.
+// **Tanpa Insert.** Layar lamanya tidak punya tombol Tambah, dan itu terkalibrasi: indeks
+// rule `Harness/MasterLoginSurvey-Harness.xml` — layar yang terbukti punya dua tombol —
+// menyebut `PYBUTTONLABEL!REFRESH` **dan** `!TAMBAH`; `DataMemberReas` hanya menyebut
+// `REFRESH`. Baris baru lahir dari alur PLA/DLA, lewat jalur sisip `UPDATEREAS` dan kedua
+// `pySaveSQL` pada `BrowseEmailReas`/`GetListDataLoginReas`.
 //
-// **Tanpa Get pun.** Sistem lama tidak punya layar detail untuk satu member — harness-nya
-// hanya grid — dan seluruh kolomnya sudah muat di dalam grid itu. Menambahkan pengambilan
-// satu baris berarti menyediakan jalur yang tidak ada pemakainya, dengan kunci tiga kolom
-// yang harus dipaksakan ke dalam jalur URL.
+// **Tanpa Delete.** Tidak satu pun rule di export menghapus baris tabel ini, dan `D-66`
+// melarang penghapusan fisik data bernilai bisnis.
+//
+// **Tanpa Get.** Form ubah dimuat dari baris yang SUDAH ada di daftar, sama seperti layar
+// lamanya memuat grid lebih dulu. Menambahkan pengambilan satu baris berarti menyediakan
+// jalur yang tidak ada pemakainya, dengan kunci tiga kolom yang harus dipaksakan ke jalur URL.
 type Repo interface {
 	// List mengembalikan baris yang cocok dengan penyaring.
 	List(ctx context.Context, filter Filter) ([]Member, error)
+
+	// Update mengubah SURAT ELEKTRONIK satu baris; ErrNotFound bila barisnya tidak ada.
+	//
+	// Padanan cabang pertama `Database/UPDATEREAS.prc`:
+	//
+	//	UPDATE POOLDATA.T_REINSURER SET EMAIl = tEMAIl
+	//	 WHERE REINSURERID = tREINSID AND REINSURERNAME = tREINSNAME AND TYPE = tTYPE
+	//
+	// # Yang TIDAK dibawa dari prosedur itu
+	//
+	// `UPDATEREAS` punya sembilan cabang: ia menyisipkan bila barisnya tidak ada, dan
+	// **menaikkan baris ber-TYPE `'1'` menjadi tipe yang diminta** bila tipe yang diminta
+	// belum ada. Keduanya adalah penulisan yang diminta alur PLA/DLA, bukan yang diminta
+	// petugas yang menekan Simpan di layar master.
+	//
+	// Di sini perilakunya tegas: baris yang tidak ada **ditolak**, tidak disisipkan diam-diam
+	// — dan baris cadangan tidak pernah berubah tipenya. Petugas yang mengubah surel satu
+	// baris tidak boleh tanpa sadar menciptakan baris baru maupun memindahkan baris cadangan
+	// milik jenis dokumen lain.
+	//
+	// `COMMIT` di dalam prosedur juga tidak dibawa; kepemilikan transaksi ada di Go (`D-68`).
+	Update(ctx context.Context, key Key, email string) error
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

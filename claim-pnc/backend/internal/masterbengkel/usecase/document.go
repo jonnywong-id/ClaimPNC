@@ -21,9 +21,12 @@ import (
 //	GetIDDokumenBengkel           DOKUMENID milik satu bengkel
 //	GetAttachmentFromDB_Sql       barisnya di DATA_ATTACHFILE
 //
-// Dua hal yang TIDAK dibawa, keduanya sudah dijelaskan di document.go: `IMAGEID` yang di
-// Pega tidak pernah terisi, dan `CATEGORY`/`SUB_CATEGORY` yang layarnya tidak punya
-// isiannya.
+// Satu langkah DISISIPKAN sebelum pencatatan, dan alasannya ada di document.go: isi berkas
+// dikirim ke layanan penyimpanan internal lewat seam DocumentUploader, lalu `IMAGEID`-nya
+// yang disimpan di barisnya. Di Pega kolom itu disediakan prosedurnya tetapi tidak pernah
+// diisi jalur Master Bengkel, sehingga berkasnya tidak tersimpan di mana pun.
+//
+// `CATEGORY` dan `SUB_CATEGORY` tetap TIDAK dibawa — layarnya tidak punya isiannya.
 
 // systemClock adalah jam bawaan, dipakai bila perakitan tidak menyetel jam sendiri.
 type systemClock struct{}
@@ -76,6 +79,15 @@ func (l *Service) UploadDocument(
 		return masterbengkel.Document{}, err
 	}
 
+	// Isi berkas pergi lebih dulu. Urutannya mengikuti `InsertDokumenPNC`, dan alasannya
+	// bukan selera: nomor urut DATAID tidak dapat dikembalikan bila unggahannya gagal
+	// sesudahnya, sehingga mengambil nomor lebih dulu berarti membuang satu nomor setiap
+	// kali layanan penyimpanan sedang bermasalah.
+	imageID, err := l.uploadFile(ctx, portalAlias, actor, clean)
+	if err != nil {
+		return masterbengkel.Document{}, err
+	}
+
 	documentID, err := store.NextDocumentID(ctx)
 	if err != nil {
 		return masterbengkel.Document{}, err
@@ -83,9 +95,9 @@ func (l *Service) UploadDocument(
 
 	document := masterbengkel.Document{
 		ID:       documentID,
+		ImageID:  imageID,
 		Name:     clean.FileName,
 		MimeType: masterbengkel.DocumentMimeType(clean.FileName),
-		Content:  clean.Content,
 
 		// ATTACHNOTE dibiarkan kosong: `Section/UploadDocument` tidak punya isian
 		// catatan, dan mengisinya dengan nama berkas — seperti yang dilakukan
@@ -98,10 +110,53 @@ func (l *Service) UploadDocument(
 	}
 
 	if err := store.SaveDocument(ctx, clean.WorkshopID, document); err != nil {
-		return masterbengkel.Document{}, err
+		// Berkasnya SUDAH sampai di layanan penyimpanan; yang gagal hanyalah catatannya.
+		// Mengembalikan galat basis data apa adanya akan membuat layar menyarankan
+		// "coba lagi" — dan pengulangan di sini menumpuk berkas ganda di penyimpanan,
+		// sebab unggahan yang pertama tidak dapat ditarik kembali.
+		return masterbengkel.Document{}, &masterbengkel.DocumentUploadError{
+			Kind: masterbengkel.UploadHalfDone,
+			Message: "Berkas sudah terkirim ke penyimpanan tetapi catatannya gagal " +
+				"disimpan, sehingga belum tertaut ke bengkel. JANGAN unggah ulang — " +
+				"laporkan ke administrator.",
+			Err: err,
+		}
 	}
 	return document, nil
 }
+
+// uploadFile mengirim isi berkas ke layanan penyimpanan dan mengembalikan IMAGEID-nya.
+//
+// Pengunggah yang belum terpasang ditolak DI SINI, bukan dibiarkan menjadi nil-panic di
+// hilir, dan bukan pula dibiarkan lewat sebagai dokumen tanpa IMAGEID — yang terakhir itu
+// persis cacat sistem lama yang modul ini hendak tutup.
+func (l *Service) uploadFile(
+	ctx context.Context,
+	portalAlias string,
+	actor Actor,
+	clean masterbengkel.UploadInput,
+) (string, error) {
+	if l.uploader == nil {
+		return "", &masterbengkel.DocumentUploadError{
+			Kind: masterbengkel.UploadMisconfigured,
+			Message: "Layanan penyimpanan dokumen belum terpasang pada lingkungan ini. " +
+				"Laporkan ke administrator.",
+		}
+	}
+	return l.uploader.Upload(ctx, masterbengkel.DocumentFile{
+		Portal:   portalAlias,
+		FileName: clean.FileName,
+		Content:  clean.Content,
+		By:       strings.TrimSpace(actor.Login),
+	})
+}
+
+// UploadAvailable menyatakan apakah jalur unggah siap dipakai.
+//
+// Layar membutuhkannya SEBELUM pengguna memilih berkas: menonaktifkan tombolnya beserta
+// sebabnya jauh lebih terbaca daripada membiarkan pengguna memilih berkas, menunggu
+// unggahan, lalu menerima penolakan.
+func (l *Service) UploadAvailable() bool { return l.uploader != nil }
 
 // Document mengembalikan lampiran yang tertaut pada sebuah bengkel.
 //

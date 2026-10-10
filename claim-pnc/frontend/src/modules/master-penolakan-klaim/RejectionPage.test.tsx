@@ -141,8 +141,27 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+// Kedua tombol pemilih memakai label Pega APA ADANYA.
+//
+// Diambil dari `pyButtonLabel` pada `Section/BrowseNoteRejectClaim-Section.xml`. Sempat
+// dipendekkan menjadi "Penolakan Klaim"/"Penolakan Komite"; dikembalikan atas permintaan
+// Work Owner 2026-10-03 supaya teks di layar baru dapat dicocokkan dengan layar lama.
+describe('pemilih master', () => {
+  it('memakai label tombol Pega apa adanya', async () => {
+    installFetch(defaultReply())
+    show()
+
+    expect(
+      screen.getByRole('tab', { name: 'Input Master Penolakan Klaim' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('tab Penolakan Klaim', () => {
-  it('menampilkan judul dan keempat kolom seperti layar lama', async () => {
+  it('menampilkan judul dan kelima kolom seperti layar lama', async () => {
     installFetch(defaultReply())
     show()
 
@@ -150,6 +169,7 @@ describe('tab Penolakan Klaim', () => {
 
     const table = await screen.findByRole('table')
     for (const title of [
+      'No',
       'Status Penolakan 1',
       'Status Penolakan 2',
       'Status Aproval',
@@ -159,10 +179,21 @@ describe('tab Penolakan Klaim', () => {
     }
   })
 
-  // Urutan kolom diambil dari label pada `Section/BrowseNoteRejectClaim-Section.xml`.
-  // Induk mendahului nama barisnya sendiri — berlawanan dengan dugaan yang wajar, dan
-  // sudah pernah tertukar pada modul sekerabat.
-  it('menempatkan induk SEBELUM nama barisnya, mengikuti urutan Pega', async () => {
+  // Kolom tombol berjudul "Aksi" — satu-satunya judul yang sengaja tidak menyalin Pega,
+  // yang meninggalkan sel judulnya kosong (ketetapan Work Owner 2026-10-03).
+  it('memberi judul "Aksi" pada kolom tombol', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+  })
+
+  // Urutan kolom dibaca SEL DEMI SEL dari `Section/BrowseNoteRejectClaim-Section.xml`,
+  // dipasangkan lewat `pyWidth` header dan sel datanya. "No" paling kiri, lalu induk
+  // mendahului nama barisnya sendiri — berlawanan dengan dugaan yang wajar, dan sudah
+  // pernah tertukar pada modul sekerabat.
+  it('menempatkan No paling kiri, lalu induk SEBELUM nama barisnya', async () => {
     installFetch(defaultReply())
     show()
 
@@ -171,7 +202,34 @@ describe('tab Penolakan Klaim', () => {
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent?.trim())
 
+    expect(header.indexOf('No')).toBe(0)
+    expect(header.indexOf('No')).toBeLessThan(header.indexOf('Status Penolakan 1'))
     expect(header.indexOf('Status Penolakan 1')).toBeLessThan(header.indexOf('Status Penolakan 2'))
+  })
+
+  // Kolom "No" BUKAN nomor urut baris.
+  //
+  // Ia `.CaseID` pada grid Pega, yang dipetakan `A.ID_ST` — ID Status Penolakan 1, yaitu
+  // INDUK baris ini. Menomorinya 1,2,3 akan tampak masuk akal dan menampilkan angka yang
+  // sama sekali lain dari yang dilihat pengguna di Pega. Kedua baris contoh sengaja
+  // berinduk sama, sehingga nomor urut dan ID induk pasti berbeda hasilnya.
+  it('mengisi kolom No dengan ID induk, bukan nomor urut', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    const firstColumn = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      // Teks sel memuat label kartu di depannya — `DataTable` menggambar meja dan kartu
+      // dari SATU pohon DOM, sehingga labelnya selalu ada meski tersembunyi pada layar
+      // lebar. Yang diperiksa karena itu angka di belakangnya.
+      .map((row) => within(row).getAllByRole('cell')[0]?.textContent?.trim().replace(/^No/, ''))
+
+    // Kedua baris contoh berinduk SAMA (`id_status_1: '1'`). Nomor urut akan menghasilkan
+    // '1' lalu '2'; ID induk menghasilkan '1' dua kali. Itulah yang membedakan keduanya,
+    // dan sebabnya kedua baris contoh sengaja dibuat berinduk sama.
+    expect(firstColumn).toEqual(['1', '1'])
   })
 
   it('menyebut entitas yang sedang dilihat', async () => {
@@ -419,7 +477,7 @@ describe('tab Penolakan Komite', () => {
     show()
 
     await screen.findByRole('table')
-    await user.click(screen.getByRole('tab', { name: 'Penolakan Komite' }))
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
 
     const table = await screen.findByRole('table')
     expect(within(table).getByRole('columnheader', { name: 'ID Master' })).toBeInTheDocument()
@@ -427,6 +485,21 @@ describe('tab Penolakan Komite', () => {
       within(table).getByRole('columnheader', { name: 'Note Komite Reject' }),
     ).toBeInTheDocument()
     expect(within(table).getByText('NILAI KLAIM DI BAWAH RISIKO SENDIRI')).toBeInTheDocument()
+  })
+
+  // Kolom tombol berjudul "Aksi" di SINI juga. Grid ini tidak punya kolom "No" — hanya
+  // tiga sel di Pega, dan yang ketiga tombol.
+  it('memberi judul "Aksi" pada kolom tombol, dan tidak punya kolom No', async () => {
+    const user = userEvent.setup()
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+    expect(within(table).queryByRole('columnheader', { name: 'No' })).not.toBeInTheDocument()
   })
 
   it('mengirim satu isian saja saat menambah', async () => {
@@ -440,7 +513,7 @@ describe('tab Penolakan Komite', () => {
     show()
 
     await screen.findByRole('table')
-    await user.click(screen.getByRole('tab', { name: 'Penolakan Komite' }))
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
 
     const form = await screen.findByRole('form', { name: 'Tambah Penolakan Komite' })
@@ -464,7 +537,7 @@ describe('tab Penolakan Komite', () => {
     show()
 
     await screen.findByRole('table')
-    await user.click(screen.getByRole('tab', { name: 'Penolakan Komite' }))
+    await user.click(screen.getByRole('tab', { name: 'Input Master Penolakan Komite' }))
 
     const table = await screen.findByRole('table')
     await user.click(

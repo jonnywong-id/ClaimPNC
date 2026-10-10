@@ -729,7 +729,8 @@ func (r *Repo) SaveDocument(ctx context.Context, workshopID string, document mas
 		strings.TrimSpace(document.Name),
 		strings.TrimSpace(document.Note),
 		strings.TrimSpace(document.MimeType),
-		document.Content,
+		strings.TrimSpace(document.ImageID),
+		strings.TrimSpace(workshopID),
 	)
 	if err != nil {
 		return fmt.Errorf("masterbengkel/sqlstore: menyisipkan lampiran: %w", err)
@@ -758,14 +759,13 @@ func (r *Repo) SaveDocument(ctx context.Context, workshopID string, document mas
 // FindDocument membaca satu lampiran menurut DATAID-nya.
 func (r *Repo) FindDocument(ctx context.Context, documentID string) (masterbengkel.Document, error) {
 	var (
-		id, name, note, mime, operator sql.NullString
-		uploadedAt                     sql.NullTime
-		content                        []byte
+		id, name, note, mime, operator, imageID sql.NullString
+		uploadedAt                              sql.NullTime
 	)
 
 	query := getQuery("bengkel_get_document")
 	err := r.db.QueryRowContext(ctx, query, strings.TrimSpace(documentID)).
-		Scan(&id, &name, &note, &mime, &operator, &uploadedAt, &content)
+		Scan(&id, &name, &note, &mime, &operator, &uploadedAt, &imageID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return masterbengkel.Document{}, masterbengkel.ErrDocumentNotFound
@@ -778,7 +778,7 @@ func (r *Repo) FindDocument(ctx context.Context, documentID string) (masterbengk
 		Name:       strings.TrimSpace(name.String),
 		Note:       strings.TrimSpace(note.String),
 		MimeType:   strings.TrimSpace(mime.String),
-		Content:    content,
+		ImageID:    strings.TrimSpace(imageID.String),
 		UploadedBy: strings.TrimSpace(operator.String),
 		UploadedAt: uploadedAt.Time,
 	}, nil

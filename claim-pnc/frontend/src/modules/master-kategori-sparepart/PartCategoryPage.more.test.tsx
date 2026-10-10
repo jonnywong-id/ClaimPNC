@@ -147,57 +147,31 @@ describe('daftar', () => {
   })
 })
 
-describe('keputusan', () => {
-  async function openPending() {
+describe('tanpa keputusan persetujuan', () => {
+  /*
+    Ketiadaan kontrol keputusan dijaga dari dua arah.
+
+    `PartCategoryPage.test.tsx` menjaga bahwa kontrolnya tidak digambar. Blok ini menjaga
+    yang lebih halus: tidak ada SATU PUN permintaan ke `/keputusan` yang terkirim, apa pun
+    yang dilakukan pengguna di tab Waiting Approval. Tanpa itu, kontrol yang tersembunyi —
+    misalnya pintasan papan ketik yang tertinggal — akan lolos dari uji pertama.
+  */
+  it('tidak menembak endpoint keputusan apa pun yang dilakukan pengguna', async () => {
+    installFetch()
     show()
     await screen.findByRole('table')
     await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
-    await waitFor(() => expect(screen.getAllByRole('checkbox')).toHaveLength(2))
-  }
+    await screen.findByText('ELECTRICAL')
 
-  it('mengatur pilihan lalu menolak', async () => {
-    installFetch()
-    await openPending()
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ATTACHMENT' }))
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ELECTRICAL' }))
-    expect(screen.getByText('2 kategori')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ATTACHMENT' }))
-    expect(screen.getByText('1 kategori')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Bersihkan' }))
-    expect(screen.getByText('Centang kategori yang akan diputuskan.')).toBeInTheDocument()
+    // Setiap tombol yang benar-benar ada di tab ini ditekan satu per satu.
+    for (const button of screen.getAllByRole('button')) {
+      if (button.textContent?.trim() === 'Ubah') continue
+      await userEvent.click(button)
+    }
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ELECTRICAL' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Reject terpilih' }))
-
-    expect(await screen.findByText(/dipindahkan ke/)).toHaveTextContent(
-      '1 kategori sparepart dipindahkan ke Reject.',
-    )
-    expect(calls.find((c) => c.url.endsWith('/keputusan'))?.body).toEqual({
-      id_kategori_sparepart: ['4'],
-      status: '2',
-    })
-  })
-
-  it.each([
-    {
-      name: 'galat API',
-      answer: (): Answer => json(409, { kode: 'konflik', pesan: 'Sudah diputuskan.' }),
-      text: 'Sudah diputuskan.',
-    },
-    {
-      name: 'jaringan putus',
-      answer: (): Answer => 'putus',
-      text: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-    },
-  ])('menampilkan galat keputusan: $name', async ({ answer, text }) => {
-    installFetch((call) => (call.url.endsWith('/keputusan') ? answer() : undefined))
-    await openPending()
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih ELECTRICAL' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    expect(await screen.findByText('Keputusan belum tersimpan')).toBeInTheDocument()
-    expect(screen.getByText(text)).toBeInTheDocument()
+    expect(calls.filter((c) => c.url.includes('/keputusan'))).toHaveLength(0)
   })
 })
 

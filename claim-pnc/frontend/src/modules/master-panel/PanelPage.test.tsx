@@ -22,6 +22,7 @@ const OPTIONS = {
     { nilai: '1', label: 'KIRI' },
     { nilai: '2', label: 'KANAN' },
   ],
+  unggah_tersedia: true,
 }
 
 /** Panel yang sudah disetujui, dengan DUA lokasi. */
@@ -90,7 +91,15 @@ function installFetch(map: (call: Call) => Reply) {
     const call: Call = {
       url,
       method: init?.method ?? 'GET',
-      body: init?.body ? JSON.parse(init.body as string) : undefined,
+      // FormData TIDAK diurai sebagai JSON. Unggahan dokumen memakai multipart, dan
+      // memaksanya lewat JSON.parse akan melempar — kegagalan yang terbaca sebagai cacat
+      // layar padahal bentuk permintaannya justru benar.
+      body:
+        init?.body instanceof FormData
+          ? init.body
+          : init?.body
+            ? JSON.parse(init.body as string)
+            : undefined,
       header: (init?.headers as Record<string, string>) ?? {},
     }
     calls.push(call)
@@ -114,6 +123,11 @@ function installFetch(map: (call: Call) => Reply) {
 function defaultReply(mutation?: (call: Call) => Reply) {
   return (call: Call): Reply => {
     if (call.url.startsWith('/api/master/panel/pilihan')) return { body: OPTIONS }
+
+    if (call.url.endsWith('/dokumen') && call.method === 'GET') {
+      // Panel contoh belum punya dokumen; itulah jawaban yang WAJAR, bukan galat.
+      return { body: { kode: 'dokumen_belum_ada', pesan: 'Panel ini belum punya dokumen.' }, status: 404 }
+    }
 
     if (call.method === 'GET') {
       const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
@@ -247,14 +261,14 @@ describe('daftar master panel', () => {
   // supaya ketiganya tidak kembali tanpa keputusan baru: rule yang menjalankannya masih
   // tidak ada di export, sehingga menampilkannya berarti menjanjikan hal yang belum dapat
   // dikerjakan.
-  it('tidak menggambar satu pun tombol unggah', async () => {
+  // Tidak satu pun endpoint unggah ditembak dari layar ini.
+  it('tidak menembak endpoint unggah mana pun', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByRole('table')
-    for (const label of ['Upload Document', 'Upload Data Master Panel', 'Upload Data Lokasi Panel']) {
-      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument()
-    }
+    expect(calls.filter((c) => c.url.includes('/dokumen') || c.url.includes('/unggah-csv')))
+      .toHaveLength(0)
   })
 
   // Ketiga tab adalah tiga nilai status atas SATU endpoint, persis seperti ketiga section
@@ -446,67 +460,35 @@ describe('form master panel', () => {
   })
 })
 
-describe('keputusan borongan', () => {
-  it('mengirim satu permintaan untuk seluruh baris yang dicentang', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: { jumlah_berubah: 1, status: '1', status_label: 'Approve', portal: 'ASM' },
-      })),
-    )
+describe('tanpa persetujuan di layar ini', () => {
+  /*
+    Layar Master Panel di Pega TIDAK punya persetujuan sama sekali.
+
+    Ketiga tab hanya punya tombol Simpan, Ubah, dan Upload Document, serta NOL
+    `pySelected` — tidak ada centang. Approve/Reject/Select All/Deselect All ada di
+    `Section/ApprovalMasterPanelHE`, yang dimuat Harness/UserInbox_Harness dan
+    Section/InboxManager_Sec — layar Inbox Manager.
+
+    Keduanya sempat digambar di sini lalu dicabut Work Owner (2026-10-03). Uji ini
+    menjaganya supaya tidak kembali tanpa keputusan baru.
+  */
+  it('tidak menggambar kolom centang pada tab mana pun', async () => {
+    installFetch(defaultReply())
     show()
 
     const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
 
-    await user.click(await screen.findByRole('checkbox', { name: 'Pilih Kaca Depan' }))
-    await user.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    await waitFor(() =>
-      expect(calls.filter((c) => c.url === '/api/master/panel/keputusan')).toHaveLength(1),
-    )
-
-    const sent = calls.find((c) => c.url === '/api/master/panel/keputusan')?.body as {
-      id_panel: string[]
-      status: string
+    for (const name of ['Approve', 'Reject', 'Waiting Approval'] as const) {
+      await user.click(tab(name))
+      await waitFor(() => expect(screen.queryAllByRole('checkbox')).toHaveLength(0))
+      expect(
+        within(screen.getByRole('table')).queryByRole('columnheader', { name: 'Pilih' }),
+      ).not.toBeInTheDocument()
     }
-    expect(sent.id_panel).toEqual(['01000002'])
-    expect(sent.status).toBe('1')
   })
 
-  // Catatan ikut terkirim, dan layar menyatakan bahwa ia hanya tersimpan pada penolakan.
-  it('mengirim catatan bersama keputusan dan menjelaskan kapan ia tersimpan', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: { jumlah_berubah: 1, status: '2', status_label: 'Reject', portal: 'ASM' },
-      })),
-    )
-    show()
-
-    const user = userEvent.setup()
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-
-    await user.click(await screen.findByRole('checkbox', { name: 'Pilih Kaca Depan' }))
-    await user.type(screen.getByLabelText('Catatan'), 'Nama tidak baku.')
-    await user.click(screen.getByRole('button', { name: 'Reject terpilih' }))
-
-    await waitFor(() =>
-      expect(calls.filter((c) => c.url === '/api/master/panel/keputusan')).toHaveLength(1),
-    )
-
-    const sent = calls.find((c) => c.url === '/api/master/panel/keputusan')?.body as {
-      catatan: string
-    }
-    expect(sent.catatan).toBe('Nama tidak baku.')
-
-    expect(
-      screen.getByText(/Pada keputusan Approve, catatan ini tidak ikut tersimpan/),
-    ).toBeInTheDocument()
-  })
-
-  // Tombol keputusan MATI selama belum ada yang dicentang — bukan disembunyikan.
-  it('mematikan tombol keputusan selama belum ada yang dicentang', async () => {
+  it('tidak menggambar tombol keputusan maupun isian catatan', async () => {
     installFetch(defaultReply())
     show()
 
@@ -514,18 +496,22 @@ describe('keputusan borongan', () => {
     await screen.findByRole('table')
     await user.click(tab('Waiting Approval'))
 
-    await screen.findByRole('checkbox', { name: 'Pilih Kaca Depan' })
-    expect(screen.getByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-  })
-
-  // Bilah keputusan hanya muncul pada tab Waiting Approval.
-  it('tidak menampilkan bilah keputusan di tab lain', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await screen.findByRole('table')
     expect(screen.queryByRole('button', { name: 'Approve terpilih' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject terpilih' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Catatan')).not.toBeInTheDocument()
+  })
+
+  // Tidak satu pun permintaan ke endpoint keputusan boleh terkirim dari layar ini.
+  it('tidak pernah menembak endpoint keputusan', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(tab('Waiting Approval'))
+    await user.click(tab('Reject'))
+
+    expect(calls.filter((c) => c.url.includes('/keputusan'))).toHaveLength(0)
   })
 })
 
@@ -608,5 +594,345 @@ describe('paginasi', () => {
 
     await screen.findByRole('table')
     expect(screen.queryByRole('navigation', { name: 'Halaman tabel' })).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Upload Document — satu-satunya unggahan yang digambar layar ini.
+ *
+ * Berkasnya berujung di GCS lewat `masterpanel/repo/dokumenlink` → `dokumenpenunjang` →
+ * `POST /api/v1/upload`. Yang diuji di sini kontrak layarnya, bukan rantai itu: letak
+ * tombolnya, bahwa berkasnya DITAHAN sampai Simpan, dan bahwa kegagalan yang melarang
+ * pengulangan terbaca berbeda.
+ */
+describe('unggah dokumen Master Panel', () => {
+  beforeEach(() => {
+    calls = []
+    startSession()
+    useSelectedPortal.getState().select('ASM')
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const DOCUMENT_REPLY = {
+    data: {
+      data_id: '20260000000001',
+      image_id: 'IMG000000001',
+      nama_berkas: 'panel.pdf',
+      tipe_media: 'application/pdf',
+      catatan: '',
+      diunggah_oleh: 'adminpnc',
+      diunggah_pada: '2026-10-07T09:00:00Z',
+      id_panel: '01000001',
+    },
+  }
+
+  function uploadReply(status = 201, body?: unknown) {
+    return defaultReply((call) => {
+      if (call.url.endsWith('/dokumen') && call.method === 'POST') {
+        return { status, body: body ?? DOCUMENT_REPLY }
+      }
+      return { body: { panel: APPROVED, portal: 'ASM' }, status: 200 }
+    })
+  }
+
+  function uploadCalls() {
+    return calls.filter((c) => c.method === 'POST' && c.url.endsWith('/dokumen'))
+  }
+
+  function pdf() {
+    return new File(['isi'], 'panel.pdf', { type: 'application/pdf' })
+  }
+
+  it('menggambar Upload Document di kepala halaman', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeInTheDocument()
+  })
+
+  // Tombolnya TIDAK pernah dimatikan — `pyDisabledNew = false` pada sel tombol Pega.
+  it('tidak pernah mematikan tombolnya', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/panel/pilihan')) {
+        return { body: { ...OPTIONS, unggah_tersedia: false } }
+      }
+      return defaultReply()(call)
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeEnabled()
+
+    // Sebabnya tertulis DI DALAM panel, bukan sebagai tombol mati tanpa keterangan.
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+    expect(await screen.findByText('Unggah dokumen belum tersedia')).toBeInTheDocument()
+  })
+
+  it('membuka panel berisi pemilih berkas dan daftar Nama File', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    expect(screen.queryByLabelText('Berkas dokumen')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+
+    expect(await screen.findByLabelText('Berkas dokumen')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Pilih Berkas' })).toBeEnabled()
+    // Baris kosong daftar "Nama File" — meniru "Data Tidak Ada" pada modal Pega.
+    expect(screen.getByText('Nama File')).toBeInTheDocument()
+    expect(screen.getByText('Data tidak ada')).toBeInTheDocument()
+    // Modal Pega berpasangan Cancel/Submit; "Unggah" tidak pernah ada di sana.
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Unggah' })).not.toBeInTheDocument()
+  })
+
+  // Berkas DITAHAN sampai Simpan ditekan — Submit hanya menutup panelnya, persis seperti
+  // `SaveFilePenunjang` yang hanya menitipkan berkas ke halaman sementara.
+  it('menahan berkas sampai Simpan ditekan, lalu mengirimnya SESUDAH panel tersimpan', async () => {
+    installFetch(uploadReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+    await screen.findByLabelText('Berkas dokumen')
+    await user.upload(screen.getByLabelText('Berkas dokumen'), pdf())
+    await user.type(screen.getByLabelText('Catatan dokumen'), 'Foto panel')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(uploadCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: 'Ubah' }))
+    await user.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(uploadCalls()).toHaveLength(1))
+
+    const saveIndex = calls.findIndex((c) => c.method === 'PUT')
+    const uploadIndex = calls.findIndex((c) => c.method === 'POST' && c.url.endsWith('/dokumen'))
+    expect(uploadIndex).toBeGreaterThan(saveIndex)
+
+    const sent = uploadCalls()[0]
+    expect(sent).toBeDefined()
+    expect(sent!.body).toBeInstanceOf(FormData)
+    expect(((sent!.body as FormData).get('berkas') as File).name).toBe('panel.pdf')
+    expect((sent!.body as FormData).get('catatan')).toBe('Foto panel')
+  })
+
+  it('menyimpan tanpa memilih berkas tidak menembak endpoint dokumen', async () => {
+    installFetch(uploadReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Ubah' }))
+    await user.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1))
+    expect(uploadCalls()).toHaveLength(0)
+  })
+
+  // Golongan "separuh jalan" HARUS melarang pengulangan — mengulang menumpuk berkas ganda
+  // di layanan penyimpanan. Panelnya dibuka kembali supaya pesannya terlihat.
+  it('melarang unggah ulang saat berkas terkirim tetapi catatannya gagal', async () => {
+    installFetch(
+      uploadReply(500, {
+        kode: 'unggah_separuh_jalan',
+        pesan: 'Berkas sudah terkirim tetapi catatannya gagal disimpan.',
+      }),
+    )
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+    await screen.findByLabelText('Berkas dokumen')
+    await user.upload(screen.getByLabelText('Berkas dokumen'), pdf())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await user.click(screen.getByRole('button', { name: 'Ubah' }))
+    await user.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    expect(await screen.findByText(/JANGAN unggah ulang/)).toBeInTheDocument()
+  })
+
+})
+
+/**
+ * Kedua unggah CSV — Master Panel dan Lokasi Panel.
+ *
+ * Bentuknya sama dengan panel dokumen (label "Berkas CSV", daftar "Nama File", Batal /
+ * Submit), tetapi ALIRANNYA berbeda dan itu berasal dari Pega: berkas CSV dikirim SEKETIKA
+ * karena ia membawa kuncinya sendiri, sedangkan dokumen menunggu Simpan.
+ */
+describe('unggah CSV Master Panel', () => {
+  beforeEach(() => {
+    calls = []
+    startSession()
+    useSelectedPortal.getState().select('ASM')
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const CSV_REPLY = {
+    data: {
+      total: 2,
+      baru: 1,
+      diperbarui: 0,
+      gagal: 1,
+      baris: [
+        { baris: 2, nama_panel: 'KAP MESIN', id_panel: '01000009', hasil: 'baru', pesan: '' },
+        { baris: 3, nama_panel: '', id_panel: '', hasil: 'gagal', pesan: 'Nama panel wajib diisi.' },
+      ],
+    },
+  }
+
+  function csvReply(status = 200, body?: unknown) {
+    return defaultReply((call) => {
+      if (call.url.includes('/unggah-csv')) {
+        return { status, body: body ?? CSV_REPLY }
+      }
+      return { body: { panel: APPROVED, portal: 'ASM' }, status: 200 }
+    })
+  }
+
+  function csv() {
+    return new File(['NAME\nKAP MESIN\n'], 'panel.csv', { type: 'text/csv' })
+  }
+
+  it('menggambar ketiga tombol unggah', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByRole('table')
+
+    for (const label of ['Upload Document', 'Upload Data Master Panel', 'Upload Data Lokasi Panel']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    }
+  })
+
+  // Satu panel terbuka pada satu waktu — ketiganya menempati tempat yang sama.
+  it('membuka satu panel saja pada satu waktu', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Panel' }))
+    expect(await screen.findByLabelText('Berkas CSV')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Berkas dokumen')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+    expect(await screen.findByLabelText('Berkas dokumen')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Berkas CSV')).not.toBeInTheDocument()
+  })
+
+  // Berbeda dari dokumen: berkas CSV DIKIRIM SEKETIKA, tanpa menunggu Simpan.
+  it('mengirim berkas master seketika ke jalurnya sendiri', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Panel' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(calls.filter((c) => c.url.endsWith('/unggah-csv'))).toHaveLength(1),
+    )
+    expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(0)
+
+    const sent = calls.find((c) => c.url.endsWith('/unggah-csv'))
+    expect(sent).toBeDefined()
+    expect(sent!.body).toBeInstanceOf(FormData)
+    expect(((sent!.body as FormData).get('berkas') as File).name).toBe('panel.csv')
+  })
+
+  it('mengirim berkas lokasi ke jalur lokasi, bukan jalur master', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Lokasi Panel' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(calls.filter((c) => c.url.endsWith('/unggah-csv-lokasi'))).toHaveLength(1),
+    )
+    // Dua endpoint terpisah, bukan satu yang menebak dari isi berkas.
+    expect(calls.filter((c) => c.url.endsWith('/unggah-csv'))).toHaveLength(0)
+  })
+
+  // Laporan per baris: tanpa nomor barisnya, "1 baris gagal" memaksa pengguna menebak yang
+  // mana di antara tiga ratus.
+  it('menampilkan laporan per baris beserta nomor dan sebabnya', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Panel' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText(/baris dibaca/)).toBeInTheDocument()
+    expect(screen.getByText('Nama panel wajib diisi.')).toBeInTheDocument()
+    // Baris yang berhasil TETAP tersimpan — tanpa kalimat ini pengguna akan mengunggah ulang
+    // seluruh berkas dan menimpa baris yang sudah benar.
+    expect(screen.getByText(/tetap tersimpan/)).toBeInTheDocument()
+  })
+
+  it('menutup panel lewat Batal tanpa mengirim apa pun', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Panel' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Batal' }))
+
+    expect(screen.queryByLabelText('Berkas CSV')).not.toBeInTheDocument()
+    expect(calls.filter((c) => c.url.includes('/unggah-csv'))).toHaveLength(0)
+  })
+
+  // Berkas yang tidak terbaca sama sekali dibedakan dari baris yang gagal: di sini TIDAK ada
+  // satu baris pun yang masuk, sehingga yang perlu diperbaiki adalah berkasnya.
+  it('membedakan berkas yang tidak terbaca dari baris yang gagal', async () => {
+    installFetch(
+      csvReply(422, {
+        kode: 'csv_tidak_sah',
+        pesan: 'Header berkas tidak lengkap. Kolom yang kurang: STS_PECAH.',
+      }),
+    )
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Panel' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Berkas tidak dapat dibaca')).toBeInTheDocument()
+    expect(screen.getByText(/STS_PECAH/)).toBeInTheDocument()
   })
 })

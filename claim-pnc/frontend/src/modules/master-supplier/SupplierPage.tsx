@@ -151,11 +151,16 @@ export function SupplierPage() {
   }
 
   /*
-    Kesembilan kolom mengikuti grid Pega SATU-LAWAN-SATU — urutan dan caption yang sama,
-    terbaca dari `Section/InboxMasterSupplier-Section.xml`:
+    Kesembilan kolom mengikuti grid Pega — urutan dan caption yang sama, terbaca dari
+    `Section/InboxMasterSupplier-Section.xml`:
 
       ID · NAMA · ALAMAT · TELP · JENIS SUPPLIER · STATUS REKANAN · STATUS AKTIF ·
       POSISI · OPTION
+
+    Satu caption sengaja TIDAK disalin: kolom terakhir berjudul **"Aksi"**, bukan "Option".
+    Itu ketetapan Work Owner 2026-10-03 yang berlaku untuk seluruh modul — kolom tombol
+    selalu berjudul "Aksi", dan isinya **"Ubah"**. Jangan dikembalikan ke caption Pega.
+    Perataan selnya di tengah, juga atas permintaan Work Owner.
 
     # Kenapa TIDAK digabung menjadi kolom majemuk
 
@@ -229,16 +234,15 @@ export function SupplierPage() {
       value: () => '',
     },
     {
-      key: 'option',
-      title: 'Option',
+      key: 'aksi',
+      title: 'Aksi',
       width: '6rem',
       noSort: true,
-      alignRight: true,
+      alignCenter: true,
       value: () => '',
-      // Caption tombolnya "Edit", mengikuti layar lama apa adanya (`D-13`) — bukan "Ubah".
       render: (row) => (
         <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
-          Edit
+          Ubah
         </Button>
       ),
     },

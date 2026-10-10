@@ -164,7 +164,7 @@ describe('penurunan Login dari Nama', () => {
 describe('daftar master login', () => {
   // Kelima kolom dibaca dari `pyLabelFieldValue` pada
   // Section/BrowseLoginSurveyor-Section.xml.
-  it('menampilkan judul dan kelima kolom grid Pega', async () => {
+  it('menampilkan judul dan keempat kolom grid Pega', async () => {
     installFetch(defaultReply())
     show()
 
@@ -173,9 +173,49 @@ describe('daftar master login', () => {
     ).toBeInTheDocument()
 
     const table = await screen.findByRole('table')
-    for (const header of ['Nama', 'Login', 'Email', 'Telp', 'Alamat']) {
+    for (const header of ['Nama', 'Login', 'Email', 'Telp']) {
       expect(within(table).getByRole('columnheader', { name: header })).toBeInTheDocument()
     }
+  })
+
+  /*
+    ALAMAT tidak ada di grid Pega — hanya di form.
+
+    Uji ini ada karena kolom itu sempat DIGAMBAR di sini: daftar kolom disimpulkan dari
+    `pyLabelFieldValue`, yang ternyata label FORM dan bukan judul kolom grid. Yang mengikat
+    grid hanyalah `.SurveyName`, `.SurveyorID`, `.Email`, dan `.Ekst`; `.BodyLetterTo` nol
+    kemunculan di wilayah grid.
+
+    Dikoreksi atas koreksi Work Owner 2026-10-04, dan dipatok di sini supaya kolom itu tidak
+    kembali masuk hanya karena isiannya ada di form.
+  */
+  it('tidak menggambar kolom Alamat di grid, karena Pega pun tidak', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(
+      within(table).queryByRole('columnheader', { name: 'Alamat' }),
+    ).not.toBeInTheDocument()
+  })
+
+  /*
+    Kolom tombol berjudul "Aksi" — ketetapan Work Owner 2026-10-03.
+
+    Uji ini ada karena judulnya sempat DIKOSONGKAN pada 2026-10-04 agar menyamai Pega (yang
+    memang mengosongkan sel judul itu), lalu dikembalikan pada hari yang sama: kolom tanpa
+    judul tampak TIDAK ADA bagi pengguna yang melihat kepala tabelnya.
+
+    Yang dijaga dua hal sekaligus — judulnya ada, dan tombolnya ada — supaya percobaan yang
+    sama tidak terulang tanpa ada yang menyadari bahwa ia sudah pernah ditolak.
+  */
+  it('memberi judul "Aksi" pada kolom tombol, dan tombolnya ada di setiap baris', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
+    expect(within(table).getAllByRole('button', { name: 'Ubah' })).toHaveLength(2)
   })
 
   // Keduanya TIDAK ada di grid Pega; keduanya hanya muncul saat sebuah baris dibuka.

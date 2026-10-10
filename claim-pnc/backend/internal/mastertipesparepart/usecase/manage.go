@@ -143,7 +143,7 @@ func (l *Service) Choices(ctx context.Context, portalAlias string) (OptionSet, e
 // dari daftarnya sendiri dan tidak pernah memeriksa ulang saat menyimpan — cukup selama
 // satu-satunya jalan masuk adalah layar itu. API dapat ditembak tanpa melewati layar, dan
 // tipe yang menunjuk kategori yang tidak ada akan tampil tanpa nama kategori di setiap grid
-// yang menampilkannya. Lihat resolveCategory.
+// yang menampilkannya. Lihat ensureCategoryExists.
 //
 // # Satu hal yang TIDAK dibawa dari sistem lama, dan itu disengaja
 //
@@ -170,8 +170,7 @@ func (l *Service) Create(
 		return mastertipesparepart.PartType{}, err
 	}
 
-	category, err := resolveCategory(ctx, store, clean.CategoryID)
-	if err != nil {
+	if err := ensureCategoryExists(ctx, store, clean.CategoryID); err != nil {
 		return mastertipesparepart.PartType{}, err
 	}
 
@@ -190,11 +189,6 @@ func (l *Service) Create(
 		return mastertipesparepart.PartType{}, errors.New(
 			"mastertipesparepart/usecase: ID tipe yang diterbitkan kosong")
 	}
-
-	// Nama kategori diisi dari daftar yang SUDAH dibaca untuk memeriksa keberadaannya, bukan
-	// lewat pembacaan kedua. Tanpa ini, layar menerima baris baru dengan kolom Kategori
-	// kosong dan harus memuat ulang daftarnya hanya untuk mengisinya.
-	saved.CategoryName = category.Name
 
 	notifyOmitted(logger, portalAlias, saved, by, "tipe sparepart baru diajukan")
 	return saved, nil
@@ -253,8 +247,7 @@ func (l *Service) Save(
 		return mastertipesparepart.PartType{}, err
 	}
 
-	category, err := resolveCategory(ctx, store, clean.CategoryID)
-	if err != nil {
+	if err := ensureCategoryExists(ctx, store, clean.CategoryID); err != nil {
 		return mastertipesparepart.PartType{}, err
 	}
 
@@ -263,11 +256,10 @@ func (l *Service) Save(
 	}
 
 	updated := mastertipesparepart.PartType{
-		ID:           stored.ID,
-		Name:         clean.Name,
-		CategoryID:   clean.CategoryID,
-		CategoryName: category.Name,
-		Status:       mastertipesparepart.StatusPending,
+		ID:         stored.ID,
+		Name:       clean.Name,
+		CategoryID: clean.CategoryID,
+		Status:     mastertipesparepart.StatusPending,
 	}
 	if err := store.Update(ctx, updated); err != nil {
 		return mastertipesparepart.PartType{}, err
@@ -277,7 +269,7 @@ func (l *Service) Save(
 	return updated, nil
 }
 
-// resolveCategory memastikan kategori yang dipilih ada DAN sudah disetujui.
+// ensureCategoryExists memastikan kategori yang dipilih ada DAN sudah disetujui.
 //
 // # Kenapa daftar yang dibaca, bukan satu baris
 //
@@ -299,23 +291,26 @@ func (l *Service) Save(
 //
 // Pesannya menyebut kemungkinan kedua itu, karena itulah satu-satunya yang dapat terjadi
 // pada pengguna yang tidak berbuat salah apa pun.
-func resolveCategory(
+// Ia mengembalikan GALAT saja, bukan kategorinya. Versi pertama mengembalikan barisnya
+// untuk mengisi nama kategori pada jawaban; kolom itu dicabut 2026-10-04 karena grid Pega
+// tidak menampilkannya, sehingga yang tersisa memang hanya pertanyaan ya-atau-tidak.
+func ensureCategoryExists(
 	ctx context.Context,
 	store mastertipesparepart.Store,
 	id string,
-) (mastertipesparepart.Category, error) {
+) error {
 	list, err := store.ListCategories(ctx)
 	if err != nil {
-		return mastertipesparepart.Category{}, err
+		return err
 	}
 
 	wanted := strings.TrimSpace(id)
 	for _, c := range list {
 		if strings.TrimSpace(c.ID) == wanted {
-			return c, nil
+			return nil
 		}
 	}
-	return mastertipesparepart.Category{}, mastertipesparepart.ErrCategoryNotFound
+	return mastertipesparepart.ErrCategoryNotFound
 }
 
 // ensureNameFree menolak nama yang sudah dipakai baris LAIN.

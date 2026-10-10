@@ -23,6 +23,21 @@ func mustTime(t *testing.T, text string) time.Time {
 // serviceWith merakit layanan atas repo memori satu portal.
 func serviceWith(t *testing.T, repo inboxinvestigator.Repo) *usecase.Service {
 	t.Helper()
+	service, _ := serviceAndForms(t, repo)
+	return service
+}
+
+// serviceAndForms merakit layanan beserta penyimpanan hasil investigasinya.
+//
+// Dikembalikan berpasangan supaya uji formulir dapat memeriksa apa yang BENAR-BENAR
+// tersimpan — termasuk perpindahan klaimnya — bukan hanya apa yang dijawab layanan.
+func serviceAndForms(
+	t *testing.T,
+	repo inboxinvestigator.Repo,
+) (*usecase.Service, *memory.InvestigationRepo) {
+	t.Helper()
+
+	forms := memory.NewInvestigationRepo()
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: func(alias string) (inboxinvestigator.Repo, error) {
 			if alias != "asm" {
@@ -30,10 +45,25 @@ func serviceWith(t *testing.T, repo inboxinvestigator.Repo) *usecase.Service {
 			}
 			return repo, nil
 		},
+		InvestigationSelector: func(
+			alias string,
+		) (inboxinvestigator.InvestigationRepo, error) {
+			if alias != "asm" {
+				return nil, errors.New("portal tidak dikenal: " + alias)
+			}
+			return forms, nil
+		},
+		Clock: func() time.Time { return formAt },
 	})
 	require.NoError(t, err)
-	return service
+	return service, forms
 }
+
+// formAt adalah jam tetap layanan ini.
+//
+// Modul ini sempat tidak punya jam sama sekali, dan itu benar selama ia hanya membaca.
+// Formulir investigasi mengubahnya: tiga nilai lahir dari waktu kini.
+var formAt = time.Date(2026, 10, 5, 7, 30, 0, 0, time.UTC)
 
 func TestLayananMenolakDirakitTanpaPemilihRepo(t *testing.T) {
 	// Rakitan yang setengah jadi harus gagal saat start, bukan saat pengguna sedang bekerja.

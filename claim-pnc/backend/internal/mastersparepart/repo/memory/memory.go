@@ -12,6 +12,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -25,6 +26,14 @@ import (
 // menyeret driver basis data ke dalam uji yang justru dibuat agar tidak membutuhkannya.
 // Kesamaannya dijaga uji, bukan oleh kompilator.
 const sequenceWidth = 10
+
+// documentSampleYear adalah tahun yang dipakai merangkai DATAID di memori.
+//
+// Ia TETAP, bukan tahun berjalan: kunci yang berubah setiap pergantian tahun akan membuat
+// uji yang menyebut kunci lulus hari ini dan gagal pada 1 Januari. Bentuknya tetap sama
+// dengan produksi — `tahun || lpad(nomor,10,'0')` (`SET_ATTACHMENT_64BIT.prc`) — dan hanya
+// tahunnya yang dibekukan.
+const documentSampleYear = 2026
 
 // Repo menyimpan master sparepart satu portal beserta kedua daftar acuannya.
 //
@@ -44,6 +53,12 @@ type Repo struct {
 	// di produksi — tidak ada satu pun operasi di berkas ini yang mengubahnya.
 	category []mastersparepart.Category
 	partType []mastersparepart.PartType
+
+	// documents meniru tautan `SPAREPART_HE.DOKUMENID` ke `DATA_ATTACHFILE`, dikunci ID
+	// sparepart. Sebuah map, bukan daftar, karena satu sparepart memegang TEPAT SATU
+	// dokumen — unggahan berikutnya menggantinya, persis seperti UPDATE di adapter SQL.
+	documents        map[string]mastersparepart.SparepartDocument
+	documentSequence int64
 
 	// site dan sequence meniru kode situs dan sequence basis data. Keduanya di sini supaya
 	// kunci yang diterbitkan saat pengembangan berbentuk sama dengan yang diterbitkan di
@@ -331,4 +346,61 @@ func (r *Repo) NextID(_ context.Context) (string, error) {
 	return mastersparepart.ComposeID(r.site, r.sequence, sequenceWidth), nil
 }
 
+// SaveDocument menyimpan metadata dokumen di memori dan menautkannya ke sparepart-nya.
+//
+// DataID-nya dirangkai dari deret tersendiri, bukan dari deret ID sparepart: di adapter SQL
+// pun keduanya deret yang berbeda milik tabel yang berbeda, dan menyamakannya di sini akan
+// membuat uji lolos pada bentuk kunci yang tidak pernah dipakai produksi.
+func (r *Repo) SaveDocument(
+	_ context.Context, doc mastersparepart.SparepartDocument,
+) (string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return "", r.failure
+	}
+
+	id := strings.TrimSpace(doc.SparepartID)
+	found := false
+	for _, s := range r.rows {
+		if strings.EqualFold(strings.TrimSpace(s.ID), id) {
+			found = true
+			break
+		}
+	}
+	// Sama seperti adapter SQL: sparepart yang tidak ada menggagalkan penyimpanan, bukan
+	// lolos diam-diam meninggalkan satu baris lampiran yatim.
+	if !found {
+		return "", fmt.Errorf("%w: %q", mastersparepart.ErrNotFound, id)
+	}
+
+	r.documentSequence++
+	dataID := fmt.Sprintf("%d%010d", documentSampleYear, r.documentSequence)
+	doc.DataID = dataID
+	if r.documents == nil {
+		r.documents = map[string]mastersparepart.SparepartDocument{}
+	}
+	r.documents[id] = doc
+	return dataID, nil
+}
+
+// DocumentOf mengembalikan dokumen sebuah sparepart; ErrDocumentMissing bila belum ada.
+func (r *Repo) DocumentOf(
+	_ context.Context, sparepartID string,
+) (mastersparepart.SparepartDocument, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if r.failure != nil {
+		return mastersparepart.SparepartDocument{}, r.failure
+	}
+
+	doc, ok := r.documents[strings.TrimSpace(sparepartID)]
+	if !ok {
+		return mastersparepart.SparepartDocument{}, fmt.Errorf(
+			"%w: %q", mastersparepart.ErrDocumentMissing, sparepartID)
+	}
+	return doc, nil
+}
+
 var _ mastersparepart.Store = (*Repo)(nil)
+var _ mastersparepart.DocumentRepo = (*Repo)(nil)

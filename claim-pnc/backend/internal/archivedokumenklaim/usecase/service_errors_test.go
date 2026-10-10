@@ -148,7 +148,8 @@ func TestGalatPemilihPortalDiteruskan(t *testing.T) {
 	_, err = service.Open(ctx, portalAlias, who)
 	require.ErrorIs(t, err, errSelector)
 
-	_, err = service.Search(ctx, portalAlias, archivedokumenklaim.CriteriaInput{Keyword: "X"},
+	_, err = service.Search(ctx, portalAlias, archivedokumenklaim.CriteriaInput{
+		Column: string(archivedokumenklaim.ColumnClaimNumber), Keyword: "X"},
 		archivedokumenklaim.Pagination{})
 	require.ErrorIs(t, err, errSelector)
 
@@ -186,7 +187,8 @@ func TestGalatRepoDibungkusKonteks(t *testing.T) {
 			return err
 		}},
 		{"Search", "membaca berkas arsip", func(s *usecase.Service) error {
-			_, err := s.Search(ctx, portalAlias, archivedokumenklaim.CriteriaInput{Keyword: "X"},
+			_, err := s.Search(ctx, portalAlias, archivedokumenklaim.CriteriaInput{
+				Column: string(archivedokumenklaim.ColumnClaimNumber), Keyword: "X"},
 				archivedokumenklaim.Pagination{})
 			return err
 		}},

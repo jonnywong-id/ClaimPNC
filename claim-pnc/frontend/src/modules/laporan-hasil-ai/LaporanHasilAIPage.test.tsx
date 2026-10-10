@@ -24,10 +24,6 @@ import { LaporanHasilAIPage } from './LaporanHasilAIPage'
  * seperti backend mengirimkannya.
  */
 const REPORT = {
-  ringkasan: [
-    { keputusan: 'Komite', total: 3, diterima: 3, ditolak: 0, menunggu: 1 },
-    { keputusan: 'AI', total: 4, diterima: 3, ditolak: 1, menunggu: 0 },
-  ],
   baris: [
     {
       id: 'KMT-000101|1|OBJ-01|CVG-01',
@@ -105,7 +101,15 @@ type Call = { url: string; header: Record<string, string> }
 
 let calls: Call[] = []
 
-function installFetch(options: { failValidation?: boolean } = {}) {
+/** Jawaban sah yang tidak menemukan satu baris pun pada rentang yang diminta. */
+const EMPTY_REPORT = {
+  baris: [],
+  paginasi: { halaman: 1, ukuran: 50, total: 0, total_halaman: 1 },
+  filter: { dari: '2026-09-01', sampai: '2026-09-30' },
+  portal: 'ASM',
+}
+
+function installFetch(options: { failValidation?: boolean; empty?: boolean } = {}) {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     calls.push({ url, header: (init?.headers as Record<string, string>) ?? {} })
 
@@ -131,7 +135,7 @@ function installFetch(options: { failValidation?: boolean } = {}) {
     }
 
     return Promise.resolve(
-      new Response(JSON.stringify(REPORT), {
+      new Response(JSON.stringify(options.empty ? EMPTY_REPORT : REPORT), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -207,6 +211,119 @@ describe('layar Laporan Hasil AI', () => {
     expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeDisabled()
   })
 
+  // Pega merender section-nya saat layar dimuat, sehingga kedua grid tergambar lengkap
+  // dengan judul kolomnya meski page list-nya masih kosong — itulah gunanya
+  // `pyGridNoResultsMessage`, rule yang memang terdaftar di harness-nya.
+  //
+  // Sebelum 2026-10-03 layar ini menyembunyikan keduanya, sehingga pengguna tidak dapat
+  // melihat kolom apa saja yang akan didapatnya sebelum mencari. Work Owner meminta
+  // perilaku Pega yang diikuti.
+  it('menggambar kesepuluh judul kolom SEBELUM tanggal diisi', async () => {
+    installFetch()
+    show()
+
+    const table = await screen.findByRole('table', {
+      name: 'Penilaian AI beserta keputusan komitenya',
+    })
+
+    for (const title of [
+      'No Klaim',
+      'Object Name',
+      'Komite Status',
+      'Tanggal Komite',
+      'AI Status',
+      'Tanggal AI',
+      'Note AI Terima',
+      'Note AI Tolak',
+      'Coverage Final',
+      'Kategori Kronologi',
+    ]) {
+      expect(
+        within(table).getByRole('columnheader', { name: new RegExp(title) }),
+      ).toBeVisible()
+    }
+
+    // Tetap tanpa satu pun pembacaan — sama seperti Pega, yang menggambar grid kosongnya
+    // tanpa menjalankan kuerinya.
+    expect(calls).toHaveLength(0)
+  })
+
+  /*
+    Pega yang berjalan TIDAK memiliki grid ringkasan (Work Owner, 2026-10-03), sehingga
+    layar ini pun tidak. Uji ini yang menjaga ia tidak kembali diam-diam — bersama kueri
+    agregat di belakangnya, yang akan berjalan pada setiap permintaan tanpa pemakai.
+  */
+  it('tidak menggambar grid ringkasan sama sekali', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('table', { name: 'Penilaian AI beserta keputusan komitenya' })
+
+    expect(screen.queryByRole('heading', { name: 'Ringkasan' })).toBeNull()
+    expect(
+      screen.queryByRole('table', { name: 'Pencacah keputusan AI dan keputusan komite' }),
+    ).toBeNull()
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+  })
+
+  // Pesannya SATU dan pendek, sama seperti `pyGridNoResultsMessage` di Pega — yang tidak
+  // membedakan "belum dicari" dari "tidak ada hasil". Versi sebelumnya memuat tiga kalimat
+  // ajakan yang membentang selebar sepuluh kolom; Work Owner memintanya dipendekkan
+  // (2026-10-03).
+  it('menampilkan "Data Tidak Ada" pada grid yang masih kosong', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('table', { name: 'Penilaian AI beserta keputusan komitenya' })
+    expect(screen.getAllByText('Data Tidak Ada')).toHaveLength(1)
+  })
+
+  // Pesannya TIDAK berubah setelah pencarian yang tidak menemukan apa pun — Pega pun
+  // memakai satu section yang sama untuk kedua keadaan.
+  it('memakai pesan yang sama sesudah pencarian tanpa hasil', async () => {
+    installFetch({ empty: true })
+    const user = userEvent.setup()
+    show()
+
+    await search(user)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Data Tidak Ada').length).toBeGreaterThan(0)
+    })
+  })
+
+  /*
+    Kelas Tailwind yang tidak dikenal TIDAK pernah mengeluh: ia lolos `tsc`, lolos seluruh
+    uji perilaku, dan diam-diam tidak menghasilkan apa pun. `rounded-kotak` adalah salah
+    satunya — `src/styles.css` hanya mendefinisikan `--radius-kartu` dan `--radius-kontrol`,
+    sehingga kartu yang memakainya tergambar bersudut tajam di antara 203 kartu yang
+    melengkung.
+
+    jsdom tidak menghitung CSS, jadi satu-satunya cara menguncinya adalah memeriksa nama
+    kelasnya. Itu biasanya uji yang rapuh; di sini ia justru satu-satunya yang mungkin.
+  */
+  it('tidak memakai kelas lengkung yang inert', async () => {
+    installFetch()
+    const { container } = show()
+
+    await screen.findByRole('table', { name: 'Penilaian AI beserta keputusan komitenya' })
+
+    expect(container.innerHTML).not.toContain('rounded-kotak')
+    expect(container.querySelector('form')?.className).toContain('rounded-kartu')
+  })
+
+  // Kueri yang `enabled`-nya false berstatus `pending` di TanStack Query, sehingga
+  // `isPending` bernilai true selamanya sebelum pencarian. Memakainya sebagai penanda
+  // memuat akan membuat kedua grid menampilkan keadaan "sedang memuat" tanpa akhir pada
+  // layar yang belum disentuh siapa pun. Yang dipakai karena itu `isLoading`.
+  it('tidak menampilkan keadaan memuat sebelum pencarian', async () => {
+    installFetch()
+    show()
+
+    await screen.findByRole('table', { name: 'Penilaian AI beserta keputusan komitenya' })
+    expect(screen.queryByText(/Memuat/i)).toBeNull()
+  })
+
   // Label keduanya disalin APA ADANYA dari Pega, termasuk yang menyesatkan: yang disaring
   // sebenarnya TANGGALKOMITE. Keputusan Work Owner 2026-09-26.
   it('memakai label isian persis seperti layar lama', async () => {
@@ -229,48 +346,6 @@ describe('layar Laporan Hasil AI', () => {
     expect(calls[0]?.url).toContain('dari=2026-09-01')
     expect(calls[0]?.url).toContain('sampai=2026-09-30')
     expect(calls[0]?.header['X-Portal']).toBe('ASM')
-  })
-
-  it('menggambar kedua grid — ringkasan lalu rincian', async () => {
-    installFetch()
-    const user = userEvent.setup()
-    show()
-
-    await search(user)
-
-    expect(await screen.findByRole('heading', { name: 'Ringkasan' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Rincian' })).toBeVisible()
-  })
-
-  // Urutannya mengikuti `<APPEND>` pada activity lama: Komite lebih dulu, baru AI.
-  it('menggambar ringkasan dengan Komite di baris pertama', async () => {
-    installFetch()
-    const user = userEvent.setup()
-    show()
-
-    await search(user)
-
-    const table = await screen.findByRole('table', {
-      name: 'Pencacah keputusan AI dan keputusan komite',
-    })
-    const rows = within(table).getAllByRole('row')
-    expect(within(rows[1]!).getByText('Komite')).toBeVisible()
-    expect(within(rows[2]!).getByText('AI')).toBeVisible()
-  })
-
-  // Kolom "Menunggu" TIDAK ada di layar lama; ia ditambahkan atas keputusan Work Owner
-  // 2026-09-26 supaya selisih antara Total dan jumlah baris dapat dibaca.
-  it('menggambar kolom Menunggu pada ringkasan', async () => {
-    installFetch()
-    const user = userEvent.setup()
-    show()
-
-    await search(user)
-
-    const table = await screen.findByRole('table', {
-      name: 'Pencacah keputusan AI dan keputusan komite',
-    })
-    expect(within(table).getByRole('columnheader', { name: /Menunggu/ })).toBeVisible()
   })
 
   // Kesepuluh kolom digambar, termasuk lima yang SELALU kosong. Menghapusnya akan membuat

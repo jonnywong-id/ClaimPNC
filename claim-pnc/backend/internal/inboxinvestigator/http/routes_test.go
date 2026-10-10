@@ -43,6 +43,13 @@ const sampleRows = 8
 // di tengah jalan. Modul ini sendiri TIDAK memakai jam apa pun.
 var sessionAt = time.Date(2026, 9, 23, 3, 0, 0, 0, time.UTC)
 
+// formAt adalah jam tetap modul ini sejak formulir investigasi dibangun.
+//
+// TIGA nilai lahir darinya — Tanggal Investigasi saat formulir dibuka, lalu InvestTfDate
+// dan AnalystTransferDate saat disimpan — dan jam tetap yang membuat ketiganya dapat diuji
+// tanpa menunggu hari berganti.
+var formAt = time.Date(2026, 10, 5, 7, 30, 0, 0, time.UTC)
+
 // testServer merakit aplikasi sama seperti cmd/claimpnc — lengkap dengan middleware sesi dan
 // middleware portal.
 //
@@ -79,6 +86,12 @@ func newTestServer(t *testing.T) *testServer {
 	asm := memory.NewSampleRepo()
 	asi := memory.NewRepo(memory.Options{})
 
+	// Penyimpanan hasil investigasi TERPISAH per portal, sama seperti antreannya. Itu yang
+	// membuat uji kebocoran antarentitas berlaku pada jalur TULIS juga — dan di sana
+	// akibatnya lebih berat, sebab yang tersimpan memuat data medis (`R-20`, `FR-R2`).
+	asmForm := memory.NewInvestigationRepo()
+	asiForm := memory.NewInvestigationRepo()
+
 	service, err := inboxinvestigatorusecase.NewService(
 		inboxinvestigatorusecase.Options{
 			RepoSelector: func(alias string) (inboxinvestigator.Repo, error) {
@@ -91,6 +104,20 @@ func newTestServer(t *testing.T) *testServer {
 					return nil, portal.ErrNotReady
 				}
 			},
+			InvestigationSelector: func(
+				alias string,
+			) (inboxinvestigator.InvestigationRepo, error) {
+				switch alias {
+				case "ASM":
+					return asmForm, nil
+				case "ASI":
+					return asiForm, nil
+				default:
+					return nil, portal.ErrNotReady
+				}
+			},
+			// Jam tetap supaya Tanggal Investigasi dan waktu perpindahan dapat diuji.
+			Clock: func() time.Time { return formAt },
 		})
 	require.NoError(t, err)
 
@@ -372,13 +399,17 @@ func TestStorageFailureIsNotAnEmptyQueue(t *testing.T) {
 	require.NotEqual(t, http.StatusOK, response.StatusCode)
 }
 
-// TestNoWriteRoutesAreRegistered membuktikan modul ini benar-benar tidak menyediakan jalur
-// tulis.
+// TestCollectionRouteStaysReadOnly membuktikan jalur DAFTAR tetap baca-saja.
 //
-// Mengambil pekerjaan dari antrean dan mencatat hasil investigasi terjadi di layar kerja
-// yang belum dibangun. Uji ini akan gagal pada hari seseorang mendaftarkan rute tulis di
-// sini tanpa memindahkan kepemilikan tabelnya lebih dulu (`P-1`).
-func TestNoWriteRoutesAreRegistered(t *testing.T) {
+// Modul ini kini PUNYA jalur tulis — `POST /inbox/investigator/{referensi}/investigasi`,
+// yang menyimpan hasil investigasi lalu memindahkan klaimnya ke Analyst. Jalur itu berada
+// pada sub-jalur satu pekerjaan, dan itu disengaja: menulis selalu menyangkut SATU
+// pekerjaan yang jelas.
+//
+// Yang dijaga uji ini adalah jalur koleksinya. Rute tulis di sana akan berarti perubahan
+// massal atas antrean — sesuatu yang tidak dilakukan layar lama, dan yang kepemilikan
+// tabelnya belum pernah dinegosiasikan (`P-1`).
+func TestCollectionRouteStaysReadOnly(t *testing.T) {
 	p := newTestServer(t)
 
 	for _, method := range []string{

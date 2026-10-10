@@ -38,6 +38,16 @@ type directHandler struct {
 	known   bool
 }
 
+// uploaderPalsu berdiri di tempat layanan penyimpanan internal.
+//
+// Tanpa ini, setiap unggahan menjawab UploadMisconfigured — dan uji jalur berhasil akan
+// menguji jalur gagal tanpa ada yang menyadarinya.
+type uploaderPalsu struct{}
+
+func (uploaderPalsu) Upload(context.Context, masterbengkel.DocumentFile) (string, error) {
+	return "img-contoh", nil
+}
+
 func newDirectHandler(t *testing.T) *directHandler {
 	t.Helper()
 
@@ -45,6 +55,7 @@ func newDirectHandler(t *testing.T) *directHandler {
 	service, err := usecase.NewService(usecase.Options{
 		RepoSelector: func(string) (masterbengkel.Store, error) { return d.store, nil },
 		Clock:        fixedClock{at: time.Date(2026, 9, 30, 10, 0, 0, 0, time.UTC)},
+		Uploader:     uploaderPalsu{},
 	})
 	require.NoError(t, err)
 
@@ -127,7 +138,7 @@ func TestEveryHandlerWithoutAPortalIsRejected(t *testing.T) {
 	handlers := []http.HandlerFunc{
 		d.handler.List, d.handler.Get, d.handler.Create, d.handler.Save, d.handler.Decide,
 		d.handler.Branches, d.handler.Cities, d.handler.Banks, d.handler.UploadDocument,
-		d.handler.Document, d.handler.DocumentFile,
+		d.handler.Document,
 	}
 
 	for _, call := range handlers {
@@ -165,7 +176,6 @@ func TestKeyedHandlersWithoutAnIDAreNotFound(t *testing.T) {
 
 	for _, call := range []http.HandlerFunc{
 		d.handler.Get, d.handler.Save, d.handler.UploadDocument, d.handler.Document,
-		d.handler.DocumentFile,
 	} {
 		recorder := httptest.NewRecorder()
 		call(recorder, jsonRequest(http.MethodPut, "{}", ""))
@@ -241,7 +251,7 @@ func TestStorageFailuresGoToTheSharedWriter(t *testing.T) {
 	}
 }
 
-// Unggah lalu baca metadata dan isi berkasnya.
+// Unggah lalu baca metadatanya.
 func TestUploadThenReadTheDocument(t *testing.T) {
 	d := newDirectHandler(t)
 
@@ -252,7 +262,7 @@ func TestUploadThenReadTheDocument(t *testing.T) {
 	body := decode(t, recorder)
 	document := body["dokumen"].(map[string]any)
 	require.Equal(t, "application/pdf", document["tipe_media"])
-	require.Equal(t, 8.0, document["ukuran_byte"])
+	require.Equal(t, "img-contoh", document["image_id"])
 	require.Equal(t, true, document["berisi"])
 	require.Equal(t, "penguji", document["diunggah_oleh"])
 	require.Equal(t, "2026-09-30T10:00:00Z", document["diunggah_pada"])
@@ -263,14 +273,6 @@ func TestUploadThenReadTheDocument(t *testing.T) {
 	require.Equal(t, document["id_dokumen"],
 		decode(t, recorder)["dokumen"].(map[string]any)["id_dokumen"])
 
-	recorder = httptest.NewRecorder()
-	d.handler.DocumentFile(recorder, jsonRequest(http.MethodGet, "", sampleID))
-	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Equal(t, "application/pdf", recorder.Header().Get("Content-Type"))
-	require.Equal(t, "8", recorder.Header().Get("Content-Length"))
-	require.Equal(t, "no-store", recorder.Header().Get("Cache-Control"))
-	require.Contains(t, recorder.Header().Get("Content-Disposition"), "bukti.pdf")
-	require.Equal(t, "%PDF isi", recorder.Body.String())
 }
 
 // Unggahan tanpa bagian berkas, bukan multipart, atau berjenis terlarang ditolak.
@@ -294,8 +296,8 @@ func TestUploadRejections(t *testing.T) {
 	require.Equal(t, masterbengkelhttp.CodeValidationFailed, decode(t, recorder)["kode"])
 }
 
-// Bengkel tanpa lampiran dijawab "dokumen tidak ditemukan"; dokumen warisan tanpa isi
-// dijawab tersendiri, dan tipe media kosong menjadi octet-stream.
+// Bengkel tanpa lampiran dijawab "dokumen tidak ditemukan", dan dokumen warisan tanpa
+// IMAGEID dikenali sebagai dokumen yang berkasnya tidak pernah tersimpan.
 func TestDocumentEdgeCases(t *testing.T) {
 	d := newDirectHandler(t)
 	ctx := context.Background()
@@ -305,22 +307,25 @@ func TestDocumentEdgeCases(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 	require.Equal(t, masterbengkelhttp.CodeDocumentNotFound, decode(t, recorder)["kode"])
 
+	// Dokumen warisan: barisnya ada, IMAGEID-nya kosong. Ia tetap dijawab 200 beserta
+	// keterangannya — yang membedakannya hanyalah `berisi: false`, dan itulah yang membuat
+	// layar dapat menjelaskan sebabnya alih-alih menyatakan dokumennya tidak ada.
 	require.NoError(t, d.store.SaveDocument(ctx, sampleID,
 		masterbengkel.Document{ID: "260000000099", Name: "warisan.pdf"}))
 	recorder = httptest.NewRecorder()
-	d.handler.DocumentFile(recorder, jsonRequest(http.MethodGet, "", sampleID))
-	require.Equal(t, http.StatusNotFound, recorder.Code)
-	require.Equal(t, masterbengkelhttp.CodeDocumentEmpty, decode(t, recorder)["kode"])
+	d.handler.Document(recorder, jsonRequest(http.MethodGet, "", sampleID))
+	require.Equal(t, http.StatusOK, recorder.Code)
+	warisan := decode(t, recorder)["dokumen"].(map[string]any)
+	require.Equal(t, false, warisan["berisi"])
+	require.Equal(t, "", warisan["image_id"])
+	require.Equal(t, "", warisan["diunggah_pada"])
 
+	require.NoError(t, d.store.SaveDocument(ctx, sampleID,
+		masterbengkel.Document{ID: "260000000100", Name: "tanpa-tipe", ImageID: "img-1"}))
 	recorder = httptest.NewRecorder()
 	d.handler.Document(recorder, jsonRequest(http.MethodGet, "", sampleID))
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Equal(t, "", decode(t, recorder)["dokumen"].(map[string]any)["diunggah_pada"])
-
-	require.NoError(t, d.store.SaveDocument(ctx, sampleID,
-		masterbengkel.Document{ID: "260000000100", Name: "tanpa-tipe", Content: []byte("x")}))
-	recorder = httptest.NewRecorder()
-	d.handler.DocumentFile(recorder, jsonRequest(http.MethodGet, "", sampleID))
-	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Equal(t, "application/octet-stream", recorder.Header().Get("Content-Type"))
+	berisi := decode(t, recorder)["dokumen"].(map[string]any)
+	require.Equal(t, true, berisi["berisi"])
+	require.Equal(t, "img-1", berisi["image_id"])
 }

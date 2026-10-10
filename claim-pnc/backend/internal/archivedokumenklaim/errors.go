@@ -29,10 +29,10 @@ var (
 // Nilainya SAMA PERSIS dengan nama field JSON pada dto. Bila keduanya berbeda, pesannya
 // tetap sampai ke layar tetapi tidak menempel pada isian mana pun.
 const (
-	FieldSearchMode = "tipe_pencarian"
-	FieldKeyword    = "kata_kunci"
-	FieldFrom       = "tanggal_dari"
-	FieldTo         = "tanggal_sampai"
+	FieldSearchColumn = "tipe_pencarian"
+	FieldKeyword      = "kata_kunci"
+	FieldFrom         = "tanggal_dari"
+	FieldTo           = "tanggal_sampai"
 
 	FieldClaimSearchType = "tipe_input"
 	FieldClaimKeyword    = "keyword_klaim"

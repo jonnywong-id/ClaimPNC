@@ -256,17 +256,19 @@ describe('daftar master auto claim', () => {
       .map((h) => h.textContent?.trim())
 
     expect(headers).toEqual([
-      'Inisial',
-      'Nama penerima',
-      'Bank penerima',
-      'No rekening',
-      'Alamat penerima',
-      'Email lapor',
-      'PCT max',
+      'INISIAL',
+      'NAMA PENERIMA',
+      'BANK PENERIMA',
+      'NO REKENING',
+      'ALAMAT PENERIMA',
+      'EMAIL LAPOR',
+      'PCT MAX',
       'PIC',
-      'Komite',
-      // Kolom tombol Update tanpa judul, sama seperti Pega.
-      '',
+      'KOMITE',
+      // Pega membiarkan sel judul kolom aksi KOSONG; di sini ia berjudul "Aksi" —
+      // keputusan Work Owner 2026-10-03, menggantikan instruksi sebelumnya pada hari
+      // yang sama yang menetapkan "Aksi". Lihat catatan di atas senarai `columns`.
+      'Aksi',
     ])
   })
 
@@ -302,7 +304,8 @@ describe('daftar master auto claim', () => {
       '100',
       'PIC Contoh Satu',
       'ADMINPNC',
-      'Update',
+      // Pega menamainya "Update"; di sini "Ubah" demi keseragaman antarmodul Go.
+      'Ubah',
     ])
   })
 
@@ -388,41 +391,151 @@ describe('daftar master auto claim', () => {
 
   /*
     Tombol keputusan berada DI FORM, bukan di baris grid — itu letaknya di Pega. Baris
-    grid hanya punya tombol Update, dan itu berlaku di keempat tab.
+    grid hanya punya satu tombol aksi, dan itu berlaku di keempat tab.
 
     Dibuktikan dari offset di dalam section: tombol ber-`stsapprove` ada di 152k–166k,
     jauh SEBELUM header grid di 232k; tombol ber-`INISIAL` ada di 280k, di dalam baris.
   */
-  it('baris grid hanya punya tombol Update, termasuk di tab Komite', async () => {
+  it('baris grid hanya punya satu tombol aksi, termasuk di tab Komite', async () => {
     installFetch(defaultReply())
     show()
 
     const user = userEvent.setup()
     const table = await screen.findByRole('table')
-    expect(within(table).getAllByRole('button', { name: 'Update' }).length).toBeGreaterThan(0)
+    expect(within(table).getAllByRole('button', { name: 'Ubah' }).length).toBeGreaterThan(0)
     expect(within(table).queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
 
     await clickTab(user, 'Komite Approval')
     await waitFor(() => {
       const grid = screen.getByRole('table')
-      expect(within(grid).getAllByRole('button', { name: 'Update' }).length).toBeGreaterThan(0)
+      expect(within(grid).getAllByRole('button', { name: 'Ubah' }).length).toBeGreaterThan(0)
       expect(within(grid).queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    })
+  })
+
+  /*
+    Tab Waiting Approval menamai tombol barisnya "Detail", bukan "Ubah" — keputusan Work
+    Owner 2026-10-03.
+
+    Ini bukan sekadar pilihan kata. Tab itu satu-satunya yang formnya tidak punya tombol
+    simpan apa pun, sehingga "Ubah" menjanjikan sesuatu yang tidak ada di dalamnya. Yang
+    diuji di sini HANYA penamaannya; bahwa formnya memang baca saja sudah diuji sendiri
+    di 'tab Waiting Approval membuka form baca saja'.
+  */
+  it('menamai tombol baris "Detail" di tab Waiting Approval saja', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    const table = await screen.findByRole('table')
+    // Tab Approve — tombolnya "Ubah", dan "Detail" tidak boleh ada di sana.
+    expect(within(table).queryByRole('button', { name: 'Detail' })).not.toBeInTheDocument()
+
+    await clickTab(user, 'Waiting Approval')
+
+    await waitFor(() => {
+      const grid = screen.getByRole('table')
+      expect(within(grid).getAllByRole('button', { name: 'Detail' }).length).toBeGreaterThan(0)
+      expect(within(grid).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
+    })
+  })
+
+  /*
+    Tab yang KOSONG tetap menggambar tabelnya beserta kepala kolom — mengikuti Pega.
+
+    Dasarnya di keempat section: `pyFieldValueForNoRows = GridNoResultsOnLoad`, yaitu grid
+    tetap tergambar dan pesan "tidak ada baris" muncul DI DALAMNYA. Tanpa itu, seluruh
+    tabel diganti gambar kotak kosong, dan pengguna kehilangan satu-satunya petunjuk bahwa
+    tab itu memang punya kolom yang sama dengan tab lain.
+
+    Tab Reject dipakai karena ia yang kosong pada data contoh — sama seperti pada basis
+    data sungguhan saat Work Owner melaporkannya.
+  */
+  it('tetap menggambar tabel dan kepala kolom pada tab yang kosong', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await clickTab(user, 'Reject')
+
+    await waitFor(() => {
+      const grid = screen.getByRole('table')
+      // Tidak ada satu baris data pun …
+      expect(within(grid).queryByRole('button', { name: 'Ubah' })).not.toBeInTheDocument()
+      // … tetapi kepala kolomnya utuh, termasuk kolom KOMITE dan kolom AKSI.
+      const headers = within(grid)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent?.trim())
+      expect(headers).toEqual([
+        'INISIAL',
+        'NAMA PENERIMA',
+        'BANK PENERIMA',
+        'NO REKENING',
+        'ALAMAT PENERIMA',
+        'EMAIL LAPOR',
+        'PCT MAX',
+        'PIC',
+        'KOMITE',
+        'Aksi',
+      ])
+    })
+
+    // Pesannya ada DI DALAM tabel, bukan menggantikannya.
+    const grid = screen.getByRole('table')
+    expect(within(grid).getByText(/Data Tidak Ada/)).toBeInTheDocument()
+  })
+
+  // Tab Komite Approval ikut, dan kepala kolomnya memang BERBEDA — tanpa kolom Komite.
+  it('tetap menggambar tabel pada tab Komite Approval yang kosong, tanpa kolom Komite', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/auto-claim/bank')) return { body: BANKS }
+      if (call.url.includes('komite_saya=true')) {
+        return { body: { auto_claim: [], status: '0', portal: 'ASM' } }
+      }
+      return defaultReply()(call)
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await clickTab(user, 'Komite Approval')
+
+    await waitFor(() => {
+      const grid = screen.getByRole('table')
+      const headers = within(grid)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent?.trim())
+      expect(headers).toEqual([
+        'INISIAL',
+        'NAMA PENERIMA',
+        'BANK PENERIMA',
+        'NO REKENING',
+        'ALAMAT PENERIMA',
+        'EMAIL LAPOR',
+        'PCT MAX',
+        'PIC',
+        'Aksi',
+      ])
     })
   })
 })
 
 /**
- * openCommitteeForm menempuh alur Pega apa adanya: buka tab Komite, tekan Update pada
- * barisnya, tunggu form termuat. Baru sesudah itu Approve dan Reject tersedia.
+ * openCommitteeForm menempuh alur Pega apa adanya: buka tab Komite, tekan tombol baris,
+ * tunggu form termuat. Baru sesudah itu Approve dan Reject tersedia.
+ *
+ * Tombol barisnya bernama "Ubah" — Pega menamainya "Update", dan nama itu diseragamkan
+ * dengan modul Go lain atas keputusan Work Owner 2026-10-03.
  */
 async function openCommitteeForm(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('table')
   await clickTab(user, 'Komite Approval')
 
   await waitFor(() =>
-    expect(screen.getAllByRole('button', { name: 'Update' }).length).toBeGreaterThan(0),
+    expect(screen.getAllByRole('button', { name: 'Ubah' }).length).toBeGreaterThan(0),
   )
-  await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+  await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
   return screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
 }
 
@@ -497,15 +610,15 @@ describe('keputusan komite', () => {
     await clickTab(user, 'Waiting Approval')
 
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Update' }).length).toBeGreaterThan(0),
+      expect(screen.getAllByRole('button', { name: 'Detail' }).length).toBeGreaterThan(0),
     )
-    await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Detail' })[0]!)
 
-    const form = await screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
+    const form = await screen.findByRole('form', { name: /Detail Master Auto Claim/ })
     expect(within(form).queryByRole('button', { name: 'Simpan' })).not.toBeInTheDocument()
     expect(within(form).queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     expect(within(form).getByRole('button', { name: 'Tutup' })).toBeInTheDocument()
-    expect(within(form).getByLabelText('PCT max')).toBeDisabled()
+    expect(within(form).getByLabelText('PCT_MAX')).toBeDisabled()
   })
 })
 
@@ -517,7 +630,7 @@ describe('form', () => {
     const user = userEvent.setup()
     await screen.findByRole('table')
 
-    await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
     await screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
 
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
@@ -539,11 +652,11 @@ describe('form', () => {
 
     const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     const form = await screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
     expect(within(form).getByText('Tidak dapat diubah.', { exact: false })).toBeInTheDocument()
-    expect(within(form).queryByRole('searchbox', { name: 'Sumber Bisnis' })).not.toBeInTheDocument()
+    expect(within(form).queryByRole('searchbox', { name: 'SUMBER BISNIS' })).not.toBeInTheDocument()
   })
 
   /*
@@ -562,7 +675,7 @@ describe('form', () => {
     const form = await screen.findByRole('form', { name: /Tambah Master Auto Claim/ })
     expect(within(form).getByRole('button', { name: 'Simpan' })).toBeDisabled()
 
-    await user.type(within(form).getByRole('searchbox', { name: 'Sumber Bisnis' }), 'leasing')
+    await user.type(within(form).getByRole('searchbox', { name: 'SUMBER BISNIS' }), 'leasing')
     await user.click(await screen.findByRole('button', { name: /PT. LEASING CONTOH UTAMA/ }))
 
     await waitFor(() =>
@@ -571,11 +684,17 @@ describe('form', () => {
   })
 
   /*
-    CLAIM ALLOWED, KOMITE, dan APPROVAL tidak punya isian di layar. Ketiganya diturunkan
-    server — kotak yang isinya selalu diabaikan lebih buruk daripada tidak ada kotak
-    sama sekali.
+    CLAIM ALLOWED, KOMITE, dan APPROVAL tidak punya isian di layar — dan ketiadaan
+    CLAIM ALLOWED MENGIKUTI Pega, bukan menyimpang darinya.
+
+    Selnya memang ada di `BrowseAutoKlaim` dan `BrowseAutoKlaimReject`, tetapi
+    `pyVisible = OTHER` dengan `pyCondition = 1==2` — idiom Pega untuk "tidak pernah
+    tampil". Nilainya ditetapkan activity: `InsertMstAutoClaim_act` menyetel
+    `TempInputAutoClaim.District := "1"` lalu menyalinnya ke `Local.CLAIM_ALLOWED`.
+
+    Uji ini karena itu menuntut ketiadaannya, bukan keberadaannya.
   */
-  it('tidak menyediakan isian untuk nilai yang diturunkan server', async () => {
+  it('tidak menyediakan isian untuk CLAIM ALLOWED, KOMITE, maupun APPROVAL', async () => {
     installFetch(defaultReply())
     show()
 
@@ -584,9 +703,148 @@ describe('form', () => {
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
 
     const form = await screen.findByRole('form', { name: /Tambah Master Auto Claim/ })
+
     expect(within(form).queryByLabelText(/claim allowed/i)).not.toBeInTheDocument()
     expect(within(form).queryByLabelText(/komite/i)).not.toBeInTheDocument()
     expect(within(form).queryByLabelText(/approval/i)).not.toBeInTheDocument()
+  })
+
+  /*
+    Daftar dan URUTAN isian mengikuti Pega.
+
+    Dibaca dari `Section/BrowseAutoKlaim-Section.xml`, berpasangan lewat `pyLabelFor` →
+    `pyLabelFieldValue` pada page `TempInputAutoClaim`:
+
+      NAMA PENERIMA   .?                 Read-only  ALWAYS
+      INISIAL         .CaseID            Read-only  ALWAYS
+      NAMA CLIENT     .EmailTertanggung  Read-only  NOTBLANK
+      CLIENT ID       .FlagReject        Read-only  NOTBLANK
+      BANK PENERIMA   .City              Editable   ALWAYS    wajib
+      NO REKENING     .DistrictID        Editable   ALWAYS    wajib
+      PCT_MAX         .CountryID         Editable   ALWAYS    wajib
+      PIC             .Country           Editable   ALWAYS    wajib
+      EMAIL LAPOR     .CityID            Editable   ALWAYS    wajib
+      (CLAIM ALLOWED  .District          Editable   OTHER -> pyCondition 1==2: MATI)
+      ALAMAT PENERIMA .Conveyance        Editable   ALWAYS    wajib
+
+    Uji ini menjaga DAFTAR dan URUTANNYA sekaligus. Tanpa urutan, isian dapat berpindah
+    tempat tanpa satu uji pun gagal — dan letak isian justru hal yang paling cepat
+    disadari pengguna yang pindah dari Pega (`D-13`).
+  */
+  it('isian form tambah sama dan seurutan dengan Pega', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
+
+    const form = await screen.findByRole('form', { name: /Tambah Master Auto Claim/ })
+    const labels = () =>
+      Array.from(form.querySelectorAll('label')).map((l) => l.textContent?.trim())
+
+    // Belum ada client yang dipilih: NAMA CLIENT dan CLIENT ID memang BELUM muncul,
+    // persis `pyVisible = NOTBLANK` di Pega.
+    expect(labels()).toEqual([
+      'SUMBER BISNIS',
+      'CARI CLIENT',
+      'NAMA PENERIMA',
+      'INISIAL',
+      'BANK PENERIMA',
+      'NO REKENING',
+      'PCT_MAX',
+      'PIC',
+      'EMAIL LAPOR',
+      'ALAMAT PENERIMA',
+    ])
+
+    // Sesudah client dipilih, keduanya muncul — dan tepat di antara INISIAL dan
+    // BANK PENERIMA, bukan di ujung form.
+    //
+    // Label "CARI CLIENT" ikut hilang dari daftar, dan itu memang perilaku pemilihnya:
+    // begitu sebuah baris dipilih, kotak pencariannya digantikan keterangan pilihan
+    // beserta tombol penggantinya — tidak ada lagi isian yang perlu dilabeli.
+    await user.type(within(form).getByRole('searchbox', { name: 'CARI CLIENT' }), 'cl')
+    await user.click(await within(form).findByRole('button', { name: /TERTANGGUNG CONTOH KETUJUH/ }))
+
+    await waitFor(() =>
+      expect(labels()).toEqual([
+        'SUMBER BISNIS',
+        'NAMA PENERIMA',
+        'INISIAL',
+        'NAMA CLIENT',
+        'CLIENT ID',
+        'BANK PENERIMA',
+        'NO REKENING',
+        'PCT_MAX',
+        'PIC',
+        'EMAIL LAPOR',
+        'ALAMAT PENERIMA',
+      ]),
+    )
+  })
+
+  /*
+    Tab Komite Approval: seluruh isian BACA SAJA, dan tiga isian tidak muncul sama sekali.
+
+    `Section/BrowseAutoKlaimKomite-Section.xml` memberi `pyEditOptions = Read-only` pada
+    KESEPULUH isiannya — komite menyetujui apa yang dilihatnya, bukan menyuntingnya lebih
+    dulu. Section itu juga tidak memuat CLAIM ALLOWED maupun kedua grid pencarian.
+
+    Hasilnya persis layar yang ditunjukkan Work Owner: empat baris, dua kolom.
+  */
+  it('form Komite Approval baca saja, tanpa pemilih dan tanpa CLAIM ALLOWED', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    const form = await openCommitteeForm(user)
+
+    const labels = Array.from(form.querySelectorAll('label')).map((l) => l.textContent?.trim())
+    expect(labels).toEqual([
+      'NAMA PENERIMA',
+      'INISIAL',
+      'NAMA CLIENT',
+      'CLIENT ID',
+      'BANK PENERIMA',
+      'NO REKENING',
+      'PCT_MAX',
+      'PIC',
+      'EMAIL LAPOR',
+      'ALAMAT PENERIMA',
+    ])
+
+    // Tidak ada satu pun isian yang dapat diketik …
+    for (const label of ['NO REKENING', 'PCT_MAX', 'PIC', 'EMAIL LAPOR', 'ALAMAT PENERIMA']) {
+      expect(within(form).getByLabelText(label)).toHaveAttribute('readonly')
+    }
+    // … tetapi keduanya tetap TERKIRIM saat Approve, sehingga `readOnly` dipakai dan
+    // bukan `disabled`. Uji 'Approve mengirim seluruh isian baris' yang membuktikannya.
+    expect(within(form).getByLabelText('NO REKENING')).not.toBeDisabled()
+
+    expect(within(form).queryByLabelText('CLAIM ALLOWED')).not.toBeInTheDocument()
+    expect(within(form).queryByRole('searchbox', { name: 'CARI CLIENT' })).not.toBeInTheDocument()
+  })
+
+  /*
+    Isian baca-saja memang tidak dapat diketik.
+
+    Di Pega keempatnya `pyEditOptions = Read-only`, dan nilainya datang dari grid
+    pencarian — bukan dari papan ketik. Isian yang terlihat dapat diketik tetapi isinya
+    diabaikan saat menyimpan adalah janji yang tidak ditepati.
+  */
+  it('NAMA PENERIMA dan INISIAL tidak dapat diketik', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
+
+    const form = await screen.findByRole('form', { name: /Tambah Master Auto Claim/ })
+    for (const label of ['NAMA PENERIMA', 'INISIAL']) {
+      expect(within(form).getByLabelText(label)).toHaveAttribute('readonly')
+    }
   })
 
   // PCT max diperiksa sebagai angka 0–100 — selisih yang direncanakan terhadap Pega,
@@ -597,10 +855,10 @@ describe('form', () => {
 
     const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     const form = await screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
-    const pct = within(form).getByLabelText('PCT max')
+    const pct = within(form).getByLabelText('PCT_MAX')
     await user.clear(pct)
     await user.type(pct, '150')
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))
@@ -616,10 +874,10 @@ describe('form', () => {
 
     const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Update' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
     const form = await screen.findByRole('form', { name: /Ubah Master Auto Claim/ })
-    const pct = within(form).getByLabelText('PCT max')
+    const pct = within(form).getByLabelText('PCT_MAX')
     await user.clear(pct)
     await user.type(pct, '82,5')
     await user.click(within(form).getByRole('button', { name: 'Simpan' }))

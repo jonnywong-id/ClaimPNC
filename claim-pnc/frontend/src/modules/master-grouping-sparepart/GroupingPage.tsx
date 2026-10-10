@@ -7,7 +7,7 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
-import { useCreateGrouping, useDecideGrouping, useGroupingList, useSaveGrouping } from './api'
+import { useCreateGrouping, useGroupingList, useSaveGrouping } from './api'
 import { GroupingForm, type GroupingFormValues } from './GroupingForm'
 
 /**
@@ -112,35 +112,44 @@ function loadMessage(error: unknown): MessageContent {
  * **kendaraan**. Baris yang menunjuk kendaraan yang sama dikumpulkan di bawah satu **Nomor
  * Grup** — itulah arti kata "grouping" pada namanya, bukan penggolongan suku cadang.
  *
- * # Enam kolom, bukan sebelas
+ * # Enam kolom, dan HANYA enam
  *
- * Grid Pega hanya menampilkan ID, No Sparepart, Nama Sparepart, Nama Panel, Sisi Panel, dan
- * No Rangka; kelima isian sisanya hanya terlihat saat sebuah baris dibuka. Susunan itu ditiru
- * apa adanya, termasuk tidak menambahkan kolom yang menurut kami berguna.
+ * Grid Pega menampilkan ID, No Sparepart, Nama Sparepart, Nama Panel, Sisi Panel, dan No
+ * Rangka; kelima isian sisanya hanya terlihat saat sebuah baris dibuka. Susunan itu ditiru apa
+ * adanya, termasuk tidak menambahkan kolom yang menurut kami berguna.
  *
- * Satu kolom DITAMBAHKAN: **Nomor Grup**. Ia tidak digambar di layar lama sama sekali, dan
- * tanpa itu pengguna tidak punya satu pun cara melihat baris mana yang tergabung dengan baris
- * mana — padahal itulah seluruh gunanya layar ini. Selisih yang dicatat, bukan disembunyikan.
+ * **Nomor grup TIDAK digambar.** Ia memang ada sebagai kolom basis data
+ * (`NO_GROUP_RANGKA`) dan tetap diterbitkan penyimpanan, tetapi layar Pega tidak
+ * menampilkannya di mana pun — ia tersimpan pada properti `pyID` yang tidak pernah dirender.
+ * Sempat digambar sebagai kolom tambahan di sini; **dicabut atas keputusan Work Owner
+ * 2026-10-04**, dengan alasan yang sama yang berlaku untuk seluruh layar: ikuti Pega.
  *
  * # Menyimpan SELALU mengembalikan baris ke antrean persetujuan
  *
  * Di sistem lama status yang disimpan datang dari pemanggil (`Param.Approval`), dan layar
  * penyuntingannya selalu mengirim "0".
  *
- * # Kenapa Approve dan Reject ada DI SINI, bukan di Inbox Manager
+ * # TIDAK ADA keputusan Approve/Reject di layar ini — dan itu memang Pega
  *
- * Di Pega keduanya ada di layar lain: `Section/ApprovalPNCMasterGroupingSparepartHE` dipakai
- * Inbox Manager. Inbox Manager belum dibangun, dan menunda keputusannya sampai layar itu ada
- * berarti setiap grouping yang ditambah tertahan di Waiting Approval tanpa satu pun cara
- * menyelesaikannya. Yang dipakai sebagai gantinya adalah BENTUK yang sama persis: centang
- * beberapa baris, lalu satu tombol untuk seluruh pilihan — sama dengan ketiga master alat
- * berat lain.
+ * Ketiga tabnya BENAR ada di Pega: `Section/PNCMasterGroupingSparepartHE` merujuk tepat tiga
+ * caption — `pyCaption Approve`, `pyCaption Reject`, dan `pyCaption Waiting Approval`.
  *
- * # Tanpa isian Catatan pada keputusan
+ * Yang TIDAK ada di sana adalah cara memutuskannya. Seluruh tombol yang dirujuk layar ini
+ * hanya **SIMPAN** dan **Ubah**, dan `pySelected` maupun `pxCheckbox` **nol kemunculan** di
+ * kelima section-nya. Keputusan hidup di layar lain —
+ * `Section/ApprovalPNCMasterGroupingSparepartHE`, yang disertakan `Harness/UserInbox_Harness`
+ * dan `Section/InboxManager_Sec`, yakni **Inbox Manager**.
  *
- * Kedua tabel modul ini tidak punya kolom penampung alasan penolakan, dan layar persetujuan
- * Pega pun tidak punya isian catatan. Menggambar isian yang diam-diam membuang isinya lebih
- * buruk daripada tidak menggambarnya.
+ * Tab Waiting Approval di sini karena itu murni **daftar**: ia memperlihatkan apa yang sedang
+ * menunggu, dan penyuntingannya memakai tombol Ubah yang sama dengan kedua tab lain.
+ *
+ * Sempat ada centang borongan beserta tombol "Approve terpilih" dan "Reject terpilih" di sini,
+ * meniru Master Bengkel, Master Panel, dan Master Sparepart. **Dicabut atas keputusan Work
+ * Owner 2026-10-04.** Catatan lama yang menyebut layar persetujuan Pega menyediakan "Select
+ * All, Deselect All, Approve, Reject" **salah untuk modul ini** — itu benar untuk ketiga master
+ * alat berat lain yang memakai `Activity/SetApprovalAllMaster`, dan ditulis di sini tanpa
+ * diperiksa ulang. Layar persetujuan modul ini memutuskan **satu baris pada satu waktu**:
+ * tombolnya `Approve`, `Reject`, dan `DETAILS`, tanpa satu pun centang.
  */
 export function GroupingPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -148,13 +157,11 @@ export function GroupingPage() {
   const [tab, setTab] = useState<TabId>('approve')
   const [isAdding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Grouping | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
 
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = useGroupingList(active.status)
   const create = useCreateGrouping()
   const save = useSaveGrouping()
-  const decide = useDecideGrouping()
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.grouping ?? []
@@ -180,15 +187,6 @@ export function GroupingPage() {
     setEditing(row)
   }
 
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   function submit(values: GroupingFormValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan membuang
     // isian pengguna saat penyimpanan gagal.
@@ -199,10 +197,6 @@ export function GroupingPage() {
     create.mutate(values, { onSuccess: closeForm })
   }
 
-  function runDecision(status: string) {
-    decide.mutate({ id_grouping: [...chosen], status }, { onSuccess: () => setChosen(new Set()) })
-  }
-
   /*
     Susunan kolom mengikuti grid Pega APA ADANYA — keenamnya berdampingan pada urutan yang
     sama: ID, No Sparepart, Nama Sparepart, Nama Panel, Sisi Panel, No Rangka.
@@ -210,33 +204,14 @@ export function GroupingPage() {
     Judulnya pun diambil dari grid, bukan dari form: grid menulis "No Sparepart" dan "Sisi
     Panel" sementara form menulis "Nomor Sparepart" dan "Sisi". Keduanya dipertahankan di
     tempatnya masing-masing (D-13).
+
+    Susunannya SAMA pada ketiga tab, termasuk Waiting Approval — ketiga section tab Pega
+    menyebut keenam judul yang sama persis, dan tidak satu pun punya kolom centang.
+
+    Kolom "Aksi" adalah satu-satunya judul yang tidak menyalin Pega; ia berlaku di seluruh
+    modul aplikasi ini.
   */
   const columns: Column<Grouping>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: Grouping) => (chosen.has(row.id_grouping) ? 'dipilih' : ''),
-            render: (row: Grouping) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_grouping)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_grouping)}
-                />
-                <span className="sr-only">
-                  Pilih grouping {row.nomor_sparepart} pada {row.nama_panel}
-                </span>
-              </label>
-            ),
-          } satisfies Column<Grouping>,
-        ]
-      : []),
     {
       key: 'id',
       title: 'ID',
@@ -280,16 +255,6 @@ export function GroupingPage() {
       value: (row) => row.no_rangka,
       render: (row) => (
         <span className="font-mono text-xs text-slate-900">{row.no_rangka || '—'}</span>
-      ),
-    },
-    {
-      // DITAMBAHKAN terhadap grid Pega; lihat catatan pada GroupingPage.
-      key: 'grup',
-      title: 'Nomor Grup',
-      width: '8rem',
-      value: (row) => row.nomor_grup,
-      render: (row) => (
-        <span className="tabular-nums text-sm text-slate-900">{row.nomor_grup || '—'}</span>
       ),
     },
     {
@@ -342,11 +307,6 @@ export function GroupingPage() {
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
               closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab sebelumnya,
-              // dan menyimpannya berarti keputusan dapat mengenai baris yang tidak sedang
-              // dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
               setTab(t.id)
             }}
             className={[
@@ -373,37 +333,6 @@ export function GroupingPage() {
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
         </span>
       </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} grouping dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(GroupingStatus.disetujui)}
-          onReject={() => runDecision(GroupingStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
 
       {isFormOpen && (
         <section className="mt-5">
@@ -450,63 +379,5 @@ export function GroupingPage() {
         )}
       </section>
     </main>
-  )
-}
-
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Section/ApprovalPNCMasterGroupingSparepartHE-Section.xml`.
- *
- * TANPA isian Catatan: kedua tabel modul ini tidak punya kolom penampungnya.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: {
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang grouping yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} grouping</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama sama
-        membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari namanya.
-        Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
   )
 }

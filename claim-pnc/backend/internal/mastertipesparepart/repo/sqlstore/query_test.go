@@ -88,18 +88,13 @@ func TestQueriesUseParameterBinding(t *testing.T) {
 			"kueri %q harus memakai parameter binding", name)
 	}
 
-	// Pencarian mengikat kata kuncinya pada `:2`, dan MENYEBUTNYA DUA KALI — satu untuk nama
-	// tipe, satu untuk nama kategori. Penyebutan ulang satu parameter posisional diterima
-	// kedua driver; pola yang sama sudah dipakai `bengkel_list_search`.
-	//
-	// Yang dijaga uji ini adalah bahwa kata kuncinya benar-benar TERIKAT pada kedua sisi OR,
-	// bukan dirangkai ke teks SQL pada salah satunya.
+	// Pencarian mengikat kata kuncinya pada `:2`, SEKALI — hanya nama tipe yang dicari.
 	search := getQuery("type_list_search")
-	require.Equalf(t, 2, strings.Count(search, ":2"),
-		"kata kunci harus terikat pada KEDUA kolom yang dicari; ditemukan %d penyebutan",
+	require.Equalf(t, 1, strings.Count(search, ":2"),
+		"kata kunci dicari pada SATU kolom saja; ditemukan %d penyebutan",
 		strings.Count(search, ":2"))
 	require.NotContains(t, search, ":3",
-		"kata kunci yang sama tidak boleh dikirim dua kali sebagai parameter berbeda")
+		"tidak ada parameter ketiga; nama kategori tidak ikut dicari")
 
 	// Penyimpanan mengikat keempat nilainya terpisah: nama, kategori, status, dan kunci.
 	update := getQuery("type_update")
@@ -153,22 +148,36 @@ func TestOnlyOwnedTableIsWritten(t *testing.T) {
 	}
 }
 
-// Daftar dan pembacaan satu baris memakai LEFT JOIN, bukan inner join.
+// Kueri pembaca TIDAK ber-JOIN sama sekali, dan tidak membawa PART_CATEGORY_NAME.
 //
-// Ini SELISIH PERILAKU yang disengaja terhadap Pega: `BrowseMasterSparepartTypeClaimHE_sql`
-// memakai inner join gaya koma, sehingga tipe yang menunjuk kategori yang tidak ada HILANG
-// dari layar dan tidak dapat diperbaiki siapa pun.
+// Grid Pega menggambar TIGA kolom — `.CityID`, `.City`, `.District` — dan nama kategori
+// tidak ada di grid mana pun (koreksi Work Owner 2026-10-04). Kueri grid Pega pun memang
+// tanpa join: `BrowseSparepartTipeClaimHE2` membaca satu tabel saja.
 //
-// Uji ini menjaga keputusan itu tetap berlaku. Bila seseorang "merapikannya" menjadi inner
-// join demi menyamai Pega, baris yatim akan lenyap lagi — dan uji ini yang menghentikannya
-// sebelum sampai ke pengguna.
-func TestJoinToCategoryIsLeftJoin(t *testing.T) {
-	for _, name := range []string{"type_list", "type_list_search", "type_get"} {
+// Uji ini menjaga keputusan itu dari dua arah sekaligus. Menambahkan JOIN kembali berarti
+// menambah kolom yang tidak ada di Pega; dan bila kelak seseorang menambahkannya sebagai
+// INNER JOIN, baris yang kategorinya hilang akan lenyap dari layar — cacat yang justru ada
+// di Pega pada jalur pemuat FORM, dan yang tidak boleh ikut terbawa ke jalur daftar.
+func TestReadQueriesDoNotJoinCategory(t *testing.T) {
+	for _, name := range []string{"type_list", "type_list_search", "type_get", "type_find_by_name"} {
 		upperCase := strings.ToUpper(getQuery(name))
-		require.Containsf(t, upperCase, "LEFT JOIN",
-			"kueri %q harus memakai LEFT JOIN supaya baris tanpa kategori tetap terlihat", name)
-		require.NotContainsf(t, upperCase, "INNER JOIN",
-			"kueri %q tidak boleh membuang baris yang kategorinya hilang", name)
+		require.NotContainsf(t, upperCase, "JOIN",
+			"kueri %q tidak boleh ber-JOIN; grid Pega membaca satu tabel saja", name)
+		require.NotContainsf(t, upperCase, "PART_CATEGORY_NAME",
+			"kueri %q tidak boleh membawa nama kategori; grid Pega tidak menampilkannya", name)
+	}
+}
+
+// Satu-satunya kueri yang menyentuh tabel kategori adalah daftar pilihan dropdown.
+func TestOnlyChoiceQueryReadsCategoryTable(t *testing.T) {
+	for name, text := range query {
+		if !strings.Contains(strings.ToUpper(text), "GCNM_M_SPAREPART_CATEGORY") {
+			continue
+		}
+		require.Containsf(t,
+			[]string{"type_category_list", "type_count_orphan_category"}, name,
+			"kueri %q menyentuh tabel kategori di luar daftar pilihan dan pemeriksaan integritas",
+			name)
 	}
 }
 

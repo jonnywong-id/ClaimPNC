@@ -54,9 +54,28 @@ type testServer struct {
 	// (ADR-0030, R-20).
 	asm *memory.Repo
 	asi *memory.Repo
+
+	// uploader merekam berkas yang benar-benar terkirim ke layanan penyimpanan. Nil bila
+	// rakitan ini sengaja dibuat TANPA jalur unggah — lihat newTestServerWithoutUploader.
+	uploader *memory.FakeUploader
 }
 
 func newTestServer(t *testing.T) *testServer {
+	t.Helper()
+	return newTestServerWith(t, &memory.FakeUploader{})
+}
+
+// newTestServerWithoutUploader merakit aplikasi TANPA jalur unggah.
+//
+// Dipakai membuktikan bahwa ketiadaan pengunggah tidak menjatuhkan sisa modul — sepuluh
+// layar master lain tetap berjalan, dan hanya tombol Upload Document yang mati beserta
+// sebabnya.
+func newTestServerWithoutUploader(t *testing.T) *testServer {
+	t.Helper()
+	return newTestServerWith(t, nil)
+}
+
+func newTestServerWith(t *testing.T, uploader *memory.FakeUploader) *testServer {
 	t.Helper()
 
 	identitySystem, err := provider.NewFake(false, nil)
@@ -74,7 +93,7 @@ func newTestServer(t *testing.T) *testServer {
 	asm := memory.NewSampleRepo()
 	asi := memory.NewRepo(memory.Options{})
 
-	panelService, err := masterpanelusecase.NewService(masterpanelusecase.Options{
+	options := masterpanelusecase.Options{
 		RepoSelector: func(alias string) (masterpanel.Store, error) {
 			switch alias {
 			case "ASM":
@@ -85,7 +104,14 @@ func newTestServer(t *testing.T) *testServer {
 				return nil, portal.ErrNotReady
 			}
 		},
-	})
+	}
+	// Nil-interface yang membungkus pointer nil BUKAN nil, dan Service memeriksa seam ini
+	// dengan `!= nil`. Tanpa penjagaan ini, rakitan "tanpa pengunggah" akan terbaca punya
+	// pengunggah — dan ujinya lulus tanpa membuktikan apa pun.
+	if uploader != nil {
+		options.Uploader = uploader
+	}
+	panelService, err := masterpanelusecase.NewService(options)
 	require.NoError(t, err)
 
 	logger := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -134,7 +160,7 @@ func newTestServer(t *testing.T) *testServer {
 	}))
 	t.Cleanup(server.Close)
 
-	p := &testServer{server: server, asm: asm, asi: asi}
+	p := &testServer{server: server, asm: asm, asi: asi, uploader: uploader}
 	p.token = p.login(t)
 	return p
 }

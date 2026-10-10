@@ -28,6 +28,7 @@ const BARU: InvestigatorTask = {
   nama_admin: 'ADMINCONTOH1',
   tanggal_pendaftaran: '2026-09-21T02:15:00Z',
   tanggal_survey: '2026-09-22T01:00:00Z',
+  lini_bisnis: '002',
 }
 
 /**
@@ -47,6 +48,7 @@ const TANPA_SURVEI: InvestigatorTask = {
   nama_admin: 'ADMINCONTOH1',
   tanggal_pendaftaran: '2026-09-15T08:05:00Z',
   tanggal_survey: null,
+  lini_bisnis: '002',
 }
 
 /**
@@ -66,6 +68,7 @@ const LAMA: InvestigatorTask = {
   nama_admin: '',
   tanggal_pendaftaran: '2026-07-30T07:00:00Z',
   tanggal_survey: '2026-08-03T02:00:00Z',
+  lini_bisnis: '002',
 }
 
 type Call = { url: string; method: string; header: Record<string, string> }
@@ -93,16 +96,74 @@ function installFetch(map: (call: Call) => Reply) {
   })
 }
 
-/** reply melayani daftar dengan baris yang diberikan. */
+/**
+ * reply melayani daftar dengan baris yang diberikan.
+ *
+ * Ia juga melayani jalur FORMULIR, karena menekan Nomor Case membukanya. Tanpa itu,
+ * permintaan formulir akan menerima jawaban berbentuk daftar — dan kegagalannya akan
+ * terbaca seperti cacat dialog, padahal yang salah stub-nya.
+ */
 function reply(tugas: InvestigatorTask[], terpotong = false): (call: Call) => Reply {
-  return () => ({
-    body: {
-      tugas,
-      terpotong,
-      batas_baris: 500,
-      portal: 'ASM',
-    },
-  })
+  return (call) => {
+    if (call.url.includes('/investigasi')) {
+      return { body: emptyForm }
+    }
+    return {
+      body: {
+        tugas,
+        terpotong,
+        batas_baris: 500,
+        portal: 'ASM',
+      },
+    }
+  }
+}
+
+/** Jawaban formulir investigasi yang belum pernah diisi. */
+const emptyForm = {
+  investigasi: {
+    referensi: 'ASM-FW-GCNMFW-WORK PNC-100241',
+    urutan_survei: 1,
+    urutan: 1,
+    tanggal_investigasi: '2026-10-05T07:30:00Z',
+    dapat_diinvestigasi: '',
+    tempat_kejadian: '',
+    nama_rumah_sakit: '',
+    nama_tempat_lainnya: '',
+    alamat_rs_klinik: '',
+    nomor_rekam_medik: '',
+    nama_pasien: '',
+    tanggal_lahir: null,
+    verifikasi_tanggal_lahir: '',
+    keterangan_tanggal_lahir: '',
+    peserta_terdaftar: '',
+    keterangan_pendaftaran: '',
+    tanggal_perawatan: null,
+    tanggal_selesai_perawatan: null,
+    total_pengajuan: '',
+    tagihan_lunas: '',
+    bayar_pasien: 'false',
+    bayar_perusahaan: 'false',
+    bayar_asuransi_lain: 'false',
+    tidak_ada_pembayaran: 'false',
+    nama_asuransi_lain: '',
+    konfirmasi_kwitansi: '',
+    nama_pic_rs: '',
+    nama_penelepon: '',
+    nama_karyawan: '',
+    kode_area_telepon: '',
+    nomor_telepon: '',
+    ekstensi_telepon: '',
+    hasil_investigasi: '',
+  },
+  tampil: {
+    nama_rumah_sakit: false,
+    nama_tempat_lainnya: true,
+    alamat_rs_klinik: false,
+    tanggal_selesai_perawatan: true,
+    nama_asuransi_lain: false,
+  },
+  portal: 'ASM',
 }
 
 function show() {
@@ -289,6 +350,25 @@ describe('antrean Inbox Investigator', () => {
     expect(screen.queryByRole('button', { name: /ambil/i })).not.toBeInTheDocument()
   })
 
+  /*
+    Kaki halaman pernah memuat tiga keterangan: "Layar ini hanya menampilkan", penjelasan
+    bahwa kolom "Lama Masuk Inbox" berisi tanggal survei, dan ajakan menekan Refresh.
+    Ketiganya dihapus atas permintaan Work Owner — layar lama tidak punya keterangan
+    semacam itu, dan alasannya sudah tinggal di dokumen.
+
+    Uji ini menahan ketiganya supaya tidak kembali dengan alasan yang terdengar masuk akal.
+  */
+  it('tidak menambahkan keterangan yang tidak ada di layar lama', async () => {
+    installFetch(reply([BARU]))
+    show()
+
+    await screen.findByRole('table')
+
+    expect(screen.queryByText(/hanya menampilkan/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/berisi Tanggal Survey/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/menyegarkan dirinya sendiri/i)).not.toBeInTheDocument()
+  })
+
   it('memuat ulang antrean saat tombol Refresh ditekan', async () => {
     installFetch(reply([BARU]))
     show()
@@ -321,20 +401,80 @@ describe('antrean Inbox Investigator', () => {
 
 
   /**
-   * Export Data Investigation DIHAPUS atas keputusan Work Owner 2026-09-24.
+   * Export Data Investigation beserta ketiga kendalinya digambar.
    *
-   * Uji ini menjaga keputusan itu: bila kelak seseorang menghidupkannya kembali tanpa
-   * pemetaan kolomnya jelas, inilah yang gagal lebih dulu.
+   * Ketiganya ada di layar lama dan seluruhnya `pyVisible = ALWAYS`. Uji ini yang gagal
+   * lebih dulu bila salah satunya hilang pada perubahan berikutnya — dan hilangnya satu
+   * kendali tidak terlihat sebagai kerusakan, melainkan sebagai berkas yang isinya berbeda.
    */
-  it('tidak menggambar kendali export sama sekali', async () => {
+  it('menggambar tombol export beserta ketiga kendalinya', async () => {
     installFetch(reply([BARU]))
     show()
     await screen.findByRole('table')
 
-    expect(screen.queryByRole('button', { name: /export/i })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/pilih investigation/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/^dari$/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/^sampai$/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export data investigation/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/pilih investigation/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^dari$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^sampai$/i)).toBeInTheDocument()
+  })
+
+  /**
+   * Ekspor TIDAK berjalan sebelum ketiga kendalinya terisi.
+   *
+   * Pemeriksaannya di layar, sebelum satu permintaan pun dikirim. Server memeriksanya lagi
+   * dan itulah yang menentukan; yang dilakukan di sini hanyalah menjawab lebih cepat dan
+   * tanpa unduhan yang isinya pesan galat.
+   */
+  it('menolak ekspor yang kendalinya belum lengkap tanpa menembak server', async () => {
+    installFetch(reply([BARU]))
+    show()
+    await screen.findByRole('table')
+
+    const before = calls.length
+    await userEvent.click(screen.getByRole('button', { name: /export data investigation/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/isi tanggal "dari"/i)
+    expect(calls).toHaveLength(before)
+  })
+
+  /**
+   * Nomor Case membuka formulir kerja Investigator.
+   *
+   * Sel Pega-nya ber-`pyFormat = pxLink` dan menjalankan Flow Action `InputInvestigator`.
+   * Formulirnya MODAL di sana (80 × 82), dan modal pula di sini — sehingga tidak ada rute
+   * baru dan daftar di belakangnya tetap pada tempatnya.
+   */
+  it('membuka formulir investigasi saat nomor case ditekan', async () => {
+    installFetch(reply([BARU]))
+    show()
+    await screen.findByRole('table')
+
+    const link = screen.getByRole('button', { name: BARU.nomor_case })
+    expect(link).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await userEvent.click(link)
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Form Investigasi Personal Accident')).toBeInTheDocument()
+    expect(within(dialog).getByText(BARU.nomor_case)).toBeInTheDocument()
+  })
+
+  /**
+   * Dialognya dapat ditutup kembali tanpa menyimpan apa pun.
+   *
+   * Tombolnya berbunyi "Back", mengikuti tombol yang sama di formulir lama.
+   */
+  it('menutup formulir tanpa menyimpan', async () => {
+    installFetch(reply([BARU]))
+    show()
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: BARU.nomor_case }))
+    const dialog = await screen.findByRole('dialog')
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /^back$/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   /** Portal yang belum dipilih menghentikan layar sebelum satu permintaan pun dikirim. */

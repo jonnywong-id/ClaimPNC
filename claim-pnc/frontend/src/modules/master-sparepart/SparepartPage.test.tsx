@@ -27,6 +27,10 @@ const OPTIONS = {
     { kode: 'TIP03', nama: 'SEAL KIT', kode_kategori: 'KAT02' },
   ],
   portal: 'ASM',
+
+  // Jalur unggah dinyatakan siap supaya isian berkas pada form tergambar hidup. Keadaan
+  // sebaliknya diuji terpisah — lihat "isian unggah mati saat layanannya belum terpasang".
+  unggah_tersedia: true,
 }
 
 /** Sparepart yang sudah disetujui, seluruh kolomnya terisi. */
@@ -113,7 +117,15 @@ function installFetch(map: (call: Call) => Reply) {
     const call: Call = {
       url,
       method: init?.method ?? 'GET',
-      body: init?.body ? JSON.parse(init.body as string) : undefined,
+      // FormData dibiarkan apa adanya: ia badan permintaan unggah, dan JSON.parse atasnya
+      // MELEMPAR — kegagalan yang muncul sebagai "unggahan tidak pernah terjadi", bukan
+      // sebagai galat yang menyebut sebabnya.
+      body:
+        init?.body instanceof FormData
+          ? init.body
+          : init?.body
+            ? JSON.parse(init.body as string)
+            : undefined,
       header: (init?.headers as Record<string, string>) ?? {},
     }
     calls.push(call)
@@ -137,6 +149,19 @@ function installFetch(map: (call: Call) => Reply) {
 function defaultReply(mutation?: (call: Call) => Reply) {
   return (call: Call): Reply => {
     if (call.url.startsWith('/api/master/sparepart/pilihan')) return { body: OPTIONS }
+
+    /*
+      Permintaan dokumen dijawab 404 `dokumen_belum_ada`, dan itu jawaban yang WAJAR —
+      bukan kegagalan. Baris contoh memang belum punya lampiran, dan backend pun menjawab
+      begitu. Dipisahkan lebih dulu karena jalur daftar di bawah akan menangkapnya dan
+      menjawabnya dengan bentuk daftar yang sama sekali bukan dokumen.
+    */
+    if (call.url.includes('/dokumen')) {
+      if (call.method === 'GET') {
+        return { body: { error: { code: 'dokumen_belum_ada' } }, status: 404 }
+      }
+      if (mutation) return mutation(call)
+    }
 
     if (call.method === 'GET') {
       const status = new URL(call.url, 'https://x').searchParams.get('status') ?? '1'
@@ -227,7 +252,7 @@ describe('daftar master sparepart', () => {
     for (const header of [
       'ID Sparepart',
       'Nama Sparepart',
-      'Harga Jual',
+      'Harga (Rp)',
       'User Update',
       'Tanggal Update',
     ]) {
@@ -342,7 +367,7 @@ describe('grid saat tidak ada baris', () => {
     for (const header of [
       'ID Sparepart',
       'Nama Sparepart',
-      'Harga Jual',
+      'Harga (Rp)',
       'User Update',
       'Tanggal Update',
     ]) {
@@ -370,15 +395,59 @@ describe('grid saat tidak ada baris', () => {
     expect(screen.getByText('Data tidak ada')).toBeInTheDocument()
   })
 
-  // Kedua tombol unggah layar Pega ditarik atas permintaan Work Owner (2026-09-24).
-  it('tidak menggambar tombol unggah', async () => {
+  // Kedua tombol unggah layar Pega digambar, dan keduanya dipagari di sini: layar ini sudah
+  // sekali kehilangan salah satunya, dan kehilangan itu tidak menggagalkan satu uji pun.
+  it('menggambar kedua tombol unggah', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByText('FILTER OLI MESIN')
-    expect(screen.queryByRole('button', { name: 'Upload Document' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Upload Data Master Sparepart' }),
+      screen.getByRole('button', { name: 'Upload Data Master Sparepart' }),
+    ).toBeInTheDocument()
+  })
+
+  /*
+    SATU panel terbuka pada satu waktu.
+
+    Keduanya menempati tempat yang sama di bawah kepala halaman. Membuka keduanya sekaligus
+    pernah benar-benar terjadi di Master Sparepart saat masing-masing memegang keadaan
+    sendiri — layarnya memanjang dan dua judul muncul berdampingan tanpa satu pun menjelaskan
+    yang mana yang sedang dipakai.
+  */
+  it('menutup panel dokumen saat panel CSV dibuka', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+    expect(await screen.findByRole('heading', { name: 'Upload Document' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Upload Data Master Sparepart' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Upload Data Master Sparepart' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Upload Document' })).not.toBeInTheDocument()
+  })
+
+  // Tombolnya menutup panelnya sendiri saat ditekan ulang — sama seperti Master Panel.
+  it('menutup panel CSV saat tombolnya ditekan ulang', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    const tombol = screen.getByRole('button', { name: 'Upload Data Master Sparepart' })
+
+    await userEvent.click(tombol)
+    expect(
+      await screen.findByRole('heading', { name: 'Upload Data Master Sparepart' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(tombol)
+    expect(
+      screen.queryByRole('heading', { name: 'Upload Data Master Sparepart' }),
     ).not.toBeInTheDocument()
   })
 })
@@ -597,74 +666,322 @@ describe('form master sparepart', () => {
   })
 })
 
-describe('keputusan borongan', () => {
-  it('menggambar bilah keputusan hanya pada tab Waiting Approval', async () => {
+describe('ketiga tab berperilaku sama, seperti Pega', () => {
+  /*
+    Ketiga section tab Pega hanya memuat dua tombol — SIMPAN dan Ubah — dan NOL pxCheckbox
+    serta NOL pySelected. Centang, Select All, Approve, dan Reject hanya ada di
+    `ApprovalMasterSparepartHE`, yakni layar Inbox Manager.
+
+    Uji ini mengunci pencabutan bilah keputusan (Work Owner, 2026-10-03) supaya ia tidak
+    kembali tanpa disengaja.
+  */
+  it('tidak menggambar centang maupun tombol keputusan di tab Waiting Approval', async () => {
     installFetch(defaultReply())
-    show()
-
-    await screen.findByText('FILTER OLI MESIN')
-    expect(
-      screen.queryByRole('button', { name: 'Approve terpilih' }),
-    ).not.toBeInTheDocument()
-
-    await userEvent.click(tab('Waiting Approval'))
-    expect(
-      await screen.findByRole('button', { name: 'Approve terpilih' }),
-    ).toBeInTheDocument()
-  })
-
-  // TANPA isian Catatan: tabelnya tidak punya kolom penampungnya. Menggambar isian yang
-  // diam-diam membuang isinya lebih buruk daripada tidak menggambarnya.
-  it('tidak menggambar isian catatan', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await screen.findByText('FILTER OLI MESIN')
-    await userEvent.click(tab('Waiting Approval'))
-
-    await screen.findByRole('button', { name: 'Approve terpilih' })
-    expect(screen.queryByLabelText('Catatan')).not.toBeInTheDocument()
-  })
-
-  it('mematikan tombol keputusan selama belum ada yang dicentang', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await screen.findByText('FILTER OLI MESIN')
-    await userEvent.click(tab('Waiting Approval'))
-
-    expect(await screen.findByRole('button', { name: 'Approve terpilih' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Reject terpilih' })).toBeDisabled()
-  })
-
-  it('mengirim satu permintaan untuk seluruh baris yang dicentang', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: {
-          jumlah_berubah: 1,
-          status: '1',
-          status_label: 'Approve',
-          portal: 'ASM',
-        },
-      })),
-    )
     show()
 
     await screen.findByText('FILTER OLI MESIN')
     await userEvent.click(tab('Waiting Approval'))
 
     await screen.findByText('SEAL KIT BOOM CYLINDER')
-    await userEvent.click(screen.getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve terpilih' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject terpilih' })).not.toBeInTheDocument()
+  })
+
+  it('menggambar kolom yang sama persis di ketiga tab', async () => {
+    installFetch(defaultReply())
+    show()
+
+    for (const name of ['Approve', 'Reject', 'Waiting Approval']) {
+      await userEvent.click(tab(name))
+
+      const table = await screen.findByRole('table')
+      const header = within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim())
+
+      expect(header).toEqual([
+        'ID Sparepart',
+        'Nama Sparepart',
+        'Harga (Rp)',
+        'User Update',
+        'Tanggal Update',
+        'Aksi',
+      ])
+    }
+  })
+})
+
+describe('unggah dokumen master sparepart', () => {
+  /*
+    Jalur penyimpanannya SUDAH ADA di aplikasi ini — modul `dokumenpenunjang`, yang meniru
+    rantai `UploadDocumentToGoogleStorage` → `InsertDokumenPNC` sampai ujungnya, termasuk
+    konvensi nama `yyMdhm-sS-<jenis>-<nama>`. Modul ini menyambung ke sana, tidak
+    membangunnya ulang.
+  */
+  it('panel tertutup sampai tombolnya ditekan', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    expect(screen.queryByLabelText('Berkas dokumen')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+    expect(await screen.findByLabelText('Berkas dokumen')).toBeEnabled()
+  })
+
+  // Dinyatakan SEBELUM pengguna memilih berkas, bukan sesudah ia memilihnya.
+  it('tombol mati saat layanan penyimpanan belum terpasang', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/sparepart/pilihan')) {
+        return { body: { ...OPTIONS, unggah_tersedia: false } }
+      }
+      return defaultReply()(call)
+    })
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeDisabled()
+  })
+
+  /*
+    Bentuknya mengikuti modal Pega: pemilih berkas sendiri (widget bawaan disembunyikan
+    karena teks "No file chosen" pun membukanya), daftar "Nama File" beserta baris
+    kosongnya, lalu Batal dan Submit.
+  */
+  it('berbentuk seperti modal Pega', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    await userEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+
+    expect(await screen.findByLabelText('Berkas dokumen')).toHaveClass('sr-only')
+    expect(screen.getByRole('button', { name: 'Pilih Berkas' })).toBeEnabled()
+    expect(screen.getByText('Nama File')).toBeInTheDocument()
+    expect(screen.getByText('Data tidak ada')).toBeInTheDocument()
+    expect(screen.getByText('Maksimal 20 MB.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Batal' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
+  })
+
+  /*
+    Urutannya yang diuji, bukan sekadar permintaannya: sparepart disimpan LEBIH DULU,
+    dokumennya menyusul ke ID yang baru lahir. Pada jalur Tambah urutan itu satu-satunya
+    yang mungkin — ID diterbitkan server.
+
+    Submit pada panel hanya MENUTUPNYA; berkasnya tetap tertahan sampai Simpan ditekan,
+    persis seperti `SaveFilePenunjang` yang menitipkan berkas ke halaman sementara.
+  */
+  it('mengunggah SESUDAH sparepart tersimpan, ke ID yang diterbitkan server', async () => {
+    installFetch(
+      defaultReply((call) => {
+        if (call.url.includes('/dokumen')) {
+          return { body: { data: { data_id: '20260000000001' } }, status: 201 }
+        }
+        return {
+          body: { sparepart: { ...APPROVED, id_sparepart: 'SP0000000009' } },
+          status: 201,
+        }
+      }),
+    )
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    await userEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+    await userEvent.upload(
+      await screen.findByLabelText('Berkas dokumen'),
+      new File(['isi'], 'faktur.pdf', { type: 'application/pdf' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('heading', { name: 'Tambah Master Sparepart' })
+    await userEvent.type(screen.getByLabelText('Nomor Sparepart'), 'NS-9')
+    await userEvent.type(screen.getByLabelText('Nama Sparepart'), 'SEAL')
+    await userEvent.type(screen.getByLabelText('Kode Sparepart'), 'KD-9')
+    await userEvent.type(screen.getByLabelText('Harga Jual (Rp)'), '2500000')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
     await waitFor(() => {
-      expect(calls.some((c) => c.url.endsWith('/keputusan'))).toBe(true)
+      const unggah = calls.filter((c) => c.url.includes('/dokumen') && c.method === 'POST')
+      expect(unggah).toHaveLength(1)
+      expect(unggah.at(0)?.url).toContain('SP0000000009')
     })
 
-    const sent = calls.find((c) => c.url.endsWith('/keputusan'))?.body as Record<string, unknown>
-    expect(sent.id_sparepart).toEqual(['SP0000000002'])
-    expect(sent.status).toBe('1')
-    // Badannya TIDAK memuat catatan.
-    expect(sent).not.toHaveProperty('catatan')
+    const simpan = calls.findIndex((c) => c.method === 'POST' && !c.url.includes('/dokumen'))
+    const unggah = calls.findIndex((c) => c.method === 'POST' && c.url.includes('/dokumen'))
+    expect(simpan).toBeLessThan(unggah)
+  })
+
+  // Tanpa berkas, tidak boleh ada permintaan unggah sama sekali.
+  it('tidak menembak endpoint dokumen bila tidak ada berkas dipilih', async () => {
+    installFetch(defaultReply(() => ({ body: { sparepart: APPROVED }, status: 201 })))
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await screen.findByRole('heading', { name: 'Tambah Master Sparepart' })
+
+    await userEvent.type(screen.getByLabelText('Nomor Sparepart'), 'NS-9')
+    await userEvent.type(screen.getByLabelText('Nama Sparepart'), 'SEAL')
+    await userEvent.type(screen.getByLabelText('Kode Sparepart'), 'KD-9')
+    await userEvent.type(screen.getByLabelText('Harga Jual (Rp)'), '2500000')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() => {
+      expect(calls.some((c) => c.method === 'POST' && !c.url.includes('/dokumen'))).toBe(true)
+    })
+    expect(calls.filter((c) => c.url.includes('/dokumen') && c.method === 'POST')).toHaveLength(0)
+  })
+})
+
+/*
+  Unggah CSV — "Upload Data Master Sparepart".
+
+  Jalurnya dipagari terpisah dari unggah dokumen karena perilakunya BERBEDA pada satu hal
+  yang menentukan: berkas CSV dikirim SEKETIKA, sedangkan berkas dokumen ditahan sampai
+  Simpan. Menguji keduanya dalam satu blok membuat perbedaan itu mudah tertukar.
+*/
+describe('unggah CSV master sparepart', () => {
+  const CSV_REPLY = {
+    data: {
+      total: 2,
+      baru: 1,
+      diperbarui: 0,
+      gagal: 1,
+      baris: [
+        {
+          baris: 2,
+          nomor_sparepart: 'NS-9',
+          id_sparepart: 'SP0000000009',
+          hasil: 'baru',
+          pesan: '',
+        },
+        {
+          baris: 3,
+          nomor_sparepart: '',
+          id_sparepart: '',
+          hasil: 'gagal',
+          pesan: 'Nomor sparepart wajib diisi.',
+        },
+      ],
+    },
+  }
+
+  function csvReply(status = 200, body?: unknown) {
+    return defaultReply((call) => {
+      if (call.url.includes('/unggah-csv')) return { status, body: body ?? CSV_REPLY }
+      return { body: { sparepart: APPROVED, portal: 'ASM' }, status: 200 }
+    })
+  }
+
+  function csv() {
+    return new File(['NAMA_SPART,NO_SPART,KODE_SPART,HARGA_JUAL\n'], 'sparepart.csv', {
+      type: 'text/csv',
+    })
+  }
+
+  // Berbeda dari dokumen: berkas CSV DIKIRIM SEKETIKA, tanpa menunggu Simpan.
+  it('mengirim berkas seketika ke jalurnya sendiri', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByText('FILTER OLI MESIN')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Sparepart' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(calls.filter((c) => c.url.endsWith('/unggah-csv'))).toHaveLength(1),
+    )
+
+    const sent = calls.find((c) => c.url.endsWith('/unggah-csv'))
+    expect(sent).toBeDefined()
+    expect(sent!.body).toBeInstanceOf(FormData)
+    expect(((sent!.body as FormData).get('berkas') as File).name).toBe('sparepart.csv')
+
+    // Jalur CSV TIDAK menyentuh endpoint dokumen — keduanya terpisah.
+    expect(calls.filter((c) => c.url.includes('/dokumen') && c.method === 'POST')).toHaveLength(0)
+  })
+
+  // Laporan per baris: tanpa nomor barisnya, "1 baris gagal" memaksa pengguna menebak yang
+  // mana di antara tiga ratus.
+  it('menampilkan laporan per baris beserta nomor dan sebabnya', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByText('FILTER OLI MESIN')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Sparepart' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText(/baris dibaca/)).toBeInTheDocument()
+    expect(screen.getByText('Nomor sparepart wajib diisi.')).toBeInTheDocument()
+    // Baris yang berhasil TETAP tersimpan — tanpa kalimat ini pengguna akan mengunggah ulang
+    // seluruh berkas dan menimpa baris yang sudah benar.
+    expect(screen.getByText(/tetap tersimpan/)).toBeInTheDocument()
+  })
+
+  it('menutup panel lewat Batal tanpa mengirim apa pun', async () => {
+    installFetch(csvReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByText('FILTER OLI MESIN')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Sparepart' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Batal' }))
+
+    expect(screen.queryByLabelText('Berkas CSV')).not.toBeInTheDocument()
+    expect(calls.filter((c) => c.url.includes('/unggah-csv'))).toHaveLength(0)
+  })
+
+  // Berkas yang tidak terbaca sama sekali dibedakan dari baris yang gagal: di sini TIDAK ada
+  // satu baris pun yang masuk, sehingga yang perlu diperbaiki adalah berkasnya.
+  it('membedakan berkas yang tidak terbaca dari baris yang gagal', async () => {
+    installFetch(
+      csvReply(422, {
+        kode: 'csv_tidak_sah',
+        pesan: 'Header berkas tidak lengkap. Kolom yang kurang: KODE_SPART.',
+      }),
+    )
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByText('FILTER OLI MESIN')
+
+    await user.click(screen.getByRole('button', { name: 'Upload Data Master Sparepart' }))
+    await user.upload(await screen.findByLabelText('Berkas CSV'), csv())
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(await screen.findByText('Berkas tidak dapat dibaca')).toBeInTheDocument()
+    expect(screen.queryByText(/baris dibaca/)).not.toBeInTheDocument()
+  })
+
+  /*
+    Tombolnya TIDAK mati saat layanan penyimpanan dokumen belum terpasang.
+
+    `unggah_tersedia` berbicara tentang layanan dokumen; unggah CSV menulis langsung ke tabel
+    sparepart dan tidak menyentuh layanan itu sama sekali. Mematikannya bersama-sama adalah
+    kesalahan yang mudah dibuat — satu penanda dipakai untuk dua hal yang tidak berhubungan.
+  */
+  it('tetap hidup meski layanan dokumen belum terpasang', async () => {
+    installFetch((call) => {
+      if (call.url.startsWith('/api/master/sparepart/pilihan')) {
+        return { body: { ...OPTIONS, unggah_tersedia: false } }
+      }
+      return defaultReply()(call)
+    })
+    show()
+
+    await screen.findByText('FILTER OLI MESIN')
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Upload Data Master Sparepart' })).toBeEnabled()
   })
 })

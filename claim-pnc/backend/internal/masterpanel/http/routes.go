@@ -295,7 +295,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 // hidup di dua tempat. Karena isinya tidak menyentuh basis data, ia TIDAK menuntut portal
 // — lihat Mount.
 func (h *Handler) Options(w http.ResponseWriter, r *http.Request) {
-	h.writeResponse(w, r, http.StatusOK, optionsDTO())
+	h.writeResponse(w, r, http.StatusOK, optionsDTO(h.service.UploadAvailable()))
 }
 
 // readRequest membaca badan JSON ke dalam target. Nilai balik false bila responsnya sudah
@@ -388,5 +388,29 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		perPortal.Post("/master/panel", h.Create)
 		perPortal.Get("/master/panel/{id}", h.Get)
 		perPortal.Put("/master/panel/{id}", h.Save)
+
+		// Dokumen panel. Keduanya BERADA DI DALAM grup per-portal, dan itu bukan
+		// kerapian: dokumen sebuah panel hidup di basis data entitasnya, dan jalur yang
+		// jatuh ke koneksi bawaan akan membaca atau menulis dokumen badan hukum lain
+		// (`R-20`).
+		//
+		// Unggahnya POST, bukan PUT, meski satu panel hanya memegang satu dokumen dan
+		// unggahan berikutnya menggantinya. Alasannya: yang dikirim adalah berkas baru
+		// yang menerbitkan DATAID baru, bukan penggantian isi sumber daya yang sama di
+		// alamat yang sama — dan permintaan ini TIDAK idempoten, sehingga PUT akan
+		// menjanjikan sesuatu yang tidak dipenuhi.
+		perPortal.Post("/master/panel/{id}/dokumen", h.UploadDocument)
+		perPortal.Get("/master/panel/{id}/dokumen", h.GetDocument)
+
+		// Dua unggah CSV. Jalurnya mengikuti penamaan Master Sparepart
+		// (`/master/sparepart/unggah-csv`) supaya kedua modul yang bersebelahan tidak
+		// memakai dua bentuk alamat berbeda untuk hal yang sama.
+		//
+		// Keduanya dipisah, bukan satu endpoint beroperasi berbeda menurut isinya: yang
+		// diunggah memang dua berkas dengan header, kunci, dan semantik yang berbeda, dan
+		// menebaknya dari isi berkas berarti satu salah ketik header membuat berkas lokasi
+		// diproses sebagai berkas master.
+		perPortal.Post("/master/panel/unggah-csv", h.ImportPanelCSV)
+		perPortal.Post("/master/panel/unggah-csv-lokasi", h.ImportLocationCSV)
 	})
 }

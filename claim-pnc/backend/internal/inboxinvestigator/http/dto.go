@@ -36,9 +36,9 @@ import (
 type TaskDTO struct {
 	// Reference adalah kunci teknis yang dibutuhkan untuk membuka pekerjaannya.
 	//
-	// Ia dikirim tetapi TIDAK ditampilkan. Layar kerja Investigator belum dibangun; begitu
-	// ia ada, inilah yang dipakai membukanya — sehingga menyalakannya kelak tidak menuntut
-	// perubahan kontrak.
+	// Ia dikirim tetapi tidak digambar sebagai kolom. Inilah yang dipakai MEMBUKA formulir
+	// kerja Investigator — `GET`/`POST .../{referensi}/investigasi` — sehingga tombol Nomor
+	// Case tidak perlu menebak kunci teknisnya dari kolom tampilan mana pun.
 	Reference string `json:"referensi"`
 
 	// CaseNumber — caption "Nomor Case".
@@ -83,6 +83,11 @@ type TaskDTO struct {
 	//
 	// ISO 8601 UTC. Null bila klaimnya belum punya baris survei.
 	SurveyDate *string `json:"tanggal_survey"`
+
+	// BusinessLine adalah kode lini bisnis klaim. Ia DIKIRIM tetapi tidak digambar sebagai
+	// kolom — tab Unggah Dokumen memakainya untuk menyembunyikan kategori yang tidak berlaku
+	// bagi lini itu, persis seperti di layar Registrasi.
+	BusinessLine string `json:"lini_bisnis"`
 }
 
 // ListResponse adalah jawaban daftar.
@@ -137,6 +142,7 @@ func toTaskDTO(task inboxinvestigator.Task) TaskDTO {
 		AdminName:       task.AdminName,
 		RegisteredAt:    toTimeString(task.RegisteredAt),
 		SurveyDate:      toTimeString(task.SurveyDate),
+		BusinessLine:    task.BusinessLine,
 	}
 }
 

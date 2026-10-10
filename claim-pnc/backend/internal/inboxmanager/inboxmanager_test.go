@@ -26,6 +26,48 @@ func TestKodeTabMengikutiKontainerSection(t *testing.T) {
 	}
 }
 
+// TestHanyaEmpatTabTingkatAtas mengunci jenjang tab terhadap cara Pega mengisinya.
+//
+// `Activity/CountDashbroardManager` menulis empat pencacah pertama ke
+// `TempCountDashboard.pxResults(<APPEND>)` dan kesembilan sisanya ke
+// `.pxResults(4).pxResults(<APPEND>)` — anak baris keempat. Menggambar ketiga belasnya sebagai
+// tab sejajar membuat sembilan antrean persetujuan tampak setara dengan induknya sendiri.
+func TestHanyaEmpatTabTingkatAtas(t *testing.T) {
+	top := inboxmanager.TopLevelTabs(inboxmanager.Tabs())
+	require.Len(t, top, 4, "Pega hanya punya empat tab tingkat atas")
+
+	names := []string{}
+	for _, tab := range top {
+		names = append(names, tab.Name)
+	}
+	require.Equal(t,
+		[]string{"Outstanding", "Produktivitas Klaim", "Klaim", "Approval Master"},
+		names)
+
+	children := inboxmanager.ChildTabs(inboxmanager.Tabs(), inboxmanager.TabApprovalMaster)
+	require.Len(t, children, 9, "kesembilan antrean adalah anak Approval Master")
+	for _, tab := range children {
+		require.Equal(t, inboxmanager.TabApprovalMaster, tab.Parent(),
+			"antrean %q harus bersarang di bawah Approval Master", tab.Name)
+	}
+}
+
+// TestJenjangTabDanPencacahTidakMenyimpang menahan dua daftar yang menyatakan hal sama.
+//
+// `Tab.Parent()` dipakai layar untuk menyusun bilah tab; `Counter.Parent` dipakai layar untuk
+// menyusun kartu di dalam Approval Master. Bila keduanya berbeda, satu antrean dapat muncul
+// di bilah atas sekaligus sebagai kartu anak.
+func TestJenjangTabDanPencacahTidakMenyimpang(t *testing.T) {
+	for _, tab := range inboxmanager.Tabs() {
+		counter := inboxmanager.Counter{TabCode: tab.Code}
+		if tab.Kind == inboxmanager.KindQueue {
+			counter.Parent = inboxmanager.TabApprovalMaster
+		}
+		require.Equal(t, counter.Parent, tab.Parent(),
+			"jenjang tab %q berbeda dari jenjang pencacahnya", tab.Name)
+	}
+}
+
 // TestSubTabApprovalProgressKlaimTidakDibawa menahan bagian yang MATI di Pega kembali.
 //
 // `Section/Sec_PaymentAkseptasiKlaimCase1-Section.xml:67064` memasang
@@ -163,13 +205,15 @@ func TestAlasanDibuangPadaAntreanTanpaKolomAlasan(t *testing.T) {
 // Kunci yang dikirim dua kali akan berubah sekali, dan selisihnya akan terbaca sebagai "sudah
 // diputuskan orang lain" — laporan yang salah tentang hal yang justru paling perlu dipercaya.
 func TestKunciGandaDibuang(t *testing.T) {
+	// Antrean yang dipakai HARUS punya jalur massal, karena dedupe baru terbukti pada
+	// permintaan berisi lebih dari satu kunci.
 	decision, err := inboxmanager.NewDecision(
-		inboxmanager.TabKategoriSparepart, inboxmanager.VerdictApprove,
-		[]string{"KAT-1", " KAT-1 ", "", "KAT-2"}, "",
+		inboxmanager.TabMasterSparepart, inboxmanager.VerdictApprove,
+		[]string{"SP-1", " SP-1 ", "", "SP-2"}, "",
 		inboxmanager.Caller{Login: "JONNY"})
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"KAT-1", "KAT-2"}, decision.Keys)
+	require.Equal(t, []string{"SP-1", "SP-2"}, decision.Keys)
 }
 
 // TestKeputusanMenolakTabYangBukanAntrean menahan rute tulis dipanggil atas dashboard.
@@ -314,4 +358,229 @@ func TestSelisihTerencanaTidakKosong(t *testing.T) {
 	for i, difference := range inboxmanager.PlannedDifferences {
 		require.NotEmptyf(t, difference, "selisih terencana ke-%d kosong", i)
 	}
+}
+
+// TestUkuranHalamanAntreanMengikutiPega mengunci angka yang BENAR-BENAR ada di export.
+//
+// Catatan di `inboxmanager.go` sebelumnya menyatakan tidak ada angka Pega yang dapat disalin
+// untuk antrean. Itu keliru: setiap section antrean menyimpan `pyPageSize` pada gridnya.
+func TestUkuranHalamanAntreanMengikutiPega(t *testing.T) {
+	want := map[string]int{
+		inboxmanager.TabMasterBengkel:     20,
+		inboxmanager.TabMasterPanel:       20,
+		inboxmanager.TabNomorRangka:       50,
+		inboxmanager.TabMasterSparepart:   20,
+		inboxmanager.TabKategoriSparepart: 50,
+		inboxmanager.TabTipeSparepart:     50,
+		inboxmanager.TabGroupingSparepart: 15,
+		inboxmanager.TabPaymentAkseptasi:  15,
+	}
+
+	for code, size := range want {
+		tab, found := inboxmanager.FindTab(code)
+		require.True(t, found)
+		require.Equalf(t, size, tab.PageSize,
+			"ukuran halaman tab %q tidak sama dengan pyPageSize di section-nya", tab.Name)
+	}
+
+	// Penolakan Klaim TIDAK menyebut ukurannya; gridnya ber-pyPageMode None di Pega.
+	penolakan, _ := inboxmanager.FindTab(inboxmanager.TabPenolakanKlaim)
+	require.Zero(t, penolakan.PageSize, "tab tanpa pyPageSize jatuh ke nilai baku aplikasi")
+}
+
+// TestRentangLintasTahunDitolakHanyaPadaTabKlaim mengunci aturan Pega yang BERBEDA per tab.
+//
+// `Activity/DashboardKlaim_act` langkah 4 memotong tahun kedua tanggal lalu langkah 5 melompat
+// ke blok galat bila keduanya berbeda. `PNCGetDashboardProduktivitasInbox_Act` tidak punya
+// langkah serupa — tidak ada Page-Set-Messages, tidak ada blok galat, tidak ada pesan.
+func TestRentangLintasTahunDitolakHanyaPadaTabKlaim(t *testing.T) {
+	lintas := inboxmanager.PeriodInput{
+		Mode:  inboxmanager.PeriodRange,
+		From:  "2025-11-01",
+		Until: "2026-02-28",
+	}
+
+	t.Run("tab Klaim menolak dengan pesan Pega", func(t *testing.T) {
+		_, err := inboxmanager.NewQuery(
+			inboxmanager.QueryInput{Tab: inboxmanager.TabKlaim, Period: lintas}, inboxmanager.Caller{Login: "JONNY"})
+
+		var invalid *inboxmanager.ValidationError
+		require.ErrorAs(t, err, &invalid)
+		require.Contains(t, err.Error(), inboxmanager.MessageRangeSameYear)
+		require.Equal(t, "Periode Up To hanya untuk periode tahun yang sama",
+			inboxmanager.MessageRangeSameYear, "pesannya disalin apa adanya dari Pega")
+	})
+
+	t.Run("tab Produktivitas menerimanya", func(t *testing.T) {
+		q, err := inboxmanager.NewQuery(
+			inboxmanager.QueryInput{Tab: inboxmanager.TabProduktivitas, Period: lintas}, inboxmanager.Caller{Login: "JONNY"})
+		require.NoError(t, err)
+		require.Equal(t, 2025, q.Period.From.Year())
+		require.Equal(t, 2026, q.Period.Until.Year())
+	})
+
+	t.Run("tab Klaim menerima rentang dalam satu tahun", func(t *testing.T) {
+		satu := inboxmanager.PeriodInput{
+			Mode:  inboxmanager.PeriodRange,
+			From:  "2026-01-01",
+			Until: "2026-12-31",
+		}
+		_, err := inboxmanager.NewQuery(
+			inboxmanager.QueryInput{Tab: inboxmanager.TabKlaim, Period: satu}, inboxmanager.Caller{Login: "JONNY"})
+		require.NoError(t, err)
+	})
+}
+
+// TestBilahTabApprovalMasterTepatDelapan mengunci dua fakta Pega yang BERBEDA.
+//
+// Pohon pencacah `CountDashbroardManager` menaruh SEMBILAN antrean di bawah Approval Master,
+// sedangkan `Section/InboxManager_Section2` menyertakan DELAPAN section — Penolakan Klaim
+// terhitung di sana tetapi tidak dapat dibuka dari bilah tabnya.
+//
+// Menyamakan keduanya akan menambah satu tab yang Pega tidak punya, atau menghilangkan satu
+// pencacah yang Pega punya.
+func TestBilahTabApprovalMasterTepatDelapan(t *testing.T) {
+	anak := inboxmanager.ChildTabs(inboxmanager.Tabs(), inboxmanager.TabApprovalMaster)
+	require.Len(t, anak, 9, "pohon pencacah punya sembilan anak")
+
+	bilah := []string{}
+	for _, tab := range anak {
+		if tab.InParentTabStrip {
+			bilah = append(bilah, tab.Name)
+		}
+	}
+
+	// Urutan dan judulnya persis `pyTitle` pada InboxManager_Section2, offset 28029 sampai
+	// 319906.
+	require.Equal(t, []string{
+		"Master Bengkel",
+		"Master Panel",
+		"Approval Nomor Rangka Beda",
+		"Master Sparepart",
+		"Master Kategori Sparepart",
+		"Master Tipe Sparepart",
+		"Master Grouping Sparepart",
+		"Payment Klaim Akseptasi",
+	}, bilah)
+
+	// Penolakan Klaim TETAP anak Approval Master — ia hanya tidak ada di bilah tabnya.
+	penolakan, _ := inboxmanager.FindTab(inboxmanager.TabPenolakanKlaim)
+	require.Equal(t, inboxmanager.TabApprovalMaster, penolakan.Parent())
+	require.False(t, penolakan.InParentTabStrip)
+}
+
+// Label tombol keputusan DISALIN dari `<pyLabel>` tiap section, termasuk huruf besarnya —
+// yang di Pega memang tidak seragam.
+func TestLabelTombolKeputusanSamaDenganPega(t *testing.T) {
+	harap := map[string][2]string{
+		inboxmanager.TabMasterBengkel:     {"APPROVE", "REJECT"},
+		inboxmanager.TabMasterPanel:       {"APPROVE", "REJECT"},
+		inboxmanager.TabNomorRangka:       {"Setuju", "Tidak Setuju"},
+		inboxmanager.TabMasterSparepart:   {"APPROVE", "REJECT"},
+		inboxmanager.TabKategoriSparepart: {"APPROVE", "REJECT"},
+		inboxmanager.TabTipeSparepart:     {"APPROVE", "REJECT"},
+		inboxmanager.TabGroupingSparepart: {"Approve", "Reject"},
+
+		// Keduanya tidak punya tombol bernama di Pega — isian di dalam grid lalu satu
+		// tombol simpan. Layar memakai kata aplikasi sendiri di sana.
+		inboxmanager.TabPaymentAkseptasi: {"", ""},
+		inboxmanager.TabPenolakanKlaim:   {"", ""},
+	}
+
+	for code, label := range harap {
+		tab, ada := inboxmanager.FindTab(code)
+		require.True(t, ada, code)
+		require.Equal(t, label[0], tab.Decision.ApproveLabel, "label setujui tab %s", code)
+		require.Equal(t, label[1], tab.Decision.RejectLabel, "label tolak tab %s", code)
+	}
+}
+
+// Master Panel menggambar SEBELAS kolom, bukan sembilan.
+//
+// `STATUS AKTIF` dan `Exclusion C` adalah dua literal terakhir di `ApprovalMasterPanelHE`
+// (offset 188054 dan 190972), dan keduanya sempat terlewat.
+func TestKolomMasterPanelSebelas(t *testing.T) {
+	tab, ada := inboxmanager.FindTab(inboxmanager.TabMasterPanel)
+	require.True(t, ada)
+
+	judul := []string{}
+	for _, kolom := range tab.Columns {
+		judul = append(judul, kolom.Title)
+	}
+
+	require.Equal(t, []string{
+		"ID", "NAMA PANEL", "STATUS REPAIR", "STATUS EDIT QUANTITY", "STATUS PREMIUM REPAIR",
+		"STATUS PECAH", "STATUS STICKER", "STATUS SISI", "STATUS RUSAK PARAH",
+		"STATUS AKTIF", "Exclusion C",
+	}, judul)
+}
+
+// Hanya SATU tab yang punya bilah sub-tab di Pega, dan isinya satu sub-tab yang tampil.
+func TestJudulSubTabHanyaPadaPaymentKlaimAkseptasi(t *testing.T) {
+	berjudul := map[string]string{}
+	for _, tab := range inboxmanager.Tabs() {
+		if tab.SectionTitle != "" {
+			berjudul[tab.Code] = tab.SectionTitle
+		}
+	}
+
+	require.Equal(t, map[string]string{
+		inboxmanager.TabPaymentAkseptasi: "Approval Payment Akseptasi",
+	}, berjudul)
+}
+
+// Jalur massal hanya ada pada tiga antrean yang di Pega punya `Select All`/`Deselect All`
+// dan memanggil `SetApprovalAllMaster`.
+func TestJalurMassalHanyaTigaAntrean(t *testing.T) {
+	massal := []string{}
+	for _, tab := range inboxmanager.Tabs() {
+		if tab.Decision.Bulk {
+			massal = append(massal, tab.Name)
+		}
+	}
+
+	require.Equal(t, []string{
+		"Master Bengkel",
+		"Master Panel",
+		"Master Sparepart",
+	}, massal)
+}
+
+// Permintaan berisi lebih dari satu kunci DITOLAK pada antrean tanpa jalur massal — bukan
+// diterima lalu dipotong diam-diam.
+func TestAntreanTanpaJalurMassalMenolakBanyakKunci(t *testing.T) {
+	penyelia := inboxmanager.Caller{Login: "PENYELIA", LineBusiness: inboxmanager.LineNonMBU}
+
+	_, err := inboxmanager.NewDecision(
+		inboxmanager.TabKategoriSparepart,
+		inboxmanager.VerdictApprove,
+		[]string{"K-1", "K-2"},
+		"",
+		penyelia,
+	)
+	require.Error(t, err)
+
+	var invalid *inboxmanager.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	require.Equal(t, inboxmanager.FieldKeys, invalid.Violations[0].Field)
+
+	// Satu kunci tetap diterima.
+	_, err = inboxmanager.NewDecision(
+		inboxmanager.TabKategoriSparepart,
+		inboxmanager.VerdictApprove,
+		[]string{"K-1"},
+		"",
+		penyelia,
+	)
+	require.NoError(t, err)
+
+	// Dan antrean yang memang punya jalur massal tidak terpengaruh.
+	_, err = inboxmanager.NewDecision(
+		inboxmanager.TabMasterSparepart,
+		inboxmanager.VerdictApprove,
+		[]string{"S-1", "S-2"},
+		"",
+		penyelia,
+	)
+	require.NoError(t, err)
 }

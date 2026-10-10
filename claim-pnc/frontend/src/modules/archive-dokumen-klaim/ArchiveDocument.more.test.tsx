@@ -34,6 +34,11 @@ const SAMPLE_PROFILE = {
 
 /** Seluruh data uji KARANGAN — `D-69`. */
 const OPENED: OpenResponse = {
+  tipe_pencarian: [
+    { kode: 'no_klaim', label: 'No Klaim' },
+    { kode: 'nama_box', label: 'Nama BOX' },
+    { kode: 'tertanggung', label: 'Tertanggung' },
+  ],
   tipe_input: [
     { kode: 'no_klaim', label: 'No Klaim' },
     { kode: 'no_polis', label: 'No Polis' },
@@ -240,8 +245,10 @@ describe('ArchiveDocumentPage — pencarian dan ekspor', () => {
     expect(within(rows[1]!).getByText('000101')).toBeInTheDocument()
     expect(within(rows[1]!).getAllByText('—')).toHaveLength(4)
     expect(within(rows[2]!).getAllByText('—')).toHaveLength(3)
-    // Kata kunci kosong tidak dikirim.
-    expect(lastCall(`${PATH}?`)?.url).toBe(`${PATH}?mode=kata_kunci`)
+    // Kata kunci kosong tidak dikirim — DAN kolomnya ikut tidak dikirim, karena kolom tanpa
+    // kata kunci tidak menyaring apa pun. Dulu parameter `mode` tetap terkirim; penyaring
+    // mode itu sudah tidak ada (2026-10-03).
+    expect(lastCall(`${PATH}?`)?.url).toBe(`${PATH}?`)
   })
 
   it('meminta halaman kedua lewat bilah halaman', async () => {
@@ -266,28 +273,27 @@ describe('ArchiveDocumentPage — pencarian dan ekspor', () => {
     expect(lastCall(`${PATH}?`)?.url).toContain('halaman=2')
   })
 
-  it('mengekspor mode tanggal dengan nama berkas cadangan', async () => {
+  it('mengekspor tanpa penyaring dengan nama berkas cadangan', async () => {
     stub((url) => (url.startsWith(`${PATH}/ekspor`) ? new Response('x', { status: 200 }) : null))
     await renderOpened()
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'tanggal_input')
     await user.click(screen.getByRole('button', { name: 'Cari' }))
-    expect(lastCall(`${PATH}?`)?.url).toBe(`${PATH}?mode=tanggal_input`)
+    // Tanpa satu pun isian, tidak ada parameter yang dikirim.
+    expect(lastCall(`${PATH}?`)?.url).toBe(`${PATH}?`)
 
     await screen.findByText('PNC-100001')
     await user.click(screen.getByRole('button', { name: 'Export To Excel' }))
 
     await waitFor(() => expect(clicked).toEqual(['archive-dokumen-klaim.csv']))
-    expect(lastCall(`${PATH}/ekspor`)?.url).toBe(`${PATH}/ekspor?mode=tanggal_input`)
+    expect(lastCall(`${PATH}/ekspor`)?.url).toBe(`${PATH}/ekspor?`)
   })
 
-  it('mengirim kedua tanggal pada ekspor mode tanggal', async () => {
+  it('mengirim kedua tanggal pada ekspor', async () => {
     stub((url) => (url.startsWith(`${PATH}/ekspor`) ? new Response('x', { status: 200 }) : null))
     await renderOpened()
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'tanggal_input')
     await user.type(screen.getByLabelText('Tgl Input Dari'), '2026-03-01')
     await user.type(screen.getByLabelText('Tgl Input Sampai'), '2026-03-31')
     await user.click(screen.getByRole('button', { name: 'Cari' }))
@@ -296,7 +302,7 @@ describe('ArchiveDocumentPage — pencarian dan ekspor', () => {
 
     await waitFor(() => expect(clicked).toHaveLength(1))
     expect(lastCall(`${PATH}/ekspor`)?.url).toBe(
-      `${PATH}/ekspor?mode=tanggal_input&tanggal_dari=2026-03-01&tanggal_sampai=2026-03-31`,
+      `${PATH}/ekspor?tanggal_dari=2026-03-01&tanggal_sampai=2026-03-31`,
     )
   })
 
@@ -325,7 +331,7 @@ describe('ArchiveDocumentPage — input data archive', () => {
   async function pickClaim() {
     await renderOpened()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Input Data Archive' }))
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
     await user.click(screen.getByRole('button', { name: 'Cari Klaim' }))
     await user.click(await screen.findByRole('button', { name: 'Detail' }))
     return user
@@ -337,7 +343,7 @@ describe('ArchiveDocumentPage — input data archive', () => {
     )
     await renderOpened()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Input Data Archive' }))
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
     await user.click(screen.getByRole('button', { name: 'Cari Klaim' }))
 
     expect(await screen.findByText('Klaim gagal.')).toBeInTheDocument()
@@ -358,7 +364,7 @@ describe('ArchiveDocumentPage — input data archive', () => {
     )
     await renderOpened()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Input Data Archive' }))
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
     await user.click(screen.getByRole('button', { name: 'Cari Klaim' }))
 
     expect(await screen.findByText('Isi Keyword klaim.')).toBeInTheDocument()
@@ -445,7 +451,7 @@ describe('ArchiveDocumentPage — kirim ke cabang', () => {
   async function openBranch() {
     await renderOpened()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Kirim ke Cabang' }))
+    await user.click(screen.getByRole('button', { name: 'Dokumen Cabang' }))
     return user
   }
 

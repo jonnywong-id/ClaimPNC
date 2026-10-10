@@ -426,12 +426,13 @@ describe('baris yang klaimnya tidak ditemukan', () => {
   })
 
   /**
-   * Isian dan tombolnya dimatikan, dan alasannya disebut di atas tabel.
+   * Isian dan tombolnya dimatikan, dan alasannya melekat PADA BARISNYA.
    *
    * Penolakannya sudah pasti; membiarkan pengguna menekannya lalu ditolak hanya membuang
-   * waktunya.
+   * waktunya. Spanduk ringkasan di atas tabel dicabut atas permintaan Work Owner — yang
+   * tersisa adalah keterangan per baris, yang justru menunjuk baris mana yang bermasalah.
    */
-  it('mematikan isian dan tombolnya, serta menyebut alasannya', async () => {
+  it('mematikan isian dan tombolnya, serta menyebut alasannya pada barisnya', async () => {
     installFetch(reply([LENGKAP, YATIM]))
     show()
 
@@ -439,9 +440,9 @@ describe('baris yang klaimnya tidak ditemukan', () => {
 
     expect(dateInput('PNC-1977')).toBeDisabled()
     expect(submitButton('PNC-1977')).toBeDisabled()
-    expect(
-      screen.getByText(/tidak ditemukan pada data\s+klaim utama/i),
-    ).toBeInTheDocument()
+    expect(submitButton('PNC-1977').getAttribute('title')).toMatch(
+      /tidak ditemukan pada data klaim utama/i,
+    )
   })
 })
 

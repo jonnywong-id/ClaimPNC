@@ -253,11 +253,13 @@ export function PartTypeForm({
   const isCurrentMissing =
     current !== '' && !category.some((one) => one.kode === current)
   if (isCurrentMissing) {
+    // Label-nya menyebut ID-nya apa adanya. Nama kategorinya TIDAK tersedia — grid Pega
+    // tidak menampilkannya, sehingga baris yang dikirim server pun tidak membawanya
+    // (koreksi Work Owner 2026-10-04). Menebaknya dari daftar pilihan mustahil: justru
+    // ketiadaan di daftar itulah yang membuat baris ini perlu pilihan tambahan.
     options.unshift({
       value: current,
-      label: editing?.nama_kategori_sparepart
-        ? `${editing.nama_kategori_sparepart} (tidak lagi disetujui)`
-        : `${current} — kategori tidak ditemukan`,
+      label: `${current} — kategori tidak lagi tersedia`,
     })
   }
 

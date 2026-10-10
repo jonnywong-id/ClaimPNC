@@ -32,6 +32,14 @@ import (
 // terbaca sebagai kegagalan server.
 const (
 	CodeMalformedRequest = "permintaan_cacat"
+
+	// CodeStoreMissing menandai penyimpanan hasil investigasi belum dibuat DBA.
+	//
+	// Ia DIBEDAKAN dari galat teknis biasa, dan itu bukan kerapian: selama
+	// `POOLDATA.TC_PNC_INVESTIGASI` belum ada, setiap simpan akan gagal. Petugas yang
+	// membaca "terjadi kesalahan pada sistem" akan mencoba berulang kali; yang membaca
+	// "belum disiapkan administrator" tahu kepada siapa harus bertanya.
+	CodeStoreMissing = "penyimpanan_belum_siap"
 )
 
 // ErrorWriter menuliskan galat dalam bentuk respons HTTP.

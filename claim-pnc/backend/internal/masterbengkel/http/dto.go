@@ -126,6 +126,17 @@ type ListResponse struct {
 	// milik entitas yang dipilih pengguna. Pada aplikasi yang melayani empat badan
 	// hukum, "data siapa ini" tidak boleh hanya diandaikan.
 	Portal string `json:"portal"`
+
+	// UploadAvailable menyatakan apakah jalur unggah dokumen siap dipakai.
+	//
+	// Ia dititipkan pada jawaban daftar — bukan endpoint tersendiri — karena layarnya
+	// memang memuat daftar lebih dulu, dan satu permintaan tambahan hanya untuk satu
+	// boolean adalah biaya yang tidak perlu.
+	//
+	// Layar memerlukannya SEBELUM pengguna memilih berkas: menonaktifkan tombolnya beserta
+	// sebabnya jauh lebih terbaca daripada membiarkan pengguna memilih berkas, menunggu
+	// unggahan, lalu menerima penolakan.
+	UploadAvailable bool `json:"unggah_tersedia"`
 }
 
 // SingleResponse adalah jawaban penambahan, pengambilan, dan penyimpanan.

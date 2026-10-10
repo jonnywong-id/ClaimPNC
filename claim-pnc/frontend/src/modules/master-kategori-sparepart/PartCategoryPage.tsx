@@ -7,12 +7,10 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
-import {
-  useCreatePartCategory,
-  useDecidePartCategory,
-  usePartCategoryList,
-  useSavePartCategory,
-} from './api'
+// `useDecidePartCategory` sengaja TIDAK diimpor. Endpoint-nya masih ada dan hook-nya masih
+// diekspor — keduanya padanan `Activity/UpdateKategoriSparepart_act` yang memang ada di
+// Pega — tetapi pemakainya adalah Inbox Manager, bukan layar ini. Lihat PartCategoryPage.
+import { useCreatePartCategory, usePartCategoryList, useSavePartCategory } from './api'
 import { PartCategoryForm, type PartCategoryFormValues } from './PartCategoryForm'
 
 /**
@@ -139,16 +137,43 @@ function loadMessage(error: unknown): MessageContent {
  * Akibatnya menyentuh layar LAIN — kategori yang sedang menunggu hilang dari dropdown
  * Master Sparepart — dan itu dinyatakan di muka pada form, bukan dibiarkan ditemukan.
  *
- * # Kenapa Approve dan Reject ada DI SINI, bukan di Inbox Manager
+ * # TANPA tombol Approve dan Reject — dan itu memang Pega
  *
- * Di Pega keduanya ada di layar lain: `Section/ApprovalMasterKategoriSparepartHE` dipakai
- * Inbox Manager. Inbox Manager belum dibangun, dan menunda keputusannya sampai layar itu ada
- * berarti setiap kategori yang ditambah tertahan di Waiting Approval tanpa satu pun cara
- * menyelesaikannya — dan selama tertahan, ia tidak dapat dipakai sparepart mana pun.
+ * Versi pertama layar ini (2026-09-21) menggambar centang pada tab Waiting Approval beserta
+ * tombol "Approve terpilih" dan "Reject terpilih". Keduanya **dihapus pada 2026-10-04**
+ * setelah ketiga section tab Pega dibaca ulang, dan hasilnya tidak menyisakan ruang tafsir:
  *
- * Yang dipakai sebagai gantinya adalah BENTUK yang sama persis: centang beberapa baris,
- * lalu satu tombol untuk seluruh pilihan. Perlakuannya sama dengan Master Bengkel, Master
- * Panel, dan Master Sparepart. Keputusan Work Owner 2026-09-21.
+ *	MasterKategoriSparepartHEApprove   tombol: UBAH, Save
+ *	MasterKategoriSparepartHEReject    tombol: UBAH, Save
+ *	MasterKategoriSparepartHEApproval  tombol: UBAH, Save
+ *
+ * Ketiganya IDENTIK. Tidak satu pun memuat Approve, Reject, maupun kontrol centang.
+ *
+ * Keputusannya ada di layar LAIN — `Section/ApprovalMasterKategoriSparepartHE`, yang dipakai
+ * Inbox Manager — dan bentuknya pun berbeda dari yang sempat dibangun di sini:
+ *
+ *	pySelected           0 kemunculan   -> tidak ada pemilihan borongan
+ *	SetApprovalAllMaster 0 kemunculan   -> kategori TIDAK ikut activity borongan itu
+ *	tombol               Approve · Reject · DETAILS, per baris
+ *
+ * Jadi keputusan kategori di Pega bersifat **per baris** lewat
+ * `Activity/UpdateKategoriSparepart_act`, bukan borongan bercentang seperti Master Bengkel,
+ * Panel, dan Sparepart. Yang dibangun sebelumnya salah pada DUA hal sekaligus: salah tempat,
+ * dan salah model.
+ *
+ * **Akibat yang disadari dan diterima:** dari layar ini sebuah kategori tidak dapat
+ * disetujui maupun ditolak. Itu persis keadaan di Pega, dan ia berarti kategori baru
+ * tertahan di Waiting Approval — tidak dapat dipakai sparepart mana pun — sampai Inbox
+ * Manager dibangun. Keputusan Work Owner 2026-10-04: ikuti Pega.
+ *
+ * Akibat itu TIDAK dijelaskan di layar. Satu paragraf keterangan sempat dipasang pada tab
+ * Waiting Approval dan **dihapus atas permintaan Work Owner** pada hari yang sama: layar
+ * Pega tidak memuat kalimat semacam itu, dan menambahkannya adalah menambah sesuatu yang
+ * tidak ada di sana. Ketiga tab karena itu kini murni daftar.
+ *
+ * Endpoint `POST /keputusan` di server TIDAK dihapus: ia padanan
+ * `UpdateKategoriSparepart_act` yang memang ada di Pega, dan Inbox Manager akan memanggilnya.
+ * Yang dihapus hanyalah pemakaiannya di layar ini.
  *
  * # Tanpa isian Catatan
  *
@@ -162,13 +187,11 @@ export function PartCategoryPage() {
   const [tab, setTab] = useState<TabId>('approve')
   const [isAdding, setAdding] = useState(false)
   const [editing, setEditing] = useState<PartCategory | null>(null)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
 
   const active = TABS.find((t) => t.id === tab) ?? TABS[0]
   const list = usePartCategoryList(active.status)
   const create = useCreatePartCategory()
   const save = useSavePartCategory()
-  const decide = useDecidePartCategory()
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.kategori_sparepart ?? []
@@ -194,15 +217,6 @@ export function PartCategoryPage() {
     setEditing(row)
   }
 
-  function toggle(id: string) {
-    setChosen((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   function submit(values: PartCategoryFormValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal — dan penolakan nama ganda adalah
@@ -217,45 +231,17 @@ export function PartCategoryPage() {
     create.mutate(values, { onSuccess: closeForm })
   }
 
-  function runDecision(status: string) {
-    decide.mutate(
-      { id_kategori_sparepart: [...chosen], status },
-      { onSuccess: () => setChosen(new Set()) },
-    )
-  }
-
   /*
-    Dua kolom, mengikuti grid Pega apa adanya, ditambah kolom aksi dan — pada tab Waiting
-    Approval — kolom centang.
+    Dua kolom, mengikuti grid Pega apa adanya, ditambah kolom aksi.
+
+    Susunannya SAMA pada ketiga tab, dan itu bukan penyederhanaan melainkan peniruan:
+    ketiga section tab Pega isinya identik — grid dua kolom, tombol UBAH, tombol Save.
+    Tidak ada kolom centang pada tab mana pun; lihat catatan pada PartCategoryPage.
 
     Tidak ada kolom status: ia sudah menjadi tab, dan menggambarnya lagi di setiap baris
     hanya mengulang hal yang sama di seluruh halaman.
   */
   const columns: Column<PartCategory>[] = [
-    ...(tab === 'menunggu'
-      ? [
-          {
-            key: 'pilih',
-            title: 'Pilih',
-            width: '4.5rem',
-            noSort: true,
-            value: (row: PartCategory) =>
-              chosen.has(row.id_kategori_sparepart) ? 'dipilih' : '',
-            render: (row: PartCategory) => (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                  checked={chosen.has(row.id_kategori_sparepart)}
-                  disabled={decide.isPending}
-                  onChange={() => toggle(row.id_kategori_sparepart)}
-                />
-                <span className="sr-only">Pilih {row.nama_kategori_sparepart}</span>
-              </label>
-            ),
-          } satisfies Column<PartCategory>,
-        ]
-      : []),
     {
       key: 'id',
       title: 'ID Kategori Sparepart',
@@ -315,11 +301,6 @@ export function PartCategoryPage() {
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
               closeForm()
-              // Centang dibuang saat berpindah tab: baris yang dipilih milik tab
-              // sebelumnya, dan menyimpannya berarti keputusan dapat mengenai baris yang
-              // tidak sedang dilihat siapa pun.
-              setChosen(new Set())
-              decide.reset()
               setTab(t.id)
             }}
             className={[
@@ -346,37 +327,6 @@ export function PartCategoryPage() {
           <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
         </span>
       </p>
-
-      {decide.isError && (
-        <div className="mt-4">
-          <ErrorMessage
-            title="Keputusan belum tersimpan"
-            description={
-              decide.error instanceof APIError
-                ? decide.error.message
-                : 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.'
-            }
-            tone="gangguan"
-          />
-        </div>
-      )}
-
-      {decide.isSuccess && decide.data && (
-        <p className="mt-4 rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {decide.data.jumlah_berubah} kategori sparepart dipindahkan ke{' '}
-          <span className="font-medium">{decide.data.status_label}</span>.
-        </p>
-      )}
-
-      {tab === 'menunggu' && (
-        <DecisionBar
-          count={chosen.size}
-          isBusy={decide.isPending}
-          onApprove={() => runDecision(PartCategoryStatus.disetujui)}
-          onReject={() => runDecision(PartCategoryStatus.ditolak)}
-          onClear={() => setChosen(new Set())}
-        />
-      )}
 
       {isFormOpen && (
         <section className="mt-5">
@@ -423,68 +373,5 @@ export function PartCategoryPage() {
         )}
       </section>
     </main>
-  )
-}
-
-/**
- * DecisionBar adalah tombol Approve dan Reject untuk seluruh baris yang dicentang.
- *
- * Ia padanan `Section/ApprovalMasterKategoriSparepartHE-Section.xml`, yang menggambar grid
- * bercentang dengan tombol Approve, Reject, dan DETAILS.
- *
- * DETAILS tidak ditiru: di layar ini setiap baris sudah punya tombol Ubah yang membuka
- * seluruh isinya — dan isinya hanya satu isian. Tombol kedua yang membuka hal yang sama
- * hanya akan menambah pilihan tanpa menambah kemampuan.
- *
- * TANPA isian Catatan: tabelnya tidak punya kolom penampungnya.
- *
- * Tombolnya mati selama belum ada yang dicentang — bukan disembunyikan. Tombol yang hilang
- * membuat pengguna mencari fiturnya; tombol yang mati menunjukkan apa yang harus dilakukan
- * lebih dulu.
- */
-function DecisionBar({
-  count,
-  isBusy,
-  onApprove,
-  onReject,
-  onClear,
-}: {
-  count: number
-  isBusy: boolean
-  onApprove: () => void
-  onReject: () => void
-  onClear: () => void
-}) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <span className="min-w-0 flex-1 text-sm text-slate-700">
-        {count === 0 ? (
-          'Centang kategori yang akan diputuskan.'
-        ) : (
-          <>
-            <span className="font-medium">{count} kategori</span> dipilih.
-          </>
-        )}
-      </span>
-      {count > 0 && (
-        <Button tone="halus" onClick={onClear} disabled={isBusy}>
-          Bersihkan
-        </Button>
-      )}
-      {/*
-        Namanya "Approve terpilih", bukan "Approve" saja.
-
-        Bukan sekadar demi kejelasan kalimat: tab di atasnya juga bernama "Approve" dan
-        "Reject" — caption Pega yang memang harus ditiru (D-13) — sehingga tombol bernama
-        sama membuat dua kontrol yang sama sekali berbeda tidak dapat dibedakan dari
-        namanya. Pembaca layar mengumumkan keduanya dengan kata yang sama persis.
-      */}
-      <Button tone="utama" onClick={onApprove} disabled={isBusy || count === 0}>
-        {isBusy ? 'Menyimpan…' : 'Approve terpilih'}
-      </Button>
-      <Button tone="kedua" onClick={onReject} disabled={isBusy || count === 0}>
-        Reject terpilih
-      </Button>
-    </div>
   )
 }

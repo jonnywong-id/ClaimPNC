@@ -256,12 +256,25 @@ const FIELD_NAMES = [
  * (`PEGA_M_SPAREPART_HE.prc:21`), tidak pernah diketik. Pada mode ubah ia ditampilkan
  * sebagai keterangan.
  *
+ * Terverifikasi ulang 2026-10-03 pada **ketiga** section tab, dan ketiganya sepakat: sel
+ * masukan `ID Sparepart` ber-`pyFormat=pxTextInput` dengan **`pyReadOnly=true`**, sementara
+ * sel `Kode Sparepart` di sebelahnya ber-`pyReadOnly=false`. Jadi di Pega pun ID tidak
+ * pernah diketik, dan Kode memang diketik — persis pembagian yang dipakai di sini.
+ * Bukti: `Section/BrowseMasterSparepartHEApprove-Section.xml`,
+ * `-Approval-Section.xml`, `-Reject-Section.xml`.
+ *
  * **User Update dan Tanggal Update.** Keduanya diisi penyimpanan
  * (`Activity/UpdateSparepartHE_act`), bukan oleh pengguna. Pada mode ubah keduanya
  * ditampilkan sebagai keterangan.
  *
  * **Unggah lampiran.** Jalur `PNCSaveAttachmentToDB` tidak dibawa modul ini; kolom DOKUMENID
  * baris yang sudah ada dipertahankan apa adanya.
+ *
+ * Kedua tombol unggah Pega memang **bukan milik form ini**: keduanya berdiri di section
+ * wadah `Section/BrowseMasterSparepartHE-Section.xml`, sejajar dengan tab — bukan di dalam
+ * form tambah/ubah. Keduanya membuka modal lewat `pyLocalAction`, dan nasibnya berbeda:
+ * `UploadDocument` lengkap di export, sedangkan `PNCUploadMasterSparepartCSV` **tidak ada
+ * satu berkas pun** (`R-16`). Rinciannya di `docs/keputusan-implementasi.md` §182.
  */
 export function SparepartForm({
   editing,

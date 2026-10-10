@@ -141,6 +141,17 @@ type OptionsResponse struct {
 
 	// Side adalah ketiga pilihan Sisi Panel beserta sebutannya.
 	Side []SideOptionDTO `json:"sisi_panel"`
+
+	// UploadAvailable menyatakan jalur unggah dokumen siap dipakai.
+	//
+	// Layar memakainya untuk memutuskan apakah tombol "Upload Document" digambar hidup
+	// atau mati beserta sebabnya. Tanpa ini tombolnya akan selalu tampak hidup dan baru
+	// gagal SESUDAH pengguna memilih berkas — kegagalan yang terjadi setelah pekerjaan,
+	// bukan sebelumnya.
+	//
+	// Ia di sini, bukan di respons daftar, karena ia sifat LINGKUNGAN — sama untuk setiap
+	// panel dan setiap portal — dan daftar dimuat ulang jauh lebih sering.
+	UploadAvailable bool `json:"unggah_tersedia"`
 }
 
 // SideOptionDTO adalah satu pilihan Sisi Panel.
@@ -328,7 +339,7 @@ func toListDTO(list []masterpanel.Panel) []PanelDTO {
 // optionsDTO menyusun daftar pilihan Lokasi dan Sisi.
 //
 // Keduanya konstanta domain, bukan bacaan basis data; lihat OptionsResponse.
-func optionsDTO() OptionsResponse {
+func optionsDTO(uploadAvailable bool) OptionsResponse {
 	location := make([]string, len(masterpanel.LocationOptions))
 	copy(location, masterpanel.LocationOptions)
 
@@ -341,5 +352,32 @@ func optionsDTO() OptionsResponse {
 		side = append(side, SideOptionDTO{Value: string(one), Label: one.Label()})
 	}
 
-	return OptionsResponse{Location: location, Side: side}
+	return OptionsResponse{Location: location, Side: side, UploadAvailable: uploadAvailable}
+}
+
+// DocumentDTO adalah bentuk kawat satu dokumen panel.
+//
+// Nama field berbahasa Indonesia mengikuti `D-80`: nama field JSON adalah KONTRAK, bukan
+// nama internal, dan menggantinya merusak klien alih-alih sekadar mengganti nama.
+//
+// # Yang sengaja TIDAK ada di sini
+//
+// URL berkasnya. Ia dimiliki modul dokumen penunjang beserta masa berlakunya, dan dibaca
+// dari sana saat dokumen benar-benar dibuka. Menyalinnya ke respons ini akan membuat layar
+// memegang tautan yang masa berlakunya sudah lewat tanpa ada yang tahu — dan tautan mati
+// yang terlihat hidup lebih buruk daripada tidak ada tautan.
+type DocumentDTO struct {
+	DataID     string `json:"data_id"`
+	ImageID    string `json:"image_id"`
+	Name       string `json:"nama_berkas"`
+	MimeType   string `json:"tipe_media"`
+	Note       string `json:"catatan"`
+	UploadedBy string `json:"diunggah_oleh"`
+	UploadedAt string `json:"diunggah_pada"`
+	PanelID    string `json:"id_panel"`
+}
+
+// DocumentResponse membungkus satu dokumen.
+type DocumentResponse struct {
+	Data DocumentDTO `json:"data"`
 }

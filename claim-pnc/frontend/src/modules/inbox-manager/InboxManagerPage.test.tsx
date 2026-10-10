@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -44,15 +44,33 @@ const TAB_OUTSTANDING: Tab = {
   panel: [
     {
       kunci: 'pic',
-      judul: 'Outstanding per PIC',
+      judul: '',
       kolom: [
-        { kunci: 'pic', judul: 'Nama PIC' },
-        { kunci: 'jumlah', judul: 'Jumlah Klaim' },
+        { kunci: 'pic', judul: 'PIC' },
+        { kunci: 'jumlah', judul: 'OS' },
+      ],
+    },
+    {
+      kunci: 'grup_bisnis',
+      judul: '',
+      kolom: [
+        { kunci: 'grup_bisnis', judul: 'COB' },
+        { kunci: 'jumlah', judul: 'OS' },
+      ],
+    },
+    {
+      kunci: 'kategori_os',
+      judul: '',
+      kolom: [
+        { kunci: 'kategori_dol', judul: 'Kategori/DOL' },
+        { kunci: 'reinsurer', judul: 'Reinsurer' },
       ],
     },
   ],
+  punya_ekspor_detail: true,
   keputusan: {
     dapat_diputuskan: false,
+    dapat_massal: false,
     alasan_wajib_saat_menolak: false,
   },
   punya_penyaring_periode: false,
@@ -63,7 +81,7 @@ const TAB_APPROVAL_MASTER: Tab = {
   nama: 'Approval Master',
   keterangan: 'Ringkasan seluruh antrean yang menunggu persetujuan Anda.',
   jenis: 'ringkasan',
-  keputusan: { dapat_diputuskan: false, alasan_wajib_saat_menolak: false },
+  keputusan: { dapat_diputuskan: false, dapat_massal: false, alasan_wajib_saat_menolak: false },
   punya_penyaring_periode: false,
 }
 
@@ -73,12 +91,15 @@ const TAB_BENGKEL: Tab = {
   nama: 'Master Bengkel',
   keterangan: 'Pengajuan data bengkel yang menunggu persetujuan.',
   jenis: 'antrean',
+  induk: '4',
+  dalam_bilah_induk: true,
   kolom: [
     { kunci: 'id', judul: 'ID Bengkel' },
     { kunci: 'nama', judul: 'Nama Bengkel' },
   ],
   keputusan: {
     dapat_diputuskan: true,
+    dapat_massal: true,
     alasan_wajib_saat_menolak: true,
     label_alasan: 'Alasan Status Bengkel',
   },
@@ -97,12 +118,15 @@ const TAB_PAYMENT: Tab = {
   nama: 'Payment Klaim Akseptasi',
   keterangan: 'Nomor akseptasi yang menunggu persetujuan atasan.',
   jenis: 'antrean',
+  induk: '4',
+  dalam_bilah_induk: true,
   kolom: [
     { kunci: 'no_klaim', judul: 'No Klaim' },
     { kunci: 'no_akseptasi', judul: 'No Akseptasi' },
   ],
   keputusan: {
     dapat_diputuskan: true,
+    dapat_massal: true,
     alasan_setuju_ditahan:
       'Menyetujui pembayaran di Pega ikut menjalankan transfer ke kasir, dan rantai itu ' +
       'belum lengkap.',
@@ -136,6 +160,10 @@ const PENCACAH: Counter[] = [
     tidak_tersedia: 'Sumbernya, view POOLDATA.SPAREPART_HE, sedang tidak dapat dibaca.',
   },
   { tab: '12', label: 'Payment Klaim Akseptasi', jumlah: 8, induk: '4' },
+
+  // Penolakan Klaim BERINDUK Approval Master pada pohon pencacah, meski tidak ada di bilah
+  // tabnya — dua fakta Pega yang berbeda.
+  { tab: '13', label: 'Penolakan Klaim', jumlah: 12, induk: '4' },
 ]
 
 /** Isi antrean Master Bengkel. Seluruhnya KARANGAN (`D-69`). */
@@ -147,6 +175,13 @@ const BARIS_BENGKEL = [
 type Call = { url: string; init: RequestInit | undefined }
 
 let calls: Call[] = []
+
+/** listCalls menyebut parameter setiap permintaan isi tab, berurutan. */
+function listCalls(): URLSearchParams[] {
+  return calls
+    .filter((call) => call.url.startsWith(`${PATH}?`) || call.url === PATH)
+    .map((call) => new URL(call.url, 'https://uji.invalid').searchParams)
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -167,9 +202,83 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
 }
 
 /** Peladen tiruan yang menjawab bentuk layar, pencacah, dan isi tab. */
+/**
+ * Jawaban tab Outstanding — tiga grid beserta kedua penyaringnya.
+ *
+ * Grid ketiga ikut MENYARING menurut Reinsurer yang diminta, supaya uji tombol "Filter"
+ * membuktikan permintaannya benar-benar berubah — bukan sekadar tombolnya dapat ditekan.
+ */
+function outstandingBody(reinsurer: string, kosong = false): ListResponse {
+  const semua = [
+    {
+      kategori_dol: { teks: 'ACCEPTATION' },
+      reinsurer: { teks: 'LEADER' },
+      '2026': { jumlah: 11 },
+    },
+    {
+      kategori_dol: { teks: 'CLAIM COMMITTEE' },
+      reinsurer: { teks: 'MEMBER' },
+      '2026': { jumlah: 4 },
+    },
+  ]
+
+  return {
+    tab: TAB_OUTSTANDING,
+    panel: [
+      {
+        kunci: 'pic',
+        judul: '',
+        kolom: TAB_OUTSTANDING.panel![0]!.kolom,
+        baris: [
+          { pic: { teks: 'ALL' }, jumlah: { jumlah: 354 } },
+          { pic: { teks: 'ANDIKA' }, jumlah: { jumlah: 18 } },
+        ],
+      },
+      {
+        kunci: 'grup_bisnis',
+        judul: '',
+        kolom: TAB_OUTSTANDING.panel![1]!.kolom,
+        baris: [{ grup_bisnis: { teks: 'FIRE' }, jumlah: { jumlah: 112 } }],
+      },
+      {
+        kunci: 'kategori_os',
+        judul: '',
+        kolom: [...TAB_OUTSTANDING.panel![2]!.kolom, { kunci: '2026', judul: '2026' }],
+        baris: kosong
+          ? []
+          : reinsurer
+            ? semua.filter((row) => row.reinsurer.teks === reinsurer)
+            : semua,
+      },
+    ],
+    penyaring: [
+      {
+        kunci: 'reinsurer',
+        label: 'Reinsurer',
+        pilihan: [
+          { nilai: '', label: 'All' },
+          { nilai: 'LEADER', label: 'Leader' },
+          { nilai: 'MEMBER', label: 'Member' },
+        ],
+      },
+      {
+        kunci: 'kategori_os',
+        label: 'Kategori OS',
+        pilihan: [
+          { nilai: '', label: 'All' },
+          { nilai: 'SURVEY', label: 'SURVEY' },
+        ],
+      },
+    ],
+  }
+}
+
 function stubDefaultFetch(options?: {
   meta?: MetadataResponse
   decide?: () => Response
+
+  /** Mengosongkan baris grid ketiga, tanpa mengosongkan kolomnya. */
+  kosongkanGridKetiga?: boolean
 }) {
   const meta = options?.meta ?? METADATA
 
@@ -212,20 +321,10 @@ function stubDefaultFetch(options?: {
             }
           : wanted === TAB_APPROVAL_MASTER.kode
             ? { tab: TAB_APPROVAL_MASTER }
-            : {
-                tab: TAB_OUTSTANDING,
-                panel: [
-                  {
-                    kunci: 'pic',
-                    judul: 'Outstanding per PIC',
-                    kolom: TAB_OUTSTANDING.panel![0]!.kolom,
-                    baris: [
-                      { pic: { teks: 'ALL' }, jumlah: { jumlah: 354 } },
-                      { pic: { teks: 'ANDIKA' }, jumlah: { jumlah: 18 } },
-                    ],
-                  },
-                ],
-              }
+            : outstandingBody(
+                new URL(url, 'https://uji.invalid').searchParams.get('reinsurer') ?? '',
+                options?.kosongkanGridKetiga === true,
+              )
 
     return jsonResponse(200, body)
   })
@@ -248,6 +347,18 @@ function renderPage() {
 async function renderLoaded() {
   renderPage()
   await screen.findByRole('tab', { name: /Outstanding/ })
+}
+
+/**
+ * Membuka satu antrean persetujuan.
+ *
+ * Dua langkah, dan itu memang bentuknya: kesembilan antrean adalah ANAK "Approval Master",
+ * bukan tab sejajar dengannya. Uji yang mengekliknya langsung dari bilah atas akan lolos pada
+ * layar yang justru salah jenjang.
+ */
+async function bukaAntrean(nama: RegExp) {
+  await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
+  await userEvent.click(await screen.findByRole('tab', { name: nama }))
 }
 
 beforeEach(() => {
@@ -275,7 +386,240 @@ describe('bentuk layar', () => {
 
     expect(screen.getByRole('tab', { name: /Outstanding/ })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /Approval Master/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Master Bengkel/ })).toBeInTheDocument()
+  })
+
+  /*
+    Uji jenjang — dan ia menahan kekeliruan yang BENAR-BENAR pernah tergambar di layar ini:
+    ketiga belas tab digambar berjajar, sehingga sembilan antrean persetujuan tampak setara
+    dengan induknya sendiri.
+
+    Dasarnya bukan selera: `Activity/CountDashbroardManager` menulis empat pencacah pertama ke
+    `TempCountDashboard.pxResults(<APPEND>)` dan sembilan sisanya ke
+    `.pxResults(4).pxResults(<APPEND>)`.
+  */
+  it('tidak menggambar antrean persetujuan di bilah tingkat atas', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(
+      within(screen.getByRole('tablist', { name: 'Bagian Inbox Manager' })).queryByRole('tab', {
+        name: /Master Bengkel/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  /*
+    Bilah di dalam Approval Master memuat TEPAT tab yang ada di bilah Pega. Penolakan Klaim
+    berinduk Approval Master pada pohon pencacah tetapi `InboxManager_Section2` tidak
+    menyertakannya di bilah tabnya.
+
+    Dan tidak ada pil "Ringkasan": Pega tidak punya.
+  */
+  it('TIDAK menaruh Ringkasan maupun Penolakan Klaim di bilah Approval Master', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
+
+    const inside = within(
+      await screen.findByRole('tablist', { name: 'Antrean Approval Master' }),
+    )
+    expect(inside.queryByRole('tab', { name: 'Ringkasan' })).not.toBeInTheDocument()
+    expect(inside.queryByRole('tab', { name: /Penolakan Klaim/ })).not.toBeInTheDocument()
+  })
+
+  /*
+    Memilih Approval Master LANGSUNG membuka antrean pertamanya.
+
+    Di Pega tidak ada halaman antara: bilah sub-tabnya muncul dengan sub-tab pertama sudah
+    terbuka. Kumpulan kartu berangka yang sempat digambar di sini dicabut atas permintaan
+    Work Owner (2026-10-08).
+  */
+  it('langsung membuka Master Bengkel saat Approval Master dipilih', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
+
+    const inside = within(
+      await screen.findByRole('tablist', { name: 'Antrean Approval Master' }),
+    )
+    await waitFor(() =>
+      expect(inside.getByRole('tab', { name: /Master Bengkel/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    )
+
+    // Dan tidak ada satu pun kartu ringkasan yang tersisa.
+    expect(screen.queryByText('menunggu')).not.toBeInTheDocument()
+  })
+
+  it('menggambar antrean persetujuan DI DALAM Approval Master', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
+
+    const inside = within(
+      await screen.findByRole('tablist', { name: 'Antrean Approval Master' }),
+    )
+    expect(inside.getByRole('tab', { name: /Master Bengkel/ })).toBeInTheDocument()
+    expect(inside.getByRole('tab', { name: /Payment Klaim Akseptasi/ })).toBeInTheDocument()
+  })
+
+  /*
+    Setelah sebuah antrean terbuka, yang tersorot di bilah atas tetap induknya. Tanpa itu,
+    tidak ada satu pun tab tingkat atas yang tersorot — dan pengguna kehilangan letaknya di
+    dalam jenjang tepat saat ia masuk ke dalamnya.
+  */
+  it('tetap menyorot Approval Master saat salah satu antreannya terbuka', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+    await bukaAntrean(/Master Bengkel/)
+
+    const top = within(screen.getByRole('tablist', { name: 'Bagian Inbox Manager' }))
+    expect(top.getByRole('tab', { name: /Approval Master/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  /*
+    Uji bagian-bagian tab Outstanding, dan ia menahan kekeliruan yang BENAR-BENAR pernah ada:
+    grid ketiga tidak digambar sama sekali karena catatan modul menyatakan kueri pemasoknya
+    "bukan grid". Work Owner menunjukkannya dari layar Pega yang berjalan.
+  */
+  it('menggambar KETIGA grid tab Outstanding', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    // Kepala kolomnya disalin apa adanya dari section — PIC, OS, COB, OS.
+    expect(await screen.findByRole('columnheader', { name: 'PIC' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'COB' })).toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader', { name: 'OS' })).toHaveLength(2)
+
+    // Grid ketiga: kolom tetap, lalu kolom tahun yang datang dari data.
+    expect(screen.getByRole('columnheader', { name: 'Kategori/DOL' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Reinsurer' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '2026' })).toBeInTheDocument()
+    expect(screen.getByText('ACCEPTATION')).toBeInTheDocument()
+  })
+
+  /*
+    Grid digambar ATAS-BAWAH, bukan berdampingan — ketetapan Work Owner 2026-10-07.
+
+    Berdampingan sempat ditiru dari Pega dan DICABUT: grid di layar ini berkolom banyak
+    (sembilan dan sepuluh), sehingga separuh lebar layar memaksa kolomnya berdempetan sampai
+    judulnya terpotong.
+  */
+  it('menggambar grid ATAS-BAWAH, bukan berdampingan', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const pic = await screen.findByRole('columnheader', { name: 'PIC' })
+    const pembungkus = pic.closest('table')?.parentElement?.parentElement?.parentElement
+
+    expect(pembungkus?.className).toContain('space-y-6')
+    expect(pembungkus?.className).not.toContain('grid-cols-2')
+  })
+
+  /*
+    Kepala kolom tetap digambar meski tidak ada satu baris pun.
+
+    Sebelumnya grid kosong hanya menampilkan "Tidak ada angka untuk penyaring ini." tanpa satu
+    pun kepala kolom, sehingga tidak ada petunjuk angka apa yang sebenarnya dihitung di sana.
+    Pega menggambarnya: tabel COB pada layar lama tetap menampilkan kesembilan kepala kolomnya
+    di atas tulisan "Data Tidak Ada".
+  */
+  it('tetap menggambar kepala kolom pada grid yang KOSONG', async () => {
+    stubDefaultFetch({ kosongkanGridKetiga: true })
+    await renderLoaded()
+
+    expect(await screen.findByRole('columnheader', { name: 'Kategori/DOL' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Reinsurer' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '2026' })).toBeInTheDocument()
+    expect(screen.getByText('Tidak ada angka untuk penyaring ini.')).toBeInTheDocument()
+  })
+
+  /*
+    Antrean pun tidak kehilangan kolomnya saat permintaannya gagal — prinsip yang sama dengan
+    dashboard, dan dengan Pega yang menampilkan alert tanpa membuang tabelnya.
+  */
+  it('tetap menggambar kolom antrean saat pemuatannya GAGAL', async () => {
+    stubFetch((url) => {
+      if (url === TAB_PATH) return jsonResponse(200, METADATA)
+      if (url === COUNTER_PATH) return jsonResponse(200, { pencacah: PENCACAH })
+      return jsonResponse(503, {
+        kode: 'sumber_tidak_tersedia',
+        pesan: 'Sumber antrean ini sedang tidak dapat dibaca.',
+      })
+    })
+    await renderLoaded()
+    await bukaAntrean(/Master Bengkel/)
+
+    expect(await screen.findByText(/Sumber antrean ini sedang tidak dapat dibaca/)).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'ID Bengkel' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Nama Bengkel' })).toBeInTheDocument()
+  })
+
+  it('menggambar kedua penyaring beserta tombolnya', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByLabelText('Reinsurer')).toBeInTheDocument()
+    expect(screen.getByLabelText('Kategori OS')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Clear Filter' })).toBeEnabled()
+  })
+
+  /*
+    Mengubah dropdown TIDAK memuat ulang; tombol Filter yang memuatnya. Itu perilaku layar
+    lama, yang memang punya tombolnya sendiri — dan tanpa uji ini, menyatukan keduanya akan
+    lolos tanpa terlihat.
+  */
+  it('menerapkan penyaring hanya setelah tombol Filter ditekan', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.selectOptions(await screen.findByLabelText('Reinsurer'), 'LEADER')
+    expect(screen.getByText('CLAIM COMMITTEE')).toBeInTheDocument()
+    expect(listCalls().some((params) => params.get('reinsurer') === 'LEADER')).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Filter' }))
+
+    await waitFor(() =>
+      expect(listCalls().some((params) => params.get('reinsurer') === 'LEADER')).toBe(true),
+    )
+    await waitFor(() => expect(screen.queryByText('CLAIM COMMITTEE')).not.toBeInTheDocument())
+  })
+
+  it('mengembalikan penyaring ke All lewat Clear Filter', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const reinsurer = await screen.findByLabelText('Reinsurer')
+    await userEvent.selectOptions(reinsurer, 'LEADER')
+    await userEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    await waitFor(() => expect(screen.queryByText('CLAIM COMMITTEE')).not.toBeInTheDocument())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear Filter' }))
+
+    expect(reinsurer).toHaveValue('')
+    expect(await screen.findByText('CLAIM COMMITTEE')).toBeInTheDocument()
+  })
+
+  /*
+    Bloknya digambar karena ia memang ada di layar lama; tombolnya dimatikan karena isinya
+    belum dapat dibangun dengan jujur. Yang diuji di sini: alasannya ikut tertulis, bukan
+    tombol mati tanpa keterangan.
+  */
+  it('menggambar blok Export Data Detail Klaim beserta alasan penahanannya', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByText('Export Data Detail Klaim')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dari')).toBeDisabled()
+    expect(screen.getByLabelText('Sampai')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Export to Excel' })).toBeDisabled()
+    expect(screen.getByText(/belum dapat dijalankan/)).toBeInTheDocument()
   })
 
   it('membuka tab bawaan yang ditetapkan server', async () => {
@@ -288,13 +632,15 @@ describe('bentuk layar', () => {
     )
   })
 
-  it('menempelkan angka pencacah pada tabnya', async () => {
+  it('TIDAK menempelkan angka pencacah pada tabnya', async () => {
+    // Pega menampilkan angkanya sebagai tabel `Status`/`Jumlah` tersendiri, bukan sebagai
+    // lencana pada tombol tabnya.
     stubDefaultFetch()
     await renderLoaded()
 
     expect(
-      within(screen.getByRole('tab', { name: /Outstanding/ })).getByText('354'),
-    ).toBeInTheDocument()
+      within(screen.getByRole('tab', { name: /Outstanding/ })).queryByText('354'),
+    ).not.toBeInTheDocument()
   })
 
   it('menyatakan lini bisnis yang menyaring angka dashboard', async () => {
@@ -339,15 +685,19 @@ describe('bentuk layar', () => {
     expect(screen.getByRole('button', { name: 'Export' })).toBeDisabled()
     expect(screen.getByText(/Hanya antrean persetujuan yang dapat diekspor/)).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     expect(await screen.findByRole('button', { name: 'Export' })).toBeEnabled()
   })
 
-  it('tidak lagi menggambar panel selisih terencana', async () => {
-    // Keputusan Work Owner 2026-10-06: panelnya DIHAPUS dari seluruh layar. Daftarnya tetap
-    // hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah adalah ia
-    // berhenti menjadi isi layar.
+  /*
+    Daftar selisih terencana TIDAK digambar di layar (ketetapan Work Owner 2026-10-07 —
+    tidak ada tulisan yang Pega tidak punya).
+
+    Ia tetap dikirim server dan tetap dipakai uji kesetaraan gerbang 1 (`D-54`); yang dicabut
+    hanya penggambarannya.
+  */
+  it('TIDAK menggambar daftar selisih terencana di layar', async () => {
     stubDefaultFetch()
     await renderLoaded()
 
@@ -360,7 +710,9 @@ describe('dashboard', () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(await screen.findByText('Outstanding per PIC')).toBeInTheDocument()
+    // Kedua grid pertama TIDAK berjudul di Pega — yang membedakannya kepala kolomnya.
+    expect(await screen.findByRole('columnheader', { name: 'PIC' })).toBeInTheDocument()
+    expect(screen.queryByText('Outstanding per PIC')).not.toBeInTheDocument()
     expect(await screen.findByText('ANDIKA')).toBeInTheDocument()
   })
 
@@ -371,7 +723,7 @@ describe('dashboard', () => {
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(await screen.findByText('Outstanding per PIC')).toBeInTheDocument()
+    expect(await screen.findByRole('columnheader', { name: 'PIC' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Periode')).not.toBeInTheDocument()
   })
 })
@@ -384,7 +736,7 @@ describe('antrean persetujuan', () => {
     // Tab dashboard: tidak ada tombol keputusan.
     expect(screen.queryByRole('button', { name: 'Setujui' })).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     expect(await screen.findByRole('button', { name: 'Setujui' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tolak' })).toBeInTheDocument()
@@ -393,7 +745,7 @@ describe('antrean persetujuan', () => {
   it('menonaktifkan tombol keputusan selama belum ada baris yang dipilih', async () => {
     stubDefaultFetch()
     await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     expect(await screen.findByRole('button', { name: 'Setujui' })).toBeDisabled()
   })
@@ -403,7 +755,7 @@ describe('antrean persetujuan', () => {
     // di layar berarti aturan kuncinya hidup di dua tempat.
     stubDefaultFetch()
     await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     await userEvent.click(await screen.findByLabelText('Pilih baris BGK-001'))
     await userEvent.click(screen.getByRole('button', { name: 'Setujui' }))
@@ -419,7 +771,7 @@ describe('antrean persetujuan', () => {
   it('menggambar isian alasan hanya bila tabelnya punya kolomnya', async () => {
     stubDefaultFetch()
     await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     expect(await screen.findByText(/Alasan Status Bengkel/)).toBeInTheDocument()
   })
@@ -429,7 +781,7 @@ describe('antrean persetujuan', () => {
     // pembayaran sudah disetujui padahal tidak pernah sampai ke kasir.
     stubDefaultFetch()
     await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Payment Klaim Akseptasi/ }))
+    await bukaAntrean(/Payment Klaim Akseptasi/)
 
     await userEvent.click(await screen.findByLabelText('Pilih baris AKS-900001'))
 
@@ -453,7 +805,7 @@ describe('antrean persetujuan', () => {
         }),
     })
     await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Master Bengkel/ }))
+    await bukaAntrean(/Master Bengkel/)
 
     await userEvent.click(await screen.findByLabelText('Pilih baris BGK-001'))
     await userEvent.click(screen.getByLabelText('Pilih baris BGK-002'))
@@ -463,24 +815,33 @@ describe('antrean persetujuan', () => {
   })
 })
 
-describe('ringkasan Approval Master', () => {
-  it('menyatakan antrean yang sumbernya TIDAK dapat dibaca, bukan menulis nol', async () => {
-    // Angka nol yang sesungguhnya berarti "tidak terbaca" membuat penyelia mengira antreannya
-    // kosong — kebohongan yang tidak menghasilkan satu pun galat.
-    stubDefaultFetch()
+describe('Approval Master tanpa kartu ringkasan', () => {
+  /*
+    Antrean yang sumbernya belum ada TIDAK lagi menjelaskan dirinya di layar.
+
+    Keterangan itu — nama view yang tidak sah di basis data — ditujukan ke tim teknis, dan
+    sebabnya keadaan pengembangan: tabelnya memang belum dibuat. Ia dicabut dari badan tab
+    maupun dari tooltip pilnya (Work Owner, 2026-10-08). Server tetap menjawab 503 dan tetap
+    mencatatnya di log.
+  */
+  it('tidak menempelkan keterangan sumber pada pil antreannya', async () => {
+    const sparepart: Tab = {
+      ...TAB_BENGKEL,
+      kode: '8',
+      nama: 'Master Sparepart',
+      keterangan: 'Pengajuan data sparepart yang menunggu persetujuan.',
+    }
+    stubDefaultFetch({ meta: { ...METADATA, tab: [...METADATA.tab, sparepart] } })
     await renderLoaded()
     await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
 
-    expect(await screen.findByText(/SPAREPART_HE/)).toBeInTheDocument()
-  })
-
-  it('membuka antreannya saat kartunya diklik', async () => {
-    stubDefaultFetch()
-    await renderLoaded()
-    await userEvent.click(screen.getByRole('tab', { name: /Approval Master/ }))
-
-    await userEvent.click(await screen.findByRole('button', { name: /Master Bengkel/ }))
-
-    expect(await screen.findByRole('button', { name: 'Setujui' })).toBeInTheDocument()
+    const inside = within(
+      await screen.findByRole('tablist', { name: 'Antrean Approval Master' }),
+    )
+    expect(inside.getByRole('tab', { name: /Master Sparepart/ })).toHaveAttribute(
+      'title',
+      sparepart.keterangan,
+    )
+    expect(screen.queryByText(/SPAREPART_HE/)).not.toBeInTheDocument()
   })
 })

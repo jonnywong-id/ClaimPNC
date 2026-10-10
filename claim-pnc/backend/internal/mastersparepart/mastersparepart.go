@@ -795,4 +795,5 @@ type Store interface {
 	Repo
 	LookupRepo
 	IDSource
+	DocumentRepo
 }

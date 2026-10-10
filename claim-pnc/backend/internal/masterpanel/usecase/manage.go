@@ -17,12 +17,24 @@ import (
 // Service adalah pintu masuk seluruh perkara master panel.
 type Service struct {
 	repoSelector masterpanel.RepoSelector
+	uploader     masterpanel.DocumentUploader
 }
 
 // Options adalah bahan pembentuk Service.
 type Options struct {
 	// RepoSelector memilih penyimpanan milik satu portal entitas. Wajib.
 	RepoSelector masterpanel.RepoSelector
+
+	// Uploader mengirim berkas ke layanan penyimpanan internal (`D-16`). BOLEH kosong.
+	//
+	// Kosong berarti seluruh jalur unggah menolak dengan pesan yang menyebut sebabnya,
+	// sementara sisa modul tetap berjalan penuh. Itu sikap yang disengaja: Upload Document
+	// adalah satu tombol pada dua tab, dan menolak start aplikasi karena satu tombol akan
+	// menjatuhkan sepuluh layar master lain bersamanya.
+	//
+	// Yang TIDAK boleh terjadi adalah tombolnya tampak hidup lalu gagal diam-diam — karena
+	// itu layar menanyakan ketersediaannya lebih dulu lewat UploadAvailable.
+	Uploader masterpanel.DocumentUploader
 }
 
 // NewService membentuk layanan dan menolak bahan yang tidak lengkap.
@@ -33,7 +45,7 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("masterpanel/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{repoSelector: o.RepoSelector}, nil
+	return &Service{repoSelector: o.RepoSelector, uploader: o.Uploader}, nil
 }
 
 // Actor adalah pengguna yang sedang melakukan sesuatu.
@@ -173,6 +185,22 @@ func (l *Service) Save(
 	by Actor,
 	logger *slog.Logger,
 ) (masterpanel.Panel, error) {
+	return l.SaveWith(ctx, portalAlias, id, input, by, logger, masterpanel.CheckOption{})
+}
+
+// SaveWith menyimpan dengan kelonggaran pemeriksaan yang dinyatakan eksplisit.
+//
+// Satu-satunya pemakainya adalah unggah CSV lokasi, yang di Pega memang melonggarkan satu
+// aturan — lokasi ganda. Bentuknya dibuat eksplisit, bukan sebagai sakelar tersembunyi di
+// dalam Save, supaya setiap pemanggil yang melonggarkannya terlihat dari pemanggilannya.
+func (l *Service) SaveWith(
+	ctx context.Context,
+	portalAlias, id string,
+	input masterpanel.Input,
+	by Actor,
+	logger *slog.Logger,
+	option masterpanel.CheckOption,
+) (masterpanel.Panel, error) {
 	store, err := l.repoSelector(portalAlias)
 	if err != nil {
 		return masterpanel.Panel{}, err
@@ -184,7 +212,7 @@ func (l *Service) Save(
 	}
 
 	clean := input.Clean()
-	if err := clean.Check(); err != nil {
+	if err := clean.CheckWith(option); err != nil {
 		return masterpanel.Panel{}, err
 	}
 

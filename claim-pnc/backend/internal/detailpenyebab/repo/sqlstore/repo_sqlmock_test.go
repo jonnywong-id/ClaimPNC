@@ -135,7 +135,16 @@ func TestInsertBuildsIDFromSiteAndSequence(t *testing.T) {
 	mock.ExpectQuery(q("detail_site")).WillReturnRows(sqlmock.NewRows([]string{"SITE"}).AddRow(" 7 "))
 	mock.ExpectQuery(q("detail_next_sequence")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(42))
 	mock.ExpectQuery(q("detail_exists")).WithArgs("70042").WillReturnRows(sqlmock.NewRows([]string{"X"}))
-	mock.ExpectExec(q("detail_insert")).WithArgs("70042", string(payload)).WillReturnResult(sqlmock.NewResult(0, 1))
+	// Ketujuh argumennya: enam kolom asli, lalu JSONDATA.
+	//
+	// Kolom asli IKUT ditulis sejak 2026-10-05, dan itu bukan kerapian: definisi
+	// `V_D_CAUSE_OF_LOSS` yang dibaca dari Oracle membuktikan view-nya membaca KOLOM, bukan
+	// `json_value` atas JSONDATA. Menulis JSONDATA saja membuat baris baru lahir dengan
+	// seluruh kolomnya NULL — tampil kosong di layar. Lihat komentar kueri detail_insert.
+	mock.ExpectExec(q("detail_insert")).
+		WithArgs("70042", in.LegacyID, in.MasterID, in.Description, in.LossCode, in.Active,
+			string(payload)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(q("master_get")).WithArgs("M1").
 		WillReturnRows(sqlmock.NewRows([]string{"ID", "LABEL"}).AddRow("M1", " M1 - Alam "))
@@ -243,7 +252,13 @@ func TestUpdateMergesStoredDocument(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(q("detail_document")).WithArgs("D1").WillReturnRows(sqlmock.NewRows([]string{"DOC"}).AddRow(stored))
-	mock.ExpectExec(q("detail_update")).WithArgs(expected, "D1").WillReturnResult(sqlmock.NewResult(0, 1))
+	// Kolom asli ikut di-SET, dengan alasan yang sama seperti detail_insert. Tanpa itu,
+	// penyimpanan berhasil tetapi layar menampilkan nilai LAMA — persis laporan Work Owner
+	// 2026-10-05.
+	mock.ExpectExec(q("detail_update")).
+		WithArgs(in.LegacyID, in.MasterID, in.Description, in.LossCode, in.Active,
+			expected, "D1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	got, err := repo.Update(context.Background(), " D1 ", in)

@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -130,46 +128,7 @@ func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DocumentFile menangani GET /master/bengkel/{id}/dokumen/berkas — isinya.
-//
-// Ia TIDAK memakai amplop JSON seperti endpoint lain: yang dikirim adalah berkasnya sendiri,
-// dan membungkusnya dalam JSON hanya memaksa peramban menyandikan ulang sesuatu yang sudah
-// siap diunduh.
-func (h *Handler) DocumentFile(w http.ResponseWriter, r *http.Request) {
-	document, _, ok := h.readDocument(w, r)
-	if !ok {
-		return
-	}
-
-	if !document.HasContent() {
-		// Dokumen warisan Pega: barisnya ada, isinya tidak pernah tersimpan. Ia dijawab
-		// 404 dengan pesan yang menyebut sebabnya — bukan berkas nol byte, yang akan
-		// terlihat seperti unduhan berhasil.
-		h.writeResponse(w, r, http.StatusNotFound, ErrorResponse{
-			Code: CodeDocumentEmpty,
-			Message: "Berkas dokumen ini tidak tersimpan. Dokumen yang diunggah lewat " +
-				"sistem lama hanya mencatat keterangannya, tanpa isinya.",
-		})
-		return
-	}
-
-	mediaType := document.MimeType
-	if mediaType == "" {
-		mediaType = "application/octet-stream"
-	}
-
-	w.Header().Set("Content-Type", mediaType)
-	w.Header().Set("Content-Length", strconv.Itoa(len(document.Content)))
-	w.Header().Set("Content-Disposition",
-		mime.FormatMediaType("attachment", map[string]string{"filename": document.Name}))
-	// Dokumen bengkel memuat data mitra; ia tidak boleh mengendap di cache bersama.
-	w.Header().Set("Cache-Control", "no-store")
-
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(document.Content)
-}
-
-// readDocument menyatukan langkah yang sama pada kedua endpoint pembaca.
+// readDocument menyiapkan satu dokumen untuk endpoint pembacanya.
 func (h *Handler) readDocument(w http.ResponseWriter, r *http.Request) (masterbengkel.Document, string, bool) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
@@ -193,13 +152,19 @@ func (h *Handler) readDocument(w http.ResponseWriter, r *http.Request) (masterbe
 
 // DocumentDTO adalah bentuk metadata dokumen di kawat.
 //
-// Nama fieldnya bahasa Indonesia — ia KONTRAK, bukan nama internal (`D-80`).
+// Nama fieldnya bahasa Indonesia — ia KONTRAK, bukan nama internal (`D-80`). Bentuknya
+// disamakan dengan DocumentDTO Master Sparepart dan Master Panel supaya satu komponen layar
+// dapat melayani ketiganya tanpa tiga bentuk data yang nyaris sama.
+//
+// URL berkasnya sengaja TIDAK ada di sini. Ia dimiliki modul dokumen penunjang beserta masa
+// berlakunya, dan menyalinnya ke sini akan membuat layar menampilkan tautan yang sudah
+// kedaluwarsa tanpa ada yang tahu.
 type DocumentDTO struct {
 	ID         string `json:"id_dokumen"`
+	ImageID    string `json:"image_id"`
 	Name       string `json:"nama_berkas"`
 	MimeType   string `json:"tipe_media"`
-	Size       int    `json:"ukuran_byte"`
-	HasContent bool   `json:"berisi"`
+	HasFile    bool   `json:"berisi"`
 	UploadedBy string `json:"diunggah_oleh"`
 	UploadedAt string `json:"diunggah_pada"`
 }
@@ -217,10 +182,10 @@ func toDocumentDTO(d masterbengkel.Document) DocumentDTO {
 	}
 	return DocumentDTO{
 		ID:         d.ID,
+		ImageID:    d.ImageID,
 		Name:       d.Name,
 		MimeType:   d.MimeType,
-		Size:       len(d.Content),
-		HasContent: d.HasContent(),
+		HasFile:    d.HasFile(),
 		UploadedBy: d.UploadedBy,
 		UploadedAt: uploadedAt,
 	}

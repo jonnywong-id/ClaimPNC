@@ -2,6 +2,7 @@ package masterreashttp_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -41,7 +42,13 @@ func newDirectHandler(t *testing.T, repo masterreas.Repo) *directHandler {
 	logger := slog.New(slog.NewJSONHandler(d.logs, nil))
 	d.handler, err = masterreashttp.NewHandler(masterreashttp.Options{
 		Service: service,
-		Logger:  logger,
+		// Caller menjadi WAJIB sejak jalur ubah ditambahkan (2026-10-05). Di uji ini ia
+		// tidak dipakai — seluruh ujinya menembak jalur baca — tetapi NewHandler menolak
+		// rakitan yang tidak lengkap, dan itu memang yang diinginkan.
+		Caller: func(context.Context) (masterreashttp.Caller, bool) {
+			return masterreashttp.Caller{Login: "uji"}, true
+		},
+		Logger: logger,
 		WriteResponse: func(w http.ResponseWriter, _ *http.Request, status int, body any) {
 			d.status, d.body = status, body
 			w.WriteHeader(status)
@@ -64,11 +71,22 @@ func TestNewHandlerRejectsIncompleteOptions(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Caller menjadi WAJIB sejak jalur ubah ditambahkan (2026-10-05): identitas pemanggil
+	// mengisi log, dan pada tabel ini log adalah SATU-SATUNYA tempat "siapa yang mengubah
+	// surel ini" terekam — kolom pencatat pelaku memang tidak ada.
 	_, err = masterreashttp.NewHandler(masterreashttp.Options{Service: service})
+	require.ErrorContains(t, err, "Caller wajib diisi")
+
+	caller := func(context.Context) (masterreashttp.Caller, bool) {
+		return masterreashttp.Caller{Login: "uji"}, true
+	}
+
+	_, err = masterreashttp.NewHandler(masterreashttp.Options{Service: service, Caller: caller})
 	require.ErrorContains(t, err, "WriteResponse dan WriteError wajib diisi")
 
 	_, err = masterreashttp.NewHandler(masterreashttp.Options{
 		Service:       service,
+		Caller:        caller,
 		WriteResponse: func(http.ResponseWriter, *http.Request, int, any) {},
 	})
 	require.ErrorContains(t, err, "WriteResponse dan WriteError wajib diisi")

@@ -196,7 +196,7 @@ func TestSaveAndFindDocument(t *testing.T) {
 	repo := memory.NewSampleRepo()
 	ctx := context.Background()
 	document := masterbengkel.Document{ID: " 260000000001 ", Name: "bukti.pdf",
-		Content: []byte("isi")}
+		ImageID: "img-1"}
 
 	require.NoError(t, repo.SaveDocument(ctx, " 010000000001 ", document))
 

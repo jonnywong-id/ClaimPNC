@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { InvestigatorTask } from '@/api/types'
@@ -23,6 +24,7 @@ function task(partial: Partial<InvestigatorTask>): InvestigatorTask {
     nama_admin: 'ADMIN1',
     tanggal_pendaftaran: '2026-09-21T02:15:00Z',
     tanggal_survey: '2026-09-22T01:00:00Z',
+    lini_bisnis: '002',
     ...partial,
   }
 }
@@ -42,9 +44,13 @@ function stub(answer: Answer) {
 
 function show() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // MemoryRouter diperlukan sejak Nomor Case menjadi tautan: layar memakai useNavigate,
+  // dan hook itu menuntut Router di atasnya.
   return render(
     <QueryClientProvider client={client}>
-      <InvestigatorInboxPage />
+      <MemoryRouter>
+        <InvestigatorInboxPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -112,6 +118,7 @@ describe('tabel', () => {
     stub(() =>
       json(200, {
         tugas: [task({ tanggal_pendaftaran: 'bukan-tanggal', tanggal_survey: '' })],
+ lini_bisnis: '002',
         terpotong: false,
         batas_baris: 500,
         portal: 'ASM',

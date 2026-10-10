@@ -223,8 +223,62 @@ SELECT JSONDATA
 -- master (D-28, modul S-5) belum dapat disandarkan padanya. Dicatat sebagai keterbatasan,
 -- bukan ditambal dengan kolom yang dikarang: menambah kolom menuntut persetujuan Work Owner
 -- dan pelaksanaan DBA (D-63).
-INSERT INTO POOLDATA.D_CAUSE_OF_LOSS (D_COL_ID, JSONDATA)
-VALUES (:1, :2)
+-- ============================================================================
+-- KOREKSI 2026-10-05 — KOLOM ASLI IKUT DITULIS, BUKAN HANYA JSONDATA
+-- ============================================================================
+--
+-- Procedure lama HANYA menulis dua kolom. Itu TIDAK cukup, dan buktinya dibaca langsung
+-- dari Oracle (`ALL_VIEWS`):
+--
+--   CREATE VIEW V_D_CAUSE_OF_LOSS AS
+--   SELECT D_COL_ID, OLD_D_COL_ID, M_COL_ID, DESCRIPTION, STS_AKTIF, LOSS_CODE
+--     FROM D_CAUSE_OF_LOSS
+--
+-- View itu membaca **kolom asli tabel**, BUKAN `json_value` atas JSONDATA. Dugaan
+-- sebaliknya yang dipakai saat modul ini pertama ditulis **terbukti salah**.
+--
+-- Akibatnya bila hanya JSONDATA yang ditulis:
+--   - INSERT  -> baris baru lahir dengan seluruh kolomnya NULL, sehingga tampil kosong
+--   - UPDATE  -> layar menampilkan nilai LAMA, karena kolomnya tidak ikut berubah
+--
+-- Itu persis laporan Work Owner 2026-10-05: "tidak dapat melakukan penambahan dan
+-- perubahan data".
+--
+-- `ALL_TRIGGERS` atas tabel ini **kosong** — tidak ada trigger yang menyalin JSONDATA ke
+-- kolom. Jadi tidak ada yang akan mengisinya selain pernyataan ini.
+--
+-- JSONDATA TETAP ditulis, dan itu bukan kemubaziran: `V_D_CAUSE_OF_LOSS_BUSINESS` membaca
+-- lini bisnis DARI JSON, bukan dari kolom —
+--
+--   SELECT D_COL_ID, ..., BISNISID FROM D_CAUSE_OF_LOSS a,
+--     json_table(jsondata, '$.BISNISID[*]' COLUMNS (BISNISID VARCHAR2(10) PATH '$.ID'))
+--
+-- sehingga membuang JSONDATA akan menghapus seluruh daftar lini bisnis.
+--
+-- Keduanya karena itu ditulis BERSAMAAN, di dalam satu pernyataan, supaya tidak pernah ada
+-- keadaan di mana kolom dan JSON tidak sepakat. Pada data yang ada sekarang keduanya
+-- memang sepakat: dari 234 baris, hanya 3 yang berbeda — dan ketiganya baris ber-DESCRIPTION
+-- kosong.
+--
+--
+-- LEBAR KOLOM, dibaca dari ALL_TAB_COLUMNS 2026-10-05 (menutup sebagian `R-08`):
+--
+--   D_COL_ID      VARCHAR2(5)      <-- kunci; lihat peringatan di bawah
+--   OLD_D_COL_ID  VARCHAR2(5)
+--   M_COL_ID      VARCHAR2(1000)
+--   DESCRIPTION   VARCHAR2(4000)
+--   LOSS_CODE     VARCHAR2(100)
+--   STS_AKTIF     VARCHAR2(10)
+--   JSONDATA      CLOB
+--
+-- PERINGATAN D_COL_ID. Lebarnya hanya **5**, dan bentuknya kode situs + empat digit
+-- (`1` + `2044` = `12044`). Begitu `D_CAUSE_SEQ` melewati 9999, ID yang dihasilkan menjadi
+-- enam karakter dan INSERT akan gagal dengan ORA-12899. Procedure lama punya batas yang
+-- sama persis (`lpad(...,4,'0')`), jadi ini BUKAN sesuatu yang diperkenalkan modul ini —
+-- tetapi ia nyata, dan nilai sequence-nya sudah 2049.
+INSERT INTO POOLDATA.D_CAUSE_OF_LOSS
+            (D_COL_ID, OLD_D_COL_ID, M_COL_ID, DESCRIPTION, LOSS_CODE, STS_AKTIF, JSONDATA)
+VALUES (:1, :2, :3, :4, :5, :6, :7)
 
 -- name: detail_update
 --
@@ -235,9 +289,21 @@ VALUES (:1, :2)
 -- D_COL_ID tidak pernah ikut di-SET: ia kunci baris, dan procedure lama pun hanya
 -- memakainya sebagai penyaring WHERE. TRIM pada penyaring, alasannya sama seperti
 -- detail_get.
+-- Kolom asli ikut di-SET, dengan alasan yang sama seperti detail_insert — baca komentar di
+-- sana. Tanpa ini, penyimpanan berhasil tetapi layar menampilkan nilai LAMA, karena
+-- V_D_CAUSE_OF_LOSS membaca kolom dan bukan JSON.
+--
+-- D_COL_ID tidak pernah ikut di-SET: ia kunci baris, dan procedure lama pun hanya
+-- memakainya sebagai penyaring WHERE. TRIM pada penyaring, alasannya sama seperti
+-- detail_get.
 UPDATE POOLDATA.D_CAUSE_OF_LOSS
-   SET JSONDATA = :1
- WHERE TRIM(D_COL_ID) = :2
+   SET OLD_D_COL_ID = :1,
+       M_COL_ID     = :2,
+       DESCRIPTION  = :3,
+       LOSS_CODE    = :4,
+       STS_AKTIF    = :5,
+       JSONDATA     = :6
+ WHERE TRIM(D_COL_ID) = :7
 
 -- name: detail_exists
 --

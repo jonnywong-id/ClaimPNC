@@ -47,10 +47,27 @@ describe('kepala, keadaan memuat, galat, dan kosong', () => {
     expect(screen.getByText('Keterangan uji.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tambah' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Tabel uji' })).toBeInTheDocument()
-    // Sel kosong digambar tanda pisah; kolom aksi rata kanan dan tidak dapat diurutkan.
+    // Sel kosong digambar tanda pisah.
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
-    expect(screen.getByRole('columnheader', { name: 'Aksi' }).className).toContain('text-right')
+    // JUDUL kolom aksi di tengah meski selnya rata kanan — ketetapan Work Owner 2026-10-03.
+    // Kolomnya sempit dan isinya tombol; judul yang menempel ke tepi terbaca seolah milik
+    // kolom di sebelahnya.
+    expect(screen.getByRole('columnheader', { name: 'Aksi' }).className).toContain('text-center')
+    expect(screen.getByRole('columnheader', { name: 'Aksi' }).className).not.toContain('text-right')
     expect(screen.getByRole('columnheader', { name: 'Nama' }).className).toContain('px-3')
+  })
+
+  // Yang berubah hanya JUDULNYA. Sel aksi tetap rata kanan, dan kolom lain tidak ikut
+  // tersentuh — tanpa uji ini, "tengahkan judul aksi" mudah melebar menjadi "tengahkan
+  // semua yang rata kanan".
+  it('menengahkan judul aksi tanpa menyentuh selnya maupun kolom lain', () => {
+    render(<DataTable columns={columns} rows={ROWS} rowKey={(r) => r.id} />)
+
+    const table = screen.getByRole('table')
+    const cell = within(table).getByText('aksi-1').closest('td')
+    expect(cell?.className).toContain('md:text-right')
+
+    expect(screen.getByRole('columnheader', { name: /Nama/ }).className).not.toContain('text-center')
   })
 
   it('menampilkan kerangka memuat dan galat menggantikan isi', () => {
@@ -281,5 +298,65 @@ describe('baris yang dapat dibuka', () => {
     await user.click(rows[0]!)
     await user.click(rows[0]!)
     expect(screen.queryByText('Rincian Beta')).not.toBeInTheDocument()
+  })
+})
+
+/*
+  Perataan kolom: kanan, tengah, dan bawaan.
+
+  `alignCenter` ditambahkan untuk kolom aksi Master Auto Claim (permintaan Work Owner
+  2026-10-03). Ia OPT-IN — bawaannya tidak meratakan apa pun — supaya puluhan layar yang
+  sudah selesai tidak ikut berubah.
+
+  Diuji pada `<th>` DAN `<td>` sekaligus: keduanya memakai ekspresi kelas yang berbeda,
+  dan memperbaiki salah satunya saja menghasilkan judul dan isinya tidak sejajar.
+*/
+describe('perataan kolom', () => {
+  type R = { id: string; a: string }
+  const rows: R[] = [{ id: '1', a: 'satu' }]
+
+  function kolom(extra: Partial<Column<R>>): Column<R>[] {
+    return [
+      { key: 'a', title: 'A', value: (r) => r.a },
+      { key: 'x', title: 'X', value: () => '', noSort: true, ...extra },
+    ]
+  }
+
+  function kelas(index: number) {
+    const table = screen.getByRole('table')
+    const th = within(table).getAllByRole('columnheader')[index]!
+    const td = within(table).getAllByRole('cell')[index]!
+    return { th: th.className, td: td.className }
+  }
+
+  it('alignCenter meratakan judul dan isi sel ke tengah', () => {
+    render(<DataTable columns={kolom({ alignCenter: true })} rows={rows} rowKey={(r) => r.id} />)
+    const { th, td } = kelas(1)
+    expect(th).toContain('text-center')
+    expect(td).toContain('md:text-center')
+    expect(th).not.toContain('text-right')
+  })
+
+  it('alignRight tetap menang bila keduanya diisi', () => {
+    render(
+      <DataTable
+        columns={kolom({ alignRight: true, alignCenter: true })}
+        rows={rows}
+        rowKey={(r) => r.id}
+      />,
+    )
+    const { th, td } = kelas(1)
+    expect(th).toContain('text-right')
+    expect(td).toContain('md:text-right')
+    expect(th).not.toContain('text-center')
+  })
+
+  it('tanpa keduanya, tidak ada kelas perataan sama sekali', () => {
+    render(<DataTable columns={kolom({})} rows={rows} rowKey={(r) => r.id} />)
+    const { th, td } = kelas(1)
+    expect(th).not.toContain('text-center')
+    expect(th).not.toContain('text-right')
+    expect(td).not.toContain('text-center')
+    expect(td).not.toContain('text-right')
   })
 })

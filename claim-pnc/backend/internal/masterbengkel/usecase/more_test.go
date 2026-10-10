@@ -83,6 +83,7 @@ func serviceOver(t *testing.T, store masterbengkel.Store) *usecase.Service {
 			}
 			return store, nil
 		},
+		Uploader: &fakeUploader{},
 	})
 	require.NoError(t, err)
 	return service

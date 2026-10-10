@@ -37,23 +37,18 @@ func NewService(o Options) (*Service, error) {
 	return &Service{repoSelector: o.RepoSelector}, nil
 }
 
-// Search mengisi seluruh layar: ringkasan di atas, rincian di bawah.
+// Search mengisi grid rincian.
 //
 // # Urutannya mengikuti `Activity/SearchDataLaporanAI-Act.xml`
 //
-//	langkah 1     susun klausa tanggal dari kedua isian   -> Filter.Clean + Validate
-//	langkah 4     baca barisnya lewat RDB-List            -> Repo.List
-//	langkah 6-9   cacah terima/tolak sambil menelusuri    -> Repo.Summarize
+//	langkah 1   susun klausa tanggal dari kedua isian   -> Filter.Clean + Validate
+//	langkah 4   baca barisnya lewat RDB-List            -> Repo.List
 //
-// # Kenapa pencacahan TIDAK ditelusuri dari barisnya
+// # Langkah pencacah activity lama TIDAK punya padanan di sini
 //
-// Activity lama mencacah dengan menelusuri `DatasearchLaporan.pxResults` — seluruh hasil
-// yang sudah ada di klipboard. Itu benar di sana karena ia memuat SEMUANYA sekaligus.
-//
-// Di sini barisnya dipaginasi, sehingga menelusuri halaman yang sedang terbuka akan
-// mencacah 50 baris dan menyebutnya total. Pencacahannya karena itu dikerjakan basis data
-// atas seluruh baris yang cocok, lewat kueri agregat tersendiri dengan penyaring yang
-// sama persis.
+// Langkah 6-9 pada activity itu mencacah terima/tolak lalu mengisi `TempTotal` — grid
+// ringkasan. Pega yang berjalan tidak memiliki grid itu (Work Owner, 2026-10-03), sehingga
+// pencacahnya pun tidak dibangun. Lihat doc paket `laporanhasilai`.
 //
 // # Validasi dijalankan SEKALI, di sini
 //
@@ -66,27 +61,12 @@ func (s *Service) Search(
 	portalAlias string,
 	filter laporanhasilai.Filter,
 	page laporanhasilai.Pagination,
-) (laporanhasilai.Result, error) {
+) (laporanhasilai.Page, error) {
 	store, clean, err := s.prepare(portalAlias, filter)
 	if err != nil {
-		return laporanhasilai.Result{}, err
+		return laporanhasilai.Page{}, err
 	}
-
-	// Ringkasan dibaca LEBIH DULU, lalu barisnya. Urutannya mengikuti akibat, bukan
-	// selera: bila ada baris masuk di antara kedua kueri, ringkasan yang lebih tua akan
-	// tampak "kurang" dibanding grid — jauh lebih mudah dipahami daripada ringkasan yang
-	// menyebut baris yang tidak ada di grid mana pun.
-	summary, err := store.Summarize(ctx, clean)
-	if err != nil {
-		return laporanhasilai.Result{}, err
-	}
-
-	rows, err := store.List(ctx, clean, page.Normalize())
-	if err != nil {
-		return laporanhasilai.Result{}, err
-	}
-
-	return laporanhasilai.Result{Page: rows, Summary: summary}, nil
+	return store.List(ctx, clean, page.Normalize())
 }
 
 // ListForExport membaca satu potong baris untuk ditulis ke berkas CSV.

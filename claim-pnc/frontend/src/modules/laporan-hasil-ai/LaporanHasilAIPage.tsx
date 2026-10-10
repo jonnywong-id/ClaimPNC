@@ -9,7 +9,7 @@ import { FormField } from '@/components/FormField'
 import { formatDate } from '@/components/format'
 
 import { useExportLaporanHasilAI, useLaporanHasilAI } from './api'
-import { emptyFilter, isComplete, type FilterInput, type ReportRow, type ReportTally } from './types'
+import { emptyFilter, isComplete, type FilterInput, type ReportRow } from './types'
 
 /**
  * Laporan Hasil AI — butir menu `MENU_ID 82`, pengganti harness `Har_LaporanHasilAI`.
@@ -23,11 +23,21 @@ import { emptyFilter, isComplete, type FilterInput, type ReportRow, type ReportT
  * # Susunan layar, dan dari mana bentuknya
  *
  * Diambil dari `Section/SecLaporanHasilAI-Section.xml`: judul, dua isian tanggal beserta
- * tombol "Cari Data" dan "Export To Excel", lalu DUA grid — ringkasan pencacah di atas,
- * rincian baris di bawah. Judul kolom TIDAK diterjemahkan: `D-13` menetapkan tampilan
- * meniru Pega, dan itulah teks yang selama ini dibaca pengguna.
+ * tombol "Cari Data" dan "Export To Excel", lalu SATU grid rincian. Judul kolom TIDAK
+ * diterjemahkan: `D-13` menetapkan tampilan meniru Pega, dan itulah teks yang selama ini
+ * dibaca pengguna.
  *
- * # Empat hal yang paling mudah disalahpahami di layar ini
+ * # SATU grid, bukan dua
+ *
+ * Export section-nya memuat grid KEDUA terikat `TempTotal.pxResults` — pencacah
+ * "Keputusan · Total · Diterima · Ditolak" — dan activity-nya benar-benar mengisinya dua
+ * baris. Layar ini sempat membangunnya karena itu.
+ *
+ * **Pega yang berjalan tidak memilikinya** (Work Owner, 2026-10-03), dan layar yang
+ * berjalan mengalahkan export yang kuerinya sendiri bertanda `work in progress`. Grid
+ * ringkasan beserta kueri agregat di belakangnya dibuang seluruhnya.
+ *
+ * # Tiga hal yang paling mudah disalahpahami di layar ini
  *
  * PERTAMA — **lima kolom SELALU kosong**: Object Name, Note AI Terima, Note AI Tolak,
  * Coverage Final, dan Kategori Kronologi. Itu bukan kerusakan dan bukan data yang hilang;
@@ -39,10 +49,6 @@ import { emptyFilter, isComplete, type FilterInput, type ReportRow, type ReportT
  *
  * KETIGA — **"No Klaim" kosong pada jenjang komite kedua ke atas**, sehingga satu klaim
  * terbaca sebagai satu kelompok. Padanan `CASE WHEN B.KOMITEKE = '1' THEN … ELSE '' END`.
- *
- * KEEMPAT — **kolom "Total" pada ringkasan BUKAN jumlah baris**. Ia `Diterima + Ditolak`;
- * yang menunggu tidak ikut. Kolom "Menunggu" ditambahkan supaya selisihnya terbaca — ia
- * satu-satunya hal di layar ini yang tidak ada di Pega.
  */
 export function LaporanHasilAIPage() {
   const portal = useSelectedPortal((state) => state.alias)
@@ -69,7 +75,6 @@ export function LaporanHasilAIPage() {
   // selalu menang lebih dulu, sehingga selisihnya tidak pernah terlihat.
   const violations = violationsOf(report.error ?? exportFile.error)
 
-  const summary = report.data?.ringkasan ?? []
   const rows = report.data?.baris ?? []
 
   return (
@@ -90,8 +95,20 @@ export function LaporanHasilAIPage() {
         </p>
       </header>
 
+      {/*
+        Kartu penyaring memakai `rounded-kartu`, BUKAN `rounded-kotak`.
+
+        `rounded-kotak` tidak punya token radius sama sekali — `src/styles.css` hanya
+        mendefinisikan `--radius-kartu` dan `--radius-kontrol`. Kelasnya karena itu INERT:
+        ia tertulis, lolos `tsc`, lolos seluruh uji, dan tidak menghasilkan satu piksel pun
+        lengkung. Kartu ini tergambar bersudut tajam sementara 203 kartu lain di aplikasi
+        melengkung.
+
+        Sekelas dengan jebakan `w-24` pada prop `width` DataTable: nama kelas yang tidak
+        dikenal Tailwind tidak pernah mengeluh tentang dirinya sendiri.
+      */}
       <form
-        className="space-y-4 rounded-kotak border border-slate-200 bg-white p-4"
+        className="space-y-4 rounded-kartu border border-slate-200 bg-white p-4"
         onSubmit={(event) => {
           event.preventDefault()
           setApplied(draft)
@@ -169,97 +186,82 @@ export function LaporanHasilAIPage() {
         />
       )}
 
-      {!searched ? (
-        <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Isi <strong>Tgl Input Dari</strong> dan <strong>Tgl Input Sampai</strong>, lalu
-          tekan <strong>Cari Data</strong>. Layar lama pun menolak tanpa keduanya —
-          penyaringnya disusun dari kedua isian itu, dan yang kosong membuat kuerinya gagal.
-        </p>
-      ) : (
-        <>
-          {/*
-            Grid ringkasan digambar DataTable yang sama dengan grid rincian, bukan tabel
-            mentah: tidak ada `<table>` di folder modules/ (aturan susunan nomor 5).
+      {/*
+        KEDUA GRID DIGAMBAR SEJAK AWAL, sebelum satu tanggal pun diisi.
 
-            Ia tanpa pencarian dan tanpa paginasi — isinya tepat dua baris, dan kotak
-            pencarian di atas dua baris hanya menambah sesuatu yang tidak menjawab apa pun.
-          */}
-          <DataTable<ReportTally>
-            title="Ringkasan"
-            label="Pencacah keputusan AI dan keputusan komite"
-            columns={summaryColumns}
-            rows={summary}
-            rowKey={(row) => row.keputusan}
-            isLoading={report.isPending}
-            hideSearch
-            emptyMessage="Belum ada yang dapat diringkas pada rentang ini."
-            error={
-              report.isError ? (
-                <ErrorMessage
-                  title="Ringkasan tidak dapat diambil"
-                  description={messageOf(report.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
-            }
-          />
+        Itu mengikuti Pega, bukan penyederhanaan: harness-nya merender section pada saat
+        dimuat, dan grid yang page list-nya masih kosong digambar lengkap dengan judul
+        kolomnya ditambah `pyGridNoResultsMessage` di bawahnya — rule yang memang terdaftar
+        di `Harness/Har_LaporanHasilAI-Harness.xml`.
 
-          <DataTable<ReportRow>
-            title="Rincian"
-            label="Penilaian AI beserta keputusan komitenya"
-            description={
-              'Satu baris adalah satu penilaian AI pada satu objek pertanggungan, ' +
-              'sehingga satu klaim dapat muncul beberapa kali.'
-            }
-            columns={detailColumns}
-            rows={rows}
-            rowKey={(row) => row.id}
-            isLoading={report.isPending}
-            hideSearch
-            emptyMessage="Tidak ada data pada rentang tanggal ini."
-            error={
-              report.isError ? (
-                <ErrorMessage
-                  title="Rincian tidak dapat diambil"
-                  description={messageOf(report.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
-            }
-            pagination={{
-              page: report.data?.paginasi.halaman ?? 1,
-              size: report.data?.paginasi.ukuran ?? 50,
-              total: report.data?.paginasi.total ?? 0,
-              totalPage: report.data?.paginasi.total_halaman ?? 0,
-              onPageChange: setPage,
-              isLoading: report.isFetching,
-            }}
-          />
-        </>
-      )}
+        Sebelum 2026-10-03 layar ini menyembunyikan keduanya dan hanya menampilkan satu
+        paragraf ajakan. Akibatnya pengguna tidak dapat melihat kolom apa saja yang akan
+        didapatnya sebelum mencari — padahal di Pega ia terbaca sejak layar terbuka. Work
+        Owner meminta perilaku Pega yang diikuti.
+
+        Yang TIDAK berubah: permintaan ke server tetap ditahan sampai tombol ditekan
+        (`enabled` pada `useLaporanHasilAI`). Pega pun tidak menjalankan kuerinya saat
+        memuat layar — grid kosongnya digambar tanpa satu pun pembacaan.
+      */}
+
+      <DataTable<ReportRow>
+        title="Rincian"
+        label="Penilaian AI beserta keputusan komitenya"
+        description={
+          'Satu baris adalah satu penilaian AI pada satu objek pertanggungan, ' +
+          'sehingga satu klaim dapat muncul beberapa kali.'
+        }
+        columns={detailColumns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        isLoading={report.isLoading}
+        hideSearch
+        showHeaderWhenEmpty
+        emptyMessage={emptyMessage}
+        error={
+          report.isError ? (
+            <ErrorMessage
+              title="Rincian tidak dapat diambil"
+              description={messageOf(report.error)}
+              tone="gangguan"
+            />
+          ) : undefined
+        }
+        pagination={{
+          page: report.data?.paginasi.halaman ?? 1,
+          size: report.data?.paginasi.ukuran ?? 50,
+          total: report.data?.paginasi.total ?? 0,
+          totalPage: report.data?.paginasi.total_halaman ?? 0,
+          onPageChange: setPage,
+          isLoading: report.isFetching,
+        }}
+      />
     </div>
   )
 }
 
 /**
- * Kolom grid ringkasan.
+ * Pesan yang menempati kedua grid ketika tidak ada satu baris pun.
  *
- * Urutannya mengikuti layar lama — Keputusan, Total, Diterima, Ditolak — dengan "Menunggu"
- * di paling kanan. Ia ditaruh di akhir dengan sengaja: menyisipkannya di tengah akan
- * menggeser kolom yang sudah dihafal pembacanya.
+ * # SATU pesan, bukan dua
+ *
+ * Ia sama sebelum maupun sesudah pencarian, karena Pega pun begitu:
+ * `pyGridNoResultsMessage` adalah satu section tunggal yang digambar setiap kali page
+ * list-nya kosong, tanpa membedakan sebabnya.
+ *
+ * # Kenapa sependek ini
+ *
+ * Versi sebelumnya memuat tiga kalimat ajakan beserta alasan kedua tanggal wajib. Di
+ * dalam grid, teks sepanjang itu membentang selebar sepuluh kolom dan menjadi paragraf
+ * yang justru tidak terbaca. Work Owner memintanya dipendekkan mengikuti Pega
+ * (2026-10-03).
+ *
+ * Ajakannya tidak hilang, hanya pindah ke saat yang tepat: menekan "Cari Data" dengan
+ * isian kosong tetap dijawab 422 beserta pesan per isian — "Tgl Input Dari belum diisi."
+ * tepat di bawah isiannya. Itu tempat yang lebih berguna daripada paragraf yang dibaca
+ * sebelum kesalahannya terjadi.
  */
-const summaryColumns: Column<ReportTally>[] = [
-  { key: 'keputusan', title: 'Keputusan', value: (row) => row.keputusan },
-  { key: 'total', title: 'Total', value: (row) => String(row.total), alignRight: true },
-  { key: 'diterima', title: 'Diterima', value: (row) => String(row.diterima), alignRight: true },
-  { key: 'ditolak', title: 'Ditolak', value: (row) => String(row.ditolak), alignRight: true },
-  {
-    key: 'menunggu',
-    title: 'Menunggu',
-    value: (row) => String(row.menunggu),
-    alignRight: true,
-  },
-]
+const emptyMessage = 'Data Tidak Ada'
 
 /**
  * Kolom grid rincian — kesepuluhnya, pada urutan yang tergambar di layar lama.

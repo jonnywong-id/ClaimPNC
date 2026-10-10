@@ -153,7 +153,7 @@ function installFetch(map: (call: Call) => Reply) {
  * daftar — persis alasan yang sama yang membuat rutenya didaftarkan lebih dulu di
  * backend.
  */
-function defaultReply(mutation?: (call: Call) => Reply) {
+function defaultReply(mutation?: (call: Call) => Reply, unggahAktif = false) {
   return (call: Call): Reply => {
     if (call.url.startsWith('/api/master/bengkel/cabang')) return { body: BRANCHES }
     if (call.url.startsWith('/api/master/bengkel/bank')) return { body: BANKS }
@@ -167,7 +167,7 @@ function defaultReply(mutation?: (call: Call) => Reply) {
       if (status === '0') rows = [PENDING]
       if (status === '2') rows = [REJECTED]
 
-      return { body: { bengkel: rows, status, portal: 'ASM' } }
+      return { body: { bengkel: rows, status, portal: 'ASM', unggah_tersedia: unggahAktif } }
     }
 
     if (mutation) return mutation(call)
@@ -430,98 +430,53 @@ describe('paginasi', () => {
   })
 })
 
-describe('keputusan borongan', () => {
-  // Centang dan tombol keputusan HANYA ada di tab Waiting Approval — sama seperti di
-  // Pega, yang menaruh keduanya di grid persetujuan saja.
-  it('tidak menampilkan centang di tab Approve', async () => {
-    installFetch(defaultReply())
-    show()
-
-    const table = await screen.findByRole('table')
-    expect(within(table).queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Approve terpilih' })).not.toBeInTheDocument()
-  })
-
-  it('tombol keputusan mati sampai ada yang dicentang', async () => {
-    installFetch(defaultReply())
-    show()
-
-    const user = userEvent.setup()
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-
-    const approve = await screen.findByRole('button', { name: 'Approve terpilih' })
-    expect(approve).toBeDisabled()
-
-    await user.click(await screen.findByRole('checkbox'))
-    await waitFor(() => expect(approve).toBeEnabled())
-  })
-
+describe('persetujuan BUKAN di layar ini', () => {
   /*
-    SATU permintaan untuk seluruh baris yang dicentang, bukan satu per baris.
+    Tab Waiting Approval hanya MENDAFTAR dan MENGUBAH — persis seperti Pega.
 
-    Bentuknya mengikuti Activity/SetApprovalAllMaster — memecahnya menjadi sederet
-    permintaan akan mengubah operasi yang di Pega utuh menjadi sesuatu yang dapat gagal
-    separuh jalan.
+    `Section/BrowseMasterHEApproval-Section.xml` tidak punya tombol keputusan sama sekali:
+    nol rujukan ke SetApprovalAllMaster, nol Select All, dan keenam kemunculan kata
+    "Approve"/"Reject" di dalamnya hanyalah nama halaman internal Pega
+    (pgRepPgSubSectionBrowseMasterHEApproveBB).
+
+    Keputusannya dijalankan dari Inbox Manager (Section/ApprovalMasterBengkelHE).
+
+    Uji ini mengunci pencabutan bilah keputusan pada 2026-10-03, supaya ia tidak kembali
+    tanpa disengaja — dua pintu untuk satu keputusan adalah persis yang dicabut.
   */
-  it('mengirim satu permintaan berisi seluruh baris yang dicentang', async () => {
-    installFetch(
-      defaultReply((call) => {
-        if (call.url === '/api/master/bengkel/keputusan') {
-          return {
-            body: {
-              jumlah_berubah: 1,
-              status: '1',
-              status_label: 'Approve',
-              portal: 'ASM',
-            },
-          }
-        }
-        return { body: { bengkel: APPROVED, portal: 'ASM' } }
-      }),
-    )
-    show()
-
-    const user = userEvent.setup()
-    await screen.findByRole('table')
-    await user.click(tab('Waiting Approval'))
-
-    await user.click(await screen.findByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: 'Approve terpilih' }))
-
-    await waitFor(() => {
-      const decision = calls.filter((c) => c.url === '/api/master/bengkel/keputusan')
-      expect(decision).toHaveLength(1)
-      expect(decision[0]?.body).toEqual({
-        id_bengkel: [PENDING.id_bengkel],
-        status: '1',
-      })
-    })
-
-    expect(
-      await screen.findByText(/1 bengkel dipindahkan ke/),
-    ).toBeInTheDocument()
-  })
-
-  // Berpindah tab membuang centang: baris yang dipilih milik tab sebelumnya, dan
-  // menyimpannya berarti keputusan dapat mengenai baris yang tidak sedang dilihat.
-  it('membuang centang saat berpindah tab', async () => {
+  it('tidak menampilkan centang maupun tombol keputusan di tab Waiting Approval', async () => {
     installFetch(defaultReply())
     show()
 
     const user = userEvent.setup()
     await screen.findByRole('table')
     await user.click(tab('Waiting Approval'))
-    await user.click(await screen.findByRole('checkbox'))
+    expect(await screen.findByText('Bengkel Contoh Menunggu')).toBeInTheDocument()
 
-    expect(await screen.findByText(/1 bengkel/)).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(within(table).queryByRole('checkbox')).not.toBeInTheDocument()
 
-    await user.click(tab('Reject'))
-    await user.click(tab('Waiting Approval'))
+    // Nama lengkapnya, bukan /Approve/: TAB-nya sendiri berupa tombol bernama "Approve"
+    // dan "Reject", sehingga penyaring yang longgar akan menemukan tab lalu lulus palsu.
+    expect(screen.queryByRole('button', { name: 'Approve terpilih' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject terpilih' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/dipilih\.$/)).not.toBeInTheDocument()
+  })
 
-    expect(
-      await screen.findByText('Centang bengkel yang akan diputuskan.'),
-    ).toBeInTheDocument()
+  // Ketiga tab memakai susunan kolom yang SAMA — tidak ada kolom tambahan di mana pun.
+  it('ketiga tab memakai jumlah kolom yang sama', async () => {
+    installFetch(defaultReply())
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    const jumlah = within(screen.getByRole('table')).getAllByRole('columnheader').length
+
+    for (const nama of ['Reject', 'Waiting Approval']) {
+      await user.click(tab(nama))
+      await screen.findByRole('table')
+      expect(within(screen.getByRole('table')).getAllByRole('columnheader')).toHaveLength(jumlah)
+    }
   })
 })
 
@@ -679,115 +634,109 @@ describe('form bengkel', () => {
 })
 
 /*
-  Panel dokumen — padanan dua tombol layar lama: "Upload Document" pada
-  Section/BrowseMasterHE dan tombol lihat dokumen pada Section/ApprovalMasterBengkelHE.
+  Unggah dokumen: tombol "Upload Document" layar Pega, dibangun kembali 2026-10-07 atas
+  permintaan Work Owner.
 
-  Letaknya PER BARIS, bukan tingkat layar, karena yang disimpannya adalah DOKUMENID —
-  kolom milik satu baris. Alasannya lengkap di DocumentPanel.
+  Captionnya terbaca dari field value `pyButtonLabel Upload Document` pada
+  `Section/BrowseMasterHE-Section.xml`, dan ia memang tombol TINGKAT LAYAR di sana.
+
+  Tombol KEDUA layar lama — "Upload Data Master Bengkel", unggah CSV — TETAP DITARIK: ia
+  bukan bagian migrasi yang dikerjakan di sini. Uji di bawah menguncinya supaya tidak kembali
+  tanpa disengaja.
 */
-describe('dokumen bengkel', () => {
-  /** replyWithDocument melayani daftar seperti biasa, dan dokumen sesuai jawaban yang diminta. */
-  function replyWithDocument(document: Reply) {
-    installFetch((call) => {
-      if (call.url.includes('/dokumen')) return document
-      return defaultReply()(call)
-    })
-  }
-
-  it('menggambar tombol Dokumen pada setiap baris', async () => {
+describe('unggah dokumen', () => {
+  it('tombol unggah CSV tetap tidak digambar', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByRole('table')
-    expect(screen.getAllByRole('button', { name: 'Dokumen' }).length).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('button', { name: 'Upload Data Master Bengkel' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('menyatakan belum ada dokumen ketika bengkel belum pernah dilampiri', async () => {
-    replyWithDocument({
-      body: { kode: 'dokumen_tidak_ditemukan', pesan: 'Bengkel ini belum punya dokumen terlampir.' },
-      status: 404,
-    })
+  // Urutannya mengikuti Master Sparepart: Tambah, lalu unggah, lalu Refresh.
+  it('kepala halaman memuat Tambah, Upload Document, lalu Refresh', async () => {
+    installFetch(defaultReply())
     show()
 
-    const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+    const urutan = ['Tambah', 'Upload Document', 'Refresh']
+    const posisi = urutan.map((nama) =>
+      screen.getAllByRole('button').findIndex((tombol) => tombol.textContent?.trim() === nama),
+    )
 
-    expect(await screen.findByText('Bengkel ini belum punya dokumen terlampir.')).toBeInTheDocument()
-    // 404 di sini keadaan wajar, bukan kerusakan — tidak digambar sebagai galat.
-    expect(screen.queryByText('Keterangan dokumen tidak dapat dimuat')).not.toBeInTheDocument()
-  })
-
-  it('menampilkan keterangan dokumen yang tertaut beserta tombol unduh', async () => {
-    replyWithDocument({
-      body: {
-        dokumen: {
-          id_dokumen: '260000000001',
-          nama_berkas: 'kerjasama.pdf',
-          tipe_media: 'application/pdf',
-          ukuran_byte: 2048,
-          berisi: true,
-          diunggah_oleh: 'adminpnc',
-          diunggah_pada: '2026-09-30T03:00:00Z',
-        },
-        portal: 'ASM',
-      },
-    })
-    show()
-
-    const user = userEvent.setup()
-    await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
-
-    expect(await screen.findByText('kerjasama.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Unduh' })).toBeInTheDocument()
+    expect(posisi.every((p) => p >= 0)).toBe(true)
+    expect([...posisi].sort((a, b) => a - b)).toEqual(posisi)
   })
 
   /*
-    Dokumen WARISAN: barisnya ada, isinya tidak pernah tersimpan karena
-    SET_ATTACHMENT_64BIT tidak menulis kolom ATTACHFILE dan jalur Master Bengkel tidak
-    pernah mengisi IMAGEID.
+    Tanpa baris yang sedang dibuka, tombolnya MATI.
 
-    Menawarkan tombol unduh di sini hanya menghasilkan berkas nol byte yang tampak seperti
-    unduhan berhasil, sehingga yang digambar adalah keterangannya.
+    Yang disimpan unggahan adalah `BENGKEL_HE.DOKUMENID` — kolom milik satu baris — sehingga
+    tombol tingkat layar tidak menyatakan baris mana yang dilampiri.
   */
-  it('tidak menawarkan unduhan untuk dokumen warisan yang isinya tidak tersimpan', async () => {
-    replyWithDocument({
-      body: {
-        dokumen: {
-          id_dokumen: '250000000009',
-          nama_berkas: 'lama.pdf',
-          tipe_media: 'application/pdf',
-          ukuran_byte: 0,
-          berisi: false,
-          diunggah_oleh: 'petugaslama',
-          diunggah_pada: '2025-02-01T03:00:00Z',
-        },
-        portal: 'ASM',
-      },
-    })
+  it('mati selama belum ada bengkel yang dibuka', async () => {
+    installFetch(defaultReply(undefined, true))
     show()
 
-    const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
-
-    expect(await screen.findByText('lama.pdf')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Unduh' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Isi berkas ini tidak tersimpan/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeDisabled()
   })
 
-  // Judul dan label isian mengikuti layar lama apa adanya — keduanya dibaca dari
-  // Section/UploadDocument.
-  it('memakai judul dan label isian milik layar lama', async () => {
-    replyWithDocument({ body: { kode: 'dokumen_tidak_ditemukan', pesan: 'belum ada' }, status: 404 })
+  /*
+    Layanan penyimpanan yang belum terpasang mematikan tombolnya SEBELUM pengguna memilih
+    berkas — bukan membiarkannya memilih berkas lalu menerima penolakan.
+  */
+  it('mati selama layanan penyimpanan belum terpasang', async () => {
+    installFetch(defaultReply())
     show()
 
     const user = userEvent.setup()
     await screen.findByRole('table')
-    await user.click(screen.getAllByRole('button', { name: 'Dokumen' })[0]!)
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
 
-    expect(await screen.findByText('Select a file to load and import')).toBeInTheDocument()
-    expect(screen.getByLabelText('Nama File')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload Document' })).toBeDisabled()
+  })
+
+  // Dengan keduanya terpenuhi, tombolnya hidup dan membuka panel berbentuk modal Pega.
+  it('membuka panel unggah untuk bengkel yang sedang dibuka', async () => {
+    installFetch(
+      defaultReply((call) => {
+        if (call.url.includes('/dokumen')) return { body: {}, status: 404 }
+        return { body: { bengkel: APPROVED, portal: 'ASM' }, status: 200 }
+      }, true),
+    )
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
+
+    const tombol = screen.getByRole('button', { name: 'Upload Document' })
+    expect(tombol).toBeEnabled()
+    await user.click(tombol)
+
+    /*
+      Pencarian dibatasi DI DALAM panelnya.
+
+      Form ubah yang terbuka di bawahnya punya tombol "Batal" sendiri, dan pencarian
+      setingkat layar akan menemukan keduanya lalu gagal dengan sebab yang menyesatkan.
+    */
+    const panel = await screen.findByRole('region', {
+      name: /Unggah dokumen bengkel/,
+    })
+    const di = within(panel)
+
+    // Bentuknya meniru modal Pega: pemilih berkas, daftar "Nama File" beserta baris
+    // kosongnya, lalu pasangan Batal/Submit.
+    expect(di.getByText('Berkas dokumen')).toBeInTheDocument()
+    expect(di.getByRole('button', { name: 'Pilih Berkas' })).toBeInTheDocument()
+    expect(di.getByText('Nama File')).toBeInTheDocument()
+    expect(di.getByText('Data tidak ada')).toBeInTheDocument()
+    expect(di.getByRole('button', { name: 'Batal' })).toBeInTheDocument()
+
+    // Submit mati selama belum ada berkas yang dipilih.
+    expect(di.getByRole('button', { name: 'Submit' })).toBeDisabled()
   })
 })

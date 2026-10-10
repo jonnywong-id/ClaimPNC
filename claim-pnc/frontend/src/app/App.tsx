@@ -215,11 +215,12 @@ export function AppRoute() {
         ketiganya satu layar dan satu butir menu di Pega (MENU_ID 28). Ketiganya hanya
         berbeda saringan atas tabel yang sama.
 
-        Tombol Approve dan Reject ada DI DALAM layar ini, padahal di Pega keduanya ada di
-        Inbox Manager (`Section/ApprovalMasterBengkelHE`). Inbox Manager belum dibangun,
-        dan menunda keputusannya berarti setiap bengkel yang ditambah tertahan tanpa satu
-        pun cara menyelesaikannya. Bentuk keputusannya sama persis — centang beberapa
-        baris, satu tombol untuk seluruh pilihan.
+        Approve dan Reject TIDAK ada di layar ini, sama seperti Pega: keputusannya
+        dijalankan dari Inbox Manager (`Section/ApprovalMasterBengkelHE`), yang kini sudah
+        dibangun beserta tab Master Bengkel-nya.
+
+        Bilah keputusan yang sempat dipasang di sini dicabut pada 2026-10-03, setelah
+        alasannya — "Inbox Manager belum dibangun" — tidak lagi berlaku.
       */}
       <Route
         path="/master/bengkel"

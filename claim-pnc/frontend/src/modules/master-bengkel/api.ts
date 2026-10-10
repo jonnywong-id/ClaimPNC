@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { callAPI, unduhBerkas, uploadAPI, type DownloadedFile } from '@/api/client'
+import { callAPI, uploadAPI } from '@/api/client'
 import type {
   WorkshopBankListResponse,
   WorkshopBranchListResponse,
@@ -281,17 +281,12 @@ export function useUploadWorkshopDocument() {
   })
 }
 
-/**
- * unduhDokumenBengkel mengambil isi berkasnya, bukan metadatanya.
+/*
+ * TIDAK ada pengunduh berkas di sini, dan itu disengaja.
  *
- * Ia BUKAN hook: unduhan adalah tindakan sesaat yang dipicu tombol, dan menaruhnya di
- * cache TanStack Query berarti menyimpan berkas beberapa megabyte di memori tanpa satu pun
- * yang membacanya lagi.
+ * Isi berkasnya tidak tinggal di aplikasi ini melainkan di layanan penyimpanan internal;
+ * yang dimiliki barisnya hanyalah `IMAGEID`. Menyediakan pengunduh berarti aplikasi menjadi
+ * perantara berkas yang bukan miliknya, dengan masa berlaku tautan yang bukan miliknya pula.
+ *
+ * Padanannya di Master Sparepart dan Master Panel juga tidak punya pengunduh.
  */
-export async function unduhDokumenBengkel(
-  id: string,
-  token: string | null,
-  portal: string | null,
-): Promise<DownloadedFile> {
-  return unduhBerkas(`${ROUTE}/${encodeURIComponent(id)}/dokumen/berkas`, { token, portal })
-}

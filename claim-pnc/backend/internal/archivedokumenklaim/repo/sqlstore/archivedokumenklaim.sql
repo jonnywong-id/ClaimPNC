@@ -98,17 +98,37 @@
 --
 -- Kolom selalu disebut namanya; SELECT * dilarang. Nilai selalu lewat parameter binding.
 
--- name: search_keyword
+-- name: search_archive
 --
--- Mode "Keyword" — `Activity/SearchDataArchiveFilling-Act.xml` langkah 2:
+-- Grid ARCHIVE FILE KLAIM, dengan KEDUA penyaringnya sekaligus.
 --
---   WHERE UPPER(NOKLAIM)='<kata kunci>' or NAMABOX='<kata kunci>'
---                                       or TERTANGGUNG='<kata kunci>'
+-- # Kenapa satu kueri, bukan tujuh
 --
--- Ketiganya OR, dan ketiganya cocok PERSIS — bukan sebagian. Itu dipertahankan: mengubah
--- `=` menjadi `LIKE '%…%'` akan membuat pencarian mengembalikan baris yang dulu tidak
--- pernah muncul, dan pada tabel arsip yang tumbuh terus itu perubahan yang tidak dapat
--- ditarik kembali diam-diam.
+-- Layar lama menampilkan dua penyaring BERSAMAAN — dropdown "Tipe Pencarian Archive"
+-- beserta Keyword, dan rentang "Tgl Input Dari/Sampai"; keduanya ber-`FlagASO==2` pada
+-- `Section/SecArchiveDokumen-Section.xml`. Tiga kolom dikalikan ada-tidaknya rentang
+-- tanggal menghasilkan tujuh bentuk kueri, dan tujuh bentuk berarti tujuh tempat yang
+-- harus berubah berpasangan setiap kali satu kolom grid bertambah.
+--
+-- Yang dipakai sebagai gantinya: SATU kueri yang penyaringnya dapat dimatikan sendiri
+-- lewat `:n IS NULL`. Pola ini sudah dipakai modul lain di aplikasi ini.
+--
+-- Penanda ganjil membawa penyaringnya, penanda genap membawa nilainya. Keduanya diisi
+-- nilai yang sama; penanda yang berbeda untuk nilai yang sama tampak berlebihan, tetapi
+-- satu penanda yang dipakai berulang berperilaku berbeda antar driver.
+--
+-- # Pencocokannya PERSIS, bukan sebagian
+--
+-- Dipertahankan dari kueri lama: mengubah `=` menjadi `LIKE '%…%'` akan membuat pencarian
+-- mengembalikan baris yang dulu tidak pernah muncul, dan pada tabel arsip yang tumbuh
+-- terus itu tidak dapat ditarik kembali diam-diam.
+--
+-- # Satu hal yang BERBEDA dari sistem lama, dan disebut terang
+--
+-- Kueri lama merangkai klausa yang SALING MENIMPA: penyaring tanggal menggantikan
+-- penyaring kata kunci, bukan menambahinya — sehingga mengisi keduanya membuat salah
+-- satunya diam-diam tidak berlaku. Di sini keduanya BERLAKU BERSAMAAN (AND). Isian yang
+-- diisi pengguna tetapi tidak berpengaruh adalah kelas cacat yang tidak layak dibawa.
 SELECT a.ID_ARCHIVE                     AS ARCHIVE_ID,
        a.NOKLAIM                        AS CLAIM_NUMBER,
        a.NOPOLIS                        AS POLICY_NUMBER,
@@ -136,56 +156,11 @@ SELECT a.ID_ARCHIVE                     AS ARCHIVE_ID,
   LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC d
          ON d.ID = a.JENISDOK
         AND d.DOC_TYPE_ID = a.TIPEDOK
--- Nilainya SUDAH dibesarkan hurufnya di Go, dan ketiga penanda diisi nilai yang sama.
--- Penanda yang berbeda untuk nilai yang sama tampak berlebihan, tetapi itulah yang
--- ditempuh seluruh modul lain: satu penanda yang dipakai berulang berperilaku berbeda
--- antar driver, dan perbedaannya baru terlihat saat dijalankan.
- WHERE UPPER(a.NOKLAIM) = :1
-    OR UPPER(a.NAMABOX) = :2
-    OR UPPER(a.TERTANGGUNG) = :3
-
--- name: search_input_date
---
--- Mode "Tgl Input" — `Activity/SearchDataArchiveFilling-Act.xml` langkah 10:
---
---   WHERE trunc(TGLINPUT) >= to_date(<awal>) and trunc(TGLINPUT) <= to_date(<akhir>)
---
--- Rentangnya INKLUSIF di kedua ujung, dan `trunc` membuang jamnya — berkas yang diinput
--- pukul 16:00 pada tanggal akhir tetap ikut. Keduanya dipertahankan.
---
--- Perbedaan bentuk: `trunc(TGLINPUT)` diganti perbandingan rentang terhadap kolom apa
--- adanya, dengan batas atas digeser satu hari dan dibuat eksklusif. Hasilnya identik,
--- tetapi index pada TGLINPUT tetap dapat dipakai — `trunc` pada kolom membuat setiap
--- pencarian memindai seluruh tabel (`09-DATABASE-STRATEGY.md` §3.2).
-SELECT a.ID_ARCHIVE                     AS ARCHIVE_ID,
-       a.NOKLAIM                        AS CLAIM_NUMBER,
-       a.NOPOLIS                        AS POLICY_NUMBER,
-       a.TERTANGGUNG                    AS INSURED_NAME,
-       a.DOL                            AS LOSS_DATE,
-       a.PICTEKNIK                      AS TECHNICAL_PIC,
-       a.TGLTERIMADOK                   AS RECEIVED_DATE,
-       a.TGLINPUT                       AS INPUT_DATE,
-       a.JUMLAHLEMBAR                   AS SHEET_COUNT,
-       a.TIPEDOK                        AS DOCUMENT_TYPE_CODE,
-       t.STS_PROSES                     AS DOCUMENT_TYPE_NAME,
-       a.JENISDOK                       AS DOCUMENT_KIND_CODE,
-       d.DETAIL_DOCUMENT                AS DOCUMENT_KIND_NAME,
-       a.NAMABOX                        AS BOX_NAME,
-       a.KODEFILLING                    AS FILLING_CODE,
-       a.USERINPUT                      AS INPUT_USER,
-       a.TGLKIRIMDOK                    AS SENT_DATE,
-       a.GROUPPANEL                     AS GROUP_PANEL,
-       a.CABANGSTATUS                   AS BRANCH_STATUS,
-       a.KODESERVICE                    AS SERVICE_CODE,
-       a.NOTESERVICE                    AS SERVICE_NOTE
-  FROM POOLDATA.T_CLAIM_ARCHIVE_FILE a
-  LEFT JOIN POOLDATA.V_LST_DOC_TYPE t
-         ON t.ID = a.TIPEDOK
-  LEFT JOIN POOLDATA.V_LST_DET_TYPE_DOC d
-         ON d.ID = a.JENISDOK
-        AND d.DOC_TYPE_ID = a.TIPEDOK
- WHERE a.TGLINPUT >= :1
-   AND a.TGLINPUT < :2
+ WHERE (:1 IS NULL OR UPPER(a.NOKLAIM) = :2)
+   AND (:3 IS NULL OR UPPER(a.NAMABOX) = :4)
+   AND (:5 IS NULL OR UPPER(a.TERTANGGUNG) = :6)
+   AND (:7 IS NULL OR a.TGLINPUT >= :8)
+   AND (:9 IS NULL OR a.TGLINPUT < :10)
 
 -- name: pending_all
 --

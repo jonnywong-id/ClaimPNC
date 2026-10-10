@@ -72,13 +72,13 @@ function installFetch(answer: (url: string) => Answer = () => undefined) {
     if (custom) return Promise.resolve(custom)
     if (url === `${PATH}/tab`) return Promise.resolve(json(200, METADATA))
     if (url.startsWith(`${PATH}/ekspor`)) return Promise.resolve(new Response('a\n', { status: 200 }))
-    return Promise.resolve(json(200, list([row('KLM-2', 'REF-2'), row('KLM-1', '')])))
+    return Promise.resolve(json(200, list([row('PNCN.26.0002', 'REF-2'), row('PNC-1865', '')])))
   })
 }
 
 function ClaimTarget() {
-  const { nomor } = useParams()
-  return <p>Halaman klaim {nomor}</p>
+  const { claimID } = useParams()
+  return <p>Halaman klaim {claimID}</p>
 }
 
 function show() {
@@ -90,7 +90,7 @@ function show() {
       <MemoryRouter initialEntries={['/inbox']}>
         <Routes>
           <Route path="/inbox" element={<InboxManagerAdminPage />} />
-          <Route path="/view-claim/:nomor" element={<ClaimTarget />} />
+          <Route path="/registrasi/klaim/:claimID" element={<ClaimTarget />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -142,24 +142,59 @@ describe('galat', () => {
 })
 
 describe('antrean', () => {
-  it('membuka klaim lewat Lihat Detail dan mematikannya untuk baris tanpa kunci', async () => {
+  it('membuka klaim PNCN di halaman klaim aplikasi ini, sama seperti My Inbox', async () => {
+    // Tujuannya `/registrasi/klaim/:claimID`, sama dengan tautan nomor klaim pada My Inbox.
+    // Sebelumnya ia `/view-claim/:referensi` — modul yang TIDAK DIPAKAI LAGI (Work Owner,
+    // 2026-09-30), dan tidak satu pun inbox Pega yang membukanya.
     installFetch((url) =>
-      url.startsWith(`${PATH}?`) ? json(200, list([row('KLM-2', 'REF-2'), row('', '')])) : undefined,
+      url.startsWith(`${PATH}?`) ? json(200, list([row('PNCN.26.0002', 'REF-2')])) : undefined,
     )
     show()
 
-    const buttons = await screen.findAllByRole('button', { name: 'Lihat Detail' })
-    expect(buttons[1]).toBeDisabled()
-    await userEvent.click(buttons[0]!)
-    expect(await screen.findByText('Halaman klaim REF-2')).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Lihat Detail' }))
+
+    // NOMOR klaim yang dikirim, bukan `referensi`: `referensi` adalah pzInsKey, dan `D-22`
+    // melarang kunci teknis Pega dipakai sebagai alamat.
+    expect(await screen.findByText('Halaman klaim PNCN.26.0002')).toBeInTheDocument()
   })
 
-  it('memakai ID bila referensi kosong', async () => {
-    installFetch((url) => (url.startsWith(`${PATH}?`) ? json(200, list([row('KLM-1', '')])) : undefined))
+  it('membuka klaim warisan Pega juga, bukan hanya PNCN', async () => {
+    // Antrean ini DIDOMINASI klaim `PNC-xxxx`. Mematikannya — menyalin pembatasan My
+    // Inbox — membuat tombolnya praktis tidak pernah dapat ditekan.
+    //
+    // Halaman tujuannya memang melayani klaim warisan: `klaim_ambil_per_nomor` membaca
+    // `POOLDATA.T_CLAIM_PNC`, tabel klaim warisan. Dan di Pega, tombol layar ini membuka
+    // formulir Register_Flow baris itu apa pun format nomornya.
+    installFetch((url) =>
+      url.startsWith(`${PATH}?`) ? json(200, list([row('PNC-2856', 'REF-9')])) : undefined,
+    )
     show()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Lihat Detail' }))
-    expect(await screen.findByText('Halaman klaim KLM-1')).toBeInTheDocument()
+    const button = await screen.findByRole('button', { name: 'Lihat Detail' })
+    expect(button).toBeEnabled()
+
+    await userEvent.click(button)
+    expect(await screen.findByText('Halaman klaim PNC-2856')).toBeInTheDocument()
+  })
+
+  it('mematikan tombol untuk klaim yang belum bernomor, beserta alasannya', async () => {
+    // Nomor terbit di ujung tahap Input Register (`ADR-0009`), sehingga baris tanpa nomor
+    // memang belum punya halaman — bukan baris yang rusak.
+    installFetch((url) => (url.startsWith(`${PATH}?`) ? json(200, list([row('', 'REF-8')])) : undefined))
+    show()
+
+    const button = await screen.findByRole('button', { name: 'Lihat Detail' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', expect.stringContaining('belum bernomor'))
+  })
+
+  it('memberi kolom tombol judul "Aksi"', async () => {
+    // Ketetapan Work Owner 2026-10-03. Mengosongkannya sudah dicoba di layar lain dan
+    // ditolak: kolom tanpa judul terbaca sebagai kolom yang TIDAK ADA.
+    installFetch()
+    show()
+
+    expect(await screen.findByRole('columnheader', { name: 'Aksi' })).toBeInTheDocument()
   })
 
   it('mengurutkan menurut kolom dan berpindah halaman', async () => {

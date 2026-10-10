@@ -117,52 +117,6 @@ func (r *Repo) List(
 	return result, nil
 }
 
-// Summarize mencacah seluruh baris yang cocok.
-//
-// Pembandingnya PERSIS, tanpa pemangkasan — sama seperti kueri ringkasannya. Bila yang
-// satu memangkas dan yang lain tidak, uji yang lulus di sini tidak menyatakan apa pun
-// tentang yang berjalan di Oracle.
-func (r *Repo) Summarize(
-	_ context.Context,
-	filter laporanhasilai.Filter,
-) (laporanhasilai.Summary, error) {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
-	matched := r.matching(filter)
-
-	var (
-		aiAccepted        int
-		aiRejected        int
-		committeeAccepted int
-		committeeRejected int
-	)
-
-	for _, one := range matched {
-		switch one.AIResult {
-		case laporanhasilai.AIAccepted:
-			aiAccepted++
-		case laporanhasilai.AIRejected:
-			aiRejected++
-		}
-
-		switch one.ApproveCode {
-		case laporanhasilai.CommitteeApprovedCode:
-			committeeAccepted++
-		case laporanhasilai.CommitteeRejectedCode:
-			committeeRejected++
-		}
-	}
-
-	total := len(matched)
-
-	return laporanhasilai.Summary{
-		Committee: tallyOf(
-			laporanhasilai.SubjectCommittee, committeeAccepted, committeeRejected, total),
-		AI: tallyOf(laporanhasilai.SubjectAI, aiAccepted, aiRejected, total),
-	}, nil
-}
-
 // matching menyaring lalu mengurutkan, meniru WHERE dan ORDER BY kuerinya.
 //
 // Pemanggil wajib sudah memegang kunci baca.
@@ -230,20 +184,6 @@ func claimNumberOf(one Row) string {
 		return ""
 	}
 	return one.ClaimNumber
-}
-
-// tallyOf menyusun satu baris ringkasan; Menunggu dihitung sebagai sisa.
-func tallyOf(subject string, accepted, rejected, rowCount int) laporanhasilai.Tally {
-	pending := rowCount - accepted - rejected
-	if pending < 0 {
-		pending = 0
-	}
-	return laporanhasilai.Tally{
-		Subject:  subject,
-		Accepted: accepted,
-		Rejected: rejected,
-		Pending:  pending,
-	}
 }
 
 var _ laporanhasilai.Repo = (*Repo)(nil)

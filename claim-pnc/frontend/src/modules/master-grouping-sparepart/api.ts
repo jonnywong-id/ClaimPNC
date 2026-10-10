@@ -211,11 +211,27 @@ export function useSaveGrouping() {
 }
 
 /**
- * Hook keputusan borongan.
+ * Hook keputusan Approve/Reject.
  *
- * SATU permintaan untuk seluruh baris yang dicentang, bukan satu per baris — memecahnya
- * menjadi sederet permintaan akan mengubah operasi yang di Pega utuh menjadi sesuatu yang
- * dapat gagal separuh jalan.
+ * # TIDAK dipakai layar Master Grouping Sparepart, dan itu disengaja
+ *
+ * Layar `GroupingSparePart_HE` di Pega **tidak memutuskan apa pun**: seluruh tombol yang
+ * dirujuk kelima section-nya hanya SIMPAN dan Ubah, dan `pySelected` maupun `pxCheckbox` nol
+ * kemunculan. Keputusannya hidup di `Section/ApprovalPNCMasterGroupingSparepartHE`, yang
+ * disertakan `Harness/UserInbox_Harness` dan `Section/InboxManager_Sec` — yakni **Inbox
+ * Manager**, layar yang belum dibangun.
+ *
+ * Centang borongan sempat dipasang di layar ini; **dicabut atas keputusan Work Owner
+ * 2026-10-04**. Hook-nya dipertahankan karena endpoint-nya memang padanan layar Pega yang
+ * nyata, bukan kemampuan yang dikarang — tetapi **GroupingPage tidak boleh memanggilnya
+ * kembali**.
+ *
+ * # Bentuknya borongan, sedangkan layar Pega memutuskan SATU BARIS pada satu waktu
+ *
+ * `ApprovalPNCMasterGroupingSparepartHE` punya tombol `Approve`, `Reject`, dan `DETAILS`
+ * tanpa satu pun centang. Bentuk borongan di sini diwarisi dari ketiga master alat berat lain,
+ * yang memang memakai `Activity/SetApprovalAllMaster` berbasis `.pySelected`. Begitu Inbox
+ * Manager dibangun, bentuknya perlu ditinjau ulang terhadap layar itu.
  *
  * TANPA catatan: kedua tabel modul ini tidak punya kolom penampungnya.
  */

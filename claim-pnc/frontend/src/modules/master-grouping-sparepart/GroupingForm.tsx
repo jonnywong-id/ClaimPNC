@@ -314,17 +314,20 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
         <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
       )}
 
+      {/*
+        HANYA ID yang ditampilkan sebagai keterangan.
+
+        Nomor grup kendaraan sempat ditampilkan di sebelahnya; **dicabut atas keputusan Work
+        Owner 2026-10-04**. Layar Pega tidak menampilkannya di mana pun — ia tersimpan pada
+        properti `pyID` yang tidak pernah dirender — dan ia tetap diterbitkan penyimpanan
+        seperti biasa, hanya tidak lagi diperlihatkan.
+      */}
       {isEditing && (
-        <div className="grid gap-3 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5 sm:grid-cols-2">
+        <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5">
           <Keterangan
             label="ID grouping"
             value={editing.id_grouping}
             hint="Diterbitkan sistem. Tidak dapat diubah."
-          />
-          <Keterangan
-            label="Nomor grup kendaraan"
-            value={editing.nomor_grup || '—'}
-            hint="Baris dengan nomor grup yang sama terpasang di kendaraan yang sama."
           />
         </div>
       )}

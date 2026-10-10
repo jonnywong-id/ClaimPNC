@@ -277,3 +277,38 @@ SELECT COUNT(*)
           FROM POOLDATA.T_REINSURER
          GROUP BY TRIM(REINSURERID)
         HAVING SUM(CASE WHEN TRIM(TYPE) = '1' THEN 1 ELSE 0 END) = 0) TANPA_CADANGAN
+
+-- name: reas_update
+--
+-- Mengubah SURAT ELEKTRONIK satu baris. Padanan cabang pertama Database/UPDATEREAS.prc:
+--
+--   UPDATE POOLDATA.T_REINSURER SET EMAIl = tEMAIl
+--    WHERE REINSURERID = tREINSID AND REINSURERNAME = tREINSNAME AND TYPE = tTYPE
+--
+-- SATU kolom yang berubah, dan itu bukan penyederhanaan: prosedur lamanya pun hanya
+-- menyentuh EMAIl pada baris yang sudah ada. LOGIN, COUNTRY, dan COUNTRYID hanya ditulis
+-- pada jalur SISIP -- yang tidak dibawa modul ini; lihat masterreas.Repo.
+--
+-- # COALESCE(TRIM(...), '') pada KETIGA bagian kuncinya
+--
+-- TRIM: bila kolomnya CHAR dan bukan VARCHAR2, Oracle memadatkan pembandingnya dengan spasi
+-- sehingga perbandingan langsung tetap benar -- tetapi PostgreSQL tidak melakukannya, dan
+-- baris yang sama tidak akan ditemukan setelah pindah basis data (D-24). DDL-nya tidak ada
+-- (R-08), jadi keduanya harus tetap benar.
+--
+-- COALESCE: TYPE benar-benar dapat NULL. GetListDataLoginReas menyisipkan baris TANPA kolom
+-- TYPE dan TANPA COUNTRY sama sekali:
+--
+--   insert into pooldata.t_reinsurer (reinsurerid,reinsurername,email,login) values (...)
+--
+-- Tanpa COALESCE, baris seperti itu TIDAK PERNAH dapat diubah dari layar: `TRIM(TYPE) = ''`
+-- bernilai NULL terhadap NULL, bukan benar, dan UPDATE-nya menyentuh nol baris tanpa satu
+-- pun galat. Lapisan aplikasi akan melaporkannya sebagai "baris tidak ditemukan" pada baris
+-- yang jelas-jelas tampil di layar.
+--
+-- COALESCE dipakai, bukan NVL -- NVL khas Oracle dan dilarang D-20.
+UPDATE POOLDATA.T_REINSURER
+   SET EMAIL = :1
+ WHERE COALESCE(TRIM(REINSURERID), '') = :2
+   AND COALESCE(TRIM(REINSURERNAME), '') = :3
+   AND COALESCE(TRIM(TYPE), '') = :4

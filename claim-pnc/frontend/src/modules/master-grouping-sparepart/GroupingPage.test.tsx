@@ -265,9 +265,9 @@ describe('GroupingPage', () => {
       expect(screen.getByRole('columnheader', { name: title })).toBeInTheDocument()
     }
 
-    // Kolom yang DITAMBAHKAN; tanpa itu pengguna tidak punya cara melihat baris mana yang
-    // tergabung dengan baris mana.
-    expect(screen.getByRole('columnheader', { name: 'Nomor Grup' })).toBeInTheDocument()
+    // Nomor grup TIDAK digambar: layar Pega tidak menampilkannya di mana pun. Sempat ada
+    // sebagai kolom tambahan; dicabut atas keputusan Work Owner 2026-10-04.
+    expect(screen.queryByRole('columnheader', { name: 'Nomor Grup' })).not.toBeInTheDocument()
   })
 
   it('menampilkan sebutan sisi, bukan sandinya', async () => {
@@ -279,13 +279,15 @@ describe('GroupingPage', () => {
     expect(screen.getByText('KANAN')).toBeInTheDocument()
   })
 
-  it('menampilkan dua baris satu grup dengan nomor grup yang sama', async () => {
+  it('dua baris satu grup tampil tanpa memperlihatkan nomor grupnya', async () => {
     installFetch(defaultReply())
     show()
 
+    // Keduanya satu grup — tetapi nomor grupnya tidak diperlihatkan di mana pun, persis
+    // seperti layar Pega. Yang terlihat adalah nomor rangkanya, yang memang sama.
     await screen.findByText('SP-1002')
-    // Dua baris, satu nomor grup — bentuk grouping yang sebenarnya.
-    expect(screen.getAllByText('0001')).toHaveLength(2)
+    expect(screen.queryAllByText('0001')).toHaveLength(0)
+    expect(screen.getAllByText('MHFXW1234K5678901').length).toBeGreaterThanOrEqual(2)
   })
 
   it('ketiga tab berurutan Approve, Reject, Waiting Approval seperti layar lama', async () => {
@@ -313,43 +315,41 @@ describe('GroupingPage', () => {
     })
   })
 
-  it('tombol keputusan hanya muncul di tab Waiting Approval', async () => {
+  /*
+    Tab Waiting Approval adalah DAFTAR, bukan tempat memutuskan.
+
+    `Section/PNCMasterGroupingSparepartHE` merujuk tepat tiga caption tab — Approve, Reject,
+    dan Waiting Approval — sehingga tabnya memang ada di Pega. Yang TIDAK ada di sana adalah
+    cara memutuskannya: seluruh tombol yang dirujuk kelima section-nya hanya SIMPAN dan Ubah,
+    dan `pySelected` maupun `pxCheckbox` nol kemunculan.
+
+    Keputusan hidup di `Section/ApprovalPNCMasterGroupingSparepartHE` — milik Inbox Manager,
+    layar yang belum dibangun, dan yang memutuskan satu baris pada satu waktu.
+  */
+  it('tab Waiting Approval tidak menyediakan cara memutuskan', async () => {
     installFetch(defaultReply())
-    show()
-
-    await screen.findByText('SP-1001')
-    expect(screen.queryByRole('button', { name: 'Approve terpilih' })).not.toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
-    expect(await screen.findByRole('button', { name: 'Approve terpilih' })).toBeInTheDocument()
-  })
-
-  it('keputusan borongan mengirim SATU permintaan berisi seluruh baris tercentang', async () => {
-    installFetch(
-      defaultReply(() => ({
-        body: {
-          jumlah_berubah: 1,
-          status: '1',
-          status_label: 'Approve',
-          portal: 'ASM',
-        },
-        status: 200,
-      })),
-    )
     show()
 
     await screen.findByText('SP-1001')
     await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
     await screen.findByText('SP-1003')
 
-    await userEvent.click(screen.getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Approve terpilih' }))
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+    for (const name of ['Approve terpilih', 'Reject terpilih', 'Bersihkan']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
+    expect(calls.some((c) => c.url.endsWith('/keputusan'))).toBe(false)
+  })
 
-    await waitFor(() => {
-      const decision = calls.find((c) => c.url.endsWith('/keputusan'))
-      expect(decision).toBeDefined()
-      expect(decision?.body).toEqual({ id_grouping: ['3'], status: '1' })
-    })
+  it('tab Waiting Approval memakai tombol Ubah yang sama dengan kedua tab lain', async () => {
+    installFetch(defaultReply())
+    show()
+
+    await screen.findByText('SP-1001')
+    await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
+    await screen.findByText('SP-1003')
+
+    expect(screen.getByRole('button', { name: 'Ubah' })).toBeInTheDocument()
   })
 
   it('form tambah mengisi lima isian turunan dari pencarian sparepart', async () => {

@@ -55,18 +55,24 @@ func fileRow(id int64) []driver.Value {
 	}
 }
 
+// Kata kunci hanya mengisi penanda KOLOM YANG DIPILIH; delapan penanda lain NULL.
+//
+// Itulah yang membuat satu kueri melayani tujuh bentuk penyaring — lihat `search_archive`.
 func TestSearchKeywordMenghitungLaluMembacaHalaman(t *testing.T) {
 	repo, mock := newMock(t)
 
-	mock.ExpectQuery(exact(counted("search_keyword"))).
-		WithArgs("PNC-1", "PNC-1", "PNC-1").
+	// :1 dan :2 kolom No Klaim; :3..:10 mematikan klausanya sendiri lewat `IS NULL`.
+	args := []driver.Value{"PNC-1", "PNC-1", nil, nil, nil, nil, nil, nil, nil, nil}
+
+	mock.ExpectQuery(exact(counted("search_archive"))).
+		WithArgs(args...).
 		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(1))
-	mock.ExpectQuery(exact(paged("search_keyword"))).
-		WithArgs("PNC-1", "PNC-1", "PNC-1", 0, 20).
+	mock.ExpectQuery(exact(paged("search_archive"))).
+		WithArgs(append(append([]driver.Value{}, args...), 0, 20)...).
 		WillReturnRows(sqlmock.NewRows(fileColumns).AddRow(fileRow(7)...))
 
 	page, err := repo.Search(context.Background(), archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeKeyword, Keyword: "PNC-1",
+		Column: archivedokumenklaim.ColumnClaimNumber, Keyword: "PNC-1",
 	}, archivedokumenklaim.Pagination{})
 	require.NoError(t, err)
 	require.Equal(t, 1, page.Total)
@@ -91,12 +97,14 @@ func TestSearchInputDateMenggeserBatasAtas(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
 
-	mock.ExpectQuery(exact(counted("search_input_date"))).
-		WithArgs(from, to.AddDate(0, 0, 1)).
+	until := to.AddDate(0, 0, 1)
+
+	mock.ExpectQuery(exact(counted("search_archive"))).
+		WithArgs(nil, nil, nil, nil, nil, nil, from, from, until, until).
 		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(0))
 
 	page, err := repo.Search(context.Background(), archivedokumenklaim.Criteria{
-		Mode: archivedokumenklaim.ModeInputDate, From: &from, To: &to,
+		From: &from, To: &to,
 	}, archivedokumenklaim.Pagination{Page: 2, Size: 5})
 	require.NoError(t, err)
 	require.Zero(t, page.Total)
@@ -162,11 +170,13 @@ func TestPendingMenolakLebihDariDuaLini(t *testing.T) {
 }
 
 func TestListPageMeneruskanGalat(t *testing.T) {
-	criteria := archivedokumenklaim.Criteria{Mode: archivedokumenklaim.ModeKeyword, Keyword: "X"}
+	criteria := archivedokumenklaim.Criteria{
+		Column: archivedokumenklaim.ColumnClaimNumber, Keyword: "X",
+	}
 
 	t.Run("hitung", func(t *testing.T) {
 		repo, mock := newMock(t)
-		mock.ExpectQuery(exact(counted("search_keyword"))).WillReturnError(errBoom)
+		mock.ExpectQuery(exact(counted("search_archive"))).WillReturnError(errBoom)
 
 		_, err := repo.Search(context.Background(), criteria, archivedokumenklaim.Pagination{})
 		require.ErrorIs(t, err, errBoom)
@@ -176,9 +186,9 @@ func TestListPageMeneruskanGalat(t *testing.T) {
 
 	t.Run("baca", func(t *testing.T) {
 		repo, mock := newMock(t)
-		mock.ExpectQuery(exact(counted("search_keyword"))).
+		mock.ExpectQuery(exact(counted("search_archive"))).
 			WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(1))
-		mock.ExpectQuery(exact(paged("search_keyword"))).WillReturnError(errBoom)
+		mock.ExpectQuery(exact(paged("search_archive"))).WillReturnError(errBoom)
 
 		_, err := repo.Search(context.Background(), criteria, archivedokumenklaim.Pagination{})
 		require.ErrorIs(t, err, errBoom)
@@ -187,9 +197,9 @@ func TestListPageMeneruskanGalat(t *testing.T) {
 
 	t.Run("pindai", func(t *testing.T) {
 		repo, mock := newMock(t)
-		mock.ExpectQuery(exact(counted("search_keyword"))).
+		mock.ExpectQuery(exact(counted("search_archive"))).
 			WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(1))
-		mock.ExpectQuery(exact(paged("search_keyword"))).
+		mock.ExpectQuery(exact(paged("search_archive"))).
 			WillReturnRows(sqlmock.NewRows([]string{"ARCHIVE_ID"}).AddRow(1))
 
 		_, err := repo.Search(context.Background(), criteria, archivedokumenklaim.Pagination{})
@@ -199,9 +209,9 @@ func TestListPageMeneruskanGalat(t *testing.T) {
 
 	t.Run("baris", func(t *testing.T) {
 		repo, mock := newMock(t)
-		mock.ExpectQuery(exact(counted("search_keyword"))).
+		mock.ExpectQuery(exact(counted("search_archive"))).
 			WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(1))
-		mock.ExpectQuery(exact(paged("search_keyword"))).
+		mock.ExpectQuery(exact(paged("search_archive"))).
 			WillReturnRows(sqlmock.NewRows(fileColumns).AddRow(fileRow(1)...).
 				RowError(0, errBoom))
 

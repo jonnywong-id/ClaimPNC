@@ -263,6 +263,7 @@ import (
 	masterautoclaimsql "claim-pnc/internal/masterautoclaim/repo/sqlstore"
 	masterautoclaimusecase "claim-pnc/internal/masterautoclaim/usecase"
 	masterbengkelhttp "claim-pnc/internal/masterbengkel/http"
+	masterbengkeldokumenlink "claim-pnc/internal/masterbengkel/repo/dokumenlink"
 	masterbengkelmemory "claim-pnc/internal/masterbengkel/repo/memory"
 	masterbengkelsql "claim-pnc/internal/masterbengkel/repo/sqlstore"
 	masterbengkelusecase "claim-pnc/internal/masterbengkel/usecase"
@@ -295,6 +296,7 @@ import (
 	mastermaskingsql "claim-pnc/internal/mastermasking/repo/sqlstore"
 	mastermaskingusecase "claim-pnc/internal/mastermasking/usecase"
 	masterpanelhttp "claim-pnc/internal/masterpanel/http"
+	masterpaneldokumenlink "claim-pnc/internal/masterpanel/repo/dokumenlink"
 	masterpanelmemory "claim-pnc/internal/masterpanel/repo/memory"
 	masterpanelsql "claim-pnc/internal/masterpanel/repo/sqlstore"
 	masterpanelusecase "claim-pnc/internal/masterpanel/usecase"
@@ -336,6 +338,7 @@ import (
 	masterrekeningusecase "claim-pnc/internal/masterrekening/usecase"
 	"claim-pnc/internal/mastersparepart"
 	masterspareparthttp "claim-pnc/internal/mastersparepart/http"
+	mastersparepartdokumenlink "claim-pnc/internal/mastersparepart/repo/dokumenlink"
 	mastersparepartmemory "claim-pnc/internal/mastersparepart/repo/memory"
 	mastersparepartsql "claim-pnc/internal/mastersparepart/repo/sqlstore"
 	mastersparepartusecase "claim-pnc/internal/mastersparepart/usecase"
@@ -985,16 +988,24 @@ func run() error {
 
 	// Master Reas (MENU_ID 35) atas POOLDATA.T_REINSURER.
 	//
-	// Ia TIDAK menerima Caller, dan itu bukan kelalaian melainkan akibat langsung dari
-	// modulnya yang hanya MEMBACA: tidak ada baris yang diturunkan dari identitas
-	// pemanggil, dan tidak ada perubahan yang perlu dicatat pelakunya.
+	// Caller dipakai HANYA untuk mengisi log: `POOLDATA.T_REINSURER` tidak punya satu pun
+	// kolom pencatat pelaku maupun stempel waktu, sehingga log adalah satu-satunya tempat
+	// "siapa yang mengubah surel ini" terekam. Itu bukan pengganti jejak audit `S-5`.
 	//
-	// Alasan modul ini hanya membaca ada pada banner paket masterreas — ringkasnya,
-	// satu-satunya penulis tabel itu di sistem lama adalah alur PLA/DLA lewat
-	// `Database/UPDATEREAS.prc`, dipanggil `UpdateDetailPLA2` dan `UpdateDetailDLA2`,
-	// bukan layar master ini.
+	// Modul ini hanya punya satu jalur tulis — mengubah surel — dan itu pun hanya menyentuh
+	// kolom `EMAIL`, meniru `Database/UPDATEREAS.prc` pada baris yang sudah ada. Baris baru
+	// tetap lahir dari alur PLA/DLA, bukan dari layar ini.
 	reinsurerMemberHandler, err := masterreashttp.NewHandler(masterreashttp.Options{
-		Service:       assembly.masterReas,
+		Service: assembly.masterReas,
+		// Jembatan satu arah dari modul auth, dipasang di sini supaya kedua modul tetap
+		// tidak saling mengimpor.
+		Caller: func(ctx context.Context) (masterreashttp.Caller, bool) {
+			baseCtx, existing := authhttp.CallerFromContext(ctx)
+			if !existing {
+				return masterreashttp.Caller{}, false
+			}
+			return masterreashttp.Caller{Login: baseCtx.User.Login}, true
+		},
 		Logger:        logger,
 		WriteResponse: writeJSON,
 		WriteError:    masterreashttp.ErrorWriter(writePortalAwareError),
@@ -3352,6 +3363,15 @@ type storage struct {
 	// (R-20).
 	investigatorInboxSelector inboxinvestigator.RepoSelector
 
+	// investigationSelector memilih penyimpanan HASIL INVESTIGASI milik satu portal.
+	//
+	// Pemilih TERSENDIRI, bukan dipakai ulang dari yang di atas, karena seam-nya memang
+	// terpisah: yang di atas hanya membaca antrean, yang ini MENULIS. Pada jalur tulis
+	// akibat pemilih yang keliru lebih berat — hasil investigasi satu badan hukum
+	// tersimpan di basis data badan hukum lain, lengkap dengan data medisnya (R-20,
+	// FR-R2).
+	investigationSelector inboxinvestigator.InvestigationRepoSelector
+
 	// receiveTKASelector memilih penyimpanan Inbox Receive TKA milik satu portal.
 	// POOLDATA.T_CLAIM_TKA_H ada di basis data setiap entitas, dan modul ini MENULIS —
 	// pemilih yang keliru bukan hanya menampakkan pekerjaan badan hukum lain, melainkan
@@ -3699,13 +3719,20 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		return assembly{}, err
 	}
 
-	// Inbox Investigator TIDAK menerima Clock maupun Logger: ia hanya membaca, dan tidak
-	// ada satu pun nilainya yang bergantung pada jam dinding. Kolom "Lama Masuk Inbox"
-	// menampilkan tanggal survei apa adanya — bukan durasi yang dihitung. Lihat
-	// inboxinvestigator.Task.SurveyDate.
+	// Inbox Investigator MENERIMA Clock sejak formulir kerja Investigator dibangun.
+	//
+	// Catatan sebelumnya di sini menyatakan ia tidak memerlukan jam, dan itu benar selama
+	// ia hanya membaca: kolom "Lama Masuk Inbox" menampilkan tanggal survei apa adanya,
+	// bukan durasi yang dihitung. Formulirnya mengubah itu — TIGA nilai lahir dari waktu
+	// kini: Tanggal Investigasi saat formulir dibuka, lalu InvestTfDate dan
+	// AnalystTransferDate saat disimpan.
+	//
+	// Masih TANPA Logger: peristiwa bisnisnya dicatat modul Jejak Audit (`S-5`) yang belum
+	// dibangun, bukan dikarang menjadi baris log yang tidak dapat diandalkan sebagai jejak.
 	investigatorInboxService, err := inboxinvestigatorusecase.NewService(
 		inboxinvestigatorusecase.Options{
-			RepoSelector: store.investigatorInboxSelector,
+			RepoSelector:          store.investigatorInboxSelector,
+			InvestigationSelector: store.investigationSelector,
 		})
 	if err != nil {
 		store.close()
@@ -3940,23 +3967,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	extra, err := buildExtraServices(store, logger) //nolint:ineffassign,staticcheck // lihat catatan di atas.
 	workshopService, err := masterbengkelusecase.NewService(masterbengkelusecase.Options{
 		RepoSelector: store.workshopSelector,
-	})
-	if err != nil {
-		store.close()
-		return assembly{}, err
-	}
-
-	panelService, err := masterpanelusecase.NewService(masterpanelusecase.Options{
-		RepoSelector: store.panelSelector,
-	})
-	if err != nil {
-		store.close()
-		return assembly{}, err
-	}
-
-	sparepartService, err := mastersparepartusecase.NewService(mastersparepartusecase.Options{
-		RepoSelector: store.sparepartSelector,
-		Clock:        clock.System{},
 	})
 	if err != nil {
 		store.close()
@@ -4514,6 +4524,81 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		store.close()
 		return assembly{}, err
 	}
+
+	// Master Panel dirakit SESUDAH dokumen penunjang, dan urutan itu bukan kebetulan:
+	// tombol "Upload Document" pada tab Approve dan Reject menempuh rantai penyimpanan
+	// yang sama persis dengan Open Protection dan registrasi
+	// (`Flow Action/UploadDocument-FA.xml` berkelas `@baseclass`, dipanggil 13 section
+	// lintas modul). Ia menyambung ke sana lewat adapter masterpaneldokumenlink,
+	// bukan membangun rantainya ulang.
+	panelService, err := masterpanelusecase.NewService(masterpanelusecase.Options{
+		RepoSelector: store.panelSelector,
+		Uploader:     masterpaneldokumenlink.New(documentService),
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Panel dirakit DUA KALI, dan ini menyambungkan keduanya.
+	//
+	// `buildExtraServices` (modules.go) sudah membuat satu Service panel jauh di atas —
+	// tanpa Uploader, karena `documentService` belum ada saat itu. Handler yang
+	// BENAR-BENAR melayani permintaan dirakit dari service itu
+	// (`modules.go` → `masterpanelhttp.Mount`), bukan dari `assembly.masterPanel`.
+	//
+	// Tanpa baris di bawah, tombol unggah mati di layar meski perakitan di sini benar:
+	// `/pilihan` menjawab `unggah_tersedia: false`, tanpa satu pun galat yang menyebutkan
+	// sebabnya. Persis jebakan yang sama dengan Master Sparepart (2026-10-06).
+	extra.panel = panelService
+
+	// Master Bengkel dirakit ULANG di sini, dengan alasan yang sama persis seperti Master
+	// Panel di atas: rakitan pertamanya berjalan jauh sebelum `documentService` ada,
+	// sehingga ia tidak dapat membawa Uploader.
+	//
+	// Tombol "Upload Document" layar Bengkel memakai `Flow Action/UploadDocument-FA.xml`
+	// yang SAMA — `@baseclass`, dipanggil 13 section lintas modul — sehingga ia menyambung
+	// lewat adapter, bukan membangun rantai penyimpanannya ulang.
+	workshopService, err = masterbengkelusecase.NewService(masterbengkelusecase.Options{
+		RepoSelector: store.workshopSelector,
+		Clock:        clock.System{},
+		Uploader:     masterbengkeldokumenlink.New(documentService),
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Dan inilah baris yang menyambungkannya. Tanpa ini tombol unggahnya mati di layar meski
+	// perakitan di atas benar — lihat catatan Master Panel.
+	extra.workshop = workshopService
+
+	// Master Sparepart dirakit di sini, bukan bersama master lainnya di atas, dan karena
+	// alasan yang sama dengan Master Panel: ia butuh documentService yang baru ada setelah
+	// baris ini. Tombol "Upload Document"-nya menempuh rantai penyimpanan yang sama persis —
+	// `GetIDDokumenSparepart-SQL.xml` kembar dengan `GetIDDokumenPanel-SQL.xml`, beda tabel
+	// saja — sehingga ia menyambung lewat adapter, bukan membangun rantainya ulang.
+	sparepartService, err := mastersparepartusecase.NewService(mastersparepartusecase.Options{
+		RepoSelector: store.sparepartSelector,
+		Clock:        clock.System{},
+		Uploader:     mastersparepartdokumenlink.New(documentService),
+	})
+	if err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
+	// Master Sparepart dirakit DUA KALI, dan ini menyambungkan keduanya.
+	//
+	// `buildExtraServices` (modules.go) sudah membuat satu Service sparepart pada baris
+	// jauh di atas — tanpa Uploader, karena `documentService` belum ada saat itu. Handler
+	// yang BENAR-BENAR melayani permintaan dirakit dari service itu
+	// (`modules.go` → `masterspareparthttp.Mount`), bukan dari `assembly.masterSparepart`.
+	//
+	// Tanpa baris di bawah, tombol "Upload Document" mati di layar meski perakitan di sini
+	// benar: `/pilihan` menjawab `unggah_tersedia: false`, dan tidak ada satu pun galat yang
+	// menyebutkan sebabnya. Itu persis yang terjadi pada 2026-10-06.
+	extra.sparepart = sparepartService
 
 	if store.legacy != nil {
 		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AcceptanceCommittee)
@@ -5162,6 +5247,15 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 				return nil, err
 			}
 			return inboxinvestigatorsql.NewRepo(conn), nil
+		}
+		store.investigationSelector = func(
+			alias string,
+		) (inboxinvestigator.InvestigationRepo, error) {
+			conn, err := pool.For(alias)
+			if err != nil {
+				return nil, err
+			}
+			return inboxinvestigatorsql.NewInvestigationRepo(conn), nil
 		}
 		store.receiveTKASelector = func(alias string) (inboxreceivetka.Repo, error) {
 			conn, err := pool.For(alias)
@@ -5887,6 +5981,7 @@ func buildStorage(cfg config.Config, production bool, logger *slog.Logger) (stor
 		store.causeOfLossDetailSelector = causeOfLossDetailSelectorMemory(cfg.PrimaryPortal)
 		store.reinsurerMemberSelector = reinsurerMemberSelectorMemory(cfg.PrimaryPortal)
 		store.investigatorInboxSelector = investigatorInboxSelectorMemory(cfg.PrimaryPortal)
+		store.investigationSelector = investigationSelectorMemory(cfg.PrimaryPortal)
 		store.receiveTKASelector = receiveTKASelectorMemory(cfg.PrimaryPortal)
 		store.clauseSelector = clauseSelectorMemory(cfg.PrimaryPortal)
 		store.supplierSelector = supplierSelectorMemory(cfg.PrimaryPortal)
@@ -6587,6 +6682,41 @@ func investigatorInboxSelectorMemory(primaryAlias string) inboxinvestigator.Repo
 			return existing, nil
 		}
 		fresh := inboxinvestigatormemory.NewSampleRepo()
+		store[clean] = fresh
+		return fresh, nil
+	}
+}
+
+// investigationSelectorMemory menyusun penyimpanan hasil investigasi di memori.
+//
+// Satu portal mendapat satu penyimpanan, dibuat saat pertama diminta lalu dipakai kembali.
+//
+// Di sini alasannya BUKAN sekadar menjaga identitas penyimpanan seperti pada pemilih
+// antrean di atas: modul ini MENULIS. Repo yang lahir kembali setiap permintaan akan
+// melupakan formulir yang barusan disimpan, sehingga membuka ulang formulir untuk
+// mengoreksinya — jalur yang paling sering dipakai petugas — tidak dapat dicoba sama sekali
+// saat pengembangan.
+//
+// Ia juga satu-satunya cara formulir ini dapat dipakai SEBELUM
+// `POOLDATA.TC_PNC_INVESTIGASI` dibuat DBA.
+func investigationSelectorMemory(
+	primaryAlias string,
+) inboxinvestigator.InvestigationRepoSelector {
+	var lock sync.Mutex
+	store := map[string]*inboxinvestigatormemory.InvestigationRepo{}
+
+	return func(alias string) (inboxinvestigator.InvestigationRepo, error) {
+		clean, err := memoryPortal(alias, primaryAlias)
+		if err != nil {
+			return nil, err
+		}
+
+		lock.Lock()
+		defer lock.Unlock()
+		if existing, already := store[clean]; already {
+			return existing, nil
+		}
+		fresh := inboxinvestigatormemory.NewInvestigationRepo()
 		store[clean] = fresh
 		return fresh, nil
 	}

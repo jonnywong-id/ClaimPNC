@@ -34,19 +34,43 @@ const TAB_PRODUKTIVITAS: Tab = {
   keterangan: 'Produktivitas per periode.',
   jenis: 'dashboard',
   panel: [],
-  keputusan: { dapat_diputuskan: false, alasan_wajib_saat_menolak: false },
+  keputusan: { dapat_diputuskan: false, dapat_massal: false, alasan_wajib_saat_menolak: false },
   punya_penyaring_periode: true,
+  label_terapkan_periode: 'Cari',
 }
 
-/** Dashboard lain yang punya penyaring periode, tanpa perbandingan tahun lalu. */
-const TAB_KLAIM: Tab = { ...TAB_PRODUKTIVITAS, kode: '3', nama: 'Klaim' }
+/**
+ * Dashboard lain yang punya penyaring periode, tanpa perbandingan tahun lalu.
+ *
+ * Label tombolnya BERBEDA, dan itu memang begitu di Pega: `pyButtonLabel Cari` pada
+ * Produktivitas, `pyButtonLabel Lihat Data` pada Klaim.
+ */
+const TAB_KLAIM: Tab = {
+  ...TAB_PRODUKTIVITAS,
+  kode: '3',
+  nama: 'Klaim',
+  label_terapkan_periode: 'Lihat Data',
+
+  // Bentuk grid ikut dikirim keterangan layar, dan itulah yang menggambar kepala kolom
+  // ketika isinya belum ada — termasuk saat permintaannya ditolak.
+  panel: [
+    {
+      kunci: 'bisnis',
+      judul: 'Total Klaim Bisnis',
+      kolom: [
+        { kunci: 'nama_bisnis', judul: 'COB' },
+        { kunci: 'total_klaim', judul: 'Total Klaim' },
+      ],
+    },
+  ],
+}
 
 const TAB_RINGKASAN: Tab = {
   kode: '4',
   nama: 'Approval Master',
   keterangan: 'Ringkasan.',
   jenis: 'ringkasan',
-  keputusan: { dapat_diputuskan: false, alasan_wajib_saat_menolak: false },
+  keputusan: { dapat_diputuskan: false, dapat_massal: false, alasan_wajib_saat_menolak: false },
   punya_penyaring_periode: false,
 }
 
@@ -56,12 +80,15 @@ const TAB_ANTREAN: Tab = {
   nama: 'Master Bengkel',
   keterangan: 'Pengajuan bengkel.',
   jenis: 'antrean',
+  induk: '4',
+  dalam_bilah_induk: true,
   kolom: [
     { kunci: 'id', judul: 'ID Bengkel' },
     { kunci: 'nama', judul: 'Nama Bengkel' },
   ],
   keputusan: {
     dapat_diputuskan: true,
+    dapat_massal: true,
     alasan_wajib_saat_menolak: false,
     label_alasan: 'Catatan',
   },
@@ -74,7 +101,9 @@ const TAB_BACA: Tab = {
   nama: 'Antrean Baca',
   keterangan: 'Hanya dilihat.',
   jenis: 'antrean',
-  keputusan: { dapat_diputuskan: false, alasan_wajib_saat_menolak: false },
+  induk: '4',
+  dalam_bilah_induk: true,
+  keputusan: { dapat_diputuskan: false, dapat_massal: false, alasan_wajib_saat_menolak: false },
   punya_penyaring_periode: false,
 }
 
@@ -84,8 +113,10 @@ const TAB_TANPA_ALASAN: Tab = {
   nama: 'Antrean Tanpa Alasan',
   keterangan: 'Tanpa alasan.',
   jenis: 'antrean',
+  induk: '4',
+  dalam_bilah_induk: true,
   kolom: [{ kunci: 'id', judul: 'ID' }],
-  keputusan: { dapat_diputuskan: true, alasan_wajib_saat_menolak: false },
+  keputusan: { dapat_diputuskan: true, dapat_massal: true, alasan_wajib_saat_menolak: false },
   punya_penyaring_periode: false,
 }
 
@@ -193,20 +224,37 @@ describe('cabang galat', () => {
     expect(await screen.findByText('Keterangan layar tidak dapat diambil.')).toBeInTheDocument()
   })
 
-  it('menampilkan galat pencacah tanpa menghalangi isi tab', async () => {
+  /*
+    Antrean yang SUMBERNYA belum ada digambar KOSONG, bukan sebagai layar rusak.
+
+    Server tetap menjawab 503 ber-kode `sumber_antrean_tidak_terbaca` dan tetap mencatat nama
+    objeknya di log — yang berubah hanya apa yang digambar. Pesannya ditujukan ke tim teknis,
+    dan sebabnya keadaan pengembangan: tabelnya memang belum dibuat (Work Owner, 2026-10-08).
+  */
+  it('menggambar antrean KOSONG saat sumbernya belum ada, tanpa pesan galat', async () => {
     stubFetch({
       meta: metadata([TAB_ANTREAN], '5'),
       answer: (url) =>
-        url === `${PATH}/ringkasan`
-          ? jsonResponse(503, { kode: 'galat_internal', pesan: 'Pencacah gagal dihitung.' })
+        url.startsWith(`${PATH}?`) || url === PATH
+          ? jsonResponse(503, {
+              kode: 'sumber_antrean_tidak_terbaca',
+              pesan:
+                'Antrean itu belum dapat ditampilkan: objek sumbernya di basis data sedang ' +
+                'tidak dapat dibaca.',
+            })
           : undefined,
-      list: () => ({ tab: TAB_ANTREAN, baris: ROWS }),
     })
     renderPage()
 
-    expect(await screen.findByText('Angka di bilah tab tidak dapat dimuat')).toBeInTheDocument()
-    expect(screen.getByText('Pencacah gagal dihitung.')).toBeInTheDocument()
-    expect(await screen.findByText('Bengkel Contoh Satu')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Tidak ada pengajuan yang menunggu persetujuan di antrean ini.'),
+    ).toBeInTheDocument()
+
+    expect(screen.queryByText(/tidak dapat dimuat/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/objek sumbernya/)).not.toBeInTheDocument()
+
+    // Kepala kolomnya TETAP digambar — bentuknya diketahui dari keterangan layar.
+    expect(screen.getByText('ID Bengkel')).toBeInTheDocument()
   })
 
   it('menampilkan galat isi tab dengan nama tabnya', async () => {
@@ -296,6 +344,93 @@ describe('antrean — pemilihan dan keputusan', () => {
     expect(screen.getByRole('button', { name: 'Setujui' })).toBeDisabled()
   })
 
+  /*
+    Enam dari sembilan antrean TIDAK punya jalur massal di Pega: sectionnya tidak menggambar
+    `Select All`, dan tombol keputusannya memanggil activity yang menyentuh satu baris. Layar
+    karena itu tidak boleh menawarkan pilih-semua di sana, dan memilih baris kedua harus
+    MENGGANTI pilihan pertama — bukan menumpuknya menjadi permintaan yang pasti ditolak
+    server.
+  */
+  it('tidak menawarkan pilih semua, dan memilih satu baris saja, pada antrean tanpa jalur massal', async () => {
+    const satuan: Tab = {
+      ...TAB_ANTREAN,
+      keputusan: { ...TAB_ANTREAN.keputusan, dapat_massal: false },
+    }
+
+    stubFetch({
+      meta: metadata([satuan], '5'),
+      list: () => ({ tab: satuan, baris: ROWS }),
+    })
+    renderPage()
+
+    expect(await screen.findByLabelText('Pilih baris BGK-001')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Pilih semua baris di halaman ini')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByLabelText('Pilih baris BGK-001'))
+    await userEvent.click(screen.getByLabelText('Pilih baris BGK-002'))
+
+    expect(screen.getByLabelText('Pilih baris BGK-001')).not.toBeChecked()
+    expect(screen.getByLabelText('Pilih baris BGK-002')).toBeChecked()
+  })
+
+  /*
+    Label tombol disalin dari Pega, termasuk huruf besarnya yang memang tidak seragam di
+    sana. Yang tidak punya literal Pega jatuh ke kata aplikasi — lihat tes-tes lain yang masih
+    mencari "Setujui".
+  */
+  it('memakai label tombol Pega bila antreannya punya', async () => {
+    const rangka: Tab = {
+      ...TAB_ANTREAN,
+      keputusan: {
+        ...TAB_ANTREAN.keputusan,
+        dapat_massal: false,
+        label_setujui: 'Setuju',
+        label_tolak: 'Tidak Setuju',
+      },
+    }
+
+    stubFetch({
+      meta: metadata([rangka], '5'),
+      list: () => ({ tab: rangka, baris: ROWS }),
+    })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: 'Setuju' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tidak Setuju' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Setujui' })).not.toBeInTheDocument()
+  })
+
+  /*
+    Tab yang di Pega isinya bilah sub-tab menggambar judul sub-tabnya.
+
+    `Sec_PaymentAkseptasiKlaimCase1` memuat dua `<pyTitle>`, tetapi yang kedua bersyarat
+    `1==2` — tidak pernah tampil. Yang digambar karena itu satu.
+  */
+  it('menggambar judul sub-tab pada tab yang punya, dan tidak pada yang lain', async () => {
+    const payment: Tab = { ...TAB_ANTREAN, judul_sub_tab: 'Approval Payment Akseptasi' }
+    stubFetch({
+      meta: metadata([payment], '5'),
+      list: () => ({ tab: payment, baris: ROWS }),
+    })
+    const { unmount } = renderPage()
+
+    expect(
+      await screen.findByRole('tab', { name: 'Approval Payment Akseptasi' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    unmount()
+
+    stubFetch({
+      meta: metadata([TAB_ANTREAN], '5'),
+      list: () => ({ tab: TAB_ANTREAN, baris: ROWS }),
+    })
+    renderPage()
+
+    expect(await screen.findByLabelText('Pilih baris BGK-001')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: 'Approval Payment Akseptasi' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('mematikan pilih semua pada antrean kosong', async () => {
     stubFetch({
       meta: metadata([TAB_ANTREAN], '5'),
@@ -367,10 +502,17 @@ describe('antrean — pemilihan dan keputusan', () => {
 })
 
 describe('bilah tab', () => {
-  it('membedakan lencana nol, lencana terpilih, dan sumber tak terbaca', async () => {
+  it('TIDAK menggambar angka pencacah pada tab mana pun', async () => {
+    /*
+      Pega menghitung antreannya, tetapi angkanya ditampilkan sebagai tabel `Status`/`Jumlah`
+      tersendiri — bukan sebagai lencana pada tombol tabnya. Lencana itu dicabut atas
+      permintaan Work Owner (2026-10-08).
+
+      Keterangan sumber yang tidak terbaca TETAP ada, sebagai tooltip, karena ia bukan angka.
+    */
     const extra: Tab = { ...TAB_ANTREAN, kode: '6', nama: 'Master Panel' }
     stubFetch({
-      meta: metadata([TAB_ANTREAN, extra, TAB_BACA], '5'),
+      meta: metadata([TAB_RINGKASAN, TAB_ANTREAN, extra, TAB_BACA], '5'),
       counters: [
         { tab: '5', label: 'Master Bengkel', jumlah: 7, induk: '4' },
         { tab: '6', label: 'Master Panel', jumlah: 0, induk: '4' },
@@ -387,37 +529,71 @@ describe('bilah tab', () => {
     renderPage()
 
     const selected = await screen.findByRole('tab', { name: /Master Bengkel/ })
-    await waitFor(() => expect(within(selected).getByText('7')).toHaveClass('bg-blue-100'))
-    expect(within(screen.getByRole('tab', { name: /Master Panel/ })).getByText('0')).toHaveClass(
-      'bg-slate-100',
-    )
-
-    const unreadable = screen.getByRole('tab', { name: /Antrean Baca/ })
-    expect(unreadable).toHaveAttribute('title', 'Sumbernya tidak dapat dibaca.')
+    expect(within(selected).queryByText('7')).not.toBeInTheDocument()
     expect(
-      within(unreadable).getByLabelText('sumber antrean ini sedang tidak dapat dibaca'),
-    ).toHaveTextContent('!')
+      within(screen.getByRole('tab', { name: /Master Panel/ })).queryByText('0'),
+    ).not.toBeInTheDocument()
 
-    // Lencana tab yang tidak terpilih memakai warna netral.
-    await userEvent.click(screen.getByRole('tab', { name: /Master Panel/ }))
-    expect(within(selected).getByText('7')).toHaveClass('bg-slate-200')
-  })
-})
-
-describe('ringkasan Approval Master', () => {
-  it('menyatakan angka antrean belum dapat dimuat bila tidak ada pencacah anak', async () => {
-    stubFetch({
-      meta: metadata([TAB_RINGKASAN], '4'),
-      counters: [{ tab: '4', label: 'Approval Master', jumlah: 0 }],
-      list: () => ({ tab: TAB_RINGKASAN }),
-    })
-    renderPage()
-
-    expect(await screen.findByText(/Angka antrean belum dapat dimuat/)).toBeInTheDocument()
+    // Keterangan "sumber tidak terbaca" juga tidak lagi menempel sebagai tooltip: ia pesan
+    // untuk tim teknis, bukan untuk penyelia.
+    const unreadable = screen.getByRole('tab', { name: /Antrean Baca/ })
+    expect(unreadable).toHaveAttribute('title', TAB_BACA.keterangan)
+    expect(
+      within(unreadable).queryByLabelText('sumber antrean ini sedang tidak dapat dibaca'),
+    ).not.toBeInTheDocument()
   })
 })
 
 describe('dashboard dengan penyaring periode', () => {
+  /*
+    Galat pemuatan TIDAK boleh menghapus penyaring periodenya.
+
+    Galat yang paling sering muncul di tab berperiode justru BERASAL dari isian periode —
+    rentang lintas tahun yang ditolak tab Klaim, meniru `Activity/DashboardKlaim_act`.
+    Mengganti seluruh badan tab membuat pesan "perbaiki yang ditandai" muncul tanpa ada yang
+    dapat diperbaiki.
+  */
+  it('tetap menggambar penyaring periode DAN gridnya saat pemuatan GAGAL', async () => {
+    // Tab Klaim — tab yang memang menolak rentang lintas tahun, dan yang bentuk gridnya
+    // ikut dikirim keterangan layar.
+    stubFetch({
+      meta: metadata([TAB_KLAIM], '3'),
+      counters: [],
+      answer: (url) =>
+        url.startsWith(`${PATH}?`) || url === PATH
+          ? // Bentuk jawaban galat validasi yang SEBENARNYA: pesan amplopnya umum, dan yang
+            // menyebut sebabnya ada di `detail`.
+            jsonResponse(422, {
+              kode: 'permintaan_tidak_valid',
+              pesan: 'Permintaan belum benar. Perbaiki yang ditandai lalu coba lagi.',
+              detail: [
+                {
+                  field: 'periode',
+                  pesan: 'Periode Up To hanya untuk periode tahun yang sama',
+                },
+              ],
+            })
+          : undefined,
+    })
+    renderPage()
+
+    expect(await screen.findByText(/tidak dapat dimuat/)).toBeInTheDocument()
+
+    // Pesan Pega-lah yang tampil, BUKAN pesan amplop yang tidak menyebut apa pun.
+    expect(
+      screen.getByText('Periode Up To hanya untuk periode tahun yang sama'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Perbaiki yang ditandai lalu coba lagi/)).not.toBeInTheDocument()
+
+    // Isiannya tetap tergambar supaya tanggalnya dapat dibetulkan di tempat.
+    expect(screen.getByLabelText('Periode')).toBeInTheDocument()
+
+    // Dan gridnya TIDAK dihapus — Pega menampilkan alert tanpa membuang tabelnya.
+    expect(screen.getByRole('columnheader', { name: 'COB' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Total Klaim' })).toBeInTheDocument()
+  })
+
+
   it('menyatakan tanpa penyaring lalu mengirim bulan yang dipilih', async () => {
     stubFetch({
       meta: metadata([TAB_PRODUKTIVITAS], '2'),
@@ -438,6 +614,10 @@ describe('dashboard dengan penyaring periode', () => {
 
     const month = screen.getByLabelText('Bulan & Tahun')
     await userEvent.type(month, '2026-09')
+
+    // Mengisi saja TIDAK memuat ulang — di Pega periode berlaku saat tombolnya ditekan.
+    expect(listCalls().some((params) => params.get('bulan') === '2026-09')).toBe(false)
+    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
 
     expect(await screen.findByText('2026-09-01 sampai 2026-09-30')).toBeInTheDocument()
     expect(
@@ -467,6 +647,7 @@ describe('dashboard dengan penyaring periode', () => {
 
     await userEvent.type(screen.getByLabelText('Dari'), '2026-08-01')
     await userEvent.type(screen.getByLabelText('Sampai'), '2026-08-31')
+    await userEvent.click(screen.getByRole('button', { name: 'Lihat Data' }))
 
     // Tab selain kode 2 diakhiri titik, tanpa perbandingan tahun lalu.
     expect(await screen.findByText('2026-08-01 sampai 2026-08-31')).toBeInTheDocument()
@@ -476,7 +657,12 @@ describe('dashboard dengan penyaring periode', () => {
     expect(sent?.get('dari')).toBe('2026-08-01')
     expect(sent?.has('bulan')).toBe(false)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus penyaring' }))
+    // Penyaring dihapus dengan MENGOSONGKAN isiannya lalu menekan tombol yang sama — tidak
+    // ada tombol "Hapus penyaring" di Pega.
+    await userEvent.clear(screen.getByLabelText('Dari'))
+    await userEvent.clear(screen.getByLabelText('Sampai'))
+    await userEvent.click(screen.getByRole('button', { name: 'Lihat Data' }))
+
     expect(
       await screen.findByText('Tanpa penyaring periode: angka di bawah mencakup seluruh periode.'),
     ).toBeInTheDocument()
@@ -484,8 +670,12 @@ describe('dashboard dengan penyaring periode', () => {
     expect(screen.getByLabelText('Bulan & Tahun')).toBeInTheDocument()
   })
 
-  // Rentang yang baru diisi sebagian hanya mengirim bagian yang terisi.
-  it('mengirim rentang tanpa tanggal yang kosong', async () => {
+  /*
+    Uji inti laporan Work Owner: mengetik tahun pada isian tanggal melewati keadaan setengah
+    jadi ("0002", lalu "0020"), dan sebelumnya setiap keadaan itu menjadi permintaan
+    tersendiri yang pasti ditolak server.
+  */
+  it('TIDAK mengirim permintaan apa pun selama tanggal masih diketik', async () => {
     stubFetch({
       meta: metadata([TAB_KLAIM], '3'),
       list: () => ({ tab: TAB_KLAIM, panel: [] }),
@@ -493,13 +683,34 @@ describe('dashboard dengan penyaring periode', () => {
     renderPage()
 
     await userEvent.selectOptions(await screen.findByLabelText('Periode'), 'rentang')
+    const sebelum = listCalls().length
 
-    await waitFor(() =>
-      expect(listCalls().some((params) => params.get('bentuk_periode') === 'rentang')).toBe(true),
-    )
-    const sent = listCalls().find((params) => params.get('bentuk_periode') === 'rentang')
-    expect(sent?.has('dari')).toBe(false)
-    expect(sent?.has('sampai')).toBe(false)
+    await userEvent.type(screen.getByLabelText('Dari'), '2026-01-01')
+    expect(listCalls()).toHaveLength(sebelum)
+
+    // Rentang yang baru separuh terisi tidak dapat diterapkan sama sekali.
+    expect(screen.getByRole('button', { name: 'Lihat Data' })).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText('Sampai'), '2026-12-31')
+    expect(screen.getByRole('button', { name: 'Lihat Data' })).toBeEnabled()
+    expect(listCalls()).toHaveLength(sebelum)
+  })
+
+  // Berganti bentuk periode saja TIDAK memuat ulang — ia bagian dari draf, sama seperti
+  // isian tanggalnya.
+  it('tidak memuat ulang hanya karena bentuk periode diganti', async () => {
+    stubFetch({
+      meta: metadata([TAB_KLAIM], '3'),
+      list: () => ({ tab: TAB_KLAIM, panel: [] }),
+    })
+    renderPage()
+
+    const mode = await screen.findByLabelText('Periode')
+    const sebelum = listCalls().length
+    await userEvent.selectOptions(mode, 'rentang')
+
+    expect(listCalls()).toHaveLength(sebelum)
+    expect(listCalls().some((params) => params.get('bentuk_periode') === 'rentang')).toBe(false)
   })
 })
 
@@ -509,7 +720,7 @@ describe('panel dashboard', () => {
     nama: 'Outstanding',
     keterangan: 'Klaim berjalan.',
     jenis: 'dashboard',
-    keputusan: { dapat_diputuskan: false, alasan_wajib_saat_menolak: false },
+    keputusan: { dapat_diputuskan: false, dapat_massal: false, alasan_wajib_saat_menolak: false },
     punya_penyaring_periode: false,
   }
 

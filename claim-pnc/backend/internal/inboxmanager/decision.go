@@ -83,6 +83,47 @@ type DecisionRule struct {
 
 	// ReasonLabel adalah judul isian alasan yang dibaca pengguna.
 	ReasonLabel string
+
+	// ApproveLabel dan RejectLabel adalah label tombol keputusan, DISALIN APA ADANYA dari
+	// `<pyLabel>` pada section Pega tab ini (`D-13`).
+	//
+	// # Kenapa tidak satu kata untuk semua tab
+	//
+	// Karena Pega tidak begitu, dan perbedaannya bukan kelalaian satu orang:
+	//
+	//	APPROVE / REJECT        Bengkel · Panel · Sparepart · Kategori Sparepart ·
+	//	                        Tipe Sparepart
+	//	Approve / Reject        Grouping Sparepart
+	//	Setuju / Tidak Setuju   Approval Nomor Rangka Beda
+	//
+	// Keduanya KOSONG pada antrean yang di Pega tidak punya tombol bernama sama sekali —
+	// Payment Klaim Akseptasi dan Penolakan Klaim memakai isian di dalam grid lalu satu
+	// tombol simpan (`SIMPAN`, `Simpan Data Penolakan`). Pada antrean itu layar memakai kata
+	// aplikasi sendiri; mengarang "APPROVE" di sana akan menuliskan literal yang tidak ada.
+	ApproveLabel string
+	RejectLabel  string
+
+	// Bulk menyatakan antrean ini dapat diputuskan BANYAK BARIS sekaligus.
+	//
+	// # Ini kewenangan, bukan kenyamanan
+	//
+	// Hanya TIGA antrean yang punya jalur massal di Pega, dan ketiganya dapat ditunjuk:
+	// `Section/ApprovalMasterBengkelHE`, `…PanelHE`, dan `…SparepartHE` menggambar tombol
+	// `Select All` dan `Deselect All` di atas gridnya, dan tombol APPROVE/REJECT di sana
+	// memanggil `Activity/SetApprovalAllMaster` — yang isinya tiga blok `RDB-List`
+	// ber-`pyStepsRepeatDefHasRepeat = EMBEDDED`, yakni perulangan atas baris.
+	//
+	// Enam antrean sisanya TIDAK punya kedua tombol itu, dan tombol keputusannya memanggil
+	// activity yang menyentuh SATU baris — `UpdateKategoriSparepart_act`,
+	// `UpdateTipeSparepart_act`, `UpdateGroupingSparepartHE_act`,
+	// `UpdateStatusAksepRangka_HE`, `SaveApprovalAkseptasiPaymentLeader_Act`
+	// (Obj-Open-By-Handle → Obj-Save → Commit), dan `SaveDataCheckerPenolakan`.
+	//
+	// Membiarkan keenamnya diputuskan serentak bukan mempermudah pekerjaan yang sama; ia
+	// memberi penyelia kemampuan menyetujui puluhan baris sekaligus yang di sistem lama
+	// sengaja tidak ada. Karena itu ia ditegakkan di SERVER, bukan hanya disembunyikan dari
+	// layar.
+	Bulk bool
 }
 
 // Decision adalah permintaan keputusan yang sudah tervalidasi.
@@ -201,6 +242,16 @@ func NewDecision(
 		violations = append(violations, Violation{
 			Field:   FieldKeys,
 			Message: "Pilih dulu baris yang hendak diputuskan.",
+		})
+	case len(cleanKeys) > 1 && !rule.Bulk:
+		// Ditegakkan di SINI, bukan hanya di layar. Keenam antrean tanpa jalur massal
+		// memutuskan satu baris per tombol di Pega; permintaan berisi banyak kunci karena
+		// itu bukan jalur yang pernah ada, dan menerimanya diam-diam akan memberi kewenangan
+		// yang sistem lama tidak pernah berikan.
+		violations = append(violations, Violation{
+			Field: FieldKeys,
+			Message: "Antrean ini diputuskan satu baris setiap kali. " +
+				"Pilih satu baris, lalu ulangi untuk baris berikutnya.",
 		})
 	case len(cleanKeys) > MaxDecisionKeys:
 		violations = append(violations, Violation{

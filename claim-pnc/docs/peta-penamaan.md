@@ -2236,6 +2236,12 @@ properti bernama `MAX_STOCK`.
 `pyID` patut diperhatikan sendiri: ia properti **bawaan Pega** yang dipinjam untuk memikul
 nomor grup kendaraan.
 
+Kolom *(tidak digambar)* pada tabel di atas berlaku harfiah untuk `NO_GROUP_RANGKA`: ia
+tersimpan, diterbitkan penyimpanan, dan dikirim API sebagai `nomor_grup` — tetapi **tidak
+ditampilkan di layar mana pun**, baik di Pega maupun di aplikasi ini. Sempat digambar sebagai
+kolom grid dan keterangan form; keduanya dicabut atas keputusan Work Owner 2026-10-04. Lihat
+`keputusan-implementasi.md` §185.
+
 ### Alias kolom SQL yang TIDAK dibawa
 
 `RDB List/GetDataMasterGrouping-SQL.xml` menamai ulang kolomnya agar cocok dengan properti di
@@ -2383,11 +2389,26 @@ dibaca dari caption pada `Section/MasterTipeSparepartHEApproval-Section.xml`.
 | `PART_CATEGORY_ID` | ID Kategori Sparepart | `CategoryID` | `id_kategori_sparepart` |
 | `APPROVAL` | — | `Status` | `status` |
 
-Satu field **bukan kolom tabel ini** dan tidak pernah ditulis:
+**Keempatnya saja — tidak ada field kelima.** Koreksi Work Owner 2026-10-04: *"Di PEGA
+kolom Kategori Sparepart tidak ada, ikuti PEGA saja."*
 
-| Asal | Label layar Pega | Nama di kode | Nama JSON |
-|---|---|---|---|
-| `GCNM_M_SPAREPART_CATEGORY.PART_CATEGORY_NAME` lewat LEFT JOIN | Kategori Sparepart | `CategoryName` | `nama_kategori_sparepart` |
+Versi pertama membawa `PART_CATEGORY_NAME` lewat LEFT JOIN, sebagai `CategoryName` /
+`nama_kategori_sparepart`. Itu dicabut seluruhnya — dari domain, DTO, tipe TypeScript, dan
+grid.
+
+Grid Pega menggambar **tiga** kolom, dibaca dengan menelusuri `<rowdata>` pada ketiga
+section tab dan memasangkan sel header dengan sel datanya lewat `pyWidth` yang cocok persis:
+
+| `pyWidth` | Header | Sel data |
+|---|---|---|
+| 94 | ID Tipe Sparepart | `.CityID` |
+| 240 | Nama Tipe Sparepart | `.City` |
+| 156 | ID Kategori Sparepart | `.District` |
+
+`.DistrictID` — alias `PART_CATEGORY_NAME` — tidak dipakai grid mana pun. Caption "Kategori
+Sparepart" yang sempat terbaca sebagai judul kolom ternyata **label FORM** untuk
+dropdown-nya; keduanya hidup di berkas section yang sama, dan membedakannya menuntut
+penelusuran `<rowdata>` alih-alih pencarian `pyCaption` yang datar.
 
 ### Alias Pega yang TIDAK dibawa
 
@@ -2430,6 +2451,11 @@ Properti input pada jalur simpan dipinjam dari kelas **Master Bengkel**
 | Rute frontend | `/master/tipe-sparepart` |
 | Jalur API | `/api/master/tipe-sparepart`, `+/pilihan`, `+/keputusan` |
 
+`+/keputusan` **tidak dipanggil layar ini**. Ketiga tab Pega nol tombol dan nol
+`pyLocalAction`; persetujuan di Pega dikerjakan `ApprovalMasterTipeSparepartHE`, milik Inbox
+Manager. Endpoint-nya tetap ada sebagai padanan section itu (koreksi Work Owner
+2026-10-04).
+
 Perhatikan selisihnya: **nama program memakai "SparepartType", rutenya memakai "tipe"**.
 Kunci petanya mengikuti basis data; rutenya mengikuti nama bisnis.
 
@@ -2466,15 +2492,29 @@ Inilah contoh telak utang `03-CURRENT-ARCHITECTURE.md` §4.2 pada modul ini. Rul
 mengalias setiap kolom menjadi properti klipboard yang namanya tidak ada hubungannya dengan
 isinya:
 
-| Kolom basis data | Alias Pega | Field Go | Field JSON | Judul kolom layar |
+| Kolom basis data | Alias Pega | Field Go | Field JSON | Di layar |
 |---|---|---|---|---|
-| `REINSURERID` | `CityID` | `ReinsurerID` | `kode_reas` | Kode Reas |
-| `REINSURERNAME` | `District` | `ReinsurerName` | `nama_reas` | Nama Reas |
+| `REINSURERID` | `CityID` | `ReinsurerID` | `kode_reas` | **tanpa kolom** — tergambar di bawah Nama Reinsurer |
+| `REINSURERNAME` | `District` | `ReinsurerName` | `nama_reas` | **Nama Reinsurer** |
 | `LOGIN` | `DistrictID` | `Login` | `login` | Login |
-| `EMAIL` | **`City`** | `Email` | `email` | Email |
-| `COUNTRY` | `Country` | `Country` | `negara` | Negara |
+| `EMAIL` | **`City`** | `Email` | `email` | Email — **satu-satunya yang dapat diubah** |
+| `COUNTRY` | `Country` | `Country` | `negara` | **tanpa kolom** — terbaca di form ubah |
 | `TYPE` | — | `Type` | `tipe` | Tipe |
 | `COUNTRYID` | — | **tidak ada** | **tidak dikirim** | **tidak ditampilkan** |
+
+Kolom **No** memuat **nomor urut tampilan**, bukan kolom basis data mana pun. Kolom **Aksi**
+menutup gridnya — judulnya `'Aksi'` seperti seluruh modul lain, berisi tombol **Ubah**.
+
+Ukuran halamannya **10**, dibaca dari `pyRDLPageSize` pada section `ListMemberReas`.
+
+**Judul kolomnya DIKOREKSI 2026-10-05.** Semula "Kode Reas", "Nama Reas", dan "Negara" —
+hasil rekonstruksi dari SELECT yang ada, karena section grid Pega hilang dari export
+(`R-16`). Work Owner menyebut kepala kolom layar Pega apa adanya:
+
+	No · Nama Reinsurer · Login · Email · Tipe · Aksi
+
+Dua yang meleset: **`REINSURERID` ternyata berjudul "No"** — sama seperti layar master lain
+yang menaruh ID induk di kolom itu — dan **`COUNTRY` tidak punya kolom sama sekali**.
 
 Alamat surel dialiaskan menjadi `City`, dan nama perusahaan reasuransi menjadi `District`.
 Membaca rule lama berarti menelusuri kelimanya sampai ke pemanggilnya untuk tahu isian mana
@@ -2498,16 +2538,16 @@ Yang **dinamai** hanyalah nilai yang artinya terbukti dari dua tempat sekaligus:
 
 ### Nama kueri
 
-Seluruhnya berawalan `reas_`, dan **seluruhnya membaca**.
+Seluruhnya berawalan `reas_`.
 
 | Kelompok | Nama |
 |---|---|
 | Daftar | `reas_list`, `reas_list_search` |
+| Tulis | `reas_update` — **satu-satunya**, dan ia hanya menyentuh kolom `EMAIL` |
 | Periksa | `reas_check_table`, `reas_count_all`, `reas_count_duplicate_key`, `reas_count_shared_login`, `reas_count_empty_login`, `reas_count_missing_email`, `reas_count_without_fallback` |
 
-Tidak ada kelompok **Tulis** dan tidak ada kelompok **Acuan** — yang pertama karena modulnya
-tidak menulis, yang kedua karena tabel acuannya (`COUNTRY`) tidak dibaca satu pun rule di
-export.
+Tidak ada kelompok **Acuan** — tabel acuannya (`COUNTRY`) tidak dibaca satu pun rule di
+export, sehingga daftar negara yang sah tidak diketahui.
 
 ### Rute dan kunci menu
 
@@ -2516,7 +2556,10 @@ export.
 | MENU_ID | 35 |
 | `MENU_PROGRAM` | `DataMemberReas` |
 | Rute frontend | `/master/reas` |
-| Jalur API | `/api/master/reas` — **hanya `GET`** |
+| Jalur API | `/api/master/reas` — `GET` dan `PUT`, keduanya **tanpa parameter jalur** |
+
+`PUT`-nya tanpa parameter karena kunci alaminya **tiga kolom** dan salah satunya (`TYPE`)
+boleh kosong; seluruhnya dikirim di badan permintaan.
 
 Perhatikan selisihnya: **nama program memakai "DataMember", judul menunya "Master Reas", dan
 caption section lamanya "Data Member"**. Kunci petanya mengikuti basis data, rutenya
@@ -2526,11 +2569,16 @@ mengikuti nama menu, dan caption lamanya dipakai sebagai keterangan di bawah jud
 
 | Kode | Kapan |
 |---|---|
-| `permintaan_cacat` | kata pencarian melampaui 100 karakter — 400 |
+| `permintaan_cacat` | kata pencarian melampaui 100 karakter, badan JSON tidak terbaca, atau memuat isian yang tidak dikenal (`login`, `negara`) — 400 |
+| `validasi_gagal` | surel kosong atau melampaui 100 karakter — 422 |
+| `tidak_ditemukan` | baris yang hendak diubah sudah tidak ada — 404 |
 
-Hanya satu, dan itu bukan kelalaian: modul yang tidak menulis tidak punya keadaan yang dapat
-ditolak atas dasar aturan bisnis. Galat portal dipetakan `portalhttp.WithPortalError`, dan
-galat teknis diserahkan ke penulis galat bersama.
+Galat portal dipetakan `portalhttp.WithPortalError`, dan galat teknis diserahkan ke penulis
+galat bersama.
+
+`tidak_ditemukan` lebih mungkin muncul di modul ini daripada di modul master lain: alur
+PLA/DLA menulis ke tabel yang sama lewat `Database/UPDATEREAS.prc`, sehingga baris dapat
+berubah di belakang layar antara saat daftar dimuat dan saat Simpan ditekan.
 
 ## Detail Penyebab Kerugian (2026-09-23)
 
@@ -5144,7 +5192,86 @@ mengisinya: `IMAGEID`, `CATEGORY`, `SUB_CATEGORY`, dan `IDPEGA`. Yang terakhir a
 properti **`ACCOUNT_ID`** membawa **muatan JSON**, bukan nomor rekening —
 `RDB List/UpdateBengkelHE-SQL.xml` mengirimnya sebagai CLOB ke `PEGA_M_BENGKEL_HE`. Nomor
 rekening yang sesungguhnya ada di kolom `NO_ACCOUNT`.
->>>>>>> 6b777aebc45e7c25f822b6765426b9209fc59904
+
+---
+
+## Koreksi Master Kategori Sparepart (2026-10-04)
+
+Mengoreksi bagian "Master Kategori Sparepart (2026-09-21)" di atas.
+
+### Tipe kolom — terverifikasi dari katalog Oracle
+
+Bagian sebelumnya tidak menyebut tipe kolomnya sama sekali, dan banner `.sql` menyatakan
+`PART_CATEGORY_ID` bertipe angka. **Itu salah.** Katalog dibaca pada 2026-10-04:
+
+| Kolom | Tipe | Catatan |
+|---|---|---|
+| `PART_CATEGORY_ID` | **`VARCHAR2(10)`** | teks, bukan angka — lihat `keputusan-implementasi.md` §186.2 |
+| `PART_CATEGORY_NAME` | `VARCHAR2(100)` | membenarkan `MaxNameLength = 100` yang semula asumsi |
+| `APPROVAL` | `VARCHAR2(2)` | |
+
+### Nama baru di paket domain
+
+Ketiganya ada di `internal/masterkategorisparepart`, bukan di adapter, karena **bentuk
+kunci adalah aturan domain** — adapter SQL dan adapter memori wajib memakai aturan yang
+sama persis.
+
+| Nama di kode | Padanan SQL | Gunanya |
+|---|---|---|
+| `MaxIDWidth` | lebar `VARCHAR2(10)` | menolak kunci yang tidak muat sebelum basis data menolaknya dengan ORA-12899 |
+| `NextKey(existing []string)` | — (dulu `category_next_id`) | maksimum **numerik** + 1; melewati kunci yang bukan angka |
+| `SortKey(id string)` | `LPAD(TRIM(PART_CATEGORY_ID), 10, '0')` | urutan teks yang berperilaku numerik |
+
+### Nama kueri yang berubah
+
+| Semula | Sekarang | Sebab |
+|---|---|---|
+| `category_next_id` | **`category_all_ids`** | penomoran tidak lagi satu agregat; ia membaca kunci lalu menghitung maksimum numerik di Go |
+
+Tiga kueri lain berubah isinya tanpa berubah namanya:
+
+| Kueri | Yang berubah |
+|---|---|
+| `category_list` · `category_list_search` · `category_find_by_name` | `ORDER BY PART_CATEGORY_ID` → `ORDER BY LPAD(TRIM(PART_CATEGORY_ID), 10, '0')` |
+| `category_get` · `category_update` · `category_set_status` | `TRIM(CAST(PART_CATEGORY_ID AS VARCHAR(64)))` → `TRIM(PART_CATEGORY_ID)` — kolomnya sudah teks, CAST-nya tidak pernah diperlukan |
+
+### Nama yang DIHAPUS dari frontend
+
+| Nama | Sebab |
+|---|---|
+| `DecisionBar` | tidak ada padanannya di layar Pega; ketiga section tab hanya memuat UBAH dan Save |
+
+`useDecidePartCategory` **tetap** diekspor `api.ts` — endpoint-nya padanan
+`Activity/UpdateKategoriSparepart_act` yang nyata ada di Pega, dan pemakainya Inbox Manager.
+
+### Tambahan ekspor (2026-10-05)
+
+| `CONTEXT.md` / layar lama | Di kode | Kenapa |
+|---|---|---|
+| baris berkas ekspor | `ExportRow` | ia BUKAN `Task`; sumbernya klaim menurut rentang tanggal transfer, bukan antrean |
+| "Dari" / "Sampai" / "Pilih Investigation" | `ExportFilter.{From,To,Investigated}` | nama mengikuti ARTINYA; property Pega-nya bernama `DateOfLoss` dan `DateReceived`, dua nama yang menyesatkan |
+| `SelectRS` | `HospitalKindCode` + `HospitalKindLabel()` | kode disimpan, label diturunkan — supaya terjemahan `@if` lama hidup di satu tempat |
+| `Remaks` (judul kolom berkas) | `Remarks` (field) | ejaan salah di judul **dipertahankan** karena dibaca pengguna; yang diperbaiki nama di kode |
+
+Dua nama yang sengaja TIDAK diperbaiki di judul berkas: **"Remaks"** dan
+**"IsInvestigated"**. Keduanya tertulis apa adanya di
+`Activity/ExportDataInvestigator-Act.xml:2332`, dan pengguna mencocokkan berkas baru dengan
+berkas lama kolom per kolom.
+
+### Tambahan formulir kerja (2026-10-06)
+
+| Layar lama / `CONTEXT.md` | Di kode | Kenapa |
+|---|---|---|
+| Flow Action `InputInvestigator` | `Investigation` + `InvestigationDialog` | satu baris hasil investigasi, bukan `Task` — sumber dan siklus hidupnya berbeda |
+| syarat `pyCondition` tiap sel | `Visible` + `VisibleFor()` | ia **aturan**, jadi tinggal di domain — bukan di komponen |
+| `SetStatusInvestigator_Act` | `Transition` | dikembalikan ke layar supaya akibatnya dapat disebutkan, bukan dikerjakan diam-diam |
+| `Remaks` (property Pega) | `Remarks` (field), `REMAKS` (kolom) | ejaan Pega dipertahankan di kolom basis data; diperbaiki hanya di nama kode (`D-80`) |
+| `SelectRS` | `HospitalKindCode` | kode disimpan; labelnya diturunkan, tidak disimpan |
+| `NamaPCRS` | `HospitalPIC` | "PCRS" singkatan yang tidak terbaca siapa pun |
+
+Dua nama berbahasa **Indonesia** di kontrak API dan basis data, sesuai `D-80`: seluruh
+medan `InvestigationDTO` (`dapat_diinvestigasi`, `nomor_rekam_medik`, …) dan seluruh kolom
+`TC_PNC_INVESTIGASI`. Keduanya kontrak, bukan nama internal.
 
 ### Koreksi 2026-10-03 — Plan dan Jaminan dicabut
 
