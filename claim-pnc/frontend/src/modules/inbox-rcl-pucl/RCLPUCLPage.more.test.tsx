@@ -149,7 +149,7 @@ describe('antrean', () => {
     const tab = screen.getByRole('tab', { name: /Tab Terhalang/ })
     expect(tab).toHaveAttribute('title', 'Kolom penandanya belum dipastikan.')
     expect(within(tab).getByText('belum tersedia')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Export to Excel' })).toBeDisabled()
     expect(urls.some((u) => u.includes('tab=9'))).toBe(false)
   })
 
@@ -206,7 +206,7 @@ describe('ekspor', () => {
     show()
     await screen.findByText('PNC-H1')
 
-    await user.click(screen.getByRole('button', { name: 'Export To Excel' }))
+    await user.click(screen.getByRole('button', { name: 'Export to Excel' }))
 
     expect(await screen.findByRole('button', { name: 'Menyiapkan berkas…' })).toBeDisabled()
   })
@@ -218,7 +218,7 @@ describe('ekspor', () => {
     show()
     await screen.findByText('PNC-H1')
 
-    await user.click(screen.getByRole('button', { name: 'Export To Excel' }))
+    await user.click(screen.getByRole('button', { name: 'Export to Excel' }))
 
     await waitFor(() => expect(names).toEqual(['inbox-rcl-pucl.csv']))
     expect(urls).toContain(`${PATH}/ekspor?tab=2`)
@@ -233,7 +233,7 @@ describe('ekspor', () => {
     show()
     await screen.findByText('PNC-H1')
 
-    await user.click(screen.getByRole('button', { name: 'Export To Excel' }))
+    await user.click(screen.getByRole('button', { name: 'Export to Excel' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(text)
   })

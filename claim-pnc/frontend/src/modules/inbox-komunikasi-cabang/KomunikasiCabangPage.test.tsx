@@ -623,38 +623,79 @@ describe('tombol bilah atas', () => {
 })
 
 describe('detail komunikasi', () => {
-  it('membuka panel utas saat sel Pesan diklik', async () => {
+  it('membuka POPUP, bukan panel yang mendorong daftarnya ke bawah', async () => {
+    // Di Pega ia dialog melayang berjudul "DETAIL KOMUNIKASI CABANG" dengan tombol silang
+    // di pojok, dan daftarnya tetap terlihat di belakangnya.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    expect(await screen.findByRole('region', { name: /Detail komunikasi/ })).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', {
+      name: /Detail Komunikasi Cabang/i,
+    })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(
+      within(dialog).getByRole('button', { name: /Tutup Detail Komunikasi Cabang/ }),
+    ).toBeInTheDocument()
   })
 
-  it('menggambar setiap ucapan sebagai barisnya sendiri, termasuk balasannya', async () => {
-    // Sampai 2026-09-24 utas dibaca dari tabel percakapan, sehingga layar detail selalu
-    // menampilkan tepat SATU ucapan — betapapun panjang percakapannya — dengan balasannya
-    // digambar sebagai blok di dalamnya.
-    //
-    // Keterangan Work Owner mengoreksinya: utas dibaca dari tabel RIWAYAT, tempat setiap
-    // pesan dan setiap balasan menempati barisnya sendiri.
+  it('menggambar utasnya sebagai grid Tanggal · Pengirim · Pesan', async () => {
+    // Bentuk `Section/BalasKomunikasiCabang-Section.xml`: tiga kolom bernomor baris. Sampai
+    // 2026-10-10 ia digambar sebagai utas percakapan — bentuk yang lebih enak dibaca tetapi
+    // bukan bentuk acuannya, dan Work Owner memintanya diseragamkan.
     await renderLoaded()
 
     await userEvent.click(
       await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
     )
 
-    // Pencarian DIBATASI pada panel detail: kalimat yang sama muncul pula di sel "Pesan"
-    // pada grid di atasnya, dan pencarian seluruh halaman akan menemukan dua.
-    const panel = await screen.findByRole('region', { name: /Detail komunikasi/ })
+    // Pencarian DIBATASI pada popup: kalimat yang sama muncul pula di sel "Pesan" pada grid
+    // di belakangnya, dan pencarian seluruh halaman akan menemukan dua.
+    const dialog = within(
+      await screen.findByRole('dialog', { name: /Detail Komunikasi Cabang/i }),
+    )
 
-    expect(panel.textContent).toContain('Mohon lengkapi berita acara')
-    expect(panel.textContent).toContain('Berita acara sudah diunggah')
+    expect(dialog.getByRole('columnheader', { name: 'Tanggal' })).toBeInTheDocument()
+    expect(dialog.getByRole('columnheader', { name: 'Pengirim' })).toBeInTheDocument()
+    expect(dialog.getByRole('columnheader', { name: 'Pesan' })).toBeInTheDocument()
 
-    // Dua ucapan = dua baris daftar, bukan satu baris berisi keduanya.
-    expect(panel.querySelectorAll('ol > li')).toHaveLength(2)
+    // Dua ucapan = dua baris data, bukan satu baris berisi keduanya. rows[0] baris judul.
+    const rows = dialog.getAllByRole('row')
+    expect(rows).toHaveLength(3)
+    expect(rows[1]).toHaveTextContent('Mohon lengkapi berita acara')
+    expect(rows[2]).toHaveTextContent('Berita acara sudah diunggah')
+
+    // Kolom nomor baris, seperti di grid Pega.
+    expect(rows[1]).toHaveTextContent('1')
+    expect(rows[2]).toHaveTextContent('2')
+  })
+
+  it('menutup popup saat Escape ditekan', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+    await screen.findByRole('dialog', { name: /Detail Komunikasi Cabang/i })
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(
+      screen.queryByRole('dialog', { name: /Detail Komunikasi Cabang/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('memakai isian SATU BARIS untuk balasan, seperti pxTextInput di Pega', async () => {
+    await renderLoaded()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Detail Komunikasi percakapan KOM-9001/ }),
+    )
+
+    const field = await screen.findByLabelText('Masukkan Balasan')
+    expect(field.tagName).toBe('INPUT')
   })
 
   it('menyatakan keadaan percakapan yang belum punya satu pun ucapan', async () => {

@@ -284,14 +284,29 @@ const DefaultTab = "pla"
 // Ia fungsi, bukan variabel, supaya setiap tab memegang senarai kolomnya sendiri. Senarai
 // bersama yang dipakai tiga tab dapat diubah salah satu pemakainya dan diam-diam mengubah
 // dua yang lain.
+// # Judul dan jumlahnya MENGIKUTI PEGA apa adanya (`D-13`)
+//
+// Keenamnya terbaca langsung dari kepala grid ketiga section, sebagai teks tebal:
+//
+//	Section/InboxPLA_sect-Section.xml:4334,4515,4628,4775,4894,5079
+//	Section/InboxDLA_sect-Section.xml
+//	Section/PNCInboxPreDLA_sect-Section.xml
+//
+// Sampai 2026-10-10 senarai ini memuat TUJUH kolom berjudul bahasa Indonesia, dan kolom
+// ketujuh — "PIC Teknik" — tidak ada di satu pun dari ketiga grid Pega. Keduanya
+// dikoreksi atas permintaan Work Owner: layar depan harus terbaca sama dengan layar lama
+// supaya petugas tidak perlu belajar ulang.
+//
+// `FieldPICTeknik` TIDAK dihapus dari baris jawabannya — ia hanya tidak lagi digambar
+// sebagai kolom. Membuangnya dari baris akan memutus pemakainya yang lain tanpa satu pun
+// permintaan untuk itu.
 func queueColumns(adviceTitle string) []Column {
 	return []Column{
-		{Key: FieldClaimNo, Title: "No Klaim"},
-		{Key: FieldPolicyNo, Title: "No Polis"},
-		{Key: FieldInsured, Title: "Nama Tertanggung"},
-		{Key: FieldRegisterDate, Title: "Tanggal Register", Date: true},
-		{Key: FieldLossDate, Title: "Tanggal Kejadian", Date: true},
-		{Key: FieldPICTeknik, Title: "PIC Teknik"},
+		{Key: FieldClaimNo, Title: "CLAIM NO"},
+		{Key: FieldPolicyNo, Title: "POLICY NO"},
+		{Key: FieldInsured, Title: "QQ NAME"},
+		{Key: FieldRegisterDate, Title: "REGISTER DATE", Date: true},
+		{Key: FieldLossDate, Title: "DATE OF LOSS", Date: true},
 		{Key: FieldAdviceDate, Title: adviceTitle, Date: true},
 	}
 }
@@ -309,7 +324,7 @@ var tabs = []Tab{
 			"reasuradur, tetapi belum dikirim. PLA memberitahukan nilai ESTIMASI klaim " +
 			"kepada koasuransi/reasuransi.",
 		Kind:              KindPLA,
-		Columns:           queueColumns("Tanggal PLA"),
+		Columns:           queueColumns("DATE OF PLA"),
 		SearchLabel:       "No Klaim",
 		DateLabel:         "Tanggal PLA",
 		SentFilterApplies: true,
@@ -352,7 +367,7 @@ var tabs = []Tab{
 			"memberitahukan nilai AKSEPTASI klaim. Daftar ini mengecualikan cabang ASNET " +
 			"dan kelompok bisnis 10008 — dua pengecualian yang tidak berlaku di tab lain.",
 		Kind:                 KindDLA,
-		Columns:              queueColumns("Tanggal DLA"),
+		Columns:              queueColumns("DATE OF DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal DLA",
 		ExcludeASNET:         true,
@@ -393,7 +408,7 @@ var tabs = []Tab{
 			"yang AKAN diakseptasi. Berbeda dari dua tab lain, yang mengeluarkan baris " +
 			"dari daftar ini adalah terbitnya Nomor Akseptasi — bukan terkirimnya surat.",
 		Kind:                 KindPreDLA,
-		Columns:              queueColumns("Tanggal Pre DLA"),
+		Columns:              queueColumns("DATE OF PRE DLA"),
 		SearchLabel:          "No Klaim",
 		DateLabel:            "Tanggal Pre DLA",
 		RequiresNoAcceptance: true,

@@ -175,8 +175,10 @@ export function KomunikasiCabangPage() {
       // "Tambah" TIDAK menyentuh peladen. Ia hanya membuka form — persis seperti di Pega,
       // yang menjalankan data transform lalu me-refresh section tanpa menulis apa pun.
       //
-      // Membukanya menutup panel detail: keduanya tampil di tempat yang sama, dan dua panel
-      // terbuka sekaligus membuat layar tidak terbaca.
+      // Membukanya menutup popup detail. Sejak popup itu melayang di atas halaman, alasannya
+      // bukan lagi tabrakan tempat melainkan tabrakan perhatian: form yang baru dibuka akan
+      // tertutup lapisan gelap, dan pengguna menekan "Tambah" lalu tidak melihat apa pun
+      // berubah.
       onAdd={() => {
         setComposing(true)
         setSent('')

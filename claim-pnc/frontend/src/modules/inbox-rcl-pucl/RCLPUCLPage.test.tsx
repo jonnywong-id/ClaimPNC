@@ -444,6 +444,45 @@ describe('isi tabel', () => {
     expect(screen.getByText('Tertanggung Contoh Satu')).toBeInTheDocument()
   })
 
+  it('menomori barisnya di kolom paling kiri, seperti grid Pega', async () => {
+    // `pyGridNumbering = true` pada ketiga section. Judul kolomnya KOSONG di sana, dan
+    // nomor urut tidak menuntut penjelasan bagi pembaca layar.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByText('PNC-700001')
+
+    const baris = screen.getAllByRole('row')[1]
+    expect(baris).not.toBeUndefined()
+    expect(baris?.firstElementChild).toHaveTextContent('1')
+  })
+
+  it('menggambar kolom tanggal sebagai dd/MM/yy H:mm, bukan teks mentah', async () => {
+    // Bentuk sel tanggal pada grid Pega, mis. `09/10/26 17:05`. Sebelum 2026-10-10 hanya
+    // nilai ber-bentuk `YYYY-MM-DD` yang diformat, sehingga nilai yang SELALU membawa jam
+    // tidak pernah cocok dan tampil mentah.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    expect(await screen.findByText('10/09/26 9:30')).toBeInTheDocument()
+    expect(screen.queryByText('2026-09-10 09:30:00')).toBeNull()
+  })
+
+  it('menggambar "Lama Klaim" sebagai waktu RELATIF, bukan tanggal penuh', async () => {
+    // Sel itu satu-satunya di section ini yang ber-`pyDateTimeFormat = DateTime-Frame`,
+    // format waktu relatif bawaan Pega — di layar ia berbunyi "21 hours ago".
+    //
+    // Yang diuji bentuknya, bukan angkanya: tanggal contohnya tetap, sedangkan "sekarang"
+    // bergerak setiap kali uji ini dijalankan.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByText('PNC-700001')
+
+    expect(screen.getByText(/ ago$/)).toBeInTheDocument()
+    expect(screen.queryByText('2026-09-10 09:29:59')).toBeNull()
+  })
+
   it('menggambar sel kosong sebagai tanda pisah, bukan dibiarkan hampa', async () => {
     // "Tanggal Cetak Surat" memang SELALU kosong di tab ini. Tanda pisah menyatakan
     // "tidak ada isinya" alih-alih "gagal dimuat".
@@ -545,7 +584,7 @@ describe('ekspor', () => {
 
     await userEvent.type(screen.getByLabelText('FROM RCL/PUCL'), '2026-09-01')
     await userEvent.type(screen.getByLabelText('TO RCL/PUCL'), '2026-09-30')
-    await userEvent.click(screen.getByRole('button', { name: /Unduh Laporan Harian/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Export to Excel/ }))
 
     const call = lastExportCall()
     expect(call?.url).toContain('dari=2026-09-01')
@@ -561,23 +600,40 @@ describe('ekspor', () => {
     await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
     await screen.findByText(/Klaim yang suratnya SUDAH dicetak/)
 
-    await userEvent.click(screen.getByRole('button', { name: /Export To Excel/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Export to Excel/ }))
 
     const call = lastExportCall()
     expect(call?.url ?? '').not.toContain('dari=')
     expect(call?.url).toContain('tab=2')
   })
 
-  it('menamai tombolnya berbeda supaya isinya diketahui sebelum diunduh', async () => {
+  it('menamai tombolnya "Export to Excel" di SETIAP tab, persis seperti di Pega', async () => {
+    // Terverifikasi pada ketiga section sebagai `pyLabel = "Export to Excel"`. Sampai
+    // 2026-10-10 tab "Cetak Surat" menamainya "Unduh Laporan Harian" — nama yang tidak
+    // pernah ada di layar lama, sehingga petugas mencari tombol yang tidak ada (`D-13`).
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(screen.getByRole('button', { name: /Unduh Laporan Harian/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Export to Excel' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Unduh Laporan Harian/ })).toBeNull()
 
     await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
     await screen.findByText(/Klaim yang suratnya SUDAH dicetak/)
 
-    expect(screen.getByRole('button', { name: /Export To Excel/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Export to Excel' })).toBeInTheDocument()
+  })
+
+  it('menaruh tombolnya SEBARIS dengan kedua isian tanggal, bukan di pojok layar', async () => {
+    // Ketiga section menggambar FROM, lalu TO, lalu tombolnya — berurutan di dalam satu
+    // tata letak yang sama di atas grid. Tombol di pojok kanan atas adalah letak yang
+    // dikarang, dan ia memisahkan tombol dari isian yang mengisinya.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    const bilah = screen.getByLabelText('FROM RCL/PUCL').closest('section')
+    expect(bilah).not.toBeNull()
+    expect(bilah).toContainElement(screen.getByRole('button', { name: 'Export to Excel' }))
+    expect(bilah).toContainElement(screen.getByLabelText('TO RCL/PUCL'))
   })
 
   it('menyebutkan kolom berkas laporan sebelum diunduh', async () => {
@@ -611,7 +667,7 @@ describe('ekspor', () => {
     })
 
     await renderLoaded()
-    await userEvent.click(screen.getByRole('button', { name: /Unduh Laporan Harian/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Export to Excel/ }))
 
     // Pesan per isian lebih berguna daripada pesan umum: ia menyebut isian MANA yang harus
     // diperbaiki, dan di layar ini isiannya ada dua.

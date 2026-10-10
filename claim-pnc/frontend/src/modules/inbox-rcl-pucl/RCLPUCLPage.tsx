@@ -7,7 +7,7 @@ import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { FormField } from '@/components/FormField'
-import { formatDate } from '@/components/format'
+import { formatPegaDateTime, formatPegaElapsed } from '@/components/format'
 
 import { RCLPUCLTabs } from './RCLPUCLTabs'
 import { useExportRCLPUCL, useRCLPUCLList, useRCLPUCLMetadata } from './api'
@@ -107,7 +107,7 @@ export function RCLPUCLPage() {
 
   if (portal === null) {
     return (
-      <PageFrame tab={tab} range={range} exportable={false}>
+      <PageFrame>
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
@@ -122,7 +122,7 @@ export function RCLPUCLPage() {
 
   if (meta.isError) {
     return (
-      <PageFrame tab={tab} range={range} exportable={false}>
+      <PageFrame>
         <ErrorMessage
           title="Layar tidak dapat dibuka"
           description={messageOf(meta.error)}
@@ -133,18 +133,7 @@ export function RCLPUCLPage() {
   }
 
   return (
-    <PageFrame
-      tab={tab}
-      range={range}
-      // Laporan harian dapat diunduh meski tabelnya kosong: isinya memang bukan isi tabel,
-      // dan rentang tanggalnya dapat memuat baris yang tidak satu pun tab tampilkan.
-      exportable={
-        !blocked &&
-        (tab?.punya_laporan_rentang_tanggal === true ||
-          (list.data?.paginasi.total ?? 0) > 0)
-      }
-      reportColumns={meta.data?.kolom_laporan ?? []}
-    >
+    <PageFrame>
       <div className="mt-4">
         <RCLPUCLTabs tabs={tabs} active={active} onSelect={selectTab} />
       </div>
@@ -155,22 +144,43 @@ export function RCLPUCLPage() {
 
           {tab.catatan && <TabNotice text={tab.catatan} />}
 
-          {tab.punya_laporan_rentang_tanggal && (
-            <DateRangeFilter value={range} onChange={setRange} />
-          )}
+          {/*
+            Bilah tindakan tetap digambar pada tab TERHALANG, hanya tombolnya mati. Tab yang
+            belum dapat diisi pun belum dapat diekspor, dan tombol yang hilang sama sekali
+            terbaca seperti layar yang berbeda — bukan seperti layar yang sama dengan satu
+            tindakan yang sedang tidak tersedia.
+          */}
+          <ActionBar
+            tab={tab}
+            range={range}
+            onRangeChange={setRange}
+            // Laporan harian dapat diunduh meski tabelnya kosong: isinya memang bukan isi
+            // tabel, dan rentang tanggalnya dapat memuat baris yang tidak satu pun tab
+            // tampilkan.
+            exportable={
+              !blocked &&
+              (tab.punya_laporan_rentang_tanggal ||
+                (list.data?.paginasi.total ?? 0) > 0)
+            }
+            reportColumns={meta.data?.kolom_laporan ?? []}
+          />
 
           {tab.terhalang ? (
             <BlockedNotice tab={tab} />
           ) : (
             <div className="mt-4">
               <DataTable<WorkItem>
-                columns={columnsFor(tab, (row) => (
+                columns={columnsFor(tab, list.data?.baris ?? [], (row) => (
                   <CaseLink item={row} onOpen={openCase} />
                 ))}
                 rows={list.data?.baris ?? []}
-                rowKey={(row) => `${row.referensi}|${row.no_case}`}
-                title={tab.nama}
+                rowKey={rowKeyOf}
                 label={`Antrean ${tab.nama}`}
+                // Garis antarkolom, supaya gridnya terbaca BERKOTAK seperti grid Pega —
+                // bukan berbaris. Judul kartu sengaja TIDAK diisi: grid lama duduk di dalam
+                // kontainer `pyHeaderType = COLLAPSIBLE` yang tidak memuat caption apa pun,
+                // dan nama tabnya sudah terbaca tepat di atasnya.
+                gridLines
                 // Kotak cari bawaan disembunyikan: hasilnya akan menyaring HANYA halaman
                 // yang sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada"
                 // untuk baris yang sebenarnya ada di halaman berikutnya.
@@ -207,97 +217,140 @@ export function RCLPUCLPage() {
   )
 }
 
-function PageFrame({
-  tab,
-  range,
-  exportable,
-  reportColumns = [],
-  children,
-}: {
-  tab: Tab | undefined
-  range: DateRange
-  /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
-  exportable: boolean
-  reportColumns?: ReportColumn[]
-  children: ReactNode
-}) {
+function PageFrame({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox RCL/PUCL</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Klaim yang ditolak (RCL) atau diproses ulang (PUCL), dikelompokkan menurut
-            perjalanan surat PUCL-nya.
-          </p>
-          {/*
-            Sifat "antrean bersama" dinyatakan di layar, bukan hanya di kode.
+      {/*
+        Kepala layar dijaga SEPENDEK layar lama: judul, satu kalimat, lalu bilah tab.
 
-            Tidak satu pun tab di sini menyaring menurut pengguna yang login — penyaringnya
-            akun antrean, bukan orang. Tanpa keterangan ini, petugas yang terbiasa dengan
-            layar inbox lain akan mengira daftarnya keliru karena memuat pekerjaan orang
-            lain.
-          */}
-          <p className="mt-2 text-xs text-slate-500">
-            Ini <span className="font-medium">antrean bersama</span>: seluruh petugas
-            RCL/PUCL pada portal yang sedang dipilih melihat daftar yang sama, bukan hanya
-            pekerjaan Anda. Setiap pembukaannya tercatat.
-          </p>
-        </div>
-        <ExportButton tab={tab} range={range} enabled={exportable} columns={reportColumns} />
+        Sampai 2026-10-10 di sini berdiri pula tombol ekspor dan satu paragraf tentang sifat
+        antrean bersama, sehingga grid-nya terdorong jauh ke bawah dan tata letaknya tidak
+        lagi terbaca seperti layar yang ditirunya (`D-13`). Keduanya TIDAK dibuang: tombolnya
+        pindah ke bilah tindakan tepat di atas grid — persis letaknya di Pega, yang
+        menggambarnya sesudah kedua isian tanggal — dan keterangan antrean bersama pindah ke
+        kaki layar bersama keterangan lain.
+      */}
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-xl font-semibold text-slate-900">Inbox RCL/PUCL</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Klaim yang ditolak (RCL) atau diproses ulang (PUCL), dikelompokkan menurut
+          perjalanan surat PUCL-nya.
+        </p>
       </header>
+
       {children}
+
+      <SharedQueueNotice />
       <WriteActionsNotice />
     </div>
   )
 }
 
 /**
- * Kedua isian tanggal tab "Cetak Surat".
+ * Bilah tindakan di atas grid: kedua isian tanggal, lalu tombol ekspor.
  *
- * # Kenapa peringatannya sekeras ini
+ * # Kenapa ketiganya sebaris, dan kenapa tombolnya di sini
  *
- * Karena isian ini TIDAK menyaring tabel di bawahnya — hanya berkas ekspornya. Itu
- * perilaku layar lama: grid-nya dipasok Report Definition yang tidak menyaring tanggal
- * sama sekali, sementara tombol ekspornya menjalankan kueri yang berbeda. Work Owner
- * memutuskan mereplikasinya (`P-5`).
+ * Karena begitulah urutannya di layar lama. Ketiga section RCL/PUCL menggambar
+ * `FROM RCL/PUCL`, lalu `TO RCL/PUCL`, lalu tombol ber-`pyLabel = "Export to Excel"` —
+ * berurutan di dalam satu tata letak yang sama, di atas grid
+ * (`Section/InboxCetakSuratPUCLRCL_Section-Section.xml`). Sebelumnya tombol itu berdiri di
+ * pojok kanan atas layar, terpisah dari isian yang mengisinya, dan itu letak yang dikarang.
+ *
+ * # Kenapa ia tetap ada di tab yang TIDAK punya rentang tanggal
+ *
+ * Karena tombolnya ada di ketiga section — terverifikasi pada ketiganya. Yang hanya dimiliki
+ * tab "Cetak Surat" adalah kedua isian tanggalnya, bukan tombolnya.
+ *
+ * # Kenapa peringatan tanggalnya sekeras itu
+ *
+ * Karena isian ini TIDAK menyaring tabel di bawahnya — hanya berkas ekspornya. Itu perilaku
+ * layar lama: grid-nya dipasok Report Definition yang tidak menyaring tanggal sama sekali,
+ * sementara tombol ekspornya menjalankan kueri yang berbeda. Work Owner memutuskan
+ * mereplikasinya (`P-5`).
  *
  * Tanpa peringatan, pengguna akan mengisi tanggal, melihat tabel tidak berubah, lalu
- * melaporkannya sebagai kerusakan. Judulnya sendiri mengikuti layar lama apa adanya —
- * "FROM RCL/PUCL" dan "TO RCL/PUCL" (`D-13`).
+ * melaporkannya sebagai kerusakan.
  */
-function DateRangeFilter({
-  value,
-  onChange,
+function ActionBar({
+  tab,
+  range,
+  onRangeChange,
+  exportable,
+  reportColumns,
 }: {
-  value: DateRange
-  onChange: (next: DateRange) => void
+  tab: Tab
+  range: DateRange
+  onRangeChange: (next: DateRange) => void
+  /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
+  exportable: boolean
+  reportColumns: ReportColumn[]
 }) {
+  const berentang = tab.punya_laporan_rentang_tanggal
+
   return (
-    <section className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="flex flex-wrap items-start gap-4">
-        <FormField
-          id="rcl-pucl-dari"
-          label="FROM RCL/PUCL"
-          type="date"
-          value={value.dari}
-          onChange={(event) => onChange({ ...value, dari: event.target.value })}
-        />
-        <FormField
-          id="rcl-pucl-sampai"
-          label="TO RCL/PUCL"
-          type="date"
-          value={value.sampai}
-          onChange={(event) => onChange({ ...value, sampai: event.target.value })}
+    <section className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-3 shadow-lembut">
+      {/*
+        `items-end` meratakan tombol dengan DASAR kotak isian, bukan dengan judulnya — tanpa
+        itu tombolnya melayang sejajar tulisan "FROM RCL/PUCL".
+      */}
+      <div className="flex flex-wrap items-end gap-4">
+        {berentang && (
+          <>
+            <FormField
+              id="rcl-pucl-dari"
+              label="FROM RCL/PUCL"
+              type="date"
+              value={range.dari}
+              onChange={(event) => onRangeChange({ ...range, dari: event.target.value })}
+            />
+            <FormField
+              id="rcl-pucl-sampai"
+              label="TO RCL/PUCL"
+              type="date"
+              value={range.sampai}
+              onChange={(event) => onRangeChange({ ...range, sampai: event.target.value })}
+            />
+          </>
+        )}
+
+        <ExportButton
+          tab={tab}
+          range={range}
+          enabled={exportable}
+          columns={reportColumns}
         />
       </div>
-      <p className="mt-3 text-xs text-slate-600">
-        <span className="font-medium">Kedua tanggal ini hanya dipakai tombol unduh.</span>{' '}
-        Tabel di bawah tidak ikut tersaring — sama seperti di layar lama. Isinya pun
-        berbeda: berkas laporan memuat klaim yang suratnya sudah dicetak, klaim yang sudah
-        selesai, dan klaim Personal Accident di luar antrean ini.
-      </p>
+
+      {berentang && (
+        <p className="mt-3 text-xs text-slate-600">
+          <span className="font-medium">Kedua tanggal ini hanya dipakai tombol unduh.</span>{' '}
+          Tabel di bawah tidak ikut tersaring — sama seperti di layar lama. Isinya pun
+          berbeda: berkas laporan memuat klaim yang suratnya sudah dicetak, klaim yang sudah
+          selesai, dan klaim Personal Accident di luar antrean ini.
+        </p>
+      )}
     </section>
+  )
+}
+
+/**
+ * Keterangan bahwa layar ini antrean BERSAMA, bukan pekerjaan pemanggil.
+ *
+ * Tidak satu pun tab di sini menyaring menurut pengguna yang login — penyaringnya akun
+ * antrean, bukan orang. Tanpa keterangan ini, petugas yang terbiasa dengan layar inbox lain
+ * akan mengira daftarnya keliru karena memuat pekerjaan orang lain.
+ *
+ * Letaknya di KAKI layar, bukan di kepalanya: ia keterangan yang dibaca sekali lalu
+ * diketahui seterusnya, sedangkan kepala layar harus terbaca seperti layar yang ditirunya.
+ */
+function SharedQueueNotice() {
+  return (
+    <p className="mt-6 text-xs text-slate-500">
+      Ini <span className="font-medium">antrean bersama</span>: seluruh petugas RCL/PUCL pada
+      portal yang sedang dipilih melihat daftar yang sama, bukan hanya pekerjaan Anda. Setiap
+      pembukaannya tercatat.
+    </p>
   )
 }
 
@@ -319,14 +372,23 @@ function TabNotice({ text }: { text: string }) {
 /**
  * Tombol ekspor.
  *
- * # SATU tombol, DUA isi berkas
+ * # Namanya "Export to Excel" di ketiga tab, persis seperti di Pega
  *
- * Tab "Cetak Surat" mengunduh LAPORAN HARIAN berbasis rentang tanggal; dua tab lain
- * mengunduh salinan tabelnya. Itu perilaku layar lama — tombolnya satu dan sama di ketiga
- * tab, hanya activity di baliknya yang berbeda.
+ * Terverifikasi pada ketiga section sebagai `pyLabel = "Export to Excel"` — dengan "to"
+ * huruf kecil — ber-`pyStyleName = "Strong"`, yakni tombol tindakan utama.
  *
- * Labelnya ikut berbeda supaya pengguna tahu apa yang akan diunduhnya SEBELUM menekan,
- * dan kolom berkasnya disebutkan di bawah tombol untuk alasan yang sama.
+ * Sampai 2026-10-10 tab "Cetak Surat" menamainya "Unduh Laporan Harian". Maksudnya baik —
+ * tab itu memang mengunduh LAPORAN HARIAN berbasis rentang tanggal, sedangkan dua tab lain
+ * mengunduh salinan tabelnya — tetapi nama yang tidak pernah ada di layar lama melanggar
+ * `D-13` dan membuat petugas mencari tombol yang ia kenal. Keterangan isi berkas di bawah
+ * tombol tetap dipertahankan, dan itulah yang sebenarnya menjawab "apa yang saya unduh".
+ *
+ * # Nadanya `utama`, bukan oranye
+ *
+ * `pyStyleName = "Strong"` di Pega berwarna oranye. Nada tombol di aplikasi ini ditetapkan
+ * baseline-nya — `utama`, `kedua`, `halus` — dan tidak ada nada oranye. Menambahkannya demi
+ * satu layar akan memecah sistem warna yang dipakai 74 layar lain; yang ditiru karena itu
+ * DERAJATNYA, bukan warnanya.
  */
 function ExportButton({
   tab,
@@ -343,9 +405,9 @@ function ExportButton({
   const isReport = tab?.punya_laporan_rentang_tanggal === true
 
   return (
-    <div className="flex max-w-sm flex-col items-end gap-1">
+    <div className="flex max-w-md flex-col items-start gap-1">
       <Button
-        tone="kedua"
+        tone="utama"
         disabled={!enabled || ekspor.isPending || tab === undefined}
         onClick={() =>
           ekspor.mutate({
@@ -354,28 +416,23 @@ function ExportButton({
           })
         }
       >
-        {ekspor.isPending
-          ? 'Menyiapkan berkas…'
-          : isReport
-            ? 'Unduh Laporan Harian'
-            : 'Export To Excel'}
+        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export to Excel'}
       </Button>
 
       {isReport && columns.length > 0 && (
-        <p className="text-right text-xs text-slate-500">
+        <p className="text-xs text-slate-500">
           Berisi: {columns.map((column) => column.judul).join(' · ')}
         </p>
       )}
 
       {ekspor.isError && (
-        <p className="text-right text-xs text-red-700" role="alert">
+        <p className="text-xs text-red-700" role="alert">
           {messageOf(ekspor.error)}
         </p>
       )}
     </div>
   )
 }
-
 /**
  * Keterangan tab yang digambar tetapi belum dapat diisi.
  *
@@ -508,9 +565,21 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
 }
 
 
-
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
+ *
+ * # Kolom pertama adalah NOMOR URUT
+ *
+ * Grid lama menomori barisnya 1, 2, 3, … di paling kiri — `pyGridNumbering = true` pada
+ * ketiga section RCL/PUCL. Judulnya KOSONG, begitu pula di sana, dan nomor urut tidak
+ * menuntut penjelasan bagi pembaca layar.
+ *
+ * Penomorannya dimulai dari satu pada SETIAP halaman, bukan diteruskan dari halaman
+ * sebelumnya. Itu yang dilakukan grid Pega, dan nomor ini memang hanya alat menunjuk baris —
+ * "yang nomor dua" — bukan posisi di dalam seluruh antrean.
+ *
+ * Petanya disusun sekali. Mencari posisi sebuah baris saat menggambar setiap sel berarti
+ * menelusuri seluruh daftar sebanyak jumlah barisnya.
  *
  * # TIDAK ada kolom aksi tambahan
  *
@@ -523,8 +592,22 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
  * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri
  * markup alih-alih nomor case.
  */
-function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
-  return tab.kolom.map((column) => {
+function columnsFor(
+  tab: Tab,
+  rows: WorkItem[],
+  openCase: (row: WorkItem) => ReactNode,
+): Column<WorkItem>[] {
+  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+
+  const kolomNomor: Column<WorkItem> = {
+    key: 'nomor',
+    title: '',
+    width: '3rem',
+    noSort: true,
+    value: (row) => String(nomor.get(rowKeyOf(row)) ?? ''),
+  }
+
+  const kolom = tab.kolom.map((column) => {
     const base: Column<WorkItem> = {
       key: column.kunci,
       title: column.judul,
@@ -536,18 +619,38 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
     }
     return base
   })
+
+  return [kolomNomor, ...kolom]
+}
+
+/**
+ * rowKeyOf menyusun kunci satu baris.
+ *
+ * Ia dipakai DUA kali — oleh `DataTable` sebagai `rowKey`, dan oleh peta nomor urut di atas
+ * — sehingga bentuknya ditulis sekali di sini. Dua tempat yang merakit kunci yang sama
+ * dengan tangan adalah dua tempat yang dapat bergeser, dan pergeserannya muncul sebagai
+ * kolom nomor urut yang kosong tanpa satu pun galat.
+ */
+function rowKeyOf(row: WorkItem): string {
+  return `${row.referensi}|${row.no_case}`
 }
 
 /**
  * cellText menyusun teks satu sel.
  *
- * Dua perlakuan, dan masing-masing punya alasannya:
+ * Tiga perlakuan, dan masing-masing punya alasannya:
  *
- *  - Tanggal diformat HANYA bila bentuknya memang `YYYY-MM-DD`. Seluruh kolom tanggal di
- *    layar ini dibaca dari kolom yang bentuknya tidak dapat diperiksa tanpa DDL (`R-08`).
- *    Memaksa pemformatan akan mengubah nilai yang tidak dikenali menjadi teks yang salah,
- *    dan itu lebih buruk daripada menampilkannya apa adanya.
- *  - Teks kosong menjadi tanda pisah, bukan sel kosong yang tidak dapat dibedakan dari
+ *  - **"Lama Klaim" digambar sebagai waktu RELATIF** — "21 hours ago", "1 day 1 hour ago".
+ *    Judulnya menyebut durasi dan isinya tanggal, dan yang menjembatani keduanya adalah
+ *    kontrolnya: sel itu satu-satunya di section ini yang ber-`pyDateTimeFormat =
+ *    DateTime-Frame`, format waktu relatif bawaan Pega. Sampai 2026-10-10 layar ini
+ *    menggambarnya sebagai tanggal penuh, dan itu nilai yang benar dengan bentuk yang salah.
+ *  - **Kolom tanggal lain digambar `dd/MM/yy H:mm`** — bentuk sel tanggal pada grid Pega,
+ *    mis. `09/10/26 17:05`. Sebelumnya hanya nilai ber-bentuk `YYYY-MM-DD` yang diformat,
+ *    sehingga nilai yang SELALU membawa jam tidak pernah cocok dan tampil mentah
+ *    (`2026-09-10 09:30:00`). Teks yang bukan tanggal dikembalikan apa adanya oleh
+ *    `formatPegaDateTime`, sehingga kolom non-tanggal tidak tersentuh.
+ *  - **Teks kosong menjadi tanda pisah**, bukan sel kosong yang tidak dapat dibedakan dari
  *    kolom yang gagal dimuat. Di layar ini itu penting khusus: kolom "Tanggal Cetak Surat"
  *    memang SELALU kosong pada tab pertama, dan tanda pisah menyatakan "tidak ada isinya"
  *    alih-alih "gagal".
@@ -558,12 +661,14 @@ function cellText(row: WorkItem, column: TabColumn): string {
   if (value == null || value === '') return '—'
 
   const text = String(value)
-  return isDate(text) ? formatDate(text) : text
-}
 
-/** isDate mengenali bentuk `YYYY-MM-DD`. */
-function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  if (column.kunci === 'lama_klaim') {
+    // Kosong berarti tanggalnya di masa depan — baris seperti itu memang ada di data
+    // warisan. Tanda pisah, bukan "0 minutes ago" yang menyatakan hal yang tidak benar.
+    return formatPegaElapsed(text) || '—'
+  }
+
+  return formatPegaDateTime(text)
 }
 
 /**

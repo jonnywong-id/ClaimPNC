@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
+import { DataTable, pageWindow, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { ChevronIcon } from '@/components/Icon'
 import { TabBar } from '@/components/TabBar'
 
 import {
@@ -69,14 +70,26 @@ const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
  *
  * # Susunan layar
  *
- *	Judul
+ * Urutannya mengikuti ketiga section layar lama baris per baris (`D-13`):
+ *
+ *	Judul layar
  *	Bilah tiga tab                 PLA · DLA · Pre DLA
  *	Keterangan daftar              satu kalimat, tidak ada di Pega
- *	Panel pencarian                Dari · Sampai · No Klaim · CARI DATA
- *	Grid antrean                   7 kolom, paginasi 10 baris
+ *	Export To Excel · Refresh      rata kiri, DI ATAS penyaring
+ *	Panel pencarian                Dari · Sampai  lalu  No Klaim · CARI DATA
+ *	Judul daftar + pencacah        "Inbox PLA"  ·  "Total Data : n" dan nomor halaman
+ *	Grid antrean                   nomor urut + 6 kolom Pega
  *	Panel bawah                    PLA · DLA  -> klik NOMOR KLAIM
  *	                               Pre DLA    -> tombol "Print Pre DLA" pada barisnya
  *	Selisih terencana              di kaki
+ *
+ * # Yang berubah pada 2026-10-10, dan kenapa
+ *
+ * Empat hal di atas sebelumnya tidak mengikuti Pega: tombol ekspor berada di kepala grid,
+ * judul daftar tidak ada, pencacah hanya muncul di KAKI tabel sebagai bilah
+ * First/Previous/Next/Last, dan gridnya bernama kolom bahasa Indonesia berjumlah tujuh —
+ * yang ketujuh, "PIC Teknik", tidak ada di satu pun grid Pega. Work Owner meminta layar
+ * depan dibuat sama dengan layar lama supaya petugas tidak perlu belajar ulang.
  */
 export function InboxPLADLAPreDLAPage() {
   const meta = usePLADLAMetadata()
@@ -224,6 +237,34 @@ export function InboxPLADLAPreDLAPage() {
         <p className="text-sm text-slate-600">{daftarAktif.keterangan}</p>
       )}
 
+      {/*
+        "Export To Excel" berada DI ATAS panel pencarian dan rata kiri, seperti di Pega —
+        bukan di kepala grid. Letaknya terbaca dari ketiga section, tempat tombolnya
+        digambar sebelum blok penyaring.
+
+        "Refresh" tidak ada di Pega dan tetap dibawa: ia tidak menulis apa pun, dan tanpa
+        tombol itu satu-satunya cara memaksa pembacaan ulang adalah menyegarkan seluruh
+        halaman — yang ikut membuang tab, nomor halaman, dan penyaring yang sedang dipakai.
+      */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          tone="kedua"
+          disabled={ekspor.isPending}
+          onClick={() => ekspor.mutate(parameter)}
+        >
+          {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+        </Button>
+        <Button
+          type="button"
+          tone="kedua"
+          onClick={() => { list.refetch() }}
+          disabled={list.isFetching}
+        >
+          {list.isFetching ? 'Menyegarkan…' : 'Refresh'}
+        </Button>
+      </div>
+
       <SearchPanel
         form={form}
         onChange={(perubahan) => setForm({ ...form, ...perubahan })}
@@ -235,11 +276,40 @@ export function InboxPLADLAPreDLAPage() {
         fieldError={galatIsian(list.error)}
       />
 
+      {/*
+        Judul daftar beserta pencacah dan nomor halamannya, DI ATAS grid.
+
+        Begitulah layar lama menyusunnya: `pyTitle` "Inbox PLA"
+        (`Section/InboxPLA_sect-Section.xml:3561`) di kiri, dan paginator bernomor rata
+        kanan sebaris dengannya. Sampai 2026-10-10 keduanya berada di KAKI tabel dalam
+        bentuk First/Previous/Next/Last — bilah yang dikarang, dan yang memaksa petugas
+        menggulir ke bawah untuk mengetahui ada berapa baris seluruhnya.
+      */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-base font-semibold text-slate-900">
+          Inbox {daftarAktif?.nama ?? ''}
+        </h2>
+
+        <PageLinks
+          halaman={list.data?.paginasi.halaman ?? 1}
+          totalHalaman={list.data?.paginasi.total_halaman ?? 1}
+          total={list.data?.paginasi.total ?? 0}
+          sibuk={list.isFetching}
+          onPilih={setPage}
+        />
+      </div>
+
       <DataTable<Baris>
-        columns={kolomAntrean(daftarAktif, setDibuka)}
+        columns={kolomAntrean(daftarAktif, list.data?.baris ?? [], setDibuka)}
         rows={list.data?.baris ?? []}
         rowKey={(row) => row.kunci_klaim}
         label={`Antrean ${daftarAktif?.nama ?? ''}`}
+        // Garis antarkolom, supaya gridnya terbaca berkotak seperti grid Pega.
+        gridLines
+        // Kotak cari bawaan dimatikan. Ia menyaring HANYA halaman yang sedang terbuka,
+        // sehingga petugas dapat diberi tahu "tidak ada" untuk baris yang sebenarnya ada
+        // di halaman berikutnya — dan panel "CARI DATA" di atas sudah menembak server.
+        hideSearch
         isLoading={list.isLoading}
         error={
           list.isError ? (
@@ -251,34 +321,6 @@ export function InboxPLADLAPreDLAPage() {
           ) : undefined
         }
         emptyMessage={pesanKosong(dikirim)}
-        pagination={{
-          page: list.data?.paginasi.halaman ?? 1,
-          size: list.data?.paginasi.ukuran ?? 10,
-          total: list.data?.paginasi.total ?? 0,
-          totalPage: list.data?.paginasi.total_halaman ?? 1,
-          onPageChange: setPage,
-          isLoading: list.isFetching,
-        }}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              tone="kedua"
-              onClick={() => { list.refetch() }}
-              disabled={list.isFetching}
-            >
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              tone="kedua"
-              disabled={ekspor.isPending}
-              onClick={() => ekspor.mutate(parameter)}
-            >
-              {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
-            </Button>
-          </div>
-        }
       />
 
       {ekspor.error != null && (
@@ -378,6 +420,119 @@ export function InboxPLADLAPreDLAPage() {
   )
 }
 
+/**
+ * PageLinks adalah pencacah "Total Data" beserta nomor halaman, di ATAS grid.
+ *
+ * # Kenapa bukan bilah halaman bawaan `DataTable`
+ *
+ * Karena bentuknya berbeda dari yang digambar layar lama. Bilah bawaan berisi empat
+ * tombol First/Previous/Next/Last di KAKI tabel; Pega menggambar NOMOR halaman di
+ * kepalanya, sebaris dengan judul daftar dan rata kanan, didahului "Total Data :".
+ * `D-13` menetapkan tata letaknya ditiru.
+ *
+ * Jendela nomornya memakai `pageWindow` milik `DataTable` — bukan salinan aturannya.
+ * Dua jendela halaman yang terlihat sama tetapi hidup di dua berkas akan berbeda begitu
+ * salah satunya disunting.
+ *
+ * # Dua tombol panah DIPERTAHANKAN, meski Pega hanya menggambar nomor
+ *
+ * Nomor halaman saja menuntut pengguna membidik sasaran selebar satu digit setiap kali ia
+ * maju satu halaman. Keduanya diberi `aria-label` lengkap karena isinya hanya gambar
+ * panah, dan panah tanpa nama tidak berarti apa pun bagi pembaca layar.
+ */
+function PageLinks({
+  halaman,
+  totalHalaman,
+  total,
+  sibuk,
+  onPilih,
+}: {
+  halaman: number
+  totalHalaman: number
+  total: number
+  sibuk: boolean
+  onPilih: (halaman: number) => void
+}) {
+  const jumlahHalaman = Math.max(totalHalaman, 1)
+
+  const tombol =
+    'inline-flex h-7 min-w-7 items-center justify-center rounded-kontrol border px-2 text-sm ' +
+    'transition-colors duration-150 ease-halus ' +
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40'
+
+  const diam = `${tombol} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {/*
+        Pencacahnya `role="status"`, sehingga berpindah halaman diumumkan pembaca layar
+        tanpa memindahkan fokus dari tombol yang baru saja ditekan.
+      */}
+      <p className="text-sm text-slate-600" role="status">
+        Total Data : <span className="font-medium text-slate-800">{total}</span>
+      </p>
+
+      {jumlahHalaman > 1 && (
+        <nav aria-label="Navigasi halaman" className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            className={diam}
+            disabled={halaman <= 1 || sibuk}
+            aria-label="Halaman sebelumnya"
+            onClick={() => onPilih(halaman - 1)}
+          >
+            <ChevronIcon className="h-4 w-4 rotate-180" />
+          </button>
+
+          {pageWindow(halaman, jumlahHalaman).map((item, urutan) =>
+            item === 'sela' ? (
+              // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
+              // dapat muncul sekaligus — urutannya yang membedakan.
+              <span
+                key={`sela-${urutan}`}
+                aria-hidden="true"
+                className="px-1 text-sm text-slate-400"
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                className={
+                  item === halaman
+                    ? `${tombol} border-blue-600 bg-blue-600 font-medium text-white`
+                    : diam
+                }
+                // Halaman yang sedang terbuka ditandai `aria-current`, bukan hanya oleh
+                // warna — yang tidak terbaca pembaca layar dan tidak terbedakan oleh
+                // sekitar satu dari dua belas laki-laki yang buta warna merah-hijau.
+                aria-current={item === halaman ? 'page' : undefined}
+                aria-label={`Halaman ${item}`}
+                disabled={sibuk}
+                onClick={() => onPilih(item)}
+              >
+                {item}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            className={diam}
+            disabled={halaman >= jumlahHalaman || sibuk}
+            aria-label="Halaman berikutnya"
+            onClick={() => onPilih(halaman + 1)}
+          >
+            <ChevronIcon className="h-4 w-4" />
+          </button>
+        </nav>
+      )}
+    </div>
+  )
+}
+
 /** Bingkai adalah judul layar beserta ruang isinya. */
 function Bingkai({ children }: { children: ReactNode }) {
   return (
@@ -412,9 +567,30 @@ function Bingkai({ children }: { children: ReactNode }) {
  */
 function kolomAntrean(
   daftar: Daftar | undefined,
+  baris: Baris[],
   onBuka: (baris: Baris) => void,
 ): Column<Baris>[] {
   if (!daftar) return []
+
+  // Kolom nomor urut, persis seperti grid Pega yang menomori barisnya 1, 2, 3, … di
+  // paling kiri. Judulnya KOSONG — begitu pula di sana, dan nomor urut tidak menuntut
+  // penjelasan bagi pembaca layar.
+  //
+  // Penomorannya dimulai dari satu pada SETIAP halaman, bukan diteruskan dari halaman
+  // sebelumnya. Itu yang dilakukan grid Pega, dan nomor ini memang hanya alat menunjuk
+  // baris — "yang nomor tiga" — bukan posisi di dalam seluruh antrean.
+  //
+  // Petanya disusun sekali. Mencari posisi sebuah baris saat menggambar setiap sel
+  // berarti menelusuri seluruh daftar sebanyak jumlah barisnya.
+  const nomor = new Map(baris.map((row, index) => [row.kunci_klaim, index + 1]))
+
+  const kolomNomor: Column<Baris> = {
+    key: 'nomor',
+    title: '',
+    width: '3rem',
+    noSort: true,
+    value: (row) => String(nomor.get(row.kunci_klaim) ?? ''),
+  }
 
   const kolom: Column<Baris>[] = daftar.kolom.map((item) => ({
     key: item.kunci,
@@ -443,6 +619,8 @@ function kolomAntrean(
         gambarSel(row, item.kunci, item.tanggal)
       ),
   }))
+
+  kolom.unshift(kolomNomor)
 
   // Kolom aksi hanya ada pada Pre DLA, dan judulnya datang dari server.
   //

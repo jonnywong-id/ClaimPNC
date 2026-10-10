@@ -15,14 +15,17 @@ import { InboxPLADLAPreDLAPage } from './InboxPLADLAPreDLAPage'
  * berlaku pada data uji persis seperti pada dokumen.
  */
 
+// Keenam kolom ini adalah kepala grid Pega apa adanya — judul dan jumlahnya
+// (`Section/InboxPLA_sect-Section.xml:4334,4515,4628,4775,4894,5079`). Sampai
+// 2026-10-10 fixture ini memuat tujuh kolom berjudul bahasa Indonesia, termasuk
+// "PIC Teknik" yang tidak ada di satu pun grid Pega.
 const KOLOM_ANTREAN = [
-  { kunci: 'no_klaim', judul: 'No Klaim', tanggal: false },
-  { kunci: 'no_polis', judul: 'No Polis', tanggal: false },
-  { kunci: 'nama_tertanggung', judul: 'Nama Tertanggung', tanggal: false },
-  { kunci: 'tanggal_register', judul: 'Tanggal Register', tanggal: true },
-  { kunci: 'tanggal_kejadian', judul: 'Tanggal Kejadian', tanggal: true },
-  { kunci: 'pic_teknik', judul: 'PIC Teknik', tanggal: false },
-  { kunci: 'tanggal_advice', judul: 'Tanggal PLA', tanggal: true },
+  { kunci: 'no_klaim', judul: 'CLAIM NO', tanggal: false },
+  { kunci: 'no_polis', judul: 'POLICY NO', tanggal: false },
+  { kunci: 'nama_tertanggung', judul: 'QQ NAME', tanggal: false },
+  { kunci: 'tanggal_register', judul: 'REGISTER DATE', tanggal: true },
+  { kunci: 'tanggal_kejadian', judul: 'DATE OF LOSS', tanggal: true },
+  { kunci: 'tanggal_advice', judul: 'DATE OF PLA', tanggal: true },
 ]
 
 const KOLOM_RINCIAN = [
@@ -332,6 +335,39 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     }
   })
 
+  /**
+   * Susunan layar depan mengikuti layar lama baris per baris (`D-13`).
+   *
+   * Keempat hal yang diperiksa di sini adalah tepat yang dilaporkan BERBEDA dari Pega
+   * pada 2026-10-10: tombol ekspor yang terdampar di kepala grid, judul daftar yang
+   * hilang, pencacah yang hanya ada di kaki, dan kolom tanpa nomor urut.
+   */
+  it('menyusun layar depan seperti Pega: ekspor di atas penyaring, judul daftar, pencacah, nomor urut', async () => {
+    installFetch(jawabanBiasa([BARIS_LENGKAP, BARIS_TANPA_TANGGAL]))
+    tampilkan()
+
+    await screen.findByText('PNC-1001')
+
+    // Judul daftar di atas grid — `pyTitle` "Inbox PLA".
+    expect(screen.getByRole('heading', { name: 'Inbox PLA', level: 2 })).toBeInTheDocument()
+
+    // Pencacah "Total Data :", bukan hanya nomor halaman.
+    expect(screen.getByRole('status')).toHaveTextContent('Total Data : 2')
+
+    // "Export To Excel" mendahului panel penyaing di DOM — itulah urutannya di Pega.
+    // Diperiksa lewat posisi dokumen, bukan lewat kelas tata letak: yang dijaga adalah
+    // urutan bacanya, dan itu pula yang dialami pengguna papan ketik.
+    const ekspor = screen.getByRole('button', { name: 'Export To Excel' })
+    const cari = screen.getByRole('button', { name: 'CARI DATA' })
+    expect(ekspor.compareDocumentPosition(cari) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    // Kolom paling kiri menomori baris halaman ini, dimulai dari satu.
+    const tabel = screen.getByRole('table', { name: 'Antrean PLA' })
+    const baris = within(tabel).getAllByRole('row')
+    expect(within(baris[1] as HTMLElement).getAllByRole('cell')[0]).toHaveTextContent('1')
+    expect(within(baris[2] as HTMLElement).getAllByRole('cell')[0]).toHaveTextContent('2')
+  })
+
   it('menggambar tanggal advice yang kosong sebagai tanda hubung, bukan tanggal', async () => {
     installFetch(jawabanBiasa([BARIS_TANPA_TANGGAL]))
     tampilkan()
@@ -343,7 +379,7 @@ describe('layar Inbox PLA, DLA, Pre DLA', () => {
     // Tanggal register dan tanggal kejadian tetap tergambar; hanya tanggal advice yang
     // kosong. Itu yang membuktikan sel kosongnya bukan akibat seluruh baris gagal
     // diformat.
-    expect(within(row as HTMLElement).getByText(/05 Feb 2026/)).toBeInTheDocument()
+    expect(within(row as HTMLElement).getByText('05/02/2026')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('—')).toBeInTheDocument()
   })
 

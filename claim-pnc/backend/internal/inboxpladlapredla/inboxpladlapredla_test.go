@@ -41,7 +41,19 @@ func TestEveryListDescribesItsOwnColumnsAndFilters(t *testing.T) {
 	for _, tab := range inboxpladlapredla.Tabs() {
 		require.NotEmpty(t, tab.Name, "%s tanpa judul", tab.Code)
 		require.NotEmpty(t, tab.Description, "%s tanpa keterangan", tab.Code)
-		require.Len(t, tab.Columns, 7, "%s kolomnya bergeser", tab.Code)
+		// Enam kolom, sebanyak kepala grid Pega — bukan tujuh.
+		//
+		// Kolom ketujuh "PIC Teknik" dibuang pada 2026-10-10 karena tidak ada di satu pun
+		// dari ketiga section Pega; angka di sini ikut dikoreksi, bukan dilonggarkan.
+		require.Len(t, tab.Columns, 6, "%s kolomnya bergeser", tab.Code)
+
+		// Keenam judulnya SAMA di ketiga tab kecuali yang terakhir, dan keenamnya terbaca
+		// dari kepala grid Pega. Memeriksa judulnya — bukan hanya jumlahnya — adalah yang
+		// menangkap penggantian judul yang tidak disengaja.
+		require.Equal(t,
+			[]string{"CLAIM NO", "POLICY NO", "QQ NAME", "REGISTER DATE", "DATE OF LOSS"},
+			columnTitlesOf(tab.Columns[:5]),
+			"%s judul kolomnya bergeser dari Pega", tab.Code)
 		require.Equal(t, "No Klaim", tab.SearchLabel, "%s", tab.Code)
 
 		require.False(t, seen[tab.DateLabel],
@@ -596,4 +608,14 @@ func TestDetailGridKeepsPegaColumnOrder(t *testing.T) {
 			posisi[inboxpladlapredla.FieldEmail],
 			"%s: Email berada setelah kedua tanggal", code)
 	}
+}
+
+// columnTitlesOf mengambil judul sederet kolom, supaya uji di atas membandingkan senarai
+// judul sekaligus — bukan satu per satu lewat indeks yang mudah tertukar.
+func columnTitlesOf(columns []inboxpladlapredla.Column) []string {
+	titles := make([]string, 0, len(columns))
+	for _, column := range columns {
+		titles = append(titles, column.Title)
+	}
+	return titles
 }
