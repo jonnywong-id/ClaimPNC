@@ -6,6 +6,7 @@ import { centsToRupiah, rupiahToCents } from '@/components/format'
 
 import { AcceptanceNumber } from './AcceptanceNumber'
 import { SettlementHistory } from './SettlementHistory'
+import { SupportingFilesButton } from './SupportingFiles'
 import { useAddSettlement, usePreviewSettlement, useUpdateSettlement, violationsFrom } from './api'
 import {
   PaymentType,
@@ -724,6 +725,12 @@ export function SettlementDetail({
           object={address.object}
           coverage={address.coverage}
           adjustment={address.adjustment}
+        />
+      )}
+      {address && (
+        <SupportingFilesButton
+          claimID={address.claimID}
+          address={{ tugas_id: address.taskID, objek: address.object, jaminan: address.coverage, adjustment: address.adjustment }}
         />
       )}
     </div>

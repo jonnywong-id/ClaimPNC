@@ -4830,6 +4830,15 @@ func emailAccountSource(store storage) func(context.Context) (emailserver.Accoun
 	return store.emailServer.Account
 }
 
+// adminEmailAccountSource adalah sumber akun surel untuk modul yang di Pega memakai Email
+// Account "Admin-PNC" (PLA/DLA, peringatan Master Rekening) — EMAIL_ACCOUNT_ADMIN_PNC.
+func adminEmailAccountSource(cfg config.Config, store storage) func(context.Context) (emailserver.Account, error) {
+	if store.emailServer == nil {
+		return nil
+	}
+	return store.emailServer.With(cfg.SMTP.AdminAccount).Account
+}
+
 // buildMasterRekening menyusun modul Master Rekening di balik seam-nya.
 //
 // # Kenapa satu layanan per portal (2026-09-19)
@@ -4855,7 +4864,7 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 	)
 
 	alertConfig := masterrekeningnotif.Config{
-		Account:  emailAccountSource(store),
+		Account:  adminEmailAccountSource(cfg, store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -8569,6 +8578,14 @@ func buildPremiumChecker(legacy *sqlstore.Legacy, logger *slog.Logger) inboxauto
 func emailAccountLabel(cfg config.Config, store storage) string {
 	if store.emailServer != nil {
 		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.AccountName()
+	}
+	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+}
+
+// adminEmailAccountLabel menyebut sumber akun surel Admin-PNC untuk log, tanpa sandi.
+func adminEmailAccountLabel(cfg config.Config, store storage) string {
+	if store.emailServer != nil {
+		return "POOLDATA.M_EMAIL_SERVER_PNC EMAIL_ACCOUNT=" + store.emailServer.With(cfg.SMTP.AdminAccount).AccountName()
 	}
 	return fmt.Sprintf("SMTP_* .env %s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
 }

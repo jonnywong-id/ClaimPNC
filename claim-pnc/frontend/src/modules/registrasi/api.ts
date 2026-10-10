@@ -1091,6 +1091,45 @@ export function useAcceptSettlement(claimID: string) {
   })
 }
 
+/** Alamat satu baris adjustment beserta tugas yang sedang dikerjakan; indeks berbasis 1. */
+export type SettlementAddress = { tugas_id: string; objek: number; jaminan: number; adjustment: number }
+
+/** Satu berkas "Unggah File Penunjang": jenis dokumen (DOC_TYPE_DT_ID) dan catatan opsional. */
+export type SupportingFileInput = { berkas: File; jenisDokumen: string; catatan: string }
+
+/**
+ * Tombol Unggah File Penunjang pada satu baris adjustment (local action `UploadDokumen_Adj`).
+ * Berkas langsung tersimpan sebagai lampiran klaim, tidak menunggu Submit akseptasi.
+ */
+export function useUploadSupportingFiles(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const apiClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ alamat, berkas }: { alamat: SettlementAddress; berkas: SupportingFileInput[] }) => {
+      const form = new FormData()
+      // Nama bagian harus sama dengan yang dibaca handler (UploadSupportingFiles).
+      form.append('tugas_id', alamat.tugas_id)
+      form.append('objek', String(alamat.objek))
+      form.append('jaminan', String(alamat.jaminan))
+      form.append('adjustment', String(alamat.adjustment))
+      for (const f of berkas) {
+        form.append('berkas', f.berkas, f.berkas.name)
+        form.append('jenis_dokumen', f.jenisDokumen)
+        form.append('catatan_berkas', f.catatan.trim())
+      }
+      return callAPI<DocumentsResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/file-penunjang`,
+        { metode: 'POST', body: form, token, portal },
+      )
+    },
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+    },
+  })
+}
+
 /** Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor). */
 export function useAddSettlement(claimID: string) {
   const token = useSession((state) => state.token)

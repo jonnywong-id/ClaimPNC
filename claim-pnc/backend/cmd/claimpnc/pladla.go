@@ -249,7 +249,8 @@ func buildPLADLAServices(
 	// Preseden yang sama sudah ada: `TKAActive()` terpisah dari `Active()` karena
 	// alasan yang persis sama.
 	konfigurasiSurat := inboxpladlapredlanotif.Config{
-		Account:  emailAccountSource(store),
+		// Email Account Pega "Admin-PNC" (UpdateDetailPLA2/UpdateDetailDLA2).
+		Account:  adminEmailAccountSource(cfg, store),
 		Host:     cfg.SMTP.Host,
 		Port:     cfg.SMTP.Port,
 		User:     cfg.SMTP.User,
@@ -268,7 +269,7 @@ func buildPLADLAServices(
 		// tidak dapat ditarik kembali. Baris log ini yang menjawab "sejak kapan" bila
 		// kelak ada surat yang dipersoalkan.
 		logger.Info("pengiriman surat PLA/DLA AKTIF",
-			slog.String("akun", emailAccountLabel(cfg, store)),
+			slog.String("akun", adminEmailAccountLabel(cfg, store)),
 			slog.String("catatan",
 				"tombol SEND kini benar-benar mengirim surat ke reasuradur"))
 	} else {

@@ -123,6 +123,10 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Post("/klaim/{klaimID}/akseptasi", func(w http.ResponseWriter, r *http.Request) {
 			h.AcceptSettlement(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tombol Unggah File Penunjang pada satu baris adjustment (local action UploadDokumen_Adj).
+		sub.Post("/klaim/{klaimID}/adjustment/file-penunjang", func(w http.ResponseWriter, r *http.Request) {
+			h.UploadSupportingFiles(w, r, chi.URLParam(r, "klaimID"))
+		})
 		// Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor).
 		sub.Get("/klaim/{klaimID}/adjustment/riwayat", func(w http.ResponseWriter, r *http.Request) {
 			h.SettlementHistory(w, r, chi.URLParam(r, "klaimID"))

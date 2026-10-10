@@ -5,8 +5,10 @@
 // Rule Pega mengirim surel lewat **Email Account** Pega (`EmailAccount = "Admin-PNC"`,
 // `"ASM"`, `"GCNM_ASI"`, …), atau — seperti `SubmitTanggalLengkapTKA` — dengan host dan sandi
 // SMTP yang ditulis langsung di dalam rule. Di aplikasi ini akun itu dibaca dari tabel
-// M_EMAIL_SERVER_PNC menurut kolom EMAIL_ACCOUNT (Work Owner 2026-10-10). Seluruh modul
-// memakai satu akun, `ClaimPNC` bawaannya, yang dapat diganti lewat EMAIL_ACCOUNT.
+// M_EMAIL_SERVER_PNC menurut kolom EMAIL_ACCOUNT (Work Owner 2026-10-10). Modul yang di Pega
+// memakai `"Admin-PNC"` — PLA/DLA (`UpdateDetailPLA2`, `UpdateDetailDLA2`) dan peringatan
+// Master Rekening (`SendEmailAlertRekening`) — membaca akun itu (EMAIL_ACCOUNT_ADMIN_PNC);
+// modul lain memakai `ClaimPNC` (EMAIL_ACCOUNT).
 //
 // # Dibaca setiap kali surel dikirim
 //
@@ -27,6 +29,9 @@ import (
 
 // DefaultAccount adalah EMAIL_ACCOUNT bawaan.
 const DefaultAccount = "ClaimPNC"
+
+// AdminPNCAccount adalah Email Account Pega `"Admin-PNC"`.
+const AdminPNCAccount = "Admin-PNC"
 
 // Account adalah satu baris M_EMAIL_SERVER_PNC.
 type Account struct {
@@ -56,6 +61,14 @@ func NewStore(db *sql.DB, account string) *Store {
 		account = DefaultAccount
 	}
 	return &Store{db: db, account: strings.TrimSpace(account)}
+}
+
+// With membentuk pembaca akun lain di basis data yang sama. account kosong berarti akun ini.
+func (s *Store) With(account string) *Store {
+	if strings.TrimSpace(account) == "" {
+		return s
+	}
+	return NewStore(s.db, account)
 }
 
 // AccountName adalah EMAIL_ACCOUNT yang dibaca.

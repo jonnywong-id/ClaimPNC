@@ -458,6 +458,11 @@ type SMTP struct {
 	// Host sampai From di bawah hanya dipakai pada mode tanpa Oracle.
 	EmailAccount string
 
+	// AdminAccount adalah EMAIL_ACCOUNT untuk surel yang di Pega dikirim lewat Email Account
+	// `"Admin-PNC"`: PLA/DLA (SEND ALL PLA, Inbox PLA/DLA) dan peringatan Master Rekening
+	// (EMAIL_ACCOUNT_ADMIN_PNC, bawaan Admin-PNC — Work Owner 2026-10-10).
+	AdminAccount string
+
 	Host     string
 	Port     int
 	User     string
@@ -790,6 +795,7 @@ func Load() (Config, error) {
 		},
 		SMTP: SMTP{
 			EmailAccount:    get("EMAIL_ACCOUNT", "ClaimPNC"),
+			AdminAccount:    get("EMAIL_ACCOUNT_ADMIN_PNC", "Admin-PNC"),
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),

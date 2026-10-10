@@ -31,6 +31,25 @@ func TestAccountReadsRowByName(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestWithReadsAnotherAccount(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery("M_EMAIL_SERVER_PNC").WithArgs("Admin-PNC").
+		WillReturnRows(sqlmock.NewRows(columns).
+			AddRow("Admin-PNC", "smtp.contoh.example", "587", "admin@contoh.example", "p", ""))
+
+	base := NewStore(db, "")
+	require.Same(t, base, base.With(" "))
+	admin := base.With(AdminPNCAccount)
+	require.Equal(t, "Admin-PNC", admin.AccountName())
+	a, err := admin.Account(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "admin@contoh.example", a.Address)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestAccountMissingOrInvalid(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
