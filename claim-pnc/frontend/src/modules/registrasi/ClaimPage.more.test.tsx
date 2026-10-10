@@ -426,6 +426,25 @@ describe('Input Register', () => {
     expect(within(grid).queryByText('Type Object')).toBeNull()
   })
 
+  // When IsHE = BusinessType "HE" OR "ContractorsPM" (When/IsHE-When.xml).
+  it('grid objek HE juga dipakai lini ContractorsPM', async () => {
+    installFetch(
+      response({
+        polis: { ...KLAIM.polis, lini: '003', jenis_bisnis: 'ContractorsPM' },
+        objek: [
+          { id: '1', nama: 'EXCAVATOR', lokasi: 'INDONESIA', model: 'EXCAVATOR', merk: 'HITACHI',
+            nama_tipe: 'ZX210F-5G', nomor_chasis: 'CH-1', coverage: [] },
+        ],
+      }),
+    )
+    show()
+
+    const { grid, header } = await headerOf()
+    expect(header).toEqual(['', '#', 'Object', 'Model', 'Merk', 'Nama Tipe', 'Nomor Chasis', 'Location', 'Aksi'])
+    expect(within(grid).getByText('HITACHI')).toBeInTheDocument()
+    expect(within(grid).getByText('CH-1')).toBeInTheDocument()
+  })
+
   it('grid objek lini lain berkolom Object dan Location; objek tambahan tetap dapat diisi', async () => {
     installFetch(
       response({

@@ -202,6 +202,41 @@ UPDATE POOLDATA.T_CLAIM_OBJECTLIST
 INSERT INTO POOLDATA.T_CLAIM_OBJECTLIST (OBJECTID, OBJECTNAME, LOKASI, CLAIMID, URUTAN)
 VALUES (:1, :2, :3, :4, :5)
 
+-- name: objek_isi_he
+--
+-- Rincian kendaraan objek Heavy Equipment, disalin dari objek polis T_ANEKALIST (NOPOLIS +
+-- PRODKE klaim, INDEXOBJECT = OBJECTID) ke kolom objek klaim (Work Owner, 2026-10-10):
+--
+--   TYPEID        <- VEHICLEHETYPE          TYPENAME  <- VEHICLEHETYPENAME
+--   BRANDID       <- VEHICLEHEBRAND         BRANDNAME <- VEHICLEHEBRANDNAME
+--   CHASISSNUMBER <- VEHICLEHECHASSISNUMBER ENGINENUMBER <- VEHICLEHEENGINENUMBER
+--
+-- Hanya klaim berlini HE — BusinessType "HE" atau "ContractorsPM", definisi When IsHE
+-- (When/IsHE-When.xml, `A OR B`). Polis ContractorsPM tidak mengisi kolom VEHICLEHE*, jadi
+-- baginya kolom-kolom ini tetap kosong.
+--
+-- Dijalankan pada setiap simpan, satu pernyataan untuk seluruh objek klaim, sehingga objek
+-- yang tidak berubah — yang dilewati objek_perbarui — ikut terisi, termasuk klaim lama.
+-- MAX karena INDEXOBJECT dapat berulang dalam satu versi polis (lihat objek_daftar).
+-- TYPEID (20) dan ENGINENUMBER (50) lebih sempit dari sumbernya (100): dipotong supaya
+-- simpan klaim tidak gagal ORA-12899. Data nyata 2026-10-10: terpanjang 8 dan 26.
+-- Objek tanpa baris polis (Tambah objek) terisi NULL.
+UPDATE POOLDATA.T_CLAIM_OBJECTLIST o
+   SET (TYPEID, TYPENAME, BRANDID, BRANDNAME, CHASISSNUMBER, ENGINENUMBER) =
+       (SELECT SUBSTR(MAX(a.VEHICLEHETYPE), 1, 20), MAX(a.VEHICLEHETYPENAME),
+               MAX(a.VEHICLEHEBRAND), MAX(a.VEHICLEHEBRANDNAME),
+               MAX(a.VEHICLEHECHASSISNUMBER), SUBSTR(MAX(a.VEHICLEHEENGINENUMBER), 1, 50)
+          FROM POOLDATA.T_ANEKALIST a
+          JOIN POOLDATA.T_CLAIM_PNC c
+            ON a.NOPOLIS = c.NOPOLIS AND a.PRODKE = c.PRODKE
+         WHERE c.CLAIMID = o.CLAIMID
+           AND CAST(a.INDEXOBJECT AS VARCHAR(20)) = TRIM(o.OBJECTID))
+ WHERE o.CLAIMID = :1
+   AND o.DIHAPUS_PADA IS NULL
+   AND EXISTS (SELECT 1 FROM POOLDATA.T_CLAIM_PNC k
+                WHERE k.CLAIMID = o.CLAIMID
+                  AND TRIM(k.POLIS_JENIS_BISNIS) IN ('HE', 'ContractorsPM'))
+
 -- name: objek_kunci
 --
 -- Objek tersimpan satu klaim, supaya saveTree hanya menulis objek yang berubah. Klaim PA

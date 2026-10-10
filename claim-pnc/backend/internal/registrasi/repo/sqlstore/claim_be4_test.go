@@ -87,6 +87,7 @@ func be4SaveSteps() []be4Step {
 		{name: "adjustment_perbarui", exec: true, affected: 0},
 		{name: "adjustment_sisip", exec: true, affected: 1},
 		{name: "objek_tandai_sisa", exec: true},
+		{name: "objek_isi_he", exec: true},
 		{name: "penerima_perbarui", exec: true, affected: 1},
 	}
 }
@@ -117,7 +118,8 @@ func TestClaimSaveWritesWholeTree(t *testing.T) {
 	steps[18].args = be4AnyArgs(6, map[int]driver.Value{0: "adminpnc", 2: "K1", 3: "OBJ1", 4: "1", 5: 1})
 	steps[19].args = be4AnyArgs(27, map[int]driver.Value{0: "1", 14: "1", 22: int64(0), 23: "K1", 24: "OBJ1", 25: "1", 26: "1"})
 	steps[21].args = be4AnyArgs(3, map[int]driver.Value{1: "K1", 2: 1})
-	steps[22].args = []driver.Value{"Budi", nil, nil, nil, "K1", "R1"}
+	steps[22].args = []driver.Value{"K1"}
+	steps[23].args = []driver.Value{"Budi", nil, nil, nil, "K1", "R1"}
 	be4ExpectAll(mock, steps)
 
 	require.NoError(t, NewClaimStore(db).Save(context.Background(), k))
@@ -136,7 +138,7 @@ func TestClaimSaveStopsAtEveryFailingStatement(t *testing.T) {
 		"menyimpan objek 1", "menyimpan objek 1", "menyimpan coverage 1.1",
 		"menyimpan spreading 1.1", "menyimpan spreading 1.1", "menyimpan spreading 1.1",
 		"menyimpan spreading 1.1", "item 1", "item 1", "estimasi 1.1", "menyimpan estimasi 1.1",
-		"adjustment 1", "adjustment 1", "menandai sisa objek",
+		"adjustment 1", "adjustment 1", "menandai sisa objek", "rincian kendaraan HE",
 		"menyimpan penerima R1",
 	}
 	for i := range steps {
@@ -201,6 +203,8 @@ func TestClaimSaveUpdatesExistingHeader(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"a", "b", "c", "d", "e"}))
 	mock.ExpectExec(be4Q("objek_tandai_sisa")).WithArgs(sqlmock.AnyArg(), "K2", 0).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(be4Q("objek_isi_he")).WithArgs("K2").
+		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	require.NoError(t, NewClaimStore(db).Save(context.Background(), k))
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -234,6 +238,8 @@ func TestClaimSaveSkipsUnchangedItems(t *testing.T) {
 	mock.ExpectExec(be4Q("objek_perbarui")).WithArgs("P3", "Peserta Tiga Baru", "", "K3", 3).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(be4Q("objek_tandai_sisa")).WithArgs(sqlmock.AnyArg(), "K3", 3).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(be4Q("objek_isi_he")).WithArgs("K3").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	require.NoError(t, NewClaimStore(db).Save(context.Background(), k))

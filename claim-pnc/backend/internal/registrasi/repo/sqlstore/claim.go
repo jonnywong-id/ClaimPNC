@@ -209,6 +209,10 @@ func (r *ClaimStore) saveTree(ctx context.Context, exec executor, k registrasi.C
 		now, k.ID, len(k.InsuredItem)); err != nil {
 		return fmt.Errorf("registrasi/sqlstore: menandai sisa objek di POOLDATA.T_CLAIM_OBJECTLIST: %w", err)
 	}
+	// Rincian kendaraan objek HE dari T_ANEKALIST; tidak mengubah apa pun bila klaim bukan HE.
+	if _, err := exec.ExecContext(ctx, loadQuery("objek_isi_he"), k.ID); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: mengisi rincian kendaraan HE di POOLDATA.T_CLAIM_OBJECTLIST: %w", err)
+	}
 	return nil
 }
 

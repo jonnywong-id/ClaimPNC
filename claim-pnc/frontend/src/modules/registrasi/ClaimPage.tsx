@@ -102,7 +102,8 @@ const CURRENCY_IDR = '10026'
 /**
  * ObjectGrid adalah empat grid `.ClaimData.ObjectList` di Section/InputRegisterDetail-sect.xml,
  * dipilih menurut kondisi tampil kontainernya: `IsTravel` (GroupPanel 005), `IsPA`
- * (GroupPanel 002), `IsHE` (BusinessType "HE"), dan `!IsTravelPA && !IsHE` untuk lini lain.
+ * (GroupPanel 002), `IsHE` (BusinessType "HE" atau "ContractorsPM" — `When/IsHE-When.xml`, logika
+ * `A OR B`), dan `!IsTravelPA && !IsHE` untuk lini lain.
  */
 type ObjectGrid = 'travel' | 'pa' | 'he' | 'umum'
 
@@ -124,10 +125,13 @@ const OBJECT_COLUMNS: Record<ObjectGrid, string[]> = {
   umum: ['Object', 'Location'],
 }
 
+/** BusinessType yang memenuhi When `IsHE`: "HE" OR "ContractorsPM" (dibandingkan tanpa beda huruf). */
+const HE_BUSINESS_TYPES = ['HE', 'CONTRACTORSPM']
+
 function objectGrid(panel: string, businessType: string): ObjectGrid {
   if (panel === PANEL_TRAVEL) return 'travel'
   if (panel === PANEL_PA) return 'pa'
-  if (businessType.trim().toUpperCase() === 'HE') return 'he'
+  if (HE_BUSINESS_TYPES.includes(businessType.trim().toUpperCase())) return 'he'
   return 'umum'
 }
 
