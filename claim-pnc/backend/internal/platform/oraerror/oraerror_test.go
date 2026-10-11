@@ -40,3 +40,12 @@ func TestDescribeIgnoresNonOracle(t *testing.T) {
 	_, ok = Describe(nil)
 	require.False(t, ok)
 }
+
+// ORA-00904 menyebut "ALIAS"."KOLOM": tabelnya diambil dari pembungkus, bukan dari alias.
+func TestDescribeInvalidIdentifierUsesWrapperTable(t *testing.T) {
+	err := fmt.Errorf("registrasi/sqlstore: membaca objek survey dari POOLDATA.T_CLAIM_OBJECTLIST: %w",
+		errors.New(`ORA-00904: "O"."OBJECTSURVEYIDMARINE": invalid identifier`))
+	msg, ok := Describe(err)
+	require.True(t, ok)
+	require.Equal(t, `Gagal membaca tabel POOLDATA.T_CLAIM_OBJECTLIST: ORA-00904: "O"."OBJECTSURVEYIDMARINE": invalid identifier`, msg)
+}

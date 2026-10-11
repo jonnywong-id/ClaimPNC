@@ -320,6 +320,11 @@ func (l *Service) DecideCommittee(ctx context.Context, p CommitteeDecisionComman
 		if err != nil {
 			return err
 		}
+		// Kasus komite survey (TransferType 1) diputus lewat link email Pega KomiteAcceptSurvey
+		// yang belum dibangun — keputusan Work Owner 2026-10-11.
+		if strings.TrimSpace(c.TransferType) == registrasi.SurveyCommitteeTransfer {
+			return registrasi.ErrSurveyCommitteeAwaiting
+		}
 		current, _ := c.Current()
 		if err := c.Decide(by.Identity, p.Decision, p.Note, now); err != nil {
 			return err

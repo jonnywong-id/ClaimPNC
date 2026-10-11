@@ -24,6 +24,11 @@ import {
   type SettlementHistoryResponse,
   type PremiumAgingResponse,
   type SurveysResponse,
+  type SurveyTabResponse,
+  type SurveyActionResponse,
+  type SurveyorOption,
+  type SurveySaveRequest,
+  type SurveyCommitteeRequest,
   type DocumentLink,
   type DocumentsResponse,
   type InsuredResponse,
@@ -45,6 +50,10 @@ import {
   type CommitteeTransferRequest,
   type CommitteeTransferResponse,
   type Task,
+  type ProgressInputForm,
+  type ProgressInputRequest,
+  type ProgressInputResponse,
+  type ProgressOption,
 } from './types'
 
 // Seluruh panggilan API modul ini lewat hook di berkas ini. Tidak ada `fetch` di dalam
@@ -643,6 +652,71 @@ function useClaimRecord<T>(
 /** Tab Survey — T_SURVEYORLIST. */
 export function useSurveys(claimID: string, enabled = true) {
   return useClaimRecord<SurveysResponse>(claimID, 'survey', enabled)
+}
+
+/** Tab Survey tahap Choose Surveyor (`TabSurvey_sect`) — grid Tambah Survey dan Permintaan Survey. */
+export function useSurveyTab(claimID: string, enabled = true) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'survey-tab', claimID, token, portal],
+    enabled,
+    queryFn: () =>
+      callAPI<SurveyTabResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/tab`, { token, portal }),
+  })
+}
+
+/** Pilihan surveyor satu Tipe Surveyor (`ChooseSurveyorType_act`), atau "nominasi". */
+export function useSurveyorOptions(type: string, enabled = true) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'surveyor', type, token, portal],
+    enabled: enabled && type !== '',
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      callAPI<SurveyorOption[]>(`/api/registrasi/surveyor?tipe=${encodeURIComponent(type)}`, { token, portal }),
+  })
+}
+
+function useSurveyAction<TBody, TResult>(claimID: string, path: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: TBody) =>
+      callAPI<TResult>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/${path}`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['registrasi', 'survey-tab', claimID] })
+      void client.invalidateQueries({ queryKey: ['registrasi', 'survey', claimID] })
+      void client.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+    },
+  })
+}
+
+/** Tombol Simpan tab Survey (`PNCSaveButton`). */
+export function useSaveSurvey(claimID: string) {
+  return useSurveyAction<SurveySaveRequest, SurveyTabResponse>(claimID, 'simpan')
+}
+
+/** Tombol Transfer Survei (`InternalSurveyor_act`). */
+export function useTransferSurvey(claimID: string) {
+  return useSurveyAction<SurveySaveRequest, SurveyActionResponse>(claimID, 'transfer')
+}
+
+/** Modal Transfer Komite (`ClaimComitee` → `ValidationAnalysis`). */
+export function useTransferSurveyCommittee(claimID: string) {
+  return useSurveyAction<SurveyCommitteeRequest, SurveyActionResponse>(claimID, 'komite')
+}
+
+/** Tombol "Ya" modal Batal Survei (`CancelSurvey`). */
+export function useCancelSurvey(claimID: string) {
+  return useSurveyAction<{ tugas_id: string; objek_id: string }, SurveyTabResponse>(claimID, 'batal')
 }
 
 /** Tab Unggah Dokumen — checklist jenis dokumen dan berkas yang sudah diunggah. */
@@ -1356,6 +1430,54 @@ export function useSaveReceiver(claimID: string) {
       }),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Isi awal modal Input Progress Claim. */
+export function useProgressInputForm(claimID: string, enabled = true) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'progres-form', claimID, token, portal],
+    enabled,
+    queryFn: () =>
+      callAPI<ProgressInputForm>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres/form`, { token, portal }),
+  })
+}
+
+/** Daftar STATUS PERLU satu Status Progress 1 (BrowseStsProgress2_act2 / BrowseStsProgressDoc). */
+export function useProgressNeedOptions(status1: string, docType: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'progres-status-perlu', status1, docType, token, portal],
+    enabled: status1 !== '',
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      callAPI<ProgressOption[]>(
+        `/api/registrasi/progres/status-perlu?status1=${encodeURIComponent(status1)}&tipe_dokumen=${encodeURIComponent(docType)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/** Tombol Submit modal Input Progress Claim; grid progres dimuat ulang. */
+export function useInputProgress(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ProgressInputRequest) =>
+      callAPI<ProgressInputResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+      void client.invalidateQueries({ queryKey: ['registrasi', 'progres-form', claimID] })
     },
   })
 }

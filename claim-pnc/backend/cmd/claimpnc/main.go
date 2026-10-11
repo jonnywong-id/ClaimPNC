@@ -2134,6 +2134,12 @@ func run() error {
 			// menambah satu baris; server tidak perlu tahu isinya.
 			authhttp.Mount(api, handlerAuth, assembly.auth, logger)
 
+			// Link email persetujuan Komite survey: dibuka anggota Komite tanpa sesi
+			// (Service REST KomiteAcceptSurvey / ShowKomiteSurveyConfirmation).
+			if registrationHandler != nil {
+				registrasihttp.MountPublic(api, registrationHandler)
+			}
+
 			// List portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
 			// bukan di layar masuk (ADR-0030, berpindah portal tanpa login ulang).
 			api.Group(func(protected chi.Router) {
@@ -4724,6 +4730,8 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			store.close()
 			return assembly{}, err
 		}
+		// Email dan link persetujuan Komite survey (setSendEmailKomite_act, KomiteAcceptSurvey).
+		registrationService.WithSurveyMail(newSurveyCommitteeMailer(cfg, store), cfg.PublicURL)
 	}
 
 	return assembly{

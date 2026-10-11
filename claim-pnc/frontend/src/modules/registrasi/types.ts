@@ -647,6 +647,91 @@ export type Survey = {
 }
 export type SurveysResponse = { survey: Survey[] }
 
+/** Satu baris grid Tambah Survey (`InputSurvey`) — objek klaim beserta isian surveynya. */
+export type SurveyObject = {
+  objek_id: string
+  urutan: number
+  nama_objek: string
+  lokasi_objek: string
+  pilih: boolean
+  lokasi_survey: string
+  /** 1 Internal Surveyor · 2 Loss Adjuster · 3 Expert · 4 Survey Agent. */
+  tipe_surveyor: string
+  nama_surveyor: string
+  login_surveyor: string
+  alamat_surveyor: string
+  email_surveyor: string
+  kode_cabang: string
+  nama_cabang: string
+  nama_surveyor_marine: string
+  login_surveyor_marine: string
+  /** 1 Menunggu Persetujuan · 2 Ditolak Komite · 3 Sedang Proses · 4 Batal Survey · 5 Selesai. */
+  status: string
+  nama_status?: string
+  id_survey?: string
+  id_survey_marine?: string
+}
+
+/** Permintaan Survey (`RequestSurvey`) — POOLDATA.T_REQ_SURVEY. */
+export type SurveyRequestInfo = {
+  survey_atas_permintaan: string
+  lokasi_survey: string
+  no_telp: string
+  tanggal_request: string
+  cabang: string
+  surveyor: string
+  email_surveyor: string
+  nama_objek: string
+}
+
+export type SurveyTabResponse = {
+  objek: SurveyObject[]
+  permintaan?: SurveyRequestInfo
+  tambah_tampil: boolean
+  anggota_koasuransi: boolean
+  marine_hull: boolean
+  pa: boolean
+}
+
+export type SurveyActionResponse = SurveyTabResponse & {
+  survey_terbit: string[]
+  komite_terbit: string[]
+  otomatis: boolean
+  /** Email Komite yang gagal dikirim — untuk dilampirkan ke IT Support. */
+  email_galat?: string[]
+}
+
+export type SurveyorOption = {
+  id: string
+  nama: string
+  login: string
+  alamat: string
+  cabang: string
+  nama_cabang: string
+  email: string
+  kontak: string
+}
+
+export type SurveySaveRequest = {
+  tugas_id: string
+  tipe_surveyor_kasus: string
+  objek: SurveyObject[]
+}
+
+export type SurveyCommitteeRequest = SurveySaveRequest & {
+  tanggal: string
+  inisial: string
+  circumstances: string
+  nominated_adjuster: string
+  remarks: string
+  nama_perusahaan: string
+  contact_person: string
+  office_phone: string
+  email: string
+  penunjukan_manual: boolean
+  nominasi: { id: string; nama: string; login: string }[]
+}
+
 export type DocumentRow = {
   id: string
   jenis_id: string
@@ -836,3 +921,32 @@ export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: C
 
 /** Jawaban GET /klaim/{id}/aging — `.PaymentData.AgingAmount` dari layanan premi. */
 export type PremiumAgingResponse = { aging_amount: string | null; tersedia: boolean }
+
+/* ── Modal Input Progress Claim (inputprogress12 / InputProgressClaim1) ── */
+
+export type ProgressPosition = { id: string; kasus_id: string; posisi: string; status: string; tanggal?: string; terbuka: boolean }
+
+export type ProgressOption = { id: string; nama: string }
+
+export type ProgressInputForm = {
+  posisi: ProgressPosition[]
+  status_progress_1: ProgressOption[]
+  status: string[]
+  tipe_dokumen: string[]
+  email_progress: string
+  status_wajib_email: string[]
+  status_tipe_dokumen: string
+}
+
+export type ProgressInputRequest = {
+  posisi_id: string
+  status_progress_1: string
+  status_perlu: string[]
+  status: string
+  remarks: string
+  tgl_next_follow_up: string
+  tipe_dokumen: string
+  email_progress: string
+}
+
+export type ProgressInputResponse = { peringatan: string[] }

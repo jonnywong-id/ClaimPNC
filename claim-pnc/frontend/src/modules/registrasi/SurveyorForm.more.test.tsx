@@ -324,7 +324,9 @@ describe('tab', () => {
     wrap(<SurveyorForm klaim={claim()} tugas={task()} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Survey' }))
-    expect(await screen.findByRole('button', { name: 'Ajukan Survey' })).toBeInTheDocument()
+    // TabSurvey_sect: tiga sub-tab Permintaan Survey, Tambah Survey, Hasil Survey.
+    expect(await screen.findByRole('tab', { name: 'Permintaan Survey' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Hasil Survey' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: 'Unggah Dokumen' }))
     expect(await screen.findByText('Berkas yang sudah diunggah')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: 'Progress Claim & Komunikasi' }))
