@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"claim-pnc/internal/inboxoutstanding"
+	"claim-pnc/internal/platform/db"
 )
 
 // Repo membaca POOLDATA.T_CLAIMLIST_ADMIN.
@@ -34,19 +35,59 @@ func (r *Repo) List(ctx context.Context, f inboxoutstanding.Filter) (inboxoutsta
 		return inboxoutstanding.Page{}, inboxoutstanding.ErrAssigneeRequired
 	}
 
+	namaDaftar, namaHitungan := "my_inbox_list", "my_inbox_count"
+	butuhPengirim := false
+
+	// Temporary Close memakai kueri TERSENDIRI, bukan daftar yang dilonggarkan.
+	//
+	// Populasinya justru yang dibuang daftar biasa — `Resolved-Completed` yang tertunda
+	// tutup — sehingga keduanya tidak dapat berbagi satu `WHERE` tanpa membuatnya memikul
+	// dua maksud yang berlawanan. Pega pun memanggil rule yang berbeda
+	// (`BrowseClaimTemporaryClose`), bukan menambal rule inbox-nya.
+	//
+	// Statusnya dikosongkan di sini: tab itu SUDAH menjadi penyaringnya sendiri, dan
+	// membiarkannya terisi akan membuat blok :15–:20 menyaring untuk kedua kalinya.
+	switch f.DocumentStatus {
+	case inboxoutstanding.StatusTemporaryClose:
+		namaDaftar, namaHitungan = "my_inbox_temporary_close_list", "my_inbox_temporary_close_count"
+		f.DocumentStatus = ""
+
+	// Deadline menempuh TABEL LAIN (`TEMPORARY_CLOSESEMENTARAPNC`) dan — tidak seperti
+	// kedua kueri lain — tidak menyaring `PYSTATUSWORK` sama sekali. Alasannya di SQL-nya.
+	case inboxoutstanding.StatusDeadlineTemporaryClose:
+		namaDaftar, namaHitungan = "my_inbox_deadline_list", "my_inbox_deadline_count"
+		f.DocumentStatus = ""
+
+	// Communication berbeda dari kedua tab di atas: dasarnya SAMA dengan inbox berjalan,
+	// yang ditambahkan hanya satu `EXISTS`. Ia tetap kueri tersendiri karena `EXISTS` itu
+	// membawa DUA argumen tambahan — identitas pemanggil untuk menyaring pengirim pesan.
+	case inboxoutstanding.StatusCommunication:
+		namaDaftar, namaHitungan = "my_inbox_communication_list", "my_inbox_communication_count"
+		f.DocumentStatus = ""
+		butuhPengirim = true
+	}
+
 	// Penyaring status dokumen ikut pada DAFTAR dan HITUNGANNYA, supaya total paginasi
-	// cocok dengan isi grid setelah pengguna mengeklik satu irisan donut.
+	// cocok dengan isi grid setelah pengguna mengeklik satu tab.
 	filters := append(filterArgs(f), statusArgs(f)...)
 
+	// Dua identitas yang SAMA dengan penyaring pemilik, diulang untuk :21 dan :22.
+	//
+	// Diulang, bukan dirujuk: go-ora mengikat menurut urutan kemunculan penanda, sehingga
+	// menulis `:1` lagi akan mengambil argumen BERIKUTNYA, bukan argumen pertama.
+	if butuhPengirim {
+		filters = append(filters, filters[0], filters[1])
+	}
+
 	var total int
-	if err := r.db.QueryRowContext(ctx, query("my_inbox_count"), filters...).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, query(namaHitungan), filters...).Scan(&total); err != nil {
 		return inboxoutstanding.Page{}, fmt.Errorf("inboxoutstanding/sqlstore: menghitung klaim: %w", err)
 	}
 
-	// Paginasi memakai :18 dan :19 — dua parameter terakhir, disisipkan sesudah penyaring.
+	// Paginasi memakai :21 dan :22 — dua parameter terakhir, disisipkan sesudah penyaring.
 	listArgs := append(append([]any(nil), filters...), f.Offset, f.Limit)
 
-	rows, err := r.db.QueryContext(ctx, query("my_inbox_list"), listArgs...)
+	rows, err := r.db.QueryContext(ctx, query(namaDaftar), listArgs...)
 	if err != nil {
 		return inboxoutstanding.Page{}, fmt.Errorf("inboxoutstanding/sqlstore: membaca daftar klaim: %w", err)
 	}
@@ -160,7 +201,7 @@ func exportArgs(f inboxoutstanding.ExportFilter) []any {
 	}
 }
 
-// filterArgs menyusun tiga belas argumen pertama, sama untuk kedua kueri.
+// filterArgs menyusun empat belas argumen pertama, sama untuk kedua kueri.
 //
 // Pola "NULL berarti tidak menyaring" dipakai supaya satu teks SQL melayani seluruh
 // kombinasi penyaring. Menyusun WHERE-nya di Go akan mengembalikan SQL ke dalam kode —
@@ -224,11 +265,24 @@ func statusArgs(f inboxoutstanding.Filter) []any {
 		status = "LENGKAP"
 	case inboxoutstanding.StatusIncomplete:
 		status = "BELUM"
+	case inboxoutstanding.StatusInternalSurveyor:
+		status = "SURVEYOR-INTERNAL"
+	case inboxoutstanding.StatusLossAdjuster:
+		status = "LOSS-ADJUSTER"
+	case inboxoutstanding.StatusTKA:
+		status = "TKA"
 	}
+
+	// Keenamnya bernilai SAMA. Yang membedakan hanya cabang OR mana yang cocok di SQL —
+	// dan keenamnya wajib ada karena go-ora mengikat menurut urutan kemunculan penanda,
+	// bukan menurut nomornya. Mengurangi satu akan menggeser offset dan limit.
 	return []any{
 		status, // :15 IS NULL
 		status, // :16 uji LENGKAP
 		status, // :17 uji BELUM
+		status, // :18 uji SURVEYOR-INTERNAL
+		status, // :19 uji LOSS-ADJUSTER
+		status, // :20 uji TKA
 	}
 }
 
@@ -242,20 +296,85 @@ func (r *Repo) SummarizeDocumentStatus(ctx context.Context, f inboxoutstanding.F
 		return inboxoutstanding.Summary{}, inboxoutstanding.ErrAssigneeRequired
 	}
 
-	var lengkap, belum, total sql.NullInt64
+	var lengkap, belum, surveyorInternal, lossAdjuster, tka, total sql.NullInt64
 	err := r.db.QueryRowContext(ctx, query("my_inbox_document_status"), filterArgs(f)...).
-		Scan(&lengkap, &belum, &total)
+		Scan(&lengkap, &belum, &surveyorInternal, &lossAdjuster, &tka, &total)
 	if err != nil {
 		return inboxoutstanding.Summary{}, fmt.Errorf("inboxoutstanding/sqlstore: meringkas status dokumen: %w", err)
 	}
 
+	// Temporary Close dihitung kueri TERSENDIRI, dan itu tidak terhindarkan: populasinya
+	// berada di LUAR himpunan yang dihitung kueri di atas — klaim yang sudah
+	// `Resolved-Completed`, yang justru dibuang penyaring dasar.
+	//
+	// Satu kueri ber-CASE tidak dapat memuat keduanya tanpa melepas penyaring dasarnya,
+	// dan melepasnya akan mengubah TOTAL — angka yang mengisi tab "ALL Case" dan wajib
+	// cocok dengan paginasi grid.
+	//
+	// Statusnya dikosongkan supaya blok :15–:20 tidak menyaring untuk kedua kalinya.
+	tutup := f
+	tutup.DocumentStatus = ""
+
+	argTutup := append(filterArgs(tutup), statusArgs(tutup)...)
+
+	var tertundaTutup sql.NullInt64
+	err = r.db.QueryRowContext(ctx, query("my_inbox_temporary_close_count"), argTutup...).
+		Scan(&tertundaTutup)
+	if err != nil {
+		return inboxoutstanding.Summary{}, fmt.Errorf(
+			"inboxoutstanding/sqlstore: menghitung klaim tertunda tutup: %w", err)
+	}
+
+	angka := map[inboxoutstanding.DocumentStatus]int{
+		inboxoutstanding.StatusComplete:         int(lengkap.Int64),
+		inboxoutstanding.StatusIncomplete:       int(belum.Int64),
+		inboxoutstanding.StatusAll:              int(total.Int64),
+		inboxoutstanding.StatusTemporaryClose:   int(tertundaTutup.Int64),
+		inboxoutstanding.StatusInternalSurveyor: int(surveyorInternal.Int64),
+		inboxoutstanding.StatusLossAdjuster:     int(lossAdjuster.Int64),
+		inboxoutstanding.StatusTKA:              int(tka.Int64),
+	}
+
+	// Deadline menempuh tabel ketiga, jadi ia kueri ketiga pula.
+	//
+	// **Tabelnya belum tentu ada di setiap portal.** Bila belum, tabnya dikirim TANPA angka
+	// — bukan nol, dan bukan galat yang menjatuhkan seluruh ringkasan. Nol akan menyatakan
+	// "tidak ada satu pun" padahal yang benar "belum dapat dihitung di portal ini", dan
+	// menggagalkan ringkasan akan menyembunyikan tujuh angka lain yang sudah benar.
+	var tenggat sql.NullInt64
+	switch err := r.db.QueryRowContext(ctx, query("my_inbox_deadline_count"), argTutup...).
+		Scan(&tenggat); {
+	case err == nil:
+		angka[inboxoutstanding.StatusDeadlineTemporaryClose] = int(tenggat.Int64)
+	case db.IsMissingObject(err):
+		// Sengaja tidak diisi.
+	default:
+		return inboxoutstanding.Summary{}, fmt.Errorf(
+			"inboxoutstanding/sqlstore: menghitung klaim bertenggat tutup: %w", err)
+	}
+
+	// Communication — kueri keempat, dan dua argumen lebih panjang.
+	//
+	// Ia tidak dapat digabung ke kueri ringkasan utama: syaratnya sebuah `EXISTS`, dan
+	// Oracle tidak mengizinkan `EXISTS` di dalam daftar SELECT. Menggantinya dengan
+	// subkueri skalar ber-COUNT akan menjalankan satu subkueri untuk SETIAP baris.
+	argKomunikasi := append(append([]any(nil), argTutup...), argTutup[0], argTutup[1])
+
+	var komunikasi sql.NullInt64
+	switch err := r.db.QueryRowContext(ctx, query("my_inbox_communication_count"), argKomunikasi...).
+		Scan(&komunikasi); {
+	case err == nil:
+		angka[inboxoutstanding.StatusCommunication] = int(komunikasi.Int64)
+	case db.IsMissingObject(err):
+		// Sengaja tidak diisi — sama seperti Deadline.
+	default:
+		return inboxoutstanding.Summary{}, fmt.Errorf(
+			"inboxoutstanding/sqlstore: menghitung klaim berkomunikasi: %w", err)
+	}
+
 	// SUM atas himpunan kosong mengembalikan NULL, bukan nol — sehingga inbox yang kosong
 	// harus menghasilkan angka nol di sini, bukan galat konversi.
-	return inboxoutstanding.BuildSummary(map[inboxoutstanding.DocumentStatus]int{
-		inboxoutstanding.StatusComplete:   int(lengkap.Int64),
-		inboxoutstanding.StatusIncomplete: int(belum.Int64),
-		inboxoutstanding.StatusAll:        int(total.Int64),
-	}, int(total.Int64)), nil
+	return inboxoutstanding.BuildSummary(angka, int(total.Int64)), nil
 }
 
 // LegacyOperatorFor membaca identitas lama petugas dari T_ACCESS_GROUP_PNC.

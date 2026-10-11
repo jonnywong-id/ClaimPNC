@@ -521,27 +521,28 @@ type statusDefinition struct {
 //
 // # Kenapa hanya tiga yang dapat dihitung
 //
-//	Complete / Not complete   Work-PNC + DOKUMENLENGKAP_1        dapat
+//	Complete / Not complete   DOKUMENLENGKAP_1, tanpa klaim TKA  dapat
 //	ALL Case                  seluruh inbox                      dapat
-//	Temporary Close           Resolved-Completed + PendingClose  populasi LAIN
-//	Deadline To Temp. Close   idem                               populasi LAIN
-//	Loss Adjuster             Work-SurveyClaim SURVEYORTYPE=2    case type lain
-//	Internal Surveyor         Work-SurveyClaim SURVEYORTYPE=1    case type lain
-//	Communication             tabel komunikasi                   bukan klaim
-//	TKA                       kolom TKA_1                        kolomnya TIDAK ADA
+//	Temporary Close           Resolved-Completed + PendingClose  dapat, lewat kueri SENDIRI
+//	Internal Surveyor         SURVEYORTYPE_1 = '1'               dapat
+//	Loss Adjuster             SURVEYORTYPE_1 = '2'               dapat
+//	TKA                       TKA_1 = '1'                        dapat
+//	Deadline To Temp. Close   Temporary_CloseSementaraPNC        tabelnya belum dibaca
+//	Communication             M_KOMUNIKASI_PNC                   aturan sambungnya belum
 //
-// `T_CLAIMLIST_ADMIN` hanya memuat `Work-PNC` (870 baris) dan `Work-ReceiveDocument`
-// (142) — nol `Work-SurveyClaim`.
+// Dua tab survei memakai kolom pada baris KLAIM, bukan objek `Work-SurveyClaim` — lihat
+// catatan panjang pada `outstanding.sql`. Untuk Internal Surveyor itu menyalin Pega apa
+// adanya; untuk Loss Adjuster itu pembacaan, karena kueri Pega-nya cross join.
 var statusOrder = []statusDefinition{
 	{StatusAll, "ALL Case", "3", true},
 	{StatusComplete, "Complete documents", "1", true},
 	{StatusIncomplete, "Documents not complete", "0", true},
-	{StatusTemporaryClose, "Temporary Close", "8", false},
-	{StatusDeadlineTemporaryClose, "Deadline To Temporary Close", "9", false},
-	{StatusLossAdjuster, "Loss Adjuster", "2", false},
-	{StatusInternalSurveyor, "Internal Surveyor", "4", false},
-	{StatusCommunication, "Communication", "5", false},
-	{StatusTKA, "TKA", "9", false},
+	{StatusTemporaryClose, "Temporary Close", "8", true},
+	{StatusDeadlineTemporaryClose, "Deadline To Temporary Close", "9", true},
+	{StatusLossAdjuster, "Loss Adjuster", "2", true},
+	{StatusInternalSurveyor, "Internal Surveyor", "4", true},
+	{StatusCommunication, "Communication", "5", true},
+	{StatusTKA, "TKA", "9", true},
 }
 
 // FindDocumentStatus mencari tab dari kodenya. Nilai kedua false bila kodenya tidak dikenal.
@@ -600,6 +601,48 @@ type StatusCount struct {
 type Summary struct {
 	Status []StatusCount
 	Total  int
+}
+
+// ForLineBusiness membuang tab yang TIDAK terlihat oleh lini bisnis pemanggil.
+//
+// # Sembilan label, delapan tab
+//
+// `Section/InboxRegister_Section-Section.xml` memakai satu properti pemilih tab,
+// `TempVisibility.Email`. Delapan nilai untuk sembilan label — karena nilai `9` dipakai
+// DUA label sekaligus, dibedakan jabatan pemanggil:
+//
+//	TempVisibility.Email==9 && OperatorID.pyPosition!='PA'   -> "Deadline To Temporary Close"
+//	TempVisibility.Email==9 && OperatorID.pyPosition=='PA'   -> "TKA"
+//
+// Jadi di Pega seorang pengguna **tidak pernah melihat keduanya**. Petugas PA melihat TKA;
+// selain itu melihat Deadline. Modul ini semula menggambar keduanya — selisih dari `D-13`
+// yang diperbaiki di sini (`D-73`, keputusan Work Owner 2026-10-11).
+//
+// # Padanan pyPosition di sistem baru
+//
+// `OperatorID.pyPosition` tidak dibawa. Padanannya `POOLDATA.M_LOGIN_PNC.LINE_BUSINESS`,
+// yang sudah dipakai modul ini untuk menentukan cakupan unduhan — sehingga tab dan unduhan
+// membaca sumber yang SAMA, dan tidak mungkin berbeda pendapat tentang siapa petugas PA.
+//
+// # Lini bisnis yang tidak diketahui
+//
+// Mengembalikan Deadline, bukan TKA. Itu perilaku mayoritas: TKA adalah pengecualian untuk
+// satu lini, dan menebak ke arah pengecualian akan menyembunyikan tab dari hampir semua
+// orang bila pembacaan lini bisnis gagal.
+func (s Summary) ForLineBusiness(line LineBusiness) Summary {
+	buang := StatusTKA
+	if line == LinePA {
+		buang = StatusDeadlineTemporaryClose
+	}
+
+	sisa := make([]StatusCount, 0, len(s.Status))
+	for _, item := range s.Status {
+		if item.Status == buang {
+			continue
+		}
+		sisa = append(sisa, item)
+	}
+	return Summary{Status: sisa, Total: s.Total}
 }
 
 // BuildSummary menyusun kesembilan tab dalam urutan layar.

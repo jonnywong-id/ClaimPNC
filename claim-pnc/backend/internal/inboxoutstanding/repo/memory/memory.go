@@ -133,10 +133,22 @@ func (r *Repo) SummarizeDocumentStatus(_ context.Context, f inboxoutstanding.Fil
 		belum++
 	}
 
+	// Dihitung TERPISAH, karena populasinya berada di luar himpunan di atas — lihat
+	// catatan pada matches.
+	tutup := f
+	tutup.DocumentStatus = inboxoutstanding.StatusTemporaryClose
+	var tertundaTutup int
+	for _, c := range r.claims {
+		if matches(c, tutup) {
+			tertundaTutup++
+		}
+	}
+
 	return inboxoutstanding.BuildSummary(map[inboxoutstanding.DocumentStatus]int{
-		inboxoutstanding.StatusComplete:   lengkap,
-		inboxoutstanding.StatusIncomplete: belum,
-		inboxoutstanding.StatusAll:        lengkap + belum,
+		inboxoutstanding.StatusComplete:       lengkap,
+		inboxoutstanding.StatusIncomplete:     belum,
+		inboxoutstanding.StatusAll:            lengkap + belum,
+		inboxoutstanding.StatusTemporaryClose: tertundaTutup,
 	}, lengkap+belum), nil
 }
 
@@ -293,6 +305,45 @@ func matches(c inboxoutstanding.OutstandingClaim, f inboxoutstanding.Filter) boo
 	if f.BranchCode != "" && !strings.EqualFold(c.BranchName, f.BranchCode) {
 		return false
 	}
+	// Temporary Close memakai kueri TERSENDIRI di produksi, bukan penyaring status — ia
+	// mencari populasi yang justru dibuang daftar biasa.
+	//
+	// **Tidak dapat ditirukan sepenuhnya:** syarat keduanya `ISPENDINGCLOSE = 'true'`, dan
+	// kolom itu tidak ada pada OutstandingClaim. Yang diperiksa di sini hanya separuhnya,
+	// sehingga fake ini **kelebihan cocok** — meloloskan klaim yang selesai tetapi tidak
+	// tertunda tutup. Keterbatasannya disebut di sini, bukan disembunyikan dengan
+	// mengembalikan kosong; kosong akan tampak sah dan menyesatkan pengujian.
+	//
+	// Perilaku sebenarnya dijaga uji sqlmock, yang memeriksa kueri MANA yang dipanggil.
+	if f.DocumentStatus == inboxoutstanding.StatusTemporaryClose {
+		return strings.TrimSpace(c.ProcessStatus) == "Resolved-Completed"
+	}
+
+	// Di luar tab itu, daftar hanya memuat pekerjaan yang MASIH berjalan — sama seperti
+	// `PYSTATUSWORK NOT IN (...)` pada kueri produksi.
+	switch strings.TrimSpace(c.ProcessStatus) {
+	case "Resolved-Completed", "Resolved-Rejected":
+		return false
+	}
+
+	// Tiga tab yang sumbernya kolom TIDAK dimodelkan OutstandingClaim:
+	//
+	//   Internal Surveyor   SURVEYORTYPE_1 = '1'
+	//   Loss Adjuster       SURVEYORTYPE_1 = '2'
+	//   TKA                 TKA_1 = '1'
+	//
+	// Ketiganya diloloskan apa adanya di sini — seperti LineBonding di atas — dan
+	// ringkasan TIDAK menyerahkan angkanya, sehingga lencananya tetap kosong alih-alih
+	// menampilkan nol yang akan terbaca sebagai "tidak ada satu pun".
+	//
+	// Perilaku sebenarnya dijaga uji sqlmock pada adapter SQL.
+	switch f.DocumentStatus {
+	case inboxoutstanding.StatusInternalSurveyor,
+		inboxoutstanding.StatusLossAdjuster,
+		inboxoutstanding.StatusTKA:
+		return true
+	}
+
 	if f.DocumentStatus != "" && documentStatusOf(c) != f.DocumentStatus {
 		return false
 	}
