@@ -123,6 +123,11 @@ type Config struct {
 	// konfigurasi, bukan ditulis di kode.
 	PrimaryPortal string
 
+	// PublicURL adalah pangkal alamat aplikasi yang dapat dibuka dari email (ALAMAT_PUBLIK), mis.
+	// https://claimpnc.contoh.example — dipakai link persetujuan Komite survey. Kosong: email
+	// Komite survey tidak dikirim dan alasannya ditampilkan.
+	PublicURL string
+
 	// DevelopmentReinsurerLogin mendaftarkan SATU login sebagai mitra reasuransi pada
 	// data contoh layar Inbox PLA DLA (`MENU_ID 45`).
 	//
@@ -508,6 +513,10 @@ type SMTP struct {
 	// `"Admin-PNC"`: PLA/DLA (SEND ALL PLA, Inbox PLA/DLA) dan peringatan Master Rekening
 	// (EMAIL_ACCOUNT_ADMIN_PNC, bawaan Admin-PNC — Work Owner 2026-10-10).
 	AdminAccount string
+
+	// SurveyAccount adalah EMAIL_ACCOUNT email Komite survey — Email Account Pega "ASM"
+	// (setSendEmailKomite_act, PNCKomiteSurveyAcceptation_act). EMAIL_ACCOUNT_KOMITE_SURVEY.
+	SurveyAccount string
 
 	Host     string
 	Port     int
@@ -895,6 +904,7 @@ func Load() (Config, error) {
 		SMTP: SMTP{
 			EmailAccount:    get("EMAIL_ACCOUNT", "ClaimPNC"),
 			AdminAccount:    get("EMAIL_ACCOUNT_ADMIN_PNC", "Admin-PNC"),
+			SurveyAccount:   get("EMAIL_ACCOUNT_KOMITE_SURVEY", "ASM"),
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),
@@ -910,6 +920,7 @@ func Load() (Config, error) {
 			Timeout: smtpTimeout,
 		},
 		PrimaryPortal: primaryPortal,
+		PublicURL:     strings.TrimSpace(os.Getenv("ALAMAT_PUBLIK")),
 		Portal:        portal,
 		Aneka:         aneka,
 

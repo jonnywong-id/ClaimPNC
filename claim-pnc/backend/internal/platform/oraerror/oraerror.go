@@ -21,9 +21,10 @@ var (
 	// oraPattern menangkap satu baris galat Oracle, mis. `ORA-01427: single-row ...`.
 	oraPattern = regexp.MustCompile(`ORA-\d{5}:[^\r\n]*`)
 
-	// quotedTable menangkap `"OWNER"."TABEL"` yang disebut Oracle sendiri (ORA-12899,
-	// ORA-01400, …).
-	quotedTable = regexp.MustCompile(`"([A-Z0-9_$#]+)"\."([A-Z0-9_$#]+)"`)
+	// quotedTable menangkap `"OWNER"."TABEL"."KOLOM"` yang disebut Oracle sendiri (ORA-12899,
+	// ORA-01400, …). Bentuk dua bagian TIDAK dipakai: pada ORA-00904 ia berarti
+	// `"ALIAS"."KOLOM"` — alias kueri, bukan tabel.
+	quotedTable = regexp.MustCompile(`"([A-Z0-9_$#]+)"\."([A-Z0-9_$#]+)"\."[A-Z0-9_$#]+"`)
 
 	// namedTable menangkap nama tabel yang disebut pembungkus galat di sqlstore.
 	namedTable = regexp.MustCompile(`\b(?:[A-Z][A-Z0-9_]*\.)?(?:T_|CPNC_|M_|MST_|GCNM_|DATA_|PC_|LST_|V_)[A-Z0-9_]+\b`)

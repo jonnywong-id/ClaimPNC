@@ -338,7 +338,7 @@ describe('ProgressTab', () => {
     const c1 = screen.getByText('PNC-1').closest('tr')!
     expect(within(c1).getAllByText('—')).toHaveLength(5)
     expect(screen.getByText('Mohon dokumen')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Input Progress Claim' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Input Progress Claim' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Kirim Pesan' })).toBeDisabled()
   })
 
