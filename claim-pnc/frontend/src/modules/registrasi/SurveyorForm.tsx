@@ -12,7 +12,8 @@ import { AcceptanceButtons } from './AcceptanceButtons'
 import { LODTypeSelect } from './LODTypeSelect'
 import { CommitteeStatus } from './Committee'
 import { CommitteeTransferDialog } from './CommitteeTransferDialog'
-import { DocumentTab, InvestigationTab, ProgressTab, SurveyTab } from './EstimateTabs'
+import { DocumentTab, InvestigationTab, ProgressTab } from './EstimateTabs'
+import { SurveyTabPanel } from './SurveyTabPanel'
 import { EstimatePaymentTable, errorText, useEstimateEditor } from './EstimateForm'
 import { ReceiverTab } from './ReceiverTab'
 import { CloseClaimDialog } from './CloseClaim'
@@ -341,7 +342,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       <TabList items={tabs} current={tab} onSelect={setTab} label={`Tab ${tugas.tindakan_keluar || 'InputSurveyor'}`} />
 
       {tab === 'Input Register' && <RegisterView klaim={klaim} />}
-      {tab === 'Survey' && <SurveyTab claimID={klaim.id} />}
+      {tab === 'Survey' && <SurveyTabPanel klaim={klaim} taskID={tugas.id} />}
       {tab === 'Investigasi' && <InvestigationTab claimID={klaim.id} />}
       {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />}
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}

@@ -40,12 +40,14 @@ const (
 	CodeInternalError        = "galat_internal"
 	// CodeDatabaseError: penyimpanan/pembacaan tabel ditolak Oracle; pesannya memuat galat
 	// Oracle apa adanya (Work Owner 2026-10-10).
-	CodeDatabaseError      = "galat_basis_data"
-	CodePremiumUnavailable = "status_premi_tidak_terbaca"
-	CodeCashierUnavailable = "kasir_tidak_terhubung"
-	CodePLASendUnavailable = "kirim_pla_tidak_tersedia"
-	CodeCashierNoReply     = "kasir_tidak_menjawab"
-	CodeCashierRejected    = "kasir_menolak"
+	CodeDatabaseError           = "galat_basis_data"
+	CodePremiumUnavailable      = "status_premi_tidak_terbaca"
+	CodeCashierUnavailable      = "kasir_tidak_terhubung"
+	CodePLASendUnavailable      = "kirim_pla_tidak_tersedia"
+	CodeSurveyUnavailable       = "survey_tidak_tersedia"
+	CodeSurveyCommitteeAwaiting = "komite_survey_menunggu"
+	CodeCashierNoReply          = "kasir_tidak_menjawab"
+	CodeCashierRejected         = "kasir_menolak"
 )
 
 // mapError memilih status HTTP dan badan respons untuk sebuah galat.
@@ -242,6 +244,24 @@ func mapError(err error) (int, ErrorResponse) {
 			Code: CodeCashierNoReply,
 			Message: "The cashier system did not reply in time. The transfer may already have been received by the cashier — " +
 				"check it in the cashier system before trying again, so the payment is not sent twice.",
+		}
+
+	case errors.Is(err, registrasi.ErrSurveyUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodeSurveyUnavailable,
+			Message: "Survey storage is not configured on this server. Report it to the administrator.",
+		}
+
+	case errors.Is(err, registrasi.ErrSurveyCommitteeAwaiting):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeSurveyCommitteeAwaiting,
+			Message: "Survey committee cases are decided through the Pega email-link service (KomiteAcceptSurvey), which is not available yet.",
+		}
+
+	case errors.Is(err, usecase.ErrSurveyNotInProgress):
+		return http.StatusConflict, ErrorResponse{
+			Code:    CodeInvalidAction,
+			Message: "Only a survey that is in progress can be cancelled.",
 		}
 
 	case errors.Is(err, usecase.ErrPLASendUnavailable):

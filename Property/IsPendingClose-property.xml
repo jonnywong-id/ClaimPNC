@@ -1,0 +1,280 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyRuleAccessWhen/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyCircumstanceDate/>
+<pyColumnIndexed/>
+<pyIsLightweight>false</pyIsLightweight>
+<pyTableClass/>
+<pyIsManualReference/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!ISPENDINGCLOSE</pxInsName>
+<pyStreamName>pxCheckbox</pyStreamName>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyExpectedSize/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pzIndexCount>6</pzIndexCount>
+<pxHostId>jboss10362</pxHostId>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyDocumentTitle/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxInstanceLockedBy/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyOnObjChange/>
+<pyDisplayMode>basic</pyDisplayMode>
+<pyRuleFormStatusTime>20261011T010329.496 GMT</pyRuleFormStatusTime>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzInsKey>
+<pyTemplate/>
+<pzDocumentKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzDocumentKey>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pzRuleSetVersionPatch>02</pzRuleSetVersionPatch>
+<pyFormPost/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyShowJavaWindowName>GeneratedJava20261011T010329.521 GMT</pyShowJavaWindowName>
+<pyRuleName>IsPendingClose</pyRuleName>
+<pxTabLabel>IsPendingClose</pxTabLabel>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzOriginalInstanceKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzOriginalInstanceKey>
+<pyDeletedObject/>
+<pySpecial>false</pySpecial>
+<pyPropertyModeLabel>TrueFalse</pyPropertyModeLabel>
+<pyPropertyMode>String</pyPropertyMode>
+<pyOldStreamName>pxCheckbox</pyOldStreamName>
+<pyJavaStream/>
+<pyColumnInclusion/>
+<pyMethodStatus/>
+<pyEditValidate/>
+<pyTableAmountUnits>true</pyTableAmountUnits>
+<pxCommitDateTime>20230112T100625.000 GMT</pxCommitDateTime>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxInstanceLockedRuleSet/>
+<pyIsTransient/>
+<pyIsReference>false</pyIsReference>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyReflectStatus>true</pyReflectStatus>
+<pyValueChanged>false</pyValueChanged>
+<pxObjClass>Rule-Obj-Property</pxObjClass>
+<pyRuleParamsStreamName/>
+<pyBaseRule>false</pyBaseRule>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyFieldClass/>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyIsNonTransient>true</pyIsNonTransient>
+<pyTableOption/>
+<pzEntryCode>sSN</pzEntryCode>
+<pyIsFromManageChangeLP/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyIsJavaPage/>
+<pyPageClass/>
+<pyMaxLength/>
+<pxInstanceLockedKey/>
+<pySerializeJavaObject>false</pySerializeJavaObject>
+<pyCannotBeDeclarativeTarget>false</pyCannotBeDeclarativeTarget>
+<pxCreateDateTime>20230103T031312.824 GMT</pxCreateDateTime>
+<pxInstanceLockedRuleSetVersion/>
+<pySPRuleSetName/>
+<pyUsage/>
+<pxMoveImportDateTime>20230112T100625.529 GMT</pxMoveImportDateTime>
+<pyJavaObjectClass/>
+<pyCircumstanceDateProp/>
+<pyDescription/>
+<pyAssocUseReferenceKey>InstanceHandle</pyAssocUseReferenceKey>
+<pyRuleStarts/>
+<pyRuleEnds/>
+<pyLocalize>false</pyLocalize>
+<pyIsGateway>false</pyIsGateway>
+<pxInstanceLockedDateTime/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyFieldName/>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyDataRetrievalType/>
+<pyIsRetrieveEachPageSeparately>false</pyIsRetrieveEachPageSeparately>
+<pyTableSelector/>
+<pyCircumstanceType/>
+<pySpecialtyComponentData/>
+<pyComparator/>
+<pyPropertyName>IsPendingClose</pyPropertyName>
+<pyCircumstanceVal/>
+<pyTableAggregate/>
+<pyRefLocalizedValue/>
+<pyOnInput/>
+<pyCircumstanceProp/>
+<pxInstanceLockedCreateDateTime/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyStringType>TrueFalse</pyStringType>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyUseForLocalization>false</pyUseForLocalization>
+<pyRuleSetVersion>01-02-02</pyRuleSetVersion>
+<pyWindowTitle/>
+<pxInsId>!ISPENDINGCLOSE</pxInsId>
+<pxUpdateDateTime>20230103T031323.714 GMT</pxUpdateDateTime>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyInterface/>
+<pyObjClassLabel>Property</pyObjClassLabel>
+<pyWorkKey/>
+<pyTableProperty/>
+<pyLabel>Is Pending Close</pyLabel>
+<pyTemplateInputBox/>
+<pzChecksum>-79122013</pzChecksum>
+<pyGatewayClass/>
+<pyAdvancedPropType>MANUAL</pyAdvancedPropType>
+<pyDataObject/>
+<pxSaveDateTime>20230103T031323.716 GMT</pxSaveDateTime>
+<pyUsesOldAutoPopulate>false</pyUsesOldAutoPopulate>
+<pyHistoryObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pzStatus>valid</pzStatus>
+<pyTableKeys REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyKeyCaption/>
+<pxObjClass>Embed-ClassKeys</pxObjClass>
+<pyKeyValue/>
+</rowdata>
+</pyTableKeys>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzIndexOwnerKey>
+<pyRuleName>none</pyRuleName>
+<pyMethodStatus/>
+<pxRuleFamilyName>NONE</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property-Qualifier</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMethodStatus/>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pxRuleFamilyName>PXCHECKBOX</pxRuleFamilyName>
+<pyRuleName>pxCheckbox</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">4</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">5</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFieldValue/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyDelete>false</pyDelete>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>false</pyPropertyPane>
+<pyBranchOut>false</pyBranchOut>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpURI>
+<pyVersionSecure>true</pyVersionSecure>
+<pyShowJava>false</pyShowJava>
+<pyCheckOut>true</pyCheckOut>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySave>false</pySave>
+<pyCompareVersion/>
+<pyAvailability>false</pyAvailability>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRestore>false</pyRestore>
+<pyForward>true</pyForward>
+<pyLaunch>true</pyLaunch>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyCheckIn>false</pyCheckIn>
+<pyPreview>true</pyPreview>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyDelegates>false</pyDelegates>
+<pyRefresh>true</pyRefresh>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-property/main.htm</pyHelpRef>
+<pyUsesInheritance>true</pyUsesInheritance>
+</pyToolBarSettings>
+<pyqualifierpagegroup REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="none">
+<pxObjClass>Embed-Desktop-ValueList</pxObjClass>
+<pxSubscript>none</pxSubscript>
+<pyLabel/>
+</rowdata>
+</pyqualifierpagegroup>
+<pyGatewayPropertyMap REPEATINGTYPE="PageList"/>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyPromptTableList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyStandardValue/>
+<pyLocalizedValue/>
+<pxObjClass>Embed-PropertyPromtValues</pxObjClass>
+</rowdata>
+</pyPromptTableList>
+<pyQualifier REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="none"/>
+</pyQualifier>
+<pzOptimizedForClassList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1">ASM-FW-GCNMFW-Work-PNC</rowdata>
+</pzOptimizedForClassList>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyTableList REPEATINGTYPE="PropertyList">
+<rowdata REPEATINGINDEX="1"/>
+</pyTableList>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyListValues REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel/>
+<pxObjClass>@baseclass</pxObjClass>
+</rowdata>
+</pyListValues>
+<pyHTMLPropertyParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyHTMLPropertyParams>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-02-02 (Available)</pyLabel>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-PROPERTY ASM-FW-GCNMFW-WORK-PNC ISPENDINGCLOSE #20230103T031312.824 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+</pagedata>

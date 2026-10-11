@@ -54,6 +54,23 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/survey", func(w http.ResponseWriter, r *http.Request) {
 			h.Surveys(w, r, chi.URLParam(r, "klaimID"))
 		})
+		// Tab Survey tahap Choose Surveyor (TabSurvey_sect): grid Tambah Survey dan prosesnya.
+		sub.Get("/klaim/{klaimID}/survey/tab", func(w http.ResponseWriter, r *http.Request) {
+			h.SurveyTab(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/survey/simpan", func(w http.ResponseWriter, r *http.Request) {
+			h.SaveSurvey(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/survey/transfer", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferSurvey(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/survey/komite", func(w http.ResponseWriter, r *http.Request) {
+			h.TransferSurveyCommittee(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Post("/klaim/{klaimID}/survey/batal", func(w http.ResponseWriter, r *http.Request) {
+			h.CancelSurvey(w, r, chi.URLParam(r, "klaimID"))
+		})
+		sub.Get("/surveyor", h.SurveyorOptions)
 		sub.Get("/klaim/{klaimID}/dokumen", func(w http.ResponseWriter, r *http.Request) {
 			h.Documents(w, r, chi.URLParam(r, "klaimID"))
 		})

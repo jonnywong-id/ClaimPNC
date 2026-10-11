@@ -647,6 +647,89 @@ export type Survey = {
 }
 export type SurveysResponse = { survey: Survey[] }
 
+/** Satu baris grid Tambah Survey (`InputSurvey`) — objek klaim beserta isian surveynya. */
+export type SurveyObject = {
+  objek_id: string
+  urutan: number
+  nama_objek: string
+  lokasi_objek: string
+  pilih: boolean
+  lokasi_survey: string
+  /** 1 Internal Surveyor · 2 Loss Adjuster · 3 Expert · 4 Survey Agent. */
+  tipe_surveyor: string
+  nama_surveyor: string
+  login_surveyor: string
+  alamat_surveyor: string
+  email_surveyor: string
+  kode_cabang: string
+  nama_cabang: string
+  nama_surveyor_marine: string
+  login_surveyor_marine: string
+  /** 1 Menunggu Persetujuan · 2 Ditolak Komite · 3 Sedang Proses · 4 Batal Survey · 5 Selesai. */
+  status: string
+  nama_status?: string
+  id_survey?: string
+  id_survey_marine?: string
+}
+
+/** Permintaan Survey (`RequestSurvey`) — POOLDATA.T_REQ_SURVEY. */
+export type SurveyRequestInfo = {
+  survey_atas_permintaan: string
+  lokasi_survey: string
+  no_telp: string
+  tanggal_request: string
+  cabang: string
+  surveyor: string
+  email_surveyor: string
+  nama_objek: string
+}
+
+export type SurveyTabResponse = {
+  objek: SurveyObject[]
+  permintaan?: SurveyRequestInfo
+  tambah_tampil: boolean
+  anggota_koasuransi: boolean
+  marine_hull: boolean
+  pa: boolean
+}
+
+export type SurveyActionResponse = SurveyTabResponse & {
+  survey_terbit: string[]
+  komite_terbit: string[]
+  otomatis: boolean
+}
+
+export type SurveyorOption = {
+  id: string
+  nama: string
+  login: string
+  alamat: string
+  cabang: string
+  nama_cabang: string
+  email: string
+  kontak: string
+}
+
+export type SurveySaveRequest = {
+  tugas_id: string
+  tipe_surveyor_kasus: string
+  objek: SurveyObject[]
+}
+
+export type SurveyCommitteeRequest = SurveySaveRequest & {
+  tanggal: string
+  inisial: string
+  circumstances: string
+  nominated_adjuster: string
+  remarks: string
+  nama_perusahaan: string
+  contact_person: string
+  office_phone: string
+  email: string
+  penunjukan_manual: boolean
+  nominasi: { id: string; nama: string; login: string }[]
+}
+
 export type DocumentRow = {
   id: string
   jenis_id: string

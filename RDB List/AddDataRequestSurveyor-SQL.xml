@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!ADDDATAREQUESTSURVEYOR #20230801T065903.478 GMT</pzDocumentKey>
+<pyDescription/>
+<pzChecksum>1662336107</pzChecksum>
+<pzRuleSetVersionPatch>07</pzRuleSetVersionPatch>
+<pyInterface/>
+<pyBaseRule>false</pyBaseRule>
+<pxOriginalCreateDateTime/>
+<pxInstanceLockedKey/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pxTabLabel>ASM-FW-GCNMFW-Data-ClaimData GCNM AddDataRequestSurveyor</pxTabLabel>
+<pyFormPost/>
+<pyMethodStatus/>
+<pyDeletedObject/>
+<pxOriginalCreateOpName/>
+<pyRuleParamsStreamName/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pxOriginalCreateSystemID/>
+<pyTemplateInputBox/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxUpdateDateTime>20230802T091328.568 GMT</pxUpdateDateTime>
+<pxInstanceLockedDateTime/>
+<pySPRuleSetName>TERESIAARDIKA@</pySPRuleSetName>
+<pyCircumstanceTemplate/>
+<pyWorkKey/>
+<pyRuleFormStatusTime>20261011T015312.163 GMT</pyRuleFormStatusTime>
+<pyJavaStream/>
+<pyRuleStarts/>
+<pyCircumstanceDateProp/>
+<pyCircumstanceType/>
+<pxInstanceLockedRuleSet/>
+<pyRuleSetVersion>01-02-07</pyRuleSetVersion>
+<pxUpdateOperator>TERESIAARDIKA</pxUpdateOperator>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!ADDDATAREQUESTSURVEYOR #20230801T065903.478 GMT</pzInsKey>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyValueChanged>false</pyValueChanged>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStreamName/>
+<pxInsName>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!ADDDATAREQUESTSURVEYOR</pxInsName>
+<pxCreateDateTime>20230801T065903.478 GMT</pxCreateDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleEnds/>
+<pxSiblingCount/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyUsage/>
+<pySaveSQL>update pooldata.pnc_salvage set tglakseptasi=sysdate, noakseptasi={OutputData.START_DATE} where noklaim={pyWorkPage.pyID} and idobject={TempGetApp.pyCountry} 
+and idcoverage={TempGetApp.pyNote} and idsalvage={TempGetApp.pyLabel}</pySaveSQL>
+<pyHistoryObject>false</pyHistoryObject>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxMoveImportDateTime>20231027T122925.291 GMT</pxMoveImportDateTime>
+<pxCreateOpName>TeresiaArdika</pxCreateOpName>
+<pxInstanceLockedCreateDateTime/>
+<pyDeleteSQL>delete from pooldata.pla where id_pla={TempPNC.SearchName}</pyDeleteSQL>
+<pyLabelOld>AddDataRequestSurveyor</pyLabelOld>
+<pxInstanceLockedRuleSetVersion/>
+<pxInsId>ASM-FW-GCNMFW-DATA-CLAIMDATA!GCNM!ADDDATAREQUESTSURVEYOR</pxInsId>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!GETDATASERVICECENTER_UPDATE #20230724T071214.454 GMT</pzOriginalInstanceKey>
+<pyStatus/>
+<pxOriginalCreateOperator/>
+<pyCircumstanceDate/>
+<pxSaveDateTime>20230802T091328.580 GMT</pxSaveDateTime>
+<pyWindowTitle/>
+<pyBrowseSQL>DECLARE 
+    status VARCHAR2(32767);  
+    IDPega VARCHAR2(32767); 
+    treq_name VARCHAR2(32767); 
+    tqqname VARCHAR2(32767);
+    tlocation VARCHAR2(32767);
+    tnotelp VARCHAR2(32767); 
+    tdate_survey DATE; 
+    tsurveyor VARCHAR2(32767); 
+    tbranch VARCHAR2(32767);
+    temail_surveyor VARCHAR2(32767); 
+    tobjectname VARCHAR2(32767);
+    tsurveyid VARCHAR2(32767);
+    tinputdate DATE;
+    ErrMsg VARCHAR2(32767);
+
+BEGIN 
+    status :={TempReq.Status};  
+    IDPega :={TempReq.ClaimID}; 
+    treq_name :={TempReq.NoClaim}; 
+    tqqname :={TempReq.City};
+    tlocation :={TempReq.Location};
+    tnotelp :={TempReq.TelpTertanggung}; 
+    tdate_survey :={TempReq.DateReceived DateTime}; 
+    tsurveyor :={TempReq.NamaSurveyor}; 
+    tbranch :={TempReq.BranchID};
+    temail_surveyor :={TempReq.Email}; 
+    tobjectname :={TempReq.ObjectName};
+    tsurveyid :={TempReq.ClaimNo};
+    tinputdate := {TempReq.DateOfLoss DateTime};
+    POOLDATA.PEGA_REQ_SURVEY (status,IDPega,treq_name,tqqname,tlocation,tnotelp,tdate_survey,tsurveyor,tbranch,temail_surveyor,tobjectname,tsurveyid,tinputdate,{OutputSC.ResponseNote out});
+  COMMIT; 
+END;</pyBrowseSQL>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyOpenSQL/>
+<pyRWAccess>GCNM</pyRWAccess>
+<pyCircumstanceDefinition/>
+<pyDeleteMemo>Done</pyDeleteMemo>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData GCNM AddDataRequestSurveyor</pyRuleName>
+<pyDocumentTitle/>
+<pyShowJavaWindowName>GeneratedJava20261011T015312.182 GMT</pyShowJavaWindowName>
+<pxInstanceLockedBy/>
+<pyCircumstanceProp/>
+<pyCircumstanceVal/>
+<pyClassName>ASM-FW-GCNMFW-Data-ClaimData</pyClassName>
+<pyTemporaryObject/>
+<pyMemo>Done</pyMemo>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHandlerFlow/>
+<pzRuleSetVersionMinor>02</pzRuleSetVersionMinor>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyCheckInRuleSet/>
+<pyRelativePath/>
+<pyTemplate/>
+<pySpecialtyComponentData/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxMoveFromSystem/>
+<pyIsFromManageChangeLP/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyLabel>AddDataRequestSurveyor</pyLabel>
+<pxCreateOperator>TERESIAARDIKA</pxCreateOperator>
+<pyRequestType>AddDataRequestSurveyor</pyRequestType>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateOpName>TeresiaArdika</pxUpdateOpName>
+<pxCommitDateTime>20231027T122927.000 GMT</pxCommitDateTime>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>jboss10422</pxHostId>
+<pzStatus>valid</pzStatus>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldType/>
+<pyCFileKey/>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+</rowdata>
+</pyCustomFields>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass/>
+</rowdata>
+</pyPagesAndClasses>
+<pyToolBarSettings>
+<pyRecover>false</pyRecover>
+<pyNew>true</pyNew>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pySave>false</pySave>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pyLaunch>true</pyLaunch>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pySiblings>true</pySiblings>
+<pyRefresh>true</pyRefresh>
+<pyBranchOut>false</pyBranchOut>
+<pyDelete>false</pyDelete>
+<pyPropertyPane>false</pyPropertyPane>
+<pyFavorites>true</pyFavorites>
+<pyBack>true</pyBack>
+<pyDelegates>false</pyDelegates>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyRestore>false</pyRestore>
+<pyShowJava>false</pyShowJava>
+<pyRun>false</pyRun>
+<pyPreview>false</pyPreview>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckIn>false</pyCheckIn>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyCompareVersion/>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyAvailability>false</pyAvailability>
+</pyToolBarSettings>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-02-07 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-DATA-CLAIMDATA GCNM!ADDDATAREQUESTSURVEYOR #20230801T065903.478 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>

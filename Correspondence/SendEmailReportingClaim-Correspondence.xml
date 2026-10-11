@@ -1,0 +1,373 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pxUpdateDateTime>20200318T082416.991 GMT</pxUpdateDateTime>
+<pzHasModeLiteral>false</pzHasModeLiteral>
+<pzIndexCount>30</pzIndexCount>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyRuleEnds/>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleFormStatusTime>20261011T015330.321 GMT</pyRuleFormStatusTime>
+<pyCircumstanceDateProp/>
+<pyReloadForm>true</pyReloadForm>
+<pxOriginalCreateDateTime/>
+<pyRuleParamsStreamName/>
+<pyFormPost/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxTabLabel>SendEmailReportingClaim Email</pxTabLabel>
+<pyCircumstanceProp/>
+<pyShowSectionPreview>false</pyShowSectionPreview>
+<pyTopLevelCorr>false</pyTopLevelCorr>
+<pyCorrType>Email</pyCorrType>
+<pyInterface/>
+<pzOriginalInstanceKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDREQUESTEMAIL!EMAIL #20180619T045318.722 GMT</pzOriginalInstanceKey>
+<pxHostId>jboss2145</pxHostId>
+<pxSaveDateTime>20200318T082417.022 GMT</pxSaveDateTime>
+<pyFormPrintMethod/>
+<pzErrorMessage/>
+<pxOriginalCreateOpName/>
+<pyJavaStream/>
+<pyRuleSetVersion>01-01-84</pyRuleSetVersion>
+<pySourceOnlyMode>true</pySourceOnlyMode>
+<pyCompact>false</pyCompact>
+<pySpecialtyComponentData/>
+<pyUserEdit>NoEdit</pyUserEdit>
+<pyWindowTitle/>
+<pxCommitDateTime>20200813T090613.000 GMT</pxCommitDateTime>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pzCorrTypeClass>Data-Corr-Email</pzCorrTypeClass>
+<pyCircumstanceDate/>
+<pyPromptValidate/>
+<pzRuleSetVersionPatch>84</pzRuleSetVersionPatch>
+<pyFormSizeHoriz>60</pyFormSizeHoriz>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxOriginalCreateOperator/>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!SENDEMAILREPORTINGCLAIM!EMAIL</pxInsName>
+<pxInstanceLockedRuleSetVersion/>
+<pzChecksum>651343709</pzChecksum>
+<pyFormSizeVert>80</pyFormSizeVert>
+<pxCreateOperator>SURYAFEBRI</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRelativePath/>
+<pyMemo>done</pyMemo>
+<pxObjClass>Rule-Obj-Corr</pxObjClass>
+<pySPRuleSetName>SURYAFEBRI@</pySPRuleSetName>
+<pxCreateSystemID>pega</pxCreateSystemID>
+<pyStreamName>SendEmailReportingClaim</pyStreamName>
+<pyDescription/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySourceStream>&lt;html&gt;
+  &lt;body&gt;
+    &lt;table&gt;
+      &lt;tr&gt;
+           &lt;td&gt;Dear,&lt;/td&gt;
+      &lt;/tr&gt; 
+      &lt;tr&gt;
+           &lt;td&gt;Berikut informasi untuk pelaporan klaim,&lt;/td&gt;
+      &lt;/tr&gt;   
+      &lt;tr&gt;&lt;td&gt;&lt;br&gt;&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No Pelaporan&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="TempSendEmail.CaseID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;Tipe Bisnis&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="TempSendEmail.City"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No Polis&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="TempSendEmail.CityID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+        &lt;td&gt;No Placing Slip&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="TempSendEmail.Country"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;      
+      &lt;tr&gt;
+        &lt;td&gt;Posisi&lt;/td&gt;
+        &lt;td&gt; : &lt;/td&gt;
+        &lt;td&gt;&lt;pega:reference name="TempSendEmail.CountryID"&gt;&lt;/pega:reference&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+           &lt;td&gt;&lt;br&gt;&lt;br&gt;Demikian informasi untuk pelaporan klaim tersebut,&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+      		&lt;td&gt;Terima Kasih,&lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/body&gt;
+ &lt;/html&gt;</pySourceStream>
+<pxUpdateOpName>SURYA FEBRI</pxUpdateOpName>
+<pyCircumstanceType/>
+<pyShowDescription>false</pyShowDescription>
+<pxInstanceLockedDateTime/>
+<pyValueChanged>false</pyValueChanged>
+<pyLabelOld>SendEmailReportingClaim</pyLabelOld>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyUsage/>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyRuleName>SendEmailReportingClaim Email</pyRuleName>
+<pyLabel>SendEmailReportingClaim</pyLabel>
+<pxInstanceLockedRuleSet/>
+<pyObjClassLabel>Correspondence</pyObjClassLabel>
+<pxCreateOpName>SURYA FEBRI</pxCreateOpName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pxInstanceLockedCreateDateTime/>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyNextAction>Send</pyNextAction>
+<pxUpdateSystemID>pegadev</pxUpdateSystemID>
+<pyJavaClassName>Rule_Obj_Corr_ASM_FW_GCNMFW_Work_PNC_SendEmailReportingClaim_Email_Stream_20200318T034256_456_GMT</pyJavaClassName>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxOriginalCreateSystemID/>
+<pxCreateDateTime>20200318T024548.817 GMT</pxCreateDateTime>
+<pzDocumentKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzDocumentKey>
+<pyMethodStatus/>
+<pyBaseRule>false</pyBaseRule>
+<pyShowJavaWindowName>GeneratedJava20261011T015330.357 GMT</pyShowJavaWindowName>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxInsId>!SENDEMAILREPORTINGCLAIM!EMAIL</pxInsId>
+<pyEmailViewMode>source</pyEmailViewMode>
+<pyWordTemplate/>
+<pyDeletedObject/>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzInsKey>
+<pyIsFromManageChangeLP/>
+<pyHistoryObject>false</pyHistoryObject>
+<pyWorkKey/>
+<pxMoveImportOperName>WILLY YAKOBUS TANDRA</pxMoveImportOperName>
+<pxInstanceLockedKey/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyDocumentTitle/>
+<pyTemplateInputBox/>
+<pyStatus/>
+<pyRuleStarts/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceVal/>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxMoveImportOperId>WILLYYAKOBUSTANDRA</pxMoveImportOperId>
+<pxUpdateOperator>SURYAFEBRI</pxUpdateOperator>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pxMoveFromSystem/>
+<pxInstanceLockedBy/>
+<pyHTMLPrompt/>
+<pxMoveImportDateTime>20200813T090613.279 GMT</pxMoveImportDateTime>
+<pyCircumstanceTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzStatus>valid</pzStatus>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+<pyPagesAndClassesMode/>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>TempSendEmail</pyPagesAndClassesPage>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyRefresh>true</pyRefresh>
+<pyRun>false</pyRun>
+<pySaveAs>true</pySaveAs>
+<pyBranchOut>false</pyBranchOut>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pySave>false</pySave>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyFavorites>true</pyFavorites>
+<pyCheckIn>false</pyCheckIn>
+<pyVersionSecure>true</pyVersionSecure>
+<pyCompareVersion/>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pySiblings>true</pySiblings>
+<pyRuleData>true</pyRuleData>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-corr/main.htm</pyHelpRef>
+<pyPropertyPane>false</pyPropertyPane>
+<pyPreview>true</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-corr/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyBack>true</pyBack>
+<pyRuleResolution>true</pyRuleResolution>
+<pyShowJava>false</pyShowJava>
+<pyLaunch>true</pyLaunch>
+<pyDelegates>true</pyDelegates>
+<pyDelete>false</pyDelete>
+<pyCheckOut>true</pyCheckOut>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyNew>true</pyNew>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyUsesInheritance>true</pyUsesInheritance>
+</pyToolBarSettings>
+<pyPageRTE>
+<pxObjClass>Embed-RTE</pxObjClass>
+<pyAdvanced>true</pyAdvanced>
+</pyPageRTE>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeName/>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+<pyPrivilegeClass>ASM-FW-GCNMFW-Work-PNC</pyPrivilegeClass>
+</rowdata>
+</pyPrivilegeList>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxPageName>TempSendEmail</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxPageName>pyWorkPage</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName/>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyRuleName>CityID</pyRuleName>
+<pxRuleFamilyName>CITYID</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>COUNTRYID</pxRuleFamilyName>
+<pyRuleName>CountryID</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>CASEID</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pyRuleName>CaseID</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>Country</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>COUNTRY</pxRuleFamilyName>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pyMethodStatus/>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pyMethodStatus/>
+<pyRuleName>City</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>CITY</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">29</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pyV2/>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFileKey/>
+<pyCFieldName/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC SENDEMAILREPORTINGCLAIM!EMAIL #20200318T024548.817 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+</rowdata>
+</pyRuleVersionsList>
+</pagedata>

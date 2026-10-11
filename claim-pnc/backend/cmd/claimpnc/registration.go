@@ -123,6 +123,7 @@ func assembleRegistration(
 		options.Inbox = registrasisql.NewInboxEntryStore(db)
 		options.Accounts = registrasisql.NewAccountDirectory(db)
 		options.Committees = registrasisql.NewCommitteeStore(db)
+		options.Survey = registrasisql.NewSurveyStore(db)
 		// Unggah Dokumen: berkas lewat modul dokumen penunjang, baris di DATA_ATTACHFILE.
 		options.Documents = documents
 		options.Attachments = registrasisql.NewAttachmentStore(db)

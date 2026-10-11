@@ -1,0 +1,705 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyMethodStatus/>
+<pxCreateDateTime>20210924T104610.814 GMT</pxCreateDateTime>
+<pyDisplayDELETEActivityParams>false</pyDisplayDELETEActivityParams>
+<pyCloseRequestor>false</pyCloseRequestor>
+<pyRequestProcessor/>
+<pyServiceRuleVersion/>
+<pxInstanceLockedCreateDateTime/>
+<pyPOSTFallbackActivity/>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyDocumentTitle/>
+<pyDeleteMemo>tes</pyDeleteMemo>
+<pyRuleEnds/>
+<pxInstanceLockedRuleSet/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pzOriginalInstanceKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20180914T100303.647 GMT</pzOriginalInstanceKey>
+<pyPUTServiceActivity/>
+<pxTabLabel>ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC ShowKomiteSurveyConfirmation</pxTabLabel>
+<pyTemplateInputBox/>
+<pxOriginalCreateSystemID/>
+<pyDescription/>
+<pyIsFromManageChangeLP/>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pyIsTraceable>off</pyIsTraceable>
+<pzChecksum>1656433690</pzChecksum>
+<pyRetryIntervalSettings/>
+<pyDELETEFallbackActivity/>
+<pxOriginalCreateOpName/>
+<pyRetryInterval/>
+<pxInstanceLockedBy/>
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzInsKey>
+<pxInsId>ASMFWGCNMFWWORKPNC!ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION</pxInsId>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyMaxConsecutiveViolations/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyInterface/>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pyReduxClipboardOptions>Values</pyReduxClipboardOptions>
+<pyShowJavaWindowName>GeneratedJava20261011T034030.978 GMT</pyShowJavaWindowName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyFormPost/>
+<pyPrimaryPageName>MyServicePage</pyPrimaryPageName>
+<pyObjClassLabel>Service REST</pyObjClassLabel>
+<pyEnableServiceSLA>false</pyEnableServiceSLA>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyCusMethod>ShowKomiteSurveyConfirmation</pyCusMethod>
+<pyActivityExecMaxDurationSettings/>
+<pyEnableReduxClipboard>false</pyEnableReduxClipboard>
+<pxHostId>jboss1040</pxHostId>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyLabel>ShowKomiteSurveyConfirmation</pyLabel>
+<pxSaveDateTime>20210924T115852.591 GMT</pxSaveDateTime>
+<pzDocumentKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzDocumentKey>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyStatus/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyRuleSetVersion>01-01-95</pyRuleSetVersion>
+<pyRelativePath/>
+<pxInstanceLockedRuleSetVersion/>
+<pyResourcePath/>
+<pyActivityExecMaxDuration/>
+<pxInsName>ASMFWGCNMFWWORKPNC!ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION</pxInsName>
+<pzIndexCount>4</pzIndexCount>
+<pyHistoryObject>false</pyHistoryObject>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyPATCHServiceActivity/>
+<pyRuleParamsStreamName/>
+<pyCircumstanceDateProp/>
+<pyGETFallbackActivity/>
+<pyCircumstanceDate/>
+<pyPrimaryPageModel/>
+<pyEditable/>
+<pyBaseRule>false</pyBaseRule>
+<pyMemo>add key</pyMemo>
+<pyCusClass>ASM-FW-GCNMFW-WORK-PNC</pyCusClass>
+<pyCircumstanceProp/>
+<pzRuleParametersShowSkills>false</pzRuleParametersShowSkills>
+<pyRuleFormStatusTime>20261011T034030.960 GMT</pyRuleFormStatusTime>
+<pxInstanceLockedKey/>
+<pxMoveFromSystem/>
+<pyCheckInRuleSet/>
+<pyReloadForm>true</pyReloadForm>
+<pxMergeSynchronized>20181217T034539.997 GMT</pxMergeSynchronized>
+<pyPrimaryPageClass>ASM-FW-GCNMFW-WORK-PNC</pyPrimaryPageClass>
+<pyLabelOld>ShowKomiteSurveyConfirmation</pyLabelOld>
+<pyDisplayPOSTActivityParams>false</pyDisplayPOSTActivityParams>
+<pyRuleStarts/>
+<pyRuleName>ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC ShowKomiteSurveyConfirmation</pyRuleName>
+<pyCircumstanceVal/>
+<pxUpdateDateTime>20210924T115852.078 GMT</pxUpdateDateTime>
+<pyMaxConsecutiveViolationsSettings/>
+<pxSiblingCount/>
+<pyDeletedObject/>
+<pyClassName/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyExecutionMode>sync</pyExecutionMode>
+<pxMoveImportDateTime>20211221T124121.203 GMT</pxMoveImportDateTime>
+<pyCircumstanceDefinition/>
+<pyEnableReduxClipboardSettings/>
+<pyDisplayPUTActivityParams>false</pyDisplayPUTActivityParams>
+<pyValueChanged>false</pyValueChanged>
+<pyWindowTitle/>
+<pyEndpointURL>https://uniapp.sinarmas.co.id/prweb/PRRestService/ASMFWGCNMFWWORKPNC/ASM-FW-GCNMFW-WORK-PNC/ShowKomiteSurveyConfirmation</pyEndpointURL>
+<pyUsage/>
+<pyGETServiceActivity>ShowKomiteSurveyor</pyGETServiceActivity>
+<pyPATCHFallbackActivity/>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyCaptureClipboard>no</pyCaptureClipboard>
+<pyCircumstanceType/>
+<pyDisplayGetActivityParams>false</pyDisplayGetActivityParams>
+<pyPUTFallbackActivity/>
+<pzRuleSetVersionPatch>95</pzRuleSetVersionPatch>
+<pyPOSTServiceActivity/>
+<pyCircumstanceTemplate/>
+<pyServiceDefnPresentationOption>YAML</pyServiceDefnPresentationOption>
+<pxCommitDateTime>20211221T124121.000 GMT</pxCommitDateTime>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyTemporaryObject/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxObjClass>Rule-Service-REST</pxObjClass>
+<pyWorkKey/>
+<pySpecialtyComponentData/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pxInstanceLockedDateTime/>
+<pyTempText>saved</pyTempText>
+<pyServiceActivity/>
+<pxOriginalCreateOperator/>
+<pyDELETEServiceActivity/>
+<pyTemplate/>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCusPackage>ASMFWGCNMFWWORKPNC</pyCusPackage>
+<pxOriginalCreateDateTime/>
+<pyJavaStream/>
+<pyServiceDefinitionContent>openapi: 3.0.1
+info:
+  title: ShowKomiteSurveyConfirmation
+  version: ASM-FW-GCNMFW-WORK-PNC
+servers:
+- url: http://pegadev.sinarmas.co.id/prweb/PRRestService/ASMFWGCNMFWWORKPNC/ASM-FW-GCNMFW-WORK-PNC/ShowKomiteSurveyConfirmation
+tags:
+- name: PNC
+paths: {}</pyServiceDefinitionContent>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pySLAFallbackOptions>Values</pySLAFallbackOptions>
+<pyAssertNoInvocation>false</pyAssertNoInvocation>
+<pyStreamName/>
+<pzStatus>valid</pzStatus>
+<pyDELETEFallbackActivityParams REPEATINGTYPE="PageList"/>
+<pyGETResponseConditions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRequestorOptions>open</pyRequestorOptions>
+<pyResponseType>text/html</pyResponseType>
+<pxObjClass>Embed-ResponseCondition</pxObjClass>
+<pyHTTPStatusCode/>
+<pyConditionType>default</pyConditionType>
+<pyConditionKey/>
+<pyResponseParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapFromKey>KomiteSurveyConfirmation</pyMapFromKey>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pyMapFrom>HTML Stream</pyMapFrom>
+<pyDataType/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc>Show Confirmation</pyDesc>
+</rowdata>
+</pyResponseParameters>
+<pyResponseHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapFromKey/>
+<pyDesc/>
+<pyParameterName/>
+<pyMapFrom/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+</pyResponseHeaders>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</rowdata>
+</pyGETResponseConditions>
+<pyPUTResponseConditions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyConditionType>default</pyConditionType>
+<pyResponseType>application/xml</pyResponseType>
+<pyRequestorOptions>open</pyRequestorOptions>
+<pyHTTPStatusCode/>
+<pxObjClass>Embed-ResponseCondition</pxObjClass>
+<pyConditionKey/>
+<pyResponseParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapFrom/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pyDesc/>
+<pyMapFromKey/>
+<pyDataType/>
+</rowdata>
+</pyResponseParameters>
+<pyResponseHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParameterName/>
+<pyMapFromKey/>
+<pyMapFrom/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+</rowdata>
+</pyResponseHeaders>
+</rowdata>
+</pyPUTResponseConditions>
+<pyPATCHFallbackActivityParams REPEATINGTYPE="PageList"/>
+<pxMessageSummary>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxUnjustifiedHSWarningCount>0</pxUnjustifiedHSWarningCount>
+<pxLowSeverityWarningCount>0</pxLowSeverityWarningCount>
+<pxHighSeverityWarningCount>1</pxHighSeverityWarningCount>
+</pxMessageSummary>
+<pyPOSTRequestQueryString REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDataType>String</pyDataType>
+<pyMapTo/>
+<pyMapToKey/>
+<pyParameterName/>
+</rowdata>
+</pyPOSTRequestQueryString>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pyDELETERequestParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pyMapTo/>
+<pyMapToKey/>
+<pyDataType>String</pyDataType>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+</pyDELETERequestParameters>
+<pyGETFallbackActivityParams REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyValue>3</pyValue>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-01-95 (Available)</pyLabel>
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pyLabel>01-01-59 (Available)</pyLabel>
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20181217T033127.077 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20180914T100303.647 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyMenuTooltip/>
+<pyValue>3</pyValue>
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-01-52 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pxListSubscript>4</pxListSubscript>
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20180824T070658.518 GMT</pzInsKey>
+<pyLabel>01-01-50 (Available)</pyLabel>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxListSubscript>5</pxListSubscript>
+<pyValue>3</pyValue>
+<pyLabel>01-01-01 (Available)</pyLabel>
+<pzInsKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20170906T070202.757 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pyGETRequestParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapTo/>
+<pyMapToKey/>
+<pyDataType>String</pyDataType>
+<pyDesc/>
+</rowdata>
+</pyGETRequestParameters>
+<pyDELETEActivityParams REPEATINGTYPE="PageList"/>
+<pyPATCHResponseConditions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyConditionType>default</pyConditionType>
+<pxObjClass>Embed-ResponseCondition</pxObjClass>
+<pyHTTPStatusCode/>
+<pyResponseType>application/xml</pyResponseType>
+<pyRequestorOptions>open</pyRequestorOptions>
+<pyConditionKey/>
+<pyResponseHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParameterName/>
+<pyMapFromKey/>
+<pyMapFrom/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+</rowdata>
+</pyResponseHeaders>
+<pyResponseParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDataType/>
+<pyMapFrom/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyMapFromKey/>
+</rowdata>
+</pyResponseParameters>
+</rowdata>
+</pyPATCHResponseConditions>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pyResourcePathParams REPEATINGTYPE="PageList"/>
+<pyDELETERequestHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapTo/>
+<pyMapToKey/>
+<pyParameterName/>
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+</pyDELETERequestHeaders>
+<pzRuleParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-MethodParams</pxObjClass>
+<pyParametersParamName/>
+</rowdata>
+</pzRuleParameters>
+<pyPOSTFallbackActivityParams REPEATINGTYPE="PageList"/>
+<pyGETRequestHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapToKey/>
+<pyMapTo/>
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName/>
+</rowdata>
+</pyGETRequestHeaders>
+<pyPUTRequestQueryString REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyParameterName/>
+<pyMapToKey/>
+<pyDataType>String</pyDataType>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapTo/>
+<pyDesc/>
+</rowdata>
+</pyPUTRequestQueryString>
+<pyDELETEResponseConditions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRequestorOptions>open</pyRequestorOptions>
+<pyConditionType>default</pyConditionType>
+<pxObjClass>Embed-ResponseCondition</pxObjClass>
+<pyResponseType>application/xml</pyResponseType>
+<pyHTTPStatusCode/>
+<pyConditionKey/>
+<pyResponseHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapFromKey/>
+<pyMapFrom/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyParameterName/>
+</rowdata>
+</pyResponseHeaders>
+<pyResponseParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDataType/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapFrom/>
+<pyDesc/>
+<pyMapFromKey/>
+</rowdata>
+</pyResponseParameters>
+</rowdata>
+</pyDELETEResponseConditions>
+<pyGETActivityParams REPEATINGTYPE="PageList"/>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningJustifiedTime>20210924T115852.060 GMT</pxWarningJustifiedTime>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningJustifiedOperator>INTANHENNY</pxWarningJustifiedOperator>
+<pxWarningMessage>(Rule-Service-REST)pxServicePackageAuthentication	get	ASMFWGCNMFWWORKPNC</pxWarningMessage>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzIndexOwnerKey>
+<pxWarningCreateOperator>CHRISTINE_TANDYWIJAYA</pxWarningCreateOperator>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningCreatedTime>20180914T100303.650 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage>-</pyWarningJustifiedMessage>
+<pxWarningDetails>(Rule-Service-REST)pxServicePackageAuthentication	get	ASMFWGCNMFWWORKPNC</pxWarningDetails>
+<pxWarningName>Service Package Requires Authentication</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pyPUTFallbackActivityParams REPEATINGTYPE="PageList"/>
+<pyPATCHRequestParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDataType>String</pyDataType>
+<pyMapTo/>
+<pyMapToKey/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+</rowdata>
+</pyPATCHRequestParameters>
+<pyPATCHActivityParams REPEATINGTYPE="PageList"/>
+<pyDELETERequestQueryString REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyParameterName/>
+<pyMapToKey/>
+<pyMapTo/>
+<pyDataType>String</pyDataType>
+</rowdata>
+</pyDELETERequestQueryString>
+<pyServiceActivityParams>
+<pyTempPlaceHolder>TempPlaceHolder</pyTempPlaceHolder>
+</pyServiceActivityParams>
+<pyToolBarSettings>
+<pySiblings>true</pySiblings>
+<pyRecover>false</pyRecover>
+<pyCompareVersion/>
+<pyNew>true</pyNew>
+<pyFavorites>true</pyFavorites>
+<pyBranchOut>false</pyBranchOut>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyCheckOut>true</pyCheckOut>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pyLaunch>true</pyLaunch>
+<pyRestore>false</pyRestore>
+<pySaveAs>true</pySaveAs>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyDelete>false</pyDelete>
+<pyPreview>false</pyPreview>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-service-/rule-service-rest/main.htm</pyHelpURI>
+<pyAvailability>false</pyAvailability>
+<pyDelegates>false</pyDelegates>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyRefresh>true</pyRefresh>
+<pyCheckIn>false</pyCheckIn>
+<pyRun>true</pyRun>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHelpRef>/rule-/rule-service-/rule-service-rest/main.htm</pyHelpRef>
+<pyVersionSecure>true</pyVersionSecure>
+<pyRuleData>true</pyRuleData>
+<pyShowJava>false</pyShowJava>
+<pyForward>true</pyForward>
+<pySave>false</pySave>
+<pyRuleResolution>true</pyRuleResolution>
+</pyToolBarSettings>
+<pxNamedPageReferences REPEATINGTYPE="PageList"/>
+<pyPATCHRequestQueryString REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapTo/>
+<pyDesc/>
+<pyMapToKey/>
+<pyParameterName/>
+<pyDataType>String</pyDataType>
+</rowdata>
+</pyPATCHRequestQueryString>
+<pyPOSTActivityParams REPEATINGTYPE="PageList"/>
+<pyPOSTResponseConditions REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyHTTPStatusCode/>
+<pyResponseType>application/xml</pyResponseType>
+<pyConditionType>default</pyConditionType>
+<pyRequestorOptions>open</pyRequestorOptions>
+<pxObjClass>Embed-ResponseCondition</pxObjClass>
+<pyConditionKey/>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyResponseParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapFromKey/>
+<pyDataType/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyMapFrom/>
+</rowdata>
+</pyResponseParameters>
+<pyResponseHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName/>
+<pyMapFromKey/>
+<pyMapFrom/>
+<pyDataType>String</pyDataType>
+</rowdata>
+</pyResponseHeaders>
+</rowdata>
+</pyPOSTResponseConditions>
+<pyPATCHRequestHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapToKey/>
+<pyParameterName/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyMapTo/>
+</rowdata>
+</pyPATCHRequestHeaders>
+<pyBuildURIParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapTo/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName/>
+<pyDataType>String</pyDataType>
+</rowdata>
+</pyBuildURIParameters>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>2</pxWarningSeverity>
+<pxWarningDetails>(Rule-Service-REST)pxServicePackageAuthentication	get	ASMFWGCNMFWWORKPNC</pxWarningDetails>
+<pxWarningJustifiedOperator>INTANHENNY</pxWarningJustifiedOperator>
+<pxWarningCreateOperator>CHRISTINE_TANDYWIJAYA</pxWarningCreateOperator>
+<pxIsWarningJustified>true</pxIsWarningJustified>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pzIndexOwnerKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzIndexOwnerKey>
+<pxWarningMessage>The get method service activity associated with this service might not work as it requires authentication.  See the "Requires Authentication" checkbox on Service Package ASMFWGCNMFWWORKPNC</pxWarningMessage>
+<pxWarningJustifiedTime>20210924T115852.060 GMT</pxWarningJustifiedTime>
+<pxWarningName>Service Package Requires Authentication</pxWarningName>
+<pxWarningCreatedTime>20180914T100303.650 GMT</pxWarningCreatedTime>
+<pyWarningJustifiedMessage>-</pyWarningJustifiedMessage>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">2</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyPUTActivityParams REPEATINGTYPE="PageList"/>
+<pyGETRequestQueryString REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pyMapTo>Clipboard</pyMapTo>
+<pyMapToKey>.ClaimData.KomiteApprove</pyMapToKey>
+<pyParameterName>aproved</pyParameterName>
+<pyDataType>String</pyDataType>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyDataType>String</pyDataType>
+<pyMapTo>Clipboard</pyMapTo>
+<pyParameterName>comment</pyParameterName>
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapToKey>.ClaimData.Remark</pyMapToKey>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyDataType>String</pyDataType>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapTo>Clipboard</pyMapTo>
+<pyDesc/>
+<pyParameterName>caseid</pyParameterName>
+<pyMapToKey>.ClaimData.CaseID</pyMapToKey>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyMapToKey>.ClaimData.CityID</pyMapToKey>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDesc/>
+<pyDataType>String</pyDataType>
+<pyMapTo>Clipboard</pyMapTo>
+<pyParameterName>object_id</pyParameterName>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyDesc/>
+<pyMapToKey>.ClaimData.NamaSurveyor</pyMapToKey>
+<pyMapTo>Clipboard</pyMapTo>
+<pyDataType>String</pyDataType>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName>surveyor</pyParameterName>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyMapTo>Clipboard</pyMapTo>
+<pyDesc/>
+<pyMapToKey>.ClaimData.LokasiSurveyor</pyMapToKey>
+<pyParameterName>surveyorid</pyParameterName>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyDataType>String</pyDataType>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyParameterName>komiteid</pyParameterName>
+<pyMapTo>Clipboard</pyMapTo>
+<pyDesc/>
+<pyMapToKey>.ClaimData.DistrictID</pyMapToKey>
+<pyDataType>String</pyDataType>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyDataType>String</pyDataType>
+<pyMapTo>Clipboard</pyMapTo>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName>komitecount</pyParameterName>
+<pyMapToKey>.ClaimData.ProvinceID</pyMapToKey>
+<pyDesc/>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName>key</pyParameterName>
+<pyDesc/>
+<pyDataType>String</pyDataType>
+<pyMapTo>Clipboard</pyMapTo>
+<pyMapToKey>.ClaimData.KodeCabang</pyMapToKey>
+</rowdata>
+</pyGETRequestQueryString>
+<pyCallParams>
+</pyCallParams>
+<pyPOSTRequestHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyMapToKey/>
+<pyDataType>String</pyDataType>
+<pyMapTo/>
+<pyParameterName/>
+</rowdata>
+</pyPOSTRequestHeaders>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyRuleName>ShowKomiteSurveyor</pyRuleName>
+<pxRuleFamilyName>SHOWKOMITESURVEYOR</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-WORK-PNC</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-SERVICE-REST ASMFWGCNMFWWORKPNC ASM-FW-GCNMFW-WORK-PNC!SHOWKOMITESURVEYCONFIRMATION #20210924T104610.814 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Activity</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">3</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pyPUTRequestHeaders REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+<pyParameterName/>
+<pyMapTo/>
+<pyDesc/>
+<pyMapToKey/>
+</rowdata>
+</pyPUTRequestHeaders>
+<pyPUTRequestParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyDesc/>
+<pyDataType>String</pyDataType>
+<pyMapToKey/>
+<pyMapTo/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+</pyPUTRequestParameters>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldType/>
+<pxSubscript>empty</pxSubscript>
+<pyCFileRelativePath/>
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFieldValue/>
+</rowdata>
+</pyCustomFields>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyPOSTRequestParameters REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMapTo/>
+<pyDataType>String</pyDataType>
+<pyMapToKey/>
+<pyUseFastJSONProcessing>false</pyUseFastJSONProcessing>
+<pyDesc/>
+<pxObjClass>Embed-InterfaceParameter</pxObjClass>
+</rowdata>
+</pyPOSTRequestParameters>
+</pagedata>
