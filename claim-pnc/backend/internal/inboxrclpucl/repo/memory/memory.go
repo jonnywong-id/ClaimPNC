@@ -675,10 +675,11 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 		},
 
 		DocumentReceipt: inboxrclpucl.DocumentReceipt{
-			// Satu baris, seperti di Oracle: hanya baris pertama page list yang terbaca.
-			ReceivedDates: inboxrclpucl.ReceivedDatesOf("2026-09-04 10:05:00", "Dokumen awal"),
-			PUCLNote:      candidate.PUCLNote,
-			CompleteAt:    candidate.DocumentCompleteAt,
+			// Keterangan grid, hanya-baca. TANGGAL grid itu adalah CompleteAt di bawah —
+			// keduanya satu isian sejak 2026-10-11.
+			ReceivedNote: inboxrclpucl.ReceivedNoteOf("Dokumen awal"),
+			PUCLNote:     candidate.PUCLNote,
+			CompleteAt:   candidate.DocumentCompleteAt,
 		},
 	}
 }

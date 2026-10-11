@@ -30,11 +30,15 @@ const PORTAL_LIST = {
 }
 
 /**
- * Kolom grid — SEMBILAN, dan identik di ketiga tab kecuali judul kolom keenam.
+ * Kolom grid — identik di ketiga tab kecuali judul kolom keenam.
  *
  * Kesamaan itu bukan kebetulan: ketiga section menggambar sel yang sama persis, dan yang
  * membedakan tab hanyalah penyaringnya. Justru karena itu layar ini menuntut keterangan
  * per tab — tidak ada petunjuk visual apa pun yang membedakan ketiganya.
+ *
+ * SATU perkecualian: tab "Cetak Surat" tidak menerima kolom "Tanggal Cetak Surat", karena
+ * kolom itu justru penyaring tabnya dan tidak pernah dapat terisi di sana. Lihat
+ * `TAB_CETAK`.
  */
 function kolom(judulJalur: string): Tab['kolom'] {
   return [
@@ -51,13 +55,25 @@ function kolom(judulJalur: string): Tab['kolom'] {
   ] as Tab['kolom']
 }
 
+/**
+ * Tab "Cetak Surat" — TANPA kolom "Tanggal Cetak Surat", dan TANPA catatan.
+ *
+ * Keduanya hilang bersamaan pada 2026-10-11, dan memang harus bersamaan: catatan itu
+ * tidak menjelaskan apa pun selain kolom tersebut.
+ *
+ * Tiruan ini sengaja menyusun kolomnya dengan MEMBUANG dari daftar bersama, bukan dengan
+ * menulis daftar kesembilan kolomnya sendiri — daftar kedua yang ditulis tangan dapat
+ * bergeser urutan dari yang pertama, dan pergeseran itulah yang justru harus tertangkap
+ * uji.
+ */
 const TAB_CETAK: Tab = {
   kode: '1',
   nama: 'Cetak Surat',
   keterangan: 'Klaim RCL/PUCL yang suratnya BELUM dicetak.',
-  kolom: kolom('Status RCL/PUCL'),
+  kolom: kolom('Status RCL/PUCL').filter(
+    (column) => column.kunci !== 'tanggal_cetak_surat',
+  ),
   punya_laporan_rentang_tanggal: true,
-  catatan: 'Kolom "Tanggal Cetak Surat" selalu kosong di tab ini.',
   terhalang: false,
 }
 
@@ -95,8 +111,10 @@ const METADATA: MetadataResponse = {
  * yang di-commit, dan larangan itu berlaku untuk data uji sama seperti untuk dokumen.
  *
  * `tanggal_cetak_surat` sengaja KOSONG: begitulah yang selalu dikirim server pada tab
- * "Cetak Surat", karena penyaring tab itu justru "surat belum dicetak". Uji di bawah
- * memastikan layar menggambarnya sebagai tanda pisah, bukan membiarkan selnya kosong.
+ * "Cetak Surat", karena penyaring tab itu justru "surat belum dicetak". Isiannya tetap
+ * ada di baris — server tetap mengirimnya — meski tab itu tidak lagi menggambar kolomnya.
+ * Uji di bawah memastikan layar menggambar kolom yang DIKIRIM server, bukan daftar kolom
+ * yang ditulis tetap di layar: isian yang ada tanpa kolomnya tidak boleh muncul.
  */
 const BARIS: WorkItem = {
   referensi: 'ASM-FW-GCNMFW-WORK PNC-700001',
@@ -280,12 +298,46 @@ describe('bentuk layar', () => {
       'Nama Tertanggung',
       'Tanggal Masuk Inbox',
       'Deskripsi Analyst',
-      'Tanggal Cetak Surat',
       'Lama Klaim',
       'Status Kadaluarsa',
     ]) {
       expect(await screen.findByRole('columnheader', { name: judul })).toBeInTheDocument()
     }
+  })
+
+  it('TIDAK menggambar "Tanggal Cetak Surat" di tab Cetak Surat', async () => {
+    // Kolom itu adalah PENYARING tab ini (`belum dicetak`), sehingga setiap baris yang
+    // tampil di sini pasti berkolom kosong — dan baris yang terisi sudah berpindah
+    // sendiri ke tab "Kelengkapan Dokumen".
+    //
+    // Sampai 2026-10-11 kolomnya tetap digambar, ditemani satu kotak keterangan yang
+    // menjelaskan mengapa ia selalu kosong. Keputusan Work Owner: kolom yang tidak dapat
+    // berisi apa pun tidak ditampilkan, dan keterangannya ikut hilang.
+    //
+    // Yang diuji KEDUANYA sekaligus. Menguji kolomnya saja akan lolos meski layar masih
+    // membela kolom yang sudah tidak ada.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await screen.findByRole('columnheader', { name: 'Nomor Case' })
+
+    expect(
+      screen.queryByRole('columnheader', { name: 'Tanggal Cetak Surat' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/selalu kosong di tab ini/)).not.toBeInTheDocument()
+  })
+
+  it('TETAP menggambar "Tanggal Cetak Surat" di tab Kelengkapan Dokumen', async () => {
+    // Di sana kolomnya memang terisi — itulah tanggal yang menjadi alasan klaimnya ada di
+    // tab tersebut. Membuangnya dari SELURUH layar akan menyembunyikan data yang nyata.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'Tanggal Cetak Surat' }),
+    ).toBeInTheDocument()
   })
 
   it('menyatakan layar ini antrean bersama, bukan pekerjaan pemanggil', async () => {
@@ -315,29 +367,42 @@ describe('bentuk layar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('menyatakan kedua tindakan yang dikerjakan lewat Pega', async () => {
-    // Keduanya pekerjaan NYATA pengguna layar ini setiap hari. Layar yang kehilangan
-    // tombolnya tanpa penjelasan akan dilaporkan sebagai kerusakan.
+  it('menunjukkan DI MANA surat dicetak, tanpa menyebut Pega', async () => {
+    // Pertanyaan penggunanya tidak berubah — "mencetak suratnya di mana?" — tetapi
+    // jawabannya berubah 2026-10-11.
     //
-    // Kata "masih" sengaja TIDAK lagi dituntut di sini: keterangannya menyatakan
-    // keputusan, bukan pekerjaan yang tertunda (Work Owner, 2026-09-30).
+    // Sebelumnya di sini berdiri kotak "Yang dikerjakan lewat Pega" yang menyatakan Cetak
+    // Surat dan Reminder PUCL hanya dapat dikerjakan di Pega. Dua-duanya tidak lagi benar:
+    // Cetak Surat dikerjakan sistem ini lewat "Download Dokumen" di layar kerja klaim, dan
+    // Reminder PUCL tidak pernah digambar bahkan di Pega (syarat tombolnya `1==2`).
+    //
+    // Yang diuji karena itu DUA hal sekaligus: keterangan barunya ada, dan kalimat lamanya
+    // benar-benar hilang. Menguji yang pertama saja akan lolos meski keduanya tergambar
+    // berdampingan.
     stubDefaultFetch()
     await renderLoaded()
 
-    const notice = screen.getByText(/Yang dikerjakan lewat Pega/)
-    expect(notice).toBeInTheDocument()
-    expect(screen.getByText(/Reminder PUCL/)).toBeInTheDocument()
+    expect(screen.getByText(/Mencetak surat RCL\/PUCL/)).toBeInTheDocument()
+    expect(screen.getByText(/Download Dokumen/)).toBeInTheDocument()
+
+    expect(screen.queryByText(/Yang dikerjakan lewat Pega/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Reminder PUCL/)).not.toBeInTheDocument()
   })
 })
 
 describe('catatan per tab', () => {
-  it('menampilkan catatan tab Cetak Surat tentang kolom yang selalu kosong', async () => {
+  it('tidak menggambar catatan apa pun di tab Cetak Surat', async () => {
+    // Tab ini sempat membawa satu catatan — penjelasan kolom "Tanggal Cetak Surat" yang
+    // selalu kosong — dan catatan itu hilang bersama kolomnya pada 2026-10-11.
+    //
+    // Yang dijaga uji ini bukan isinya melainkan ketiadaannya: server mengirim `catatan`
+    // sebagai data, sehingga catatan yang dihidupkan kembali tanpa alasan akan muncul di
+    // layar tanpa satu baris pun disunting di sini.
     stubDefaultFetch()
     await renderLoaded()
 
-    expect(
-      await screen.findByText(/"Tanggal Cetak Surat" selalu kosong di tab ini/),
-    ).toBeInTheDocument()
+    await screen.findByText(/Klaim RCL\/PUCL yang suratnya BELUM dicetak/)
+    expect(screen.queryByText(/selalu kosong di tab ini/)).not.toBeInTheDocument()
   })
 
   it('menampilkan catatan tab Klaim MSIG tentang kemungkinan kosong', async () => {
@@ -484,9 +549,14 @@ describe('isi tabel', () => {
   })
 
   it('menggambar sel kosong sebagai tanda pisah, bukan dibiarkan hampa', async () => {
-    // "Tanggal Cetak Surat" memang SELALU kosong di tab ini. Tanda pisah menyatakan
-    // "tidak ada isinya" alih-alih "gagal dimuat".
-    stubDefaultFetch()
+    // Tanda pisah menyatakan "tidak ada isinya" alih-alih "gagal dimuat" — dua keadaan
+    // yang tampak sama persis bila selnya dibiarkan hampa.
+    //
+    // Yang dipakai di sini "Deskripsi Analyst": ia sel yang KEBETULAN kosong, dan itulah
+    // yang perlakuan ini layani. Sampai 2026-10-11 uji ini bersandar pada "Tanggal Cetak
+    // Surat", yang justru kolom yang TIDAK MUNGKIN terisi di tab ini — dan kolom itu kini
+    // tidak digambar sama sekali.
+    stubDefaultFetch([{ ...BARIS, deskripsi_analyst: '' }])
     await renderLoaded()
 
     await screen.findByText('PNC-700001')

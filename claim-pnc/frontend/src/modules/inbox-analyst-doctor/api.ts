@@ -32,7 +32,7 @@ const keys = {
 }
 
 /**
- * Hook keterangan layar — judul kolom, selisih terencana, dan keterbatasan.
+ * Hook keterangan layar — judul kolom dan keterbatasan yang berlaku.
  *
  * # Kenapa judul kolom datang dari server
  *

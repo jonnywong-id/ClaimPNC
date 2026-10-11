@@ -501,14 +501,17 @@ func actionDoneMessage(kind inboxrclpucl.ClaimActionKind) string {
 	}
 }
 
-// RejectWrite menjawab aksi tulis yang belum tersedia.
+// RejectWrite menjawab aksi tulis yang tidak dikenali.
 //
-// Ia sengaja BUKAN 404. Layar lama punya dua tindakan yang menulis — mencetak surat
-// PUCL/RCL, yang mengisi `TANGGALCETAKDOKUMENPUCL_1` sehingga klaimnya BERPINDAH dari tab
-// "Cetak Surat" ke tab "Kelengkapan Dokumen", dan mengirim Reminder PUCL. Tindakan yang
-// dijawab "halaman tidak ditemukan" terbaca sebagai kerusakan, sementara yang dibutuhkan
-// pengguna adalah tahu ke mana ia harus pergi.
+// Ia sengaja BUKAN 404. Tindakan yang dijawab "halaman tidak ditemukan" terbaca sebagai
+// kerusakan, sementara yang dibutuhkan pengguna adalah tahu ke mana ia harus pergi.
 //
+// # Siapa yang sebenarnya sampai ke sini sekarang
+//
+// Bukan lagi "Cetak Surat" maupun "Reminder PUCL". Yang pertama punya jalurnya sendiri
+// (`/tindakan/cetak`) sejak 2026-10-06; yang kedua tidak pernah digambar bahkan di Pega.
+// Yang tersisa adalah pemanggil yang menyebut tindakan di luar KnownClaimActions — tautan
+// lama, alamat yang diketik sendiri, atau layar yang belum diperbarui.//
 // Portal tetap diperiksa lebih dulu meski permintaannya pasti ditolak: jawaban yang menyebut
 // portal aktif untuk permintaan yang tidak menyebut portal akan membuat layar mengira ia
 // sudah berada di portal yang benar.
@@ -518,12 +521,12 @@ func (h *Handler) RejectWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dicatat, bukan hanya ditolak. Selama masa paralel, inilah satu-satunya tanda seberapa
-	// sering pengguna benar-benar membutuhkan aksi ini — dan itu yang menjadi dasar
-	// memutuskan kapan kepemilikan tabelnya dipindahkan (`P-1`).
+	// Dicatat, bukan hanya ditolak. Nama tindakan yang ditolak adalah satu-satunya petunjuk
+	// pemanggil mana yang masih menyebut tindakan yang sudah tidak ada — dan tanpa catatan
+	// itu, tombol yang diam-diam rusak di satu layar tidak akan pernah terlihat.
 	if h.logger != nil {
 		h.logger.Info(
-			"aksi tulis diminta pada modul yang belum menulis",
+			"aksi tulis yang tidak dikenali diminta",
 			slog.String("modul", "inbox-rcl-pucl"),
 			slog.String("jalur", r.URL.Path),
 			slog.String("tindakan", strings.TrimSpace(r.URL.Query().Get("tindakan"))),

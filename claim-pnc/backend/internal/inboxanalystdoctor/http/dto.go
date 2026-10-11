@@ -113,10 +113,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Portal:           portalAlias,
-		Kolom:            columns,
-		Keterbatasan:     meta.Limitations,
-		UkuranHalaman:    meta.PageSize,
+		Portal:        portalAlias,
+		Kolom:         columns,
+		Keterbatasan:  meta.Limitations,
+		UkuranHalaman: meta.PageSize,
 	}
 }
 
