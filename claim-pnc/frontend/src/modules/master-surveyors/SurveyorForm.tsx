@@ -523,6 +523,34 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
             tone="penolakan"
           />
         )}
+
+        {/*
+          Keadaan yang DISENGAJA, bukan kerusakan — karena itu ia catatan biasa, bukan
+          ErrorMessage. Kedua nada ErrorMessage berwarna merah, dan memakainya di sini
+          membuat layar yang bekerja normal tampak gagal.
+
+          Yang tidak dibawa: `Call GCNMCreateOperator` pada langkah 18
+          `CNMInsertDetailSurveyors_act`, yang menulis `Data-Admin-Operator-ID` — tabel
+          operator milik Pega. Dua hal menghalanginya, dan keduanya di luar modul ini:
+
+            P-1   selama masa paralel, tabel itu DITULIS Pega. Menulisnya dari sini
+                  berarti dua sistem menulis satu tabel yang sama.
+            F-3   autentikasi sistem baru bukan operator Pega melainkan HCC/HCQ, dan
+                  kontraknya belum ada (`R-14`, `ADR-0024`). "Membuat akun" karena itu
+                  belum punya arti yang tertentu di sini.
+
+          Satu hal lagi yang memang TIDAK pantas ditiru: activity lama menyusun kata
+          sandinya sebagai `LOGIN_APLIKASI + "123456"` dan menjalankan langkah itu
+          `pyStepsPreCondition = true` — tanpa syarat, untuk setiap penyimpanan.
+        */}
+        {isInternal && (
+          <p className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+            <span className="font-medium text-slate-700">Catatan:</span> nama login tersimpan
+            dan keunikannya dijaga, tetapi akun aplikasinya belum diterbitkan otomatis —
+            pembuatan akun menunggu modul Identitas &amp; Akses. Sampaikan ke administrator
+            bila surveyor ini perlu segera dapat masuk.
+          </p>
+        )}
           </>
         )}
 

@@ -269,16 +269,18 @@ export function SurveyorPage() {
         </p>
       </header>
 
-      {/* Penyimpangan yang paling perlu diketahui pengguna disebut di layar, bukan hanya
-          di dokumen: surveyor internal yang ditambahkan di sini BELUM mendapat akun. */}
-      <div className="mb-6">
-        <ErrorMessage
-          title="Akun aplikasi surveyor belum dibuat otomatis"
-          description="Di sistem lama, menambah Internal Surveyor sekaligus menerbitkan akun aplikasinya. Di sini nama loginnya tersimpan dan keunikannya dijaga, tetapi akunnya belum terbit — pembuatan akun menunggu modul Identitas & Akses. Sampaikan ke administrator bila surveyor baru perlu segera masuk."
-          tone="gangguan"
-        />
-      </div>
+      {/*
+        Keterangan "akun belum terbit otomatis" DIPINDAHKAN ke dalam formulir, dan hanya
+        tampil saat Internal Surveyor dipilih.
 
+        Sebelumnya ia kotak merah permanen di puncak halaman. Itu keliru dalam tiga hal:
+        ia tampak seperti kerusakan sistem padahal keadaan yang disengaja, ia muncul
+        bahkan ketika pengguna hanya melihat daftar, dan ia hanya benar untuk surveyor
+        yang punya nama login — yaitu internal saja.
+
+        Peringatan yang muncul pada saat yang tidak ada hubungannya akan berhenti dibaca,
+        dan ketika itu terjadi ia menjadi tidak berguna justru saat benar-benar berlaku.
+      */}
       {formOpen && (
         <div className="mb-6">
           <SurveyorForm
