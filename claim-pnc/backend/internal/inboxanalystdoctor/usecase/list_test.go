@@ -201,13 +201,51 @@ func TestKolomYangBelumTerbawaMenjelaskanDirinya(t *testing.T) {
 			found = true
 			require.NotEmpty(t, column.Note)
 
-			// Keterangannya menyebut SEBABNYA, bukan sekadar "belum ada". Pembacanya
-			// pengguna, sehingga kata `unexposed` sengaja tidak dipakai — yang dipakai
-			// padanan Indonesianya.
-			require.Contains(t, column.Note, "tidak terekspos")
+			// Keterangannya menyebut SEBABNYA, bukan sekadar "belum ada".
+			require.Contains(t, column.Note, "tidak dapat dibaca")
+
+			// Dan ia menyebut SIAPA yang dapat menghilangkannya. Tanpa itu, pengguna tahu
+			// kolomnya kosong tetapi tidak tahu kepada siapa menanyakannya.
+			require.Contains(t, column.Note, "tim basis data")
 		}
 	}
 	require.True(t, found, "kolom komentar_pic_teknis wajib ada")
+}
+
+// TestTeksLayarBebasRujukanTeknis menjaga regresi yang sudah pernah sampai ke pengguna.
+//
+// Keterangan kolom dan panel "Yang perlu diketahui" sempat memuat nama berkas rule, nomor
+// keputusan, dan nama kolom Oracle lengkap dengan tanda petik balik. Panelnya menggambar teks
+// biasa, bukan Markdown, sehingga tanda petik balik itu tampil apa adanya di layar — dan nama
+// seperti `KOMENTARANALISATOR_1` tidak menjawab satu pun pertanyaan pengguna.
+//
+// Ketelusurannya tidak hilang; ia pindah ke komentar Go pada `Limitations`, yang memang dibaca
+// pengembang. Yang dijaga di sini adalah batas antara keduanya.
+func TestTeksLayarBebasRujukanTeknis(t *testing.T) {
+	terlarang := []string{
+		"`",                   // penanda Markdown; panelnya teks biasa
+		"KOMENTARANALISATOR",  // nama kolom Oracle
+		"AnalystDoctorRemaks", // nama properti Pega
+		"Register_Flow",       // nama berkas rule
+		"Assignment13",        // nama shape di dalam flow
+		"TKT-",                // nomor tiket
+		"D-15",                // nomor keputusan
+		"unexposed",           // istilah internal Pega
+	}
+
+	teks := usecase.Limitations()
+	for _, column := range usecase.Columns() {
+		if column.Note != "" {
+			teks = append(teks, column.Note)
+		}
+	}
+
+	for _, baris := range teks {
+		for _, kata := range terlarang {
+			require.NotContains(t, baris, kata,
+				"teks yang dibaca pengguna tidak boleh memuat rujukan teknis")
+		}
+	}
 }
 
 // TestSelisihTerencanaDanKeterbatasanTidakKosong menjaga keduanya sampai ke layar.

@@ -916,13 +916,13 @@ func scanDetail(row scanner) (inboxrclpucl.ClaimDetail, error) {
 			CompleteAt:   inboxrclpucl.DisplayTimeText(documentCompleteAt.String),
 			InsuredEmail: insuredEmail.String,
 
-			// Baris pertama grid "Tanggal Terima Dokumen". Baris kosong TIDAK dibentuk:
-			// grid tanpa baris berarti daftarnya memang kosong, dan satu baris kosong
-			// terbaca sebagai entri yang ada tetapi tak terisi.
-			ReceivedDates: inboxrclpucl.ReceivedDatesOf(
-				inboxrclpucl.DisplayTimeText(receivedDateFirst.String),
-				receivedNote.String,
-			),
+			// Kolom "Keterangan" grid "Tanggal terima Dokumen", hanya-baca.
+			//
+			// `receivedDateFirst` (`RECEIVEDDATE_1`) sengaja TIDAK dipakai lagi: sejak
+			// 2026-10-11 tanggal pada grid itu adalah `CompleteAt` di atas. Pemindainya
+			// tetap membacanya supaya urutan kolom kueri tidak bergeser — lihat
+			// detailColumns.
+			ReceivedNote: inboxrclpucl.ReceivedNoteOf(receivedNote.String),
 		},
 	}, nil
 }

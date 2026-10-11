@@ -12,9 +12,10 @@
 // `15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6. Perakitannya ada di http/export.go,
 // dan DailyReport dipakai dengan pola yang sama.
 //
-// Tidak ada operasi yang menulis. Layar lama punya dua tindakan yang menulis — mencetak
-// surat PUCL/RCL dan mengirim Reminder PUCL — dan keduanya menyentuh tabel yang masih
-// dimiliki Pega selama masa paralel (`P-1`).
+// DUA operasi lain MENULIS, dan keduanya dikerjakan sendiri: PerformAction (lima tindakan
+// layar kerja) dan UploadDocument. Tidak satu pun menempuh layanan Pega — lihat
+// PerformAction untuk sebabnya, dan untuk alasan seam ClaimActions tetap dipertahankan
+// meski tidak lagi terjangkau.
 package usecase
 
 import (

@@ -69,13 +69,13 @@ const DETAIL = {
   },
   penerimaan_dokumen: {
     komentar_pucl: 'Menunggu kelengkapan dari cabang.',
+    // Sel "Tanggal" pada grid "Tanggal terima Dokumen" — satu isian yang sama dengan yang
+    // dikirim Save dan kedua tombol Kirim. Nama fieldnya tetap `tanggal_kelengkapan_
+    // dokumen` karena ia kontrak, bukan nama internal.
     tanggal_kelengkapan_dokumen: '2026-09-05 11:20:00',
-    // SATU baris, seperti di Oracle: daftarnya page list tanpa tabel, dan hanya baris
-    // pertamanya yang diekspos sebagai kolom.
-    tanggal_terima_dokumen: [
-      { tanggal: '2026-09-04 10:05:00', keterangan: 'Dokumen awal' },
-    ],
-    tanggal_terima_dokumen_sebagian: true,
+    // Sel "Keterangan" pada grid yang sama — HANYA-BACA, dari `KETERANGAN_1` di tabel
+    // objek kerja Pega.
+    keterangan_terima_dokumen: 'Dokumen awal',
     // Sengaja KOSONG: kolom `EMAIL_LOD` ada tetapi belum terisi pada seluruh baris
     // produksi, sehingga inilah keadaan yang sebenarnya akan digambar.
     email_tertanggung: '',
@@ -287,8 +287,12 @@ describe('layar kerja SendtoRCLPUCL', () => {
   })
 
   it('menggambar isian clipboard di TEMPATNYA, bukan menghilangkannya', async () => {
-    // Sembilan isian adalah properti clipboard Pega, bukan kolom tabel. Menghilangkannya
+    // Isian bertanda ini properti clipboard Pega, bukan kolom tabel. Menghilangkannya
     // membuat layar tampak setara padahal tidak.
+    //
+    // Semula sembilan; kini dua. Yang diuji di sini PERLAKUANNYA, bukan jumlahnya —
+    // jumlahnya milik peladen, dan uji yang mematoknya di sini akan menjadikannya dua
+    // tempat yang dapat berselisih.
     stubDefaultFetch()
     renderWorkScreen()
 
@@ -305,18 +309,49 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // Tiga sisanya ada di tab kedua, dan dua di antaranya WAJIB diisi di layar lama.
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
     expect(screen.getByText('Email Tertanggung')).toBeInTheDocument()
-    expect(screen.getByText('Tanggal Kelengkapan Dokumen')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tanggal terima Dokumen')).toBeInTheDocument()
   })
 
-  it('menggambar grid "Tanggal terima Dokumen" sebagai daftar, bukan satu isian', async () => {
-    // Di section ia grid berulang dua kolom. Menggantinya dengan satu isian tanggal akan
-    // menyembunyikan bahwa layar lama menerima BANYAK tanggal terima dokumen.
+  it('TIDAK menggambar kotak "Isian yang tersimpan di clipboard Pega" di kaki layar', async () => {
+    // Kotak itu dihapus 2026-10-11 atas keputusan Work Owner. Ia TIDAK keliru — isinya
+    // sudah diperbaiki hari yang sama — melainkan MENGULANG: kedua isian yang disebutnya
+    // sudah bertanda "di clipboard Pega" tepat di tempatnya.
+    //
+    // Yang dijaga DUA hal sekaligus: kotaknya hilang, DAN penanda di tiap isian tetap ada.
+    // Menguji yang pertama saja akan lolos meski keadaan isian itu tidak lagi terlihat di
+    // mana pun — dan itu justru kegagalan yang kotak ini dulu ada untuk mencegahnya.
+    //
+    // Sejarah yang membuat kotaknya tidak layak dihidupkan lagi apa adanya: kalimatnya
+    // menyebut jumlah sebagai ANGKA ("Kesembilannya") sementara daftarnya datang dari
+    // peladen dan sudah menyusut empat kali. Sampai 2026-10-11 layar menyatakan sembilan
+    // sementara daftarnya memuat tiga, tanpa satu pun galat.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+
+    expect(screen.queryByText(/Isian yang tersimpan di clipboard Pega/)).toBeNull()
+    expect(screen.queryByText(/properti clipboard pada objek kerja Pega/)).toBeNull()
+
+    // Penandanya TETAP ada di tiap isian — itulah yang menggantikan kotaknya.
+    expect(screen.getAllByText('di clipboard Pega').length).toBeGreaterThan(0)
+  })
+
+  it('menggambar grid "Tanggal terima Dokumen" sebagai TABEL dua kolom', async () => {
+    // Di section ia grid dua kolom, dan bentuk itu dipertahankan meski barisnya kini satu:
+    // menggantinya dengan sepasang isian biasa akan menghapus kolom "Keterangan" dari
+    // pandangan, padahal nilainya nyata — hanya belum dapat ditulis dari sini.
+    //
+    // Judulnya diambil lewat peran HEADING, bukan teks persis: ia membawa tanda wajib `*`
+    // sejak isian terpisahnya dihapus, sehingga pencocokan teks utuh akan gagal.
     stubDefaultFetch()
     renderWorkScreen()
 
     await userEvent.click(await screen.findByRole('tab', { name: 'Penerimaan Dokumen' }))
 
-    expect(screen.getByText('Tanggal terima Dokumen')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Tanggal terima Dokumen/ }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Tanggal' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Keterangan' })).toBeInTheDocument()
   })
@@ -326,8 +361,8 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // tanggapan terbaca sebagai kerusakan — dan memang begitu: tidak ada cara membedakan
     // "belum dibangun" dari "rusak" bila menekannya tidak menghasilkan apa pun.
     //
-    // Yang BELUM berubah adalah akibatnya: tidak satu pun menulis, karena tabelnya masih
-    // dimiliki Pega (`P-1`). Menekannya menjelaskan hal itu dan memberi nomor case-nya.
+    // Sejak 2026-10-06 akibatnya pun nyata: kelimanya MENULIS, seluruhnya ke tabel milik
+    // aplikasi ini. Tidak satu pun menempuh Pega.
     stubDefaultFetch()
     renderWorkScreen()
 
@@ -354,10 +389,17 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await userEvent.click(tombol)
 
     expect(tombol).toHaveAttribute('aria-expanded', 'true')
-    // LANGKAHNYA lebih dulu, bukan penolakannya, dan ia MENYEBUT nama tombolnya — panelnya
-    // satu untuk seluruh layar, sehingga tanpa nama itu tidak jelas tindakan mana yang
-    // dimaksud.
-    expect(screen.getByText(/di Pega pada klaim/)).toBeInTheDocument()
+    // Panelnya MENYEBUT nama tombolnya — ia satu untuk seluruh layar, sehingga tanpa nama
+    // itu tidak jelas tindakan mana yang dimaksud.
+    //
+    // Ia juga membawa ALASANNYA sendiri sejak 2026-10-11. Sebelumnya alasan itu tertulis
+    // sekali di kaki layar ("Layar ini baca saja — kerjakan tindakannya di Pega"), dan kotak
+    // itu tidak digambar lagi karena kelima tindakan layar ini dikerjakan sendiri. Tanpa
+    // perubahan ini, yang tersisa adalah satu kalimat telanjang tanpa keterangan apa pun.
+    // DUA kemunculan: tombolnya sendiri, dan namanya di dalam panel.
+    expect(screen.getAllByText(/Tutup Klaim/).length).toBeGreaterThan(1)
+    expect(screen.getByText(/belum dibangun di sini/)).toBeInTheDocument()
+    expect(screen.getByText(/sebelas isian/)).toBeInTheDocument()
     expect(screen.getAllByText(REFERENSI).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Salin nomor case' })).toBeEnabled()
 
@@ -495,7 +537,7 @@ describe('layar kerja SendtoRCLPUCL', () => {
     // `datetime-local` hanya menerima `YYYY-MM-DDTHH:mm`, sehingga nilai dari peladen
     // dipendekkan — dan nilai yang tidak cocok diabaikan DIAM-DIAM oleh peramban, sehingga
     // justru bentuk inilah yang perlu dijaga.
-    expect(screen.getByLabelText(/Tanggal Kelengkapan Dokumen/)).toHaveValue(
+    expect(screen.getByLabelText('Tanggal terima Dokumen')).toHaveValue(
       '2026-09-05T11:20',
     )
 
@@ -507,43 +549,16 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.queryAllByText('di clipboard Pega')).toHaveLength(0)
   })
 
-  it('"✚ Tambah" menambah baris berisi Tanggal dan Keterangan', async () => {
-    // Di Pega keduanya operasi SISI KLIEN: `pyAction addRow` tanpa satu pun `pyActivity`,
-    // dan `deleteRow` tidak ada sama sekali di section. Tidak ada permintaan ke peladen.
-    //
-    // Catatan lama menyatakan keduanya "menulis ke objek kerja yang dimiliki Pega" — itu
-    // tidak pernah terbukti, dan uji ini yang menahannya agar tidak kembali.
-    stubDefaultFetch()
-    renderWorkScreen()
-
-    await screen.findByRole('button', { name: 'Download Dokumen' })
-    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
-
-    expect(screen.queryByLabelText('Tanggal baris 2')).not.toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: '✚ Tambah' }))
-
-    expect(screen.getByLabelText('Tanggal baris 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('Keterangan baris 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('Tanggal baris 2')).toHaveValue('')
-  })
-
-  it('"Hapus" membuang barisnya, sampai daftarnya kosong', async () => {
-    stubDefaultFetch()
-    renderWorkScreen()
-
-    await screen.findByRole('button', { name: 'Download Dokumen' })
-    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
-
-    await userEvent.click(screen.getByRole('button', { name: 'Hapus' }))
-
-    // Satu-satunya baris contoh hilang, dan grid kembali ke kalimat layar lama.
-    expect(screen.queryByLabelText('Tanggal baris 1')).not.toBeInTheDocument()
-    expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
-
-    // Dan tautannya mati ketika tidak ada lagi yang dapat dibuang — bukan diam saja.
-    expect(screen.getByRole('button', { name: 'Hapus' })).toBeDisabled()
-  })
+  // Dua uji DIHAPUS di sini pada 2026-10-11: '"✚ Tambah" menambah baris' dan '"Hapus"
+  // membuang barisnya'.
+  //
+  // Keduanya menguji perilaku yang sekarang sengaja TIDAK ADA. Barisnya kini mewakili satu
+  // kolom basis data (`TGL_TERIMA_DOKUMEN_PUCL`), sehingga baris kedua tidak punya tempat
+  // disimpan — menambahnya hanya menghasilkan data yang pasti lenyap saat Save.
+  //
+  // Ketiadaannya dijaga uji tersendiri: 'TIDAK lagi menggambar "Tambah"/"Hapus" pada grid
+  // yang satu baris'. Menghapus uji tanpa menggantinya akan membiarkan tombolnya kembali
+  // tanpa satu pun yang menahan.
 
   it('"Save" MENGIRIM apa yang diketik petugas, bukan nilai awalnya', async () => {
     // Ini yang membuat tombolnya berarti. Sampai 2026-10-01 ketiga isian digambar hanya-baca,
@@ -577,40 +592,63 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(badan).toContain('2026-09-05T11:20')
   })
 
-  it('menggambar grid "Tanggal Terima Dokumen" beserta batas keterbacaannya', async () => {
-    // Daftarnya page list `.ClaimData.PUCLStatus.DateReceivedDocument` yang TIDAK punya
-    // tabel; hanya baris pertamanya yang diekspos lewat `RECEIVEDDATE_1`/`KETERANGAN_1`.
+  it('menggambar grid "Tanggal terima Dokumen" sebagai SATU baris terikat kolomnya', async () => {
+    // Sejak 2026-10-11 sel "Tanggal" pada grid ini DAN isian "Tanggal Kelengkapan
+    // Dokumen" adalah satu isian — penetapan Work Owner — dan keduanya
+    // `TGL_TERIMA_DOKUMEN_PUCL`.
     //
-    // Yang dijaga: barisnya tergambar, DAN batasnya dinyatakan. Grid yang menampilkan satu
-    // baris tanpa keterangan akan terbaca sebagai daftar yang utuh.
+    // Yang dijaga tiga: nilainya datang dari kolom itu, Keterangan tergambar hanya-baca,
+    // dan isian terpisah di bawahnya BENAR-BENAR hilang. Menguji dua yang pertama saja
+    // akan lolos meski satu nilai punya dua tempat pengisian.
     stubDefaultFetch()
     renderWorkScreen()
 
     await screen.findByRole('button', { name: 'Download Dokumen' })
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
 
-    // Kedua selnya DAPAT DIKETIK sejak 2026-10-02 — di section pun keduanya
-    // `pyReadOnly false`. Nilainya karena itu nilai ISIAN, bukan teks.
-    expect(screen.getByLabelText('Tanggal baris 1')).toHaveValue('2026-09-04T10:05')
-    expect(screen.getByLabelText('Keterangan baris 1')).toHaveValue('Dokumen awal')
-    expect(screen.getByText(/Baru baris pertama yang terbaca/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Tanggal terima Dokumen')).toHaveValue('2026-09-05T11:20')
+    expect(screen.getByText('Dokumen awal')).toBeInTheDocument()
 
-    // Kalimat lama yang menyatakan DAFTARNYA tidak terbaca sama sekali TIDAK boleh kembali.
-    // Pola dipersempit ke kata "Daftarnya": kaki layar memakai kalimat serupa untuk ISIAN
-    // yang memang masih di clipboard, dan itu benar.
-    expect(
-      screen.queryByText(/Daftarnya tersimpan di clipboard Pega/),
-    ).not.toBeInTheDocument()
+    // HANYA-BACA: ia bukan kotak isian. `P-1` melarang modul ini menulis tabel objek
+    // kerja Pega, dan isian yang tampak dapat diketik lalu diam-diam tidak tersimpan jauh
+    // lebih buruk daripada isian yang jelas tidak dapat diketik.
+    expect(screen.queryByLabelText(/Keterangan baris/)).not.toBeInTheDocument()
+
+    // Isian terpisahnya HILANG — satu nilai, satu tempat pengisian.
+    expect(screen.queryByText('Tanggal Kelengkapan Dokumen')).not.toBeInTheDocument()
   })
 
-  it('tidak menyatakan "baru baris pertama" ketika daftarnya memang KOSONG', async () => {
-    // Pada daftar kosong, keterangan itu menyesatkan: ia terbaca sebagai "mungkin ada yang
-    // tersembunyi", padahal kemungkinan terbesarnya daftarnya memang kosong.
+  it('TIDAK lagi menggambar "Tambah"/"Hapus" pada grid yang satu baris', async () => {
+    // Keduanya ada di layar lama (`pyAction addRow`, sisi klien), dan dihilangkan dengan
+    // sengaja — selisih terencana terhadap `D-13`.
+    //
+    // Sebabnya bukan kerapian: barisnya kini mewakili SATU kolom basis data, sehingga
+    // baris kedua tidak punya tempat disimpan. Tombol yang menambahnya akan menghasilkan
+    // data yang pasti lenyap saat Save, tanpa satu pun galat.
+    stubDefaultFetch()
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    expect(screen.queryByRole('button', { name: /Tambah/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
+
+    // Kedua keterangan lama ikut hilang: tanggalnya kini TERSIMPAN, dan gridnya bukan
+    // lagi daftar yang dapat punya baris berikutnya.
+    expect(screen.queryByText(/Baru baris pertama yang terbaca/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/belum tersimpan/)).not.toBeInTheDocument()
+  })
+
+  it('menggambar tanda pisah ketika Keterangan memang kosong', async () => {
+    // `KETERANGAN_1` terisi pada 85 dari 7.723 baris, jadi kosong adalah keadaan yang
+    // LAZIM di sini — bukan kekecualian. Tanda pisah menyatakan "tidak ada isinya"
+    // alih-alih sel hampa yang tidak dapat dibedakan dari gagal dimuat.
     stubDefaultFetch({
       ...DETAIL,
       penerimaan_dokumen: {
         ...DETAIL.penerimaan_dokumen,
-        tanggal_terima_dokumen: [],
+        keterangan_terima_dokumen: '',
       },
     })
     renderWorkScreen()
@@ -618,11 +656,38 @@ describe('layar kerja SendtoRCLPUCL', () => {
     await screen.findByRole('button', { name: 'Download Dokumen' })
     await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
 
-    // "Data Tidak Ada" adalah kalimat LAYAR LAMA apa adanya (`D-13`). Kalimat kami
-    // sendiri yang lebih panjang dipakai sampai 2026-10-01, dan justru karena itu
-    // layarnya tidak lagi terbaca sebagai layar yang sama saat dibandingkan.
-    expect(screen.getByText('Data Tidak Ada')).toBeInTheDocument()
-    expect(screen.queryByText(/Baru baris pertama yang terbaca/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Tanggal terima Dokumen')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('menyimpan tanggal yang diketik di grid lewat tombol Save', async () => {
+    // Inilah yang diminta Work Owner: grid menulis ke
+    // `POOLDATA.TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL`.
+    //
+    // Yang diuji nilai yang BARU DIKETIK, bukan nilai bawaan — uji yang memakai bawaan
+    // akan lolos meski sel gridnya sama sekali tidak terhubung ke badan permintaan.
+    let badan = ''
+    stubFetch((url, init) => {
+      if (url.includes('/tindakan/save')) {
+        badan = String((init as RequestInit | undefined)?.body ?? '')
+        return jsonResponse(200, { pesan: 'Isian tersimpan.' })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await screen.findByRole('button', { name: 'Download Dokumen' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Penerimaan Dokumen' }))
+
+    const tanggal = screen.getByLabelText('Tanggal terima Dokumen')
+    await userEvent.clear(tanggal)
+    await userEvent.type(tanggal, '2026-10-07T00:00')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('Isian tersimpan.')).toBeInTheDocument()
+    expect(badan).toContain('2026-10-07T00:00')
   })
 
   it('"Kirim Ke Analyst" MENJALANKAN tindakannya, bukan menolak', async () => {
@@ -1285,7 +1350,7 @@ describe('penolakan validasi menandai isiannya', () => {
     // Kedua isian ditandai di tempatnya — inilah yang dijanjikan kalimat peladen.
     const catatan = await screen.findByLabelText(/Catatan untuk Analyst/)
     expect(catatan).toHaveAttribute('aria-invalid', 'true')
-    const tanggal = screen.getByLabelText(/Tanggal Kelengkapan Dokumen/)
+    const tanggal = screen.getByLabelText('Tanggal terima Dokumen')
     expect(tanggal).toHaveAttribute('aria-invalid', 'true')
 
     // Dan keduanya disebut SEKALIGUS, bukan satu lalu satu lagi (`P-5`).

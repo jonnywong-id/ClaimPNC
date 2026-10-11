@@ -697,6 +697,8 @@ export type SurveyActionResponse = SurveyTabResponse & {
   survey_terbit: string[]
   komite_terbit: string[]
   otomatis: boolean
+  /** Email Komite yang gagal dikirim — untuk dilampirkan ke IT Support. */
+  email_galat?: string[]
 }
 
 export type SurveyorOption = {
@@ -919,3 +921,32 @@ export type SettlementHistoryResponse = { komite: CommitteeStatusRow[]; kasir: C
 
 /** Jawaban GET /klaim/{id}/aging — `.PaymentData.AgingAmount` dari layanan premi. */
 export type PremiumAgingResponse = { aging_amount: string | null; tersedia: boolean }
+
+/* ── Modal Input Progress Claim (inputprogress12 / InputProgressClaim1) ── */
+
+export type ProgressPosition = { id: string; kasus_id: string; posisi: string; status: string; tanggal?: string; terbuka: boolean }
+
+export type ProgressOption = { id: string; nama: string }
+
+export type ProgressInputForm = {
+  posisi: ProgressPosition[]
+  status_progress_1: ProgressOption[]
+  status: string[]
+  tipe_dokumen: string[]
+  email_progress: string
+  status_wajib_email: string[]
+  status_tipe_dokumen: string
+}
+
+export type ProgressInputRequest = {
+  posisi_id: string
+  status_progress_1: string
+  status_perlu: string[]
+  status: string
+  remarks: string
+  tgl_next_follow_up: string
+  tipe_dokumen: string
+  email_progress: string
+}
+
+export type ProgressInputResponse = { peringatan: string[] }

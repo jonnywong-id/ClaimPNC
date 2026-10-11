@@ -121,7 +121,7 @@ func (s *SurveyStore) NextSurveyID(ctx context.Context, at time.Time) (string, e
 	year := clock.DateWIB(at).Year()
 	var next int64
 	pattern := fmt.Sprintf("%s.%02d.%%", registrasi.SurveyCasePrefix, year%100)
-	if err := s.exec(ctx).QueryRowContext(ctx, loadQuery("survey_nomor_berikut"), pattern).Scan(&next); err != nil {
+	if err := s.exec(ctx).QueryRowContext(ctx, loadQuery("survey_nomor_berikut"), pattern, pattern).Scan(&next); err != nil {
 		return "", fmt.Errorf("registrasi/sqlstore: menerbitkan nomor survey dari POOLDATA.T_SURVEYORLIST: %w", err)
 	}
 	return registrasi.FormatSurveyID(year, next), nil
@@ -236,7 +236,7 @@ func (s *SurveyStore) SaveCommitteeNote(ctx context.Context, committeeID string,
 	if _, err := s.exec(ctx).ExecContext(ctx, loadQuery("survey_komite_catatan"),
 		timeOrNil(n.Date), emptyTextAsNil(n.Initial), emptyTextAsNil(n.AnalysisType), emptyTextAsNil(n.Circumstances),
 		emptyTextAsNil(n.Nominated), emptyTextAsNil(n.Remarks), emptyTextAsNil(n.Company), emptyTextAsNil(n.ContactPerson),
-		emptyTextAsNil(n.OfficePhone), emptyTextAsNil(n.Email), committeeID); err != nil {
+		emptyTextAsNil(n.OfficePhone), emptyTextAsNil(n.Email), emptyTextAsNil(n.Key), committeeID); err != nil {
 		return fmt.Errorf("registrasi/sqlstore: menyimpan isian komite survey %s di POOLDATA.TC_PNC_KOMITE: %w", committeeID, err)
 	}
 	return nil
@@ -257,6 +257,32 @@ func (s *SurveyStore) Request(ctx context.Context, keys registrasi.RecordKeys) (
 	return registrasi.SurveyRequest{RequestorName: trimmed(name), Location: trimmed(loc), Phone: trimmed(phone),
 		Date: date.Time, Branch: trimmed(branch), Surveyor: trimmed(surveyor), Email: trimmed(email),
 		ObjectName: trimmed(object)}, true, nil
+}
+
+// CommitteeNote membaca isian modal Transfer Komite kasus komite survey.
+func (s *SurveyStore) CommitteeNote(ctx context.Context, committeeID string) (registrasi.SurveyCommitteeNote, error) {
+	var date sql.NullTime
+	var initial, kind, circ, nom, rem, comp, contact, phone, email, key sql.NullString
+	err := s.exec(ctx).QueryRowContext(ctx, loadQuery("survey_komite_catatan_ambil"), strings.TrimSpace(committeeID)).
+		Scan(&date, &initial, &kind, &circ, &nom, &rem, &comp, &contact, &phone, &email, &key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return registrasi.SurveyCommitteeNote{}, registrasi.ErrCommitteeNotFound
+	}
+	if err != nil {
+		return registrasi.SurveyCommitteeNote{}, fmt.Errorf("registrasi/sqlstore: membaca isian komite survey dari POOLDATA.TC_PNC_KOMITE: %w", err)
+	}
+	return registrasi.SurveyCommitteeNote{Date: date.Time, Initial: trimmed(initial), AnalysisType: trimmed(kind),
+		Circumstances: trimmed(circ), Nominated: trimmed(nom), Remarks: trimmed(rem), Company: trimmed(comp),
+		ContactPerson: trimmed(contact), OfficePhone: trimmed(phone), Email: trimmed(email), Key: trimmed(key)}, nil
+}
+
+// SurveyorByLogin membaca surveyor menurut login (`SearchSurveyorName`).
+func (s *SurveyStore) SurveyorByLogin(ctx context.Context, login string) (registrasi.SurveyorOption, bool, error) {
+	list, err := s.surveyors(ctx, "survey_surveyor_login", strings.TrimSpace(login))
+	if err != nil || len(list) == 0 {
+		return registrasi.SurveyorOption{}, false, err
+	}
+	return list[0], true, nil
 }
 
 var _ registrasi.SurveyStore = (*SurveyStore)(nil)

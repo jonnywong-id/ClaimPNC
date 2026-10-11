@@ -42660,3 +42660,98 @@ dan itulah sebabnya cacatnya lolos: ia tidak terlihat saat membaca kode, tidak t
 `go vet`, dan tidak tertangkap uji sqlmock — hanya muncul saat kueri benar-benar dijalankan.
 
 Ditambah `TestLikePatternMembungkusDanMelepasKarakterKhusus` untuk escape wildcard.
+
+---
+
+## 181. Master Login — klaim "akun belum diterbitkan" DICABUT, karena Pega pun tidak menerbitkannya (2026-10-11)
+
+Work Owner mempertanyakan catatan kaki layar Master Login, lalu memastikannya dari sistem
+yang berjalan. **Klaim di §38.4 keliru**, dan seluruh turunannya dicabut.
+
+### 181.1 Apa yang diklaim, dan apa yang sebenarnya
+
+`§38.4` menyatakan layar Pega memanggil `GCNMCreateOperator` untuk menerbitkan akun operator
+beserta **satu kata sandi tetap untuk setiap orang**, dan menyimpulkan perilaku itu "tidak
+dapat dibawa". Atas dasar itu dipasang peringatan di **tiga tempat**: form penambahan, kaki
+halaman, dan log (`noteAccountNotIssued`).
+
+Yang sebenarnya terjadi: **penyimpanan hanya masuk ke `POOLDATA.MST_LOGIN_SURVEYOR`.** Tidak
+ada baris operator yang terbit di schema `DATAPEGA`.
+
+### 181.2 Empat bukti yang mencabutnya
+
+| # | Bukti |
+|---|---|
+| 1 | Activity simpan `Activity/CNMInsertMstLoginSurveyor_act` berisi **delapan langkah**, dan **tidak satu pun** memanggil `GCNMCreateOperator`: tolak LOGIN kosong · ambil leader · sisip · perbarui · pesan · bersihkan halaman |
+| 2 | Pemanggilan `GCNMCreateOperator` hanya ada di `Activity/SetLoginSurveyor_act` — activity yang dijalankan event `change` pada isian **Nama**, bukan oleh tombol Simpan |
+| 3 | Langkah itu sendiri **mati**: bertanda blok `//`, sama seperti dua langkah lain di activity yang sama yang terbukti **cara lama** memeriksa login ganda dan sudah digantikan langkah berikutnya lewat Report Definition. Penanda syarat aktifnya `false`, dan syaratnya menyebut `Local.STS_REKANAN` — local yang **tidak pernah diisi di mana pun** |
+| 4 | **Work Owner memastikannya dari sistem yang berjalan** — penyimpanan hanya ke `MST_LOGIN_SURVEYOR`, tanpa operator di `DATAPEGA` |
+
+### 181.3 Kenapa kekeliruannya lolos
+
+Dua langkah yang sama-sama ada di export dibaca sebagai satu alur. `SetLoginSurveyor_act`
+memang memuat pemanggilan itu — yang tidak diperiksa adalah **apakah activity itu dipanggil
+tombol Simpan**, dan **apakah langkahnya hidup**.
+
+Dua petunjuk sempat terlihat dan dianggap tidak menentukan: tanda blok `//`, dan syarat
+`STS_REKANAN` yang menggantung. Keduanya baru berarti setelah dibandingkan dengan dua langkah
+lain yang bertanda sama dan terbukti kode lama. **Satu petunjuk lemah tidak menentukan apa
+pun; tiga petunjuk lemah yang searah menentukan.**
+
+Catatan `03-CURRENT-ARCHITECTURE.md` §4.3 — bahwa `//` dipakai 952× sebagai label bermakna
+dan **bukan** penanda nonaktif — benar untuk seluruh export, dan karena itu dipakai menolak
+dugaan nonaktif di sini. Yang terlewat: di **berkas ini** ketiga langkah ber-`//` justru
+kode yang sudah digantikan. Aturan umum tidak menggantikan pembacaan berkasnya sendiri.
+
+### 181.4 Yang berubah
+
+| Tempat | Perubahan |
+|---|---|
+| `SurveyorLoginPage.tsx` | catatan kaki **dihapus seluruhnya**; doc comment ditulis ulang |
+| `SurveyorLoginForm.tsx` | peringatan kuning pada form penambahan **dihapus** |
+| `usecase/manage.go` | `noteAccountNotIssued` **diganti** `noteCreated`; doc comment `Service.Create` ditulis ulang memuat keempat bukti |
+| `SurveyorLoginPage.test.tsx` | uji dibalik — kini menjaga klaim itu **tidak** muncul |
+| `usecase/manage_more_test.go` | idem, pada log |
+
+Kedua uji sengaja berbentuk **negatif** supaya klaim itu tidak dapat dipasang kembali tanpa
+sengaja.
+
+### 181.5 Catatan kedua juga dicabut, atas keputusan Work Owner
+
+Catatan *"Login tidak dapat dihapus"* **benar** — tabelnya tidak punya penanda aktif. Tetapi
+Pega pun tidak punya tombol Hapus: `Section/BrowseLoginSurveyor-Section.xml` memuat
+`pyGridDeleteActivityExists = false` pada kedua gridnya, dan `pyDeleteActivity` kosong.
+
+Karena perilakunya **setara dengan Pega**, ia bukan kekurangan yang perlu diperingatkan.
+Ketetapan Work Owner: *"ikuti saja dulu hanya bisa add dan editnya, jangan mengubah atau
+menambah apapun"*.
+
+Konsekuensi: **permintaan kolom penanda aktif lewat `D-63` TIDAK diajukan.**
+
+### 181.6 Yang ikut gugur
+
+Seluruhnya sempat diajukan pada percakapan yang sama dan **batal**:
+
+- permintaan kontrak API HCC/HCQ khusus untuk kasus surveyor
+- permintaan daftar Operator ID ber-access-group `GCNMFW:PNCSurveyor` ke Tim Pega
+- rencana memindahkan akun surveyor yang sudah ada ke `POOLDATA.M_LOGIN_PNC`
+- permintaan `ALTER TABLE` penanda aktif ke DBA
+
+Tidak satu pun diperlukan: **tidak ada yang hilang terhadap Pega.**
+
+### 181.7 Yang TIDAK disunting
+
+`§38.4` dan `§38.11` **dibiarkan apa adanya**. Keduanya rekaman keputusan pada saat itu,
+beserta alasan yang dipakai saat itu — menyuntingnya akan menghapus jejak bahwa
+kekeliruannya pernah ada dan pernah dipasang ke layar. Yang berlaku adalah bab ini.
+Perlakuan yang sama dipakai `00-DECISION-LOG.md` (`D-74`).
+
+### 181.8 Satu hal yang masih terbuka
+
+Kalau Pega tidak menerbitkan akun, **surveyor hari ini login lewat mana?** Dugaan terkuat
+`POOLDATA.M_LOGIN_PNC` — tabel login non-karyawan (broker dan surveyor independen) yang
+sudah dibaca `auth/provider/local.go`, dan yang **nol kemunculan** di seluruh export Pega
+sehingga penulisnya aplikasi lain.
+
+Ini **tidak menghalangi** modul Master Login: layar ini memang hanya mencatat data. Dicatat
+supaya pertanyaannya tidak hilang.

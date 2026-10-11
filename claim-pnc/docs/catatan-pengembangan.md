@@ -53585,3 +53585,159 @@ Setelah seluruh tab hidup, inilah keadaan sebenarnya terhadap Pega:
 "kueri kita terhadap Oracle yang sama" — **bukan** "hasil kita dibandingkan hasil Pega". Uji
 kesetaraan gerbang 1 (`S-8`, `D-42`) belum ada. Jadi yang terbukti adalah kuerinya diturunkan dari
 Pega dan berjalan benar; **kesetaraan hasilnya belum pernah diadu langsung.**
+---
+
+### 21.9 Peringatan "akun belum terbit" dipindahkan ke tempat ia berlaku (2026-10-11)
+
+Work Owner bertanya kenapa kotak merah **"Akun aplikasi surveyor belum dibuat otomatis"**
+masih berdiri padahal modulnya sudah dinyatakan selesai.
+
+**Isinya benar; letaknya yang salah.** Ia keadaan yang disengaja, bukan kerusakan — tetapi
+dipasang sebagai `ErrorMessage` permanen di puncak halaman, sehingga setiap kali siapa pun
+membuka layar ini, yang pertama terlihat adalah kotak merah.
+
+Tiga hal keliru sekaligus:
+
+| Keliru | Akibatnya |
+|---|---|
+| Memakai `ErrorMessage` | Kedua nadanya berwarna merah, sehingga layar yang bekerja normal tampak gagal |
+| Dipasang di tingkat halaman | Muncul bahkan ketika pengguna hanya melihat daftar dan tidak menambah siapa pun |
+| Berlaku untuk semua tipe | Padahal hanya surveyor **internal** yang punya nama login |
+
+Peringatan yang muncul pada saat yang tidak ada hubungannya akan berhenti dibaca — dan
+ketika itu terjadi, ia menjadi tidak berguna justru saat benar-benar berlaku.
+
+**Diperbaiki:** dipindahkan ke dalam formulir, hanya tampil saat Internal Surveyor dipilih,
+dan ditulis sebagai catatan biasa — bukan kotak galat.
+
+#### Kenapa pembuatan akunnya memang belum dapat dikerjakan
+
+Bukan karena terlewat. Langkah 18 `CNMInsertDetailSurveyors_act` memanggil
+`Call GCNMCreateOperator`, dan activity itu bekerja seluruhnya pada kelas
+**`Data-Admin-Operator-ID`** — 36 kemunculan, nol kelas lain. Itu tabel operator milik
+Pega.
+
+| Penghalang | Isi |
+|---|---|
+| `P-1` | Selama masa paralel, tabel operator **ditulis Pega**. Menulisnya dari sini berarti dua sistem menulis satu tabel yang sama |
+| `F-3` | Autentikasi sistem baru bukan operator Pega melainkan HCC/HCQ, dan kontraknya **belum ada** (`R-14`, `ADR-0024`). "Membuat akun" belum punya arti yang tertentu di sini |
+
+**Satu hal yang memang tidak pantas ditiru**, ditemukan saat memeriksa ini:
+`Activity/CNMInsertDetailSurveyors_act-Act.xml:3340` menyusun kata sandinya sebagai
+`TempDetailSurveyors.LOGIN_APLIKASI + "123456"`. Dan langkah pemanggilnya
+`pyStepsPreCondition = true` — **tanpa syarat**, dijalankan pada setiap penyimpanan,
+termasuk untuk tipe yang `LOGIN_APLIKASI`-nya kosong. Keduanya masuk daftar yang harus
+dijawab `F-3`, bukan disalin.
+
+#### Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `SurveyorForm.test.tsx` | **13 lulus** — satu baru, mengunci catatan itu agar hanya muncul untuk internal |
+| `master-surveyors` + `Sidebar.test.tsx` | **27 lulus** |
+| `npx tsc --noEmit` atas modul ini | **0 galat** |
+
+#### Koreksi 2026-10-11 — `P-1` tidak lagi menghalangi
+
+Work Owner menyatakan **tabel operator Pega sudah tidak dipakai**, dan modul ini hanya
+dipakai pengguna internal.
+
+Penelusuran atas pertanyaan susulannya — *"apakah ada filter berdasarkan operator Pega di
+modul ini?"* — memberi jawaban **tidak**, dan itu terverifikasi:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| `PR_OPERATORS` / `DATAPEGA` di seluruh modul | **nol kemunculan** |
+| Tabel yang dibaca/ditulis | `POOLDATA.V_D_SURVEYORS` dan `POOLDATA.D_SURVEYORS` |
+
+**Ada satu penyaring berbasis identitas orang**, tetapi sumbernya bukan Pega:
+
+```
+auth.User.Identity  ->  Caller.Identity  ->  dibandingkan dengan D_SURVEYORS.KOMITE
+```
+
+`auth.User.Identity` adalah kunci alami pengguna dari sesi (NIK atau LOGIN_ID), bukan
+dibaca dari tabel operator. Penyaring tab Komite Approval dan `ensureIsAssignedCommittee`
+karena itu berjalan tanpa tabel operator Pega sama sekali.
+
+**Akibatnya:** keberatan `P-1` pada §21.9 — "dua sistem menulis satu tabel" — **gugur**.
+Penghalang pembuatan akun tinggal **`F-3`**: belum ada tabel pengguna tujuan, karena
+bentuknya ditentukan kontrak HCC/HCQ yang belum tiba.
+
+#### Satu risiko yang BELUM terjawab, dan dampaknya senyap
+
+Kolom `KOMITE` berisi **Operator ID**, diisi dari `EMAILKOMITE` lewat alias yang
+menyesatkan (`OPERATOR_ID as BUSINESS_CODE`). Yang belum diketahui: **isi kolom itu pada
+43 baris yang sudah ada — Operator ID Pega, atau sudah NIK/LOGIN_ID?**
+
+Bila ia masih Operator ID Pega sementara `auth.User.Identity` berisi NIK, maka tab
+**Komite Approval akan selalu kosong** dan **tidak ada satu pun pesan galat** yang
+menandainya. Itu kelas cacat yang sama persis dengan yang pernah terjadi di modul Inbox
+Laporan Klaim (`keputusan-implementasi.md` §19.3) — penyaring yang memakai sistem kode
+berbeda, lalu tidak ada baris yang cocok.
+
+Satu kueri ke DBA cukup menutupnya:
+
+```sql
+SELECT DISTINCT KOMITE FROM POOLDATA.V_D_SURVEYORS WHERE KOMITE IS NOT NULL;
+```
+
+Pemilik: **DBA**. Sampai itu terjawab, tab Komite Approval **belum dapat dinyatakan
+terbukti bekerja terhadap data produksi** — ia bekerja terhadap data contoh.
+
+#### Koreksi kedua 2026-10-11 — catatan "akun belum terbit" DICABUT
+
+Work Owner bertanya: *"jadi udah gabutuh apa-apa lagi dong, HCC/HCQ buat apa emang?"*
+
+Pertanyaan itu membongkar kekeliruan saya sendiri. **HCC/HCQ bukan sesuatu yang ditunggu —
+ia sudah berjalan di aplikasi ini.** Rantainya ditetapkan Work Owner 2026-09-16 dan sudah
+terpasang di `internal/auth/provider`:
+
+| Urutan | Sumber | Identity |
+|---|---|---|
+| 1 | API HCC/HCQ — kredensial karyawan | **NIK** |
+| 2 | `POOLDATA.M_LOGIN_PNC` — non-karyawan (broker, surveyor independen) | **LOGIN_ID** |
+
+Jadi kalimat saya di §21.9 — *"kontraknya belum ada"* — **sudah usang untuk basis kode
+ini**. Yang belum ada adalah kontrak untuk hal lain pada `F-3` (peta peran), bukan untuk
+masuk aplikasi.
+
+**Dan premis catatan itu sendiri ternyata salah.** Catatan hanya tampil untuk Internal
+Surveyor, padahal:
+
+```sql
+-- BrowseNonMBUUsers: daftar pegawai yang dapat dipilih
+where ... and login_aplikasi is not null
+```
+
+Setiap nama yang **dapat dipilih** di layar itu sudah punya kredensial yang dikenali
+HCC/HCQ. Catatan itu memperingatkan satu-satunya tipe yang justru **pasti sudah punya
+akun**.
+
+**Ditambah:** penerbitan login surveyor punya layarnya sendiri di sistem lama —
+`Harness/MasterLoginSurvey-Harness.xml` atas tabel `mst_login_surveyor`. Modul tersendiri,
+bukan tanggung jawab Master Surveyors.
+
+`Call GCNMCreateOperator` karena itu menerbitkan akun **portal Pega** — portal yang sudah
+tidak dipakai. Tidak ada yang perlu digantikan di modul ini.
+
+**Tindakan:** catatan dihapus dari layar. Uji yang semula mengunci kemunculannya dibalik
+menjadi mengunci **ketidakmunculannya**, supaya ia tidak kembali tanpa alasan baru.
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `SurveyorForm.test.tsx` | **13 lulus** |
+| `npx tsc --noEmit` atas modul ini | **0 galat** |
+
+#### Pelajaran: tiga kali premis saya salah di modul yang sama
+
+| # | Saya nyatakan | Kenyataannya |
+|---|---|---|
+| 1 | Daftar pegawai tidak tersedia | Ada — `BrowseNonMBUUsers`, separuhnya tabel lokal |
+| 2 | `P-1` menghalangi pembuatan akun | Tabel operator Pega sudah tidak dipakai |
+| 3 | Kontrak HCC/HCQ belum ada | Sudah terpasang sejak 2026-09-16 di `auth/provider` |
+
+Polanya satu dan sama: **saya menyimpulkan ketiadaan dari pencarian yang gagal**, lalu
+menuliskannya ke layar sebagai fakta. Yang benar: ketiadaan baru boleh dinyatakan setelah
+jalur pemanggilnya ditelusuri — dan untuk hal yang akan DITAMPILKAN ke pengguna, ia harus
+ditelusuri lebih dulu, bukan sesudah ditegur.

@@ -77,6 +77,8 @@ type SurveyResult struct {
 	Surveys   []string // nomor survey (SRVN) yang terbit
 	Committee []string // nomor kasus komite (KMTN) yang terbit
 	Auto      bool     // jalur otomatis (Auto_ChildSurvey_act)
+	// MailWarnings adalah email Komite yang gagal dikirim (prosesnya tetap tersimpan).
+	MailWarnings []string
 }
 
 // ErrSurveyNotInProgress: Batal Survei hanya untuk objek berstatus Sedang Proses (tombolnya hanya
@@ -473,6 +475,12 @@ func (l *Service) TransferSurveyCommittee(ctx context.Context, p SurveyCommittee
 
 	coMember := registrasi.CoInsuranceMember(claim.Policy)
 	result := SurveyResult{Auto: auto}
+	type pendingMail struct {
+		object    registrasi.SurveyObject
+		committee string
+		note      registrasi.SurveyCommitteeNote
+	}
+	var mails []pendingMail
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
 		// Langkah 19: Post_ChildSurvey_act untuk seluruh objek.
 		issued, err := l.postChildSurvey(ctx, store, claim, objects, p.CaseSurveyorType, coMember, by, now)
@@ -529,9 +537,11 @@ func (l *Service) TransferSurveyCommittee(ctx context.Context, p SurveyCommittee
 				}
 				note := p.Note
 				note.AnalysisType = "1"
+				note.Key = newCommitteeKey() // newWorkCover.Key — Post_ChildKomite_act 2.2
 				if note.Date.IsZero() {
 					note.Date = now
 				}
+				mails = append(mails, pendingMail{object: o, committee: id, note: note})
 				if err := store.SaveCommitteeNote(ctx, id, note); err != nil {
 					return err
 				}
@@ -569,6 +579,13 @@ func (l *Service) TransferSurveyCommittee(ctx context.Context, p SurveyCommittee
 	})
 	if err != nil {
 		return SurveyResult{}, err
+	}
+	// setSendEmailKomite_act: email SendApproveCommittee ke anggota PERTAMA (komitecount 1),
+	// sesudah tersimpan. Satu email per kasus komite.
+	for _, m := range mails {
+		if msg := l.sendSurveyCommitteeMail(ctx, claim, m.object, m.committee, members[0].Email, 1, m.note.Key, m.note); msg != "" {
+			result.MailWarnings = append(result.MailWarnings, m.committee+": "+msg)
+		}
 	}
 	result.View, err = l.surveyView(ctx, store, claim, by)
 	return result, err

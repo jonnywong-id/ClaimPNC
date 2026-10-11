@@ -37,7 +37,9 @@
 --   .ObjectSurveyIDMarine       -> OBJECTSURVEYIDMARINE
 --
 -- Pernyataan (2) menambah isian modal Transfer Komite (`Section/ClaimComitee-sect.xml`) pada
--- kepala kasus komite survey POOLDATA.TC_PNC_KOMITE (TRANSFERTYPE '1').
+-- kepala kasus komite survey POOLDATA.TC_PNC_KOMITE (TRANSFERTYPE '1'), ditambah SURVEY_KUNCI:
+-- `newWorkCover.Key` — parameter `key` link email Komite yang diperiksa
+-- `PNCKomiteSurveyAcceptation_act` langkah 9.
 --
 -- Kolom baru semuanya NULLABLE, sehingga Pega yang masih menulis tabel yang sama tidak
 -- terganggu (`P-4`).
@@ -66,5 +68,6 @@ ALTER TABLE POOLDATA.TC_PNC_KOMITE ADD (
   SURVEY_PERUSAHAAN    VARCHAR2(500),
   SURVEY_KONTAK        VARCHAR2(500),
   SURVEY_TELEPON       VARCHAR2(100),
-  SURVEY_EMAIL         VARCHAR2(500)
+  SURVEY_EMAIL         VARCHAR2(500),
+  SURVEY_KUNCI         VARCHAR2(64)
 );

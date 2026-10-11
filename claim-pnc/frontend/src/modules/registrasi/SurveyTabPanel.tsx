@@ -14,7 +14,7 @@ import {
   useTransferSurveyCommittee,
   violationsFrom,
 } from './api'
-import type { Claim, SurveyObject, SurveyorOption, SurveyTabResponse } from './types'
+import type { Claim, SurveyActionResponse, SurveyObject, SurveyorOption, SurveyTabResponse } from './types'
 
 /*
  * Tab Survey tahap Choose Surveyor — `Section/TabSurvey_sect.xml`, tiga sub-tab:
@@ -151,6 +151,7 @@ function InputSurvey({ klaim, taskID, data }: { klaim: Claim; taskID: string; da
   const [page, setPage] = useState(0)
   const [committeeOpen, setCommitteeOpen] = useState(false)
   const [cancelRow, setCancelRow] = useState<SurveyObject | null>(null)
+  const [committeeResult, setCommitteeResult] = useState<SurveyActionResponse | null>(null)
   const save = useSaveSurvey(klaim.id)
   const transfer = useTransferSurvey(klaim.id)
 
@@ -298,7 +299,7 @@ function InputSurvey({ klaim, taskID, data }: { klaim: Claim; taskID: string; da
         </div>
       )}
       {save.isSuccess && !busy && !failure && <p className="mt-3 text-sm text-emerald-700">Data survey tersimpan.</p>}
-      {result && !busy && !failure && <ActionResult surveys={result.survey_terbit} committee={result.komite_terbit} auto={result.otomatis} />}
+      {result && !busy && !failure && <ActionResult surveys={result.survey_terbit} committee={result.komite_terbit} auto={result.otomatis} mailErrors={result.email_galat ?? []} />}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Button tone="kedua" disabled={busy} onClick={() => save.mutate(body())}>
@@ -317,14 +318,17 @@ function InputSurvey({ klaim, taskID, data }: { klaim: Claim; taskID: string; da
       </div>
 
       {committeeOpen && (
-        <CommitteeDialog klaim={klaim} request={body()} onClose={() => setCommitteeOpen(false)} />
+        <CommitteeDialog klaim={klaim} request={body()} onClose={() => setCommitteeOpen(false)} onDone={setCommitteeResult} />
+      )}
+      {committeeResult && !committeeOpen && (
+        <ActionResult surveys={committeeResult.survey_terbit} committee={committeeResult.komite_terbit} auto={committeeResult.otomatis} mailErrors={committeeResult.email_galat ?? []} />
       )}
       {cancelRow && <CancelDialog claimID={klaim.id} taskID={taskID} row={cancelRow} onClose={() => setCancelRow(null)} />}
     </div>
   )
 }
 
-function ActionResult({ surveys, committee, auto }: { surveys: string[]; committee: string[]; auto: boolean }) {
+function ActionResult({ surveys, committee, auto, mailErrors = [] }: { surveys: string[]; committee: string[]; auto: boolean; mailErrors?: string[] }) {
   return (
     <div className="mt-3 space-y-1 text-sm text-emerald-700" role="status">
       {surveys.length > 0 && <p>Survey terbit: {surveys.join(', ')}.</p>}
@@ -335,6 +339,13 @@ function ActionResult({ surveys, committee, auto }: { surveys: string[]; committ
         </p>
       )}
       {auto && <p>Jalur otomatis: survey langsung dibuat tanpa Komite.</p>}
+      {mailErrors.length > 0 && (
+        <ErrorMessage
+          tone="gangguan"
+          title="Pengajuan tersimpan, tetapi email ke anggota Komite gagal dikirim"
+          description={`Rincian untuk IT Support: ${mailErrors.join(' | ')}`}
+        />
+      )}
     </div>
   )
 }
@@ -483,10 +494,12 @@ function CommitteeDialog({
   klaim,
   request,
   onClose,
+  onDone,
 }: {
   klaim: Claim
   request: { tugas_id: string; tipe_surveyor_kasus: string; objek: SurveyObject[] }
   onClose: () => void
+  onDone: (result: SurveyActionResponse) => void
 }) {
   const send = useTransferSurveyCommittee(klaim.id)
   const nominatedOptions = useSurveyorOptions('nominasi')
@@ -518,7 +531,12 @@ function CommitteeDialog({
         penunjukan_manual: manual,
         nominasi: nominees.filter((n) => n.nama.trim() !== '').map((n) => ({ id: n.id, nama: n.nama, login: n.login })),
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: (result) => {
+          onDone(result)
+          onClose()
+        },
+      },
     )
   }
 

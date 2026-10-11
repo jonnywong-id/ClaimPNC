@@ -19,13 +19,20 @@ var (
 	// siapa yang membukanya adalah satu-satunya kontrol yang tersisa (`D-59`).
 	ErrCallerUnknown = errors.New("inboxrclpucl: identitas pemanggil tidak terbaca")
 
-	// ErrWriteNotAvailable berarti aksi tulis diminta pada modul yang hanya membaca.
+	// ErrWriteNotAvailable berarti aksi tulis diminta pada alamat yang tidak mengenalinya.
 	//
-	// Ia ADA supaya dua tindakan yang di layar lama menulis — mencetak surat PUCL/RCL dan
-	// mengirim Reminder PUCL — dapat dijawab dengan alasan alih-alih dengan "halaman tidak
-	// ditemukan". Keduanya terlihat sangat berbeda bagi pengguna, dan hanya yang pertama
-	// yang memberi tahu apa yang harus dilakukannya.
-	ErrWriteNotAvailable = errors.New("inboxrclpucl: modul ini belum menulis apa pun")
+	// # Yang membuatnya ada, dan yang TIDAK lagi membuatnya ada
+	//
+	// Semula ia menjawab dua tindakan layar lama yang menulis — mencetak surat PUCL/RCL dan
+	// mengirim Reminder PUCL. Keduanya tidak lagi memakainya: yang pertama dikerjakan sendiri
+	// lewat ActionPrintLetter sejak 2026-10-06, dan yang kedua tidak pernah digambar bahkan
+	// di Pega (syarat tombolnya `1==2`).
+	//
+	// Ia TETAP ADA karena perannya berubah, bukan hilang: jalur `/tindakan` tanpa nama aksi
+	// menjawab tindakan yang BELUM dikenali, dan tindakan seperti itu lebih baik dijawab
+	// dengan alasan daripada dengan "halaman tidak ditemukan" — yang terbaca sebagai
+	// kerusakan.
+	ErrWriteNotAvailable = errors.New("inboxrclpucl: tindakan ini tidak dikenali")
 
 	// ErrReportNotAvailable berarti laporan harian diminta pada tab yang tidak punya.
 	//

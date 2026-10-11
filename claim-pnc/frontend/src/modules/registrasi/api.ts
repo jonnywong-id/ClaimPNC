@@ -50,6 +50,10 @@ import {
   type CommitteeTransferRequest,
   type CommitteeTransferResponse,
   type Task,
+  type ProgressInputForm,
+  type ProgressInputRequest,
+  type ProgressInputResponse,
+  type ProgressOption,
 } from './types'
 
 // Seluruh panggilan API modul ini lewat hook di berkas ini. Tidak ada `fetch` di dalam
@@ -1426,6 +1430,54 @@ export function useSaveReceiver(claimID: string) {
       }),
     onSuccess: () => {
       apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+    },
+  })
+}
+
+/** Isi awal modal Input Progress Claim. */
+export function useProgressInputForm(claimID: string, enabled = true) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'progres-form', claimID, token, portal],
+    enabled,
+    queryFn: () =>
+      callAPI<ProgressInputForm>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres/form`, { token, portal }),
+  })
+}
+
+/** Daftar STATUS PERLU satu Status Progress 1 (BrowseStsProgress2_act2 / BrowseStsProgressDoc). */
+export function useProgressNeedOptions(status1: string, docType: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  return useQuery({
+    queryKey: ['registrasi', 'progres-status-perlu', status1, docType, token, portal],
+    enabled: status1 !== '',
+    staleTime: 5 * 60 * 1000,
+    queryFn: () =>
+      callAPI<ProgressOption[]>(
+        `/api/registrasi/progres/status-perlu?status1=${encodeURIComponent(status1)}&tipe_dokumen=${encodeURIComponent(docType)}`,
+        { token, portal },
+      ),
+  })
+}
+
+/** Tombol Submit modal Input Progress Claim; grid progres dimuat ulang. */
+export function useInputProgress(claimID: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ProgressInputRequest) =>
+      callAPI<ProgressInputResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres`, {
+        metode: 'POST',
+        body,
+        token,
+        portal,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+      void client.invalidateQueries({ queryKey: ['registrasi', 'progres-form', claimID] })
     },
   })
 }
