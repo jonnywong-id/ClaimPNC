@@ -53490,3 +53490,98 @@ kode asing tidak menyelinap masuk sebagai tab kesepuluh.
 Uji `Countable` juga ditulis ulang menyebut kesembilan tab satu per satu, bukan menghitung panjang
 `statusOrder`. Menambah tab baru karena itu memaksa keputusan sadar: sumber datanya sudah ada,
 atau ia dikirim tanpa angka.
+
+## 155. Akun leader — ada, tetapi Pega tidak memakainya di My Inbox (2026-10-11)
+
+Work Owner menduga ada akun leader yang melihat seluruh outstanding anggotanya. **Dugaannya
+benar bahwa strukturnya ada** — tetapi penelusuran menunjukkan layar ini bukan tempatnya.
+
+### 155.1 Strukturnya nyata
+
+`POOLDATA.MST_USER_TEKNIK` memuat `ATASAN`, `STS_LEADER`, dan `TEAM_GROUP`. Kueri yang
+memakainya `RDB List/SearchPIC_sql-SQL.xml`:
+
+    select OPERATOR_ID from pooldata.MST_USER_TEKNIK where atasan in {ASIS:tempgetpic.EMAIL}
+
+`Activity/SearchPICTeknik_act-Act.xml` merakit hasilnya menjadi daftar `IN`, dan ia memanggil
+`SearchPIC_sql` **dua kali** — jadi cakupannya berjenjang: anggota, lalu anggota-dari-anggota.
+
+### 155.2 Tetapi bukan di layar ini
+
+Pemanggil `SearchPICTeknik_act` hanya **dua**: `GetDataProgressClaim` dan `GetNextFUdata_act`.
+**`SetClaimPNC` tidak termasuk.**
+
+`SetClaimPNC` menyetel `TempOperator.CityID` **sekali saja**, di `:554`, dengan tepat dua
+identitas — lama dan sekarang:
+
+    "('" + TempOPID.pxResults(1).City + "', '" + OperatorID.pyUserIdentifier + "')"
+
+Diperiksa menyeluruh: `TempOperator.CityID` muncul 5× di activity itu, satu sebagai penyetelan
+dan empat sebagai pemakaian pada tab komunikasi. Tidak ada cabang yang melebarkannya.
+
+Jadi modul ini **setia pada Pega**. Yang diminta Work Owner adalah **perubahan perilaku**, bukan
+perbaikan cacat — dan itu keputusan, bukan temuan.
+
+### 155.3 Angka yang menentukan bila kelak diterapkan
+
+| | |
+|---|---:|
+| Baris `MST_USER_TEKNIK` | 49 (24 aktif) |
+| Ber-`STS_LEADER = TRUE` | **4** |
+| Atasan berbeda | 5 — tim berukuran 1, 7, 7, 8, 9 |
+| Klaim berjalan seluruhnya | 2.087 |
+| Dipegang orang yang **punya** atasan | **424** |
+| Pemegangnya **tidak ada** di `MST_USER_TEKNIK` | **1.380** |
+
+Angka terakhir yang paling perlu diperhatikan: **dua pertiga pemegang klaim berjalan tidak
+terdaftar di master teknik sama sekali.** Mekanisme leader karena itu hanya akan menjangkau
+sekitar seperlima klaim, dan sisanya tetap tidak terlihat atasan siapa pun.
+
+Dampak per atasan: INDRAGUNAWAN 163 klaim, TONY 121, BAMBANGSETIADJIGUNAWAN 117, ELLENSUPRIYATI 23.
+
+### 155.4 Dua hal yang menghalangi penerapan langsung
+
+1. **`M_LOGIN_PNC` tidak punya kolom atasan.** Ia hanya lima kolom: `LOGIN_ID`, `LOGIN_NAME`,
+   `HASH_PASSWORD`, `ACTIVE_STATUS`, `LINE_BUSINESS`. Memakai `MST_USER_TEKNIK` berarti
+   menghidupkan kembali sumber yang sudah pernah ditolak sebagai master pengguna.
+2. **`SearchPICTeknik_act` memuat hardcode nama orang** — `DANIELLISWANDI` dipetakan ke
+   `BAMBANGSETIADJIGUNAWAN`, dan ada cabang khusus `INDRAGUNAWAN`. Bagian dari 24 Operator ID
+   hardcode pada `D-15`, dan tidak boleh ikut dibawa.
+
+### 155.5 Celah terakhir ditutup — dan jawabannya bukan "sama persis"
+
+Satu hal yang saya tandai saat menelusuri tab, lalu belum pernah diperiksa: `CountInAllInboxPicTeknik`
+menambahkan `AND b.pyerrormessage is null` yang TIDAK dimiliki kueri tab per-status.
+
+Diperiksa: **`PYERRORMESSAGE` tidak ada di `T_CLAIMLIST_ADMIN`** (ada di `PC_ASSIGN_WORKLIST`).
+Terukur **616 penugasan** ber-pesan galat, **167** di antaranya menunjuk klaim PNC.
+
+Saya sempat mencatatnya sebagai **selisih yang perlu ditutup**. Work Owner mengoreksi, dan
+koreksinya benar: `pyerrormessage` terisi ketika **engine Pega gagal menjalankan case** — ia jejak
+kegagalan platform, bukan data bisnis. Di Go tidak ada assignment Pega, sehingga tidak ada yang
+perlu disembunyikan.
+
+Jadi ia masuk daftar **sengaja tidak dibawa**, sederet dengan blok `// TESTING` dan perilaku
+berbasis hostname — bukan daftar selisih.
+
+Satu akibat yang tetap perlu diketahui selama masa paralel: 167 klaim itu **terlihat di Go dan
+tersembunyi di Pega**, sehingga pengguna yang sama dapat melihat dua angka berbeda. Itu bukan
+cacat — klaim yang macet justru lebih baik terlihat — tetapi akan muncul sebagai selisih pada uji
+kesetaraan `S-8` dan harus dinyatakan di muka sebagai perbedaan terencana, bukan ditemukan sebagai
+kejutan.
+
+### 155.6 Tiga selisih yang DISENGAJA, dan satu yang belum teruji
+
+Setelah seluruh tab hidup, inilah keadaan sebenarnya terhadap Pega:
+
+| Hal | Keadaan |
+|---|---|
+| Loss Adjuster | **sengaja berbeda** — Pega cross join tanpa syarat penghubung; kita pakai `SURVEYORTYPE_1='2'` pada baris klaim (`P-5`) |
+| Communication | **336 dari 338** pesan terjangkau — `CASEID_1` diganti jembatan `T_SURVEYORLIST` |
+| ALL Case | `pyerrormessage` **sengaja tidak dibawa** — jejak kegagalan engine Pega, tak bermakna di Go; akibatnya 167 klaim terlihat di sini dan tersembunyi di Pega |
+| Sumber data | `T_CLAIMLIST_ADMIN` 2.747 baris Work-PNC versus 2.648 di Pega; 98 baris yatim |
+
+**Dan yang paling perlu dinyatakan terus terang:** seluruh verifikasi sejauh ini adalah
+"kueri kita terhadap Oracle yang sama" — **bukan** "hasil kita dibandingkan hasil Pega". Uji
+kesetaraan gerbang 1 (`S-8`, `D-42`) belum ada. Jadi yang terbukti adalah kuerinya diturunkan dari
+Pega dan berjalan benar; **kesetaraan hasilnya belum pernah diadu langsung.**

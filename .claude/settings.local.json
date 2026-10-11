@@ -125,7 +125,14 @@
       "Bash(mv /tmp/h.go http/handler_more_test.go)",
       "Bash(sed -i 's|\"internal-surveyor\", \"loss-adjuster\", \"tka\",|\"internal-surveyor\", \"loss-adjuster\", \"tka\", \"komunikasi\",|' http/handler_more_test.go)",
       "Bash(mv /tmp/s.go outstanding_sqlmock_test.go)",
-      "Bash(gofmt -w outstanding_sqlmock_test.go)"
+      "Bash(gofmt -w outstanding_sqlmock_test.go)",
+      "Bash(grep -oE \"<PropertiesName>[^<]+|<PropertiesValue>[^<]{0,160}|<pyStepsPreCondParamsWhen>[^<]+|<pyMethodName>[^<]+|<pyActivityName>[^<]+\")",
+      "Bash(grep -oiE \"[^<]{0,60}leader[^<]{0,60}\")",
+      "Bash(grep -oE \"from [^<]{0,120}\")",
+      "Bash(grep -oE \"InboxManagerAdmin[A-Za-z_]*|<pyName>[A-Za-z_0-9]{4,40}|Browse[A-Za-z_0-9]+|Set[A-Za-z_0-9]+\")",
+      "Bash(grep -oE \"<PropertiesName>[^<]+|<PropertiesValue>[^<]{0,150}|<pyRuleName>[A-Za-z_0-9]{4,40}|<pyStepsPreCondParamsWhen>[^<]+\")",
+      "Bash(grep -oE \"<pyStepsPreCondParamsWhen>[^<]+|<PropertiesValue>[^<]{0,170}|GetDataPIC[A-Za-z]*|SearchPIC_sql|<pyMethodName>[^<]+\")",
+      "Bash(grep -oE \"<pyBrowseSQL>.{0,500}\")"
     ]
   }
 }
