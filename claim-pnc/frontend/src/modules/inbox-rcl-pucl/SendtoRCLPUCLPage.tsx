@@ -762,19 +762,32 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
 }
 
 /**
- * Kaki layar — nomor case dan daftar isian yang hidup di clipboard Pega.
+ * Kaki layar — nomor case.
  *
  * Dipakai KEDUA tab, bukan hanya salah satunya: petugas yang membuka tab "Penerimaan
- * Dokumen" lebih dulu tetap membutuhkan nomor case-nya, dan tetap perlu tahu isian mana yang
- * memang belum terbaca dari sini.
+ * Dokumen" lebih dulu tetap membutuhkan nomor case-nya.
  *
- * # Satu kotak di sini sudah TIDAK digambar lagi
+ * # Dua kotak di sini sudah TIDAK digambar lagi
  *
- * Yaitu "Layar ini baca saja — kerjakan tindakannya di Pega". Ia bergantung pada
+ * **"Layar ini baca saja — kerjakan tindakannya di Pega"** bergantung pada
  * `tindakan_masih_di_pega`, dan peladen mengirimkannya `false` sejak 2026-10-06: kelima
  * tombol layar ini dikerjakan sistem ini sendiri. Kotaknya TIDAK dihapus dari kode melainkan
  * dibiarkan bergantung pada isian itu — supaya yang menentukan tampil-tidaknya tetap satu
  * tempat di peladen, bukan dua tempat yang dapat berselisih.
+ *
+ * **"Isian yang tersimpan di clipboard Pega"** dihapus 2026-10-11 atas keputusan Work Owner.
+ * Ia TIDAK keliru — isinya sudah benar sejak hari yang sama — melainkan MENGULANG: kedua
+ * isian yang disebutnya sudah digambar di tempatnya masing-masing bertanda "di clipboard
+ * Pega", dan tanda itu sudah menyatakan hal yang sama di tempat yang lebih berguna.
+ *
+ * Yang ini memang dihapus, bukan dibiarkan bersyarat seperti kotak di atasnya: daftarnya
+ * tetap di peladen dan panjangnya tidak pernah nol, sehingga kotak bersyarat akan selalu
+ * tergambar. Preseden yang sama sudah dipakai panel "Yang berbeda dari layar lama" pada
+ * 2026-10-06 — datanya tinggal di Go untuk `D-54`, layarnya berhenti menggambarnya.
+ *
+ * `isian_belum_terpetakan` karena itu masih dikirim peladen dan TIDAK dibaca layar ini. Ia
+ * dipertahankan di sana sebagai rekaman berbukti — lihat `unmappedLetterFields`, yang memuat
+ * alasan tiap isian beserta kolom yang sudah dicari dan tidak ditemukan.
  */
 function ScreenFooter({
   detail,
@@ -819,33 +832,6 @@ function ScreenFooter({
         </div>
       )}
 
-      {detail && detail.isian_belum_terpetakan.length > 0 && (
-        <div className="mt-3 rounded-kontrol border border-slate-200 bg-white px-3 py-2">
-          <p className="text-xs font-medium text-slate-700">
-            Isian yang tersimpan di clipboard Pega
-          </p>
-          <p className="mt-1 text-xs text-slate-600">
-            {detail.isian_belum_terpetakan.join(' · ')}
-          </p>
-          {/*
-            JANGAN menyebut jumlahnya sebagai angka di kalimat ini.
-
-            Daftarnya datang dari server dan sudah menyusut empat kali — sembilan, lima,
-            tiga, dua. Kalimat ini pernah berbunyi "Kesembilannya" sampai 2026-10-11, yakni
-            dua penyusutan setelah angka itu benar: layar menyatakan sembilan sementara
-            daftar di atasnya memuat tiga. Tidak ada galat, tidak ada uji yang gagal, dan
-            tidak ada apa pun yang menandainya selain membacanya.
-
-            Yang berwenang atas jumlahnya hanya `unmappedLetterFields` di peladen.
-          */}
-          <p className="mt-1 text-xs text-slate-500">
-            Isian di atas adalah properti clipboard pada objek kerja Pega, bukan kolom
-            tabel, sehingga nilainya tidak dapat dibaca dari sini selama objek kerjanya
-            masih dimiliki Pega. Isian ini tetap digambar di tempatnya supaya keadaannya
-            terlihat.
-          </p>
-        </div>
-      )}
     </>
   )
 }

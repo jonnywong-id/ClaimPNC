@@ -312,23 +312,29 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(screen.getByLabelText('Tanggal terima Dokumen')).toBeInTheDocument()
   })
 
-  it('TIDAK menyebut jumlah isian clipboard sebagai angka di kaki layar', async () => {
-    // Inilah cacat yang memunculkan uji ini. Daftarnya datang dari peladen dan sudah
-    // menyusut empat kali — sembilan, lima, tiga, dua — sementara kalimat di bawahnya
-    // berbunyi "Kesembilannya" sampai 2026-10-11. Layar menyatakan sembilan, daftar di
-    // atasnya memuat tiga, dan tidak ada satu pun galat yang menandainya.
+  it('TIDAK menggambar kotak "Isian yang tersimpan di clipboard Pega" di kaki layar', async () => {
+    // Kotak itu dihapus 2026-10-11 atas keputusan Work Owner. Ia TIDAK keliru — isinya
+    // sudah diperbaiki hari yang sama — melainkan MENGULANG: kedua isian yang disebutnya
+    // sudah bertanda "di clipboard Pega" tepat di tempatnya.
     //
-    // Yang dijaga uji ini bukan kalimat tertentu melainkan KETIADAAN angka: kalimat yang
-    // mematok jumlah akan selalu basi pada penyusutan berikutnya.
+    // Yang dijaga DUA hal sekaligus: kotaknya hilang, DAN penanda di tiap isian tetap ada.
+    // Menguji yang pertama saja akan lolos meski keadaan isian itu tidak lagi terlihat di
+    // mana pun — dan itu justru kegagalan yang kotak ini dulu ada untuk mencegahnya.
+    //
+    // Sejarah yang membuat kotaknya tidak layak dihidupkan lagi apa adanya: kalimatnya
+    // menyebut jumlah sebagai ANGKA ("Kesembilannya") sementara daftarnya datang dari
+    // peladen dan sudah menyusut empat kali. Sampai 2026-10-11 layar menyatakan sembilan
+    // sementara daftarnya memuat tiga, tanpa satu pun galat.
     stubDefaultFetch()
     renderWorkScreen()
 
-    const kaki = await screen.findByText(/properti clipboard pada objek kerja Pega/)
+    await screen.findByRole('button', { name: 'Download Dokumen' })
 
-    expect(kaki).not.toHaveTextContent(
-      /\b(kesembilan\w*|kelima\w*|keempat\w*|ketiga\w*|kedua\w*)\b/i,
-    )
-    expect(kaki).not.toHaveTextContent(/\b\d+\s+isian\b/i)
+    expect(screen.queryByText(/Isian yang tersimpan di clipboard Pega/)).toBeNull()
+    expect(screen.queryByText(/properti clipboard pada objek kerja Pega/)).toBeNull()
+
+    // Penandanya TETAP ada di tiap isian — itulah yang menggantikan kotaknya.
+    expect(screen.getAllByText('di clipboard Pega').length).toBeGreaterThan(0)
   })
 
   it('menggambar grid "Tanggal terima Dokumen" sebagai TABEL dua kolom', async () => {
