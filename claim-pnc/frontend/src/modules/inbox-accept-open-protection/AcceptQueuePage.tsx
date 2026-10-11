@@ -92,6 +92,9 @@ export function AcceptQueuePage() {
   // Dibedakan dari gangguan supaya pesannya menjelaskan apa yang harus diminta pengguna.
   const forbidden = allowed.error instanceof APIError && allowed.error.status === 403
 
+  // Gagal selain 403: antreannya tidak diketahui, sehingga daftar TIDAK dapat ditampilkan.
+  const queuesGagal = allowed.isError && !forbidden
+
   function changeQueue(next: Queue) {
     setPickedQueue(next)
     // Halaman dan pencarian dikembalikan: keduanya milik antrean sebelumnya, dan
@@ -226,6 +229,25 @@ export function AcceptQueuePage() {
             title="Anda tidak berwenang atas layar ini"
             description="Access group Anda tidak termasuk yang boleh mengakseptasi permintaan proteksi. Hubungi administrator bila seharusnya berhak."
             tone="penolakan"
+          />
+        </div>
+      )}
+
+      {/*
+        Kegagalan SELAIN 403 juga harus bersuara.
+
+        Sebelumnya hanya 403 yang ditampilkan, sehingga penolakan jenis lain — portal tidak
+        disebut, sesi kedaluwarsa, basis data terganggu — tidak memunculkan pesan apa pun.
+        Yang terlihat pengguna hanyalah tabel yang memuat tanpa henti, dan itu terbaca
+        sebagai "lambat", bukan sebagai "gagal". Ia bahkan sempat tampak sembuh sendiri,
+        karena Muat ulang menembak daftarnya langsung.
+      */}
+      {queuesGagal && (
+        <div className="mt-6">
+          <ErrorMessage
+            title="Daftar antrean gagal dimuat"
+            description="Antrean yang menjadi hak Anda belum dapat dibaca, sehingga daftar permintaan belum dapat ditampilkan. Coba muat ulang halaman; bila tetap, laporkan ke administrator."
+            tone="gangguan"
           />
         </div>
       )}
@@ -388,7 +410,13 @@ export function AcceptQueuePage() {
           // Prop tidak dikirim sama sekali saat kosong: tsconfig memakai
           // exactOptionalPropertyTypes, yang membedakan "tidak ada" dari "undefined".
           {...(total > 0 ? { description: `${total} permintaan menunggu keputusan.` } : {})}
-          isLoading={list.isPending && portal !== null}
+          // `queue !== null` WAJIB ikut disyaratkan.
+          //
+          // Kueri yang `enabled: false` tetap berstatus `pending` di TanStack Query v5 —
+          // ia bukan "sedang memuat" melainkan "tidak pernah dijalankan". Tanpa syarat ini,
+          // antrean yang tidak diketahui menghasilkan rangka pemuatan yang berputar
+          // SELAMANYA, dan pengguna membacanya sebagai lambat, bukan sebagai gagal.
+          isLoading={list.isPending && portal !== null && queue !== null}
           searchLabel="Cari No Proteksi / No Polis / No Klaim"
           emptyMessage="Tidak ada permintaan proteksi yang menunggu keputusan pada antrean ini."
           serverSearch={{ value: search, onChange: changeSearch, matchCount: total }}
@@ -413,11 +441,18 @@ export function AcceptQueuePage() {
         />
       </div>
 
-      <p className="mt-4 text-xs text-slate-500">
-        Pemisahan antrean di sistem lama mengikuti peran pengguna, bukan pilihan. Selama
-        tabel peran belum terisi, kedua antrean dapat dibuka siapa pun yang berhak masuk
-        layar ini.
-      </p>
+      {/*
+        Catatan penjelas di bawah tabel DIHAPUS 2026-10-11, atas permintaan Work Owner.
+
+        Ia tidak punya padanan di Pega — `Section/InputProtection_Section-Section.xml` tidak
+        memuat keterangan apa pun di bawah gridnya — sehingga menghapusnya justru mendekatkan
+        layar ini ke aslinya (`D-13`).
+
+        Isinya sendiri sudah usang dua kali: versi pertama menyatakan kedua antrean dapat
+        dibuka siapa pun selama tabel peran belum terisi, yang tidak berlaku lagi sejak
+        kewenangan ditegakkan 2026-09-28. Aturan yang sebenarnya hidup di `QueuesFor`
+        (`authorization.go`), dan di sanalah ia dijelaskan — bukan di layar.
+      */}
     </div>
   )
 }

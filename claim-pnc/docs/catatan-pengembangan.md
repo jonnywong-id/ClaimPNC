@@ -53741,3 +53741,68 @@ Polanya satu dan sama: **saya menyimpulkan ketiadaan dari pencarian yang gagal**
 menuliskannya ke layar sebagai fakta. Yang benar: ketiadaan baru boleh dinyatakan setelah
 jalur pemanggilnya ditelusuri — dan untuk hal yang akan DITAMPILKAN ke pengguna, ia harus
 ditelusuri lebih dulu, bukan sesudah ditegur.
+
+## 156. Inbox Accept Open Protection memuat tanpa henti saat awal login (2026-10-11)
+
+Gejala yang dilaporkan Work Owner: membuka Inbox Open Protection sesudah login memperlihatkan
+rangka pemuatan terus-menerus; data baru tampil setelah menekan **Muat ulang**.
+
+### Sebabnya bukan lambat, melainkan gagal tanpa bersuara
+
+`Mount` memasang `portalhttp.ActivePortal` pada **seluruh** grup `/inbox-accept-open-protection`,
+termasuk `/antrean`. Peramban memperlakukan rute itu sebagai bebas portal — dengan alasan
+tertulis *"tidak menuntut portal aktif"* — sehingga tidak mengirim `X-Portal`. Alasan itu benar
+tentang **artinya** dan keliru tentang **rutenya**: `SelectActive` menolak alias kosong dengan
+`ErrNotStated`, dan tidak pernah jatuh ke portal bawaan (`R-20`).
+
+Rantai akibatnya:
+
+| Tahap | Keadaan |
+|---|---|
+| `/antrean` ditolak | daftar antrean kosong |
+| `allowedQueues = []` | `queue` menjadi `null` |
+| kueri daftar `enabled: false` | di TanStack Query v5 ia tetap berstatus `pending` — bukan "sedang memuat", melainkan "tidak pernah dijalankan" |
+| `isLoading={list.isPending && portal !== null}` | rangka pemuatan berputar selamanya |
+
+Dua hal menyembunyikannya. Judul `'Proteksi Klaim NON PREMI'` ternyata **judul cadangan** yang
+juga tampil saat `queue` bernilai `null`, sehingga layar tampak normal tanpa tab. Dan layar
+hanya memunculkan galat **403**; penolakan jenis lain tidak menampilkan pesan apa pun.
+
+**Muat ulang tampak menyembuhkan karena alasan yang menyesatkan:** `refetch()` pada v5
+mengabaikan `enabled`, lalu menembak daftar dengan antrean bawaan `non-premi` — yang memang sah.
+
+### Perbaikannya berubah di tengah jalan, dan itu disengaja
+
+Versi pertama memperbaikinya di frontend dengan mengirim `X-Portal`. Saat memeriksa apakah cacat
+yang sama ada di modul lain, ternyata **lima modul lain memasang rute bebas-portalnya di luar
+grup** sebagai baris pertama, lengkap dengan komentar eksplisit: `master/detail-penyebab/pilihan`,
+`master/panel/pilihan`, `master/pasal-kerugian/kategori`, `master/posisi-klaim`, dan
+`inbox-auto-claim/tab`. Modul ini satu-satunya yang menyimpang.
+
+Dan `Queues` memang tidak menyentuh data entitas — ia hanya membaca group lewat `GroupReader`,
+yang memakai **koneksi utama** (`D-78`). Menuntut portal di sana tidak menambah pengamanan.
+
+Yang diterapkan:
+
+1. `/antrean` dipindah **ke luar** grup berportal.
+2. Frontend dikembalikan — tidak mengirim portal, karena memang tidak perlu.
+3. Rangka pemuatan menuntut `queue !== null`.
+4. Kegagalan selain 403 memunculkan "Daftar antrean gagal dimuat".
+5. Catatan usang di bawah tabel diganti; isinya menggambarkan keadaan sebelum kewenangan
+   ditegakkan (2026-09-28) dan menyatakan kedua antrean dapat dibuka siapa pun — yang tidak
+   berlaku lagi.
+
+### Kenapa tidak ada uji yang menangkapnya
+
+Pembantu `do` di backend **selalu** memasang `X-Portal`, dan stub `/antrean` di frontend menjawab
+`200` tanpa memeriksa header sama sekali. Keduanya lulus baik sebelum maupun sesudah perbaikan.
+
+Empat uji baru, **seluruhnya dibuktikan gagal tanpa perbaikannya**:
+`TestAntreanDilayaniTanpaHeaderPortal` · `TestDaftarTetapMenuntutPortal` (menjaga rute yang
+membaca data tetap wajib berportal) · dua uji frontend untuk rangka pemuatan dan pesan galat.
+
+**Dikonfirmasi Work Owner 2026-10-11** dengan dua akun berbeda: inbox langsung terisi tanpa Muat
+ulang.
+
+**Tidak ada modul lain terkena** — ketiga belas pemanggilan lain yang tidak mengirim portal
+diperiksa; seluruhnya sudah benar.

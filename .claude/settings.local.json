@@ -132,7 +132,8 @@
       "Bash(grep -oE \"InboxManagerAdmin[A-Za-z_]*|<pyName>[A-Za-z_0-9]{4,40}|Browse[A-Za-z_0-9]+|Set[A-Za-z_0-9]+\")",
       "Bash(grep -oE \"<PropertiesName>[^<]+|<PropertiesValue>[^<]{0,150}|<pyRuleName>[A-Za-z_0-9]{4,40}|<pyStepsPreCondParamsWhen>[^<]+\")",
       "Bash(grep -oE \"<pyStepsPreCondParamsWhen>[^<]+|<PropertiesValue>[^<]{0,170}|GetDataPIC[A-Za-z]*|SearchPIC_sql|<pyMethodName>[^<]+\")",
-      "Bash(grep -oE \"<pyBrowseSQL>.{0,500}\")"
+      "Bash(grep -oE \"<pyBrowseSQL>.{0,500}\")",
+      "Bash(grep -rn \"callAPI<[^>]*>\\(\\\\`\\\\?[^\\)]*{ token }\" --include=\"api.ts\" .)"
     ]
   }
 }

@@ -42755,3 +42755,87 @@ sehingga penulisnya aplikasi lain.
 
 Ini **tidak menghalangi** modul Master Login: layar ini memang hanya mencatat data. Dicatat
 supaya pertanyaannya tidak hilang.
+
+## 182. Rute bebas portal dipasang di luar grup, bukan dipaksa membawa portal (2026-10-11)
+
+**Keputusan.** `GET /inbox-accept-open-protection/antrean` dipindah **ke luar** grup
+`portalhttp.ActivePortal`. Peramban tidak mengirim `X-Portal` untuknya, dan itu benar.
+
+**Dasarnya dua, dan keduanya diperiksa sebelum diputuskan.**
+
+1. **Rutenya memang tidak menyentuh data entitas.** `Queues` hanya membaca group lewat
+   `GroupReader`, yang komentarnya sendiri menetapkan memakai **koneksi utama** — bukan
+   koneksi portal — karena `D-78` menetapkan satu identitas berlaku di keempat portal.
+   Membacanya dari koneksi portal justru akan membuat kewenangan seseorang berubah-ubah
+   mengikuti entitas yang sedang dibuka.
+
+2. **Lima modul lain sudah memakai pola itu**, sebagai baris pertama `Mount` dengan komentar
+   eksplisit: `master/detail-penyebab/pilihan`, `master/panel/pilihan`,
+   `master/pasal-kerugian/kategori`, `master/posisi-klaim`, `inbox-auto-claim/tab`. Modul ini
+   satu-satunya yang menyimpang.
+
+**Pilihan yang DITOLAK: mengirim `X-Portal` dari peramban.** Ia berfungsi dan sempat
+diterapkan, tetapi menyimpang dari pola repo untuk keuntungan nol — dan ia memasang
+ketergantungan palsu: daftar antrean menjadi menunggu portal siap, padahal jawabannya tidak
+bergantung padanya sama sekali.
+
+**Batas yang dijaga.** Memindahkan satu rute keluar hanya sah selama rute yang **membaca
+data** tetap di dalam grup. `TestDaftarTetapMenuntutPortal` menjaganya: tanpa uji itu,
+pemindahan berikutnya dapat menyeret rute lain keluar dan membuka data entitas yang bukan hak
+pemanggil (`R-20`).
+
+---
+
+## 183. Kueri yang nonaktif tidak boleh menyamar sebagai pemuatan (2026-10-11)
+
+**Keputusan.** Syarat rangka pemuatan ditambah `queue !== null`:
+
+```tsx
+isLoading={list.isPending && portal !== null && queue !== null}
+```
+
+**Alasan.** Di TanStack Query v5, kueri ber-`enabled: false` tetap berstatus `pending`. Itu
+bukan "sedang memuat" melainkan "tidak pernah dijalankan", dan memperlakukan keduanya sama
+menghasilkan rangka pemuatan yang berputar **selamanya**.
+
+Bedanya bukan kosmetik: pengguna membaca rangka pemuatan sebagai **lambat** dan menunggu;
+ia membaca pesan galat sebagai **gagal** dan melapor. Yang pertama membuat cacat bertahan
+tanpa dilaporkan.
+
+**Aturan umum yang diturunkan darinya:** setiap `isLoading` yang diberi `isPending` dari kueri
+bersyarat WAJIB ikut menyebut syaratnya. Bila syaratnya berubah, syarat di sini ikut berubah.
+
+---
+
+## 184. Kegagalan daftar antrean harus bersuara, bukan hanya 403 (2026-10-11)
+
+**Keputusan.** Galat selain 403 atas `/antrean` memunculkan pesan tersendiri — "Daftar antrean
+gagal dimuat" bernada *gangguan*, dibedakan dari penolakan kewenangan bernada *penolakan*.
+
+**Alasan.** Sebelumnya hanya 403 yang ditampilkan. Penolakan jenis lain — portal tidak
+disebut, sesi kedaluwarsa, basis data terganggu — tidak memunculkan apa pun, dan satu-satunya
+gejalanya adalah tabel yang memuat tanpa henti.
+
+Keduanya dibedakan karena **pekerjaan perbaikannya berbeda**: yang satu meminta akses ke
+administrator, yang lain melaporkan gangguan. Pesan yang sama untuk keduanya membuat yang
+pertama dicoba, dan hampir pasti salah.
+
+---
+
+## 185. Catatan penjelas di bawah tabel dihapus (2026-10-11)
+
+**Keputusan.** Paragraf keterangan di bawah tabel Inbox Accept Open Protection dihapus, atas
+permintaan Work Owner.
+
+**Alasan.** Ia tidak punya padanan di Pega — `Section/InputProtection_Section-Section.xml`
+tidak memuat keterangan apa pun di bawah gridnya. Menghapusnya mendekatkan layar ke aslinya
+(`D-13`), bukan menjauhkannya.
+
+**Riwayatnya menjelaskan kenapa ia tidak layak dipertahankan.** Isinya sudah usang dua kali:
+versi pertama menyatakan kedua antrean dapat dibuka siapa pun selama tabel peran belum terisi
+— keadaan yang berakhir saat kewenangan ditegakkan 2026-09-28, dan sejak itu keliru. Work
+Owner menanyakan maksudnya justru karena ia tidak lagi cocok dengan yang dilihatnya.
+
+Aturan yang sebenarnya hidup di `QueuesFor` (`authorization.go`) beserta alasannya. Menyalin
+aturan ke teks layar membuatnya hidup di dua tempat, dan yang di layar akan tertinggal — ia
+tidak punya uji yang menggagalkannya saat aturannya berubah.
