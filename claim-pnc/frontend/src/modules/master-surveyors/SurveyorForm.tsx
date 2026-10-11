@@ -525,32 +525,39 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
         )}
 
         {/*
-          Keadaan yang DISENGAJA, bukan kerusakan — karena itu ia catatan biasa, bukan
-          ErrorMessage. Kedua nada ErrorMessage berwarna merah, dan memakainya di sini
-          membuat layar yang bekerja normal tampak gagal.
+          TIDAK ADA catatan "akun belum terbit" di sini, dan itu keputusan — bukan
+          kelalaian. Catatan itu pernah ada, lalu DICABUT 2026-10-11 karena premisnya
+          ternyata salah.
 
-          Yang tidak dibawa: `Call GCNMCreateOperator` pada langkah 18
+          Yang tidak dibawa dari sistem lama: `Call GCNMCreateOperator` pada langkah 18
           `CNMInsertDetailSurveyors_act`, yang menulis `Data-Admin-Operator-ID` — tabel
-          operator milik Pega. Dua hal menghalanginya, dan keduanya di luar modul ini:
+          operator milik Pega. Ia menerbitkan akun PORTAL PEGA, dan portal itu sudah tidak
+          dipakai (Work Owner, 2026-10-11).
 
-            P-1   selama masa paralel, tabel itu DITULIS Pega. Menulisnya dari sini
-                  berarti dua sistem menulis satu tabel yang sama.
-            F-3   autentikasi sistem baru bukan operator Pega melainkan HCC/HCQ, dan
-                  kontraknya belum ada (`R-14`, `ADR-0024`). "Membuat akun" karena itu
-                  belum punya arti yang tertentu di sini.
+          Penggantinya sudah berjalan, dan keduanya BUKAN di modul ini:
+
+            masuk aplikasi   rantai `auth/provider` yang ditetapkan Work Owner 2026-09-16 —
+                             kredensial karyawan diperiksa HCC/HCQ (Identity = NIK), dan
+                             bila gagal dicoba POOLDATA.M_LOGIN_PNC untuk non-karyawan
+            login surveyor   punya layarnya sendiri di sistem lama,
+                             `Harness/MasterLoginSurvey-Harness.xml` atas tabel
+                             `mst_login_surveyor` — modul tersendiri
+
+          Khusus SURVEYOR INTERNAL, tidak ada akun yang perlu diterbitkan sama sekali:
+          kueri pegawainya menyaring `login_aplikasi is not null`, sehingga setiap nama
+          yang DAPAT dipilih di sini sudah punya kredensial yang dikenali HCC/HCQ.
+
+          Dan catatan itu hanya tampil untuk internal. Jadi ia memperingatkan satu-satunya
+          tipe yang justru pasti sudah punya akun — peringatan yang salah sasaran, dan
+          peringatan yang salah mengajari pengguna mengabaikan peringatan.
+
+          Modul ini sendiri TIDAK menyentuh skema Pega sama sekali: nol kemunculan
+          `PR_OPERATORS` maupun `DATAPEGA` di seluruh kuerinya.
 
           Satu hal lagi yang memang TIDAK pantas ditiru: activity lama menyusun kata
           sandinya sebagai `LOGIN_APLIKASI + "123456"` dan menjalankan langkah itu
           `pyStepsPreCondition = true` — tanpa syarat, untuk setiap penyimpanan.
         */}
-        {isInternal && (
-          <p className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-            <span className="font-medium text-slate-700">Catatan:</span> nama login tersimpan
-            dan keunikannya dijaga, tetapi akun aplikasinya belum diterbitkan otomatis —
-            pembuatan akun menunggu modul Identitas &amp; Akses. Sampaikan ke administrator
-            bila surveyor ini perlu segera dapat masuk.
-          </p>
-        )}
           </>
         )}
 
