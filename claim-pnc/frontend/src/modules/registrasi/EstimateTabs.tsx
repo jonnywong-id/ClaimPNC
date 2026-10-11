@@ -4,6 +4,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { formatDate } from '@/components/format'
 
 import { useDeleteDocument, useDocumentLink, useDocuments, useProgressRecords, useSurveys, useUploadDocument } from './api'
+import { ProgressInputDialog } from './ProgressInputDialog'
 import type { Attachment } from './types'
 
 /*
@@ -470,16 +471,18 @@ export function DocumentTab({ claimID, line = '' }: { claimID: string; line?: st
 
 export function ProgressTab({ claimID }: { claimID: string }) {
   const q = useProgressRecords(claimID)
+  const [inputOpen, setInputOpen] = useState(false)
   return (
     <div className="mt-3">
       <div className="flex gap-2">
-        <button type="button" disabled title={NOT_BUILT} className="rounded border border-slate-300 px-3 py-1 text-sm disabled:opacity-60">
+        <button type="button" onClick={() => setInputOpen(true)} className="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50">
           Input Progress Claim
         </button>
         <button type="button" disabled title={NOT_BUILT} className="rounded border border-slate-300 px-3 py-1 text-sm disabled:opacity-60">
           Kirim Pesan
         </button>
       </div>
+      {inputOpen && <ProgressInputDialog claimID={claimID} onClose={() => setInputOpen(false)} />}
       <Loading state={q} />
       {q.data && (
         <>

@@ -65,6 +65,10 @@ type Service struct {
 	acceptanceMultiLevel   string
 	defaultPATechnicalPIC  string
 	plaSender              registrasi.PLASender
+	survey                 registrasi.SurveyStore
+	progressInput          registrasi.ProgressInputStore
+	surveyMailer           registrasi.SurveyMailer
+	surveyLinkBase         string
 	cashier                registrasi.CashierStore
 	cashierGateway         registrasi.CashierGateway
 	lodRenderer            registrasi.LODRenderer
@@ -150,6 +154,21 @@ type Options struct {
 	// PLASender mengirim PLA lewat email — tombol SEND ALL PLA. Nil: tombolnya menjawab
 	// ErrPLASendUnavailable.
 	PLASender registrasi.PLASender
+
+	// Survey menyimpan tab Survey tahap Choose Surveyor. Nil: tab Survey menjawab
+	// ErrSurveyUnavailable.
+	Survey registrasi.SurveyStore
+
+	// ProgressInput menyimpan modal Input Progress Claim. Nil: modal menjawab
+	// ErrProgressInputUnavailable.
+	ProgressInput registrasi.ProgressInputStore
+
+	// SurveyMailer mengirim email Komite survey (akun "ASM"). Nil: email tidak dikirim dan
+	// alasannya ditampilkan.
+	SurveyMailer registrasi.SurveyMailer
+	// SurveyLinkBase adalah pangkal alamat publik aplikasi untuk link persetujuan email Komite
+	// survey (ALAMAT_PUBLIK).
+	SurveyLinkBase string
 	// Cashier membaca kode bank dan menulis log serta status Transfer Kasir; CashierGateway
 	// mengirim pembayaran ke sistem Kasir.
 	Cashier        registrasi.CashierStore
@@ -308,6 +327,10 @@ func NewService(o Options) (*Service, error) {
 		acceptanceMultiLevel:   o.AcceptanceMultiLevelCommittee,
 		defaultPATechnicalPIC:  o.DefaultPATechnicalPIC,
 		plaSender:              o.PLASender,
+		survey:                 o.Survey,
+		progressInput:          o.ProgressInput,
+		surveyMailer:           o.SurveyMailer,
+		surveyLinkBase:         o.SurveyLinkBase,
 		cashier:                o.Cashier,
 		cashierGateway:         o.CashierGateway,
 		lodRenderer:            o.LODRenderer,

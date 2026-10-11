@@ -126,25 +126,33 @@ func (l *Service) Get(
 // kosong tidak dapat dibedakan dari baris yang memang tidak bertim, dan tidak ada apa pun
 // di layar yang akan menunjukkannya.
 //
-// # Satu hal yang TIDAK dibawa, dan itu tidak dapat dibawa
+// # Layar lama TIDAK menerbitkan akun, dan klaim sebaliknya sudah DICABUT
 //
-// `Activity/SetLoginSurveyor_act` memanggil `GCNMCreateOperator` untuk **menerbitkan akun
-// operator Pega** bagi surveyor yang baru, dengan kata sandi yang sama untuk setiap orang
-// (`local.pass`), dan pesan suksesnya menyebut kata sandi itu terang-terangan.
+// Versi awal modul ini menyatakan bahwa layar Pega menerbitkan akun operator beserta kata
+// sandi yang sama untuk setiap orang, dan bahwa perilaku itu "tidak dapat dibawa".
+// Pernyataan itu KELIRU. Dicabut 2026-10-11 setelah ditelusuri ulang bersama Work Owner.
 //
-// Tiga hal menghalanginya, dan ketiganya bukan selera:
+// Empat hal mencabutnya:
 //
-//  1. **Tidak ada tempat menerbitkannya.** Sistem baru tidak punya operator Pega, dan
-//     kontrak identitas `F-3` belum ada (`R-14`, `ADR-0024`).
-//  2. **Kata sandinya tidak boleh ditulis di artefak yang di-commit** (`D-69`), dan tidak
-//     boleh di-hardcode (`D-15`).
-//  3. **Mengumumkan kata sandi bagi akun yang tidak diterbitkan adalah keterangan yang
-//     salah.** Petugas akan menyampaikannya kepada surveyor, dan surveyor tidak akan dapat
-//     masuk.
+//  1. Activity simpan `Activity/CNMInsertMstLoginSurveyor_act` berisi DELAPAN langkah, dan
+//     tidak satu pun memanggil `GCNMCreateOperator`. Yang ada hanya: tolak LOGIN kosong,
+//     ambil leader, sisip atau perbarui MST_LOGIN_SURVEYOR, pesan, bersihkan halaman.
+//  2. Pemanggilan `GCNMCreateOperator` hanya ada di `Activity/SetLoginSurveyor_act`, yakni
+//     activity yang dijalankan event `change` pada isian Nama — bukan oleh tombol Simpan.
+//  3. Langkah itu sendiri MATI. Ia bertanda blok `//`, sama seperti dua langkah lain di
+//     activity yang sama yang terbukti cara LAMA memeriksa login ganda dan sudah
+//     digantikan langkah berikutnya lewat Report Definition. Penanda syarat aktifnya
+//     bernilai `false`, dan syaratnya menyebut `Local.STS_REKANAN` — local yang tidak
+//     pernah diisi di mana pun dalam activity itu.
+//  4. Work Owner memastikannya dari sistem yang berjalan: penyimpanan hanya masuk ke
+//     `POOLDATA.MST_LOGIN_SURVEYOR`, tanpa baris operator apa pun di schema `DATAPEGA`.
 //
-// Baris MST_LOGIN_SURVEYOR tetap tersimpan — itulah yang dikerjakan layar ini — dan
-// ketiadaan akunnya dicatat di log serta DINYATAKAN di layar, bukan tersamar. Perlakuan
-// yang sama dipakai Master Bengkel, yang menghadapi `GCNMCreateOperator` yang sama persis.
+// Akibatnya untuk modul ini: **tidak ada yang hilang terhadap Pega.** Layar lama dan layar
+// baru sama-sama hanya mencatat data surveyor. Peringatan "akun belum diterbitkan" yang
+// sempat dipasang di form, di kaki layar, dan di log karena itu DICABUT seluruhnya — ia
+// menyatakan kekurangan yang tidak pernah ada.
+//
+// Jangan dipasang kembali tanpa bukti baru dari sistem yang berjalan.
 func (l *Service) Create(
 	ctx context.Context,
 	portalAlias string,
@@ -183,7 +191,7 @@ func (l *Service) Create(
 		return masterlogin.SurveyorLogin{}, err
 	}
 
-	noteAccountNotIssued(logger, portalAlias, saved, by)
+	noteCreated(logger, portalAlias, saved, by)
 	return saved, nil
 }
 
@@ -304,18 +312,16 @@ func leaderOf(
 	}
 }
 
-// noteAccountNotIssued mencatat akun aplikasi yang TIDAK diterbitkan.
+// noteCreated mencatat penambahan baris baru.
 //
-// Ia sengaja bertingkat Info dan bukan Warn: ketiadaannya adalah keadaan yang DIKETAHUI dan
-// diputuskan (`F-3` belum ada, `D-69` melarang kata sandi tertulis), bukan gangguan yang
-// perlu ditindaklanjuti seseorang malam ini.
+// Terpisah dari noteSaved karena LOGINLEADER hanya diturunkan pada penambahan; pada
+// penyuntingan ia dipertahankan apa adanya dari baris tersimpan. Mencatatnya di sini
+// membuat tautan tim sebuah baris terbaca dari log pada saat baris itu lahir — satu-satunya
+// saat nilainya ditentukan.
 //
-// Yang dicatat adalah peristiwanya, supaya saat kontrak identitas tiba, daftar login yang
-// akunnya belum pernah diterbitkan dapat ditarik tanpa menebak baris mana saja.
-//
-// Kata sandi yang di-hardcode pada `Activity/SetLoginSurveyor_act` TIDAK ditulis ke log
-// maupun ke berkas mana pun (`D-69`).
-func noteAccountNotIssued(
+// Yang digantikannya: `noteAccountNotIssued`, dicabut 2026-10-11 karena berdiri di atas
+// premis yang keliru. Lihat doc comment Service.Create.
+func noteCreated(
 	logger *slog.Logger,
 	portalAlias string,
 	one masterlogin.SurveyorLogin,
@@ -324,7 +330,7 @@ func noteAccountNotIssued(
 	if logger == nil {
 		return
 	}
-	logger.Info("login surveyor tersimpan; akun aplikasinya tidak diterbitkan karena seam identitas belum ada",
+	logger.Info("login surveyor ditambahkan",
 		slog.String("portal", portalAlias),
 		slog.String("login", one.Login),
 		slog.String("nama", one.Name),
@@ -332,11 +338,10 @@ func noteAccountNotIssued(
 		slog.String("oleh", by.Login))
 }
 
-// noteSaved mencatat penyimpanan.
+// noteSaved mencatat penyuntingan baris yang sudah ada.
 //
-// Terpisah dari noteAccountNotIssued karena penyuntingan TIDAK menyentuh penerbitan akun
-// sama sekali — menyatukan keduanya akan membuat setiap penyimpanan tampak seperti
-// percobaan menerbitkan akun yang gagal.
+// Terpisah dari noteCreated supaya penambahan dan penyuntingan dapat dibedakan di log tanpa
+// membaca isinya — tabelnya sendiri tidak punya pencatat pelaku maupun stempel waktu.
 func noteSaved(
 	logger *slog.Logger,
 	portalAlias string,
@@ -355,7 +360,7 @@ func noteSaved(
 
 // noteLeaderMissing mencatat penambahan yang menghasilkan LOGINLEADER kosong.
 //
-// Warn, bukan Info: berbeda dari akun yang sengaja tidak diterbitkan, ini keadaan yang
+// Warn, bukan Info: berbeda dari penambahan biasa, ini keadaan yang
 // TIDAK dikehendaki siapa pun — baris yang tersimpan tidak bertaut ke tim mana pun, dan
 // tabelnya tidak punya cara membedakan "tidak bertim" dari "gagal menemukan timnya".
 //

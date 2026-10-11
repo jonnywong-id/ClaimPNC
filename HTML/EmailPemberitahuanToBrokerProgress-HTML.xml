@@ -1,0 +1,437 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pyLabel>EmailPemberitahuanToBrokerProgress</pyLabel>
+<pxMoveImportOperName>ARLEXYVARIAN</pxMoveImportOperName>
+<pyBaseRule>false</pyBaseRule>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pxMoveImportOperId>ARLEXYVARIAN</pxMoveImportOperId>
+<pxObjClass>Rule-Obj-HTML</pxObjClass>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!EMAILPEMBERITAHUANTOBROKERPROGRESS</pxInsName>
+<pyStreamName>EmailPemberitahuanToBrokerProgress</pyStreamName>
+<pxUpdateOperator>WULANINDRIPAAT</pxUpdateOperator>
+<pySPRuleSetName>WULANINDRIPAAT@</pySPRuleSetName>
+<pxTabLabel>EmailPemberitahuanToBrokerProgress</pxTabLabel>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyRuleSetVersion>01-03-19</pyRuleSetVersion>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pySourceStream>&lt;html&gt;
+  &lt;head&gt;
+ &lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+  &lt;/head&gt;
+   &lt;body&gt;
+     &lt;table&gt;
+       
+       &lt;!--
+       &lt;tr&gt; &lt;td&gt;Subject &lt;/td&gt;
+         &lt;td&gt;:&lt;/td&gt;
+         &lt;td&gt;&lt;pega:reference name="CatatanKlaim.CauseOfLoss"&gt;&lt;/pega:reference&gt;&lt;/td&gt; //Subject Email
+       &lt;/tr&gt; --&gt;
+       &lt;tr&gt;
+         &lt;p&gt;Dear Bpk/Ibu &lt;br&gt;&lt;pega:reference name="CatatanKlaim.Telephone"&gt;&lt;/pega:reference&gt;&lt;br&gt;&lt;/p&gt;
+         &lt;p&gt;Sehubung dengan pengajuan klaim asuransi dengan polis &lt;pega:reference name="CatatanKlaim.PolicyNo"&gt;&lt;/pega:reference&gt; a/n &lt;pega:reference name="CatatanKlaim.NamaDokterRCL"&gt;&lt;/pega:reference&gt;,tanggal kejadian    &lt;pega:reference name="CatatanKlaim.NoRekap"&gt;&lt;/pega:reference&gt; yang dilaporkan pada &lt;pega:reference name="CatatanKlaim.NoPla"&gt;&lt;/pega:reference&gt;, &lt;br&gt;kami mengingatkan Bapak/Ibu untuk menyampaikan kelengkapan dokumen klaim ini agar klaim dapat kami proses lebih lanjut.&lt;/p&gt;
+         &lt;p&gt;&lt;b&gt;On Without Prejudice to Policy Liability&lt;/b&gt;, dokumen yang diperlukan terkait klaim ini: &lt;br&gt; 
+         &lt;br&gt;&lt;pega:forEach name="TempCatatanKlaim.pxResults"&gt;
+             *&lt;pega:reference name = "$this.ProgressID"/&gt;&lt;br&gt;
+           &lt;/pega:forEach&gt;
+         *Dan dokumen/ hal lainnya bila diperlukan dikemudian hari (belum bersifat final)&lt;br&gt;
+         Kami mengharapkan agar dokumen dapat diberikan dalam waktu dekat agar proses klaim dapat dilanjutkan.&lt;br&gt;&lt;br&gt;
+         Terima kasih atas perhatian dan kerjasamanya.&lt;/p&gt;
+        
+       &lt;/tr&gt;
+       &lt;tr&gt;
+       &lt;p&gt;
+       Best Regards,&lt;br&gt;&lt;br&gt;
+       &lt;pega:reference name="CatatanKlaim.Usulan"&gt;&lt;/pega:reference&gt;
+       &lt;/p&gt;
+       &lt;/tr&gt;
+     &lt;/table&gt;&lt;br&gt;
+	&lt;br&gt;&lt;br&gt;
+   
+  &lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pxCreateDateTime>20260619T030652.595 GMT</pxCreateDateTime>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyHTMLAPIVersionDisplay>04-02</pyHTMLAPIVersionDisplay>
+<pzDocumentKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzDocumentKey>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pzIndexCount>34</pzIndexCount>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pzChecksum>2013452691</pzChecksum>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzInsKey>
+<pyShowJavaWindowName>GeneratedJava20261011T063510.764 GMT</pyShowJavaWindowName>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxSaveDateTime>20260619T031131.920 GMT</pxSaveDateTime>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pxMoveImportDateTime>20260803T102326.591 GMT</pxMoveImportDateTime>
+<pyToolbarSaveLabel>Save</pyToolbarSaveLabel>
+<pxCreateOpName>WULANINDRIPAAT</pxCreateOpName>
+<pxUpdateDateTime>20260619T031131.897 GMT</pxUpdateDateTime>
+<pyLabelOld>EmailPemberitahuanToBrokerProgress</pyLabelOld>
+<pyMemo>looping untuk list dokumen</pyMemo>
+<pyRuleName>EmailPemberitahuanToBrokerProgress</pyRuleName>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pxCommitDateTime>20260803T102326.000 GMT</pxCommitDateTime>
+<pxMergeSynchronized>20240327T093137.647 GMT</pxMergeSynchronized>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyRuleFormStatusTime>20261011T063510.735 GMT</pyRuleFormStatusTime>
+<pzRuleSetVersionPatch>19</pzRuleSetVersionPatch>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyObjClassLabel>HTML</pyObjClassLabel>
+<pxHostId>jboss10372</pxHostId>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyReloadForm>true</pyReloadForm>
+<pxCreateOperator>WULANINDRIPAAT</pxCreateOperator>
+<pyValueChanged>false</pyValueChanged>
+<pyCompact>false</pyCompact>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyHistoryObject>false</pyHistoryObject>
+<pxInsId>!EMAILPEMBERITAHUANTOBROKERPROGRESS</pxInsId>
+<pyDeleteMemo>dones</pyDeleteMemo>
+<pyJavaClassName>Rule_Obj_HTML_ASM_FW_GCNMFW_Work_PNC_EmailPemberitahuanToBrokerProgress_Stream_20260619T030652_595_GMT</pyJavaClassName>
+<pxUpdateOpName>WULANINDRIPAAT</pxUpdateOpName>
+<pzOriginalInstanceKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC INFORMASISINGKATKLAIM #20231124T042121.211 GMT</pzOriginalInstanceKey>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pzStatus>valid</pzStatus>
+<pyPageTable REPEATINGTYPE="PageList"/>
+<pyToolBarSettings>
+<pyLaunch>true</pyLaunch>
+<pySave>false</pySave>
+<pyPreview>true</pyPreview>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpRef>
+<pyNew>true</pyNew>
+<pyRecover>false</pyRecover>
+<pyPropertyPane>false</pyPropertyPane>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyVersionSecure>false</pyVersionSecure>
+<pySiblings>true</pySiblings>
+<pyAvailability>false</pyAvailability>
+<pyShowJava>true</pyShowJava>
+<pyRuleData>true</pyRuleData>
+<pyForward>true</pyForward>
+<pySaveAs>true</pySaveAs>
+<pyFavorites>true</pyFavorites>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-html/main.htm</pyHelpURI>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyRestore>false</pyRestore>
+<pyCheckIn>false</pyCheckIn>
+<pyRefresh>true</pyRefresh>
+<pyDelete>true</pyDelete>
+<pyBack>true</pyBack>
+<pyRun>false</pyRun>
+<pyBranchOut>false</pyBranchOut>
+<pyDelegates>false</pyDelegates>
+<pyCheckOut>true</pyCheckOut>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+</pyToolBarSettings>
+<pxWarnings REPEATINGTYPE="PageList"/>
+<pyRMAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+<pyAction>load</pyAction>
+</pyRMAction>
+<pyIndirectIncludes REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Alias</pxObjClass>
+</rowdata>
+</pyIndirectIncludes>
+<pyRuleCompareList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzInsKey>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-19 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxListSubscript>2</pxListSubscript>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260723T091531.438 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-03 (Available)</pyLabel>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20240326T070303.979 GMT</pzInsKey>
+</rowdata>
+</pyRuleCompareList>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pyRuleName>ASM-FW-GCNMFW-Data-ClaimData</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleFamilyName>ASM-FW-GCNMFW-DATA-CLAIMDATA</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">22</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pyRuleName>NoPla</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NOPLA</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">23</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>pxTextInput</pyRuleName>
+<pxRuleFamilyName>PXTEXTINPUT</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">24</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>Telephone</pyRuleName>
+<pxRuleFamilyName>TELEPHONE</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">25</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyRuleName>CauseOfLoss</pyRuleName>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>CAUSEOFLOSS</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">26</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleFamilyName>POLICYNO</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pyRuleName>PolicyNo</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">27</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pyRuleName>NoRekap</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>NOREKAP</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">28</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="8">
+<pyRuleName>Code-Pega-List</pyRuleName>
+<pxRuleFamilyName>CODE-PEGA-LIST</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pxRuleClassName>Code-Pega-List</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">29</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="9">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ProgressID</pyRuleName>
+<pxRuleFamilyName>PROGRESSID</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">30</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="10">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">31</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="11">
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleFamilyName>NAMADOKTERRCL</pxRuleFamilyName>
+<pyRuleName>NamaDokterRCL</pyRuleName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">32</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="12">
+<pyRuleName>Usulan</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Data-ClaimData</pxRuleClassName>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>USULAN</pxRuleFamilyName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">33</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxCSSSelectors REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-19 (Available)</pyLabel>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzInsKey>
+<pyValue>3</pyValue>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyLabel>01-03-15 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260723T091531.438 GMT</pzInsKey>
+<pxListSubscript>2</pxListSubscript>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxListSubscript>3</pxListSubscript>
+<pyLabel>01-03-03 (Available)</pyLabel>
+<pyValue>3</pyValue>
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20240326T070303.979 GMT</pzInsKey>
+</rowdata>
+</pyRuleVersionsList>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-PNC</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>CatatanKlaim</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyPagesAndClassesPage>PageRespondStatus</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempErrImg</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage>TempErrImg.pxResults</pyPagesAndClassesPage>
+</rowdata>
+<rowdata REPEATINGINDEX="6">
+<pyPagesAndClassesPage>TempCatatanKlaim</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>Code-Pega-List</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+<rowdata REPEATINGINDEX="7">
+<pyPagesAndClassesPage>TempCatatanKlaim.pxResults</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Data-ClaimData</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+</rowdata>
+</pyPagesAndClasses>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxPageName>CatatanKlaim</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxPageName>PageRespondStatus</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Data-ClaimData</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">18</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>TempCatatanKlaim</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">19</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxPageClass>Code-Pega-List</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>TempErrImg</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">20</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexOwnerKey>RULE-OBJ-HTML ASM-FW-GCNMFW-WORK-PNC EMAILPEMBERITAHUANTOBROKERPROGRESS #20260619T030652.595 GMT</pzIndexOwnerKey>
+<pxPageName>pyWorkPage</pxPageName>
+<pxPageClass>ASM-FW-GCNMFW-Work-PNC</pxPageClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">21</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+</pagedata>
