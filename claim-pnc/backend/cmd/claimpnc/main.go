@@ -4257,12 +4257,15 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxrclpuclusecase.Options{
 			RepoSelector: store.rclPUCLSelector,
 
-			// Pemanggil layanan Pega untuk tindakan "Kirim Ke Analyst".
+			// Pemanggil layanan Pega — TIDAK LAGI dipakai tindakan mana pun.
 			//
-			// Alamatnya dari `PEGA_LAYANAN_KLAIM`, dan KOSONG adalah keadaan yang sah hari
-			// ini: layanannya belum dibangun (`permintaan-artefak-pega.md` §12). Alamat
-			// kosong membuat tindakannya dijawab 503 dengan keterangan yang menyebut siapa
-			// yang harus bertindak — bukan membuat aplikasi gagal menyala.
+			// Kelima tindakan layar RCL/PUCL dikerjakan sendiri sejak 2026-10-06, seluruhnya
+			// menulis ke tabel milik aplikasi ini. Seam-nya tetap dipasang, dan alasannya ada
+			// di `inboxrclpucl.ClaimActions`: `ClaimActionKind` masih dapat bertambah, dan
+			// tindakan baru yang belum punya penanganan harus JATUH ke penolakan yang
+			// terbaca — bukan ke "berhasil tanpa melakukan apa-apa".
+			//
+			// Alamat KOSONG tetap keadaan yang sah, dan kini bahkan yang biasa.
 			Actions: inboxrclpuclpega.NewClient(inboxrclpuclpega.Config{
 				BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM")),
 				Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM_PATH")),

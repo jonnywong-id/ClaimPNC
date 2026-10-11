@@ -72,9 +72,12 @@ var columns = []Column{
 	{
 		Key:   "komentar_pic_teknis",
 		Title: "Komentar dari PIC Teknis",
-		Note: "Belum terbawa. Properti `ClaimData.AnalystDoctorRemaks` ditandai Pega " +
-			"sendiri sebagai tidak terekspos, sehingga ia tidak punya kolom SQL yang " +
-			"dapat dibaca.",
+
+		// Keterangan ini DIBACA PENGGUNA sebagai tooltip judul kolom, bukan dibaca
+		// pengembang. Nama properti Pega, nama kolom Oracle, dan nomor keputusan karena itu
+		// tidak ditulis di sini — tempatnya di komentar Go pada `Limitations` di bawah.
+		Note: "Belum terbawa. Isinya tersimpan di sistem lama dengan cara yang tidak dapat " +
+			"dibaca dari luar, dan kolom penggantinya masih diminta ke tim basis data.",
 	},
 	{
 		Key:   "lama_hari",
@@ -120,20 +123,43 @@ func PlannedDifferences() []string {
 // Bedanya dengan PlannedDifferences: yang di atas adalah pilihan yang sudah diputuskan, yang
 // di bawah adalah penghalang yang masih menunggu pihak lain. Keduanya dipisah supaya
 // keterbatasan yang selesai dapat dihapus tanpa menyentuh keputusan yang masih berlaku.
+//
+// # Kenapa teksnya tidak memuat satu pun rujukan teknis
+//
+// Karena pembacanya adalah PENGGUNA LAYAR — tenaga medis yang membuka antreannya — bukan
+// pengembang yang membaca berkas ini. Nama berkas rule, nomor keputusan, dan nama kolom
+// Oracle tidak menjawab satu pun pertanyaan yang ia punya, sementara tanda petik balik yang
+// ikut terbawa tampil apa adanya di layar karena panelnya menggambar teks biasa, bukan
+// Markdown. Tonenya mengikuti `inheritedNotes` pada modul Dashboard Claim.
+//
+// Ketelusurannya TIDAK hilang, hanya pindah ke tempat yang benar:
+//
+//	Kolom "Komentar dari PIC Teknis"
+//	  `.ClaimData.AnalystDoctorRemaks` ditandai Pega sendiri `unexposed`, sehingga ia hidup
+//	  di dalam blob dan tidak punya kolom SQL. Dua calon pengganti sudah diperiksa lalu
+//	  ditolak: `KOMENTARANALISATOR_1` milik jalur PUCL, dan alias `AnalystDoctorRemaks` di
+//	  rule SQL lama menunjuk kolom yang berbeda-beda. Rinciannya di kepala
+//	  `repo/sqlstore/inboxanalystdoctor.sql`.
+//
+//	Penerima tugas
+//	  `Flow/Register_Flow.xml` `Assignment13` menujukan seluruh tugas tahap ini ke satu
+//	  operator yang tertanam di dalam alur. `D-15` menetapkan nilai seperti itu menjadi
+//	  master data.
+//
+//	Kewenangan menu
+//	  `TKT-F3-005` — pemeriksaan "apakah peran pemanggil memiliki menu ini" belum ada.
 func Limitations() []string {
 	return []string{
-		"Kolom \"Komentar dari PIC Teknis\" selalu kosong. Properti Pega-nya tidak " +
-			"terekspos sebagai kolom SQL, dan dua calon penggantinya sudah diperiksa lalu " +
-			"ditolak: KOMENTARANALISATOR_1 milik jalur PUCL, dan alias AnalystDoctorRemaks " +
-			"di rule SQL lama menunjuk kolom yang berbeda-beda. Mengisinya menuntut kolom " +
-			"baru dari DBA, bukan tebakan nama.",
-		"Seluruh tugas tahap Analyst Doctor di sistem lama ditujukan ke SATU operator yang " +
-			"tertanam di dalam alur (`Flow/Register_Flow.xml`, `Assignment13`). Selama " +
-			"penugasannya belum dipindahkan ke master data (`D-15`), pengguna lain melihat " +
-			"antrean kosong — dan kosong di sini berarti \"bukan milik Anda\", bukan " +
-			"\"tidak ada pekerjaan\".",
-		"Pemeriksaan kewenangan menu belum ada (`TKT-F3-005`). Yang menjaga layar ini " +
-			"sekarang hanyalah sesi dan portal aktif.",
+		"Kolom \"Komentar dari PIC Teknis\" belum terisi. Isinya tersimpan di sistem lama " +
+			"dengan cara yang tidak dapat dibaca dari luar, dan kolom penggantinya masih " +
+			"diminta ke tim basis data. Sel yang kosong di kolom itu berarti \"belum " +
+			"terbawa\", bukan \"PIC Teknis tidak menulis apa pun\".",
+		"Antrean ini hanya memuat tugas milik Anda sendiri. Di sistem lama seluruh tugas " +
+			"penilaian medis ditujukan ke satu petugas, dan selama penerimanya belum dapat " +
+			"diatur lewat master data, pengguna lain akan melihat antrean kosong — kosong " +
+			"di sini berarti \"bukan milik Anda\", bukan \"tidak ada pekerjaan\".",
+		"Layar ini baru dijaga oleh sesi dan pilihan entitas yang sedang aktif. Pemeriksaan " +
+			"kewenangan menu per peran belum berjalan.",
 	}
 }
 

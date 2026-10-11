@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/Button'
 import { DataTable, type Column } from '@/components/DataTable'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { Field } from '@/components/Field'
 
 import {
   useEksporReas,
@@ -67,6 +68,17 @@ import type { Baris, Daftar } from './types'
  * Login yang tidak terdaftar sebagai mitra menerima pesan yang menjelaskan sebabnya dan
  * menunjuk menu yang benar. Di Pega ia hanya melihat layar kosong tanpa satu pun
  * keterangan — dan menyimpulkan sistemnya rusak.
+ *
+ * # Susunan layar mengikuti Pega dari atas ke bawah (`D-13`)
+ *
+ *	donat + tabel "Status / Jumlah"      satu panel, selebar layar
+ *	"Search" + kotak Claim No + tombol   panel tersendiri
+ *	"Export To Excel"                    rata kiri, di bawah pencarian
+ *	grid                                 selebar layar, berkolom nomor urut
+ *
+ * Sampai 2026-10-11 susunannya berbeda: kotak cari dan ketiga tombol berada **di dalam**
+ * kepala grid, dan tabel "Status / Jumlah" melayang di sebelah KANAN grid. Keduanya tidak
+ * ada di layar lama, dan Work Owner meminta tata letaknya dikembalikan ke Pega.
  *
  * # Layar induk BACA-SAJA; yang menulis ada di RINCIAN
  *
@@ -176,103 +188,151 @@ export function InboxPLADLAReasPage() {
 
   return (
     <Bingkai>
-      {daftarAktif && (
-        <p className="text-sm text-slate-600">{daftarAktif.keterangan}</p>
+      {/*
+        Panel ringkasan di ATAS, selebar layar — bukan melayang di sebelah kanan grid.
+
+        Di dalamnya donat dan tabel "Status / Jumlah" berdampingan, dan keduanya
+        menampilkan angka yang sama. Ia menumpuk pada layar sempit, dan itu bukan
+        penyimpangan: `D-12` menuntut layar ini tetap terpakai di tablet.
+      */}
+      <StatusSummary
+        rows={ringkas.data?.baris ?? []}
+        active={aktif}
+        isLoading={ringkas.isLoading}
+        onSelect={pilihDaftar}
+      />
+
+      {ringkas.isError && (
+        <ErrorMessage
+          title="Jumlah tiap daftar tidak dapat dihitung"
+          description={pesanGalat(ringkas.error)}
+          tone="gangguan"
+        />
       )}
 
       {/*
-        Grid di KIRI, tabel "Status / Jumlah" di KANAN — susunan Pega apa adanya.
+        Kotak cari beserta tombolnya berdiri SENDIRI di atas grid, seperti di Pega —
+        bukan di dalam kepala grid.
 
-        Ia menumpuk pada layar sempit, dan itu bukan penyimpangan: `D-12` menuntut layar
-        ini tetap terpakai di tablet, dan tabel dua kolom yang dipaksa berdampingan di
-        lebar 768px akan memeras gridnya sampai tidak terbaca. Pada lebar desktop —
-        tempat layar ini sebenarnya dipakai — susunannya sama dengan layar lama.
+        Ia `<form>` supaya Enter di dalam kotaknya mencari, sama seperti menekan tombolnya.
+        Di layar lama perilaku itu datang gratis dari form Pega; di sini ia harus disebut.
       */}
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-start">
-        <div className="min-w-0 flex-1 space-y-5">
-          <DataTable<Baris>
-            columns={kolomDaftar(daftarAktif, rincian, setRincian)}
-            rows={list.data?.baris ?? []}
-            rowKey={(row) => row.kunci_klaim}
-            label={`Daftar ${daftarAktif?.nama ?? ''}`}
-            isLoading={list.isLoading}
-            error={
-              list.isError ? (
-                <ErrorMessage
-                  title="Daftar tidak dapat dimuat"
-                  description={pesanGalat(list.error)}
-                  tone="gangguan"
-                />
-              ) : undefined
-            }
-            emptyMessage={pesanKosong(dicari, daftarAktif)}
-            searchLabel="Claim No"
-            serverSearch={{
-              value: ketikan,
-              onChange: setKetikan,
-              matchCount: list.data?.paginasi.total,
-            }}
-            pagination={{
-              page: list.data?.paginasi.halaman ?? 1,
-              size: list.data?.paginasi.ukuran ?? 10,
-              total: list.data?.paginasi.total ?? 0,
-              totalPage: list.data?.paginasi.total_halaman ?? 1,
-              onPageChange: setPage,
-              isLoading: list.isFetching,
-            }}
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" onClick={cari} disabled={list.isFetching}>
-                  {list.isFetching ? 'Mencari…' : 'Search Data'}
-                </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  onClick={() => { list.refetch() }}
-                  disabled={list.isFetching}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  type="button"
-                  tone="kedua"
-                  disabled={ekspor.isPending}
-                  onClick={() => ekspor.mutate(parameter)}
-                >
-                  {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
-                </Button>
-              </div>
-            }
-          />
+      <form
+        className="rounded-kartu border border-slate-200 bg-white px-5 py-4 shadow-lembut"
+        onSubmit={(event) => {
+          event.preventDefault()
+          cari()
+        }}
+      >
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[16rem] flex-1 sm:max-w-sm">
+            <Field
+              id="pladla-reas-cari"
+              label="Search"
+              /*
+                Nama bagi pembaca layar menyebut KEDUANYA.
 
-          {ekspor.error != null && (
+                Yang terlihat hanyalah "Search" — itu yang tertulis di layar lama — tetapi
+                "Search" sendirian tidak memberi tahu apa yang dicari. Nama lengkapnya tetap
+                memuat judul yang terlihat, sebagaimana dituntut WCAG 2.5.3: pengguna
+                perintah suara yang mengucapkan "Search" tetap mengenai kotak ini.
+              */
+              aria-label="Search — Claim No"
+              placeholder="Claim No"
+              value={ketikan}
+              onChange={(event) => { setKetikan(event.target.value) }}
+            />
+          </div>
+
+          <Button type="submit" disabled={list.isFetching}>
+            {list.isFetching ? 'Mencari…' : 'Search Data'}
+          </Button>
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={() => { list.refetch() }}
+            disabled={list.isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
+
+        {dicari !== '' && (
+          <p className="mt-2 text-xs text-slate-600" role="status">
+            {list.data?.paginasi.total ?? 0} baris cocok dengan “{dicari}”.
+          </p>
+        )}
+      </form>
+
+      {/*
+        "Export To Excel" berdiri sendiri DI BAWAH pencarian dan rata kiri, persis seperti
+        di layar lama — bukan berjajar dengan "Search Data" di kepala grid.
+      */}
+      <div>
+        <Button
+          type="button"
+          tone="kedua"
+          disabled={ekspor.isPending}
+          onClick={() => ekspor.mutate(parameter)}
+        >
+          {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+        </Button>
+
+        {ekspor.error != null && (
+          <div className="mt-3">
             <ErrorMessage
               title="Berkas ekspor tidak dapat diambil"
               description={pesanGalat(ekspor.error)}
               tone="gangguan"
             />
-          )}
-        </div>
-
-        <div className="w-full xl:w-96 xl:shrink-0">
-          <StatusSummary
-            rows={ringkas.data?.baris ?? []}
-            active={aktif}
-            isLoading={ringkas.isLoading}
-            onSelect={pilihDaftar}
-          />
-
-          {ringkas.isError && (
-            <div className="mt-3">
-              <ErrorMessage
-                title="Jumlah tiap daftar tidak dapat dihitung"
-                description={pesanGalat(ringkas.error)}
-                tone="gangguan"
-              />
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {daftarAktif && (
+        <p className="text-sm text-slate-600">{daftarAktif.keterangan}</p>
+      )}
+
+      <DataTable<Baris>
+        columns={kolomDaftar(daftarAktif, rincian, setRincian)}
+        rows={list.data?.baris ?? []}
+        rowKey={(row) => row.kunci_klaim}
+        label={`Daftar ${daftarAktif?.nama ?? ''}`}
+        isLoading={list.isLoading}
+        error={
+          list.isError ? (
+            <ErrorMessage
+              title="Daftar tidak dapat dimuat"
+              description={pesanGalat(list.error)}
+              tone="gangguan"
+            />
+          ) : undefined
+        }
+        emptyMessage={pesanKosong(dicari, daftarAktif)}
+        /*
+          Kotak cari bawaan tabel DIMATIKAN — yang berlaku adalah formulir di atas.
+
+          `serverSearch` tetap dikirim meski kotaknya tidak tergambar, dan itu bukan sisa:
+          ia yang mematikan penyaringan dan pengurutan di peramban. Tanpanya, tabel akan
+          menyaring SATU HALAMAN dari sekian — hasil yang bohong.
+        */
+        hideSearch
+        serverSearch={{
+          value: ketikan,
+          onChange: setKetikan,
+          matchCount: list.data?.paginasi.total,
+        }}
+        // Grid Pega berkotak penuh, bukan hanya bergaris antarbaris.
+        gridLines
+        pagination={{
+          page: list.data?.paginasi.halaman ?? 1,
+          size: list.data?.paginasi.ukuran ?? 10,
+          total: list.data?.paginasi.total ?? 0,
+          totalPage: list.data?.paginasi.total_halaman ?? 1,
+          onPageChange: setPage,
+          isLoading: list.isFetching,
+        }}
+      />
 
       {rincian && (
         <DetailKlaimPanel
@@ -316,12 +376,33 @@ function kolomDaftar(
 ): Column<Baris>[] {
   if (!daftar) return []
 
-  const kolom: Column<Baris>[] = daftar.kolom.map((item) => ({
-    key: item.kunci,
-    title: item.judul,
-    value: (row) => nilaiSel(row, item.kunci),
-    render: (row) => gambarSel(row, item.kunci, item.tanggal),
-  }))
+  const kolom: Column<Baris>[] = [
+    /*
+      Kolom nomor urut, sama seperti kolom paling kiri grid Pega.
+
+      Nomornya datang dari DataTable, bukan dari indeks baris di layar ini: ia berlanjut
+      antarhalaman, sehingga baris pertama halaman kedua bernomor 11 — bukan 1 lagi.
+
+      Judulnya ditulis "No" meskipun di Pega kepala kolomnya kosong. Kepala kolom yang
+      benar-benar kosong membuat pembaca layar menyebut selnya tanpa menyebutkan ia
+      nomor urut, dan tidak ada yang hilang dari tampilannya karena satu kata itu.
+    */
+    {
+      key: 'nomor_urut',
+      title: 'No',
+      width: '3.5rem',
+      noSort: true,
+      alignCenter: true,
+      value: () => '',
+      render: (_row, nomor) => nomor,
+    },
+    ...daftar.kolom.map((item) => ({
+      key: item.kunci,
+      title: item.judul,
+      value: (row: Baris) => nilaiSel(row, item.kunci),
+      render: (row: Baris) => gambarSel(row, item.kunci, item.tanggal),
+    })),
+  ]
 
   // Apakah barisnya punya tombol rincian datang dari SERVER, bukan dicocokkan di layar.
   if (!daftar.punya_rincian) return kolom

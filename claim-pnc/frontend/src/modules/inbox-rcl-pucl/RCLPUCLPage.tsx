@@ -241,7 +241,7 @@ function PageFrame({ children }: { children: ReactNode }) {
       {children}
 
       <SharedQueueNotice />
-      <WriteActionsNotice />
+      <LetterActionNotice />
     </div>
   )
 }
@@ -360,6 +360,10 @@ function SharedQueueNotice() {
  * Isinya datang dari SERVER, bukan ditulis tetap di sini, supaya ia hilang dengan
  * sendirinya begitu keadaannya berubah — khususnya catatan tab "Klaim MSIG", yang berlaku
  * hanya sampai DBA memastikan kolom penandanya.
+ *
+ * Itu bukan kelebihan teoretis. Tab "Cetak Surat" sempat membawa catatan yang menjelaskan
+ * kolom "Tanggal Cetak Surat" yang selalu kosong; ketika kolomnya dibuang pada 2026-10-11,
+ * catatannya ikut hilang tanpa satu baris pun disunting di layar ini.
  */
 function TabNotice({ text }: { text: string }) {
   return (
@@ -455,38 +459,38 @@ function BlockedNotice({ tab }: { tab: Tab }) {
 }
 
 /**
- * Keterangan kedua tindakan yang ada di layar lama dan DIKERJAKAN di Pega.
+ * Keterangan DI MANA surat RCL/PUCL dicetak.
  *
- * # Kenapa dinyatakan, bukan dibiarkan hilang begitu saja
+ * # Kenapa keterangannya tetap ada, padahal tidak lagi menyebut Pega
  *
- * Karena keduanya adalah pekerjaan NYATA yang dilakukan pengguna layar ini setiap hari —
- * mencetak surat PUCL/RCL dan mengirim pengingat. Layar yang kehilangan tombolnya tanpa
- * penjelasan akan dilaporkan sebagai kerusakan, dan penggunanya tidak akan tahu ia masih
- * harus mengerjakannya lewat Pega.
+ * Karena pertanyaan penggunanya tidak berubah: "mencetak suratnya di mana?". Yang berubah
+ * jawabannya. Sampai 2026-10-06 di sini berdiri kotak amber berjudul "Yang dikerjakan lewat
+ * Pega" yang menyatakan Cetak Surat dan Reminder PUCL hanya dapat dikerjakan di Pega. Dua
+ * hal membuatnya TIDAK LAGI BENAR, dan keduanya terbukti dari kode:
  *
- * # Kenapa "dikerjakan di Pega", bukan "belum tersedia"
+ *   - **Cetak Surat sudah dikerjakan sistem ini.** Tombol "Download Dokumen" di layar kerja
+ *     klaim menerbitkan PDF suratnya, melampirkannya, lalu menandai `TGL_CETAK_DOKUMEN_PUCL`
+ *     — penanda yang memindahkan klaimnya ke tab "Kelengkapan Dokumen". Seluruhnya menulis
+ *     ke `POOLDATA.TC_PNC_PUCL`, tabel milik aplikasi ini; tidak satu pun menempuh Pega.
+ *   - **Reminder PUCL tidak pernah ada di Pega.** Syarat tampil tombolnya di layar lama
+ *     ditulis `1==2` — syarat yang tidak pernah benar. Menyebutnya "dikerjakan lewat Pega"
+ *     menyuruh petugas mencari tombol yang tidak pernah digambar sistem mana pun.
  *
- * Karena ia KEPUTUSAN, bukan pekerjaan yang tertunda (Work Owner, 2026-09-30). Kedua tabel
- * yang disentuhnya dibaca ratusan aturan Pega, sehingga kepemilikannya tidak berpindah satu
- * layar demi satu layar (`P-1`). "Belum tersedia" menjanjikan tombol yang akan hidup pada
- * rilis berikutnya; yang benar adalah tombol itu hidup ketika Pega dimatikan.
+ * # Kenapa nadanya netral, bukan amber
+ *
+ * Amber di aplikasi ini berarti terhalang. Tidak ada yang terhalang di layar ini: tindakannya
+ * ada, hanya letaknya bukan di antrean melainkan di dalam klaimnya — persis seperti di Pega,
+ * yang juga menuntut baris dibuka lebih dulu. Mempertahankan kotak amber akan membuat layar
+ * yang berfungsi penuh terbaca seperti layar yang separuh jadi.
  */
-function WriteActionsNotice() {
+function LetterActionNotice() {
   return (
-    <section className="mt-6 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-amber-900">
-        Yang dikerjakan lewat Pega
-      </h2>
-      <p className="mt-2 text-xs text-slate-700">
-        <span className="font-medium">Cetak Surat</span> dan{' '}
-        <span className="font-medium">Reminder PUCL</span> dikerjakan di Pega, bukan di
-        sini. Keduanya mengubah data klaim — mencetak surat bahkan memindahkan klaimnya dari
-        tab &ldquo;Cetak Surat&rdquo; ke &ldquo;Kelengkapan Dokumen&rdquo; — dan selama Pega
-        dan sistem baru berjalan berdampingan, data klaim hanya boleh diubah dari satu
-        sistem. Layar ini untuk memantau dan mengunduh, dan akan tetap begitu sampai Pega
-        dimatikan.
-      </p>
-    </section>
+    <p className="mt-2 text-xs text-slate-500">
+      <span className="font-medium">Mencetak surat RCL/PUCL</span> dikerjakan dari dalam
+      klaimnya: buka Nomor Case, lalu tekan &ldquo;Download Dokumen&rdquo;. Suratnya terbit,
+      melampir ke klaim, dan klaimnya berpindah sendiri dari tab &ldquo;Cetak
+      Surat&rdquo; ke &ldquo;Kelengkapan Dokumen&rdquo;.
+    </p>
   )
 }
 
@@ -651,9 +655,12 @@ function rowKeyOf(row: WorkItem): string {
  *    (`2026-09-10 09:30:00`). Teks yang bukan tanggal dikembalikan apa adanya oleh
  *    `formatPegaDateTime`, sehingga kolom non-tanggal tidak tersentuh.
  *  - **Teks kosong menjadi tanda pisah**, bukan sel kosong yang tidak dapat dibedakan dari
- *    kolom yang gagal dimuat. Di layar ini itu penting khusus: kolom "Tanggal Cetak Surat"
- *    memang SELALU kosong pada tab pertama, dan tanda pisah menyatakan "tidak ada isinya"
- *    alih-alih "gagal".
+ *    kolom yang gagal dimuat. Tanda pisah menyatakan "tidak ada isinya" alih-alih "gagal".
+ *
+ *    Perlakuan ini untuk sel yang KEBETULAN kosong. Kolom yang TIDAK MUNGKIN terisi bukan
+ *    urusannya: "Tanggal Cetak Surat" di tab pertama sudah tidak dikirim server sama
+ *    sekali sejak 2026-10-11, karena kolom itu justru penyaring tabnya. Satu kolom penuh
+ *    tanda pisah bukan keterangan — ia ruang yang terpakai tanpa memberi tahu apa pun.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
   const value = row[column.kunci]

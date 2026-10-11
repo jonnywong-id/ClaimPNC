@@ -122,8 +122,9 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Tidak ada lagi yang menempuh layanan Pega.
 		perPortal.Post("/inbox-rcl-pucl/klaim/{referensi}/tindakan/{aksi}", h.PerformAction)
 
-		// Aksi tulis sistem lama yang BELUM punya jalur. Rutenya ADA supaya tindakan di layar
-		// menjawab dengan alasan, bukan dengan "halaman tidak ditemukan".
+		// Penadah aksi tulis yang TIDAK DIKENALI. Rutenya ADA supaya tindakan semacam itu
+		// dijawab dengan alasan, bukan dengan "halaman tidak ditemukan" — yang terbaca sebagai
+		// kerusakan. Tidak satu pun tombol layar ini menujunya; lihat Handler.RejectWrite.
 		perPortal.Post("/inbox-rcl-pucl/tindakan", h.RejectWrite)
 	})
 }
