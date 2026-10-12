@@ -150,11 +150,16 @@ const documentColumns: Column<KomiteAttachment>[] = [
 /**
  * Dokumen Pendukung dan Dokumen Polis.
  *
- * Dokumen Pendukung meniru `Section/PNCViewAttachmentKomite`: daftar lampiran klaim
- * (`DATA_ATTACHFILE`) dengan kolom Kategori (`.ATTACHNOTE`), Nama (`.ATTACHNAME`), dan Tanggal
- * (`.INPUTDATE`). Nama berkas adalah tautan yang memanggil `GetLinkViewDoc2_Act` — di sini
- * tautan dokumen klaim Registrasi, yang menerbitkan alamat baca dari layanan penyimpanan.
- * Dokumen Polis dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
+ * Dokumen Pendukung meniru `Section/PNCViewAttachmentKomite`: kolom Kategori (`.ATTACHNOTE`),
+ * Nama (`.ATTACHNAME`), dan Tanggal (`.INPUTDATE`). Nama berkas ber-IMAGEID adalah tautan
+ * yang memanggil `GetLinkViewDoc2_Act` lalu `openUrlInWindow` — di sini tautan dokumen klaim
+ * Registrasi, yang menjalankan alur yang sama: alamat tersimpan dipakai selama belum basi,
+ * selebihnya diterbitkan `NewLinkDokumenPNC`. Lampiran tanpa IMAGEID (grid
+ * `SupportAttachmentOld`) tetap teks biasa, karena activity itu berhenti bila IMAGEID kosong.
+ *
+ * Isinya diambil dari lampiran klaim (`DATA_ATTACHFILE`), bukan dari
+ * `.Adjustment.DocumentList` case komite yang Pega pakai — daftar itu hanya ada di BLOB kerja
+ * Pega. Dokumen Polis dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
  */
 function Documents({ claimKey, attachments }: { claimKey: string; attachments: KomiteAttachment[] }) {
   const link = useAttachmentLink(claimKey)
@@ -173,21 +178,23 @@ function Documents({ claimKey, attachments }: { claimKey: string; attachments: K
     })
   }
 
-  // Nama berkas menjadi tautan, seperti kolom `.ATTACHNAME` pada PNCViewAttachmentKomite.
   const supportingColumns: Column<KomiteAttachment>[] = documentColumns.map((c) =>
     c.key === 'nama' && claimKey
       ? {
           ...c,
-          render: (r: KomiteAttachment) => (
-            <button
-              type="button"
-              className="break-all text-left text-sky-700 underline hover:text-sky-900 disabled:cursor-wait disabled:opacity-60"
-              disabled={link.isPending && link.variables === r.id}
-              onClick={() => open(r)}
-            >
-              {r.nama || 'dokumen'}
-            </button>
-          ),
+          render: (r: KomiteAttachment) =>
+            r.tersimpan ? (
+              <button
+                type="button"
+                className="break-all text-left text-sky-700 underline hover:text-sky-900 disabled:cursor-wait disabled:opacity-60"
+                disabled={link.isPending && link.variables === r.id}
+                onClick={() => open(r)}
+              >
+                {r.nama || 'dokumen'}
+              </button>
+            ) : (
+              (r.nama ?? '')
+            ),
         }
       : c,
   )

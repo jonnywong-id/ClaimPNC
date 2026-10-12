@@ -5347,6 +5347,8 @@ export type KomiteAttachment = {
   kategori?: string
   diunggah_oleh?: string
   diunggah_pada?: string
+  /** Punya IMAGEID di layanan penyimpanan; hanya lampiran ini yang namanya dapat dibuka. */
+  tersimpan?: boolean
 }
 
 /** Keputusan komite **menurut Pega**, dari `POOLDATA.T_CLAIM_KOMITE_LIST`. */

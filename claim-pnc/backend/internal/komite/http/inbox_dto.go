@@ -344,6 +344,11 @@ type AttachmentDTO struct {
 	Category   string `json:"kategori,omitempty"`
 	UploadedBy string `json:"diunggah_oleh,omitempty"`
 	UploadedAt string `json:"diunggah_pada,omitempty"`
+
+	// Stored menyatakan lampiran punya `IMAGEID`, sehingga namanya dapat dibuka lewat
+	// tautan dokumen klaim. Yang salah adalah lampiran lama (BLOB saja) — di Pega namanya
+	// teks biasa pada grid `SupportAttachmentOld`.
+	Stored bool `json:"tersimpan"`
 }
 
 // AdjustmentLineDTO adalah satu baris `POOLDATA.T_CLAIM_ADJUSTMENT`.

@@ -389,7 +389,10 @@ describe('CommitteeBottom', () => {
       <CommitteeBottom
         transfer={transfer({
           kunci_klaim: 'ASM-FW-GCNMFW-WORK PNC-1',
-          lampiran: [{ id: '77', nama: 'a.pdf', kategori: '10066' }],
+          lampiran: [
+            { id: '77', nama: 'a.pdf', kategori: '10066', tersimpan: true },
+            { id: '78', nama: 'lama.pdf', kategori: '10066', tersimpan: false },
+          ],
         })}
       />,
     )
@@ -400,6 +403,9 @@ describe('CommitteeBottom', () => {
       '/api/registrasi/klaim/ASM-FW-GCNMFW-WORK%20PNC-1/dokumen/77/tautan',
     )
     expect(tab.opener).toBeNull()
+    // Lampiran lama tanpa IMAGEID tetap teks, seperti grid SupportAttachmentOld.
+    expect(screen.queryByRole('button', { name: 'lama.pdf' })).not.toBeInTheDocument()
+    expect(screen.getByText('lama.pdf')).toBeInTheDocument()
 
     openMock.mockRestore()
     vi.unstubAllGlobals()
@@ -407,7 +413,9 @@ describe('CommitteeBottom', () => {
 
   it('tidak menjadikan nama berkas tautan bila case belum tertaut ke klaim', () => {
     renderBottom(
-      <CommitteeBottom transfer={transfer({ lampiran: [{ id: '77', nama: 'a.pdf' }] })} />,
+      <CommitteeBottom
+        transfer={transfer({ lampiran: [{ id: '77', nama: 'a.pdf', tersimpan: true }] })}
+      />,
     )
     expect(screen.queryByRole('button', { name: 'a.pdf' })).not.toBeInTheDocument()
     expect(screen.getByText('a.pdf')).toBeInTheDocument()
