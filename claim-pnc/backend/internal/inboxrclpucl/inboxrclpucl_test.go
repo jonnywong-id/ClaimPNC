@@ -185,6 +185,45 @@ func TestLetterPrintedFilterSplitsTheTabs(t *testing.T) {
 	require.True(t, msig.MSIG)
 }
 
+func TestOnlyTheKelengkapanDokumenTabHasTheReminderButton(t *testing.T) {
+	// Terverifikasi dengan menghitung rujukan `ReminderPUCL` pada ketiga section inbox:
+	// `InboxKelengkapanDocPUCLRCL_Section` memuat 2, sementara
+	// `InboxCetakSuratPUCLRCL_Section` dan `InboxAJSMSIG_Section` memuat NOL.
+	//
+	// Uji ini sekaligus menahan kembalinya kesimpulan yang SALAH. Modul ini sempat
+	// menyatakan "Reminder PUCL tidak pernah digambar, bahkan di Pega" — benar untuk layar
+	// kerja (`SendtoRCLPUCL`, syarat tombolnya `1==2`), dan salah untuk inbox. Keduanya
+	// tombol yang BERBEDA, dan yang di inbox tergambar nyata di Pega yang berjalan
+	// (Work Owner, 2026-10-12, dengan tangkapan layar).
+	for _, tab := range inboxrclpucl.Tabs() {
+		if tab.Code == inboxrclpucl.TabKelengkapanDokumen {
+			require.True(t, tab.HasReminder,
+				"tab Kelengkapan Dokumen punya tombol Reminder PUCL di Pega")
+			continue
+		}
+		require.Falsef(t, tab.HasReminder,
+			"tab %s tidak punya tombol Reminder PUCL di section-nya", tab.Name)
+	}
+}
+
+func TestTheReminderFilterIsTheKelengkapanDokumenFilter(t *testing.T) {
+	// `RDB List/ReminderPUCL-SQL.xml` menyaring dengan KELIMA syarat yang sama persis
+	// dengan tab Kelengkapan Dokumen: `PYSTATUSWORK <> 'Resolved-Completed'`,
+	// `PXASSIGNEDOPERATORID = 'RCLPUCL'`, `TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL`,
+	// `PUCLAPPROVE_1 <> 1`, dan `MSIG_1 IS NULL`.
+	//
+	// Karena itu modalnya memakai daftar tab ini, bukan kueri kedua yang kebetulan mirip.
+	// Uji ini menjaga premis itu: begitu salah satu penyaringnya bergeser, modalnya tidak
+	// lagi boleh memakai daftar yang sama — dan tidak ada apa pun selain uji ini yang akan
+	// menandainya.
+	tab, found := inboxrclpucl.FindTab(inboxrclpucl.TabKelengkapanDokumen)
+	require.True(t, found)
+
+	require.True(t, tab.LetterPrinted, "TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL")
+	require.False(t, tab.MSIG, "MSIG_1 IS NULL")
+	require.True(t, tab.HasReminder)
+}
+
 func TestTheMSIGTabIsNotMarkedBlocked(t *testing.T) {
 	// Tab Klaim MSIG kemungkinan kosong di produksi, tetapi ia TIDAK terhalang: kuerinya
 	// dapat dijalankan, dan kosongnya adalah JAWABAN — bukan ketidakmampuan menjawab.

@@ -696,6 +696,26 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                 aksi="tolak"
                 reference={detail?.referensi}
                 /*
+                  Suratnya terbit dan MELAMPIR, tetapi TIDAK dibuka — sama seperti kedua
+                  tombol Kirim.
+
+                  Sampai 2026-10-12 prop ini tidak diisi, sehingga ia memakai bawaan `true`
+                  dan menolak klaim ikut mengunduh PDF-nya. Work Owner melaporkannya, dan
+                  penelusuran ke rule membenarkan laporan itu:
+
+                      Section/SectionPenerimaanDokumenPUCL-Section.xml:7068
+                        click -> runActivity InsertMitraPA(tipe="dokumen")
+                        click -> refresh thisSection + PUCLPost(Status=0, idObj, idCov, idAdj)
+                        click -> refresh currentharness
+
+                  Ketiganya tidak membuka apa pun. PDF-nya memang terbit, tetapi di dalam
+                  `AttachAsPDFC` langkah "call View" — SATU-SATUNYA langkah yang membukanya —
+                  berprekondisi `Param.IsViewPolis=="1" && Param.a!=1`, sementara `PUCLPost`
+                  langkah 36 memanggilnya dengan KEDUANYA KOSONG dan `IsViewPolis` bukan
+                  parameter `PUCLPost`. Jadi di Pega langkah itu tidak pernah berjalan.
+                */
+                bukaBerkas={false}
+                /*
                   Akibatnya disebut, bukan hanya namanya. Tombol ini MENUTUP klaimnya —
                   `PUCLPost` dengan `Status = "0"` memanggil `ASMForceCaseClose`, sehingga
                   status kerjanya menjadi Resolved-Rejected dan klaimnya keluar dari antrean

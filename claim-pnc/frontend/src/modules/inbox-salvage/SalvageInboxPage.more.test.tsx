@@ -131,8 +131,8 @@ async function fillRequired(user: ReturnType<typeof userEvent.setup>, scope: HTM
   }
 
   for (const [label, value] of [
-    ['Mata Uang', 'IDR'],
-    ['Status Salvage', '2'],
+    [/Mata Uang/, 'IDR'],
+    [/Status Salvage/, '2'],
   ] as const) {
     const pilihan = within(scope).queryByLabelText(label) as HTMLSelectElement | null
     if (pilihan !== null && pilihan.value === '') await user.selectOptions(pilihan, value)
@@ -388,7 +388,7 @@ describe('SalvageInboxPage — form Tambah', () => {
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
     await fillRequired(user, form)
-    await user.click(within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(within(form).getByRole('button', { name: 'Submit' }))
 
     expect(await screen.findByText('Pengajuan 300 tersimpan.')).toHaveAttribute('role', 'status')
 
@@ -426,7 +426,7 @@ describe('SalvageInboxPage — form Tambah', () => {
     await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const form = await screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
     await fillRequired(user, form)
-    await user.click(within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(within(form).getByRole('button', { name: 'Submit' }))
 
     const bilah = await screen.findByText(/BELUM diterima/)
     expect(bilah).toHaveAttribute('role', 'status')
@@ -464,9 +464,11 @@ describe('SalvageInboxPage — form Tambah', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Detail' }))
     const form = await screen.findByRole('form', { name: 'Menambahkan Data Salvage' })
-    expect(within(form).getByText('PNC-1')).toBeInTheDocument()
+    // Nomor klaimnya terbaca di kolom 'Nomor Klaim', bukan lagi di kalimat pembuka —
+    // kalimat itu dibuang atas permintaan Work Owner (2026-10-12).
+    expect(within(form).getByLabelText(/Nomor Klaim/)).toHaveValue('PNC-1')
     await fillRequired(user, form)
-    await user.click(within(form).getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(within(form).getByRole('button', { name: 'Submit' }))
 
     expect(await screen.findByText('Tersimpan untuk klaim.')).toHaveAttribute('role', 'status')
     expect(screen.queryByRole('form', { name: 'Menambahkan Data Salvage' })).not.toBeInTheDocument()
@@ -504,13 +506,29 @@ describe('TambahSalvageForm', () => {
       <TambahSalvageForm
         statusOptions={[{ kode: '2', label: 'Salvage DiTerima' }]}
         currencyOptions={[{ kode: 'IDR', label: 'IDR' }]}
-        uploadColumns={['item', 'quantity']}
         onClose={onClose}
         onSaved={onSaved}
       />,
     )
-    const file = view.container.querySelector('input[type="file"]') as HTMLInputElement
-    return { onSaved, onClose, file }
+    return { onSaved, onClose, view }
+  }
+
+  /**
+   * Membuka modal **UploadDetailSalvage** dan mengembalikan isinya.
+   *
+   * Tombolnya tidak lagi membuka pemilih berkas secara langsung — di layar lama ia local
+   * action yang membuka jendela tersendiri, dan sejak 2026-10-12 begitu pula di sini.
+   */
+  async function bukaUnggahan(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Upload Detail Salvage' }))
+    const modal = await screen.findByRole('dialog', { name: 'UploadDetailSalvage' })
+    return {
+      modal,
+      file: within(modal).getByLabelText(
+        'Select a local CSV file to load and import',
+      ) as HTMLInputElement,
+      kirim: () => user.click(within(modal).getByRole('button', { name: 'Submit' })),
+    }
   }
 
   it('mengirim seluruh isian beserta item hasil unggahan yang tersisa', async () => {
@@ -537,16 +555,25 @@ describe('TambahSalvageForm', () => {
     // membuat test ini melewati batas waktu di runner CI yang sibuk; tanpa jeda, setiap
     // ketukan tetap dikirim sebagai event terpisah — yang diuji tidak berkurang.
     const user = userEvent.setup({ delay: null })
-    const { onSaved, onClose, file } = show()
+    const { onSaved, onClose } = show()
 
     expect(screen.getAllByText('Data Tidak Ada')[0]!).toBeInTheDocument()
-    expect(screen.getByText('item, quantity')).toBeInTheDocument()
+    // Daftar kolom berkas CSV tidak lagi digambar — layar lama tidak memuatnya, dan
+    // Work Owner meminta keterangan itu dibuang (2026-10-12).
+    expect(screen.queryByText('item, quantity')).toBeNull()
 
-    await user.upload(file, new File(['a,b'], 'detail.csv', { type: 'text/csv' }))
+    const unggahan = await bukaUnggahan(user)
+    await user.upload(unggahan.file, new File(['a,b'], 'detail.csv', { type: 'text/csv' }))
+    await unggahan.kirim()
+
+    // Modal menutup sendiri setelah berkasnya terbaca — hasilnya ada di tabel, bukan di
+    // dalam modal, sehingga membiarkannya terbuka hanya menghalangi pandangan.
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'UploadDetailSalvage' })).toBeNull(),
+    )
     expect(await screen.findByText('Dua baris terbaca. Belum tersimpan.')).toBeInTheDocument()
     const items = screen.getByRole('table', { name: 'Detail Item Salvage' })
     expect(within(items).getByDisplayValue('Besi')).toBeInTheDocument()
-    expect(file.value).toBe('')
     // "Hapus" ada SATU, di atas tabel, dan ia membuang baris TERAKHIR — bukan satu
     // tautan per baris. Baris terakhir pula yang paling sering dibatalkan orang.
     await user.click(screen.getByRole('button', { name: 'Hapus' }))
@@ -558,9 +585,8 @@ describe('TambahSalvageForm', () => {
       [/Nama Coverage/, 'Cov'],
       [/Jenis Salvage/, 'Besi Tua'],
       [/Lokasi Salvage$/, 'Gudang'],
-      // "Nilai Penawaran" tidak lagi digambar pada form Tambah — nilainya tetap terkirim
-      // apa adanya, tetapi tidak ada kolom untuk mengetiknya di sini.
-      [/Total Nilai Salvage/, '1000'],
+      [/Minimum Salvage/, '1000'],
+      [/Nilai Penawaran/, '1200'],
       [/Share Tertanggung/, '10'],
       [/^Email$/, 'a@example.invalid'],
       [/Nama PIC Survey/, 'Surveyor'],
@@ -572,12 +598,12 @@ describe('TambahSalvageForm', () => {
     for (const [label, value] of fields) {
       await user.type(screen.getByLabelText(label), value)
     }
-    await user.selectOptions(screen.getByLabelText('Mata Uang'), 'IDR')
-    await user.selectOptions(screen.getByLabelText('Status Salvage'), '2')
+    await user.selectOptions(screen.getByLabelText(/Mata Uang/), 'IDR')
+    await user.selectOptions(screen.getByLabelText(/Status Salvage/), '2')
     await user.click(screen.getByLabelText('Lokasi Salvage Di Jabodatabek'))
     // "Tanggal Input" TIDAK dapat diubah — di layar lama pun ia teks biasa, bukan kotak
     // isian. Nilainya tetap dikirim, dan itulah yang diperiksa di bawah.
-    await user.click(screen.getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     await waitFor(() =>
       expect(onSaved).toHaveBeenCalledWith({ pesan: 'ok', perluPerhatian: false }),
@@ -594,6 +620,7 @@ describe('TambahSalvageForm', () => {
       lokasi_salvage_di_jabodetabek: true,
       tanggal_input: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       minimum_salvage: '1000',
+      nilai_penawaran: '1200',
       email_pic_survey: 'b@example.invalid',
       remark: 'catatan',
       detail_item_salvage: [{ nama_item: 'Besi', jumlah_item: '3', satuan: 'kg', remark: 'karat' }],
@@ -602,14 +629,19 @@ describe('TambahSalvageForm', () => {
     expect(calls.find((c) => c.url === `${PATH}/unggah-detail`)?.init?.body).toBeInstanceOf(FormData)
   })
 
-  it('mengunci tombol unggah selama berkas dibaca', async () => {
+  it('mengunci tombol kirim modal selama berkas dibaca', async () => {
     stubFetch((url) => (url === `${PATH}/unggah-detail` ? 'hold' : null))
     const user = userEvent.setup()
-    const { file } = show()
+    show()
 
-    await user.upload(file, new File(['a'], 'a.csv', { type: 'text/csv' }))
+    const unggahan = await bukaUnggahan(user)
+    await user.upload(unggahan.file, new File(['a'], 'a.csv', { type: 'text/csv' }))
+    await unggahan.kirim()
+
     expect(await screen.findByRole('button', { name: 'Membaca berkas…' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Submit Pengajuan Salvage' })).not.toBeDisabled()
+    // Cancel ikut terkunci: menutup modal di tengah jalan membuang hasil yang sebentar
+    // lagi tiba, dan pengguna akan mengira unggahannya gagal.
+    expect(within(unggahan.modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
   })
 
   it('menyebut galat unggah dari server', async () => {
@@ -619,11 +651,17 @@ describe('TambahSalvageForm', () => {
         : null,
     )
     const user = userEvent.setup()
-    const { file } = show()
+    show()
 
-    await user.upload(file, new File(['a'], 'a.csv', { type: 'text/csv' }))
-    expect(await screen.findByText('Berkas tidak dapat dibaca')).toBeInTheDocument()
-    expect(screen.getByText('Pemisah bukan koma.')).toBeInTheDocument()
+    const unggahan = await bukaUnggahan(user)
+    await user.upload(unggahan.file, new File(['a'], 'a.csv', { type: 'text/csv' }))
+    await unggahan.kirim()
+
+    // Galatnya dilaporkan DI DALAM modal — di sanalah pengguna sedang menatap — dan
+    // modalnya tetap terbuka supaya berkas lain dapat langsung dipilih.
+    expect(await within(unggahan.modal).findByText('Berkas tidak dapat dibaca')).toBeInTheDocument()
+    expect(within(unggahan.modal).getByText('Pemisah bukan koma.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'UploadDetailSalvage' })).toBeInTheDocument()
   })
 
   it('menandai galat detail item dan menyebut galat simpan', async () => {
@@ -638,7 +676,7 @@ describe('TambahSalvageForm', () => {
     show()
 
     await fillRequired(user, document.body)
-    await user.click(screen.getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
     expect(await screen.findByText('Pengajuan tidak tersimpan')).toBeInTheDocument()
     expect(screen.getAllByText('Permintaan belum benar.').length).toBeGreaterThan(0)
     expect(screen.getByText('Item wajib bernama.')).toHaveAttribute('role', 'alert')
@@ -651,19 +689,38 @@ describe('TambahSalvageForm', () => {
     show()
 
     await fillRequired(user, document.body)
-    await user.click(screen.getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
     expect((await screen.findAllByText('Tidak dapat menghubungi server Claim PNC.')).length).toBeGreaterThan(0)
 
     mode = 'hold'
-    await user.click(screen.getByRole('button', { name: 'Submit Pengajuan Salvage' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
     expect(await screen.findByRole('button', { name: 'Menyimpan…' })).toBeDisabled()
   })
 
   it('tidak menembak server bila tidak ada berkas yang dipilih', async () => {
     stubFetch(() => null)
-    const { file } = show()
+    const user = userEvent.setup()
+    show()
 
-    file.dispatchEvent(new Event('change', { bubbles: true }))
+    const unggahan = await bukaUnggahan(user)
+
+    // Kirim TERKUNCI selama belum ada berkas. Itu yang menggantikan penjagaan lama di
+    // dalam kode: tanpa berkas, tombolnya memang tidak dapat ditekan.
+    expect(within(unggahan.modal).getByRole('button', { name: 'Submit' })).toBeDisabled()
+    unggahan.file.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(calls).toHaveLength(0)
+  })
+
+  it('Cancel menutup modal tanpa menembak server', async () => {
+    stubFetch(() => null)
+    const user = userEvent.setup()
+    show()
+
+    const unggahan = await bukaUnggahan(user)
+    await user.upload(unggahan.file, new File(['a'], 'a.csv', { type: 'text/csv' }))
+    await user.click(within(unggahan.modal).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('dialog', { name: 'UploadDetailSalvage' })).toBeNull()
     expect(calls).toHaveLength(0)
   })
 })

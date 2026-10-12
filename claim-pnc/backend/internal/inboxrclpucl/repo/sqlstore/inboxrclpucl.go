@@ -1170,3 +1170,56 @@ func newTaskID() string {
 	}
 	return hex.EncodeToString(b[:])
 }
+
+// ReminderRecipients membaca penerima Reminder PUCL untuk nomor klaim yang dipilih.
+//
+// # Kenapa membaca ULANG, bukan memercayai permintaan
+//
+// Karena ini tindakan yang MENGIRIM SUREL KELUAR. Alamat yang datang dari badan permintaan
+// dapat ditulis siapa pun yang dapat memanggil API; alamat yang dibaca dari basis data
+// tidak. Nama tertanggung pun dibaca ulang karena ia masuk ke subjek surel.
+//
+// # Nomor yang tidak memenuhi syarat TIDAK dikembalikan, dan itu disengaja
+//
+// Kuerinya mengulang kelima penyaring antrean Kelengkapan Dokumen. Nomor yang tidak
+// memenuhinya tidak menghasilkan baris, dan pemanggil melaporkannya sebagai
+// `tidak-memenuhi-syarat` — bukan mengirim surel ke klaim yang kebetulan ada tetapi bukan
+// urusan antrean ini.
+//
+// Urutan hasilnya MENGIKUTI urutan masukan, bukan urutan basis data: pemanggil memetakan
+// hasil ke baris yang dicentang petugas, dan urutan yang bergeser membuat pemetaannya
+// menebak.
+func (r *Repo) ReminderRecipients(
+	ctx context.Context,
+	claimNumbers []string,
+) ([]inboxrclpucl.ReminderRecipient, error) {
+	out := make([]inboxrclpucl.ReminderRecipient, 0, len(claimNumbers))
+
+	for _, number := range claimNumbers {
+		row := r.db.QueryRowContext(ctx, query("reminder_recipient"),
+			number,
+			inboxrclpucl.WorkStatusCompleted,
+			inboxrclpucl.PUCLReturnedToAnalyst,
+			inboxrclpucl.WorkStatusRejected,
+		)
+
+		var claimNumber, insuredName, insuredEmail sql.NullString
+		switch err := row.Scan(&claimNumber, &insuredName, &insuredEmail); {
+		case errors.Is(err, sql.ErrNoRows):
+			// Tidak memenuhi syarat. Barisnya SENGAJA tidak dibentuk — pemanggil yang
+			// menyatakannya, supaya "tidak memenuhi syarat" dan "tidak punya alamat"
+			// tidak tertukar di sini.
+			continue
+		case err != nil:
+			return nil, fmt.Errorf("inboxrclpucl: membaca penerima reminder: %w", err)
+		}
+
+		out = append(out, inboxrclpucl.ReminderRecipient{
+			ClaimNumber: strings.TrimSpace(claimNumber.String),
+			InsuredName: strings.TrimSpace(insuredName.String),
+			Email:       strings.TrimSpace(insuredEmail.String),
+		})
+	}
+
+	return out, nil
+}

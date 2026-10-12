@@ -1678,6 +1678,17 @@ type Repo interface {
 	// bahwa sebuah id ada tetapi milik klaim lain.
 	DocumentContent(ctx context.Context, caseNumber, documentID string) (DocumentContent, error)
 
+	// ReminderRecipients membaca penerima Reminder PUCL untuk nomor klaim yang dipilih.
+	//
+	// Ia MEMBACA ULANG alamat dan nama dari basis data, bukan menerimanya dari permintaan:
+	// pengingat ini keluar dari sistem, dan alamat yang datang dari badan permintaan dapat
+	// ditulis siapa pun yang dapat memanggil API.
+	//
+	// Hasilnya hanya memuat klaim yang MEMENUHI penyaring antrean Kelengkapan Dokumen.
+	// Nomor yang tidak memenuhinya tidak menghasilkan baris sama sekali — pemanggil
+	// melaporkannya sebagai ReminderNotEligible.
+	ReminderRecipients(ctx context.Context, claimNumbers []string) ([]ReminderRecipient, error)
+
 	// ReturnToAnalyst menandai klaim SUDAH SELESAI dikerjakan PUCL.
 	//
 	// Ia menulis `PUCLAPPROVE_1 = PUCLReturnedToAnalyst` pada `POOLDATA.TC_PNC_PUCL`, dan

@@ -172,6 +172,17 @@ type Row struct {
 	// dikirim layar dengan nilai yang tersimpan tanpa melewati penafsiran tanggal.
 	DocumentCompleteAt string
 
+	// InsuredEmail adalah `POOLDATA.T_CLAIM_PNC.EMAIL_LOD` — alamat surel tertanggung.
+	//
+	// Ia tinggal di TABEL LAIN, dan di sini disatukan ke dalam baris supaya penyimpanan
+	// tiruan tidak perlu meniru gabungannya. Yang ditiru perilakunya: boleh KOSONG.
+	//
+	// Kosong bukan kekeliruan data. Kolomnya baru mulai diisi, sehingga klaim lama belum
+	// tentu punya — dan Reminder PUCL wajib melaporkannya per klaim alih-alih menyatakan
+	// di muka bahwa seluruh baris kosong, yang pernah ditulis tetap di layar lalu menjadi
+	// salah begitu kolomnya diisi.
+	InsuredEmail string
+
 	// IDObject, IDCoverage, IDAdjustment meniru `ID_OBJECT`, `ID_COVERAGE`, dan
 	// `ID_ADJUSTMENT` — parameter tersembunyi yang dikirim ke `PUCLPost`.
 	//
@@ -680,6 +691,7 @@ func detailOf(candidate Row) inboxrclpucl.ClaimDetail {
 			ReceivedNote: inboxrclpucl.ReceivedNoteOf("Dokumen awal"),
 			PUCLNote:     candidate.PUCLNote,
 			CompleteAt:   candidate.DocumentCompleteAt,
+			InsuredEmail: candidate.InsuredEmail,
 		},
 	}
 }
@@ -983,4 +995,54 @@ func (s *Store) ClearTechnicalPIC(reference string) {
 			return
 		}
 	}
+}
+
+// ReminderRecipients memenuhi inboxrclpucl.Repo untuk Reminder PUCL.
+//
+// Ia menegakkan penyaring yang SAMA dengan kueri Oracle — lewat matchesWorkClass,
+// matchesWorkStatus, dan penyaring tab Kelengkapan Dokumen. Penyimpanan tiruan yang lebih
+// longgar daripada yang nyata membuat uji lulus untuk permintaan yang akan ditolak di
+// produksi, dan pada tindakan yang MENGIRIM SUREL KELUAR itu kelonggaran yang berbahaya.
+//
+// Urutan hasilnya mengikuti urutan MASUKAN, bukan urutan baris — sama seperti sqlstore.
+func (s *Store) ReminderRecipients(
+	_ context.Context,
+	claimNumbers []string,
+) ([]inboxrclpucl.ReminderRecipient, error) {
+	// Tab Kelengkapan Dokumen dipakai sebagai penyaringnya, bukan disusun ulang dengan
+	// tangan: menuliskan ulang kelima syaratnya di sini adalah tempat kedua yang dapat
+	// bergeser dari yang pertama.
+	tab, found := inboxrclpucl.FindTab(inboxrclpucl.TabKelengkapanDokumen)
+	if !found {
+		return nil, nil
+	}
+	q := inboxrclpucl.Query{Tab: tab}
+
+	out := make([]inboxrclpucl.ReminderRecipient, 0, len(claimNumbers))
+
+	for _, number := range claimNumbers {
+		wanted := strings.TrimSpace(number)
+
+		for _, candidate := range s.rows {
+			if strings.TrimSpace(candidate.Item.CaseID) != wanted {
+				continue
+			}
+			if !matchesWorkClass(candidate) ||
+				!matchesWorkStatus(candidate) ||
+				!matchesLetterPrinted(candidate, q) ||
+				!matchesApproval(candidate, q) ||
+				!matchesMSIG(candidate, q) {
+				break
+			}
+
+			out = append(out, inboxrclpucl.ReminderRecipient{
+				ClaimNumber: strings.TrimSpace(candidate.Item.CaseID),
+				InsuredName: candidate.Item.InsuredName,
+				Email:       strings.TrimSpace(candidate.InsuredEmail),
+			})
+			break
+		}
+	}
+
+	return out, nil
 }

@@ -208,7 +208,8 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 				Kunci string `json:"kunci"`
 				Judul string `json:"judul"`
 			} `json:"kolom"`
-			PunyaLaporan bool `json:"punya_laporan_rentang_tanggal"`
+			PunyaLaporan  bool `json:"punya_laporan_rentang_tanggal"`
+			PunyaReminder bool `json:"punya_reminder"`
 		} `json:"tab"`
 		TabBawaan    string `json:"tab_bawaan"`
 		KolomLaporan []struct {
@@ -225,6 +226,14 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 	require.NotEmpty(t, body.Tab[0].Kolom)
 	require.Equal(t, inboxrclpucl.DefaultTab, body.TabBawaan)
 	require.Len(t, body.KolomLaporan, len(inboxrclpucl.DailyReportColumns))
+
+	// Tombol "Reminder PUCL" HANYA di tab Kelengkapan Dokumen — `InboxKelengkapanDocPUCLRCL_
+	// Section:1156`. Diuji di tingkat JSON, bukan hanya pada senarai tab di Go: isian yang
+	// benar di domain tetapi tidak ikut terangkai ke DTO menghasilkan layar tanpa tombol,
+	// tanpa satu pun galat. Persis itu yang dilaporkan Work Owner 2026-10-12.
+	require.False(t, body.Tab[0].PunyaReminder, "Cetak Surat tidak punya Reminder PUCL")
+	require.True(t, body.Tab[1].PunyaReminder, "Kelengkapan Dokumen punya Reminder PUCL")
+	require.False(t, body.Tab[2].PunyaReminder, "Klaim MSIG tidak punya Reminder PUCL")
 	require.Equal(t, testPortal, body.Portal)
 }
 

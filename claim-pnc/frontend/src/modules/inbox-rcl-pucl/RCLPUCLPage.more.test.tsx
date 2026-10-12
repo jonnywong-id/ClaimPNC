@@ -29,6 +29,7 @@ const TAB_GRID: Tab = {
   keterangan: 'Klaim yang suratnya sudah dicetak.',
   kolom: COLUMNS,
   punya_laporan_rentang_tanggal: false,
+  punya_reminder: true,
   terhalang: false,
 }
 
@@ -38,6 +39,7 @@ const TAB_BLOCKED: Tab = {
   keterangan: 'Antrean yang belum dapat diisi.',
   kolom: COLUMNS,
   punya_laporan_rentang_tanggal: false,
+  punya_reminder: false,
   terhalang: true,
   alasan_terhalang: 'Kolom penandanya belum dipastikan.',
   pemilik_penghalang: 'DBA',

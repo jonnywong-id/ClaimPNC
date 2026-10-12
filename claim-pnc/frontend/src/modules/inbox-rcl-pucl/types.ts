@@ -151,6 +151,15 @@ export type Tab = {
   punya_laporan_rentang_tanggal: boolean
 
   /**
+   * Tab ini punya tombol **"Reminder PUCL"** di bilah tindakannya.
+   *
+   * Hanya tab "Kelengkapan Dokumen". Datang dari server, bukan dibandingkan dengan kode tab
+   * di sini: kode tab adalah nilai milik modul, dan membandingkannya di layar membuat satu
+   * aturan hidup di dua tempat yang dapat berselisih (`D-15`).
+   */
+  punya_reminder: boolean
+
+  /**
    * Keterangan yang berlaku pada tab ini saja, digambar di atas grid.
    *
    * Kini hanya satu tab memilikinya: "Klaim MSIG", yang menjelaskan mengapa ia kemungkinan

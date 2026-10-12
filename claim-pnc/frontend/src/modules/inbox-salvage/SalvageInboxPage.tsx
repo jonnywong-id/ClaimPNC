@@ -317,7 +317,6 @@ export function SalvageInboxPage() {
           key={editingFor.id_salvage}
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
           currencyOptions={meta.data?.pilihan_mata_uang ?? []}
-          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           editing={{
             id_salvage: editingFor.id_salvage,
             isian: toFormState(editingFor),
@@ -344,7 +343,6 @@ export function SalvageInboxPage() {
           key={creatingFor.no_klaim}
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
           currencyOptions={meta.data?.pilihan_mata_uang ?? []}
-          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           prefill={{
             nomor_klaim: creatingFor.no_klaim,
             nama_object: creatingFor.nama_object,
@@ -372,7 +370,6 @@ export function SalvageInboxPage() {
         <TambahSalvageForm
           statusOptions={meta.data?.pilihan_status_salvage ?? []}
           currencyOptions={meta.data?.pilihan_mata_uang ?? []}
-          uploadColumns={meta.data?.kolom_berkas_unggahan ?? []}
           onClose={() => setAdding(false)}
           onSaved={setSaved}
         />
