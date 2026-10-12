@@ -288,6 +288,11 @@ type TransferDetailDTO struct {
 	DominantFactors []string        `json:"faktor_dominan"`
 	Attachments     []AttachmentDTO `json:"lampiran"`
 
+	// ClaimKey adalah kunci klaim (`T_CLAIM_PNC.CLAIMID`) untuk membuka lampiran lewat
+	// `GET /api/registrasi/klaim/{kunci}/dokumen/{lampiran}/tautan`. Kosong bila case
+	// belum tertaut ke klaim.
+	ClaimKey string `json:"kunci_klaim,omitempty"`
+
 	// Members adalah "Daftar Komite" case ini; History adalah "History of Previous
 	// Adjustment Committees" — case komite lain milik klaim yang sama.
 	Members []CommitteeEntryDTO `json:"daftar_komite"`

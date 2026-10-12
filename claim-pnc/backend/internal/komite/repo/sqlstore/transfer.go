@@ -81,6 +81,7 @@ func (r *TransferRepo) FindTransfer(
 		return detail, nil
 	}
 
+	detail.ClaimKey = strings.TrimSpace(kunciKlaim)
 	detail.Claim, detail.HasClaim, err = r.claim(ctx, kunciKlaim)
 	if err != nil {
 		return komite.TransferDetail{}, err

@@ -290,9 +290,14 @@ describe('ClaimSheet', () => {
 
 // ── CommitteeBottom ────────────────────────────────────────────────────────────────
 
+function renderBottom(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 describe('CommitteeBottom', () => {
   it('menebalkan baris total dan menulis keterangan estimasi alih-alih angkanya', () => {
-    render(
+    renderBottom(
       <CommitteeBottom
         transfer={transfer({
           baris: [
@@ -323,7 +328,7 @@ describe('CommitteeBottom', () => {
   })
 
   it('menyebut tabel yang belum dibangun dan memberi label pada beberapa baris', () => {
-    render(
+    renderBottom(
       <CommitteeBottom
         transfer={transfer({
           baris: [
@@ -347,7 +352,7 @@ describe('CommitteeBottom', () => {
   })
 
   it('menulis kategori dari catatan, lalu kategori, dan isi kedua daftar komite', () => {
-    render(
+    renderBottom(
       <CommitteeBottom
         transfer={transfer({
           lampiran: [
@@ -369,8 +374,47 @@ describe('CommitteeBottom', () => {
     expect(screen.getByText('cek ulang')).toBeInTheDocument()
   })
 
+  it('membuka berkas Dokumen Pendukung lewat tautan dokumen klaim saat namanya ditekan', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://storage.invalid/a.pdf' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() }
+    const openMock = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+
+    renderBottom(
+      <CommitteeBottom
+        transfer={transfer({
+          kunci_klaim: 'ASM-FW-GCNMFW-WORK PNC-1',
+          lampiran: [{ id: '77', nama: 'a.pdf', kategori: '10066' }],
+        })}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'a.pdf' }))
+
+    await waitFor(() => expect(tab.location.href).toBe('https://storage.invalid/a.pdf'))
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      '/api/registrasi/klaim/ASM-FW-GCNMFW-WORK%20PNC-1/dokumen/77/tautan',
+    )
+    expect(tab.opener).toBeNull()
+
+    openMock.mockRestore()
+    vi.unstubAllGlobals()
+  })
+
+  it('tidak menjadikan nama berkas tautan bila case belum tertaut ke klaim', () => {
+    renderBottom(
+      <CommitteeBottom transfer={transfer({ lampiran: [{ id: '77', nama: 'a.pdf' }] })} />,
+    )
+    expect(screen.queryByRole('button', { name: 'a.pdf' })).not.toBeInTheDocument()
+    expect(screen.getByText('a.pdf')).toBeInTheDocument()
+  })
+
   it('menulis kalimat kosong saat tidak ada lampiran maupun komite', () => {
-    render(<CommitteeBottom transfer={transfer()} />)
+    renderBottom(<CommitteeBottom transfer={transfer()} />)
 
     expect(screen.getAllByText('Data Tidak Ada')).toHaveLength(2)
     expect(

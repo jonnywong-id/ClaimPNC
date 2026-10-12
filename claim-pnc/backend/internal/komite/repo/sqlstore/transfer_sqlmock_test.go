@@ -175,6 +175,7 @@ func TestFindTransferReadsEveryPartOfALegacyCase(t *testing.T) {
 	}}, detail.Members)
 
 	require.True(t, detail.HasClaim)
+	require.Equal(t, legacyKey, detail.ClaimKey, "kunci klaim apa adanya, untuk tautan lampiran")
 	require.Equal(t, "POL-1", detail.Claim.PolicyNumber)
 	require.Equal(t, "Leader", detail.Claim.CoinsRole)
 	require.Len(t, detail.Coverages, 1)

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { callAPI } from '@/api/client'
 import { useSession } from '@/app/session'
 
-import type { Keterangan, Laporan } from './types'
+import type { FilterObjek, Keterangan, Laporan } from './types'
 
 const PATH = '/api/konversi-coverage'
 
@@ -51,6 +51,8 @@ export function mergeReports(a: Laporan | null, b: Laporan): Laporan {
   if (!a) return b
   return {
     uji_coba: b.uji_coba,
+    filter_prodke: b.filter_prodke,
+    filter_indexobject: b.filter_indexobject,
     mulai: a.mulai,
     selesai: b.selesai,
     polis: [...a.polis, ...b.polis],
@@ -64,7 +66,8 @@ export function mergeReports(a: Laporan | null, b: Laporan): Laporan {
 
 /**
  * Menjalankan konversi per BATCH_SIZE polis, berurutan, lalu menggabungkan laporannya.
- * `ujiCoba` menjalankan lalu membatalkan seluruh tulisan. Kelompok yang gagal menghentikan
+ * `ujiCoba` menjalankan lalu membatalkan seluruh tulisan. `filter` membatasi PRODKE dan/atau
+ * INDEXOBJECT; isian kosong berarti seluruhnya ikut dikonversi. Kelompok yang gagal menghentikan
  * sisanya; polis kelompok sebelumnya sudah selesai dan ikut dikembalikan lewat BatchError.
  */
 export function useJalankan() {
@@ -72,6 +75,7 @@ export function useJalankan() {
   return async (
     polis: string,
     ujiCoba: boolean,
+    filter: FilterObjek,
     onProgress?: (done: number, total: number) => void,
   ): Promise<Laporan> => {
     const list = parsePolicies(polis)
@@ -83,7 +87,12 @@ export function useJalankan() {
         const part = await callAPI<Laporan>(`${PATH}/jalankan`, {
           metode: 'POST',
           token,
-          body: { polis: batch.join(','), uji_coba: ujiCoba },
+          body: {
+            polis: batch.join(','),
+            uji_coba: ujiCoba,
+            prodke: filter.prodke.trim(),
+            indexobject: filter.indexobject.trim(),
+          },
         })
         report = mergeReports(report, part)
       } catch (e) {

@@ -231,3 +231,33 @@ export function useDecideKmtn(caseID: string) {
     },
   })
 }
+
+/** Jawaban `GET /api/registrasi/klaim/{kunci}/dokumen/{lampiran}/tautan`. */
+export type AttachmentLink = {
+  url: string
+  /** RFC 3339 WIB; kosong bila metadata penyimpanan tidak mencatat masa berlaku. */
+  berlaku_sampai?: string
+}
+
+/**
+ * Alamat baca satu berkas "Dokumen Pendukung" — padanan `GetLinkViewDoc2_Act`, aksi klik
+ * nama berkas pada `Section/PNCViewAttachmentKomite`.
+ *
+ * Tidak ada endpoint khusus Komite: yang dipanggil adalah tautan dokumen klaim milik
+ * Registrasi, yang sudah meniru `GetLinkViewDoc_Act` — IMAGEID lampiran dicari di antara
+ * lampiran klaim itu, lalu alamatnya diterbitkan (atau diperpanjang) oleh layanan
+ * penyimpanan. Diminta saat nama ditekan, bukan dimuat bersama daftar, karena alamatnya
+ * bermasa berlaku.
+ */
+export function useAttachmentLink(claimKey: string) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (attachmentID: string) =>
+      callAPI<AttachmentLink>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimKey)}/dokumen/${encodeURIComponent(attachmentID)}/tautan`,
+        { token, portal },
+      ),
+  })
+}

@@ -7,6 +7,8 @@ import type {
 import { DataTable, type Column } from '@/components/DataTable'
 import { formatRupiah } from '@/lib/money'
 
+import { useAttachmentLink } from './api'
+
 import { formatTanggal, formatWaktu } from './format'
 
 /**
@@ -36,7 +38,7 @@ export function CommitteeBottom({ transfer }: { transfer: KomiteTransferDetail }
           />
         ) : null,
       )}
-      <Documents attachments={transfer.lampiran ?? []} />
+      <Documents claimKey={transfer.kunci_klaim ?? ''} attachments={transfer.lampiran ?? []} />
       <EntryTable
         title="History of Previous Adjustment Committees"
         withCase
@@ -148,23 +150,67 @@ const documentColumns: Column<KomiteAttachment>[] = [
 /**
  * Dokumen Pendukung dan Dokumen Polis.
  *
- * Pega menggambar Dokumen Pendukung lewat `PNCViewAttachmentKomite` — section yang TIDAK ada
- * di export — sehingga isinya diambil dari lampiran klaim (`DATA_ATTACHFILE`). Dokumen Polis
- * dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
+ * Dokumen Pendukung meniru `Section/PNCViewAttachmentKomite`: daftar lampiran klaim
+ * (`DATA_ATTACHFILE`) dengan kolom Kategori (`.ATTACHNOTE`), Nama (`.ATTACHNAME`), dan Tanggal
+ * (`.INPUTDATE`). Nama berkas adalah tautan yang memanggil `GetLinkViewDoc2_Act` — di sini
+ * tautan dokumen klaim Registrasi, yang menerbitkan alamat baca dari layanan penyimpanan.
+ * Dokumen Polis dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
  */
-function Documents({ attachments }: { attachments: KomiteAttachment[] }) {
+function Documents({ claimKey, attachments }: { claimKey: string; attachments: KomiteAttachment[] }) {
+  const link = useAttachmentLink(claimKey)
+
+  // Jendela dibuka LEBIH DULU, saat klik masih berlangsung, lalu diarahkan setelah alamatnya
+  // datang — membukanya sesudah permintaan selesai akan diblokir peramban sebagai popup.
+  const open = (attachment: KomiteAttachment) => {
+    const target = window.open('', '_blank')
+    if (target) target.opener = null
+    link.mutate(attachment.id, {
+      onSuccess: (found) => {
+        if (target) target.location.href = found.url
+        else window.open(found.url, '_blank', 'noopener,noreferrer')
+      },
+      onError: () => target?.close(),
+    })
+  }
+
+  // Nama berkas menjadi tautan, seperti kolom `.ATTACHNAME` pada PNCViewAttachmentKomite.
+  const supportingColumns: Column<KomiteAttachment>[] = documentColumns.map((c) =>
+    c.key === 'nama' && claimKey
+      ? {
+          ...c,
+          render: (r: KomiteAttachment) => (
+            <button
+              type="button"
+              className="break-all text-left text-sky-700 underline hover:text-sky-900 disabled:cursor-wait disabled:opacity-60"
+              disabled={link.isPending && link.variables === r.id}
+              onClick={() => open(r)}
+            >
+              {r.nama || 'dokumen'}
+            </button>
+          ),
+        }
+      : c,
+  )
+
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <DataTable
-        title="Dokumen Pendukung"
-        columns={documentColumns}
-        rows={attachments}
-        rowKey={(r) => r.id}
-        emptyMessage="Data Tidak Ada"
-        showHeaderWhenEmpty
-        hideSearch
-        searchable={false}
-      />
+      <div>
+        <DataTable
+          title="Dokumen Pendukung"
+          columns={supportingColumns}
+          rows={attachments}
+          rowKey={(r) => r.id}
+          emptyMessage="Data Tidak Ada"
+          showHeaderWhenEmpty
+          hideSearch
+          searchable={false}
+        />
+        {link.isError && (
+          <p role="alert" className="mt-2 text-sm text-red-700">
+            {link.error instanceof Error ? link.error.message : 'Dokumen tidak dapat dibuka.'}
+          </p>
+        )}
+      </div>
       <DataTable
         title="Dokumen Polis"
         description="Dokumen polis dibaca Pega dari layanan GetFilePolisByServiceKlaim, yang belum tersedia di sini."

@@ -483,6 +483,7 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 		FacOffers:       facOffers,
 		DominantFactors: dominant,
 		Attachments:     attachments,
+		ClaimKey:        d.ClaimKey,
 		Members:         entriesDTO(d.Members),
 		History:         entriesDTO(d.History),
 	}
