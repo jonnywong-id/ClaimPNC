@@ -19,15 +19,20 @@ const MaxPolicies = 500
 
 // Source membaca basis data LIVE. Pengisinya WAJIB hanya membaca.
 type Source interface {
-	// Objects mengembalikan baris T_PROPERTYLIST satu polis, seluruh versinya (PRODKE).
-	Objects(ctx context.Context, policyNo string) ([]ki.ObjectRow, error)
+	// Objects mengembalikan baris T_PROPERTYLIST satu polis yang lolos filter. Filter
+	// kosong berarti seluruh versi (PRODKE) dan seluruh objek.
+	Objects(ctx context.Context, policyNo string, filter ki.Filter) ([]ki.ObjectRow, error)
 }
 
 // Batch adalah seluruh tulisan untuk satu polis.
 type Batch struct {
 	PolicyNo string
-	Objects  []ki.ObjectRow // kolom BLOB-nya disalin ke TEST
-	Items    []ki.Row
+	// Filter yang dipakai membaca LIVE. Bila INDEXOBJECT terisi, penulis TEST WAJIB
+	// membatasi penghapusan item lama per objek — bukan per versi — supaya objek lain di
+	// versi yang sama tidak ikut terhapus.
+	Filter  ki.Filter
+	Objects []ki.ObjectRow // kolom BLOB-nya disalin ke TEST
+	Items   []ki.Row
 }
 
 // Applied adalah hasil penulisan satu polis.
@@ -66,14 +71,16 @@ type PolicyResult struct {
 
 // Report adalah laporan satu kali jalan.
 type Report struct {
-	UjiCoba   bool           `json:"uji_coba"`
-	Mulai     time.Time      `json:"mulai"`
-	Selesai   time.Time      `json:"selesai"`
-	Polis     []PolicyResult `json:"polis"`
-	Berhasil  int            `json:"berhasil"`
-	TidakAda  int            `json:"tidak_ditemukan"`
-	Gagal     int            `json:"gagal"`
-	TotalItem int            `json:"total_item"`
+	UjiCoba     bool           `json:"uji_coba"`
+	FilterProd  string         `json:"filter_prodke,omitempty"`
+	FilterIndex string         `json:"filter_indexobject,omitempty"`
+	Mulai       time.Time      `json:"mulai"`
+	Selesai     time.Time      `json:"selesai"`
+	Polis       []PolicyResult `json:"polis"`
+	Berhasil    int            `json:"berhasil"`
+	TidakAda    int            `json:"tidak_ditemukan"`
+	Gagal       int            `json:"gagal"`
+	TotalItem   int            `json:"total_item"`
 }
 
 // ErrBusy berarti konversi lain sedang berjalan.
@@ -102,12 +109,13 @@ func New(source Source, target Target, now func() time.Time) *Service {
 	return &Service{source: source, target: target, now: now}
 }
 
-// Run mengonversi daftar polis. commit=false menjalankan uji coba: seluruh tulisan
+// Run mengonversi daftar polis, dibatasi filter (kosong = seluruh PRODKE dan seluruh
+// INDEXOBJECT). commit=false menjalankan uji coba: seluruh tulisan
 // dijalankan di TEST lalu dibatalkan, sehingga angka laporannya sama dengan yang akan
 // terjadi.
 //
 // Satu polis yang gagal tidak menghentikan polis lain; transaksinya sendiri yang dibatalkan.
-func (s *Service) Run(ctx context.Context, policies []string, commit bool) (Report, error) {
+func (s *Service) Run(ctx context.Context, policies []string, filter ki.Filter, commit bool) (Report, error) {
 	if len(policies) == 0 {
 		return Report{}, ErrEmptyList
 	}
@@ -119,12 +127,12 @@ func (s *Service) Run(ctx context.Context, policies []string, commit bool) (Repo
 	}
 	defer s.running.Unlock()
 
-	report := Report{UjiCoba: !commit, Mulai: s.now()}
+	report := Report{UjiCoba: !commit, Mulai: s.now(), FilterProd: filter.ProdKe, FilterIndex: filter.IndexObject}
 	for _, policyNo := range policies {
 		if err := ctx.Err(); err != nil {
 			return report, err
 		}
-		result := s.one(ctx, policyNo, commit)
+		result := s.one(ctx, policyNo, filter, commit)
 		switch result.Status {
 		case "berhasil":
 			report.Berhasil++
@@ -140,10 +148,10 @@ func (s *Service) Run(ctx context.Context, policies []string, commit bool) (Repo
 	return report, nil
 }
 
-func (s *Service) one(ctx context.Context, policyNo string, commit bool) PolicyResult {
+func (s *Service) one(ctx context.Context, policyNo string, filter ki.Filter, commit bool) PolicyResult {
 	result := PolicyResult{PolicyNo: policyNo}
 
-	objects, err := s.source.Objects(ctx, policyNo)
+	objects, err := s.source.Objects(ctx, policyNo, filter)
 	if err != nil {
 		result.Status = "gagal"
 		result.Galat = fmt.Sprintf("membaca LIVE %s: %v", ki.ObjectTable, err)
@@ -152,10 +160,13 @@ func (s *Service) one(ctx context.Context, policyNo string, commit bool) PolicyR
 	if len(objects) == 0 {
 		result.Status = "tidak_ditemukan"
 		result.Galat = "nomor polis tidak ada di " + ki.ObjectTable + " LIVE"
+		if !filter.Empty() {
+			result.Galat = "tidak ada objek dengan " + filter.Describe() + " untuk nomor polis ini di " + ki.ObjectTable + " LIVE"
+		}
 		return result
 	}
 
-	batch := Batch{PolicyNo: policyNo, Objects: objects}
+	batch := Batch{PolicyNo: policyNo, Filter: filter, Objects: objects}
 	versions := map[string]bool{}
 	for _, object := range objects {
 		versions[object.ProdKe] = true

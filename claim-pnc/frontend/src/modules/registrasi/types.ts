@@ -845,6 +845,8 @@ export type DLARequest = {
   adjustment: number
   nomor?: string
   catatan?: Record<string, string>
+  /** Isian Email per nomor DLA; disimpan ke EMAILDLA saat PRINT bila berubah. */
+  email?: Record<string, string>
   sesuai_polis?: boolean
 }
 

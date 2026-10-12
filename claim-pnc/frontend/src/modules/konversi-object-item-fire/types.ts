@@ -31,9 +31,18 @@ export type PolicyResult = {
   galat?: string
 }
 
+/** Pembatas objek yang dikonversi. Isian kosong berarti tanpa batas. */
+export type ObjectFilter = {
+  prodke: string
+  indexobject: string
+}
+
 /** Jawaban POST /api/konversi-object-item-fire/jalankan. */
 export type Report = {
   uji_coba: boolean
+  /** Filter yang dipakai; tidak ada berarti seluruh PRODKE / seluruh INDEXOBJECT. */
+  filter_prodke?: string | undefined
+  filter_indexobject?: string | undefined
   mulai: string
   selesai: string
   polis: PolicyResult[]

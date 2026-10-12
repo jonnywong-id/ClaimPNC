@@ -7,7 +7,7 @@ import type {
 import { DataTable, type Column } from '@/components/DataTable'
 import { formatRupiah } from '@/lib/money'
 
-import { useAttachmentLink } from './api'
+import { AttachmentOpenError, useAttachmentOpener } from './AttachmentName'
 
 import { formatTanggal, formatWaktu } from './format'
 
@@ -162,49 +162,14 @@ const documentColumns: Column<KomiteAttachment>[] = [
  * Pega. Dokumen Polis dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
  */
 function Documents({ claimKey, attachments }: { claimKey: string; attachments: KomiteAttachment[] }) {
-  const link = useAttachmentLink(claimKey)
-
-  // Jendela dibuka LEBIH DULU, saat klik masih berlangsung, lalu diarahkan setelah alamatnya
-  // datang — membukanya sesudah permintaan selesai akan diblokir peramban sebagai popup.
-  const open = (attachment: KomiteAttachment) => {
-    const target = window.open('', '_blank')
-    if (target) target.opener = null
-    link.mutate(attachment.id, {
-      onSuccess: (found) => {
-        if (target) target.location.href = found.url
-        else window.open(found.url, '_blank', 'noopener,noreferrer')
-      },
-      onError: () => target?.close(),
-    })
-  }
-
-  const supportingColumns: Column<KomiteAttachment>[] = documentColumns.map((c) =>
-    c.key === 'nama' && claimKey
-      ? {
-          ...c,
-          render: (r: KomiteAttachment) =>
-            r.tersimpan ? (
-              <button
-                type="button"
-                className="break-all text-left text-sky-700 underline hover:text-sky-900 disabled:cursor-wait disabled:opacity-60"
-                disabled={link.isPending && link.variables === r.id}
-                onClick={() => open(r)}
-              >
-                {r.nama || 'dokumen'}
-              </button>
-            ) : (
-              (r.nama ?? '')
-            ),
-        }
-      : c,
-  )
+  const opener = useAttachmentOpener(claimKey)
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <div>
         <DataTable
           title="Dokumen Pendukung"
-          columns={supportingColumns}
+          columns={opener.withNameLink(documentColumns)}
           rows={attachments}
           rowKey={(r) => r.id}
           emptyMessage="Data Tidak Ada"
@@ -212,11 +177,7 @@ function Documents({ claimKey, attachments }: { claimKey: string; attachments: K
           hideSearch
           searchable={false}
         />
-        {link.isError && (
-          <p role="alert" className="mt-2 text-sm text-red-700">
-            {link.error instanceof Error ? link.error.message : 'Dokumen tidak dapat dibuka.'}
-          </p>
-        )}
+        <AttachmentOpenError message={opener.error} />
       </div>
       <DataTable
         title="Dokumen Polis"

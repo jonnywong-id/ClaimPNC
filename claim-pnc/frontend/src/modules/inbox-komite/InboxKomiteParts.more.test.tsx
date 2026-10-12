@@ -241,7 +241,7 @@ describe('ClaimSheet', () => {
   })
 
   it('PolicyTab dan AttachmentTab jatuh ke tanda pisah dan kalimat kosong', () => {
-    render(
+    renderBottom(
       <>
         <PolicyTab kasus={KASUS_KOSONG} />
         <AttachmentTab />
@@ -275,7 +275,7 @@ describe('ClaimSheet', () => {
   })
 
   it('AttachmentTab menulis lampiran beserta pengunggahnya', () => {
-    render(
+    renderBottom(
       <AttachmentTab
         transfer={transfer({
           lampiran: [{ id: 'A1', nama: 'foto.jpg', catatan: 'kerusakan', kategori: 'Foto', diunggah_oleh: 'PETUGAS' }],
@@ -285,6 +285,38 @@ describe('ClaimSheet', () => {
 
     expect(screen.getByText('foto.jpg')).toBeInTheDocument()
     expect(screen.getByText('PETUGAS')).toBeInTheDocument()
+  })
+
+  it('AttachmentTab membuka lampiran ber-IMAGEID lewat tautan dokumen klaim', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://storage.invalid/foto.jpg' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() }
+    const openMock = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+
+    renderBottom(
+      <AttachmentTab
+        transfer={transfer({
+          kunci_klaim: 'PNCN.26.35',
+          lampiran: [
+            { id: 'A1', nama: 'foto.jpg', tersimpan: true },
+            { id: 'A2', nama: 'lama.jpg', tersimpan: false },
+          ],
+        })}
+      />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'foto.jpg' }))
+
+    await waitFor(() => expect(tab.location.href).toBe('https://storage.invalid/foto.jpg'))
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/registrasi/klaim/PNCN.26.35/dokumen/A1/tautan')
+    expect(screen.queryByRole('button', { name: 'lama.jpg' })).not.toBeInTheDocument()
+
+    openMock.mockRestore()
+    vi.unstubAllGlobals()
   })
 })
 
@@ -997,19 +1029,37 @@ describe('KmtnDecisionForm', () => {
 
   it('mengabarkan isian yang kurang satu per satu dan galat simpan', async () => {
     let fail: Answer = { status: 409, body: { kode: 'bukan_giliran', pesan: 'Bukan giliran Anda.' } }
-    stubPages((_, init) =>
+    stubPages((url, init) =>
       init?.method === 'POST'
         ? fail
-        : { body: { id: 'KMTN.26.9', nomor_klaim: 'X', status: 'berjalan', menunggu: 'ELLENSUPRIYATI' } },
+        : String(url).includes('/api/master/penolakan-komite')
+          ? {
+              body: {
+                portal: 'ASM',
+                penolakan_komite: [
+                  { id: '1', catatan: 'Tidak dijamin polis' },
+                  { id: '2', catatan: 'Dokumen tidak lengkap' },
+                ],
+              },
+            }
+          : { body: { id: 'KMTN.26.9', nomor_klaim: 'X', status: 'berjalan', menunggu: 'ELLENSUPRIYATI' } },
     )
     const user = userEvent.setup()
     show()
 
-    await user.click(await screen.findByLabelText('Rejected'))
+    // Approved tidak memunculkan Reject Note; Rejected memunculkannya dan mewajibkannya.
+    await user.click(await screen.findByLabelText('Approved'))
+    expect(screen.queryByLabelText(/Reject Note/)).not.toBeInTheDocument()
+    await user.click(screen.getByLabelText('Rejected'))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
-    expect(screen.getByText('Catatan Komite is required.')).toBeInTheDocument()
+    expect(screen.getByText('Reject Note and Catatan Komite are required.')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText(/Catatan Komite/), 'tolak')
+    // Memilih Reject Note mengisi Catatan Komite dengan teks master (KomitePostAct).
+    const rejectNote = screen.getByLabelText(/Reject Note/)
+    await screen.findByRole('option', { name: 'Dokumen tidak lengkap' })
+    await user.selectOptions(rejectNote, '2')
+    expect(screen.getByLabelText(/Catatan Komite/)).toHaveValue('Dokumen tidak lengkap')
+
     await user.click(screen.getByRole('button', { name: 'Submit' }))
     expect(await screen.findByText('Bukan giliran Anda.')).toBeInTheDocument()
 

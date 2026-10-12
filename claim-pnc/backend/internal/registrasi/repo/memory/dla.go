@@ -112,6 +112,17 @@ func (s *DLA) Save(_ context.Context, d registrasi.DLA) error {
 	return nil
 }
 
+func (s *DLA) UpdateEmail(_ context.Context, claimID, number, email string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.Saved {
+		if s.Saved[i].ClaimID == claimID && s.Saved[i].Number == number {
+			s.Saved[i].Info.Email = email
+		}
+	}
+	return nil
+}
+
 func (s *DLA) MarkPrinted(_ context.Context, claimID, number, note string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

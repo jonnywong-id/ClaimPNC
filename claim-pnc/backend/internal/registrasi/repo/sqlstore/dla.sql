@@ -166,3 +166,11 @@ VALUES (:1, :2, :3, :4, :5, :6, '0', :7, :8, :9, :10, :11, :12, :13, :14, :15, :
 UPDATE POOLDATA.T_DLALIST
    SET NOTES = :1, ISDLA = '1'
  WHERE CLAIMID = :2 AND NODLA = :3 AND (REVISI = '0' OR REVISI IS NULL)
+
+-- name: dla_email
+--
+-- Isian Email layar PrintDLA (`.pyEmailAddress`, pxTextArea Editable). Padanan `pla_email`;
+-- kolomnya VARCHAR2(500), terukur dari ALL_TAB_COLUMNS 2026-10-12.
+UPDATE POOLDATA.T_DLALIST
+   SET EMAILDLA = :1
+ WHERE CLAIMID = :2 AND NODLA = :3 AND (REVISI = '0' OR REVISI IS NULL)

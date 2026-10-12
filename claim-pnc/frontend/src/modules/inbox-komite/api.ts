@@ -261,3 +261,29 @@ export function useAttachmentLink(claimKey: string) {
       ),
   })
 }
+
+/** Satu baris Master Penolakan Komite (`POOLDATA.MST_REJECTED_KOMITE`). */
+export type CommitteeRejection = { id: string; catatan: string }
+
+/**
+ * Pilihan "Reject Note" pada form keputusan — `KomitePenolakanMaster.pxResults` yang diisi
+ * `GetAllDataMasterRejected` (`GetMasterRejectedKomites`: IDMASTER, NOTEMASTER).
+ *
+ * Dibaca lewat endpoint Master Penolakan Komite yang sudah ada; bentuknya ditulis ulang di
+ * sini karena fitur tidak boleh mengimpor fitur lain.
+ */
+export function useRejectionNotes(enabled: boolean) {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useQuery({
+    queryKey: ['inbox-komite', 'penolakan-komite', portal, token] as const,
+    queryFn: () =>
+      callAPI<{ penolakan_komite?: CommitteeRejection[] }>('/api/master/penolakan-komite', {
+        token,
+        portal,
+      }),
+    enabled: enabled && token !== null,
+    staleTime: 5 * 60 * 1000,
+  })
+}

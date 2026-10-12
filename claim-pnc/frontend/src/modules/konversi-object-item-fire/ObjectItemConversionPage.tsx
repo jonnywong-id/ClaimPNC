@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
+import { Field } from '@/components/Field'
 import { TextAreaField } from '@/components/TextAreaField'
 
 import { useInfo, useRun } from './api'
-import type { ConnectionInfo, PolicyResult, Report } from './types'
+import type { ConnectionInfo, ObjectFilter, PolicyResult, Report } from './types'
 
 /**
  * Konversi Object Item Fire — menu `MENU_ID 88` (`KonversiObjekItemFire`).
@@ -18,6 +19,9 @@ import type { ConnectionInfo, PolicyResult, Report } from './types'
  *
  * sekaligus menyalin kolom BLOB-nya ke baris objek yang sama di TEST — kolom itulah yang
  * dibaca pilihan Objek item estimasi klaim Fire.
+ *
+ * PRODKE dan Index Object boleh diisi untuk membatasi objek yang dikonversi; bila
+ * dikosongkan, seluruh PRODKE dan seluruh Index Object polisnya ikut dikonversi.
  *
  * "Uji Coba" menjalankan seluruh tulisan di TEST lalu membatalkannya, sehingga angka di
  * laporan sama persis dengan yang akan terjadi — termasuk galat bentuk data.
@@ -31,6 +35,7 @@ export function ObjectItemConversionPage() {
   const [busy, setBusy] = useState<'test' | 'run' | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<ObjectFilter>({ prodke: '', indexobject: '' })
 
   // Daftar bawaan dari KONVERSI_POLIS mengisi kotak sekali, selama pengguna belum mengetik.
   useEffect(() => {
@@ -40,12 +45,17 @@ export function ObjectItemConversionPage() {
   const policies = text.split(/[\s,;]+/).filter((p) => p.trim() !== '')
   const unique = new Set(policies).size
   const ready = info.data?.live.lengkap && info.data?.test.lengkap && !info.data?.galat
+  const prodkeError = numberError(filter.prodke)
+  const indexError = numberError(filter.indexobject)
+  const filterValid = !prodkeError && !indexError
+  const scope = describeFilter(filter)
 
   async function execute(dryRun: boolean) {
     if (!dryRun) {
       const ok = window.confirm(
-        `Tulis hasil konversi ${unique} polis ke basis data TEST?\n\n` +
-          'Item objek lama polis tersebut di T_PROPERTYITEMLIST TEST akan dihapus lalu diganti, ' +
+        `Tulis hasil konversi ${unique} polis ke basis data TEST?\n` +
+          `Cakupan: ${scope}.\n\n` +
+          'Item objek lama dalam cakupan tersebut di T_PROPERTYITEMLIST TEST akan dihapus lalu diganti, ' +
           'dan kolom PROPERTYITEMLIST di T_PROPERTYLIST TEST ditimpa dengan isi LIVE.',
       )
       if (!ok) return
@@ -53,7 +63,7 @@ export function ObjectItemConversionPage() {
     setBusy(dryRun ? 'test' : 'run')
     setError(null)
     try {
-      setReport(await run(text, dryRun))
+      setReport(await run(text, dryRun, filter))
     } catch (e) {
       setReport(null)
       setError(e instanceof APIError ? e.message : 'Konversi gagal dijalankan.')
@@ -99,13 +109,34 @@ export function ObjectItemConversionPage() {
             setText(e.target.value)
           }}
           placeholder="Satu nomor polis per baris (boleh juga dipisah koma)"
-          hint={`${unique} nomor polis unik · maksimal ${info.data?.maks_polis ?? 500} per kali jalan · seluruh versi (PRODKE) ikut dikonversi`}
+          hint={`${unique} nomor polis unik · maksimal ${info.data?.maks_polis ?? 500} per kali jalan`}
         />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            id="filter-prodke"
+            label="PRODKE"
+            inputMode="numeric"
+            value={filter.prodke}
+            onChange={(e) => setFilter((f) => ({ ...f, prodke: e.target.value }))}
+            placeholder="Kosongkan untuk semua PRODKE"
+            error={prodkeError}
+          />
+          <Field
+            id="filter-indexobject"
+            label="Index Object"
+            inputMode="numeric"
+            value={filter.indexobject}
+            onChange={(e) => setFilter((f) => ({ ...f, indexobject: e.target.value }))}
+            placeholder="Kosongkan untuk semua Index Object"
+            error={indexError}
+          />
+        </div>
+        <p className="text-xs text-slate-500">Cakupan: {scope} — berlaku untuk setiap polis di daftar.</p>
         <div className="flex flex-wrap gap-2">
-          <Button tone="kedua" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(true)}>
+          <Button tone="kedua" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(true)}>
             {busy === 'test' ? 'Menjalankan uji coba…' : 'Uji Coba'}
           </Button>
-          <Button tone="utama" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(false)}>
+          <Button tone="utama" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(false)}>
             {busy === 'run' ? 'Mengonversi…' : 'Jalankan Konversi'}
           </Button>
         </div>
@@ -115,6 +146,19 @@ export function ObjectItemConversionPage() {
       {report && <ReportView report={report} />}
     </div>
   )
+}
+
+/** Pesan galat isian filter: kosong boleh, selain itu hanya bilangan bulat tak negatif. */
+function numberError(value: string): string | undefined {
+  const v = value.trim()
+  return v === '' || /^\d+$/.test(v) ? undefined : 'Isi dengan angka, atau kosongkan.'
+}
+
+/** Uraian cakupan konversi, mis. "PRODKE 1, semua Index Object". */
+function describeFilter(f: { prodke?: string | undefined; indexobject?: string | undefined }): string {
+  const p = f.prodke?.trim()
+  const i = f.indexobject?.trim()
+  return `${p ? `PRODKE ${p}` : 'semua PRODKE'}, ${i ? `Index Object ${i}` : 'semua Index Object'}`
 }
 
 function ConnectionCard({ title, info, loading }: { title: string; info: ConnectionInfo | undefined; loading: boolean }) {
@@ -150,6 +194,9 @@ function ReportView({ report }: { report: Report }) {
         <p className="mt-1 text-slate-700">
           {report.berhasil} berhasil · {report.tidak_ditemukan} tidak ditemukan · {report.gagal} gagal ·{' '}
           {report.total_item} baris item
+        </p>
+        <p className="mt-1 text-slate-500">
+          Cakupan: {describeFilter({ prodke: report.filter_prodke, indexobject: report.filter_indexobject })}
         </p>
       </div>
 

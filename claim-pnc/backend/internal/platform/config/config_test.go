@@ -431,3 +431,19 @@ func TestDevelopmentReinsurerLoginIsAcceptedOnMemoryStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "JONNY", cfg.DevelopmentReinsurerLogin, "spasi di ujung dipangkas")
 }
+
+// Pemeriksaan sertifikat SMTP hanya dimatikan bila SMTP_TLS_LEWATI_VERIFIKASI tepat "true";
+// kosong atau nilai lain tetap memeriksa.
+func TestSMTPSkipTLSVerifyOnlyWhenTrue(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  bool
+	}{{"", false}, {"false", false}, {"ya", false}, {"true", true}, {" TRUE ", true}} {
+		cleanEnv(t)
+		t.Setenv("SMTP_TLS_LEWATI_VERIFIKASI", tc.value)
+
+		cfg, err := config.Load()
+		require.NoError(t, err)
+		require.Equal(t, tc.want, cfg.SMTP.SkipTLSVerify, "nilai %q", tc.value)
+	}
+}

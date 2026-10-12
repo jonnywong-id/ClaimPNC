@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { callAPI } from '@/api/client'
 import { useSession } from '@/app/session'
 
-import type { Info, Report } from './types'
+import type { Info, ObjectFilter, Report } from './types'
 
 const PATH = '/api/konversi-object-item-fire'
 
@@ -22,13 +22,21 @@ export function useInfo() {
   })
 }
 
-/** Menjalankan konversi. `ujiCoba` menjalankan lalu membatalkan seluruh tulisan. */
+/**
+ * Menjalankan konversi. `ujiCoba` menjalankan lalu membatalkan seluruh tulisan. `filter`
+ * membatasi PRODKE dan/atau INDEXOBJECT; isian kosong berarti seluruhnya ikut dikonversi.
+ */
 export function useRun() {
   const token = useSession((s) => s.token)
-  return (polis: string, ujiCoba: boolean): Promise<Report> =>
+  return (polis: string, ujiCoba: boolean, filter: ObjectFilter): Promise<Report> =>
     callAPI<Report>(`${PATH}/jalankan`, {
       metode: 'POST',
       token,
-      body: { polis, uji_coba: ujiCoba },
+      body: {
+        polis,
+        uji_coba: ujiCoba,
+        prodke: filter.prodke.trim(),
+        indexobject: filter.indexobject.trim(),
+      },
     })
 }

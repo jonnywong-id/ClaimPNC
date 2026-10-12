@@ -446,6 +446,13 @@ func run() error {
 
 	logger := logging.New(slog.LevelInfo)
 	logger.Info("konfigurasi terbaca", slog.Any("konfigurasi", cfg.Summary()))
+	if cfg.SMTP.SkipTLSVerify {
+		logger.Warn("pemeriksaan sertifikat SMTP DIMATIKAN",
+			slog.String("sebab", "SMTP_TLS_LEWATI_VERIFIKASI=true"),
+			slog.String("berlaku_untuk", "PLA/DLA, TKA, Salvage, Master Rekening, Master XOL"),
+			slog.String("akibat", "sambungan tetap terenkripsi, tetapi identitas server surel tidak diperiksa"),
+			slog.String("perbaikan", "pasang sertifikat CA perusahaan di mesin aplikasi, lalu kosongkan sakelar ini"))
+	}
 
 	assembly, err := build(cfg, logger)
 	if err != nil {
@@ -4967,13 +4974,14 @@ func buildSalvageNotifier(cfg config.Config, logger *slog.Logger) inboxsalvage.N
 	}
 
 	return inboxsalvagenotif.NewSender(inboxsalvagenotif.Config{
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		To:       cfg.SMTP.SalvageRecipients,
-		Timeout:  cfg.SMTP.Timeout,
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		To:            cfg.SMTP.SalvageRecipients,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	})
 }
 
@@ -5014,14 +5022,15 @@ func buildReceiveTKANotifier(
 	logger *slog.Logger,
 ) inboxreceivetka.Notifier {
 	smtpConfig := inboxreceivetkanotif.Config{
-		Account:  emailAccountSource(store),
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		To:       cfg.SMTP.TKARecipients,
-		Timeout:  cfg.SMTP.Timeout,
+		Account:       emailAccountSource(store),
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		To:            cfg.SMTP.TKARecipients,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	}
 	if !smtpConfig.Complete() {
 		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
@@ -5076,14 +5085,15 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 	)
 
 	alertConfig := masterrekeningnotif.Config{
-		Account:  adminEmailAccountSource(cfg, store),
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		To:       cfg.SMTP.AlertRecipients,
-		Timeout:  cfg.SMTP.Timeout,
+		Account:       adminEmailAccountSource(cfg, store),
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		To:            cfg.SMTP.AlertRecipients,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	}
 	if alertConfig.Complete() {
 		notifier = masterrekeningnotif.NewSender(alertConfig)
@@ -7603,14 +7613,15 @@ func claimStatusSelectorMemory(primaryAlias string) masterstatus.RepoSelector {
 // belum dibangun.
 func buildXOLNotifier(cfg config.Config, store storage, logger *slog.Logger) masterxol.Notifier {
 	smtpConfig := masterxolnotif.Config{
-		Account:  emailAccountSource(store),
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		To:       cfg.SMTP.XOLCommitteeRecipients,
-		Timeout:  cfg.SMTP.Timeout,
+		Account:       emailAccountSource(store),
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		To:            cfg.SMTP.XOLCommitteeRecipients,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	}
 	if smtpConfig.Complete() {
 		return masterxolnotif.NewSender(smtpConfig)

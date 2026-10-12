@@ -81,6 +81,55 @@ func TestPrintDLAMarksPrinted(t *testing.T) {
 	require.True(t, strings.HasPrefix(after.DLA[0].Note, "Catatan uji\n- "), after.DLA[0].Note)
 }
 
+// Email DLA dapat diubah dan tersimpan saat PRINT — juga pada DLA yang sudah tercetak, karena
+// isian `.pyEmailAddress` di Pega Editable tanpa syarat.
+func TestPrintDLASavesEditedEmail(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task, _ := l.acceptedForDLA(t)
+	list, err := l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	number := list.DLA[0].Number
+
+	cmd := dlaCommand(task)
+	cmd.Number = number
+	cmd.Emails = map[string]string{number: "  reas@contoh.internal,klaim@contoh.internal  "}
+	_, err = l.service.PrintDLA(ctx, cmd, l.caller)
+	require.NoError(t, err)
+	after, err := l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	require.Equal(t, "reas@contoh.internal,klaim@contoh.internal", after.DLA[0].Info.Email)
+
+	cmd.Emails = map[string]string{number: "baru@contoh.internal"}
+	_, err = l.service.PrintDLA(ctx, cmd, l.caller)
+	require.NoError(t, err)
+	after, err = l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	require.True(t, after.DLA[0].Printed)
+	require.Equal(t, "baru@contoh.internal", after.DLA[0].Info.Email)
+}
+
+// Email lebih dari 500 karakter (EMAILDLA VARCHAR2(500)) ditolak sebelum apa pun ditulis.
+func TestPrintDLARejectsEmailOverColumnLength(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task, _ := l.acceptedForDLA(t)
+	list, err := l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	number := list.DLA[0].Number
+
+	cmd := dlaCommand(task)
+	cmd.Emails = map[string]string{number: strings.Repeat("a", usecase.DLAEmailMax+1)}
+	_, err = l.service.PrintDLA(ctx, cmd, l.caller)
+	var invalid *registrasi.ValidationError
+	require.ErrorAs(t, err, &invalid)
+	require.Equal(t, registrasi.ViolationDLAEmailTooLong, invalid.Violation[0].Code)
+
+	after, err := l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	require.False(t, after.DLA[0].Printed)
+}
+
 // Klaim ex gratia non-ASO tidak mendapat DLA (GenerateDLAList langkah 14).
 func TestListDLASkipsExGratia(t *testing.T) {
 	l := setup(t)
