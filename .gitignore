@@ -1,11 +1,34 @@
-# Hasil build, bukan sumber.
-#
-# `claimpnc.exe~` sempat ikut terlacak dan berukuran 28 MB. Ia bertabrakan pada SETIAP
-# merge — dua orang membangun binary yang berbeda dari sumber yang sama, dan git tidak
-# punya cara menggabungkan keduanya. Berkasnya tetap ada di komputer masing-masing;
-# yang dihentikan hanyalah pelacakannya.
-*.exe
-*.exe~
+# Berkas ini berlaku saat backend/ berdiri sebagai repo sendiri di GitLab —
+# .gitignore di claim-pnc/ tidak ikut terbawa ke repo itu.
 
 # Rahasia. `.env.example` tetap terlacak sebagai contoh yang isinya kosong.
 .env
+.env.*
+!.env.example
+
+# Biner hasil build
+*.exe
+*.exe~
+# Hanya biner di akar repo — tanpa garis miring, pola ini ikut mengabaikan cmd/claimpnc/.
+/claimpnc
+
+# Log saat aplikasi dijalankan lokal
+*.log
+
+# Hasil build SPA — dihasilkan `npm run build` di frontend/, disematkan saat go build.
+# .gitkeep sengaja ikut supaya `go build ./...` tetap jalan pada clone yang bersih.
+spa/dist/*
+!spa/dist/.gitkeep
+
+# Artefak CI dan laporan uji/analisis lokal
+coverage.out
+coverage.html
+test-report.json
+.go/
+.go-build/
+.sonar/
+.scannerwork/
+gl-code-quality-report.json
+
+# Contoh PDF yang dibangkitkan uji (REJECT_PDF_OUT). Bukan artefak sumber.
+.contoh-surat/
