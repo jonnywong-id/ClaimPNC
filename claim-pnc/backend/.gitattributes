@@ -1,6 +1,0 @@
-# Simpan dan checkout dengan LF di semua OS, supaya gofmt/Prettier di CI tidak gagal karena CRLF.
-* text=auto eol=lf
-*.png binary
-*.jpg binary
-*.ico binary
-*.woff2 binary
