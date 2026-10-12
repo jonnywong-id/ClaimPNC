@@ -51,7 +51,7 @@ func (brokenRepo) KPI(context.Context, inboxsurvey.SurveyorIdentity, inboxsurvey
 //
 // Itu memang kontraknya: kegagalan membaca ketersediaan tidak boleh menjatuhkan layar,
 // melainkan jatuh ke perilaku paling berhati-hati.
-func (brokenRepo) KPIYears(context.Context, inboxsurvey.SurveyorIdentity) ([]string, error) {
+func (brokenRepo) KPIYears(context.Context) ([]string, error) {
 	return nil, errors.New("rahasia basis data")
 }
 
@@ -133,9 +133,17 @@ func TestMetadataEndpoint(t *testing.T) {
 	require.Equal(t, string((inboxsurvey.Readiness{}).DefaultAvailableTab()), body["tab_bawaan"])
 	// Nilainya dikirim APA ADANYA, persis isi TipeData dan TipeExport di Pega — bukan kode
 	// pendek. Nilai yang sama itulah yang dibandingkan kueri terhadap kolom `tipe`.
+	// Keduanya TIDAK dirender layar (`K-105.29`), tetapi TETAP dikirim — bentuk jawabannya
+	// sengaja sama dengan ~30 layar lain. Ia pernah hilang diam-diam dari DTO, dan yang
+	// menangkapnya adalah pembacaan manusia, bukan satu pun uji. Ini penangkapnya.
+	require.NotNil(t, body["selisih_terencana"])
+	require.NotNil(t, body["keterbatasan"])
+
 	require.Equal(t, []any{"ALL", "OUTSTANDING", "FINAL"}, body["status_survei"])
 	require.Equal(t, []any{"DATA SUMMARY", "DATA DETAIL"}, body["tipe_report"])
-	require.Equal(t, []any{"1", "2", "3", "4"}, body["kuartal"])
+	// Urut seperti `Data Transform/GetListQuartal`: "ALL" di puncak, lalu keempat kuartal.
+	// Layar membangun dropdown dari daftar ini apa adanya, tanpa menyisipkan apa pun.
+	require.Equal(t, []any{"ALL", "1", "2", "3", "4"}, body["kuartal"])
 	require.EqualValues(t, inboxsurvey.DefaultLimit, body["ukuran_halaman"])
 	require.Len(t, body["kolom"], 13)
 	require.Len(t, body["kolom_kpi"], 9)

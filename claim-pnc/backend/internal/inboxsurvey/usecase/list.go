@@ -7,9 +7,13 @@
 //	Counts    jumlah baris ketujuh tab, untuk bilah tab
 //	KPI       ringkasan KPI adjuster
 //
-// Tidak ada operasi yang menulis. Menerima penugasan, menjadwal ulang survei, dan mengunggah
-// laporan seluruhnya menempuh `Surveyor_Flow` — sebuah flow yang TIDAK ADA di export — dan
-// penugasan masih dimiliki Pega selama masa paralel (`P-1`).
+// Tidak ada operasi yang menulis, dan itu sifat ANTREAN — bukan soal kepemilikan tabel.
+// `POOLDATA.T_SURVEYORLIST` sudah ditulis aplikasi ini sendiri lewat modul Registrasi
+// (`survey_sisip` saat surveyor ditunjuk, `survey_batal` saat survei dibatalkan).
+//
+// Yang masih ditempuh di Pega adalah MENGERJAKAN penugasannya — Final Report, Invoice Fee,
+// Close Case, dan reschedule, seluruhnya lewat `Flow/Surveyor_Flow.xml`. Layar penggantinya
+// belum ada di aplikasi ini.
 package usecase
 
 import (
@@ -427,9 +431,10 @@ func Limitations(ready inboxsurvey.Readiness) []string {
 		// yang sudah tidak ada, dan itu persis cacat yang diperbaiki 2026-10-07.
 		return []string{
 			"Membuka baris untuk mengerjakan surveinya belum tersedia. Di layar lama tautannya " +
-				"membuka penugasan `Surveyor_Flow`, dan flow itu tidak ada di export — " +
-				"`Flow/` hanya memuat empat, dan itu bukan salah satunya. Selama masa paralel " +
-				"penugasan tetap dikerjakan di Pega.",
+				"membuka penugasan `Surveyor_Flow`, dan layar penggantinya belum ada di " +
+				"aplikasi ini. Menunjuk surveyor dan membatalkan survei SUDAH dikerjakan modul " +
+				"Registrasi; yang belum adalah layar MENGERJAKAN surveinya — Final Report, " +
+				"Invoice Fee, Close Case, dan reschedule masih ditempuh di Pega.",
 
 			"ENAM padanan kolom masih BELUM diuji ke basis data, dan seluruhnya dipakai hari " +
 				"ini: Claim No (`CASEID_1`), Policy No (`POLICYNO`), Insured Name (`QQNAME`), " +
@@ -440,6 +445,14 @@ func Limitations(ready inboxsurvey.Readiness) []string {
 				"terbuka — `BrowseCommunicationLostAdjuster` menyambung ke " +
 				"`pc_assign_worklist` lewat `a.pzInsKey = b.pxrefobjectkey`. Modul ini tidak " +
 				"membawa penyaring itu, sehingga tabnya dapat memuat lebih banyak baris.",
+
+			"Angka tab KPI DIBACA apa adanya dari `POOLDATA.DETAIL_KPI_ADJUSTER`, sedangkan " +
+				"Pega MENGHITUNG ULANG lalu menulisinya lebih dulu setiap kali tombol ditekan: " +
+				"`GetReportKPIAdjuster` langkah 3 memanggil `ReportKPILoginAdjuster_act` tanpa " +
+				"syarat, dan activity itu menempuh `CallProcedureInsertKPISurvey` → " +
+				"`POOLDATA.INSERT_KPIADJUSTER` yang menyisip DAN memperbarui tabel itu. Selama " +
+				"masa paralel tabel itu tetap ditulis Pega (`P-1`), sehingga angka di sini " +
+				"semutakhir pemakaian panel KPI Pega terakhir — bukan semutakhir klik di layar ini.",
 
 			"Pemeriksaan kewenangan menu belum ada (`TKT-F3-005`). Yang menjaga layar ini " +
 				"sekarang adalah sesi, portal aktif, dan penyaring identitas surveyor.",
@@ -491,9 +504,18 @@ func Limitations(ready inboxsurvey.Readiness) []string {
 			"membawa penyaring itu, sehingga tabnya dapat memuat lebih banyak baris.",
 
 		"Membuka baris untuk mengerjakan surveinya belum tersedia. Di layar lama tautannya " +
-			"membuka penugasan `Surveyor_Flow`, dan flow itu tidak ada di export — " +
-			"`Flow/` hanya memuat empat, dan itu bukan salah satunya. Selama masa paralel " +
-			"penugasan tetap dikerjakan di Pega.",
+			"membuka penugasan `Surveyor_Flow`, dan layar penggantinya belum ada di " +
+			"aplikasi ini. Menunjuk surveyor dan membatalkan survei SUDAH dikerjakan modul " +
+			"Registrasi; yang belum adalah layar MENGERJAKAN surveinya — Final Report, " +
+			"Invoice Fee, Close Case, dan reschedule masih ditempuh di Pega.",
+
+		"Angka tab KPI DIBACA apa adanya dari `POOLDATA.DETAIL_KPI_ADJUSTER`, sedangkan " +
+			"Pega MENGHITUNG ULANG lalu menulisinya lebih dulu setiap kali tombol ditekan: " +
+			"`GetReportKPIAdjuster` langkah 3 memanggil `ReportKPILoginAdjuster_act` tanpa " +
+			"syarat, dan activity itu menempuh `CallProcedureInsertKPISurvey` → " +
+			"`POOLDATA.INSERT_KPIADJUSTER` yang menyisip DAN memperbarui tabel itu. Selama " +
+			"masa paralel tabel itu tetap ditulis Pega (`P-1`), sehingga angka di sini " +
+			"semutakhir pemakaian panel KPI Pega terakhir — bukan semutakhir klik di layar ini.",
 
 		"Pemeriksaan kewenangan menu belum ada (`TKT-F3-005`). Yang menjaga layar ini " +
 			"sekarang adalah sesi, portal aktif, dan penyaring identitas surveyor.",
@@ -659,12 +681,15 @@ func (s *Service) KPIYears(
 	portalAlias string,
 	caller inboxsurvey.Caller,
 ) ([]string, error) {
-	identity, repo, err := s.prepare(ctx, portalAlias, caller)
+	// Identitas tetap diperiksa meski kuerinya tidak memakainya: pemanggil yang bukan
+	// surveyor tidak berhak membuka layar ini sama sekali, dan dropdown yang terisi bagi
+	// orang yang tidak berhak adalah jawaban yang salah sejak pertanyaannya.
+	_, repo, err := s.prepare(ctx, portalAlias, caller)
 	if err != nil {
 		return nil, err
 	}
 
-	years, err := repo.KPIYears(ctx, identity)
+	years, err := repo.KPIYears(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("mengambil daftar tahun KPI: %w", err)
 	}

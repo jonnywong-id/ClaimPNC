@@ -37,7 +37,7 @@ func (f failingRepo) KPI(context.Context, inboxsurvey.SurveyorIdentity, inboxsur
 	return nil, f.err
 }
 
-func (f failingRepo) KPIYears(context.Context, inboxsurvey.SurveyorIdentity) ([]string, error) {
+func (f failingRepo) KPIYears(context.Context) ([]string, error) {
 	return nil, f.err
 }
 
@@ -110,7 +110,7 @@ func TestMetadataDescribesTabsColumnsAndDefaults(t *testing.T) {
 	require.Equal(t, (inboxsurvey.Readiness{}).DefaultAvailableTab(), meta.DefaultTab)
 	require.Equal(t, inboxsurvey.DefaultLimit, meta.PageSize)
 	require.Len(t, meta.PlannedDifferences, 6)
-	require.Len(t, meta.Limitations, 10)
+	require.Len(t, meta.Limitations, 11)
 
 	cols := usecase.Columns(inboxsurvey.Readiness{})
 	cols[0].Key = "rusak"

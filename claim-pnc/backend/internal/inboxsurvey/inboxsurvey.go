@@ -981,11 +981,31 @@ func (r ReportType) Valid() bool {
 	return r == ReportSummary || r == ReportDetail
 }
 
-// Quarters mengembalikan keempat kuartal untuk mengisi dropdown.
+// Quarters mengembalikan isi dropdown Kuartal, **urut seperti di Pega**.
 //
-// Di Pega ia `TempAdjComp.Initial`, dan `GetReportKPIAdjuster` mencabangkannya dengan
-// `@contains(TempAdjComp.Initial,"1")` … `"4"`.
-func Quarters() []string { return []string{"1", "2", "3", "4"} }
+// Ini salinan `Data Transform/GetListQuartal` apa adanya — rule itu tidak ada di export
+// (`R-16`), dan isinya dibacakan Work Owner dari layar Pega pada 2026-10-12:
+//
+//	1  Remove  TempKuartal
+//	2  Set     TempKuartal.pxResults(<APPEND>).Email := "ALL"
+//	3  Set     TempKuartal.pxResults(<APPEND>).Email := "1"
+//	4  Set     TempKuartal.pxResults(<APPEND>).Email := "2"
+//	5  Set     TempKuartal.pxResults(<APPEND>).Email := "3"
+//	6  Set     TempKuartal.pxResults(<APPEND>).Email := "4"
+//
+// Tiga hal yang mengikat dan terbaca dari situ:
+//
+//   - **`ALL` adalah anggota daftar**, bukan tambahan antarmuka. Ia ditulis di rule-nya,
+//     sehingga tempatnya di sini — bukan ditempel di komponen layar.
+//   - **`ALL` berada di PUNCAK**, mendahului keempat kuartal.
+//   - **Teks sama dengan nilai.** Kendalinya menyetel `pyPrompt` dan `pyValue` pada properti
+//     yang sama (`.Email`), dan rule-nya mengisi properti itu dengan string di atas.
+//
+// Tidak ada pilihan kosong di dalam rule; `--Pilih--` disumbang kendalinya, bukan daftarnya.
+//
+// `GetReportKPIAdjuster` kemudian mencabangkan nilainya dengan `@contains(…,"1")` … `"4"`
+// untuk keempat kuartal, dan `Initial==""||Initial=="ALL"` untuk `ALL`.
+func Quarters() []string { return []string{QuarterAll, "1", "2", "3", "4"} }
 
 // KPIFilter adalah penyaring panel KPI, satu field per kendali di layar Pega.
 type KPIFilter struct {
@@ -1017,9 +1037,30 @@ func (s SurveyStatus) QuarterApplies() bool {
 // QuarterAll adalah pilihan "seluruh kuartal" pada kendali Kuartal.
 //
 // Terbaca dari percabangan `Activity/GetReportKPIAdjuster-Act.xml`, yang membedakan
-// `@contains(Initial,"1")`…`"4"` dari `Initial==""||Initial=="ALL"`. Isi daftar pilihannya
-// sendiri — `TempKuartal.pxResults` — TIDAK ADA di export (`R-16`); yang terbaca hanyalah
-// nilai yang benar-benar dicabangkan.
+// `@contains(Initial,"1")`…`"4"` dari `Initial==""||Initial=="ALL"`.
+//
+// # Daftar pilihannya berasal dari rule yang HILANG, dan rule itu kini punya nama
+//
+// Kendali Kuartal diisi sebuah **Data Transform**, bukan activity:
+//
+//	pyDTName        = GetListQuartal
+//	pyRunPreDT      = true
+//	pySourceName    = TempKuartal.pxResults
+//	pyPrompt        = .Email      (teks yang tampil)
+//	pyValue         = .Email      (nilai yang dikirim — sama dengan teksnya)
+//
+// `Data Transform/GetListQuartal-DT.xml` **TIDAK ADA di export** (`R-16`). Direktorinya
+// terkirim dengan 87 berkas; yang satu ini bukan salah satunya.
+//
+// Bentuknya dapat diperkirakan dari saudaranya yang ADA, `Data Transform/GetListYear-DT.xml`:
+// sebuah daftar literal — `REMOVE TempYear`, lalu dua belas `SET TempYear.pxResults(<APPEND>)
+// .TreatyYear := "2015"` … `"2025"`. Daftar seperti itu tidak dapat diturunkan dari data mana
+// pun; ia harus dibaca.
+//
+// Karena itu `1`–`4` di sini disusun ulang dari nilai yang BENAR-BENAR dicabangkan activity-
+// nya, dan `ALL` dari cabang `Initial==""||Initial=="ALL"`. Yang belum dapat dipastikan adalah
+// TEKS yang tampil di layar lama — `GetListYear` membuktikan teks dan nilai boleh sama persis,
+// tetapi tidak membuktikan `GetListQuartal` menuliskannya "1" dan bukan "Kuartal 1".
 const QuarterAll = "ALL"
 
 // CategoryValue adalah nilai yang dikirim ke penyaring kolom `tipe`.
@@ -1151,10 +1192,24 @@ func (f KPIFilter) Normalize() KPIFilter {
 // Dideklarasikan DI SINI, di paket yang memakainya — bukan di paket yang memenuhinya. Diisi
 // `repo/sqlstore` terhadap Oracle dan `repo/memory` untuk pengujian.
 //
-// Ia hanya MEMBACA. Menerima penugasan, menjadwal ulang survei, dan mengunggah laporan
-// seluruhnya menempuh `Surveyor_Flow` — sebuah flow yang TIDAK ADA di export (`Flow/` hanya
-// memuat empat, dan itu bukan salah satunya). Selama masa paralel penugasan tetap milik Pega
-// (`P-1`), sehingga ketiadaan method tulis di sini bukan kekurangan melainkan batas.
+// Ia hanya MEMBACA, dan alasannya BUKAN karena `T_SURVEYORLIST` milik Pega — tabel itu sudah
+// ditulis aplikasi ini sendiri.
+//
+// # Siapa menulis apa hari ini (diperiksa 2026-10-12)
+//
+//	menunjuk surveyor/adjuster    aplikasi ini   registrasi `survey_sisip`  (CASEID SRVN.YY.n)
+//	batal survei                  aplikasi ini   registrasi `survey_batal`
+//	kemajuan adjuster             PEGA           `Flow/Surveyor_Flow.xml`
+//	  Final Report · Invoice Fee · Close Case · reschedule
+//
+// Yang masih milik Pega adalah **MENGERJAKAN** penugasannya — assignment `InputSurveyorDetail`,
+// `ReviewSurveyorDetail`, `InputSurveyDetail`, `Review`, dengan aksi `RescheduleBack` dan
+// `CloseSurvey` atas kelas `ASM-FW-GCNMFW-Work-SurveyClaim`. Belum ada layar penggantinya di
+// aplikasi ini.
+//
+// Jadi yang menahan method tulis di sini sederhana: modul ini adalah ANTREAN, dan antrean tidak
+// mengubah pekerjaan — layar yang mengerjakannya yang mengubah. `P-1` tetap berlaku pada kolom
+// yang masih ditulis Pega, bukan pada seluruh tabelnya.
 type Repo interface {
 	// List mengambil satu halaman satu tab.
 	//
@@ -1179,8 +1234,16 @@ type Repo interface {
 	// Ia TERPISAH dari KPI karena dibutuhkan SEBELUM tombol Cari ditekan — dropdown yang
 	// kosong sampai pencarian pertama bukan dropdown, melainkan kotak teks yang menyamar.
 	//
-	// Isinya direkonstruksi dari data; lihat kueri kpi_years untuk alasannya.
-	KPIYears(ctx context.Context, identity SurveyorIdentity) ([]string, error)
+	// # Kenapa TANPA identitas, satu-satunya method di seam ini yang begitu
+	//
+	// Karena rule aslinya tidak menyaring adjuster sama sekali
+	// (`RDB List/GetTahunKPIAdjuster-SQL.xml`): daftar tahunnya sama bagi setiap pengguna
+	// layar ini. Menerima identitas lalu tidak memakainya akan membuat pembaca berikutnya
+	// menduga ia disaring, padahal tidak.
+	//
+	// Kewenangan tetap diperiksa — pemanggil wajib terdaftar sebagai surveyor — tetapi itu
+	// terjadi di lapisan aplikasi, bukan di dalam kuerinya.
+	KPIYears(ctx context.Context) ([]string, error)
 
 	// Readiness melaporkan kolom mana yang benar-benar dapat dipakai di portal ini.
 	//
