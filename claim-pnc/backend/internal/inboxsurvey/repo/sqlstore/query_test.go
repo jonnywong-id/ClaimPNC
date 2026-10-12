@@ -761,7 +761,7 @@ func TestSetiapParameterKueriDipasokRepo(t *testing.T) {
 		"kpi_by_year":         {"scope", "year", "quarter"},
 		"kpi_by_quarter_year": {"scope", "year"},
 		"kpi_detail":          {"scope", "year", "quarter"},
-		"kpi_years":           {"scope"},
+		"kpi_years":           {"final_report", "close_case", "invoice_fee"},
 	}
 
 	for name, names := range dipasok {
@@ -779,6 +779,59 @@ func TestSetiapParameterKueriDipasokRepo(t *testing.T) {
 		for _, n := range names {
 			require.Containsf(t, bindNames(queries[name]), n,
 				"repo mengirim :%s ke kueri %s yang tidak memakainya", n, name)
+		}
+	}
+}
+
+// TestDaftarTahunMenerjemahkanRulenya mengunci kpi_years terhadap rule aslinya.
+//
+// `RDB List/GetTahunKPIAdjuster-SQL.xml` adalah pre-activity kendali "Tahun Kuartal", dan
+// ia membaca objek kerja survei — BUKAN tabel KPI:
+//
+//	select to_char(PXSAVEDATETIME, 'yyyy') as "AdjusterPIC"
+//	  from datapega.pc_asm_fw_gcnmfw_work
+//	 where pxobjclass = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+//	   and ADJUSTERSTATUS_1 in ('Final Report','Close Case','Invoice Fee')
+//	 group by to_char(PXSAVEDATETIME, 'yyyy')
+//
+// Tiga hal dikunci di sini, dan ketiganya pernah SALAH pada versi sebelumnya:
+//
+//  1. Tabelnya `T_SURVEYORLIST`, bukan `DETAIL_KPI_ADJUSTER`. Versi sebelumnya membaca
+//     tabel KPI — tabel yang rule aslinya tidak sentuh sama sekali.
+//  2. Ketiga status adjuster disaring. Versi sebelumnya mematok `tipe` pada tabel yang salah.
+//  3. TANPA penyaring cakupan. Versi sebelumnya menyaringnya — karangan saya sendiri, dan ia
+//     membuat daftar tahun berbeda antar pengguna sementara di Pega ia sama bagi semua.
+func TestDaftarTahunMenerjemahkanRulenya(t *testing.T) {
+	tahun := strings.ToUpper(tanpaKomentar(queries["kpi_years"]))
+
+	require.Contains(t, tahun, "POOLDATA.T_SURVEYORLIST",
+		"kpi_years membaca tabel yang salah; rule aslinya membaca objek kerja survei")
+	require.Contains(t, tahun, "S.STS_SURVEY IN (:FINAL_REPORT, :CLOSE_CASE, :INVOICE_FEE)",
+		"kpi_years tidak menyaring ketiga status adjuster yang rule aslinya saring")
+	require.Contains(t, tahun, "TO_CHAR(S.TGLINPUT, 'YYYY')",
+		"kpi_years tidak memakai TGLINPUT, padanan PXSAVEDATETIME")
+
+	require.NotContains(t, tahun, "DETAIL_KPI_ADJUSTER",
+		"kpi_years membaca tabel KPI; rule aslinya tidak menyentuhnya sama sekali")
+	require.NotContains(t, tahun, ":SCOPE",
+		"kpi_years menyaring cakupan; rule aslinya tidak menyaring adjuster sama sekali")
+}
+
+// TestTidakSatuPunKueriMenyentuhTabelEnginePega mengikat keputusan Work Owner 2026-09-28.
+//
+// `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` dan `DATAPEGA.PC_ASSIGN_WORKLIST` dicabut dari pemakaian,
+// begitu pula tabel cermin `POOLDATA.T_CLAIM_SURVEY_DATAPEGA` (2026-09-30). Penyebutannya di
+// komentar justru DIPERTAHANKAN — ia mencatat apa yang digantikan — sehingga uji ini membaca
+// teks kueri saja.
+func TestTidakSatuPunKueriMenyentuhTabelEnginePega(t *testing.T) {
+	terlarang := []string{"DATAPEGA.", "PC_ASSIGN_WORKLIST", "PC_ASM_FW_GCNMFW_WORK",
+		"T_CLAIM_SURVEY_DATAPEGA"}
+
+	for name, text := range queries {
+		body := strings.ToUpper(tanpaKomentar(text))
+		for _, kata := range terlarang {
+			require.NotContainsf(t, body, kata,
+				"kueri %s menyentuh %s, yang sudah dicabut dari pemakaian", name, kata)
 		}
 	}
 }

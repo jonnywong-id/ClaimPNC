@@ -79,6 +79,10 @@ type Config struct {
 
 	// Timeout membatasi lama menunggu server SMTP. Nol berarti nilai baku.
 	Timeout time.Duration
+
+	// SkipTLSVerify mematikan pemeriksaan sertifikat server saat STARTTLS —
+	// SMTP_TLS_LEWATI_VERIFIKASI. Lihat config.SMTP.SkipTLSVerify untuk akibatnya.
+	SkipTLSVerify bool
 }
 
 // Complete menyatakan konfigurasi ini cukup untuk mengirim surel.
@@ -174,8 +178,10 @@ func (s *Sender) send(ctx context.Context, to []string, message []byte) error {
 	// Ini menutup satu temuan nyata: export memuat `UseSSL=false` pada SELURUH
 	// kemunculannya, sementara 16 dari 31 lokasi memakai port 587 (`R-17`).
 	secured := false
+	// ServerName wajib diisi: tanpa itu (dan tanpa InsecureSkipVerify) STARTTLS selalu gagal.
+	tlsConfig := &tls.Config{ServerName: s.cfg.Host, InsecureSkipVerify: s.cfg.SkipTLSVerify} //nolint:gosec // sakelar SMTP_TLS_LEWATI_VERIFIKASI, mati secara baku
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host}); err != nil {
+		if err := client.StartTLS(tlsConfig); err != nil {
 			return fmt.Errorf("masterxol/notification: menegakkan TLS: %w", err)
 		}
 		secured = true

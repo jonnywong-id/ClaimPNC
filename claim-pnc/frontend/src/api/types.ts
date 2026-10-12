@@ -5347,6 +5347,8 @@ export type KomiteAttachment = {
   kategori?: string
   diunggah_oleh?: string
   diunggah_pada?: string
+  /** Punya IMAGEID di layanan penyimpanan; hanya lampiran ini yang namanya dapat dibuka. */
+  tersimpan?: boolean
 }
 
 /** Keputusan komite **menurut Pega**, dari `POOLDATA.T_CLAIM_KOMITE_LIST`. */
@@ -5412,6 +5414,8 @@ export type KomiteTransferDetail = {
   fac_out?: KomiteFacOffer[]
   faktor_dominan?: string[]
   lampiran?: KomiteAttachment[]
+  /** Kunci klaim (`T_CLAIM_PNC.CLAIMID`) untuk membuka lampiran; kosong bila belum tertaut. */
+  kunci_klaim?: string
   /** Daftar Komite — anggota case ini. */
   daftar_komite?: KomiteCommitteeEntry[]
   /** History of Previous Adjustment Committees — case komite lain milik klaim yang sama. */

@@ -127,7 +127,10 @@ func TestProbeKueri(t *testing.T) {
 	jalankan("kpi_by_year", sql.Named("scope", cakupan), sql.Named("year", nil), sql.Named("quarter", "3"))
 	jalankan("kpi_by_quarter_year", sql.Named("scope", cakupan), sql.Named("year", nil))
 	jalankan("kpi_detail", sql.Named("scope", cakupan), sql.Named("year", nil), sql.Named("quarter", nil))
-	jalankan("kpi_years", sql.Named("scope", cakupan))
+	jalankan("kpi_years",
+		sql.Named("final_report", inboxsurvey.StatusFinalReport),
+		sql.Named("close_case", inboxsurvey.StatusCloseCase),
+		sql.Named("invoice_fee", inboxsurvey.StatusInvoiceFee))
 
 	fmt.Println("--- pemeriksa kesiapan ---")
 	jalankan("check_new_columns")

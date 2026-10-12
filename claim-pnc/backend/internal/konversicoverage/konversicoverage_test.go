@@ -125,3 +125,35 @@ func TestCoverageAnekaMembawaIndexTAnekaList(t *testing.T) {
 	_, has := got.Coverage[0]["INDEXTANEKALIST"]
 	require.False(t, has, "lini selain Aneka tidak diberi kolom ini")
 }
+
+func TestNewFilter(t *testing.T) {
+	f, err := NewFilter("  ", "")
+	require.NoError(t, err)
+	require.True(t, f.Empty(), "kosong berarti seluruh PRODKE dan INDEXOBJECT")
+
+	f, err = NewFilter(" 01 ", "003")
+	require.NoError(t, err)
+	require.Equal(t, Filter{ProdKe: "1", IndexObject: "3"}, f)
+	require.Equal(t, "PRODKE 1, INDEXOBJECT 3", f.Describe())
+
+	f, err = NewFilter("0", "")
+	require.NoError(t, err)
+	require.Equal(t, "0", f.ProdKe)
+
+	_, err = NewFilter("1a", "")
+	require.ErrorIs(t, err, ErrInvalidFilter)
+	_, err = NewFilter("", "-1")
+	require.ErrorIs(t, err, ErrInvalidFilter)
+}
+
+func TestCoverageObjectKey(t *testing.T) {
+	aneka, cargo := Lines[0], Lines[1]
+	col, val := CoverageObjectKey(aneka, ObjectRow{IndexObject: "3", ListIndex: "7"})
+	require.Equal(t, "INDEXTANEKALIST", col)
+	require.Equal(t, "7", val)
+	_, val = CoverageObjectKey(aneka, ObjectRow{IndexObject: "3"})
+	require.Equal(t, "3", val)
+	col, val = CoverageObjectKey(cargo, ObjectRow{IndexObject: "3", ListIndex: "7"})
+	require.Equal(t, "INDEXOBJECT", col)
+	require.Equal(t, "3", val)
+}

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject } from 'react'
 
-import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
 import { centsToRupiah, rupiahToCents } from '@/components/format'
 
 import { AcceptanceNumber } from './AcceptanceNumber'
-import { SettlementHistory } from './SettlementHistory'
+import { EmptyCommitteeTable, SettlementHistory } from './SettlementHistory'
 import { SupportingFilesButton } from './SupportingFiles'
 import { useAddSettlement, usePreviewSettlement, useUpdateSettlement, violationsFrom } from './api'
 import {
@@ -70,7 +69,7 @@ const VAT_OPTIONS = [
 const EMPTY = '——'
 
 /** Hapus baris tersimpan butuh soft delete, sedangkan T_CLAIM_ADJUSTMENT belum punya DIHAPUS_PADA. */
-const DELETE_NEEDS_COLUMN = 'Deleting a saved line needs column DIHAPUS_PADA on POOLDATA.T_CLAIM_ADJUSTMENT (DBA).'
+export const DELETE_NEEDS_COLUMN = 'Deleting a saved line needs column DIHAPUS_PADA on POOLDATA.T_CLAIM_ADJUSTMENT (DBA).'
 const PREVIEW_DELAY_MS = 300
 
 /** Persen × 10.000 menjadi teks yang dapat disunting kembali (`105000` → `10,5`). */
@@ -131,6 +130,12 @@ type Values = {
   tipe_vat: string
 }
 
+/** SettlementEditorHandle: menyimpan isian SEKARANG (Transfer ke Komite, Unggah File Penunjang). */
+export interface SettlementEditorHandle {
+  /** Indeks baris tersimpan (berbasis 0). Ditolak bila isian belum lengkap atau server menolak. */
+  save: () => Promise<number>
+}
+
 export function SettlementEditor({
   claimID,
   taskID,
@@ -147,7 +152,7 @@ export function SettlementEditor({
   analystTransfer = false,
   existing,
   onCreated,
-  onClose,
+  saveRef,
 }: {
   claimID: string
   taskID: string
@@ -178,6 +183,8 @@ export function SettlementEditor({
   onCreated?: (index: number) => void
   /** Hapus pada baris yang belum tersimpan. */
   onClose: () => void
+  /** Pegangan simpan-sekarang untuk pemanggil. */
+  saveRef?: RefObject<SettlementEditorHandle | null> | undefined
 }) {
   const add = useAddSettlement(claimID)
   const update = useUpdateSettlement(claimID)
@@ -235,6 +242,18 @@ export function SettlementEditor({
     vat: fee ? percentE4(values.vat) : 0,
   }
   const malformed = Object.values(numbers).some((n) => Number.isNaN(n))
+  // Isian bertanda * yang masih kosong. Baris BARU baru disimpan setelah semuanya terisi:
+  // menyimpan lebih awal hanya memunculkan penolakan server sebelum petugas sempat mengisi.
+  const blank = (v: string) => v.trim() === ''
+  const incomplete =
+    pt === '' ||
+    (proposeBased &&
+      (((!pa || analystTransfer) && blank(values.total_klaim)) ||
+        blank(values.nilai_pengajuan) ||
+        blank(values.tipe_resiko) ||
+        (withPercent && blank(values.persen_resiko)) ||
+        (manualRisk && blank(values.nilai_resiko)))) ||
+    (fee && (blank(values.professional_fee) || blank(values.survey_expenses) || blank(values.vat)))
 
   const request: SettlementRequest = {
     tugas_id: taskID,
@@ -267,41 +286,68 @@ export function SettlementEditor({
     return () => window.clearTimeout(timer)
   }, [requestKey, malformed, runPreview])
 
-  // Baris tersimpan: indeksnya (berbasis 0). Baris baru: null sampai simpan pertama berhasil.
-  const savedIndex = existing?.index ?? null
+  // Baris tersimpan: indeksnya (berbasis 0). Baris baru: null sampai simpan pertama berhasil —
+  // atau indeks hasil simpan-sekarang, selama baris ini masih terbuka sebagai baris baru.
+  const [createdIndex, setCreatedIndex] = useState<number | null>(null)
+  const savedIndex = existing?.index ?? createdIndex
   const lastSaved = useRef(existing ? requestKey : '')
-  const { mutate: runAdd } = add
-  const { mutate: runUpdate } = update
+  const [localError, setLocalError] = useState<string | null>(null)
+  const { mutateAsync: addAsync } = add
+  const { mutateAsync: updateAsync } = update
+
+  // persist menyimpan isian saat ini: baris baru disisipkan, baris tersimpan diubah bila berbeda.
+  const persist = useCallback(async (): Promise<number> => {
+    if (malformed) {
+      setLocalError('Angka tidak valid.')
+      throw new Error('malformed')
+    }
+    if (savedIndex === null && incomplete) {
+      setLocalError('Lengkapi isian bertanda * lebih dulu.')
+      throw new Error('incomplete')
+    }
+    setLocalError(null)
+    const body = JSON.parse(requestKey) as SettlementRequest
+    if (savedIndex === null) {
+      const result = await addAsync(body)
+      lastSaved.current = requestKey
+      const count = result?.klaim?.objek?.[object - 1]?.coverage[coverage - 1]?.adjustment?.length ?? 0
+      const n = Math.max(count - 1, 0)
+      setCreatedIndex(n)
+      return n
+    }
+    if (requestKey !== lastSaved.current) {
+      await updateAsync({ ...body, adjustment: savedIndex + 1 })
+      lastSaved.current = requestKey
+    }
+    return savedIndex
+  }, [malformed, incomplete, savedIndex, requestKey, addAsync, updateAsync, object, coverage])
+  useImperativeHandle(saveRef, () => ({ save: persist }), [persist])
+
   useEffect(() => {
     if (!commitPending) return
     setCommitPending(false)
     if (malformed || requestKey === lastSaved.current) return
-    const body = JSON.parse(requestKey) as SettlementRequest
-    if (savedIndex === null) {
-      runAdd(body, {
-        onSuccess: (result) => {
-          lastSaved.current = requestKey
-          const count = result?.klaim?.objek?.[object - 1]?.coverage[coverage - 1]?.adjustment?.length ?? 0
-          if (count > 0) onCreated?.(count - 1)
-        },
+    if (savedIndex === null && incomplete) return
+    const wasNew = savedIndex === null
+    persist()
+      .then((n) => {
+        if (wasNew) onCreated?.(n)
       })
-    } else {
-      runUpdate({ ...body, adjustment: savedIndex + 1 }, { onSuccess: () => (lastSaved.current = requestKey) })
-    }
-  }, [commitPending, requestKey, malformed, savedIndex, runAdd, runUpdate, object, coverage, onCreated])
+      .catch(() => {})
+  }, [commitPending, requestKey, malformed, incomplete, savedIndex, persist, onCreated])
 
   const line = computed?.adjustment
   const saveError = savedIndex === null ? add.error : update.error
   const saving = add.isPending || update.isPending
   const violations = violationsFrom(saveError)
-  const failure = saveError ?? preview.error
+  const failure = localError !== null ? new Error(localError) : (saveError ?? preview.error)
   const money = (sen: number | undefined) => (line && sen !== undefined ? amount.format(sen / 100) : EMPTY)
 
   return (
     <div
       role="group"
       aria-label={existing ? `Ubah adjustment ${existing.index + 1}` : 'Adjustment baru'}
-      className="rounded border border-blue-200 bg-white p-4 text-sm"
+      className="bg-white text-sm"
     >
       <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
         {/* ── Kolom kiri ─────────────────────────────────────────────────────── */}
@@ -444,18 +490,33 @@ export function SettlementEditor({
         </div>
       )}
 
-      {/* Pega tidak punya Simpan/Batal: setiap perubahan isian langsung disimpan. Hapus menghapus baris. */}
-      <div className="mt-4 flex items-center justify-end gap-3">
-        {saving && <span className="text-xs text-slate-500">Menyimpan…</span>}
-        <Button
-          tone="halus"
-          disabled={saving || savedIndex !== null}
-          title={savedIndex !== null ? DELETE_NEEDS_COLUMN : undefined}
-          onClick={onClose}
-        >
-          Hapus
-        </Button>
-      </div>
+      {/* Status Penerimaan Komite dan Unggah File Penunjang di bawah isian, seperti InputAdjustment_sect. */}
+      {savedIndex !== null ? (
+        <SettlementHistory claimID={claimID} object={object} coverage={coverage} adjustment={savedIndex + 1} alwaysCommittee />
+      ) : (
+        <EmptyCommitteeTable />
+      )}
+      {savedIndex === null && incomplete && (
+        <p className="mt-3 text-xs text-slate-600">
+          Lengkapi isian bertanda <span className="text-orange-600">*</span>. Adjustment tersimpan otomatis setelah isiannya lengkap,
+          atau saat Transfer ke Komite dan Unggah File Penunjang.
+        </p>
+      )}
+      <SupportingFilesButton
+        claimID={claimID}
+        address={{ tugas_id: taskID, objek: object, jaminan: coverage, adjustment: (savedIndex ?? 0) + 1 }}
+        prepare={async () => {
+          const n = await persist()
+          return { tugas_id: taskID, objek: object, jaminan: coverage, adjustment: n + 1 }
+        }}
+        onClosed={() => {
+          // Baris baru yang tersimpan lewat tombol ini diserahkan ke grid setelah dialog ditutup.
+          if (!existing && createdIndex !== null) onCreated?.(createdIndex)
+        }}
+      />
+
+      {/* Pega tidak punya Simpan/Batal: setiap perubahan isian langsung disimpan. Hapus ada di baris grid. */}
+      {saving && <p className="mt-3 text-right text-xs text-slate-500">Menyimpan…</p>}
     </div>
   )
 }

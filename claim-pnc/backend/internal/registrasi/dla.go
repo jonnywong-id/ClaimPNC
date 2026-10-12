@@ -174,6 +174,9 @@ type DLASource interface {
 	Save(ctx context.Context, d DLA) error
 	// MarkPrinted mengisi NOTES dan ISDLA = '1' — PRINT pertama.
 	MarkPrinted(ctx context.Context, claimID, number, note string) error
+	// UpdateEmail mengganti email penerima DLA (EMAILDLA) — isian Email layar PrintDLA
+	// (`.pyEmailAddress`, Editable). Di dalam UnitOfWork.
+	UpdateEmail(ctx context.Context, claimID, number, email string) error
 }
 
 // DLARenderer mengubah DLA menjadi dokumen yang diunduh.

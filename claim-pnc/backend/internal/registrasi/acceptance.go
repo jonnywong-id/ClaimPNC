@@ -326,6 +326,20 @@ const (
 	CommitteeProgress2  = "24"
 )
 
+// Posisi REGISTER dibuka saat klaim dibuat — `CreateInputKlaim_PNC` langkah 7–8 (klaim dari
+// layar registrasi) dan `CreateRegisterKlaimPNC` langkah 33–34 (klaim dari berkas RCV). Jalur
+// RCV lebih dulu menutup posisi LAPORAN KLAIM berkasnya (langkah 6–7, kategori UPDATE).
+const (
+	PositionRegister     = "REGISTER"
+	RegisterProgressNote = "Auto Create Register"
+	RegisterProgress1    = "002"
+	RegisterProgress2    = "2"
+	PositionReport       = "LAPORAN KLAIM"
+	ReportFinishNote     = "Auto Finish Laporan"
+	ReportProgress1      = "001"
+	ReportProgress2      = "61"
+)
+
 // Progres akseptasi — `SetAdjustmentAcceptation` langkah 69–70 dan 95–96.
 const (
 	AcceptanceProgress1     = "014"

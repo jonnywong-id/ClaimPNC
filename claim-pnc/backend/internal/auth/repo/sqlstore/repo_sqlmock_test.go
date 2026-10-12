@@ -45,24 +45,21 @@ func TestLegacyFindActive(t *testing.T) {
 	legacy := NewLegacy(db)
 	require.Same(t, db, legacy.DB())
 
-	loginColumns := []string{"ID", "NAMA", "DETAIL_BRANCH_CODE"}
+	// DUA kolom saja. Kueri ini sempat mengembalikan `DETAIL_BRANCH_CODE` dari
+	// `LEFT JOIN POOLDATA.V_HRD_M_MST`; gabungan itu dicabut 2026-10-11 karena cabang hanya
+	// boleh datang dari layanan HCC — lihat catatan pada kueri.
+	loginColumns := []string{"ID", "NAMA"}
 
-	// Pengguna yang ADA di master HRD lokal membawa cabangnya. Inilah yang memperbaiki
-	// "Cabang Anda belum terdaftar" pada pengguna yang cabangnya sebenarnya tercatat.
 	mock.ExpectQuery(q("local_login_find_active")).WithArgs("admin", "abc").
-		WillReturnRows(sqlmock.NewRows(loginColumns).AddRow("admin", "Admin PNC", " 001 "))
+		WillReturnRows(sqlmock.NewRows(loginColumns).AddRow("admin", "Admin PNC"))
 	got, err := legacy.FindActive(context.Background(), "admin", "abc")
 	require.NoError(t, err)
-	require.Equal(t, provider.LocalLogin{
-		LoginID: "admin", LoginName: "Admin PNC", DetailBranchCode: "001",
-	}, got, "spasi di sekitar kode cabang harus dipangkas")
+	require.Equal(t, provider.LocalLogin{LoginID: "admin", LoginName: "Admin PNC"}, got)
 
-	// Broker dan surveyor independen TIDAK ada di HRD, sehingga LEFT JOIN mengembalikan
-	// NULL. Mereka tetap harus dapat masuk — yang kosong hanya cabangnya.
 	mock.ExpectQuery(q("local_login_find_active")).WithArgs("broker", "abc").
-		WillReturnRows(sqlmock.NewRows(loginColumns).AddRow("broker", "Broker Rekanan", nil))
+		WillReturnRows(sqlmock.NewRows(loginColumns).AddRow("broker", "Broker Rekanan"))
 	got, err = legacy.FindActive(context.Background(), "broker", "abc")
-	require.NoError(t, err, "cabang NULL tidak boleh menggagalkan login")
+	require.NoError(t, err)
 	require.Equal(t, provider.LocalLogin{LoginID: "broker", LoginName: "Broker Rekanan"}, got)
 
 	mock.ExpectQuery(q("local_login_find_active")).WillReturnRows(sqlmock.NewRows(loginColumns))

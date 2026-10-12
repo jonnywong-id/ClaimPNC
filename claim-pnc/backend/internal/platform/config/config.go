@@ -524,6 +524,21 @@ type SMTP struct {
 	Password string
 	From     string
 
+	// SkipTLSVerify (SMTP_TLS_LEWATI_VERIFIKASI=true) mematikan pemeriksaan sertifikat
+	// server SMTP saat STARTTLS, untuk kelima modul pengirim surel (PLA/DLA, TKA,
+	// Salvage, Master Rekening, Master XOL).
+	//
+	// Ada karena server surel internal memakai sertifikat yang ditandatangani CA
+	// perusahaan, yang tidak dikenal mesin aplikasi — STARTTLS gagal dengan "x509:
+	// certificate signed by unknown authority" dan TIDAK ADA surel yang terkirim.
+	//
+	// Akibat yang diterima saat menyalakannya: sambungan tetap TERENKRIPSI, tetapi
+	// identitas server tidak diperiksa, sehingga pihak yang dapat menyela jaringan dapat
+	// menyamar sebagai server surel dan membaca isi surel beserta sandi SMTP. Perbaikan
+	// yang sebenarnya adalah memasang sertifikat CA perusahaan di mesin aplikasi; saat itu
+	// sakelar ini dimatikan kembali. Keadaannya disebut di log saat start.
+	SkipTLSVerify bool
+
 	// AlertRecipients adalah mailbox Tim IT yang menerima peringatan kegagalan
 	// integrasi. Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_PERINGATAN.
 	//
@@ -910,6 +925,7 @@ func Load() (Config, error) {
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),
 			Password:        os.Getenv("SMTP_PASSWORD"),
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
+			SkipTLSVerify:   strings.EqualFold(strings.TrimSpace(os.Getenv("SMTP_TLS_LEWATI_VERIFIKASI")), "true"),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
 			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
 
@@ -1107,9 +1123,10 @@ func (k Config) Summary() map[string]any {
 		"kasir_aktif":        k.Cashier.Active(),
 		// Disebut di log saat start supaya keadaan "penerbit VA sungguhan menyala"
 		// tidak pernah menjadi hal yang baru diketahui setelah rekening terbit.
-		"virtual_account_sungguhan": k.VirtualAccount.Live(),
-		"smtp_aktif":                k.SMTP.Active(),
-		"smtp_tka_aktif":            k.SMTP.TKAActive(),
+		"virtual_account_sungguhan":  k.VirtualAccount.Live(),
+		"smtp_aktif":                 k.SMTP.Active(),
+		"smtp_tka_aktif":             k.SMTP.TKAActive(),
+		"smtp_tls_lewati_verifikasi": k.SMTP.SkipTLSVerify,
 	}
 }
 

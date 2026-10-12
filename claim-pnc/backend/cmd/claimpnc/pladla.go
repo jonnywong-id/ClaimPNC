@@ -250,13 +250,14 @@ func buildPLADLAServices(
 	// alasan yang persis sama.
 	konfigurasiSurat := inboxpladlapredlanotif.Config{
 		// Email Account Pega "Admin-PNC" (UpdateDetailPLA2/UpdateDetailDLA2).
-		Account:  adminEmailAccountSource(cfg, store),
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		Timeout:  cfg.SMTP.Timeout,
+		Account:       adminEmailAccountSource(cfg, store),
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	}
 
 	var pengirimSurat inboxpladlapredla.Notifier
@@ -421,13 +422,14 @@ func newSurveyCommitteeMailer(cfg config.Config, store storage) registrasi.Surve
 		account = store.emailServer.With(cfg.SMTP.SurveyAccount).Account
 	}
 	c := inboxpladlapredlanotif.Config{
-		Account:  account,
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		Timeout:  cfg.SMTP.Timeout,
+		Account:       account,
+		Host:          cfg.SMTP.Host,
+		Port:          cfg.SMTP.Port,
+		User:          cfg.SMTP.User,
+		Password:      cfg.SMTP.Password,
+		From:          cfg.SMTP.From,
+		Timeout:       cfg.SMTP.Timeout,
+		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
 	}
 	if !c.Complete() {
 		return nil

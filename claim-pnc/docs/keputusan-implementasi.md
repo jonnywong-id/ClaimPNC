@@ -42755,3 +42755,258 @@ sehingga penulisnya aplikasi lain.
 
 Ini **tidak menghalangi** modul Master Login: layar ini memang hanya mencatat data. Dicatat
 supaya pertanyaannya tidak hilang.
+
+## 182. Rute bebas portal dipasang di luar grup, bukan dipaksa membawa portal (2026-10-11)
+
+**Keputusan.** `GET /inbox-accept-open-protection/antrean` dipindah **ke luar** grup
+`portalhttp.ActivePortal`. Peramban tidak mengirim `X-Portal` untuknya, dan itu benar.
+
+**Dasarnya dua, dan keduanya diperiksa sebelum diputuskan.**
+
+1. **Rutenya memang tidak menyentuh data entitas.** `Queues` hanya membaca group lewat
+   `GroupReader`, yang komentarnya sendiri menetapkan memakai **koneksi utama** — bukan
+   koneksi portal — karena `D-78` menetapkan satu identitas berlaku di keempat portal.
+   Membacanya dari koneksi portal justru akan membuat kewenangan seseorang berubah-ubah
+   mengikuti entitas yang sedang dibuka.
+
+2. **Lima modul lain sudah memakai pola itu**, sebagai baris pertama `Mount` dengan komentar
+   eksplisit: `master/detail-penyebab/pilihan`, `master/panel/pilihan`,
+   `master/pasal-kerugian/kategori`, `master/posisi-klaim`, `inbox-auto-claim/tab`. Modul ini
+   satu-satunya yang menyimpang.
+
+**Pilihan yang DITOLAK: mengirim `X-Portal` dari peramban.** Ia berfungsi dan sempat
+diterapkan, tetapi menyimpang dari pola repo untuk keuntungan nol — dan ia memasang
+ketergantungan palsu: daftar antrean menjadi menunggu portal siap, padahal jawabannya tidak
+bergantung padanya sama sekali.
+
+**Batas yang dijaga.** Memindahkan satu rute keluar hanya sah selama rute yang **membaca
+data** tetap di dalam grup. `TestDaftarTetapMenuntutPortal` menjaganya: tanpa uji itu,
+pemindahan berikutnya dapat menyeret rute lain keluar dan membuka data entitas yang bukan hak
+pemanggil (`R-20`).
+
+---
+
+## 183. Kueri yang nonaktif tidak boleh menyamar sebagai pemuatan (2026-10-11)
+
+**Keputusan.** Syarat rangka pemuatan ditambah `queue !== null`:
+
+```tsx
+isLoading={list.isPending && portal !== null && queue !== null}
+```
+
+**Alasan.** Di TanStack Query v5, kueri ber-`enabled: false` tetap berstatus `pending`. Itu
+bukan "sedang memuat" melainkan "tidak pernah dijalankan", dan memperlakukan keduanya sama
+menghasilkan rangka pemuatan yang berputar **selamanya**.
+
+Bedanya bukan kosmetik: pengguna membaca rangka pemuatan sebagai **lambat** dan menunggu;
+ia membaca pesan galat sebagai **gagal** dan melapor. Yang pertama membuat cacat bertahan
+tanpa dilaporkan.
+
+**Aturan umum yang diturunkan darinya:** setiap `isLoading` yang diberi `isPending` dari kueri
+bersyarat WAJIB ikut menyebut syaratnya. Bila syaratnya berubah, syarat di sini ikut berubah.
+
+---
+
+## 184. Kegagalan daftar antrean harus bersuara, bukan hanya 403 (2026-10-11)
+
+**Keputusan.** Galat selain 403 atas `/antrean` memunculkan pesan tersendiri — "Daftar antrean
+gagal dimuat" bernada *gangguan*, dibedakan dari penolakan kewenangan bernada *penolakan*.
+
+**Alasan.** Sebelumnya hanya 403 yang ditampilkan. Penolakan jenis lain — portal tidak
+disebut, sesi kedaluwarsa, basis data terganggu — tidak memunculkan apa pun, dan satu-satunya
+gejalanya adalah tabel yang memuat tanpa henti.
+
+Keduanya dibedakan karena **pekerjaan perbaikannya berbeda**: yang satu meminta akses ke
+administrator, yang lain melaporkan gangguan. Pesan yang sama untuk keduanya membuat yang
+pertama dicoba, dan hampir pasti salah.
+
+---
+
+## 185. Catatan penjelas di bawah tabel dihapus (2026-10-11)
+
+**Keputusan.** Paragraf keterangan di bawah tabel Inbox Accept Open Protection dihapus, atas
+permintaan Work Owner.
+
+**Alasan.** Ia tidak punya padanan di Pega — `Section/InputProtection_Section-Section.xml`
+tidak memuat keterangan apa pun di bawah gridnya. Menghapusnya mendekatkan layar ke aslinya
+(`D-13`), bukan menjauhkannya.
+
+**Riwayatnya menjelaskan kenapa ia tidak layak dipertahankan.** Isinya sudah usang dua kali:
+versi pertama menyatakan kedua antrean dapat dibuka siapa pun selama tabel peran belum terisi
+— keadaan yang berakhir saat kewenangan ditegakkan 2026-09-28, dan sejak itu keliru. Work
+Owner menanyakan maksudnya justru karena ia tidak lagi cocok dengan yang dilihatnya.
+
+Aturan yang sebenarnya hidup di `QueuesFor` (`authorization.go`) beserta alasannya. Menyalin
+aturan ke teks layar membuatnya hidup di dua tempat, dan yang di layar akan tertinggal — ia
+tidak punya uji yang menggagalkannya saat aturannya berubah.
+
+### K-105.34 · Tombol panel KPI tidak pernah mati; isian wajib ditandai saat ditekan
+
+**Keputusan.** Tombol **Cari** dan **Export Data** selalu dapat ditekan, labelnya tidak
+berganti, dan pemeriksaan isian wajib terjadi **saat ditekan** — menandai isian yang kosong,
+bukan mematikan tombolnya.
+
+**Dasar.** `pyDisabled` bernilai `false` pada seluruh kemunculannya di panel KPI
+(`Section/InboxSurvey_section-Section.xml`). Mematikannya adalah tambahan saya sendiri.
+
+**Sebab ia bukan sekadar soal kesetiaan.** Tombol kelabu tidak menyatakan **apa** yang kurang.
+Pengguna harus menebak isian mana yang menahannya; layar lama menjawabnya langsung.
+
+**Yang ikut dibuang.** Baris petunjuk tetap *"Pilih Status Survey dan Tipe Report lebih dulu…"*
+— Pega tidak punya baris seperti itu, dan pesannya kini muncul di isian yang bersangkutan,
+tepat saat dibutuhkan.
+
+**Lebar kendali diseragamkan** mengikuti `pyWidth = 130`. Lebar yang berbeda-beda membuat satu
+bilah penyaring terlihat seperti dirakit dari dua layar.
+
+**Yang TIDAK diikuti: palet.** Tombol Pega oranye; aplikasi ini memakai temanya sendiri di 30+
+layar. `D-13` menetapkan alur dan tata letak yang diikuti, bukan warnanya — menyamakan satu
+layar akan membuatnya menyimpang dari seluruh aplikasi.
+
+**Perbaikan menyusul:** `selisih_terencana` dipulihkan ke `MetadataResponse` setelah ketahuan
+hilang, melanggar `K-105.29`. Penjaganya kini ada di `TestMetadataEndpoint`.
+
+Terkait: `84.33` · `K-105.29` · `D-13`
+
+### K-105.35 · Daftar tahun diturunkan dari laporan yang disaringnya, bukan dari seluruh tabel
+
+**Keputusan.** `kpi_years` memakai **predikat yang sama persis** dengan ketiga laporan yang
+kendali Tahun Kuartal saring — termasuk `tipe='FINAL'` — dikurangi penyaring tahunnya sendiri.
+
+**Sebab.** Ketiga laporan itu mematok `tipe='FINAL'` di dalam rule Pega-nya. Daftar tahun yang
+dibangun tanpa penyaring itu menawarkan tahun yang hasilnya **dijamin kosong**, dan kosongnya
+terbaca sebagai "tidak ada datanya" — bukan "pilihan itu memang tidak pernah berlaku".
+
+**Kenapa ini yang setara, bukan tebakan.** Rule pengisi `TahunKPI` tidak ada di export
+(`R-16`); yang terbaca hanya bentuknya — dropdown ber-`--Pilih--`, berkelas
+`ASM-FW-GCNMFW-Data-Survey`. Yang dapat dipastikan adalah **apa yang laporannya terima**, dan
+daftar yang tepat sama dengan itu tidak dapat salah ke dua arah: tidak menawarkan yang mustahil,
+tidak menyembunyikan yang ada.
+
+**Tanpa tabel engine Pega.** Hanya `POOLDATA.DETAIL_KPI_ADJUSTER`, tabel yang sama dengan
+kelima laporan KPI. `TestTidakSatuPunKueriMenyentuhTabelEnginePega` menjaganya, dan ia membaca
+teks kueri saja — penyebutan di komentar justru dipertahankan karena mencatat apa yang dilepas
+(Work Owner 2026-09-28 dan 2026-09-30).
+
+Terkait: `84.34` · `K-105.33` · `R-16`
+
+### K-105.36 · Daftar tahun adalah penerjemahan `GetTahunKPIAdjuster`, bukan turunan laporan
+
+**Keputusan.** `kpi_years` menerjemahkan `RDB List/GetTahunKPIAdjuster-SQL.xml` apa adanya,
+dengan `datapega.pc_asm_fw_gcnmfw_work` diganti `POOLDATA.T_SURVEYORLIST`.
+
+**Yang disupersede.** `K-105.35` menurunkan daftar tahun dari laporan yang disaringnya
+(`DETAIL_KPI_ADJUSTER`, `tipe='FINAL'`, disaring cakupan). Rule aslinya membuktikan ketiganya
+salah: tabelnya berbeda, penyaringnya tiga status adjuster, dan **tidak ada penyaring cakupan
+sama sekali**.
+
+Entri itu tidak disunting; yang berlaku adalah entri ini.
+
+**Konsekuensi yang diterima.** Daftar tahun **sama bagi setiap pengguna**, dan dapat menawarkan
+tahun yang bagi pemanggil tertentu berisi nol baris. Itu perilaku layar lama (`P-5`).
+
+**Satu pelajaran yang dicatat.** Penyapuan saya memakai nama HALAMAN (`TahunKPI`), bukan nama
+activity-nya (`GetTahunKPIAdjuster`) — dan karena tidak ketemu, saya menyimpulkan rule-nya
+hilang lalu mengarang penggantinya. Nama halaman dan nama pengisinya adalah dua hal berbeda;
+yang kedua hanya terbaca dari `pyPreActivity` pada cell property kendalinya.
+
+Terkait: `84.35` · `K-105.35` (disupersede) · `P-5`
+
+### K-105.37 · Modul tetap baca-saja atas dasar `P-1`, bukan atas dasar flow yang hilang
+
+**Keputusan.** `Repo` tetap tanpa method tulis. Dasarnya **`P-1`** — selama masa paralel,
+penugasan survei masih ditulis Pega.
+
+**Yang dikoreksi.** Lima komentar menyatakan dasarnya adalah `Surveyor_Flow` yang tidak ada di
+export. Flow itu **ada** (`Flow/Surveyor_Flow.xml`, 6 berkas di `Flow/`, bukan 4). Alasan yang
+salah sudah diganti alasan yang benar; keputusannya sendiri tidak berubah.
+
+**Pelajaran.** Dua alasan yang menuju kesimpulan sama tidak sama kuat. Yang satu (`P-1`)
+keputusan tertulis; yang satu lagi klaim faktual yang tidak pernah saya periksa ulang setelah
+export bertambah. Menumpuk keduanya membuat yang lemah ikut terbawa sebagai kebenaran.
+
+Terkait: `84.36` · `P-1` · `R-16`
+
+### K-105.38 · Tab KPI membaca saja; jalur hitung-ulang Pega TIDAK dibawa
+
+**Keputusan.** Tab KPI membaca `POOLDATA.DETAIL_KPI_ADJUSTER` apa adanya. Jalur hitung-ulang
+Pega — `ReportKPILoginAdjuster_act` → `CallProcedureInsertKPISurvey` →
+`POOLDATA.INSERT_KPIADJUSTER` — tidak dibawa.
+
+**Dasar.** `P-1`. Prosedur itu `INSERT` **dan** `UPDATE` tabel yang masih ditulis Pega.
+Menjalankannya dari Go menjadikan dua sistem menulis satu tabel — persis yang `P-1` larang.
+
+**Konsekuensi yang diterima.** Angka KPI di layar ini semutakhir pemakaian panel KPI Pega
+terakhir, bukan semutakhir klik penggunanya. Dinyatakan di daftar keterbatasan layar, kedua
+cabang.
+
+**Yang menjadi pertanyaan Work Owner.** Apakah jalur hitung-ulang dibawa ke Go, dan bila ya,
+kapan kepemilikan `DETAIL_KPI_ADJUSTER` berpindah. Keduanya keputusan kepemilikan tabel, bukan
+keputusan teknis.
+
+Terkait: `84.37` · `P-1` · `K-105.38`
+
+### K-105.39 · Pilihan Kuartal tetap `1`–`4` + `ALL` sampai `GetListQuartal` diterima
+
+**Keputusan.** Daftar pilihan Kuartal tetap `1`, `2`, `3`, `4`, `ALL` — nilai yang terbaca dari
+percabangan `Activity/GetReportKPIAdjuster-Act.xml`.
+
+**Yang berubah dari sebelumnya.** Bukan isinya, melainkan **statusnya**. Sebelumnya dicatat
+sebagai "daftar tanpa rule mana pun"; kini diketahui rule-nya **ada dan bernama**
+`GetListQuartal`, sebuah Data Transform yang **hilang dari export**. Diminta lewat
+`permintaan-artefak-pega.md` bab 22.
+
+**Yang masih terbuka setelah rule itu tiba.** Hanya **teks** pilihannya. `pyPrompt` dan
+`pyValue` kendali itu sama-sama `.Email`, jadi teks dan nilai adalah string yang sama — bila
+`GetListQuartal` menuliskan `"Kuartal 1"`, maka nilainya pun `"Kuartal 1"`, dan
+`@contains(Initial,"1")` tetap cocok. Perubahannya karena itu **hanya label**, dan tidak
+menyentuh satu pun angka hasil hitungan.
+
+**Kenapa tidak menunggu.** Menahan panel KPI demi label yang sudah pasti cocok akan menahan
+seluruh fitur demi perbedaan kosmetik.
+
+Terkait: `84.38` · `R-16` · `D-39` · `P-5`
+
+### K-105.40 · Daftar Kuartal adalah salinan `GetListQuartal`, dan satu-satunya sumbernya server
+
+**Keputusan.** `Quarters()` = `["ALL","1","2","3","4"]` — salinan `Data Transform/GetListQuartal`
+apa adanya, termasuk urutannya. Layar menggambarnya **apa adanya** dari server.
+
+**Yang disupersede.** `K-105.39` mencatat daftar ini sebagai rekonstruksi dari percabangan
+activity, dengan teks yang belum pasti. Isi rule-nya dibacakan Work Owner 2026-10-12; teks
+terbukti sama dengan nilai, dan `ALL` terbukti anggota daftarnya sendiri — bukan tambahan
+antarmuka seperti yang diterapkan sebelumnya.
+
+**Yang berubah di kode.** `ALL` pindah dari komponen layar ke daftar server. Sebelumnya
+backend mengirim empat nilai dan frontend menyisipkan yang kelima; sekarang satu sumber.
+
+**Yang TIDAK berubah.** Tidak satu angka pun. Penyaringannya memang sudah benar — activity
+memakai `@contains` untuk kuartal dan kecocokan persis hanya untuk `ALL`.
+
+**Bentuk bukti yang dipakai.** Tangkapan layar rule di Pega, bukan berkas export. Karena itu
+permintaan `permintaan-artefak-pega.md` bab 22 **tidak dicabut**, hanya turun derajat menjadi
+permintaan arsip: supaya pembaca berikutnya dapat memverifikasinya dari repositori.
+
+Terkait: `84.39` · `K-105.39` (disupersede) · `R-16`
+
+### K-105.41 · Modul ini baca-saja karena ia ANTREAN, bukan karena tabelnya milik Pega
+
+**Keputusan.** `Repo` tetap tanpa method tulis. Dasarnya: modul ini menampilkan **antrean**,
+dan antrean tidak mengubah pekerjaan — layar yang mengerjakannya yang mengubah.
+
+**Yang dikoreksi.** Sebelumnya dasarnya ditulis sebagai `P-1`: "penugasan survei masih ditulis
+Pega". Itu **salah** — modul Registrasi aplikasi ini sudah menyisip dan memperbarui
+`POOLDATA.T_SURVEYORLIST` (`survey_sisip`, `survey_batal`). `P-1` tetap berlaku pada kolom yang
+masih ditulis Pega, bukan pada seluruh tabelnya.
+
+**Konsekuensi yang perlu dicatat.** Tautan baris yang membuka penugasan survei bukan lagi
+terhalang kepemilikan tabel, melainkan oleh **belum adanya layar pengganti** untuk
+`InputSurveyorDetail` / `ReviewSurveyorDetail` / `RescheduleBack` / `CloseSurvey`. Itu pekerjaan
+modul lain, dan ruang lingkupnya milik Work Owner.
+
+**Yang dilaporkan, tidak disentuh.** `ADJUSTERACCEPT`, `REFNO`, dan `ADJUSTER_PIC` tidak ditulis
+siapa pun — bukan Pega (tidak ada di `INSERT_SURVEYORLIST.prc`), bukan aplikasi ini (tidak ada
+di `survey_sisip`). Permintaannya perlu diubah dari "jalankan jalur pengisiannya" menjadi
+"tetapkan siapa yang mengisinya".
+
+Terkait: `84.40` · `P-1` · `K-105.38`

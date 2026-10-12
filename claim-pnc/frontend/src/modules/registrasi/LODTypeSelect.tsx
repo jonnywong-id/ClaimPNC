@@ -47,6 +47,10 @@ export function LODTypeSelect({
     list.push({ id: current, nama: line.nama_tipe_pdf_lod || current, tersedia: true })
   }
   const violations = violationsFrom(save.error)
+  // Baris terkunci: nama tipenya saja, seperti grid Pega (mis. "Property - Interim tanpa Co Member").
+  if (!editable && current !== '') {
+    return <span className="block">{list.find((t) => t.id === current)?.nama ?? line.nama_tipe_pdf_lod ?? current}</span>
+  }
   return (
     <div className="mb-1">
       <select

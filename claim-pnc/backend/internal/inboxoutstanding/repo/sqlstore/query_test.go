@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -276,12 +277,51 @@ func TestTidakAdaPolaSQLYangDilarang(t *testing.T) {
 // apa adanya membuat tab "Documents not complete" berlencana 7 tetapi daftarnya kosong.
 func TestStatusDokumenDiterjemahkanKePenandaSQL(t *testing.T) {
 	for status, want := range map[inboxoutstanding.DocumentStatus]string{
-		inboxoutstanding.StatusComplete:   "LENGKAP",
-		inboxoutstanding.StatusIncomplete: "BELUM",
+		inboxoutstanding.StatusComplete:         "LENGKAP",
+		inboxoutstanding.StatusIncomplete:       "BELUM",
+		inboxoutstanding.StatusInternalSurveyor: "SURVEYOR-INTERNAL",
+		inboxoutstanding.StatusLossAdjuster:     "LOSS-ADJUSTER",
+		inboxoutstanding.StatusTKA:              "TKA",
 	} {
 		args := statusArgs(inboxoutstanding.Filter{DocumentStatus: status})
-		require.Equal(t, []any{want, want, want}, args, "status %s", status)
+
+		// ENAM kali nilai yang sama — satu per penanda :15 sampai :20. Jumlahnya wajib
+		// tetap enam walau nilainya nil, karena go-ora mengikat menurut urutan kemunculan:
+		// kurang satu akan menggeser offset dan limit, dan hasilnya halaman yang salah
+		// tanpa satu pun galat.
+		require.Equal(t, []any{want, want, want, want, want, want}, args, "status %s", status)
 		require.Contains(t, query("my_inbox_list"), "'"+want+"'", "SQL harus menguji %s", want)
 	}
-	require.Equal(t, []any{nil, nil, nil}, statusArgs(inboxoutstanding.Filter{}))
+
+	require.Equal(t, []any{nil, nil, nil, nil, nil, nil},
+		statusArgs(inboxoutstanding.Filter{}))
+
+	// Temporary Close TIDAK punya penanda teks: ia memakai kueri tersendiri, dan adapter
+	// mengosongkan statusnya sebelum memanggil.
+	require.Equal(t, []any{nil, nil, nil, nil, nil, nil},
+		statusArgs(inboxoutstanding.Filter{DocumentStatus: inboxoutstanding.StatusTemporaryClose}))
+}
+
+// Jumlah penanda di SQL wajib sama dengan jumlah argumen yang disusun Go. Keduanya mudah
+// bergeser sendiri-sendiri, dan selisihnya muncul sebagai ORA-01008 di produksi — bukan
+// saat menulis kode.
+func TestJumlahPenandaSQLCocokDenganJumlahArgumen(t *testing.T) {
+	for _, nama := range []string{
+		"my_inbox_list", "my_inbox_count",
+		"my_inbox_temporary_close_list", "my_inbox_temporary_close_count",
+	} {
+		teks := query(nama)
+		tertinggi := 0
+		for n := 1; n <= 40; n++ {
+			if strings.Contains(teks, ":"+strconv.Itoa(n)) {
+				tertinggi = n
+			}
+		}
+
+		perlu := len(filterArgs(inboxoutstanding.Filter{})) + len(statusArgs(inboxoutstanding.Filter{}))
+		if strings.HasSuffix(nama, "_list") {
+			perlu += 2 // offset dan limit
+		}
+		require.Equal(t, perlu, tertinggi, "jumlah penanda pada %s", nama)
+	}
 }

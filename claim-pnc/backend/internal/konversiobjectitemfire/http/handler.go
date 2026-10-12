@@ -111,6 +111,9 @@ func (h *Handler) info(w http.ResponseWriter, r *http.Request) {
 type runRequest struct {
 	Polis   string `json:"polis"`
 	UjiCoba bool   `json:"uji_coba"`
+	// Kosong berarti seluruh PRODKE / seluruh INDEXOBJECT.
+	ProdKe      string `json:"prodke"`
+	IndexObject string `json:"indexobject"`
 }
 
 func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +123,11 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	policies := kc.ParsePolicyList(request.Polis)
+	filter, err := kc.NewFilter(request.ProdKe, request.IndexObject)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "validasi_gagal", err.Error())
+		return
+	}
 
 	service, err := h.ensure(r.Context())
 	if err != nil {
@@ -133,9 +141,10 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request) {
 		login = caller.Login
 	}
 	h.opts.Logger.Info("konversi object item fire dimulai",
-		slog.String("login", login), slog.Int("jumlah_polis", len(policies)), slog.Bool("uji_coba", request.UjiCoba))
+		slog.String("login", login), slog.Int("jumlah_polis", len(policies)), slog.Bool("uji_coba", request.UjiCoba),
+		slog.String("filter", filter.Describe()))
 
-	report, err := service.Run(r.Context(), policies, !request.UjiCoba)
+	report, err := service.Run(r.Context(), policies, filter, !request.UjiCoba)
 	switch {
 	case errors.Is(err, usecase.ErrEmptyList), errors.Is(err, usecase.ErrTooMany):
 		writeError(w, http.StatusUnprocessableEntity, "validasi_gagal", err.Error())

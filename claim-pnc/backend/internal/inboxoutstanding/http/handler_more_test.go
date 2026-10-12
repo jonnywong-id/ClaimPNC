@@ -109,7 +109,20 @@ func TestSummaryReturnsEveryTabWithCountsAndOwner(t *testing.T) {
 
 	require.Equal(t, 2, body.Total)
 	require.Equal(t, "ADMINPNC", body.Pemilik)
-	require.Len(t, body.Status, 9)
+
+	// DELAPAN, bukan sembilan. Sembilan label hanya delapan tab: "Deadline To Temporary
+	// Close" dan "TKA" berbagi satu nilai `TempVisibility.Email==9` di Pega, dipilih
+	// jabatan pemanggil. Petugas uji ini bukan PA, jadi yang tampil Deadline.
+	// Lihat Summary.ForLineBusiness.
+	require.Len(t, body.Status, 8)
+
+	kode := make([]string, 0, len(body.Status))
+	for _, s := range body.Status {
+		kode = append(kode, s.Kode)
+	}
+	require.Contains(t, kode, "deadline-temporary-close")
+	require.NotContains(t, kode, "tka",
+		"petugas non-PA tidak pernah melihat tab TKA di Pega")
 
 	// "ALL Case" PALING DEPAN — keputusan Work Owner 2026-10-05; lihat statusOrder.
 	require.Equal(t, "semua", body.Status[0].Kode)
@@ -123,10 +136,23 @@ func TestSummaryReturnsEveryTabWithCountsAndOwner(t *testing.T) {
 	require.Equal(t, 1, *body.Status[1].Jumlah)
 	require.Equal(t, 1, *body.Status[2].Jumlah)
 
-	// Tab yang belum dapat dihitung dikirim tanpa jumlah dan tidak dapat dipilih.
-	require.Equal(t, "loss-adjuster", body.Status[5].Kode)
-	require.Nil(t, body.Status[5].Jumlah)
-	require.False(t, body.Status[5].DapatDipilih)
+	letak := map[string]int{}
+	for i, k := range kode {
+		letak[k] = i
+	}
+
+	// SELURUH tab yang tampil dapat dipilih — tidak ada lagi yang mati sejak 2026-10-11.
+	//
+	// Lencana keempatnya TIDAK diperiksa di sini: repo memori tidak memodelkan
+	// `SURVEYORTYPE_1`, `TKA_1`, maupun kedua tabel luar, sehingga ia tidak menyerahkan
+	// angkanya. Yang membuktikan angkanya mengalir adalah uji sqlmock pada adapter
+	// sebenarnya.
+	for _, k := range []string{
+		"internal-surveyor", "loss-adjuster", "komunikasi", "deadline-temporary-close",
+	} {
+		require.Contains(t, letak, k)
+		require.True(t, body.Status[letak[k]].DapatDipilih, k)
+	}
 }
 
 func TestSummaryRejectsAMalformedQuery(t *testing.T) {
@@ -187,11 +213,27 @@ func TestListRejectsUnknownAndUncountableDocumentStatuses(t *testing.T) {
 
 	for _, path := range []string{
 		"/api/inbox-outstanding?status_dokumen=entah",
-		"/api/inbox-outstanding?status_dokumen=tka",
+
+		// Tab ini masih menunggu aturan penyambungan tabelnya, jadi memilihnya
+		// ditolak — bukan dilayani dengan daftar kosong yang tampak sah.
 	} {
 		res := get(t, server, path)
 		require.Equal(t, http.StatusBadRequest, res.Code, path)
 		require.Equal(t, outstandinghttp.CodeBadRequest, decodeCode(t, res.Body.Bytes()), path)
+	}
+}
+
+// Tab yang sumbernya sudah ada DITERIMA — kebalikan uji di atas, dan ditulis terpisah
+// supaya menghidupkan satu tab tidak diam-diam melonggarkan penolakan tab lain.
+func TestListMenerimaTabYangSumberDatanyaSudahAda(t *testing.T) {
+	server := testServer(t, "ADMINPNC")
+
+	for _, kode := range []string{
+		"lengkap", "belum-lengkap", "temporary-close", "deadline-temporary-close",
+		"internal-surveyor", "loss-adjuster", "tka", "komunikasi",
+	} {
+		res := get(t, server, "/api/inbox-outstanding?status_dokumen="+kode)
+		require.Equal(t, http.StatusOK, res.Code, kode)
 	}
 }
 

@@ -35,6 +35,7 @@ import {
   violationsFrom,
   messagesByField,
 } from './api'
+import { ColumnFilter, matchesFilters, type ColumnFilters } from './ColumnFilter'
 import { EstimateForm } from './EstimateForm'
 import { StagePath } from './StagePath'
 import { SurveyorForm } from './SurveyorForm'
@@ -122,6 +123,17 @@ const OBJECT_COLUMNS: Record<ObjectGrid, string[]> = {
   travel: ['Nama Peserta', 'Status', 'KTP/Paspor', 'Tanggal Lahir'],
   pa: ['Nama', 'Pekerjaan', 'Tanggal Lahir'],
   he: ['Object', 'Model', 'Merk', 'Nama Tipe', 'Nomor Chasis', 'Location'],
+  umum: ['Object', 'Location'],
+}
+
+/**
+ * Kolom yang dapat difilter (`pyColumnFiltering` grid objek InputRegisterDetail-sect): kolom
+ * nama dan lokasi bertanda `true`; Tanggal Lahir mengikuti layar Pega (ikon corong tampil).
+ */
+const FILTER_COLUMNS: Record<ObjectGrid, string[]> = {
+  travel: ['Nama Peserta', 'Tanggal Lahir'],
+  pa: ['Nama', 'Tanggal Lahir'],
+  he: ['Object', 'Location'],
   umum: ['Object', 'Location'],
 }
 
@@ -496,6 +508,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   // klaim PA dapat memuat ratusan peserta. Baris di halaman lain tetap ada di form dan ikut
   // tersimpan; hanya tidak digambar.
   const [itemPage, setItemPage] = useState(1)
+  const [itemFilters, setItemFilters] = useState<ColumnFilters>({})
   const fieldErrors = messagesByField(violations)
   const hubungan = watch('pelapor_hubungan')
 
@@ -572,7 +585,31 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
 
   // Halaman dijepit ke jumlah halaman yang ada: menghapus objek terakhir di halaman terakhir
   // tidak meninggalkan halaman kosong.
-  const itemPages = Math.max(1, Math.ceil(objek.fields.length / ITEM_PAGE_SIZE))
+  const filterColumns = FILTER_COLUMNS[grid]
+  const savedItem = (i: number) => klaim.objek.find((o) => o.id.trim() === (formItems?.[i]?.id ?? '').trim())
+  // Nilai kolom yang dapat difilter pada baris ke-i, sama dengan teks yang digambar.
+  const filterValues = (i: number): Record<string, string> => {
+    const item = formItems?.[i]
+    const name = item?.nama?.trim() ?? ''
+    const location = item?.lokasi?.trim() ?? ''
+    const birth = savedItem(i)?.tanggal_lahir
+    return {
+      Nama: name,
+      'Nama Peserta': name,
+      Object: name,
+      Location: location,
+      'Tanggal Lahir': birth ? birthDate(birth) : '',
+    }
+  }
+  const allItemIndexes = objek.fields.map((_, i) => i)
+  const visibleItems = allItemIndexes.filter((i) => matchesFilters(filterValues(i), itemFilters))
+  // Daftar nilai satu kolom: baris yang lolos filter KOLOM LAIN, seperti grid Pega.
+  const columnValues = (column: string) =>
+    allItemIndexes
+      .filter((i) => matchesFilters(filterValues(i), { ...itemFilters, [column]: [] }))
+      .map((i) => filterValues(i)[column] ?? '')
+
+  const itemPages = Math.max(1, Math.ceil(visibleItems.length / ITEM_PAGE_SIZE))
   const itemCurrentPage = Math.min(itemPage, itemPages)
   const itemFirst = (itemCurrentPage - 1) * ITEM_PAGE_SIZE
 
@@ -778,24 +815,34 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                 {gridColumns.map((title) => (
                   <th key={title} scope="col" className="border border-slate-300 p-2">
                     {title}
+                    {filterColumns.includes(title) && (
+                      <ColumnFilter
+                        column={title}
+                        values={columnValues(title)}
+                        picked={itemFilters[title] ?? []}
+                        onChange={(picked) => {
+                          setItemFilters((f) => ({ ...f, [title]: picked }))
+                          setItemPage(1)
+                        }}
+                      />
+                    )}
                   </th>
                 ))}
                 <th scope="col" className="w-20 border border-slate-300 p-2">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {objek.fields.length === 0 && (
+              {visibleItems.length === 0 && (
                 <tr>
                   <td colSpan={gridColumns.length + 3} className="border border-slate-300 p-2 text-xs text-slate-500">
                     Data Tidak Ada
                   </td>
                 </tr>
               )}
-              {objek.fields.slice(itemFirst, itemFirst + ITEM_PAGE_SIZE).map((f, n) => {
-                const i = itemFirst + n
+              {visibleItems.slice(itemFirst, itemFirst + ITEM_PAGE_SIZE).map((i) => {
                 return (
                 <InsuredItemEditor
-                  key={f.id}
+                  key={objek.fields[i]?.id ?? i}
                   claimID={klaim.id}
                   index={i}
                   grid={grid}
@@ -805,7 +852,7 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
                   register={register}
                   setValue={setValue}
                   businessCode={klaim.polis.kode_bisnis ?? ''}
-                  saved={klaim.objek.find((o) => o.id.trim() === (formItems?.[i]?.id ?? '').trim())}
+                  saved={savedItem(i)}
                   pa={pa}
                   onRemove={() => objek.remove(i)}
                 />
@@ -814,11 +861,11 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
             </tbody>
           </table>
         </div>
-        {objek.fields.length > ITEM_PAGE_SIZE && (
+        {visibleItems.length > ITEM_PAGE_SIZE && (
           <Paginator
             firstRow={itemFirst + 1}
-            lastRow={Math.min(itemFirst + ITEM_PAGE_SIZE, objek.fields.length)}
-            totalRows={objek.fields.length}
+            lastRow={Math.min(itemFirst + ITEM_PAGE_SIZE, visibleItems.length)}
+            totalRows={visibleItems.length}
             currentPage={itemCurrentPage}
             totalPages={itemPages}
             onPick={setItemPage}
@@ -832,6 +879,8 @@ function FormRegister({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
           type="button"
           onClick={() => {
             setAddedItem(objek.fields.length)
+            // Objek baru belum bernama: filter dilepas supaya barisnya tidak tersembunyi.
+            setItemFilters({})
             // Objek baru ada di baris terakhir: buka halaman terakhir supaya terlihat.
             setItemPage(Math.floor(objek.fields.length / ITEM_PAGE_SIZE) + 1)
             // Kode objek tidak punya kolom di grid Pega; objek tambahan diberi kode berikutnya.

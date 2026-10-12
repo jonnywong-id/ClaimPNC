@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"unicode/utf8"
 
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/registrasi"
@@ -26,6 +27,9 @@ type DLACommand struct {
 	Number string
 	// Remarks adalah isian REMARKS per nomor DLA yang belum pernah dicetak.
 	Remarks map[string]string
+	// Emails adalah isian Email per nomor DLA (`.pyEmailAddress`, Editable); disimpan ke
+	// EMAILDLA saat PRINT bila berbeda dari yang tersimpan.
+	Emails map[string]string
 	// AsPerPolicy adalah centang "Coverage AS PER ORIGINAL POLICY" (`.CheckCoverage`).
 	AsPerPolicy bool
 }
@@ -304,9 +308,21 @@ func dlaTotalConvert(sc dlaScope) *big.Rat {
 	return total
 }
 
+// DLAEmailMax adalah panjang maksimum isian Email DLA: T_DLALIST.EMAILDLA VARCHAR2(500),
+// terukur dari ALL_TAB_COLUMNS 2026-10-12 — separuh EMAILPLA.
+const DLAEmailMax = 500
+
 // PrintDLA mencetak DLA satu adjustment — satu nomor, atau seluruhnya. DLA yang belum terbit
 // diterbitkan lebih dulu; PRINT pertama menyimpan REMARKS dan menandai ISDLA.
 func (l *Service) PrintDLA(ctx context.Context, p DLACommand, by Caller) (DLAResult, error) {
+	for number, email := range p.Emails {
+		if utf8.RuneCountInString(strings.TrimSpace(email)) > DLAEmailMax {
+			return DLAResult{}, &registrasi.ValidationError{Violation: []registrasi.Violation{{
+				Code: registrasi.ViolationDLAEmailTooLong, Field: "email",
+				Message: "Email DLA " + number + " is limited to 500 characters.",
+			}}}
+		}
+	}
 	sc, err := l.dlaScopeOf(ctx, p, by)
 	if err != nil {
 		return DLAResult{}, err
@@ -414,6 +430,19 @@ func (l *Service) PrintDLA(ctx context.Context, p DLACommand, by Caller) (DLARes
 	}
 
 	err = l.unit.Run(ctx, func(ctx context.Context) error {
+		// Email dapat diubah untuk DLA mana pun pada adjustment ini, tercetak atau belum —
+		// di Pega isiannya Editable tanpa syarat. Yang tidak berubah tidak ditulis.
+		emailChanged := 0
+		for _, d := range all.DLA {
+			email, ok := p.Emails[d.Number]
+			if !ok || strings.TrimSpace(email) == d.Info.Email {
+				continue
+			}
+			if err := l.dla.UpdateEmail(ctx, sc.claim.ID, d.Number, strings.TrimSpace(email)); err != nil {
+				return err
+			}
+			emailChanged++
+		}
 		printed := 0
 		for _, d := range list {
 			if d.Printed {
@@ -430,8 +459,8 @@ func (l *Service) PrintDLA(ctx context.Context, p DLACommand, by Caller) (DLARes
 		}
 		return l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: sc.claim.ID, ClaimNumber: sc.claim.Number, Event: "DLA_CETAK", Actor: by.Identity, At: now,
-			Note: fmt.Sprintf("Print DLA objek %d jaminan %d adjustment %d: %d dokumen, %d cetak pertama",
-				p.Object, p.Coverage, p.Adjustment, len(list), printed),
+			Note: fmt.Sprintf("Print DLA objek %d jaminan %d adjustment %d: %d dokumen, %d cetak pertama, %d email diubah",
+				p.Object, p.Coverage, p.Adjustment, len(list), printed, emailChanged),
 		})
 	})
 	if err != nil {

@@ -251,6 +251,94 @@ describe('tombol akseptasi', () => {
     vi.unstubAllGlobals()
   })
 
+  it('Print DLA menampilkan File Pendukung dan membuka dokumen ber-IMAGEID', async () => {
+    const requests: string[] = []
+    const json = (body: unknown) =>
+      Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', (url: string) => {
+      requests.push(url)
+      if (url.endsWith('/dokumen')) {
+        return json({
+          kategori: [
+            {
+              kode: 'COLLECTING DOCUMENT',
+              nama: 'Collecting Document',
+              dokumen: [{ id: '14893', jenis_id: '10066', nama: 'Form Claim', wajib: false, minimal: '', terunggah: 1 }],
+            },
+          ],
+          berkas: [
+            { id: 'D1', nama: 'Formclaim.pdf', jenis_berkas: 'pdf', catatan: 'form claim', kategori: '10066', sub_kategori: '14893', tersimpan: true, diunggah_oleh: 'U', diunggah_pada: '' },
+            { id: 'D2', nama: 'Bukti PLA : H1 To :BPPDAN.pdf', jenis_berkas: 'pdf', catatan: 'upload', kategori: '', sub_kategori: '', tersimpan: false, diunggah_oleh: 'U', diunggah_pada: '' },
+          ],
+        })
+      }
+      if (url.endsWith('/tautan')) return json({ url: 'https://storage.invalid/Formclaim.pdf', berlaku_sampai: '' })
+      return json({ baru_terbit: 0, ex_gratia: false, peringatan: [], dla: [] })
+    })
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() }
+    const openMock = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+    const user = userEvent.setup()
+    mount({ status_akseptasi_lod: '1', nomor_akseptasi: 'A26' })
+    await user.click(screen.getByRole('button', { name: 'Print DLA' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Print DLA' })
+    const grid = await within(dialog).findByRole('table', { name: 'File Pendukung' })
+
+    expect(within(grid).getByText('COLLECTING DOCUMENT')).toBeInTheDocument()
+    expect(within(grid).getByText('14893')).toBeInTheDocument()
+    // Tanpa kategori, Jenis Dokumen jatuh ke catatan; tanpa IMAGEID, namanya teks.
+    expect(within(grid).getByText('upload')).toBeInTheDocument()
+    expect(within(grid).queryByRole('button', { name: /Bukti PLA/ })).not.toBeInTheDocument()
+
+    const pilih = within(grid).getByRole('checkbox', { name: 'Pilih Formclaim.pdf' })
+    await user.click(pilih)
+    expect(pilih).toBeChecked()
+
+    await user.click(within(grid).getByRole('button', { name: 'Formclaim.pdf' }))
+    await waitFor(() => expect(tab.location.href).toBe('https://storage.invalid/Formclaim.pdf'))
+    expect(requests.some((u) => u.endsWith('/dokumen/D1/tautan'))).toBe(true)
+    openMock.mockRestore()
+  })
+
+  it('Print DLA mengirim Email yang diubah bersama permintaan PRINT', async () => {
+    const bodies: unknown[] = []
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:dla', revokeObjectURL: () => undefined }))
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      if (url.endsWith('/dla')) {
+        bodies.push(JSON.parse(String(init?.body)))
+        return Promise.resolve(new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } }))
+      }
+      if (url.endsWith('/dokumen')) {
+        return Promise.resolve(new Response(JSON.stringify({ kategori: [], berkas: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            baru_terbit: 0,
+            ex_gratia: false,
+            peringatan: [],
+            dla: [
+              { nomor: 'H1', penerima: 'BPPDAN', tipe: 'BPPDAN', catatan: '', email: 'lama@contoh.internal', tanggal: '2026-10-08', nilai: '1.00', mata_uang: 'IDR', sudah_cetak: true, sudah_kirim: false },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+    })
+    const user = userEvent.setup()
+    mount({ status_akseptasi_lod: '1', nomor_akseptasi: 'A26' })
+    await user.click(screen.getByRole('button', { name: 'Print DLA' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Print DLA' })
+    const email = await within(dialog).findByRole('textbox', { name: 'Email H1' })
+    expect(email).toHaveValue('lama@contoh.internal')
+    expect(email).toBeEnabled()
+
+    await user.clear(email)
+    await user.type(email, 'baru@contoh.internal')
+    await user.click(within(dialog).getByRole('button', { name: 'PRINT' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toMatchObject({ nomor: 'H1', email: { H1: 'baru@contoh.internal' } })
+  })
+
   it('Print DLA klaim ex gratia menyatakan tidak ada DLA', async () => {
     vi.stubGlobal('fetch', () =>
       Promise.resolve(

@@ -53,6 +53,28 @@ describe('Konversi Object Item Fire', () => {
 
     expect(await screen.findByText('Hasil Uji Coba — tidak ada yang tersimpan')).toBeInTheDocument()
     expect(screen.getByText(/2 baris item/)).toBeInTheDocument()
-    expect(bodies[0]).toEqual({ polis: 'P-1', uji_coba: true })
+    expect(bodies[0]).toEqual({ polis: 'P-1', uji_coba: true, prodke: '', indexobject: '' })
+  })
+
+  it('mengirim filter PRODKE dan Index Object, dan menolak isian bukan angka', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <ObjectItemConversionPage />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('u@live:1521/LIVE')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('PRODKE'), '1a')
+    expect(screen.getByText('Isi dengan angka, atau kosongkan.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Uji Coba' })).toBeDisabled()
+
+    await userEvent.clear(screen.getByLabelText('PRODKE'))
+    await userEvent.type(screen.getByLabelText('PRODKE'), '39749851')
+    await userEvent.type(screen.getByLabelText('Index Object'), '77')
+    await userEvent.click(screen.getByRole('button', { name: 'Uji Coba' }))
+
+    expect(await screen.findByText('Hasil Uji Coba — tidak ada yang tersimpan')).toBeInTheDocument()
+    expect(bodies.at(-1)).toEqual({ polis: 'P-1', uji_coba: true, prodke: '39749851', indexobject: '77' })
   })
 })

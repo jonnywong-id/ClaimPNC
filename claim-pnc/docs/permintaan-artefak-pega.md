@@ -3565,3 +3565,126 @@ jejak audit. Ditunda sebagai pekerjaan lanjutan: REST `ServiceCloseClaimNonMBU`,
 pengembangan #146). Tidak ada rule yang masih menahan. Yang tetap kosong di export: daftar pilihan dropdown Survey Kepuasan,
 Manual/Paperless, Banding, Alasan Keterlambatan (Property tanpa tabel; dua Property terakhir tidak ada) — bila diperlukan,
 mohon Property `Banding`, `AlasanTerlambat`, `NoReffBroker` beserta sumber daftar pilihannya.
+
+---
+
+## 22. Inbox Survey / Loss Adjuster — Data Transform `GetListQuartal` (2026-10-12) — ke **Tim Pega**
+
+| | |
+|---|---|
+| **Status** | **Untuk arsip** — isinya sudah dibacakan Work Owner 2026-10-12 dari layar Pega, dan layar baru sudah disamakan. Yang diminta sekarang hanya **berkas rule-nya**, supaya dapat diperiksa ulang dari repositori alih-alih dari tangkapan layar |
+| **Pemilik** | Tim Pega |
+| **Menghalangi** | isi dropdown **Kuartal** pada panel KPI layar My Work (`MENU_ID 50`) |
+| **Dasar** | `R-16` · `D-39` |
+
+### 22.1 Yang diminta
+
+```
+Data Transform    GetListQuartal
+```
+
+Satu berkas. Tidak ada rule lain yang masih kami tunggu untuk layar ini.
+
+### 22.2 Dari mana kami tahu rule ini ada
+
+`Section/InboxSurvey_section-Section.xml` menyetel kendali Kuartal seperti ini:
+
+```xml
+<pyDTName>GetListQuartal</pyDTName>
+<pyRunPreDT>true</pyRunPreDT>
+<pySourceName>TempKuartal.pxResults</pySourceName>
+<pyPrompt>.Email</pyPrompt>
+<pyValue>.Email</pyValue>
+```
+
+Jadi kendali itu **memang punya pengisi**, dan pengisinya sebuah Data Transform yang dijalankan
+lebih dulu (`pyRunPreDT = true`). Teks yang tampil dan nilai yang dikirim keduanya dibaca dari
+properti yang sama, `.Email`.
+
+Direktori `Data Transform/` terkirim dengan **87 berkas**; `GetListQuartal-DT.xml` bukan salah
+satunya. Kata `GetListQuartal` hanya muncul di dua tempat di seluruh export — Section dan
+Harness layar ini — yaitu di tempat ia **dipanggil**, tidak di tempat ia **didefinisikan**.
+
+### 22.3 Kenapa isinya tidak dapat kami turunkan sendiri
+
+Saudaranya yang ADA, `Data Transform/GetListYear-DT.xml`, memperlihatkan bentuk rule semacam
+ini: sebuah **daftar literal**, bukan kueri.
+
+```
+1   REMOVE  TempYear
+2   SET     TempYear.pxResults(<APPEND>).TreatyYear := "2015"
+3   SET     TempYear.pxResults(<APPEND>).TreatyYear := "2016"
+…
+12  SET     TempYear.pxResults(<APPEND>).TreatyYear := "2025"
+```
+
+Daftar yang ditulis tangan seperti itu **tidak dapat diturunkan dari data mana pun**. Ia harus
+dibaca dari rule-nya.
+
+### 22.4 Yang sudah kami ketahui, dan yang belum
+
+Dari percabangan `Activity/GetReportKPIAdjuster-Act.xml` kami dapat membaca **nilai** yang
+benar-benar dibedakan jalur perhitungannya:
+
+| Nilai | Terbaca dari |
+|---|---|
+| `1` · `2` · `3` · `4` | `@contains(Initial,"1")` … `@contains(Initial,"4")` |
+| `ALL` | `Initial == "" \|\| Initial == "ALL"` |
+
+Jadi **nilainya** cukup pasti. Yang **belum** dapat kami pastikan adalah **teks yang tampil di
+layar lama** — apakah `GetListQuartal` menuliskan `"1"`, `"Kuartal 1"`, atau `"Q1"`.
+`GetListYear` membuktikan teks dan nilai boleh sama persis, tetapi ia tidak membuktikan apa pun
+tentang rule yang berbeda.
+
+Sementara menunggu, layar baru menampilkan `1`–`4` dan `ALL` apa adanya. Bila teks aslinya
+berbeda, yang berubah hanya labelnya — angka yang dihitung tidak terpengaruh.
+
+### 22.5 Cara memeriksa hasil export sudah lengkap
+
+Satu berkas wajib ada:
+
+```
+Data Transform/GetListQuartal-DT.xml
+```
+
+### 22.6 Yang TIDAK perlu dikirim
+
+Seluruh rule lain yang dipakai layar ini **sudah ada** dan sudah kami baca:
+
+```
+Activity/GetReportKPIAdjuster      Activity/GetFilterKPI
+Activity/GetTahunKPIAdjuster       Activity/ReportKPILoginAdjuster_act
+Activity/GetLostAdjuster_act       Activity/SetTempLostAdjuster
+Activity/GetReportKPI_Survey       Activity/GetReportKPIAdjuster_Komunikasi
+Activity/GetReportKPIAdjuster_FinalReport   Activity/GetReportKPIAdjuster_Progress
+RDB List/GetTahunKPIAdjuster       RDB List/GetSummaryKPIAdjusterKuartal
+RDB List/GetSummaryKPIAdjusterALLKuartal    RDB List/GetDetailKPIAdjusterKuartal
+RDB List/GetNilaiKPIPIC            RDB List/GetDataCaseSurvey(ALL)
+RDB List/BrowseAdjsuterExternal    RDB List/CallProcedureInsertKPISurvey
+Flow/Surveyor_Flow                 Database/INSERT_KPIADJUSTER.prc
+```
+
+### 22.7 Satu koreksi atas daftar kami sendiri
+
+`docs/Steering` Lampiran E (`R-07`) mendaftar **`ReportKPILoginAdjuster_act`** sebagai activity
+yang dipanggil tetapi tidak ada di export. Berkasnya **ada** — `Activity/ReportKPILoginAdjuster_act-Act.xml`,
+452 KB. Daftar itu perlu dimutakhirkan; tidak ada permintaan baru dari butir ini.
+
+### 22.8 Pembaruan 2026-10-12 — isinya sudah diketahui, permintaannya turun derajat
+
+Work Owner membuka rule-nya di Pega dan memperlihatkan isinya:
+
+```
+1  Remove  TempKuartal
+2  Set     TempKuartal.pxResults(<APPEND>).Email := "ALL"
+3  Set     TempKuartal.pxResults(<APPEND>).Email := "1"
+4  Set     TempKuartal.pxResults(<APPEND>).Email := "2"
+5  Set     TempKuartal.pxResults(<APPEND>).Email := "3"
+6  Set     TempKuartal.pxResults(<APPEND>).Email := "4"
+```
+
+Layar baru sudah disamakan — termasuk **urutannya**, dengan `ALL` di puncak.
+
+**Permintaan ini karena itu tidak lagi memblokir apa pun.** Ia tetap diajukan supaya isinya
+dapat diperiksa ulang dari berkas rule, bukan dari tangkapan layar di percakapan. Bila
+pengirimannya menyulitkan, butir ini boleh ditutup tanpa akibat pada pembangunan.

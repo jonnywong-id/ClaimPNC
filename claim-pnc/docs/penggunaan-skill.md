@@ -16204,3 +16204,28 @@ Kerapuhannya dicatat, bukan ditambal.
 **Satu berkas sesi lain terpaksa disunting** — `repo_sqlmock_test.go` mengunci urutan
 argumen yang terbukti salah, sehingga membiarkannya berarti mengunci cacatnya. Yang
 disentuh hanya tiga baris harapan, dan alasannya ditulis di tempatnya.
+
+## Inbox Open Protection memuat tanpa henti (2026-10-11)
+
+Tidak ada skill Matt Pocock yang dipanggil. Yang dipakai disiplinnya:
+
+| Disiplin | Penerapannya |
+|---|---|
+| **grilling** — kejar sebab, jangan berhenti di gejala | "Harus Muat ulang dulu" diperlakukan sebagai petunjuk, bukan keluhan. Pertanyaannya: *kenapa tombol itu berhasil sementara pemuatan otomatis tidak?* Jawabannya — `refetch()` mengabaikan `enabled` — yang menunjuk langsung ke kueri yang nonaktif, bukan ke kueri yang lambat |
+| **grilling** — periksa premis sebelum membangun di atasnya | Perbaikan pertama (mengirim `X-Portal`) sudah berfungsi dan sudah beruji. Ia tetap **dibongkar** setelah pemeriksaan menemukan lima modul lain memakai pola berbeda. Berfungsi bukan alasan berhenti memeriksa |
+| **codebase-design** — ikuti batas yang sudah ada | Rute bebas portal dipasang di luar grup, seperti lima saudaranya — bukan memaksa peramban membawa portal yang tidak dipakai siapa pun |
+| **domain-modeling** — satu aturan, satu tempat | Catatan di layar yang menyalin aturan `QueuesFor` dihapus, bukan diperbarui. Aturan yang hidup di dua tempat akan berbeda, dan yang di layar tidak punya uji yang menggagalkannya |
+
+### Yang paling berguna pada sesi ini: menguji bahwa ujinya gagal
+
+Keempat uji baru **dijalankan terhadap kode yang belum diperbaiki** lebih dulu, dan keempatnya
+gagal. Itu bukan formalitas — dua uji lama di berkas yang sama lulus baik sebelum maupun
+sesudah perbaikan, karena pembantu `do` selalu memasang `X-Portal` dan stub `/antrean` menjawab
+`200` tanpa memeriksa header. Uji yang tidak pernah gagal tidak menjaga apa pun.
+
+### Kesalahan sendiri
+
+| Kesalahan | Cara ketahuannya |
+|---|---|
+| Menyampaikan perbaikan pertama sebagai final sebelum memeriksa pola repo | Pemeriksaan modul lain — yang semula hanya untuk mencari cacat serupa — menunjukkan justru perbaikan sayalah yang menyimpang. Disampaikan terus terang ke Work Owner, bukan diganti diam-diam |
+| Memperbarui isi catatan di layar, padahal yang benar menghapusnya | Work Owner menyebutkannya lagi setelah diperbarui. Barulah diperiksa bahwa Pega tidak punya catatan itu sama sekali |
