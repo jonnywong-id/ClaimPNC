@@ -7,8 +7,6 @@ import type {
 import { DataTable, type Column } from '@/components/DataTable'
 import { formatRupiah } from '@/lib/money'
 
-import { AttachmentOpenError, useAttachmentOpener } from './AttachmentName'
-
 import { formatTanggal, formatWaktu } from './format'
 
 /**
@@ -38,7 +36,7 @@ export function CommitteeBottom({ transfer }: { transfer: KomiteTransferDetail }
           />
         ) : null,
       )}
-      <Documents claimKey={transfer.kunci_klaim ?? ''} attachments={transfer.lampiran ?? []} />
+      <Documents attachments={transfer.lampiran ?? []} />
       <EntryTable
         title="History of Previous Adjustment Committees"
         withCase
@@ -150,35 +148,23 @@ const documentColumns: Column<KomiteAttachment>[] = [
 /**
  * Dokumen Pendukung dan Dokumen Polis.
  *
- * Dokumen Pendukung meniru `Section/PNCViewAttachmentKomite`: kolom Kategori (`.ATTACHNOTE`),
- * Nama (`.ATTACHNAME`), dan Tanggal (`.INPUTDATE`). Nama berkas ber-IMAGEID adalah tautan
- * yang memanggil `GetLinkViewDoc2_Act` lalu `openUrlInWindow` — di sini tautan dokumen klaim
- * Registrasi, yang menjalankan alur yang sama: alamat tersimpan dipakai selama belum basi,
- * selebihnya diterbitkan `NewLinkDokumenPNC`. Lampiran tanpa IMAGEID (grid
- * `SupportAttachmentOld`) tetap teks biasa, karena activity itu berhenti bila IMAGEID kosong.
- *
- * Isinya diambil dari lampiran klaim (`DATA_ATTACHFILE`), bukan dari
- * `.Adjustment.DocumentList` case komite yang Pega pakai — daftar itu hanya ada di BLOB kerja
- * Pega. Dokumen Polis dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
+ * Pega menggambar Dokumen Pendukung lewat `PNCViewAttachmentKomite` — section yang TIDAK ada
+ * di export — sehingga isinya diambil dari lampiran klaim (`DATA_ATTACHFILE`). Dokumen Polis
+ * dibaca Pega lewat layanan (`GetFilePolisByServiceKlaim`) dan belum dibawa.
  */
-function Documents({ claimKey, attachments }: { claimKey: string; attachments: KomiteAttachment[] }) {
-  const opener = useAttachmentOpener(claimKey)
-
+function Documents({ attachments }: { attachments: KomiteAttachment[] }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <div>
-        <DataTable
-          title="Dokumen Pendukung"
-          columns={opener.withNameLink(documentColumns)}
-          rows={attachments}
-          rowKey={(r) => r.id}
-          emptyMessage="Data Tidak Ada"
-          showHeaderWhenEmpty
-          hideSearch
-          searchable={false}
-        />
-        <AttachmentOpenError message={opener.error} />
-      </div>
+      <DataTable
+        title="Dokumen Pendukung"
+        columns={documentColumns}
+        rows={attachments}
+        rowKey={(r) => r.id}
+        emptyMessage="Data Tidak Ada"
+        showHeaderWhenEmpty
+        hideSearch
+        searchable={false}
+      />
       <DataTable
         title="Dokumen Polis"
         description="Dokumen polis dibaca Pega dari layanan GetFilePolisByServiceKlaim, yang belum tersedia di sini."

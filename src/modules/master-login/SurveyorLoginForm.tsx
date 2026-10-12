@@ -376,12 +376,14 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         </div>
       )}
 
-      {/* Peringatan "akun aplikasinya belum diterbitkan" DICABUT 2026-10-11.
-
-          Ia berdiri di atas premis yang keliru: layar Pega pun tidak pernah menerbitkan
-          akun — penyimpanannya hanya masuk ke POOLDATA.MST_LOGIN_SURVEYOR. Memperingatkan
-          pengguna tentang kekurangan yang tidak ada justru menyesatkan. Keempat buktinya
-          ada di doc comment usecase.Service.Create. */}
+      {/* Akibat menyimpan dinyatakan di muka, bukan ditemukan setelah tombol ditekan. */}
+      {!editMode && (
+        <p className="rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Menyimpan mencatat login surveyor di master ini. <strong>Akun aplikasinya belum
+          diterbitkan</strong> — surveyor yang baru ditambahkan belum dapat masuk sampai
+          sistem identitas tersedia.
+        </p>
+      )}
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
         <Button tone="halus" onClick={onCancel} disabled={isSaving}>

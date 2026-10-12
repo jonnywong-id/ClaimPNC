@@ -54,7 +54,6 @@ export function AcceptanceButtons({
   groupPanel,
   businessType,
   receivers,
-  cells = false,
 }: {
   claimID: string
   taskID: string
@@ -66,68 +65,12 @@ export function AcceptanceButtons({
   groupPanel: string
   businessType: string
   receivers: Receiver[]
-  /**
-   * Tiga sel grid seperti `ShowAdjustment_sect`: Print LOD · Persetujuan / Akseptasi (kolom
-   * Akseptasi) · Print DLA atau Print Pre DLA (`PNCTombolDLA_sect`).
-   */
-  cells?: boolean
 }) {
   const [open, setOpen] = useState<'lod' | 'accept' | 'dla' | null>(null)
   const rules = acceptanceRules(line, groupPanel, businessType)
-  if (!rules.visible) {
-    return cells ? (
-      <>
-        <td className="p-2" />
-        <td className="p-2" />
-        <td className="p-2" />
-      </>
-    ) : null
-  }
+  if (!rules.visible) return null
 
   const address = { tugas_id: taskID, objek: object, jaminan: coverage, adjustment }
-  const dialogs = (
-    <>
-      {open === 'lod' && (
-        <PrintLODDialog claimID={claimID} address={address} initialType={line.tipe_pdf_lod ?? ''} onClose={() => setOpen(null)} />
-      )}
-      {open === 'dla' && <DLADialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
-      {open === 'accept' && (
-        <AcceptationForm
-          claimID={claimID}
-          address={address}
-          line={line}
-          groupPanel={groupPanel}
-          receivers={receivers}
-          onClose={() => setOpen(null)}
-        />
-      )}
-    </>
-  )
-
-  if (cells) {
-    // PNCTombolDLA_sect: Print Pre DLA bila `.AcceptanceStatus == '1' && .AcceptationStatusLOD == ''`,
-    // Print DLA bila `.AcceptationStatusLOD != ''`.
-    const preDLA = (line.status_akseptasi_lod ?? '').trim() === ''
-    return (
-      <>
-        <td className="p-2 text-center">
-          <ActionButton label="Print LOD" disabled={rules.printLODDisabled} onClick={() => setOpen('lod')} />
-        </td>
-        <td className="p-2 text-center">
-          <ActionButton label="Persetujuan / Akseptasi" disabled={rules.acceptDisabled} onClick={() => setOpen('accept')} />
-          {dialogs}
-        </td>
-        <td className="p-2 text-center">
-          {preDLA ? (
-            // Local action PrintPreDLA belum dibangun di layar ini (tersedia di Inbox PLA/DLA/Pre DLA).
-            <ActionButton label="Print Pre DLA" disabled title="Print Pre DLA tersedia di Inbox PLA / DLA / Pre DLA." onClick={() => {}} />
-          ) : (
-            <ActionButton label="Print DLA" disabled={rules.printDLADisabled} onClick={() => setOpen('dla')} />
-          )}
-        </td>
-      </>
-    )
-  }
 
   return (
     <div className="space-y-1">
@@ -163,12 +106,11 @@ export function AcceptanceButtons({
   )
 }
 
-function ActionButton({ label, disabled, onClick, title }: { label: string; disabled: boolean; onClick: () => void; title?: string }) {
+function ActionButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       disabled={disabled}
-      title={title}
       onClick={onClick}
       className="whitespace-nowrap rounded border border-blue-400 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
     >

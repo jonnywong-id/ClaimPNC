@@ -276,6 +276,20 @@ export function ClauseAIPage() {
         )}
       </section>
 
+      {/* Dua keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan
+          pengguna sendiri. */}
+      <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        <p>
+          <strong className="text-slate-700">Layar ini hanya menampilkan.</strong>{' '}
+          Wording polis di sini tidak dapat ditambah, diubah, maupun dihapus — layar lamanya
+          pun tidak punya jalurnya. Perubahannya dilakukan di tempat lain.
+        </p>
+        <p>
+          <strong className="text-slate-700">Pencarian dan halaman dikerjakan server.</strong>{' '}
+          Kata kunci dicocokkan ke seluruh baris, bukan hanya yang sedang tampil — dan karena
+          itu kolomnya tidak dapat diurutkan dari layar.
+        </p>
+      </footer>
     </main>
   )
 }

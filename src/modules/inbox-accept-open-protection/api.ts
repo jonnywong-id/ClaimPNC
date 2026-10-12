@@ -86,20 +86,7 @@ function buildPath(f: ProtectionFilter): string {
  * yang pasti gagal — dan pengguna tetap akan mencobanya. Menebaknya di peramban lebih buruk
  * lagi: kewenangan yang ditentukan klien bukan kewenangan.
  *
- * # Tidak menuntut portal aktif — kewenangan sama di keempat portal (`D-78`)
- *
- * Karena itu `portal` tidak masuk kunci kueri maupun headernya: jawabannya dipakai ulang di
- * portal mana pun, dan `GroupReader` membacanya dari koneksi utama.
- *
- * Rutenya pun dipasang DI LUAR grup berportal (`Mount`, 2026-10-11). Sebelumnya ia berada di
- * dalam grup sementara pemanggilan ini tidak mengirim `X-Portal`, sehingga ia selalu dijawab
- * `ErrNotStated` — dan akibatnya berantai: daftar antrean kosong → antrean aktif `null` →
- * kueri daftar tetap `enabled: false` → tabel memperlihatkan rangka pemuatan SELAMANYA.
- *
- * Dua hal menyembunyikannya, dan keduanya ikut diperbaiki: layar hanya memunculkan galat
- * 403, dan tombol Muat ulang tampak menyembuhkan keadaan karena `refetch()` pada TanStack
- * Query v5 mengabaikan `enabled` — daftarnya ditembak dengan antrean bawaan `non-premi`,
- * lalu berhasil.
+ * Tidak menuntut portal aktif — kewenangan sama di keempat portal (`D-78`).
  */
 export function useAllowedQueues() {
   const token = useSession((state) => state.token)

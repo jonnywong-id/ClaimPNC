@@ -67,7 +67,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../backend/spa/dist',
+    outDir: 'dist',
     emptyOutDir: true,
     target: ['chrome109', 'edge109', 'firefox115', 'safari16.4'],
     cssMinify: 'lightningcss',

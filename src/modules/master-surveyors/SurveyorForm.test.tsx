@@ -206,19 +206,6 @@ describe('isian formulir menurut tipe surveyor', () => {
     await screen.findByRole('option', { name: 'KANTOR PUSAT' })
   })
 
-  it('TIDAK ada catatan "akun belum terbit" pada tipe mana pun', async () => {
-    // Catatan itu pernah ada, lalu dicabut karena premisnya salah: surveyor internal
-    // dipilih dari pegawai yang `login_aplikasi is not null`, sehingga akunnya justru
-    // PASTI sudah ada. Uji ini menjaga agar ia tidak kembali tanpa alasan baru.
-    show()
-    expect(screen.queryByText(/akun aplikasi/i)).not.toBeInTheDocument()
-
-    for (const label of ['LOSS ADJUSTER', 'INTERNAL SURVEYOR']) {
-      await chooseType(label)
-      expect(screen.queryByText(/akun aplikasi/i)).not.toBeInTheDocument()
-    }
-  })
-
   it('Login Aplikasi TIDAK PERNAH muncul, pada tipe mana pun', async () => {
     show()
     for (const label of ['INTERNAL SURVEYOR', 'LOSS ADJUSTER', 'EXPERT', 'SURVEY AGENT']) {

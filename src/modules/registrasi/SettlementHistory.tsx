@@ -5,7 +5,7 @@ import { useSettlementHistory } from './api'
 /** Label kolom Status grid komite — kode STATUSAPPROVE T_CLAIM_KOMITE_LIST. */
 const COMMITTEE_DECISION: Record<string, string> = { '0': 'Menunggu', '1': 'Setuju', '2': 'Tolak' }
 
-type Props = { claimID: string; object: number; coverage: number; adjustment: number; alwaysCommittee?: boolean }
+type Props = { claimID: string; object: number; coverage: number; adjustment: number }
 
 /**
  * SettlementHistory menggambar dua grid di bawah rincian satu baris Adjustment, mengikuti
@@ -19,18 +19,18 @@ type Props = { claimID: string; object: number; coverage: number; adjustment: nu
  *
  * Grid yang tidak berisi tidak digambar, sama seperti kondisi tampil XML. Keduanya baca saja.
  */
-export function SettlementHistory({ claimID, object, coverage, adjustment, alwaysCommittee = false }: Props) {
+export function SettlementHistory({ claimID, object, coverage, adjustment }: Props) {
   const history = useSettlementHistory(claimID, object, coverage, adjustment)
   if (history.isError) {
     return <p className="mt-4 text-xs text-amber-700">Riwayat komite dan transfer kasir tidak dapat dimuat.</p>
   }
   const committee = history.data?.komite ?? []
   const cashier = history.data?.kasir ?? []
-  if (committee.length === 0 && cashier.length === 0 && !alwaysCommittee) return null
+  if (committee.length === 0 && cashier.length === 0) return null
 
   return (
     <div className="mt-5 space-y-5">
-      {(committee.length > 0 || alwaysCommittee) && (
+      {committee.length > 0 && (
         <HistoryTable
           title="Status Penerimaan Komite"
           headers={['Nama Komite', 'Status', 'Tanggal Approve/Reject', 'Komentar']}
@@ -69,13 +69,6 @@ function HistoryTable({ title, headers, rows }: { title: string; headers: string
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={headers.length} className="border border-slate-200 p-2 text-slate-500">
-                Data Tidak Ada
-              </td>
-            </tr>
-          )}
           {rows.map((row, i) => (
             <tr key={i}>
               {row.map((cell, j) => (
@@ -89,9 +82,4 @@ function HistoryTable({ title, headers, rows }: { title: string; headers: string
       </table>
     </section>
   )
-}
-
-/** Tabel Status Penerimaan Komite yang masih kosong — baris adjustment yang belum tersimpan. */
-export function EmptyCommitteeTable() {
-  return <div className="mt-5"><HistoryTable title="Status Penerimaan Komite" headers={['Nama Komite', 'Status', 'Tanggal Approve/Reject', 'Komentar']} rows={[]} /></div>
 }

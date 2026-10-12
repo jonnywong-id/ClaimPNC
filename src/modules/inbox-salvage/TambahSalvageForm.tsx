@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useRef, useState } from 'react'
 
 import { APIError } from '@/api/client'
 import { AutoCompleteField } from '@/components/AutoCompleteField'
@@ -9,9 +9,12 @@ import { SelectField } from '@/components/SelectField'
 import { TextAreaField } from '@/components/TextAreaField'
 
 import { RiwayatSalvage } from './RiwayatSalvage'
-import { UploadDetailSalvageModal } from './UploadDetailSalvageModal'
 import { UploadDocumentModal } from './UploadDocumentModal'
-import { useCreateSalvage, useSalvageClaimLookup } from './api'
+import {
+  useCreateSalvage,
+  useSalvageClaimLookup,
+  useUploadSalvageDetail,
+} from './api'
 import type {
   CatatanSimpan,
   CoveragePilihan,
@@ -20,7 +23,6 @@ import type {
   HistoryRow,
   ObjekPilihan,
   StatusOption,
-  UploadResponse,
 } from './types'
 
 /**
@@ -71,6 +73,7 @@ type Props = {
    * yang tidak dapat dipakai.
    */
   currencyOptions: StatusOption[]
+  uploadColumns: string[]
   onClose: () => void
 
   /**
@@ -187,6 +190,7 @@ const emptyForm: FormState = {
 export function TambahSalvageForm({
   statusOptions,
   currencyOptions,
+  uploadColumns,
   onClose,
   onSaved,
   prefill,
@@ -221,9 +225,6 @@ export function TambahSalvageForm({
   // alih-alih meninggalkan layar.
   const [uploading, setUploading] = useState(false)
 
-  /** Apakah modal **UploadDetailSalvage** sedang terbuka. */
-  const [unggahDetail, setUnggahDetail] = useState(false)
-
   // Nomor klaim yang SUDAH selesai diketik — bukan yang sedang diketik.
   //
   // Keduanya dipisah dengan sengaja. `form.nomor_klaim` berubah pada setiap ketukan
@@ -235,8 +236,10 @@ export function TambahSalvageForm({
   // HTML berarti "selesai diubah", bukan "sedang diubah".
   const [lookupClaim, setLookupClaim] = useState('')
 
+  const fileInput = useRef<HTMLInputElement>(null)
 
   const create = useCreateSalvage()
+  const upload = useUploadSalvageDetail()
 
   // Pencarian hanya hidup pada jalur tombol "Tambah".
   //
@@ -377,18 +380,23 @@ export function TambahSalvageForm({
     )
   }
 
-  /**
-   * Menerima hasil bacaan modal **UploadDetailSalvage**.
-   *
-   * Pembacaan berkasnya sendiri dikerjakan modal itu; yang dikerjakan di sini hanyalah
-   * menaruh hasilnya ke dalam tabel.
-   */
-  function terimaUnggahan(result: UploadResponse) {
-    // Baris yang diunggah DITAMBAHKAN ke yang sudah ada, bukan menggantikannya.
-    // `UploadDetailSalvage` memakai `<APPEND>` pada setiap barisnya, sehingga dua
-    // berkas yang diunggah berturut-turut menghasilkan gabungan keduanya.
-    setItems((current) => [...current, ...result.detail_item_salvage])
-    setUploadNote(result.pesan)
+  function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    upload.mutate(file, {
+      onSuccess: (result) => {
+        // Baris yang diunggah DITAMBAHKAN ke yang sudah ada, bukan menggantikannya.
+        // `UploadDetailSalvage` memakai `<APPEND>` pada setiap barisnya, sehingga dua
+        // berkas yang diunggah berturut-turut menghasilkan gabungan keduanya.
+        setItems((current) => [...current, ...result.detail_item_salvage])
+        setUploadNote(result.pesan)
+      },
+    })
+
+    // Nilai input dikosongkan supaya berkas yang SAMA dapat diunggah lagi. Tanpa ini,
+    // memilih berkas yang sama dua kali tidak memicu perubahan apa pun.
+    event.target.value = ''
   }
 
   return (
@@ -401,13 +409,26 @@ export function TambahSalvageForm({
         <h2 className="text-base font-semibold text-slate-900">
           Menambahkan Data Salvage
         </h2>
-        {/*
-          Di bawah judul HANYA ada peringatan di layar lama, kata demi kata (`:884`).
+        <p className="mt-1 text-sm text-slate-600">
+          {form.nomor_klaim === '' ? null : (
+            <>
+              Untuk klaim <strong>{form.nomor_klaim}</strong>.{' '}
+            </>
+          )}
+          {editing === undefined ? (
+            <>
+              Pengajuan yang disimpan langsung masuk antrean <strong>Checker</strong>.
+            </>
+          ) : (
+            <>
+              Pengajuan <strong>{editing.id_salvage}</strong> dikembalikan checker untuk
+              diperbaiki. Menyimpan akan <strong>mengganti</strong> daftar barangnya
+              dengan isi tabel di bawah.
+            </>
+          )}
+        </p>
 
-          Kalimat pembuka yang dulu menyebut nomor klaim dan antrean Checker dibuang atas
-          permintaan Work Owner (2026-10-12): layar lama tidak memuatnya, dan nomor
-          klaimnya sudah terbaca di kolom "Nomor Klaim" tepat di bawah ini.
-        */}
+        {/* Peringatan ini ada di layar lama, kata demi kata (`:884`). */}
         <p className="mt-2 text-sm text-slate-700">
           Perhatian Lokasi Salvage Di Jabodatabek diInput Jika Lokasi Salvage DI
           Jabodatabek
@@ -498,6 +519,7 @@ export function TambahSalvageForm({
           value={form.nama_object}
           onPick={chooseObject}
           error={violations['nama_object']}
+          hint={hintFor(objectChoices.length, 'objek')}
           required
         />
 
@@ -527,11 +549,12 @@ export function TambahSalvageForm({
 
         <AutoCompleteField
           id="salvage-nama-coverage"
-          label="Nama Coverage *"
+          label="Nama Coverage"
           choices={coverageChoices}
           value={form.nama_coverage}
           onPick={chooseCoverage}
           error={violations['nama_coverage']}
+          hint={hintFor(coverageChoices.length, 'coverage')}
           required
         />
 
@@ -593,7 +616,7 @@ export function TambahSalvageForm({
         */}
         <SelectField
           id="salvage-mata-uang"
-          label="Mata Uang *"
+          label="Mata Uang"
           emptyText="--Pilih--"
           options={currencyOptions.map((option) => ({
             value: option.kode,
@@ -613,19 +636,19 @@ export function TambahSalvageForm({
           dikerjakan server, yang menolak isian yang bukan angka beserta nama isiannya.
         */}
         {/*
-          Judulnya **"Minimum Salvage"**, sama seperti layar lama.
+          Judulnya **"Total Nilai Salvage"**, bukan "Minimum Salvage".
 
-          Sempat ditulis "Total Nilai Salvage" atas dugaan bahwa layar yang BERJALAN sudah
-          bergeser dari export. Tangkapan layar Pega yang diberikan Work Owner (2026-10-12)
-          membantah dugaan itu: layar yang berjalan menuliskannya **"Minimum Salvage"**,
-          persis seperti `Section/TambahData_Salvage-Section.xml:5409`.
+          Export rule menyebutnya "Minimum Salvage"
+          (`Section/TambahData_Salvage-Section.xml:5409`), tetapi layar yang BERJALAN
+          menuliskannya "Total Nilai Salvage". Yang diikuti adalah layar yang berjalan —
+          itulah yang dilihat petugas setiap hari, dan export-nya snapshot yang lebih tua.
 
           Yang berubah hanya judulnya. Isiannya tetap `minimum_salvage`, tetap berakhir di
           kolom yang sama, dan tetap dibaca grid riwayat sebagai "Nilai Minimum".
         */}
         <FormField
           id="salvage-minimum"
-          label="Minimum Salvage"
+          label="Total Nilai Salvage"
           inputMode="decimal"
           value={form.minimum_salvage}
           onChange={(event) => set('minimum_salvage', event.target.value)}
@@ -648,7 +671,7 @@ export function TambahSalvageForm({
         {/* "--Pilih--" ada di layar lama apa adanya (`pyCaption --Pilih--`). */}
         <SelectField
           id="salvage-status"
-          label="Status Salvage *"
+          label="Status Salvage"
           emptyText="--Pilih--"
           options={statusOptions.map((option) => ({
             value: option.kode,
@@ -661,23 +684,19 @@ export function TambahSalvageForm({
         />
 
         {/*
-          "Nilai Penawaran" DIGAMBAR, tepat di bawah "Minimum Salvage".
+          Sel KOSONG, dan kekosongannya disengaja.
 
-          Kolomnya sempat ditiadakan atas dugaan bahwa layar yang berjalan tidak lagi
-          memuatnya pada form **Tambah**. Tangkapan layar Pega (2026-10-12) menunjukkan
-          kolomnya ada, dan `Section/TambahData_Salvage-Section.xml` memuat caption-nya.
+          Di sinilah "Nilai Penawaran" dulu digambar. Layar yang berjalan tidak lagi
+          memuatnya pada form **Tambah** — nilai penawaran baru lahir setelah salvage
+          ditawarkan, bukan saat pengajuannya dibuat — sehingga kolomnya ditiadakan di
+          sini dan "Email PIC Survey" tetap berada di lajur yang sama dengan "Nama PIC
+          Survey" di atasnya.
 
-          Nilainya memang sudah selalu dikirim — `form.nilai_penawaran` tidak pernah
-          dibuang — tetapi tanpa kolomnya pengguna tidak punya cara mengisinya.
+          Nilainya TIDAK hilang dari data: `form.nilai_penawaran` tetap dikirim apa adanya,
+          sehingga pengajuan yang sedang disunting tidak kehilangan penawaran yang sudah
+          pernah tercatat hanya karena kolomnya tidak lagi tergambar.
         */}
-        <FormField
-          id="salvage-nilai-penawaran"
-          label="Nilai Penawaran"
-          inputMode="decimal"
-          value={form.nilai_penawaran}
-          onChange={(event) => set('nilai_penawaran', event.target.value)}
-          failure={violations['nilai_penawaran']}
-        />
+        <div className="hidden lg:block" aria-hidden="true" />
 
         <FormField
           id="salvage-email-survey"
@@ -698,8 +717,12 @@ export function TambahSalvageForm({
 
       <DetailItemTable
         items={items}
+        uploadColumns={uploadColumns}
         uploadNote={uploadNote}
-        onUpload={() => setUnggahDetail(true)}
+        uploadError={upload.error}
+        isUploading={upload.isPending}
+        fileInput={fileInput}
+        onChooseFile={chooseFile}
         onAdd={() => setItems((current) => [...current, emptyItem()])}
         onChange={(index, patch) =>
           setItems((current) =>
@@ -712,46 +735,7 @@ export function TambahSalvageForm({
           setItems((current) => current.filter((_, position) => position !== index))
         }
         failure={violations['detail_item_salvage']}
-        actions={
-          <>
-            {/*
-              Tombol ini MEMBUKA MODAL, tidak langsung memilih berkas.
-
-              Begitulah layar lama: ia local action `UploadDocument_Salvage`
-              (`Section/TambahData_Salvage-Section.xml:13259`) yang membuka jendela
-              tersendiri berisi kedua batas unggahan sebelum berkasnya dipilih. Judulnya
-              "Upload File" apa adanya (`:13230`).
-            */}
-            <Button type="button" tone="kedua" onClick={() => setUploading(true)}>
-              Upload File
-            </Button>
-
-            {/*
-              "Batal" TIDAK ada di layar lama — di sana form ini modal dengan tanda silang
-              di sudutnya. Di sini ia menggantikan tanda silang itu: tanpanya tidak ada
-              jalan keluar dari form selain menyimpan.
-            */}
-            <Button type="button" tone="halus" onClick={onClose}>
-              Batal
-            </Button>
-
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Menyimpan…' : 'Submit'}
-            </Button>
-          </>
-        }
       />
-
-      {/*
-        Kabar unggahan dokumen digambar DI BAWAH tabel, bukan di dalam modal — modalnya
-        sudah tertutup saat kabar ini datang, dan tanpa jejak di layar pengguna tidak punya
-        cara memastikan dokumennya benar-benar tersimpan.
-      */}
-      {docNote !== '' && (
-        <p className="rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {docNote}
-        </p>
-      )}
 
       {/*
         Grid riwayat digambar SELALU, termasuk ketika kosong.
@@ -764,12 +748,53 @@ export function TambahSalvageForm({
       */}
       <RiwayatSalvage rows={riwayat} />
 
-      {unggahDetail && (
-        <UploadDetailSalvageModal
-          onClose={() => setUnggahDetail(false)}
-          onLoaded={terimaUnggahan}
-        />
-      )}
+      {/*
+        Tombol berada di KAKI form, bukan di samping grid Detail Item.
+
+        Begitulah letaknya di layar yang berjalan: "Upload File Pendukung Lain" di kiri
+        bawah, tombol kirim di kanan bawah, keduanya di bawah kedua grid. Menaruhnya di
+        samping grid membuat tombol kirim terbaca seolah menyimpan grid itu saja.
+      */}
+      <div className="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+        <div className="space-y-2">
+          {/*
+            Tombol ini MEMBUKA MODAL, tidak langsung memilih berkas.
+
+            Begitulah layar lama: ia local action `UploadDocument_Salvage`
+            (`Section/TambahData_Salvage-Section.xml:13259`) yang membuka jendela
+            tersendiri berisi kedua batas unggahan sebelum berkasnya dipilih.
+          */}
+          <Button type="button" tone="kedua" onClick={() => setUploading(true)}>
+            Upload File Pendukung Lain
+          </Button>
+
+          {/*
+            Kabarnya digambar DI BAWAH tombolnya, bukan di dalam modal — modalnya sudah
+            tertutup saat kabar ini datang, dan tanpa jejak di layar pengguna tidak
+            punya cara memastikan dokumennya benar-benar tersimpan.
+          */}
+          {docNote !== '' && (
+            <p className="rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              {docNote}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/*
+            "Batal" TIDAK ada di layar lama — di sana form ini modal dengan tanda
+            silang di sudutnya. Di sini ia menggantikan tanda silang itu: tanpanya
+            tidak ada jalan keluar dari form selain menyimpan.
+          */}
+          <Button type="button" tone="halus" onClick={onClose}>
+            Batal
+          </Button>
+
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending ? 'Menyimpan…' : 'Submit Pengajuan Salvage'}
+          </Button>
+        </div>
+      </div>
 
       {uploading && (
         <UploadDocumentModal
@@ -781,6 +806,20 @@ export function TambahSalvageForm({
       )}
     </form>
   )
+}
+
+/**
+ * hintFor menyusun keterangan di bawah kedua autocomplete.
+ *
+ * Isinya menjawab satu pertanyaan yang pasti muncul: "daftarnya kosong, rusak atau memang
+ * begitu?" Kedua kolom menerima ketikan bebas, sehingga daftar kosong BUKAN jalan buntu —
+ * dan mengatakannya di tempat lebih murah daripada membiarkan orang menebaknya.
+ */
+function hintFor(count: number, what: string): string {
+  if (count === 0) {
+    return `Belum ada ${what} yang dapat dipilih. Nama boleh diketik langsung.`
+  }
+  return `${count} ${what} tersedia. Nama di luar daftar boleh diketik langsung.`
 }
 
 type LookupStateProps = {
@@ -865,26 +904,16 @@ function ClaimLookupState({
 
 type DetailProps = {
   items: DetailItem[]
+  uploadColumns: string[]
   uploadNote: string
-
-  /** Membuka modal **UploadDetailSalvage**. */
-  onUpload: () => void
+  uploadError: unknown
+  isUploading: boolean
+  fileInput: React.RefObject<HTMLInputElement | null>
+  onChooseFile: (event: React.ChangeEvent<HTMLInputElement>) => void
   onAdd: () => void
   onChange: (index: number, patch: Partial<DetailItem>) => void
   onRemove: (index: number) => void
   failure: string | undefined
-
-  /**
-   * Tombol yang digambar **di samping kanan tabel**, bukan di kaki form.
-   *
-   * Letaknya ditentukan tangkapan layar Pega (2026-10-12): "Upload File" dan "Submit"
-   * berdiri sejajar di sebelah kanan grid Detail Item, dan grid "Detail History Salvage"
-   * berada di bawah keduanya.
-   *
-   * Tombolnya datang dari luar karena yang dikirimnya adalah SELURUH form, bukan tabel
-   * ini — tabel tidak boleh memegang tombol yang menyimpan sesuatu yang bukan miliknya.
-   */
-  actions: React.ReactNode
 }
 
 /** Kelas isian di dalam sel grid — dibuat sekali supaya kelima kolom sama persis. */
@@ -906,25 +935,29 @@ const SEL_INPUT =
  * jalur KEDUA di layar lama (tombol "Upload Detail Salvage"), bukan satu-satunya.
  * Keduanya kini ada, dan keduanya mengisi tabel yang sama.
  *
- * # Kolomnya TIGA, bukan lima
+ * # Dua kolom yang digambar tetapi BELUM dapat disimpan
  *
- * **Harga Total** dan **Upload file** sempat ikut digambar dalam keadaan mati, atas dugaan
- * bahwa layar yang berjalan memuat keduanya. Tangkapan layar Pega (2026-10-12) membantah
- * dugaan itu: gridnya berkolom tiga — Nama Item, Jumlah Item / Qty, Remark — persis
- * seperti export-nya.
+ * **Harga Total** dan **Upload file** ada di layar yang berjalan sekarang, tetapi tidak
+ * ada di export — dan yang lebih menentukan, `Database/INSERT_SALVAGE_DETAILS.prc` yang
+ * kita punya **tidak punya parameter untuk keduanya**. Prosedurnya hanya menerima satu
+ * angka, `tTOTALHARGA`, dan angka itu sudah dipakai kolom "Jumlah Item".
  *
- * Keduanya memang tidak akan dapat disimpan sekalipun digambar:
- * `Database/INSERT_SALVAGE_DETAILS.prc` tidak punya satu pun parameter untuknya.
+ * Keduanya karena itu digambar dalam keadaan mati, dengan alasannya tertulis di bawah
+ * tabel — bukan dihilangkan, supaya ketiadaannya terlihat, dan bukan pula dibuat aktif,
+ * supaya tidak ada yang mengetik nilai yang diam-diam hilang saat disimpan.
  */
 function DetailItemTable({
   items,
+  uploadColumns,
   uploadNote,
-  onUpload,
+  uploadError,
+  isUploading,
+  fileInput,
+  onChooseFile,
   onAdd,
   onChange,
   onRemove,
   failure,
-  actions,
 }: DetailProps) {
   return (
     <section className="space-y-3">
@@ -958,21 +991,32 @@ function DetailItemTable({
           Hapus
         </button>
 
-        {/*
-          Tombol ini MEMBUKA MODAL, tidak langsung memilih berkas.
-
-          Begitulah layar lama: ia local action `UploadDetailSalvage`
-          (`Flow Action/UploadDetailSalvage-FA.xml`) yang membuka jendela tersendiri
-          berisi pemilih berkas beserta sepasang tombol Cancel/Submit.
-
-          Galat pembacaan karena itu dilaporkan DI DALAM modal, bukan di sini — di sanalah
-          pengguna sedang menatap saat galatnya datang.
-        */}
-        <Button type="button" tone="kedua" onClick={onUpload}>
-          Upload Detail Salvage
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".csv,text/csv"
+          onChange={onChooseFile}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+        <Button
+          type="button"
+          tone="kedua"
+          disabled={isUploading}
+          onClick={() => fileInput.current?.click()}
+        >
+          {isUploading ? 'Membaca berkas…' : 'Upload Detail Salvage'}
         </Button>
       </div>
 
+      {uploadError != null && (
+        <ErrorMessage
+          title="Berkas tidak dapat dibaca"
+          description={messageOf(uploadError)}
+          tone="penolakan"
+        />
+      )}
       {uploadNote !== '' && (
         <p className="rounded-kontrol bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {uploadNote}
@@ -984,14 +1028,9 @@ function DetailItemTable({
         </p>
       )}
 
-      {/*
-        Tabel di KIRI, tombolnya di KANAN — begitulah letaknya di layar lama.
-
-        Keduanya menumpuk pada layar sempit (`flex-wrap`), supaya tabel berkolom tiga ini
-        tidak terdesak menjadi tidak terbaca di lebar tablet ke bawah.
-      */}
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-0 flex-1 overflow-x-auto rounded-kartu border border-slate-200">
+      {/* Tabel melebar penuh; tombol kirim ada di kaki form, bukan di sampingnya. */}
+      <div>
+        <div className="min-w-0 overflow-x-auto rounded-kartu border border-slate-200">
           <table className="w-full min-w-max text-sm" aria-label="Detail Item Salvage">
             <thead className="bg-slate-50 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
               <tr>
@@ -999,10 +1038,28 @@ function DetailItemTable({
                   Nama Item
                 </th>
                 <th scope="col" className="px-3 py-2.5">
-                  Jumlah Item / Qty
+                  Jumlah Item
                 </th>
                 <th scope="col" className="px-3 py-2.5">
                   Remark
+                </th>
+
+                {/*
+                  Kedua kolom berikut ADA di layar yang berjalan dan karena itu digambar —
+                  tetapi dalam keadaan MATI, dengan alasannya tertulis di bawah tabel.
+
+                  Keduanya tidak dapat disimpan: `Database/INSERT_SALVAGE_DETAILS.prc`
+                  tidak punya satu pun parameter untuknya. Prosedurnya hanya menerima satu
+                  angka, `tTOTALHARGA`, dan angka itu sudah dipakai kolom "Jumlah Item".
+
+                  Menghilangkannya membuat ketiadaannya tidak terlihat; membuatnya aktif
+                  membuat orang mengetik nilai yang diam-diam hilang saat disimpan.
+                */}
+                <th scope="col" className="px-3 py-2.5 text-slate-400">
+                  Harga Total
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-slate-400">
+                  Upload file
                 </th>
               </tr>
             </thead>
@@ -1011,7 +1068,7 @@ function DetailItemTable({
               {items.length === 0 ? (
                 <tr>
                   {/* Teks kekosongan disalin apa adanya dari layar lama. */}
-                  <td colSpan={3} className="px-3 py-3 text-sm text-slate-500">
+                  <td colSpan={5} className="px-3 py-3 text-sm text-slate-500">
                     Data Tidak Ada
                   </td>
                 </tr>
@@ -1036,7 +1093,7 @@ function DetailItemTable({
 
                     <td className="px-3 py-2">
                       <input
-                        aria-label={`Jumlah Item / Qty baris ${index + 1}`}
+                        aria-label={`Jumlah Item baris ${index + 1}`}
                         inputMode="decimal"
                         className={`${SEL_INPUT} text-right tabular-nums`}
                         value={item.jumlah_item}
@@ -1056,6 +1113,22 @@ function DetailItemTable({
                         }
                       />
                     </td>
+
+                    {/* Kedua sel mati — lihat alasannya di kepala tabel. */}
+                    <td className="px-3 py-2">
+                      <input
+                        aria-label={`Harga Total baris ${index + 1}`}
+                        className={`${SEL_INPUT} disabled:cursor-not-allowed disabled:bg-slate-50`}
+                        value=""
+                        disabled
+                        readOnly
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Button type="button" tone="kedua" disabled>
+                        Upload file
+                      </Button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -1063,17 +1136,26 @@ function DetailItemTable({
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">{actions}</div>
       </div>
 
-      {/*
-        Keterangan berkas CSV — kolomnya apa saja, pemisahnya koma, dan barisnya
-        DITAMBAHKAN bukan menggantikan — dibuang atas permintaan Work Owner (2026-10-12).
-        Layar lama tidak memuatnya.
+      <p className="text-sm text-slate-600">
+        Kolom <strong>Harga Total</strong> dan <strong>Upload file</strong> digambar tetapi
+        belum dapat disimpan: <span className="font-mono text-xs">INSERT_SALVAGE_DETAILS</span>{' '}
+        tidak punya parameter untuk keduanya.
+      </p>
 
-        Dua hal karenanya tidak lagi tertulis di layar, dan keduanya tetap berlaku:
-        pemisah selain koma ditolak server dengan pesannya sendiri, dan kolom "Satuan"
-        ada di berkas CSV tetapi tidak digambar di tabel ini — sama seperti layar lama.
+      <p className="text-sm text-slate-600">
+        Berkas CSV berkolom{' '}
+        <span className="font-mono text-xs">{uploadColumns.join(', ')}</span>. Pemisah
+        antarkolom adalah <strong>koma</strong> — berkas yang disimpan Excel dengan setelan
+        Indonesia memakai titik koma dan tidak akan terbaca. Baris dari berkas DITAMBAHKAN
+        ke yang sudah ada, bukan menggantikannya.
+      </p>
+
+      {/*
+        Kolom "Satuan" ADA di berkas CSV tetapi TIDAK digambar di tabel ini — layar lama
+        pun hanya menggambar tiga kolom. Baris yang diketik langsung karena itu tersimpan
+        tanpa satuan, sementara baris dari CSV membawa satuannya.
       */}
     </section>
   )

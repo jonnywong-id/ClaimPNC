@@ -57,7 +57,7 @@ export type KolomLayar = {
   keterangan?: string
 }
 
-/** Keterangan layar — judul kolom dan keterbatasan yang berlaku. */
+/** Keterangan layar — judul kolom, selisih terencana, dan keterbatasan. */
 export type KeteranganResponse = {
   portal: string
   kolom: KolomLayar[]

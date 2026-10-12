@@ -204,8 +204,6 @@ describe('DLADialog', () => {
     expect(calls.find((c) => c.url === `${BASE}/dla`)?.body).toEqual({
       ...ADDRESS,
       catatan: { 'DLA-1': 'catatan baru' },
-      // Isian Email seluruh baris ikut terkirim; server hanya menulis yang berubah.
-      email: { 'DLA-1': '', 'DLA-2': 'r@contoh.example' },
       sesuai_polis: true,
     })
     await waitFor(() => expect(listed).toBe(2))

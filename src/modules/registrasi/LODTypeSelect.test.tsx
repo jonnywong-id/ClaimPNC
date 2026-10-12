@@ -50,10 +50,11 @@ describe('dropdown Tipe LOD', () => {
     expect(calls.find((c) => c.url.endsWith('/lod/pilih'))?.body).toEqual({ tugas_id: 'tugas-1', objek: 1, jaminan: 2, adjustment: 3, tipe_pdf: '15' })
   })
 
-  it('setelah akseptasi tampil sebagai teks pilihannya seperti grid Pega; PA tidak menggambar apa pun', () => {
+  it('setelah akseptasi dropdown tetap tampil, terkunci dengan pilihannya; PA tidak menggambar apa pun', () => {
     mount({ status_akseptasi_lod: '1', nomor_akseptasi: 'A26', tipe_pdf_lod: '4', nama_tipe_pdf_lod: 'Property - Final tanpa Co Member' })
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    expect(screen.getByText('Property - Final tanpa Co Member')).toBeInTheDocument()
+    const select = screen.getByRole('combobox')
+    expect(select).toBeDisabled()
+    expect(select).toHaveValue('4')
     const { container } = mount({}, '002')
     expect(container).toBeEmptyDOMElement()
   })

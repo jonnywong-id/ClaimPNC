@@ -1,13 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSelectedPortal } from '@/app/portal'
 import { useSession } from '@/app/session'
 
-import { SettlementDetail, SettlementEditor, finishMoney, groupMoney, inpatientDays, type SettlementEditorHandle } from './SettlementEditor'
+import { SettlementDetail, SettlementEditor, finishMoney, groupMoney, inpatientDays } from './SettlementEditor'
 import type { Settlement } from './types'
 
 /**
@@ -73,16 +73,6 @@ function wrap(children: ReactNode) {
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
 }
 
-/** Isian wajib baris baru: Tipe Pembayaran Final, Total Klaim, Nilai Pengajuan Tertanggung, Tipe Resiko Lainnya. */
-async function fillRequired() {
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '1')
-  await userEvent.type(screen.getByLabelText('Total Klaim'), '1000')
-  await userEvent.type(screen.getByLabelText('Nilai Pengajuan Tertanggung'), '1000')
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Resiko Sendiri'), '3')
-  await userEvent.type(screen.getByLabelText('Nilai Resiko Sendiri'), '10')
-  await userEvent.tab()
-}
-
 function editor(
   props: {
     travel?: boolean
@@ -94,7 +84,6 @@ function editor(
     existing?: { index: number; line: Settlement }
     onCreated?: (index: number) => void
     onClose?: () => void
-    saveRef?: React.RefObject<SettlementEditorHandle | null>
   } = {},
 ) {
   return (
@@ -117,7 +106,6 @@ function editor(
       {...(props.existing ? { existing: props.existing } : {})}
       {...(props.onCreated ? { onCreated: props.onCreated } : {})}
       onClose={props.onClose ?? (() => {})}
-      {...(props.saveRef ? { saveRef: props.saveRef } : {})}
     />
   )
 }
@@ -361,30 +349,14 @@ describe('SettlementEditor', () => {
     installFetch((url) => (url === path ? answer() : undefined))
     wrap(editor())
 
-    // Isian wajib lengkap: dihitung dan langsung disimpan (SetNilaiResikoSendiri).
-    await fillRequired()
+    // Pilihan berubah: dihitung dan langsung disimpan (SetNilaiResikoSendiri).
+    await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '1')
 
     expect(await screen.findByText(title)).toBeInTheDocument()
     expect(screen.getByText(text)).toBeInTheDocument()
   })
 
   // Pega tidak punya Simpan/Batal: perubahan isian langsung disimpan; Hapus menutup baris yang belum tersimpan.
-  it('simpan-sekarang (Transfer ke Komite / Unggah File Penunjang): menolak isian belum lengkap, lalu menyimpan', async () => {
-    installFetch((url) => (url === BASE ? json(200, { klaim: { objek: [{ coverage: [{ adjustment: [line(), line()] }] }] } }) : undefined))
-    const ref = createRef<SettlementEditorHandle>()
-    wrap(editor({ saveRef: ref }))
-
-    await expect(ref.current!.save()).rejects.toThrow()
-    expect(await screen.findByText('Lengkapi isian bertanda * lebih dulu.')).toBeInTheDocument()
-    expect(calls.find((c) => c.url === BASE)).toBeUndefined()
-
-    await fillRequired()
-    await waitFor(() => expect(calls.filter((c) => c.url === BASE)).toHaveLength(1))
-    // Baris yang sudah tersimpan: simpan-sekarang tanpa perubahan tidak mengirim ulang.
-    await expect(ref.current!.save()).resolves.toBe(1)
-    expect(calls.filter((c) => c.url === BASE)).toHaveLength(1)
-  })
-
   it('menyimpan baris baru begitu isian berubah, tanpa Simpan dan Batal', async () => {
     installFetch((url) => (url === BASE ? json(200, { klaim: { objek: [{ coverage: [{ adjustment: [line()] }] }] } }) : undefined))
     const onCreated = vi.fn()
@@ -393,17 +365,12 @@ describe('SettlementEditor', () => {
 
     expect(screen.queryByRole('button', { name: 'Simpan' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Batal' })).not.toBeInTheDocument()
-    // Belum lengkap: belum ada simpan, dan tidak ada pesan penolakan.
     await userEvent.selectOptions(screen.getByLabelText('Tipe Pembayaran'), '1')
-    expect(calls.find((c) => c.url === BASE)).toBeUndefined()
-    expect(screen.getByText(/Lengkapi isian bertanda/)).toBeInTheDocument()
-    await fillRequired()
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(0))
     expect(calls.find((c) => c.url === BASE)?.body).toMatchObject({ tugas_id: 'tugas-1', objek: 1, jaminan: 1, tipe_pembayaran: '1' })
 
-    // Hapus ada di baris grid (SurveyorForm), bukan di dalam isian.
-    expect(screen.queryByRole('button', { name: 'Hapus' })).not.toBeInTheDocument()
-    expect(onClose).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Hapus' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('baris tersimpan: perubahan disimpan ulang lewat rute ubah; Hapus menunggu kolom DIHAPUS_PADA', async () => {
@@ -411,6 +378,7 @@ describe('SettlementEditor', () => {
     wrap(editor({ existing: { index: 0, line: line({ tipe_resiko: '3' }) } }))
 
     expect(screen.getByLabelText('Total Klaim')).toHaveValue('1000,00')
+    expect(screen.getByRole('button', { name: 'Hapus' })).toBeDisabled()
     await userEvent.clear(screen.getByLabelText('Total Klaim'))
     await userEvent.type(screen.getByLabelText('Total Klaim'), '2000')
     await userEvent.tab()

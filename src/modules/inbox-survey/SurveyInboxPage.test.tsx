@@ -149,9 +149,8 @@ const keteranganResponse: KeteranganResponse = {
   tab_bawaan: 'belum-dijawab',
   status_survei: ["ALL", "OUTSTANDING", "FINAL"],
   tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
-  kuartal: ["ALL", "1", "2", "3", "4"],
+  kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
   keterbatasan: ['Empat kueri tab layar lama hilang dari export.'],
 }
 
@@ -622,41 +621,27 @@ it('tidak menembak KPI sampai tombol Cari ditekan', async () => {
 })
 
 /**
- * Kedua tombol TIDAK PERNAH mati — `pyDisabled` bernilai `false` di seluruh panel KPI.
+ * Tombol Cari mati sampai KEDUA isian wajib terisi.
  *
- * Versi sebelumnya layar ini mematikannya sampai kedua isian wajib terisi. Itu tambahan saya
- * sendiri, dan ia menyembunyikan sebabnya: tombol kelabu tidak memberi tahu APA yang kurang.
- *
- * Yang menggantikannya: menekan Cari dengan isian kosong MENANDAI isian yang bersangkutan dan
- * tidak menembak server sama sekali.
+ * Keduanya ditandai bintang merah di layar lama. Membiarkannya hidup akan membuat pengguna
+ * menekan Cari lalu menerima penolakan — satu perjalanan yang sudah dapat dicegah di layar.
  */
-it('menandai isian wajib saat Cari ditekan, bukan mematikan tombolnya', async () => {
+it('mematikan Cari dan Export Data sampai kedua isian wajib terisi', async () => {
   stubFetch(daftarResponse())
   renderPage()
 
   await screen.findByText('PNCN.26.0101')
   await userEvent.click(screen.getByRole('tab', { name: 'KPI' }))
 
-  const cari = screen.getByRole('button', { name: 'Cari' })
-  const ekspor = screen.getByRole('button', { name: 'Export Data' })
-  expect(cari).toBeEnabled()
-  expect(ekspor).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Export Data' })).toBeDisabled()
 
-  // Belum ditekan: tidak ada satu pun isian yang ditandai. Menandainya sejak layar terbuka
-  // membuat panel yang belum disentuh tampil seolah pengguna sudah berbuat salah.
-  expect(screen.queryAllByText('Wajib dipilih.')).toHaveLength(0)
+  await userEvent.selectOptions(screen.getByLabelText(/Status Survey/), 'FINAL')
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeDisabled()
 
-  await userEvent.click(cari)
-
-  expect(screen.getAllByText('Wajib dipilih.')).toHaveLength(2)
-  expect(calls.some((c) => c.url.includes('/kpi?'))).toBe(false)
-
-  // Begitu keduanya terisi, penandanya hilang dan permintaannya berjalan.
-  await pilihKPI()
-  expect(screen.queryAllByText('Wajib dipilih.')).toHaveLength(0)
-
-  await userEvent.click(cari)
-  await waitFor(() => expect(calls.some((c) => c.url.includes('/kpi?'))).toBe(true))
+  await userEvent.selectOptions(screen.getByLabelText(/Tipe Report/), 'DATA SUMMARY')
+  expect(screen.getByRole('button', { name: 'Cari' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Export Data' })).toBeEnabled()
 })
 
 /**

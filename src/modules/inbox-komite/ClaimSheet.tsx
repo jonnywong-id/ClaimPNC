@@ -10,7 +10,6 @@ import type {
 import { DataTable, type Column } from '@/components/DataTable'
 import { formatRupiah } from '@/lib/money'
 
-import { AttachmentOpenError, useAttachmentOpener } from './AttachmentName'
 import { formatPersen, formatTanggal, formatWaktu } from './format'
 
 /**
@@ -353,31 +352,24 @@ const attachmentColumns: Column<KomiteAttachment>[] = [
 
 /**
  * Tab "Lampiran Dokumen" — lampiran klaim yang dikomitekan (`POOLDATA.DATA_ATTACHFILE`).
- * Nama berkas ber-IMAGEID dapat ditekan untuk membuka dokumennya, sama seperti Dokumen
- * Pendukung (lihat `AttachmentName.tsx`).
  *
  * `UploadDocumentKomite` di Pega juga menerima unggahan KE case komite; jalur itu belum
  * ada, dan layar menyatakannya alih-alih menampilkan tombol yang tidak bekerja.
  */
 export function AttachmentTab({ transfer }: { transfer?: KomiteTransferDetail | undefined }) {
-  const opener = useAttachmentOpener(transfer?.kunci_klaim ?? '')
-
   return (
     <div className="space-y-3">
-      <div>
-        <DataTable
-          title="Lampiran Dokumen"
-          description="Berkas yang sudah diunggah untuk klaim ini."
-          columns={opener.withNameLink(attachmentColumns)}
-          rows={transfer?.lampiran ?? []}
-          rowKey={(r) => r.id}
-          emptyMessage="Belum ada lampiran untuk klaim ini."
-          showHeaderWhenEmpty
-          hideSearch
-          searchable={false}
-        />
-        <AttachmentOpenError message={opener.error} />
-      </div>
+      <DataTable
+        title="Lampiran Dokumen"
+        description="Berkas yang sudah diunggah untuk klaim ini."
+        columns={attachmentColumns}
+        rows={transfer?.lampiran ?? []}
+        rowKey={(r) => r.id}
+        emptyMessage="Belum ada lampiran untuk klaim ini."
+        showHeaderWhenEmpty
+        hideSearch
+        searchable={false}
+      />
       <p className="text-xs leading-relaxed text-slate-500">
         Mengunggah dokumen ke case komite (<code>UploadDocumentKomite</code>) belum tersedia.
         Dokumen klaim diunggah dari tab Unggah Dokumen pada layar klaimnya.

@@ -64,11 +64,9 @@ export type WorkItem = {
   /**
    * Kolom "Tanggal Cetak Surat".
    *
-   * Isiannya tetap dikirim untuk KETIGA tab, tetapi hanya DIGAMBAR di dua tab terakhir.
-   * Pada tab "Cetak Surat" ia selalu kosong — kolom ini justru PENYARING tab itu, dengan
-   * syarat `belum dicetak` — sehingga sejak 2026-10-11 server tidak lagi menyertakannya di
-   * `kolom` tab tersebut. Layar tidak menyaring apa pun sendiri: ia menggambar kolom yang
-   * dikirim server, tidak kurang dan tidak lebih.
+   * SELALU kosong pada tab "Cetak Surat" — penyaring tab itu justru `belum dicetak`.
+   * Kolomnya tetap digambar karena layar lama menggambarnya, dan tabnya membawa
+   * `catatan` yang menjelaskannya.
    */
   tanggal_cetak_surat: string
 
@@ -151,21 +149,10 @@ export type Tab = {
   punya_laporan_rentang_tanggal: boolean
 
   /**
-   * Tab ini punya tombol **"Reminder PUCL"** di bilah tindakannya.
-   *
-   * Hanya tab "Kelengkapan Dokumen". Datang dari server, bukan dibandingkan dengan kode tab
-   * di sini: kode tab adalah nilai milik modul, dan membandingkannya di layar membuat satu
-   * aturan hidup di dua tempat yang dapat berselisih (`D-15`).
-   */
-  punya_reminder: boolean
-
-  /**
    * Keterangan yang berlaku pada tab ini saja, digambar di atas grid.
    *
-   * Kini hanya satu tab memilikinya: "Klaim MSIG", yang menjelaskan mengapa ia kemungkinan
-   * kosong. Tab "Cetak Surat" sempat punya satu pula — penjelasan kolom "Tanggal Cetak
-   * Surat" yang selalu kosong — dan keterangan itu hilang bersama kolomnya pada
-   * 2026-10-11.
+   * Dua tab memilikinya: "Cetak Surat" menjelaskan kolom yang selalu kosong, dan
+   * "Klaim MSIG" menjelaskan mengapa ia kemungkinan kosong.
    */
   catatan?: string
 
@@ -276,30 +263,33 @@ export type LetterDraft = {
  * Hanya satu isiannya punya kolom yang diketahui. Sisanya tidak dikirim sama sekali —
  * yang menjelaskan ketiadaannya adalah `isian_belum_terpetakan`.
  */
+/** Satu baris grid "Tanggal Terima Dokumen". */
+export type ReceivedDate = {
+  tanggal: string
+  keterangan: string
+}
+
 export type DocumentReceipt = {
   /**
-   * Sel **"Keterangan"** pada grid "Tanggal terima Dokumen". HANYA-BACA.
+   * Grid "Tanggal Terima Dokumen" — paling banyak SATU baris.
    *
-   * Sumbernya `KETERANGAN_1` di tabel objek kerja Pega, yang `P-1` larang ditulis modul
-   * ini selama masa paralel. Layar menggambarnya jelas tidak dapat diketik.
+   * Daftarnya page list Pega tanpa tabel; hanya baris pertamanya yang diekspos sebagai
+   * kolom. Lihat `tanggal_terima_dokumen_sebagian`.
    */
-  keterangan_terima_dokumen: string
+  tanggal_terima_dokumen: ReceivedDate[]
 
   /**
-   * Sel **"Tanggal"** pada grid itu — dari `TGL_TERIMA_DOKUMEN_PUCL`.
+   * Daftar di atas MUNGKIN tidak lengkap.
+   *
+   * Datang dari server supaya ia hilang di satu tempat begitu baris kedua dan seterusnya
+   * terbaca lewat layanan Pega.
+   */
+  tanggal_terima_dokumen_sebagian: boolean
+
+  /**
+   * "Tanggal Kelengkapan Dokumen" — dari `TGL_TERIMA_DOKUMEN_PUCL`.
    *
    * Sudah berbentuk tampilan; layar tidak memformat ulang apa pun.
-   *
-   * # Namanya tidak sejalan dengan labelnya, dan itu disengaja
-   *
-   * Sampai 2026-10-11 nilai ini digambar sebagai isian tersendiri berlabel "Tanggal
-   * Kelengkapan Dokumen", terpisah dari grid di atasnya — dan keduanya menulis kolom yang
-   * SAMA. Work Owner menetapkan keduanya memang satu hal, sehingga isian terpisahnya
-   * dihapus dan nilainya kini digambar di dalam grid.
-   *
-   * Nama fieldnya TIDAK ikut diganti: ia kontrak yang sudah dipakai badan permintaan Save
-   * dan kedua tombol Kirim, sehingga menggantinya adalah perubahan yang merusak — bukan
-   * penggantian nama (`D-80`).
    */
   tanggal_kelengkapan_dokumen: string
 
@@ -331,18 +321,12 @@ export type ClaimDetailResponse = {
   /**
    * Isian layar lama yang tersimpan di CLIPBOARD Pega, bukan sebagai kolom tabel.
    *
-   * Work Owner menjelaskan 2026-09-24: sembilan isian berupa properti clipboard pada objek
-   * kerja (`.ClaimData.PUCLStatus.NIK` dan seterusnya). Properti clipboard yang tidak
-   * dioptimasi tidak punya kolom sendiri — jadi ini BUKAN daftar "kolom yang belum
-   * ditemukan".
+   * Work Owner menjelaskan 2026-09-24: kesembilannya properti clipboard pada objek kerja
+   * (`.ClaimData.PUCLStatus.NIK` dan seterusnya). Properti clipboard yang tidak dioptimasi
+   * tidak punya kolom sendiri — jadi ini BUKAN daftar "kolom yang belum ditemukan".
    *
    * Datang dari server sebagai kalimat siap baca, bukan nama properti Pega — yang
    * membacanya petugas klaim.
-   *
-   * PANJANGNYA BERUBAH, dan layar tidak boleh menyebut jumlahnya sebagai angka. Daftarnya
-   * sudah menyusut empat kali — sembilan, lima, tiga, dua — dan setiap penyusutan membuat
-   * kalimat berangka di kaki layar salah tanpa satu pun galat. Itu benar-benar terjadi:
-   * sampai 2026-10-11 layar menyatakan "Kesembilannya" sementara daftarnya memuat tiga.
    */
   isian_belum_terpetakan: string[]
 

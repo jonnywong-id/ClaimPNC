@@ -261,22 +261,14 @@ describe('daftar master login', () => {
     }
   })
 
-  // Kedua catatan kaki DICABUT 2026-10-11 atas keputusan Work Owner.
-  //
-  // Yang pertama keliru: layar Pega pun tidak pernah menerbitkan akun. Yang kedua benar
-  // tetapi bukan kekurangan — Pega juga tidak punya tombol Hapus, dan layar ini mengikuti
-  // Pega apa adanya.
-  //
-  // Uji ini menjaga keduanya tidak dipasang kembali tanpa bukti baru.
-  it('tidak menyatakan akun belum diterbitkan, dan tidak menjanjikan hapus', async () => {
+  // Keduanya keterbatasan nyata yang tidak terlihat dari layar bila tidak disebutkan.
+  it('menyatakan akun belum diterbitkan dan login tidak dapat dihapus', async () => {
     installFetch(defaultReply())
     show()
 
     await screen.findByText('Budi Hartono')
-    expect(screen.queryByText(/belum diterbitkan/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/kata sandi/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/sistem identitas/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /hapus/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/Akun aplikasi belum diterbitkan/)).toBeInTheDocument()
+    expect(screen.getByText(/Login tidak dapat dihapus/)).toBeInTheDocument()
   })
 })
 

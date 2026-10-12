@@ -523,41 +523,6 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
             tone="penolakan"
           />
         )}
-
-        {/*
-          TIDAK ADA catatan "akun belum terbit" di sini, dan itu keputusan — bukan
-          kelalaian. Catatan itu pernah ada, lalu DICABUT 2026-10-11 karena premisnya
-          ternyata salah.
-
-          Yang tidak dibawa dari sistem lama: `Call GCNMCreateOperator` pada langkah 18
-          `CNMInsertDetailSurveyors_act`, yang menulis `Data-Admin-Operator-ID` — tabel
-          operator milik Pega. Ia menerbitkan akun PORTAL PEGA, dan portal itu sudah tidak
-          dipakai (Work Owner, 2026-10-11).
-
-          Penggantinya sudah berjalan, dan keduanya BUKAN di modul ini:
-
-            masuk aplikasi   rantai `auth/provider` yang ditetapkan Work Owner 2026-09-16 —
-                             kredensial karyawan diperiksa HCC/HCQ (Identity = NIK), dan
-                             bila gagal dicoba POOLDATA.M_LOGIN_PNC untuk non-karyawan
-            login surveyor   punya layarnya sendiri di sistem lama,
-                             `Harness/MasterLoginSurvey-Harness.xml` atas tabel
-                             `mst_login_surveyor` — modul tersendiri
-
-          Khusus SURVEYOR INTERNAL, tidak ada akun yang perlu diterbitkan sama sekali:
-          kueri pegawainya menyaring `login_aplikasi is not null`, sehingga setiap nama
-          yang DAPAT dipilih di sini sudah punya kredensial yang dikenali HCC/HCQ.
-
-          Dan catatan itu hanya tampil untuk internal. Jadi ia memperingatkan satu-satunya
-          tipe yang justru pasti sudah punya akun — peringatan yang salah sasaran, dan
-          peringatan yang salah mengajari pengguna mengabaikan peringatan.
-
-          Modul ini sendiri TIDAK menyentuh skema Pega sama sekali: nol kemunculan
-          `PR_OPERATORS` maupun `DATAPEGA` di seluruh kuerinya.
-
-          Satu hal lagi yang memang TIDAK pantas ditiru: activity lama menyusun kata
-          sandinya sebagai `LOGIN_APLIKASI + "123456"` dan menjalankan langkah itu
-          `pyStepsPreCondition = true` — tanpa syarat, untuk setiap penyimpanan.
-        */}
           </>
         )}
 

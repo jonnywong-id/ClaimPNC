@@ -158,7 +158,11 @@ export function AccountPage() {
           </ol>
         </nav>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Rekening</h1>
-        
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+          Rekening tujuan pembayaran klaim. Rekening baru menunggu keputusan komite, lalu
+          didaftarkan ke sistem Kasir — sebelum keduanya selesai, ia belum dapat dipakai
+          membayar klaim.
+        </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh

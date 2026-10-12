@@ -70,8 +70,9 @@ const ISIAN_KPI_KOSONG: IsianKPI = { status: '', tipe: '', kuartal: '', tahun: '
  * # Layar ini hanya MEMBACA
  *
  * Menerima penugasan, menjadwal ulang survei, dan mengunggah laporan seluruhnya menempuh
- * `Flow/Surveyor_Flow.xml`, dan selama masa paralel penugasan survei masih ditulis Pega
- * (`P-1`). Tidak ada tombol yang mengubah apa pun di sini, dan ketiadaannya disengaja.
+ * `Surveyor_Flow` — sebuah flow yang TIDAK ADA di export. Selama masa paralel penugasan tetap
+ * dikerjakan di Pega (`P-1`). Tidak ada tombol yang mengubah apa pun di sini, dan
+ * ketiadaannya disengaja.
  */
 export function SurveyInboxPage() {
   const navigate = useNavigate()
@@ -146,9 +147,8 @@ export function SurveyInboxPage() {
    * Tujuan tautan baris.
    *
    * Di sistem lama, tautannya membuka penugasan `Surveyor_Flow` lewat kunci
-   * `ASSIGN-WORKLIST <pyID>!Surveyor_Flow`. Penugasan itu masih ditulis Pega selama masa
-   * paralel (`P-1`), sehingga yang dibuka di sini adalah klaimnya — bukan penugasan
-   * surveinya.
+   * `ASSIGN-WORKLIST <pyID>!Surveyor_Flow`. Flow itu TIDAK ADA di export, sehingga yang
+   * dibuka di sini adalah klaimnya — bukan penugasan surveinya.
    *
    * Yang dikirim nomor klaimnya saja: `D-22` menetapkan sistem baru tidak pernah menuliskan
    * awalan kelas Pega lagi.
@@ -548,82 +548,51 @@ function BagianKPI({
 
   const lengkap = isian.status !== '' && isian.tipe !== ''
 
-  /*
-    Isian wajib ditandai SETELAH tombol ditekan, bukan sejak layar terbuka.
-
-    Layar lama tidak pernah menandai apa pun sebelum Cari ditekan — ia hanya memasang bintang
-    merah pada labelnya. Menandai sejak awal membuat panel yang belum disentuh siapa pun
-    tampil seolah pengguna sudah berbuat salah.
-  */
-  const [sudahDicoba, setSudahDicoba] = useState(false)
-
-  function coba(aksi: () => void) {
-    setSudahDicoba(true)
-    if (!lengkap) return
-    aksi()
-  }
-
-  const galatWajib = (terisi: boolean) =>
-    sudahDicoba && !terisi ? 'Wajib dipilih.' : undefined
-
   return (
     <>
       <section className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-4 shadow-lembut">
-        {/*
-          Keempat kendali berlebar SAMA — `pyWidth = 130` pada ketiganya yang menyebutkannya di
-          `Section/InboxSurvey_section-Section.xml`. Lebar yang berbeda-beda adalah tambahan
-          saya sendiri, dan ia membuat bilah penyaring terlihat seperti dirakit dari dua layar.
-        */}
         <div className="flex flex-wrap items-start gap-4">
-          <div className="w-44">
+          <div className="w-52">
             <SelectField
               id="kpi-status-survei"
               label="Status Survey *"
               emptyText="--Pilih--"
               options={pilihanStatus.map((v) => ({ value: v, label: v }))}
               value={isian.status}
-              error={galatWajib(isian.status !== '')}
               onChange={(event) => ubah({ status: event.target.value })}
             />
           </div>
 
-          <div className="w-44">
+          <div className="w-52">
             <SelectField
               id="kpi-tipe-report"
               label="Tipe Report *"
               emptyText="--Pilih--"
               options={pilihanTipe.map((v) => ({ value: v, label: v }))}
               value={isian.tipe}
-              error={galatWajib(isian.tipe !== '')}
               onChange={(event) => ubah({ tipe: event.target.value })}
             />
           </div>
 
           {kuartalBerlaku && (
             <>
-              {/*
-                Daftarnya datang UTUH dari server — termasuk "ALL", yang sempat ditempel di
-                sini. Sejak isi `Data Transform/GetListQuartal` dibacakan Work Owner
-                (2026-10-12) diketahui "ALL" adalah anggota daftarnya sendiri dan berada di
-                puncak, bukan tambahan antarmuka. Menempelnya di sini berarti dua sumber untuk
-                satu daftar, dan yang kedua tidak terlihat dari server.
-
-                "ALL" tetap BERBEDA dari "--Pilih--": ia meminta keempat kuartal sekaligus
-                lewat rule lain (`GetSummaryKPIAdjusterALLKuartal`), sedangkan "--Pilih--"
-                berarti belum memilih.
-              */}
-              <div className="w-44">
+              <div className="w-40">
                 <SelectField
                   id="kpi-kuartal"
                   label="Kuartal"
                   emptyText="--Pilih--"
-                  options={pilihanKuartal.map((v) => ({ value: v, label: v }))}
+                  options={[
+                    // "ALL" adalah pilihan yang BERBEDA dari "--Pilih--": ia meminta keempat
+                    // kuartal sekaligus, dan menempuh rule lain (`GetSummaryKPIAdjusterALLKuartal`).
+                    { value: 'ALL', label: 'ALL' },
+                    ...pilihanKuartal.map((v) => ({ value: v, label: v })),
+                  ]}
                   value={isian.kuartal}
                   onChange={(event) => ubah({ kuartal: event.target.value })}
                 />
               </div>
 
-              <div className="w-44">
+              <div className="w-40">
                 {/*
                   Dropdown, bukan kotak teks — `pySourceName = TahunKPI.pxResults` dengan
                   `--Pilih--` di puncaknya. Isinya direkonstruksi dari tahun yang benar-benar
@@ -643,26 +612,21 @@ function BagianKPI({
             </>
           )}
 
-          {/*
-            Kedua tombol TIDAK PERNAH mati, dan labelnya tidak berganti.
-
-            `pyDisabled` bernilai `false` pada seluruh kemunculannya di panel ini — layar lama
-            membiarkan keduanya dapat ditekan kapan saja, lalu menandai isian wajib yang masih
-            kosong. Mematikannya adalah tambahan saya sendiri, dan ia menyembunyikan sebabnya:
-            tombol kelabu tidak memberi tahu apa pun tentang APA yang kurang.
-
-            Pemeriksaannya pindah ke saat tombol ditekan (lihat `coba`), sehingga pengguna
-            mendapat jawaban di isian yang bersangkutan — bukan tombol yang diam.
-          */}
           <div className="flex items-center gap-2 self-end pb-1">
-            <Button onClick={() => coba(onCari)} aria-busy={sedangMengambil}>
-              Cari
+            <Button onClick={onCari} disabled={!lengkap || sedangMengambil}>
+              {sedangMengambil ? 'Mencari…' : 'Cari'}
             </Button>
-            <Button tone="halus" onClick={() => coba(onEkspor)} aria-busy={sedangMengekspor}>
-              Export Data
+            <Button tone="halus" onClick={onEkspor} disabled={!lengkap || sedangMengekspor}>
+              {sedangMengekspor ? 'Menyiapkan…' : 'Export Data'}
             </Button>
           </div>
         </div>
+
+        {!lengkap && (
+          <p className="mt-3 text-xs text-slate-600">
+            Pilih Status Survey dan Tipe Report lebih dulu, lalu tekan Cari.
+          </p>
+        )}
 
         {galatEkspor !== null && (
           <div className="mt-3">

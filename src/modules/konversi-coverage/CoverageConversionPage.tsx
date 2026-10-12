@@ -3,11 +3,10 @@ import { useEffect, useState } from 'react'
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
 import { TextAreaField } from '@/components/TextAreaField'
 
 import { BatchError, useJalankan, useKeterangan } from './api'
-import type { FilterObjek, HasilPolis, InfoKoneksi, Laporan } from './types'
+import type { HasilPolis, InfoKoneksi, Laporan } from './types'
 
 /**
  * Konversi Coverage — menu `MENU_ID 87`.
@@ -22,9 +21,6 @@ import type { FilterObjek, HasilPolis, InfoKoneksi, Laporan } from './types'
  *
  * sekaligus menyalin kolom BLOB-nya ke baris objek yang sama di TEST.
  *
- * PRODKE dan Index Object boleh diisi untuk membatasi objek yang dikonversi; bila
- * dikosongkan, seluruh PRODKE dan seluruh Index Object polisnya ikut dikonversi.
- *
  * "Uji Coba" menjalankan seluruh tulisan di TEST lalu membatalkannya, sehingga angka di
  * laporan sama persis dengan yang akan terjadi — termasuk galat bentuk data.
  */
@@ -38,7 +34,6 @@ export function CoverageConversionPage() {
   const [report, setReport] = useState<Laporan | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [filter, setFilter] = useState<FilterObjek>({ prodke: '', indexobject: '' })
 
   // Daftar bawaan dari KONVERSI_POLIS mengisi kotak sekali, selama pengguna belum mengetik.
   useEffect(() => {
@@ -48,17 +43,12 @@ export function CoverageConversionPage() {
   const policies = text.split(/[\s,;]+/).filter((p) => p.trim() !== '')
   const unique = new Set(policies).size
   const ready = info.data?.live.lengkap && info.data?.test.lengkap && !info.data?.galat
-  const prodkeError = numberError(filter.prodke)
-  const indexError = numberError(filter.indexobject)
-  const filterValid = !prodkeError && !indexError
-  const scope = describeFilter(filter)
 
   async function execute(ujiCoba: boolean) {
     if (!ujiCoba) {
       const ok = window.confirm(
-        `Tulis hasil konversi ${unique} polis ke basis data TEST?\n` +
-          `Cakupan: ${scope}.\n\n` +
-          'Coverage dan spreading lama dalam cakupan tersebut di TEST akan dihapus lalu diganti, ' +
+        `Tulis hasil konversi ${unique} polis ke basis data TEST?\n\n` +
+          'Coverage dan spreading lama polis tersebut di TEST akan dihapus lalu diganti, ' +
           'dan kolom BLOB objeknya ditimpa dengan isi LIVE.',
       )
       if (!ok) return
@@ -67,7 +57,7 @@ export function CoverageConversionPage() {
     setError(null)
     setReport(null)
     try {
-      setReport(await run(text, ujiCoba, filter, (done, total) => setProgress({ done, total })))
+      setReport(await run(text, ujiCoba, (done, total) => setProgress({ done, total })))
     } catch (e) {
       // Kelompok sebelum yang gagal sudah selesai — laporannya tetap ditampilkan.
       setReport(e instanceof BatchError ? e.partial : null)
@@ -115,34 +105,13 @@ export function CoverageConversionPage() {
             setText(e.target.value)
           }}
           placeholder="Satu nomor polis per baris (boleh juga dipisah koma)"
-          hint={`${unique} nomor polis unik · maksimal ${info.data?.maks_polis ?? 500} per kali jalan`}
+          hint={`${unique} nomor polis unik · maksimal ${info.data?.maks_polis ?? 500} per kali jalan · seluruh versi (PRODKE) ikut dikonversi`}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id="filter-prodke"
-            label="PRODKE"
-            inputMode="numeric"
-            value={filter.prodke}
-            onChange={(e) => setFilter((f) => ({ ...f, prodke: e.target.value }))}
-            placeholder="Kosongkan untuk semua PRODKE"
-            error={prodkeError}
-          />
-          <Field
-            id="filter-indexobject"
-            label="Index Object"
-            inputMode="numeric"
-            value={filter.indexobject}
-            onChange={(e) => setFilter((f) => ({ ...f, indexobject: e.target.value }))}
-            placeholder="Kosongkan untuk semua Index Object"
-            error={indexError}
-          />
-        </div>
-        <p className="text-xs text-slate-500">Cakupan: {scope} — berlaku untuk setiap polis di daftar.</p>
         <div className="flex flex-wrap gap-2">
-          <Button tone="kedua" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(true)}>
+          <Button tone="kedua" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(true)}>
             {busy === 'uji' ? `Menjalankan uji coba… ${progressText(progress)}` : 'Uji Coba'}
           </Button>
-          <Button tone="utama" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(false)}>
+          <Button tone="utama" disabled={!ready || unique === 0 || busy !== null} onClick={() => execute(false)}>
             {busy === 'jalan' ? `Mengonversi… ${progressText(progress)}` : 'Jalankan Konversi'}
           </Button>
         </div>
@@ -152,19 +121,6 @@ export function CoverageConversionPage() {
       {report && <ReportView report={report} />}
     </div>
   )
-}
-
-/** Pesan galat isian filter: kosong boleh, selain itu hanya bilangan bulat tak negatif. */
-function numberError(value: string): string | undefined {
-  const v = value.trim()
-  return v === '' || /^\d+$/.test(v) ? undefined : 'Isi dengan angka, atau kosongkan.'
-}
-
-/** Uraian cakupan konversi, mis. "PRODKE 1, semua Index Object". */
-function describeFilter(f: { prodke?: string | undefined; indexobject?: string | undefined }): string {
-  const p = f.prodke?.trim()
-  const i = f.indexobject?.trim()
-  return `${p ? `PRODKE ${p}` : 'semua PRODKE'}, ${i ? `Index Object ${i}` : 'semua Index Object'}`
 }
 
 /** Kemajuan per kelompok polis, mis. "30/96". */
@@ -205,9 +161,6 @@ function ReportView({ report }: { report: Laporan }) {
         <p className="mt-1 text-slate-700">
           {report.berhasil} berhasil · {report.tidak_ditemukan} tidak ditemukan · {report.gagal} gagal ·{' '}
           {report.total_coverage} baris coverage · {report.total_spreading} baris spreading
-        </p>
-        <p className="mt-1 text-slate-500">
-          Cakupan: {describeFilter({ prodke: report.filter_prodke, indexobject: report.filter_indexobject })}
         </p>
       </div>
 

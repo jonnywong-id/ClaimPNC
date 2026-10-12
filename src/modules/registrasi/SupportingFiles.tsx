@@ -17,51 +17,21 @@ const emptyRow = (): Row => ({ berkas: null, jenisDokumen: '', catatan: '' })
  * sebagai lampiran klaim. Penyimpanannya berdiri sendiri — tidak menunggu Submit akseptasi —
  * sehingga tombolnya tetap tersedia setelah klaim diakseptasi atau dibayar.
  */
-export function SupportingFilesButton({
-  claimID,
-  address,
-  prepare,
-  onClosed,
-}: {
-  claimID: string
-  address: SettlementAddress
-  /**
-   * Baris adjustment yang belum tersimpan: disimpan lebih dulu, lalu dialog dibuka untuk
-   * alamat baris hasil simpan. Galat simpan ditampilkan isiannya sendiri.
-   */
-  prepare?: (() => Promise<SettlementAddress>) | undefined
-  /** Dipanggil setelah dialog ditutup. */
-  onClosed?: (() => void) | undefined
-}) {
+export function SupportingFilesButton({ claimID, address }: { claimID: string; address: SettlementAddress }) {
   const [open, setOpen] = useState(false)
   const [done, setDone] = useState<number | null>(null)
-  const [target, setTarget] = useState<SettlementAddress>(address)
-  const [preparing, setPreparing] = useState(false)
 
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
       <button
         type="button"
-        disabled={preparing}
         onClick={() => {
           setDone(null)
-          if (!prepare) {
-            setTarget(address)
-            setOpen(true)
-            return
-          }
-          setPreparing(true)
-          prepare()
-            .then((saved) => {
-              setTarget(saved)
-              setOpen(true)
-            })
-            .catch(() => {})
-            .finally(() => setPreparing(false))
+          setOpen(true)
         }}
-        className="rounded border border-blue-500 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+        className="rounded border border-blue-500 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50"
       >
-        {preparing ? 'Menyimpan adjustment…' : 'Unggah File Penunjang'}
+        Unggah File Penunjang
       </button>
       {done !== null && (
         <span role="status" className="text-xs text-emerald-700">
@@ -71,15 +41,11 @@ export function SupportingFilesButton({
       {open && (
         <SupportingFilesDialog
           claimID={claimID}
-          address={target}
-          onClose={() => {
-            setOpen(false)
-            onClosed?.()
-          }}
+          address={address}
+          onClose={() => setOpen(false)}
           onSaved={(count) => {
             setDone(count)
             setOpen(false)
-            onClosed?.()
           }}
         />
       )}

@@ -5,7 +5,7 @@ import { APIError } from '@/api/client'
 import { useSession } from '@/app/session'
 import { Button } from '@/components/Button'
 
-import { isKmtnCase, useDecideKmtn, useKmtnCommittee, useRejectionNotes } from './api'
+import { isKmtnCase, useDecideKmtn, useKmtnCommittee } from './api'
 
 /**
  * Form keputusan komite — bagian akhir `Section/ShowTransfer`:
@@ -24,17 +24,10 @@ import { isKmtnCase, useDecideKmtn, useKmtnCommittee, useRejectionNotes } from '
  *
  * Teks tambahan yang tidak ada di Pega berbahasa Inggris (D-80); label form mengikuti Pega.
  *
- * # Reject Note
+ * # Yang tidak dibawa
  *
- * Dropdown `.RejectedCode` "Reject Note" (==Pilih Reject==) tampil dan WAJIB bila Keputusan
- * Komite Rejected (`pyRequiredWhen .RadApprove==2`). Pilihannya `KomitePenolakanMaster`
- * (`POOLDATA.MST_REJECTED_KOMITE`: nilai IDMASTER, teks NOTEMASTER). Memilih satu mengisi
- * Catatan Komite dengan teks master itu — `KomitePostAct` menjadikan `.NoteKasir` master
- * terpilih sebagai catatan komite. Catatan tetap dapat diedit.
- *
- * Dua rule terkait tidak ada di export: `Setdatapenolakankomite` (aksi saat dropdown berubah)
- * dan pengisi `TempRejected.DISC2` (syarat tambahan tampilnya dropdown). Karena syarat itu tak
- * dapat dinilai, dropdown tampil setiap kali Rejected dipilih.
+ * `.RejectedCode` (pasal penolakan) pada ShowTransfer tidak ditampilkan: sumber daftarnya
+ * (`GetDataPenolakanKlaimMas`) tidak ada di export.
  */
 export function KmtnDecisionForm({ caseID }: { caseID: string }) {
   const login = useSession((state) => state.user?.login ?? '')
@@ -42,8 +35,6 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
   const decide = useDecideKmtn(caseID)
   const [decision, setDecision] = useState<'' | '1' | '2'>('')
   const [note, setNote] = useState('')
-  const [rejectCode, setRejectCode] = useState('')
-  const rejections = useRejectionNotes(decision === '2')
   const [missing, setMissing] = useState<string[]>([])
 
   if (!isKmtnCase(caseID)) return null
@@ -85,7 +76,6 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
   function submit() {
     const kurang: string[] = []
     if (!decision) kurang.push('Keputusan Komite')
-    if (decision === '2' && !rejectCode) kurang.push('Reject Note')
     if (!note.trim()) kurang.push('Catatan Komite')
     setMissing(kurang)
     if (kurang.length > 0 || !decision) return
@@ -128,38 +118,6 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
           ))}
         </div>
       </fieldset>
-
-      {decision === '2' && (
-        <div className="mt-4">
-          <label htmlFor="reject-note" className="block text-xs font-semibold text-slate-700">
-            Reject Note <span className="text-amber-600">*</span>
-          </label>
-          <select
-            id="reject-note"
-            value={rejectCode}
-            onChange={(e) => {
-              const code = e.target.value
-              setRejectCode(code)
-              const chosen = (rejections.data?.penolakan_komite ?? []).find((r) => r.id === code)
-              if (chosen) setNote(chosen.catatan)
-            }}
-            disabled={decide.isPending || rejections.isPending}
-            className="mt-1 w-72 max-w-full rounded-kontrol border border-slate-300 p-1.5 text-sm"
-          >
-            <option value="">==Pilih Reject==</option>
-            {(rejections.data?.penolakan_komite ?? []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.catatan}
-              </option>
-            ))}
-          </select>
-          {rejections.isError && (
-            <p className="mt-1 text-xs text-rose-700" role="alert">
-              The reject note list could not be loaded.
-            </p>
-          )}
-        </div>
-      )}
 
       <label htmlFor="catatan-komite" className="mt-4 block text-xs font-semibold text-slate-700">
         Catatan Komite <span className="text-amber-600">*</span>

@@ -45,9 +45,9 @@ import type { ClaimDetailResponse } from './types'
  * Antreannya tetap dapat dikembalikan utuh: tab dan nomor halaman dibawa di alamat, jadi
  * tombol kembali mendarat di tempat yang sama — bukan di tab pertama halaman pertama.
  *
- * # Sebagian isian hidup di CLIPBOARD Pega
+ * # Sembilan isian hidup di CLIPBOARD Pega
  *
- * Bukan "kolomnya belum ditemukan" — Work Owner menjelaskan 2026-09-24 bahwa sembilan isian
+ * Bukan "kolomnya belum ditemukan" — Work Owner menjelaskan 2026-09-24 bahwa kesembilannya
  * diambil dari clipboard objek kerja (`.ClaimData.PUCLStatus.NIK` dan seterusnya). Properti
  * clipboard yang tidak dioptimasi memang tidak punya kolom sendiri, sehingga tidak ada yang
  * dapat dibaca kueri biasa selama objek kerjanya masih dimiliki Pega.
@@ -181,14 +181,10 @@ function StateNotice({
 /**
  * Tanda yang menggantikan nilai pada isian yang hidup di clipboard Pega.
  *
- * Ia BUKAN "kolomnya belum ketemu". Work Owner menjelaskan 2026-09-24 bahwa isian bertanda
+ * Ia BUKAN "kolomnya belum ketemu". Work Owner menjelaskan 2026-09-24 bahwa kesembilan isian
  * ini adalah properti clipboard pada objek kerja — `.ClaimData.PUCLStatus.NIK` dan
  * seterusnya — dan properti clipboard yang tidak dioptimasi memang tidak punya kolom sendiri.
  * Mencarinya lagi ke DBA tidak akan menemukannya.
- *
- * Yang bertanda ini TINGGAL DUA. Semula sembilan: empat di antaranya ternyata sudah punya
- * kolom pada tabel yang berjalan, dan tiga lagi menyusul terpetakan. Jumlahnya karena itu
- * tidak pernah disebut sebagai angka di layar — lihat ScreenFooter.
  */
 const DI_CLIPBOARD = Symbol('tersimpan di clipboard Pega')
 
@@ -582,18 +578,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
   return (
     <>
       <Panel>
-        {/*
-          Tanggalnya dimiliki TAB ini, bukan grid — sejak 2026-10-11 ia isian yang sama
-          dengan yang dikirim tombol Save dan kedua tombol Kirim
-          (`tanggal_kelengkapan_dokumen`). Menaruh keadaannya di dalam grid akan membuat
-          tombol-tombol itu mengirim nilai lama.
-        */}
-        <ReceivedDocumentGrid
-          detail={detail}
-          value={completeAt}
-          onChange={setCompleteAt}
-          failure={violations['tanggal_kelengkapan_dokumen']}
-        />
+        <ReceivedDocumentGrid detail={detail} />
 
         {/*
         Ketiganya FULL WIDTH di section, dan dua di antaranya WAJIB diisi (`pyRequired`
@@ -620,19 +605,14 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           ]}
         />
 
-        {/*
-          Isian "Tanggal Kelengkapan Dokumen" DIHAPUS dari sini pada 2026-10-11.
-
-          Ia dan sel "Tanggal" pada grid di atas menulis kolom yang SAMA
-          (`TGL_TERIMA_DOKUMEN_PUCL`), dan Work Owner menetapkan keduanya memang satu hal.
-          Dua tempat pengisian untuk satu nilai di satu layar berarti yang satu menimpa
-          yang lain tanpa petugas menyadarinya — pada isian yang WAJIB, dan yang ikut
-          ditulis kedua tombol Kirim.
-
-          Yang dipertahankan gridnya, bukan isian ini: judul kolomnya ("Tanggal terima
-          Dokumen") sama dengan nama kolom basis datanya, dan gridnya digambar lebih dulu
-          di section.
-        */}
+        <EditableField
+          label="Tanggal Kelengkapan Dokumen"
+          required
+          value={completeAt}
+          onChange={setCompleteAt}
+          type="datetime-local"
+          failure={violations['tanggal_kelengkapan_dokumen']}
+        />
 
         <EditableField
           label="Catatan untuk Analyst"
@@ -695,26 +675,6 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                 label="Tolak Klaim"
                 aksi="tolak"
                 reference={detail?.referensi}
-                /*
-                  Suratnya terbit dan MELAMPIR, tetapi TIDAK dibuka — sama seperti kedua
-                  tombol Kirim.
-
-                  Sampai 2026-10-12 prop ini tidak diisi, sehingga ia memakai bawaan `true`
-                  dan menolak klaim ikut mengunduh PDF-nya. Work Owner melaporkannya, dan
-                  penelusuran ke rule membenarkan laporan itu:
-
-                      Section/SectionPenerimaanDokumenPUCL-Section.xml:7068
-                        click -> runActivity InsertMitraPA(tipe="dokumen")
-                        click -> refresh thisSection + PUCLPost(Status=0, idObj, idCov, idAdj)
-                        click -> refresh currentharness
-
-                  Ketiganya tidak membuka apa pun. PDF-nya memang terbit, tetapi di dalam
-                  `AttachAsPDFC` langkah "call View" — SATU-SATUNYA langkah yang membukanya —
-                  berprekondisi `Param.IsViewPolis=="1" && Param.a!=1`, sementara `PUCLPost`
-                  langkah 36 memanggilnya dengan KEDUANYA KOSONG dan `IsViewPolis` bukan
-                  parameter `PUCLPost`. Jadi di Pega langkah itu tidak pernah berjalan.
-                */
-                bukaBerkas={false}
                 /*
                   Akibatnya disebut, bukan hanya namanya. Tombol ini MENUTUP klaimnya —
                   `PUCLPost` dengan `Status = "0"` memanggil `ASMForceCaseClose`, sehingga
@@ -782,32 +742,11 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
 }
 
 /**
- * Kaki layar — nomor case.
+ * Kaki layar — kunci klaim, sifat baca-saja, dan daftar isian clipboard.
  *
- * Dipakai KEDUA tab, bukan hanya salah satunya: petugas yang membuka tab "Penerimaan
- * Dokumen" lebih dulu tetap membutuhkan nomor case-nya.
- *
- * # Dua kotak di sini sudah TIDAK digambar lagi
- *
- * **"Layar ini baca saja — kerjakan tindakannya di Pega"** bergantung pada
- * `tindakan_masih_di_pega`, dan peladen mengirimkannya `false` sejak 2026-10-06: kelima
- * tombol layar ini dikerjakan sistem ini sendiri. Kotaknya TIDAK dihapus dari kode melainkan
- * dibiarkan bergantung pada isian itu — supaya yang menentukan tampil-tidaknya tetap satu
- * tempat di peladen, bukan dua tempat yang dapat berselisih.
- *
- * **"Isian yang tersimpan di clipboard Pega"** dihapus 2026-10-11 atas keputusan Work Owner.
- * Ia TIDAK keliru — isinya sudah benar sejak hari yang sama — melainkan MENGULANG: kedua
- * isian yang disebutnya sudah digambar di tempatnya masing-masing bertanda "di clipboard
- * Pega", dan tanda itu sudah menyatakan hal yang sama di tempat yang lebih berguna.
- *
- * Yang ini memang dihapus, bukan dibiarkan bersyarat seperti kotak di atasnya: daftarnya
- * tetap di peladen dan panjangnya tidak pernah nol, sehingga kotak bersyarat akan selalu
- * tergambar. Preseden yang sama sudah dipakai panel "Yang berbeda dari layar lama" pada
- * 2026-10-06 — datanya tinggal di Go untuk `D-54`, layarnya berhenti menggambarnya.
- *
- * `isian_belum_terpetakan` karena itu masih dikirim peladen dan TIDAK dibaca layar ini. Ia
- * dipertahankan di sana sebagai rekaman berbukti — lihat `unmappedLetterFields`, yang memuat
- * alasan tiap isian beserta kolom yang sudah dicari dan tidak ditemukan.
+ * Dipakai KEDUA tab, bukan hanya salah satunya. Petugas yang membuka tab "Penerimaan
+ * Dokumen" lebih dulu tetap membutuhkan kunci klaimnya untuk mengerjakan tindakannya di
+ * Pega, dan tetap perlu tahu tombolnya mati karena keputusan — bukan karena rusak.
  */
 function ScreenFooter({
   detail,
@@ -819,12 +758,8 @@ function ScreenFooter({
   return (
     <>
       {/*
-        Ditampilkan dengan sengaja, meski ia BUKAN isian di section mana pun.
-
-        Semula alasannya adalah supaya petugas dapat membuka klaim yang sama di Pega untuk
-        mengerjakan tindakannya. Alasan itu sudah lewat — tindakannya dikerjakan dari sini.
-        Yang tersisa dua, dan keduanya cukup: ia dipakai "Tutup Klaim" MSIG yang modalnya
-        belum dibangun, dan ia nomor yang disebut petugas saat melaporkan satu klaim.
+        Ditampilkan dengan sengaja, meski ia BUKAN isian di section mana pun: ia yang dipakai
+        petugas membuka klaim yang sama di Pega untuk mengerjakan tindakannya.
 
         LABELNYA BERUBAH 2026-10-01, karena ISINYA berubah. Sebelumnya ia kunci teknis Pega
         (`ASM-FW-GCNMFW-WORK PNC-1865`) — parameter `inskey` yang dikirim tautan aslinya.
@@ -852,6 +787,22 @@ function ScreenFooter({
         </div>
       )}
 
+      {detail && detail.isian_belum_terpetakan.length > 0 && (
+        <div className="mt-3 rounded-kontrol border border-slate-200 bg-white px-3 py-2">
+          <p className="text-xs font-medium text-slate-700">
+            Isian yang tersimpan di clipboard Pega
+          </p>
+          <p className="mt-1 text-xs text-slate-600">
+            {detail.isian_belum_terpetakan.join(' · ')}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Kesembilannya properti clipboard pada objek kerja Pega, bukan kolom tabel,
+            sehingga nilainya tidak dapat dibaca dari sini selama objek kerjanya masih
+            dimiliki Pega. Isian ini tetap digambar di tempatnya supaya keadaannya
+            terlihat.
+          </p>
+        </div>
+      )}
     </>
   )
 }
@@ -859,78 +810,70 @@ function ScreenFooter({
 /**
  * Grid "Tanggal terima Dokumen" — dua kolomnya `.DateReceived` dan `.Remarks`.
  *
- * # Ia SATU BARIS, dan barisnya adalah satu kolom basis data
- *
- * Sampai 2026-10-11 grid ini daftar yang dapat ditambah dan dikurangi, dipasok senarai
- * tersendiri, dan TIDAK tersimpan ke mana pun. Di bawahnya berdiri isian "Tanggal
- * Kelengkapan Dokumen" yang tersimpan ke `POOLDATA.TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL`.
- *
- * Work Owner menetapkan keduanya SATU hal. Jadi:
- *
- *   Tanggal     ← `TGL_TERIMA_DOKUMEN_PUCL`, dapat diketik, WAJIB, dan benar-benar tersimpan
- *   Keterangan  ← `KETERANGAN_1` pada tabel objek kerja Pega, HANYA-BACA
- *
- * dan isian terpisah di bawahnya DIHAPUS — satu nilai tidak boleh punya dua tempat
- * pengisian di satu layar.
- *
- * # Kenapa "✚ Tambah" dan "Hapus" hilang
- *
- * Karena barisnya kini mewakili satu kolom tunggal. Tombol yang menambah baris akan
- * membuat data yang pasti lenyap saat disimpan — persis kegagalan yang paling sulit
- * dilacak, karena tidak menghasilkan satu pun galat.
- *
- * Keduanya memang ada di layar lama (`pyAction addRow`, sisi klien). Menghilangkannya
- * adalah selisih yang DISENGAJA terhadap `D-13`, dan dicatat di `PlannedDifferences`.
- *
- * # Kenapa Keterangan digambar hanya-baca, bukan dihilangkan
- *
- * Kolomnya ada di section dan nilainya nyata — `KETERANGAN_1` terisi pada 85 dari 7.723
- * baris. Yang tidak ada adalah tempat menulisnya: tabel itu milik Pega selama masa paralel
- * (`P-1`). Menggambarnya tampak dapat diketik lalu diam-diam tidak menyimpannya jauh lebih
- * buruk daripada menggambarnya jelas hanya-baca — prinsip yang sama sudah dipakai "Email
- * Tertanggung" di layar ini.
+ * Ia digambar sebagai kerangka kosong, bukan dihilangkan. Grid berulang adalah satu-satunya
+ * bentuk di layar ini yang tidak dapat diwakili sebuah isian, dan menghapusnya akan
+ * menyembunyikan bahwa layar lama memuat DAFTAR di sini — bukan satu tanggal.
  */
-function ReceivedDocumentGrid({
-  detail,
-  value,
-  onChange,
-  failure,
-}: {
-  detail: ClaimDetailResponse | null
+function ReceivedDocumentGrid({ detail }: { detail: ClaimDetailResponse | null }) {
+  const partial = detail?.penerimaan_dokumen?.tanggal_terima_dokumen_sebagian === true
 
-  /** Tanggalnya, berbentuk `YYYY-MM-DDTHH:mm`. Dimiliki ReceiptTab, bukan grid ini. */
-  value: string
-  onChange: (next: string) => void
+  // Barisnya KEADAAN LAYAR, bukan dibaca langsung dari `detail`.
+  //
+  // Di Pega, "✚ Tambah" dan "Hapus" adalah operasi SISI KLIEN pada page list di clipboard —
+  // terverifikasi dari section: `pyAction addRow` tanpa satu pun `pyActivity`, dan `deleteRow`
+  // tidak ada sama sekali. Tidak ada permintaan ke peladen saat keduanya ditekan; yang
+  // menyimpannya adalah tombol "Save", lewat `Obj-Save`.
+  //
+  // Keadaannya disemai lewat KUNCI REMOUNT pada pemanggilnya, sama seperti kedua isian di
+  // bawah grid — lihat ReceiptTab.
+  const [rows, setRows] = useState<ReceivedRow[]>(() =>
+    (detail?.penerimaan_dokumen?.tanggal_terima_dokumen ?? []).map((row) => ({
+      tanggal: untukIsianWaktu(row.tanggal),
+      keterangan: row.keterangan,
+    })),
+  )
 
-  /** Pelanggaran peladen untuk `tanggal_kelengkapan_dokumen`. */
-  failure?: string | undefined
-}) {
-  const note = detail?.penerimaan_dokumen?.keterangan_terima_dokumen ?? ''
-
-  // Keadaan salah ditandai TIGA cara — tepi merah, pesan tertulis, dan `aria-invalid` —
-  // supaya terbaca juga oleh yang tidak membedakan warna dan oleh pembaca layar. Sama
-  // seperti EditableField, karena sejak isian terpisahnya dihapus sel inilah yang menerima
-  // penolakan peladen atas isian WAJIB itu.
-  const pesanID = failure ? 'galat-tanggal-terima-dokumen' : undefined
+  function ubah(index: number, bagian: Partial<ReceivedRow>) {
+    setRows((lama) => lama.map((row, i) => (i === index ? { ...row, ...bagian } : row)))
+  }
 
   return (
     // Grid-nya punya BINGKAINYA SENDIRI di layar lama — kotak di dalam kotak, bukan sekadar
     // tabel yang mengambang di atas isian di bawahnya.
     <div className="rounded-sm border border-slate-300 p-4">
-      <h3 className="text-[13px] font-semibold text-slate-800">
-        Tanggal terima Dokumen
-        {/*
-          Tanda wajib pindah ke SINI bersama isiannya. Sebelumnya ia menempel pada
-          "Tanggal Kelengkapan Dokumen" di bawah; menghapus isian itu tanpa memindahkan
-          tandanya akan membuat isian wajib tergambar seolah boleh dikosongkan, lalu
-          ditolak peladen tanpa petugas tahu sebabnya.
-        */}
-        <span className="ml-1 text-red-600" aria-hidden="true">
-          *
-        </span>
-      </h3>
+      <h3 className="text-[13px] font-semibold text-slate-800">Tanggal terima Dokumen</h3>
 
-      <table className="mt-3 w-full border-collapse text-sm">
+      {/*
+        Keduanya TAUTAN BIRU di layar lama, bukan tombol berbingkai — "✚ Tambah" dan "Hapus"
+        berdampingan tepat di atas tabelnya.
+
+        Keduanya BEKERJA, dan itu bukan kelonggaran: di Pega pun keduanya tidak memanggil apa
+        pun. Catatan lama di tempat ini menyatakan keduanya "MENULIS ke objek kerja yang masih
+        dimiliki Pega" — itu TIDAK terbukti, dan dicabut 2026-10-02.
+
+        "Hapus" membuang baris TERAKHIR. Pega membuang baris yang sedang dipilih, dan grid ini
+        belum punya pemilihan baris; membuang yang terakhir memasangkannya dengan "Tambah"
+        yang menyisipkan di belakang (`pyPosition AFTER`).
+      */}
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setRows((lama) => [...lama, { tanggal: '', keterangan: '' }])}
+          className="text-sm font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+        >
+          ✚ Tambah
+        </button>
+        <button
+          type="button"
+          disabled={rows.length === 0}
+          onClick={() => setRows((lama) => lama.slice(0, -1))}
+          className="text-sm font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+        >
+          Hapus
+        </button>
+      </div>
+
+      <table className="mt-2 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-300 text-left text-[13px] text-slate-800">
             <th className="w-1/2 py-1.5 font-semibold">Tanggal</th>
@@ -938,61 +881,75 @@ function ReceivedDocumentGrid({
           </tr>
         </thead>
         <tbody>
-          <tr className="border-b border-slate-100">
-            <td className="py-1.5 pr-3">
-              <input
-                type="datetime-local"
-                aria-label="Tanggal terima Dokumen"
-                aria-required="true"
-                aria-invalid={failure ? true : undefined}
-                aria-describedby={pesanID}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className={[
-                  'w-full rounded-sm border bg-white px-2 py-1 text-sm text-slate-900',
-                  'focus:outline-none focus:ring-2',
-                  failure
-                    ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30'
-                    : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/30',
-                ].join(' ')}
-              />
-            </td>
-
-            {/*
-              Hanya-baca, dan terlihat begitu: latar abu, tanpa bingkai isian. Tanda pisah
-              saat kosong — sama seperti sel kosong di tabel lain modul ini — supaya
-              "memang tidak ada isinya" tidak tertukar dengan "gagal dimuat".
-            */}
-            <td className="py-1.5">
-              <div className="w-full rounded-sm bg-slate-50 px-2 py-1 text-sm text-slate-700">
-                {note === '' ? <span className="text-slate-400">—</span> : note}
-              </div>
-            </td>
-          </tr>
+          {rows.length === 0 ? (
+            <tr className="border-b border-slate-200">
+              {/*
+                "Data Tidak Ada" — kalimat layar lama APA ADANYA (`D-13`), bukan kalimat kami
+                sendiri. Yang sebelumnya tertulis di sini menjelaskan keadaannya dengan lebih
+                panjang, dan justru karena itu tidak lagi terbaca sebagai layar yang sama.
+              */}
+              <td colSpan={2} className="py-2 text-sm text-slate-400">
+                Data Tidak Ada
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, index) => (
+              // Kuncinya INDEKS, bukan isinya. Baris baru lahir kosong, sehingga dua baris
+              // kosong akan berbagi kunci yang sama bila isinya dipakai — dan React lalu
+              // menggambar ulang isian yang sedang diketik.
+              <tr key={index} className="border-b border-slate-100">
+                <td className="py-1.5 pr-3">
+                  <input
+                    type="datetime-local"
+                    aria-label={`Tanggal baris ${index + 1}`}
+                    value={row.tanggal}
+                    onChange={(e) => ubah(index, { tanggal: e.target.value })}
+                    className="w-full rounded-sm border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                </td>
+                <td className="py-1.5">
+                  <input
+                    type="text"
+                    aria-label={`Keterangan baris ${index + 1}`}
+                    value={row.keterangan}
+                    onChange={(e) => ubah(index, { keterangan: e.target.value })}
+                    className="w-full rounded-sm border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
 
-      {failure && (
-        <p id={pesanID} className="mt-1 text-xs text-red-700" role="alert">
-          {failure}
+      {/*
+        DUA keterangan, dan keduanya menyatakan hal yang berbeda.
+
+        Yang pertama datang dari SERVER dan menyangkut apa yang TERBACA; yang kedua menyangkut
+        apa yang TERSIMPAN. Menggabungkannya akan membuat batas pembacaan dan batas penyimpanan
+        terbaca sebagai satu masalah, padahal pemiliknya berbeda.
+      */}
+      {partial && rows.length > 0 && (
+        <p className="mt-1 text-[11px] leading-snug text-slate-500">
+          Baru baris pertama yang terbaca. Bila di Pega ada baris berikutnya, ia belum
+          muncul di sini.
         </p>
       )}
 
-      {/*
-        SATU keterangan, bukan dua.
-
-        Sampai 2026-10-11 di sini berdiri dua: "Baru baris pertama yang terbaca" dan
-        "Perubahan pada daftar ini belum tersimpan". Keduanya tidak lagi benar — tanggalnya
-        kini tersimpan, dan gridnya bukan lagi daftar yang dapat punya baris berikutnya.
-        Yang tersisa hanyalah batas pada kolom Keterangan.
-      */}
-      <p className="mt-1 text-[11px] leading-snug text-slate-500">
-        Kolom <span className="font-medium">Keterangan</span> hanya dapat dibaca — ia
-        tersimpan di objek kerja Pega, yang selama masa paralel hanya boleh ditulis dari
-        Pega. Tanggalnya tersimpan dari sini lewat tombol Save.
+      <p className="mt-1 text-[11px] leading-snug text-amber-700">
+        Perubahan pada daftar ini <span className="font-medium">belum tersimpan</span> —
+        ia hilang saat layar dimuat ulang. Tempat simpannya menunggu tabel yang sudah
+        diminta (<span className="font-mono">TC_PNC_PUCL_TERIMA_DOKUMEN</span>).
       </p>
     </div>
   )
+}
+
+/** Satu baris grid "Tanggal terima Dokumen", sebagaimana diketik di layar. */
+type ReceivedRow = {
+  // Berbentuk `YYYY-MM-DDTHH:mm`, yaitu yang diterima `datetime-local`.
+  tanggal: string
+  keterangan: string
 }
 
 /**
@@ -1449,14 +1406,15 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
 }
 
 /**
- * Tombol yang benar-benar MENJALANKAN tindakannya — seluruhnya di sistem ini.
+ * Tombol yang benar-benar MENJALANKAN tindakannya lewat Pega.
  *
  * # Kenapa ia tidak memakai panel WriteAction
  *
  * Karena ia bukan penolakan melainkan tindakan. Yang perlu digambar adalah keadaannya —
  * sedang berjalan, berhasil, atau gagal beserta alasannya — bukan langkah pengganti.
  *
- * Saat GAGAL, pesan peladen sudah memuat langkah berikutnya, sehingga tidak diulang di sini.
+ * Saat GAGAL karena layanan Pega belum tersambung, pesan peladen sudah memuat langkah
+ * penggantinya ("kerjakan di Pega; salin nomor case"), sehingga tidak diulang di sini.
  *
  * Pesan BERHASIL pun datang dari peladen, bukan ditulis di sini: ia menyebut AKIBATNYA —
  * "klaimnya berpindah ke tab Kelengkapan Dokumen" — dan akibat itu berbeda per tindakan.
@@ -1596,24 +1554,17 @@ function ClaimAction({
           {/*
             Nomor case-nya digambar DI SINI, bukan hanya di kaki layar.
 
-            Galat ini satu-satunya yang harus DILAPORKAN, dan laporan tanpa nomor case tidak
-            dapat ditindaklanjuti siapa pun. Sebelumnya nomornya hanya ada di kaki layar,
-            sehingga kalimat yang benar berujung pada gulir mencari — lihat CopyCaseNumber.
+            Pesan peladen menyuruh mengerjakannya di Pega, dan untuk itu petugas butuh nomor
+            case-nya. Sebelumnya ia hanya ada di kaki layar, sehingga kalimat yang benar
+            berujung pada gulir mencari — lihat CopyCaseNumber.
 
-            KALIMATNYA BERUBAH 2026-10-11. Dulu ia berbunyi "Kerjakan di Pega pada klaim",
-            karena galat ini dulu berarti layanan Pega belum tersambung. Artinya sudah
-            berganti: kelima tindakan layar ini dikerjakan sendiri, dan yang dapat sampai ke
-            sini hanyalah tindakan yang penanganannya belum ditulis — sesuatu yang tidak
-            diselesaikan dengan membuka Pega. Pesan peladen pun kini menyuruh melapor, dan
-            kalimat di sini tidak boleh menyuruh hal yang berbeda.
-
-            Galat lain — kewenangan, tindakan tidak berlaku, sambungan putus — tetap TIDAK
-            menggambarnya: ketiganya diselesaikan petugas sendiri, dan nomor case di sana
-            hanya menyiratkan ada yang perlu dilaporkan.
+            Hanya untuk galat "layanan belum tersambung". Galat lain — kewenangan, tindakan
+            tidak berlaku, sambungan putus — TIDAK diselesaikan dengan mengerjakannya di Pega,
+            dan menawarkan nomor case di sana akan menyesatkan.
           */}
-          {perluDilaporkan(tindakan.error) && (
+          {belumTersambungKePega(tindakan.error) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-700">Nomor case:</span>
+              <span className="text-xs text-slate-700">Kerjakan di Pega pada klaim</span>
               <CopyCaseNumber caseNumber={reference} />
             </div>
           )}
@@ -1624,19 +1575,13 @@ function ClaimAction({
 }
 
 /**
- * Benarkah galat ini menuntut petugas MELAPOR, alih-alih menyelesaikannya sendiri?
+ * Benarkah galat ini "layanan Pega belum tersambung"?
  *
  * Diuji lewat KODE galat, bukan lewat teks pesannya. Pesan ditulis untuk dibaca manusia dan
  * boleh diperbaiki kapan saja; kode adalah kontrak. Mencocokkan teks berarti satu perbaikan
  * kalimat di peladen diam-diam menghilangkan nomor case dari layar.
- *
- * Kodenya masih bernama `layanan_pega_belum_tersedia`, dan NAMANYA memang sudah tidak lagi
- * menggambarkan isinya — peladen memakainya untuk tindakan yang penanganannya belum ditulis.
- * Ia dibiarkan apa adanya dengan sengaja: nama kode adalah kontrak yang sudah dibaca layar
- * ini, dan menggantinya demi kerapian berarti perubahan yang merusak klien untuk hal yang
- * tidak dilihat satu pun pengguna.
  */
-function perluDilaporkan(error: unknown): boolean {
+function belumTersambungKePega(error: unknown): boolean {
   return error instanceof APIError && error.kode === 'layanan_pega_belum_tersedia'
 }
 
@@ -1678,19 +1623,9 @@ function WriteAction({
  * bawah dirinya; tautan di dalam baris alat menggambarnya di bawah SELURUH baris, supaya
  * barisnya tidak terdorong melebar.
  *
- * # Ia kini MEMBAWA alasannya sendiri, dan itu perubahan 2026-10-11
- *
- * Sebelumnya alasannya sengaja tidak diulang di sini karena sudah tertulis sekali di kaki
- * layar ("Layar ini baca saja — kerjakan tindakannya di Pega"). Kotak itu TIDAK digambar
- * lagi: peladen mengirim `tindakan_masih_di_pega = false` sejak kelima tindakan layar ini
- * dikerjakan sendiri. Membiarkan panel ini tetap singkat akan meninggalkan satu kalimat
- * telanjang — "Kerjakan Tutup Klaim di Pega" — tanpa satu pun keterangan mengapa, tepat di
- * layar yang seluruh tombol lainnya bekerja.
- *
- * Alasannya pun BUKAN lagi `P-1`. Yang menahan "Tutup Klaim" adalah modal `PreventRejectClaim`
- * berisi sebelas isian yang belum dibangun — bukan tabel yang masih dimiliki Pega. Menyebut
- * alasan yang keliru akan membuat tombolnya tampak ikut hidup saat Pega dimatikan, padahal
- * tidak.
+ * Isinya satu baris, dan alasan panjangnya TIDAK diulang di sini: ia sudah tertulis sekali di
+ * kaki layar. Yang tersisa hanyalah yang BERBEDA antartombol — nama tindakannya dan nomor
+ * case yang perlu disalin.
  */
 function ActionNote({
   label,
@@ -1700,16 +1635,11 @@ function ActionNote({
   caseNumber?: string | undefined
 }) {
   return (
-    <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
-      <p className="text-xs text-slate-700">
-        <span className="font-medium">{label}</span> belum dibangun di sini. Di layar lama ia
-        membuka formulir konfirmasi tersendiri berisi sebelas isian, dan formulir itulah yang
-        belum ada — bukan datanya. Untuk sekarang, kerjakan di Pega.
-      </p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-slate-700">Nomor case:</span>
-        <CopyCaseNumber caseNumber={caseNumber} />
-      </div>
+    <div className="mt-2 flex max-w-md flex-wrap items-center gap-2 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
+      <span className="text-xs text-slate-700">
+        Kerjakan <span className="font-medium">{label}</span> di Pega pada klaim
+      </span>
+      <CopyCaseNumber caseNumber={caseNumber} />
     </div>
   )
 }
@@ -1720,10 +1650,10 @@ function ActionNote({
  * # Kenapa ia komponen tersendiri
  *
  * Ia dipakai DUA tempat yang keadaannya berbeda: panel tombol yang memang belum dibangun
- * (WriteAction — tinggal satu, "Tutup Klaim" MSIG), dan panel GALAT tombol yang sudah
- * dibangun tetapi gagal karena sebab yang hanya dapat diselesaikan di Pega (ClaimAction).
- * Keduanya menuntut hal yang sama dari petugas — menyalin nomor case lalu mengerjakannya di
- * Pega — sehingga keduanya wajib menyediakan nomor itu DI TEMPAT pesannya muncul.
+ * (WriteAction), dan panel GALAT tombol yang sudah dibangun tetapi layanan Pega-nya belum
+ * tersambung (ClaimAction). Keduanya menuntut hal yang sama dari petugas — menyalin nomor
+ * case lalu mengerjakannya di Pega — sehingga keduanya wajib menyediakan nomor itu DI TEMPAT
+ * pesannya muncul.
  *
  * Sebelum 2026-10-01 hanya WriteAction yang punya. ClaimAction menampilkan pesan
  * "salin nomor case-nya dari layar ini" tanpa satu pun nomor di dekatnya, sehingga petugas

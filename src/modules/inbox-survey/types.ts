@@ -141,12 +141,6 @@ export type KeteranganResponse = {
   tipe_report: string[];
   kuartal: string[];
   ukuran_halaman: number;
-
-  /**
-   * Keduanya TIDAK dirender layar ini (`K-105.29`); bentuknya dikirim supaya sama dengan
-   * ~30 layar lain, dan supaya keputusan itu dapat dibalik satu baris.
-   */
-  selisih_terencana: string[];
   keterbatasan: string[];
 };
 

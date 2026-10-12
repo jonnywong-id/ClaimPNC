@@ -81,9 +81,8 @@ const KETERANGAN: KeteranganResponse = {
   tab_bawaan: 'aktif',
   status_survei: ["ALL", "OUTSTANDING", "FINAL"],
   tipe_report: ["DATA SUMMARY", "DATA DETAIL"],
-  kuartal: ["ALL", "1", "2", "3", "4"],
+  kuartal: ["1", "2", "3", "4"],
   ukuran_halaman: 25,
-  selisih_terencana: ['Tab Close memakai status adjuster Close Case.'],
   keterbatasan: [],
 }
 
