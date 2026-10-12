@@ -53,3 +53,17 @@ func TestBentukTakDikenalDitolak(t *testing.T) {
 func TestParsePolicyList(t *testing.T) {
 	require.Equal(t, []string{"A", "B", "C"}, ParsePolicyList("A\nB, C;A\tB"))
 }
+
+func TestNewFilter(t *testing.T) {
+	f, err := NewFilter("  ", "")
+	require.NoError(t, err)
+	require.True(t, f.Empty(), "kosong berarti seluruh PRODKE dan INDEXOBJECT")
+
+	f, err = NewFilter(" 01 ", "077")
+	require.NoError(t, err)
+	require.Equal(t, Filter{ProdKe: "1", IndexObject: "77"}, f)
+	require.Equal(t, "PRODKE 1, INDEXOBJECT 77", f.Describe())
+
+	_, err = NewFilter("1a", "")
+	require.ErrorIs(t, err, ErrInvalidFilter)
+}

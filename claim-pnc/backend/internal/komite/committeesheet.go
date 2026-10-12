@@ -98,6 +98,12 @@ type Attachment struct {
 	Category string
 	InputBy  string
 	InputAt  time.Time
+
+	// ImageID adalah `IMAGEID` — kunci berkas di layanan penyimpanan. Kosong berarti
+	// lampiran lama yang hanya tersimpan sebagai BLOB: `ShowKomiteViewContent` menaruhnya
+	// di `SupportAttachmentOld`, dan `PNCViewAttachmentKomite` menggambar namanya sebagai
+	// teks biasa, tanpa tautan `GetLinkViewDoc2_Act`.
+	ImageID string
 }
 
 // Leader adalah baris "LEADER" kolom kanan.

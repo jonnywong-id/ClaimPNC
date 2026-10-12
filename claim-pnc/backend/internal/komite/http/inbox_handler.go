@@ -465,6 +465,7 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 			Category:   a.Category,
 			UploadedBy: a.InputBy,
 			UploadedAt: formatTime(a.InputAt),
+			Stored:     a.ImageID != "",
 		})
 	}
 	dominant := make([]string, 0, len(d.DominantFactors))
@@ -483,6 +484,7 @@ func toTransferDTO(d komite.TransferDetail) TransferDetailDTO {
 		FacOffers:       facOffers,
 		DominantFactors: dominant,
 		Attachments:     attachments,
+		ClaimKey:        d.ClaimKey,
 		Members:         entriesDTO(d.Members),
 		History:         entriesDTO(d.History),
 	}

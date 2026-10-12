@@ -133,7 +133,8 @@ func Convert(object ObjectRow, line Line) (Converted, error) {
 		// 2026-10-07: tanpa kolom ini, registrasi tidak dapat mengetahui coverage milik
 		// objek mana. Nilai baris objek menang atas isi dokumen, sama seperti kunci lain.
 		if line.Key == "aneka" {
-			row["INDEXTANEKALIST"] = firstFilled(object.ListIndex, object.IndexObject)
+			_, value := CoverageObjectKey(line, object)
+			row["INDEXTANEKALIST"] = value
 		}
 		if isBlank(row["INDEXCOVERAGE"]) {
 			row["INDEXCOVERAGE"] = json.Number(strconv.Itoa(i + 1))
@@ -168,6 +169,22 @@ func Convert(object ObjectRow, line Line) (Converted, error) {
 		}
 	}
 	return result, nil
+}
+
+// CoverageObjectKey mengembalikan kolom tabel coverage yang menghubungkan coverage ke
+// objeknya, beserta nilainya untuk satu baris objek.
+//
+// Untuk Aneka kolomnya INDEXTANEKALIST (T_COVERAGELIST_ANEKA tidak punya INDEXOBJECT),
+// lini lain INDEXOBJECT. Dipakai Convert saat menulis dan penulis TEST saat membatasi
+// penghapusan per objek, supaya keduanya tidak pernah berbeda pendapat.
+func CoverageObjectKey(line Line, object ObjectRow) (column, value string) {
+	if line.Key == "aneka" {
+		if strings.TrimSpace(object.ListIndex) != "" {
+			return "INDEXTANEKALIST", object.ListIndex
+		}
+		return "INDEXTANEKALIST", object.IndexObject
+	}
+	return "INDEXOBJECT", object.IndexObject
 }
 
 // applyKeys menimpa kolom kunci dengan nilai dari baris objeknya.
@@ -331,4 +348,63 @@ func ParsePolicyList(text string) []string {
 		result = append(result, p)
 	}
 	return result
+}
+
+// Filter mempersempit objek yang dikonversi. Isian kosong berarti tanpa batas: Filter
+// kosong mengonversi seluruh versi (PRODKE) dan seluruh objek (INDEXOBJECT) polisnya.
+//
+// Filter berlaku sama untuk setiap polis di daftar dan untuk keempat lini.
+type Filter struct {
+	ProdKe      string
+	IndexObject string
+}
+
+// ErrInvalidFilter berarti isian filter bukan bilangan bulat tak negatif.
+var ErrInvalidFilter = errors.New("filter tidak sah")
+
+// NewFilter merapikan dan memeriksa isian filter. PRODKE dan INDEXOBJECT adalah kolom
+// angka, sehingga hanya digit yang diterima; nol di depan dibuang supaya `01` cocok
+// dengan TO_CHAR(PRODKE) = `1`.
+func NewFilter(prodKe, indexObject string) (Filter, error) {
+	p, err := normalizeNumber("PRODKE", prodKe)
+	if err != nil {
+		return Filter{}, err
+	}
+	i, err := normalizeNumber("INDEXOBJECT", indexObject)
+	if err != nil {
+		return Filter{}, err
+	}
+	return Filter{ProdKe: p, IndexObject: i}, nil
+}
+
+// Empty berarti tidak ada batas sama sekali.
+func (f Filter) Empty() bool { return f.ProdKe == "" && f.IndexObject == "" }
+
+// Describe adalah uraian filter untuk pesan dan log, mis. "PRODKE 1, INDEXOBJECT 3".
+func (f Filter) Describe() string {
+	var parts []string
+	if f.ProdKe != "" {
+		parts = append(parts, "PRODKE "+f.ProdKe)
+	}
+	if f.IndexObject != "" {
+		parts = append(parts, "INDEXOBJECT "+f.IndexObject)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func normalizeNumber(name, text string) (string, error) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", nil
+	}
+	for _, r := range text {
+		if r < '0' || r > '9' {
+			return "", fmt.Errorf("%w: %s harus bilangan bulat tak negatif, bukan %q", ErrInvalidFilter, name, text)
+		}
+	}
+	text = strings.TrimLeft(text, "0")
+	if text == "" {
+		text = "0"
+	}
+	return text, nil
 }

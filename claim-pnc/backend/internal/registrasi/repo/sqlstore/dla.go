@@ -206,6 +206,14 @@ func (s *DLAStore) MarkPrinted(ctx context.Context, claimID, number, note string
 	return nil
 }
 
+// UpdateEmail mengganti EMAILDLA — isian Email layar PrintDLA.
+func (s *DLAStore) UpdateEmail(ctx context.Context, claimID, number, email string) error {
+	if _, err := executorFrom(ctx, s.db).ExecContext(ctx, loadQuery("dla_email"), emptyTextAsNil(email), claimID, number); err != nil {
+		return fmt.Errorf("registrasi/sqlstore: menyimpan email DLA %s: %w", number, err)
+	}
+	return nil
+}
+
 // wallDate menulis waktu sebagai DATE jam dinding WIB — konvensi SYSDATE Pega.
 func wallDate(t time.Time) time.Time {
 	w := t.In(clock.ZoneWIB)

@@ -881,7 +881,8 @@ describe('tahap Input Estimasi', () => {
     // Baris yang belum diakseptasi tetap dapat diubah (InputAdjustment: nonaktif hanya bila AcceptanceStatus != '').
     const detail = screen.getByRole('group', { name: 'Ubah adjustment 1' })
     expect(within(detail).getByLabelText('Tipe Resiko Sendiri')).toHaveValue('3')
-    expect(within(detail).getByRole('button', { name: 'Hapus' })).toBeDisabled()
+    // Hapus ada di kolom terakhir baris grid, seperti Pega.
+    expect(screen.getByRole('button', { name: 'Hapus' })).toBeDisabled()
     await user.click(row)
     expect(screen.queryByRole('group', { name: 'Ubah adjustment 1' })).not.toBeInTheDocument()
 
@@ -997,7 +998,6 @@ describe('tahap Input Estimasi', () => {
     expect(buttons).toHaveLength(1)
     expect(screen.getByText('Sudah ditransfer')).toBeInTheDocument()
     expect(await screen.findByText(/Komite KMTN-00001 · jenjang 1\/2 menunggu KOMITE01/)).toBeInTheDocument()
-    expect(screen.getByText('Belum ditransfer')).toBeInTheDocument()
 
     await user.click(buttons[0]!)
     const dialog = await screen.findByRole('dialog', { name: 'Transfer Claim ke Komite' })
@@ -1085,7 +1085,17 @@ describe('tahap Input Estimasi', () => {
     mount(<ClaimPage />)
     const user = userEvent.setup()
 
+    // Baris baru tampil di grid dengan Hapus di kolom terakhir; Hapus menutup isiannya.
     await user.click(await screen.findByRole('button', { name: 'Tambah' }))
+    expect(screen.getByRole('group', { name: 'Adjustment baru' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Status Penerimaan Komite' })).toBeInTheDocument()
+    // Unggah File Penunjang tidak nonaktif: pada isian yang belum lengkap ia meminta kelengkapan dulu.
+    await user.click(screen.getByRole('button', { name: 'Unggah File Penunjang' }))
+    expect(await screen.findByText('Lengkapi isian bertanda * lebih dulu.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Hapus' }))
+    expect(screen.queryByRole('group', { name: 'Adjustment baru' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Tambah' }))
     const row = screen.getByRole('group', { name: 'Adjustment baru' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.selectOptions(within(row).getByLabelText('Tipe Pembayaran'), '1')

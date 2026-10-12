@@ -34,9 +34,18 @@ export type HasilPolis = {
   galat?: string
 }
 
+/** Pembatas objek yang dikonversi. Isian kosong berarti tanpa batas. */
+export type FilterObjek = {
+  prodke: string
+  indexobject: string
+}
+
 /** Jawaban POST /api/konversi-coverage/jalankan. */
 export type Laporan = {
   uji_coba: boolean
+  /** Filter yang dipakai; tidak ada berarti seluruh PRODKE / seluruh INDEXOBJECT. */
+  filter_prodke?: string | undefined
+  filter_indexobject?: string | undefined
   mulai: string
   selesai: string
   polis: HasilPolis[]

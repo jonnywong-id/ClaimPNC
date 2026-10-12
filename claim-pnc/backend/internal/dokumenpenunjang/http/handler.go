@@ -22,6 +22,7 @@ import (
 type Service interface {
 	Upload(ctx context.Context, cmd usecase.UploadCommand) (dokumenpenunjang.Document, error)
 	List(ctx context.Context, portalAlias, nomorKlaim string) ([]dokumenpenunjang.Document, error)
+	SiapBuka(ctx context.Context, portalAlias, pengguna string, daftar []dokumenpenunjang.Document) ([]dokumenpenunjang.Document, error)
 }
 
 // Caller adalah identitas pengguna yang sedang masuk.
@@ -97,6 +98,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeErrorF(w, r, err)
 		return
+	}
+
+	// Alamat yang kosong atau basi diterbitkan ulang (`GetLinkViewDoc_Act`), supaya nama
+	// berkas dapat dibuka. Penerbitan membawa login pemanggil ke layanan penyimpanan
+	// (`DocAPI.UserInput`); tanpa identitas, daftarnya dikirim apa adanya.
+	if h.getCaller != nil {
+		if pemanggil, ada := h.getCaller(r.Context()); ada && strings.TrimSpace(pemanggil.Login) != "" {
+			var gagal error
+			daftar, gagal = h.service.SiapBuka(r.Context(), alias, pemanggil.Login, daftar)
+			if gagal != nil && h.logger != nil {
+				h.logger.WarnContext(r.Context(), "tautan dokumen penunjang gagal diterbitkan ulang",
+					slog.String("modul", "dokumenpenunjang"), slog.Any("galat", gagal))
+			}
+		}
 	}
 
 	h.writeJSON(w, r, http.StatusOK, ListResponse{

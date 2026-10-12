@@ -70,6 +70,10 @@ type Config struct {
 	// menggantung menahan permintaan pengguna tanpa batas — dan pengguna akan menekan
 	// tombolnya lagi.
 	Timeout time.Duration
+
+	// SkipTLSVerify mematikan pemeriksaan sertifikat server saat STARTTLS —
+	// SMTP_TLS_LEWATI_VERIFIKASI. Lihat config.SMTP.SkipTLSVerify untuk akibatnya.
+	SkipTLSVerify bool
 }
 
 // Complete menyatakan konfigurasinya cukup untuk mengirim.
@@ -198,8 +202,10 @@ func (s *Sender) send(ctx context.Context, to []string, pesan []byte) error {
 	// ini akan terkirim tanpa enkripsi — dan itu keputusan yang layak diambil sadar,
 	// bukan diwarisi.
 	adaTLS := false
+	// ServerName wajib diisi: tanpa itu (dan tanpa InsecureSkipVerify) STARTTLS selalu gagal.
+	tlsConfig := &tls.Config{ServerName: s.cfg.Host, InsecureSkipVerify: s.cfg.SkipTLSVerify} //nolint:gosec // sakelar SMTP_TLS_LEWATI_VERIFIKASI, mati secara baku
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host}); err != nil {
+		if err := client.StartTLS(tlsConfig); err != nil {
 			return fmt.Errorf("inboxpladlapredla/notification: menegakkan TLS: %w", err)
 		}
 		adaTLS = true

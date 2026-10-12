@@ -18,6 +18,7 @@ type DLARequest struct {
 	Adjustment  int               `json:"adjustment"`
 	Number      string            `json:"nomor"`
 	Remarks     map[string]string `json:"catatan"`
+	Emails      map[string]string `json:"email"`
 	AsPerPolicy bool              `json:"sesuai_polis"`
 }
 
@@ -46,7 +47,7 @@ type DLAListResponse struct {
 func (b DLARequest) command(claimID string) usecase.DLACommand {
 	return usecase.DLACommand{
 		ClaimID: claimID, TaskID: b.TaskID, Object: b.Object, Coverage: b.Coverage, Adjustment: b.Adjustment,
-		Number: b.Number, Remarks: b.Remarks, AsPerPolicy: b.AsPerPolicy,
+		Number: b.Number, Remarks: b.Remarks, Emails: b.Emails, AsPerPolicy: b.AsPerPolicy,
 	}
 }
 

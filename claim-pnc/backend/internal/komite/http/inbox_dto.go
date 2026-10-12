@@ -288,6 +288,11 @@ type TransferDetailDTO struct {
 	DominantFactors []string        `json:"faktor_dominan"`
 	Attachments     []AttachmentDTO `json:"lampiran"`
 
+	// ClaimKey adalah kunci klaim (`T_CLAIM_PNC.CLAIMID`) untuk membuka lampiran lewat
+	// `GET /api/registrasi/klaim/{kunci}/dokumen/{lampiran}/tautan`. Kosong bila case
+	// belum tertaut ke klaim.
+	ClaimKey string `json:"kunci_klaim,omitempty"`
+
 	// Members adalah "Daftar Komite" case ini; History adalah "History of Previous
 	// Adjustment Committees" — case komite lain milik klaim yang sama.
 	Members []CommitteeEntryDTO `json:"daftar_komite"`
@@ -339,6 +344,11 @@ type AttachmentDTO struct {
 	Category   string `json:"kategori,omitempty"`
 	UploadedBy string `json:"diunggah_oleh,omitempty"`
 	UploadedAt string `json:"diunggah_pada,omitempty"`
+
+	// Stored menyatakan lampiran punya `IMAGEID`, sehingga namanya dapat dibuka lewat
+	// tautan dokumen klaim. Yang salah adalah lampiran lama (BLOB saja) — di Pega namanya
+	// teks biasa pada grid `SupportAttachmentOld`.
+	Stored bool `json:"tersimpan"`
 }
 
 // AdjustmentLineDTO adalah satu baris `POOLDATA.T_CLAIM_ADJUSTMENT`.
