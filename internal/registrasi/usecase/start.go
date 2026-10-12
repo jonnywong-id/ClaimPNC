@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"claim-pnc/internal/registrasi"
 )
@@ -209,9 +208,6 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 		if err := l.mirrorInbox(ctx, claim); err != nil {
 			return err
 		}
-		if err := l.openRegisterProgress(ctx, claim, by, now); err != nil {
-			return err
-		}
 		if err := l.audit.Record(ctx, registrasi.AuditTrail{
 			ClaimID: claim.ID,
 			Event:   "KLAIM_DIBUKA",
@@ -245,37 +241,6 @@ func (l *Service) Start(ctx context.Context, p StartCommand, by Caller) (StartRe
 	}
 
 	return StartResult{Claim: claim, Task: task}, nil
-}
-
-// openRegisterProgress membuka posisi progres REGISTER klaim baru, dan untuk klaim dari berkas
-// RCV menutup posisi LAPORAN KLAIM berkas itu lebih dulu — lihat registrasi.PositionRegister.
-// Tanpa posisi terbuka, tombol Input Progress Claim tidak punya posisi untuk ditulisi.
-func (l *Service) openRegisterProgress(ctx context.Context, claim registrasi.Claim, by Caller, now time.Time) error {
-	if l.acceptance == nil {
-		return nil
-	}
-	if claim.RCVID != "" {
-		report, err := l.acceptance.OpenPosition(ctx, claim.RCVID, registrasi.PositionReport)
-		if err != nil {
-			return err
-		}
-		// Berkas tanpa posisi LAPORAN KLAIM terbuka: penutupannya dilewati (POSISIID wajib terisi).
-		if report != "" {
-			if err := l.acceptance.AddProgress(ctx, registrasi.ProgressUpdate{
-				ClaimNumber: claim.RCVID, PositionID: report, Note: registrasi.ReportFinishNote,
-				Progress1: registrasi.ReportProgress1, Progress2: registrasi.ReportProgress2,
-				Position: registrasi.AcceptanceProgressDone, User: by.Identity, At: now,
-			}); err != nil {
-				return err
-			}
-		}
-	}
-	_, err := l.acceptance.StartProgress(ctx, registrasi.ProgressStart{
-		ClaimNumber: claim.Number, CaseID: claim.Number, Position: registrasi.PositionRegister,
-		Note: registrasi.RegisterProgressNote, Progress1: registrasi.RegisterProgress1,
-		Progress2: registrasi.RegisterProgress2, User: by.Identity, At: now,
-	})
-	return err
 }
 
 // applyReport menyalin isi berkas laporan ke klaim yang baru dibuka.

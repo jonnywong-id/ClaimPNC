@@ -86,10 +86,6 @@ type Config struct {
 
 	// Timeout membatasi lama menunggu server SMTP. Nol berarti nilai baku.
 	Timeout time.Duration
-
-	// SkipTLSVerify mematikan pemeriksaan sertifikat server saat STARTTLS —
-	// SMTP_TLS_LEWATI_VERIFIKASI. Lihat config.SMTP.SkipTLSVerify untuk akibatnya.
-	SkipTLSVerify bool
 }
 
 // Complete menyatakan konfigurasi ini cukup untuk mengirim surel.
@@ -184,10 +180,8 @@ func (p *Sender) send(ctx context.Context, to []string, message []byte) error {
 	// Rule lama menetapkan `UseSSL=false` dan mengirimkan kata sandi apa adanya (`R-17`).
 	// Itu tidak ditiru: menyalin kelemahan keamanan bukan kesetaraan perilaku.
 	secured := false
-	// ServerName wajib diisi: tanpa itu (dan tanpa InsecureSkipVerify) STARTTLS selalu gagal.
-	tlsConfig := &tls.Config{ServerName: p.cfg.Host, InsecureSkipVerify: p.cfg.SkipTLSVerify} //nolint:gosec // sakelar SMTP_TLS_LEWATI_VERIFIKASI, mati secara baku
 	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(tlsConfig); err != nil {
+		if err := client.StartTLS(&tls.Config{ServerName: p.cfg.Host}); err != nil {
 			return fmt.Errorf("inboxreceivetka/notification: menegakkan TLS: %w", err)
 		}
 		secured = true

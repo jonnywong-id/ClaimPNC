@@ -39,7 +39,7 @@ func TestTabsReturnsACopy(t *testing.T) {
 	require.Equal(t, "Cetak Surat", second[0].Name)
 }
 
-func TestEveryTabDrawsTheSameColumnsExceptTheLetterDate(t *testing.T) {
+func TestEveryTabDrawsTheSameTenColumns(t *testing.T) {
 	// Sembilan kolom pertama dibaca dari sel grid ketiga section, dan ketiganya IDENTIK
 	// kecuali judul kolom keenam. Kolom yang bertambah atau berkurang di salah satu tab
 	// berarti salah satu section dibaca keliru.
@@ -47,12 +47,6 @@ func TestEveryTabDrawsTheSameColumnsExceptTheLetterDate(t *testing.T) {
 	// Kolom KESEPULUH tidak berasal dari section mana pun: ia kolom yang mengurutkan
 	// tabel, ditambahkan 2026-09-30 atas keputusan Work Owner. Ia ikut dituntut identik
 	// di ketiga tab karena ketiganya diurutkan dengan kolom yang sama.
-	//
-	// SATU-SATUNYA perkecualian adalah "Tanggal Cetak Surat" di tab Cetak Surat — lihat uji
-	// berikutnya. Yang dituntut di sini karena itu bukan sekadar "tidak ada kolom itu",
-	// melainkan bahwa kesembilan kolom lain tetap pada URUTAN yang sama persis: tab yang
-	// kolomnya bergeser urutan justru paling membingungkan di layar yang ketiga tabnya
-	// tampak sama.
 	wanted := []string{
 		inboxrclpucl.FieldCaseID,
 		inboxrclpucl.FieldPolicyNumber,
@@ -67,72 +61,12 @@ func TestEveryTabDrawsTheSameColumnsExceptTheLetterDate(t *testing.T) {
 	}
 
 	for _, tab := range inboxrclpucl.Tabs() {
-		expected := wanted
-		if tab.Code == inboxrclpucl.TabCetakSurat {
-			expected = []string{}
-			for _, key := range wanted {
-				if key == inboxrclpucl.FieldLetterPrintedAt {
-					continue
-				}
-				expected = append(expected, key)
-			}
-		}
-
 		keys := []string{}
 		for _, column := range tab.Columns {
 			keys = append(keys, column.Key)
 		}
-		require.Equalf(t, expected, keys, "kolom tab %s berbeda", tab.Name)
+		require.Equalf(t, wanted, keys, "kolom tab %s berbeda", tab.Name)
 	}
-}
-
-func TestTheCetakSuratTabDropsTheLetterDateColumn(t *testing.T) {
-	// `TANGGALCETAKDOKUMENPUCL_1` adalah PENYARING tab ini, dengan syarat `IS NULL`.
-	// Setiap baris yang tampil di sana karena itu pasti berkolom kosong — dan baris yang
-	// terisi sudah berpindah sendiri ke tab Kelengkapan Dokumen.
-	//
-	// Menggambarnya kembali berarti satu kolom penuh tanda pisah yang tidak pernah dapat
-	// berubah, ditambah satu paragraf pembelaan di atas grid. Keputusan Work Owner
-	// 2026-10-11: tidak ditampilkan.
-	//
-	// Uji ini menjaga KEDUANYA sekaligus — kolomnya hilang DAN keterangan yang
-	// menjelaskannya ikut hilang. Menguji yang pertama saja akan lolos meski layar masih
-	// membela kolom yang sudah tidak ada.
-	cetak, found := inboxrclpucl.FindTab(inboxrclpucl.TabCetakSurat)
-	require.True(t, found)
-
-	for _, column := range cetak.Columns {
-		require.NotEqual(t, inboxrclpucl.FieldLetterPrintedAt, column.Key,
-			"kolom yang tidak pernah dapat terisi tidak digambar di tab ini")
-	}
-
-	require.Empty(t, cetak.Notice,
-		"keterangan tentang kolom yang sudah tidak digambar tidak boleh tertinggal")
-
-	// Kedua tab lain TETAP menggambarnya: di sana kolomnya memang terisi, dan membuangnya
-	// akan menyembunyikan tanggal yang justru menjadi alasan klaimnya ada di sana.
-	for _, code := range []string{
-		inboxrclpucl.TabKelengkapanDokumen,
-		inboxrclpucl.TabKlaimMSIG,
-	} {
-		tab, ok := inboxrclpucl.FindTab(code)
-		require.True(t, ok)
-
-		keys := []string{}
-		for _, column := range tab.Columns {
-			keys = append(keys, column.Key)
-		}
-		require.Containsf(t, keys, inboxrclpucl.FieldLetterPrintedAt,
-			"tab %s tetap menggambar tanggal cetak surat", tab.Name)
-	}
-
-	// Berkas unduhan tab ini TIDAK ikut kehilangan kolomnya: isinya laporan harian, yang
-	// justru memuat klaim yang suratnya SUDAH dicetak.
-	reportKeys := []string{}
-	for _, column := range inboxrclpucl.DailyReportColumns {
-		reportKeys = append(reportKeys, column.Key)
-	}
-	require.Contains(t, reportKeys, inboxrclpucl.FieldLetterPrintedAt)
 }
 
 func TestOnlyTheMSIGTabRenamesTheTrackColumn(t *testing.T) {
@@ -183,45 +117,6 @@ func TestLetterPrintedFilterSplitsTheTabs(t *testing.T) {
 
 	require.False(t, lengkap.MSIG)
 	require.True(t, msig.MSIG)
-}
-
-func TestOnlyTheKelengkapanDokumenTabHasTheReminderButton(t *testing.T) {
-	// Terverifikasi dengan menghitung rujukan `ReminderPUCL` pada ketiga section inbox:
-	// `InboxKelengkapanDocPUCLRCL_Section` memuat 2, sementara
-	// `InboxCetakSuratPUCLRCL_Section` dan `InboxAJSMSIG_Section` memuat NOL.
-	//
-	// Uji ini sekaligus menahan kembalinya kesimpulan yang SALAH. Modul ini sempat
-	// menyatakan "Reminder PUCL tidak pernah digambar, bahkan di Pega" — benar untuk layar
-	// kerja (`SendtoRCLPUCL`, syarat tombolnya `1==2`), dan salah untuk inbox. Keduanya
-	// tombol yang BERBEDA, dan yang di inbox tergambar nyata di Pega yang berjalan
-	// (Work Owner, 2026-10-12, dengan tangkapan layar).
-	for _, tab := range inboxrclpucl.Tabs() {
-		if tab.Code == inboxrclpucl.TabKelengkapanDokumen {
-			require.True(t, tab.HasReminder,
-				"tab Kelengkapan Dokumen punya tombol Reminder PUCL di Pega")
-			continue
-		}
-		require.Falsef(t, tab.HasReminder,
-			"tab %s tidak punya tombol Reminder PUCL di section-nya", tab.Name)
-	}
-}
-
-func TestTheReminderFilterIsTheKelengkapanDokumenFilter(t *testing.T) {
-	// `RDB List/ReminderPUCL-SQL.xml` menyaring dengan KELIMA syarat yang sama persis
-	// dengan tab Kelengkapan Dokumen: `PYSTATUSWORK <> 'Resolved-Completed'`,
-	// `PXASSIGNEDOPERATORID = 'RCLPUCL'`, `TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL`,
-	// `PUCLAPPROVE_1 <> 1`, dan `MSIG_1 IS NULL`.
-	//
-	// Karena itu modalnya memakai daftar tab ini, bukan kueri kedua yang kebetulan mirip.
-	// Uji ini menjaga premis itu: begitu salah satu penyaringnya bergeser, modalnya tidak
-	// lagi boleh memakai daftar yang sama — dan tidak ada apa pun selain uji ini yang akan
-	// menandainya.
-	tab, found := inboxrclpucl.FindTab(inboxrclpucl.TabKelengkapanDokumen)
-	require.True(t, found)
-
-	require.True(t, tab.LetterPrinted, "TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL")
-	require.False(t, tab.MSIG, "MSIG_1 IS NULL")
-	require.True(t, tab.HasReminder)
 }
 
 func TestTheMSIGTabIsNotMarkedBlocked(t *testing.T) {
@@ -781,30 +676,10 @@ func TestWaktuBentukPegaDigambarSebagaiWIB(t *testing.T) {
 	}
 }
 
-func TestKeteranganTerimaDokumenDibacaMeskiTanggalnyaKosong(t *testing.T) {
-	// Pendahulunya — `ReceivedDatesOf` — MEMBUANG keterangan ketika tanggalnya kosong.
-	// Itu benar selama gridnya sebuah daftar: baris tanpa tanggal berarti entri yang tidak
-	// ada. Ia SALAH sejak 2026-10-11, saat grid itu menjadi satu baris yang mewakili satu
-	// kolom: keterangan yang terisi akan hilang dari layar hanya karena tanggalnya belum
-	// diisi, dan tidak ada apa pun yang menandainya.
-	require.Equal(t, "Dokumen awal", inboxrclpucl.ReceivedNoteOf("Dokumen awal"))
-	require.Equal(t, "Dokumen awal", inboxrclpucl.ReceivedNoteOf("  Dokumen awal  "))
-	require.Empty(t, inboxrclpucl.ReceivedNoteOf("   "))
-}
-
-func TestTanggalGridTerimaDokumenAdalahCompleteAt(t *testing.T) {
-	// Sejak 2026-10-11 sel "Tanggal" pada grid dan isian "Tanggal Kelengkapan Dokumen"
-	// adalah SATU isian — penetapan Work Owner — dan keduanya `TGL_TERIMA_DOKUMEN_PUCL`.
-	//
-	// Uji ini menjaga agar senarai tanggal tersendiri tidak kembali. Dua tanggal berbeda
-	// yang digambar sebagai satu isian adalah cara paling pasti membuat yang satu menimpa
-	// yang lain tanpa ketahuan — dan kolom itu WAJIB diisi, sehingga kehilangannya
-	// menghentikan kedua tombol Kirim.
-	receipt := inboxrclpucl.DocumentReceipt{
-		CompleteAt:   "07/10/2026 00:00",
-		ReceivedNote: "Dokumen awal",
-	}
-
-	require.Equal(t, "07/10/2026 00:00", receipt.CompleteAt)
-	require.Equal(t, "Dokumen awal", receipt.ReceivedNote)
+func TestGridTanggalTerimaDokumenMemakaiBentukTampilan(t *testing.T) {
+	// Penggambarnya dipakai di SATU tempat, dan uji ini yang memastikan ia benar-benar
+	// dilewati — bukan hanya tersedia.
+	rows := inboxrclpucl.ReceivedDatesOf("20240911T143500.000 GMT", "Dokumen awal")
+	require.Len(t, rows, 1)
+	require.Equal(t, "11/09/2024 21:35", rows[0].Date)
 }

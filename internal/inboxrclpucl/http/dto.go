@@ -107,11 +107,6 @@ type TabDTO struct {
 	// isian itu TIDAK menyaring tabel di bawahnya.
 	HasDateRangeReport bool `json:"punya_laporan_rentang_tanggal"`
 
-	// HasReminder menyatakan tab ini punya tombol "Reminder PUCL".
-	//
-	// Hanya tab Kelengkapan Dokumen — lihat `inboxrclpucl.Tab.HasReminder`.
-	HasReminder bool `json:"punya_reminder"`
-
 	// Notice adalah keterangan yang berlaku pada tab ini saja, digambar di atas grid.
 	// Kosong berarti tidak ada.
 	Notice string `json:"catatan,omitempty"`
@@ -199,37 +194,26 @@ type LetterDraftDTO struct {
 
 // DocumentReceiptDTO adalah bagian "Penerimaan Dokumen".
 //
-// KEEMPAT isiannya kini punya sumber. Yang terakhir menyusul adalah daftar "Tanggal terima
-// Dokumen": baris PERTAMANYA terbaca lewat `RECEIVEDDATE_1` dan `KETERANGAN_1`.
-//
-// Yang tersisa pada daftar itu bukan ketiadaan sumber melainkan dua batas yang lebih sempit,
-// dan masing-masing dinyatakan di tempatnya sendiri — `ReceivedDatesPartial` untuk baris
-// kedua dan seterusnya, dan keterangan di layar untuk perubahan yang belum tersimpan. Karena
-// itu sejak 2026-10-11 ia TIDAK lagi disebut `UnmappedFields`: menyebutnya "tidak terbaca"
-// bertentangan dengan baris yang tergambar berisi tepat di atas kalimat itu.
+// TIGA dari empat isiannya kini punya kolom. Yang tersisa tanpa sumber hanyalah daftar
+// "Tanggal terima Dokumen", dan ketiadaannya dijelaskan `UnmappedFields` — bukan dikirim
+// sebagai isian kosong, yang akan membuat layar mengira datanya memang belum diisi.
 type DocumentReceiptDTO struct {
 	PUCLNote string `json:"komentar_pucl"`
 
-	// CompleteAt — `TGL_TERIMA_DOKUMEN_PUCL`.
-	//
-	// Ia memasok DUA tempat yang dulu terpisah di layar: sel "Tanggal" pada grid "Tanggal
-	// terima Dokumen", dan isian "Tanggal Kelengkapan Dokumen" di bawahnya. Sejak
-	// 2026-10-11 keduanya satu isian — penetapan Work Owner — dan layar menggambarnya
-	// sekali saja, di dalam grid.
-	//
-	// Nama fieldnya TIDAK diubah meski labelnya kini "Tanggal" pada grid. Ia kontrak yang
-	// sudah dipakai badan permintaan `Save` dan kedua tombol Kirim (`tanggal_kelengkapan_
-	// dokumen`), dan menggantinya adalah perubahan yang merusak klien — bukan penggantian
-	// nama (`D-80`).
+	// CompleteAt — "Tanggal Kelengkapan Dokumen", dari `TGL_TERIMA_DOKUMEN_PUCL`.
 	CompleteAt string `json:"tanggal_kelengkapan_dokumen"`
 
-	// ReceivedNote — sel "Keterangan" pada grid yang sama. HANYA-BACA.
+	// ReceivedDates — grid "Tanggal Terima Dokumen".
 	//
-	// Sumbernya `KETERANGAN_1` pada tabel objek kerja Pega, yang `P-1` larang modul ini
-	// tulisi selama masa paralel. Layar menggambarnya jelas tidak dapat diketik: isian yang
-	// tampak dapat diisi lalu diam-diam tidak tersimpan jauh lebih buruk daripada isian
-	// yang jelas hanya-baca.
-	ReceivedNote string `json:"keterangan_terima_dokumen"`
+	// Paling banyak SATU baris: daftarnya page list tanpa tabel, dan hanya baris pertamanya
+	// yang diekspos sebagai kolom. Lihat `inboxrclpucl.DocumentReceipt.ReceivedDates`.
+	ReceivedDates []ReceivedDateDTO `json:"tanggal_terima_dokumen"`
+
+	// ReceivedDatesPartial menyatakan daftar di atas MUNGKIN tidak lengkap.
+	//
+	// Dikirim sebagai data, bukan ditulis tetap di layar, supaya ia hilang di satu tempat
+	// begitu baris kedua dan seterusnya terbaca lewat layanan Pega.
+	ReceivedDatesPartial bool `json:"tanggal_terima_dokumen_sebagian"`
 
 	// InsuredEmail — "Email Tertanggung", dari `T_CLAIM_PNC.EMAIL_LOD`.
 	//
@@ -274,17 +258,10 @@ type ClaimDetailResponse struct {
 	// membawanya ke kontrak adalah jalur tulis yang sedang disiapkan.
 	ActionParameters ActionParametersDTO `json:"parameter_tindakan"`
 
-	// WriteBlocked menyatakan tindakan layar ini masih harus dikerjakan di Pega.
+	// WriteBlocked menyatakan layar ini di Pega adalah layar TULIS.
 	//
-	// Ia bernilai **false** sejak 2026-10-06, dan nilainya itu yang berlaku: kelima tombol
-	// layar kerja — "Download Dokumen", "Tolak Klaim", kedua "Kirim", dan "Save" — dikerjakan
-	// sendiri, seluruhnya menulis ke tabel milik aplikasi ini. Lihat usecase.PerformAction.
-	//
-	// Isian ini TIDAK dibuang bersama nilainya. Ia kontrak yang sudah dibaca layar, dan
-	// membuangnya berarti layar versi lama memperlakukan ketiadaannya sebagai `false` tanpa
-	// pernah menyatakannya — kebetulan yang benar hari ini dan tidak terbaca sebagai
-	// keputusan. Yang tersisa dari masa paralel adalah satu tombol di luar lingkupnya;
-	// lihat catatan pada pengisiannya.
+	// Layar memakainya untuk menjelaskan mengapa tidak ada satu pun tombol simpan di sini,
+	// alih-alih membiarkan pengguna mencarinya.
 	WriteBlocked bool `json:"tindakan_masih_di_pega"`
 
 	Portal string `json:"portal"`
@@ -317,6 +294,24 @@ func screenButtonsOf(b inboxrclpucl.ScreenButtons) ScreenButtonsDTO {
 		SendToAnalyst:    b.SendToAnalyst,
 		SendToPICTeknik:  b.SendToPICTeknik,
 	}
+}
+
+// ReceivedDateDTO adalah satu baris grid "Tanggal Terima Dokumen".
+//
+// Nama isiannya mengikuti JUDUL KOLOM yang dibaca pengguna, bukan nama properti Pega.
+type ReceivedDateDTO struct {
+	Tanggal    string `json:"tanggal"`
+	Keterangan string `json:"keterangan"`
+}
+
+func receivedDatesOf(rows []inboxrclpucl.ReceivedDocumentDate) []ReceivedDateDTO {
+	// Senarai KOSONG, bukan nil, supaya JSON-nya `[]` dan bukan `null`. Layar membedakan
+	// "daftarnya kosong" dari "isiannya tidak ada".
+	out := make([]ReceivedDateDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ReceivedDateDTO{Tanggal: row.Date, Keterangan: row.Note})
+	}
+	return out
 }
 
 // ActionParametersDTO adalah parameter tersembunyi tombol tindakan.
@@ -397,7 +392,6 @@ func toTabDTO(tab inboxrclpucl.Tab) TabDTO {
 		Description:        tab.Description,
 		Columns:            toColumnListDTO(tab.Columns),
 		HasDateRangeReport: tab.HasDateRangeReport,
-		HasReminder:        tab.HasReminder,
 		Notice:             tab.Notice,
 		Blocked:            tab.Blocked,
 		BlockedReason:      tab.BlockedReason,
@@ -461,32 +455,13 @@ func toPaginationDTO(page inboxrclpucl.Page) PaginationDTO {
 // Pega — yang membacanya petugas klaim. Satu di antaranya patut disadari: label **"No
 // Kontrak"** menempel pada properti `.ClaimData.PUCLStatus.NIK`. Label dan properti di situ
 // memang tidak sejalan, dan yang dibawa adalah LABEL-nya (`D-13`).
-//
-// # Daftarnya menyusut empat kali, dan hitungan di layar JANGAN ditulis sebagai angka
-//
-// Sembilan → lima saat keempat kolom surat ditemukan (§84.2) → tiga pada 2026-10-01 saat
-// "Email Tertanggung" dan "Tanggal Kelengkapan Dokumen" ikut terpetakan → **dua pada
-// 2026-10-11**, saat "Tanggal terima Dokumen" dikeluarkan — lihat di bawah.
-//
-// Setiap penyusutan itu membuat kalimat di kaki layar yang menyebut jumlahnya ("Kesembilan…")
-// menjadi salah tanpa satu pun galat. Karena itu layar kini menyebut daftarnya TANPA angka:
-// yang berwenang atas jumlahnya hanya senarai ini.
-//
-// # Kenapa "Tanggal terima Dokumen" DIKELUARKAN pada 2026-10-11
-//
-// Karena ia tidak lagi benar. Baris PERTAMA grid itu terbaca — lewat `RECEIVEDDATE_1` dan
-// `KETERANGAN_1` pada tabel objek kerja, terisi 4.156 dari 7.723 baris — digambar sebagai
-// isian yang dapat diketik, dan ikut tersimpan. Menyebutnya "tidak dapat dibaca dari sini"
-// bertentangan dengan grid yang tergambar berisi tepat di atas kalimat itu.
-//
-// Batas yang NYATA pada grid itu ada dua, dan keduanya sudah dinyatakan di tempatnya
-// masing-masing — "Baru baris pertama yang terbaca" saat daftarnya terisi, dan keterangan
-// bahwa perubahannya belum tersimpan. Keduanya lebih tepat daripada satu baris di kaki layar,
-// karena keduanya menyangkut hal yang berbeda: yang satu batas PEMBACAAN, yang satu batas
-// PENYIMPANAN.
+// Daftarnya menyusut dua kali: dari sembilan menjadi lima saat keempat kolom surat ditemukan
+// (§84.2), lalu menjadi TIGA pada 2026-10-01 saat "Email Tertanggung" dan "Tanggal
+// Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner.
 var unmappedLetterFields = []string{
 	"No Kontrak",
 	"Business Unit / Seksi",
+	"Tanggal terima Dokumen (Tanggal · Keterangan)",
 }
 
 // toClaimDetailResponse merakit jawaban layar kerja satu klaim.
@@ -517,10 +492,11 @@ func toClaimDetailResponse(
 		},
 
 		DocumentReceipt: DocumentReceiptDTO{
-			PUCLNote:     detail.DocumentReceipt.PUCLNote,
-			ReceivedNote: detail.DocumentReceipt.ReceivedNote,
-			CompleteAt:   detail.DocumentReceipt.CompleteAt,
-			InsuredEmail: detail.DocumentReceipt.InsuredEmail,
+			PUCLNote:             detail.DocumentReceipt.PUCLNote,
+			ReceivedDates:        receivedDatesOf(detail.DocumentReceipt.ReceivedDates),
+			ReceivedDatesPartial: true,
+			CompleteAt:           detail.DocumentReceipt.CompleteAt,
+			InsuredEmail:         detail.DocumentReceipt.InsuredEmail,
 		},
 
 		UnmappedFields: unmapped,
@@ -534,22 +510,10 @@ func toClaimDetailResponse(
 		Buttons:          screenButtonsOf(detail.Buttons()),
 		ActionParameters: actionParametersOf(detail.ActionParameters),
 
-		// FALSE sejak 2026-10-06, dan itulah gunanya ia dikirim sebagai isian alih-alih
-		// ditulis tetap di layar: perpindahan kepemilikannya (`P-1`) cukup diubah di SATU
-		// tempat, yaitu baris ini.
-		//
-		// Yang membuatnya berubah bukan keputusan tata tulis melainkan kode: kelima tindakan
-		// layar kerja ditangani sendiri lewat method Repo-nya masing-masing, dan seluruhnya
-		// menulis ke `TC_PNC_PUCL`, `CPNC_TUGAS`, dan `T_CLAIMLIST_ADMIN` — tabel milik
-		// aplikasi ini. Tidak satu pun menyentuh tabel engine Pega.
-		//
-		// Satu tombol memang masih menunjuk Pega — "Tutup Klaim" pada klaim MSIG ber-jalur
-		// Notification — tetapi ia BUKAN yang dinyatakan isian ini. Di Pega pun ia tidak
-		// menulis apa pun secara langsung: ia membuka modal `PreventRejectClaim` berisi
-		// sebelas isian tersendiri, dan itu layar yang belum dibangun, bukan tabel yang belum
-		// berpindah. Keterangannya digambar pada tombolnya sendiri, bukan sebagai sifat
-		// seluruh layar.
-		WriteBlocked: false,
+		// Selalu true selama masa paralel. Ia dikirim sebagai isian, bukan ditulis tetap
+		// di layar, supaya ia dapat berubah di satu tempat begitu kepemilikan tabelnya
+		// berpindah (`P-1`).
+		WriteBlocked: true,
 
 		Portal: portalAlias,
 	}

@@ -45,12 +45,6 @@ func (s *stubService) List(_ context.Context, alias, nomor string) ([]dokumenpen
 	return s.list, s.err
 }
 
-func (s *stubService) SiapBuka(
-	_ context.Context, _, _ string, daftar []dokumenpenunjang.Document,
-) ([]dokumenpenunjang.Document, error) {
-	return daftar, nil
-}
-
 func writeJSON(w http.ResponseWriter, _ *http.Request, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

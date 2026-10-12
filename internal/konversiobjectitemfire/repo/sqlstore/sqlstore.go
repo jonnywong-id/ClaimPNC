@@ -99,35 +99,17 @@ func NewLive(conn *sql.DB) *Live { return &Live{conn: conn} }
 
 var _ usecase.Source = (*Live)(nil)
 
-// objectsSQL membaca baris objek satu polis; %s diisi syarat WHERE dari objectFilter.
+// objectsSQL membaca baris objek satu polis, seluruh versinya.
 var objectsSQL = fmt.Sprintf(`SELECT IDPEGA, NOPOLIS, TO_CHAR(PRODKE), TO_CHAR(INDEXOBJECT), %s
   FROM %s.%s
- WHERE %%s
+ WHERE NOPOLIS = :1
  ORDER BY PRODKE, INDEXOBJECT`, ki.BlobColumn, owner, ki.ObjectTable)
 
-// objectFilter menyusun syarat WHERE pembacaan objek. Filter dipasang langsung di kueri,
-// bukan disaring setelah seluruh polis terbaca. Yang dirangkai hanya nama kolom tetap;
-// nilainya diikat lewat parameter.
-func objectFilter(policyNo string, filter ki.Filter) (string, []any) {
-	where := "NOPOLIS = :1"
-	args := []any{policyNo}
-	if filter.ProdKe != "" {
-		args = append(args, filter.ProdKe)
-		where += " AND TO_CHAR(PRODKE) = :" + strconv.Itoa(len(args))
-	}
-	if filter.IndexObject != "" {
-		args = append(args, filter.IndexObject)
-		where += " AND TO_CHAR(INDEXOBJECT) = :" + strconv.Itoa(len(args))
-	}
-	return where, args
-}
-
-// Objects membaca baris T_PROPERTYLIST satu polis yang lolos filter.
+// Objects membaca baris T_PROPERTYLIST satu polis, seluruh versinya.
 //
 // Pembacaan dibungkus `SET TRANSACTION READ ONLY` — bila suatu hari ada pernyataan tulis yang
 // keliru diarahkan ke sini, Oracle sendiri yang menolaknya (ORA-01456).
-func (l *Live) Objects(ctx context.Context, policyNo string, filter ki.Filter) ([]ki.ObjectRow, error) {
-	where, args := objectFilter(policyNo, filter)
+func (l *Live) Objects(ctx context.Context, policyNo string) ([]ki.ObjectRow, error) {
 	tx, err := l.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -136,7 +118,7 @@ func (l *Live) Objects(ctx context.Context, policyNo string, filter ki.Filter) (
 	if _, err := tx.ExecContext(ctx, "SET TRANSACTION READ ONLY"); err != nil {
 		return nil, fmt.Errorf("membuka transaksi baca-saja: %w", err)
 	}
-	rows, err := tx.QueryContext(ctx, fmt.Sprintf(objectsSQL, where), args...)
+	rows, err := tx.QueryContext(ctx, objectsSQL, policyNo)
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +165,7 @@ var _ usecase.Target = (*Test)(nil)
 //
 // Penghapusan fisik di sini SENGAJA, dan hanya karena tujuannya basis data TEST: ia membuat
 // konversi dapat diulang tanpa menumpuk baris ganda. Cakupannya dibatasi NOPOLIS + PRODKE yang
-// sedang dikonversi — polis lain tidak tersentuh. Bila filter INDEXOBJECT terisi,
-// cakupannya menyempit lagi menjadi NOPOLIS + PRODKE + INDEXOBJECT per objek, supaya objek
-// lain di versi yang sama tidak ikut terhapus.
+// sedang dikonversi — polis lain tidak tersentuh.
 func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (usecase.Applied, error) {
 	var applied usecase.Applied
 	warnings := map[string]bool{}
@@ -220,7 +200,9 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 		}
 	}()
 
+	versions := map[string]bool{}
 	for _, object := range batch.Objects {
+		versions[object.ProdKe] = true
 		n, err := updateObject(ctx, tx, object)
 		if err != nil {
 			return finish(), fmt.Errorf("memperbarui %s INDEXOBJECT %s: %w", ki.ObjectTable, object.IndexObject, err)
@@ -232,11 +214,15 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 		applied.ObjectsUpdated += int(n)
 	}
 
-	deleted, err := deleteOld(ctx, tx, columns, batch.PolicyNo, deleteScopes(batch.Objects, batch.Filter.IndexObject != ""))
-	if err != nil {
-		return finish(), err
+	for _, version := range sortedSet(versions) {
+		n, err := execCount(ctx, tx, fmt.Sprintf(
+			"DELETE FROM %s.%s WHERE NOPOLIS = :1 AND TO_CHAR(PRODKE) = :2", owner, ki.ItemTable),
+			batch.PolicyNo, version)
+		if err != nil {
+			return finish(), fmt.Errorf("menghapus %s lama: %w", ki.ItemTable, err)
+		}
+		applied.ItemsDeleted += int(n)
 	}
-	applied.ItemsDeleted = deleted
 	n, err := insertRows(ctx, tx, columns, batch.Items, warn)
 	if err != nil {
 		return finish(), err
@@ -251,56 +237,6 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 	}
 	committed = true
 	return finish(), nil
-}
-
-// scope adalah satu cakupan penghapusan: satu versi, dan — bila IndexObject terisi — satu objek.
-type scope struct {
-	ProdKe      string
-	IndexObject string // kosong: seluruh objek di versi itu
-}
-
-// deleteScopes menyusun cakupan penghapusan. Tanpa filter INDEXOBJECT, satu cakupan per
-// versi (perilaku semula); dengan filter itu, satu cakupan per objek.
-func deleteScopes(objects []ki.ObjectRow, byObject bool) []scope {
-	var result []scope
-	seen := map[scope]bool{}
-	for _, object := range objects {
-		sc := scope{ProdKe: object.ProdKe}
-		if byObject {
-			sc.IndexObject = object.IndexObject
-		}
-		if !seen[sc] {
-			seen[sc] = true
-			result = append(result, sc)
-		}
-	}
-	return result
-}
-
-// deleteOld menghapus item lama di setiap cakupan, lalu mengembalikan jumlahnya.
-//
-// Bila cakupannya per objek tetapi T_PROPERTYITEMLIST di TEST tidak punya kolom INDEXOBJECT,
-// konversi DITOLAK: penghapusan per versi akan ikut membuang item objek lain yang tidak
-// diminta.
-func deleteOld(ctx context.Context, tx *sql.Tx, columns map[string]ki.Column, policyNo string, scopes []scope) (int, error) {
-	total := 0
-	for _, sc := range scopes {
-		query := fmt.Sprintf("DELETE FROM %s.%s WHERE NOPOLIS = :1 AND TO_CHAR(PRODKE) = :2", owner, ki.ItemTable)
-		args := []any{policyNo, sc.ProdKe}
-		if sc.IndexObject != "" {
-			if _, ok := columns["INDEXOBJECT"]; !ok {
-				return total, fmt.Errorf("%s.%s tidak punya kolom INDEXOBJECT; penghapusan per INDEXOBJECT tidak dapat dibatasi — kosongkan filter INDEXOBJECT", owner, ki.ItemTable)
-			}
-			query += " AND TO_CHAR(INDEXOBJECT) = :3"
-			args = append(args, sc.IndexObject)
-		}
-		n, err := execCount(ctx, tx, query, args...)
-		if err != nil {
-			return total, fmt.Errorf("menghapus %s lama: %w", ki.ItemTable, err)
-		}
-		total += int(n)
-	}
-	return total, nil
 }
 
 // updateObject menyalin BLOB LIVE apa adanya ke baris objek yang sama di TEST.

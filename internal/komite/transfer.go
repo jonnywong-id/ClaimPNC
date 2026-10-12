@@ -132,11 +132,6 @@ type TransferDetail struct {
 	// Attachments adalah lampiran klaimnya — isi tab "Lampiran Dokumen".
 	Attachments []Attachment
 
-	// ClaimKey adalah `T_CLAIM_PNC.CLAIMID` klaim case ini, apa adanya (ber-prefix untuk
-	// klaim warisan). Layar memakainya untuk membuka lampiran lewat tautan dokumen klaim
-	// yang sudah ada — padanan `GetLinkViewDoc2_Act` pada `PNCViewAttachmentKomite`.
-	ClaimKey string
-
 	// Members adalah "Daftar Komite": seluruh anggota case ini, urut jenjang.
 	Members []CommitteeEntry
 

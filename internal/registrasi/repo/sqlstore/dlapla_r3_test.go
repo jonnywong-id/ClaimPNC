@@ -259,21 +259,6 @@ func TestDLASaveAndMarkPrinted(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Email DLA: isian kosong ditulis NULL, sama dengan pla_email.
-func TestDLAUpdateEmail(t *testing.T) {
-	db, mock := be4DB(t)
-	s := NewDLAStore(db)
-	ctx := context.Background()
-
-	mock.ExpectExec(be4Q("dla_email")).WithArgs("a@contoh.internal", "K1", "D1").WillReturnResult(sqlmock.NewResult(0, 1))
-	require.NoError(t, s.UpdateEmail(ctx, "K1", "D1", "a@contoh.internal"))
-	mock.ExpectExec(be4Q("dla_email")).WithArgs(nil, "K1", "D1").WillReturnResult(sqlmock.NewResult(0, 1))
-	require.NoError(t, s.UpdateEmail(ctx, "K1", "D1", ""))
-	mock.ExpectExec(be4Q("dla_email")).WillReturnError(be4Boom)
-	require.ErrorContains(t, s.UpdateEmail(ctx, "K1", "D1", "x"), "menyimpan email DLA D1")
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
 // Polis DLA: dokumen POLICYDATA sebagai dasar, lalu kolom T_GENERAL, T_OFFERFACIN,
 // T_SPREADINGLIST, T_COINSLIST, dan T_FACOFFER menimpanya bila terisi.
 func TestDLAPolicyDocument(t *testing.T) {

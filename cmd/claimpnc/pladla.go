@@ -250,14 +250,13 @@ func buildPLADLAServices(
 	// alasan yang persis sama.
 	konfigurasiSurat := inboxpladlapredlanotif.Config{
 		// Email Account Pega "Admin-PNC" (UpdateDetailPLA2/UpdateDetailDLA2).
-		Account:       adminEmailAccountSource(cfg, store),
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
+		Account:  adminEmailAccountSource(cfg, store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		Timeout:  cfg.SMTP.Timeout,
 	}
 
 	var pengirimSurat inboxpladlapredla.Notifier
@@ -403,36 +402,4 @@ func (s plaEmailSender) SendPLA(ctx context.Context, portal, login, claimID, num
 	}
 	_, err := s.queue.SendAdviceWith(ctx, portal, inboxpladlapredla.Caller{Login: login}, "pla", claimID, number, extra)
 	return err
-}
-
-// surveyCommitteeMailer memenuhi registrasi.SurveyMailer dengan pengirim surat Inbox PLA/DLA,
-// memakai akun email Komite survey (EMAIL_ACCOUNT_KOMITE_SURVEY, Email Account Pega "ASM").
-type surveyCommitteeMailer struct {
-	sender inboxpladlapredla.Notifier
-}
-
-func (m surveyCommitteeMailer) Send(ctx context.Context, to []string, subject, html string) error {
-	return m.sender.SendAdvice(ctx, inboxpladlapredla.Letter{To: to, Subject: subject, HTMLBody: html})
-}
-
-// newSurveyCommitteeMailer menyusun pengirim email Komite survey; nil bila konfigurasinya belum lengkap.
-func newSurveyCommitteeMailer(cfg config.Config, store storage) registrasi.SurveyMailer {
-	account := emailAccountSource(store)
-	if store.emailServer != nil {
-		account = store.emailServer.With(cfg.SMTP.SurveyAccount).Account
-	}
-	c := inboxpladlapredlanotif.Config{
-		Account:       account,
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
-	}
-	if !c.Complete() {
-		return nil
-	}
-	return surveyCommitteeMailer{sender: inboxpladlapredlanotif.NewSender(c)}
 }

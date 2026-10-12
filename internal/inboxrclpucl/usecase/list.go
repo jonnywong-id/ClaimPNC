@@ -12,10 +12,9 @@
 // `15-NFR-PERFORMANCE-SCALABILITY.md` §3.2 aturan 6. Perakitannya ada di http/export.go,
 // dan DailyReport dipakai dengan pola yang sama.
 //
-// DUA operasi lain MENULIS, dan keduanya dikerjakan sendiri: PerformAction (lima tindakan
-// layar kerja) dan UploadDocument. Tidak satu pun menempuh layanan Pega — lihat
-// PerformAction untuk sebabnya, dan untuk alasan seam ClaimActions tetap dipertahankan
-// meski tidak lagi terjangkau.
+// Tidak ada operasi yang menulis. Layar lama punya dua tindakan yang menulis — mencetak
+// surat PUCL/RCL dan mengirim Reminder PUCL — dan keduanya menyentuh tabel yang masih
+// dimiliki Pega selama masa paralel (`P-1`).
 package usecase
 
 import (
@@ -34,7 +33,6 @@ type Service struct {
 	repoSelector inboxrclpucl.RepoSelector
 	actions      inboxrclpucl.ClaimActions
 	letters      inboxrclpucl.LetterRenderer
-	reminders    inboxrclpucl.ReminderNotifier
 	clock        clock.Clock
 	logger       *slog.Logger
 }
@@ -57,13 +55,6 @@ type Options struct {
 	// berkas — perilaku modul ini sebelum templat `SuratPUCL` diterima 2026-10-02. Ia tidak
 	// menggagalkan tindakannya, karena perpindahan tab itulah yang menghambat petugas.
 	Letters inboxrclpucl.LetterRenderer
-
-	// Reminders mengirim pengingat kelengkapan dokumen ke tertanggung. Boleh nil.
-	//
-	// Nil BUKAN kekeliruan tatanan: peladen SMTP belum tentu terkonfigurasi di setiap
-	// lingkungan, dan antrean tetap harus dapat dibuka tanpanya. Permintaan kirim lalu
-	// dijawab galat yang terbaca, bukan panik.
-	Reminders inboxrclpucl.ReminderNotifier
 
 	// Clock boleh nil; bila nil dipakai jam sistem.
 	//
@@ -88,7 +79,6 @@ func NewService(o Options) (*Service, error) {
 		repoSelector: o.RepoSelector,
 		actions:      o.Actions,
 		letters:      o.Letters,
-		reminders:    o.Reminders,
 		clock:        jam,
 		logger:       o.Logger,
 	}, nil

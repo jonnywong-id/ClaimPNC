@@ -19,19 +19,14 @@ const MaxPolicies = 500
 
 // Source membaca basis data LIVE. Pengisinya WAJIB hanya membaca.
 type Source interface {
-	// Objects mengembalikan baris objek satu polis di satu lini yang lolos filter. Filter
-	// kosong berarti seluruh versi (PRODKE) dan seluruh objek.
-	Objects(ctx context.Context, line kc.Line, policyNo string, filter kc.Filter) ([]kc.ObjectRow, error)
+	// Objects mengembalikan baris objek satu polis di satu lini, seluruh versinya (PRODKE).
+	Objects(ctx context.Context, line kc.Line, policyNo string) ([]kc.ObjectRow, error)
 }
 
 // Batch adalah seluruh tulisan untuk satu polis.
 type Batch struct {
 	PolicyNo string
-	// Filter yang dipakai membaca LIVE. Bila INDEXOBJECT terisi, penulis TEST WAJIB
-	// membatasi penghapusan coverage dan spreading lama per objek — bukan per versi —
-	// supaya objek lain di versi yang sama tidak ikut terhapus.
-	Filter kc.Filter
-	Lines  []LineBatch
+	Lines    []LineBatch
 	// Spreading seluruh lini satu polis — satu tabel tujuan untuk keempatnya.
 	Spreading []kc.Row
 }
@@ -85,8 +80,6 @@ type PolicyResult struct {
 // Report adalah laporan satu kali jalan.
 type Report struct {
 	UjiCoba     bool           `json:"uji_coba"`
-	FilterProd  string         `json:"filter_prodke,omitempty"`
-	FilterIndex string         `json:"filter_indexobject,omitempty"`
 	Mulai       time.Time      `json:"mulai"`
 	Selesai     time.Time      `json:"selesai"`
 	Polis       []PolicyResult `json:"polis"`
@@ -123,14 +116,13 @@ func New(source Source, target Target, now func() time.Time) *Service {
 	return &Service{source: source, target: target, now: now}
 }
 
-// Run mengonversi daftar polis, dibatasi filter (kosong = seluruh PRODKE dan seluruh
-// INDEXOBJECT). commit=false menjalankan uji coba: seluruh tulisan
+// Run mengonversi daftar polis. commit=false menjalankan uji coba: seluruh tulisan
 // dijalankan di TEST lalu dibatalkan, sehingga angka laporannya sama dengan yang akan
 // terjadi.
 //
 // Satu polis yang gagal tidak menghentikan polis lain; transaksinya sendiri yang
 // dibatalkan.
-func (s *Service) Run(ctx context.Context, policies []string, filter kc.Filter, commit bool) (Report, error) {
+func (s *Service) Run(ctx context.Context, policies []string, commit bool) (Report, error) {
 	if len(policies) == 0 {
 		return Report{}, ErrEmptyList
 	}
@@ -142,12 +134,12 @@ func (s *Service) Run(ctx context.Context, policies []string, filter kc.Filter, 
 	}
 	defer s.running.Unlock()
 
-	report := Report{UjiCoba: !commit, Mulai: s.now(), FilterProd: filter.ProdKe, FilterIndex: filter.IndexObject}
+	report := Report{UjiCoba: !commit, Mulai: s.now()}
 	for _, policyNo := range policies {
 		if err := ctx.Err(); err != nil {
 			return report, err
 		}
-		result := s.one(ctx, policyNo, filter, commit)
+		result := s.one(ctx, policyNo, commit)
 		switch result.Status {
 		case "berhasil":
 			report.Berhasil++
@@ -164,13 +156,13 @@ func (s *Service) Run(ctx context.Context, policies []string, filter kc.Filter, 
 	return report, nil
 }
 
-func (s *Service) one(ctx context.Context, policyNo string, filter kc.Filter, commit bool) PolicyResult {
+func (s *Service) one(ctx context.Context, policyNo string, commit bool) PolicyResult {
 	result := PolicyResult{PolicyNo: policyNo}
-	batch := Batch{PolicyNo: policyNo, Filter: filter}
+	batch := Batch{PolicyNo: policyNo}
 	versions := map[string]bool{}
 
 	for _, line := range kc.Lines {
-		objects, err := s.source.Objects(ctx, line, policyNo, filter)
+		objects, err := s.source.Objects(ctx, line, policyNo)
 		if err != nil {
 			result.Status = "gagal"
 			result.Galat = fmt.Sprintf("membaca LIVE %s: %v", line.ObjectTable, err)
@@ -208,9 +200,6 @@ func (s *Service) one(ctx context.Context, policyNo string, filter kc.Filter, co
 	if len(batch.Lines) == 0 {
 		result.Status = "tidak_ditemukan"
 		result.Galat = "nomor polis tidak ada di keempat tabel objek LIVE"
-		if !filter.Empty() {
-			result.Galat = "tidak ada objek dengan " + filter.Describe() + " untuk nomor polis ini di keempat tabel objek LIVE"
-		}
 		return result
 	}
 

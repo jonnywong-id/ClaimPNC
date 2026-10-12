@@ -34,7 +34,6 @@ package memory
 import (
 	"context"
 	"sort"
-	"strconv"
 	"strings"
 
 	"claim-pnc/internal/inboxsurvey"
@@ -46,12 +45,6 @@ import (
 // dan menaruhnya di tipe domain akan membuat orang menduga ia bagian dari kontrak.
 type Record struct {
 	Task inboxsurvey.SurveyTask
-
-	// AdjusterStatus adalah `STS_SURVEY` — padanan `ADJUSTERSTATUS_1` di Pega.
-	//
-	// Ia TIDAK ikut ke layar sebagai kolom, tetapi menyaring: tab Invoice dan daftar tahun
-	// keduanya membacanya.
-	AdjusterStatus string
 
 	// Messages adalah isi `POOLDATA.M_KOMUNIKASI_PNC` untuk baris ini.
 	Messages []Message
@@ -219,29 +212,20 @@ func (s *Store) List(
 	return page, nil
 }
 
-// KPIYears mengambil tahun untuk dropdown "Tahun Kuartal".
-//
-// TANPA penyaring cakupan dan TANPA identitas — rule aslinya pun tidak menyaring adjuster
-// (`RDB List/GetTahunKPIAdjuster-SQL.xml`). Yang disaring: ketiga status adjuster, dari
-// kolom yang sama dengan kueri — `STS_SURVEY` — dan tahunnya dari `TGLINPUT`.
-func (s *Store) KPIYears(_ context.Context) ([]string, error) {
+// KPIYears mengambil tahun yang ada pada baris milik cakupan pemanggil.
+func (s *Store) KPIYears(
+	_ context.Context,
+	identity inboxsurvey.SurveyorIdentity,
+) ([]string, error) {
 	seen := map[string]bool{}
 	result := []string{}
 
-	for _, record := range s.records {
-		switch strings.TrimSpace(record.AdjusterStatus) {
-		case inboxsurvey.StatusFinalReport,
-			inboxsurvey.StatusCloseCase,
-			inboxsurvey.StatusInvoiceFee:
-		default:
+	for _, entry := range s.kpi {
+		if !nameInScope(entry.Adjuster, identity.Scope) {
 			continue
 		}
-		if record.Task.CreatedAt.IsZero() {
-			continue
-		}
-
-		year := strconv.Itoa(record.Task.CreatedAt.Year())
-		if seen[year] {
+		year := strings.TrimSpace(entry.Year)
+		if year == "" || seen[year] {
 			continue
 		}
 		seen[year] = true

@@ -13,17 +13,11 @@ import (
 
 type fakeSource map[string][]ki.ObjectRow // kunci: nomor polis
 
-func (f fakeSource) Objects(_ context.Context, policyNo string, filter ki.Filter) ([]ki.ObjectRow, error) {
+func (f fakeSource) Objects(_ context.Context, policyNo string) ([]ki.ObjectRow, error) {
 	if policyNo == "RUSAK" {
 		return nil, errors.New("ORA-12541")
 	}
-	var result []ki.ObjectRow
-	for _, o := range f[policyNo] {
-		if (filter.ProdKe == "" || o.ProdKe == filter.ProdKe) && (filter.IndexObject == "" || o.IndexObject == filter.IndexObject) {
-			result = append(result, o)
-		}
-	}
-	return result, nil
+	return f[policyNo], nil
 }
 
 type fakeTarget struct {
@@ -47,7 +41,7 @@ func TestSetiapPolisDilaporkanTerpisah(t *testing.T) {
 	}
 	target := &fakeTarget{}
 	report, err := New(source, target, func() time.Time { return time.Unix(0, 0) }).
-		Run(context.Background(), []string{"F1", "TIDAKADA", "RUSAK"}, ki.Filter{}, false)
+		Run(context.Background(), []string{"F1", "TIDAKADA", "RUSAK"}, false)
 	require.NoError(t, err)
 
 	require.True(t, report.UjiCoba)
@@ -71,7 +65,7 @@ func TestDokumenRusakMenggagalkanPolisItuSaja(t *testing.T) {
 		"F2": {{PolicyNo: "F2", ProdKe: "0", IndexObject: "1", Document: []byte(`[{"ItemType":"STOCK"}]`)}},
 	}
 	target := &fakeTarget{}
-	report, err := New(source, target, nil).Run(context.Background(), []string{"F1", "F2"}, ki.Filter{}, true)
+	report, err := New(source, target, nil).Run(context.Background(), []string{"F1", "F2"}, true)
 	require.NoError(t, err)
 	require.Equal(t, "gagal", report.Polis[0].Status)
 	require.Contains(t, report.Polis[0].Galat, "PropertyItemList")
@@ -80,36 +74,8 @@ func TestDokumenRusakMenggagalkanPolisItuSaja(t *testing.T) {
 }
 
 func TestDaftarKosongDanTerlaluPanjangDitolak(t *testing.T) {
-	_, err := New(fakeSource{}, &fakeTarget{}, nil).Run(context.Background(), nil, ki.Filter{}, true)
+	_, err := New(fakeSource{}, &fakeTarget{}, nil).Run(context.Background(), nil, true)
 	require.ErrorIs(t, err, ErrEmptyList)
-	_, err = New(fakeSource{}, &fakeTarget{}, nil).Run(context.Background(), make([]string, MaxPolicies+1), ki.Filter{}, true)
+	_, err = New(fakeSource{}, &fakeTarget{}, nil).Run(context.Background(), make([]string, MaxPolicies+1), true)
 	require.ErrorIs(t, err, ErrTooMany)
-}
-
-func TestFilterMembatasiObjekDanDiteruskanKePenulis(t *testing.T) {
-	doc := []byte(`{"PropertyItemList":[{"ItemType":"BUILDING"}]}`)
-	source := fakeSource{"F1": {
-		{PolicyNo: "F1", ProdKe: "0", IndexObject: "77", Document: doc},
-		{PolicyNo: "F1", ProdKe: "1", IndexObject: "77", Document: doc},
-		{PolicyNo: "F1", ProdKe: "1", IndexObject: "78", Document: doc},
-	}}
-	target := &fakeTarget{}
-	filter := ki.Filter{ProdKe: "1", IndexObject: "77"}
-	report, err := New(source, target, nil).Run(context.Background(), []string{"F1"}, filter, true)
-	require.NoError(t, err)
-
-	require.Equal(t, filter, target.batches[0].Filter)
-	require.Len(t, target.batches[0].Objects, 1)
-	require.Equal(t, []string{"1"}, report.Polis[0].Versi)
-	require.Equal(t, "1", report.FilterProd)
-	require.Equal(t, "77", report.FilterIndex)
-}
-
-func TestFilterTanpaObjekCocokDilaporkanTidakDitemukan(t *testing.T) {
-	source := fakeSource{"F1": {{PolicyNo: "F1", ProdKe: "0", IndexObject: "1"}}}
-	report, err := New(source, &fakeTarget{}, nil).
-		Run(context.Background(), []string{"F1"}, ki.Filter{IndexObject: "9"}, false)
-	require.NoError(t, err)
-	require.Equal(t, 1, report.TidakAda)
-	require.Contains(t, report.Polis[0].Galat, "INDEXOBJECT 9")
 }

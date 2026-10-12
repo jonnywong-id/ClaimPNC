@@ -115,27 +115,6 @@ type Tab struct {
 	// DailyReportRow.
 	HasDateRangeReport bool
 
-	// HasReminder menyatakan tab ini punya tombol **"Reminder PUCL"** di bilah tindakannya.
-	//
-	// Hanya tab Kelengkapan Dokumen. Terverifikasi dengan menghitung rujukan `ReminderPUCL`
-	// pada ketiga section inbox: `InboxKelengkapanDocPUCLRCL_Section` memuat 2, sementara
-	// `InboxCetakSuratPUCLRCL_Section` dan `InboxAJSMSIG_Section` memuat NOL.
-	//
-	// # Kenapa ia DATA, bukan perbandingan kode tab di layar
-	//
-	// Karena kode tab (`"2"`) adalah nilai milik modul ini, dan menaruh perbandingannya di
-	// frontend membuat satu aturan hidup di dua tempat yang dapat berselisih tanpa ketahuan
-	// (`D-15`). Pola yang sama sudah dipakai HasDateRangeReport.
-	//
-	// # Catatan koreksi
-	//
-	// Modul ini sempat menyatakan "Reminder PUCL tidak pernah digambar, bahkan di Pega",
-	// dengan dasar syarat `1==2` pada tombol bernama sama. Itu benar untuk LAYAR KERJA
-	// (`SendtoRCLPUCL`), dan ditarik untuk INBOX: keduanya tombol yang berbeda, dan yang di
-	// inbox benar-benar tergambar di Pega yang berjalan — dilaporkan Work Owner 2026-10-12
-	// beserta tangkapan layarnya.
-	HasReminder bool
-
 	// Blocked menyatakan tab ini digambar tetapi belum dapat diisi.
 	//
 	// Tidak ada tab yang terhalang di layar ini. Tab "Klaim MSIG" SANGAT MUNGKIN kosong di
@@ -157,13 +136,9 @@ type Tab struct {
 	// Notice adalah keterangan yang berlaku pada TAB INI SAJA, ditampilkan di atas grid.
 	//
 	// Ia berbeda dari PlannedDifferences, yang berlaku untuk seluruh layar. Yang ditaruh di
-	// sini adalah hal yang hanya benar pada satu tab — dan kini tinggal satu: tab Klaim
-	// MSIG yang kemungkinan selalu kosong.
-	//
-	// Sampai 2026-10-11 tab Cetak Surat pun punya satu: keterangan bahwa kolom "Tanggal
-	// Cetak Surat" selalu kosong di sana. Keterangan itu hilang bersama kolomnya — lihat
-	// gridColumns. Keterangan yang menjelaskan kolom yang sudah tidak digambar adalah
-	// keterangan yang menyuruh pengguna mencari sesuatu yang tidak ada.
+	// sini adalah hal yang hanya benar pada satu tab — dan di layar ini ada dua: kolom
+	// "Tanggal Cetak Surat" yang SELALU kosong di tab Cetak Surat, dan tab Klaim MSIG yang
+	// kemungkinan selalu kosong.
 	//
 	// Kosong berarti tidak ada keterangan khusus.
 	Notice string
@@ -201,13 +176,6 @@ type Tab struct {
 // `STATUSCASE_1` patut diperhatikan khusus: ia MENYARING tab Cetak Surat tetapi tidak
 // digambar di mana pun, sementara judul "Status Kadaluarsa" justru menunjuk `STATUSKLAIM_1`.
 // Lihat WorkItem.ExpiryStatus.
-//
-// # Satu kolom TIDAK digambar di tab Cetak Surat, dan itu disengaja
-//
-// "Tanggal Cetak Surat" dibaca dari `TANGGALCETAKDOKUMENPUCL_1` — kolom yang menjadi
-// PENYARING tab itu, dengan syarat `IS NULL`. Jadi ia bukan kolom yang kebetulan kosong:
-// ia kolom yang TIDAK MUNGKIN terisi di sana, karena baris yang terisi justru pindah ke
-// tab Kelengkapan Dokumen. Lihat withoutColumn.
 func gridColumns(trackTitle string) []Column {
 	return []Column{
 		{Key: FieldCaseID, Title: "Nomor Case"},
@@ -230,25 +198,6 @@ func gridColumns(trackTitle string) []Column {
 		// Lihat WorkItem.CreatedAt untuk alasan ia ditambahkan (Work Owner, 2026-09-30).
 		{Key: FieldCreatedAt, Title: "Tanggal Dibuat"},
 	}
-}
-
-// withoutColumn mengembalikan salinan daftar kolom TANPA kolom berkunci key.
-//
-// # Kenapa membuang, bukan menyusun daftar tersendiri
-//
-// Karena kesembilan kolom lain WAJIB tetap identik di ketiga tab, beserta urutannya. Daftar
-// kedua yang ditulis tangan adalah daftar yang dapat bergeser dari yang pertama tanpa satu
-// pun galat — dan pergeserannya muncul sebagai tab yang kolomnya berbeda urutan, hal yang
-// justru paling membingungkan di layar yang ketiga tabnya tampak sama.
-func withoutColumn(columns []Column, key string) []Column {
-	result := make([]Column, 0, len(columns))
-	for _, column := range columns {
-		if column.Key == key {
-			continue
-		}
-		result = append(result, column)
-	}
-	return result
 }
 
 // Judul kolom keenam — satu-satunya yang berbeda antartab.
@@ -301,12 +250,13 @@ var tabs = []Tab{
 			"menunggu tindakan paling awal: begitu suratnya dicetak, klaimnya berpindah " +
 			"sendiri ke tab Kelengkapan Dokumen.",
 
-		// Kolom "Tanggal Cetak Surat" DIBUANG di tab ini — lihat gridColumns dan
-		// PlannedDifferences. Ia penyaring tab ini (`IS NULL`), sehingga menggambarnya
-		// berarti satu kolom penuh tanda pisah yang tidak pernah dapat berubah.
-		Columns:            withoutColumn(gridColumns(trackTitleDefault), FieldLetterPrintedAt),
+		Columns:            gridColumns(trackTitleDefault),
 		LetterPrinted:      false,
 		HasDateRangeReport: true,
+
+		Notice: "Kolom \"Tanggal Cetak Surat\" selalu kosong di tab ini, dan itu bukan " +
+			"data yang hilang — justru itulah arti tab ini: suratnya belum dicetak. " +
+			"Kolomnya tetap digambar karena layar lama menggambarnya.",
 	},
 	{
 		Code: TabKelengkapanDokumen,
@@ -321,15 +271,6 @@ var tabs = []Tab{
 		Columns:       gridColumns(trackTitleDefault),
 		LetterPrinted: true,
 		MSIG:          false,
-
-		// Satu-satunya tab yang punya tombol "Reminder PUCL" — lihat Tab.HasReminder.
-		//
-		// Penyaring kueri reminder (`RDB List/ReminderPUCL-SQL.xml`) IDENTIK dengan
-		// penyaring tab ini: `PYSTATUSWORK <> 'Resolved-Completed'`,
-		// `PXASSIGNEDOPERATORID = 'RCLPUCL'`, `TANGGALCETAKDOKUMENPUCL_1 IS NOT NULL`,
-		// `PUCLAPPROVE_1 <> 1`, `MSIG_1 IS NULL`. Jadi daftar yang dipilih di modalnya
-		// adalah baris tab ini juga — bukan kumpulan lain yang kebetulan mirip.
-		HasReminder: true,
 	},
 	{
 		Code: TabKlaimMSIG,
@@ -654,87 +595,14 @@ var PlannedDifferences = []Difference{
 	},
 
 	{
-		Summary: "\"Reminder PUCL\" ADA di antrean Kelengkapan Dokumen, tetapi tombol " +
-			"kirimnya mati — dan di LAYAR KERJA ia memang tidak pernah muncul.",
+		Summary: "Tombol \"Reminder PUCL\" tidak ada di layar kerja, dan di Pega pun " +
+			"sebenarnya tidak pernah muncul.",
 
-		Detail: "Ada DUA tombol bernama sama, dan keduanya berbeda nasib. Modul ini sempat " +
-			"menyatakan keduanya tidak pernah digambar; itu dikoreksi 2026-10-12 setelah " +
-			"Work Owner mengirim tangkapan layar Pega yang berjalan.\n\n" +
-			"DI LAYAR KERJA (`SendtoRCLPUCL`) — tidak pernah muncul, dan itu benar. Syarat " +
-			"tampilnya ditulis \"1==2\", syarat yang tidak pernah benar: tombol yang " +
-			"dimatikan dengan cara dikarang syaratnya alih-alih dihapus. Menggambarnya di " +
-			"sana akan menawarkan tindakan yang tidak pernah tersedia. Hal yang sama " +
-			"berlaku pada satu tombol \"Tolak Klaim\" kedua di layar itu.\n\n" +
-			"DI ANTREAN, tab Kelengkapan Dokumen — tergambar nyata " +
-			"(`Section/InboxKelengkapanDocPUCLRCL_Section-Section.xml:1156`), membuka " +
-			"modal berisi daftar klaim yang dapat dicentang. Kedua section antrean lain " +
-			"tidak memuatnya sama sekali.\n\n" +
-			"YANG DIKERJAKAN DI SINI: tombolnya, modalnya, daftar klaimnya, kotak centang " +
-			"per baris, dan \"Pilih semua\". Daftarnya memakai baris tab itu juga — bukan " +
-			"kueri kedua — karena penyaring `RDB List/ReminderPUCL-SQL.xml` IDENTIK dengan " +
-			"penyaring tabnya pada kelima syaratnya.\n\n" +
-			"PENGIRIMANNYA BERJALAN sejak 2026-10-12, ke `.ClaimData.EmailLOD` " +
-			"(`POOLDATA.T_CLAIM_PNC.EMAIL_LOD`) memakai akun `Admin-PNC` dari " +
-			"`POOLDATA.M_EMAIL_SERVER_PNC`. Host, pengguna, dan kata sandi yang terpasang " +
-			"PLAINTEKS di dalam activity Pega TIDAK dibawa (`R-17`, `D-40`).\n\n" +
-			"Tombolnya sempat digambar MATI, ditemani kalimat \"Email Tertanggung kosong " +
-			"pada seluruh baris, dihitung 2026-10-01\". Kalimat itu benar saat ditulis dan " +
-			"menjadi salah begitu Work Owner mengisi kolomnya — keadaan basis data " +
-			"dibekukan menjadi kalimat, kegagalan yang sama dengan \"Kesembilannya\" di " +
-			"kaki layar kerja. Penggantinya: peladen melaporkan kenyataan PER KLAIM saat " +
-			"pengiriman dicoba — terkirim, belum punya alamat, tidak lagi di antrean ini, " +
-			"atau ditolak peladen surel.\n\n" +
-			"DUA SELISIH pada surelnya sendiri:\n" +
-			"  · **Badan surel DISUSUN, bukan disalin.** Rule HTML-nya " +
-			"(`SendReminderPUCLKeTertanggungPA`) tidak ada di export — folder `HTML/` " +
-			"memuat 42 berkas dan tidak satu pun bernama mirip itu (`R-16`). Isinya " +
-			"dibatasi pada keterangan yang memang dimiliki antrean ini: nomor klaim dan " +
-			"nama tertanggung. Preseden yang sama sudah ditempuh modul Salvage.\n" +
-			"  · **Subjeknya ditiru APA ADANYA, termasuk salah ketiknya** — \"PERSONAL " +
-			"AACCIDENT\", huruf A ganda, dan pemenggalan nama pada huruf `Q` PERTAMA " +
-			"alih-alih pada \" QQ \". Keduanya sampai ke kotak masuk tertanggung hari ini; " +
-			"`P-5` menetapkan perilaku dipertahankan lebih dulu, dan memperbaiki teks yang " +
-			"dibaca pihak LUAR layak diputuskan Work Owner alih-alih diselipkan. " +
-			"**Calon perbaikan yang menunggu jawaban.**\n\n" +
-			"Satu pagar yang TIDAK ada di Pega ditambahkan: paling banyak 50 klaim sekali " +
-			"kirim, sama dengan satu halaman penuh grid. Ini tindakan yang keluar dari " +
-			"sistem dan tidak dapat ditarik kembali; permintaan yang menyapu seluruh " +
-			"antrean karena satu klik keliru jauh lebih mahal daripada mengirim dua kali.",
-	},
-
-	{
-		Summary: "Grid \"Tanggal terima Dokumen\" kini SATU baris yang tersimpan, dan isian " +
-			"\"Tanggal Kelengkapan Dokumen\" di bawahnya dihapus.",
-
-		Detail: "Keduanya menulis kolom yang SAMA — " +
-			"`POOLDATA.TC_PNC_PUCL.TGL_TERIMA_DOKUMEN_PUCL` — dan Work Owner menetapkan " +
-			"2026-10-11 bahwa keduanya memang satu hal.\n\n" +
-			"Sampai hari itu keadaannya begini: gridnya daftar yang dapat ditambah dan " +
-			"dikurangi, dipasok `RECEIVEDDATE_1` dari tabel objek kerja Pega, dan TIDAK " +
-			"tersimpan ke mana pun; sementara isian di bawahnya tersimpan ke kolom tersebut. " +
-			"Dua tanggal berdampingan, satu tersimpan satu tidak, dan tidak ada apa pun di " +
-			"layar yang menyatakan mana yang mana.\n\n" +
-			"YANG BERUBAH:\n" +
-			"  · Sel \"Tanggal\" pada grid kini membaca DAN menulis kolom itu — ia isian " +
-			"yang sama dengan yang dikirim Save dan kedua tombol Kirim.\n" +
-			"  · Isian \"Tanggal Kelengkapan Dokumen\" dihapus. Satu nilai tidak boleh punya " +
-			"dua tempat pengisian di satu layar: yang satu akan menimpa yang lain tanpa " +
-			"petugas menyadarinya, pada isian yang WAJIB.\n" +
-			"  · Tanda wajib `*` pindah ke judul grid bersama isiannya.\n" +
-			"  · Tombol \"✚ Tambah\" dan \"Hapus\" dihilangkan. Keduanya ADA di layar lama " +
-			"(`pyAction addRow`, sisi klien), dan inilah selisih yang disengaja: barisnya " +
-			"kini mewakili satu kolom tunggal, sehingga baris kedua tidak punya tempat " +
-			"disimpan. Tombol yang menambahnya hanya akan menghasilkan data yang pasti " +
-			"lenyap saat Save, tanpa satu pun galat.\n" +
-			"  · Kolom \"Keterangan\" menjadi HANYA-BACA, dibaca dari `KETERANGAN_1` pada " +
-			"tabel objek kerja Pega — terisi pada 85 dari 7.723 baris. `P-1` melarang modul " +
-			"ini menulis tabel Pega, dan menggambarnya tampak dapat diketik lalu diam-diam " +
-			"tidak menyimpannya jauh lebih buruk daripada menggambarnya jelas hanya-baca.\n\n" +
-			"Kedua keterangan lama di bawah grid ikut hilang — \"Baru baris pertama yang " +
-			"terbaca\" dan \"belum tersimpan\" — karena keduanya tidak lagi benar.\n\n" +
-			"Yang masih menunggu: tempat simpan untuk daftar yang BENAR-BENAR berbilang " +
-			"baris, beserta Keterangan yang dapat ditulis. Keduanya menuntut tabel " +
-			"tersendiri (`TC_PNC_PUCL_TERIMA_DOKUMEN`) yang menempuh `D-63`.",
+		Detail: "Syarat tampilnya di layar lama ditulis \"1==2\" — syarat yang tidak pernah " +
+			"benar. Ia tombol yang dimatikan dengan cara dikarang syaratnya alih-alih " +
+			"dihapus. Yang ditiru adalah perilakunya yang nyata, yaitu tidak muncul; " +
+			"menggambarnya di sini akan menawarkan tindakan yang tidak pernah tersedia. Hal " +
+			"yang sama berlaku pada satu tombol \"Tolak Klaim\" kedua di layar lama.",
 	},
 
 	{
@@ -781,55 +649,6 @@ var PlannedDifferences = []Difference{
 	},
 
 	// ---- Yang hanya terlihat bila kedua layar DIBANDINGKAN --------------------------
-
-	{
-		Summary: "Tab \"Cetak Surat\" tidak lagi menggambar kolom \"Tanggal Cetak Surat\". " +
-			"Kolom itu tidak pernah dapat berisi apa pun di tab tersebut.",
-
-		Detail: "Kolomnya dibaca dari `TANGGALCETAKDOKUMENPUCL_1`, dan kolom itulah " +
-			"PENYARING tab \"Cetak Surat\" — dengan syarat `IS NULL`. Jadi setiap baris yang " +
-			"tampil di sana pasti berkolom kosong, dan baris yang kolomnya terisi sudah " +
-			"berpindah sendiri ke tab \"Kelengkapan Dokumen\". Menggambarnya berarti " +
-			"menggambar satu kolom penuh tanda pisah yang tidak pernah dapat berubah.\n\n" +
-			"Sampai 2026-10-11 kolomnya tetap digambar — `D-13` menetapkan tampilan meniru " +
-			"Pega — dan di atas grid berdiri satu kotak keterangan yang menjelaskan mengapa " +
-			"ia selalu kosong. Keputusan Work Owner 2026-10-11: kolom yang tidak dapat " +
-			"berisi apa pun TIDAK ditampilkan, dan keterangan yang menjelaskannya ikut " +
-			"hilang bersamanya. Satu kolom kosong yang menuntut satu paragraf pembelaan " +
-			"memakan ruang DUA kali, dan tidak memberi satu pun keterangan yang belum " +
-			"disampaikan judul tabnya sendiri.\n\n" +
-			"Yang TIDAK berubah: kolomnya tetap digambar di tab \"Kelengkapan Dokumen\" dan " +
-			"\"Klaim MSIG\", tempat ia memang terisi, dan tetap ada di berkas unduhan tab " +
-			"\"Cetak Surat\" — isi berkas itu laporan harian yang justru memuat klaim yang " +
-			"suratnya sudah dicetak. Penyaring, urutan, isi, dan pembagian halamannya tidak " +
-			"bergeser sedikit pun.",
-	},
-
-	{
-		Summary: "Setiap judul kolom di Pega punya corong penyaring. Di sini belum ada — " +
-			"yang tersedia hanya pengurutan kolom.",
-
-		Detail: "Ketiga section antrean menyalakan penyaringan grid: `pyGridFiltering = " +
-			"true` pada `InboxCetakSuratPUCLRCL_Section`, " +
-			"`InboxKelengkapanDocPUCLRCL_Section`, dan `InboxAJSMSIG_Section`, dengan " +
-			"`pyFilteringOnUnExposedColumns = false` — jadi yang dapat disaring hanya kolom " +
-			"yang terekspos.\n\n" +
-			"Modul ini sempat menyatakan sebaliknya, dengan alasan \"ketiga Report " +
-			"Definition-nya tidak menyaring menurut kata kunci\". Pernyataan itu benar " +
-			"tentang Report Definition dan menyimpulkan hal yang salah tentang layarnya: " +
-			"penyaringan grid di Pega adalah setelan GRID, bukan pekerjaan Report " +
-			"Definition. Dikoreksi 2026-10-12 setelah Work Owner meminta section " +
-			"Kelengkapan Dokumen dianalisis ulang.\n\n" +
-			"Kotak cari tunggal memang TIDAK ada di layar lama, dan tetap tidak digambar di " +
-			"sini — ia akan menyaring hanya halaman yang sedang terbuka, sehingga pengguna " +
-			"diberi tahu \"tidak ada\" untuk baris yang sebenarnya ada di halaman " +
-			"berikutnya.\n\n" +
-			"Yang perlu diputuskan sebelum ini dibangun: penyaring per kolom pada tabel " +
-			"berisi puluhan juta baris wajib dikerjakan BASIS DATA, bukan di layar — " +
-			"menyaring di layar mengulang persis cacat kotak cari di atas, dan `D-10` " +
-			"menetapkan volume data sebagai hambatan nyata modul ini. Artinya ia menyentuh " +
-			"kueri ketiga tab beserta indexnya, bukan hanya komponen tabelnya.",
-	},
 
 	{
 		Summary: "Ada satu kolom tambahan di paling kanan, \"Tanggal Dibuat\", yang tidak " +
@@ -891,11 +710,9 @@ var PlannedDifferences = []Difference{
 		Detail: "Tab dan nomor halaman antrean ikut ke alamatnya supaya tombol kembali " +
 			"mendarat di tempat yang sama. Isinya mengikuti kedua bagian layar lama — " +
 			"\"Lampiran Surat\" dan \"Penerimaan Dokumen\" — dan ketiga isian turunannya " +
-			"diambil dari anak klaim, sama seperti di Pega. TINDAKANNYA pun berjalan dari " +
-			"sana sejak 2026-10-06: Download Dokumen, Tolak Klaim, kedua tombol Kirim, dan " +
-			"Save seluruhnya dikerjakan sistem ini, tidak satu pun menempuh Pega. Satu " +
-			"tombol yang belum ada adalah \"Tutup Klaim\" pada klaim MSIG ber-jalur " +
-			"Notification; di Pega ia membuka modal berisi sebelas isian tersendiri, dan " +
-			"modal itulah yang belum dibangun.",
+			"diambil dari anak klaim, sama seperti di Pega. Yang belum ada adalah TINDAKAN " +
+			"pada layar itu: di Pega, membuka baris berarti mengambil penugasannya untuk " +
+			"dikerjakan, dan itu menulis ke tabel penugasan yang masih dimiliki Pega selama " +
+			"kedua sistem berjalan berdampingan.",
 	},
 }

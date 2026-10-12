@@ -48,14 +48,8 @@ func TestCreateAndSaveAreLogged(t *testing.T) {
 
 	saved, err := service.Create(ctx, portalUji, isianSah(), usecase.Actor{Login: "RinaAyu"}, logger)
 	require.NoError(t, err)
-	require.Contains(t, logs.String(), "login surveyor ditambahkan")
+	require.Contains(t, logs.String(), "akun aplikasinya tidak diterbitkan")
 	require.NotContains(t, logs.String(), "login leader tidak dapat diturunkan")
-
-	// Klaim "akun belum diterbitkan" DICABUT 2026-10-11: layar Pega pun tidak pernah
-	// menerbitkan akun. Pemeriksaan ini menjaga klaim itu tidak dipasang kembali tanpa
-	// bukti baru. Lihat doc comment usecase.Service.Create.
-	require.NotContains(t, logs.String(), "tidak diterbitkan")
-	require.NotContains(t, logs.String(), "sandi")
 
 	logs.Reset()
 	change := isianSah()

@@ -359,42 +359,6 @@ func (s *Service) Tautan(
 	return dokumen, nil
 }
 
-// SiapBuka memastikan setiap dokumen pada daftar punya alamat baca yang masih berlaku —
-// padanan `Activity/GetLinkViewDoc_Act-act.xml`, dijalankan untuk dokumen yang alamatnya
-// kosong atau sudah basi, sehingga namanya di layar Open Protection dapat dibuka.
-//
-// Dokumen yang alamatnya masih berlaku TIDAK menyentuh layanan penyimpanan sama sekali.
-// Kegagalan menerbitkan alamat untuk satu dokumen tidak menggagalkan daftar: dokumen itu
-// dikembalikan apa adanya (tetap tampil, tanpa tautan) dan kegagalannya dikumpulkan
-// pada galat yang dikembalikan, supaya pemanggil dapat mencatatnya.
-func (s *Service) SiapBuka(
-	ctx context.Context,
-	portalAlias, pengguna string,
-	daftar []dokumenpenunjang.Document,
-) ([]dokumenpenunjang.Document, error) {
-	sekarang := s.clock.Now()
-	hasil := make([]dokumenpenunjang.Document, 0, len(daftar))
-	var gagal []error
-	for _, d := range daftar {
-		masihBerlaku := strings.TrimSpace(d.URL) != "" && !d.Kedaluwarsa(sekarang)
-		if masihBerlaku || strings.TrimSpace(d.ImageID) == "" {
-			hasil = append(hasil, d)
-			continue
-		}
-		baru, err := s.Tautan(ctx, portalAlias, d.ImageID, pengguna)
-		if err != nil {
-			gagal = append(gagal, fmt.Errorf("dokumen %s: %w", d.ImageID, err))
-			hasil = append(hasil, d)
-			continue
-		}
-		// Metadata daftar (jenis dokumen, tanggal unggah) dipertahankan; yang diperbarui
-		// hanya alamat dan masa berlakunya.
-		d.URL, d.ExpiresAt = baru.URL, baru.ExpiresAt
-		hasil = append(hasil, d)
-	}
-	return hasil, errors.Join(gagal...)
-}
-
 // Hapus menghapus berkas dari bucket penyimpanan — `Activity/DeleteAttachDoc-act.xml` langkah 6–14.
 //
 // Berhasil hanya bila jawaban layanan memuat "deleted from bucket" (langkah 15–19). Baris

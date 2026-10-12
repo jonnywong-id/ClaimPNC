@@ -56,12 +56,9 @@ SELECT a.D_SURVEY_ID, a.NAME, a.LOGIN_APLIKASI, a.ADDRESS, a.BRANCH, a.BRANCHNAM
 -- name: survey_nomor_berikut
 -- Nomor survey SRVN.YY.n: deret per tahun dari nomor terbesar di T_SURVEYORLIST, tanpa nol di
 -- depan — pola yang sama dengan PNCN/RCVN/KMTN. Bind: :1 'SRVN.YY.%'.
--- Nomor yang dipasang pada objek tanpa baris T_SURVEYORLIST (persetujuan Komite lewat link,
--- PNCKomiteSurveyAcceptation_act) ikut dihitung supaya tidak terbit dua kali. Bind :1 dan :2 sama.
-SELECT COALESCE(MAX(n), 0) + 1
-  FROM (SELECT TO_NUMBER(SUBSTR(CASEID, 9)) AS n FROM POOLDATA.T_SURVEYORLIST WHERE CASEID LIKE :1
-        UNION ALL
-        SELECT TO_NUMBER(SUBSTR(OBJECTSURVEYID, 9)) FROM POOLDATA.T_CLAIM_OBJECTLIST WHERE OBJECTSURVEYID LIKE :2)
+SELECT COALESCE(MAX(TO_NUMBER(SUBSTR(CASEID, 9))), 0) + 1
+  FROM POOLDATA.T_SURVEYORLIST
+ WHERE CASEID LIKE :1
 
 -- name: survey_sisip
 -- INSERT_SURVEYORLIST.prc:27-35 (cabang sisip). TGLINPUT = waktu simpan.
@@ -130,23 +127,8 @@ VALUES (:1, :2, :3, :4)
 UPDATE POOLDATA.TC_PNC_KOMITE
    SET SURVEY_TANGGAL = :1, SURVEY_INISIAL = :2, SURVEY_TIPE_ANALISIS = :3, SURVEY_KRONOLOGI = :4,
        SURVEY_NOMINATED = :5, SURVEY_REMARKS = :6, SURVEY_PERUSAHAAN = :7, SURVEY_KONTAK = :8,
-       SURVEY_TELEPON = :9, SURVEY_EMAIL = :10, SURVEY_KUNCI = :11
- WHERE KOMITE_ID = :12
-
--- name: survey_komite_catatan_ambil
--- Bind: :1 KOMITE_ID.
-SELECT SURVEY_TANGGAL, SURVEY_INISIAL, SURVEY_TIPE_ANALISIS, SURVEY_KRONOLOGI, SURVEY_NOMINATED,
-       SURVEY_REMARKS, SURVEY_PERUSAHAAN, SURVEY_KONTAK, SURVEY_TELEPON, SURVEY_EMAIL, SURVEY_KUNCI
-  FROM POOLDATA.TC_PNC_KOMITE
- WHERE KOMITE_ID = :1
-
--- name: survey_surveyor_login
--- RDB `SearchSurveyorName` (tidak ada di export): surveyor menurut LOGIN_APLIKASI.
--- Bind: :1 login.
-SELECT a.D_SURVEY_ID, a.NAME, a.LOGIN_APLIKASI, a.ADDRESS, a.BRANCH, a.BRANCHNAME, a.EMAIL, a.OTHER_CONTACT
-  FROM POOLDATA.V_D_SURVEYORS a
- WHERE a.LOGIN_APLIKASI = :1
- FETCH FIRST 1 ROWS ONLY
+       SURVEY_TELEPON = :9, SURVEY_EMAIL = :10
+ WHERE KOMITE_ID = :11
 
 -- name: survey_permintaan
 -- Permintaan Survey (RequestSurvey) dari POOLDATA.T_REQ_SURVEY, yang terbaru.

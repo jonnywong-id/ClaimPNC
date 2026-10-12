@@ -174,9 +174,6 @@ type DLASource interface {
 	Save(ctx context.Context, d DLA) error
 	// MarkPrinted mengisi NOTES dan ISDLA = '1' — PRINT pertama.
 	MarkPrinted(ctx context.Context, claimID, number, note string) error
-	// UpdateEmail mengganti email penerima DLA (EMAILDLA) — isian Email layar PrintDLA
-	// (`.pyEmailAddress`, Editable). Di dalam UnitOfWork.
-	UpdateEmail(ctx context.Context, claimID, number, email string) error
 }
 
 // DLARenderer mengubah DLA menjadi dokumen yang diunduh.
@@ -187,11 +184,7 @@ type DLARenderer interface {
 // DLADocument adalah isi satu dokumen DLA.
 type DLADocument struct {
 	DLA
-	Entity string // ASM atau ASI — alamat kaki
-	// Portal adalah alias portal yang logonya dipakai di kop (ASM, ASI, SMAS, …): portal klaim,
-	// atau ASI bila penyetujunya DHARMANTO (`SetSignatureNonMBU`). Portal tanpa logo dicetak
-	// tanpa logo.
-	Portal          string
+	Entity          string // ASM atau ASI
 	BusinessName    string
 	PolicyNumber    string
 	ClaimNumber     string

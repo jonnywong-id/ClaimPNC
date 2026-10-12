@@ -246,12 +246,6 @@ func mapError(err error) (int, ErrorResponse) {
 				"check it in the cashier system before trying again, so the payment is not sent twice.",
 		}
 
-	case errors.Is(err, registrasi.ErrProgressInputUnavailable):
-		return http.StatusServiceUnavailable, ErrorResponse{
-			Code:    CodeSurveyUnavailable,
-			Message: "Progress storage is not configured on this server. Report it to the administrator.",
-		}
-
 	case errors.Is(err, registrasi.ErrSurveyUnavailable):
 		return http.StatusServiceUnavailable, ErrorResponse{
 			Code:    CodeSurveyUnavailable,

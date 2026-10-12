@@ -123,11 +123,6 @@ type Config struct {
 	// konfigurasi, bukan ditulis di kode.
 	PrimaryPortal string
 
-	// PublicURL adalah pangkal alamat aplikasi yang dapat dibuka dari email (ALAMAT_PUBLIK), mis.
-	// https://claimpnc.contoh.example — dipakai link persetujuan Komite survey. Kosong: email
-	// Komite survey tidak dikirim dan alasannya ditampilkan.
-	PublicURL string
-
 	// DevelopmentReinsurerLogin mendaftarkan SATU login sebagai mitra reasuransi pada
 	// data contoh layar Inbox PLA DLA (`MENU_ID 45`).
 	//
@@ -514,30 +509,11 @@ type SMTP struct {
 	// (EMAIL_ACCOUNT_ADMIN_PNC, bawaan Admin-PNC — Work Owner 2026-10-10).
 	AdminAccount string
 
-	// SurveyAccount adalah EMAIL_ACCOUNT email Komite survey — Email Account Pega "ASM"
-	// (setSendEmailKomite_act, PNCKomiteSurveyAcceptation_act). EMAIL_ACCOUNT_KOMITE_SURVEY.
-	SurveyAccount string
-
 	Host     string
 	Port     int
 	User     string
 	Password string
 	From     string
-
-	// SkipTLSVerify (SMTP_TLS_LEWATI_VERIFIKASI=true) mematikan pemeriksaan sertifikat
-	// server SMTP saat STARTTLS, untuk kelima modul pengirim surel (PLA/DLA, TKA,
-	// Salvage, Master Rekening, Master XOL).
-	//
-	// Ada karena server surel internal memakai sertifikat yang ditandatangani CA
-	// perusahaan, yang tidak dikenal mesin aplikasi — STARTTLS gagal dengan "x509:
-	// certificate signed by unknown authority" dan TIDAK ADA surel yang terkirim.
-	//
-	// Akibat yang diterima saat menyalakannya: sambungan tetap TERENKRIPSI, tetapi
-	// identitas server tidak diperiksa, sehingga pihak yang dapat menyela jaringan dapat
-	// menyamar sebagai server surel dan membaca isi surel beserta sandi SMTP. Perbaikan
-	// yang sebenarnya adalah memasang sertifikat CA perusahaan di mesin aplikasi; saat itu
-	// sakelar ini dimatikan kembali. Keadaannya disebut di log saat start.
-	SkipTLSVerify bool
 
 	// AlertRecipients adalah mailbox Tim IT yang menerima peringatan kegagalan
 	// integrasi. Ditulis sebagai daftar dipisah koma di SMTP_PENERIMA_PERINGATAN.
@@ -919,13 +895,11 @@ func Load() (Config, error) {
 		SMTP: SMTP{
 			EmailAccount:    get("EMAIL_ACCOUNT", "ClaimPNC"),
 			AdminAccount:    get("EMAIL_ACCOUNT_ADMIN_PNC", "Admin-PNC"),
-			SurveyAccount:   get("EMAIL_ACCOUNT_KOMITE_SURVEY", "ASM"),
 			Host:            strings.TrimSpace(os.Getenv("SMTP_HOST")),
 			Port:            portSMTP,
 			User:            strings.TrimSpace(os.Getenv("SMTP_USER")),
 			Password:        os.Getenv("SMTP_PASSWORD"),
 			From:            strings.TrimSpace(os.Getenv("SMTP_DARI")),
-			SkipTLSVerify:   strings.EqualFold(strings.TrimSpace(os.Getenv("SMTP_TLS_LEWATI_VERIFIKASI")), "true"),
 			AlertRecipients: splitAddress(os.Getenv("SMTP_PENERIMA_PERINGATAN")),
 			TKARecipients:   splitAddress(os.Getenv("SMTP_PENERIMA_TKA")),
 
@@ -936,7 +910,6 @@ func Load() (Config, error) {
 			Timeout: smtpTimeout,
 		},
 		PrimaryPortal: primaryPortal,
-		PublicURL:     strings.TrimSpace(os.Getenv("ALAMAT_PUBLIK")),
 		Portal:        portal,
 		Aneka:         aneka,
 
@@ -1123,10 +1096,9 @@ func (k Config) Summary() map[string]any {
 		"kasir_aktif":        k.Cashier.Active(),
 		// Disebut di log saat start supaya keadaan "penerbit VA sungguhan menyala"
 		// tidak pernah menjadi hal yang baru diketahui setelah rekening terbit.
-		"virtual_account_sungguhan":  k.VirtualAccount.Live(),
-		"smtp_aktif":                 k.SMTP.Active(),
-		"smtp_tka_aktif":             k.SMTP.TKAActive(),
-		"smtp_tls_lewati_verifikasi": k.SMTP.SkipTLSVerify,
+		"virtual_account_sungguhan": k.VirtualAccount.Live(),
+		"smtp_aktif":                k.SMTP.Active(),
+		"smtp_tka_aktif":            k.SMTP.TKAActive(),
 	}
 }
 

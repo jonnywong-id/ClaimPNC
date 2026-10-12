@@ -81,7 +81,6 @@ func (r *TransferRepo) FindTransfer(
 		return detail, nil
 	}
 
-	detail.ClaimKey = strings.TrimSpace(kunciKlaim)
 	detail.Claim, detail.HasClaim, err = r.claim(ctx, kunciKlaim)
 	if err != nil {
 		return komite.TransferDetail{}, err
@@ -280,9 +279,9 @@ func (r *TransferRepo) attachments(ctx context.Context, kunciKlaim string) ([]ko
 	}
 	var hasil []komite.Attachment
 	for rows.Next() {
-		var id, name, note, category, by, image sql.NullString
+		var id, name, note, category, by sql.NullString
 		var at sql.NullTime
-		if err := rows.Scan(&id, &name, &note, &category, &by, &at, &image); err != nil {
+		if err := rows.Scan(&id, &name, &note, &category, &by, &at); err != nil {
 			_ = rows.Close()
 			return nil, fmt.Errorf("komite/sqlstore: baris lampiran: %w", err)
 		}
@@ -293,7 +292,6 @@ func (r *TransferRepo) attachments(ctx context.Context, kunciKlaim string) ([]ko
 			Category: strings.TrimSpace(category.String),
 			InputBy:  strings.TrimSpace(by.String),
 			InputAt:  at.Time,
-			ImageID:  strings.TrimSpace(image.String),
 		})
 	}
 	if err := closeRows(rows); err != nil {

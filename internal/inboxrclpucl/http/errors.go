@@ -118,24 +118,11 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// dari layar ini", padahal nomornya hanya ada di kaki layar — kalimat yang benar
 		// berujung pada gulir mencari. Layar kini menggambar nomornya tepat di bawah pesan ini
 		// (`CopyCaseNumber`), sehingga menyebutnya di sini hanya mengulang apa yang terlihat.
-		//
-		// # Cabang ini TIDAK TERJANGKAU oleh satu pun tindakan yang dikenali
-		//
-		// Kelima tindakan layar RCL/PUCL dikerjakan sendiri sejak 2026-10-06, dan tidak satu
-		// pun menempuh seam `ClaimActions`. Yang dapat sampai ke sini hanyalah
-		// `ClaimActionKind` BARU yang ditambahkan tanpa penanganannya sendiri — dan itulah
-		// gunanya seam beserta cabang ini dipertahankan: tindakan semacam itu harus jatuh ke
-		// penolakan yang terbaca, bukan ke "berhasil tanpa melakukan apa-apa".
-		//
-		// Pesannya karena itu TIDAK lagi menyuruh mengerjakannya di Pega. Tindakan yang
-		// sampai ke sini adalah tindakan yang penanganannya belum ditulis di sistem ini; ia
-		// tidak punya padanan di Pega yang dapat ditunjuk, dan menyuruh petugas ke sana
-		// berarti menyuruhnya mencari tombol yang belum tentu ada.
 		return http.StatusServiceUnavailable, ErrorResponse{
 			Code: "layanan_pega_belum_tersedia",
-			Message: "Tindakan ini belum punya penanganan di sistem ini. Laporkan ke tim " +
-				"teknis beserta nama tombol yang Anda tekan — tindakan RCL/PUCL lainnya " +
-				"berjalan seperti biasa.",
+			Message: "Tindakan ini dijalankan oleh Pega, dan layanannya belum dibangun — " +
+				"yang ditunggu rule Service REST `ActionClaimPUCL` dari Tim Pega. " +
+				"Sementara itu tindakan ini dikerjakan di Pega.",
 		}, true
 
 	case errors.Is(err, inboxrclpucl.ErrActionNotAvailable):
@@ -224,24 +211,12 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		// wewenangnya bukan yang menghalangi. 404 akan menyatakan alamatnya tidak ada,
 		// sehingga tombolnya terbaca sebagai kerusakan. 501 menyatakan yang sebenarnya:
 		// alamatnya ada, permintaannya sah, kemampuannya yang belum dibangun.
-		//
-		// # Pesannya TIDAK LAGI menyebut Pega, dan tidak lagi menamai tindakannya
-		//
-		// Bentuk sebelumnya berbunyi "Cetak Surat dan Reminder PUCL belum tersedia …
-		// kerjakan lewat Pega". Keduanya tidak lagi benar: Cetak Surat dikerjakan sendiri
-		// lewat `/tindakan/cetak` sejak 2026-10-06, dan Reminder PUCL tidak pernah tampil
-		// di Pega sama sekali — syarat tombolnya ditulis `1==2`. Menyuruh petugas
-		// mengerjakannya di Pega berarti menyuruhnya mencari tombol yang tidak ada.
-		//
-		// Yang tersisa untuk jalur ini adalah tindakan yang BELUM dikenali, dan namanya
-		// tidak dapat diketahui di sini. Pesannya karena itu menyebut keadaannya, bukan
-		// menebak nama tindakannya.
 		return http.StatusNotImplemented, ErrorResponse{
 			Code: CodeWriteNotAvailable,
-			Message: "Tindakan ini belum dibangun di layar mana pun. Tindakan RCL/PUCL " +
-				"yang tersedia dijalankan dari dalam klaimnya — buka Nomor Case dari " +
-				"antrean. Bila Anda sampai di sini dari sebuah tombol, laporkan ke tim " +
-				"teknis beserta nama tombolnya.",
+			Message: "Tindakan \"Cetak Surat\" dan \"Reminder PUCL\" belum tersedia di " +
+				"sistem baru. Keduanya menulis ke objek kerja klaim, dan selama Pega dan " +
+				"sistem baru berjalan berdampingan tabel itu hanya boleh ditulis satu " +
+				"sistem — hari ini Pega. Kerjakan lewat Pega.",
 		}, true
 
 	default:

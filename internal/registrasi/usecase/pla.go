@@ -573,7 +573,7 @@ func (l *Service) plaDocuments(ctx context.Context, claim registrasi.Claim, obje
 	files := make([]plaFile, 0, len(list))
 	for _, p := range list {
 		content, err := l.plaRenderer.Render(registrasi.PLADocument{
-			PLA: p, Entity: entity, Portal: claim.Portal,
+			PLA: p, Entity: entity,
 			BusinessName:    firstText(claim.Policy.BusinessName, policy.BusinessName),
 			PolicyNumber:    claim.Policy.Number,
 			ClaimNumber:     claim.Number,

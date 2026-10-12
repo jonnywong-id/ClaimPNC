@@ -1399,28 +1399,25 @@ type DocumentReceipt struct {
 	// penelusurannya mengarah ke proses yang MENGISI kolom itu.
 	InsuredEmail string
 
-	// ReceivedNote adalah kolom **"Keterangan"** pada grid "Tanggal terima Dokumen".
+	// ReceivedDates adalah grid **"Tanggal Terima Dokumen"** — kolom Tanggal dan Keterangan.
 	//
-	// # Kenapa hanya Keterangan, dan ke mana Tanggalnya
+	// # Paling banyak SATU baris, dan itu batas DATA, bukan batas rancangan
 	//
-	// Karena sejak 2026-10-11 grid itu dan isian "Tanggal Kelengkapan Dokumen" diperlakukan
-	// sebagai SATU hal — penetapan Work Owner. Tanggal pada grid adalah CompleteAt di atas,
-	// yakni `TGL_TERIMA_DOKUMEN_PUCL`, dan ia yang dibaca serta ditulis.
+	// Grid-nya terikat page list `.ClaimData.PUCLStatus.DateReceivedDocument` berkelas
+	// `ASM-FW-GCNMFW-Data-DateReceivedDocument`. Katalog Oracle dicari 2026-10-01: tidak ada
+	// tabel bernama mirip itu, dan tidak ada satu pun tabel yang memuat `DATERECEIVED`
+	// bersama `REMARKS`. Daftarnya memang hidup di dalam blob objek kerja.
 	//
-	// Sebelumnya grid itu dipasok senarai tersendiri dari `RECEIVEDDATE_1` pada tabel objek
-	// kerja Pega. Senarai itu DICABUT: menggambar dua tanggal berbeda sebagai satu isian
-	// adalah cara paling pasti membuat yang satu menimpa yang lain tanpa ketahuan.
+	// Yang terbaca hanyalah BARIS PERTAMANYA, lewat dua kolom hasil ekspos pada tabel objek
+	// kerja — pola akhiran `_1` yang sama dengan `RCL_PUCL_1` dan `MSIG_1`:
 	//
-	// # Keterangan TIDAK dapat ditulis dari sini, dan itu bukan kelalaian
+	//	RECEIVEDDATE_1  terisi 4.156 dari 7.723 · panjang maksimum 23
+	//	KETERANGAN_1    terisi    85            · panjang maksimum 32
 	//
-	// Nilainya dibaca dari `KETERANGAN_1` — kolom hasil ekspos pada tabel objek kerja Pega,
-	// pola akhiran `_1` yang sama dengan `RCL_PUCL_1` dan `MSIG_1`, terisi pada 85 dari
-	// 7.723 baris. Tabel itu milik PEGA selama masa paralel, dan `P-1` melarang modul ini
-	// menulisinya.
-	//
-	// Ia tetap dibaca dan digambar — hanya-baca — karena nilai yang ADA tidak boleh
-	// disembunyikan hanya karena belum dapat diubah.
-	ReceivedNote string
+	// Bentuknya tetap SENARAI meski isinya paling banyak satu, karena itulah bentuk gridnya
+	// di layar lama. Begitu baris kedua dan seterusnya terbaca — lewat layanan Pega pada
+	// `permintaan-artefak-pega.md` §12 — isinya bertambah tanpa mengubah kontrak.
+	ReceivedDates []ReceivedDocumentDate
 }
 
 // TrackHidden adalah kode jalur yang menyembunyikan tab "Penerimaan Dokumen" di Pega.
@@ -1499,18 +1496,29 @@ type ActionParameters struct {
 	IDAdjustment string
 }
 
-// ReceivedNoteOf membaca kolom "Keterangan" grid "Tanggal terima Dokumen".
+// ReceivedDocumentDate adalah satu baris grid "Tanggal Terima Dokumen".
 //
-// Ia hanya merapikan spasi. Tidak ada lagi keputusan "baris dibentuk atau tidak" seperti pada
-// `ReceivedDatesOf` yang digantikannya: gridnya kini SELALU satu baris, karena barisnya
-// mewakili satu kolom tunggal — `TGL_TERIMA_DOKUMEN_PUCL` — bukan page list yang panjangnya
-// ditentukan data.
+// Kedua isiannya adalah kolom grid di `SectionPenerimaanDokumenPUCL`: `.DateReceived` dengan
+// judul **"Tanggal"**, dan `.Remarks` dengan judul **"Keterangan"**.
+type ReceivedDocumentDate struct {
+	// Date sudah berbentuk tampilan WIB.
+	Date string
+
+	// Note adalah kolom "Keterangan". Ia sering kosong — kolomnya terisi pada 85 dari 7.723
+	// baris — dan barisnya tetap digambar selama tanggalnya ada.
+	Note string
+}
+
+// ReceivedDatesOf menyusun grid "Tanggal Terima Dokumen" dari baris pertamanya.
 //
-// Fungsi lama membuang keterangan ketika tanggalnya kosong. Itu benar untuk daftar, dan
-// SALAH untuk baris tunggal: keterangan yang ada akan hilang dari layar hanya karena
-// tanggalnya belum diisi.
-func ReceivedNoteOf(note string) string {
-	return strings.TrimSpace(note)
+// Baris yang tanggalnya KOSONG tidak dibentuk sama sekali, meski keterangannya terisi: grid
+// tanpa baris berarti daftarnya memang kosong, sedangkan satu baris bertanggal kosong terbaca
+// sebagai entri yang ada tetapi belum diisi. Keduanya menuntut tindakan yang berbeda.
+func ReceivedDatesOf(date, note string) []ReceivedDocumentDate {
+	if strings.TrimSpace(date) == "" {
+		return nil
+	}
+	return []ReceivedDocumentDate{{Date: DisplayPegaTime(date), Note: note}}
 }
 
 // pegaTimeLayouts adalah bentuk waktu yang DISIMPAN PEGA sebagai teks.
@@ -1621,20 +1629,16 @@ type DocumentContent struct {
 // Dideklarasikan DI SINI, di paket yang memakainya — bukan di paket yang memenuhinya. Diisi
 // `repo/sqlstore` terhadap Oracle dan `repo/memory` untuk pengujian.
 //
-// # Seam ini MENULIS pula, dan setiap tulisannya pada tabel milik aplikasi ini
+// # Tidak ada satu pun operasi yang menulis, dan itu keputusan, bukan kelalaian
 //
-// Sampai 2026-10-06 di tempat ini tertulis bahwa tidak ada satu pun operasi yang menulis,
-// karena mencetak surat PUCL/RCL dan mengirim Reminder PUCL dianggap menyentuh tabel objek
-// kerja yang masih dimiliki Pega (`P-1`). Keduanya tidak lagi benar.
+// Layar lama punya dua tindakan yang menulis: mencetak surat PUCL/RCL — yang mengisi
+// `TANGGALCETAKDOKUMENPUCL_1` sehingga klaimnya BERPINDAH dari tab 1 ke tab 2 — dan mengirim
+// Reminder PUCL. Keduanya menyentuh tabel objek kerja dan tabel penugasan, dan keduanya
+// masih dimiliki Pega selama masa paralel (`P-1`).
 //
-// Mencetak surat MENULIS `TGL_CETAK_DOKUMEN_PUCL` pada `TC_PNC_PUCL` — tabel milik aplikasi
-// ini, bukan tabel engine Pega — dan itulah kolom yang memindahkan klaim dari tab 1 ke tab 2.
-// Reminder PUCL tidak pernah digambar bahkan di Pega: syarat tombolnya `1==2`.
-//
-// Yang menulis di seam ini karena itu ada enam: MoveToSendToAnalyst, ReturnToAnalyst,
-// RejectClaim, SaveReceipt, AddDocument, dan MarkLetterPrinted. Masing-masing membawa
-// catatan sendiri tentang tabel apa yang disentuhnya dan mengapa `P-1` tidak dilanggar —
-// dan catatan itu, bukan kalimat umum di sini, yang menjadi pagarnya.
+// Keputusan Work Owner 2026-09-23: tombolnya tetap DIGAMBAR, aksinya ditolak dengan alasan
+// yang terbaca. Operasi yang tidak tersedia di seam ini karena itu tidak dapat dipakai kode
+// yang ditulis kemudian tanpa keputusan sadar.
 type Repo interface {
 	// List mengembalikan SATU HALAMAN baris yang cocok beserta jumlah seluruhnya.
 	//
@@ -1677,17 +1681,6 @@ type Repo interface {
 	// ErrDocumentNotFound — keduanya tidak dibedakan, supaya jawaban tidak memberi tahu
 	// bahwa sebuah id ada tetapi milik klaim lain.
 	DocumentContent(ctx context.Context, caseNumber, documentID string) (DocumentContent, error)
-
-	// ReminderRecipients membaca penerima Reminder PUCL untuk nomor klaim yang dipilih.
-	//
-	// Ia MEMBACA ULANG alamat dan nama dari basis data, bukan menerimanya dari permintaan:
-	// pengingat ini keluar dari sistem, dan alamat yang datang dari badan permintaan dapat
-	// ditulis siapa pun yang dapat memanggil API.
-	//
-	// Hasilnya hanya memuat klaim yang MEMENUHI penyaring antrean Kelengkapan Dokumen.
-	// Nomor yang tidak memenuhinya tidak menghasilkan baris sama sekali — pemanggil
-	// melaporkannya sebagai ReminderNotEligible.
-	ReminderRecipients(ctx context.Context, claimNumbers []string) ([]ReminderRecipient, error)
 
 	// ReturnToAnalyst menandai klaim SUDAH SELESAI dikerjakan PUCL.
 	//

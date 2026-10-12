@@ -192,14 +192,6 @@ func Mount(r chi.Router, h *Handler) {
 		sub.Get("/klaim/{klaimID}/tertanggung", func(w http.ResponseWriter, r *http.Request) {
 			h.Insured(w, r, chi.URLParam(r, "klaimID"))
 		})
-		// Modal Input Progress Claim (tab Progress Claim & Komunikasi).
-		sub.Get("/klaim/{klaimID}/progres/form", func(w http.ResponseWriter, r *http.Request) {
-			h.ProgressInputForm(w, r, chi.URLParam(r, "klaimID"))
-		})
-		sub.Post("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
-			h.InputProgress(w, r, chi.URLParam(r, "klaimID"))
-		})
-		sub.Get("/progres/status-perlu", h.ProgressNeedOptions)
 		sub.Get("/klaim/{klaimID}/progres", func(w http.ResponseWriter, r *http.Request) {
 			h.Progress(w, r, chi.URLParam(r, "klaimID"))
 		})

@@ -61,8 +61,6 @@ type SurveyActionResponse struct {
 	Surveys   []string `json:"survey_terbit"`
 	Committee []string `json:"komite_terbit"`
 	Auto      bool     `json:"otomatis"`
-	// MailWarnings: email Komite yang gagal dikirim, untuk dilampirkan ke IT Support.
-	MailWarnings []string `json:"email_galat,omitempty"`
 }
 
 // SurveyorOptionDTO adalah satu pilihan surveyor.
@@ -201,7 +199,7 @@ func (h *Handler) SaveSurvey(w http.ResponseWriter, r *http.Request, claimID str
 }
 
 func surveyActionDTO(res usecase.SurveyResult) SurveyActionResponse {
-	out := SurveyActionResponse{SurveyTabResponse: surveyTabDTO(res.View), Surveys: res.Surveys, Committee: res.Committee, Auto: res.Auto, MailWarnings: res.MailWarnings}
+	out := SurveyActionResponse{SurveyTabResponse: surveyTabDTO(res.View), Surveys: res.Surveys, Committee: res.Committee, Auto: res.Auto}
 	if out.Surveys == nil {
 		out.Surveys = []string{}
 	}

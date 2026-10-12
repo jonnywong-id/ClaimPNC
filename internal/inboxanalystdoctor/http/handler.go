@@ -81,12 +81,8 @@ func NewHandler(o Options) *Handler {
 
 // Metadata menangani GET /api/inbox-analyst-doctor/keterangan.
 //
-// Ia GET dan tidak mengubah apa pun: judul kolom dan keterbatasan adalah bentuk layar, bukan
-// data entitas.
-//
-// Selisih terencana TIDAK ikut dikirim. Keputusan Work Owner 2026-10-06 menghapus panelnya
-// dari seluruh layar; `routes_test.go` mengunci ketiadaannya supaya ia tidak kembali diam-diam
-// saat DTO ini disunting lagi.
+// Ia GET dan tidak mengubah apa pun: judul kolom, selisih terencana, dan keterbatasan adalah
+// bentuk layar, bukan data entitas.
 func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {

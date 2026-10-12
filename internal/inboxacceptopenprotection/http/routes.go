@@ -57,30 +57,12 @@ import (
 // `X-Portal` DITOLAK middleware — tidak pernah dilayani portal utama sebagai cadangan
 // (`R-20`, `TKT-F6-002`).
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
-	// Antrean yang boleh dibuka pemanggil — TANPA pemeriksaan portal.
-	//
-	// # Kenapa di luar grup, dan kenapa ini sebuah perbaikan
-	//
-	// Jawabannya tidak bergantung entitas: `D-78` menetapkan satu identitas berlaku di
-	// keempat portal, dan `GroupReader` membacanya dari KONEKSI UTAMA — bukan koneksi
-	// portal. Tidak ada data entitas yang disentuh di sini.
-	//
-	// Sebelumnya ia berada DI DALAM grup, sementara peramban memperlakukannya sebagai rute
-	// bebas portal dan tidak mengirim `X-Portal`. Akibatnya ia selalu dijawab `ErrNotStated`,
-	// daftar antrean selalu kosong, dan tabel permintaan memperlihatkan rangka pemuatan yang
-	// berputar selamanya — tanpa satu pun pesan galat.
-	//
-	// Bentuk ini sekaligus menyamakan modul ini dengan saudaranya, yang seluruhnya memasang
-	// rute bebas-portalnya di luar grup sebagai baris pertama: `master/detail-penyebab/
-	// pilihan`, `master/panel/pilihan`, `master/pasal-kerugian/kategori`,
-	// `master/posisi-klaim`, dan `inbox-auto-claim/tab`.
-	//
-	// Didaftarkan SEBELUM "/{nomor}" supaya chi tidak menganggap "antrean" sebagai nomor
-	// proteksi.
-	r.Get("/inbox-accept-open-protection/antrean", h.Queues)
-
 	r.Route("/inbox-accept-open-protection", func(accept chi.Router) {
 		accept.Use(portalhttp.ActivePortal(portalDeps))
+
+		// Antrean yang boleh dibuka pemanggil. Didaftarkan SEBELUM "/{nomor}" supaya chi
+		// tidak menganggap "antrean" sebagai nomor proteksi.
+		accept.Get("/antrean", h.Queues)
 
 		accept.Get("/", h.List)
 		accept.Get("/{nomor}", h.Get)

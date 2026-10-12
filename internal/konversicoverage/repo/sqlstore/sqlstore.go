@@ -101,12 +101,11 @@ func NewLive(conn *sql.DB) *Live {
 	return &Live{conn: conn, dict: &dictionary{conn: conn}}
 }
 
-// Objects membaca baris objek satu polis yang lolos filter. Filter kosong berarti
-// seluruh versi dan seluruh objek.
+// Objects membaca baris objek satu polis, seluruh versinya.
 //
 // Pembacaan dibungkus `SET TRANSACTION READ ONLY` — bila suatu hari ada pernyataan tulis
 // yang keliru diarahkan ke sini, Oracle sendiri yang menolaknya (ORA-01456).
-func (l *Live) Objects(ctx context.Context, line kc.Line, policyNo string, filter kc.Filter) ([]kc.ObjectRow, error) {
+func (l *Live) Objects(ctx context.Context, line kc.Line, policyNo string) ([]kc.ObjectRow, error) {
 	columns, err := l.dict.columns(ctx, line.ObjectTable)
 	if err != nil {
 		return nil, err
@@ -123,11 +122,10 @@ func (l *Live) Objects(ctx context.Context, line kc.Line, policyNo string, filte
 	if _, ok := columns["INDEXTANEKALIST"]; ok {
 		listIndex = "TO_CHAR(INDEXTANEKALIST)"
 	}
-	where, args := objectFilter(policyNo, filter)
 	query := fmt.Sprintf(`SELECT IDPEGA, %s, NOPOLIS, TO_CHAR(PRODKE), TO_CHAR(INDEXOBJECT), %s, %s
   FROM %s.%s
- WHERE %s
- ORDER BY PRODKE, INDEXOBJECT`, applicationID, listIndex, line.BlobColumn, owner, line.ObjectTable, where)
+ WHERE NOPOLIS = :1
+ ORDER BY PRODKE, INDEXOBJECT`, applicationID, listIndex, line.BlobColumn, owner, line.ObjectTable)
 
 	tx, err := l.conn.BeginTx(ctx, nil)
 	if err != nil {
@@ -137,7 +135,7 @@ func (l *Live) Objects(ctx context.Context, line kc.Line, policyNo string, filte
 	if _, err := tx.ExecContext(ctx, "SET TRANSACTION READ ONLY"); err != nil {
 		return nil, fmt.Errorf("membuka transaksi baca-saja: %w", err)
 	}
-	rows, err := tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, policyNo)
 	if err != nil {
 		return nil, err
 	}
@@ -165,22 +163,6 @@ func (l *Live) Objects(ctx context.Context, line kc.Line, policyNo string, filte
 	return result, rows.Err()
 }
 
-// objectFilter menyusun syarat WHERE pembacaan objek. Yang dirangkai hanya nama kolom
-// tetap; nilainya diikat lewat parameter.
-func objectFilter(policyNo string, filter kc.Filter) (string, []any) {
-	where := "NOPOLIS = :1"
-	args := []any{policyNo}
-	if filter.ProdKe != "" {
-		args = append(args, filter.ProdKe)
-		where += " AND TO_CHAR(PRODKE) = :" + strconv.Itoa(len(args))
-	}
-	if filter.IndexObject != "" {
-		args = append(args, filter.IndexObject)
-		where += " AND TO_CHAR(INDEXOBJECT) = :" + strconv.Itoa(len(args))
-	}
-	return where, args
-}
-
 // ============================================================================
 // TEST
 // ============================================================================
@@ -203,9 +185,7 @@ func NewTest(conn *sql.DB) *Test {
 //
 // Penghapusan fisik di sini SENGAJA, dan hanya karena tujuannya basis data TEST: ia
 // membuat konversi dapat diulang tanpa menumpuk baris ganda. Cakupannya dibatasi
-// NOPOLIS + PRODKE yang sedang dikonversi — polis lain tidak tersentuh. Bila filter
-// INDEXOBJECT terisi, cakupannya menyempit lagi menjadi per objek (lihat deleteScopes),
-// supaya objek lain di versi yang sama tidak ikut terhapus.
+// NOPOLIS + PRODKE yang sedang dikonversi — polis lain tidak tersentuh.
 func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (usecase.Applied, error) {
 	var applied usecase.Applied
 	warnings := map[string]bool{}
@@ -251,13 +231,12 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 		}
 	}()
 
-	byObject := batch.Filter.IndexObject != ""
-	var spreadScopes []scope
+	spreadVersions := map[string]bool{}
 	for _, lb := range batch.Lines {
-		spreadScopes = append(spreadScopes, deleteScopes(lb, byObject, func(o kc.ObjectRow) (string, string) {
-			return "INDEXOBJECT", o.IndexObject
-		})...)
+		versions := map[string]bool{}
 		for _, object := range lb.Objects {
+			versions[object.ProdKe] = true
+			spreadVersions[object.ProdKe] = true
 			n, err := updateObject(ctx, tx, lb.Line, object)
 			if err != nil {
 				return finish(), fmt.Errorf("memperbarui %s INDEXOBJECT %s: %w", lb.Line.ObjectTable, object.IndexObject, err)
@@ -270,33 +249,38 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 		}
 
 		if cols, ok := coverageColumns[lb.Line.CoverageTable]; ok {
-			scopes := deleteScopes(lb, byObject, func(o kc.ObjectRow) (string, string) {
-				return kc.CoverageObjectKey(lb.Line, o)
-			})
-			n, err := deleteOld(ctx, tx, lb.Line.CoverageTable, cols, batch.PolicyNo, scopes)
+			for _, version := range sortedSet(versions) {
+				n, err := execCount(ctx, tx, fmt.Sprintf(
+					"DELETE FROM %s.%s WHERE NOPOLIS = :1 AND TO_CHAR(PRODKE) = :2", owner, lb.Line.CoverageTable),
+					batch.PolicyNo, version)
+				if err != nil {
+					return finish(), fmt.Errorf("menghapus %s lama: %w", lb.Line.CoverageTable, err)
+				}
+				applied.CoverageDeleted += int(n)
+			}
+			n, err := insertRows(ctx, tx, lb.Line.CoverageTable, cols, lb.Coverage, warn)
 			if err != nil {
 				return finish(), err
 			}
-			applied.CoverageDeleted += n
-			inserted, err := insertRows(ctx, tx, lb.Line.CoverageTable, cols, lb.Coverage, warn)
-			if err != nil {
-				return finish(), err
-			}
-			applied.CoverageInserted += inserted
+			applied.CoverageInserted += n
 		}
 	}
 
 	if len(batch.Spreading) > 0 {
-		n, err := deleteOld(ctx, tx, kc.SpreadingTable, spreadColumns, batch.PolicyNo, spreadScopes)
+		for _, version := range sortedSet(spreadVersions) {
+			n, err := execCount(ctx, tx, fmt.Sprintf(
+				"DELETE FROM %s.%s WHERE NOPOLIS = :1 AND TO_CHAR(PRODKE) = :2", owner, kc.SpreadingTable),
+				batch.PolicyNo, version)
+			if err != nil {
+				return finish(), fmt.Errorf("menghapus %s lama: %w", kc.SpreadingTable, err)
+			}
+			applied.SpreadDeleted += int(n)
+		}
+		n, err := insertRows(ctx, tx, kc.SpreadingTable, spreadColumns, batch.Spreading, warn)
 		if err != nil {
 			return finish(), err
 		}
-		applied.SpreadDeleted = n
-		inserted, err := insertRows(ctx, tx, kc.SpreadingTable, spreadColumns, batch.Spreading, warn)
-		if err != nil {
-			return finish(), err
-		}
-		applied.SpreadInserted = inserted
+		applied.SpreadInserted = n
 	}
 
 	if !commit {
@@ -307,65 +291,6 @@ func (t *Test) Apply(ctx context.Context, batch usecase.Batch, commit bool) (use
 	}
 	committed = true
 	return finish(), nil
-}
-
-// scope adalah satu cakupan penghapusan: satu versi, dan — bila Column terisi — satu objek.
-type scope struct {
-	ProdKe string
-	Column string // kosong: seluruh objek di versi itu
-	Value  string
-}
-
-// deleteScopes menyusun cakupan penghapusan satu lini. Tanpa filter INDEXOBJECT, satu
-// cakupan per versi (perilaku semula). Dengan filter itu, satu cakupan per objek, dengan
-// kolom penghubung yang diberikan key.
-func deleteScopes(lb usecase.LineBatch, byObject bool, key func(kc.ObjectRow) (string, string)) []scope {
-	var result []scope
-	seen := map[scope]bool{}
-	for _, object := range lb.Objects {
-		sc := scope{ProdKe: object.ProdKe}
-		if byObject {
-			sc.Column, sc.Value = key(object)
-		}
-		if !seen[sc] {
-			seen[sc] = true
-			result = append(result, sc)
-		}
-	}
-	return result
-}
-
-// deleteOld menghapus baris lama satu tabel di setiap cakupan, lalu mengembalikan
-// jumlahnya.
-//
-// Bila cakupannya per objek tetapi tabel tujuan tidak punya kolom penghubungnya,
-// konversi DITOLAK: penghapusan per versi akan ikut membuang objek lain yang tidak
-// diminta.
-func deleteOld(ctx context.Context, tx *sql.Tx, table string, columns map[string]kc.Column,
-	policyNo string, scopes []scope) (int, error) {
-	total := 0
-	seen := map[scope]bool{}
-	for _, sc := range scopes {
-		if seen[sc] {
-			continue
-		}
-		seen[sc] = true
-		query := fmt.Sprintf("DELETE FROM %s.%s WHERE NOPOLIS = :1 AND TO_CHAR(PRODKE) = :2", owner, table)
-		args := []any{policyNo, sc.ProdKe}
-		if sc.Column != "" {
-			if _, ok := columns[sc.Column]; !ok {
-				return total, fmt.Errorf("%s.%s tidak punya kolom %s; penghapusan per INDEXOBJECT tidak dapat dibatasi — kosongkan filter INDEXOBJECT", owner, table, sc.Column)
-			}
-			query += " AND TO_CHAR(" + sc.Column + ") = :3"
-			args = append(args, sc.Value)
-		}
-		n, err := execCount(ctx, tx, query, args...)
-		if err != nil {
-			return total, fmt.Errorf("menghapus %s lama: %w", table, err)
-		}
-		total += int(n)
-	}
-	return total, nil
 }
 
 // updateObject menyalin BLOB LIVE apa adanya ke baris objek yang sama di TEST.

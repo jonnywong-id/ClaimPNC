@@ -122,10 +122,7 @@ type PLAPrevious struct {
 // PLADocument adalah isi satu dokumen PLA.
 type PLADocument struct {
 	PLA
-	Entity string // ASM atau ASI — penanda tangan dan alamat kaki
-	// Portal adalah alias portal klaim (ASM, ASI, SMAS, …) — menentukan logo kop. Portal
-	// tanpa logo dicetak tanpa logo, bukan memakai logo portal lain.
-	Portal          string
+	Entity          string // ASM atau ASI — kop, penanda tangan, dan alamat kaki
 	BusinessName    string
 	PolicyNumber    string
 	ClaimNumber     string

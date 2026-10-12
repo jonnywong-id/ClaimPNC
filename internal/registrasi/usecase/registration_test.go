@@ -285,25 +285,6 @@ func TestClaimReportMovesTabs(t *testing.T) {
 		require.Equal(t, hasil.Claim.Number, l.link.ClaimNumber(laporan))
 	})
 
-	// CreateRegisterKlaimPNC 6–7 dan 33–34: posisi LAPORAN KLAIM berkas ditutup ("Auto Finish
-	// Laporan", 001/61, Done), lalu posisi REGISTER klaim dibuka ("Auto Create Register", 002/2).
-	t.Run("posisi progres LAPORAN KLAIM ditutup dan REGISTER dibuka", func(t *testing.T) {
-		l := setup(t)
-		ctx := context.Background()
-		l.acceptance.Positions = map[string]string{memory.PositionKey(laporan, registrasi.PositionReport): "4"}
-		start, err := l.service.Start(ctx, usecase.StartCommand{PolicyNumber: firePolicy, Portal: "ASM", RCVID: laporan}, l.caller)
-		require.NoError(t, err)
-		require.Len(t, l.acceptance.Progress, 1)
-		require.Equal(t, laporan, l.acceptance.Progress[0].ClaimNumber)
-		require.Equal(t, "4", l.acceptance.Progress[0].PositionID)
-		require.Equal(t, "Auto Finish Laporan", l.acceptance.Progress[0].Note)
-		require.Equal(t, "Done", l.acceptance.Progress[0].Position)
-		require.Len(t, l.acceptance.Started, 1)
-		require.Equal(t, start.Claim.Number, l.acceptance.Started[0].ClaimNumber)
-		require.Equal(t, "REGISTER", l.acceptance.Started[0].Position)
-		require.Equal(t, "Auto Create Register", l.acceptance.Started[0].Note)
-	})
-
 	// Menekan Back tidak MENGUBAH tautan yang sudah dibuat saat klaim dibuka.
 	//
 	// Menarik kembali penyerahannya akan mengosongkan TRANSFERASM sementara NOKLAIM

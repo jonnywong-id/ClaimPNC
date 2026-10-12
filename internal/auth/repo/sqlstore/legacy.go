@@ -28,11 +28,11 @@ func (w *Legacy) FindActive(ctx context.Context, loginID, passwordFingerprint st
 	rows := w.db.QueryRowContext(ctx, getQuery("local_login_find_active"), loginID, passwordFingerprint)
 
 	var result provider.LocalLogin
-	// Cabang TIDAK dipindai dari sini. `M_LOGIN_PNC` tidak punya kolom cabang, dan Work
-	// Owner menetapkan cabang hanya datang dari layanan HCC (2026-10-11) — lihat catatan di
-	// kueri `local_login_find_active`. Pengguna jalur ini karena itu selalu tanpa cabang,
-	// dan layar yang batas datanya cabang memang menolaknya.
-	err := rows.Scan(&result.LoginID, &result.LoginName)
+	// Cabang dipindai sebagai nullable: LEFT JOIN ke master HRD mengembalikan NULL untuk
+	// pengguna non-karyawan yang memang tidak ada di sana.
+	var detailBranchCode sql.NullString
+	err := rows.Scan(&result.LoginID, &result.LoginName, &detailBranchCode)
+	result.DetailBranchCode = strings.TrimSpace(detailBranchCode.String)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return provider.LocalLogin{}, provider.ErrLoginMismatch

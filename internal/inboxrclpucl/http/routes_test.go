@@ -208,8 +208,7 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 				Kunci string `json:"kunci"`
 				Judul string `json:"judul"`
 			} `json:"kolom"`
-			PunyaLaporan  bool `json:"punya_laporan_rentang_tanggal"`
-			PunyaReminder bool `json:"punya_reminder"`
+			PunyaLaporan bool `json:"punya_laporan_rentang_tanggal"`
 		} `json:"tab"`
 		TabBawaan    string `json:"tab_bawaan"`
 		KolomLaporan []struct {
@@ -226,14 +225,6 @@ func TestMetadataDescribesTheTabsAndNamesThePortal(t *testing.T) {
 	require.NotEmpty(t, body.Tab[0].Kolom)
 	require.Equal(t, inboxrclpucl.DefaultTab, body.TabBawaan)
 	require.Len(t, body.KolomLaporan, len(inboxrclpucl.DailyReportColumns))
-
-	// Tombol "Reminder PUCL" HANYA di tab Kelengkapan Dokumen — `InboxKelengkapanDocPUCLRCL_
-	// Section:1156`. Diuji di tingkat JSON, bukan hanya pada senarai tab di Go: isian yang
-	// benar di domain tetapi tidak ikut terangkai ke DTO menghasilkan layar tanpa tombol,
-	// tanpa satu pun galat. Persis itu yang dilaporkan Work Owner 2026-10-12.
-	require.False(t, body.Tab[0].PunyaReminder, "Cetak Surat tidak punya Reminder PUCL")
-	require.True(t, body.Tab[1].PunyaReminder, "Kelengkapan Dokumen punya Reminder PUCL")
-	require.False(t, body.Tab[2].PunyaReminder, "Klaim MSIG tidak punya Reminder PUCL")
 	require.Equal(t, testPortal, body.Portal)
 }
 
@@ -429,30 +420,12 @@ func TestDetailReturnsTheWorkScreenOfOneClaim(t *testing.T) {
 	require.NotEmpty(t, body.LampiranSurat.NoPolis)
 	// "UP" diisi dari sumber yang sama dengan "Nama Peserta" — perilaku Pega apa adanya.
 	require.Equal(t, body.LampiranSurat.NamaPeserta, body.LampiranSurat.UP)
-	// DUA, bukan sembilan. Daftarnya menyusut tiga kali — lihat unmappedLetterFields:
-	// empat isian surat ternyata punya kolom di `TC_PNC_PUCL`; lalu "Email Tertanggung" dan
-	// "Tanggal Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner; lalu
-	// "Tanggal terima Dokumen" dikeluarkan pada 2026-10-11.
-	require.Len(t, body.BelumTerpetakan, 2)
+	// TIGA, bukan sembilan. Daftarnya menyusut dua kali — lihat unmappedLetterFields:
+	// empat isian surat ternyata punya kolom di `TC_PNC_PUCL`, lalu "Email Tertanggung" dan
+	// "Tanggal Kelengkapan Dokumen" ikut terpetakan atas penetapan Work Owner.
+	require.Len(t, body.BelumTerpetakan, 3)
 	require.Contains(t, body.BelumTerpetakan, "No Kontrak")
-	require.Contains(t, body.BelumTerpetakan, "Business Unit / Seksi")
-
-	// Grid "Tanggal terima Dokumen" TIDAK boleh kembali ke daftar ini.
-	//
-	// Baris pertamanya TERBACA — `RECEIVEDDATE_1` terisi 4.156 dari 7.723 baris — digambar
-	// sebagai isian yang dapat diketik, dan ikut tersimpan. Menyebutnya "tidak dapat dibaca
-	// dari sini" bertentangan dengan grid yang tergambar berisi tepat di atas kalimat itu.
-	//
-	// Kedua batas yang NYATA pada grid itu punya tempatnya sendiri: `ReceivedDatesPartial`
-	// untuk baris kedua dan seterusnya, dan keterangan di layar untuk perubahan yang belum
-	// tersimpan.
-	for _, field := range body.BelumTerpetakan {
-		require.NotContainsf(t, field, "Tanggal terima Dokumen",
-			"grid yang baris pertamanya terbaca bukan isian yang belum terpetakan: %q", field)
-	}
-	// FALSE sejak 2026-10-06: kelima tindakan layar kerja dikerjakan sendiri, seluruhnya
-	// menulis ke tabel milik aplikasi ini. Isiannya tetap dikirim — lihat DetailResponse.
-	require.False(t, body.MasihDiPega)
+	require.True(t, body.MasihDiPega)
 	require.Equal(t, testPortal, body.Portal)
 }
 
@@ -485,7 +458,7 @@ func TestRejectWriteAnswersNotImplementedAndLogsTheRequest(t *testing.T) {
 	require.Equal(t, http.StatusNotImplemented, res.Code)
 	require.Equal(t, rclpuclhttp.CodeWriteNotAvailable, errorCode(t, res))
 
-	require.Contains(t, buf.String(), "aksi tulis yang tidak dikenali diminta")
+	require.Contains(t, buf.String(), "aksi tulis diminta pada modul yang belum menulis")
 	require.Contains(t, buf.String(), "tindakan=cetak")
 }
 

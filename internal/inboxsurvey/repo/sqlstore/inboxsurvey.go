@@ -279,17 +279,16 @@ func (r *Repo) KPI(
 	return result, nil
 }
 
-// KPIYears mengambil tahun untuk dropdown "Tahun Kuartal".
-//
-// TANPA penyaring cakupan — rule aslinya pun tidak menyaringnya. Lihat kueri kpi_years.
+// KPIYears mengambil tahun yang benar-benar ada pada baris milik cakupan pemanggil.
 //
 // Tahun KOSONG dilewati, bukan dikembalikan sebagai pilihan kosong: dropdown yang memuat
 // baris tanpa label tidak dapat dipilih dengan sengaja oleh siapa pun.
-func (r *Repo) KPIYears(ctx context.Context) ([]string, error) {
+func (r *Repo) KPIYears(
+	ctx context.Context,
+	identity inboxsurvey.SurveyorIdentity,
+) ([]string, error) {
 	rows, err := r.db.QueryContext(ctx, query("kpi_years"),
-		sql.Named("final_report", inboxsurvey.StatusFinalReport),
-		sql.Named("close_case", inboxsurvey.StatusCloseCase),
-		sql.Named("invoice_fee", inboxsurvey.StatusInvoiceFee))
+		sql.Named("scope", scopeValue(identity.Scope)))
 	if err != nil {
 		return nil, fmt.Errorf("menjalankan kueri kpi_years: %w", err)
 	}

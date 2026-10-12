@@ -141,13 +141,6 @@ type MetadataResponse struct {
 	Kuartal      []string    `json:"kuartal"`
 	UkuranHala   int         `json:"ukuran_halaman"`
 
-	// SelisihTerencana adalah perbedaan yang DISENGAJA terhadap layar Pega (`D-54`).
-	//
-	// Keduanya TIDAK ditampilkan layar sejak `K-105.29` — surveyor membuka layar ini untuk
-	// mengerjakan survei, bukan membaca catatan migrasi. Bentuk jawabannya tetap dikirim
-	// supaya sama dengan ~30 layar lain, dan supaya keputusan itu dapat dibalik satu baris.
-	SelisihTerencana []string `json:"selisih_terencana"`
-
 	// Keterbatasan adalah penghalang yang masih menunggu pihak lain, dan akan hilang dengan
 	// sendirinya begitu penghalangnya hilang.
 	Keterbatasan []string `json:"keterbatasan"`
@@ -279,17 +272,16 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Portal:           portalAlias,
-		Kolom:            columns,
-		Tab:              tabList,
-		KolomKPI:         kpi,
-		TabBawaan:        string(meta.DefaultTab),
-		UkuranHala:       meta.PageSize,
-		StatusSurvei:     statusValues(),
-		TipeReport:       reportValues(),
-		Kuartal:          inboxsurvey.Quarters(),
-		SelisihTerencana: meta.PlannedDifferences,
-		Keterbatasan:     meta.Limitations,
+		Portal:       portalAlias,
+		Kolom:        columns,
+		Tab:          tabList,
+		KolomKPI:     kpi,
+		TabBawaan:    string(meta.DefaultTab),
+		UkuranHala:   meta.PageSize,
+		StatusSurvei: statusValues(),
+		TipeReport:   reportValues(),
+		Kuartal:      inboxsurvey.Quarters(),
+		Keterbatasan: meta.Limitations,
 	}
 }
 

@@ -186,10 +186,6 @@ type SurveyCommitteeNote struct {
 	ContactPerson string
 	OfficePhone   string
 	Email         string
-
-	// Key adalah `newWorkCover.Key` (`@CreateUniqueID()`, Post_ChildKomite_act 2.2): parameter
-	// `key` link email yang diperiksa `PNCKomiteSurveyAcceptation_act` langkah 9.
-	Key string
 }
 
 // SurveyRequest adalah Permintaan Survey (`RequestSurvey`) — baris POOLDATA.T_REQ_SURVEY.
@@ -220,16 +216,6 @@ type SurveyStore interface {
 	SaveNominated(ctx context.Context, claimID string, list []SurveyorOption) error
 	SaveCommitteeNote(ctx context.Context, committeeID string, n SurveyCommitteeNote) error
 	Request(ctx context.Context, keys RecordKeys) (SurveyRequest, bool, error)
-	CommitteeNote(ctx context.Context, committeeID string) (SurveyCommitteeNote, error)
-	// SurveyorByLogin adalah RDB `SearchSurveyorName` (tidak ada di export): surveyor menurut
-	// LOGIN_APLIKASI — NAME, ADDRESS, OTHER_CONTACT.
-	SurveyorByLogin(ctx context.Context, login string) (SurveyorOption, bool, error)
-}
-
-// SurveyMailer mengirim email alur survey (akun Email "ASM" — `setSendEmailKomite_act` 14,
-// `PNCKomiteSurveyAcceptation_act` 14.11).
-type SurveyMailer interface {
-	Send(ctx context.Context, to []string, subject, html string) error
 }
 
 // IsMarineHull adalah When `IsMarineHull`: BusinessType MarineHull/WreckRemoval, kode 10152,

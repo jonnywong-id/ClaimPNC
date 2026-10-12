@@ -149,10 +149,7 @@ func TestPilihanPanelKPISamaDenganPega(t *testing.T) {
 		inboxsurvey.ReportDetail,
 	}, inboxsurvey.ReportTypes())
 
-	// Salinan `Data Transform/GetListQuartal` apa adanya — `ALL` di PUNCAK, lalu keempat
-	// kuartal. Urutannya ikut dikunci: rule itu menuliskan `ALL` lebih dulu, dan daftar
-	// pilihan yang urutannya berpindah tidak dapat dihafal siapa pun.
-	require.Equal(t, []string{"ALL", "1", "2", "3", "4"}, inboxsurvey.Quarters())
+	require.Equal(t, []string{"1", "2", "3", "4"}, inboxsurvey.Quarters())
 }
 
 // TestKeduaIsianPanelKPIWajib menjaga keduanya tidak pernah dipilihkan untuk pengguna.

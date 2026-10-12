@@ -18,10 +18,11 @@ const realFingerprint = "A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F
 // fakeLoginList meniru POOLDATA.M_LOGIN_PNC: ia hanya menjawab bila ketiga syarat
 // terpenuhi sekaligus — login_id cocok, sidik cocok, dan baris aktif.
 type fakeLoginList struct {
-	loginID     string
-	loginName   string
-	fingerprint string
-	issues      error
+	loginID          string
+	loginName        string
+	fingerprint      string
+	detailBranchCode string
+	issues           error
 
 	wantedFingerprint string
 }
@@ -35,8 +36,9 @@ func (d *fakeLoginList) FindActive(_ context.Context, loginID, fingerprint strin
 		return provider.LocalLogin{}, provider.ErrLoginMismatch
 	}
 	return provider.LocalLogin{
-		LoginID:   d.loginID,
-		LoginName: d.loginName,
+		LoginID:          d.loginID,
+		LoginName:        d.loginName,
+		DetailBranchCode: d.detailBranchCode,
 	}, nil
 }
 
@@ -81,21 +83,17 @@ func TestLocalAcceptsMatchingLogin(t *testing.T) {
 	require.NotContains(t, list.wantedFingerprint, "123")
 }
 
-// Jalur login lokal TIDAK PERNAH membawa cabang, dan itu keputusan Work Owner.
+// Cabang dari master HRD lokal ikut terbawa ke profil.
 //
-// Uji ini dulu berlawanan arah: ia memastikan cabang dari master HRD lokal
-// (`POOLDATA.V_HRD_M_MST.LCA_ID`) ikut terbawa ke profil. Sumber itu DICABUT pada
-// 2026-10-11 — ia pilihan sendiri, nol kemunculan di export Pega, dan hanya 68% sepakat
-// dengan sumber Pega yang sebenarnya (`LST_USER_ASURANSI.CAB_ID`).
-//
-// Work Owner menetapkan: cabang hanya datang dari layanan HCC, dan pengguna tanpa data
-// cabang memang tidak berhak membuka layar berbatas cabang. Uji ini menjaga ketetapan itu —
-// bila kelak ada yang menambahkan sumber cabang lain di jalur ini, ia gagal.
-func TestLocalNeverCarriesABranch(t *testing.T) {
+// Tanpa ini, pengguna yang cabangnya SUDAH tercatat tetap ditolak layar berbatas cabang
+// dengan "Cabang Anda belum terdaftar" — data yang ada tetapi tidak pernah dibaca. Itu
+// keluhan nyata yang memicu perbaikan ini, bukan kasus yang dibayangkan.
+func TestLocalCarriesBranchFromHRDMaster(t *testing.T) {
 	list := &fakeLoginList{
-		loginID:     "JONNY",
-		loginName:   "JONNY WONG",
-		fingerprint: realFingerprint,
+		loginID:          "JONNY",
+		loginName:        "JONNY WONG",
+		fingerprint:      realFingerprint,
+		detailBranchCode: "001",
 	}
 	local, err := provider.NewLocal(list)
 	require.NoError(t, err)
@@ -104,11 +102,11 @@ func TestLocalNeverCarriesABranch(t *testing.T) {
 		auth.Credential{Username: "JONNY", Password: "123"})
 	require.NoError(t, err)
 
-	// Ketiga field cabang kosong. `DetailBranchCode` adalah yang dibaca layar OS Claim per
-	// Cabang; `BranchCode` punya pembaca lain yang MENULISKANNYA ke basis data (modul
-	// Archive Dokumen Klaim, kolom KODECABANG), jadi ia tidak boleh terisi diam-diam.
-	require.Empty(t, profile.DetailBranchCode,
-		"cabang hanya dari HCC — jalur lokal tidak boleh mengisinya dari tabel mana pun")
+	require.Equal(t, "001", profile.DetailBranchCode)
+
+	// Yang terisi HANYA kode cabang rinci. `BranchCode` dan `Branch` sengaja dibiarkan
+	// kosong: keduanya tidak disediakan sumber ini, dan `BranchCode` punya pembaca lain
+	// yang MENULISKANNYA ke basis data (modul Archive Dokumen Klaim, kolom KODECABANG).
 	require.Empty(t, profile.BranchCode)
 	require.Empty(t, profile.Branch)
 }

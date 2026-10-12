@@ -38,11 +38,6 @@ var claimColumns = []string{
 	"TECHNICAL_PIC", "RECORDED_BY", "CURRENT_STAGE", "CURRENT_HOLDER", "DOCUMENT_DONE",
 }
 
-// kolomRingkasan mengikuti urutan SELECT pada my_inbox_document_status.
-var kolomRingkasan = []string{
-	"LENGKAP", "BELUM", "SURVEYOR_INTERNAL", "LOSS_ADJUSTER", "TKA", "TOTAL",
-}
-
 var (
 	registered = time.Date(2026, time.September, 15, 20, 0, 0, 0, time.UTC)
 	created    = time.Date(2026, time.September, 14, 1, 0, 0, 0, time.UTC)
@@ -413,22 +408,7 @@ func TestSummarizeDocumentStatusBindsTheFiltersWithoutTheStatus(t *testing.T) {
 
 	mock.ExpectQuery(exactly("my_inbox_document_status")).
 		WithArgs(toDriver(filterArgs(f))...).
-		WillReturnRows(sqlmock.NewRows(kolomRingkasan).AddRow(2, 5, 11, 4, 1, 7))
-
-	// Temporary Close dihitung kueri TERSENDIRI — populasinya di luar himpunan di atas.
-	//
-	// Statusnya WAJIB dikosongkan lebih dulu: penyaring yang sedang dipilih pengguna tidak
-	// boleh ikut menyempitkan tab lain, kalau tidak lencananya menyusut begitu pengguna
-	// memilih satu tab dan tidak ada jalan kembali selain memuat ulang halaman.
-	tanpaStatus := f
-	tanpaStatus.DocumentStatus = ""
-	mock.ExpectQuery(exactly("my_inbox_temporary_close_count")).
-		WithArgs(toDriver(append(filterArgs(tanpaStatus), statusArgs(tanpaStatus)...))...).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(3))
-	mock.ExpectQuery(exactly("my_inbox_deadline_count")).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(2))
-	mock.ExpectQuery(exactly("my_inbox_communication_count")).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(5))
+		WillReturnRows(sqlmock.NewRows([]string{"LENGKAP", "BELUM", "TOTAL"}).AddRow(2, 5, 7))
 
 	summary, err := repo.SummarizeDocumentStatus(context.Background(), f)
 	require.NoError(t, err)
@@ -441,23 +421,6 @@ func TestSummarizeDocumentStatusBindsTheFiltersWithoutTheStatus(t *testing.T) {
 	require.Equal(t, 2, *counts[inboxoutstanding.StatusComplete])
 	require.Equal(t, 5, *counts[inboxoutstanding.StatusIncomplete])
 	require.Equal(t, 7, *counts[inboxoutstanding.StatusAll])
-	require.Equal(t, 3, *counts[inboxoutstanding.StatusTemporaryClose])
-	require.Equal(t, 11, *counts[inboxoutstanding.StatusInternalSurveyor])
-	require.Equal(t, 4, *counts[inboxoutstanding.StatusLossAdjuster])
-	require.Equal(t, 1, *counts[inboxoutstanding.StatusTKA])
-
-	require.Equal(t, 2, *counts[inboxoutstanding.StatusDeadlineTemporaryClose])
-	require.Equal(t, 5, *counts[inboxoutstanding.StatusCommunication])
-
-	// Kesembilan tab terisi — tidak ada lagi yang dikirim tanpa angka.
-	for status, jumlah := range counts {
-		require.NotNil(t, jumlah, status)
-	}
-
-	// Total TIDAK ikut bertambah: "ALL Case" adalah inbox berjalan, dan klaim tertunda
-	// tutup berada di luarnya. Menjumlahkannya akan membuat angka tab tidak cocok dengan
-	// paginasi grid.
-	require.Equal(t, 7, summary.Total)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -465,36 +428,13 @@ func TestSummarizeDocumentStatusBindsTheFiltersWithoutTheStatus(t *testing.T) {
 func TestSummarizeDocumentStatusReadsNullSumsAsZero(t *testing.T) {
 	repo, mock := newMockRepo(t)
 	mock.ExpectQuery(exactly("my_inbox_document_status")).
-		WillReturnRows(sqlmock.NewRows(kolomRingkasan).AddRow(nil, nil, nil, nil, nil, nil))
-	mock.ExpectQuery(exactly("my_inbox_temporary_close_count")).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(nil))
-	mock.ExpectQuery(exactly("my_inbox_deadline_count")).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(2))
-	mock.ExpectQuery(exactly("my_inbox_communication_count")).
-		WillReturnRows(sqlmock.NewRows([]string{"COUNT"}).AddRow(5))
+		WillReturnRows(sqlmock.NewRows([]string{"LENGKAP", "BELUM", "TOTAL"}).AddRow(nil, nil, nil))
 
 	summary, err := repo.SummarizeDocumentStatus(context.Background(),
 		inboxoutstanding.Filter{AssignedTo: "budi"})
 	require.NoError(t, err)
 	require.Zero(t, summary.Total)
 	require.Equal(t, 0, *summary.Status[0].Count)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-// Kegagalan pada kueri KEDUA harus menyebut kueri kedua, bukan "meringkas status dokumen".
-// Pesan yang keliru menunjuk tempat salah saat ditelusuri di produksi.
-func TestSummarizeDocumentStatusWrapsAFailureOfTheTemporaryCloseCount(t *testing.T) {
-	repo, mock := newMockRepo(t)
-	cause := errors.New("ORA-00942")
-
-	mock.ExpectQuery(exactly("my_inbox_document_status")).
-		WillReturnRows(sqlmock.NewRows(kolomRingkasan).AddRow(1, 1, 0, 0, 0, 2))
-	mock.ExpectQuery(exactly("my_inbox_temporary_close_count")).WillReturnError(cause)
-
-	_, err := repo.SummarizeDocumentStatus(context.Background(),
-		inboxoutstanding.Filter{AssignedTo: "budi"})
-	require.ErrorIs(t, err, cause)
-	require.ErrorContains(t, err, "tertunda tutup")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

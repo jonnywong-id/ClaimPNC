@@ -223,7 +223,6 @@ import (
 	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclpega "claim-pnc/internal/inboxrclpucl/adapter/pega"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
-	inboxrclpuclnotif "claim-pnc/internal/inboxrclpucl/notification"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl/suratpdf"
@@ -447,13 +446,6 @@ func run() error {
 
 	logger := logging.New(slog.LevelInfo)
 	logger.Info("konfigurasi terbaca", slog.Any("konfigurasi", cfg.Summary()))
-	if cfg.SMTP.SkipTLSVerify {
-		logger.Warn("pemeriksaan sertifikat SMTP DIMATIKAN",
-			slog.String("sebab", "SMTP_TLS_LEWATI_VERIFIKASI=true"),
-			slog.String("berlaku_untuk", "PLA/DLA, TKA, Salvage, Master Rekening, Master XOL"),
-			slog.String("akibat", "sambungan tetap terenkripsi, tetapi identitas server surel tidak diperiksa"),
-			slog.String("perbaikan", "pasang sertifikat CA perusahaan di mesin aplikasi, lalu kosongkan sakelar ini"))
-	}
 
 	assembly, err := build(cfg, logger)
 	if err != nil {
@@ -2141,12 +2133,6 @@ func run() error {
 			// Setiap modul memasang rutenya sendiri di sini. Modul berikutnya cukup
 			// menambah satu baris; server tidak perlu tahu isinya.
 			authhttp.Mount(api, handlerAuth, assembly.auth, logger)
-
-			// Link email persetujuan Komite survey: dibuka anggota Komite tanpa sesi
-			// (Service REST KomiteAcceptSurvey / ShowKomiteSurveyConfirmation).
-			if registrationHandler != nil {
-				registrasihttp.MountPublic(api, registrationHandler)
-			}
 
 			// List portal berada di balik sesi: pemilihnya ada di dalam aplikasi,
 			// bukan di layar masuk (ADR-0030, berpindah portal tanpa login ulang).
@@ -4265,15 +4251,12 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inboxrclpuclusecase.Options{
 			RepoSelector: store.rclPUCLSelector,
 
-			// Pemanggil layanan Pega — TIDAK LAGI dipakai tindakan mana pun.
+			// Pemanggil layanan Pega untuk tindakan "Kirim Ke Analyst".
 			//
-			// Kelima tindakan layar RCL/PUCL dikerjakan sendiri sejak 2026-10-06, seluruhnya
-			// menulis ke tabel milik aplikasi ini. Seam-nya tetap dipasang, dan alasannya ada
-			// di `inboxrclpucl.ClaimActions`: `ClaimActionKind` masih dapat bertambah, dan
-			// tindakan baru yang belum punya penanganan harus JATUH ke penolakan yang
-			// terbaca — bukan ke "berhasil tanpa melakukan apa-apa".
-			//
-			// Alamat KOSONG tetap keadaan yang sah, dan kini bahkan yang biasa.
+			// Alamatnya dari `PEGA_LAYANAN_KLAIM`, dan KOSONG adalah keadaan yang sah hari
+			// ini: layanannya belum dibangun (`permintaan-artefak-pega.md` §12). Alamat
+			// kosong membuat tindakannya dijawab 503 dengan keterangan yang menyebut siapa
+			// yang harus bertindak — bukan membuat aplikasi gagal menyala.
 			Actions: inboxrclpuclpega.NewClient(inboxrclpuclpega.Config{
 				BaseURL:  strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM")),
 				Path:     strings.TrimSpace(os.Getenv("PEGA_LAYANAN_KLAIM_PATH")),
@@ -4287,16 +4270,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			// Owner 2026-10-02. Tanpa pemasangan ini tombolnya hanya memindahkan klaim
 			// antartab, dan tidak satu berkas pun terbit.
 			Letters: suratpdf.Renderer{},
-
-			// Pengirim Reminder PUCL — tombol pada antrean Kelengkapan Dokumen.
-			//
-			// Akunnya "Admin-PNC", mengikuti `Activity/ReminderPUCLPA-Act.xml:3629`. Host,
-			// pengguna, dan kata sandi di activity itu TIDAK dibawa (`R-17`, `D-40`);
-			// seluruhnya dibaca dari `POOLDATA.M_EMAIL_SERVER_PNC`.
-			//
-			// Nil bila SMTP belum terkonfigurasi, dan itu keadaan yang sah: antreannya tetap
-			// terbuka, hanya tombol kirimnya dijawab galat yang terbaca.
-			Reminders: buildRCLPUCLReminder(cfg, store, logger),
 
 			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
 			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan
@@ -4751,8 +4724,6 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			store.close()
 			return assembly{}, err
 		}
-		// Email dan link persetujuan Komite survey (setSendEmailKomite_act, KomiteAcceptSurvey).
-		registrationService.WithSurveyMail(newSurveyCommitteeMailer(cfg, store), cfg.PublicURL)
 	}
 
 	return assembly{
@@ -4985,14 +4956,13 @@ func buildSalvageNotifier(cfg config.Config, logger *slog.Logger) inboxsalvage.N
 	}
 
 	return inboxsalvagenotif.NewSender(inboxsalvagenotif.Config{
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		To:            cfg.SMTP.SalvageRecipients,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.SalvageRecipients,
+		Timeout:  cfg.SMTP.Timeout,
 	})
 }
 
@@ -5033,15 +5003,14 @@ func buildReceiveTKANotifier(
 	logger *slog.Logger,
 ) inboxreceivetka.Notifier {
 	smtpConfig := inboxreceivetkanotif.Config{
-		Account:       emailAccountSource(store),
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		To:            cfg.SMTP.TKARecipients,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
+		Account:  emailAccountSource(store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.TKARecipients,
+		Timeout:  cfg.SMTP.Timeout,
 	}
 	if !smtpConfig.Complete() {
 		logger.Warn("pemberitahuan kelengkapan dokumen TKA tidak aktif",
@@ -5051,42 +5020,6 @@ func buildReceiveTKANotifier(
 		return nil
 	}
 	return inboxreceivetkanotif.NewSender(smtpConfig)
-}
-
-// buildRCLPUCLReminder menyusun pengirim Reminder PUCL, atau nil bila SMTP belum siap.
-//
-// Akunnya "Admin-PNC", mengikuti `Activity/ReminderPUCLPA-Act.xml:3629`.
-//
-// # Nil adalah keadaan yang SAH, bukan kegagalan rakitan
-//
-// Antrean RCL/PUCL harus tetap terbuka di lingkungan yang belum punya SMTP. Yang tidak
-// boleh terjadi adalah tombol kirim yang tampak bekerja lalu diam: usecase menjawabnya
-// ErrReminderUnavailable, dan layar menggambarnya sebagai galat yang terbaca.
-//
-// Penerimanya TIDAK ikut diperiksa di sini — berbeda dari modul lain. Penerima Reminder
-// PUCL bukan konfigurasi melainkan alamat tertanggung yang dibaca per klaim.
-func buildRCLPUCLReminder(
-	cfg config.Config,
-	store storage,
-	logger *slog.Logger,
-) inboxrclpucl.ReminderNotifier {
-	smtpConfig := inboxrclpuclnotif.Config{
-		Account:  adminEmailAccountSource(cfg, store),
-		Host:     cfg.SMTP.Host,
-		Port:     cfg.SMTP.Port,
-		User:     cfg.SMTP.User,
-		Password: cfg.SMTP.Password,
-		From:     cfg.SMTP.From,
-		Timeout:  cfg.SMTP.Timeout,
-	}
-	if smtpConfig.Complete() {
-		return inboxrclpuclnotif.NewSender(smtpConfig)
-	}
-
-	logger.Warn("Reminder PUCL tidak dapat dikirim: SMTP belum dikonfigurasi",
-		slog.String("modul", "inboxrclpucl"),
-		slog.String("perbaikan", "isi akun Admin-PNC di POOLDATA.M_EMAIL_SERVER_PNC atau SMTP_*"))
-	return nil
 }
 
 // emailAccountSource adalah sumber akun surel POOLDATA.M_EMAIL_SERVER_PNC untuk seluruh
@@ -5132,15 +5065,14 @@ func buildMasterRekening(cfg config.Config, store storage, logger *slog.Logger) 
 	)
 
 	alertConfig := masterrekeningnotif.Config{
-		Account:       adminEmailAccountSource(cfg, store),
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		To:            cfg.SMTP.AlertRecipients,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
+		Account:  adminEmailAccountSource(cfg, store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.AlertRecipients,
+		Timeout:  cfg.SMTP.Timeout,
 	}
 	if alertConfig.Complete() {
 		notifier = masterrekeningnotif.NewSender(alertConfig)
@@ -7660,15 +7592,14 @@ func claimStatusSelectorMemory(primaryAlias string) masterstatus.RepoSelector {
 // belum dibangun.
 func buildXOLNotifier(cfg config.Config, store storage, logger *slog.Logger) masterxol.Notifier {
 	smtpConfig := masterxolnotif.Config{
-		Account:       emailAccountSource(store),
-		Host:          cfg.SMTP.Host,
-		Port:          cfg.SMTP.Port,
-		User:          cfg.SMTP.User,
-		Password:      cfg.SMTP.Password,
-		From:          cfg.SMTP.From,
-		To:            cfg.SMTP.XOLCommitteeRecipients,
-		Timeout:       cfg.SMTP.Timeout,
-		SkipTLSVerify: cfg.SMTP.SkipTLSVerify,
+		Account:  emailAccountSource(store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		To:       cfg.SMTP.XOLCommitteeRecipients,
+		Timeout:  cfg.SMTP.Timeout,
 	}
 	if smtpConfig.Complete() {
 		return masterxolnotif.NewSender(smtpConfig)

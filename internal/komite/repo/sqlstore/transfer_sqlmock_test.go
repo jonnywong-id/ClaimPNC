@@ -90,8 +90,8 @@ func factorRows() *sqlmock.Rows {
 }
 
 func attachmentRows() *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"ID", "NAME", "NOTE", "CAT", "BY", "AT", "IMAGEID"}).
-		AddRow(" A1 ", " foto.png ", " n ", " Foto ", " budi ", at, " IMG-1 ")
+	return sqlmock.NewRows([]string{"ID", "NAME", "NOTE", "CAT", "BY", "AT"}).
+		AddRow(" A1 ", " foto.png ", " n ", " Foto ", " budi ", at)
 }
 
 func policyRows() *sqlmock.Rows {
@@ -175,7 +175,6 @@ func TestFindTransferReadsEveryPartOfALegacyCase(t *testing.T) {
 	}}, detail.Members)
 
 	require.True(t, detail.HasClaim)
-	require.Equal(t, legacyKey, detail.ClaimKey, "kunci klaim apa adanya, untuk tautan lampiran")
 	require.Equal(t, "POL-1", detail.Claim.PolicyNumber)
 	require.Equal(t, "Leader", detail.Claim.CoinsRole)
 	require.Len(t, detail.Coverages, 1)
@@ -186,7 +185,6 @@ func TestFindTransferReadsEveryPartOfALegacyCase(t *testing.T) {
 	require.Equal(t, []string{"Banjir"}, detail.DominantFactors)
 	require.Equal(t, []komite.Attachment{{
 		ID: "A1", Name: "foto.png", Note: "n", Category: "Foto", InputBy: "budi", InputAt: at,
-		ImageID: "IMG-1",
 	}}, detail.Attachments)
 	require.Len(t, detail.History, 1)
 
@@ -227,7 +225,7 @@ func TestFindTransferOfANewCaseUsesItsOwnHeader(t *testing.T) {
 		{"transfer_coverages", empty(coverageColumns...)},
 		{"transfer_spreading", empty("A", "B", "C", "D", "E")},
 		{"transfer_dominant_factors", empty("A")},
-		{"transfer_attachments", empty("A", "B", "C", "D", "E", "F", "G")},
+		{"transfer_attachments", empty("A", "B", "C", "D", "E", "F")},
 		{"transfer_history_new", empty(entryColumns...)},
 	})
 
