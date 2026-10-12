@@ -107,6 +107,11 @@ type TabDTO struct {
 	// isian itu TIDAK menyaring tabel di bawahnya.
 	HasDateRangeReport bool `json:"punya_laporan_rentang_tanggal"`
 
+	// HasReminder menyatakan tab ini punya tombol "Reminder PUCL".
+	//
+	// Hanya tab Kelengkapan Dokumen — lihat `inboxrclpucl.Tab.HasReminder`.
+	HasReminder bool `json:"punya_reminder"`
+
 	// Notice adalah keterangan yang berlaku pada tab ini saja, digambar di atas grid.
 	// Kosong berarti tidak ada.
 	Notice string `json:"catatan,omitempty"`
@@ -392,6 +397,7 @@ func toTabDTO(tab inboxrclpucl.Tab) TabDTO {
 		Description:        tab.Description,
 		Columns:            toColumnListDTO(tab.Columns),
 		HasDateRangeReport: tab.HasDateRangeReport,
+		HasReminder:        tab.HasReminder,
 		Notice:             tab.Notice,
 		Blocked:            tab.Blocked,
 		BlockedReason:      tab.BlockedReason,

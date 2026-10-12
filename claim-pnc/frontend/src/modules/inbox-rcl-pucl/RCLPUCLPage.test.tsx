@@ -74,6 +74,7 @@ const TAB_CETAK: Tab = {
     (column) => column.kunci !== 'tanggal_cetak_surat',
   ),
   punya_laporan_rentang_tanggal: true,
+  punya_reminder: false,
   terhalang: false,
 }
 
@@ -83,6 +84,7 @@ const TAB_LENGKAP: Tab = {
   keterangan: 'Klaim yang suratnya SUDAH dicetak tetapi belum disetujui.',
   kolom: kolom('Status RCL/PUCL'),
   punya_laporan_rentang_tanggal: false,
+  punya_reminder: true,
   terhalang: false,
 }
 
@@ -92,6 +94,7 @@ const TAB_MSIG: Tab = {
   keterangan: 'Klaim RCL/PUCL jalur MSIG.',
   kolom: kolom('Status'),
   punya_laporan_rentang_tanggal: false,
+  punya_reminder: false,
   catatan: 'Tab ini nyaris selalu kosong. Penandanya hanya terisi pada segelintir klaim.',
   terhalang: false,
 }
@@ -201,6 +204,44 @@ function stubDefaultFetch(rows: WorkItem[] = [BARIS]) {
     // Tab yang diminta menentukan bentuk jawabannya. Menjawab tab yang sama untuk setiap
     // permintaan akan membuat uji perpindahan tab lulus tanpa membuktikan apa pun — dan di
     // layar ini bahayanya lebih besar, karena ketiga tab menggambar kolom yang identik.
+    const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
+    const answered =
+      wanted === TAB_MSIG.kode
+        ? TAB_MSIG
+        : wanted === TAB_LENGKAP.kode
+          ? TAB_LENGKAP
+          : TAB_CETAK
+
+    const baris = answered.kode === TAB_MSIG.kode ? [] : rows
+
+    return jsonResponse(200, {
+      tab: answered,
+      baris,
+      paginasi: { halaman: 1, ukuran: 50, total: baris.length, total_halaman: 1 },
+      portal: 'ASM',
+    })
+  })
+}
+
+/**
+ * stubDefaultFetch yang juga menjawab `POST /reminder`.
+ *
+ * Badan permintaannya diserahkan ke pemanggil supaya uji dapat memeriksa APA yang dikirim,
+ * bukan hanya bahwa sesuatu terkirim — di layar ini yang dikirim adalah hal yang paling
+ * penting: nomor klaim, dan BUKAN alamat surel.
+ */
+function stubDefaultFetchWithReminder(
+  answer: (body: string) => unknown,
+  rows: WorkItem[] = [BARIS],
+) {
+  stubFetch((url, init) => {
+    if (url === TAB_PATH) return jsonResponse(200, METADATA)
+    if (url.startsWith(`${PATH}/reminder`)) {
+      const body = String((init as RequestInit | undefined)?.body ?? '')
+      return jsonResponse(200, answer(body))
+    }
+    if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+
     const wanted = new URL(url, 'https://uji.invalid').searchParams.get('tab')
     const answered =
       wanted === TAB_MSIG.kode
@@ -387,6 +428,214 @@ describe('bentuk layar', () => {
 
     expect(screen.queryByText(/Yang dikerjakan lewat Pega/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Reminder PUCL/)).not.toBeInTheDocument()
+  })
+})
+
+describe('Reminder PUCL', () => {
+  it('menggambar tombolnya HANYA di tab "Kelengkapan Dokumen"', async () => {
+    // Tombolnya ada di Pega — `InboxKelengkapanDocPUCLRCL_Section:1156` — dan modul ini
+    // sempat menyatakan sebaliknya. Kesimpulan lama itu benar untuk LAYAR KERJA, tempat
+    // syarat tombol bernama sama ditulis `1==2`, dan salah untuk INBOX.
+    //
+    // Yang menentukan tampil-tidaknya adalah `punya_reminder` dari server, bukan
+    // perbandingan kode tab di layar — sehingga uji ini juga menjaga aturan itu tetap di
+    // satu tempat.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    // Tab "Cetak Surat" terbuka lebih dulu: tombolnya TIDAK boleh ada di sana.
+    expect(screen.queryByRole('button', { name: 'Reminder PUCL' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+
+    expect(
+      await screen.findByRole('button', { name: 'Reminder PUCL' }),
+    ).toBeInTheDocument()
+  })
+
+  it('membuka modal berisi daftar klaim yang dapat dipilih', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+
+    const modal = await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+    expect(modal).toBeInTheDocument()
+
+    // Barisnya baris tab itu juga — penyaring kueri reminder identik dengannya.
+    const pilih = await screen.findByRole('checkbox', { name: /Pilih PNC-700001/ })
+    expect(pilih).not.toBeChecked()
+
+    await userEvent.click(pilih)
+    expect(pilih).toBeChecked()
+    expect(screen.getByText('1 klaim dipilih.')).toBeInTheDocument()
+  })
+
+  it('"Pilih semua" mengirim NOMOR KLAIM, bukan kunci baris', async () => {
+    // Jalur kedua menuju cacat yang sama. `toggle` dan `toggleAll` mengisi himpunan yang
+    // sama, tetapi lewat kode yang berbeda — memperbaiki yang satu tidak otomatis
+    // memperbaiki yang lain, dan tidak ada apa pun yang menandainya.
+    let badan = ''
+    stubDefaultFetchWithReminder((body) => {
+      badan = body
+      return {
+        hasil: [{ nomor_klaim: 'PNC-700001', status: 'terkirim' }],
+        ringkasan: { terkirim: 1, tanpa_email: 0, tidak_memenuhi_syarat: 0, gagal: 0 },
+      }
+    })
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih semua' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Reminder' }))
+
+    expect(await screen.findByText('1 pengingat terkirim.')).toBeInTheDocument()
+    expect(JSON.parse(badan)).toEqual({ nomor_klaim: ['PNC-700001'] })
+  })
+
+  it('TIDAK dapat mencentang baris yang tidak punya nomor klaim', async () => {
+    // Pengingat ditujukan ke sebuah klaim. Baris tanpa nomor tidak menunjuk klaim mana
+    // pun, dan membiarkannya dicentang hanya menghasilkan satu baris
+    // "tidak-memenuhi-syarat" yang membingungkan.
+    stubDefaultFetchWithReminder(() => ({ hasil: [], ringkasan: { terkirim: 0, tanpa_email: 0, tidak_memenuhi_syarat: 0, gagal: 0 } }), [
+      { ...BARIS, no_case: '' },
+    ])
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    expect(await screen.findByRole('checkbox', { name: 'Pilih' })).toBeDisabled()
+  })
+
+  it('"Pilih semua" mencentang seluruh baris halaman ini', async () => {
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Pilih semua' }))
+
+    expect(screen.getByRole('checkbox', { name: /Pilih PNC-700001/ })).toBeChecked()
+  })
+
+  it('TIDAK membekukan keadaan basis data menjadi kalimat di layar', async () => {
+    // Sampai 2026-10-12 tombol kirimnya MATI, ditemani kalimat "Email Tertanggung kosong
+    // pada seluruh baris, dihitung 2026-10-01".
+    //
+    // Kalimat itu benar saat ditulis dan menjadi salah begitu Work Owner mengisi kolomnya
+    // — persis kegagalan yang sama dengan "Kesembilannya" di kaki layar kerja. Keadaan
+    // basis data tidak boleh dibekukan menjadi kalimat; yang melaporkannya harus peladen,
+    // per klaim, saat pengiriman dicoba.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    expect(screen.queryByText(/Belum dapat dikirim/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/kosong pada seluruh baris/)).not.toBeInTheDocument()
+  })
+
+  it('mematikan tombol kirim hanya selama belum ada yang dicentang', async () => {
+    // Mati karena "tidak ada yang dipilih" adalah keadaan LAYAR yang benar; mati karena
+    // keadaan basis data yang ditebak di muka tidak.
+    stubDefaultFetch()
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    expect(screen.getByRole('button', { name: 'Kirim Reminder' })).toBeDisabled()
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: /Pilih PNC-700001/ }))
+
+    expect(screen.getByRole('button', { name: 'Kirim Reminder' })).toBeEnabled()
+  })
+
+  it('MENGIRIM nomor klaim yang dicentang, bukan alamat surelnya', async () => {
+    // Alamat surel sengaja TIDAK ikut: peladen membacanya ulang dari basis data. Ini
+    // tindakan yang mengirim sesuatu keluar, dan alamat yang datang dari layar dapat
+    // ditulis siapa pun yang dapat memanggil API.
+    let badan = ''
+    stubDefaultFetchWithReminder((body) => {
+      badan = body
+      return {
+        hasil: [{ nomor_klaim: 'PNC-700001', status: 'terkirim' }],
+        ringkasan: {
+          terkirim: 1,
+          tanpa_email: 0,
+          tidak_memenuhi_syarat: 0,
+          gagal: 0,
+        },
+      }
+    })
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: /Pilih PNC-700001/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Reminder' }))
+
+    expect(await screen.findByText('1 pengingat terkirim.')).toBeInTheDocument()
+
+    // Diperiksa PERSIS, bukan dengan `toContain`.
+    //
+    // Versi pertama uji ini memakai `expect(badan).toContain('PNC-700001')` dan LULUS
+    // meski yang terkirim adalah kunci baris `"PNC-700001|PNC-700001"` — kunci itu memuat
+    // nomor klaimnya, sehingga pemeriksaan "memuat" tidak dapat membedakan keduanya.
+    //
+    // Cacatnya baru terlihat di layar sebagai "klaim tidak lagi di antrean ini" — kalimat
+    // yang menuduh DATA padahal yang salah kuncinya. Pembandingan persis yang
+    // menangkapnya.
+    expect(JSON.parse(badan)).toEqual({ nomor_klaim: ['PNC-700001'] })
+  })
+
+  it('melaporkan hasil PER KLAIM, bukan satu kalimat untuk semuanya', async () => {
+    // Pengiriman sebagian adalah hasil yang lazim di sini: sebagian klaim punya alamat
+    // surel, sebagian belum. Satu kalimat "berhasil" menyembunyikan klaim yang justru
+    // perlu ditindak, dan satu kalimat "gagal" membuat petugas mengirim ulang ke orang
+    // yang sudah menerimanya.
+    stubDefaultFetchWithReminder(() => ({
+      hasil: [
+        { nomor_klaim: 'PNC-700001', status: 'terkirim' },
+        { nomor_klaim: 'PNC-700002', status: 'tanpa-email' },
+      ],
+      ringkasan: {
+        terkirim: 1,
+        tanpa_email: 1,
+        tidak_memenuhi_syarat: 0,
+        gagal: 0,
+      },
+    }))
+    await renderLoaded()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Kelengkapan Dokumen/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Reminder PUCL' }))
+    await screen.findByRole('dialog', { name: 'Reminder PUCL' })
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: /Pilih PNC-700001/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Kirim Reminder' }))
+
+    expect(await screen.findByText('1 pengingat terkirim.')).toBeInTheDocument()
+
+    // Yang TIDAK terkirim disebut satu per satu, beserta SEBABNYA — bukan hanya dihitung.
+    expect(screen.getByText(/belum punya Email Tertanggung/)).toBeInTheDocument()
+    expect(screen.getByText('PNC-700002')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Email Tertanggung belum diisi pada klaim ini/),
+    ).toBeInTheDocument()
   })
 })
 

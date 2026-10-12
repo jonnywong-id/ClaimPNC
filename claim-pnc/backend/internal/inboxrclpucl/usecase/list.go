@@ -34,6 +34,7 @@ type Service struct {
 	repoSelector inboxrclpucl.RepoSelector
 	actions      inboxrclpucl.ClaimActions
 	letters      inboxrclpucl.LetterRenderer
+	reminders    inboxrclpucl.ReminderNotifier
 	clock        clock.Clock
 	logger       *slog.Logger
 }
@@ -56,6 +57,13 @@ type Options struct {
 	// berkas — perilaku modul ini sebelum templat `SuratPUCL` diterima 2026-10-02. Ia tidak
 	// menggagalkan tindakannya, karena perpindahan tab itulah yang menghambat petugas.
 	Letters inboxrclpucl.LetterRenderer
+
+	// Reminders mengirim pengingat kelengkapan dokumen ke tertanggung. Boleh nil.
+	//
+	// Nil BUKAN kekeliruan tatanan: peladen SMTP belum tentu terkonfigurasi di setiap
+	// lingkungan, dan antrean tetap harus dapat dibuka tanpanya. Permintaan kirim lalu
+	// dijawab galat yang terbaca, bukan panik.
+	Reminders inboxrclpucl.ReminderNotifier
 
 	// Clock boleh nil; bila nil dipakai jam sistem.
 	//
@@ -80,6 +88,7 @@ func NewService(o Options) (*Service, error) {
 		repoSelector: o.RepoSelector,
 		actions:      o.Actions,
 		letters:      o.Letters,
+		reminders:    o.Reminders,
 		clock:        jam,
 		logger:       o.Logger,
 	}, nil

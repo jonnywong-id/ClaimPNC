@@ -125,6 +125,17 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Penadah aksi tulis yang TIDAK DIKENALI. Rutenya ADA supaya tindakan semacam itu
 		// dijawab dengan alasan, bukan dengan "halaman tidak ditemukan" — yang terbaca sebagai
 		// kerusakan. Tidak satu pun tombol layar ini menujunya; lihat Handler.RejectWrite.
+		// Reminder PUCL — tombol pada antrean Kelengkapan Dokumen
+		// (`Section/InboxKelengkapanDocPUCLRCL_Section-Section.xml:1156`).
+		//
+		// POST ke alamat DAFTAR, bukan ke alamat satu klaim: satu permintaan menyangkut
+		// banyak klaim sekaligus, persis seperti modalnya di Pega yang mencentang beberapa
+		// baris lalu menekan satu tombol.
+		//
+		// Ia WAJIB berada sebelum penadah di bawah. Chi memilih rute yang paling cocok,
+		// tetapi menaruh rute nyata sesudah penadahnya membuat urutan itu menjadi hal yang
+		// harus diingat — dan yang harus diingat akan terlupa.
+		perPortal.Post("/inbox-rcl-pucl/reminder", h.SendReminder)
 		perPortal.Post("/inbox-rcl-pucl/tindakan", h.RejectWrite)
 	})
 }

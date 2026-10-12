@@ -489,6 +489,53 @@ describe('layar kerja SendtoRCLPUCL', () => {
     expect(diambil).toMatch(/\/dokumen\/DOC-SURAT$/)
   })
 
+  it('"Tolak Klaim" TIDAK mengunduh suratnya', async () => {
+    // Keluhan Work Owner 2026-10-12: "pada saat Klik Tolak Klaim dia ke download dokumen
+    // juga/Suratnya ke cetak".
+    //
+    // Laporannya benar, dan rule-nya membenarkannya. Rangkaian tombol ini di Pega —
+    // `Section/SectionPenerimaanDokumenPUCL-Section.xml:7068` — hanya `InsertMitraPA`,
+    // `PUCLPost(Status=0)`, lalu dua refresh. Suratnya memang terbit dan MELAMPIR, tetapi
+    // langkah yang membukanya (`AttachAsPDFC` -> "call View") berprekondisi
+    // `Param.IsViewPolis=="1"`, sementara `PUCLPost` memanggilnya dengan nilai KOSONG.
+    //
+    // Sebabnya di sini: `bukaBerkas` berbawaan `true`, dan tombol ini satu-satunya yang
+    // lupa menyatakan `false` — kedua tombol Kirim sudah menyatakannya sejak awal.
+    //
+    // Yang dijaga: peladen tetap boleh MENGEMBALIKAN baris suratnya (ia memang melampir),
+    // dan layar tetap tidak boleh mengambil isinya.
+    let diambil: string | null = null
+    stubFetch((url) => {
+      if (url.includes('/tindakan/tolak')) {
+        return jsonResponse(200, {
+          pesan: 'Klaim ditolak.',
+          dokumen: { id: 'DOC-RCL', nama: 'RCL.pdf' },
+        })
+      }
+      if (url.includes('/dokumen/')) {
+        diambil = url
+        return new Response(new Blob(['%PDF-1.4 surat']), {
+          status: 200,
+          headers: { 'Content-Type': 'application/pdf' },
+        })
+      }
+      if (url.includes('/dokumen')) return jsonResponse(200, DOKUMEN)
+      if (url.startsWith(CLAIM_PATH)) return jsonResponse(200, DETAIL)
+      return jsonResponse(404, { kode: 'tidak_ditemukan', pesan: 'Tidak ada.' })
+    })
+    renderWorkScreen()
+
+    await userEvent.click(
+      await screen.findByRole('tab', { name: 'Penerimaan Dokumen' }),
+    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Tolak Klaim' }))
+
+    // Ditunggu sampai tindakannya BENAR-BENAR selesai, bukan sekadar belum sempat
+    // mengunduh. Tanpa penantian ini, uji akan lulus hanya karena ia lebih cepat.
+    await screen.findByText('Klaim ditolak.')
+    expect(diambil).toBeNull()
+  })
+
   it('memilih tombol kirim menurut lini bisnis, bukan menggambar keduanya', async () => {
     // `RCL_PUCL = 2 && IsPA` versus `RCL_PUCL = 2 && IsTravel`. Analyst dan PIC Teknik dua
     // peran berbeda, sehingga menggambar keduanya menawarkan tindakan yang meneruskan klaim

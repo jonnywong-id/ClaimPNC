@@ -515,3 +515,62 @@ export type KategoriDokumen = {
   // Yang dibaca petugas. Untuk sekarang selalu sama dengan `nilai`.
   nama: string
 }
+
+/**
+ * Hasil satu klaim pada pengiriman Reminder PUCL.
+ *
+ * `status` adalah KONTRAK, bukan kalimat — layar yang menyusun kalimatnya. Nilainya
+ * ditetapkan peladen: `terkirim`, `tanpa-email`, `tidak-memenuhi-syarat`, `gagal`.
+ */
+export type HasilReminder = {
+  nomor_klaim: string
+  status: string
+
+  /** Hanya terisi pada status `gagal`. */
+  alasan?: string
+}
+
+/** Jawaban tombol "Kirim Reminder". */
+export type JawabanReminder = {
+  hasil: HasilReminder[]
+
+  /**
+   * Cacah per status, dihitung PELADEN.
+   *
+   * Layar tidak menghitungnya sendiri: dua tempat yang menghitung hal yang sama dapat
+   * berselisih, dan selisihnya muncul sebagai "3 terkirim" di atas daftar yang memuat
+   * empat baris terkirim.
+   */
+  ringkasan: {
+    terkirim: number
+    tanpa_email: number
+    tidak_memenuhi_syarat: number
+    gagal: number
+  }
+}
+
+/**
+ * Mengirim Reminder PUCL untuk klaim yang dicentang.
+ *
+ * Yang dikirim hanya NOMOR KLAIM. Alamat surel tidak ikut: peladen membacanya ulang dari
+ * basis data, karena ini tindakan yang mengirim sesuatu keluar dan alamat yang datang dari
+ * layar dapat ditulis siapa pun yang dapat memanggil API.
+ *
+ * Daftar antrean TIDAK di-invalidasi sesudahnya: mengirim pengingat tidak mengubah satu
+ * baris pun di antrean — klaimnya tetap menunggu dokumen. Menyegarkannya hanya akan
+ * membuat daftar berkedip tanpa alasan.
+ */
+export function useKirimReminder() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: (nomorKlaim: string[]) =>
+      callAPI<JawabanReminder>(`${PATH}/reminder`, {
+        token,
+        portal,
+        metode: 'POST',
+        body: { nomor_klaim: nomorKlaim },
+      }),
+  })
+}

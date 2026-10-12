@@ -10,7 +10,13 @@ import { FormField } from '@/components/FormField'
 import { formatPegaDateTime, formatPegaElapsed } from '@/components/format'
 
 import { RCLPUCLTabs } from './RCLPUCLTabs'
-import { useExportRCLPUCL, useRCLPUCLList, useRCLPUCLMetadata } from './api'
+import {
+  useExportRCLPUCL,
+  useKirimReminder,
+  useRCLPUCLList,
+  useRCLPUCLMetadata,
+} from './api'
+import type { HasilReminder, JawabanReminder } from './api'
 import type {
   DateRange,
   ReportColumn,
@@ -185,8 +191,19 @@ export function RCLPUCLPage() {
                 // yang sedang terbuka, sehingga pengguna dapat diberi tahu "tidak ada"
                 // untuk baris yang sebenarnya ada di halaman berikutnya.
                 //
-                // Layar lama pun tidak punya kotak cari: ketiga Report Definition-nya
-                // tidak menyaring menurut kata kunci sama sekali.
+                // KOREKSI 2026-10-12. Di sini sebelumnya tertulis "layar lama pun tidak
+                // punya kotak cari: ketiga Report Definition-nya tidak menyaring menurut
+                // kata kunci sama sekali". Pernyataan itu benar tentang Report Definition
+                // dan MENYIMPULKAN HAL YANG SALAH tentang layarnya.
+                //
+                // Penyaringan di grid Pega bukan pekerjaan Report Definition melainkan
+                // setelan GRID-nya, dan ketiga section inbox menyalakannya:
+                // `pyGridFiltering = true` pada ketiganya. Itulah corong penyaring di
+                // setiap judul kolom yang terlihat di layar Pega yang berjalan.
+                //
+                // Jadi yang hilang di sini BUKAN kotak cari — layar lama memang tidak
+                // punya — melainkan penyaring per kolom. Alasan pertama di atas tetap
+                // berlaku dan tidak menggantikannya. Lihat PlannedDifferences.
                 hideSearch
                 isLoading={list.isPending}
                 error={
@@ -320,6 +337,15 @@ function ActionBar({
           enabled={exportable}
           columns={reportColumns}
         />
+
+        {/*
+          Hanya tab "Kelengkapan Dokumen" yang punya tombol ini, dan yang menentukannya
+          SERVER — bukan perbandingan kode tab di sini (`D-15`).
+
+          Letaknya di sebelah "Export to Excel", persis seperti di Pega: keduanya
+          berdampingan di bilah tindakan tepat di atas grid.
+        */}
+        {tab.punya_reminder && <ReminderButton tab={tab} />}
       </div>
 
       {berentang && (
@@ -437,6 +463,358 @@ function ExportButton({
     </div>
   )
 }
+/**
+ * Tombol "Reminder PUCL" beserta modalnya.
+ *
+ * # Ia ADA di Pega, dan modul ini sempat menyatakan sebaliknya
+ *
+ * Catatan lama menyatakan "Reminder PUCL tidak pernah digambar, bahkan di Pega", dengan
+ * dasar syarat `1==2` pada tombol bernama sama. Itu benar untuk **layar kerja**
+ * (`SendtoRCLPUCL`) dan SALAH untuk **inbox**: keduanya tombol yang berbeda. Yang di inbox
+ * tergambar nyata di Pega yang berjalan — dilaporkan Work Owner 2026-10-12 beserta
+ * tangkapan layarnya, dan terverifikasi ulang di
+ * `Section/InboxKelengkapanDocPUCLRCL_Section-Section.xml:1156`.
+ *
+ * # Isinya baris tab ini juga, bukan kumpulan lain
+ *
+ * Penyaring `RDB List/ReminderPUCL-SQL.xml` IDENTIK dengan penyaring tab "Kelengkapan
+ * Dokumen" — kelima syaratnya sama persis. Karena itu modalnya memakai daftar yang sama,
+ * bukan permintaan baru yang kebetulan mirip: dua kueri yang seharusnya sama tetapi ditulis
+ * terpisah adalah dua kueri yang dapat bergeser diam-diam.
+ *
+ * # Kenapa tombol kirimnya MATI, dan kenapa tetap digambar
+ *
+ * Di Pega, modal ini mengirim email ke `.ClaimData.EmailLOD` lewat `ASMSendsEmailAttachments`
+ * memakai akun `"Admin-PNC"`. Kolom sumbernya `POOLDATA.T_CLAIM_PNC.EMAIL_LOD` — dan ia
+ * **kosong pada seluruh 2.206 baris**, dihitung langsung 2026-10-01.
+ *
+ * Jadi tombol yang dapat ditekan di sini akan mengirim ke alamat kosong: gagal diam-diam,
+ * atau lebih buruk, terkirim ke alamat yang salah. Ia digambar supaya tindakannya terlihat
+ * ada, dan alasannya ditulis di sebelahnya — pola yang sama sudah dipakai layar kerja modul
+ * ini untuk tindakan yang belum dapat dijalankan.
+ */
+function ReminderButton({ tab }: { tab: Tab }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button tone="kedua" onClick={() => setOpen(true)}>
+        Reminder PUCL
+      </Button>
+
+      {open && <ReminderDialog tab={tab} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/**
+ * Modal "Reminder PUCL" — daftar klaim yang dapat dipilih.
+ *
+ * Bentuknya mengikuti Pega: daftar berkotak centang per baris ditambah "Pilih semua" di
+ * atasnya, lalu tombol kirim.
+ *
+ * Paginasinya dipertahankan, dan itu disengaja: daftar ini dapat memuat ribuan baris, dan
+ * memuat seluruhnya sekaligus adalah persis beban yang `D-10` memperingatkannya. Pilihan
+ * disimpan menurut NOMOR CASE, bukan nomor baris, supaya ia selamat melewati pergantian
+ * halaman.
+ */
+function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
+  const [page, setPage] = useState(1)
+  const [chosen, setChosen] = useState<Set<string>>(new Set())
+
+  const kirim = useKirimReminder()
+
+  const list = useRCLPUCLList(tab.kode, page, true)
+  const rows = list.data?.baris ?? []
+
+  // Pilihan disimpan menurut NOMOR KLAIM, bukan kunci baris.
+  //
+  // Kunci baris adalah `referensi|no_case` — bentuk yang hanya berarti bagi DataTable.
+  // Menyimpannya di sini dan mengirimkannya sebagai nomor klaim adalah cacat yang
+  // benar-benar terjadi 2026-10-12: peladen menerima "PNC-2067|PNC-2067", tidak
+  // menemukannya, lalu melaporkan "klaim tidak lagi di antrean ini" — kalimat yang
+  // menuduh DATA padahal yang salah adalah kuncinya.
+  //
+  // Yang disimpan kini SAMA PERSIS dengan yang dikirim. Itu bukan penghematan satu
+  // pemetaan melainkan penghapusan seluruh kelas cacat ini: tidak ada lagi dua bentuk
+  // identitas yang dapat tertukar.
+  //
+  // Baris tanpa nomor klaim TIDAK dapat dipilih — lihat reminderColumns. Pengingat
+  // ditujukan ke sebuah klaim, dan baris tanpa nomor tidak menunjuk klaim mana pun.
+  const onPage = rows.map((row) => row.no_case).filter((number) => number !== '')
+  const allOnPage = onPage.length > 0 && onPage.every((number) => chosen.has(number))
+
+  function toggle(key: string) {
+    setChosen((lama) => {
+      const next = new Set(lama)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  /** "Pilih semua" berlaku untuk HALAMAN INI — itulah yang terlihat pengguna. */
+  function toggleAll() {
+    setChosen((lama) => {
+      const next = new Set(lama)
+      for (const key of onPage) {
+        if (allOnPage) next.delete(key)
+        else next.add(key)
+      }
+      return next
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Reminder PUCL"
+    >
+      <div className="w-full max-w-5xl rounded-kartu border border-slate-200 bg-white shadow-lembut">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Reminder PUCL</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Pilih klaim yang akan dikirimi pengingat kelengkapan dokumen. Daftarnya sama
+              dengan antrean &ldquo;Kelengkapan Dokumen&rdquo; — penyaringnya memang sama
+              persis.
+            </p>
+          </div>
+          <Button tone="halus" onClick={onClose}>
+            Tutup
+          </Button>
+        </div>
+
+        <div className="px-5 py-4">
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-800">
+            <input
+              type="checkbox"
+              checked={allOnPage}
+              onChange={toggleAll}
+              disabled={rows.length === 0}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Pilih semua
+          </label>
+
+          <div className="mt-3">
+            <DataTable<WorkItem>
+              columns={reminderColumns(rows, chosen, toggle)}
+              rows={rows}
+              rowKey={rowKeyOf}
+              label="Klaim untuk Reminder PUCL"
+              gridLines
+              hideSearch
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <ErrorMessage
+                    title="Daftar tidak dapat dimuat"
+                    description={messageOf(list.error)}
+                    tone="gangguan"
+                  />
+                ) : undefined
+              }
+              emptyMessage="Tidak ada klaim yang menunggu kelengkapan dokumen."
+              pagination={{
+                page: list.data?.paginasi.halaman ?? 1,
+                size: list.data?.paginasi.ukuran ?? 50,
+                total: list.data?.paginasi.total ?? 0,
+                totalPage: list.data?.paginasi.total_halaman ?? 1,
+                onPageChange: setPage,
+                isLoading: list.isFetching,
+              }}
+            />
+          </div>
+        </div>
+
+        {kirim.data && <ReminderResult hasil={kirim.data} />}
+
+        {kirim.isError && (
+          <div className="px-5 pb-2">
+            <ErrorMessage
+              title="Pengingat tidak dapat dikirim"
+              description={messageOf(kirim.error)}
+              tone="gangguan"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+          <p className="text-xs text-slate-600">
+            {chosen.size === 0
+              ? 'Belum ada klaim yang dipilih.'
+              : `${chosen.size} klaim dipilih.`}
+          </p>
+
+          {/*
+            Tombolnya HIDUP, dan keadaannya ditentukan DATA — bukan kalimat yang ditulis
+            tetap di layar.
+
+            Sampai 2026-10-12 di sini berdiri tombol mati beserta kalimat "Email
+            Tertanggung kosong pada seluruh baris, dihitung 2026-10-01". Kalimat itu benar
+            saat ditulis dan menjadi salah begitu kolomnya diisi — persis kegagalan yang
+            sama dengan "Kesembilannya" di kaki layar kerja. Keadaan basis data TIDAK boleh
+            dibekukan menjadi kalimat.
+
+            Penggantinya: tombolnya hidup selama ada yang dicentang, dan PELADEN yang
+            melaporkan kenyataan per klaim — terkirim, belum punya alamat, tidak memenuhi
+            syarat, atau gagal.
+          */}
+          <Button
+            tone="utama"
+            disabled={chosen.size === 0 || kirim.isPending}
+            onClick={() => kirim.mutate([...chosen])}
+          >
+            {kirim.isPending ? 'Mengirim…' : 'Kirim Reminder'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Hasil pengiriman Reminder PUCL, dilaporkan PER KLAIM.
+ *
+ * # Kenapa per klaim, bukan satu kalimat
+ *
+ * Karena pengiriman sebagian adalah hasil yang LAZIM di sini: sebagian klaim punya alamat
+ * surel tertanggung, sebagian belum. Satu kalimat "berhasil" menyembunyikan klaim yang
+ * justru perlu ditindak, dan satu kalimat "gagal" menyembunyikan yang sudah terkirim —
+ * lalu petugas mengirim ulang ke orang yang sudah menerimanya.
+ *
+ * Cacahnya datang dari PELADEN, tidak dihitung ulang di sini. Dua tempat yang menghitung
+ * hal yang sama dapat berselisih, dan selisihnya muncul sebagai "3 terkirim" di atas
+ * daftar yang memuat empat baris terkirim.
+ */
+function ReminderResult({ hasil }: { hasil: JawabanReminder }) {
+  const { ringkasan } = hasil
+
+  const gagal = hasil.hasil.filter((baris) => baris.status !== 'terkirim')
+
+  return (
+    <div className="border-t border-slate-200 px-5 py-4">
+      <p className="text-sm font-medium text-slate-900">
+        {ringkasan.terkirim > 0
+          ? `${ringkasan.terkirim} pengingat terkirim.`
+          : 'Tidak ada pengingat yang terkirim.'}
+      </p>
+
+      {gagal.length > 0 && (
+        <>
+          <p className="mt-1 text-xs text-slate-600">
+            {/*
+              Ketiga sebabnya disebut TERPISAH karena tindakannya berbeda: yang tanpa
+              alamat menunggu Email Tertanggung diisi, yang tidak memenuhi syarat memang
+              bukan urusan antrean ini, dan yang gagal dapat dicoba lagi.
+            */}
+            Sisanya tidak terkirim
+            {ringkasan.tanpa_email > 0 &&
+              ` · ${ringkasan.tanpa_email} belum punya Email Tertanggung`}
+            {ringkasan.tidak_memenuhi_syarat > 0 &&
+              ` · ${ringkasan.tidak_memenuhi_syarat} tidak lagi di antrean ini`}
+            {ringkasan.gagal > 0 && ` · ${ringkasan.gagal} ditolak peladen surel`}.
+          </p>
+
+          <ul className="mt-2 space-y-1">
+            {gagal.map((baris) => (
+              <li key={baris.nomor_klaim} className="text-xs text-slate-700">
+                <span className="font-mono">{baris.nomor_klaim}</span>
+                {' — '}
+                {alasanReminder(baris)}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * alasanReminder menyusun kalimat satu baris hasil.
+ *
+ * Kalimatnya disusun di LAYAR dari kode status, bukan dikirim peladen sebagai kalimat jadi
+ * — kecuali `gagal`, yang alasannya memang hanya diketahui peladen. Kode status adalah
+ * kontrak yang stabil; kalimat yang dikirim peladen akan membuat perubahan susunan kata
+ * menuntut penempelan ulang binary.
+ */
+function alasanReminder(baris: HasilReminder): string {
+  switch (baris.status) {
+    case 'tanpa-email':
+      return 'Email Tertanggung belum diisi pada klaim ini.'
+    case 'tidak-memenuhi-syarat':
+      return 'Klaim ini tidak lagi berada di antrean Kelengkapan Dokumen.'
+    case 'gagal':
+      return baris.alasan ?? 'Pengiriman ditolak peladen surel.'
+    default:
+      return baris.status
+  }
+}
+
+/**
+ * Kolom modal Reminder — kotak centang, lalu kolom yang dipakai memilih.
+ *
+ * Sengaja LEBIH SEDIKIT daripada grid tab-nya: yang dibutuhkan untuk memutuskan "klaim ini
+ * diingatkan atau tidak" hanya identitas klaim, siapa tertanggungnya, dan sejak kapan
+ * suratnya dicetak. Menyalin kesepuluh kolom grid ke dalam modal akan membuat modalnya
+ * selebar layar dan kotak centangnya terdorong keluar pandangan.
+ */
+function reminderColumns(
+  rows: WorkItem[],
+  chosen: Set<string>,
+  toggle: (key: string) => void,
+): Column<WorkItem>[] {
+  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+
+  return [
+    {
+      key: 'pilih',
+      title: '',
+      width: '3rem',
+      noSort: true,
+      // Dicentang menurut NOMOR KLAIM — nilai yang sama persis dengan yang dikirim ke
+      // peladen. Lihat catatan pada `chosen` di ReminderDialog.
+      value: (row) => (chosen.has(row.no_case) ? 'dipilih' : ''),
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={chosen.has(row.no_case)}
+          onChange={() => toggle(row.no_case)}
+          // Baris tanpa nomor klaim tidak dapat dipilih: pengingat ditujukan ke sebuah
+          // klaim, dan baris tanpa nomor tidak menunjuk klaim mana pun. Mematikannya
+          // lebih jujur daripada membiarkannya dicentang lalu ditolak peladen.
+          disabled={row.no_case === ''}
+          aria-label={`Pilih ${row.no_case}`}
+          className="h-4 w-4 rounded border-slate-300 disabled:cursor-not-allowed"
+        />
+      ),
+    },
+    {
+      key: 'nomor',
+      title: '',
+      width: '3rem',
+      noSort: true,
+      value: (row) => String(nomor.get(rowKeyOf(row)) ?? ''),
+    },
+    { key: 'no_case', title: 'Nomor Case', value: (row) => row.no_case },
+    { key: 'no_polis', title: 'No Polis', value: (row) => row.no_polis },
+    {
+      key: 'nama_tertanggung',
+      title: 'Nama Tertanggung',
+      value: (row) => row.nama_tertanggung,
+    },
+    {
+      key: 'tanggal_cetak_surat',
+      title: 'Tanggal Cetak Surat',
+      value: (row) => formatPegaDateTime(row.tanggal_cetak_surat) || '—',
+    },
+  ]
+}
+
 /**
  * Keterangan tab yang digambar tetapi belum dapat diisi.
  *

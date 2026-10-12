@@ -767,31 +767,80 @@ SELECT TO_CHAR(d.TANGGAL, 'yyyy'),
  ORDER BY 1 DESC, 3
 
 -- name: kpi_years
--- Isi dropdown **Tahun Kuartal**.
+-- Isi dropdown **Tahun Kuartal** — penerjemahan `RDB List/GetTahunKPIAdjuster-SQL.xml`.
 --
--- # Kenapa ia ada, dan kenapa isinya rekonstruksi
+-- Rule aslinya dijalankan sebagai PRE-ACTIVITY kendali itu (`pyPreActivity`
+-- = `GetTahunKPIAdjuster`, `pyRunPreActivity` = `true`), dan hasilnya mengisi
+-- `TahunKPI.pxResults` yang nilai tiap barisnya dibaca dari `.AdjusterPIC`:
 --
--- Layar lama mengisi kendali itu dari `TahunKPI.pxResults` — sebuah page list yang TIDAK
--- PERNAH diisi di mana pun dalam export (`R-16`), sama seperti `TempKuartal.pxResults`. Yang
--- terbaca hanyalah BENTUKNYA: `pySourceName = TahunKPI.pxResults` dengan `--Pilih--` di
--- puncaknya, yaitu sebuah dropdown.
+--	select to_char(PXSAVEDATETIME, 'yyyy') as "AdjusterPIC"
+--	  from datapega.pc_asm_fw_gcnmfw_work
+--	 where pxobjclass = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+--	   and ADJUSTERSTATUS_1 in ('Final Report','Close Case','Invoice Fee')
+--	 group by to_char(PXSAVEDATETIME, 'yyyy')
 --
--- Isinya karena itu direkonstruksi dari data: tahun yang BENAR-BENAR ada pada baris milik
--- cakupan pemanggil. Itu daftar yang tidak pernah menawarkan tahun yang hasilnya pasti kosong,
--- dan tidak pernah menyembunyikan tahun yang datanya ada.
+-- # Penerjemahan, baris per baris
 --
--- Bila rule pengisi aslinya kelak tiba dan ternyata berbeda — misalnya rentang tetap, atau
--- tahun berjalan ditambah lima ke belakang — kueri inilah yang diganti, bukan layarnya.
+--	Pega                                       di sini
+--	------------------------------------------ ------------------------------------------
+--	datapega.pc_asm_fw_gcnmfw_work             POOLDATA.T_SURVEYORLIST
+--	  + pxobjclass = '…-Work-SurveyClaim'        (tidak perlu — tabelnya memang survei saja)
+--	ADJUSTERSTATUS_1                           STS_SURVEY
+--	PXSAVEDATETIME                             TGLINPUT
 --
--- Disaring CAKUPAN, sama seperti seluruh kueri KPI lain: tabel ini memuat penilaian seluruh
--- adjuster, dan daftar tahun pun tidak boleh membocorkan keberadaan data orang lain.
+-- Kedua tabel DATAPEGA dicabut dari pemakaian (Work Owner 2026-09-28), dan penggantinya untuk
+-- modul ini `POOLDATA.T_SURVEYORLIST`. Penyaring `pxobjclass` ikut hilang karena ia memilih
+-- objek kerja bertipe survei di tabel yang memuat SELURUH objek kerja; `T_SURVEYORLIST` hanya
+-- memuat survei, sehingga penyaring itu tidak punya pekerjaan.
 --
--- Bind: :scope
-SELECT DISTINCT TO_CHAR(d.TANGGAL, 'yyyy') AS YEAR_KEY
-  FROM POOLDATA.DETAIL_KPI_ADJUSTER d
- WHERE INSTR(:scope, '|' || UPPER(TRIM(d.ADJUSTER)) || '|') > 0
-   AND d.TANGGAL IS NOT NULL
- ORDER BY YEAR_KEY DESC
+-- `STS_SURVEY` adalah padanan `ADJUSTERSTATUS_1`, dan itu kini **TERBACA dari XML**, bukan
+-- sekadar terukur dari sebaran nilainya. `RDB List/CallProcedureInsertSurvey-SQL.xml` memetakan
+-- parameter procedure-nya satu per satu, dan parameter ke-14 — yang mengisi `STS_SURVEY` —
+-- disuapi properti `AdjusterStatus`:
+--
+--	POOLDATA.INSERT_SURVEYORLIST (… {TempSurvey.AdjusterStatus} …)
+--	                                    ^ TSTS -> STS_SURVEY
+--
+-- Jadi kolom ini memang **tempat `AdjusterStatus` disimpan**, bukan kolom lain yang kebetulan
+-- berisi nilai serupa. Sebaran produksi (`Final Report` 1.466 · `Invoice Fee` 1.069 ·
+-- `Close Case` 316) kini menjadi penguat, bukan satu-satunya dasar.
+--
+-- `TGLINPUT` adalah padanan `PXSAVEDATETIME`, dan itu TERBACA — bukan diduga:
+-- `Database/INSERT_SURVEYORLIST.prc` mengisinya `SYSDATE` pada kolom pertama VALUES-nya,
+-- yaitu saat barisnya ditulis sistem. `PXSAVEDATETIME` pun begitu — saat objek kerjanya
+-- disimpan.
+--
+-- Satu perbedaan yang disadari: Pega memakai waktu simpan TERAKHIR objek kerjanya, sedangkan
+-- `T_SURVEYORLIST` menyimpan SATU BARIS per perubahan status sehingga `TGLINPUT` adalah waktu
+-- status itu dicatat. Untuk daftar tahun keduanya menjawab pertanyaan yang sama.
+--
+-- Tabel itu TIDAK punya kolom lain yang dapat menjadi padanannya: ketujuh belas kolomnya
+-- terbaca di `INSERT_SURVEYORLIST.prc`, dan satu-satunya tanggal sistem di antaranya
+-- `TGLINPUT`. `SURVEYDATE` adalah tanggal janji, `TGLPERAWATAN` tanggal kejadian.
+--
+-- # Yang TIDAK ada di sini, dan itu mengikuti Pega
+--
+-- **Tanpa penyaring cakupan.** Rule aslinya tidak menyaring adjuster sama sekali: daftar
+-- tahunnya sama bagi setiap pengguna layar ini. Versi sebelumnya berkas ini menyaring cakupan
+-- dan mematok `tipe='FINAL'` pada tabel yang BERBEDA — keduanya karangan saya, dan keduanya
+-- dibuang.
+--
+-- Akibatnya yang harus disadari: daftar dapat menawarkan tahun yang bagi pemanggil tertentu
+-- berisi nol baris. Itu perilaku layar lama (`P-5`), bukan cacat.
+--
+-- # Satu tambahan yang disengaja
+--
+-- `ORDER BY 1 DESC`. Rule aslinya tidak mengurutkan sama sekali, sehingga urutannya terserah
+-- Oracle dan dapat berubah antar pemanggilan. Dropdown yang urutannya berpindah-pindah tidak
+-- dapat dihafal siapa pun; tahun terbaru di puncak adalah yang paling sering dipilih.
+--
+-- Bind: :final_report · :close_case · :invoice_fee
+SELECT TO_CHAR(s.TGLINPUT, 'yyyy') AS YEAR_KEY
+  FROM POOLDATA.T_SURVEYORLIST s
+ WHERE s.STS_SURVEY IN (:final_report, :close_case, :invoice_fee)
+   AND s.TGLINPUT IS NOT NULL
+ GROUP BY TO_CHAR(s.TGLINPUT, 'yyyy')
+ ORDER BY 1 DESC
 
 -- name: kpi_detail
 -- Laporan DATA DETAIL — satu baris per BERKAS, angkanya MENTAH.

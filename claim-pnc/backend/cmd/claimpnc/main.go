@@ -223,6 +223,7 @@ import (
 	inboxrclusecase "claim-pnc/internal/inboxrcl/usecase"
 	inboxrclpuclpega "claim-pnc/internal/inboxrclpucl/adapter/pega"
 	inboxrclpuclhttp "claim-pnc/internal/inboxrclpucl/http"
+	inboxrclpuclnotif "claim-pnc/internal/inboxrclpucl/notification"
 	inboxrclpuclmemory "claim-pnc/internal/inboxrclpucl/repo/memory"
 	inboxrclpuclsql "claim-pnc/internal/inboxrclpucl/repo/sqlstore"
 	"claim-pnc/internal/inboxrclpucl/suratpdf"
@@ -4287,6 +4288,16 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			// antartab, dan tidak satu berkas pun terbit.
 			Letters: suratpdf.Renderer{},
 
+			// Pengirim Reminder PUCL — tombol pada antrean Kelengkapan Dokumen.
+			//
+			// Akunnya "Admin-PNC", mengikuti `Activity/ReminderPUCLPA-Act.xml:3629`. Host,
+			// pengguna, dan kata sandi di activity itu TIDAK dibawa (`R-17`, `D-40`);
+			// seluruhnya dibaca dari `POOLDATA.M_EMAIL_SERVER_PNC`.
+			//
+			// Nil bila SMTP belum terkonfigurasi, dan itu keadaan yang sah: antreannya tetap
+			// terbuka, hanya tombol kirimnya dijawab galat yang terbaca.
+			Reminders: buildRCLPUCLReminder(cfg, store, logger),
+
 			// Logger WAJIB, dengan alasan yang sama seperti modul di atasnya DITAMBAH
 			// satu: antrean layar ini bersama, sehingga tidak ada penyaring kepemilikan
 			// sama sekali — dan berkas laporan hariannya dapat diunduh dengan rentang
@@ -5040,6 +5051,42 @@ func buildReceiveTKANotifier(
 		return nil
 	}
 	return inboxreceivetkanotif.NewSender(smtpConfig)
+}
+
+// buildRCLPUCLReminder menyusun pengirim Reminder PUCL, atau nil bila SMTP belum siap.
+//
+// Akunnya "Admin-PNC", mengikuti `Activity/ReminderPUCLPA-Act.xml:3629`.
+//
+// # Nil adalah keadaan yang SAH, bukan kegagalan rakitan
+//
+// Antrean RCL/PUCL harus tetap terbuka di lingkungan yang belum punya SMTP. Yang tidak
+// boleh terjadi adalah tombol kirim yang tampak bekerja lalu diam: usecase menjawabnya
+// ErrReminderUnavailable, dan layar menggambarnya sebagai galat yang terbaca.
+//
+// Penerimanya TIDAK ikut diperiksa di sini — berbeda dari modul lain. Penerima Reminder
+// PUCL bukan konfigurasi melainkan alamat tertanggung yang dibaca per klaim.
+func buildRCLPUCLReminder(
+	cfg config.Config,
+	store storage,
+	logger *slog.Logger,
+) inboxrclpucl.ReminderNotifier {
+	smtpConfig := inboxrclpuclnotif.Config{
+		Account:  adminEmailAccountSource(cfg, store),
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		User:     cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		Timeout:  cfg.SMTP.Timeout,
+	}
+	if smtpConfig.Complete() {
+		return inboxrclpuclnotif.NewSender(smtpConfig)
+	}
+
+	logger.Warn("Reminder PUCL tidak dapat dikirim: SMTP belum dikonfigurasi",
+		slog.String("modul", "inboxrclpucl"),
+		slog.String("perbaikan", "isi akun Admin-PNC di POOLDATA.M_EMAIL_SERVER_PNC atau SMTP_*"))
+	return nil
 }
 
 // emailAccountSource adalah sumber akun surel POOLDATA.M_EMAIL_SERVER_PNC untuk seluruh

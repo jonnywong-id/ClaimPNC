@@ -133,7 +133,11 @@
       "Bash(grep -oE \"<PropertiesName>[^<]+|<PropertiesValue>[^<]{0,150}|<pyRuleName>[A-Za-z_0-9]{4,40}|<pyStepsPreCondParamsWhen>[^<]+\")",
       "Bash(grep -oE \"<pyStepsPreCondParamsWhen>[^<]+|<PropertiesValue>[^<]{0,170}|GetDataPIC[A-Za-z]*|SearchPIC_sql|<pyMethodName>[^<]+\")",
       "Bash(grep -oE \"<pyBrowseSQL>.{0,500}\")",
-      "Bash(grep -rn \"callAPI<[^>]*>\\(\\\\`\\\\?[^\\)]*{ token }\" --include=\"api.ts\" .)"
+      "Bash(grep -rn \"callAPI<[^>]*>\\(\\\\`\\\\?[^\\)]*{ token }\" --include=\"api.ts\" .)",
+      "Bash(timeout 120 grep -rl \"TahunKPI\" --include=*.xml .)",
+      "Bash(timeout 120 grep -rl \"TempKuartal\" --include=*.xml .)",
+      "Bash(rm -f y.head.tmp y.body.tmp y.tail.tmp)",
+      "Bash(timeout 120 grep -rl \"GetTahunKPIAdjuster\" --include=*.xml .)"
     ]
   }
 }

@@ -49,6 +49,15 @@ func TestSeluruhRuteTerdaftar(t *testing.T) {
 		// bawah koleksi itu — bukan menjalankan tindakan bernama.
 		"POST /inbox-rcl-pucl/klaim/{referensi}/dokumen",
 		"GET /inbox-rcl-pucl/kategori-dokumen",
+
+		// Reminder PUCL — POST ke alamat DAFTAR, karena satu permintaan menyangkut banyak
+		// klaim sekaligus.
+		//
+		// Rute inilah yang pada 2026-10-12 dijawab "Alamat API tidak dikenal" di layar,
+		// dan uji ini ditambahkan bersamaan supaya penyebabnya tidak perlu dicari dua kali:
+		// bila uji ini LULUS sementara layar tetap menjawab begitu, yang berjalan bukan kode
+		// ini melainkan binary lama.
+		"POST /inbox-rcl-pucl/reminder",
 	} {
 		require.Truef(t, terpasang[wajib], "rute %q tidak terdaftar", wajib)
 	}
