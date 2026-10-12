@@ -9,7 +9,7 @@ import { useSession } from '@/app/session'
 
 import { useCauseOfLossOptions, useClaimTask, useCompleteStage, useCurrencies, useFaceSheet, usePrepareSettlement, violationsFrom } from './api'
 import { AcceptanceButtons } from './AcceptanceButtons'
-import { LODTypeSelect } from './LODTypeSelect'
+import { LODTypeSelect, lodTypeVisible } from './LODTypeSelect'
 import { CommitteeStatus } from './Committee'
 import { CommitteeTransferDialog } from './CommitteeTransferDialog'
 import { DocumentTab, InvestigationTab, ProgressTab } from './EstimateTabs'
@@ -750,7 +750,7 @@ function AdjustmentView({
       {listed.length === 0 && (
         <p className="mt-3 text-sm text-slate-600">Belum ada objek yang punya coverage.</p>
       )}
-      <table className="mt-3 w-full border-collapse text-sm">
+      <table className="mt-3 w-full border-collapse border border-slate-300 text-sm">
         <caption className="sr-only">Adjustment dan akseptasi</caption>
         <Head columns={columns} />
         <tbody>
@@ -758,9 +758,9 @@ function AdjustmentView({
             const totals = acceptedTotals(o)
             return (
               <Fragment key={i}>
-                <tr className="border-b border-slate-200 align-top">
-                  <td className="p-2">{row + 1}</td>
-                  <td className="p-2">{o.nama || o.id}</td>
+                <tr className="border-t border-slate-300 bg-white align-top">
+                  <td className="p-2 font-semibold text-slate-700">{row + 1}</td>
+                  <td className="p-2 font-medium">{o.nama || o.id}</td>
                   {pa ? (
                     <>
                       <td className="p-2">{o.pekerjaan || '—'}</td>
@@ -780,8 +780,8 @@ function AdjustmentView({
                 </tr>
                 <tr>
                   <td colSpan={columns.length} className="p-2">
-                    <div className="rounded border border-slate-300 p-2">
-                      <table className="w-full border-collapse text-sm">
+                    <div className="rounded border border-slate-300 bg-slate-50 p-2">
+                      <table className="w-full border-collapse border border-slate-300 bg-white text-sm">
                         <caption className="sr-only">Jaminan {o.nama}</caption>
                         {pa ? (
                           <thead>
@@ -810,9 +810,9 @@ function AdjustmentView({
                         <tbody>
                           {o.coverage.map((c, j) => (
                             <Fragment key={j}>
-                              <tr className="border-b border-slate-100">
-                                <td className="p-2">{j + 1}</td>
-                                <td className="p-2">{c.nama || c.id}</td>
+                              <tr className="border-t border-slate-300">
+                                <td className="p-2 font-semibold text-slate-700">{j + 1}</td>
+                                <td className="p-2 font-medium">{c.nama || c.id}</td>
                                 {pa && <td className="p-2">{c.penyebab_kerugian ? causeName(c.penyebab_kerugian) : '—'}</td>}
                                 <td className="p-2">{policyCurrency}</td>
                                 <td className="p-2 text-right">{formatAmount(c.tsi_sen)}</td>
@@ -1056,128 +1056,144 @@ function SettlementGrid({
     if (autoOpen !== null) setOpen(autoOpen)
   }, [autoOpen])
   return (
-    <table className="w-full border-collapse border border-slate-200 text-sm">
+    <table className="w-full border-collapse border border-slate-300 text-sm">
       <caption className="sr-only">Adjustment {name}</caption>
       <thead>
+        {/* Kolom ShowAdjustment_sect: Adjustment · Transfer Komite · Tipe Pembayaran/ Akseptasi Komite ·
+            (Print LOD) · Akseptasi · (Print DLA / Print Pre DLA) · Tambah. */}
         <tr className="bg-slate-100 text-left text-xs text-slate-700">
+          <th className="w-6 p-2" />
           <th className="p-2">Adjustment</th>
           <th className="p-2">Transfer Komite</th>
           <th className="p-2">Tipe Pembayaran/ Akseptasi Komite</th>
+          <th className="p-2" />
           <th className="p-2">Akseptasi</th>
-          <th className="p-2">
+          <th className="p-2" />
+          <th className="p-2 text-center">
             <button
               type="button"
               onClick={onAdd}
               disabled={editor !== null || lockedReason !== null}
               title={lockedReason ?? undefined}
-              className="rounded border border-blue-300 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+              className="rounded border border-blue-400 bg-white px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
             >
-              Tambah
+              <span aria-hidden="true">⊕ </span>Tambah
             </button>
           </th>
         </tr>
       </thead>
       <tbody>
         {lines.length === 0 && editor === null ? (
-          <Empty span={5} />
+          <Empty span={8} />
         ) : (
-          lines.map((s, n) => (
-            <Fragment key={n}>
-            <tr className="border-b border-slate-100 align-top">
-              <td className="p-2">
-                {/* `.PDFType` (ShowAdjustment_sect, sel pertama kolom Adjustment): dropdown Tipe LOD. */}
-                <LODTypeSelect
-                  claimID={claimID}
-                  taskID={taskID}
-                  object={object}
-                  coverage={coverage}
-                  adjustment={n + 1}
-                  line={s}
-                  groupPanel={groupPanel}
-                  businessType={businessType}
-                  lockedReason={lockedReason}
-                />
-                <button
-                  type="button"
-                  aria-expanded={open === n}
-                  onClick={() => setOpen(open === n ? null : n)}
-                  className="text-left hover:underline"
+          lines.map((s, n) => {
+            const selected = open === n
+            const text = selected ? 'text-white' : 'text-slate-900'
+            return (
+              <Fragment key={n}>
+                <tr
+                  aria-selected={selected}
+                  onClick={(e) => {
+                    // Klik baris memilih dan membuka detailnya, seperti grid Pega; tombol dan isian tidak.
+                    if ((e.target as HTMLElement).closest('button, select, input, a, [role="dialog"]')) return
+                    setOpen(selected ? null : n)
+                  }}
+                  className={['cursor-pointer border-t border-slate-300 align-top', selected ? 'bg-[#b3d1e4]' : 'bg-white hover:bg-slate-50'].join(' ')}
                 >
-                  <span className="block font-medium text-blue-800">
-                    {open === n ? '▾' : '▸'} Adjustment {n + 1}
-                  </span>
-                  <span className="block text-xs text-slate-600">
-                    {currencyName(s.mata_uang, currencies)} {formatAmount(s.nilai_asm_sen)}
-                  </span>
-                  <span className="block text-xs text-slate-500">Gross {formatAmount(s.nilai_gross_sen)}</span>
-                </button>
-              </td>
-              <td className="p-2">
-                {/* ShowAdjustment sel 28: `.IsKomiteTransfer=='' && .AcceptanceStatus=='' && IsNonMBU`,
-                    membuka modal ClaimComitee_OC. Sel 29 (section TransferKomite) tidak ada di export. */}
-                {!s.komite_id && s.status_akseptasi === '' && nonMBU ? (
-                  <button
-                    type="button"
-                    disabled={lockedReason !== null}
-                    title={lockedReason ?? undefined}
-                    onClick={() => onTransferCommittee(n + 1)}
-                    className="whitespace-nowrap rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
-                  >
-                    Transfer ke Komite
-                  </button>
-                ) : s.komite_id ? (
-                  <span className="text-xs text-slate-600">Sudah ditransfer</span>
-                ) : null}
-              </td>
-              <td className="p-2">
-                {/* Section TransferKomite: `.PaymentType` · " / " bila `.AcceptanceStatus != ''` ·
-                    `.AcceptanceStatus` (Property AcceptanceStatus: 1 Akseptasi, 2 Belum Akseptasi). */}
-                {s.nama_tipe_pembayaran}
-                {s.status_akseptasi !== '' && <> / {ACCEPTANCE_STATUS_LABEL[s.status_akseptasi] ?? ''}</>}
-              </td>
-              <td className="p-2 text-xs">
-                <CommitteeStatus line={s} />
-                <AcceptanceButtons
-                  claimID={claimID}
-                  taskID={taskID}
-                  object={object}
-                  coverage={coverage}
-                  adjustment={n + 1}
-                  line={s}
-                  groupPanel={groupPanel}
-                  businessType={businessType}
-                  receivers={receivers}
-                />
-              </td>
-              <td className="p-2" />
-            </tr>
-            {open === n && (
-              <tr>
-                <td colSpan={5} className="p-2">
-                  {editable?.(n, s) ?? (
-                  <SettlementDetail
+                  <td className="p-2 text-xs text-slate-700">
+                    {/* Nomor baris; tombolnya membuka detail lewat papan ketik dan pembaca layar. */}
+                    <button type="button" aria-expanded={selected} aria-label={`Adjustment ${n + 1}`} onClick={() => setOpen(selected ? null : n)}>
+                      {n + 1}
+                    </button>
+                  </td>
+                  <td className={`p-2 ${text}`}>
+                    {/* `.PDFType` (ShowAdjustment_sect, kolom Adjustment): Tipe LOD; dropdown selama dapat diubah. */}
+                    {lodTypeVisible(groupPanel, businessType) ? (
+                      <LODTypeSelect
+                        claimID={claimID}
+                        taskID={taskID}
+                        object={object}
+                        coverage={coverage}
+                        adjustment={n + 1}
+                        line={s}
+                        groupPanel={groupPanel}
+                        businessType={businessType}
+                        lockedReason={lockedReason}
+                      />
+                    ) : (
+                      <span>Adjustment {n + 1}</span>
+                    )}
+                  </td>
+                  <td className={`p-2 ${text}`}>
+                    {/* ShowAdjustment sel 28: `.IsKomiteTransfer=='' && .AcceptanceStatus=='' && IsNonMBU`,
+                        membuka modal ClaimComitee_OC. */}
+                    {!s.komite_id && s.status_akseptasi === '' && nonMBU ? (
+                      <button
+                        type="button"
+                        disabled={lockedReason !== null}
+                        title={lockedReason ?? undefined}
+                        onClick={() => onTransferCommittee(n + 1)}
+                        className="whitespace-nowrap rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
+                      >
+                        Transfer ke Komite
+                      </button>
+                    ) : s.komite_id && s.status_akseptasi !== '1' ? (
+                      <span className="block text-xs">
+                        <span className="block">Sudah ditransfer</span>
+                        <CommitteeStatus line={s} />
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className={`p-2 ${text}`}>
+                    {/* Section TransferKomite: `.PaymentType` · " / " bila `.AcceptanceStatus != ''` · `.AcceptanceStatus`. */}
+                    {s.nama_tipe_pembayaran}
+                    {s.status_akseptasi !== '' && <> &nbsp;/&nbsp; {ACCEPTANCE_STATUS_LABEL[s.status_akseptasi] ?? ''}</>}
+                  </td>
+                  <AcceptanceButtons
+                    cells
+                    claimID={claimID}
+                    taskID={taskID}
+                    object={object}
+                    coverage={coverage}
+                    adjustment={n + 1}
                     line={s}
-                    currencyName={currencyName(s.mata_uang, currencies)}
-                    estimation={estimation}
-                    spreading={spreading}
-                    travel={travel}
-                    nonMBU={nonMBU}
-                    pa={groupPanel === PANEL_PA}
-                    exGratia={exGratia}
-                    inpatientDays={inpatientDays}
-                    address={{ claimID, taskID, object, coverage, adjustment: n + 1 }}
+                    groupPanel={groupPanel}
+                    businessType={businessType}
+                    receivers={receivers}
                   />
-                  )}
-                </td>
-              </tr>
-            )}
-            </Fragment>
-          ))
+                  <td className="p-2" />
+                </tr>
+                {selected && (
+                  <tr>
+                    <td colSpan={8} className="border-t border-slate-300 bg-white p-0">
+                      <div className="border border-slate-300 px-6 py-4">
+                        {editable?.(n, s) ?? (
+                          <SettlementDetail
+                            line={s}
+                            currencyName={currencyName(s.mata_uang, currencies)}
+                            estimation={estimation}
+                            spreading={spreading}
+                            travel={travel}
+                            nonMBU={nonMBU}
+                            pa={groupPanel === PANEL_PA}
+                            exGratia={exGratia}
+                            inpatientDays={inpatientDays}
+                            address={{ claimID, taskID, object, coverage, adjustment: n + 1 }}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })
         )}
         {editor !== null && (
-          <tr>
-            <td colSpan={5} className="p-2">
-              {editor}
+          <tr className="border-t border-slate-300">
+            <td className="p-2 align-top text-xs text-slate-700">{lines.length + 1}</td>
+            <td colSpan={7} className="p-0">
+              <div className="border border-slate-300 px-6 py-4">{editor}</div>
             </td>
           </tr>
         )}

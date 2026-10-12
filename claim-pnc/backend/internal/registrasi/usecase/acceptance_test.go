@@ -56,13 +56,19 @@ func TestAcceptSettlementIssuesNumberAndMarksClaim(t *testing.T) {
 	l := setup(t)
 	ctx := context.Background()
 	task, claim := l.approvedClaim(t)
-	// Persetujuan komite terakhir membuka posisi AKSEPTASI (KomitePost_Adjustment 19–21).
-	require.Len(t, l.acceptance.Started, 1)
+	// Klaim dibuka dengan posisi REGISTER (CreateInputKlaim_PNC 7–8); persetujuan komite terakhir
+	// membuka posisi AKSEPTASI (KomitePost_Adjustment 19–21).
+	require.Len(t, l.acceptance.Started, 2)
+	require.Equal(t, registrasi.ProgressStart{
+		ClaimNumber: claim.Number, CaseID: claim.Number, Position: registrasi.PositionRegister,
+		Note: "Auto Create Register", Progress1: "002", Progress2: "2",
+		User: l.acceptance.Started[0].User, At: l.acceptance.Started[0].At,
+	}, l.acceptance.Started[0])
 	require.Equal(t, registrasi.ProgressStart{
 		ClaimNumber: claim.Number, CaseID: claim.Number, Position: registrasi.PositionAcceptance,
 		Note: "Auto Create AKSEPTASI", Progress1: "014", Progress2: "60",
-		User: l.acceptance.Started[0].User, At: l.acceptance.Started[0].At,
-	}, l.acceptance.Started[0])
+		User: l.acceptance.Started[1].User, At: l.acceptance.Started[1].At,
+	}, l.acceptance.Started[1])
 	opened := l.acceptance.Positions[memory.PositionKey(claim.Number, registrasi.PositionAcceptance)]
 	require.NotEmpty(t, opened)
 
@@ -87,7 +93,7 @@ func TestAcceptSettlementIssuesNumberAndMarksClaim(t *testing.T) {
 	require.Equal(t, "60", l.acceptance.Progress[0].Progress2)
 	require.Equal(t, opened, l.acceptance.Progress[0].PositionID, "POSISIID = posisi AKSEPTASI terbuka")
 	require.Equal(t, opened, l.acceptance.Progress[1].PositionID)
-	require.Empty(t, l.acceptance.Positions, "posisi AKSEPTASI tertutup Done")
+	require.NotContains(t, l.acceptance.Positions, memory.PositionKey(claim.Number, registrasi.PositionAcceptance), "posisi AKSEPTASI tertutup Done")
 	require.Len(t, l.uploader.Files, 1, "berkas Unggah Dokumen Persetujuan LOD terkirim")
 
 	_, err = l.service.AcceptSettlement(ctx, acceptance(task, registrasi.LODAgreed), l.caller)
@@ -186,6 +192,7 @@ func TestCommitteeRejectClosesCommitteePosition(t *testing.T) {
 	claim, err := l.store.Get(ctx, task.ClaimID)
 	require.NoError(t, err)
 	l.acceptance.Positions = map[string]string{memory.PositionKey(claim.Number, registrasi.PositionCommittee): "7"}
+	l.acceptance.Started = nil // posisi REGISTER dari pembukaan klaim
 
 	_, err = l.service.DecideCommittee(ctx, decide(result.Committee.ID, registrasi.DecisionReject, "tidak layak"), committee1)
 	require.NoError(t, err)

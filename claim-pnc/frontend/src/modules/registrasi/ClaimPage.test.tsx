@@ -997,7 +997,6 @@ describe('tahap Input Estimasi', () => {
     expect(buttons).toHaveLength(1)
     expect(screen.getByText('Sudah ditransfer')).toBeInTheDocument()
     expect(await screen.findByText(/Komite KMTN-00001 · jenjang 1\/2 menunggu KOMITE01/)).toBeInTheDocument()
-    expect(screen.getByText('Belum ditransfer')).toBeInTheDocument()
 
     await user.click(buttons[0]!)
     const dialog = await screen.findByRole('dialog', { name: 'Transfer Claim ke Komite' })
