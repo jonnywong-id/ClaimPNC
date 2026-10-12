@@ -42660,3 +42660,182 @@ dan itulah sebabnya cacatnya lolos: ia tidak terlihat saat membaca kode, tidak t
 `go vet`, dan tidak tertangkap uji sqlmock — hanya muncul saat kueri benar-benar dijalankan.
 
 Ditambah `TestLikePatternMembungkusDanMelepasKarakterKhusus` untuk escape wildcard.
+
+---
+
+## 181. Master Login — klaim "akun belum diterbitkan" DICABUT, karena Pega pun tidak menerbitkannya (2026-10-11)
+
+Work Owner mempertanyakan catatan kaki layar Master Login, lalu memastikannya dari sistem
+yang berjalan. **Klaim di §38.4 keliru**, dan seluruh turunannya dicabut.
+
+### 181.1 Apa yang diklaim, dan apa yang sebenarnya
+
+`§38.4` menyatakan layar Pega memanggil `GCNMCreateOperator` untuk menerbitkan akun operator
+beserta **satu kata sandi tetap untuk setiap orang**, dan menyimpulkan perilaku itu "tidak
+dapat dibawa". Atas dasar itu dipasang peringatan di **tiga tempat**: form penambahan, kaki
+halaman, dan log (`noteAccountNotIssued`).
+
+Yang sebenarnya terjadi: **penyimpanan hanya masuk ke `POOLDATA.MST_LOGIN_SURVEYOR`.** Tidak
+ada baris operator yang terbit di schema `DATAPEGA`.
+
+### 181.2 Empat bukti yang mencabutnya
+
+| # | Bukti |
+|---|---|
+| 1 | Activity simpan `Activity/CNMInsertMstLoginSurveyor_act` berisi **delapan langkah**, dan **tidak satu pun** memanggil `GCNMCreateOperator`: tolak LOGIN kosong · ambil leader · sisip · perbarui · pesan · bersihkan halaman |
+| 2 | Pemanggilan `GCNMCreateOperator` hanya ada di `Activity/SetLoginSurveyor_act` — activity yang dijalankan event `change` pada isian **Nama**, bukan oleh tombol Simpan |
+| 3 | Langkah itu sendiri **mati**: bertanda blok `//`, sama seperti dua langkah lain di activity yang sama yang terbukti **cara lama** memeriksa login ganda dan sudah digantikan langkah berikutnya lewat Report Definition. Penanda syarat aktifnya `false`, dan syaratnya menyebut `Local.STS_REKANAN` — local yang **tidak pernah diisi di mana pun** |
+| 4 | **Work Owner memastikannya dari sistem yang berjalan** — penyimpanan hanya ke `MST_LOGIN_SURVEYOR`, tanpa operator di `DATAPEGA` |
+
+### 181.3 Kenapa kekeliruannya lolos
+
+Dua langkah yang sama-sama ada di export dibaca sebagai satu alur. `SetLoginSurveyor_act`
+memang memuat pemanggilan itu — yang tidak diperiksa adalah **apakah activity itu dipanggil
+tombol Simpan**, dan **apakah langkahnya hidup**.
+
+Dua petunjuk sempat terlihat dan dianggap tidak menentukan: tanda blok `//`, dan syarat
+`STS_REKANAN` yang menggantung. Keduanya baru berarti setelah dibandingkan dengan dua langkah
+lain yang bertanda sama dan terbukti kode lama. **Satu petunjuk lemah tidak menentukan apa
+pun; tiga petunjuk lemah yang searah menentukan.**
+
+Catatan `03-CURRENT-ARCHITECTURE.md` §4.3 — bahwa `//` dipakai 952× sebagai label bermakna
+dan **bukan** penanda nonaktif — benar untuk seluruh export, dan karena itu dipakai menolak
+dugaan nonaktif di sini. Yang terlewat: di **berkas ini** ketiga langkah ber-`//` justru
+kode yang sudah digantikan. Aturan umum tidak menggantikan pembacaan berkasnya sendiri.
+
+### 181.4 Yang berubah
+
+| Tempat | Perubahan |
+|---|---|
+| `SurveyorLoginPage.tsx` | catatan kaki **dihapus seluruhnya**; doc comment ditulis ulang |
+| `SurveyorLoginForm.tsx` | peringatan kuning pada form penambahan **dihapus** |
+| `usecase/manage.go` | `noteAccountNotIssued` **diganti** `noteCreated`; doc comment `Service.Create` ditulis ulang memuat keempat bukti |
+| `SurveyorLoginPage.test.tsx` | uji dibalik — kini menjaga klaim itu **tidak** muncul |
+| `usecase/manage_more_test.go` | idem, pada log |
+
+Kedua uji sengaja berbentuk **negatif** supaya klaim itu tidak dapat dipasang kembali tanpa
+sengaja.
+
+### 181.5 Catatan kedua juga dicabut, atas keputusan Work Owner
+
+Catatan *"Login tidak dapat dihapus"* **benar** — tabelnya tidak punya penanda aktif. Tetapi
+Pega pun tidak punya tombol Hapus: `Section/BrowseLoginSurveyor-Section.xml` memuat
+`pyGridDeleteActivityExists = false` pada kedua gridnya, dan `pyDeleteActivity` kosong.
+
+Karena perilakunya **setara dengan Pega**, ia bukan kekurangan yang perlu diperingatkan.
+Ketetapan Work Owner: *"ikuti saja dulu hanya bisa add dan editnya, jangan mengubah atau
+menambah apapun"*.
+
+Konsekuensi: **permintaan kolom penanda aktif lewat `D-63` TIDAK diajukan.**
+
+### 181.6 Yang ikut gugur
+
+Seluruhnya sempat diajukan pada percakapan yang sama dan **batal**:
+
+- permintaan kontrak API HCC/HCQ khusus untuk kasus surveyor
+- permintaan daftar Operator ID ber-access-group `GCNMFW:PNCSurveyor` ke Tim Pega
+- rencana memindahkan akun surveyor yang sudah ada ke `POOLDATA.M_LOGIN_PNC`
+- permintaan `ALTER TABLE` penanda aktif ke DBA
+
+Tidak satu pun diperlukan: **tidak ada yang hilang terhadap Pega.**
+
+### 181.7 Yang TIDAK disunting
+
+`§38.4` dan `§38.11` **dibiarkan apa adanya**. Keduanya rekaman keputusan pada saat itu,
+beserta alasan yang dipakai saat itu — menyuntingnya akan menghapus jejak bahwa
+kekeliruannya pernah ada dan pernah dipasang ke layar. Yang berlaku adalah bab ini.
+Perlakuan yang sama dipakai `00-DECISION-LOG.md` (`D-74`).
+
+### 181.8 Satu hal yang masih terbuka
+
+Kalau Pega tidak menerbitkan akun, **surveyor hari ini login lewat mana?** Dugaan terkuat
+`POOLDATA.M_LOGIN_PNC` — tabel login non-karyawan (broker dan surveyor independen) yang
+sudah dibaca `auth/provider/local.go`, dan yang **nol kemunculan** di seluruh export Pega
+sehingga penulisnya aplikasi lain.
+
+Ini **tidak menghalangi** modul Master Login: layar ini memang hanya mencatat data. Dicatat
+supaya pertanyaannya tidak hilang.
+
+## 182. Rute bebas portal dipasang di luar grup, bukan dipaksa membawa portal (2026-10-11)
+
+**Keputusan.** `GET /inbox-accept-open-protection/antrean` dipindah **ke luar** grup
+`portalhttp.ActivePortal`. Peramban tidak mengirim `X-Portal` untuknya, dan itu benar.
+
+**Dasarnya dua, dan keduanya diperiksa sebelum diputuskan.**
+
+1. **Rutenya memang tidak menyentuh data entitas.** `Queues` hanya membaca group lewat
+   `GroupReader`, yang komentarnya sendiri menetapkan memakai **koneksi utama** — bukan
+   koneksi portal — karena `D-78` menetapkan satu identitas berlaku di keempat portal.
+   Membacanya dari koneksi portal justru akan membuat kewenangan seseorang berubah-ubah
+   mengikuti entitas yang sedang dibuka.
+
+2. **Lima modul lain sudah memakai pola itu**, sebagai baris pertama `Mount` dengan komentar
+   eksplisit: `master/detail-penyebab/pilihan`, `master/panel/pilihan`,
+   `master/pasal-kerugian/kategori`, `master/posisi-klaim`, `inbox-auto-claim/tab`. Modul ini
+   satu-satunya yang menyimpang.
+
+**Pilihan yang DITOLAK: mengirim `X-Portal` dari peramban.** Ia berfungsi dan sempat
+diterapkan, tetapi menyimpang dari pola repo untuk keuntungan nol — dan ia memasang
+ketergantungan palsu: daftar antrean menjadi menunggu portal siap, padahal jawabannya tidak
+bergantung padanya sama sekali.
+
+**Batas yang dijaga.** Memindahkan satu rute keluar hanya sah selama rute yang **membaca
+data** tetap di dalam grup. `TestDaftarTetapMenuntutPortal` menjaganya: tanpa uji itu,
+pemindahan berikutnya dapat menyeret rute lain keluar dan membuka data entitas yang bukan hak
+pemanggil (`R-20`).
+
+---
+
+## 183. Kueri yang nonaktif tidak boleh menyamar sebagai pemuatan (2026-10-11)
+
+**Keputusan.** Syarat rangka pemuatan ditambah `queue !== null`:
+
+```tsx
+isLoading={list.isPending && portal !== null && queue !== null}
+```
+
+**Alasan.** Di TanStack Query v5, kueri ber-`enabled: false` tetap berstatus `pending`. Itu
+bukan "sedang memuat" melainkan "tidak pernah dijalankan", dan memperlakukan keduanya sama
+menghasilkan rangka pemuatan yang berputar **selamanya**.
+
+Bedanya bukan kosmetik: pengguna membaca rangka pemuatan sebagai **lambat** dan menunggu;
+ia membaca pesan galat sebagai **gagal** dan melapor. Yang pertama membuat cacat bertahan
+tanpa dilaporkan.
+
+**Aturan umum yang diturunkan darinya:** setiap `isLoading` yang diberi `isPending` dari kueri
+bersyarat WAJIB ikut menyebut syaratnya. Bila syaratnya berubah, syarat di sini ikut berubah.
+
+---
+
+## 184. Kegagalan daftar antrean harus bersuara, bukan hanya 403 (2026-10-11)
+
+**Keputusan.** Galat selain 403 atas `/antrean` memunculkan pesan tersendiri — "Daftar antrean
+gagal dimuat" bernada *gangguan*, dibedakan dari penolakan kewenangan bernada *penolakan*.
+
+**Alasan.** Sebelumnya hanya 403 yang ditampilkan. Penolakan jenis lain — portal tidak
+disebut, sesi kedaluwarsa, basis data terganggu — tidak memunculkan apa pun, dan satu-satunya
+gejalanya adalah tabel yang memuat tanpa henti.
+
+Keduanya dibedakan karena **pekerjaan perbaikannya berbeda**: yang satu meminta akses ke
+administrator, yang lain melaporkan gangguan. Pesan yang sama untuk keduanya membuat yang
+pertama dicoba, dan hampir pasti salah.
+
+---
+
+## 185. Catatan penjelas di bawah tabel dihapus (2026-10-11)
+
+**Keputusan.** Paragraf keterangan di bawah tabel Inbox Accept Open Protection dihapus, atas
+permintaan Work Owner.
+
+**Alasan.** Ia tidak punya padanan di Pega — `Section/InputProtection_Section-Section.xml`
+tidak memuat keterangan apa pun di bawah gridnya. Menghapusnya mendekatkan layar ke aslinya
+(`D-13`), bukan menjauhkannya.
+
+**Riwayatnya menjelaskan kenapa ia tidak layak dipertahankan.** Isinya sudah usang dua kali:
+versi pertama menyatakan kedua antrean dapat dibuka siapa pun selama tabel peran belum terisi
+— keadaan yang berakhir saat kewenangan ditegakkan 2026-09-28, dan sejak itu keliru. Work
+Owner menanyakan maksudnya justru karena ia tidak lagi cocok dengan yang dilihatnya.
+
+Aturan yang sebenarnya hidup di `QueuesFor` (`authorization.go`) beserta alasannya. Menyalin
+aturan ke teks layar membuatnya hidup di dua tempat, dan yang di layar akan tertinggal — ia
+tidak punya uji yang menggagalkannya saat aturannya berubah.

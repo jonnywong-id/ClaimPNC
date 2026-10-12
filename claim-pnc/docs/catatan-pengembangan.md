@@ -24727,6 +24727,88 @@ supaya tidak ditambahkan kembali oleh orang yang mengira butirnya terlewat.
 
 Panel kini tersisa **dua butir**, keduanya selisih nyata terhadap Pega.
 
+### 42.22 Sumber cabang dicabut — hanya dari HCC (2026-10-11)
+
+Work Owner bertanya: *"ini sekarang login menggunakan m_login_pnc contoh login JONNY, darimana
+kamu mendapatkan kode cabang Kantor Pusat?"* — lalu, setelah jawabannya ditelusuri:
+*"kamu pakai ini V_HRD_M_MST.LCA_ID dapat darimana?"*
+
+#### Jawabannya: dari saya sendiri, bukan dari Pega
+
+Rantai yang dipakai sampai hari ini:
+
+```
+M_LOGIN_PNC.LOGIN_ID = JONNY
+   -> LEFT JOIN V_HRD_M_MST ON LOGIN_APLIKASI = LOGIN_ID
+   -> LCA_ID = 001
+   -> BRANCH.OLDID = 001  ->  BRANCH.ID = 100081  KANTOR PUSAT
+```
+
+**`V_HRD_M_MST` dan `LCA_ID` nol kemunculan di seluruh export Pega.** Keduanya saya temukan
+sendiri dengan menelusuri katalog Oracle. Rantai Pega yang sebenarnya ada di
+`RDB List/GetIDCabang-SQL.xml`, dipanggil **13 activity**:
+
+```sql
+from branch a, hrdasm.v_hrd_mst@asmd c, lst_user_asuransi@asmd b
+where c.login_aplikasi = {TempCabang.UserAdmin}
+  and c.nik = b.nik
+  and b.cab_id = a.oldid
+```
+
+Cabangnya datang dari **`LST_USER_ASURANSI.CAB_ID`**, bukan dari HRD — HRD hanya memetakan
+login ke NIK. Dan `LST_USER_ASURANSI` **tidak ada secara lokal**; ia hanya terjangkau lewat DB
+Link, yang justru sedang dihapus (`D-25`, `R-03`).
+
+#### Penggantinya diukur, dan TIDAK setara
+
+Dibandingkan lewat DB Link (2026-10-11):
+
+| | |
+|---|---|
+| Baris gabungan dibandingkan | 2.400 |
+| `LCA_ID` = `CAB_ID` | **1.625 (68%)** |
+| NIK yang punya **lebih dari satu** `CAB_ID` | **556** |
+
+Untuk JONNY keduanya sepakat — rantai Pega pun menghasilkan `100081 KANTOR PUSAT`. Tetapi
+sepertiga pengguna lain akan mendapat cabang yang berbeda dari Pega, dan sebagian besar
+selisihnya karena **kueri Pega sendiri ambigu** bagi 556 orang.
+
+**Kesalahan saya:** pembenaran lamanya — *"`LCA_ID` berada di ruang kode yang sama dengan
+`DetailBranchCode`"* — menguji **format** (3 digit, cocok ke `OLDID`) lalu diperlakukan seolah
+membuktikan **isinya** benar. Dua hal yang berbeda, dan selisihnya 32%. Yang menemukannya
+pertanyaan Work Owner, bukan uji mana pun.
+
+#### Keputusan: cabang HANYA dari layanan HCC
+
+> *"Jangan menggunakan V_HRD_M_MST.LCA_ID dan M_LOGIN_PNC, hanya dengan data cabang dari
+> service HCC, apabila tidak ada data cabang maka memang tidak ada akses untuk melihat data di
+> OS Claim per Cabang"*
+
+Yang dicabut:
+
+| Berkas | Perubahan |
+|---|---|
+| `legacy.sql` | `LEFT JOIN POOLDATA.V_HRD_M_MST` dan kolom `DETAIL_BRANCH_CODE` dibuang |
+| `legacy.go` | pemindaian kolom cabang dibuang |
+| `provider/local.go` | field `LocalLogin.DetailBranchCode` **dihapus seluruhnya** |
+| `local_test.go` | uji "cabang dari HRD ikut terbawa" **dibalik** menjadi "jalur lokal tidak pernah membawa cabang" |
+
+Field-nya dihapus, bukan dikosongkan — supaya tidak ada yang mengisinya lagi dari sumber lain
+tanpa keputusan baru.
+
+#### Perilaku barunya sudah benar tanpa perubahan tambahan
+
+Pengguna `M_LOGIN_PNC` kini masuk tanpa cabang, dan layar menolaknya dengan pesan yang memang
+sudah diambil apa adanya dari Pega (`D-13`):
+
+> **Belum ada Data Cabang pada Akun ini. Mohon Menghubungi Tim IT**
+
+Itu `409` dengan kode `cabang_tidak_diketahui`, bukan daftar kosong — persis yang dikehendaki.
+
+**Akibat langsung:** akun **JONNY tidak lagi dapat membuka layar ini** lewat login lokal. Itu
+bukan kemunduran melainkan ketetapan; untuk mencoba layarnya, jalurnya adalah provider `fake`
+atau HCC yang sudah berjalan.
+
 #### Satu hal yang tetap berupa simpulan
 
 **"Estimasi Value = jumlah estimasi coverage"** adalah simpulan, bukan bacaan langsung dari
@@ -52989,3 +53071,738 @@ Verifikasi langsung ke peladen yang berjalan, dengan `--noproxy '*'`:
    sudah dicabut, sehingga ia tidak lagi persoalan layar ini — tetapi bila kelak `T_PLA_XOL.TAHUN` dipakai di
    tempat lain, isinya perlu diperiksa dulu.
 3. **Endpoint `/ringkas`** (cacah status klaim di dalam satu daftar) tetap ada tanpa pemakai — lihat §156.5.
+
+## 149. Enam tab mati ditelusuri ke sumbernya, dan tabelnya terisi sendiri (2026-10-11)
+
+Work Owner menanyakan kenapa enam tab status dokumen tidak dapat ditekan. Jawaban saya sebelumnya
+bersandar pada komentar kode saya sendiri; ditelusuri ke export, **satu alasannya keliru** dan dua
+selisih baru muncul.
+
+### 149.1 Mekanismenya: sembilan label, delapan tab
+
+`TempVisibility.Email` adalah pemilih tab. Nilai `9` dipakai **dua label sekaligus** — "Deadline To
+Temporary Close" bila `OperatorID.pyPosition != 'PA'`, dan "TKA" bila `== 'PA'`. Jadi di Pega
+seorang pengguna **tidak pernah melihat keduanya**; modul kita menggambar keduanya.
+
+### 149.2 Yang saya salah: Internal Surveyor
+
+Saya menyebutnya butuh `Work-SurveyClaim`, sama seperti Loss Adjuster. `CountInternalSurveyorPIC`
+membuktikan sebaliknya — ia membaca `a.SURVEYORTYPE_1` pada baris klaim itu sendiri. Dan kolom itu
+**sudah ada dan sudah terisi** di `T_CLAIMLIST_ADMIN`, cocok persis dengan Pega (533 bernilai `1`,
+135 bernilai `2`). Tab ini dapat dihidupkan tanpa pemindahan apa pun.
+
+### 149.3 Cacat di kueri Pega: Loss Adjuster cross join
+
+`CountOSLossAdjusterPIC` dan `BrowseOSLossAdjusterPIC` memakai alias `C` tanpa **satu pun** syarat
+penghubung ke `a` maupun `B` — hanya `PXOBJCLASS`, `SURVEYORTYPE_1`, dan dua `PYSTATUSWORK`.
+Angkanya = (klaim milik saya) x (seluruh survei terbuka di sistem). Bila tab ini dibangun, perilaku
+itu **tidak boleh direplikasi**; ia masuk kategori cacat `P-5`.
+
+### 149.4 Dua selisih di tab yang SUDAH jalan
+
+1. Pega mengecualikan klaim TKA dari Complete dan Documents not complete. Kueri Go tidak.
+2. Pega tidak pernah menampilkan Deadline dan TKA bersamaan; kita menampilkan keduanya.
+
+### 149.5 Tabelnya terisi sendiri — dan premis berkas backfill gugur
+
+Antara 7 dan 11 Oktober `T_CLAIMLIST_ADMIN` naik dari **1.049 ke 2.890 baris**, dan **nol klaim
+tertinggal**. Jadi `MERGE` sisipan tidak akan menyisipkan apa pun lagi.
+
+Pengisinya **bukan skrip kita** — ia mengisi `BUSINESSGROUPID`, `PXASSIGNEDOPERATORID`,
+`SURVEYORTYPE_1`, `STATUSPROGRESS1`, tetapi **nol** pada `DOKUMENLENGKAP_1` dan `ISPENDINGCLOSE`.
+Kekhawatiran `P-1` karena itu **bukan dugaan lagi**.
+
+### 149.6 Sensus kolom, dan dua jebakan yang tertangkap karenanya
+
+Disusun `backfill-kolom-t-claimlist-admin.md` — `MERGE` ber-`WHEN MATCHED` saja untuk delapan kolom.
+
+Dua hal yang hanya terlihat karena sensus dijalankan lebih dulu:
+
+- **26 kolom "sebagian terisi" ternyata tidak bolong.** Diuji per kolom, yang kosong di tujuan
+  padahal Pega punya nilainya: `SURVEYORTYPE_1` nol, `USERTEKNIS_1` nol, `BRANCHNAME` nol. Mereka
+  tampak sebagian karena **Pega sendiri sebagian**. Hanya `PNCCASEID` yang benar hilang, 30 baris.
+  Mengisinya membabi buta akan menyentuh 2.649 baris tanpa mengubah apa pun.
+- **Dua kolom tanggal bertipe beda** — `DATE` di tujuan, `VARCHAR2` di Pega. Formatnya dibuktikan
+  dengan mencocokkan ke baris yang sudah terisi: `TO_DATE(SUBSTR(x,1,8),'YYYYMMDD')` cocok 1.727/0
+  dan 2.248/0. Tetapi keduanya **sudah terisi**, jadi tidak disentuh — rumusnya dicatat saja.
+
+Tiga kolom (`ADJUSTERSTATUS_1`, `KURIR`, `NOTREGISTNOTE_1`) sengaja **tidak** diisi: Pega sendiri
+nol nilai di sana, sehingga mengisinya adalah pekerjaan nol yang tetap menyentuh 2.649 baris.
+
+### 149.7 Rollback yang lossless, dan sebabnya
+
+Karena kedelapan kolom terbukti **100% kosong** sebelum diisi, rollback-nya cukup mengembalikan
+`NULL` — tidak ada nilai lama yang hilang karena tidak ada nilai lama. Itu dinyatakan sebagai
+**syarat**, bukan kebetulan: §2.1 mewajibkan kedelapan hitungan bernilai nol, dan menghentikan
+pekerjaan bila tidak.
+
+### 149.8 Catatan atas cara kerja saya
+
+Saya membangun perkakas katalog sementara, padahal `cmd/cekobjek`, `cekddl`, dan `cekkueri` sudah
+ada. Perkakas itu sudah dihapus, tetapi seharusnya saya memeriksa dulu apa yang tersedia.
+
+## 150. My Inbox — tiga selisih dari Pega diperbaiki (2026-10-11)
+
+Work Owner menjawab enam butir daftar kekurangan. Dua perbaikan masuk pada putaran ini.
+
+### 150.1 Penyaring klaim tertunda tutup — dugaan naik jadi temuan
+
+Kemarin saya menandainya **belum terbukti**. Hari ini terbukti dari kode aksi precondition:
+
+| Baris | Elemen | Nilai |
+|---|---|---|
+| 1335 | pyStepsPreCondParamsWhen | TempVisibility.Email==8 |
+| 1342 | pyStepsPreCondParamsWhenTrue | **3** = lewati |
+| 1340 | pyStepsPreCondParamsWhenFalse | 2 = jalankan |
+
+Dibaca terbalik, ia akan tampak membuang justru di tab Temporary Close. Karena itu kodenya
+**diuji silang** terhadap langkah yang maknanya sudah pasti: langkah Email==0 di baris 1459
+ber-WhenTrue=2, yakni dijalankan saat syaratnya benar. Jadi 3 memang "lewati".
+
+Ditambahkan ke daftar, hitungan, dan ringkasan. Export sudah memilikinya sejak awal.
+
+### 150.2 Pengecualian TKA pada dua tab dokumen
+
+Pega menambahkan syarat TKA pada cabang Complete dan Not complete. Dulu tidak dibawa karena
+kolomnya belum ada; kolom itu ditambahkan Work Owner 2026-10-11 dan diisi dari Pega.
+
+Akibat yang didokumentasikan di kuerinya: **LENGKAP + BELUM tidak lagi sama dengan TOTAL**, dan
+itu benar — selisihnya klaim TKA, yang punya tabnya sendiri. BuildSummary tidak pernah
+mengandaikan keduanya berjumlah total, jadi sisi Go tidak perlu disesuaikan.
+
+### 150.3 Sembilan label, delapan tab
+
+Deadline dan TKA berbagi satu nilai pemilih tab di Pega, dibedakan pyPosition. Work Owner
+menetapkan padanannya **LINE_BUSINESS di M_LOGIN_PNC** — sumber yang SAMA dengan cakupan
+unduhan, sehingga tab dan unduhan tidak mungkin berbeda pendapat soal siapa petugas PA.
+
+Diterapkan sebagai fungsi domain Summary.ForLineBusiness, bukan dengan mengubah antarmuka Repo.
+Penyaringan tab adalah aturan domain, bukan urusan penyimpanan — dan cara ini tidak menyentuh
+satu pun adapter.
+
+Kegagalan membaca lini bisnis **tidak menggagalkan ringkasan**: angkanya sudah benar, yang hilang
+hanya pilihan antara dua label. Jatuhnya ke Deadline, yaitu perilaku mayoritas — menebak ke arah
+TKA akan menyembunyikan tab dari hampir semua orang setiap kali pembacaan gagal, tanpa galat.
+
+### 150.4 Satu uji yang merekam perilaku lama
+
+TestSummaryReturnsEveryTabWithCountsAndOwner menuntut **sembilan** tab. Itu bukan uji yang gagal
+karena cacat — ia merekam perilaku yang baru saja terbukti salah. Ditulis ulang supaya menguji
+**aturannya**: Deadline ada, TKA tidak, bagi petugas non-PA. Ditambah empat uji domain, termasuk
+sisi PA dan lini bisnis yang tidak terbaca — keduanya sebelumnya tidak tertutup sama sekali.
+
+### 150.5 Satu pertanyaan saya yang dikoreksi Work Owner
+
+Saya menulis tab Temporary Close "perlu melonggarkan penyaring dasar". Work Owner bertanya kenapa
+tidak mengikuti Pega saja — dan itu benar. **Pega tidak melonggarkan apa pun**; ia punya kueri
+terpisah, BrowseClaimTemporaryClose, dengan WHERE-nya sendiri. Kesan "melonggarkan" muncul hanya
+karena modul ini memakai satu kueri untuk semua tab. Jalur yang diambil: menambah kueri bernama
+tersendiri.
+
+### 150.6 Satu akibat yang diangkat sebelum dikerjakan
+
+Work Owner memilih SURVEYTYPE di T_SURVEYORLIST sebagai sumber tab Internal Surveyor. Diukur
+lebih dulu: Pega menghitung 533 klaim dari SURVEYORTYPE_1 pada baris klaim, sedangkan
+T_SURVEYORLIST hanya memuat 107 baris bertipe 1 dari 280 baris seluruhnya. Angkanya akan terbaca
+jauh lebih kecil daripada Pega. Disampaikan sebelum dibangun, bukan setelah.
+
+## 151. My Inbox — tab Temporary Close hidup (2026-10-11)
+
+### 151.1 Bentuknya mengikuti Pega, bukan menambal yang ada
+
+Work Owner bertanya kenapa harus "melonggarkan penyaring dasar" dan tidak mengikuti Pega saja.
+Pertanyaan itu benar: **Pega tidak melonggarkan apa pun**, ia memanggil rule yang berbeda —
+BrowseClaimTemporaryClose — dengan WHERE miliknya sendiri. Kesan melonggarkan muncul hanya karena
+modul ini memakai satu kueri untuk semua tab.
+
+Ditambahkan dua kueri bernama tersendiri. Parameternya SENGAJA sama persis (:1 sampai :19) supaya
+satu penyusun argumen dipakai tanpa cabang — dengan go-ora, bind terikat menurut urutan kemunculan,
+bukan nomornya, sehingga dua kueri yang berbagi penyusun argumen wajib sama bentuknya.
+
+### 151.2 Cacat senyap yang hanya tertangkap karena dijalankan
+
+Versi pertama kueri itu menyalin penyaring inbox biasa: PXASSIGNEDOPERATORID. Dijalankan terhadap
+data nyata lewat repo asli, hasilnya **nol** — dan nol itu tidak memunculkan galat apa pun.
+
+Sebabnya terbaca setelah kueri Pega dibaca ulang: ia menyaring **userteknis_1**, dan **tidak
+menyentuh PC_ASSIGN_WORKLIST sama sekali**. Itu keharusan, bukan ketidakkonsistenan — klaim yang
+sudah Resolved-Completed tidak punya penugasan terbuka lagi. Terukur: dari 10 klaim tertunda tutup
+di DEV, **nol** punya baris di worklist.
+
+Pelajarannya bukan soal kolom mana. Uji sqlmock lulus pada versi yang salah, karena ia memeriksa
+kueri mana yang dipanggil — bukan apakah kuerinya mengembalikan sesuatu. Yang menangkapnya adalah
+menjalankannya terhadap data nyata.
+
+### 151.3 Ringkasan memakai DUA kueri, dan itu tidak terhindarkan
+
+Populasi Temporary Close berada di LUAR himpunan yang dihitung kueri ringkasan — ia justru yang
+dibuang penyaring dasar. Satu kueri ber-CASE tidak dapat memuat keduanya tanpa melepas penyaring
+dasar, dan melepasnya akan mengubah TOTAL — angka yang mengisi tab ALL Case dan wajib cocok dengan
+paginasi grid.
+
+### 151.4 Fake memori: keterbatasannya ditulis, bukan disembunyikan
+
+Repo memori tidak dapat menirukan ISPENDINGCLOSE — kolom itu tidak ada pada OutstandingClaim.
+Mengikuti preseden LineBonding di berkas yang sama, keterbatasannya ditulis terbuka dan fake-nya
+**kelebihan cocok**, bukan mengembalikan kosong. Kosong akan tampak sah dan menyesatkan pengujian.
+
+Sekalian ditemukan bahwa fake itu **tidak pernah membuang klaim selesai** pada tab lain, padahal
+kueri produksi melakukannya sejak awal. Diperbaiki pada putaran yang sama.
+
+### 151.5 Pembuktian akhir terhadap data nyata
+
+Lewat repo asli, PIC ESTHERSIMBOLON:
+
+| Tab | Jumlah |
+|---|---:|
+| ALL Case | 153 |
+| Complete documents | 85 |
+| Documents not complete | 64 |
+| Temporary Close | **3** |
+
+85 + 64 = 149, sedangkan total 153. **Selisih 4 itu klaim TKA** yang kini dikecualikan dari kedua
+tab — pembuktian langsung bahwa perbaikan 150.2 bekerja, dan bahwa LENGKAP + BELUM memang tidak
+lagi berjumlah TOTAL.
+
+Sebelum pengisian kolom kemarin, Complete documents bernilai 0 untuk siapa pun.
+
+### 151.6 Di luar modul ini — dilaporkan, tidak disentuh
+
+`internal/masterbengkel/repo/dokumenlink` gagal build: `repoGagal` tidak memenuhi
+`dokumenpenunjang.Repo` (kurang `PerbaruiTautan`) dan `penyimpananDiam` kurang `Hapus`.
+Berkas `internal/dokumenpenunjang/http/` memang tercatat berubah di luar pekerjaan ini.
+
+## 152. My Inbox — tiga tab terakhir hidup, seluruhnya dari kolom baris klaim (2026-10-11)
+
+Work Owner memutuskan kedua tab survei diambil dari `SURVEYORTYPE_1`, bukan dari
+`T_SURVEYORLIST` — "yang paling sesuai dengan Pega". TKA ikut karena kolomnya sudah terisi.
+
+### 152.1 Analisis yang mendahuluinya
+
+Sebelum memutuskan, `T_SURVEYORLIST` diukur terhadap pertanyaan apakah ia dapat menggantikan
+DATAPEGA untuk data survei. Tiga temuan:
+
+1. **Untuk inbox ini DATAPEGA memang sudah bukan sumbernya.** `SURVEYORTYPE_1` sudah ikut
+   dipindahkan ke `T_CLAIMLIST_ADMIN` dan terisi 674 baris, cocok persis dengan Pega.
+2. **Keduanya menjawab pertanyaan berbeda.** Kolom klaim menyatakan jenis surveyor yang DIPILIH
+   (674 klaim); tabel survei menyatakan survei yang BENAR-BENAR tercatat (280 baris = 113 klaim).
+   Pada klaim berjalan, hanya **41 dari 513** klaim bertipe `1` punya baris survei.
+3. **Lubang cakupannya murni historis** — seluruh 180 objek survei yang hilang berasal dari 2023
+   ke bawah; 2024, 2025, dan 2026 utuh. Kemarin saya menyebut "180 hilang" tanpa memecahnya per
+   tahun, dan itu membuat tabelnya tampak jauh lebih rapuh daripada keadaannya.
+
+Satu kehati-hatian yang tetap dicatat: status di `T_SURVEYORLIST` sepakat sempurna dengan objeknya
+(278 sama, 0 berbeda), tetapi `PYSTATUSWORK` baru diisi lewat backfill — jadi kesepakatan itu
+mungkin hasil pengisian, bukan bukti sinkronisasi berjalan.
+
+### 152.2 Satu tab menyalin Pega, satu lagi membaca maksudnya
+
+**Internal Surveyor** menyalin apa adanya: `CountInternalSurveyorPIC-SQL.xml` menyaring
+`a.SURVEYORTYPE_1='1'` pada baris klaim, tanpa menyentuh objek survei.
+
+**Loss Adjuster bukan salinan.** Kueri Pega-nya membaca tipe pada baris `Work-SurveyClaim`, tetapi
+alias itu **tidak punya satu pun syarat penghubung** — cross join, berlaku di `Count` maupun
+`Browse`. Perilaku itu tidak direplikasi; ia cacat `P-5`. Yang dipakai kolom pada baris klaim, yang
+membawa domain nilai sama dan diisi dari pilihan yang sama. Perbedaan derajat keduanya ditulis di
+kuerinya, supaya tidak terbaca sebagai dua salinan yang setara.
+
+### 152.3 Uji baru yang langsung menangkap kelalaian saya
+
+Ditambahkan `TestJumlahPenandaSQLCocokDenganJumlahArgumen` — membandingkan penanda tertinggi di
+tiap kueri dengan jumlah argumen yang disusun Go.
+
+Ia **langsung merah**: blok status pada `my_inbox_count` belum ikut diperbarui saat `my_inbox_list`
+sudah. Selisih seperti itu muncul sebagai ORA-01008 di produksi, bukan saat menulis kode — dan
+pada kueri hitungan ia bahkan bisa lolos diam-diam sebagai angka yang salah.
+
+### 152.4 Batas fake memori dinyatakan, lagi
+
+Tiga tab baru bersandar pada kolom yang **tidak dimodelkan** `OutstandingClaim` —
+`SURVEYORTYPE_1` dan `TKA_1`. Fake meloloskannya apa adanya dan **tidak menyerahkan angkanya**,
+sehingga lencananya kosong alih-alih nol. Uji HTTP karenanya hanya memeriksa tab itu DAPAT
+DIPILIH, dan alasannya ditulis di uji itu sendiri.
+
+Yang membuktikan angkanya mengalir adalah uji sqlmock atas keenam kolom ringkasan, ditambah
+pembuktian langsung di bawah.
+
+### 152.5 Pembuktian terhadap Oracle — lencana versus daftar
+
+Lewat repo asli, pemilik dengan inbox terbesar:
+
+| Tab | Lencana ringkasan | Total daftar |
+|---|---:|---:|
+| ALL Case | 300 | — |
+| Complete documents | 17 | **17** |
+| Documents not complete | 283 | **283** |
+| Internal Surveyor | 27 | **27** |
+| Loss Adjuster | 6 | **6** |
+| TKA | 0 | **0** |
+| Temporary Close | 1 | **1** |
+
+Keenamnya cocok. Itu pemeriksaan yang paling menentukan: angka tab yang tidak cocok dengan
+paginasi grid tidak memunculkan galat apa pun — pengguna hanya melihat dua angka berbeda untuk hal
+yang sama.
+
+Tersisa dua tab tanpa angka, dan keduanya menunggu **tabel**, bukan kode: Deadline To Temporary
+Close (`TEMPORARY_CLOSESEMENTARAPNC`, 1 baris di DEV) dan Communication (`M_KOMUNIKASI_PNC`, 580
+baris, aturan penyambungannya belum ditetapkan).
+
+### 152.6 CRLF
+
+`gofmt -l` menandai sebelas berkas modul ini, sembilan di antaranya tidak saya sentuh. Sebabnya
+CRLF dari checkout — kondisi yang sudah tercatat di §84.17. Tidak dikonversi massal: diff-nya akan
+menelan berkas yang bukan bagian pekerjaan ini. Diff nyata tetap kecil dan terarah.
+
+## 153. My Inbox — Deadline To Temporary Close hidup (2026-10-11)
+
+Work Owner: "ikuti pega saja jika memang hanya 1 baris". Dikerjakan sebagai kueri bernama
+tersendiri, pola yang sama dengan Temporary Close.
+
+### 153.1 Tiga hal dari kueri Pega yang menentukan bentuknya
+
+`BrowseClaimDeadlineToTemporaryClose-SQL.xml`:
+
+1. **Pemiliknya `userteknis_1`**, bukan penugasan — sama seperti Temporary Close.
+2. **Subkuerinya BERKORELASI**: `t.PIC = a.userteknis_1`. Melepas korelasi itu akan meloloskan
+   klaim milik orang lain yang kebetulan punya baris tenggat.
+3. **Tidak ada penyaring `PYSTATUSWORK` sama sekali** — berbeda dari KEDUA kueri lain di berkas
+   itu. Tetapi `{ASIS:TempSearch.source}` ikut, sehingga pengecualian `ISPENDINGCLOSE` berlaku.
+
+Butir 3 yang paling mudah terlewat kalau kuerinya cuma dibaca sekilas: inbox berjalan membuang
+klaim selesai, Temporary Close justru mencarinya, dan tab ini tidak peduli.
+
+### 153.2 Perbandingan PIC dibiarkan MENTAH
+
+`t.PIC = k.USERTEKNIS_1` tanpa `UPPER(TRIM(...))`, persis Pega. Keduanya kolom yang sama-sama
+berasal dari Pega; menormalkannya justru dapat meloloskan pasangan yang di Pega tidak cocok.
+Penyaring pemilik di atasnya tetap dinormalkan — di sana yang dibandingkan identitas login, dan
+bentuknya memang berbeda.
+
+### 153.3 Tabel yang belum tentu ada di tiap portal
+
+`TEMPORARY_CLOSESEMENTARAPNC` hanya terbukti ada di ASM. Bila tidak ada di portal lain, tabnya
+dikirim **tanpa angka** — bukan nol, dan bukan galat yang menjatuhkan seluruh ringkasan. Nol akan
+menyatakan "tidak ada satu pun" padahal yang benar "belum dapat dihitung di portal ini", dan
+menggagalkan ringkasan akan menyembunyikan tujuh angka lain yang sudah benar.
+
+### 153.4 Hasilnya nol, dan nol itu benar
+
+PIC `DEMITRAJANUARBAWOLE`: Deadline **0**, Temporary Close **1**. Satu-satunya baris tenggat di DEV
+menunjuk klaim yang **sedang tertunda tutup**, sehingga `TempSearch.source` membuangnya. Persis
+perilaku Pega — tetapi artinya tab ini **tidak dapat diuji secara berarti di DEV**; yang teruji
+kuerinya, bukan isinya.
+
+### 153.5 Yang dibatalkan
+
+Cacat "tab ALL Case tergeser keluar pandangan" **dicoret**: Work Owner menyatakan tangkapan
+layarnya memang sudah digeser sendiri. Dugaan saya bahwa deretnya tergulir sendiri tidak terbukti,
+dan memang tidak pernah saya reproduksi.
+
+## 154. My Inbox — Communication hidup; kesembilan tab lengkap (2026-10-11)
+
+### 154.1 Pertanyaan Work Owner yang menghapus satu permintaan ke DBA
+
+Saya mengusulkan meminta kolom `CASEID_1` ditambahkan ke `T_CLAIMLIST_ADMIN`, karena tanpanya
+tab Communication hanya menjangkau 176 dari 338 pesan yang dijangkau Pega.
+
+Work Owner menduga `CASEID_1` berisi SRV, dan menanyakan apakah `T_SURVEYORLIST` bisa dipakai
+untuk mencari SRV milik tiap PNC. **Dugaannya benar, dan jembatannya bekerja:**
+
+| Pola `CASEID_1` | Jumlah |
+|---|---:|
+| `ASM-FW-GCNMFW-WORK SRV-…` | **146 dari 146** |
+
+`T_SURVEYORLIST` memang peta SRV -> PNC: `CASEID` berisi SRV (279/280), `PNCCASEID` berisi kunci
+klaim (280/280). Dipakai sebagai jembatan:
+
+| Jalur | Pesan terjangkau dari 580 |
+|---|---:|
+| dua kolom langsung | 176 |
+| **ditambah jembatan `T_SURVEYORLIST`** | **336** |
+| Pega dengan ketiga kolomnya | 338 |
+
+**Selisih 2 pesan — permintaan kolom ke DBA dibatalkan.** Usul saya kalah oleh pertanyaan yang
+lebih baik.
+
+### 154.2 Apa yang sebenarnya dicari tab itu
+
+Bukan "klaim ini punya komunikasi". `SetClaimPNC` cabang `Email==5` menyetel dua parameter:
+`komunikasistatus = '0'` dan `kom.sender NOT IN <saya>` — yaitu **komunikasi masuk yang belum
+dijawab**. Tiga tab bersaudara (`Email==6`, `==7`) memakai tabel yang sama dengan kombinasi
+berbeda dan tidak ada di layar ini.
+
+### 154.3 Jebakan `SENDER`
+
+| | |
+|---|---:|
+| `SENDER` terisi | 574 dari 580 |
+| cocok sebuah `PXASSIGNEDOPERATORID` | **450** |
+| berbentuk email | **3** |
+
+`SENDER` berisi Operator ID Pega, bukan login HCC. Dibandingkan dengan email login saja, syarat
+"bukan saya" **tidak pernah cocok** — setiap pesan terbaca datang dari orang lain dan tabnya
+membengkak tanpa galat. Kelas cacat yang sama dengan identitas lama pada penyaring pemilik, jadi
+penanganannya juga sama: dua identitas.
+
+### 154.4 Bentuknya berbeda dari dua tab sebelumnya
+
+Temporary Close dan Deadline punya POPULASI sendiri. Communication tidak: dasarnya **sama persis**
+dengan inbox berjalan, yang ditambahkan hanya satu `EXISTS`. Ia tetap kueri tersendiri karena
+`EXISTS` itu membawa dua argumen tambahan.
+
+Ringkasan kini menempuh **empat kueri**. Communication tidak dapat digabung ke kueri utama:
+syaratnya `EXISTS`, dan Oracle tidak mengizinkan `EXISTS` di dalam daftar SELECT. Menggantinya
+dengan subkueri skalar ber-COUNT akan menjalankan satu subkueri untuk setiap baris. Terukur:
+ringkasan utuh **92 ms**.
+
+### 154.5 Yang tidak terjangkau siapa pun
+
+`M_KOMUNIKASI_PNC.CASEID` menampung beberapa jenis pengenal sekaligus — SRV (332), PNC (130),
+angka telanjang (38), **nomor klaim format baru `PNCN.YY.xxxx` (19)**, dan RCV (15). Dua jenis
+terakhir tidak dijangkau Pega maupun kueri ini.
+
+Yang `PNCN.YY.xxxx` patut diingat: itu format `D-71`, artinya **sudah ada komunikasi yang
+menunjuk klaim terbitan sistem baru** sementara kuerinya belum menjangkau bentuk itu.
+
+### 154.6 Pembuktian — kesembilan tab, satu pemilik
+
+| Tab | Lencana | Total daftar |
+|---|---:|---:|
+| ALL Case | 95 | — |
+| Complete documents | 4 | **4** |
+| Documents not complete | 91 | **91** |
+| Temporary Close | 1 | **1** |
+| Deadline To Temporary Close | 0 | **0** |
+| Loss Adjuster | 29 | **29** |
+| Internal Surveyor | 11 | **11** |
+| **Communication** | **10** | **10** |
+| TKA | 0 | **0** |
+
+Kesembilannya cocok. **Tidak ada lagi tab yang dikirim tanpa angka.**
+
+### 154.7 Satu uji yang kehilangan contohnya
+
+`TestBuildSummaryKeepsTheLegacyOrderAndLeavesUncountableTabsWithoutACount` memakai
+`StatusCommunication` sebagai contoh tab yang tak terhitung. Karena kini seluruh tab terhitung,
+contohnya diganti **kode tak dikenal** — mekanismenya tetap diuji, dan sekalian dibuktikan bahwa
+kode asing tidak menyelinap masuk sebagai tab kesepuluh.
+
+Uji `Countable` juga ditulis ulang menyebut kesembilan tab satu per satu, bukan menghitung panjang
+`statusOrder`. Menambah tab baru karena itu memaksa keputusan sadar: sumber datanya sudah ada,
+atau ia dikirim tanpa angka.
+
+## 155. Akun leader — ada, tetapi Pega tidak memakainya di My Inbox (2026-10-11)
+
+Work Owner menduga ada akun leader yang melihat seluruh outstanding anggotanya. **Dugaannya
+benar bahwa strukturnya ada** — tetapi penelusuran menunjukkan layar ini bukan tempatnya.
+
+### 155.1 Strukturnya nyata
+
+`POOLDATA.MST_USER_TEKNIK` memuat `ATASAN`, `STS_LEADER`, dan `TEAM_GROUP`. Kueri yang
+memakainya `RDB List/SearchPIC_sql-SQL.xml`:
+
+    select OPERATOR_ID from pooldata.MST_USER_TEKNIK where atasan in {ASIS:tempgetpic.EMAIL}
+
+`Activity/SearchPICTeknik_act-Act.xml` merakit hasilnya menjadi daftar `IN`, dan ia memanggil
+`SearchPIC_sql` **dua kali** — jadi cakupannya berjenjang: anggota, lalu anggota-dari-anggota.
+
+### 155.2 Tetapi bukan di layar ini
+
+Pemanggil `SearchPICTeknik_act` hanya **dua**: `GetDataProgressClaim` dan `GetNextFUdata_act`.
+**`SetClaimPNC` tidak termasuk.**
+
+`SetClaimPNC` menyetel `TempOperator.CityID` **sekali saja**, di `:554`, dengan tepat dua
+identitas — lama dan sekarang:
+
+    "('" + TempOPID.pxResults(1).City + "', '" + OperatorID.pyUserIdentifier + "')"
+
+Diperiksa menyeluruh: `TempOperator.CityID` muncul 5× di activity itu, satu sebagai penyetelan
+dan empat sebagai pemakaian pada tab komunikasi. Tidak ada cabang yang melebarkannya.
+
+Jadi modul ini **setia pada Pega**. Yang diminta Work Owner adalah **perubahan perilaku**, bukan
+perbaikan cacat — dan itu keputusan, bukan temuan.
+
+### 155.3 Angka yang menentukan bila kelak diterapkan
+
+| | |
+|---|---:|
+| Baris `MST_USER_TEKNIK` | 49 (24 aktif) |
+| Ber-`STS_LEADER = TRUE` | **4** |
+| Atasan berbeda | 5 — tim berukuran 1, 7, 7, 8, 9 |
+| Klaim berjalan seluruhnya | 2.087 |
+| Dipegang orang yang **punya** atasan | **424** |
+| Pemegangnya **tidak ada** di `MST_USER_TEKNIK` | **1.380** |
+
+Angka terakhir yang paling perlu diperhatikan: **dua pertiga pemegang klaim berjalan tidak
+terdaftar di master teknik sama sekali.** Mekanisme leader karena itu hanya akan menjangkau
+sekitar seperlima klaim, dan sisanya tetap tidak terlihat atasan siapa pun.
+
+Dampak per atasan: INDRAGUNAWAN 163 klaim, TONY 121, BAMBANGSETIADJIGUNAWAN 117, ELLENSUPRIYATI 23.
+
+### 155.4 Dua hal yang menghalangi penerapan langsung
+
+1. **`M_LOGIN_PNC` tidak punya kolom atasan.** Ia hanya lima kolom: `LOGIN_ID`, `LOGIN_NAME`,
+   `HASH_PASSWORD`, `ACTIVE_STATUS`, `LINE_BUSINESS`. Memakai `MST_USER_TEKNIK` berarti
+   menghidupkan kembali sumber yang sudah pernah ditolak sebagai master pengguna.
+2. **`SearchPICTeknik_act` memuat hardcode nama orang** — `DANIELLISWANDI` dipetakan ke
+   `BAMBANGSETIADJIGUNAWAN`, dan ada cabang khusus `INDRAGUNAWAN`. Bagian dari 24 Operator ID
+   hardcode pada `D-15`, dan tidak boleh ikut dibawa.
+
+### 155.5 Celah terakhir ditutup — dan jawabannya bukan "sama persis"
+
+Satu hal yang saya tandai saat menelusuri tab, lalu belum pernah diperiksa: `CountInAllInboxPicTeknik`
+menambahkan `AND b.pyerrormessage is null` yang TIDAK dimiliki kueri tab per-status.
+
+Diperiksa: **`PYERRORMESSAGE` tidak ada di `T_CLAIMLIST_ADMIN`** (ada di `PC_ASSIGN_WORKLIST`).
+Terukur **616 penugasan** ber-pesan galat, **167** di antaranya menunjuk klaim PNC.
+
+Saya sempat mencatatnya sebagai **selisih yang perlu ditutup**. Work Owner mengoreksi, dan
+koreksinya benar: `pyerrormessage` terisi ketika **engine Pega gagal menjalankan case** — ia jejak
+kegagalan platform, bukan data bisnis. Di Go tidak ada assignment Pega, sehingga tidak ada yang
+perlu disembunyikan.
+
+Jadi ia masuk daftar **sengaja tidak dibawa**, sederet dengan blok `// TESTING` dan perilaku
+berbasis hostname — bukan daftar selisih.
+
+Satu akibat yang tetap perlu diketahui selama masa paralel: 167 klaim itu **terlihat di Go dan
+tersembunyi di Pega**, sehingga pengguna yang sama dapat melihat dua angka berbeda. Itu bukan
+cacat — klaim yang macet justru lebih baik terlihat — tetapi akan muncul sebagai selisih pada uji
+kesetaraan `S-8` dan harus dinyatakan di muka sebagai perbedaan terencana, bukan ditemukan sebagai
+kejutan.
+
+### 155.6 Tiga selisih yang DISENGAJA, dan satu yang belum teruji
+
+Setelah seluruh tab hidup, inilah keadaan sebenarnya terhadap Pega:
+
+| Hal | Keadaan |
+|---|---|
+| Loss Adjuster | **sengaja berbeda** — Pega cross join tanpa syarat penghubung; kita pakai `SURVEYORTYPE_1='2'` pada baris klaim (`P-5`) |
+| Communication | **336 dari 338** pesan terjangkau — `CASEID_1` diganti jembatan `T_SURVEYORLIST` |
+| ALL Case | `pyerrormessage` **sengaja tidak dibawa** — jejak kegagalan engine Pega, tak bermakna di Go; akibatnya 167 klaim terlihat di sini dan tersembunyi di Pega |
+| Sumber data | `T_CLAIMLIST_ADMIN` 2.747 baris Work-PNC versus 2.648 di Pega; 98 baris yatim |
+
+**Dan yang paling perlu dinyatakan terus terang:** seluruh verifikasi sejauh ini adalah
+"kueri kita terhadap Oracle yang sama" — **bukan** "hasil kita dibandingkan hasil Pega". Uji
+kesetaraan gerbang 1 (`S-8`, `D-42`) belum ada. Jadi yang terbukti adalah kuerinya diturunkan dari
+Pega dan berjalan benar; **kesetaraan hasilnya belum pernah diadu langsung.**
+---
+
+### 21.9 Peringatan "akun belum terbit" dipindahkan ke tempat ia berlaku (2026-10-11)
+
+Work Owner bertanya kenapa kotak merah **"Akun aplikasi surveyor belum dibuat otomatis"**
+masih berdiri padahal modulnya sudah dinyatakan selesai.
+
+**Isinya benar; letaknya yang salah.** Ia keadaan yang disengaja, bukan kerusakan — tetapi
+dipasang sebagai `ErrorMessage` permanen di puncak halaman, sehingga setiap kali siapa pun
+membuka layar ini, yang pertama terlihat adalah kotak merah.
+
+Tiga hal keliru sekaligus:
+
+| Keliru | Akibatnya |
+|---|---|
+| Memakai `ErrorMessage` | Kedua nadanya berwarna merah, sehingga layar yang bekerja normal tampak gagal |
+| Dipasang di tingkat halaman | Muncul bahkan ketika pengguna hanya melihat daftar dan tidak menambah siapa pun |
+| Berlaku untuk semua tipe | Padahal hanya surveyor **internal** yang punya nama login |
+
+Peringatan yang muncul pada saat yang tidak ada hubungannya akan berhenti dibaca — dan
+ketika itu terjadi, ia menjadi tidak berguna justru saat benar-benar berlaku.
+
+**Diperbaiki:** dipindahkan ke dalam formulir, hanya tampil saat Internal Surveyor dipilih,
+dan ditulis sebagai catatan biasa — bukan kotak galat.
+
+#### Kenapa pembuatan akunnya memang belum dapat dikerjakan
+
+Bukan karena terlewat. Langkah 18 `CNMInsertDetailSurveyors_act` memanggil
+`Call GCNMCreateOperator`, dan activity itu bekerja seluruhnya pada kelas
+**`Data-Admin-Operator-ID`** — 36 kemunculan, nol kelas lain. Itu tabel operator milik
+Pega.
+
+| Penghalang | Isi |
+|---|---|
+| `P-1` | Selama masa paralel, tabel operator **ditulis Pega**. Menulisnya dari sini berarti dua sistem menulis satu tabel yang sama |
+| `F-3` | Autentikasi sistem baru bukan operator Pega melainkan HCC/HCQ, dan kontraknya **belum ada** (`R-14`, `ADR-0024`). "Membuat akun" belum punya arti yang tertentu di sini |
+
+**Satu hal yang memang tidak pantas ditiru**, ditemukan saat memeriksa ini:
+`Activity/CNMInsertDetailSurveyors_act-Act.xml:3340` menyusun kata sandinya sebagai
+`TempDetailSurveyors.LOGIN_APLIKASI + "123456"`. Dan langkah pemanggilnya
+`pyStepsPreCondition = true` — **tanpa syarat**, dijalankan pada setiap penyimpanan,
+termasuk untuk tipe yang `LOGIN_APLIKASI`-nya kosong. Keduanya masuk daftar yang harus
+dijawab `F-3`, bukan disalin.
+
+#### Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `SurveyorForm.test.tsx` | **13 lulus** — satu baru, mengunci catatan itu agar hanya muncul untuk internal |
+| `master-surveyors` + `Sidebar.test.tsx` | **27 lulus** |
+| `npx tsc --noEmit` atas modul ini | **0 galat** |
+
+#### Koreksi 2026-10-11 — `P-1` tidak lagi menghalangi
+
+Work Owner menyatakan **tabel operator Pega sudah tidak dipakai**, dan modul ini hanya
+dipakai pengguna internal.
+
+Penelusuran atas pertanyaan susulannya — *"apakah ada filter berdasarkan operator Pega di
+modul ini?"* — memberi jawaban **tidak**, dan itu terverifikasi:
+
+| Yang diperiksa | Hasil |
+|---|---|
+| `PR_OPERATORS` / `DATAPEGA` di seluruh modul | **nol kemunculan** |
+| Tabel yang dibaca/ditulis | `POOLDATA.V_D_SURVEYORS` dan `POOLDATA.D_SURVEYORS` |
+
+**Ada satu penyaring berbasis identitas orang**, tetapi sumbernya bukan Pega:
+
+```
+auth.User.Identity  ->  Caller.Identity  ->  dibandingkan dengan D_SURVEYORS.KOMITE
+```
+
+`auth.User.Identity` adalah kunci alami pengguna dari sesi (NIK atau LOGIN_ID), bukan
+dibaca dari tabel operator. Penyaring tab Komite Approval dan `ensureIsAssignedCommittee`
+karena itu berjalan tanpa tabel operator Pega sama sekali.
+
+**Akibatnya:** keberatan `P-1` pada §21.9 — "dua sistem menulis satu tabel" — **gugur**.
+Penghalang pembuatan akun tinggal **`F-3`**: belum ada tabel pengguna tujuan, karena
+bentuknya ditentukan kontrak HCC/HCQ yang belum tiba.
+
+#### Satu risiko yang BELUM terjawab, dan dampaknya senyap
+
+Kolom `KOMITE` berisi **Operator ID**, diisi dari `EMAILKOMITE` lewat alias yang
+menyesatkan (`OPERATOR_ID as BUSINESS_CODE`). Yang belum diketahui: **isi kolom itu pada
+43 baris yang sudah ada — Operator ID Pega, atau sudah NIK/LOGIN_ID?**
+
+Bila ia masih Operator ID Pega sementara `auth.User.Identity` berisi NIK, maka tab
+**Komite Approval akan selalu kosong** dan **tidak ada satu pun pesan galat** yang
+menandainya. Itu kelas cacat yang sama persis dengan yang pernah terjadi di modul Inbox
+Laporan Klaim (`keputusan-implementasi.md` §19.3) — penyaring yang memakai sistem kode
+berbeda, lalu tidak ada baris yang cocok.
+
+Satu kueri ke DBA cukup menutupnya:
+
+```sql
+SELECT DISTINCT KOMITE FROM POOLDATA.V_D_SURVEYORS WHERE KOMITE IS NOT NULL;
+```
+
+Pemilik: **DBA**. Sampai itu terjawab, tab Komite Approval **belum dapat dinyatakan
+terbukti bekerja terhadap data produksi** — ia bekerja terhadap data contoh.
+
+#### Koreksi kedua 2026-10-11 — catatan "akun belum terbit" DICABUT
+
+Work Owner bertanya: *"jadi udah gabutuh apa-apa lagi dong, HCC/HCQ buat apa emang?"*
+
+Pertanyaan itu membongkar kekeliruan saya sendiri. **HCC/HCQ bukan sesuatu yang ditunggu —
+ia sudah berjalan di aplikasi ini.** Rantainya ditetapkan Work Owner 2026-09-16 dan sudah
+terpasang di `internal/auth/provider`:
+
+| Urutan | Sumber | Identity |
+|---|---|---|
+| 1 | API HCC/HCQ — kredensial karyawan | **NIK** |
+| 2 | `POOLDATA.M_LOGIN_PNC` — non-karyawan (broker, surveyor independen) | **LOGIN_ID** |
+
+Jadi kalimat saya di §21.9 — *"kontraknya belum ada"* — **sudah usang untuk basis kode
+ini**. Yang belum ada adalah kontrak untuk hal lain pada `F-3` (peta peran), bukan untuk
+masuk aplikasi.
+
+**Dan premis catatan itu sendiri ternyata salah.** Catatan hanya tampil untuk Internal
+Surveyor, padahal:
+
+```sql
+-- BrowseNonMBUUsers: daftar pegawai yang dapat dipilih
+where ... and login_aplikasi is not null
+```
+
+Setiap nama yang **dapat dipilih** di layar itu sudah punya kredensial yang dikenali
+HCC/HCQ. Catatan itu memperingatkan satu-satunya tipe yang justru **pasti sudah punya
+akun**.
+
+**Ditambah:** penerbitan login surveyor punya layarnya sendiri di sistem lama —
+`Harness/MasterLoginSurvey-Harness.xml` atas tabel `mst_login_surveyor`. Modul tersendiri,
+bukan tanggung jawab Master Surveyors.
+
+`Call GCNMCreateOperator` karena itu menerbitkan akun **portal Pega** — portal yang sudah
+tidak dipakai. Tidak ada yang perlu digantikan di modul ini.
+
+**Tindakan:** catatan dihapus dari layar. Uji yang semula mengunci kemunculannya dibalik
+menjadi mengunci **ketidakmunculannya**, supaya ia tidak kembali tanpa alasan baru.
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `SurveyorForm.test.tsx` | **13 lulus** |
+| `npx tsc --noEmit` atas modul ini | **0 galat** |
+
+#### Pelajaran: tiga kali premis saya salah di modul yang sama
+
+| # | Saya nyatakan | Kenyataannya |
+|---|---|---|
+| 1 | Daftar pegawai tidak tersedia | Ada — `BrowseNonMBUUsers`, separuhnya tabel lokal |
+| 2 | `P-1` menghalangi pembuatan akun | Tabel operator Pega sudah tidak dipakai |
+| 3 | Kontrak HCC/HCQ belum ada | Sudah terpasang sejak 2026-09-16 di `auth/provider` |
+
+Polanya satu dan sama: **saya menyimpulkan ketiadaan dari pencarian yang gagal**, lalu
+menuliskannya ke layar sebagai fakta. Yang benar: ketiadaan baru boleh dinyatakan setelah
+jalur pemanggilnya ditelusuri — dan untuk hal yang akan DITAMPILKAN ke pengguna, ia harus
+ditelusuri lebih dulu, bukan sesudah ditegur.
+
+## 156. Inbox Accept Open Protection memuat tanpa henti saat awal login (2026-10-11)
+
+Gejala yang dilaporkan Work Owner: membuka Inbox Open Protection sesudah login memperlihatkan
+rangka pemuatan terus-menerus; data baru tampil setelah menekan **Muat ulang**.
+
+### Sebabnya bukan lambat, melainkan gagal tanpa bersuara
+
+`Mount` memasang `portalhttp.ActivePortal` pada **seluruh** grup `/inbox-accept-open-protection`,
+termasuk `/antrean`. Peramban memperlakukan rute itu sebagai bebas portal — dengan alasan
+tertulis *"tidak menuntut portal aktif"* — sehingga tidak mengirim `X-Portal`. Alasan itu benar
+tentang **artinya** dan keliru tentang **rutenya**: `SelectActive` menolak alias kosong dengan
+`ErrNotStated`, dan tidak pernah jatuh ke portal bawaan (`R-20`).
+
+Rantai akibatnya:
+
+| Tahap | Keadaan |
+|---|---|
+| `/antrean` ditolak | daftar antrean kosong |
+| `allowedQueues = []` | `queue` menjadi `null` |
+| kueri daftar `enabled: false` | di TanStack Query v5 ia tetap berstatus `pending` — bukan "sedang memuat", melainkan "tidak pernah dijalankan" |
+| `isLoading={list.isPending && portal !== null}` | rangka pemuatan berputar selamanya |
+
+Dua hal menyembunyikannya. Judul `'Proteksi Klaim NON PREMI'` ternyata **judul cadangan** yang
+juga tampil saat `queue` bernilai `null`, sehingga layar tampak normal tanpa tab. Dan layar
+hanya memunculkan galat **403**; penolakan jenis lain tidak menampilkan pesan apa pun.
+
+**Muat ulang tampak menyembuhkan karena alasan yang menyesatkan:** `refetch()` pada v5
+mengabaikan `enabled`, lalu menembak daftar dengan antrean bawaan `non-premi` — yang memang sah.
+
+### Perbaikannya berubah di tengah jalan, dan itu disengaja
+
+Versi pertama memperbaikinya di frontend dengan mengirim `X-Portal`. Saat memeriksa apakah cacat
+yang sama ada di modul lain, ternyata **lima modul lain memasang rute bebas-portalnya di luar
+grup** sebagai baris pertama, lengkap dengan komentar eksplisit: `master/detail-penyebab/pilihan`,
+`master/panel/pilihan`, `master/pasal-kerugian/kategori`, `master/posisi-klaim`, dan
+`inbox-auto-claim/tab`. Modul ini satu-satunya yang menyimpang.
+
+Dan `Queues` memang tidak menyentuh data entitas — ia hanya membaca group lewat `GroupReader`,
+yang memakai **koneksi utama** (`D-78`). Menuntut portal di sana tidak menambah pengamanan.
+
+Yang diterapkan:
+
+1. `/antrean` dipindah **ke luar** grup berportal.
+2. Frontend dikembalikan — tidak mengirim portal, karena memang tidak perlu.
+3. Rangka pemuatan menuntut `queue !== null`.
+4. Kegagalan selain 403 memunculkan "Daftar antrean gagal dimuat".
+5. Catatan usang di bawah tabel diganti; isinya menggambarkan keadaan sebelum kewenangan
+   ditegakkan (2026-09-28) dan menyatakan kedua antrean dapat dibuka siapa pun — yang tidak
+   berlaku lagi.
+
+### Kenapa tidak ada uji yang menangkapnya
+
+Pembantu `do` di backend **selalu** memasang `X-Portal`, dan stub `/antrean` di frontend menjawab
+`200` tanpa memeriksa header sama sekali. Keduanya lulus baik sebelum maupun sesudah perbaikan.
+
+Empat uji baru, **seluruhnya dibuktikan gagal tanpa perbaikannya**:
+`TestAntreanDilayaniTanpaHeaderPortal` · `TestDaftarTetapMenuntutPortal` (menjaga rute yang
+membaca data tetap wajib berportal) · dua uji frontend untuk rangka pemuatan dan pesan galat.
+
+**Dikonfirmasi Work Owner 2026-10-11** dengan dua akun berbeda: inbox langsung terisi tanpa Muat
+ulang.
+
+**Tidak ada modul lain terkena** — ketiga belas pemanggilan lain yang tidak mengirim portal
+diperiksa; seluruhnya sudah benar.

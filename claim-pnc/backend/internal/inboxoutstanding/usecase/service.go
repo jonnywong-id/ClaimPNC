@@ -182,7 +182,23 @@ func (s *Service) Summary(ctx context.Context, q Query) (SummaryResult, error) {
 		return SummaryResult{}, fmt.Errorf("inboxoutstanding/usecase: meringkas status dokumen: %w", err)
 	}
 
-	return SummaryResult{Summary: summary, AssignedTo: q.LoginID}, nil
+	// Lini bisnis menentukan tab mana yang TERLIHAT, bukan baris mana yang terhitung —
+	// lihat Summary.ForLineBusiness. Ia dibaca dari sumber yang sama dengan cakupan
+	// unduhan, sehingga tab dan unduhan tidak mungkin berbeda pendapat soal siapa petugas
+	// PA.
+	//
+	// Kegagalan membacanya TIDAK menggagalkan ringkasan: angka tiap tab sudah benar, dan
+	// yang hilang hanyalah pilihan antara dua label. Menjatuhkan seluruh panel karena itu
+	// akan menyembunyikan angka yang sebenarnya sudah di tangan.
+	line, err := claims.LineBusinessFor(ctx, q.LoginID)
+	if err != nil {
+		line = inboxoutstanding.LineUnknown
+	}
+
+	return SummaryResult{
+		Summary:    summary.ForLineBusiness(line),
+		AssignedTo: q.LoginID,
+	}, nil
 }
 
 // ExportQuery adalah permintaan unduhan CSV.

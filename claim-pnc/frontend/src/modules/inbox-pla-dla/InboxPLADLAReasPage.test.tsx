@@ -400,6 +400,9 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     expect(
       screen.queryByRole('button', { name: 'Export To Excel' }),
     ).toBeNull()
+    expect(
+      screen.queryByRole('region', { name: 'Status dan jumlah klaim per daftar' }),
+    ).toBeNull()
   })
 
   it('tidak menembak grid XOL ketika pemanggilnya sudah ditolak', async () => {
@@ -417,6 +420,82 @@ describe('layar Inbox PLA DLA milik reasuradur', () => {
     // Satu sebab, satu penolakan. Tanpa penjagaan ini pengguna menerima dua penolakan
     // untuk hal yang sama — dan yang kedua digambar sebagai kerusakan.
     expect(calls.some((call) => call.url.includes('/xol'))).toBe(false)
+  })
+
+  /*
+    Tata letaknya mengikuti Pega dari atas ke bawah (`D-13`):
+
+      donat + tabel "Status / Jumlah"      selebar layar
+      "Search" + Claim No + tombolnya      panel tersendiri
+      "Export To Excel"                    rata kiri, di bawah pencarian
+      grid                                 selebar layar, berkolom nomor urut
+
+    Sampai 2026-10-11 kotak cari dan ketiga tombol berada DI DALAM kepala grid, dan tabel
+    ringkas melayang di sebelah kanannya. Uji berikut yang menahannya kembali ke sana.
+  */
+  it('menaruh ringkasan di ATAS grid, bukan di sebelah kanannya', async () => {
+    installFetch(jawabanBiasa([BARIS]))
+    tampilkan()
+
+    await screen.findByText('PNC-2001')
+
+    const ringkas = screen.getByRole('region', {
+      name: 'Status dan jumlah klaim per daftar',
+    })
+    const grid = screen.getByRole('table', { name: /Daftar PLA/ })
+
+    // DOCUMENT_POSITION_FOLLOWING: gridnya datang SESUDAH ringkasannya.
+    expect(ringkas.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it('menaruh kotak cari dan ketiga tombol DI LUAR grid', async () => {
+    installFetch(jawabanBiasa([BARIS]))
+    tampilkan()
+
+    await screen.findByText('PNC-2001')
+
+    // Wadah grid adalah kartu tabelnya. Ketiga kendali ini ada di layar, tetapi tidak
+    // satu pun berada di dalam kartu itu.
+    const kartuGrid = screen.getByRole('table', { name: /Daftar PLA/ }).closest('section')
+    expect(kartuGrid).not.toBeNull()
+
+    for (const nama of ['Search Data', 'Refresh', 'Export To Excel']) {
+      const tombol = screen.getByRole('button', { name: nama })
+      expect(kartuGrid?.contains(tombol)).toBe(false)
+    }
+
+    expect(kartuGrid?.contains(screen.getByLabelText(/Claim No/))).toBe(false)
+  })
+
+  it('menomori baris grid, seperti kolom paling kiri grid Pega', async () => {
+    installFetch(jawabanBiasa([BARIS, BARIS_STATUS_ASING]))
+    tampilkan()
+
+    await screen.findByText('PNC-2001')
+
+    const grid = screen.getByRole('table', { name: /Daftar PLA/ })
+    expect(within(grid).getByRole('columnheader', { name: 'No' })).toBeInTheDocument()
+
+    // Baris pertama bernomor 1, baris kedua bernomor 2 — bukan keduanya kosong.
+    const baris = within(grid).getAllByRole('row')
+    expect(within(baris[1] as HTMLElement).getByText('1')).toBeInTheDocument()
+    expect(within(baris[2] as HTMLElement).getByText('2')).toBeInTheDocument()
+  })
+
+  it('mencari pula ketika Enter ditekan di dalam kotak Claim No', async () => {
+    installFetch(jawabanBiasa([BARIS]))
+    tampilkan()
+
+    await screen.findByText('PNC-2001')
+
+    // Di layar lama perilaku ini datang gratis dari form Pega; di sini ia harus disebut.
+    await userEvent.type(screen.getByLabelText(/Claim No/), 'PNC-2001{Enter}')
+
+    await waitFor(() => {
+      expect(calls.some((call) => call.url.includes('cari=PNC-2001'))).toBe(true)
+    })
   })
 
   it('mengirim kata kunci hanya setelah Search Data ditekan', async () => {

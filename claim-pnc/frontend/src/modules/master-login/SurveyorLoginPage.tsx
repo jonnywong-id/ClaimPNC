@@ -103,17 +103,18 @@ function loadMessage(error: unknown): MessageContent {
  * tanda hubung. LOGIN itulah kunci barisnya — setiap pernyataan simpan menyaring
  * `where login = ...` — sehingga Nama TERKUNCI setelah baris tersimpan.
  *
- * # Akun aplikasi TIDAK diterbitkan, dan itu dinyatakan terang-terangan
+ * # Layar ini SETARA dengan Pega — tidak ada yang hilang
  *
- * Di Pega, menyimpan baris baru ikut memanggil `GCNMCreateOperator` untuk menerbitkan akun
- * operator, dengan kata sandi yang sama untuk setiap orang, dan pesan suksesnya menyebut
- * kata sandi itu. Tiga hal menghalanginya di sini: tidak ada operator Pega untuk
- * diterbitkan, kontrak identitas `F-3` belum ada (`R-14`), dan mengumumkan kata sandi bagi
- * akun yang tidak diterbitkan adalah keterangan yang salah — petugas akan menyampaikannya
- * kepada surveyor yang kemudian tidak dapat masuk.
+ * Versi awal berkas ini menyatakan bahwa layar Pega ikut menerbitkan akun operator beserta
+ * kata sandi yang sama untuk setiap orang, dan memasang peringatan di dua tempat karena
+ * perilaku itu tidak dibawa. Pernyataan itu KELIRU, dan dicabut 2026-10-11.
  *
- * Perlakuan yang sama dipakai Master Bengkel, yang menghadapi `GCNMCreateOperator` yang
- * sama persis.
+ * Yang sebenarnya: activity simpan `CNMInsertMstLoginSurveyor_act` hanya menyisipkan atau
+ * memperbarui `POOLDATA.MST_LOGIN_SURVEYOR`. Pemanggilan `GCNMCreateOperator` ada di
+ * activity LAIN yang berjalan saat Nama diketik, dan langkah itu sendiri mati. Keempat
+ * buktinya ada di doc comment usecase.Service.Create pada backend.
+ *
+ * Akibatnya layar ini tidak memuat catatan kaki maupun peringatan apa pun soal akun.
  *
  * # Cakupan daftarnya adalah REKONSTRUKSI
  *
@@ -343,25 +344,18 @@ export function SurveyorLoginPage() {
         )}
       </section>
 
-      {/* Dua keterbatasan yang nyata, dinyatakan di kaki halaman alih-alih ditemukan
-          pengguna sendiri.
+      {/* TIDAK ADA catatan kaki di sini, dan itu disengaja.
 
-          Keduanya berasal dari bentuk tabelnya, bukan dari pilihan modul ini — dan keduanya
-          tidak terlihat dari layar bila tidak disebutkan. */}
-      <footer className="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
-        <p>
-          <strong className="text-slate-700">Akun aplikasi belum diterbitkan.</strong>{' '}
-          Layar ini mencatat login surveyor di master; ia belum membuat akun yang dapat
-          dipakai masuk. Aplikasi lama menerbitkannya dengan kata sandi yang sama untuk
-          setiap orang — perilaku yang tidak dibawa, dan penggantinya menunggu sistem
-          identitas.
-        </p>
-        <p>
-          <strong className="text-slate-700">Login tidak dapat dihapus.</strong>{' '}
-          Tabelnya tidak punya penanda aktif, dan penghapusan data bernilai bisnis dilarang.
-          Surveyor yang sudah tidak bertugas tetap tampil di daftar ini.
-        </p>
-      </footer>
+          Dua pernyataan sempat dipasang dan DICABUT 2026-10-11 atas keputusan Work Owner:
+
+          1. "Akun aplikasi belum diterbitkan" — KELIRU. Layar Pega pun tidak pernah
+             menerbitkan akun; ia hanya mencatat data surveyor. Lihat doc comment
+             usecase.Service.Create di backend untuk keempat buktinya.
+          2. "Login tidak dapat dihapus" — benar, tetapi Pega juga tidak punya tombol Hapus
+             (`pyGridDeleteActivityExists = false` pada gridnya). Layar ini mengikuti Pega:
+             hanya Tambah dan Ubah, tanpa menambah maupun mengubah apa pun.
+
+          Jangan pasang kembali tanpa bukti baru dari sistem yang berjalan. */}
     </main>
   )
 }

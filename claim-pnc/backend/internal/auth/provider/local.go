@@ -11,20 +11,20 @@ import (
 )
 
 // LocalLogin adalah satu baris POOLDATA.M_LOGIN_PNC yang cocok.
+//
+// # Ia TIDAK membawa cabang, dan itu disengaja
+//
+// Struktur ini sempat punya `DetailBranchCode` yang diisi dari master HRD lokal
+// `POOLDATA.V_HRD_M_MST` (kolom `LCA_ID`). Field itu DICABUT atas keputusan Work Owner
+// (2026-10-11): cabang hanya boleh datang dari layanan HCC, dan `LCA_ID` terbukti bukan
+// sumber yang dipakai Pega — nol kemunculan di seluruh export, dan hanya 68% sepakat
+// dengan sumber Pega yang sebenarnya. Rinciannya di kueri `local_login_find_active`.
+//
+// Akibatnya setiap pengguna jalur ini masuk tanpa cabang, dan layar yang batas datanya
+// cabang menolaknya. Itu penolakan yang BENAR, bukan cacat yang perlu ditambal.
 type LocalLogin struct {
 	LoginID   string
 	LoginName string
-
-	// DetailBranchCode adalah kode cabang RINCI pengguna, bila ia ditemukan di master
-	// HRD lokal `POOLDATA.V_HRD_M_MST` (kolom `LCA_ID`).
-	//
-	// Kosong untuk pengguna non-karyawan yang sebenarnya — broker dan surveyor
-	// independen tidak ada di HRD, dan mereka memang tidak punya cabang.
-	//
-	// Nilainya berada di ruang kode yang SAMA dengan `DetailBranchCode` dari HCQ, yakni
-	// `POOLDATA.BRANCH.OLDID`, sehingga ia dapat dipakai apa adanya. Lihat catatan pada
-	// kueri `local_login_find_active`.
-	DetailBranchCode string
 }
 
 // LoginListRepo adalah seam ke tabel POOLDATA.M_LOGIN_PNC.
@@ -101,10 +101,10 @@ func (l *Local) Verify(ctx context.Context, k auth.Credential) (auth.Profile, er
 		Kind:     auth.NonEmployee,
 		Login:    strings.TrimSpace(rows.LoginID),
 
-		// Cabang diisi HANYA bila master HRD lokal memuatnya. Kosong tetap sah dan
-		// tidak menghalangi masuk — yang terjadi kemudian adalah penolakan pada layar
-		// yang memang berbatas cabang, bukan kegagalan login.
-		DetailBranchCode: strings.TrimSpace(rows.DetailBranchCode),
+		// `DetailBranchCode` sengaja DIBIARKAN KOSONG. Cabang hanya datang dari layanan
+		// HCC (keputusan Work Owner 2026-10-11), dan jalur ini bukan HCC. Kosong tidak
+		// menghalangi masuk; yang terjadi kemudian adalah penolakan pada layar yang
+		// memang berbatas cabang — dan penolakan itu yang dikehendaki.
 	}
 	if err := profile.Check(); err != nil {
 		return auth.Profile{}, err
