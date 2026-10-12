@@ -73,6 +73,15 @@ func (l *Service) dlaScopeOf(ctx context.Context, p DLACommand, by Caller) (dlaS
 		return dlaScope{}, err
 	}
 	object := claim.InsuredItem[p.Object-1]
+	// Isian akseptasi (kolom migrasi 0013) tidak ikut termuat bersama klaim. KOMITEACCEPTED
+	// di antaranya adalah `.AdjustmentList().KomiteAccepted` — nama penanda tangan DLA
+	// (`tempObjeCvg.CountryID`) sekaligus kunci tanda tangannya (`SetSignatureNonMBU`). Tanpa
+	// pembacaan ini nama dan tanda tangan DLA selalu kosong.
+	if l.acceptance != nil {
+		if err := l.acceptance.Fields(ctx, claim.ID, object.ID, p.Coverage, p.Adjustment, line); err != nil {
+			return dlaScope{}, err
+		}
+	}
 	return dlaScope{claim: claim, object: object, coverage: object.Coverage[p.Coverage-1], line: *line, p: p}, nil
 }
 
@@ -368,9 +377,17 @@ func (l *Service) PrintDLA(ctx context.Context, p DLACommand, by Caller) (DLARes
 		return DLAResult{}, err
 	}
 	entity := plaEntity(sc.claim.Portal)
+	logoPortal := sc.claim.Portal
 	signerName := strings.TrimSpace(sc.line.Acceptance.Form.CommitteeName)
 	var signature []byte
-	if id := dlaSignatureID(signerName); id != "" {
+	id := dlaSignatureID(signerName)
+	if id == "DHARMANTO" {
+		// `SetSignatureNonMBU`: penyetuju DHARMANTO menyetel TempPDFLaterOfAssigment.pyID =
+		// "insurtech", sehingga kop dan footer DLA memakai Simas Insurtech.
+		entity = "ASI"
+		logoPortal = "ASI"
+	}
+	if id != "" {
 		if _, signature, err = l.pla.Signature(ctx, id); err != nil {
 			return DLAResult{}, err
 		}
@@ -403,7 +420,7 @@ func (l *Service) PrintDLA(ctx context.Context, p DLACommand, by Caller) (DLARes
 			}
 		}
 		content, err := l.dlaRenderer.Render(registrasi.DLADocument{
-			DLA: d, Entity: entity,
+			DLA: d, Entity: entity, Portal: logoPortal,
 			BusinessName:    firstText(sc.claim.Policy.BusinessName, policy.BusinessName),
 			PolicyNumber:    sc.claim.Policy.Number,
 			ClaimNumber:     sc.claim.Number,

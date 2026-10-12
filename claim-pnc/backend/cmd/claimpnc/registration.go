@@ -9,6 +9,7 @@ import (
 
 	komitesql "claim-pnc/internal/komite/repo/sqlstore"
 	komiteusecase "claim-pnc/internal/komite/usecase"
+	"claim-pnc/internal/platform/asset"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/config"
 	"claim-pnc/internal/platform/random"
@@ -70,11 +71,14 @@ func assembleRegistration(
 	clock := clock.System{}
 
 	options := registrasiusecase.Options{
-		IDGenerator:            idGenerator,
-		Clock:                  clock,
-		FaceSheetRenderer:      facesheetpdf.Renderer{},
-		PLARenderer:            plapdf.Renderer{},
-		DLARenderer:            dlapdf.Renderer{},
+		IDGenerator:       idGenerator,
+		Clock:             clock,
+		FaceSheetRenderer: facesheetpdf.Renderer{},
+		PLARenderer:       plapdf.Renderer{Logo: asset.PortalLogos()},
+		// Kop DLA dan PLA dipilih menurut portal klaim (asset.PortalLogos): hari ini hanya ASM
+		// yang punya logo (LogoASM, padanan `webweb/LogoASM.PNG` Pega); portal lain tercetak
+		// tanpa logo, bukan meminjam logo ASM.
+		DLARenderer:            dlapdf.Renderer{Logo: asset.PortalLogos()},
 		AcceptanceNoteRenderer: acceptancenotepdf.Renderer{},
 		LODRenderer:            lodpdf.Renderer{},
 

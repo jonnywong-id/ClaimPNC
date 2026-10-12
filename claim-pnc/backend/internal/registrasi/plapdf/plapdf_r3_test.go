@@ -89,3 +89,44 @@ func TestFormatHelpers(t *testing.T) {
 	normalized := normalizePNG(samplePNG(t))
 	require.True(t, bytes.HasPrefix(normalized, []byte("\x89PNG")))
 }
+
+// Logo kop dipilih menurut PORTAL klaim: hanya portal yang punya logo yang mencetaknya, dan
+// portal lain (SMAS, SMI, …) tidak meminjam logo ASM walaupun entitas alamat kakinya ASM.
+func TestPLALogoFollowsPortal(t *testing.T) {
+	// Tanpa alfa: satu objek gambar per logo, tanpa masker transparansi.
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 4, 2))))
+	logo := buf.Bytes()
+	images := func(portal string) int {
+		doc := sampleDoc()
+		doc.Entity, doc.Portal, doc.Signature = "ASM", portal, nil
+		out, err := Renderer{Logo: map[string][]byte{"ASM": logo}}.Render(doc)
+		require.NoError(t, err)
+		return strings.Count(string(out), "/Subtype /Image")
+	}
+	require.Equal(t, 1, images("ASM"))
+	require.Equal(t, 1, images("asm"), "alias dibandingkan tanpa peduli huruf besar")
+	for _, portal := range []string{"SMAS", "SMI", "SPK", "SPKS", ""} {
+		require.Zero(t, images(portal), portal)
+	}
+}
+
+// Footer (kop bawah) per portal: ASM, ASI, dan SMI punya alamat dari template Pega; portal
+// lain tidak punya dan tidak boleh meminjam alamat badan hukum lain.
+func TestFooterFollowsPortal(t *testing.T) {
+	want := map[string]string{
+		"ASM": "PT Asuransi Sinar Mas",
+		"ASI": "PT ASURANSI SIMAS INSURTECH",
+		"SMI": "Sinar Mas Insurance, S.A.",
+	}
+	for portal, name := range want {
+		if footer[portal][0] != name {
+			t.Fatalf("%s: footer %q, ingin %q", portal, footer[portal][0], name)
+		}
+	}
+	for _, portal := range []string{"SMAS", "SPK", "SPKS"} {
+		if _, ok := footer[portal]; ok {
+			t.Fatalf("%s tidak boleh punya footer tanpa sumber", portal)
+		}
+	}
+}

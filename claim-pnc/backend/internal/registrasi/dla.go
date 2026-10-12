@@ -187,7 +187,11 @@ type DLARenderer interface {
 // DLADocument adalah isi satu dokumen DLA.
 type DLADocument struct {
 	DLA
-	Entity          string // ASM atau ASI
+	Entity string // ASM atau ASI — alamat kaki
+	// Portal adalah alias portal yang logonya dipakai di kop (ASM, ASI, SMAS, …): portal klaim,
+	// atau ASI bila penyetujunya DHARMANTO (`SetSignatureNonMBU`). Portal tanpa logo dicetak
+	// tanpa logo.
+	Portal          string
 	BusinessName    string
 	PolicyNumber    string
 	ClaimNumber     string

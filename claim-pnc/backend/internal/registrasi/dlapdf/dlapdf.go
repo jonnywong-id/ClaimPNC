@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	_ "image/jpeg" // logo Insurtech di Pega berformat JPG (webweb/LogoInsurtech.jpg)
 	"image/png"
 	"strings"
 	"time"
@@ -21,7 +22,8 @@ import (
 	"claim-pnc/internal/registrasi/facesheetpdf"
 )
 
-// Renderer memenuhi registrasi.DLARenderer. Logo adalah PNG kop per entitas (ASM, ASI).
+// Renderer memenuhi registrasi.DLARenderer. Logo adalah gambar kop (PNG atau JPEG) dikunci alias
+// portal huruf besar (ASM, ASI, SMAS, …); portal tanpa entri dicetak tanpa logo.
 type Renderer struct {
 	Logo map[string][]byte
 }
@@ -39,12 +41,17 @@ const (
 	pageMarginB = 30.0
 )
 
-// footer adalah alamat kaki halaman per entitas — blok footer template DLA.
+// footer adalah alamat kaki halaman per PORTAL — blok footer template Pega
+// (`PLAHTML*`: pyID 'Asm', 'insurtech', 'smi'). Portal tanpa entri (SMAS, SPK, SPKS) tidak
+// punya alamat di export, sehingga dokumennya dicetak tanpa footer alih-alih memakai alamat
+// badan hukum lain.
 var footer = map[string][2]string{
 	"ASM": {"PT Asuransi Sinar Mas",
 		"Plaza Simas, Jl.KH.Fachrudin no.18 Jakarta Pusat 10250-Indonesia\n24 Hour Customer Care:(021)-235-67-888; Telp:(021)-390-2141 (Hunting); Faks:(021)-390-2159/60,\nwww.sinarmas.co.id"},
 	"ASI": {"PT ASURANSI SIMAS INSURTECH",
 		"Gedung Menara Tekno Lantai 5, Jl. K. H. Fachrudin No. 19, Jakarta, 10250 - Indonesia\nTelp : (021) 5050 7777  Faks : (021) 4060 0009  Email : Info@simasinsurtech.com"},
+	"SMI": {"Sinar Mas Insurance, S.A.",
+		"Rua 30 de Agosto, Bidau Lecidere, Dili, Timor-Leste\nPhone : (670)3310899 • www.sinarmasinsurance-timorleste.com"},
 }
 
 // Render membentuk PDF satu DLA.
@@ -54,12 +61,14 @@ func (r Renderer) Render(d registrasi.DLADocument) ([]byte, error) {
 	pdf.SetAutoPageBreak(true, pageMarginB)
 	pdf.SetTitle("DLA "+d.Number, true)
 	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	entity := d.Entity
-	if _, ok := footer[entity]; !ok {
-		entity = "ASM"
-	}
+	// Footer mengikuti PORTAL klaim, bukan entitas: entitas meringkas portal selain ASI
+	// menjadi ASM, sehingga memakainya akan mencetak alamat Asuransi Sinar Mas pada dokumen
+	// portal lain.
+	f, hasFooter := footer[strings.ToUpper(strings.TrimSpace(d.Portal))]
 	pdf.SetFooterFunc(func() {
-		f := footer[entity]
+		if !hasFooter {
+			return
+		}
 		pdf.SetY(-26)
 		pdf.SetFont(font, "B", 8)
 		pdf.CellFormat(0, 4, tr(f[0]), "", 1, "L", false, 0, "")
@@ -68,7 +77,10 @@ func (r Renderer) Render(d registrasi.DLADocument) ([]byte, error) {
 	})
 	pdf.AddPage()
 
-	if logo := normalizePNG(r.Logo[entity]); len(logo) > 0 {
+	// Logo dipilih menurut PORTAL, bukan entitas alamat kaki: entitas meringkas portal selain
+	// ASI menjadi ASM, sehingga memakainya akan mencetak logo ASM pada dokumen SMAS, SMI, SPK,
+	// dan SPKS.
+	if logo := normalizePNG(r.Logo[strings.ToUpper(strings.TrimSpace(d.Portal))]); len(logo) > 0 {
 		opt := fpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
 		pdf.RegisterImageOptionsReader("logo", opt, bytes.NewReader(logo))
 		pdf.ImageOptions("logo", marginLeft, 12, 55, 0, false, opt, 0, "")
