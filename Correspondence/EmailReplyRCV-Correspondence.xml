@@ -1,0 +1,400 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pyRuleParamsStreamName/>
+<pxUpdateOpName>IntanHenny</pxUpdateOpName>
+<pyInterface/>
+<pyLabelOld>EmailReplyRCV</pyLabelOld>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyStatus/>
+<pyWindowTitle/>
+<pxCreateSystemID>pegadev83</pxCreateSystemID>
+<pyPromptValidate/>
+<pzRuleSetVersionPatch>99</pzRuleSetVersionPatch>
+<pySourceOnlyMode>true</pySourceOnlyMode>
+<pySpecialtyComponentData/>
+<pyAccessibilityCount>0</pyAccessibilityCount>
+<pyCircumstanceDateProp/>
+<pyJavaGenerateAPIVersion>04-02</pyJavaGenerateAPIVersion>
+<pxUpdateOperator>INTANHENNY</pxUpdateOperator>
+<pxInstanceLockedRuleSet/>
+<pyDescription/>
+<pyFormSizeVert>80</pyFormSizeVert>
+<pzChecksum>326541026</pzChecksum>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyRuleFormStatusTime>20261012T062136.737 GMT</pyRuleFormStatusTime>
+<pyValueChanged>false</pyValueChanged>
+<pxHostId>jboss10373</pxHostId>
+<pyFormPrintMethod/>
+<pyHTMLPrompt/>
+<pyRuleStarts/>
+<pzIndexCount>18</pzIndexCount>
+<pyBrowserSupportLevel>0</pyBrowserSupportLevel>
+<pyJavaClassName>Rule_Obj_Corr_ASM_FW_GCNMFW_Work_PNC_EmailReplyRCV_corr_Email_Stream_20221116T081126_097_GMT</pyJavaClassName>
+<pyXMLSignature>&lt;methodSignature&gt;&lt;pyStepsPageAliases&gt;&lt;/pyStepsPageAliases&gt;&lt;/methodSignature&gt;</pyXMLSignature>
+<pyWordTemplate/>
+<pxOriginalCreateSystemID/>
+<pzOriginalInstanceKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20210813T063155.158 GMT</pzOriginalInstanceKey>
+<pySPRuleSetName>INTANHENNY@</pySPRuleSetName>
+<pyJavaStream/>
+<pySourceStream>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta http-equiv="Content-Type" content="text/html; charset=UTF-8"&gt;
+&lt;style&gt;
+.link-button{
+   background-color: white;
+   border: 2px solid #e7e7e7;
+  border-radius: 12px;
+  color: black;
+  font-color: black;
+  padding: 5px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body &gt;
+  &lt;p&gt;
+    Dear,&lt;br&gt;&lt;br&gt;
+    Terima kasih atas komunikasi yang telah bapak/ibu kirim.&lt;br&gt;
+    Untuk itu kami berikan tanggapan kami atas komunikasi yang telah bapak/ibu kirim : &lt;br&gt;  &lt;pega:reference name="tempReply.ADDRESS"&gt;&lt;/pega:reference&gt;
+    &lt;br&gt;&lt;br&gt;
+    Silahkan klik link &lt;b&gt;&lt;a href="http://pega.sinarmas.co.id/prweb/" class="link-button"&gt;PEGA SITE&lt;/a&gt;&lt;/b&gt; untuk melihat detail komunikasi &lt;br&gt;&lt;br&gt;
+    Terima Kasih&lt;br&gt;
+    Best Regards,
+  &lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pySourceStream>
+<pxCreateOperator>INTANHENNY</pxCreateOperator>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pyCircumstanceDefinition/>
+<pzInvalidateCss>true</pzInvalidateCss>
+<pxCreatedInPRPCVersion>08-03</pxCreatedInPRPCVersion>
+<pxMoveImportDateTime>20221116T100652.317 GMT</pxMoveImportDateTime>
+<pyRuleEnds/>
+<pyMethodStatus/>
+<pyDeletedObject/>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pyClassName>ASM-FW-GCNMFW-Work-PNC</pyClassName>
+<pyEditable/>
+<pyShowDescription>false</pyShowDescription>
+<pxMoveFromSystem/>
+<pyBaseRule>false</pyBaseRule>
+<pxSaveDateTime>20221116T081319.580 GMT</pxSaveDateTime>
+<pxOriginalCreateOpName/>
+<pyMemo>done</pyMemo>
+<pyCheckInRuleSet/>
+<pxUpdateDateTime>20221116T081319.569 GMT</pxUpdateDateTime>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pyIsFromManageChangeLP/>
+<pxInstanceLockedCreateDateTime/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pyFormPost/>
+<pxCommitDateTime>20221116T100652.000 GMT</pxCommitDateTime>
+<pyUserEdit>NoEdit</pyUserEdit>
+<pzHasModeLiteral>false</pzHasModeLiteral>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyReloadForm>true</pyReloadForm>
+<pyShowJavaWindowName>GeneratedJava20261012T062136.770 GMT</pyShowJavaWindowName>
+<pyRuleName>EmailReplyRCV_corr Email</pyRuleName>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyObjClassLabel>Correspondence</pyObjClassLabel>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pyHistoryObject>false</pyHistoryObject>
+<pyEmailViewMode>source</pyEmailViewMode>
+<pzCorrTypeClass>Data-Corr-Email</pzCorrTypeClass>
+<pyCorrType>Email</pyCorrType>
+<pyCircumstanceProp/>
+<pyCircumstanceVal/>
+<pyAccessibilityLevel>0</pyAccessibilityLevel>
+<pxMoveImportOperId>INTANHENNYSETIYAWATI</pxMoveImportOperId>
+<pyRelativePath/>
+<pyDeleteMemo>done</pyDeleteMemo>
+<pyCircumstanceType/>
+<pyNextAction>Send</pyNextAction>
+<pxCreateOpName>IntanHenny</pxCreateOpName>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pxInstanceLockedBy/>
+<pxOriginalCreateOperator/>
+<pxInsName>ASM-FW-GCNMFW-WORK-PNC!EMAILREPLYRCV_CORR!EMAIL</pxInsName>
+<pxInsId>!EMAILREPLYRCV_CORR!EMAIL</pxInsId>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyTopLevelCorr>false</pyTopLevelCorr>
+<pyStreamName>EmailReplyRCV_corr</pyStreamName>
+<pyCircumstanceTemplate/>
+<pyShowSectionPreview>false</pyShowSectionPreview>
+<pyLabel>EmailReplyRCV</pyLabel>
+<pxInstanceLockedDateTime/>
+<pzDocumentKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzDocumentKey>
+<pxObjClass>Rule-Obj-Corr</pxObjClass>
+<pzErrorMessage/>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>INTAN HENNY SETIYAWATI</pxMoveImportOperName>
+<pyDocumentTitle/>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzInsKey>
+<pyFormSizeHoriz>60</pyFormSizeHoriz>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMinor>01</pzRuleSetVersionMinor>
+<pyCircumstanceDate/>
+<pyRuleSetVersion>01-01-99</pyRuleSetVersion>
+<pyUsage/>
+<pxCreateDateTime>20221116T081124.978 GMT</pxCreateDateTime>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pxInstanceLockedKey/>
+<pxTabLabel>EmailReplyRCV_corr Email</pxTabLabel>
+<pyTemporaryObject/>
+<pyCompact>false</pyCompact>
+<pyWorkKey/>
+<pxOriginalCreateDateTime/>
+<pzStatus>valid</pzStatus>
+<pyPrivilegeList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPrivilegeClass>ASM-FW-GCNMFW-Work-PNC</pyPrivilegeClass>
+<pyPrivilegeName/>
+<pxObjClass>Embed-Rule-PrivilegeSecurity</pxObjClass>
+</rowdata>
+</pyPrivilegeList>
+<pyRMAction>
+<pyV2/>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxWarningJustifiedOperator/>
+<pxWarningMessage>(Rule-Stream)pxStylesOnCorrespondence</pxWarningMessage>
+<pxWarningJustifiedTime/>
+<pxWarningDetails>(Rule-Stream)pxStylesOnCorrespondence</pxWarningDetails>
+<pxWarningType>Maintainability</pxWarningType>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pyWarningJustifiedMessage/>
+<pxWarningName>Styles on correspondence</pxWarningName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxWarningCreatedTime>20210813T063159.028 GMT</pxWarningCreatedTime>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarnings>
+<pxAPIMethodReferences REPEATINGTYPE="PageList"/>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFieldName/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pyCFileRelativePath/>
+<pxSubscript>empty</pxSubscript>
+<pyCFieldValue/>
+<pyCFileKey/>
+<pyCFieldType/>
+</rowdata>
+</pyCustomFields>
+<pyToolBarSettings>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyCheckIn>false</pyCheckIn>
+<pySave>false</pySave>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRecover>false</pyRecover>
+<pyRuleResolution>true</pyRuleResolution>
+<pySaveAs>true</pySaveAs>
+<pyDelegates>true</pyDelegates>
+<pyShowJava>false</pyShowJava>
+<pyAvailability>false</pyAvailability>
+<pyForward>true</pyForward>
+<pyRun>false</pyRun>
+<pyRuleData>true</pyRuleData>
+<pyVersionSecure>true</pyVersionSecure>
+<pyUsesInheritance>true</pyUsesInheritance>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyLaunch>true</pyLaunch>
+<pyHelpRef>/rule-/rule-obj-/rule-obj-corr/main.htm</pyHelpRef>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pySiblings>true</pySiblings>
+<pyCompareVersion/>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-obj-/rule-obj-corr/main.htm</pyHelpURI>
+<pyRefresh>true</pyRefresh>
+<pyPreview>true</pyPreview>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBranchOut>false</pyBranchOut>
+<pyNew>true</pyNew>
+<pyFavorites>true</pyFavorites>
+<pyPropertyPane>false</pyPropertyPane>
+<pyDelete>false</pyDelete>
+<pyBack>true</pyBack>
+<pyRestore>false</pyRestore>
+<pyCheckOut>true</pyCheckOut>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesPage>pyWorkPage</pyPagesAndClassesPage>
+<pyPagesAndClassesMode/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Work-ReceiveDocument</pyPagesAndClassesClass>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyPagesAndClassesPage>tempReply</pyPagesAndClassesPage>
+<pyPagesAndClassesClass>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyPagesAndClassesClass>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesMode/>
+</rowdata>
+</pyPagesAndClasses>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzInsKey>
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pyLabel>01-01-99 (Available)</pyLabel>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxObjClass>Rule-</pxObjClass>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20210813T063155.158 GMT</pzInsKey>
+<pyLabel>01-01-94 (Available)</pyLabel>
+<pxListSubscript>2</pxListSubscript>
+<pyMenuTooltip/>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyMenuTooltip/>
+<pxListSubscript>3</pxListSubscript>
+<pyValue>3</pyValue>
+<pzInsKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20200415T183810.664 GMT</pzInsKey>
+<pyLabel>01-01-84 (Available)</pyLabel>
+<pxObjClass>Rule-</pxObjClass>
+</rowdata>
+</pyRuleVersionsList>
+<pxCSSSelectors REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Embed-Reference-CSS</pxObjClass>
+<pxSelectorName>.link-button</pxSelectorName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="pzCSS">9</rowdata>
+</pzIndexes>
+</rowdata>
+</pxCSSSelectors>
+<pxNamedPageReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pxPageName>tempReply</pxPageName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">11</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pxPageName>pyWorkPage</pxPageName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxPageClass>ASM-FW-GCNMFW-Work-ReceiveDocument</pxPageClass>
+<pxObjClass>Embed-Reference-NamedPage</pxObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="NamedPageReference">12</rowdata>
+</pzIndexes>
+</rowdata>
+</pxNamedPageReferences>
+<pxRuleReferences REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxRuleClassName/>
+<pxRuleFamilyName>DEFAULT</pxRuleFamilyName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>Default</pyRuleName>
+<pxRuleObjClass>Rule-HTML-Property</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pyMethodStatus/>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">13</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="2">
+<pyMethodStatus/>
+<pyRuleName>ADDRESS</pyRuleName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleObjClass>Rule-Obj-Property</pxRuleObjClass>
+<pxRuleFamilyName>ADDRESS</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pxRuleClassName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">14</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="3">
+<pyRuleName>ASM-FW-GCNMFW-Work-PNC</pyRuleName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-PNC</pxRuleClassName>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pyMethodStatus/>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-PNC</pxRuleFamilyName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">15</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="4">
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Work-ReceiveDocument</pyRuleName>
+<pxRuleFamilyName>ASM-FW-GCNMFW-WORK-RECEIVEDOCUMENT</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Work-ReceiveDocument</pxRuleClassName>
+<pyMethodStatus/>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">16</rowdata>
+</pzIndexes>
+</rowdata>
+<rowdata REPEATINGINDEX="5">
+<pyMethodStatus/>
+<pxRuleObjClass>Rule-Obj-Class</pxRuleObjClass>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxRuleFamilyName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS</pxRuleFamilyName>
+<pxRuleClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pxRuleClassName>
+<pxObjClass>Embed-Reference-Rule</pxObjClass>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyRuleName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="RuleReference">17</rowdata>
+</pzIndexes>
+</rowdata>
+</pxRuleReferences>
+<pxWarningsToDisplay REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxWarningDetails>(Rule-Stream)pxStylesOnCorrespondence</pxWarningDetails>
+<pxWarningCreateOperator>INTANHENNY</pxWarningCreateOperator>
+<pyWarningJustifiedMessage/>
+<pxWarningJustifiedTime/>
+<pxWarningRuleSetType>PEGA</pxWarningRuleSetType>
+<pxWarningType>Maintainability</pxWarningType>
+<pzIndexOwnerKey>RULE-OBJ-CORR ASM-FW-GCNMFW-WORK-PNC EMAILREPLYRCV_CORR!EMAIL #20221116T081124.978 GMT</pzIndexOwnerKey>
+<pxIsWarningJustified>false</pxIsWarningJustified>
+<pxObjClass>Embed-Warning</pxObjClass>
+<pxWarningSeverity>3</pxWarningSeverity>
+<pxWarningJustifiedOperator/>
+<pxWarningMessage>Custom styles and scripts included with correspondence text may be difficult to maintain.  Consider moving these items to a HTML fragment instead.</pxWarningMessage>
+<pxWarningCreatedTime>20210813T063159.028 GMT</pxWarningCreatedTime>
+<pxWarningName>Styles on correspondence</pxWarningName>
+<pzIndexes REPEATINGTYPE="PropertyGroup">
+<rowdata REPEATINGINDEX="Warnings">10</rowdata>
+</pzIndexes>
+</rowdata>
+</pxWarningsToDisplay>
+<pyPageRTE>
+<pxObjClass>Embed-RTE</pxObjClass>
+<pyAdvanced>true</pyAdvanced>
+</pyPageRTE>
+<pxMessageSummary>
+<pxUnjustifiedWarningCount>1</pxUnjustifiedWarningCount>
+<pxObjClass>Embed-Message-Summary</pxObjClass>
+<pxWarningCount>1</pxWarningCount>
+</pxMessageSummary>
+</pagedata>

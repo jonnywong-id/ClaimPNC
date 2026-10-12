@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/Button'
 import { ErrorMessage } from '@/components/ErrorMessage'
@@ -19,7 +19,7 @@ import { ReceiverTab } from './ReceiverTab'
 import { CloseClaimDialog } from './CloseClaim'
 import { SendToInputorDialog } from './SendToInputor'
 import { SendToRCLPUCLDialog } from './SendToRCLPUCL'
-import { SettlementDetail, SettlementEditor, inpatientDays } from './SettlementEditor'
+import { DELETE_NEEDS_COLUMN, SettlementDetail, SettlementEditor, inpatientDays, type SettlementEditorHandle } from './SettlementEditor'
 import { isPHKCoverage, showTransferToAnalyst } from './TransferToAnalyst'
 import {
   EstimationType,
@@ -703,6 +703,10 @@ function AdjustmentView({
   const [committeeFor, setCommitteeFor] = useState<{ object: number; coverage: number; adjustment?: number } | null>(null)
   // Baris adjustment yang baru tersimpan pertama kali — dibuka di grid supaya isiannya dapat diteruskan.
   const [openFor, setOpenFor] = useState<{ i: number; j: number; n: number } | null>(null)
+  // Pegangan simpan-sekarang isian yang sedang terbuka: baris baru dan baris tersimpan yang dibuka.
+  // Transfer ke Komite menyimpan isiannya lebih dulu, supaya yang ditransfer adalah nilai terakhir.
+  const addEditor = useRef<SettlementEditorHandle | null>(null)
+  const openEditor = useRef<SettlementEditorHandle | null>(null)
   // Tambah: ValidationAdjustment lebih dulu. PA pada jaminan tanpa adjustment mendapat estimasi
   // NewEstimationPA (TSI) sehingga Claim Face Sheet dapat dibuat.
   const prepare = usePrepareSettlement(klaim.id)
@@ -911,7 +915,21 @@ function AdjustmentView({
                                     receivers={klaim.penerima_klaim ?? []}
                                     exGratia={klaim.ex_gratia}
                                           inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
-                                    onTransferCommittee={(n) => setCommitteeFor({ object: i + 1, coverage: j + 1, adjustment: n })}
+                                    onTransferCommittee={(n) => {
+                                      const pending = openEditor.current ? openEditor.current.save() : Promise.resolve(0)
+                                      pending.then(() => setCommitteeFor({ object: i + 1, coverage: j + 1, adjustment: n })).catch(() => {})
+                                    }}
+                                    onTransferNew={() => {
+                                      // Baris baru: disimpan dulu, lalu modal Transfer Claim ke Komite untuk baris hasil simpan.
+                                      addEditor.current
+                                        ?.save()
+                                        .then((n) => {
+                                          setAddFor(null)
+                                          setOpenFor({ i, j, n })
+                                          setCommitteeFor({ object: i + 1, coverage: j + 1, adjustment: n + 1 })
+                                        })
+                                        .catch(() => {})
+                                    }}
                                     autoOpen={openFor?.i === i && openFor.j === j ? openFor.n : null}
                                     editable={(n, s) =>
                                       lockedReason === null && s.status_akseptasi === '' && !s.komite_id && !s.sudah_transfer_kasir ? (
@@ -931,11 +949,13 @@ function AdjustmentView({
                                           analyst={tugas.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
                                           existing={{ index: n, line: s }}
+                                          saveRef={openEditor}
                                           onClose={() => {}}
                                         />
                                       ) : null
                                     }
                                     onAdd={() => startAdd(i, j)}
+                                    onCancelAdd={() => setAddFor(null)}
                                     lockedReason={lockedReason}
                                     editor={
                                       addFor?.i === i && addFor.j === j ? (
@@ -953,6 +973,7 @@ function AdjustmentView({
                                           inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
                                           analyst={tugas.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
+                                          saveRef={addEditor}
                                           onCreated={(n) => {
                                             setAddFor(null)
                                             setOpenFor({ i, j, n })
@@ -1011,9 +1032,11 @@ function SettlementGrid({
   exGratia,
   inpatientDays,
   onTransferCommittee,
+  onTransferNew,
   autoOpen = null,
   editable,
   onAdd,
+  onCancelAdd,
   editor,
   lockedReason,
 }: {
@@ -1040,11 +1063,15 @@ function SettlementGrid({
   inpatientDays: number | null
   /** Tombol "Transfer ke Komite" baris adjustment (berbasis 1) — membuka modal ClaimComitee_OC. */
   onTransferCommittee: (adjustment: number) => void
+  /** Transfer ke Komite pada baris baru: simpan isian lalu buka modal komite. */
+  onTransferNew?: () => void
   /** Baris (berbasis 0) yang dibuka otomatis — baris yang baru tersimpan pertama kali. */
   autoOpen?: number | null
   /** Form isian untuk baris yang masih dapat diubah (`.AcceptanceStatus == ''`), atau null. */
   editable?: (n: number, line: Settlement) => ReactNode | null
   onAdd: () => void
+  /** Hapus pada baris adjustment baru yang belum tersimpan. */
+  onCancelAdd?: () => void
   /** Baris isian adjustment baru, bila tombol Tambah jaminan ini sedang dibuka. */
   editor: ReactNode
   /** Alasan tombol Tambah dikunci — tugas bukan milik pengguna ini. */
@@ -1161,7 +1188,11 @@ function SettlementGrid({
                     businessType={businessType}
                     receivers={receivers}
                   />
-                  <td className="p-2" />
+                  <td className="p-2 text-center">
+                    {s.status_akseptasi === '' && !s.komite_id && !s.sudah_transfer_kasir && lockedReason === null && (
+                      <DeleteRowButton disabled title={DELETE_NEEDS_COLUMN} />
+                    )}
+                  </td>
                 </tr>
                 {selected && (
                   <tr>
@@ -1190,14 +1221,67 @@ function SettlementGrid({
           })
         )}
         {editor !== null && (
-          <tr className="border-t border-slate-300">
-            <td className="p-2 align-top text-xs text-slate-700">{lines.length + 1}</td>
-            <td colSpan={7} className="p-0">
-              <div className="border border-slate-300 px-6 py-4">{editor}</div>
-            </td>
-          </tr>
+          <>
+            {/* Baris baru seperti Pega: nomor, Tipe LOD, Transfer ke Komite, tipe pembayaran, dan Hapus.
+                Tipe LOD dan Transfer ke Komite aktif setelah isian pertama tersimpan. */}
+            <tr className="border-t border-slate-300 bg-[#b3d1e4] align-top">
+              <td className="p-2 text-xs text-slate-700">{lines.length + 1}</td>
+              <td className="p-2">
+                {lodTypeVisible(groupPanel, businessType) && (
+                  <select
+                    aria-label={`Tipe LOD adjustment ${lines.length + 1}`}
+                    disabled
+                    title="Tipe LOD dapat dipilih setelah isian adjustment tersimpan."
+                    className="block w-full max-w-xs rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs"
+                  >
+                    <option>-- Pilih Tipe LOD --</option>
+                  </select>
+                )}
+              </td>
+              <td className="p-2">
+                {nonMBU && (
+                  <button
+                    type="button"
+                    disabled={lockedReason !== null || !onTransferNew}
+                    title={lockedReason ?? 'Isian adjustment disimpan lebih dulu, lalu modal Transfer Claim ke Komite terbuka.'}
+                    onClick={onTransferNew}
+                    className="whitespace-nowrap rounded bg-orange-500 px-2 py-0.5 text-xs text-white disabled:opacity-60"
+                  >
+                    Transfer ke Komite
+                  </button>
+                )}
+              </td>
+              <td className="p-2 text-white">——</td>
+              <td className="p-2" />
+              <td className="p-2" />
+              <td className="p-2" />
+              <td className="p-2 text-center">
+                <DeleteRowButton onClick={onCancelAdd} />
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={8} className="border-t border-slate-300 bg-white p-0">
+                <div className="border border-slate-300 px-6 py-4">{editor}</div>
+              </td>
+            </tr>
+          </>
         )}
       </tbody>
     </table>
+  )
+}
+
+/** Tombol Hapus baris adjustment — kolom terakhir grid ShowAdjustment_sect. */
+function DeleteRowButton({ onClick, disabled = false, title }: { onClick?: (() => void) | undefined; disabled?: boolean; title?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="rounded border border-blue-400 bg-white px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+    >
+      <span aria-hidden="true">⊗ </span>Hapus
+    </button>
   )
 }

@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+
+<pagedata>
+<pySPRuleSetName>NOVERHALOMOAN@</pySPRuleSetName>
+<pxCommitDateTime>20241223T123622.000 GMT</pxCommitDateTime>
+<pyCircumstanceDate/>
+<pxLimitedAccess>Dev</pxLimitedAccess>
+<pyTemplateDisplayText>No ruleset versions available</pyTemplateDisplayText>
+<pyStatus/>
+<pxOriginalCreateSystemID/>
+<pzChecksum>-1433432888</pzChecksum>
+<pyWindowTitle/>
+<pyRuleAvailable>Yes</pyRuleAvailable>
+<pySortDateCircumWithinRSMajor>true</pySortDateCircumWithinRSMajor>
+<pxHostId>jboss10372</pxHostId>
+<pyCircumstanceTemplate/>
+<pyJavaStream/>
+<pyOpenSQL/>
+<pzIsPrivateCheckOut>true</pzIsPrivateCheckOut>
+<pxUpdateSystemID>pegadev83</pxUpdateSystemID>
+<pyCircumstanceDateProp/>
+<pyMethodStatus/>
+<pyLabelOld>InsertPendukungDocListKomunikasi</pyLabelOld>
+<pyStreamName/>
+<pxInstanceLockedKey/>
+<pyIsStaleRuleCheckEnabled>false</pyIsStaleRuleCheckEnabled>
+<pyTemplate/>
+<pyRuleHarness>RuleForm</pyRuleHarness>
+<pyDocumentTitle/>
+<pyRuleSetVersion>01-03-10</pyRuleSetVersion>
+<pxMoveImportDateTime>20241223T123621.986 GMT</pxMoveImportDateTime>
+<pzRuleSetVersionPatch>10</pzRuleSetVersionPatch>
+<pyRuleFormStatusTime>20261012T060304.860 GMT</pyRuleFormStatusTime>
+<pyRequestType>InsertPendukungDocListKomunikasi</pyRequestType>
+<pxCreateSystemID>pegadev</pxCreateSystemID>
+<pyRuleSet>GCNMFW</pyRuleSet>
+<pxInstanceLockedDateTime/>
+<pxMoveImportOperId>NOVERHALOMOAN</pxMoveImportOperId>
+<pyWorkKey/>
+<pxUpdateDateTime>20241202T075022.939 GMT</pxUpdateDateTime>
+<pyCircumstanceProp/>
+<pxInsName>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!INSERTPENDUKUNGDOCLISTKOMUNIKASI</pxInsName>
+<pySaveSQL/>
+<pyObjClassLabel>Connect SQL</pyObjClassLabel>
+<pyRuleParamsStreamName/>
+<pyCircumstanceVal/>
+<pyMemo>insert dokument pendukung</pyMemo>
+<pyRWAccess>GCNM</pyRWAccess>
+<pySpecialtyComponentData/>
+<pyTempText>saved</pyTempText>
+<pyDeleteSQL/>
+<pyRuleFormStatus>Good</pyRuleFormStatus>
+<pyDeletedObject/>
+<pxInstanceLockedBy/>
+<pxOriginalRuleSet>GCNMFW</pxOriginalRuleSet>
+<pzDocumentKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTPENDUKUNGDOCLISTKOMUNIKASI #20241202T023803.502 GMT</pzDocumentKey>
+<pxOriginalCreateOperator/>
+<pxOriginalCreateOpName/>
+<pyRuleName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM InsertPendukungDocListKomunikasi</pyRuleName>
+<pxInstanceLockedRuleSet/>
+<pxInstanceLockedCreateDateTime/>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTPENDUKUNGDOCLISTKOMUNIKASI #20241202T023803.502 GMT</pzInsKey>
+<pyHandlerFlow/>
+<pyDisplayMode>clone</pyDisplayMode>
+<pyCircumstanceType/>
+<pxCreateOperator>NOVERHALOMOAN</pxCreateOperator>
+<pyCircumstanceDefinition/>
+<pzOriginalInstanceKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTDOKUMENLISTKOMUNIKASI_PNC #20200302T064335.376 GMT</pzOriginalInstanceKey>
+<pyRuleFormType>Harness</pyRuleFormType>
+<pyTemplateInputBox/>
+<pxMoveImportOperName>NOVERHALOMOAN</pxMoveImportOperName>
+<pyFormPost/>
+<pyRuleStarts/>
+<pyUsage/>
+<pzRuleSetVersionMajor>01</pzRuleSetVersionMajor>
+<pyIsFromManageChangeLP/>
+<pxOriginalCreateDateTime/>
+<pyRelativePath/>
+<pyBaseRule>false</pyBaseRule>
+<pyDeleteMemo>DONE</pyDeleteMemo>
+<pxSiblingCount/>
+<pyValueChanged>false</pyValueChanged>
+<pxInstanceLockedRuleSetVersion/>
+<pzRuleSetVersionMinor>03</pzRuleSetVersionMinor>
+<pyLabel>InsertPendukungDocListKomunikasi</pyLabel>
+<pxCreateDateTime>20241202T023803.502 GMT</pxCreateDateTime>
+<pxUpdateOpName>NOVERHALOMOAN</pxUpdateOpName>
+<pyRuleEnds/>
+<pxUpdateOperator>NOVERHALOMOAN</pxUpdateOperator>
+<pxTabLabel>ASM-FW-GCNMFW-Int-V_D_SURVEYORS GCNM InsertPendukungDocListKomunikasi</pxTabLabel>
+<pxObjClass>Rule-Connect-SQL</pxObjClass>
+<pyHistoryObject>false</pyHistoryObject>
+<pyClassName>ASM-FW-GCNMFW-Int-V_D_SURVEYORS</pyClassName>
+<pxInsId>ASM-FW-GCNMFW-INT-V_D_SURVEYORS!GCNM!INSERTPENDUKUNGDOCLISTKOMUNIKASI</pxInsId>
+<pxSaveDateTime>20241202T075023.801 GMT</pxSaveDateTime>
+<pxMoveFromSystem/>
+<pyShowJavaWindowName>GeneratedJava20261012T060304.886 GMT</pyShowJavaWindowName>
+<pyDescription/>
+<pyStepPageReference>RH_1</pyStepPageReference>
+<pxCreateOpName>NOVERHALOMOAN</pxCreateOpName>
+<pyInterface/>
+<pyBrowseSQL>INSERT INTO POOLDATA.S_KOMUNIKASI_PNC(DOCUMENTID,KOMUNIKASIID, CATEGORYID, TYPEID,UPLOADDATE,PZDOCUMENT) 
+select nvl(max (DOCUMENTID),0)+1,{TempEmail.SurveyName},{TempEmail.SurveyorName},{TempEmail.SurveyorType},sysdate,{TempEmail.KOMISI2}
+from POOLDATA.S_KOMUNIKASI_PNC</pyBrowseSQL>
+<pzStatus>valid</pzStatus>
+<pyToolBarSettings>
+<pyRuleData>true</pyRuleData>
+<pxObjClass>Embed-WBSettings-ToolBar</pxObjClass>
+<pyBack>true</pyBack>
+<pySave>false</pySave>
+<pyRecover>false</pyRecover>
+<pyAvailability>false</pyAvailability>
+<pyNew>true</pyNew>
+<pyVersionSecure>true</pyVersionSecure>
+<pyBranchOut>false</pyBranchOut>
+<pySiblings>true</pySiblings>
+<pyDelegates>false</pyDelegates>
+<pyFavorites>true</pyFavorites>
+<pyRuleResolution>true</pyRuleResolution>
+<pxCanJustifyWarnings>true</pxCanJustifyWarnings>
+<pyCheckOut>true</pyCheckOut>
+<pyUsesInheritance>false</pyUsesInheritance>
+<pyForward>true</pyForward>
+<pyRestore>false</pyRestore>
+<pyHelpRef>/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpRef>
+<pyDelete>false</pyDelete>
+<pyHelpURI>https://community.pega.com/sites/default/files/help_v83/rule-/rule-connect-/rule-connect-sql/main.htm</pyHelpURI>
+<pyLaunch>true</pyLaunch>
+<pyCompareVersion/>
+<pyPropertyPane>false</pyPropertyPane>
+<pyHasQualifiers>false</pyHasQualifiers>
+<pyRefresh>true</pyRefresh>
+<pyPreview>false</pyPreview>
+<pyCurrentlyOpen>true</pyCurrentlyOpen>
+<pyRequiresCheckOut>true</pyRequiresCheckOut>
+<pyShowJava>false</pyShowJava>
+<pySaveAs>true</pySaveAs>
+<pyRun>false</pyRun>
+<pyCheckIn>false</pyCheckIn>
+</pyToolBarSettings>
+<pyPagesAndClasses REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pyPagesAndClassesClass/>
+<pxObjClass>Embed-PagesAndClasses</pxObjClass>
+<pyPagesAndClassesPage/>
+</rowdata>
+</pyPagesAndClasses>
+<pxWarningsToDisplay REPEATINGTYPE="PageList"/>
+<pyRuleVersionsList REPEATINGTYPE="PageList">
+<rowdata REPEATINGINDEX="1">
+<pxObjClass>Rule-</pxObjClass>
+<pzInsKey>RULE-CONNECT-SQL ASM-FW-GCNMFW-INT-V_D_SURVEYORS GCNM!INSERTPENDUKUNGDOCLISTKOMUNIKASI #20241202T023803.502 GMT</pzInsKey>
+<pyMenuTooltip/>
+<pxListSubscript>1</pxListSubscript>
+<pyLabel>01-03-10 (Available)</pyLabel>
+<pyValue>3</pyValue>
+</rowdata>
+</pyRuleVersionsList>
+<pyCustomFields REPEATINGTYPE="PageGroup">
+<rowdata REPEATINGINDEX="empty">
+<pyCFileKey/>
+<pyCFieldValue/>
+<pyCFieldName/>
+<pyCFieldType/>
+<pyCFileRelativePath/>
+<pxObjClass>Embed-CustomFieldsList</pxObjClass>
+<pxSubscript>empty</pxSubscript>
+</rowdata>
+</pyCustomFields>
+<pyRMAction>
+<pyAction>load</pyAction>
+<pxObjClass>Embed-RuleManagement</pxObjClass>
+</pyRMAction>
+<pxWarnings REPEATINGTYPE="PageList"/>
+</pagedata>
