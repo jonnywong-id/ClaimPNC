@@ -24,6 +24,11 @@ type Service struct {
 	// uploader mengirim isi berkas ke layanan penyimpanan. Opsional — lihat
 	// Options.Uploader.
 	uploader masterbengkel.DocumentUploader
+
+	// linker menerbitkan alamat baca berkas yang sudah terunggah.
+	//
+	// Ia TIDAK diisi dari Options melainkan diturunkan dari uploader — lihat NewService.
+	linker masterbengkel.DocumentLinker
 }
 
 // Options adalah bahan pembentuk Service.
@@ -55,11 +60,29 @@ func NewService(o Options) (*Service, error) {
 	if o.RepoSelector == nil {
 		return nil, errors.New("masterbengkel/usecase: RepoSelector wajib diisi")
 	}
-	return &Service{
+
+	service := &Service{
 		repoSelector: o.RepoSelector,
 		clock:        o.Clock,
 		uploader:     o.Uploader,
-	}, nil
+	}
+
+	// Pembuka dokumen DITURUNKAN dari pengunggahnya, bukan diminta terpisah di Options.
+	//
+	// Keduanya menempuh layanan yang sama dan diisi adapter yang sama, sehingga memintanya
+	// terpisah hanya menambah satu bahan yang dapat lupa diisi saat perakitan. Di repo ini
+	// jebakan itu bukan hipotesis: tombol unggah Master Sparepart dan Master Panel pernah
+	// mati senyap pada hari yang sama persis karena satu baris penyambung yang terlewat
+	// (lihat TestUploaderTerpasangSetelahPerakitan).
+	//
+	// Pengunggah yang kebetulan tidak dapat menerbitkan alamat — fake pada pengujian,
+	// misalnya — menyisakan linker nil, dan jalur bukanya menolak dengan sebab yang jelas
+	// alih-alih memanggil nil.
+	if linker, ok := o.Uploader.(masterbengkel.DocumentLinker); ok {
+		service.linker = linker
+	}
+
+	return service, nil
 }
 
 // Actor adalah pengguna yang sedang melakukan sesuatu.

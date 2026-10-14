@@ -183,3 +183,56 @@ func (l *Service) Document(
 	}
 	return store.FindDocument(ctx, documentID)
 }
+
+// DocumentLink menerbitkan alamat baca dokumen sebuah bengkel.
+//
+// Padanan tombol lihat dokumen pada `Section/ApprovalMasterBengkelHE`, yang di Pega
+// membuka `ViewDocumentMasterBengkel` lalu `Section/ViewAttachment`.
+//
+// # Tiga keadaan yang dibedakan, dan kenapa
+//
+//	bengkel tidak ada            ErrNotFound
+//	belum pernah dilampiri       ErrDocumentNotFound
+//	barisnya ada, berkasnya tidak ErrDocumentLinkEmpty
+//
+// Yang ketiga adalah keadaan SELURUH dokumen warisan Pega. Menyatukannya dengan yang
+// kedua akan membuat layar berkata "belum ada dokumen" padahal nama berkasnya terpampang
+// di baris yang sama — dan pengguna tidak punya cara tahu mengapa.
+//
+// # Pelakunya ikut, dan itu bukan sekadar catatan
+//
+// Memperpanjang alamat menempuh pencatatan izin akses atas nama pengguna yang membuka.
+// Login pemanggil karena itu diteruskan, bukan diganti nama layanan.
+func (l *Service) DocumentLink(
+	ctx context.Context,
+	portalAlias, workshopID string,
+	actor Actor,
+) (masterbengkel.DocumentLink, error) {
+	document, err := l.Document(ctx, portalAlias, workshopID)
+	if err != nil {
+		return masterbengkel.DocumentLink{}, err
+	}
+
+	// Dokumen tanpa IMAGEID ditolak DI SINI, sebelum layanan penyimpanan disentuh:
+	// memintakan alamat untuk berkas yang tidak pernah ada hanya menghasilkan kegagalan
+	// yang sebabnya sudah kita ketahui sejak awal.
+	if !document.HasFile() {
+		return masterbengkel.DocumentLink{}, masterbengkel.ErrDocumentLinkEmpty
+	}
+
+	if l.linker == nil {
+		return masterbengkel.DocumentLink{}, masterbengkel.ErrDocumentLinkUnsupported
+	}
+
+	link, err := l.linker.Link(ctx, portalAlias, document.ImageID, strings.TrimSpace(actor.Login))
+	if err != nil {
+		return masterbengkel.DocumentLink{}, err
+	}
+
+	// Alamat kosong tanpa galat diperlakukan sebagai berkas yang tidak dapat dibuka.
+	// Tanpa pemeriksaan ini, layar menerima 200 lalu membuka tab kosong.
+	if strings.TrimSpace(link.URL) == "" {
+		return masterbengkel.DocumentLink{}, masterbengkel.ErrDocumentLinkEmpty
+	}
+	return link, nil
+}

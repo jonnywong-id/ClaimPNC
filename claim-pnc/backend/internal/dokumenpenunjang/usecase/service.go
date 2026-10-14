@@ -30,6 +30,7 @@ type Service struct {
 	clock      dokumenpenunjang.Clock
 	skip       bool
 	accessCode string
+	folderName string
 
 	// lastImageAt adalah waktu ImageID terakhir. GenerateImageID bergantung pada milidetik;
 	// dua berkas satu Submit tidak boleh berbagi kunci, jadi waktunya dijaga selalu maju.
@@ -54,6 +55,12 @@ type Options struct {
 	// aplikasi lain yang berhasil mengunggah (mis. folder Klaim MBU) tidak punya satu pun
 	// baris GCP_IMAGE. Kosong: perilaku `GET_TOKEN_STORAGE`.
 	AccessCode string
+
+	// FolderName MENIMPA nama folder penyimpanan (PENYIMPANAN_DOKUMEN_FOLDER).
+	//
+	// Kosong berarti nama folder dibaca dari `GENERAL.T_FOLDER_STORAGE`, persis seperti
+	// Pega. Lihat config.DocumentStorage.FolderName untuk sebab penimpa ini ada.
+	FolderName string
 }
 
 // NewService membentuk Service; ketiga bahannya WAJIB.
@@ -86,7 +93,24 @@ func NewService(o Options) (*Service, error) {
 		clock:      o.Clock,
 		skip:       o.SkipConversion,
 		accessCode: strings.TrimSpace(o.AccessCode),
+		folderName: strings.TrimSpace(o.FolderName),
 	}, nil
+}
+
+// folderAplikasi menjawab nama folder penyimpanan yang berlaku.
+//
+// Penimpa dipakai bila diisi; bila tidak, namanya dibaca dari `T_FOLDER_STORAGE` persis
+// seperti Pega. Keduanya melewati SATU tempat ini supaya ketiga jalur yang membutuhkannya
+// — unggah, perpanjang tautan, dan hapus — tidak mungkin berbeda pendapat tentang folder
+// mana yang sedang dipakai.
+func (s *Service) folderAplikasi(
+	ctx context.Context,
+	repo dokumenpenunjang.Repo,
+) (string, error) {
+	if s.folderName != "" {
+		return s.folderName, nil
+	}
+	return repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
 }
 
 // UploadCommand adalah permintaan unggah dari transport.
@@ -161,7 +185,7 @@ func (s *Service) Upload(
 		ekstensi = dokumenpenunjang.EkstensiSetelahKonversi(ekstensi)
 	}
 
-	folderAplikasi, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+	folderAplikasi, err := s.folderAplikasi(ctx, repo)
 	if err != nil {
 		return dokumenpenunjang.Document{}, err
 	}
@@ -319,7 +343,7 @@ func (s *Service) Tautan(
 		return dokumenpenunjang.Document{}, fmt.Errorf(
 			"%w: folder atau nama berkas tidak terbaca dari metadata", dokumenpenunjang.ErrTautanGagal)
 	}
-	folderAplikasi, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+	folderAplikasi, err := s.folderAplikasi(ctx, repo)
 	if err != nil {
 		return dokumenpenunjang.Document{}, err
 	}
@@ -381,7 +405,7 @@ func (s *Service) Hapus(ctx context.Context, portalAlias, imageID, pengguna stri
 	if pengguna == "" {
 		return dokumenpenunjang.ErrPengunggahKosong
 	}
-	folderAplikasi, err := repo.NamaFolderAplikasi(ctx, dokumenpenunjang.NamaAplikasi)
+	folderAplikasi, err := s.folderAplikasi(ctx, repo)
 	if err != nil {
 		return err
 	}

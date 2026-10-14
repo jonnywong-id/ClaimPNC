@@ -2949,6 +2949,14 @@ export type WorkshopDocumentResponse = {
   portal: string
 }
 
+/** Alamat baca berkas dokumen bengkel, beserta masa berlakunya. */
+export type WorkshopDocumentLinkResponse = {
+  url: string
+  /** Kosong berarti penyimpanan tidak mencatat masa berlakunya. */
+  berlaku_sampai: string
+  portal: string
+}
+
 export type WorkshopBranchListResponse = {
   cabang: WorkshopBranch[]
   portal: string
@@ -3630,6 +3638,17 @@ export type SparepartOptionsResponse = {
   portal: string
 
   /**
+   * Keempat daftar berikut KONSTANTA, bukan bacaan basis data — nilainya ada di rule
+   * Property Pega pada kelas `ASM-FW-GCNMFW-Int-SPAREPART_HE`.
+   *
+   * Urutannya mengikuti Pega dan TIDAK boleh diurutkan ulang di layar.
+   */
+  jenis_sparepart: SparepartFlagOption[]
+  satuan: SparepartFlagOption[]
+  status_aktif: SparepartFlagOption[]
+  status_sparepart: SparepartFlagOption[]
+
+  /**
    * Jalur unggah dokumen siap dipakai.
    *
    * Form menanyakannya SEBELUM menggambar isian berkas. Tanpa ini isiannya akan selalu
@@ -3637,6 +3656,17 @@ export type SparepartOptionsResponse = {
    * menjengkelkan, karena ia terjadi sesudah pekerjaan, bukan sebelumnya.
    */
   unggah_tersedia: boolean
+}
+
+/**
+ * Satu pilihan penanda Master Sparepart.
+ *
+ * `label` boleh KOSONG, dan itu bukan cacat: `SATUAN` memang punya pilihan tanpa label di
+ * rule Pega. Layar yang memutuskan bagaimana menggambarnya.
+ */
+export type SparepartFlagOption = {
+  nilai: string
+  label: string
 }
 
 /**

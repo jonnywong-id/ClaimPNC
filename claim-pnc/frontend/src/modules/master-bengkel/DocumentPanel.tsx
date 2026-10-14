@@ -5,7 +5,11 @@ import type { Workshop } from '@/api/types'
 import { Button } from '@/components/Button'
 import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
 
-import { useUploadWorkshopDocument, useWorkshopDocument } from './api'
+import {
+  useOpenWorkshopDocument,
+  useUploadWorkshopDocument,
+  useWorkshopDocument,
+} from './api'
 
 /**
  * Panel "Upload Document" Master Bengkel.
@@ -54,9 +58,11 @@ export function DocumentPanel({
 
   const document = useWorkshopDocument(workshop.id_bengkel, true)
   const upload = useUploadWorkshopDocument()
+  const openDocument = useOpenWorkshopDocument()
 
   const [chosen, setChosen] = useState<File | null>(null)
   const [tooBig, setTooBig] = useState(false)
+  const [blocked, setBlocked] = useState(false)
 
   const attached = document.data?.dokumen ?? null
 
@@ -86,6 +92,48 @@ export function DocumentPanel({
     setTooBig(false)
     setChosen(null)
     if (input.current) input.current.value = ''
+  }
+
+  /**
+   * Membuka berkas dokumen di tab baru.
+   *
+   * # Tabnya dibuka SEBELUM alamatnya diminta, dan itu bukan kelalaian urutan
+   *
+   * Peramban hanya mengizinkan tab baru yang terbuka sebagai akibat LANGSUNG dari klik.
+   * `window.open` yang dipanggil setelah permintaan jaringan selesai sudah terlepas dari
+   * kliknya, dan diblokir sebagai popup — pengguna menekan tombol, menunggu, lalu tidak
+   * terjadi apa-apa.
+   *
+   * Karena itu tab kosong dibuka lebih dulu, lalu diarahkan setelah alamatnya datang, dan
+   * ditutup kembali bila permintaannya gagal.
+   */
+  function open() {
+    setBlocked(false)
+    const tab = window.open('', '_blank')
+    if (tab === null) {
+      // Popup diblokir pengaturan peramban. Halaman ini TIDAK dialihkan — pengguna sedang
+      // berada di panel dokumennya, dan memindahkannya diam-diam lebih mengganggu daripada
+      // menyatakan sebabnya.
+      setBlocked(true)
+      return
+    }
+
+    openDocument.mutate(
+      { id: workshop.id_bengkel },
+      {
+        onSuccess: (data) => {
+          // Tautan ke halaman ini diputus: tab yang dibuka memegang `opener` dan dapat
+          // mengarahkan halaman asalnya.
+          tab.opener = null
+          tab.location.replace(data.url)
+        },
+        onError: () => {
+          // Tab kosong yang ditinggalkan terbuka hanya membingungkan — pengguna melihat
+          // halaman putih tanpa keterangan, sementara sebabnya ada di panel ini.
+          tab.close()
+        },
+      },
+    )
   }
 
   function submit() {
@@ -131,13 +179,26 @@ export function DocumentPanel({
         )}
 
         {attached !== null && (
-          <p className="text-sm text-slate-600">
-            Dokumen saat ini:{' '}
-            <span className="font-medium text-slate-800">{attached.nama_berkas}</span>
-            {attached.diunggah_oleh !== '' && (
-              <span className="text-slate-500"> — diunggah {attached.diunggah_oleh}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-600">
+              Dokumen saat ini:{' '}
+              <span className="font-medium text-slate-800">{attached.nama_berkas}</span>
+              {attached.diunggah_oleh !== '' && (
+                <span className="text-slate-500"> — diunggah {attached.diunggah_oleh}</span>
+              )}
+            </p>
+
+            {/*
+              Tombolnya hanya muncul untuk dokumen yang berkasnya benar-benar tersimpan.
+              Dokumen warisan Pega tidak punya berkas, dan menawarkan tombol yang pasti
+              gagal hanya memindahkan kekecewaan ke satu klik berikutnya.
+            */}
+            {attached.berisi && (
+              <Button tone="kedua" onClick={open} disabled={openDocument.isPending}>
+                {openDocument.isPending ? 'Membuka…' : 'Buka Dokumen'}
+              </Button>
             )}
-          </p>
+          </div>
         )}
 
         {attached !== null && !attached.berisi && (
@@ -151,6 +212,16 @@ export function DocumentPanel({
             mencatat keterangannya. Unggah ulang berkasnya bila masih dibutuhkan.
           </p>
         )}
+
+        {blocked && (
+          <ErrorMessage
+            title="Tab baru diblokir peramban"
+            description="Dokumen dibuka di tab baru, dan peramban Anda menahannya. Izinkan popup untuk alamat ini, lalu tekan Buka Dokumen sekali lagi."
+            tone="gangguan"
+          />
+        )}
+
+        {openDocument.isError && <OpenError error={openDocument.error} />}
 
         <div>
           <label htmlFor={fileId} className="block text-sm font-medium text-slate-700">
@@ -226,6 +297,45 @@ export function DocumentPanel({
       </div>
     </section>
   )
+}
+
+/**
+ * Pesan galat saat membuka dokumen.
+ *
+ * Dipisahkan dari UploadError karena yang gagal berbeda dan yang boleh dilakukan pengguna
+ * pun berbeda: unggahan yang gagal mungkin berarti berkasnya belum tersimpan, sedangkan
+ * pembukaan yang gagal TIDAK pernah berarti itu — berkasnya tetap ada di penyimpanan.
+ * Pesannya menyatakan hal itu supaya tidak ada yang mengunggah ulang tanpa perlu.
+ */
+function OpenError({ error }: { error: unknown }) {
+  let title = 'Dokumen tidak dapat dibuka'
+  let description = 'Coba beberapa saat lagi. Dokumennya tetap tersimpan.'
+  let tone: ErrorTone = 'gangguan'
+
+  if (error instanceof NetworkError) {
+    description = 'Sambungan terputus saat meminta alamat berkasnya. Coba lagi.'
+  } else if (error instanceof APIError) {
+    switch (error.kode) {
+      case 'dokumen_tanpa_isi':
+        // Keadaan data, bukan gangguan — mengulang tidak akan mengubah apa pun.
+        title = 'Berkas dokumen ini tidak tersimpan'
+        description = error.message
+        tone = 'penolakan'
+        break
+      case 'dokumen_tidak_ditemukan':
+        title = 'Dokumen tidak ditemukan'
+        description = error.message
+        tone = 'penolakan'
+        break
+      case 'tautan_dokumen_gagal':
+        description = error.message
+        break
+      default:
+        description = error.message
+    }
+  }
+
+  return <ErrorMessage title={title} description={description} tone={tone} />
 }
 
 /**

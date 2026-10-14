@@ -7,6 +7,7 @@ import type {
   WorkshopCityListResponse,
   WorkshopDecisionInput,
   WorkshopDecisionResponse,
+  WorkshopDocumentLinkResponse,
   WorkshopDocumentResponse,
   WorkshopInput,
   WorkshopListResponse,
@@ -281,12 +282,36 @@ export function useUploadWorkshopDocument() {
   })
 }
 
+/**
+ * Hook pembuka dokumen — padanan tombol lihat dokumen pada
+ * `Section/ApprovalMasterBengkelHE`.
+ *
+ * # Mutation, bukan query, dan itu disengaja
+ *
+ * Menerbitkan alamat bukan sekadar membaca: ia menempuh layanan penyimpanan dan mencatat
+ * izin akses atas nama pembukanya. Sebagai query ia akan berjalan sendiri saat panel
+ * terbuka — termasuk bagi dokumen yang tidak akan dibuka siapa pun — dan hasilnya pun
+ * tersimpan di cache padahal alamatnya bermasa berlaku.
+ *
+ * Sebagai mutation ia berjalan HANYA saat tombolnya ditekan, dan alamatnya selalu segar.
+ */
+export function useOpenWorkshopDocument() {
+  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias)
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      callAPI<WorkshopDocumentLinkResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/dokumen/tautan`,
+        { token, portal },
+      ),
+  })
+}
+
 /*
  * TIDAK ada pengunduh berkas di sini, dan itu disengaja.
  *
- * Isi berkasnya tidak tinggal di aplikasi ini melainkan di layanan penyimpanan internal;
- * yang dimiliki barisnya hanyalah `IMAGEID`. Menyediakan pengunduh berarti aplikasi menjadi
- * perantara berkas yang bukan miliknya, dengan masa berlaku tautan yang bukan miliknya pula.
- *
- * Padanannya di Master Sparepart dan Master Panel juga tidak punya pengunduh.
+ * Yang diambil hook di atas hanyalah ALAMAT-nya; berkasnya sendiri diambil peramban
+ * langsung dari layanan penyimpanan. Menjadikan aplikasi ini perantara berkas berarti
+ * memikul berkas yang bukan miliknya, dengan masa berlaku tautan yang bukan miliknya pula.
  */

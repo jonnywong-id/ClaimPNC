@@ -740,3 +740,142 @@ describe('unggah dokumen', () => {
     expect(di.getByRole('button', { name: 'Submit' })).toBeDisabled()
   })
 })
+
+/*
+  Membuka dokumen: tombol lihat dokumen layar Pega
+  (`Section/ApprovalMasterBengkelHE` -> `ViewDocumentMasterBengkel`).
+
+  Tombolnya ADA di Pega dan tetap ada di sini; yang berbeda hanyalah hasilnya. Di Pega ia
+  selalu kosong sebab `ATTACHFILE` tidak pernah terisi, sedangkan di sini berkasnya
+  benar-benar tersimpan sehingga ada yang dapat dibuka.
+*/
+describe('membuka dokumen', () => {
+  const DOKUMEN_BERISI = {
+    dokumen: {
+      id_dokumen: '260000000041',
+      image_id: 'img-9001',
+      nama_berkas: 'bukti-kerja-sama.pdf',
+      tipe_media: 'application/pdf',
+      berisi: true,
+      diunggah_oleh: 'adminpnc',
+      diunggah_pada: '2026-09-30T10:00:00Z',
+    },
+    portal: 'ASM',
+  }
+
+  // Dokumen warisan Pega: barisnya ada, berkasnya tidak pernah tersimpan.
+  const DOKUMEN_KOSONG = {
+    dokumen: { ...DOKUMEN_BERISI.dokumen, image_id: '', berisi: false },
+    portal: 'ASM',
+  }
+
+  /**
+   * bukaPanel membuka panel dokumen satu bengkel, dengan metadata yang diminta.
+   *
+   * Kedua jalur dokumen diperiksa SEBELUM balasan baku, bukan diserahkan ke parameter
+   * mutation-nya: balasan baku menjawab setiap GET dengan daftar bengkel, sehingga
+   * metadata dokumennya tidak akan pernah sampai ke layar.
+   */
+  async function bukaPanel(metadata: unknown, tautan?: Reply) {
+    const baku = defaultReply(undefined, true)
+    installFetch((call) => {
+      if (call.url.includes('/dokumen/tautan')) {
+        return tautan ?? { body: { url: '', berlaku_sampai: '', portal: 'ASM' } }
+      }
+      if (call.url.includes('/dokumen')) return { body: metadata }
+      return baku(call)
+    })
+    show()
+
+    const user = userEvent.setup()
+    await screen.findByRole('table')
+    await user.click(screen.getAllByRole('button', { name: 'Ubah' })[0]!)
+    await user.click(screen.getByRole('button', { name: 'Upload Document' }))
+
+    const panel = await screen.findByRole('region', { name: /Unggah dokumen bengkel/ })
+    return { user, di: within(panel) }
+  }
+
+  it('membuka berkas di tab baru memakai alamat dari server', async () => {
+    // Tab palsu: yang diperiksa adalah ALAMAT yang diarahkan padanya, bukan bahwa
+    // permintaannya berhasil.
+    const tab = { opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+
+    const { user, di } = await bukaPanel(DOKUMEN_BERISI, {
+      body: {
+        url: 'https://penyimpanan.contoh/berkas/img-9001',
+        berlaku_sampai: '2026-09-30T11:00:00Z',
+        portal: 'ASM',
+      },
+    })
+
+    await user.click(await di.findByRole('button', { name: 'Buka Dokumen' }))
+
+    await waitFor(() => {
+      expect(tab.location.replace).toHaveBeenCalledWith(
+        'https://penyimpanan.contoh/berkas/img-9001',
+      )
+    })
+
+    // Tabnya dibuka KOSONG lebih dulu — itu yang membuatnya lolos pemblokir popup, sebab
+    // window.open setelah permintaan jaringan sudah terlepas dari klik penggunanya.
+    expect(open).toHaveBeenCalledWith('', '_blank')
+
+    // Tautan balik ke halaman ini diputus.
+    expect(tab.opener).toBeNull()
+
+    open.mockRestore()
+  })
+
+  /*
+    Dokumen warisan tidak menawarkan tombolnya sama sekali.
+
+    Berkasnya memang tidak pernah tersimpan, dan tombol yang pasti gagal hanya memindahkan
+    kekecewaan ke satu klik berikutnya. Keterangan sebabnya tetap digambar.
+  */
+  it('tidak menawarkan tombol untuk dokumen yang berkasnya tidak tersimpan', async () => {
+    const { di } = await bukaPanel(DOKUMEN_KOSONG)
+
+    expect(await di.findByText(/Berkas dokumen ini tidak tersimpan/)).toBeInTheDocument()
+    expect(di.queryByRole('button', { name: 'Buka Dokumen' })).not.toBeInTheDocument()
+  })
+
+  // Tab kosong yang ditinggalkan terbuka hanya membingungkan: pengguna melihat halaman
+  // putih sementara sebabnya tergambar di panel yang ia tinggalkan.
+  it('menutup tab dan menyebut sebabnya bila alamatnya gagal diterbitkan', async () => {
+    const tab = { opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+
+    const { user, di } = await bukaPanel(DOKUMEN_BERISI, {
+      body: {
+        kode: 'tautan_dokumen_gagal',
+        pesan:
+          'Alamat berkas tidak dapat diterbitkan karena layanan penyimpanan sedang tidak dapat dihubungi.',
+      },
+      status: 503,
+    })
+
+    await user.click(await di.findByRole('button', { name: 'Buka Dokumen' }))
+
+    await waitFor(() => {
+      expect(tab.close).toHaveBeenCalled()
+    })
+    expect(await di.findByText(/tidak dapat dihubungi/)).toBeInTheDocument()
+    expect(tab.location.replace).not.toHaveBeenCalled()
+
+    open.mockRestore()
+  })
+
+  // Peramban yang menahan tab baru dijawab dengan sebabnya, bukan dengan diam.
+  it('menyebutkan bila tab baru diblokir peramban', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+
+    const { user, di } = await bukaPanel(DOKUMEN_BERISI)
+    await user.click(await di.findByRole('button', { name: 'Buka Dokumen' }))
+
+    expect(await di.findByText(/diblokir/i)).toBeInTheDocument()
+
+    open.mockRestore()
+  })
+})
