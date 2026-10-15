@@ -216,9 +216,14 @@ function currencyName(code: string, list: CurrencyOption[]): string {
  * InputSurveyor (`ClaimSurvey_sect`) — sehingga isiannya hidup di sini, bukan di salah satu
  * layar.
  */
+/**
+ * `tugas` boleh NULL — klaim tanpa tugas terbuka dibuka BACA-SAJA, dan editornya tetap
+ * dipasang supaya tabelnya dapat menggambar isi yang sudah ada. Yang tidak dapat dilakukan
+ * adalah menyimpannya, dan itu dijaga pemanggilnya lewat `lockedReason`.
+ */
 export function useEstimateEditor(
   klaim: Claim,
-  tugas: Task,
+  tugas: Task | null,
   options: { withNote?: boolean } = {},
 ) {
   const [form, setForm] = useState<ItemForm[][][]>(() => fromClaim(klaim));
@@ -237,6 +242,7 @@ export function useEstimateEditor(
    * itu dikunci.
    */
   function downloadFaceSheet(i: number, j: number) {
+    if (tugas === null) return;
     faceSheet.reset();
     save.mutate(toRequest(tugas.id, form, false, sentNote), {
       onSuccess: (result) => {
@@ -302,10 +308,11 @@ export function useEstimateEditor(
     note,
     setNote,
     /** Permintaan simpan dari isian yang sedang tampil. */
-    request: (kembali: boolean) => toRequest(tugas.id, form, kembali, sentNote),
+    request: (kembali: boolean) =>
+      toRequest(tugas?.id ?? "", form, kembali, sentNote),
     /** Save tanpa menutup tahap. */
     saveNow: () =>
-      save.mutate(toRequest(tugas.id, form, false, sentNote), {
+      save.mutate(toRequest(tugas?.id ?? "", form, false, sentNote), {
         onSuccess: afterSave,
       }),
     hasFaceSheet: () => claimHasFaceSheet(form),
@@ -328,7 +335,7 @@ export function EstimatePaymentTable({
   onlyWithCoverage = false,
 }: {
   klaim: Claim;
-  tugas: Task;
+  tugas: Task | null;
   editor: EstimateEditor;
   currencyList: CurrencyOption[];
   busy: boolean;
@@ -439,7 +446,7 @@ export function EstimatePaymentTable({
       {plaFor && (
         <PLADialog
           claimID={klaim.id}
-          taskID={tugas.id}
+          taskID={tugas?.id ?? ""}
           object={plaFor.i + 1}
           coverage={plaFor.j + 1}
           coverageName={klaim.objek[plaFor.i]?.coverage[plaFor.j]?.nama ?? ""}

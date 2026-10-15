@@ -31,7 +31,7 @@ export function SubPopupRincian({
   onTutup,
 }: {
   judul: string;
-  baris: Record<string, unknown>;
+  baris: Record<string, string>;
   isian: Isian[];
   onTutup: () => void;
 }) {
@@ -80,7 +80,7 @@ export function SubPopupRincian({
           </button>
         </div>
 
-        <Isian_ dokumen={baris} isian={isian} />
+        <Isian_ nilai={baris} isian={isian} />
 
         <div className="mt-6 flex justify-end">
           <Button tone="utama" onClick={onTutup}>

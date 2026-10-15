@@ -156,14 +156,6 @@ type Props = {
    */
   editing: Sparepart | null;
 
-  /**
-   * Nilai yang SUDAH DIPAKAI baris lain, per isian penanda.
-   *
-   * Dipakai sebagai pilihan pada keempat penanda yang daftar pilihannya TIDAK ADA di export
-   * Pega (R-16). Pilihannya berasal dari data, bukan dari tebakan.
-   */
-  knownValues: Record<string, string[]>;
-
   isSaving: boolean;
   error: unknown;
   onSave: (values: SparepartFormValues) => void;
@@ -298,7 +290,6 @@ const FIELD_NAMES = [
  */
 export function SparepartForm({
   editing,
-  knownValues,
   isSaving,
   error,
   onSave,
@@ -616,17 +607,12 @@ export function SparepartForm({
       <Group title="Penanda">
         {/*
           Keempat penanda ini dirender pxRadioButtons atau pxDropdown di Pega, dan daftar
-          pilihannya ada di rule Field Value yang TIDAK ikut di export (R-16).
+          pilihannya ada di rule Property-nya (diterima 2026-10-14).
 
-          Bentuknya ditiru apa adanya — radio untuk Jenis, dropdown untuk tiga lainnya —
-          tetapi isinya diambil dari NILAI YANG SUDAH DIPAKAI BARIS LAIN, bukan dari daftar
-          yang dikarang. Pilihan "Lainnya…" selalu tersedia; lihat ChoiceField.
+          Bentuk DAN isinya ditiru apa adanya — radio untuk Jenis, dropdown untuk tiga
+          lainnya, pilihan persis daftar Pega. Tanpa "Lainnya…" dan tanpa ketikan bebas,
+          karena Pega pun tidak punya keduanya. Lihat ChoiceField.
         */}
-        <p className="text-xs text-slate-500">
-          Daftar pilihan keempat penanda ini tidak ada di export Pega. Yang
-          ditawarkan adalah nilai yang sudah dipakai sparepart lain pada entitas
-          ini; pilih “Lainnya…” untuk mengetik nilai baru.
-        </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Controller
@@ -637,8 +623,7 @@ export function SparepartForm({
                 label="Jenis Sparepart"
                 variant="radio"
                 value={field.value}
-                known={knownValues.jenis_sparepart ?? []}
-                maxLength={MAX.penanda}
+                choices={options.data?.jenis_sparepart ?? []}
                 disabled={isSaving}
                 error={errors.jenis_sparepart?.message}
                 onChange={field.onChange}
@@ -653,8 +638,7 @@ export function SparepartForm({
                 label="Satuan"
                 variant="dropdown"
                 value={field.value}
-                known={knownValues.satuan ?? []}
-                maxLength={MAX.penanda}
+                choices={options.data?.satuan ?? []}
                 disabled={isSaving}
                 error={errors.satuan?.message}
                 onChange={field.onChange}
@@ -669,8 +653,7 @@ export function SparepartForm({
                 label="Status Aktif"
                 variant="dropdown"
                 value={field.value}
-                known={knownValues.status_aktif ?? []}
-                maxLength={MAX.penanda}
+                choices={options.data?.status_aktif ?? []}
                 disabled={isSaving}
                 error={errors.status_aktif?.message}
                 onChange={field.onChange}
@@ -685,8 +668,7 @@ export function SparepartForm({
                 label="Status Sparepart"
                 variant="dropdown"
                 value={field.value}
-                known={knownValues.status_sparepart ?? []}
-                maxLength={MAX.penanda}
+                choices={options.data?.status_sparepart ?? []}
                 disabled={isSaving}
                 error={errors.status_sparepart?.message}
                 onChange={field.onChange}

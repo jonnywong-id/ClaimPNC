@@ -19,7 +19,11 @@ const SEMUA = {
   status_compliance: true,
   bisnis: false,
   rincian: true,
+  rincian_awal: false,
 };
+
+/** Kartu ber-Treaty yang di Pega mulai TERCENTANG — dua dari tiga. */
+const SEMUA_TERCENTANG = { ...SEMUA, rincian_awal: true };
 
 const CATALOG = {
   judul: "",
@@ -31,6 +35,14 @@ const CATALOG = {
       penyaring: SEMUA,
       tersedia: true,
       sumber: { activity: "X" },
+    },
+    {
+      kode: "akseptasi",
+      judul: "REPORT AKSEPTASI",
+      tombol: [{ kode: "", label: "Export Data Akseptasi" }],
+      penyaring: SEMUA_TERCENTANG,
+      tersedia: true,
+      sumber: { activity: "Z" },
     },
     {
       kode: "mati",
@@ -89,6 +101,22 @@ function installFetch(answer: (url: string) => Answer = () => undefined) {
     }
     return Promise.resolve(json(200, CATALOG));
   });
+}
+
+/**
+ * Kotak Treaty ke-n.
+ *
+ * Ditulis sebagai fungsi, bukan indeks langsung, karena TypeScript mode ketat
+ * menganggap hasil indeks bisa undefined — dan melemparkan galat bernama di sini jauh
+ * lebih mudah dibaca daripada tanda seru yang menyembunyikannya.
+ */
+function kotakTreaty(n: number): HTMLElement {
+  const semua = screen.getAllByRole("checkbox", { name: "Treaty" });
+  const kotak = semua[n];
+  if (kotak === undefined) {
+    throw new Error(`kotak Treaty ke-${n} tidak ada; yang ada ${semua.length}`);
+  }
+  return kotak;
 }
 
 function show() {
@@ -160,7 +188,9 @@ describe("ekspor", () => {
       name: "Export Compliance",
     });
     await userEvent.click(screen.getByLabelText("Valid / Bayar"));
-    await userEvent.click(screen.getByRole("checkbox", { name: "Treaty" }));
+    // Kotak Treaty milik kartu Compliance — yang PERTAMA. Kartu Akseptasi punya kotak
+    // sendiri, dan sejak keadaannya dipisah per panel keduanya tidak lagi saling ikut.
+    await userEvent.click(kotakTreaty(0));
     await userEvent.click(tombol);
 
     await waitFor(() =>
@@ -219,5 +249,78 @@ describe("ekspor", () => {
     expect(
       screen.getByText("Terjadi kesalahan pada sistem."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("kotak centang Treaty", () => {
+  /*
+   * Ketiga hal berikut dilaporkan Work Owner 2026-10-13 setelah membandingkan layar ini
+   * dengan Pega produksi berdampingan. Ketiganya tidak terlihat dari harness XML.
+   */
+
+  it("mulai TERCENTANG bila peladen menyatakan begitu", async () => {
+    installFetch();
+    show();
+
+    // Akseptasi mulai tercentang; Compliance mulai kosong. Keduanya di layar yang sama.
+    await screen.findByRole("button", { name: "Export Data Akseptasi" });
+    const kotak = screen.getAllByRole("checkbox", { name: "Treaty" });
+
+    expect(kotak).toHaveLength(2);
+    expect(kotak[0]).not.toBeChecked(); // compliance — rincian_awal: false
+    expect(kotak[1]).toBeChecked(); //     akseptasi  — rincian_awal: true
+  });
+
+  // Keadaannya PER PANEL. Sebelumnya satu nilai bersama, sehingga mencentang di satu
+  // kartu ikut mencentang di kartu lain — dan karena kotak ini memilih susunan kolom
+  // berkas, akibatnya berkas kartu lain ikut berubah tanpa disentuh.
+  it("mencentang satu panel tidak menyentuh panel lain", async () => {
+    installFetch();
+    show();
+
+    await screen.findByRole("button", { name: "Export Data Akseptasi" });
+    const kotak = screen.getAllByRole("checkbox", { name: "Treaty" });
+
+    await userEvent.click(kotakTreaty(0));
+
+    expect(kotak[0]).toBeChecked();
+    expect(kotak[1]).toBeChecked(); // tetap seperti semula, tidak ikut berubah
+  });
+
+  it("mengirim keadaan milik panel yang tombolnya ditekan", async () => {
+    installFetch();
+    show();
+
+    // Akseptasi tercentang sejak awal, TANPA pengguna menyentuhnya.
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Export Data Akseptasi" }),
+    );
+
+    await waitFor(() =>
+      expect(urls.some((u) => u.includes("/akseptasi/ekspor"))).toBe(true),
+    );
+    expect(urls.find((u) => u.includes("/akseptasi/ekspor"))).toContain(
+      "rincian=1",
+    );
+  });
+});
+
+describe("Refresh List", () => {
+  // Tombol ini ada di Pega dan selama ini terlewat. Yang dimuat ulang DAFTAR panelnya —
+  // ketersediaan sebuah panel dapat berubah tanpa layar di-reload.
+  it("memuat ulang daftar panelnya", async () => {
+    installFetch();
+    show();
+
+    await screen.findByRole("button", { name: "Export Compliance" });
+    const sebelum = urls.filter((u) => !u.includes("/ekspor")).length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Refresh List" }));
+
+    await waitFor(() =>
+      expect(urls.filter((u) => !u.includes("/ekspor")).length).toBeGreaterThan(
+        sebelum,
+      ),
+    );
   });
 });

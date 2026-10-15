@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+
+import { claimDetailPath } from "@/lib/claim";
 
 import { APIError } from "@/api/client";
 import { useSelectedPortal } from "@/app/portal";
@@ -20,7 +23,6 @@ import {
   useTelusurDashboard,
 } from "./api";
 import { DialogPermintaanKlaim } from "./DialogPermintaanKlaim";
-import { DialogRincianKlaim } from "./DialogRincianKlaim";
 import { DialogTransfer } from "./DialogTransfer";
 import { KartuPenghitung } from "./KartuPenghitung";
 import { RingkasanDonut } from "./RingkasanDonut";
@@ -76,6 +78,36 @@ type PanelPenyaring = {
   statusBayar: string;
 };
 
+/**
+ * kueriKembali merangkai KEADAAN LAYAR menjadi query string yang dibawa tautan nomor klaim.
+ *
+ * Yang dibawa bukan sekadar tile, melainkan juga penyaring yang SEDANG BERLAKU dan halaman
+ * keberapa. Work Owner memintanya setelah mencari dengan lini bisnis lalu membuka satu klaim:
+ * kembali ke daftar kosong berarti mengulang pencarian dari awal.
+ *
+ * Nilai kosong TIDAK disertakan, supaya alamatnya tetap terbaca dan tidak memuat enam
+ * parameter kosong pada pemakaian yang paling sering.
+ */
+function kueriKembali(
+  tile: Tile,
+  liniBisnis: string,
+  penyaring: PanelPenyaring,
+  halaman: number,
+): string {
+  const p = new URLSearchParams({ asal: "dashboard-claim", tile });
+  const isi: [string, string][] = [
+    ["lini", liniBisnis],
+    ["polis", penyaring.nomorPolis],
+    ["klaim", penyaring.nomorKlaim],
+    ["pic", penyaring.pic],
+    ["transfer", penyaring.statusTransfer],
+    ["bayar", penyaring.statusBayar],
+  ];
+  for (const [k, v] of isi) if (v) p.set(k, v);
+  if (halaman > 1) p.set("hal", String(halaman));
+  return p.toString();
+}
+
 const PANEL_KOSONG: PanelPenyaring = {
   nomorPolis: "",
   nomorKlaim: "",
@@ -87,9 +119,13 @@ const PANEL_KOSONG: PanelPenyaring = {
 export function DashboardClaimPage() {
   const portal = useSelectedPortal((state) => state.alias);
 
+  // Seluruh keadaan awal layar ini dibaca dari ALAMAT, supaya kembali dari halaman klaim
+  // memulihkan tile, penyaring, dan halaman yang tadi dibuka.
+  const [paramAlamat] = useSearchParams();
+
   const [tab, setTab] = useState<TabDashboard>("dashboard");
 
-  const [liniBisnis, setLiniBisnis] = useState("");
+  const [liniBisnis, setLiniBisnis] = useState(paramAlamat.get("lini") ?? "");
   const [cari, setCari] = useState("");
 
   /*
@@ -110,10 +146,33 @@ export function DashboardClaimPage() {
     Keduanya dipisah supaya "yang terlihat di kotak" dan "yang sedang berlaku" tidak dapat
     menyimpang tanpa disadari.
   */
-  const [draf, setDraf] = useState(PANEL_KOSONG);
-  const [terapan, setTerapan] = useState(PANEL_KOSONG);
-  const [tile, setTile] = useState<Tile | null>(null);
-  const [halaman, setHalaman] = useState(1);
+  const penyaringAwal: PanelPenyaring = {
+    nomorPolis: paramAlamat.get("polis") ?? "",
+    nomorKlaim: paramAlamat.get("klaim") ?? "",
+    pic: paramAlamat.get("pic") ?? "",
+    statusTransfer: paramAlamat.get("transfer") ?? "",
+    statusBayar: paramAlamat.get("bayar") ?? "",
+  };
+  // `draf` DAN `terapan` sama-sama diisi: yang pertama supaya kotaknya terlihat terisi, yang
+  // kedua supaya daftarnya benar-benar tersaring tanpa menekan Search Data lagi.
+  const [draf, setDraf] = useState(penyaringAwal);
+  const [terapan, setTerapan] = useState(penyaringAwal);
+  /*
+    Tile yang sedang dibuka ikut tertulis di alamat (`?tile=outstanding`).
+
+    Sebabnya satu: halaman klaim yang dibuka dari sini menautkan kembali ke sini, dan yang
+    diminta Work Owner adalah kembali ke DAFTAR yang tadi dibuka — bukan ke dashboard kosong.
+    Menyimpannya hanya di state React tidak cukup, karena halaman klaim adalah rute lain:
+    keadaan itu hilang begitu alamatnya berganti.
+
+    Alamat juga membuat daftarnya dapat dimuat ulang dan dibagikan apa adanya.
+  */
+  const tileAwal = tileSah(paramAlamat.get("tile"));
+  const [tile, setTile] = useState<Tile | null>(tileAwal);
+  const [halaman, setHalaman] = useState(() => {
+    const n = Number(paramAlamat.get("hal"));
+    return Number.isInteger(n) && n > 0 ? n : 1;
+  });
 
   // Keadaan tab Tampungan disimpan TERPISAH dari tab Dashboard.
   //
@@ -563,6 +622,7 @@ export function DashboardClaimPage() {
               liniBisnis={liniBisnis}
               onTransfer={setTransferKlaim}
               kunciPenyaring={JSON.stringify(penyaringAktif)}
+              kueriKembali={kueriKembali(tile, liniBisnis, terapan, halaman)}
               onTransferMassal={(baris, semuaCocok) =>
                 setTransferMassal({ baris, semuaCocok })
               }
@@ -609,6 +669,7 @@ function Telusur({
   state,
   liniBisnis,
   kunciPenyaring,
+  kueriKembali,
   onTransfer,
   onTransferMassal,
 }: {
@@ -621,6 +682,9 @@ function Telusur({
   state: ReturnType<typeof useTelusurDashboard>;
   liniBisnis: string;
 
+  /** Query string yang dibawa tautan nomor klaim supaya layar ini pulih saat kembali. */
+  kueriKembali: string;
+
   /**
    * Sidik jari penyaring yang sedang berlaku, untuk membuang mode "Select All".
    *
@@ -628,6 +692,16 @@ function Telusur({
    * membuat efeknya berjalan terus-menerus dan membuang mode itu sebelum sempat dipakai.
    */
   kunciPenyaring: string;
+
+  /**
+   * Link mana yang dipasang pada nomor klaim — jawaban SERVER, bukan penilaian layar.
+   *
+   *	true   buka klaim untuk DIKERJAKAN, sama dengan open case di My Inbox
+   *	false  popup rincian, baca saja
+   *
+   * Sistem lama memasang dua aksi pada sel yang sama dan memilih lewat When rule
+   * `IsManagerPNC`. Yang datang ke sini jawabannya, bukan grup penggunanya.
+   */
 
   onTransfer: (row: BarisKlaim) => void;
   /**
@@ -650,7 +724,6 @@ function Telusur({
     sudah memuatnya. Mengambilnya ulang dari server hanya untuk judul adalah perjalanan
     jaringan yang tidak perlu.
   */
-  const [rincian, setRincian] = useState<BarisKlaim | null>(null);
 
   // Baris yang dicentang pada kolom "Pilih" — hanya tile Close Claim yang memilikinya.
   //
@@ -891,14 +964,6 @@ function Telusur({
       {peringatanUnduh}
       {keteranganPilihan}
 
-      {rincian !== null ? (
-        <DialogRincianKlaim
-          klaimID={rincian.klaim_id || rincian.nomor_klaim}
-          nomorKlaim={rincian.nomor_klaim}
-          onTutup={() => setRincian(null)}
-        />
-      ) : null}
-
       {/*
       Sebab tombolnya mati dinyatakan, bukan dibiarkan ditebak.
 
@@ -920,14 +985,14 @@ function Telusur({
         // itu ada di layar lama dan ditiru apa adanya.
         columns={
           tile === "close-claim"
-            ? kolomCloseClaim(dipilih, gantiPilih, nomorBaris, setRincian)
+            ? kolomCloseClaim(dipilih, gantiPilih, nomorBaris, kueriKembali)
             : kolomOutstanding(
                 onTransfer,
                 dipilih,
                 gantiPilih,
                 nomorBaris,
                 semuaCocok,
-                setRincian,
+                kueriKembali,
               )
         }
         rows={barisKlaim}
@@ -1038,41 +1103,67 @@ function tanggalJam(nilai: string): string {
  * Data warisan memuat baris seperti itu — uji adapter memori memakainya sebagai contoh.
  */
 function TautanKlaim({
-  row,
-  onBuka,
+  nomorKlaim,
+  kueri,
 }: {
-  row: BarisKlaim;
-  onBuka: (row: BarisKlaim) => void;
+  nomorKlaim: string;
+  kueri: string;
 }) {
-  if (!row.nomor_klaim) return <span className="text-slate-400">—</span>;
+  if (!nomorKlaim) return <span className="text-slate-400">—</span>;
 
+  const gaya = [
+    "font-medium text-blue-700 underline-offset-2 hover:underline",
+    "focus:outline-none focus-visible:rounded-kontrol",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+    "focus-visible:outline-blue-600",
+  ].join(" ");
+
+  /*
+    SATU tujuan: halaman klaim yang SAMA dengan yang dibuka My Inbox.
+
+    # Kenapa satu, bukan dua
+
+    Sampai 2026-10-12 sel ini punya dua tujuan — padanan `openAssignment` dan
+    `showHarness ViewTempDetailClaim` pada `DashboardClaimShow_Sec1`. Keduanya dicoba, dan
+    keduanya ditolak Work Owner: yang diminta adalah **halaman detail yang sama persis dengan
+    My Inbox**, apa pun tipe tile dan apa pun format nomornya.
+
+    Halaman itu (`/registrasi/klaim/:nomor`) membawa Tahapan Klaim, tab Input Register,
+    Estimasi & Adjustment, Investigasi, Unggah Dokumen, dan Progress Claim — yang di layar
+    lama tersebar di beberapa harness.
+
+    # Klaim warisan ikut ditautkan
+
+    Sebelumnya `PNC-xxxx` sengaja TIDAK ditautkan ke sana (`P-3`: alurnya masih di Pega,
+    sehingga tahapannya kosong). Work Owner menimbang itu dan tetap memilih halaman yang sama
+    untuk semua. Konsekuensinya diterima: untuk klaim warisan, bagian "Tahapan Klaim" dan
+    tombol tindakannya tidak punya tugas yang sedang berjalan untuk digerakkan.
+  */
   return (
-    <button
-      type="button"
-      onClick={() => onBuka(row)}
-      className={[
-        "font-medium text-blue-700 underline-offset-2 hover:underline",
-        "focus:outline-none focus-visible:rounded-kontrol",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-        "focus-visible:outline-blue-600",
-      ].join(" ")}
-    >
-      {row.nomor_klaim}
-    </button>
+    /*
+      Tile asal ikut dibawa di alamat, supaya tautan "Kembali" di halaman klaim dapat
+      mengembalikan pengguna ke DAFTAR yang tadi dibuka — bukan ke inbox umum.
+
+      Ia ditaruh di alamat, bukan di `state` navigasi: alamat bertahan saat halaman dimuat
+      ulang dan saat tautannya disalin, sedangkan `state` hilang pada keduanya.
+    */
+    <Link to={`${claimDetailPath(nomorKlaim)}?${kueri}`} className={gaya}>
+      {nomorKlaim}
+    </Link>
   );
 }
 
 /** Kolom bersama kedua tile bertipe klaim, dalam urutan yang sama dengan layar lama. */
-function kolomKlaimDasar(
-  onBuka: (row: BarisKlaim) => void,
-): Column<BarisKlaim>[] {
+function kolomKlaimDasar(kueri: string): Column<BarisKlaim>[] {
   return [
     {
       key: "nomor_klaim",
       title: "No Klaim",
       value: (row) => row.nomor_klaim,
       width: "9rem",
-      render: (row) => <TautanKlaim row={row} onBuka={onBuka} />,
+      render: (row) => (
+        <TautanKlaim nomorKlaim={row.nomor_klaim} kueri={kueri} />
+      ),
     },
     {
       key: "nomor_polis",
@@ -1141,14 +1232,14 @@ function kolomOutstanding(
   onPilih: (klaimID: string) => void,
   nomor: (row: BarisKlaim) => number,
   semuaCocok: boolean,
-  onBuka: (row: BarisKlaim) => void,
+  kueri: string,
 ): Column<BarisKlaim>[] {
   return [
     kolomNomor(nomor),
     // Layar lama menggambar "Pilih" di grid INI juga, dan centangnya melayani
     // "Transfer All Case By UserID".
     kolomPilih(dipilih, onPilih, semuaCocok),
-    ...kolomKlaimDasar(onBuka),
+    ...kolomKlaimDasar(kueri),
     {
       key: "tanggal_lapor",
       title: "Report Date",
@@ -1292,10 +1383,17 @@ function kolomCloseClaim(
   dipilih: Set<string>,
   onPilih: (klaimID: string) => void,
   nomor: (row: BarisKlaim) => number,
-  onBuka: (row: BarisKlaim) => void,
+  kueri: string,
 ): Column<BarisKlaim>[] {
   // `No Klaim` mendahului `Pilih` di sini — lihat keterangan di atas.
-  const [noKlaim, ...sisaKlaimDasar] = kolomKlaimDasar(onBuka);
+  // SELALU popup — tile ini tidak punya link "buka case", dan itu terbaca dari sumbernya:
+  // `GcnmBrowseReopenCase_SQL` TIDAK merakit kolom `pyNote`, sedangkan sel `openAssignment`
+  // Pega membuka kunci yang diambil dari `pyNote`. Tanpa kolom itu tidak ada yang dibuka.
+  //
+  // Hanya `GcnmBrowseCase_SQL` (tile Outstanding) yang merakitnya:
+  //
+  //	'ASSIGN-WORKLIST ' || a.pzinskey || '!Register_Flow' AS "pyNote"
+  const [noKlaim, ...sisaKlaimDasar] = kolomKlaimDasar(kueri);
   return [
     kolomNomor(nomor),
     ...(noKlaim ? [noKlaim] : []),
@@ -1336,6 +1434,11 @@ const kolomLossAdjuster: Column<BarisSurvei>[] = [
     key: "nomor_klaim",
     title: "Claim No",
     value: (row) => row.nomor_klaim,
+    // SENGAJA tidak ditautkan — layar lama pun tidak.
+    //
+    // `BrowseLossAdjuster` dan `BrowseInternalSurveyor` tidak merakit kolom `pyNote`,
+    // sedangkan sel `openAssignment` Pega membuka kunci yang diambil dari `pyNote`. Tanpa
+    // kolom itu tidak ada yang dibuka, dan Work Owner menegaskan itu memang benar (2026-10-12).
     width: "9rem",
   },
   {
@@ -1390,6 +1493,7 @@ const kolomInternalSurveyor: Column<BarisSurvei>[] = [
     key: "nomor_klaim",
     title: "No Klaim",
     value: (row) => row.nomor_klaim,
+    // Idem Loss Adjuster: layar lama tidak menautkannya.
     width: "9rem",
   },
   {
@@ -1461,6 +1565,23 @@ function kartuKosong(
       },
     ];
   return bawaan.map((item) => ({ ...item, jumlah: 0 }));
+}
+
+/**
+ * tileSah menerima nilai `?tile=` dari alamat HANYA bila ia salah satu dari empat yang ada.
+ *
+ * Alamat dapat diketik siapa saja. Tanpa penjaga ini, `?tile=apa-saja` akan menjadi tile
+ * terpilih, lalu kueri telusurnya dikirim dengan nilai yang tidak dikenal server — gagal
+ * tanpa sebab yang terlihat pengguna.
+ */
+function tileSah(nilai: string | null): Tile | null {
+  const sah: Tile[] = [
+    "outstanding",
+    "close-claim",
+    "loss-adjuster",
+    "internal-surveyor",
+  ];
+  return sah.find((t) => t === nilai) ?? null;
 }
 
 /** Membaca pesan galat yang layak dibaca pengguna. */

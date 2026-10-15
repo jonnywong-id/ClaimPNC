@@ -490,6 +490,7 @@ export function PanelPage() {
           <DocumentField
             current={currentDocument.data?.data ?? null}
             available={options.data?.unggah_tersedia ?? false}
+            formOpen={isFormOpen}
             file={file}
             note={note}
             onPick={setFile}
@@ -614,6 +615,33 @@ export function PanelPage() {
           </span>
         </span>
       </p>
+
+      {/*
+        Berkas yang sedang ditahan ditampilkan DI SEBELAH form, bukan hanya di dalam panel
+        unggah yang sudah ditutup Submit.
+
+        Tanpa ini, menekan Submit tidak meninggalkan satu pun jejak di layar: panelnya
+        menutup, dan berkas yang dipilih menjadi keadaan tak terlihat yang baru terkirim
+        beberapa klik kemudian. Pengguna yang tidak melihat apa-apa wajar menyimpulkan
+        unggahannya gagal — dan itulah yang benar-benar terjadi pada 2026-10-14.
+      */}
+      {isFormOpen && file !== null && (
+        <p className="mt-4 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          Dokumen siap diunggah:{" "}
+          <span className="font-medium">{file.name}</span> — terkirim saat Anda
+          menekan <span className="font-medium">Simpan</span> di bawah.{" "}
+          <button
+            type="button"
+            className="font-medium text-blue-700 underline underline-offset-2"
+            onClick={() => {
+              setFile(null);
+              setNote("");
+            }}
+          >
+            Batalkan berkas
+          </button>
+        </p>
+      )}
 
       {isFormOpen && (
         <section className="mt-5">

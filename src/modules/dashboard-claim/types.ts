@@ -180,6 +180,25 @@ export type PenyaringResponse = {
   tipe_pengguna: Pilihan[];
   tile: KeteranganTile[];
   portal: string;
+  /**
+   * Apakah pengguna termasuk grup yang berwenang membuka case.
+   *
+   * # TIDAK dipakai layar sejak 2026-10-12
+   *
+   * Sistem lama memasang DUA aksi pada sel nomor klaim dan memilih lewat When rule
+   * `IsManagerPNC` (`Section/DashboardClaimShow_Sec1`), dan layar ini sempat menirunya.
+   * Work Owner memutuskan **satu tujuan untuk semua**: halaman klaim yang sama dengan My
+   * Inbox, apa pun grup penggunanya.
+   *
+   * Field-nya **tetap dikirim server dan tetap dibaca di sini**, karena jawabannya dihitung
+   * dari `POOLDATA.M_LOGIN_GROUP_PNC` dan merupakan satu-satunya tempat kewenangan itu
+   * terbaca hari ini. Menghapusnya berarti membuang pengetahuan yang sudah terukur, dan
+   * `F-3` akan membangunnya lagi dari nol.
+   *
+   * Menyembunyikan link **bukan** keamanan. Pemeriksaan di server pada setiap alamat adalah
+   * lingkup `F-3` dan belum ada — jadi jangan membaca `false` sebagai "tidak bisa menyunting".
+   */
+  boleh_buka_case: boolean;
 };
 
 /** Penyaring yang dikirim layar. */
@@ -364,16 +383,60 @@ export type RincianKlaim = {
   didaftarkan_pada: string;
 
   /**
-   * Isi klaim apa adanya dari `POOLDATA.JSON_KLAIM.DATA_JSON`.
+   * Kode lini bisnis klaim, dipakai memilih VARIAN grid objek.
    *
-   * Bentuknya BELUM PERNAH DIPERIKSA — DDL-nya tidak tersedia (`R-08`). Diketik `unknown`,
-   * bukan bentuk yang dikarang: tipe yang menyatakan bentuk belum terbukti membuat isian
-   * yang namanya ternyata berbeda hilang tanpa satu pun tanda, dan TypeScript justru
-   * menyatakannya benar.
-   *
-   * Pembacaannya lewat `ambil()`, yang membedakan "jalur tidak ada" dari "ada tetapi kosong".
+   * Dulu digali dari dokumen JSON. Sejak migrasi lepas dari JSON (keputusan Work Owner
+   * 2026-10-12), keduanya datang dari kepala — dan tanpa itu setiap klaim akan dinyatakan
+   * "tidak termasuk yang digambar layar lama".
    */
-  dokumen: Record<string, unknown>;
+  group_panel: string;
+  jenis_bisnis: string;
+
+  /**
+   * "Catatan dari Inputor" pada kepala popup — `T_CLAIM_PNC.REMARK`.
+   *
+   * "Aging Amount" yang berdampingan dengannya TIDAK ada di kontrak: ia milik data polis, dan
+   * polis bukan milik bounded context ini (`D-04`). Layar menggambarnya kosong, dan itu jujur.
+   */
+  catatan_inputor: string;
+
+  /**
+   * Ketujuh bagian isi popup, dibaca server dari TABEL RELASIONAL.
+   *
+   * Dulu satu field `dokumen` berisi dokumen JSON apa adanya. Kolom itu terisi 721 dari 16.284
+   * baris, sehingga popup tampil kosong bagi mayoritas klaim — di Pega pun demikian.
+   *
+   * Tiap bagian SELALU larik, tidak pernah `null`: dua bentuk untuk satu arti hanya menambah
+   * cabang yang harus dijaga layar.
+   */
+  penerima: BarisRincian[];
+  objek: BarisRincian[];
+  coverage: BarisRincian[];
+  adjustment: BarisRincian[];
+  survey: BarisRincian[];
+  lampiran: BarisRincian[];
+  progres: BarisRincian[];
+
+  /**
+   * Tiga himpunan isian TUNGGAL — bukan grid.
+   *
+   * Layar lama menggambar ketiganya sebagai satu blok nilai berlabel, bukan daftar baris,
+   * sehingga keduanya tidak boleh dimodelkan sama. Objek bersarang, bukan diratakan ke
+   * kepala: `lokasi_kejadian` pada tab Registrasi dan `lokasi` pada permintaan survei adalah
+   * nilai yang berbeda, dan diratakan keduanya akan bertabrakan.
+   */
+  registrasi: Record<string, string>;
+  survei: Record<string, string>;
+  pucl: Record<string, string>;
 
   portal: string;
 };
+
+/**
+ * Satu baris bagian rincian.
+ *
+ * Nilainya SELALU teks — termasuk tanggal dan nilai uang. Nilai uang dikirim sebagai teks
+ * dengan sengaja (`D-51`): angka JSON adalah `float64` di hampir semua klien, dan presisi
+ * penuh hilang di sana tanpa satu pun tanda.
+ */
+export type BarisRincian = Record<string, string>;

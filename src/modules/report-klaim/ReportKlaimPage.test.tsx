@@ -18,7 +18,7 @@ import { ReportKlaimPage } from "./ReportKlaimPage";
  *	tat               memakai rentang tanggal DAN lini bisnis
  *	adjuster          TERHALANG
  *	komite            bertombol DUA
- *	klaim-per-bisnis  satu-satunya yang punya autocomplete Bisnis di barisnya
+ *	regist-simas-online  TANPA satu pun penyaring
  *	akseptasi         satu-satunya yang punya kotak centang "Treaty" di barisnya
  */
 const CATALOG = {
@@ -55,18 +55,18 @@ const CATALOG = {
       sumber: { activity: "PNCAdjusterReport_Act" },
     },
     {
-      kode: "klaim-per-bisnis",
-      judul: "REPORT KLAIM PER BISNIS",
-      tombol: [{ kode: "", label: "Export Data" }],
+      kode: "regist-simas-online",
+      judul: "REPORT DATA REGIST SIMAS ON LINE",
+      tombol: [{ kode: "", label: "Export Data Regist Simas On Line" }],
       penyaring: {
         rentang_tanggal: false,
         lini_bisnis: false,
         status_compliance: false,
-        bisnis: true,
+        rincian_awal: false,
         rincian: false,
       },
       tersedia: true,
-      sumber: { activity: "ExportDataClaimBusiness" },
+      sumber: { activity: "PNCReportKlaimHE_act" },
     },
     {
       kode: "akseptasi",
@@ -240,7 +240,7 @@ describe("layar Report Klaim", () => {
     expect(judul).toEqual([
       "REPORT TAT",
       "REPORT ADJUSTER",
-      "REPORT KLAIM PER BISNIS",
+      "REPORT DATA REGIST SIMAS ON LINE",
       "REPORT AKSEPTASI",
       "REPORT DATA KOMITE",
     ]);
@@ -298,25 +298,7 @@ describe("layar Report Klaim", () => {
     expect(within(tat).queryByLabelText("Treaty")).toBeNull();
   });
 
-  // Autocomplete bisnis berada DI BARIS panel Klaim Per Bisnis, bukan di bilah penyaring.
-  it("menempatkan autocomplete Bisnis pada baris Klaim Per Bisnis saja", async () => {
-    installFetch();
-    show();
-
-    const perBisnis = (
-      await screen.findByRole("heading", {
-        name: "REPORT KLAIM PER BISNIS",
-        level: 2,
-      })
-    ).closest("article") as HTMLElement;
-    expect(
-      within(perBisnis).getByLabelText("Bisnis untuk Report Klaim Per Bisnis"),
-    ).toBeVisible();
-
-    // Bilah atas tetap satu-satunya yang berlabel "Bisnis" — kontrol baris ini tidak
-    // berlabel di layar lama, dan tidak diberi label terlihat di sini.
-    expect(screen.getAllByLabelText("Bisnis")).toHaveLength(1);
-  });
+  // Uji autocomplete Bisnis dicabut 2026-10-13 bersama panelnya.
 
   // Panel bertombol dua adalah SATU baris, bukan dua baris berjudul sama.
   it("menggambar dua tombol pada panel Data Komite", async () => {
@@ -401,37 +383,22 @@ describe("layar Report Klaim", () => {
 
     await screen.findByRole("button", { name: "Export Data TAT" });
     await userEvent.type(screen.getByLabelText("Dari"), "2026-09-01");
-    await userEvent.click(screen.getByRole("button", { name: "Export Data" }));
-
-    await waitFor(() => {
-      expect(calls.some((c) => c.url.includes("klaim-per-bisnis/ekspor"))).toBe(
-        true,
-      );
-    });
-    const ekspor = calls.find((c) => c.url.includes("klaim-per-bisnis/ekspor"));
-    expect(ekspor?.url).not.toContain("dari=");
-  });
-
-  // Daftar bisnis hanya ditarik ketika autocomplete-nya disentuh — ia dapat berisi ratusan
-  // baris, dan 27 dari 28 panel tidak memakainya.
-  it("menarik pilihan bisnis hanya saat dibutuhkan", async () => {
-    installFetch();
-    show();
-
-    await screen.findByRole("button", { name: "Export Data TAT" });
-    expect(calls.some((c) => c.url.includes("/pilihan-bisnis"))).toBe(false);
-
-    const perBisnis = screen
-      .getByRole("heading", { name: "REPORT KLAIM PER BISNIS", level: 2 })
-      .closest("article") as HTMLElement;
     await userEvent.click(
-      within(perBisnis).getByLabelText("Bisnis untuk Report Klaim Per Bisnis"),
+      screen.getByRole("button", { name: "Export Data Regist Simas On Line" }),
     );
 
     await waitFor(() => {
-      expect(calls.some((c) => c.url.includes("/pilihan-bisnis"))).toBe(true);
+      expect(
+        calls.some((c) => c.url.includes("regist-simas-online/ekspor")),
+      ).toBe(true);
     });
+    const ekspor = calls.find((c) =>
+      c.url.includes("regist-simas-online/ekspor"),
+    );
+    expect(ekspor?.url).not.toContain("dari=");
   });
+
+  // Uji pemuatan pilihan bisnis dicabut 2026-10-13 bersama panelnya.
 
   // Tanpa portal, layar tidak dibuka sama sekali: berkasnya memuat data satu badan hukum
   // dan aplikasi ini melayani empat (`R-20`).

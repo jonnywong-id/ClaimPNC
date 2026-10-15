@@ -750,6 +750,9 @@ describe("unggah dokumen Master Panel", () => {
     await screen.findByRole("table");
     expect(screen.queryByLabelText("Berkas dokumen")).not.toBeInTheDocument();
 
+    // Panelnya dibuka LEBIH DULU. Dokumen menempel pada satu panel, sehingga tanpa panel
+    // yang dituju tidak ada yang dapat diunggah — lihat uji jalan buntu di bawah.
+    await user.click(screen.getByRole("button", { name: "Ubah" }));
     await user.click(screen.getByRole("button", { name: "Upload Document" }));
 
     expect(await screen.findByLabelText("Berkas dokumen")).toBeEnabled();
@@ -773,6 +776,7 @@ describe("unggah dokumen Master Panel", () => {
     const user = userEvent.setup();
     await screen.findByRole("table");
 
+    await user.click(screen.getByRole("button", { name: "Ubah" }));
     await user.click(screen.getByRole("button", { name: "Upload Document" }));
     await screen.findByLabelText("Berkas dokumen");
     await user.upload(screen.getByLabelText("Berkas dokumen"), pdf());
@@ -781,7 +785,6 @@ describe("unggah dokumen Master Panel", () => {
 
     expect(uploadCalls()).toHaveLength(0);
 
-    await user.click(screen.getByRole("button", { name: "Ubah" }));
     await user.click(screen.getByRole("button", { name: "Simpan" }));
 
     await waitFor(() => expect(uploadCalls()).toHaveLength(1));
@@ -799,6 +802,61 @@ describe("unggah dokumen Master Panel", () => {
       "panel.pdf",
     );
     expect((sent!.body as FormData).get("catatan")).toBe("Foto panel");
+  });
+
+  /**
+   * Tanpa panel yang dituju, panel unggah TIDAK boleh menerima berkas.
+   *
+   * # Kenapa uji ini ada
+   *
+   * Sampai 2026-10-14 ia menerimanya, dan hasilnya jalan buntu yang DIAM: pengguna
+   * menekan Upload Document dari kepala halaman, memilih berkas, menekan Submit — dan
+   * tidak terjadi apa pun. Berkasnya ditahan di keadaan layar, sementara satu-satunya
+   * yang mengirimnya adalah jalur Simpan pada form Tambah/Ubah yang tidak sedang
+   * terbuka. Tidak ada galat, tidak ada permintaan jaringan, tidak ada jejak.
+   *
+   * Dilaporkan Work Owner setelah mencobanya sendiri. Uji lama justru MEREKAM keadaan
+   * itu sebagai benar — ia membuka panel unggah tanpa form dan menuntut pemilih
+   * berkasnya hidup.
+   */
+  it("menolak memilih berkas selama belum ada panel yang dituju", async () => {
+    installFetch(uploadReply());
+    show();
+
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+
+    // Dibuka dari kepala halaman, TANPA menekan Tambah maupun Ubah lebih dulu.
+    await user.click(screen.getByRole("button", { name: "Upload Document" }));
+
+    expect(
+      await screen.findByText(/Pilih dulu panel yang akan diberi dokumen/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pilih Berkas" })).toBeDisabled();
+    expect(screen.getByLabelText("Berkas dokumen")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+  });
+
+  // Berkas yang ditahan harus TERLIHAT sesudah Submit menutup panelnya. Tanpa ini, Submit
+  // tidak meninggalkan satu pun jejak di layar dan wajar dikira gagal.
+  it("menampilkan berkas yang ditahan di sebelah form sesudah Submit", async () => {
+    installFetch(uploadReply());
+    show();
+
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+
+    await user.click(screen.getByRole("button", { name: "Ubah" }));
+    await user.click(screen.getByRole("button", { name: "Upload Document" }));
+    await user.upload(await screen.findByLabelText("Berkas dokumen"), pdf());
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    // Panelnya tertutup, tetapi berkasnya tetap tersebut beserta apa yang harus dilakukan.
+    expect(screen.queryByLabelText("Berkas dokumen")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/Dokumen siap diunggah/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("panel.pdf")).toBeInTheDocument();
   });
 
   it("menyimpan tanpa memilih berkas tidak menembak endpoint dokumen", async () => {
@@ -830,12 +888,12 @@ describe("unggah dokumen Master Panel", () => {
     const user = userEvent.setup();
     await screen.findByRole("table");
 
+    await user.click(screen.getByRole("button", { name: "Ubah" }));
     await user.click(screen.getByRole("button", { name: "Upload Document" }));
     await screen.findByLabelText("Berkas dokumen");
     await user.upload(screen.getByLabelText("Berkas dokumen"), pdf());
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    await user.click(screen.getByRole("button", { name: "Ubah" }));
     await user.click(screen.getByRole("button", { name: "Simpan" }));
 
     expect(await screen.findByText(/JANGAN unggah ulang/)).toBeInTheDocument();

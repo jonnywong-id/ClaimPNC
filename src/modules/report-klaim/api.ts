@@ -4,11 +4,7 @@ import { callAPI, simpanBerkas, unduhBerkas } from "@/api/client";
 import { useSelectedPortal } from "@/app/portal";
 import { useSession } from "@/app/session";
 
-import type {
-  BusinessOptionResponse,
-  CatalogResponse,
-  ExportRequest,
-} from "./types";
+import type { CatalogResponse, ExportRequest } from "./types";
 
 const ROUTE = "/api/report-klaim";
 
@@ -16,7 +12,7 @@ const ROUTE = "/api/report-klaim";
  * Kunci cache menyertakan portal DAN token.
  *
  * Portal ikut karena itulah yang menentukan basis data mana yang menjawab (`ADR-0030`).
- * Tanpa itu, berpindah entitas akan menampilkan pilihan bisnis entitas sebelumnya dari
+ * Tanpa itu, berpindah entitas akan menampilkan katalog entitas sebelumnya dari
  * cache — dan tidak ada apa pun di layar yang menandakan daftar itu milik badan hukum
  * lain (`R-20`).
  *
@@ -27,11 +23,7 @@ function catalogKey(portal: string | null, token: string | null) {
   return ["report-klaim", portal, token] as const;
 }
 
-function businessKey(portal: string | null, token: string | null) {
-  return ["report-klaim-bisnis", portal, token] as const;
-}
-
-/** Katalog 28 panel beserta keadaannya. */
+/** Katalog 23 panel beserta keadaannya. */
 export function useReportCatalog() {
   const token = useSession((state) => state.token);
   const portal = useSelectedPortal((state) => state.alias);
@@ -46,28 +38,8 @@ export function useReportCatalog() {
   });
 }
 
-/**
- * Isi autocomplete "Bisnis".
- *
- * Ia dibaca TERPISAH dari katalog, dan hanya saat dibutuhkan: daftarnya dapat berisi
- * ratusan baris sementara hanya SATU dari 28 panel yang memakainya. Menyatukannya dengan
- * katalog berarti setiap kali layar dibuka ikut menarik daftar yang 27 panel lain tidak
- * membutuhkannya.
- */
-export function useBusinessOptions(enabled: boolean) {
-  const token = useSession((state) => state.token);
-  const portal = useSelectedPortal((state) => state.alias);
-
-  return useQuery({
-    queryKey: businessKey(portal, token),
-    enabled: enabled && portal !== null && token !== null,
-    queryFn: () =>
-      callAPI<BusinessOptionResponse>(`${ROUTE}/pilihan-bisnis`, {
-        token,
-        portal,
-      }),
-  });
-}
+// useBusinessOptions berdiri di sini sampai 2026-10-13, dicabut bersama panel REPORT
+// KLAIM PER BISNIS — satu-satunya pemakainya, dan panel itu tidak ada di Pega produksi.
 
 /**
  * searchParams menyusun parameter kueri, dan HANYA mengirim penyaring yang berlaku.
@@ -91,8 +63,7 @@ function searchParams(request: ExportRequest): string {
   if (penyaring.status_compliance && filter.status_compliance !== "") {
     param.set("status_compliance", filter.status_compliance);
   }
-  if (penyaring.bisnis && filter.bisnis !== "")
-    param.set("bisnis", filter.bisnis);
+
   if (penyaring.rincian && filter.rincian) param.set("rincian", "1");
 
   return param.toString();

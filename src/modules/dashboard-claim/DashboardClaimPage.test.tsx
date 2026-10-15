@@ -18,9 +18,12 @@ import type {
  * Data uji seluruhnya KARANGAN.
  *
  * `D-69` melarang data nasabah nyata ditulis di berkas yang di-commit, dan larangan itu
- * berlaku untuk data uji sama seperti untuk dokumen.
+ * berlaku untuk data uji sama seperti untuk dokumen yang di-commit.
  */
 const penyaringResponse: PenyaringResponse = {
+  // Bawaan uji adalah BACA SAJA — hak sunting harus dinyatakan dengan sengaja oleh uji
+  // yang memang mengujinya, tidak didapat karena lupa.
+  boleh_buka_case: false,
   lini_bisnis: [
     { nilai: "ALL", label: "Semua Lini Bisnis" },
     { nilai: "NONMBU", label: "Non-MBU" },
@@ -92,7 +95,9 @@ function ringkasanResponse(
   };
 }
 
-function telusurKlaim(): TelusurResponse {
+function telusurKlaim(
+  ubah: Partial<TelusurResponse["klaim"][number]> = {},
+): TelusurResponse {
   return {
     tile: "outstanding",
     judul: "Outstanding",
@@ -115,6 +120,7 @@ function telusurKlaim(): TelusurResponse {
         status_klaim_kode: "1147",
         status_klaim_label: "Register",
         status_proses: "New",
+        ...ubah,
         // Dua posisi berjalan sekaligus, digabung koma — bentuk yang dihasilkan
         // GET_POSISI_PROGRESS_PNC. Progres kedua kosong, dan itu keadaan yang sah.
       },
@@ -204,7 +210,7 @@ function stubFetch(
   });
 }
 
-function renderPage() {
+function renderPage(alamat = "/dashboard-claim") {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -214,7 +220,7 @@ function renderPage() {
 
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[alamat]}>
         <DashboardClaimPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -405,133 +411,6 @@ it("memakai teks pyNoSelectionText layar lama pada kedua dropdown penyaring", as
     screen.queryByRole("option", { name: /^Semua Status/ }),
   ).not.toBeInTheDocument();
 });
-
-it("membagi popup rincian menjadi tab, dalam urutan harness layar lama", async () => {
-  // Urutan ini disalin dari elemen pyTitle pada
-  // Harness/ViewTempDetailClaim-Harness.xml, bukan disusun ulang. Ia terlihat janggal —
-  // Penerima Pembayaran Klaim mendahului Registrasi — dan itu justru alasan uji ini ada:
-  // merapikannya agar "masuk akal" adalah membuat model sendiri lagi.
-  vi.stubGlobal("fetch", (url: string) => {
-    calls.push({ url });
-    if (url.includes("/klaim/")) {
-      return Promise.resolve(
-        jsonResponse(200, {
-          klaim_id: "CONTOH-1",
-          nomor_klaim: "PNCN.26.0001",
-          status_proses: "New",
-          status_klaim: "1147",
-          pic_teknik: "PIC Contoh 1",
-          admin_pnc: "Admin Contoh 1",
-          didaftarkan_pada: "2026-08-05T03:00:00Z",
-          dokumen: {
-            ClaimData: { ObjectList: [{ ObjectName: "Objek Contoh" }] },
-          },
-          portal: "ASM",
-        }),
-      );
-    }
-    if (url.includes("/penyaring"))
-      return Promise.resolve(jsonResponse(200, penyaringResponse));
-    if (url.includes("/ringkasan"))
-      return Promise.resolve(jsonResponse(200, ringkasanResponse()));
-    return Promise.resolve(jsonResponse(200, telusurKlaim()));
-  });
-
-  renderPage();
-  await screen.findByText("247");
-  await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
-  await userEvent.click(
-    await screen.findByRole("button", { name: "PNCN.26.0001" }),
-  );
-
-  const popup = await screen.findByRole("dialog", {
-    name: /Detail Klaim PNCN.26.0001/i,
-  });
-  const judul = within(popup)
-    .getAllByRole("tab")
-    .map((el) => (el.textContent ?? "").trim());
-
-  expect(judul).toEqual([
-    "Penerima Pembayaran Klaim",
-    "Registrasi",
-    "Hasil Survey",
-    "Estimasi",
-    "Adjustment & Akseptasi",
-    "Dokumen",
-    "Progress Klaim",
-  ]);
-
-  // Riwayat lampiran BUKAN tab — di layar lama ia grid di bawah isi tab.
-  expect(
-    within(popup).queryByRole("tab", { name: /Attachment|Lampiran/i }),
-  ).not.toBeInTheDocument();
-  expect(within(popup).getByText("Attachment")).toBeVisible();
-});
-
-it("klaim PA memunculkan tab Catatan Untuk Analis dan kolom objek versi PA", async () => {
-  // Penjaganya disalin dari pyContainerVisibleWhen di harness dan section:
-  //   tab "Catatan Untuk Analis"  IsPA      -> Policy.Quotation.GroupPanel = "002"
-  //   grid objek versi PA         IsPA      -> Nama / Perkerjaan / Tanggal Lahir
-  //   grid objek versi Travel     IsTravel  -> Nama Peserta / Status / KTP/Paspor / ...
-  //
-  // Uji ini ada karena tebakan sebelumnya TERBALIK: saya mengira kolom Peserta milik PA.
-  // "Perkerjaan" memang salah ketik di layar lama, dan dibawa apa adanya.
-  vi.stubGlobal("fetch", (url: string) => {
-    calls.push({ url });
-    if (url.includes("/klaim/")) {
-      return Promise.resolve(
-        jsonResponse(200, {
-          klaim_id: "CONTOH-PA",
-          nomor_klaim: "PNCN.26.0001",
-          status_proses: "New",
-          status_klaim: "1147",
-          pic_teknik: "PIC Contoh 1",
-          admin_pnc: "Admin Contoh 1",
-          didaftarkan_pada: "2026-08-05T03:00:00Z",
-          dokumen: {
-            Policy: { Quotation: { GroupPanel: "002" } },
-            ClaimData: {
-              ObjectList: [
-                { ObjectName: "Peserta Contoh", ObjectJob: "Karyawan" },
-              ],
-            },
-          },
-          portal: "ASM",
-        }),
-      );
-    }
-    if (url.includes("/penyaring"))
-      return Promise.resolve(jsonResponse(200, penyaringResponse));
-    if (url.includes("/ringkasan"))
-      return Promise.resolve(jsonResponse(200, ringkasanResponse()));
-    return Promise.resolve(jsonResponse(200, telusurKlaim()));
-  });
-
-  renderPage();
-  await screen.findByText("247");
-  await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
-  await userEvent.click(
-    await screen.findByRole("button", { name: "PNCN.26.0001" }),
-  );
-
-  const popup = await screen.findByRole("dialog", {
-    name: /Detail Klaim PNCN.26.0001/i,
-  });
-
-  // Tab bersyarat IsPA kini muncul — pada klaim non-PA ia tidak.
-  expect(
-    within(popup).getByRole("tab", { name: "Catatan Untuk Analis" }),
-  ).toBeVisible();
-
-  await userEvent.click(within(popup).getByRole("tab", { name: "Registrasi" }));
-  expect(
-    within(popup).getByRole("columnheader", { name: "Perkerjaan" }),
-  ).toBeVisible();
-  expect(
-    within(popup).queryByRole("columnheader", { name: "KTP/Paspor" }),
-  ).not.toBeInTheDocument();
-});
-
 it("menggambar kolom survei pada tile bertipe survei", async () => {
   stubFetch(ringkasanResponse(), telusurSurvei());
   renderPage();
@@ -1384,27 +1263,46 @@ it("menggambar jam pada Tanggal Pendaftaran dan Report Date, serta menomori bari
   const tabel = screen.getAllByRole("table")[0]!;
   expect(within(tabel).getByText("1")).toBeInTheDocument();
 });
-
-it("nomor klaim membuka popup rincian, bukan berpindah halaman", async () => {
-  const calls2: { url: string }[] = [];
-  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
-    calls2.push({ url });
-    calls.push({ url, init });
-    if (url.includes("/klaim/")) {
+it("memasang tautan buka case saat pengguna boleh membukanya", async () => {
+  globalThis.fetch = vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/penyaring")) {
       return Promise.resolve(
-        jsonResponse(200, {
-          klaim_id: "CONTOH-1",
-          nomor_klaim: "PNCN.26.0001",
-          status_proses: "New",
-          status_klaim: "1147",
-          pic_teknik: "PIC Contoh 1",
-          admin_pnc: "Admin Contoh 1",
-          didaftarkan_pada: "2026-08-05T03:00:00Z",
-          dokumen: {},
-          portal: "ASM",
-        }),
+        jsonResponse(200, { ...penyaringResponse, boleh_buka_case: true }),
       );
     }
+    if (url.includes("/ringkasan"))
+      return Promise.resolve(jsonResponse(200, ringkasanResponse()));
+    return Promise.resolve(jsonResponse(200, telusurKlaim()));
+  });
+
+  renderPage();
+  await screen.findByText("247");
+  await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
+
+  // Tujuannya SAMA dengan link open case di My Inbox. Alamatnya diuji apa adanya: rute yang
+  // berbeda satu huruf membawa pengguna ke layar yang tidak ada, tanpa galat di sisi data.
+  const tautan = await screen.findByRole("link", { name: "PNCN.26.0001" });
+  expect(tautan).toHaveAttribute(
+    "href",
+    "/registrasi/klaim/PNCN.26.0001?asal=dashboard-claim&tile=outstanding",
+  );
+  expect(screen.queryByRole("button", { name: "PNCN.26.0001" })).toBeNull();
+});
+/**
+ * Nomor klaim menuju halaman klaim yang SAMA dengan yang dibuka My Inbox.
+ *
+ * # Satu tujuan, bukan dua
+ *
+ * Layar lama punya dua aksi pada sel ini (`openAssignment` dan `showHarness`), dan keduanya
+ * sempat dibangun. Work Owner menolak keduanya: yang diminta satu halaman detail yang sama
+ * persis dengan My Inbox, apa pun tipe tile dan apa pun format nomornya.
+ *
+ * Uji ini yang menjaga agar percabangan itu tidak kembali diam-diam.
+ */
+it("nomor klaim menuju halaman klaim yang sama dengan My Inbox", async () => {
+  vi.stubGlobal("fetch", (url: string) => {
+    calls.push({ url });
     if (url.includes("/penyaring"))
       return Promise.resolve(jsonResponse(200, penyaringResponse));
     if (url.includes("/ringkasan"))
@@ -1416,58 +1314,23 @@ it("nomor klaim membuka popup rincian, bukan berpindah halaman", async () => {
   await screen.findByText("247");
   await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
 
-  // Di Pega ia pranala yang menjalankan showHarness bertarget POPUP — bukan pindah halaman.
-  await userEvent.click(
-    await screen.findByRole("button", { name: "PNCN.26.0001" }),
+  const tautan = await screen.findByRole("link", { name: "PNCN.26.0001" });
+  expect(tautan).toHaveAttribute(
+    "href",
+    "/registrasi/klaim/PNCN.26.0001?asal=dashboard-claim&tile=outstanding",
   );
 
-  const dialog = await screen.findByRole("dialog", {
-    name: /Detail Klaim PNCN.26.0001/i,
-  });
-  expect(within(dialog).getByText("PIC Contoh 1")).toBeInTheDocument();
-
-  // Rinciannya diambil SAAT diklik, bukan ikut pada setiap baris daftar. Menyertakannya di
-  // daftar akan membawa puluhan dokumen klaim pada setiap pemuatan halaman.
-  expect(calls2.filter((c) => c.url.includes("/klaim/"))).toHaveLength(1);
-
-  // Dokumen kosong DINYATAKAN, bukan digambar sebagai layar hampa — klaim yang belum punya
-  // baris di JSON_KLAIM memang begitu, dan itu keadaan yang sah.
-  expect(
-    within(dialog).getByText(/belum punya dokumen rincian/i),
-  ).toBeInTheDocument();
+  // Rinciannya TIDAK ikut diambil saat daftar dimuat — ia diambil halaman tujuannya.
+  expect(calls.filter((c) => c.url.includes("/klaim/"))).toHaveLength(0);
 });
 
-it("baris grid di dalam popup membuka sub-popup, dan Escape menutup yang itu saja", async () => {
-  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
-    calls.push({ url, init });
-    if (url.includes("/klaim/")) {
-      return Promise.resolve(
-        jsonResponse(200, {
-          klaim_id: "CONTOH-1",
-          nomor_klaim: "PNCN.26.0001",
-          status_proses: "New",
-          status_klaim: "1147",
-          pic_teknik: "PIC Contoh 1",
-          admin_pnc: "Admin Contoh 1",
-          didaftarkan_pada: "2026-08-05T03:00:00Z",
-          // Satu baris coverage — di Pega barisnya membuka Flow Action ViewCoverageAdj.
-          dokumen: {
-            ClaimData: {
-              ObjectCoverageList: [
-                {
-                  CoverageNote: "Kebakaran",
-                  CoverageID: "PLAN-1",
-                  SumTSI: "1000000",
-                },
-              ],
-            },
-          },
-          portal: "ASM",
-        }),
-      );
-    }
+it("tujuannya sama meski pengguna tidak berwenang membuka case", async () => {
+  vi.stubGlobal("fetch", (url: string) => {
+    calls.push({ url });
     if (url.includes("/penyaring"))
-      return Promise.resolve(jsonResponse(200, penyaringResponse));
+      return Promise.resolve(
+        jsonResponse(200, { ...penyaringResponse, boleh_buka_case: true }),
+      );
     if (url.includes("/ringkasan"))
       return Promise.resolve(jsonResponse(200, ringkasanResponse()));
     return Promise.resolve(jsonResponse(200, telusurKlaim()));
@@ -1476,33 +1339,97 @@ it("baris grid di dalam popup membuka sub-popup, dan Escape menutup yang itu saj
   renderPage();
   await screen.findByText("247");
   await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
-  await userEvent.click(
-    await screen.findByRole("button", { name: "PNCN.26.0001" }),
-  );
 
-  const popup = await screen.findByRole("dialog", {
-    name: /Detail Klaim PNCN.26.0001/i,
+  // `boleh_buka_case` TIDAK lagi memilih tujuan — ia pernah memilihnya, dan itu ditolak.
+  expect(
+    await screen.findByRole("link", { name: "PNCN.26.0001" }),
+  ).toHaveAttribute(
+    "href",
+    "/registrasi/klaim/PNCN.26.0001?asal=dashboard-claim&tile=outstanding",
+  );
+});
+
+/**
+ * Klaim warisan `PNC-xxxx` menuju halaman yang SAMA.
+ *
+ * Sempat dikecualikan atas dasar `P-3` — klaim yang dimulai di Pega diselesaikan di Pega,
+ * sehingga Tahapan Klaim-nya kosong di sini. Work Owner menimbang itu dan tetap memilih satu
+ * halaman untuk semua.
+ */
+it("klaim warisan menuju halaman klaim yang sama, bukan halaman lain", async () => {
+  vi.stubGlobal("fetch", (url: string) => {
+    calls.push({ url });
+    if (url.includes("/penyaring"))
+      return Promise.resolve(
+        jsonResponse(200, { ...penyaringResponse, boleh_buka_case: true }),
+      );
+    if (url.includes("/ringkasan"))
+      return Promise.resolve(jsonResponse(200, ringkasanResponse()));
+    return Promise.resolve(
+      jsonResponse(
+        200,
+        telusurKlaim({ nomor_klaim: "PNC-11", klaim_id: "WARISAN-1" }),
+      ),
+    );
   });
 
-  // Coverage ada di tab 'Adjustment & Akseptasi', bukan di gulungan panjang: popup layar lama
-  // dibagi menjadi tab lewat 'pyTitle' pada ViewTempDetailClaim.
-  await userEvent.click(
-    within(popup).getByRole("tab", { name: "Adjustment & Akseptasi" }),
-  );
-  expect(within(popup).getByText("Kebakaran")).toBeInTheDocument();
+  renderPage();
+  await screen.findByText("247");
+  await userEvent.click(screen.getByRole("button", { name: /^Outstanding/ }));
 
-  // Padanan pyEditAction: barisnya punya tombol Detail.
-  await userEvent.click(
-    within(popup).getAllByRole("button", { name: "Detail" })[0]!,
+  expect(await screen.findByRole("link", { name: "PNC-11" })).toHaveAttribute(
+    "href",
+    "/registrasi/klaim/PNC-11?asal=dashboard-claim&tile=outstanding",
   );
-  const sub = await screen.findByRole("dialog", { name: "Detail Coverage" });
-  expect(within(sub).getByText("Nama Coverage")).toBeInTheDocument();
+});
 
-  // Escape menutup sub-popup SAJA. Tanpa stopPropagation keduanya tertutup sekaligus, dan
-  // pengguna yang hanya ingin kembali ke daftar kehilangan seluruh rinciannya.
-  await userEvent.keyboard("{Escape}");
-  expect(screen.queryByRole("dialog", { name: "Detail Coverage" })).toBeNull();
-  expect(
-    screen.getByRole("dialog", { name: /Detail Klaim PNCN.26.0001/i }),
-  ).toBeInTheDocument();
+/**
+ * Nomor klaim pada tile bertipe SURVEI TIDAK ditautkan — sama seperti layar lama.
+ *
+ * `BrowseLossAdjuster` dan `BrowseInternalSurveyor` tidak merakit kolom `pyNote`, sedangkan
+ * sel `openAssignment` Pega membuka kunci yang diambil dari `pyNote`. Tanpa kolom itu tidak
+ * ada yang dapat dibuka.
+ *
+ * Sempat ditautkan pada 2026-10-12 dan DIKEMBALIKAN atas koreksi Work Owner. Uji ini yang
+ * menjaga agar tidak ditambahkan lagi karena dikira kekurangan.
+ */
+it("nomor klaim pada tile bertipe survei TIDAK ditautkan, seperti layar lama", async () => {
+  stubFetch(ringkasanResponse(), telusurSurvei());
+  renderPage();
+
+  await screen.findByText("18");
+  await userEvent.click(screen.getByRole("button", { name: /Loss Adjuster/ }));
+  await screen.findByText("SRV-CONTOH-0001");
+
+  // Nomornya TAMPIL, tetapi bukan sebagai pranala.
+  expect(screen.getByText("PNCN.26.0001")).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "PNCN.26.0001" })).toBeNull();
+});
+
+/**
+ * Keadaan layar pulang-pergi lewat ALAMAT.
+ *
+ * Work Owner memintanya setelah mencari dengan lini bisnis lalu membuka satu klaim: kembali
+ * ke daftar kosong berarti mengulang pencarian dari awal. Alamat dipakai, bukan state React,
+ * karena halaman klaim adalah rute lain — state hilang begitu alamatnya berganti.
+ */
+it("memulihkan tile dan penyaring dari alamat", async () => {
+  renderPage("/dashboard-claim?tile=outstanding&lini=003&pic=BUDI");
+
+  // Tile terbuka tanpa diklik, dan kotak penyaringnya sudah terisi.
+  expect(await screen.findByDisplayValue("BUDI")).toBeInTheDocument();
+});
+
+it("menyertakan penyaring yang berlaku pada tautan nomor klaim", async () => {
+  renderPage("/dashboard-claim?tile=outstanding&lini=003&pic=BUDI&hal=2");
+
+  const tautan = await screen.findByRole("link", { name: "PNCN.26.0001" });
+  const p = new URLSearchParams(
+    (tautan.getAttribute("href") ?? "").split("?")[1],
+  );
+  expect(p.get("asal")).toBe("dashboard-claim");
+  expect(p.get("tile")).toBe("outstanding");
+  expect(p.get("lini")).toBe("003");
+  expect(p.get("pic")).toBe("BUDI");
+  expect(p.get("hal")).toBe("2");
 });

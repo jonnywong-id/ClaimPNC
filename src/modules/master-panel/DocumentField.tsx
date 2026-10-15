@@ -64,6 +64,20 @@ type Props = {
   /** Jalur unggah siap dipakai. Dibaca dari `unggah_tersedia` pada endpoint pilihan. */
   available: boolean;
 
+  /**
+   * Form Tambah/Ubah sedang terbuka — yakni ADA panel yang akan menerima dokumen ini.
+   *
+   * Tanpa ini panel unggah menjadi jalan buntu, dan buntu yang DIAM: berkas yang dipilih
+   * ditahan di layar, Submit menutup panelnya, lalu tidak ada yang pernah mengirimnya
+   * karena pengirimannya menumpang jalur Simpan. Dari sisi pengguna, menekan Submit
+   * tampak tidak melakukan apa pun.
+   *
+   * Ia memang harus menumpang Simpan — lihat keterangan panjang di atas: pada Tambah, ID
+   * panel baru lahir SESUDAH tersimpan. Yang keliru bukan penundaannya, melainkan
+   * membiarkan panel ini dibuka saat tidak ada panel yang dituju.
+   */
+  formOpen: boolean;
+
   /** Berkas yang sedang ditahan, beserta catatannya. */
   file: File | null;
   note: string;
@@ -84,6 +98,7 @@ export function DocumentField(props: Props) {
   const {
     current,
     available,
+    formOpen,
     file,
     note,
     onPick,
@@ -96,6 +111,11 @@ export function DocumentField(props: Props) {
   const noteId = useId();
   const input = useRef<HTMLInputElement>(null);
   const [tooBig, setTooBig] = useState(false);
+
+  // Berkas hanya boleh dipilih bila ada panel yang menerimanya. Mematikannya di sini,
+  // SEBELUM pengguna membuka manajer berkas, jauh lebih baik daripada membiarkannya
+  // memilih berkas lalu diam-diam membuangnya.
+  const canPick = available && formOpen;
 
   // Batas yang sama dengan `dokumenpenunjang.BatasUkuranBerkas`. Diperiksa di peramban
   // JUGA, bukan hanya di server: berkas 2 GB yang ditolak server tetap harus diunggah
@@ -126,6 +146,19 @@ export function DocumentField(props: Props) {
         <ErrorMessage
           title="Unggah dokumen belum tersedia"
           description="Layanan penyimpanan dokumen belum terpasang pada lingkungan ini. Panel tetap dapat disimpan; dokumennya menyusul setelah layanan itu tersedia."
+          tone="gangguan"
+        />
+      )}
+
+      {/*
+        Tanpa panel yang dituju, unggahan tidak mungkin dikirim ke mana pun. Yang
+        dikatakan di sini adalah APA YANG HARUS DILAKUKAN, bukan sekadar bahwa fiturnya
+        mati — pengguna yang membaca "tidak tersedia" akan mengira sistemnya rusak.
+      */}
+      {available && !formOpen && (
+        <ErrorMessage
+          title="Pilih dulu panel yang akan diberi dokumen"
+          description="Dokumen menempel pada satu panel. Tekan Ubah pada baris panelnya — atau Tambah bila panelnya belum ada — lalu buka kembali Upload Document."
           tone="gangguan"
         />
       )}
@@ -172,7 +205,7 @@ export function DocumentField(props: Props) {
           id={fileId}
           ref={input}
           type="file"
-          disabled={!available || isSaving}
+          disabled={!canPick || isSaving}
           onChange={(event) => pick(event.target.files?.[0] ?? null)}
           className="sr-only"
         />
@@ -182,7 +215,7 @@ export function DocumentField(props: Props) {
             onClick={() => {
               input.current?.click();
             }}
-            disabled={!available || isSaving}
+            disabled={!canPick || isSaving}
           >
             Pilih Berkas
           </Button>
@@ -251,6 +284,20 @@ export function DocumentField(props: Props) {
         `dragDropFileUpload`, dan yang menyimpannya adalah jalur SIMPAN. Jadi Submit di sini
         berarti "berkas ini saya pilih" — persis seperti di Pega.
       */}
+      {/*
+        Submit TIDAK mengirim berkasnya, dan itu harus dikatakan — bukan dibiarkan
+        disimpulkan. Tombol bernama "Submit" yang tidak mengirim apa pun adalah tombol
+        yang akan dikira rusak oleh siapa pun yang menekannya.
+      */}
+      {file !== null && formOpen && (
+        <p className="rounded-kontrol bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          Berkas ini <span className="font-medium">belum terkirim</span>. Tekan{" "}
+          <span className="font-medium">Submit</span> untuk menutup panel ini,
+          lalu <span className="font-medium">Simpan</span> pada form panel — di
+          situlah berkasnya dikirim.
+        </p>
+      )}
+
       <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-3">
         <Button
           tone="halus"
