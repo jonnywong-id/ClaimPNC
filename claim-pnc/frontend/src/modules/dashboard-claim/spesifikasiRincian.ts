@@ -1,3 +1,21 @@
+/*
+  ============================================================================
+  KUNCI KOLOM BERPINDAH DARI JALUR JSON KE FIELD KONTRAK — 2026-10-12
+  ============================================================================
+
+  Sampai 2026-10-12, `kunci` di berkas ini adalah JALUR di dalam dokumen
+  `POOLDATA.JSON_KLAIM.DATA_JSON`. Setelah Work Owner memutuskan migrasi tidak memakai JSON
+  lagi, isinya dibaca dari tabel relasional dan dikirim sebagai bagian bertipe — sehingga
+  `kunci` kini adalah NAMA FIELD pada kontrak.
+
+  `label` TIDAK berubah sama sekali: ia yang dilihat pengguna, dan `D-13` menetapkan teks
+  layar mengikuti Pega apa adanya. Yang berubah hanya dari mana nilainya diambil.
+
+  Kunci berawalan `BELUM_TERSAMBUNG_` adalah kolom yang BELUM punya padanan kolom basis
+  data. Ia sengaja tidak dihapus dari daftar: menghapusnya membuat kolomnya hilang dari layar
+  tanpa jejak, sedangkan membiarkannya kosong menunjukkan ada yang belum selesai. Kolom-kolom
+  itu berasal dari grid HE, checklist dokumen, dan grid komite.
+*/
 import type { Isian, KolomGrid } from './BagianRincian'
 
 /**
@@ -26,22 +44,46 @@ import type { Isian, KolomGrid } from './BagianRincian'
  * pengiriman) dan karena itu tidak digambar sebagai isian.
  */
 export const ISIAN_REGISTER: Isian[] = [
-  { label: 'Tanggal Terima Dokumen', jalur: 'ClaimData.DateReceived' },
-  { label: 'Tanggal Kejadian / Tanggal Masuk Rawat Inap', jalur: 'ClaimData.DateOfLoss' },
-  { label: 'Tanggal Keluar Rawat Inap', jalur: 'ClaimData.TanggalSelesaiRawatInap' },
-  { label: 'Tanggal Lapor', jalur: 'ClaimData.ReportDate' },
-  { label: 'No Telephone Pelapor', jalur: 'ClaimData.ReporterTelp' },
-  { label: 'Email', jalur: 'ClaimData.Email' },
-  { label: 'Status Pelapor', jalur: 'ClaimData.InsuredRelationship' },
-  { label: 'Sebutkan...', jalur: 'ClaimData.InsuredRelationshipOthers' },
-  { label: 'Klaim Estimasi', jalur: 'ClaimData.ClaimEstimate' },
-  { label: 'Nilai Dalam IDR', jalur: 'ClaimData.DollarCurrencyVal' },
-  { label: 'Lokasi Kerugian/Kejadian', jalur: 'ClaimData.Location' },
-  { label: 'Kelurahan', jalur: 'ClaimData.District' },
-  { label: 'Apakah tertanggung seorang TKI?', jalur: 'ClaimData.TKI' },
-  { label: 'Catatan dari Analyst', jalur: 'ClaimData.AnaylstRemarks' },
-  { label: 'Catatan Ke Analyst', jalur: 'ClaimData.Remark' },
-  { label: 'Catatan Ke PIC Teknis', jalur: 'ClaimData.RemarkRecommendation' },
+  { label: 'Tanggal Terima Dokumen', kunci: 'tanggal_terima_dokumen' },
+  {
+    label: 'Tanggal Kejadian / Tanggal Masuk Rawat Inap',
+    kunci: 'tanggal_kejadian',
+  },
+  {
+    label: 'Tanggal Keluar Rawat Inap',
+    kunci: 'tanggal_keluar_rawat_inap',
+  },
+  { label: 'Tanggal Lapor', kunci: 'tanggal_lapor' },
+  { label: 'No Telephone Pelapor', kunci: 'telepon_pelapor' },
+  { label: 'Email', kunci: 'email_pelapor' },
+  { label: 'Status Pelapor', kunci: 'status_pelapor' },
+  { label: 'Sebutkan...', kunci: 'status_pelapor_lain' },
+  {
+    label: 'Klaim Estimasi',
+    kunci: 'klaim_estimasi',
+    absen:
+      'Nilai estimasi hidup di POOLDATA.T_CLAIM_ESTIMASI — per objek dan per coverage, bukan ' +
+      'satu nilai per klaim. Menjumlahkannya adalah keputusan bisnis yang belum diambil.',
+  },
+  {
+    label: 'Nilai Dalam IDR',
+    kunci: 'nilai_idr',
+    absen:
+      'Sumbernya sama dengan Klaim Estimasi (kolom CONVERTVALUE), dan terhalang pertanyaan ' +
+      'yang sama.',
+  },
+  { label: 'Lokasi Kerugian/Kejadian', kunci: 'lokasi_kejadian' },
+  { label: 'Kelurahan', kunci: 'kelurahan' },
+  { label: 'Apakah tertanggung seorang TKI?', kunci: 'tertanggung_tki' },
+  {
+    label: 'Catatan dari Analyst',
+    kunci: 'catatan_dari_analyst',
+    absen:
+      'Catatan analis tersimpan sebagai PERCAKAPAN di POOLDATA.M_KOMUNIKASI_PNC, bukan satu ' +
+      'nilai. Menampilkan pesan terakhirnya saja akan menyembunyikan sisanya.',
+  },
+  { label: 'Catatan Ke Analyst', kunci: 'catatan_ke_analyst' },
+  { label: 'Catatan Ke PIC Teknis', kunci: 'catatan_ke_pic_teknis' },
 ]
 
 /**
@@ -52,14 +94,14 @@ export const ISIAN_REGISTER: Isian[] = [
  * dan nama propertinya sendiri (`ObjectName`, `ObjectIDCard`) sudah terbaca apa adanya.
  */
 export const KOLOM_OBJEK: KolomGrid[] = [
-  { label: 'Nama Objek', kunci: 'ObjectName' },
-  { label: 'Lokasi Objek', kunci: 'ObjectLocation' },
-  { label: 'Status Peserta', kunci: 'ObjectParticipantStatus' },
-  { label: 'NIK', kunci: 'ObjectIDCard' },
-  { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
-  { label: 'Pekerjaan', kunci: 'ObjectJob' },
-  { label: 'Tipe Kendaraan', kunci: 'ObjectVehicleType' },
-  { label: 'No Rangka', kunci: 'ObjectVehicleChasis' },
+  { label: 'Nama Objek', kunci: 'nama_objek' },
+  { label: 'Lokasi Objek', kunci: 'lokasi_objek' },
+  { label: 'Status Peserta', kunci: 'status_peserta' },
+  { label: 'NIK', kunci: 'nik' },
+  { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
+  { label: 'Pekerjaan', kunci: 'pekerjaan' },
+  { label: 'Tipe Kendaraan', kunci: 'tipe_kendaraan' },
+  { label: 'No Rangka', kunci: 'no_rangka' },
 ]
 
 /**
@@ -88,8 +130,8 @@ export const KOLOM_OBJEK: KolomGrid[] = [
  * sub-popup baris, bukan di grid.
  */
 export const KOLOM_PENERIMA: KolomGrid[] = [
-  { label: 'Nama', kunci: 'Name' },
-  { label: 'Alamat', kunci: 'Address' },
+  { label: 'Nama', kunci: 'nama' },
+  { label: 'Alamat', kunci: 'alamat' },
 ]
 
 /**
@@ -99,14 +141,20 @@ export const KOLOM_PENERIMA: KolomGrid[] = [
  * dari ikatan selnya.
  */
 export const ISIAN_SURVEY: Isian[] = [
-  { label: 'Survey Atas Permintaan', jalur: 'ClaimData.SurveyData.RequestorName' },
-  { label: 'Lokasi Survey', jalur: 'ClaimData.SurveyData.LocationSurvey' },
-  { label: 'No. Telp', jalur: 'ClaimData.SurveyData.NoTelpDiHubungi' },
-  { label: 'Tanggal Request Survey', jalur: 'ClaimData.SurveyData.RequestSurveyDate' },
-  { label: 'Cabang', jalur: 'ClaimData.SurveyData.Cabang' },
-  { label: 'Surveyor', jalur: 'ClaimData.SurveyData.SurveyorName' },
-  { label: 'Email Surveyor', jalur: 'ClaimData.SurveyData.EmailSurvey' },
-  { label: 'Nama Object', jalur: 'ClaimData.SurveyData.ObjectName' },
+  {
+    label: 'Survey Atas Permintaan',
+    kunci: 'atas_permintaan',
+  },
+  { label: 'Lokasi Survey', kunci: 'lokasi' },
+  { label: 'No. Telp', kunci: 'telepon' },
+  {
+    label: 'Tanggal Request Survey',
+    kunci: 'tanggal_request',
+  },
+  { label: 'Cabang', kunci: 'cabang' },
+  { label: 'Surveyor', kunci: 'surveyor' },
+  { label: 'Email Surveyor', kunci: 'email_surveyor' },
+  { label: 'Nama Object', kunci: 'nama_objek' },
 ]
 
 /**
@@ -116,13 +164,26 @@ export const ISIAN_SURVEY: Isian[] = [
  * tertulis di `pyLabelFieldValue`, dan `D-13` menetapkan teks layar mengikuti Pega.
  */
 export const ISIAN_CATATAN: Isian[] = [
-  { label: 'Pilihan Compliance', jalur: 'ClaimData.PilihanCompliance' },
-  { label: 'Note PilihanCompliance', jalur: 'ClaimData.NotePilihanCompliance' },
+  {
+    label: 'Pilihan Compliance',
+    kunci: 'pilihan_compliance',
+    absen:
+      'Dicari menyeluruh ke ALL_TAB_COLUMNS seluruh skema POOLDATA — tidak ada satu pun kolom ' +
+      'yang sepadan. Bukan hanya tidak ada di T_CLAIM_PNC.',
+  },
+  {
+    label: 'Note PilihanCompliance',
+    kunci: 'note_pilihan_compliance',
+    absen: 'Sama seperti Pilihan Compliance: tidak ada kolomnya di mana pun pada skema POOLDATA.',
+  },
   {
     label: 'Tanggal Kelengkapan Dokumen Akhir PUCL',
-    jalur: 'ClaimData.PUCLStatus.TanggalTerimaDokumenPUCL',
+    kunci: 'tanggal_dokumen_lengkap',
   },
-  { label: 'Alasan Dokter Tolak RCL', jalur: 'ClaimData.AlasanDokterRejectRCL' },
+  {
+    label: 'Alasan Dokter Tolak RCL',
+    kunci: 'alasan_dokter_tolak_rcl',
+  },
 ]
 
 /**
@@ -143,11 +204,11 @@ export const ISIAN_CATATAN: Isian[] = [
  * yang tidak ada di bentuk karangan itu — sementara "Kode Coverage" ternyata tidak pernah ada.
  */
 export const KOLOM_COVERAGE: KolomGrid[] = [
-  { label: 'Nama Coverage', kunci: 'CoverageNote' },
-  { label: 'Nama Plan', kunci: 'CoverageID' },
-  { label: 'TSI', kunci: 'SumTSI' },
-  { label: 'Mata Uang', kunci: 'Currency' },
-  { label: 'Penyebab Kerugian', kunci: 'CauseOfLoss' },
+  { label: 'Nama Coverage', kunci: 'nama_coverage' },
+  { label: 'Nama Plan', kunci: 'kode_plan' },
+  { label: 'TSI', kunci: 'tsi' },
+  { label: 'Mata Uang', kunci: 'mata_uang' },
+  { label: 'Penyebab Kerugian', kunci: 'penyebab_kerugian' },
 ]
 
 /**
@@ -168,10 +229,10 @@ export const KOLOM_COVERAGE: KolomGrid[] = [
  * `.RISK` memuat jumlah dokumen yang sudah diunggah — alias menyesatkan, dipakai apa adanya.
  */
 export const KOLOM_DOKUMEN: KolomGrid[] = [
-  { label: 'Kategori', kunci: 'DETAIL_DOCUMENT' },
-  { label: 'Wajib Unggah', kunci: 'STS_WAJIB' },
-  { label: 'Minimal Unggah', kunci: 'MIN_DOC' },
-  { label: 'Total Sudah Diunggah', kunci: 'RISK' },
+  { label: 'Kategori', kunci: 'detail_document', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Wajib Unggah', kunci: 'sts_wajib', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Minimal Unggah', kunci: 'min_doc', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Total Sudah Diunggah', kunci: 'risk', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -194,9 +255,9 @@ export const KOLOM_DOKUMEN: KolomGrid[] = [
  * menghasilkan kolom kosong.
  */
 export const KOLOM_RIWAYAT_LAMPIRAN: KolomGrid[] = [
-  { label: 'Category', kunci: 'pyCategory' },
-  { label: 'Name', kunci: 'pyAttachName' },
-  { label: 'Created date', kunci: 'pxCreateDateTime' },
+  { label: 'Category', kunci: 'kategori' },
+  { label: 'Name', kunci: 'nama' },
+  { label: 'Created date', kunci: 'ditambahkan_pada' },
 ]
 
 /**
@@ -217,10 +278,10 @@ export const KOLOM_RIWAYAT_LAMPIRAN: KolomGrid[] = [
  * Ketiganya dipakai apa adanya karena itulah kunci di dokumen JSON-nya.
  */
 export const KOLOM_POSISI: KolomGrid[] = [
-  { label: 'Case ID', kunci: 'CaseID' },
-  { label: 'POSISI', kunci: 'AlasanTerlambat' },
-  { label: 'Tanggal', kunci: 'KomiteApproveDate' },
-  { label: 'STATUS', kunci: 'CountryID' },
+  { label: 'Case ID', kunci: 'kode_tahap' },
+  { label: 'POSISI', kunci: 'nama_tahap' },
+  { label: 'Tanggal', kunci: 'tanggal' },
+  { label: 'STATUS', kunci: 'status' },
 ]
 
 /**
@@ -242,12 +303,12 @@ export const KOLOM_POSISI: KolomGrid[] = [
  * objek — lihat KOLOM_KOMITE_HE. Urutan kolomnya juga dikoreksi mengikuti Pega.
  */
 export const KOLOM_OBJEK_HE: KolomGrid[] = [
-  { label: 'Object', kunci: 'ObjectName' },
-  { label: 'Model', kunci: 'ObjectVehicleModel' },
-  { label: 'Merk', kunci: 'ObjectVehicleBrand' },
-  { label: 'Nama Tipe', kunci: 'ObjectVehicleType' },
-  { label: 'Nomor Chasis', kunci: 'ObjectVehicleChasis' },
-  { label: 'Location', kunci: 'ObjectLocation' },
+  { label: 'Object', kunci: 'nama_objek' },
+  { label: 'Model', kunci: 'objectvehiclemodel', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Merk', kunci: 'objectvehiclebrand', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Nama Tipe', kunci: 'tipe_kendaraan' },
+  { label: 'Nomor Chasis', kunci: 'no_rangka' },
+  { label: 'Location', kunci: 'lokasi_objek' },
 ]
 
 /**
@@ -258,9 +319,14 @@ export const KOLOM_OBJEK_HE: KolomGrid[] = [
  * `ViewShowReceiver` sekaligus — tanda ia milik kerangka popup, bukan satu bagian tertentu.
  */
 export const ISIAN_KEPALA: Isian[] = [
-  { label: 'Status Klaim', jalur: 'ClaimData.StatusClaim' },
-  { label: 'Aging Amount', jalur: 'Policy.AgingAmount' },
-  { label: 'Catatan dari Inputor', jalur: 'ClaimData.Remark' },
+  { label: 'Status Klaim', kunci: 'status_klaim' },
+  {
+    label: 'Aging Amount',
+    kunci: 'aging_amount',
+    absen:
+      'Milik data polis (Policy.AgingAmount), dan polis bukan milik bounded context ini (D-04).',
+  },
+  { label: 'Catatan dari Inputor', kunci: 'catatan_inputor' },
 ]
 
 /**
@@ -275,23 +341,23 @@ export const ISIAN_KEPALA: Isian[] = [
  * Bila judul aslinya kelak ditemukan, yang berubah hanya berkas ini.
  */
 export const ISIAN_DETAIL_SURVEYOR: Isian[] = [
-  { label: 'SurveyName', jalur: 'SurveyName' },
-  { label: 'SurveyDate', jalur: 'SurveyDate' },
-  { label: 'SurveyorName', jalur: 'SurveyorName' },
-  { label: 'LocationSurvey', jalur: 'LocationSurvey' },
-  { label: 'InsuredPIC', jalur: 'InsuredPIC' },
-  { label: 'LossType', jalur: 'LossType' },
-  { label: 'LossDescription', jalur: 'LossDescription' },
-  { label: 'EstimateDescription', jalur: 'EstimateDescription' },
-  { label: 'SurveyorDescription', jalur: 'SurveyorDescription' },
-  { label: 'PolicyTerm', jalur: 'PolicyTerm' },
-  { label: 'PoliceReport', jalur: 'PoliceReport' },
-  { label: 'WitnessName', jalur: 'WitnessName' },
-  { label: 'WitnessAddress', jalur: 'WitnessAddress' },
-  { label: 'Salvage', jalur: 'Salvage' },
-  { label: 'SalvageDescription', jalur: 'SalvageDescription' },
-  { label: 'ClientSignature', jalur: 'ClientSignature' },
-  { label: 'OthersDescription', jalur: 'OthersDescription' },
+  { label: 'SurveyName', kunci: 'surveyname', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'SurveyDate', kunci: 'tanggal_survey' },
+  { label: 'SurveyorName', kunci: 'nama_surveyor' },
+  { label: 'LocationSurvey', kunci: 'lokasi_survey' },
+  { label: 'InsuredPIC', kunci: 'insuredpic', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'LossType', kunci: 'jenis_kerugian' },
+  { label: 'LossDescription', kunci: 'lossdescription', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'EstimateDescription', kunci: 'estimatedescription', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'SurveyorDescription', kunci: 'surveyordescription', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'PolicyTerm', kunci: 'policyterm', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'PoliceReport', kunci: 'policereport', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'WitnessName', kunci: 'witnessname', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'WitnessAddress', kunci: 'witnessaddress', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Salvage', kunci: 'salvage', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'SalvageDescription', kunci: 'salvagedescription', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'ClientSignature', kunci: 'clientsignature', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'OthersDescription', kunci: 'othersdescription', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -302,19 +368,19 @@ export const ISIAN_DETAIL_SURVEYOR: Isian[] = [
  * kendali yang tidak membawa nilai.
  */
 export const ISIAN_HASIL_SURVEY: Isian[] = [
-  { label: 'Reference Number', jalur: 'ReferenceNo' },
-  { label: 'Appointed No', jalur: 'IDSurvey' },
-  { label: 'Appointment Date', jalur: 'AppointmentDate' },
-  { label: 'Request Date Appointment', jalur: 'AppointmentDateReq' },
-  { label: 'Tanggal Survey', jalur: 'SurveyDate' },
-  { label: 'Lokasi Survey', jalur: 'LocationSurvey' },
-  { label: 'Nama Surveyor', jalur: 'AdjusterPIC' },
-  { label: 'Status Survey', jalur: 'AdjusterStatus' },
-  { label: 'Catatan Survey', jalur: 'AdjusterAcceptNote' },
-  { label: 'Komite ID', jalur: 'KomiteID' },
-  { label: 'Status Komite', jalur: 'KomiteAproval' },
-  { label: 'Komentar', jalur: 'KomiteComment' },
-  { label: 'Note Terlambat', jalur: 'KeteranganLain' },
+  { label: 'Reference Number', kunci: 'no_referensi' },
+  { label: 'Appointed No', kunci: 'idsurvey', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Appointment Date', kunci: 'appointmentdate', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Request Date Appointment', kunci: 'appointmentdatereq', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Tanggal Survey', kunci: 'tanggal_survey' },
+  { label: 'Lokasi Survey', kunci: 'lokasi_survey' },
+  { label: 'Nama Surveyor', kunci: 'nama_surveyor' },
+  { label: 'Status Survey', kunci: 'status' },
+  { label: 'Catatan Survey', kunci: 'catatan' },
+  { label: 'Komite ID', kunci: 'komiteid', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini (±40 juta baris, NO_KLAIM tanpa index).' },
+  { label: 'Status Komite', kunci: 'komiteaproval', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini.' },
+  { label: 'Komentar', kunci: 'komitecomment', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini.' },
+  { label: 'Note Terlambat', kunci: 'keteranganlain', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -323,12 +389,12 @@ export const ISIAN_HASIL_SURVEY: Isian[] = [
  * Caption "---" dan "YA" tidak dipakai: keduanya isi dropdown, bukan label isian.
  */
 export const ISIAN_DETAIL_PROGRESS: Isian[] = [
-  { label: 'Tgl Progress', jalur: 'TglProgress' },
-  { label: 'Keterangan', jalur: 'KeteranganProgress' },
-  { label: 'PIC', jalur: 'PIC' },
-  { label: 'Next Follow Up', jalur: 'NextFollowUp' },
-  { label: 'Tgl Next Follow Up', jalur: 'ObjekTanggal' },
-  { label: 'Catatan Delivery', jalur: 'Comment' },
+  { label: 'Tgl Progress', kunci: 'tanggal' },
+  { label: 'Keterangan', kunci: 'keterangan' },
+  { label: 'PIC', kunci: 'oleh' },
+  { label: 'Next Follow Up', kunci: 'nextfollowup', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Tgl Next Follow Up', kunci: 'tindak_lanjut' },
+  { label: 'Catatan Delivery', kunci: 'comment', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -337,15 +403,15 @@ export const ISIAN_DETAIL_PROGRESS: Isian[] = [
  * Kesepuluh judul disalin dari rujukan `pyCaption`-nya.
  */
 export const KOLOM_COVERAGE_HE: KolomGrid[] = [
-  { label: 'Coverage', kunci: 'CoverageNote' },
-  { label: 'Penyebab Kerugian', kunci: 'CauseOfLoss' },
-  { label: 'Merk', kunci: 'ObjectVehicleBrand' },
-  { label: 'Model', kunci: 'ObjectVehicleModel' },
-  { label: 'Type', kunci: 'ObjectVehicleType' },
-  { label: 'Tahun Kendaraan', kunci: 'ObjectVehicleYear' },
-  { label: 'No Rangka', kunci: 'ObjectVehicleChasis' },
-  { label: 'No Mesin', kunci: 'ObjectVehicleEngineNumber' },
-  { label: 'No Serial', kunci: 'SerialNo' },
+  { label: 'Coverage', kunci: 'nama_coverage' },
+  { label: 'Penyebab Kerugian', kunci: 'penyebab_kerugian' },
+  { label: 'Merk', kunci: 'objectvehiclebrand', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Model', kunci: 'objectvehiclemodel', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Type', kunci: 'tipe_kendaraan' },
+  { label: 'Tahun Kendaraan', kunci: 'objectvehicleyear', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'No Rangka', kunci: 'no_rangka' },
+  { label: 'No Mesin', kunci: 'objectvehicleenginenumber', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'No Serial', kunci: 'serialno', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -356,11 +422,11 @@ export const KOLOM_COVERAGE_HE: KolomGrid[] = [
  * sama secara vertikal. Yang bertambah hanya `DESCRIPTION`, yang di grid tidak digambar.
  */
 export const ISIAN_COVERAGE_DETAIL: Isian[] = [
-  { label: 'Nama Coverage', jalur: 'CoverageNote' },
-  { label: 'Nama Plan', jalur: 'CoverageID' },
-  { label: 'TSI', jalur: 'SumTSI' },
-  { label: 'Mata Uang', jalur: 'Currency' },
-  { label: 'Penyebab Kerugian', jalur: 'CauseOfLoss' },
+  { label: 'Nama Coverage', kunci: 'nama_coverage' },
+  { label: 'Nama Plan', kunci: 'kode_plan' },
+  { label: 'TSI', kunci: 'tsi' },
+  { label: 'Mata Uang', kunci: 'mata_uang' },
+  { label: 'Penyebab Kerugian', kunci: 'penyebab_kerugian' },
 ]
 
 /**
@@ -379,11 +445,11 @@ export const ISIAN_COVERAGE_DETAIL: Isian[] = [
  * Lokasi objek terikat `.RescheduleLocation` — sekali lagi alias yang menyesatkan.
  */
 export const KOLOM_HASIL_SURVEY: KolomGrid[] = [
-  { label: 'Tanggal Pengajuan Survey', kunci: 'SurveyDate' },
-  { label: 'Nama Surveyor', kunci: 'SurveyorName' },
-  { label: 'Nama Objek', kunci: 'ObjectName' },
-  { label: 'Lokasi Objek', kunci: 'RescheduleLocation' },
-  { label: 'Status', kunci: 'SurveyStatus' },
+  { label: 'Tanggal Pengajuan Survey', kunci: 'tanggal_survey' },
+  { label: 'Nama Surveyor', kunci: 'nama_surveyor' },
+  { label: 'Nama Objek', kunci: 'nama_objek' },
+  { label: 'Lokasi Objek', kunci: 'lokasi_objek' },
+  { label: 'Status', kunci: 'status' },
 ]
 
 /**
@@ -393,10 +459,10 @@ export const KOLOM_HASIL_SURVEY: KolomGrid[] = [
  * adanya. Lihat catatan pada `ISIAN_DETAIL_SURVEYOR`.
  */
 export const KOLOM_DETAIL_SURVEYOR: KolomGrid[] = [
-  { label: 'SurveyName', kunci: 'SurveyName' },
-  { label: 'SurveyDate', kunci: 'SurveyDate' },
-  { label: 'SurveyorName', kunci: 'SurveyorName' },
-  { label: 'LocationSurvey', kunci: 'LocationSurvey' },
+  { label: 'SurveyName', kunci: 'surveyname', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'SurveyDate', kunci: 'tanggal_survey' },
+  { label: 'SurveyorName', kunci: 'nama_surveyor' },
+  { label: 'LocationSurvey', kunci: 'lokasi_survey' },
 ]
 
 /**
@@ -406,15 +472,15 @@ export const KOLOM_DETAIL_SURVEYOR: KolomGrid[] = [
  * Kesembilan judul disalin dari rujukan `pyCaption` section itu.
  */
 export const ISIAN_COVERAGE_HE: Isian[] = [
-  { label: 'Coverage', jalur: 'CoverageNote' },
-  { label: 'Penyebab Kerugian', jalur: 'CauseOfLoss' },
-  { label: 'Merk', jalur: 'ObjectVehicleBrand' },
-  { label: 'Model', jalur: 'ObjectVehicleModel' },
-  { label: 'Type', jalur: 'ObjectVehicleType' },
-  { label: 'Tahun Kendaraan', jalur: 'ObjectVehicleYear' },
-  { label: 'No Rangka', jalur: 'ObjectVehicleChasis' },
-  { label: 'No Mesin', jalur: 'ObjectVehicleEngineNumber' },
-  { label: 'No Serial', jalur: 'SerialNo' },
+  { label: 'Coverage', kunci: 'nama_coverage' },
+  { label: 'Penyebab Kerugian', kunci: 'penyebab_kerugian' },
+  { label: 'Merk', kunci: 'objectvehiclebrand', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Model', kunci: 'objectvehiclemodel', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Type', kunci: 'objectvehicletype', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'Tahun Kendaraan', kunci: 'objectvehicleyear', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'No Rangka', kunci: 'objectvehiclechasis', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'No Mesin', kunci: 'objectvehicleenginenumber', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
+  { label: 'No Serial', kunci: 'serialno', absen: 'Kolom padanannya BELUM ditelusuri — berbeda dari "tidak ada".' },
 ]
 
 /**
@@ -426,13 +492,13 @@ export const ISIAN_COVERAGE_HE: Isian[] = [
  * `pyEditAction` membuka seluruhnya.
  */
 export const ISIAN_PENERIMA_DETAIL: Isian[] = [
-  { label: 'Nama', jalur: 'Name' },
-  { label: 'Alamat', jalur: 'Address' },
-  { label: 'Telepon', jalur: 'Telephone' },
-  { label: 'Nomor Kontrak', jalur: 'NomorKontrak' },
-  { label: 'No Rekening', jalur: 'NoAccount' },
-  { label: 'Nama Bank', jalur: 'NameOfBank' },
-  { label: 'Nama Cabang Bank', jalur: 'BranchOfBank' },
+  { label: 'Nama', kunci: 'nama' },
+  { label: 'Alamat', kunci: 'alamat' },
+  { label: 'Telepon', kunci: 'telephone', absen: 'T_CLAIM_RECEIVER hanya punya 6 kolom; telepon bukan salah satunya.' },
+  { label: 'Nomor Kontrak', kunci: 'nomorkontrak', absen: 'T_CLAIM_RECEIVER hanya punya 6 kolom; nomor kontrak bukan salah satunya.' },
+  { label: 'No Rekening', kunci: 'no_rekening' },
+  { label: 'Nama Bank', kunci: 'nama_bank' },
+  { label: 'Nama Cabang Bank', kunci: 'branchofbank', absen: 'T_CLAIM_RECEIVER menyimpan NAMEOFBANK, tanpa cabangnya.' },
 ]
 
 /**
@@ -444,13 +510,12 @@ export const ISIAN_PENERIMA_DETAIL: Isian[] = [
  * berbeda di Pega, dan menyatukannya menghapus perbedaan yang mungkin bermakna.
  */
 export const ISIAN_COVERAGE_GRID: Isian[] = [
-  { label: 'Coverage', jalur: 'CoverageNote' },
-  { label: 'Nama Plan', jalur: 'CoverageID' },
-  { label: 'TSI', jalur: 'SumTSI' },
-  { label: 'Mata Uang', jalur: 'Currency' },
-  { label: 'Penyebab Kerugian', jalur: 'CauseOfLoss' },
+  { label: 'Coverage', kunci: 'nama_coverage' },
+  { label: 'Nama Plan', kunci: 'kode_plan' },
+  { label: 'TSI', kunci: 'tsi' },
+  { label: 'Mata Uang', kunci: 'mata_uang' },
+  { label: 'Penyebab Kerugian', kunci: 'penyebab_kerugian' },
 ]
-
 
 /**
  * Grid **komite** pada tab Heavy Equipment — grid kedua
@@ -460,17 +525,17 @@ export const ISIAN_COVERAGE_GRID: Isian[] = [
  * seolah membawa satu keputusan komite — padahal keduanya daftar yang berbeda panjang.
  */
 export const KOLOM_KOMITE_HE: KolomGrid[] = [
-  { label: 'Nama Komite', kunci: 'KomiteID' },
-  { label: 'Status', kunci: 'KomiteAproval' },
-  { label: 'Komentar', kunci: 'KomiteComment' },
+  { label: 'Nama Komite', kunci: 'komiteid', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini (±40 juta baris, NO_KLAIM tanpa index).' },
+  { label: 'Status', kunci: 'komiteaproval', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini.' },
+  { label: 'Komentar', kunci: 'komitecomment', absen: 'Milik T_CLAIM_KOMITE_LIST — belum dibaca modul ini.' },
 ]
 
 /** Grid kedua tab **Hasil Survey** — varian investigasi di section yang sama. */
 export const KOLOM_INVESTIGASI: KolomGrid[] = [
-  { label: 'Tanggal Investigasi', kunci: 'SurveyDate' },
-  { label: 'Nama Peserta', kunci: 'ObjectName' },
-  { label: 'Lokasi Objek', kunci: 'ObjectLocation' },
-  { label: 'Status', kunci: 'SurveyStatus' },
+  { label: 'Tanggal Investigasi', kunci: 'tanggal_survey' },
+  { label: 'Nama Peserta', kunci: 'nama_objek' },
+  { label: 'Lokasi Objek', kunci: 'lokasi_objek' },
+  { label: 'Status', kunci: 'status' },
 ]
 
 /**
@@ -508,35 +573,35 @@ export const VARIAN_OBJEK_REGISTER: VarianObjek[] = [
   {
     penjaga: 'IsTravel',
     kolom: [
-      { label: 'Nama Peserta', kunci: 'ObjectName' },
-      { label: 'Status', kunci: 'ObjectParticipantStatus' },
-      { label: 'KTP/Paspor', kunci: 'ObjectIDCard' },
-      { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama Peserta', kunci: 'nama_objek' },
+      { label: 'Status', kunci: 'status_peserta' },
+      { label: 'KTP/Paspor', kunci: 'nik' },
+      { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
     ],
   },
   {
     // "Perkerjaan" — salah ketik di layar lama, dibawa apa adanya (`D-13`).
     penjaga: 'IsPA',
     kolom: [
-      { label: 'Nama', kunci: 'ObjectName' },
-      { label: 'Perkerjaan', kunci: 'ObjectJob' },
-      { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama', kunci: 'nama_objek' },
+      { label: 'Perkerjaan', kunci: 'pekerjaan' },
+      { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
     ],
   },
   {
     penjaga: 'IsAneka',
     kolom: [
-      { label: 'Object', kunci: 'ObjectName' },
-      { label: 'Nama Tipe', kunci: 'ObjectVehicleType' },
-      { label: 'Nomor Chasis', kunci: 'ObjectVehicleChasis' },
-      { label: 'Location', kunci: 'ObjectLocation' },
+      { label: 'Object', kunci: 'nama_objek' },
+      { label: 'Nama Tipe', kunci: 'tipe_kendaraan' },
+      { label: 'Nomor Chasis', kunci: 'no_rangka' },
+      { label: 'Location', kunci: 'lokasi_objek' },
     ],
   },
   {
     penjaga: 'IsFire || IsMarineCargo',
     kolom: [
-      { label: 'Object', kunci: 'ObjectName' },
-      { label: 'Location', kunci: 'ObjectLocation' },
+      { label: 'Object', kunci: 'nama_objek' },
+      { label: 'Location', kunci: 'lokasi_objek' },
     ],
   },
 ]
@@ -547,26 +612,26 @@ export const VARIAN_OBJEK_ESTIMASI: VarianObjek[] = [
     // "Lokasi Object" — campur Indonesia/Inggris, apa adanya.
     penjaga: 'IsAneka || IsMarineCargo || IsFire',
     kolom: [
-      { label: 'Nama Objek', kunci: 'ObjectName' },
-      { label: 'Lokasi Object', kunci: 'ObjectLocation' },
+      { label: 'Nama Objek', kunci: 'nama_objek' },
+      { label: 'Lokasi Object', kunci: 'lokasi_objek' },
     ],
   },
   {
     // "Tanggal lahir" — huruf kecil pada "lahir", berbeda dari grid lain. Apa adanya.
     penjaga: 'IsPA',
     kolom: [
-      { label: 'Nama Objek', kunci: 'ObjectName' },
-      { label: 'Pekerjaan', kunci: 'ObjectJob' },
-      { label: 'Tanggal lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama Objek', kunci: 'nama_objek' },
+      { label: 'Pekerjaan', kunci: 'pekerjaan' },
+      { label: 'Tanggal lahir', kunci: 'tanggal_lahir' },
     ],
   },
   {
     penjaga: 'IsTravel',
     kolom: [
-      { label: 'Nama Peserta', kunci: 'ObjectName' },
-      { label: 'Status', kunci: 'ObjectParticipantStatus' },
-      { label: 'KTP/Paspor', kunci: 'ObjectIDCard' },
-      { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama Peserta', kunci: 'nama_objek' },
+      { label: 'Status', kunci: 'status_peserta' },
+      { label: 'KTP/Paspor', kunci: 'nik' },
+      { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
     ],
   },
 ]
@@ -576,25 +641,25 @@ export const VARIAN_OBJEK_ADJ: VarianObjek[] = [
   {
     penjaga: 'IsAneka || IsFire || IsMarineCargo',
     kolom: [
-      { label: 'Nama Objek', kunci: 'ObjectName' },
-      { label: 'Lokasi', kunci: 'ObjectLocation' },
+      { label: 'Nama Objek', kunci: 'nama_objek' },
+      { label: 'Lokasi', kunci: 'lokasi_objek' },
     ],
   },
   {
     penjaga: 'IsPA',
     kolom: [
-      { label: 'Nama Objek', kunci: 'ObjectName' },
-      { label: 'Pekerjaan', kunci: 'ObjectJob' },
-      { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama Objek', kunci: 'nama_objek' },
+      { label: 'Pekerjaan', kunci: 'pekerjaan' },
+      { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
     ],
   },
   {
     penjaga: 'IsTravel',
     kolom: [
-      { label: 'Nama Peserta', kunci: 'ObjectName' },
-      { label: 'Status', kunci: 'ObjectParticipantStatus' },
-      { label: 'KTP/Paspor', kunci: 'ObjectIDCard' },
-      { label: 'Tanggal Lahir', kunci: 'ObjectDateOfBirth' },
+      { label: 'Nama Peserta', kunci: 'nama_objek' },
+      { label: 'Status', kunci: 'status_peserta' },
+      { label: 'KTP/Paspor', kunci: 'nik' },
+      { label: 'Tanggal Lahir', kunci: 'tanggal_lahir' },
     ],
   },
 ]

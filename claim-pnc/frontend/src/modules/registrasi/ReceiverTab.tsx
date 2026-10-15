@@ -33,7 +33,8 @@ export function ReceiverTab({
   lockedReason,
 }: {
   klaim: Claim
-  tugas: Task
+  /** Null bila klaim tidak punya tugas terbuka — layar dibuka BACA-SAJA. */
+  tugas: Task | null
   /** Alasan isian dikunci — tugas bukan milik pengguna ini. */
   lockedReason: string | null
 }) {
@@ -96,7 +97,7 @@ export function ReceiverTab({
                   <td colSpan={4} className="border border-slate-200 p-3">
                     <ReceiverPane
                       claimID={klaim.id}
-                      taskID={tugas.id}
+                      taskID={tugas?.id ?? ''}
                       receiver={r}
                       lockedReason={lockedReason}
                       onDone={() => setOpen(null)}
@@ -112,7 +113,7 @@ export function ReceiverTab({
             <td colSpan={4} className="border border-slate-200 p-3">
               <ReceiverPane
                 claimID={klaim.id}
-                taskID={tugas.id}
+                taskID={tugas?.id ?? ''}
                 receiver={null}
                 lockedReason={lockedReason}
                 onDone={() => setOpen(null)}

@@ -172,7 +172,7 @@ const rentangSah = "dari=2026-09-01&sampai=2026-09-30"
 
 // panelKatalog membaca daftar panel dari jawaban katalog, dikunci kodenya.
 //
-// Daftarnya DATAR dan sudah berurutan — harness lama menumpuk ke-28 panel dalam satu
+// Daftarnya DATAR dan sudah berurutan — layar Pega menyusun ke-23 panelnya dalam dua
 // kolom tanpa pengelompokan, dan pengelompokan yang sempat ada di sini dicabut
 // 2026-10-08 atas ralat Work Owner.
 func panelKatalog(t *testing.T, body map[string]any) map[string]map[string]any {
@@ -199,7 +199,7 @@ func TestKatalogMengembalikanKeduapuluhDelapanPanelDatar(t *testing.T) {
 	require.Nil(t, body["kelompok"], "katalog TIDAK lagi dikelompokkan")
 
 	laporan, _ := body["laporan"].([]any)
-	require.Len(t, laporan, 28)
+	require.Len(t, laporan, 23)
 
 	lines, _ := body["lini_bisnis"].([]any)
 	require.Len(t, lines, 5)
@@ -261,16 +261,24 @@ func TestKartuMenyebutkanPenyaringYangBerlaku(t *testing.T) {
 	tat, _ := byCode["tat"]["penyaring"].(map[string]any)
 	require.True(t, tat["rentang_tanggal"].(bool))
 	require.True(t, tat["lini_bisnis"].(bool))
-	require.False(t, tat["bisnis"].(bool))
 
-	// Laporan Komunikasi Klaim tidak menerima satu pun penyaring.
-	komunikasi, _ := byCode["komunikasi-klaim"]["penyaring"].(map[string]any)
-	require.False(t, komunikasi["rentang_tanggal"].(bool))
-	require.False(t, komunikasi["lini_bisnis"].(bool))
+	// Regist Simas On Line tidak menerima satu pun penyaring. Sebelum 2026-10-13
+	// contohnya Komunikasi Klaim; panel itu dicabut karena tidak ada di Pega produksi.
+	regist, _ := byCode["regist-simas-online"]["penyaring"].(map[string]any)
+	require.False(t, regist["rentang_tanggal"].(bool))
+	require.False(t, regist["lini_bisnis"].(bool))
 
-	// Panel Klaim Per Bisnis satu-satunya yang memakai autocomplete Bisnis.
-	bisnis, _ := byCode["klaim-per-bisnis"]["penyaring"].(map[string]any)
-	require.True(t, bisnis["bisnis"].(bool))
+	// Kotak centang "Treaty" hanya pada TIGA kartu, dan keadaan awalnya berbeda-beda.
+	for kode, awal := range map[string]bool{
+		"akseptasi":       true,
+		"os-komite":       false,
+		"os-belum-komite": true,
+	} {
+		p, _ := byCode[kode]["penyaring"].(map[string]any)
+		require.Truef(t, p["rincian"].(bool), "kartu %s seharusnya punya kotak Treaty", kode)
+		require.Equalf(t, awal, p["rincian_awal"].(bool),
+			"keadaan awal Treaty kartu %s tidak sesuai layar Pega", kode)
+	}
 }
 
 func TestPanelDataKomiteMengirimDuaTombol(t *testing.T) {
@@ -348,7 +356,9 @@ func TestTanggalWajibDitolakDenganMenyebutIsiannya(t *testing.T) {
 func TestLaporanTanpaRentangTanggalTidakMewajibkannya(t *testing.T) {
 	p := newTestServer(t)
 
-	response := p.get(t, "/api/report-klaim/komunikasi-klaim/ekspor", portalUji)
+	// Regist Simas On Line menggantikan Komunikasi Klaim sejak 2026-10-13 — keduanya
+	// tanpa penyaring, dan yang kedua dicabut karena tidak ada di Pega produksi.
+	response := p.get(t, "/api/report-klaim/regist-simas-online/ekspor", portalUji)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 }
 
@@ -406,40 +416,8 @@ func TestLiniBisnisAsingDitolak(t *testing.T) {
 	require.NotEqual(t, http.StatusOK, response.StatusCode)
 }
 
-// Panel Klaim Per Bisnis TIDAK dapat dijalankan tanpa memilih bisnis — kuerinya tidak
-// punya cabang "bila kosong", dan hasilnya akan kosong tanpa satu pun tanda.
-func TestKlaimPerBisnisMewajibkanPilihanBisnis(t *testing.T) {
-	p := newTestServer(t)
-
-	response := p.get(t, "/api/report-klaim/klaim-per-bisnis/ekspor", portalUji)
-	require.Equal(t, http.StatusUnprocessableEntity, response.StatusCode)
-
-	detail, _ := decodeJSON(t, response)["detail"].([]any)
-	first, _ := detail[0].(map[string]any)
-	require.Equal(t, "bisnis", first["isian"])
-
-	ok := p.get(t, "/api/report-klaim/klaim-per-bisnis/ekspor?bisnis=10076", portalUji)
-	require.Equal(t, http.StatusOK, ok.StatusCode)
-}
-
-func TestPilihanBisnisDapatDibaca(t *testing.T) {
-	p := newTestServer(t)
-
-	response := p.get(t, "/api/report-klaim/pilihan-bisnis", portalUji)
-	require.Equal(t, http.StatusOK, response.StatusCode)
-
-	bisnis, _ := decodeJSON(t, response)["bisnis"].([]any)
-	require.NotEmpty(t, bisnis)
-	first, _ := bisnis[0].(map[string]any)
-	require.NotEmpty(t, first["kode"])
-	require.NotEmpty(t, first["nama"])
-}
-
-// ---------------------------------------------------------------------------
-
-// Permintaan tanpa header portal DITOLAK, tidak pernah dilayani portal utama sebagai
-// cadangan — jatuh ke koneksi bawaan berarti mengunduh data satu badan hukum dari basis
-// data badan hukum lain tanpa satu pun pesan galat (`R-20`).
+// TestKlaimPerBisnisMewajibkanPilihanBisnis dan TestPilihanBisnisDapatDibaca berdiri di
+// sini sampai 2026-10-13, dicabut bersama panel dan endpoint-nya.
 func TestPermintaanTanpaPortalDitolak(t *testing.T) {
 	p := newTestServer(t)
 

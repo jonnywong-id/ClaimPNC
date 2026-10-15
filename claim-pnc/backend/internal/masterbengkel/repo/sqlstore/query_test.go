@@ -298,14 +298,43 @@ func TestListQueriesOrderByKeyDescending(t *testing.T) {
 	}
 }
 
-// Penyaring cabang TETAP memuat '0076' yang tertanam.
+// Daftar cabang dibaca dari POOLDATA.BRANCH, dan TIDAK menempuh DB link.
 //
-// Ia direplikasi apa adanya karena export tidak memuat satu pun keterangan tentang
-// artinya, sehingga mengangkatnya menjadi konfigurasi berarti menebak nilainya untuk
-// entitas lain. Uji ini menjaga keputusan itu TERLIHAT: siapa pun yang kelak
-// mengangkatnya akan menghapus uji ini dengan sadar, bukan mengubah perilaku diam-diam.
-func TestBranchQueryKeepsHardcodedApplicationCode(t *testing.T) {
-	require.Contains(t, getQuery("bengkel_branch_list"), "'0076'")
+// Kueri sebelumnya menyalin `BrowseCabangBengkelHE-SQL.xml` yang membaca
+// `GENERAL.LST_USER_ASURANSI`. Skema `GENERAL` tidak ada di basis data Claim PNC — kueri
+// itu gagal dengan `ORA-00942`, dan dropdown Nama Cabang kosong tanpa satu pun galat yang
+// terlihat pengguna (diperiksa 2026-10-14). Sumber yang berlaku ditunjukkan Work Owner.
+//
+// Uji ini menjaga dua hal sekaligus: sumbernya tidak kembali ke tabel yang tidak ada, dan
+// perbaikannya tidak ditempuh dengan menambah pemakaian DB Link baru — yang justru
+// `D-25` perintahkan dihapus.
+func TestBranchQueryReadsLocalBranchView(t *testing.T) {
+	text := strings.ToUpper(getQuery("bengkel_branch_list"))
+
+	require.Contains(t, text, "POOLDATA.BRANCH")
+	require.Contains(t, text, "BRANCHNAME")
+
+	require.NotContains(t, text, "LST_USER_ASURANSI",
+		"skema GENERAL tidak ada di basis data ini; kueri akan gagal ORA-00942")
+	require.NotContains(t, text, "@ASMD",
+		"daftar cabang tidak boleh menempuh DB link (D-25)")
+}
+
+// Urutan kolom SELECT harus tetap nama-lalu-kode.
+//
+// Pemindaiannya di Go membaca dua kolom berurutan tanpa menyebut namanya, sehingga
+// menukar urutannya akan mengisi nama cabang dengan kodenya — dan sebaliknya — tanpa satu
+// pun galat.
+func TestBranchQuerySelectsNameBeforeID(t *testing.T) {
+	text := strings.ToUpper(getQuery("bengkel_branch_list"))
+
+	posisiNama := strings.Index(text, "BRANCHNAME")
+	posisiID := strings.Index(text, "B.ID")
+
+	require.NotEqual(t, -1, posisiNama)
+	require.NotEqual(t, -1, posisiID)
+	require.Less(t, posisiNama, posisiID,
+		"kolom nama harus dipilih lebih dulu; Go memindainya berdasarkan urutan")
 }
 
 // Setiap kueri yang memakai LIKE menyebut ESCAPE secara eksplisit.

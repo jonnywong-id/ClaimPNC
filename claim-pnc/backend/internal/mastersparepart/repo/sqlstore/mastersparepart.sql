@@ -45,10 +45,15 @@
 -- satu yang dapat dikerjakan tanpa menebak:
 --
 --   (a) menulis dokumen JSON ke M_SPAREPART_HE_BU.JSONDATA dengan SQL biasa.
---       TIDAK DAPAT DIKERJAKAN: nama kunci JSON-nya diterbitkan fungsi
---       `@GCNM.GetPageJSONString()`, dan `Function/GetPageJSONString-Function.xml` HANYA
---       memuat tanda tangannya — badan fungsinya tidak ikut di export (R-16). Setiap
---       kunci yang ditulis akan menjadi tebakan.
+--       TIDAK DIKERJAKAN: nama kunci JSON-nya diterbitkan fungsi
+--       `@GCNM.GetPageJSONString()`, yang badannya berbunyi `stepPage.getJSON(false)` —
+--       artinya kuncinya adalah nama properti clipboard pada halaman pemanggil, bukan
+--       daftar tetap yang dapat dibaca dari satu tempat. Menulisnya berarti menebak
+--       halaman mana yang dipakai setiap pemanggil.
+--
+--       (Catatan koreksi: baris ini sebelumnya menyebut badan fungsinya tidak ikut di
+--       export. Itu KELIRU — ia ada di `Function/GetPageJSONString-Function.xml:12-15`.
+--       Kesimpulannya tidak berubah, tetapi alasannya berbeda.)
 --
 --   (b) menulis kolom bernama ke SPAREPART_HE.
 --       DAPAT DIKERJAKAN: kedua puluh tiga kolomnya terbaca lengkap dari

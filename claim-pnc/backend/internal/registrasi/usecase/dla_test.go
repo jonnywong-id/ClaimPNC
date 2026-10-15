@@ -98,6 +98,33 @@ func TestListDLASkipsExGratia(t *testing.T) {
 	require.Empty(t, l.dla.Saved)
 }
 
+// DLA warisan tanpa kode reasuradur dibuka TANPA peringatan — sama seperti Pega.
+//
+// `GenerateDLAList` membuat `WarningDLAPages` baru tiap kali layar dibuka, lalu ber-`EXIT`
+// sebelum langkah pengisinya ketika DLA sudah ada (`Activity/GenerateDLAList-Act.xml`:6568).
+// Jadi kotak peringatan `PrintDLA-sect` tetap tersembunyi pada klaim seperti ini.
+//
+// Keadaan yang diuji bukan karangan: 4.958 dari 6.388 baris `T_DLALIST` di basis data
+// pengembangan REINSCODE-nya kosong, menyebar di 1.836 klaim (diukur 2026-10-13). Kode baru
+// tidak dapat menerbitkannya — `CoinsDLAShares` melewati anggota tanpa kode — sehingga baris
+// ini disemai langsung sebagaimana Pega meninggalkannya.
+func TestListDLAWarisanTanpaKodeReasuradurTidakDiperingatkan(t *testing.T) {
+	l := setup(t)
+	ctx := context.Background()
+	task, claim := l.acceptedForDLA(t)
+	l.dla.Saved = append(l.dla.Saved, registrasi.DLA{
+		ClaimID: claim.ID, ObjectID: claim.InsuredItem[0].ID, CoverageSeq: 1, AdjustmentSeq: 1,
+		Number: "H2010024325", Type: registrasi.DLATypeFacOut,
+		Recipient: "UNKNOWN", RecipientCode: "",
+	})
+
+	list, err := l.service.ListDLA(ctx, dlaCommand(task), l.caller)
+	require.NoError(t, err)
+	require.Equal(t, 0, list.Issued, "DLA sudah ada, tidak boleh terbit lagi")
+	require.Len(t, list.DLA, 1)
+	require.Empty(t, list.Warning, "Pega keluar sebelum mengisi WarningDLAPages saat DLA sudah ada")
+}
+
 // Baris yang belum disetujui LOD tidak dapat membuka Print DLA.
 func TestListDLARequiresLODAgreement(t *testing.T) {
 	l := setup(t)

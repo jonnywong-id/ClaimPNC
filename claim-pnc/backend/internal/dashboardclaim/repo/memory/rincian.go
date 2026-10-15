@@ -50,7 +50,14 @@ func (r *Repo) FindClaimDetail(
 			TechnicalPIC:  row.TechnicalPIC,
 			AdminPNC:      row.AdminPNC,
 			RegisteredAt:  row.RegisteredAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-			Document:      map[string]any{},
+			// Ketujuh bagian DAN ketiga himpunan isian sengaja KOSONG di mode memori.
+			//
+			// Mengarangnya berarti layar yang dicoba tanpa basis data menampilkan isi yang
+			// tidak pernah ada di produksi — dan cacat yang paling mahal justru yang muncul
+			// hanya ketika datanya nyata.
+			//
+			// Akibatnya popup di mode memori menyatakan "belum punya isi rincian", dan itu
+			// jujur: di mode ini klaimnya memang tidak punya isi.
 		}, nil
 	}
 

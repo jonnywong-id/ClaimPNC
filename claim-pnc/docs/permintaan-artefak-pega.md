@@ -3565,3 +3565,335 @@ jejak audit. Ditunda sebagai pekerjaan lanjutan: REST `ServiceCloseClaimNonMBU`,
 pengembangan #146). Tidak ada rule yang masih menahan. Yang tetap kosong di export: daftar pilihan dropdown Survey Kepuasan,
 Manual/Paperless, Banding, Alasan Keterlambatan (Property tanpa tabel; dua Property terakhir tidak ada) — bila diperlukan,
 mohon Property `Banding`, `AlasanTerlambat`, `NoReffBroker` beserta sumber daftar pilihannya.
+
+---
+
+## 22. 54 Section hilang — satu borongan (2026-10-12) — ke **Tim Pega** dan **Tim GISFW**
+
+### Kenapa permintaan ini muncul sekarang
+
+Work Owner menunjuk satu kalimat di layar klaim:
+
+> *"Isian Input Register tampil untuk dibaca. Mengubahnya dari tahap ini belum dibangun."*
+
+Penelusurannya menemukan sebabnya bukan pekerjaan yang terlewat, melainkan **rule-nya tidak ada
+di export**. Dari situ sapuan diperluas ke SELURUH Flow Action.
+
+### Cara daftar ini disusun
+
+Untuk setiap berkas di `Flow Action/`, diambil `pyStreamName` — section yang dirender flow
+action itu — lalu dicari di `Section/` **menurut `pyRuleName`, bukan menurut nama berkas**
+(`D-39`: nama berkas terbukti tidak dapat dipercaya). Yang tidak ditemukan masuk daftar.
+
+Hasilnya **54 section**. Seluruhnya termasuk ±242 rule hilang yang sudah tercatat sebagai
+`R-16`; yang baru di sini adalah **namanya satu per satu beserta kelasnya**, sehingga
+permintaannya dapat dilayani tanpa menebak.
+
+### Yang paling menahan pekerjaan hari ini
+
+| Nama rule | Tipe rule | Applies To |
+|---|---|---|
+| `InputSurveyor` | `Rule-HTML-Section` | `ASM-FW-GISFW-Work-Surveyor` |
+| `InputDtlSurveyor` | `Rule-HTML-Section` | `ASM-FW-GISFW-Work-Surveyor` |
+
+`InputDtlSurveyor` tidak muncul di tabel borongan di bawah karena ia bukan `pyStreamName`
+sebuah Flow Action; ia ditemukan di dalam `Flow Action/InputSurveyor-FA.xml` sebagai
+`pzPackageRuntime.packageSection("InputDtlSurveyor", …)`. Keduanya diminta bersama karena
+belum pasti mana yang benar-benar dirender.
+
+> **Kelasnya GISFW, bukan GCNMFW.** `D-03` menetapkan GISFW dikembangkan tim lain, sehingga
+> kedua section ini kemungkinan harus diminta ke **tim GISFW**, bukan ke tim Claim PNC.
+
+Tanpa keduanya, tiga hal tidak dapat ditetapkan dan karenanya tidak dibangun: isian Input
+Register mana yang boleh disunting dari tahap Choose Surveyor, validasi apa yang berlaku, dan
+proses simpan apa yang berjalan sesudahnya.
+
+### Daftar lengkap — 54 section
+
+| Nama rule | Tipe rule | Applies To | Dirender Flow Action |
+|---|---|---|---|
+| `AksepProtection` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-OpenProtection` | `AksepProtection` |
+| `AnalystDoctor_act` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `AnalystDoctor_act` |
+| `AnalystRemarksToInvest` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `AnalystRemarksToInvest` |
+| `AnalystRemarks_PA` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `AnalystRemarks_PA` |
+| `AnalystRemarks` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `AnalystRemarks` |
+| `ComplianceDialog` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `ComplianceDialog` |
+| `CreateMasterSupplier` | `Rule-HTML-Section` | `@baseclass` | `CreateMasterSupplier` |
+| `DETAILKOMUNIKASICABANG_11` | `Rule-HTML-Section` | `@baseclass` | `DETAILKOMUNIKASICABANG_11` |
+| `DetailPremi` | `Rule-HTML-Section` | `@baseclass` | `DetailPremi` |
+| `DokumenBandingSalvage` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-ClaimData` | `DokumenBandingSalvage` |
+| `EditMasterSupplier` | `Rule-HTML-Section` | `ASM-FW-GKM-Int-SUPPLIER` | `EditMasterSupplier` |
+| `FilterDashboardClaim` | `Rule-HTML-Section` | `@baseclass` | `FilterDashboardClaim` |
+| `FilterDashboardClaimclose` | `Rule-HTML-Section` | `@baseclass` | `FilterDashboardClaimclose` |
+| `FlowDetailServiceCenter` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-ClaimData` | `FlowDetailServiceCenter` |
+| `GCNMAlertSendRequest` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work` | `GCNMAlertSendRequest` |
+| `GCNMChangeViewAttachment` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Survey` | `GCNMChangeViewAttachment` |
+| `InformasiOsDanAkseptasiKlaim` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Object` | `InformasiOsDanAkseptasiKlaim` |
+| `InputAlasanTerlambat` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `InputAlasanTerlambat` |
+| `InputInvestigator` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `InputInvestigator` |
+| `InputPosisiClaim1` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `InputPosisiClaim1` |
+| `InputProtectionFlow` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-OpenProtection` | `InputProtectionFlow` |
+| `InputSurveyor` | `Rule-HTML-Section` | `ASM-FW-GISFW-Work-Surveyor` | `InputSurveyor` |
+| `KomentarRCLPUCL` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `KomentarRCLPUCL` |
+| `PNCInboxPrintPreDLA` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Int-V_POLIS` | `PNCInboxPrintPreDLA` |
+| `PNCTransferManagement_lo` | `Rule-HTML-Section` | `@baseclass` | `PNCTransferManagement_lo` |
+| `PNCUploadClaimCSV_Inward` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadClaimCSV_Inward` |
+| `PNCUploadClaimCSV_MBUSalvage` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadClaimCSV_MBUSalvage` |
+| `PNCUploadDataKlaimSlikOJK` | `Rule-HTML-Section` | `Data-Portal` | `PNCUploadDataKlaimSlikOJK` |
+| `PNCUploadLokasiPanelCSV` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadLokasiPanelCSV` |
+| `PNCUploadMasterBengkelCSV` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadMasterBengkelCSV` |
+| `PNCUploadMasterPanelCSV` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadMasterPanelCSV` |
+| `PNCUploadMasterSparepartCSV` | `Rule-HTML-Section` | `@baseclass` | `PNCUploadMasterSparepartCSV` |
+| `PrintLODUP` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Adjustment` | `PrintLODUP` |
+| `PrintPLA` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-ObjectCoverage` | `PrintPLA` |
+| `ReminderPUCL` | `Rule-HTML-Section` | `Data-Portal` | `ReminderPUCL` |
+| `SendAnalystDoctor` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SendAnalystDoctor` |
+| `SendToRCLDokter` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SendToRCLDokter` |
+| `SetOpenTSI` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SetOpenTSI` |
+| `SetUploadDocCompliance` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SetUploadDocCompliance` |
+| `SetUploadDocPUCL` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-OpenProtection` | `SetUploadDocPUCL` |
+| `ShowFormRejectClaim` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-Compliance` | `ShowFormRejectClaim` |
+| `UploadDetailSalvage` | `Rule-HTML-Section` | `@baseclass` | `UploadDetailSalvage` |
+| `UploadDocSurvey` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Survey` | `UploadDocSurvey` |
+| `UploadDocument_Salvage` | `Rule-HTML-Section` | `@baseclass` | `UploadDocument_Salvage` |
+| `UploadDokumenSC` | `Rule-HTML-Section` | `@baseclass` | `UploadDokumenSC` |
+| `ValidasiTransferKasir_dialog` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Adjustment` | `ValidasiTransferKasir_dialog` |
+| `ViewAttachmentPUCL` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `ViewAttachmentPUCL` |
+| `ViewAttachmentSurvey` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Int` | `ViewAttachmentSurvey` |
+| `ViewDocumentMasterBengkel` | `Rule-HTML-Section` | `@baseclass` | `ViewDocumentMasterBengkel` |
+| `ViewTransferDtl` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-Komite` | `ViewTransferDtl` |
+| `ViewUploadDokumenKlaim` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Int` | `ViewUploadDokumenKlaim` |
+| `Visibilityseentelpemail` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `Visibilityseentelpemail` |
+| `inputprogress12` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-ClaimData` | `inputprogress12` |
+| `sendToAnalystRCL` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `sendToAnalystRCL` |
+
+### Catatan untuk yang melayani permintaan
+
+1. **Export ulang berbasis Product rule lebih baik daripada memenuhi daftar ini satu per satu**
+   (`D-39`). Daftar ini hanya mencakup section yang dirujuk Flow Action — **tipe rule lain
+   belum disapu sama sekali**: When, Data Transform, Ticket, Report Definition, dan Function
+   library. Memenuhi 54 ini tidak menutup `R-16`.
+2. Daftar ini berguna sebagai **alat verifikasi**: setelah export ulang diterima, sapuan yang
+   sama dijalankan lagi dan hasilnya harus nol.
+3. Perintah penyusunnya ada di catatan pengembangan bab yang sama tanggalnya, sehingga dapat
+   dijalankan ulang kapan pun tanpa menyusunnya dari awal.
+
+### 22.1 Koreksi kelas `InputSurveyor` (2026-10-12, sore)
+
+Work Owner mengirim `InputDtlSurveyor` lalu bertanya **siapa yang memanggil `InputSurveyor`**,
+karena tidak ditemukan. Pertanyaan itu benar, dan jawabannya: **tidak ada apa pun di export ini
+yang memanggilnya.** Kelas yang saya tulis di §22 salah.
+
+#### Bukti
+
+| Flow Action dipakai `Register_Flow` | Kelasnya | Section-nya |
+|---|---|---|
+| `InputRegister` | `ASM-FW-GCNMFW-Work-PNC` | ada |
+| `InputEstimasi` | `ASM-FW-GCNMFW-Work-PNC` | ada |
+| `ViewPolis` | `ASM-FW-GCNMFW-Work-PNC` | ada |
+| **`InputSurveyor`** | **`ASM-FW-GISFW-Work-Surveyor`** | **hilang** |
+
+`Flow/Register_Flow.xml` sendiri berkelas `ASM-FW-GCNMFW-Work-PNC`, dan memuat shape
+`Choose Surveyor` berpasangan dengan `InputSurveyor` — pola yang sama dengan
+`Input Register`/`InputRegister` dan `View Polis`/`ViewPolis`.
+
+`ASM-FW-GISFW-Work-Surveyor` **bukan kelas induk** `ASM-FW-GCNMFW-Work-PNC`; keduanya cabang
+yang bersisian. Sebuah assignment pada kelas GCNMFW tidak dapat memakai flow action yang hanya
+ada di kelas GISFW itu.
+
+#### Isi `InputDtlSurveyor` membuktikannya
+
+Setelah berkasnya masuk, isinya terbaca: sembilan isian — Nama Konsumen, Alamat Konsumen,
+Lokasi Survey, Lokasi Showroom, Alasan Pemilihan Lokasi, Jam Survey, Tanggal Survey, Nama
+Surveyor, Nama Perusahaan.
+
+Itu **formulir penjadwalan survei**, bukan layar klaim bertab (Input Register · Estimasi &
+Adjustment · Survey · Unggah Dokumen · Progress Claim & Komunikasi) yang dilihat petugas pada
+tahap Choose Surveyor. Jadi pasangan GISFW itu memang layar yang berbeda.
+
+#### Yang sebenarnya diminta
+
+| Nama rule | Tipe rule | Applies To |
+|---|---|---|
+| `InputSurveyor` | `Rule-Obj-FlowAction` | **`ASM-FW-GCNMFW-Work-PNC`** |
+| `InputSurveyor` | `Rule-HTML-Section` | **`ASM-FW-GCNMFW-Work-PNC`** |
+
+Dipanggil dari `ASM-FW-GCNMFW-WORK-PNC!REGISTER_FLOW`, shape **`Choose Surveyor`**.
+
+#### Akibat yang lebih luas daripada satu rule
+
+Export ini **satu berkas per NAMA rule**, bukan per (nama + kelas). `Flow Action/InputSurveyor-FA.xml`
+hanya memuat satu dari dua rule bernama sama, dan yang tersimpan kebetulan yang GISFW.
+
+Artinya **dua rule bernama sama di kelas berbeda saling menimpa tanpa jejak** — sejenis dengan
+cacat export yang sudah tercatat di `D-39` (dua berkas berisi rule lain). Setiap permintaan
+berikutnya karena itu **wajib menyebut kelas**, bukan nama saja — termasuk 54 baris di §22,
+yang kelasnya diambil dari berkas yang ada dan karenanya **ikut meragukan bila rule bernama
+sama hidup di lebih dari satu kelas**.
+
+### 22.2 Bukti langsung dari `Register_Flow` — kiriman kedua masih berkas yang sama
+
+Work Owner menambahkan `InputSurveyor-FA` lalu melaporkan section-nya tidak ada. Berkas yang
+masuk **masih rule yang sama** — `pxInsName = ASM-FW-GISFW-WORK-SURVEYOR!INPUTSURVEYOR`.
+Mencarinya di Pega **berdasarkan nama** akan selalu memberi berkas itu, karena memang ada dua
+rule bernama sama dan pencarian nama menemukan yang GISFW lebih dulu.
+
+Bukti bahwa yang dibutuhkan ada di kelas lain, dibaca langsung dari `Flow/Register_Flow.xml`:
+
+| Baris | Elemen | Nilai |
+|---|---|---|
+| 729 | `pyMOName` | `InputSurveyor` |
+| 732 | `pyExpression` | `InputSurveyor` |
+| 745 | `pyClassName` | **`ASM-FW-GCNMFW-Work-PNC`** |
+| 753 | `pyConditionType` | **`Action`** — artinya ini Flow Action, bukan sekadar nama shape |
+| 739 | `pyFrom` | `Assignment3` |
+
+Dan `Assignment3` adalah:
+
+| Elemen | Nilai |
+|---|---|
+| `pyMOName` | **`Choose Surveyor`** |
+| `pyClassName` | `ASM-FW-GCNMFW-Work-PNC` |
+
+Jadi: assignment **Choose Surveyor** pada `Register_Flow` keluar lewat konektor bertipe
+`Action` yang menjalankan flow action **`InputSurveyor` di kelas `ASM-FW-GCNMFW-Work-PNC`**.
+Pembandingnya `InputRegister` berbentuk persis sama (`pyConditionType = Action`,
+`pyClassName = ASM-FW-GCNMFW-Work-PNC`), dan flow action maupun section-nya ada di export.
+
+#### Cara mengambilnya supaya tidak tertukar lagi
+
+Jangan dicari berdasarkan nama. Tempuh dari flow-nya:
+
+1. Buka `Register_Flow` pada kelas `ASM-FW-GCNMFW-Work-PNC`
+2. Pilih assignment **Choose Surveyor**
+3. Buka konektor yang keluar darinya — flow action yang tertera di situ adalah yang dimaksud
+4. Dari flow action itu, buka section yang dirujuknya
+
+#### Soal "section-nya tidak ada"
+
+Itu mungkin benar dan bukan masalah. Flow action GISFW yang sudah ada memakai
+`pyIsUsingDesignTemplate = true`, dan pada bentuk itu tata letaknya tinggal **di dalam flow
+action**, bukan sebagai rule Section tersendiri. Apakah yang GCNMFW juga begitu **belum dapat
+dipastikan sampai berkasnya ada** — dan bila ya, mengirim flow action-nya saja sudah cukup.
+
+Yang pasti: **Section bernama `InputSurveyor` tidak perlu dicari lagi berdasarkan nama.** Yang
+diminta satu hal saja — flow action `InputSurveyor` pada kelas `ASM-FW-GCNMFW-Work-PNC`,
+beserta apa pun yang dirujuknya.
+
+### 22.3 KOREKSI BESAR — bukan 54 section, melainkan **6**
+
+**Daftar 54 di §22 salah dan jangan dikirim.** Ia dibangun di atas satu asumsi yang kemudian
+terbukti keliru.
+
+#### Asumsi yang gugur
+
+Sapuan §22 menganggap `pyStreamName` sebuah Flow Action menyebut nama Section yang direndernya.
+Flow action `InputSurveyor` yang dikirim Work Owner membantahnya:
+
+| Elemen | Nilai |
+|---|---|
+| `pyStreamName` | `InputSurveyor` |
+| yang benar-benar dirender | **`ClaimSurvey`** (`packageSection("ClaimSurvey")`) |
+
+`pyStreamName` ternyata **selalu** sama dengan nama flow action itu sendiri — diperiksa pada
+seluruh 100 flow action, 100 dari 100 sama. Jadi ia tidak menyebut apa pun; ia hanya menggemakan
+namanya sendiri. Sapuan yang membandingkannya dengan daftar Section karena itu melaporkan
+"hilang" untuk setiap flow action yang kebetulan tidak punya Section senama — **48 dari 54
+adalah positif palsu.**
+
+#### Sapuan yang benar
+
+Rujukan section yang sesungguhnya ada pada stream hasil generate, berbentuk
+`packageSection("<nama>")`. Disapu dengan itu, dan keberadaannya diuji terhadap `pxInsName`
+berkas Section — bukan terhadap `pyRuleName`, yang ikut cocok pada **rujukan** di dalam section
+lain dan sempat memberi positif palsu kedua.
+
+Hasilnya **6**:
+
+| Nama rule | Tipe rule | Kelas flow action pemanggil | Flow Action |
+|---|---|---|---|
+| `DetailPremi` | `Rule-HTML-Section` | `@baseclass` | `DetailPremi_FA.xml` |
+| `AlertSendRequest` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work` | `GCNMAlertSendRequest_FA.xml` |
+| `InformasiOsDanAkseptasiKlaim_Sec` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Data-Object` | `InformasiOsDanAkseptasiKlaim_FA.xml` |
+| `InputAlasanTerlambat` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `InputAlasanTerlambat_FA.xml` |
+| `AnalystDocterPNC` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SendAnalystDoctor-FA.xml` |
+| `SetPassword_sect` | `Rule-HTML-Section` | `ASM-FW-GCNMFW-Work-PNC` | `SetOpenTSI_FA.xml` |
+
+> Kolom kelas adalah kelas **flow action pemanggilnya**, bukan tentu kelas section-nya —
+> pelajaran dari §22.2. Ambil tiap section dari flow action yang menyebutnya, jangan dari
+> pencarian nama.
+
+`DetailPremi` menjelaskan satu keterangan yang sudah lama tampil di layar klaim: **Status
+Pembayaran Premi** dan **Aging Amount** kosong karena layar Detail Premi memang belum dapat
+dibangun.
+
+#### Pelajaran yang dicatat supaya tidak terulang
+
+Dua positif palsu berturut-turut, keduanya berpola sama: **alat ukur dipakai sebelum diuji pada
+kasus yang jawabannya sudah diketahui.** Bila sapuan §22 diuji lebih dulu terhadap
+`InputRegister` — yang section-nya jelas ada — pola `pyStreamName` masih lolos; yang akan
+menangkapnya adalah menguji terhadap flow action yang section-nya bernama **berbeda**. Sejak
+sekarang, setiap sapuan diuji terhadap satu kasus positif **dan** satu kasus yang namanya tidak
+sama.
+
+### 22.4 Keenam section diterima — dan batas yang masih tersisa (2026-10-12, malam)
+
+Work Owner menambahkan keenamnya. Terverifikasi lewat `pxInsName`, bukan nama berkas:
+
+| Section | Ukuran | Kelas |
+|---|---|---|
+| `DetailPremi` | 208K | `@baseclass` |
+| `AlertSendRequest` | 128K | `ASM-FW-GCNMFW-Work` |
+| `InformasiOsDanAkseptasiKlaim_Sec` | 316K | `ASM-FW-GCNMFW-Data-Object` |
+| `InputAlasanTerlambat` | 144K | `ASM-FW-GCNMFW-Work-PNC` |
+| `AnalystDocterPNC` | 224K | `ASM-FW-GCNMFW-Work-PNC` |
+| `SetPassword_sect` | 84K | `ASM-FW-GCNMFW-Work-PNC` |
+
+Jumlah section di export: **389 → 395**.
+
+**Sapuan Flow Action → Section kini NOL yang hilang.** Alat ukurnya diuji lebih dulu pada tiga
+kasus berjawaban diketahui — `ClaimSurvey` (ada), `InputRegisterDetail2` (ada), dan satu nama
+karangan (tidak ada) — lalu baru dijalankan.
+
+#### Rantai layar klaim, lengkap
+
+```
+Register_Flow (ASM-FW-GCNMFW-Work-PNC)
+  └─ Assignment "Choose Surveyor"
+      └─ Flow Action InputSurveyor
+          └─ Section ClaimSurvey
+              ├─ IsPendingClose = false -> InputRegisterDetail2   DAPAT DISUNTING
+              └─ IsPendingClose = true  -> ViewInputRegisterDetail  baca-saja
+```
+
+Keempat belas section yang di-*include* `ClaimSurvey` ada, begitu pula `When/IsPendingClose`
+dan propertinya.
+
+#### Yang TIDAK dapat dipastikan, dan sebabnya
+
+Rujukan **antar-section** tidak dapat disapu dengan andal. Tiga alat ukur dicoba dan ketiganya
+gugur pada uji kasus berjawaban diketahui:
+
+| Alat ukur | Gagal karena |
+|---|---|
+| `pyStreamName` | selalu menggemakan nama flow action sendiri — sumber kesalahan 54 di §22 |
+| `pyRuleName` | ikut cocok pada **rujukan** di dalam section lain, bukan identitas rule |
+| `pySectionInCellParamType` + baris berikutnya | urutan elemen tidak tetap; `ClaimSurvey` menghasilkan 1, seharusnya 14 |
+| `packageSection(...)` | nol kemunculan di dalam Section — hanya ada pada stream Flow Action |
+
+Sebab yang mendasarinya: `<pyInclude>` dipakai untuk **dua hal berbeda** — menyisipkan section
+dan menyisipkan kontrol — dan **export ini tidak memuat satu pun rule Control**; tidak ada
+folder `Control/` sama sekali. Jadi setiap include kontrol akan selamanya tampak "hilang", dan
+daftar apa pun yang disusun darinya tercemar.
+
+Sapuan mentah menghasilkan 34 kandidat. Uji petik membuktikan sebagiannya **kontrol**, bukan
+section — `Tambah` pada `InputRegisterDetail2_sect.xml:24289` bertanda `pyType = FIELD`.
+Daftar itu karena itu **tidak dicantumkan di sini**; menyodorkannya akan mengulang persis
+kesalahan §22.
+
+#### Yang berguna diminta berikutnya
+
+1. **Rule Control** — belum pernah diminta sama sekali, dan tanpanya rujukan antar-section tidak
+   dapat dipisahkan antara section hilang dan kontrol yang memang tidak diekspor.
+2. **Export ulang berbasis Product rule** (`D-39`) — tetap jalan yang benar; daftar per tipe
+   terbukti selalu melewatkan tipe yang tidak terpikir.

@@ -8,21 +8,21 @@
 //
 // # Yang membuatnya berbeda dari modul lain
 //
-// Ia **bukan satu laporan**. `Harness/PNCTATReport-Harness.xml` memuat **28 panel
+// Ia **bukan satu laporan**. `Harness/PNCTATReport-Harness.xml` memuat **28 panel (produksi menampilkan **23** — lihat catalogLiniBisnis)
 // laporan** yang berdiri sendiri-sendiri, masing-masing hanya berisi judul dan satu
 // tombol Export. Tidak ada tabel hasil di layar sama sekali: setiap tombol memanggil satu
 // activity yang menjalankan kueri, menyusun barisnya, lalu mengunduh **berkas CSV** lewat
 // `pxConvertResultsToCSV`.
 //
 // Karena itu modul ini tidak punya "daftar" dalam arti modul inbox. Yang dimilikinya
-// adalah **katalog laporan** — 28 entri yang menyebutkan judul panel, label tombolnya,
+// adalah **katalog laporan** — 23 entri yang menyebutkan judul panel, label tombolnya,
 // penyaring yang ia pakai, nama berkas keluarannya, dan susunan kolomnya.
 //
 // # Asal setiap aturan di modul ini
 //
 // Seluruhnya dibaca dari export rule Pega, bukan dikarang:
 //
-//	Harness/PNCTATReport-Harness.xml   susunan 28 panel, judul, label tombol, penyaring
+//	Harness/PNCTATReport-Harness.xml   susunan panel, judul, label tombol, penyaring
 //	                                   bersama, dan parameter tetap tiap tombol
 //	Activity/<24 activity>-Act.xml     kueri yang dijalankan, pemetaan kolom, susunan CSV
 //	                                   beserta judul kolomnya, dan nama berkasnya

@@ -61,6 +61,7 @@ const CLAIM = {
     status_pucl: 0,
     transfer_compliance: false,
     status_proses: 'BERJALAN',
+    status_kerja_pega: '',
     status_klaim: '',
     flag_klaim: '0',
     status_posisi_progres: 'On Progress',

@@ -44,8 +44,20 @@ func SampleOutstanding() []ClaimRecord {
 				PolicyNumber: "POLIS-CONTOH-0001", InsuredName: "Tertanggung Contoh A",
 				BusinessName: "Aneka", BusinessSource: "Cabang", BranchName: "Jakarta",
 				TechnicalPIC: "PIC Contoh 1", AdminPNC: "Admin Contoh 1",
-				ClaimStatusCode: "1147", ProcessStatus: "New",
+				ClaimStatusCode: "1147", ClaimStatusLabel: "Register", ProcessStatus: "New",
 				LossDate: sampleDate(4), RegisteredAt: sampleTime(5),
+				ReportDate: sampleDate(3),
+
+				// Kelima kolom berikut HANYA dibaca jalur unduhan, dan hanya catatan
+				// pertama ini yang mengisinya. Satu catatan sudah cukup membuktikan
+				// perbedaan kedua jalur terlihat; mengisi seluruhnya justru menyamarkan
+				// mana yang sedang diuji.
+				//
+				// Angkanya ditulis sebagai teks persis seperti yang keluar dari Oracle —
+				// termasuk TSI empat belas digit, yang tidak muat utuh di float64.
+				TSI: "93980904506106", EstimateIDR: "17964.07",
+				OriginUser: "ADMIN_ASAL_1", AssignedOperator: "OPERATOR_PEMEGANG_1",
+				TransferredToPICAt: sampleDate(2),
 			},
 		},
 		{

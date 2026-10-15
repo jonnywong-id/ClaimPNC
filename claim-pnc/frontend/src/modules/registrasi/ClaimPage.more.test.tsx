@@ -48,6 +48,7 @@ const KLAIM = {
   status_pucl: 0,
   transfer_compliance: false,
   status_proses: 'BERJALAN',
+  status_kerja_pega: '',
   status_klaim: '',
   flag_klaim: '0',
   status_posisi_progres: 'On Progress',
@@ -120,13 +121,13 @@ function installFetch(claim: unknown, answer: (url: string, method: string) => A
   })
 }
 
-function show() {
+function show(alamat = '/registrasi/klaim/klaim-1') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/registrasi/klaim/klaim-1']}>
+      <MemoryRouter initialEntries={[alamat]}>
         <Routes>
           <Route path="/registrasi/klaim/:claimID" element={<ClaimPage />} />
           <Route path="/registrasi" element={<p>Halaman inbox</p>} />
@@ -165,12 +166,125 @@ describe('keadaan klaim', () => {
   })
 
   it('menyebut klaim yang sudah selesai pada alur Register', async () => {
-    installFetch(response({ tahap_kini: '' }, null))
+    // `status_proses` SELESAI — tanpa itu klaimnya bukan selesai, melainkan milik Pega.
+    installFetch(response({ tahap_kini: '', status_proses: 'SELESAI' }, null))
     show()
 
     expect(await screen.findByText(/Klaim ini sudah selesai pada alur Register\./)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Klaim belum bernomor' })).toBeInTheDocument()
     expect(screen.queryByText(/tidak ada tugas terbuka/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * Tahap kosong punya DUA sebab, dan keduanya tidak boleh disebut "selesai".
+   *
+   * `tahap_kini` diturunkan dari tugas terbuka di `CPNC_TUGAS` — tabel milik aplikasi ini, yang
+   * hanya terisi bila klaimnya didaftarkan DI SINI. Diukur 2026-10-12: dari 368 barisnya, 359
+   * milik klaim `PNCN.` dan hanya 2 milik klaim warisan.
+   *
+   * Klaim warisan karena itu SELALU bertahap kosong. Menyebutnya "sudah selesai" adalah
+   * pernyataan yang salah, dan `PNC-11` membuktikannya: `STATUSWORK` = `New`.
+   */
+  it('membedakan klaim milik Pega dari klaim yang sudah selesai', async () => {
+    // Status Pega apa adanya — di luar BERJALAN/SELESAI/DITOLAK milik aplikasi ini.
+    installFetch(response({ tahap_kini: '', status_proses: 'New' }, null))
+    show()
+
+    expect(await screen.findByText(/dikerjakan di Pega, bukan di aplikasi ini/)).toBeInTheDocument()
+    expect(screen.queryByText(/sudah selesai pada alur Register/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * Status PEGA menang atas status tabel bisnis.
+   *
+   * `PNC-6` di DEV: `T_CLAIM_PNC.STATUSWORK` = `Open`, tetapi
+   * `T_CLAIMLIST_ADMIN.PYSTATUSWORK` = `Resolved-Rejected`. Keduanya tidak sepakat pada 157
+   * dari 1.360 klaim warisan (diukur 2026-10-12).
+   *
+   * Sebelum perbaikan ini, halaman membaca `Open` lalu menulis "dikerjakan di Pega" pada klaim
+   * yang sebenarnya SUDAH SELESAI. Dilaporkan Work Owner pada klaim Close Claim.
+   */
+  it('memakai status Pega saat ia berbeda dari status tabel bisnis', async () => {
+    installFetch(
+      response({ tahap_kini: '', status_proses: 'Open', status_kerja_pega: 'Resolved-Rejected' }, null),
+    )
+    show()
+
+    expect(await screen.findByText(/sudah selesai pada alur Register/)).toBeInTheDocument()
+    expect(screen.queryByText(/dikerjakan di Pega, bukan di aplikasi ini/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * Tanpa status Pega, pemeriksaan jatuh ke status aplikasi ini — persis seperti sebelumnya.
+   *
+   * Kosong berarti klaimnya tidak punya baris di tabel daftar Pega, BUKAN berarti selesai.
+   * Menganggapnya selesai akan menyatakan tuntas klaim yang belum tentu tuntas.
+   */
+  it('tidak menganggap selesai saat status Pega kosong', async () => {
+    installFetch(response({ tahap_kini: '', status_proses: 'New', status_kerja_pega: '' }, null))
+    show()
+
+    expect(await screen.findByText(/dikerjakan di Pega, bukan di aplikasi ini/)).toBeInTheDocument()
+  })
+
+  /**
+   * Klaim tanpa tugas memakai BINGKAI YANG SAMA, dibuka baca-saja.
+   *
+   * Seluruh isi halaman ini digambar oleh bingkai tahap, dan bingkai itu menuntut sebuah
+   * tugas. Akibatnya klaim yang alurnya sudah selesai — dan seluruh klaim warisan yang alurnya
+   * masih di Pega (`P-3`) — hanya menampilkan kepala dan satu kalimat. Dilaporkan Work Owner
+   * 2026-10-12 pada `PNC-11`.
+   *
+   * Yang dijaga di sini: bingkainya **yang sama**, bukan bagian buatan sendiri yang menyerupai.
+   * Bagian buatan sendiri sudah dicoba dan ditolak, dan uji ini yang mencegahnya kembali.
+   */
+  it('memakai bingkai yang sama, dibuka baca-saja, saat tidak ada tugas terbuka', async () => {
+    installFetch(
+      response(
+        {
+          tahap_kini: '',
+          objek: [
+            {
+              id: 'objek-1',
+              nama: 'Bangunan Gudang',
+              lokasi: 'Cakung',
+              coverage: [
+                {
+                  id: 'cov-1',
+                  nama: 'RESIKO A',
+                  penyebab_kerugian: 'ACCIDENT',
+                  tsi_sen: 1500000000,
+                  spreading: [],
+                },
+              ],
+            },
+          ],
+        },
+        null,
+      ),
+    )
+    show()
+
+    // Bingkainya bernama "Rincian Klaim" — BUKAN "InputSurveyor", yang akan menyatakan klaim
+    // berada di tahap yang sudah dilewatinya.
+    expect(await screen.findByRole('heading', { name: 'Rincian Klaim' })).toBeInTheDocument()
+
+    // Deret tab yang sama dengan klaim yang punya tugas.
+    for (const judul of ['Input Register', 'Estimasi & Adjustment', 'Unggah Dokumen']) {
+      expect(screen.getByRole('tab', { name: judul })).toBeInTheDocument()
+    }
+
+    // Isinya tergambar — objek dan jaminannya, bukan layar kosong.
+    expect(screen.getByText('Bangunan Gudang')).toBeInTheDocument()
+    expect(screen.getByText('RESIKO A')).toBeInTheDocument()
+
+    // Terkunci: sebabnya dinyatakan SEKALI, oleh kotak di tingkat halaman.
+    //
+    // Bingkai tahap sempat memasang peringatannya sendiri di bawah kotak itu, dan keduanya
+    // mengatakan hal yang sama dengan kalimat berbeda. Dicabut 2026-10-12 setelah Work Owner
+    // melaporkannya pada klaim Close Claim.
+    expect(screen.getByText(/dikerjakan di Pega|sudah selesai pada alur Register/)).toBeInTheDocument()
+    expect(screen.queryByText(/Tombol dan isiannya dinonaktifkan/)).not.toBeInTheDocument()
   })
 
   it('menyebut tahap yang tugasnya bukan milik pengguna', async () => {
@@ -719,5 +833,41 @@ describe('Input Register', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
     expect(await screen.findByText('Halaman inbox')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Tautan kembali memulihkan DAFTAR yang tadi dibuka, bukan sekadar membuka dashboard.
+ *
+ * Work Owner memintanya setelah mencari dengan lini bisnis lalu membuka satu klaim: kembali
+ * ke daftar kosong berarti mengulang pencarian dari awal.
+ */
+describe('tautan kembali', () => {
+  it('membawa seluruh penyaring kembali ke Dashboard Claim', async () => {
+    installFetch(response({}, null))
+    show(
+      '/registrasi/klaim/klaim-1?asal=dashboard-claim&tile=outstanding&lini=003&pic=BUDI&hal=3',
+    )
+
+    const kembali = await screen.findByRole('link', { name: '← Kembali ke Dashboard Claim' })
+    const tujuan = kembali.getAttribute('href') ?? ''
+    expect(tujuan.startsWith('/dashboard-claim?')).toBe(true)
+
+    const p = new URLSearchParams(tujuan.split('?')[1])
+    expect(p.get('tile')).toBe('outstanding')
+    expect(p.get('lini')).toBe('003')
+    expect(p.get('pic')).toBe('BUDI')
+    expect(p.get('hal')).toBe('3')
+
+    // `asal` adalah penanda ARAH, bukan keadaan layar tujuan — ia tidak ikut pulang.
+    expect(p.get('asal')).toBeNull()
+  })
+
+  it('tanpa asal, tujuannya tetap inbox seperti sebelumnya', async () => {
+    installFetch(response({}, null))
+    show()
+
+    const kembali = await screen.findByRole('link', { name: '← Kembali ke inbox' })
+    expect(kembali).toHaveAttribute('href', '/registrasi')
   })
 })

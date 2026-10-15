@@ -164,12 +164,33 @@ type OptionsResponse struct {
 	Type     []TypeDTO     `json:"tipe"`
 	Portal   string        `json:"portal"`
 
+	// Keempat daftar berikut KONSTANTA, bukan bacaan basis data — nilainya ada di rule
+	// Property Pega, bukan di tabel acuan. Lihat mastersparepart.KindOptions.
+	//
+	// Ia tetap disajikan lewat endpoint, bukan disalin ke dalam layar, supaya daftar yang
+	// menentukan isi empat isian tidak hidup di dua tempat yang bisa berbeda.
+	//
+	// Urutannya mengikuti Pega dan TIDAK boleh diurutkan ulang oleh penerimanya.
+	Kind         []FlagOptionDTO `json:"jenis_sparepart"`
+	Unit         []FlagOptionDTO `json:"satuan"`
+	ActiveStatus []FlagOptionDTO `json:"status_aktif"`
+	PartStatus   []FlagOptionDTO `json:"status_sparepart"`
+
 	// UploadAvailable menyatakan jalur unggah dokumen siap dipakai.
 	//
 	// Layar menanyakannya SEBELUM menggambar isian berkas. Tanpa ini isiannya akan selalu
 	// tampak hidup dan baru gagal setelah pengguna memilih berkas — kegagalan paling
 	// menjengkelkan, karena ia terjadi sesudah pekerjaan, bukan sebelumnya.
 	UploadAvailable bool `json:"unggah_tersedia"`
+}
+
+// FlagOptionDTO adalah satu pilihan penanda.
+//
+// Label boleh KOSONG, dan itu bukan cacat: `SATUAN` memang punya pilihan tanpa label di
+// rule Pega. Layar yang memutuskan bagaimana menggambarnya.
+type FlagOptionDTO struct {
+	Value string `json:"nilai"`
+	Label string `json:"label"`
 }
 
 // SaveRequest adalah badan permintaan penambahan DAN penyimpanan.
@@ -400,8 +421,23 @@ func toOptionsDTO(
 		Category:        category,
 		Type:            partType,
 		Portal:          portalAlias,
+		Kind:            flagOptionsDTO(mastersparepart.KindOptions),
+		Unit:            flagOptionsDTO(mastersparepart.UnitOptions),
+		ActiveStatus:    flagOptionsDTO(mastersparepart.ActiveStatusOptions),
+		PartStatus:      flagOptionsDTO(mastersparepart.PartStatusOptions),
 		UploadAvailable: uploadAvailable,
 	}
+}
+
+// flagOptionsDTO memindahkan daftar pilihan penanda ke bentuk kawat.
+//
+// Urutannya dipertahankan apa adanya; lihat catatan pada mastersparepart.KindOptions.
+func flagOptionsDTO(source []mastersparepart.FlagOption) []FlagOptionDTO {
+	result := make([]FlagOptionDTO, 0, len(source))
+	for _, one := range source {
+		result = append(result, FlagOptionDTO{Value: one.Value, Label: one.Label})
+	}
+	return result
 }
 
 // DocumentDTO adalah bentuk kawat satu dokumen sparepart.

@@ -444,10 +444,13 @@ func (r *Repo) CountLocationOrphan(ctx context.Context) (int, error) {
 	return r.count(ctx, "panel_count_location_orphan")
 }
 
-// CountLocationNameMismatch menghitung baris yang NAMA-nya berbeda dari LOKASI_PANEL.
+// CountLocationNameMismatch menghitung baris lokasi yang NAMA-nya berbeda dari NAME
+// panel induknya.
 //
-// Inilah pemeriksaan yang menentukan apakah asumsi pada banner berkas .sql benar. Lihat
-// checkPanel pada cmd/claimpnc untuk apa yang dilakukan atas hasilnya.
+// Inilah pemeriksaan yang menjaga koreksi 2026-10-14 tetap berlaku; lihat banner berkas
+// .sql. Nol berarti setiap baris lokasi membawa nama panelnya, sehingga daftar Sisi
+// modul Grouping Sparepart menemukan barisnya. Lihat checkPanelLocation pada
+// cmd/claimpnc untuk apa yang dilakukan atas hasilnya.
 func (r *Repo) CountLocationNameMismatch(ctx context.Context) (int, error) {
 	return r.count(ctx, "panel_count_location_name_mismatch")
 }
@@ -462,14 +465,17 @@ func (r *Repo) count(ctx context.Context, name string, argument ...any) (int, er
 
 // insertLocation menyisipkan seluruh baris lokasi sebuah panel.
 //
-// Kolom NAMA diisi nilai yang SAMA dengan LOKASI_PANEL; lihat banner berkas .sql untuk
-// asumsi di baliknya dan cara memeriksanya.
+// Kolom NAMA diisi NAMA PANEL INDUK, bukan nama lokasinya. Keduanya memang mudah
+// tertukar — dan sampai 2026-10-14 berkas ini memang menukarnya. Lihat banner berkas
+// .sql untuk ketiga bukti yang membantahnya, dan untuk akibatnya pada modul Grouping
+// Sparepart bila tertukar lagi.
 func insertLocation(ctx context.Context, tx *sql.Tx, p masterpanel.Panel) error {
 	owner := strings.TrimSpace(p.ID)
+	panelName := strings.TrimSpace(p.Name)
 	for _, one := range p.Location {
 		name := strings.TrimSpace(one.Name)
 		if _, err := tx.ExecContext(ctx, getQuery("panel_location_insert"),
-			owner, name, string(one.Side), name); err != nil {
+			owner, name, string(one.Side), panelName); err != nil {
 			return fmt.Errorf("masterpanel/sqlstore: menyisipkan lokasi %q pada %q: %w",
 				one.Name, p.ID, err)
 		}

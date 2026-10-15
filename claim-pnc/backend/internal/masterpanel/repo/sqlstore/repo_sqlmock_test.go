@@ -229,13 +229,81 @@ func TestInsertWritesParentAndChildrenInOneTransaction(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(singleCol))
 	mock.ExpectExec(q("panel_insert")).WithArgs("01000001", "Pintu", "1", "1", "0", "0", "1",
 		"1", "0", "1", "C", "M", "", "D", "0").WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("panel_location_insert")).WithArgs("01000001", "KIRI", "1", "KIRI").
+	// Nilai keempat adalah NAMA PANEL ("Pintu"), BUKAN nama lokasinya. Keduanya sengaja
+	// dibuat berbeda di mockPanel supaya tertukarnya terlihat — lihat banner
+	// masterpanel.sql, koreksi 2026-10-14.
+	mock.ExpectExec(q("panel_location_insert")).WithArgs("01000001", "KIRI", "1", "Pintu").
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec(q("panel_location_insert")).WithArgs("01000001", "KANAN", "2", "KANAN").
+	mock.ExpectExec(q("panel_location_insert")).WithArgs("01000001", "KANAN", "2", "Pintu").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	require.NoError(t, repo.Insert(context.Background(), mockPanel))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Kolom NAMA pada baris lokasi berisi NAMA PANEL, bukan nama lokasinya.
+//
+// # Kenapa uji ini berdiri sendiri
+//
+// Sampai 2026-10-14 jalur tulis mengisinya dengan nama LOKASI, dan tidak satu pun uji
+// gagal karenanya: baris tetap tersisip, transaksi tetap menutup, layar Master Panel
+// tetap benar. Yang rusak ada di modul LAIN — daftar Sisi Grouping Sparepart menyaring
+// `UPPER(TRIM(NAMA)) = <nama panel>`, sehingga seluruh barisnya berhenti ditemukan
+// tanpa satu pun pesan galat.
+//
+// Kekeliruan yang tidak membuat apa pun gagal adalah kekeliruan yang akan terulang,
+// karena tidak ada yang mengingatkan saat seseorang "merapikan" dua nilai yang
+// kebetulan berdampingan. Uji ini yang mengingatkannya.
+//
+// Ketiga buktinya ada di banner masterpanel.sql.
+func TestLocationRowCarriesPanelNameNotLocationName(t *testing.T) {
+	repo, mock := newMock(t)
+
+	// Panel bernama "Pintu" dengan SATU lokasi bernama "KIRI" — keduanya sengaja
+	// berbeda, sehingga tertukarnya tidak dapat lolos sebagai kebetulan.
+	panel := mockPanel
+	panel.Location = []masterpanel.PanelLocation{
+		{Name: "KIRI", Side: masterpanel.SideLeft},
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(q("panel_lock_by_name")).WithArgs("PINTU").
+		WillReturnRows(sqlmock.NewRows(singleCol))
+	mock.ExpectExec(q("panel_insert")).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(q("panel_location_insert")).
+		WithArgs("01000001", "KIRI", "1", "Pintu").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	require.NoError(t, repo.Insert(context.Background(), panel))
+	require.NoError(t, mock.ExpectationsWereMet(),
+		"nilai keempat panel_location_insert harus nama PANEL, bukan nama lokasi")
+}
+
+// Jalur UBAH menulis NAMA dengan aturan yang sama seperti jalur TAMBAH.
+//
+// Keduanya memanggil insertLocation, tetapi lewat dua fungsi yang berbeda — dan
+// perbaikan yang hanya diterapkan di salah satunya persis kegagalan yang utang teknis
+// 4.6 Steering sebutkan: satu aturan digandakan, lalu menyimpang di salah satu salinan.
+func TestUpdateAlsoCarriesPanelNameIntoLocationRow(t *testing.T) {
+	repo, mock := newMock(t)
+
+	panel := mockPanel
+	panel.Location = []masterpanel.PanelLocation{
+		{Name: "KANAN", Side: masterpanel.SideRight},
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(q("panel_update")).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(q("panel_location_clear")).WithArgs("01000001").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(q("panel_location_insert")).
+		WithArgs("01000001", "KANAN", "2", "Pintu").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	require.NoError(t, repo.Update(context.Background(), panel))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

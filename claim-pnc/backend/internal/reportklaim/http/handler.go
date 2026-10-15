@@ -72,25 +72,12 @@ func (h *Handler) Catalog(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(w, r, http.StatusOK, toCatalogDTO(h.service.Catalog()))
 }
 
-// BusinessOptions menangani GET /report-klaim/pilihan-bisnis.
-func (h *Handler) BusinessOptions(w http.ResponseWriter, r *http.Request) {
-	active, _, ready := h.prepare(w, r)
-	if !ready {
-		return
-	}
-
-	option, err := h.service.BusinessOptions(r.Context(), active.Alias)
-	if err != nil {
-		h.writeModuleError(w, r, err)
-		return
-	}
-
-	body := BusinessOptionResponse{Bisnis: make([]BusinessOptionDTO, 0, len(option))}
-	for _, o := range option {
-		body.Bisnis = append(body.Bisnis, BusinessOptionDTO{Kode: o.Code, Nama: o.Name})
-	}
-	h.writeResponse(w, r, http.StatusOK, body)
-}
+// BusinessOptions — GET /report-klaim/pilihan-bisnis — berdiri di sini sampai 2026-10-13.
+// Ia mengisi autocomplete "Bisnis" milik panel REPORT KLAIM PER BISNIS, dan dicabut
+// bersama panel itu yang tidak ada di Pega produksi.
+//
+// Endpoint-nya ikut hilang, bukan dibiarkan menjawab daftar kosong: endpoint yang tidak
+// punya pemanggil adalah permukaan yang tetap harus dijaga tanpa ada yang memakainya.
 
 // prepare memeriksa portal aktif dan identitas pemanggil.
 func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (portal.Portal, reportklaim.Caller, bool) {
@@ -137,7 +124,6 @@ func readFilter(r *http.Request, entity string) (reportklaim.Filter, error) {
 		To:               to,
 		BusinessLine:     line,
 		ComplianceStatus: strings.TrimSpace(value.Get("status_compliance")),
-		BusinessCode:     strings.TrimSpace(value.Get("bisnis")),
 		Detail:           value.Get("rincian") == "1",
 		Entity:           entity,
 	}, nil

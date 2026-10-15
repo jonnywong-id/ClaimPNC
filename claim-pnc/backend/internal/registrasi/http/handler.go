@@ -819,6 +819,7 @@ func claimDTO(k registrasi.Claim) ClaimDTO {
 		PUCLStatus:             k.PUCLStatus,
 		ComplianceTransfer:     k.ComplianceTransfer,
 		ProcessStatus:          string(k.ProcessStatus),
+		PegaWorkStatus:         k.PegaWorkStatus,
 		ClaimStatus:            string(k.ClaimStatus),
 		ClaimStatusName:        k.ClaimStatusName,
 		AnalystTransferred:     !k.AnalystTransferredAt.IsZero(),

@@ -165,7 +165,17 @@ SELECT CLAIMID, CLAIMNO, PORTAL,
        EMAIL_LOD, REMARKRECOMENDATION, SUBJECTEMAIL, STSSALVAGE, ANALYST_TRANSFERDATE, REMARK,
        STS_TKI,
        PENGKINIAN_NO_KTP, PENGKINIAN_NO_HP, PENGKINIAN_EMAIL, REPORTTYPE,
-       TANGGALSELESAIRAWATINAP
+       TANGGALSELESAIRAWATINAP,
+       -- Status kerja menurut PEGA, bukan menurut tabel bisnis ini.
+       --
+       -- `T_CLAIM_PNC.STATUSWORK` dan `T_CLAIMLIST_ADMIN.PYSTATUSWORK` BERBEDA pada 157 dari
+       -- 1.360 klaim warisan (diukur 2026-10-12). `PNC-6` contohnya: tabel ini berkata `Open`,
+       -- Pega berkata `Resolved-Rejected`. Yang menentukan apakah masih ada pekerjaan adalah
+       -- Pega, karena dialah yang memegang assignment-nya (`P-3`).
+       --
+       -- Dibaca sebagai subkueri skalar, bukan JOIN, supaya bentuk kueri ini tidak berubah dan
+       -- urutan kolomnya tetap — satu kolom tambahan di akhir, bukan susunan baru.
+       (SELECT MAX(k.PYSTATUSWORK) FROM POOLDATA.T_CLAIMLIST_ADMIN k WHERE k.PYID = CLAIMNO)
   FROM POOLDATA.T_CLAIM_PNC
  WHERE CLAIMID = :1
 
@@ -189,7 +199,17 @@ SELECT CLAIMID, CLAIMNO, PORTAL,
        EMAIL_LOD, REMARKRECOMENDATION, SUBJECTEMAIL, STSSALVAGE, ANALYST_TRANSFERDATE, REMARK,
        STS_TKI,
        PENGKINIAN_NO_KTP, PENGKINIAN_NO_HP, PENGKINIAN_EMAIL, REPORTTYPE,
-       TANGGALSELESAIRAWATINAP
+       TANGGALSELESAIRAWATINAP,
+       -- Status kerja menurut PEGA, bukan menurut tabel bisnis ini.
+       --
+       -- `T_CLAIM_PNC.STATUSWORK` dan `T_CLAIMLIST_ADMIN.PYSTATUSWORK` BERBEDA pada 157 dari
+       -- 1.360 klaim warisan (diukur 2026-10-12). `PNC-6` contohnya: tabel ini berkata `Open`,
+       -- Pega berkata `Resolved-Rejected`. Yang menentukan apakah masih ada pekerjaan adalah
+       -- Pega, karena dialah yang memegang assignment-nya (`P-3`).
+       --
+       -- Dibaca sebagai subkueri skalar, bukan JOIN, supaya bentuk kueri ini tidak berubah dan
+       -- urutan kolomnya tetap — satu kolom tambahan di akhir, bukan susunan baru.
+       (SELECT MAX(k.PYSTATUSWORK) FROM POOLDATA.T_CLAIMLIST_ADMIN k WHERE k.PYID = CLAIMNO)
   FROM POOLDATA.T_CLAIM_PNC
  WHERE CLAIMNO = :1
 

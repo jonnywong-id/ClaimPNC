@@ -9,7 +9,7 @@ import {
   type UseFormSetValue,
   type UseFormWatch,
 } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate, useParams } from 'react-router-dom'
 
 import { APIError } from '@/api/client'
 import { Button } from '@/components/Button'
@@ -199,11 +199,46 @@ export function ClaimPage() {
         </div>
       )}
 
+      {/*
+        Tahap kosong punya DUA sebab yang berbeda, dan sebelumnya keduanya disebut "selesai".
+
+        `tahap_kini` diturunkan dari tugas terbuka di `CPNC_TUGAS` — tabel tugas milik aplikasi
+        ini, yang hanya terisi bila klaimnya didaftarkan DI SINI. Diukur 2026-10-12: dari 368
+        barisnya, **359 milik klaim `PNCN.`** dan hanya **2** milik klaim warisan.
+
+        Klaim warisan `PNC-xxxx` karena itu selalu bertahap kosong — bukan karena selesai,
+        melainkan karena alurnya tidak pernah berjalan di sini (`P-3`). `PNC-11` membuktikannya:
+        `STATUSWORK` = `New`, dan klaim yang "sudah selesai" tidak mungkin berstatus New.
+
+        Dilaporkan Work Owner 2026-10-12 lewat pertanyaan "kurang apa ya" — pertanyaan yang
+        tidak akan muncul bila kalimatnya benar sejak awal.
+      */}
       {content.klaim.tahap_kini === '' && (
         <p className="mt-6 rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          Klaim ini sudah selesai pada alur Register. Tidak ada tugas yang menunggu.
+          {selesaiDiSini(content.klaim.status_proses, content.klaim.status_kerja_pega)
+            ? 'Klaim ini sudah selesai pada alur Register. Tidak ada tugas yang menunggu.'
+            : 'Klaim ini dikerjakan di Pega, bukan di aplikasi ini. Rinciannya dapat dibaca di sini; pengerjaannya tetap di Pega.'}
         </p>
       )}
+
+      {/*
+        Klaim tanpa tugas terbuka memakai BINGKAI YANG SAMA, dibuka baca-saja.
+
+        # Kenapa sebelumnya kosong
+
+        Seluruh isi halaman ini — tab Input Register, Estimasi & Adjustment, Investigasi,
+        Unggah Dokumen, Progress Claim & Komunikasi — digambar oleh bingkai tahap, dan bingkai
+        itu menuntut sebuah TUGAS. Klaim yang alurnya sudah selesai, dan seluruh klaim warisan
+        `PNC-xxxx` yang alurnya masih di Pega (`P-3`), karena itu hanya menampilkan kepala dan
+        satu kalimat. Dilaporkan Work Owner 2026-10-12 pada `PNC-11`.
+
+        # Kenapa bingkai yang sama, bukan bagian buatan sendiri
+
+        Bagian buatan sendiri sudah dicoba dan ditolak: yang diminta tampilan yang SAMA, bukan
+        yang menyerupai. `SurveyorForm` karena itu menerima `tugas = null` dan mengunci seluruh
+        tindakannya, alih-alih digandakan menjadi layar kedua yang kelak berbeda sendiri.
+      */}
+      {!content.tugas && <SurveyorForm klaim={content.klaim} tugas={null} />}
 
       {content.tugas && !atInputRegister && !atInputEstimate && !atInputSurveyor && (
         <StageActions tugas={content.tugas} />
@@ -234,11 +269,46 @@ export function ClaimPage() {
   )
 }
 
+/**
+ * Tautan kembali mengikuti ASAL pembuka halaman ini.
+ *
+ * Halaman klaim dibuka dari beberapa layar, dan "kembali" yang selalu menuju `/registrasi`
+ * membuang tempat kerja pengguna: yang membuka dari Dashboard Claim harus memilih ulang tile
+ * dan halaman daftarnya. Asal dibaca dari alamat (`?asal=`), bukan dari riwayat peramban,
+ * supaya ia tetap benar setelah halaman dimuat ulang.
+ *
+ * Tanpa `?asal=`, tujuannya tetap `/registrasi` seperti sebelumnya.
+ */
+function tautanKembali(param: URLSearchParams): { ke: string; label: string } {
+  if (param.get('asal') === 'dashboard-claim') {
+    /*
+      SELURUH parameter diteruskan apa adanya, bukan hanya `tile`.
+
+      Dashboard Claim memulihkan tile, penyaring, dan halaman dari alamatnya. Meneruskan
+      sebagian saja akan memulihkan sebagian pula — pengguna yang tadi mencari dengan lini
+      bisnis kembali ke daftar yang tersaring berbeda, dan itu lebih membingungkan daripada
+      kembali ke daftar kosong.
+
+      `asal` sendiri dibuang: ia penanda arah, bukan keadaan layar tujuan.
+    */
+    const bawa = new URLSearchParams(param)
+    bawa.delete('asal')
+    const kueri = bawa.toString()
+    return {
+      ke: kueri ? `/dashboard-claim?${kueri}` : '/dashboard-claim',
+      label: '← Kembali ke Dashboard Claim',
+    }
+  }
+  return { ke: '/registrasi', label: '← Kembali ke inbox' }
+}
+
 function Frame({ children }: { children: ReactNode }) {
+  const [param] = useSearchParams()
+  const kembali = tautanKembali(param)
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link to="/registrasi" className="text-sm text-slate-600 underline">
-        ← Kembali ke inbox
+      <Link to={kembali.ke} className="text-sm text-slate-600 underline">
+        {kembali.label}
       </Link>
       <div className="mt-4">{children}</div>
     </div>
@@ -1805,4 +1875,38 @@ function errorMessage(failure: unknown): string {
   if (failure instanceof APIError) return failure.message
   if (failure instanceof Error) return failure.message
   return 'Terjadi kesalahan pada sistem.'
+}
+
+/**
+ * Apakah klaim benar-benar SELESAI di aplikasi ini — bukan sekadar tidak punya tugas.
+ *
+ * Status proses aplikasi ini hanya tiga: `BERJALAN`, `SELESAI`, `DITOLAK`. Klaim warisan
+ * membawa status Pega apa adanya (`New`, `Open`, …), dan itulah penandanya: status di luar
+ * ketiganya berarti klaim itu tidak pernah dijalankan di sini.
+ *
+ * # Status PEGA diperiksa lebih dulu, dan itu memperbaiki kekeliruan nyata
+ *
+ * `status_proses` dibaca dari `T_CLAIM_PNC.STATUSWORK` — tabel bisnis. `status_kerja_pega`
+ * dibaca dari `T_CLAIMLIST_ADMIN.PYSTATUSWORK` — tabel daftar milik Pega. Keduanya TIDAK
+ * sepakat pada 157 dari 1.360 klaim warisan (diukur 2026-10-12).
+ *
+ * `PNC-6` contohnya: tabel bisnis berkata `Open`, Pega berkata `Resolved-Rejected`. Halaman
+ * karena itu menulis "dikerjakan di Pega" pada klaim yang sebenarnya SUDAH SELESAI, dan Work
+ * Owner melaporkannya.
+ *
+ * Yang menentukan apakah masih ada pekerjaan adalah Pega, karena dialah yang memegang
+ * assignment-nya. Awalan `Resolved-` dipakai apa adanya: Pega memakai `Resolved-Completed`
+ * dan `Resolved-Rejected`, dan keduanya berarti alurnya berhenti.
+ *
+ * Bila `status_kerja_pega` kosong — klaimnya tidak ada di tabel daftar Pega — pemeriksaan
+ * jatuh ke status aplikasi ini, persis seperti sebelumnya.
+ *
+ * Diperiksa dengan daftar PUTIH, bukan daftar hitam: status Pega yang belum pernah terlihat
+ * akan ikut tergolong "bukan selesai", dan itu jawaban yang aman — menyebut klaim selesai
+ * padahal belum jauh lebih berbahaya daripada sebaliknya.
+ */
+function selesaiDiSini(statusProses: string, statusKerjaPega: string): boolean {
+  // Pega lebih dulu: dialah yang memegang assignment selama masa paralel (`P-3`).
+  if (statusKerjaPega.startsWith('Resolved-')) return true
+  return statusProses === 'SELESAI' || statusProses === 'DITOLAK'
 }

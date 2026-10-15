@@ -27,8 +27,15 @@ export type FilterUsage = {
   rentang_tanggal: boolean
   lini_bisnis: boolean
   status_compliance: boolean
-  bisnis: boolean
   rincian: boolean
+
+  /**
+   * Keadaan AWAL kotak centang "Treaty" pada kartu ini.
+   *
+   * Dikirim peladen, bukan ditebak layar: ketiga kartu yang punya kotak ini TIDAK sama —
+   * Akseptasi dan OS Belum Komite mulai tercentang, OS Komite mulai kosong.
+   */
+  rincian_awal: boolean
 }
 
 /** Jejak ke rule Pega asal sebuah laporan. */
@@ -75,15 +82,7 @@ export type CatalogResponse = {
   status_compliance: ComplianceStatus[]
 }
 
-/** Satu pilihan autocomplete "Bisnis" pada panel Klaim Per Bisnis. */
-export type BusinessOption = {
-  kode: string
-  nama: string
-}
-
-export type BusinessOptionResponse = {
-  bisnis: BusinessOption[]
-}
+// BusinessOption dan BusinessOptionResponse dicabut 2026-10-13 bersama panelnya.
 
 /**
  * Isian penyaring.
@@ -96,7 +95,6 @@ export type ReportFilter = {
   sampai: string
   lini: string
   status_compliance: string
-  bisnis: string
   rincian: boolean
 }
 
@@ -105,7 +103,6 @@ export const EMPTY_FILTER: ReportFilter = {
   sampai: '',
   lini: '',
   status_compliance: '',
-  bisnis: '',
   rincian: false,
 }
 

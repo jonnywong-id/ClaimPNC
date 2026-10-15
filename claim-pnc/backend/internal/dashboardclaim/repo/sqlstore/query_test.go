@@ -15,7 +15,13 @@ import (
 // perannya supaya uji dapat memperlakukan keduanya berbeda pada paginasi.
 var (
 	countQueries = []string{"outstanding_count", "loss_adjuster_count", "internal_surveyor_count"}
-	listQueries  = []string{"outstanding_list", "loss_adjuster_list", "internal_surveyor_list"}
+	// `outstanding_export` ikut di sini, bukan di daftar tersendiri: ia dipaginasi dan
+	// disaring persis seperti kueri daftar lain, sehingga seluruh penjaga penanda bind,
+	// urutan penanda, dan pola SQL terlarang berlaku padanya tanpa ditulis ulang.
+	listQueries = []string{
+		"outstanding_list", "outstanding_export",
+		"loss_adjuster_list", "internal_surveyor_list",
+	}
 )
 
 // TestMissingQueryPanics memastikan nama kueri yang salah ketik terlihat segera.
@@ -140,6 +146,55 @@ func TestOutstandingListAndCountShareTheSameWhere(t *testing.T) {
 		"syarat WHERE outstanding_count dan outstanding_list berbeda — totalnya akan menyimpang dari barisnya")
 }
 
+// TestExportQueryMatchesListQuery menjaga bahwa yang diunduh adalah yang terlihat.
+//
+// `outstanding_export` membaca lima kolom lebih banyak daripada `outstanding_list`, tetapi
+// BARISNYA harus sama persis: berkas unduhan adalah layar yang sedang dilihat pengguna, bukan
+// himpunan lain. Satu syarat yang tertinggal saat salah satunya disunting membuat pengguna
+// mengunduh klaim yang tidak pernah muncul di layarnya — tanpa satu pun galat.
+//
+// Urutannya ikut diperiksa dengan alasan yang terpisah: kedua kueri dipaginasi, dan urutan
+// yang berbeda membuat satu baris terbaca dua kali di dua halaman unduhan sementara baris
+// lain tidak pernah terbaca sama sekali.
+func TestExportQueryMatchesListQuery(t *testing.T) {
+	require.Equal(t,
+		whereClause(t, query("outstanding_list")),
+		whereClause(t, query("outstanding_export")),
+		"syarat WHERE outstanding_export berbeda dari outstanding_list — "+
+			"yang diunduh bukan yang terlihat di layar")
+
+	require.Equal(t,
+		orderClause(t, query("outstanding_list")),
+		orderClause(t, query("outstanding_export")),
+		"urutan outstanding_export berbeda — paginasi unduhan akan melewatkan baris")
+}
+
+// TestExportQueryAvoidsBareScalarSubquery menjaga satu kegagalan yang sudah terbukti.
+//
+// Bentuk Pega `(SELECT r.FINISHREGISTERDATE FROM POOLDATA.T_CLAIM_PNC r WHERE …)` menghasilkan
+// **ORA-01427** karena tabel itu memuat sampai empat baris untuk satu `CLAIMNO`. Diuji
+// langsung terhadap Oracle sebelum kueri ini ditulis: bentuk telanjang gagal, bentuk ber-MAX
+// lolos.
+//
+// Penjaganya ditulis sebagai larangan tekstual, bukan sebagai uji terhadap basis data, supaya
+// ia tetap berjalan di mesin yang tidak punya Oracle — dan karena yang perlu dicegah memang
+// penulisan ulang bentuk telanjangnya oleh orang yang menyalin dari XML Pega.
+func TestExportQueryAvoidsBareScalarSubquery(t *testing.T) {
+	sql := query("outstanding_export")
+
+	for _, terlarang := range []string{
+		"SELECT r.FINISHREGISTERDATE",
+		"SELECT e.TSI",
+	} {
+		require.NotContains(t, sql, terlarang,
+			"sub-kueri skalar telanjang %q menghasilkan ORA-01427 pada klaim "+
+				"yang punya lebih dari satu baris pasangan — bungkus dengan MAX()", terlarang)
+	}
+
+	require.Contains(t, sql, "SELECT MAX(r.FINISHREGISTERDATE)")
+	require.Contains(t, sql, "SELECT MAX(e.TSI)")
+}
+
 // TestCountAndListMayDifferForSurveyTiles menjaga keputusan Work Owner 2026-09-26.
 //
 // Pada kedua tile survei, kueri hitung dan kueri daftar MEMANG membaca tabel yang berbeda:
@@ -167,9 +222,23 @@ func TestCountAndListMayDifferForSurveyTiles(t *testing.T) {
 // setara dengan sistem lama.
 //
 // DIPERBARUI 2026-10-08: syarat "harus menggabung ke PC_ASSIGN_WORKLIST" diganti "tidak boleh
-// menyentuh DATAPEGA sama sekali". Kedua tabel Pega menyatu di POOLDATA.T_CLAIMLIST_ADMIN,
-// sehingga join itu hilang — dan bersamanya hilang pula penggandaan baris pada klaim yang
-// memegang lebih dari satu penugasan.
+// menyentuh DATAPEGA sama sekali".
+//
+// DIPERBARUI 2026-10-12: syarat "harus memakai COALESCE(SUM(" DICABUT.
+//
+// Bentuk `SUM(CASE WHEN (…) > 0 THEN 1 ELSE 0 END)` dipakai Pega karena berkas survei berada
+// di TABEL YANG SAMA dengan klaimnya, sehingga satu-satunya cara menghitung klaim adalah
+// menjumlahkan penanda per baris. Setelah berkas survei pindah ke POOLDATA.T_SURVEYORLIST
+// (tabel terpisah), bentuk itu tidak lagi punya alasan — dan menirunya hanya meniru bentuk,
+// bukan arti.
+//
+// Yang dijaga sekarang ARTINYA, dan itu yang sejak awal menjadi maksud uji ini:
+//
+//	loss_adjuster_count       menghitung KLAIM   -> COUNT(DISTINCT A.PZINSKEY)
+//	internal_surveyor_count   menghitung BERKAS  -> COUNT(*) atas berkas
+//
+// Perbedaan satuan itu keputusan Work Owner 2026-09-26 (`P-5`), dan ia yang membuat angka
+// kartu tidak sama dengan jumlah baris telusurnya.
 func TestSurveyCountsRunOverClaimTable(t *testing.T) {
 	for _, name := range []string{"loss_adjuster_count", "internal_surveyor_count"} {
 		statement := query(name)
@@ -178,10 +247,38 @@ func TestSurveyCountsRunOverClaimTable(t *testing.T) {
 			"kueri %s harus berjalan atas tabel klaim", name)
 		require.Containsf(t, statement, "POOLDATA.T_CLAIMLIST_ADMIN",
 			"kueri %s harus berjalan atas tabel datar, bukan tabel Pega", name)
+		require.Containsf(t, statement, "POOLDATA.T_SURVEYORLIST",
+			"kueri %s harus membaca berkas survei dari tabelnya sendiri", name)
 		require.NotContainsf(t, statement, "DATAPEGA.",
 			"kueri %s masih menyentuh skema DATAPEGA, yang sudah tidak dipakai lagi", name)
-		require.Containsf(t, statement, "COALESCE(SUM(",
-			"kueri %s harus memakai SUM(CASE …) seperti kueri lamanya, dibungkus COALESCE", name)
+	}
+
+	// Satuan hitungnya dijaga per kueri, bukan diseragamkan — lihat catatan di atas.
+	require.Contains(t, query("loss_adjuster_count"), "COUNT(DISTINCT A.PZINSKEY)",
+		"loss_adjuster_count harus menghitung KLAIM, bukan berkas survei")
+	require.Contains(t, query("internal_surveyor_count"), "COUNT(*)",
+		"internal_surveyor_count harus menghitung BERKAS survei, bukan klaim")
+}
+
+// TestSurveyLinksFilesToClaimsByTheMeasuredKey menjaga satu-satunya tautan yang benar.
+//
+// `T_SURVEYORLIST` punya DUA kolom berbentuk kunci Pega dan keduanya mudah tertukar:
+//
+//	PNCCASEID  menaut ke klaim    -> cocok 113 dari 113 terhadap PZINSKEY (diukur 2026-10-12)
+//	CASEID     kunci kasus survei -> cocok 0; ia BUKAN penaut
+//
+// Memakai `CASEID` sebagai penaut tidak menghasilkan galat — ia menghasilkan NOL BARIS, dan
+// nol baris pada tile tidak dapat dibedakan dari "memang tidak ada survei".
+func TestSurveyLinksFilesToClaimsByTheMeasuredKey(t *testing.T) {
+	for _, name := range []string{
+		"loss_adjuster_count", "loss_adjuster_list",
+		"internal_surveyor_count", "internal_surveyor_list",
+	} {
+		statement := strings.Join(strings.Fields(query(name)), " ")
+		require.Containsf(t, statement, "PNCCASEID",
+			"kueri %s harus menaut berkas survei lewat PNCCASEID", name)
+		require.NotContainsf(t, statement, "s.CASEID = A.PZINSKEY",
+			"kueri %s menaut lewat CASEID — itu kunci kasus survei, bukan penaut ke klaim", name)
 	}
 }
 
@@ -191,12 +288,15 @@ func TestSurveyCountsRunOverClaimTable(t *testing.T) {
 // kueri memang berbeda struktur — bukan satu kueri berparameter. Uji ini yang menjaga
 // keduanya tidak tertukar saat disunting.
 func TestSurveyorTypeIsPinnedPerQuery(t *testing.T) {
+	// Nama kolomnya berubah 2026-10-12 bersama sumbernya: `SURVEYORTYPE_1` pada tabel kerja
+	// Pega menjadi `SURVEYTYPE` pada POOLDATA.T_SURVEYORLIST. Nilainya TIDAK berubah —
+	// '2' loss adjuster eksternal, '1' surveyor internal ASM.
 	for _, name := range []string{"loss_adjuster_count", "loss_adjuster_list"} {
-		require.Containsf(t, query(name), "SURVEYORTYPE_1 = '2'",
+		require.Containsf(t, query(name), "SURVEYTYPE = '2'",
 			"kueri %s harus menyaring loss adjuster", name)
 	}
 	for _, name := range []string{"internal_surveyor_count", "internal_surveyor_list"} {
-		require.Containsf(t, query(name), "SURVEYORTYPE_1 = '1'",
+		require.Containsf(t, query(name), "SURVEYTYPE = '1'",
 			"kueri %s harus menyaring surveyor internal", name)
 	}
 }
@@ -408,6 +508,43 @@ func TestOnlyPICMovesWritePegaSchema(t *testing.T) {
 	}
 }
 
+// Kolom "Nama Admin" pada unduhan memakai cadangan, bukan kolom polos.
+//
+// `PYORIGUSERID` terisi 1 dari 2.930 baris di tabel datar ini, karena Pega menyimpannya di
+// `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` yang tidak boleh kami baca (`D-21`). Cadangannya
+// `PXCREATEOPERATOR` — satu-satunya dari ketiga kolom admin yang ditulis `INSERT` klaim baru.
+//
+// Uji ini ada karena `A.PYORIGUSERID AS NAMA_ADMIN` terbaca WAJAR dan lebih mirip Pega,
+// sehingga mudah dikembalikan oleh orang yang belum tahu kolomnya kosong. Alasan lengkapnya
+// di `outstanding.sql` tepat di atas kueri `outstanding_export`.
+func TestExportNamaAdminFallsBackToCreateOperator(t *testing.T) {
+	statement := query("outstanding_export")
+
+	require.Contains(t, strings.ToUpper(statement),
+		"COALESCE(A.PYORIGUSERID, A.PXCREATEOPERATOR) AS NAMA_ADMIN",
+		"kolom Nama Admin harus memakai cadangan PXCREATEOPERATOR; PYORIGUSERID sendirian "+
+			"terisi 1 dari 2.930 baris")
+	require.NotContains(t, strings.ToUpper(statement), "A.PYORIGUSERID      AS NAMA_ADMIN",
+		"kolom polos PYORIGUSERID akan membuat Nama Admin kosong di hampir semua baris")
+}
+
+// Kueri daftar dan unduhan membaca tabel datar POOLDATA, bukan skema Pega.
+//
+// `TestOnlyPICMovesWritePegaSchema` di atas hanya melarang MENULIS ke DATAPEGA. Uji ini
+// melengkapi sisi lainnya: jalur yang menggambar layar dan berkas unduhan tidak boleh
+// MEMBACA-nya pun.
+//
+// Alasannya bukan selera. `D-21` menetapkan satu tabel satu penulis selama masa paralel, dan
+// skema DATAPEGA masih dimiliki Pega. Membaca dari sana berarti angka di layar kami berubah
+// ketika Pega menulis, di luar kendali modul ini — dan `P-1` menjadi tidak dapat ditegakkan.
+// Pengecualiannya hanya Pindah PIC, yang memang sengaja menulis ke sana lewat `D-63`.
+func TestListAndExportQueriesAvoidPegaSchema(t *testing.T) {
+	for _, name := range listQueries {
+		require.NotContainsf(t, strings.ToUpper(query(name)), "DATAPEGA.",
+			"kueri %s membaca skema DATAPEGA; tabel datar POOLDATA yang dipakai (`D-21`)", name)
+	}
+}
+
 // TestNoForbiddenSQLPatterns menjaga aturan §4.3 dan §6 Technical Strategy.
 //
 // Pemeriksaan pola SQL terlarang wajib berjalan di CI dan memblokir merge. Uji ini
@@ -483,6 +620,22 @@ func whereClause(t *testing.T, statement string) string {
 
 	clause := statement[start:]
 	if end := outerKeyword(clause, "ORDER BY"); end >= 0 {
+		clause = clause[:end]
+	}
+	return strings.Join(strings.Fields(clause), " ")
+}
+
+// orderClause memotong klausa ORDER BY TERLUAR, membuang paginasi di belakangnya.
+//
+// Kedalaman kurung dihitung dengan alasan yang sama seperti whereClause.
+func orderClause(t *testing.T, statement string) string {
+	t.Helper()
+
+	start := outerKeyword(statement, "ORDER BY")
+	require.GreaterOrEqual(t, start, 0, "pernyataan tanpa klausa ORDER BY di kedalaman nol")
+
+	clause := statement[start:]
+	if end := outerKeyword(clause, "OFFSET"); end >= 0 {
 		clause = clause[:end]
 	}
 	return strings.Join(strings.Fields(clause), " ")
@@ -638,7 +791,34 @@ func TestProbesNameEveryColumnTheyGuard(t *testing.T) {
 		// ada membuat kueri gagal sama saja dengan kolom yang dibaca.
 		"klaim_rincian_check": {dijaga: "klaim_rincian", kolom: []string{
 			"PYID", "PZINSKEY", "PYSTATUSWORK", "STATUSCLAIM_1", "USERTEKNIS_1",
-			"PXCREATEOPNAME", "PXCREATEDATETIME", "DATA_JSON", "IDPEGA", "PXOBJCLASS",
+			"PXCREATEOPNAME", "PXCREATEDATETIME", "PXOBJCLASS",
+			// Cadangan status dari tabel klaim warisan — lihat rincian.sql.
+			// DATA_JSON dan IDPEGA DILEPAS 2026-10-12: isi popup tidak lagi dari dokumen JSON.
+			"STATUSCLAIM", "CLAIMID",
+		}},
+
+		// Kedua kolom penaut didaftarkan dengan sengaja: `PNCCASEID` dan `PZINSKEY` adalah
+		// yang menyambungkan berkas survei ke klaimnya, dan ketiadaan salah satunya persis
+		// kegagalan 2026-10-08 (`CASEID_1` yang tidak ada di tabel mana pun).
+		// Kolom kunci `LOGIN_ID` ikut disebut: tanpa itu probe lulus sementara pembacaan
+		// grup gagal, dan SETIAP pengguna jatuh ke baca-saja tanpa satu pun galat.
+		"grup_pengguna_check": {dijaga: "grup_pengguna", kolom: []string{"LOGIN_ID", "GROUP_ID"}},
+
+		// Tujuh tabel bagian isi popup — satu probe, satu pasangan. Yang dijaga di sini
+		// kueri ADJUSTMENT, yang paling banyak kolomnya; keenam lainnya ikut dalam probe yang
+		// sama dan tidak dapat lolos sendiri.
+		"rincian_bagian_check": {dijaga: "rincian_adjustment", kolom: []string{
+			"NOAKSEPTASI", "TGLAKSEPTASI", "STATUSAKSEPTASI", "PAYMENTTYPE", "RECEIVERNAME",
+			"CURRENCY", "NILAIAKSEPTASI", "PROPOSE_VALUE", "TOTAL_CLAIM",
+			"TRANSFER_CASHIER_DATE", "CLAIM_STATUS_PAID",
+		}},
+
+		"survey_check": {dijaga: "internal_surveyor_list", kolom: []string{
+			"CASEID", "PNCCASEID", "INDEX_SURVEY", "SURVEYTYPE", "SURVEYOR_NAME",
+			"ADJUSTER_PIC", "STS_SURVEY", "REFNO", "RESCHEDULE_LOCATION",
+			"PYSTATUSWORK", "SURVEYDATE", "TGLINPUT",
+			"PZINSKEY", "PYID", "POLICYNO", "QQNAME", "USERTEKNIS_1",
+			"BRANCHNAME", "PXFLOWNAME", "PXTASKLABEL", "GROUPPANEL_1", "PXOBJCLASS",
 		}},
 	}
 

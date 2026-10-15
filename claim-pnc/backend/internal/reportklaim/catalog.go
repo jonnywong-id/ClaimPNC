@@ -1,10 +1,10 @@
 package reportklaim
 
-// Catalog adalah ke-28 panel pada layar Report Klaim.
+// Catalog adalah ke-23 panel pada layar Report Klaim.
 //
 // # Urutannya
 //
-// Dikelompokkan menurut Group supaya 28 kartu tetap terbaca di layar. Urutan ASLI harness
+// Dikelompokkan menurut Group supaya 23 kartu tetap terbaca di layar. Urutan ASLI harness
 // tetap tersimpan pada pegaOrder dan dikembalikan CatalogInPegaOrder — siapa pun yang
 // perlu mencocokkan modul ini dengan layar lama membacanya dari sana, bukan dari sini.
 //
@@ -15,7 +15,7 @@ package reportklaim
 // bagi seluruh aplikasi, dan tidak ada apa pun yang mencegahnya. Fungsi mengembalikan
 // salinan barunya setiap kali.
 func Catalog() []Report {
-	out := make([]Report, 0, 28)
+	out := make([]Report, 0, 23)
 	out = append(out, catalogKlaim()...)
 	out = append(out, catalogReasuransi()...)
 	out = append(out, catalogPenyelesaian()...)
@@ -30,6 +30,17 @@ func Catalog() []Report {
 // Ia dicatat karena ia satu-satunya urutan yang DAPAT DIVERIFIKASI terhadap layar lama.
 // Pengelompokan pada Catalog adalah penambahan yang disadari (lihat Group); urutan ini
 // bukan.
+//
+// # Urutannya mengalir KIRI-KANAN, bukan ke bawah
+//
+// Layar Pega menyusun panelnya dalam DUA KOLOM. Urutan di sini urutan baca — kiri, kanan,
+// lalu turun — dan itu sebabnya ia cocok dengan layar produksi tanpa diubah sama sekali
+// ketika tata letaknya diperbaiki menjadi dua kolom pada 2026-10-13.
+//
+// # Lima panel yang dicabut
+//
+// Daftar ini sempat memuat 28. Lima dicabut karena tidak ada di Pega produksi — lihat
+// catatan di kepala catalogLiniBisnis.
 var pegaOrder = []Code{
 	CodeTAT,
 	CodeMitra,
@@ -45,17 +56,12 @@ var pegaOrder = []Code{
 	CodeDLA,
 	CodePengirimanPLA,
 	CodePengirimanDLA,
-	CodeKomunikasiKlaim,
 	CodeAIKlaim,
 	CodeKasirSudahBayar,
 	CodeKasirBelumBayar,
-	CodeKlaimAsuransiKredit,
 	CodePendingLOD,
 	CodeRegistSimasOnline,
-	CodeKlaimPerBisnis,
-	CodeKlaimTraveloka,
 	CodeAkseptasi,
-	CodeKlaimPegiPegi,
 	CodeOSKomite,
 	CodeOSBelumKomite,
 	CodeKomite,
@@ -63,7 +69,7 @@ var pegaOrder = []Code{
 
 // CatalogInPegaOrder mengembalikan katalog dalam urutan tumpukan panel di harness.
 func CatalogInPegaOrder() []Report {
-	byCode := make(map[Code]Report, 28)
+	byCode := make(map[Code]Report, 23)
 	for _, r := range Catalog() {
 		byCode[r.Code] = r
 	}

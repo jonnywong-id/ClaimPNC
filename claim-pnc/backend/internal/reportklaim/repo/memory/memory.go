@@ -66,14 +66,7 @@ func (r *Repo) Stream(
 	return nil
 }
 
-// ListBusinessOptions mengembalikan beberapa pilihan bisnis contoh.
-func (r *Repo) ListBusinessOptions(context.Context) ([]reportklaim.BusinessOption, error) {
-	return []reportklaim.BusinessOption{
-		{Code: "10076", Name: "Contoh Bisnis Aneka"},
-		{Code: "10043", Name: "Contoh Bisnis Heavy Equipment"},
-		{Code: "10083", Name: "Contoh Bisnis Bonding"},
-	}, nil
-}
+// ListBusinessOptions berdiri di sini sampai 2026-10-13, dicabut bersama panelnya.
 
 // Selector mengembalikan RepoSelector yang melayani SATU alias portal saja.
 //

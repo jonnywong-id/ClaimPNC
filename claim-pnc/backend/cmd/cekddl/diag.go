@@ -29,13 +29,6 @@ func diagnosaNolBaris(ctx context.Context, db *sql.DB) {
 		judul string
 		uji   [][2]string
 	}{
-		{"report_klaim_pegipegi", [][2]string{
-			{"klaim Travel seluruhnya",
-				`SELECT COUNT(*) FROM pooldata.t_claim_pnc WHERE grouppanel = '005'`},
-			{"+ berawalan polis mitra", // nilai awalannya tidak dicetak
-				`SELECT COUNT(*) FROM pooldata.t_claim_pnc WHERE grouppanel = '005' AND nopolis LIKE '122N%'`},
-		}},
-
 		{"report_komite_nonmbu", [][2]string{
 			{"rantai join lengkap + Non-MBU",
 				`SELECT COUNT(*)` + rantaiKomite},
@@ -94,19 +87,6 @@ func diagnosaNolBaris(ctx context.Context, db *sql.DB) {
 				                         FROM pooldata.t_claim_komite_list f
 				                        WHERE f.statusapprove = '1'
 				                          AND f.no_klaim = d.pyid)`},
-		}},
-
-		{"report_klaim_per_bisnis", [][2]string{
-			{"baris dashboard seluruhnya",
-				`SELECT COUNT(*) FROM pooldata.pega_dashboardpnc`},
-			{"+ punya klaim yang cocok nomornya",
-				`SELECT COUNT(*) FROM pooldata.pega_dashboardpnc a
-				  WHERE EXISTS (SELECT 1 FROM pooldata.t_claim_pnc p WHERE p.claimno = a.noklaim)`},
-			{"kode bisnis yang BENAR-BENAR dipakai klaim",
-				`SELECT COUNT(DISTINCT p.businesscode) FROM pooldata.t_claim_pnc p`},
-			{"  di antaranya ada di daftar pilihan panel",
-				`SELECT COUNT(DISTINCT p.businesscode) FROM pooldata.t_claim_pnc p
-				  WHERE p.businesscode IN (SELECT id FROM pooldata.business WHERE note IS NOT NULL)`},
 		}},
 	}
 

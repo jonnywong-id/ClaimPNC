@@ -24,12 +24,19 @@ import (
 type Service interface {
 	Counts(ctx context.Context, q usecase.Query) (usecase.CountsResult, error)
 	List(ctx context.Context, q usecase.ListQuery) (usecase.ListResult, error)
+
+	// ListForExport melayani berkas unduhan, yang pada tile Outstanding membaca lima kolom
+	// lebih banyak daripada grid. Lihat catatannya di usecase.
+	ListForExport(ctx context.Context, q usecase.ListQuery) (usecase.ListResult, error)
 	Holding(ctx context.Context, q usecase.Query) (usecase.HoldingResult, error)
 	Transfer(ctx context.Context, cmd usecase.TransferCommand) (dashboardclaim.TransferRequest, error)
 	TechnicalPIC(ctx context.Context, q usecase.TechnicalPICQuery) (usecase.TechnicalPICResult, error)
 
 	// ClaimDetail membaca isi popup yang terbuka saat nomor klaim diklik.
 	ClaimDetail(ctx context.Context, q usecase.ClaimDetailQuery) (dashboardclaim.ClaimDetail, error)
+
+	// MayOpenCase menjawab apakah pemanggil boleh membuka klaim untuk DIKERJAKAN.
+	MayOpenCase(ctx context.Context, q usecase.AccessQuery) (bool, error)
 }
 
 // Handler melayani rute Dashboard Claim.
@@ -149,9 +156,9 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 			card(dashboardclaim.TileLossAdjuster, counts.LossAdjuster),
 			card(dashboardclaim.TileInternalSurveyor, counts.InternalSurveyor),
 		},
-		LiniBisnis:       string(result.Filter.Business),
-		Portal:           active.Alias,
-		CatatanWarisan:   inheritedNotes(),
+		LiniBisnis:     string(result.Filter.Business),
+		Portal:         active.Alias,
+		CatatanWarisan: inheritedNotes(),
 	})
 }
 
@@ -268,11 +275,33 @@ func (h *Handler) Metadata(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Link mana yang dipasang pada nomor klaim — dua aksi Pega, dipilih di server.
+	//
+	// Galatnya SENGAJA TIDAK membatalkan jawaban: penyaring membentuk kerangka layar, dan
+	// menggagalkannya hanya karena grup tidak terbaca akan membuat seluruh Dashboard Claim
+	// kosong padahal datanya sehat. Yang terjadi bila gagal adalah jatuh ke BACA SAJA —
+	// sisi yang aman — dan sebabnya masuk log, bukan hilang.
+	bolehBuka := false
+	if caller, ada := h.caller(r.Context()); ada {
+		izin, err := h.service.MayOpenCase(r.Context(), usecase.AccessQuery{
+			PortalAlias: active.Alias,
+			Identity:    caller.Identity,
+		})
+		if err != nil {
+			h.logger.WarnContext(r.Context(),
+				"grup pengguna tidak terbaca; nomor klaim dipasang sebagai baca-saja",
+				slog.String("jalur", r.URL.Path),
+				slog.String("galat", err.Error()))
+		}
+		bolehBuka = izin
+	}
+
 	h.writeResponse(w, r, http.StatusOK, metadataResponse{
 		LiniBisnis:     choices,
 		StatusTransfer: cashierChoices,
 		StatusBayar:    paymentChoices,
 		TipePengguna:   typeChoices,
+		BolehBukaCase:  bolehBuka,
 		Tile:           tileList,
 		Portal:         active.Alias,
 	})

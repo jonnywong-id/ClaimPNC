@@ -551,15 +551,23 @@ func TestTanggalDiformatWIB(t *testing.T) {
 // Rincian klaim dibaca lewat rutenya sendiri, bukan ikut pada daftar.
 //
 // Di Pega ia popup yang datanya diambil SAAT diklik (`setDataViewKlaim_Act` →
-// `ViewTempDetailClaim`, `pyTarget: popup`). Menyertakan dokumen JSON pada setiap baris
-// daftar akan membawa puluhan dokumen klaim pada setiap pemuatan halaman.
+// `ViewTempDetailClaim`, `pyTarget: popup`). Menyertakan isinya pada setiap baris daftar
+// akan membawa tujuh bagian untuk puluhan klaim pada setiap pemuatan halaman.
+//
+// Ketujuh bagian wajib berupa LARIK, tidak pernah `null`: `[]` dan `null` berarti hal
+// yang sama bagi layar, dan dua bentuk untuk satu arti hanya menambah cabang.
 func TestClaimDetailRoute(t *testing.T) {
 	server := testServer(t)
 
 	body := decode(t, get(t, server, "/api/dashboard-claim/klaim/CONTOH-BERJALAN-1"))
 
 	require.Equal(t, "CONTOH-BERJALAN-1", body["klaim_id"])
-	require.NotNil(t, body["dokumen"], "dokumen null memaksa layar menjaga satu keadaan lagi")
+	for _, bagian := range []string{
+		"penerima", "objek", "coverage", "adjustment", "survey", "lampiran", "progres",
+	} {
+		require.NotNilf(t, body[bagian],
+			"bagian %q bernilai null — layar tidak boleh menjaga dua bentuk untuk satu arti", bagian)
+	}
 }
 
 // Rute rincian TIDAK boleh tertangkap pola "/{tile}".

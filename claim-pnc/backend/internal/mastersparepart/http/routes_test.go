@@ -402,6 +402,40 @@ func TestOptionsReturnsBothLookups(t *testing.T) {
 	require.Equal(t, "KAT01", partType[0].(map[string]any)["kode_kategori"])
 }
 
+// Keempat penanda disajikan beserta labelnya, pada urutan rule Pega.
+//
+// Urutannya ikut diperiksa, bukan hanya isinya: `REPEATINGINDEX` pada rule Property
+// menentukan urutan yang dilihat petugas pada dropdown hari ini, dan mengurutkannya ulang
+// mengubah layar tanpa alasan.
+func TestOptionsReturnsFlagChoices(t *testing.T) {
+	p := newTestServer(t)
+
+	_, content := p.call(t, http.MethodGet, "/api/master/sparepart/pilihan", "ASM", "")
+
+	for _, tc := range []struct {
+		field string
+		want  [][2]string
+	}{
+		{"jenis_sparepart", [][2]string{{"1", "Fast Moving"}, {"2", "Non Fast Moving"}}},
+		// Satu pilihan, labelnya memang KOSONG di rule Pega.
+		{"satuan", [][2]string{{"1", ""}}},
+		// "Non AKtif" adalah ejaan asli Pega; diperiksa apa adanya supaya perapiannya
+		// kelak menjadi keputusan yang terlihat, bukan perubahan diam-diam.
+		{"status_aktif", [][2]string{{"1", "Aktif"}, {"0", "Non AKtif"}}},
+		{"status_sparepart", [][2]string{{"1", "AVAILABLE"}, {"0", "RARE"}}},
+	} {
+		list, ok := content[tc.field].([]any)
+		require.Truef(t, ok, "%s tidak ada di jawaban /pilihan", tc.field)
+		require.Lenf(t, list, len(tc.want), "jumlah pilihan %s", tc.field)
+
+		for i, want := range tc.want {
+			one := list[i].(map[string]any)
+			require.Equalf(t, want[0], one["nilai"], "%s urutan ke-%d: nilai", tc.field, i+1)
+			require.Equalf(t, want[1], one["label"], "%s urutan ke-%d: label", tc.field, i+1)
+		}
+	}
+}
+
 // `/pilihan` tidak pernah terbaca sebagai sebuah ID sparepart.
 func TestStaticSegmentsAreNotTreatedAsID(t *testing.T) {
 	p := newTestServer(t)

@@ -250,7 +250,7 @@ func TestLocationInsertHasFourArguments(t *testing.T) {
 	text := strings.ToUpper(getQuery("panel_location_insert"))
 
 	// Keempat kolomnya disebut, dan NAMA adalah yang keempat. Lihat banner
-	// masterpanel.sql: nilainya sengaja sama dengan LOKASI_PANEL.
+	// masterpanel.sql: nilainya NAMA PANEL induk, bukan nama lokasinya.
 	for _, column := range []string{"ID_PANEL", "LOKASI_PANEL", "SISI_PANEL", "NAMA"} {
 		require.Containsf(t, text, column, "panel_location_insert harus menyebut %s", column)
 	}

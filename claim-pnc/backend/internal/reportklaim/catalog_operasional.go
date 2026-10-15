@@ -6,7 +6,6 @@ const (
 	CodeProduksiKlaimPA Code = "produksi-klaim-pa"
 	CodeCompliance      Code = "compliance"
 	CodeAdjuster        Code = "adjuster"
-	CodeKomunikasiKlaim Code = "komunikasi-klaim"
 )
 
 // catalogOperasional menyusun kelima panel kelompok Operasional.
@@ -94,9 +93,9 @@ func catalogOperasional() []Report {
 			},
 		},
 		{
-			Code:         CodeCompliance,
-			Title:        "REPORT COMPLIANCE",
-			Group:        GroupOperasional,
+			Code:  CodeCompliance,
+			Title: "REPORT COMPLIANCE",
+			Group: GroupOperasional,
 			// Label tombolnya MENYEBUTKAN keterbatasannya, dan itu disengaja.
 			//
 			// Laporan ini berjalan tanpa penyaring Status Compliance — properti penyaringnya
@@ -105,7 +104,10 @@ func catalogOperasional() []Report {
 			//
 			// Perbedaan sebesar itu tidak boleh hanya tertulis di dokumen. Ia ditaruh di
 			// tempat yang pasti terbaca: tombol yang ditekan pengguna.
-			Actions:      oneAction("Export Data Compliance (tanpa penyaring status)", nil),
+			// Label PERSIS seperti Pega. Keterangan "tanpa penyaring status" sempat
+			// ditempelkan ke sini; tempatnya di dokumen dan di komentar kueri, bukan di
+			// tombol yang dibaca pengguna setiap hari.
+			Actions:      oneAction("Export Data Compliance", nil),
 			FileBaseName: "Laporan Compliance",
 			// Radio "Status Compliance" dipakai HANYA oleh panel ini — di seluruh
 			// harness, `TempAdjComp.ComplianceStatus` tidak muncul di panel lain mana pun.
@@ -214,25 +216,7 @@ func catalogOperasional() []Report {
 				always("10 kolom", colsAdjuster),
 			},
 		},
-		{
-			Code:  CodeKomunikasiKlaim,
-			Title: "REPORT DATA KOMUNIKASI KLAIM",
-			Group: GroupOperasional,
-			// Label tombolnya seluruhnya huruf besar dan tidak berawalan "Export",
-			// menyimpang dari 28 tombol lainnya. Disalin apa adanya.
-			Actions:      oneAction("REPORT KOMUNIKASI KLAIM", nil),
-			FileBaseName: "Report Inbox Komunikasi",
-			// `ReportDataInboxKomunikasi_Klaim` tidak menerima satu pun parameter — ia
-			// mengambil SELURUH percakapan. Tidak ada isian yang aktif pada kartunya.
-			Uses: 0,
-			Source: Source{
-				Activity: "PNCReportDataKominukasiAdjusterKlaim",
-				SQLRule:  []string{"ReportDataInboxKomunikasi_Klaim"},
-			},
-			Availability: Ready(),
-			variants: []variant{
-				always("7 kolom", colsKomunikasiKlaim),
-			},
-		},
+		// REPORT DATA KOMUNIKASI KLAIM berdiri di sini sampai 2026-10-13, lalu dicabut:
+		// ia TIDAK ADA di Pega produksi. Lihat catatan di kepala catalogLiniBisnis.
 	}
 }

@@ -31,6 +31,23 @@ func (r *Repo) CountOutstanding(ctx context.Context, f dashboardclaim.Filter) (i
 // Kedua kueri dijalankan dari argumen penyaring YANG SAMA, bukan disusun dua kali: itulah
 // yang membuat angka pada kartu dan jumlah baris pada telusurnya tidak dapat menyimpang.
 func (r *Repo) ListOutstanding(ctx context.Context, f dashboardclaim.Filter) (dashboardclaim.ClaimPage, error) {
+	return r.listOutstanding(ctx, f, "outstanding_list", false)
+}
+
+// ListOutstandingExport membaca halaman yang sama beserta lima kolom berkas unduhan.
+//
+// Ia memanggil jalur yang SAMA dengan ListOutstanding dan hanya menukar nama kueri, supaya
+// penyaring, paginasi, dan penghitungan totalnya tidak dapat menyimpang di antara keduanya.
+func (r *Repo) ListOutstandingExport(ctx context.Context, f dashboardclaim.Filter) (dashboardclaim.ClaimPage, error) {
+	return r.listOutstanding(ctx, f, "outstanding_export", true)
+}
+
+func (r *Repo) listOutstanding(
+	ctx context.Context,
+	f dashboardclaim.Filter,
+	namaKueri string,
+	lengkap bool,
+) (dashboardclaim.ClaimPage, error) {
 	f = f.Normalize()
 	filters := outstandingFilterArgs(f)
 
@@ -39,7 +56,7 @@ func (r *Repo) ListOutstanding(ctx context.Context, f dashboardclaim.Filter) (da
 		return dashboardclaim.ClaimPage{}, fmt.Errorf("dashboardclaim/sqlstore: menghitung klaim berjalan: %w", err)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query("outstanding_list"), withPaging(filters, f)...)
+	rows, err := r.db.QueryContext(ctx, query(namaKueri), withPaging(filters, f)...)
 	if err != nil {
 		return dashboardclaim.ClaimPage{}, fmt.Errorf("dashboardclaim/sqlstore: membaca daftar klaim berjalan: %w", err)
 	}
@@ -47,7 +64,7 @@ func (r *Repo) ListOutstanding(ctx context.Context, f dashboardclaim.Filter) (da
 
 	result := make([]dashboardclaim.ClaimRow, 0, f.Limit)
 	for rows.Next() {
-		row, err := scanClaimRow(rows)
+		row, err := scanClaimRow(rows, lengkap)
 		if err != nil {
 			return dashboardclaim.ClaimPage{}, fmt.Errorf("dashboardclaim/sqlstore: membaca baris klaim: %w", err)
 		}
@@ -67,7 +84,11 @@ func (r *Repo) ListOutstanding(ctx context.Context, f dashboardclaim.Filter) (da
 // Urutan pemindaiannya WAJIB sama dengan urutan kolom pada `outstanding_list`. Keduanya
 // dijaga berdampingan supaya penambahan kolom yang lupa diikuti pemindainya gagal saat uji,
 // bukan menggeser seluruh nilai satu kolom tanpa galat apa pun.
-func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
+//
+// `lengkap` menambahkan lima kolom terakhir `outstanding_export`. Satu pemindai untuk kedua
+// kueri, bukan dua: lima belas kolom pertama keduanya identik, dan menyalinnya berarti dua
+// daftar urutan yang dapat menyimpang tanpa ada yang menandainya.
+func scanClaimRow(s scanner, lengkap bool) (dashboardclaim.ClaimRow, error) {
 	var (
 		claimID          sql.NullString
 		claimNumber      sql.NullString
@@ -88,9 +109,21 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		// Dulu sumbernya `RECEIVEDDATE_1` objek kerja Pega — TEKS bergaya
 		// `20200106T142602.000 GMT` — yang tidak ada di `T_CLAIMLIST_ADMIN`.
 		reportDate sql.NullTime
+
+		// Kelima berikut hanya terisi pada `outstanding_export`.
+		//
+		// TSI dan estimasi dipindai ke STRING, bukan float64: keduanya nilai uang, dan
+		// `93.980.904.506.106` tidak muat utuh di float64 (`09-DATABASE-STRATEGY` §5).
+		// Diuji langsung terhadap Oracle — go-ora memindai NUMBER ke string tanpa
+		// kehilangan satu digit pun, sehingga tidak perlu TO_CHAR di sisi SQL.
+		tsi                sql.NullString
+		estimateIDR        sql.NullString
+		originUser         sql.NullString
+		assignedOperator   sql.NullString
+		transferredToPICAt sql.NullTime
 	)
 
-	if err := s.Scan(
+	dest := []any{
 		&claimID,
 		&claimNumber,
 		&policyNumber,
@@ -106,7 +139,18 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		&lossDate,
 		&reportDate,
 		&registeredAt,
-	); err != nil {
+	}
+	if lengkap {
+		dest = append(dest,
+			&tsi,
+			&estimateIDR,
+			&originUser,
+			&assignedOperator,
+			&transferredToPICAt,
+		)
+	}
+
+	if err := s.Scan(dest...); err != nil {
 		return dashboardclaim.ClaimRow{}, err
 	}
 
@@ -125,6 +169,12 @@ func scanClaimRow(s scanner) (dashboardclaim.ClaimRow, error) {
 		ProcessStatus:    text(processStatus),
 		LossDate:         timeOrNil(lossDate),
 		ReportDate:       timeOrNil(reportDate),
+
+		TSI:                text(tsi),
+		EstimateIDR:        text(estimateIDR),
+		OriginUser:         text(originUser),
+		AssignedOperator:   text(assignedOperator),
+		TransferredToPICAt: timeOrNil(transferredToPICAt),
 	}
 	if registeredAt.Valid {
 		row.RegisteredAt = registeredAt.Time

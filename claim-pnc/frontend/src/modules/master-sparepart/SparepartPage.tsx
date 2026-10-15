@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { SparepartStatus, type Sparepart } from '@/api/types'
 import { useSelectedPortal } from '@/app/portal'
@@ -17,7 +17,6 @@ import {
 import { DocumentField } from './DocumentField'
 import { ImportCSVPanel } from './ImportCSVPanel'
 import { SparepartForm, type SparepartFormValues } from './SparepartForm'
-import { compareCodeUnits } from '@/lib/sort'
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -66,14 +65,6 @@ type TabId = (typeof TABS)[number]['id']
  * seluruh layar; angkanya milik layar, bukan milik komponen tabel.
  */
 const PAGE_SIZE = 30
-
-/** Kolom penanda yang nilai sahnya tidak ada di export; pilihannya dikumpulkan dari data. */
-const MARK_COLUMNS = [
-  'jenis_sparepart',
-  'satuan',
-  'status_aktif',
-  'status_sparepart',
-] as const
 
 /**
  * Kalimat yang mengisi badan grid ketika tidak ada satu pun baris yang tergambar.
@@ -210,26 +201,6 @@ export function SparepartPage() {
 
   const isFormOpen = isAdding || editing !== null
   const rows = list.data?.sparepart ?? []
-
-  /*
-    Pilihan nilai untuk keempat penanda yang daftar pilihannya tidak ada di export (R-16).
-
-    Dikumpulkan dari baris yang SEDANG TERMUAT, bukan dari daftar yang dikarang. Ia jawaban
-    terbaik yang tersedia atas pertanyaan "nilai apa yang sah di kolom ini" — lihat
-    ChoiceField.
-  */
-  const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
-    for (const column of MARK_COLUMNS) {
-      const unique = new Set<string>()
-      for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
-      }
-      collected[column] = [...unique].sort(compareCodeUnits)
-    }
-    return collected
-  }, [rows])
 
   function closeForm() {
     create.reset()
@@ -502,7 +473,6 @@ export function SparepartPage() {
         <section className="mt-5">
           <SparepartForm
             editing={editing}
-            knownValues={knownValues}
             isSaving={create.isPending || save.isPending}
             error={editing ? save.error : create.error}
             onSave={submit}

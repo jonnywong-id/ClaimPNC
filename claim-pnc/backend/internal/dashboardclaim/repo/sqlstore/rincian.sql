@@ -23,46 +23,111 @@
 --	  select data_json as "LSC_ID" from pooldata.json_klaim where idpega = {…}
 --
 -- lalu menguraikannya menjadi ClaimData, ObjectList, ObjectCoverageList, AdjustmentList,
--- ComiteeClaim, ClaimReceiver, Policy, SpreadingRisk, dan Coins — kesembilan kelas itu
--- terbaca dari daftar kelas yang dirujuk activity-nya.
+-- ComiteeClaim, ClaimReceiver, Policy, SpreadingRisk, dan Coins.
 --
--- # KOLOMNYA `data_json`, BUKAN `DATA_JSONBLOB`
+-- ============================================================================
+-- JSON TIDAK DIPAKAI LAGI — KEPUTUSAN WORK OWNER 2026-10-12
+-- ============================================================================
 --
--- `POOLDATA.JSON_KLAIM` memuat KEDUANYA, dan rule yang berbeda membaca yang berbeda:
+-- Kueri di bawah dulu menggabung `POOLDATA.JSON_KLAIM` dan mengembalikan dokumennya utuh.
+-- Gabungan itu DILEPAS. Isi popup kini dibaca dari tabel relasional — lihat
+-- `rincian_bagian.sql`.
 --
---	data_json        GetJsonKlaimPNC            ← layar INI
---	DATA_JSONBLOB    GetBrowseDataAIPA, GetClaimTreaty_SQL, BroswseKlaimByRegisterDate
+-- Sebabnya terukur: `data_json` terisi **721 dari 16.284 baris**, dan hanya **348 dari 2.758**
+-- klaim dashboard punya isinya. Popup karena itu tampil kosong bagi mayoritas klaim — dan di
+-- Pega pun demikian, karena rule-nya membaca kolom yang sama.
 --
--- Yang dipakai di sini `data_json`, karena itu yang dibaca rule layar ini. Memilih yang lain
--- karena "modul sebelah memakainya" adalah tebakan atas kolom yang isinya belum pernah
--- dibandingkan — dan keduanya mungkin memang berbeda isi.
+-- Arahnya juga sudah tertulis di Steering: `R-10` menetapkan di sistem baru data klaim
+-- disimpan sebagai tabel relasional, dan JSON hanya untuk snapshot polis (`D-04`).
 --
 -- # Kuncinya PZINSKEY, dan grid sudah memegangnya
 --
--- `GetJsonKlaimPNC` menyaring `idpega`, yang berpasangan dengan `PZINSKEY` pada tabel kerja.
--- Baris grid sudah membawa `klaim_id` = PZINSKEY, sehingga popup tidak perlu mencarinya ulang
--- lewat nomor klaim — dan dengan begitu tidak ada klaim bernomor kembar yang tertukar.
---
--- # LEFT JOIN, bukan INNER
---
--- Klaim yang belum punya baris di JSON_KLAIM tetap DAPAT DIBUKA, dengan isian kosong. INNER
--- JOIN akan membuatnya menjawab "klaim tidak ditemukan" — padahal klaimnya ada, hanya
--- dokumennya yang belum terbentuk.
+-- Baris grid membawa `klaim_id` = PZINSKEY, sehingga popup tidak perlu mencarinya ulang lewat
+-- nomor klaim — dan dengan begitu tidak ada klaim bernomor kembar yang tertukar.
 
 -- name: klaim_rincian
 -- Bind: :1 PZINSKEY klaim
 SELECT W.PYID            AS NOMOR_KLAIM,
        W.PZINSKEY        AS KLAIM_ID,
        W.PYSTATUSWORK    AS STATUS_PROSES,
-       W.STATUSCLAIM_1   AS STATUS_KLAIM,
+       -- Status klaim dari tabel datar, DENGAN cadangan dari tabel klaim warisan.
+       --
+       -- Diukur 2026-10-12 atas 2.758 klaim di `T_CLAIMLIST_ADMIN`:
+       --
+       --     STATUSCLAIM_1 terisi            2.084
+       --     setelah cadangan ini            2.193   (+109)
+       --
+       -- Tanpa cadangan, popup menjawab "—" pada klaim yang halaman `/registrasi/klaim/:nomor`
+       -- justru menampilkan statusnya — dua layar menampilkan hal berbeda untuk klaim yang
+       -- sama. Itu yang dilaporkan Work Owner pada `PNC-11`.
+       --
+       -- Halaman itu membaca `POOLDATA.T_CLAIM_PNC.STATUSCLAIM`, dan ini membaca kolom yang
+       -- sama — bukan menebak nilainya.
+       COALESCE(W.STATUSCLAIM_1, P.STATUSCLAIM) AS STATUS_KLAIM,
        W.USERTEKNIS_1    AS PIC_TEKNIK,
        W.PXCREATEOPNAME  AS ADMIN_PNC,
        W.PXCREATEDATETIME AS DIDAFTARKAN_PADA,
-       J.DATA_JSON       AS DOKUMEN
+       -- Lini bisnis klaim, dipakai layar memilih varian grid.
+       --
+       -- Dulu kedua nilai ini diambil dari dokumen JSON. Setelah dokumen itu dilepas,
+       -- keduanya HARUS ikut di kepala: tanpa itu penjaga IsPA/IsHE/IsFire tidak punya
+       -- bahan, dan layar akan menyatakan setiap klaim "tidak termasuk yang digambar".
+       W.GROUPPANEL_1    AS GROUP_PANEL,
+       P.POLIS_JENIS_BISNIS AS JENIS_BISNIS,
+       -- "Catatan dari Inputor" pada kepala popup — dulu dari ClaimData.Remark di dokumen.
+       --
+       -- "Aging Amount" yang berdampingan dengannya TIDAK punya padanan relasional: ia milik
+       -- data polis (Policy.AgingAmount), dan polis bukan milik bounded context ini (D-04).
+       -- Isiannya karena itu tetap kosong, dan itu dinyatakan — bukan diisi nilai karangan.
+       P.REMARK          AS CATATAN_INPUTOR,
+       -- ---------------------------------------------------------------------
+       -- Isian tab "Registrasi" — `ISIAN_REGISTER` pada layar.
+       -- ---------------------------------------------------------------------
+       --
+       -- Keenam belas isian ini dulu digali dari dokumen JSON, dan setelah dokumen dilepas
+       -- tab Registrasi tampil sebagai penanda "belum tersambung". Work Owner meminta
+       -- isiannya PERSIS, bukan ditautkan ke layar lain yang kebetulan memuatnya.
+       --
+       -- Ketiga belas yang punya padanan kolom dibaca di sini. Kolomnya SAMA dengan yang
+       -- dibaca `registrasi/repo/sqlstore/claim.sql` `klaim_ambil` — bukan kolom lain yang
+       -- kebetulan mirip namanya, sehingga kedua layar tidak dapat berbeda isi.
+       P.RECEIVEDATE            AS TANGGAL_TERIMA_DOKUMEN,
+       P.DATEOFLOSS             AS TANGGAL_KEJADIAN,
+       P.TANGGALSELESAIRAWATINAP AS TANGGAL_KELUAR_RAWAT_INAP,
+       P.REPORTDATE             AS TANGGAL_LAPOR,
+       P.NO_HP                  AS TELEPON_PELAPOR,
+       P.PELAPOR_HUBUNGAN       AS STATUS_PELAPOR,
+       P.PELAPOR_HUBUNGAN_LAIN  AS STATUS_PELAPOR_LAIN,
+       P.LOCATION               AS LOKASI_KEJADIAN,
+       P.DISTRICT               AS KELURAHAN,
+       P.STS_TKI                AS TERTANGGUNG_TKI,
+       P.REMARK                 AS CATATAN_KE_ANALYST,
+       P.REMARKRECOMENDATION    AS CATATAN_KE_PIC_TEKNIS,
+       P.EMAIL_LOD              AS EMAIL_PELAPOR
   FROM POOLDATA.T_CLAIMLIST_ADMIN W
-       LEFT JOIN POOLDATA.JSON_KLAIM J
-              ON W.PZINSKEY = J.IDPEGA
- WHERE W.PZINSKEY = :1
+       -- LEFT JOIN, bukan INNER: klaim yang belum ada di tabel warisan tetap harus tampil.
+       --
+       -- Kuncinya `CLAIMID`, bukan `CLAIMNO`. Keduanya diukur berdampingan — `CLAIMID` cocok
+       -- pada 1.513 klaim, `CLAIMNO` pada 1.464 — dan `CLAIMID` TUNGGAL (nol ganda),
+       -- sedangkan `CLAIMNO` terbukti punya nilai ganda di tabel itu.
+       LEFT JOIN POOLDATA.T_CLAIM_PNC P
+              ON P.CLAIMID = W.PZINSKEY
+-- Dicari lewat KUNCI PEGA **atau** NOMOR KLAIM, dan keduanya memakai nilai yang sama.
+--
+-- # Kenapa dua-duanya
+--
+-- Grid memegang `PZINSKEY` dan memakainya langsung. Halaman detail memakai NOMOR klaim di
+-- alamatnya, karena kunci teknis Pega tidak pernah dipakai sebagai alamat (`D-22`) — dan
+-- `PZINSKEY` memuat spasi (`ASM-FW-GCNMFW-WORK PNC-13`), yang akan tampak di bilah alamat.
+--
+-- # Kenapa aman
+--
+-- `PYID` diukur TUNGGAL pada 2026-10-12: 2.777 baris dashboard, **nol** `PYID` ganda. Tanpa
+-- pengukuran itu, pencarian lewat nomor dapat mengembalikan klaim yang salah tanpa satu pun
+-- galat — dan yang terlihat hanyalah rincian milik orang lain.
+--
+-- Bind: :1 dipakai untuk KEDUANYA, dikirim dua kali sebagai :1 dan :2.
+ WHERE (W.PZINSKEY = :1 OR W.PYID = :2)
    AND W.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
 
 -- name: klaim_rincian_check
@@ -74,9 +139,13 @@ SELECT W.PYID            AS NOMOR_KLAIM,
 -- `PXOBJCLASS` ikut disebut sejak 2026-10-08. Ia hanya muncul di klausa WHERE kueri nyatanya,
 -- sehingga versi sebelumnya tidak membuktikannya ada — lihat `TestProbesNameEveryColumnTheyGuard`.
 SELECT W.PYID, W.PZINSKEY, W.PYSTATUSWORK, W.STATUSCLAIM_1,
-       W.USERTEKNIS_1, W.PXCREATEOPNAME, W.PXCREATEDATETIME, J.DATA_JSON
+       W.USERTEKNIS_1, W.PXCREATEOPNAME, W.PXCREATEDATETIME,
+       P.STATUSCLAIM, P.CLAIMID, W.GROUPPANEL_1, P.POLIS_JENIS_BISNIS, P.REMARK,
+       P.RECEIVEDATE, P.DATEOFLOSS, P.TANGGALSELESAIRAWATINAP, P.REPORTDATE,
+       P.NO_HP, P.PELAPOR_HUBUNGAN, P.PELAPOR_HUBUNGAN_LAIN, P.LOCATION,
+       P.DISTRICT, P.STS_TKI, P.REMARKRECOMENDATION, P.EMAIL_LOD
   FROM POOLDATA.T_CLAIMLIST_ADMIN W
-       LEFT JOIN POOLDATA.JSON_KLAIM J
-              ON W.PZINSKEY = J.IDPEGA
+       LEFT JOIN POOLDATA.T_CLAIM_PNC P
+              ON P.CLAIMID = W.PZINSKEY
  WHERE 1 = 0
    AND W.PXOBJCLASS IS NOT NULL

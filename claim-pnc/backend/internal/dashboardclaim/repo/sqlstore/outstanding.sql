@@ -244,6 +244,174 @@ SELECT DISTINCT
  ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
 OFFSET :21 ROWS FETCH NEXT :22 ROWS ONLY
 
+-- name: outstanding_export
+-- Membaca satu halaman klaim berjalan BESERTA lima kolom yang hanya digambar berkas unduhan.
+--
+-- ============================================================================
+-- KENAPA KUERI TERSENDIRI, DAN BUKAN KOLOM TAMBAHAN DI outstanding_list
+-- ============================================================================
+--
+-- Diukur terhadap Oracle, satu halaman 25 baris, cache hangat:
+--
+--     tanpa kolom tambahan      33 ms
+--     + PYORIGUSERID, PXASSIGNEDOPERATORID   55 ms   (kolom tabel sendiri)
+--     + TSI                     69 ms
+--     + ESTIMASI                60 ms
+--     + TGL TRANSFER            54 ms
+--     kelimanya sekaligus      100 ms
+--
+-- Tiga kali lipat untuk lima kolom yang TIDAK digambar grid. Layar membayar biaya itu pada
+-- setiap pergantian halaman, setiap pengguna, sepanjang hari; berkas unduhan membayarnya
+-- sekali saat diminta. Karena itu keduanya dipisah.
+--
+-- ============================================================================
+-- WHERE-NYA SALINAN PERSIS DARI outstanding_list
+-- ============================================================================
+--
+-- Berkas unduhan adalah layar yang sedang dilihat pengguna. Bila syaratnya menyimpang, yang
+-- diunduh adalah himpunan LAIN daripada yang terlihat — dan tidak ada galat yang muncul.
+-- `TestExportQueryMatchesListQuery` menjaganya baris per baris.
+--
+-- ============================================================================
+-- KENAPA MAX() PADA DUA SUB-KUERI, PADAHAL PEGA TIDAK MEMAKAINYA
+-- ============================================================================
+--
+-- Pega menulis keduanya sebagai sub-kueri skalar telanjang
+-- (`RDB List/BrowseInboxOutstanding1-SQL.xml`):
+--
+--     (SELECT r.FINISHREGISTERDATE FROM POOLDATA.T_CLAIM_PNC r WHERE A.PXINSNAME = R.CLAIMNO)
+--     (SELECT TSI FROM POOLDATA.PEGA_DASHBOARDPNC e WHERE E.NOKLAIM = a.PXINSNAME)
+--
+-- `POOLDATA.T_CLAIM_PNC` memuat sampai **4 baris** untuk satu `CLAIMNO`, dan bentuk di atas
+-- karena itu menghasilkan `ORA-01427: single-row subquery returns more than one row`.
+-- Diuji langsung: bentuk telanjang gagal, bentuk ber-MAX lolos. Pada data hari ini hanya
+-- **1** klaim berjalan yang kena — dan satu baris itu cukup untuk menggagalkan SELURUH
+-- unduhan, bukan satu selnya.
+--
+-- MAX() dipakai pada keduanya, bukan hanya pada yang terbukti ganda: `PEGA_DASHBOARDPNC`
+-- hari ini satu baris per `NOKLAIM`, tetapi tidak ada constraint yang menjaminnya tetap
+-- begitu di produksi. Pada data satu baris, MAX() memberi nilai yang sama persis.
+--
+-- ============================================================================
+-- `PXINSNAME` DIGANTI `PYID`
+-- ============================================================================
+--
+-- Pega menjodohkan lewat `a.PXINSNAME`; kolom itu TIDAK ada di `T_CLAIMLIST_ADMIN` (60
+-- kolomnya diperiksa langsung). Penggantinya `A.PYID` — pada objek kerja Pega keduanya
+-- memang nomor klaim yang sama, dan penjodohannya terbukti: dari 2.121 klaim berjalan,
+-- 1.642 bertemu baris di PEGA_DASHBOARDPNC dan 1.156 di T_CLAIM_PNC. Sisanya memang tidak
+-- punya pasangan — berkas unduhan Pega pun menampilkan sel TSI yang kosong.
+--
+-- ============================================================================
+-- "Nama Admin" MEMAKAI CADANGAN — `COALESCE(PYORIGUSERID, PXCREATEOPERATOR)`
+-- ============================================================================
+--
+-- Pega membaca `a.pyOrigUserID AS "ReporterName"` dari `datapega.pc_asm_fw_gcnmfw_work`
+-- (`RDB List/BrowseInboxOutstanding1-SQL.xml`:103 dan :117) — TABEL YANG BERBEDA dari
+-- tabel datar ini, meski nama kolomnya sama persis.
+--
+-- Akibatnya kolom itu nyaris kosong di sini (diukur 2026-10-13):
+--
+--     POOLDATA.T_CLAIMLIST_ADMIN       PYORIGUSERID terisi        1 dari 2.930
+--     DATAPEGA.PC_ASM_FW_GCNMFW_WORK   PYORIGUSERID terisi    7.197 dari 7.753
+--
+-- Membacanya dari DATAPEGA BUKAN pilihan: `D-21` menetapkan satu tabel satu penulis dan
+-- skema itu masih milik Pega, sehingga angka layar kami akan berubah di luar kendali.
+-- `TestListAndExportQueriesAvoidPegaSchema` menegakkannya.
+--
+-- Cadangannya `PXCREATEOPERATOR`, kolom di BARIS DAN TABEL YANG SAMA. Dipilih setelah
+-- diukur, bukan ditebak:
+--
+--     kolom                terisi   sama dengan nilai Pega   ditulis aplikasi ini
+--     PYORIGUSERID              1              —                    tidak
+--     PXCREATEOPERATOR      2.842            92%                    YA
+--     PXCREATEOPNAME        2.704            87%                    tidak
+--
+-- Butir terakhir yang menentukan: hanya `PXCREATEOPERATOR` yang ada di daftar kolom
+-- `INSERT` klaim baru (`internal/registrasi/repo/sqlstore/inboxentry.sql`:56). Dua kolom
+-- lainnya tidak pernah ditulis, sehingga memakainya akan membuat klaim BARU pun kosong —
+-- memindahkan masalah, bukan menyelesaikannya.
+--
+-- `PYORIGUSERID` tetap di depan supaya nilainya langsung dipakai bila kelak kolom itu
+-- dilengkapi, tanpa mengubah kueri lagi.
+--
+-- SELISIH YANG DISENGAJA terhadap `P-5`: pada 8% klaim, nama ini akan BERBEDA dari yang
+-- ditampilkan Pega. Diterima Work Owner 2026-10-13 dengan alasan DATAPEGA memang akan
+-- ditinggalkan, sehingga meniru Pega di sini berarti meniru kolom yang akan mati.
+--
+-- Pola `COALESCE` ini bukan hal baru di repositori: `inboxinvestigator.sql`:203 memakai
+-- `COALESCE(k.PYORIGUSERID, k.PXCREATEOPERATOR, p.ADMINKLAIM)` untuk persoalan yang sama.
+SELECT DISTINCT
+       A.PZINSKEY          AS ID_KLAIM,
+       A.PYID              AS NO_KLAIM,
+       A.POLICYNO          AS NO_POLIS,
+       A.QQNAME            AS NAMA_TERTANGGUNG,
+       A.BUSINESSNAME      AS NAMA_BISNIS,
+       A.SOBNAME           AS SUMBER_BISNIS,
+       A.BRANCHNAME        AS NAMA_CABANG,
+       A.USERTEKNIS_1      AS PIC_TEKNIK,
+       A.PXCREATEOPNAME    AS ADMIN_PNC,
+       A.STATUSCLAIM_1     AS KODE_STATUS_KLAIM,
+       (SELECT s.LSC_NOTE
+          FROM POOLDATA.V_STS_CLAIM s
+         WHERE s.LSC_ID = A.STATUSCLAIM_1) AS LABEL_STATUS_KLAIM,
+       A.PYSTATUSWORK      AS STATUS_PROSES,
+       CAST(A.DATEOFLOSS_1 AS DATE) AS TANGGAL_KEJADIAN,
+       A.REPORTDATE_1    AS TANGGAL_LAPOR,
+       A.PXCREATEDATETIME  AS TANGGAL_PENDAFTARAN,
+       (SELECT MAX(e.TSI)
+          FROM POOLDATA.PEGA_DASHBOARDPNC e
+         WHERE e.NOKLAIM = A.PYID) AS TSI,
+       (SELECT SUM(e.CONVERTVALUE)
+          FROM POOLDATA.T_CLAIM_ESTIMASI e
+         WHERE e.CLAIMID = A.PZINSKEY) AS ESTIMASI_IDR,
+       COALESCE(A.PYORIGUSERID, A.PXCREATEOPERATOR) AS NAMA_ADMIN,
+       A.PXASSIGNEDOPERATORID AS LOGIN_TERAKHIR,
+       (SELECT MAX(r.FINISHREGISTERDATE)
+          FROM POOLDATA.T_CLAIM_PNC r
+         WHERE r.CLAIMNO = A.PYID) AS TANGGAL_TRANSFER_PIC
+  FROM POOLDATA.T_CLAIMLIST_ADMIN A
+       INNER JOIN POOLDATA.BUSINESS c
+               ON A.BUSINESSCODE_1 = c.ID
+       INNER JOIN POOLDATA.BUSINESSGROUP d
+               ON c.BUSINESSGROUPID = d.ID
+ WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND A.PYSTATUSWORK <> 'Resolved-Completed'
+   AND A.PYSTATUSWORK <> 'Resolved-Rejected'
+   AND A.BRANCHNAME <> 'ASNET'
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND (:1 IS NULL
+        OR UPPER(A.POLICYNO) LIKE :2 ESCAPE '\'
+        OR UPPER(A.PYID) LIKE :3 ESCAPE '\')
+   AND (:4 = 'ALL'
+        OR (:5 = 'NONMBU'
+            AND A.GROUPPANEL_1 IN ('003', '004', '006')
+            AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
+        OR (:6 = 'BONDING'
+            AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
+        OR (:7 = 'PA' AND A.GROUPPANEL_1 = '002')
+        OR (:8 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   AND (:9 IS NULL OR UPPER(A.POLICYNO) LIKE :10 ESCAPE '\')
+   AND (:11 IS NULL OR UPPER(A.PYID) LIKE :12 ESCAPE '\')
+   AND (:13 IS NULL OR UPPER(A.USERTEKNIS_1) LIKE :14 ESCAPE '\')
+   AND (:15 IS NULL
+        OR (:16 = 'SUDAH'
+            AND EXISTS (SELECT T.CLAIMID
+                          FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                         WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                           AND T.CLAIMID = A.PZINSKEY))
+        OR (:17 = 'BELUM'
+            AND NOT EXISTS (SELECT T.CLAIMID
+                              FROM POOLDATA.T_CLAIM_ADJUSTMENT T
+                             WHERE T.TRANSFER_CASHIER_DATE IS NOT NULL
+                               AND T.CLAIMID = A.PZINSKEY)))
+   AND (:18 IS NULL
+        OR (:19 = 'LUNAS' AND A.STATUSCLAIM_1 = '1163')
+        OR (:20 = 'BELUM' AND A.STATUSCLAIM_1 <> '1163'))
+ ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
+OFFSET :21 ROWS FETCH NEXT :22 ROWS ONLY
+
 -- name: pindah_pic_saring
 -- Memindahkan SELURUH klaim yang cocok dengan penyaring layar — "Select All" lintas halaman.
 --

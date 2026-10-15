@@ -7,7 +7,7 @@ import { ErrorMessage } from '@/components/ErrorMessage'
 import { Field } from '@/components/Field'
 import { SelectField } from '@/components/SelectField'
 
-import { useBusinessOptions, useExportReport, useReportCatalog } from './api'
+import { useExportReport, useReportCatalog } from './api'
 import {
   EMPTY_FILTER,
   type BusinessLine,
@@ -61,20 +61,37 @@ export function ReportKlaimPage() {
   const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER)
   const [sedangDiunduh, setSedangDiunduh] = useState<string | null>(null)
 
+  /*
+   * Keadaan kotak centang "Treaty", DIKUNCI PER PANEL.
+   *
+   * Sebelumnya ia satu nilai di dalam `filter`, dan akibatnya dua: mencentang di satu
+   * panel ikut mencentang di dua panel lain, dan ketiganya mulai kosong padahal di Pega
+   * dua di antaranya mulai tercentang.
+   *
+   * Yang kedua lebih berat daripada kelihatannya — kotak ini memilih SUSUNAN KOLOM
+   * berkas, bukan menyaring baris. Keadaan awal yang keliru berarti berkas yang diunduh
+   * tanpa disentuh siapa pun punya kolom berbeda dari Pega.
+   *
+   * Nilai awalnya datang dari peladen (`penyaring.rincian_awal`) karena ia pengetahuan
+   * tentang sistem lama. Yang di sini hanya MENYIMPAN perubahan pengguna.
+   */
+  const [rincian, setRincian] = useState<Record<string, boolean>>({})
+
+  const rincianPanel = (laporan: Report) =>
+    rincian[laporan.kode] ?? laporan.penyaring.rincian_awal
+
   const catalog = useReportCatalog()
   const exportReport = useExportReport()
 
-  // Daftar bisnis ditarik hanya ketika pengguna menyentuh autocomplete-nya — ia dapat
-  // berisi ratusan baris, dan 27 dari 28 panel tidak memakainya.
-  const [bisnisDiminta, setBisnisDiminta] = useState(false)
-  const businessOptions = useBusinessOptions(bisnisDiminta)
+  // Daftar bisnis beserta hook-nya dicabut 2026-10-13 bersama panel REPORT KLAIM PER
+  // BISNIS — satu-satunya yang memakainya.
 
   function unduh(laporan: Report, aksi: string) {
     setSedangDiunduh(laporan.kode)
     const request: ExportRequest = {
       kode: laporan.kode,
       aksi,
-      filter,
+      filter: { ...filter, rincian: rincianPanel(laporan) },
       penyaring: laporan.penyaring,
     }
     exportReport.mutate(request, { onSettled: () => setSedangDiunduh(null) })
@@ -99,14 +116,31 @@ export function ReportKlaimPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
-      <header>
-        <h1 className="text-xl font-semibold text-slate-900">
-          {catalog.data?.judul ?? 'Report Claim'}
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Pilih periode dan penyaringnya, lalu tekan Export pada laporan yang dituju.
-          Berkasnya terunduh dalam bentuk CSV.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">
+            {catalog.data?.judul ?? 'Report Claim'}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Pilih periode dan penyaringnya, lalu tekan Export pada laporan yang dituju.
+            Berkasnya terunduh dalam bentuk CSV.
+          </p>
+        </div>
+        {/*
+          Tombol ini ada di Pega, di sudut yang sama, dan selama ini terlewat.
+
+          Yang dimuat ulang DAFTAR panelnya — bukan isi laporan. Ketersediaan sebuah panel
+          dapat berubah tanpa layar di-reload (koneksi kedua terpasang, master terisi),
+          dan tanpa tombol ini satu-satunya cara menyegarkannya adalah memuat ulang
+          seluruh halaman.
+        */}
+        <Button
+          tone="kedua"
+          disabled={catalog.isFetching}
+          onClick={() => void catalog.refetch()}
+        >
+          {catalog.isFetching ? 'Memuat…' : 'Refresh List'}
+        </Button>
       </header>
 
       <FilterBar
@@ -136,18 +170,26 @@ export function ReportKlaimPage() {
       )}
 
       {/*
-        Satu kolom, berurutan, tanpa kelompok — persis susunan harness-nya.
+        DUA KOLOM, mengalir kiri-kanan lalu turun — persis layar Pega.
+
+        Sebelum 2026-10-13 di sini satu kolom. Kesimpulannya ditarik dari ketiadaan
+        penanda kelompok di harness, dan itu kekeliruan yang sama bentuknya dengan yang
+        sudah dua kali terjadi di layar ini: menyimpulkan tampilan dari apa yang TIDAK
+        ada di XML. Yang menjawabnya akhirnya tangkapan layar produksi.
+
+        Urutan kartunya sendiri tidak berubah — ia memang urutan baca kiri-ke-kanan, dan
+        itu sebabnya `CatalogInPegaOrder` sudah cocok sejak awal.
+
+        Satu kolom di lebar telepon: dua kolom kartu selebar ini tidak terbaca di sana,
+        dan layar Pega pun tidak pernah dibuka dari telepon.
       */}
-      <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
         {catalog.data?.laporan.map((laporan) => (
           <ReportRow
             key={laporan.kode}
             laporan={laporan}
-            filter={filter}
-            ubah={ubah}
-            bisnis={businessOptions.data?.bisnis ?? []}
-            bisnisMemuat={bisnisDiminta && businessOptions.isPending}
-            mintaBisnis={() => setBisnisDiminta(true)}
+            rincian={rincianPanel(laporan)}
+            ubahRincian={(nilai) => setRincian({ ...rincian, [laporan.kode]: nilai })}
             sedangDiunduh={sedangDiunduh === laporan.kode}
             onExport={(aksi) => unduh(laporan, aksi)}
           />
@@ -249,11 +291,9 @@ function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: 
 
 type RowProps = {
   laporan: Report
-  filter: ReportFilter
-  ubah: (bagian: Partial<ReportFilter>) => void
-  bisnis: { kode: string; nama: string }[]
-  bisnisMemuat: boolean
-  mintaBisnis: () => void
+  /** Keadaan kotak centang "Treaty" MILIK PANEL INI, bukan keadaan bersama. */
+  rincian: boolean
+  ubahRincian: (nilai: boolean) => void
   sedangDiunduh: boolean
   onExport: (aksi: string) => void
 }
@@ -265,16 +305,7 @@ type RowProps = {
  * pengguna melaporkan laporan yang "hilang", dan membuat kemajuan migrasi tidak terbaca
  * dari layar — perlakuan yang sama dengan butir menu yang belum punya layar.
  */
-function ReportRow({
-  laporan,
-  filter,
-  ubah,
-  bisnis,
-  bisnisMemuat,
-  mintaBisnis,
-  sedangDiunduh,
-  onExport,
-}: RowProps) {
+function ReportRow({ laporan, rincian, ubahRincian, sedangDiunduh, onExport }: RowProps) {
   const mati = !laporan.tersedia
 
   return (
@@ -309,55 +340,19 @@ function ReportRow({
       </div>
 
       {/*
-        Isian khusus panel ini. Letaknya mengikuti harness: autocomplete bisnis berada
-        tepat setelah panel Klaim Per Bisnis, dan kotak centang "Treaty" tepat setelah
-        panel Akseptasi.
+        Isian khusus panel ini — kotak centang "Treaty". Letaknya mengikuti layar Pega:
+        ia berada DI BARIS panelnya sendiri, bukan di bilah penyaring atas.
+
+        Autocomplete "Bisnis" berdiri di sini sampai 2026-10-13, lalu dicabut bersama
+        panel REPORT KLAIM PER BISNIS yang tidak ada di Pega produksi.
       */}
-      {!mati && laporan.penyaring.bisnis && (
-        <div className="mt-3 max-w-sm">
-          {/*
-            Ia TIDAK memakai SelectField, dan itu disengaja.
-
-            Di harness kontrol ini ber-`pyIncludeLabel = false` — tidak berlabel sama
-            sekali, karena letaknya tepat di sebelah judul panelnya. SelectField selalu
-            menggambar label yang terlihat, dan label kedua berbunyi "Bisnis" di layar
-            yang bilah atasnya sudah punya "Bisnis" justru menimbulkan pertanyaan yang
-            tidak ada di layar lama.
-
-            Yang dipakai karena itu `aria-label`: tidak terlihat, tetapi tetap terbaca
-            pembaca layar — label tersembunyi lebih baik daripada tidak ada label sama
-            sekali, dan lebih baik daripada label yang membingungkan.
-          */}
-          <select
-            aria-label="Bisnis untuk Report Klaim Per Bisnis"
-            value={filter.bisnis}
-            disabled={bisnisMemuat}
-            onFocus={mintaBisnis}
-            onMouseDown={mintaBisnis}
-            onChange={(e) => ubah({ bisnis: e.target.value })}
-            className={
-              'w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 ' +
-              'text-slate-900 shadow-lembut transition-[border-color,box-shadow] ' +
-              'duration-150 ease-halus focus:border-blue-500 focus:outline-none ' +
-              'focus-visible:ring-4 focus-visible:ring-blue-500/20'
-            }
-          >
-            <option value="">{bisnisMemuat ? 'Memuat…' : '----- Pilih -----'}</option>
-            {bisnis.map((b) => (
-              <option key={b.kode} value={b.kode}>
-                {b.nama}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {!mati && laporan.penyaring.rincian && (
         <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
-            checked={filter.rincian}
-            onChange={(e) => ubah({ rincian: e.target.checked })}
+            checked={rincian}
+            onChange={(e) => ubahRincian(e.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
           />
           {/*

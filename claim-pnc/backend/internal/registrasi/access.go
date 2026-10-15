@@ -77,9 +77,45 @@ func StageRoles(s Stage) []string {
 	return routerRoles[s.Router]
 }
 
+// Grup administrator aplikasi ini. KEDUANYA berlaku, dan itu bukan kehati-hatian berlebih.
+//
+// Work Owner menetapkan 2026-10-12: *"IT itu pas di Pega namanya Administrator, jadi semua
+// sama aja."* Diukur di `POOLDATA.M_LOGIN_GROUP_PNC` hari yang sama, **keduanya benar-benar
+// dipakai**:
+//
+//	Administrators   8 anggota
+//	IT               2 anggota
+//
+// Memakai `IT` saja akan mencabut akses 8 orang yang hari ini memegangnya; memakai
+// `Administrators` saja mencabut akses 2 orang. Keduanya diterima sampai Work Owner
+// menyatukan isinya di master.
+const (
+	RoleIT             = GroupPrefix + "IT"
+	RoleAdministrators = GroupPrefix + "Administrators"
+)
+
 // holdsStageRole menyatakan pemegang peran-peran ini memegang salah satu grup tahap.
+//
+// # Administrator memegang SETIAP tahap
+//
+// Di Pega, `Administrators` dapat mengerjakan tugas tahap mana pun; di sini `IT` dan
+// `Administrators` sama-sama berlaku. Tanpa ini, akun administrator tidak dapat membuka satu
+// pun tugas milik orang lain kecuali kebetulan memegang grup tahapnya juga.
+//
+// # Dua akibat, dan keduanya disengaja
+//
+//  1. Akun administrator dapat mengerjakan tugas siapa pun pada tahap apa pun. `D-59` memang menetapkan
+//     tidak ada pemisahan tugas formal, sehingga ini bukan pelonggaran baru — ia memulihkan
+//     perilaku Pega yang hilang. Kontrol pengimbangnya tetap jejak audit (`S-5`).
+//
+//  2. `GroupStages` memakai fungsi yang sama, sehingga inbox administrator menampilkan tugas antrean
+//     SELURUH tahap — bukan hanya tahap grupnya. Itu pun yang dilihat `Administrators` di Pega.
 func holdsStageRole(s Stage, roles []string) bool {
-	return FlowContext{CallerRoles: roles}.HasRole(StageRoles(s)...)
+	ctx := FlowContext{CallerRoles: roles}
+	if ctx.HasRole(RoleIT, RoleAdministrators) {
+		return true
+	}
+	return ctx.HasRole(StageRoles(s)...)
 }
 
 // RoleAnalyst adalah When `IsAnalisator`: operator anggota workgroup `KlaimAnalisator`

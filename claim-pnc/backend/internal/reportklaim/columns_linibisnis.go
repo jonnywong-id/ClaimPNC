@@ -58,46 +58,6 @@ var colsRegistSimasOnline = []Column{
 	{Header: "PIC", Field: "WARRANTYNO"},
 }
 
-// colsKlaimAsuransiKredit — 3 kolom.
-//
-// Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
-// `pxConvertResultsToCSV` pada `Activity/PNCReportKlaimKredit_act-Act.xml`.
-var colsKlaimAsuransiKredit = []Column{
-	{Header: "User Input", Field: "EDMNO"},
-	{Header: "Sumber Bisnis", Field: "PRODKE"},
-	{Header: "Total Klaim", Field: "CLIENTID"},
-}
-
-// colsKlaimPerBisnis — 14 kolom.
-//
-// Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
-// `pxConvertResultsToCSV` pada `Activity/ExportDataClaimBusiness-Act.xml`.
-var colsKlaimPerBisnis = []Column{
-	{Header: "NO KLAIM", Field: "ClaimNo"},
-	{Header: "NO POLIS", Field: "PolicyNo"},
-	{Header: "SUMBIS", Field: "SIM"},
-	{Header: "PERIODE AWAL POLIS", Field: "City"},
-	{Header: "PERIODE AKHIR POLIS", Field: "CityID"},
-	{Header: "TANGGAL REGIST", Field: "Country"},
-	{Header: "DOL", Field: "CountryID"},
-	{Header: "PIC", Field: "UserTeknis"},
-	{Header: "TSI", Field: "TKI"},
-	{Header: "NILAI ESTIMASI", Field: "CaseID"},
-	{Header: "NILAI AKSEPTASI", Field: "RefNo"},
-	{Header: "STATUS KLAIM", Field: "StatusClaim"},
-	{Header: "EMAIL", Field: "NewEmail"},
-	{Header: "No. TELP", Field: "NewTelpTertanggung"},
-}
-
-// colsKlaimTravel — 6 kolom.
-//
-// Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
-// `pxConvertResultsToCSV` pada `Activity/ExportDataClaimTravel-Act.xml`.
-var colsKlaimTravel = []Column{
-	{Header: "NO POLIS", Field: "PolicyNo"},
-	{Header: "NO KLAIM", Field: "ClaimNo"},
-	{Header: "TGL REGIST", Field: "BranchID"},
-	{Header: "NAMA PESERTA", Field: "BranchName"},
-	{Header: "NO AKSEPTASI", Field: "CaseID"},
-	{Header: "NILAI AKSEP", Field: "CauseOfLoss"},
-}
+// Tiga susunan kolom berdiri di sini sampai 2026-10-13 — colsKlaimAsuransiKredit,
+// colsKlaimPerBisnis, dan colsKlaimTravel. Ketiganya dicabut bersama panelnya, yang
+// tidak ada di Pega produksi. Lihat catatan di kepala catalogLiniBisnis.

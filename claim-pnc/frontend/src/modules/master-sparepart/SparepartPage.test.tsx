@@ -28,6 +28,23 @@ const OPTIONS = {
   ],
   portal: 'ASM',
 
+  // Keempat daftar berikut KONSTANTA dari rule Property Pega, bukan bacaan basis data.
+  // Nilainya disalin apa adanya dari rule, termasuk label `satuan` yang kosong dan ejaan
+  // "Non AKtif" — keduanya memang begitu di Pega.
+  jenis_sparepart: [
+    { nilai: '1', label: 'Fast Moving' },
+    { nilai: '2', label: 'Non Fast Moving' },
+  ],
+  satuan: [{ nilai: '1', label: '' }],
+  status_aktif: [
+    { nilai: '1', label: 'Aktif' },
+    { nilai: '0', label: 'Non AKtif' },
+  ],
+  status_sparepart: [
+    { nilai: '1', label: 'AVAILABLE' },
+    { nilai: '0', label: 'RARE' },
+  ],
+
   // Jalur unggah dinyatakan siap supaya isian berkas pada form tergambar hidup. Keadaan
   // sebaliknya diuji terpisah — lihat "isian unggah mati saat layanannya belum terpasang".
   unggah_tersedia: true,
@@ -565,23 +582,6 @@ describe('form master sparepart', () => {
     expect(within(tipe).queryByRole('option', { name: 'FILTER' })).not.toBeInTheDocument()
   })
 
-  /*
-    Keempat penanda menawarkan NILAI YANG SUDAH DIPAKAI baris lain, bukan daftar yang
-    dikarang — daftar pilihan aslinya tidak ada di export (R-16).
-  */
-  it('menawarkan nilai penanda yang sudah dipakai baris lain', async () => {
-    installFetch(defaultReply())
-    show()
-
-    await screen.findByText('FILTER OLI MESIN')
-    await userEvent.click(screen.getByRole('button', { name: 'Ubah' }))
-
-    const satuan = await screen.findByLabelText('Satuan')
-    expect(within(satuan).getByRole('option', { name: 'PCS' })).toBeInTheDocument()
-    // Jalan keluarnya selalu tersedia, supaya nilai baru tetap dapat diketik.
-    expect(within(satuan).getByRole('option', { name: 'Lainnya…' })).toBeInTheDocument()
-  })
-
   it('mengirim isian yang benar saat menambah', async () => {
     installFetch(defaultReply(() => ({ body: { sparepart: APPROVED, portal: 'ASM' }, status: 201 })))
     show()
@@ -663,6 +663,79 @@ describe('form master sparepart', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
 
     expect(await screen.findByText('Kode sudah dipakai sparepart lain.')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Keempat penanda memakai daftar pilihan dari rule Property Pega.
+ *
+ * Yang diperiksa di sini bukan sekadar "pilihannya ada", melainkan tiga hal yang mudah
+ * rusak diam-diam: labelnya benar, urutannya mengikuti rule, dan yang TERSIMPAN tetap
+ * kodenya — bukan labelnya.
+ */
+describe('daftar pilihan penanda', () => {
+  /** Membuka form ubah pada baris pertama. */
+  async function openForm() {
+    installFetch(defaultReply())
+    show()
+    await screen.findByText('FILTER OLI MESIN')
+    await userEvent.click(screen.getByRole('button', { name: 'Ubah' }))
+    return screen.findByRole('form', { name: 'Ubah FILTER OLI MESIN' })
+  }
+
+  it('menggambar label Pega, pada urutan rule-nya', async () => {
+    await openForm()
+
+    const pilihan = within(screen.getByLabelText('Status Aktif'))
+      .getAllByRole('option')
+      .map((one) => one.textContent)
+
+    // "— pilih —" lebih dulu, lalu daftar Pega pada urutan rule. TIDAK ada "Lainnya…".
+    //
+    // Ejaan "Non AKtif" diperiksa apa adanya: ia ejaan asli Pega, dan merapikannya kelak
+    // harus menjadi keputusan yang terlihat, bukan perubahan diam-diam.
+    expect(pilihan).toEqual(['— pilih —', 'Aktif', 'Non AKtif'])
+  })
+
+  // `SATUAN` punya satu pilihan dan labelnya KOSONG di rule Pega. Menggambarnya sebagai
+  // baris kosong membuat dropdown yang mustahil dipilih dengan sadar, jadi ia jatuh kembali
+  // ke kodenya.
+  it('menggambar kode saat labelnya kosong di Pega', async () => {
+    await openForm()
+
+    const pilihan = within(screen.getByLabelText('Satuan'))
+      .getAllByRole('option')
+      .map((one) => one.textContent)
+
+    // 'PCS' adalah nilai BARIS INI sendiri — di luar daftar Pega, tetapi tetap digambar
+    // supaya form tidak menampilkan isian kosong untuk baris yang sebenarnya berisi.
+    expect(pilihan).toEqual(['— pilih —', '1', 'PCS'])
+  })
+
+  // Nilai baris yang di luar daftar tetap terpilih saat barisnya dibuka. Tanpa ini isiannya
+  // akan tampak kosong, lalu tersimpan kosong tanpa satu pun tanda.
+  it('tetap memilih nilai baris yang di luar daftar Pega', async () => {
+    const form = await openForm()
+
+    const jenis = within(form).getByRole('radiogroup', { name: 'Jenis Sparepart' })
+    const pilihan = within(jenis)
+      .getAllByRole('radio')
+      .map((one) => one.closest('label')?.textContent)
+
+    expect(pilihan).toEqual(['Fast Moving', 'Non Fast Moving', 'ORIGINAL'])
+    expect(within(jenis).getByRole('radio', { name: 'ORIGINAL' })).toBeChecked()
+  })
+
+  it('mengirim KODE, bukan label, saat disimpan', async () => {
+    await openForm()
+
+    await userEvent.selectOptions(screen.getByLabelText('Status Sparepart'), '0')
+    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+
+    const sent = calls.find((c) => c.method === 'PUT')?.body as Record<string, unknown>
+    expect(sent).toBeDefined()
+    // "0", bukan "RARE".
+    expect(sent.status_sparepart).toBe('0')
   })
 })
 

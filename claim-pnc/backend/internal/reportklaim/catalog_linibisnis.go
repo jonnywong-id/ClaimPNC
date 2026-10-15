@@ -2,18 +2,30 @@ package reportklaim
 
 // Kode laporan kelompok Lini Bisnis & Mitra Kerja Sama.
 const (
-	CodeKlaimHE             Code = "klaim-he"
-	CodeRegistSimasOnline   Code = "regist-simas-online"
-	CodeKlaimAsuransiKredit Code = "klaim-asuransi-kredit"
-	CodeKlaimPerBisnis      Code = "klaim-per-bisnis"
-	CodeKlaimTraveloka      Code = "klaim-traveloka"
-	CodeKlaimPegiPegi       Code = "klaim-pegipegi"
+	CodeKlaimHE           Code = "klaim-he"
+	CodeRegistSimasOnline Code = "regist-simas-online"
 )
 
-// catalogLiniBisnis menyusun keenam panel kelompok Lini Bisnis & Mitra Kerja Sama.
+// catalogLiniBisnis menyusun kedua panel kelompok Lini Bisnis & Mitra Kerja Sama.
 //
-// Yang menyatukannya: keenamnya menyaring SATU lini atau satu mitra tertentu, dan
-// penyaringnya tertanam di laporannya — bukan dipilih pengguna lewat dropdown "Treaty".
+// Yang menyatukannya: keduanya menyaring SATU lini tertentu, dan penyaringnya tertanam di
+// laporannya — bukan dipilih pengguna lewat dropdown "Treaty".
+//
+// # Empat panel yang DICABUT 2026-10-13
+//
+// Kelompok ini sempat berisi enam. Keempat berikut dicabut karena **tidak ada di Pega
+// produksi**, dan Work Owner menetapkan migrasi mengikuti produksi:
+//
+//	REPORT KLAIM ASURANSI KREDIT
+//	REPORT KLAIM PER BISNIS
+//	REPORT KLAIM TRAVELOKA
+//	REPORT KLAIM PEGIPEGI
+//
+// Keempatnya ADA di `Harness/PNCTATReport-Harness.xml`, ber-`pyVisible = ALWAYS`, lengkap
+// dengan activity dan rule SQL-nya. Jadi yang berbeda bukan hak akses melainkan VERSI
+// harness-nya: export memuat 28 panel sementara produksi menampilkan 23.
+//
+// Rinciannya di `catatan-pengembangan.md` §61 dan §62.
 func catalogLiniBisnis() []Report {
 	return []Report{
 		{
@@ -56,83 +68,6 @@ func catalogLiniBisnis() []Report {
 			Availability: Ready(),
 			variants: []variant{
 				always("12 kolom", colsRegistSimasOnline),
-			},
-		},
-		{
-			Code:  CodeKlaimAsuransiKredit,
-			Title: "REPORT KLAIM ASURANSI KREDIT",
-			Group: GroupLiniBisnis,
-			// Spasi ganda pada "Klaim  Asuransi" ada di harness, bukan di sini.
-			Actions:      oneAction("Export Data Klaim  Asuransi Kredit", nil),
-			FileBaseName: "Laporan Klaim Asuransi Kredit",
-			// Rentang tanggalnya atas `tglproses`, bukan tanggal registrasi.
-			Uses: FilterDateRange,
-			Source: Source{
-				Activity: "PNCReportKlaimKredit_act",
-				SQLRule:  []string{"GetDataKlaimAsuransiKredit", "GetClientNameAutoKlaim"},
-			},
-			Availability: Ready(),
-			// Tiga kolom saja — dan itu memang seluruh isinya di export.
-			variants: []variant{
-				always("3 kolom", colsKlaimAsuransiKredit),
-			},
-		},
-		{
-			Code:         CodeKlaimPerBisnis,
-			Title:        "REPORT KLAIM PER BISNIS",
-			Group:        GroupLiniBisnis,
-			Actions:      oneAction("Export Data", nil),
-			FileBaseName: "DATA KLAIM",
-			// SATU-SATUNYA panel yang memakai autocomplete "Bisnis", dan ia WAJIB diisi:
-			// `BrowseDataClaimBusiness` menyaring `TempLaporan.CountryID` tanpa cabang
-			// "bila kosong". Dibiarkan kosong, kuerinya membandingkan dengan string
-			// kosong dan berkasnya keluar tanpa satu baris pun — tanpa satu pun tanda
-			// bahwa yang kurang adalah isiannya.
-			Uses: FilterBusinessCode,
-			Source: Source{
-				Activity: "ExportDataClaimBusiness",
-				SQLRule:  []string{"BrowseDataClaimBusiness"},
-			},
-			Availability: Ready(),
-			variants: []variant{
-				always("14 kolom", colsKlaimPerBisnis),
-			},
-		},
-		{
-			Code:  CodeKlaimTraveloka,
-			Title: "REPORT KLAIM TRAVELOKA",
-			Group: GroupLiniBisnis,
-			// Panel ini dan PegiPegi berbagi satu activity, dibedakan oleh `tipe`, yang
-			// di dalam activity menjadi potongan penyaring nomor polis:
-			//
-			//	TRVLK  AND a.nopolis LIKE '%T%'
-			//	PEGI   and a.nopolis like '122N%'
-			Actions:      oneAction("Export Data Traveloka", map[string]string{"tipe": "TRVLK"}),
-			FileBaseName: "DATA KLAIM TRAVELOKA",
-			Uses:         FilterDateRange,
-			Source: Source{
-				Activity: "ExportDataClaimTravel",
-				SQLRule:  []string{"BrowseDataClaimTraveloka"},
-			},
-			Availability: Ready(),
-			variants: []variant{
-				always("6 kolom", colsKlaimTravel),
-			},
-		},
-		{
-			Code:         CodeKlaimPegiPegi,
-			Title:        "REPORT KLAIM PEGIPEGI",
-			Group:        GroupLiniBisnis,
-			Actions:      oneAction("Export Data PegiPegi", map[string]string{"tipe": "PEGI"}),
-			FileBaseName: "DATA KLAIM PEGIPEGI",
-			Uses:         FilterDateRange,
-			Source: Source{
-				Activity: "ExportDataClaimTravel",
-				SQLRule:  []string{"BrowseDataClaimTraveloka"},
-			},
-			Availability: Ready(),
-			variants: []variant{
-				always("6 kolom", colsKlaimTravel),
 			},
 		},
 	}

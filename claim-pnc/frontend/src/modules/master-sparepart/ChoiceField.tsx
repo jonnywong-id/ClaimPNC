@@ -1,35 +1,32 @@
 import { useId } from 'react'
-import { compareCodeUnits } from '@/lib/sort'
+import type { SparepartFlagOption } from '@/api/types'
 
 /**
- * ChoiceField adalah isian yang nilainya dipilih dari daftar, dengan jalan keluar berupa
- * ketikan bebas.
+ * ChoiceField adalah isian yang nilainya dipilih dari daftar pilihan rule Property Pega.
  *
- * # Kenapa komponen ini ada, dan kenapa ia tinggal di modul ini
+ * # Isinya PERSIS daftar Pega
  *
  * Empat isian Master Sparepart — Jenis, Satuan, Status Aktif, dan Status Sparepart —
- * dirender `pxRadioButtons` atau `pxDropdown` di layar Pega, tetapi **daftar pilihannya
- * tidak ada di export**: keempatnya memakai `pyListSource=associated`, artinya pilihannya
- * datang dari rule Field Value pada propertinya, dan tidak ada satu pun direktori Property
- * maupun Field Value di export (`R-16`).
+ * dirender `pxRadioButtons` atau `pxDropdown` di layar Pega, dan pilihannya ada di
+ * `pyPromptTableList` rule Property masing-masing pada kelas
+ * `ASM-FW-GCNMFW-Int-SPAREPART_HE` (diterima 2026-10-14).
  *
- * Work Owner meminta layarnya "seperti aplikasi Pega" (2026-09-20). Itu menuntut dua hal
- * yang tampak bertentangan: bentuknya harus dropdown atau radio, sementara isinya tidak
- * diketahui. Komponen ini yang menyelesaikannya:
+ * Tidak ada pilihan tambahan, tidak ada ketikan bebas, tidak ada nilai yang dikumpulkan dari
+ * baris lain. Pega tidak punya ketiganya, jadi layar ini pun tidak — keputusan Work Owner
+ * 2026-10-14, menggantikan rancangan sebelumnya yang menambahkan "Lainnya…".
  *
- *   - bentuknya dropdown atau radio, persis seperti Pega;
- *   - pilihannya adalah nilai yang SUDAH DIPAKAI baris lain pada entitas ini — bukan
- *     daftar yang dikarang;
- *   - selalu ada pilihan **Lainnya**, yang membuka isian ketik.
+ * # Satu-satunya hal di luar daftar, dan itu bukan tambahan
  *
- * Pilihan terakhir itu bukan hiasan. Tanpa ia, basis data yang masih kosong akan
- * menghasilkan dropdown tanpa satu pun pilihan — isian yang mustahil diisi — dan baris
- * lama yang nilainya belum pernah dipakai baris lain tidak akan dapat disimpan ulang.
+ * Bila baris yang sedang dibuka memuat nilai yang TIDAK ada di daftar, nilai itu tetap
+ * digambar sebagai pilihan terpilih. Itu bukan pilihan karangan melainkan isi baris itu
+ * sendiri; tanpanya form akan menampilkan isian kosong untuk baris yang sebenarnya berisi,
+ * lalu menyimpannya sebagai kosong tanpa satu pun tanda.
+ *
+ * Nilai seperti itu memang ada di data — `SATUAN` hanya punya satu pilihan di rule Pega,
+ * sementara baris lama memuat satuan lain.
  *
  * Ia tinggal di `modules/master-sparepart/` dan BUKAN di `shared/components/` karena
- * persoalannya khas modul ini: ia jawaban atas daftar pilihan yang hilang, bukan pola
- * antarmuka yang layak dipakai ulang. Memindahkannya ke `shared/` akan mengundang layar
- * lain memakainya di tempat yang daftar pilihannya sebenarnya diketahui.
+ * pilihannya khas modul ini.
  */
 type Props = {
   /** Label yang dibaca pengguna, mengikuti caption layar Pega. */
@@ -38,8 +35,13 @@ type Props = {
   /** Nilai yang sedang dipegang isian ini. */
   value: string
 
-  /** Nilai yang sudah dipakai baris lain; menjadi pilihan yang ditawarkan. */
-  known: string[]
+  /**
+   * Daftar pilihan dari rule Property Pega, pada urutan rule-nya.
+   *
+   * TIDAK diurutkan ulang: `REPEATINGINDEX` menentukan urutan yang dilihat petugas pada
+   * dropdown hari ini.
+   */
+  choices: SparepartFlagOption[]
 
   /**
    * Bentuk kontrolnya, mengikuti layar Pega apa adanya.
@@ -52,37 +54,32 @@ type Props = {
   disabled?: boolean
   error?: string | undefined
   hint?: string | undefined
-  maxLength: number
   onChange: (value: string) => void
 }
-
-/** Sandi pilihan "Lainnya"; sengaja memuat karakter yang tidak mungkin menjadi nilai. */
-const OTHER = '\u0000lainnya'
 
 export function ChoiceField({
   label,
   value,
-  known,
+  choices,
   variant,
   disabled,
   error,
   hint,
-  maxLength,
   onChange,
 }: Props) {
   const id = useId()
   const errorId = `${id}-error`
 
-  // Nilai yang sedang dipegang TETAP muncul sebagai pilihan meski tidak ada di daftar —
-  // baris lama dapat memuat nilai yang belum pernah dipakai baris lain, dan menyembunyikannya
-  // akan mengosongkan isian hanya karena barisnya dibuka.
-  const options = [...new Set([...known, ...(value !== '' ? [value] : [])])].sort(compareCodeUnits)
-  const isTyping = value !== '' && !known.includes(value)
+  // Daftar Pega apa adanya, TANPA diurutkan ulang.
+  //
+  // Label kosong jatuh kembali ke kodenya: `SATUAN` punya pilihan tanpa label di Pega, dan
+  // menggambarnya sebagai baris kosong membuat dropdown yang mustahil dipilih dengan sadar.
+  const options = choices.map((one) => ({ value: one.nilai, text: one.label || one.nilai }))
 
-  function pick(picked: string) {
-    // Memilih "Lainnya" mengosongkan isian lebih dulu, supaya kotak ketiknya terbuka kosong
-    // alih-alih mewarisi nilai yang barusan ditinggalkan.
-    onChange(picked === OTHER ? '' : picked)
+  // Nilai baris ini sendiri, bila di luar daftar. Lihat catatan komponen: ini isi barisnya,
+  // bukan pilihan tambahan.
+  if (value !== '' && !choices.some((one) => one.nilai === value)) {
+    options.push({ value, text: value })
   }
 
   const describedBy = error ? errorId : undefined
@@ -105,11 +102,11 @@ export function ChoiceField({
       {variant === 'dropdown' ? (
         <select
           id={id}
-          value={isTyping ? OTHER : value}
+          value={value}
           disabled={disabled}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={describedBy}
-          onChange={(event) => pick(event.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           className={[
             'mt-1.5 w-full rounded-kontrol border bg-white px-3 py-2.5 text-sm text-slate-900',
             'shadow-lembut transition-[border-color,box-shadow] duration-150 ease-halus',
@@ -122,11 +119,10 @@ export function ChoiceField({
         >
           <option value="">— pilih —</option>
           {options.map((one) => (
-            <option key={one} value={one}>
-              {one}
+            <option key={one.value} value={one.value}>
+              {one.text}
             </option>
           ))}
-          <option value={OTHER}>Lainnya…</option>
         </select>
       ) : (
         <div
@@ -136,61 +132,23 @@ export function ChoiceField({
           className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2"
         >
           {options.map((one) => (
-            <label key={one} className="inline-flex items-center gap-1.5 text-sm text-slate-800">
+            <label
+              key={one.value}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-800"
+            >
               <input
                 type="radio"
                 name={id}
-                value={one}
-                checked={value === one}
+                value={one.value}
+                checked={value === one.value}
                 disabled={disabled}
-                onChange={() => pick(one)}
+                onChange={() => onChange(one.value)}
                 className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500/50"
               />
-              {one}
+              {one.text}
             </label>
           ))}
-          <label className="inline-flex items-center gap-1.5 text-sm text-slate-800">
-            <input
-              type="radio"
-              name={id}
-              value={OTHER}
-              checked={isTyping || value === ''}
-              disabled={disabled}
-              onChange={() => pick(OTHER)}
-              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500/50"
-            />
-            Lainnya…
-          </label>
         </div>
-      )}
-
-      {/*
-        Kotak ketik hanya muncul saat "Lainnya" yang dipilih, atau saat nilai yang tersimpan
-        memang belum pernah dipakai baris lain. Menampilkannya selalu akan membuat isian
-        punya dua tempat memasukkan nilai yang sama, dan itu membingungkan.
-      */}
-      {(isTyping || (variant === 'radio' && value === '')) && (
-        <input
-          type="text"
-          value={value}
-          maxLength={maxLength}
-          disabled={disabled}
-          aria-label={`${label} — ketik nilai lain`}
-          aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(event.target.value)}
-          className={[
-            'mt-2 w-full rounded-kontrol border bg-white px-3 py-2.5 text-sm text-slate-900',
-            'placeholder:text-slate-400',
-            'transition-[border-color,box-shadow] duration-150 ease-halus',
-            'focus:outline-none focus:ring-4',
-            'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
-            error
-              ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-              : 'border-slate-300 hover:border-slate-400 focus:border-blue-500 focus:ring-blue-500/15',
-          ].join(' ')}
-          placeholder="Ketik nilai lain"
-        />
       )}
 
       {error ? (

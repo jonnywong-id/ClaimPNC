@@ -7,7 +7,15 @@ import { formatDate, formatPercent } from '@/components/format'
 import { simpanBerkas } from '@/api/client'
 import { useSession } from '@/app/session'
 
-import { useCauseOfLossOptions, useClaimTask, useCompleteStage, useCurrencies, useFaceSheet, usePrepareSettlement, violationsFrom } from './api'
+import {
+  useCauseOfLossOptions,
+  useClaimTask,
+  useCompleteStage,
+  useCurrencies,
+  useFaceSheet,
+  usePrepareSettlement,
+  violationsFrom,
+} from './api'
 import { AcceptanceButtons } from './AcceptanceButtons'
 import { LODTypeSelect } from './LODTypeSelect'
 import { CommitteeStatus } from './Committee'
@@ -205,15 +213,54 @@ export function ownerNotice(tugas: Task, identity: string, register: boolean): s
 }
 
 /**
+ * Judul bingkai: nama tindakan keluar tahapnya, atau "Rincian Klaim" bila tidak ada tugas.
+ *
+ * Tanpa tugas, menuliskan "InputSurveyor" akan menyatakan klaim berada di tahap yang sudah
+ * dilewatinya — keliru, dan keliru dengan percaya diri.
+ */
+function judulBingkai(tugas: Task | null): string {
+  if (tugas === null) return 'Rincian Klaim'
+  return tugas.tindakan_keluar || 'InputSurveyor'
+}
+
+/**
  * Bingkai ClaimSurvey_sect untuk tahap yang ditutup flow action InputSurveyor/InputInvestigator.
  * Tab Input Register di sini tampilan baca (RegisterView); tahap Input Register sendiri memakai
  * bingkai InputRegister-sect (InputRegisterFrame).
  */
-export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
+export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task | null }) {
   const identity = useSession((state) => state.user?.identitas ?? '')
-  const notice = ownerNotice(tugas, identity, false)
+
+  /*
+    `tugas` boleh NULL — klaim yang alurnya sudah selesai, dan klaim warisan `PNC-xxxx` yang
+    alurnya masih di Pega (`P-3`), tidak punya tugas terbuka.
+
+    Sampai 2026-10-12 bingkai ini menuntut sebuah tugas, sehingga klaim seperti itu hanya
+    menampilkan kepala dan satu kalimat — dilaporkan Work Owner pada `PNC-11`.
+
+    Yang dibuka tanpa tugas adalah bingkai yang SAMA, dengan seluruh tindakannya terkunci.
+    Membuat layar terpisah sudah dicoba dan ditolak: yang diminta tampilan yang sama, bukan
+    tampilan yang mirip.
+  */
+  const bacaSaja = tugas === null
+  /*
+    Tanpa tugas, bingkai ini TIDAK memasang peringatannya sendiri.
+
+    Halaman klaim sudah memasang satu kotak di atas bingkai ini untuk keadaan yang sama —
+    `tahap_kini === ''` dan `tugas === null` selalu terjadi bersamaan — dan kotak itu
+    menerangkan SEBABNYA: klaimnya sudah selesai, atau masih dikerjakan di Pega.
+
+    Peringatan kedua di sini hanya mengulangnya dengan kalimat yang lebih lemah ("tidak sedang
+    dikerjakan siapa pun"), dan dua kotak berturut-turut yang mengatakan hal sama membuat
+    keduanya berhenti dibaca. Dilaporkan Work Owner 2026-10-12 pada klaim Close Claim.
+
+    Yang TETAP dipasang: peringatan tugas milik orang lain. Keadaan itu tidak punya kotak di
+    atasnya — klaimnya punya tahap berjalan — sehingga tanpa kalimat ini tombol yang mati
+    tidak punya penjelasan sama sekali.
+  */
+  const notice = bacaSaja ? null : ownerNotice(tugas, identity, false)
   // Tahap Investigator membuka tab Investigasi lebih dulu.
-  const investigator = tugas.tindakan_keluar === ACTION_INPUT_INVESTIGATOR && klaim.polis.lini === PANEL_PA
+  const investigator = tugas?.tindakan_keluar === ACTION_INPUT_INVESTIGATOR && klaim.polis.lini === PANEL_PA
   const [tab, setTab] = useState<Tab>(investigator ? 'Investigasi' : 'Estimasi & Adjustment')
   const [subTab, setSubTab] = useState<SubTab>('Adjustment & Akseptasi')
   const currencies = useCurrencies()
@@ -230,10 +277,10 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   const [sendingToRCLPUCL, setSendingToRCLPUCL] = useState(false)
   // Kirim ke RCL/PUCL: local action KomentarRCLPUCL. Tombolnya tampil menurut kondisi
   // section, tetapi baru dapat ditekan bila tugasnya memang dapat dikerjakan pemanggil.
-  const canSendToRCLPUCL = notice === null && !tugas.dapat_diambil
+  const canSendToRCLPUCL = tugas !== null && notice === null && !tugas.dapat_diambil
   const [closing, setClosing] = useState(false)
   // Kirim ke Inputor: local action AnalystRemarks (ClaimSurvey_sect, `!isAnalystPA_PNC`).
-  const canSendToInputor = notice === null && !tugas.dapat_diambil
+  const canSendToInputor = tugas !== null && notice === null && !tugas.dapat_diambil
 
   const buttons: { label: string; strong?: boolean; visible: boolean; onClick?: () => void }[] = [
     { label: 'Detail Premi', visible: true },
@@ -262,14 +309,19 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
   ]
 
   return (
-    <section className="mt-6 rounded border border-slate-200 p-4" aria-label={tugas.tindakan_keluar || 'InputSurveyor'}>
-      <h2 className="text-sm text-slate-700">{tugas.tindakan_keluar || 'InputSurveyor'}</h2>
-      {tugas.dapat_diambil ? (
+    <section className="mt-6 rounded border border-slate-200 p-4" aria-label={judulBingkai(tugas)}>
+      <h2 className="text-sm text-slate-700">{judulBingkai(tugas)}</h2>
+      {tugas?.dapat_diambil ? (
         <ClaimTaskNotice tugas={tugas} />
       ) : (
         notice && (
           <p className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
-            {notice} Layar ini dapat dibaca, tetapi isiannya tidak dapat disimpan.
+            {/*
+              Ekor "Layar ini dapat dibaca…" melengkapi kalimat yang berhenti pada siapa
+              pemilik tugasnya. Sejak peringatan baca-saja dicabut, `notice` hanya berisi
+              keadaan itu, sehingga ekornya tidak lagi bersyarat.
+            */}
+            {`${notice} Layar ini dapat dibaca, tetapi isiannya tidak dapat disimpan.`}
           </p>
         )
       )}
@@ -313,17 +365,17 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
       </div>
 
-      {sendingToInputor && (
+      {sendingToInputor && tugas && (
         <SendToInputorDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setSendingToInputor(false)} />
       )}
-      {closing && <CloseClaimDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setClosing(false)} />}
+      {closing && tugas && <CloseClaimDialog claimID={klaim.id} taskID={tugas.id} onClose={() => setClosing(false)} />}
       {klaim.tutup_sementara === true && (
         <p className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
           This claim is temporarily closed.
         </p>
       )}
 
-      {sendingToRCLPUCL && (
+      {sendingToRCLPUCL && tugas && (
         <SendToRCLPUCLDialog
           claimID={klaim.id}
           taskID={tugas.id}
@@ -339,10 +391,10 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
       </dl>
 
       {/* ── Tab ─────────────────────────────────────────────────────────────────── */}
-      <TabList items={tabs} current={tab} onSelect={setTab} label={`Tab ${tugas.tindakan_keluar || 'InputSurveyor'}`} />
+      <TabList items={tabs} current={tab} onSelect={setTab} label={`Tab ${judulBingkai(tugas)}`} />
 
       {tab === 'Input Register' && <RegisterView klaim={klaim} />}
-      {tab === 'Survey' && <SurveyTabPanel klaim={klaim} taskID={tugas.id} />}
+      {tab === 'Survey' && tugas && <SurveyTabPanel klaim={klaim} taskID={tugas.id} />}
       {tab === 'Investigasi' && <InvestigationTab claimID={klaim.id} />}
       {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />}
       {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
@@ -357,7 +409,7 @@ export function SurveyorForm({ klaim, tugas }: { klaim: Claim; tugas: Task }) {
         </div>
       )}
 
-      {pa && <StageSubmit tugas={tugas} locked={notice !== null || tugas.dapat_diambil} />}
+      {pa && tugas && <StageSubmit tugas={tugas} locked={notice !== null || tugas.dapat_diambil} />}
     </section>
   )
 }
@@ -558,7 +610,8 @@ function RegisterView({ klaim }: { klaim: Claim }) {
   return (
     <div className="mt-3">
       <p className="text-xs text-slate-500">
-        Isian Input Register tampil untuk dibaca. Mengubahnya dari tahap ini belum dibangun.
+        Isian Input Register tampil untuk dibaca. Klaim yang sudah melewati tahap Input Register
+        tidak dapat mengubahnya dari sini, peran apa pun pemanggilnya.
       </p>
       <dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-3">
         {rows.map(([label, value]) => (
@@ -611,7 +664,7 @@ function EstimateView({
   lockedReason,
 }: {
   klaim: Claim
-  tugas: Task
+  tugas: Task | null
   currencies: CurrencyOption[]
   lockedReason: string | null
 }) {
@@ -692,7 +745,7 @@ function AdjustmentView({
   currencies,
 }: {
   klaim: Claim
-  tugas: Task
+  tugas: Task | null
   identity: string
   currencies: CurrencyOption[]
 }) {
@@ -714,9 +767,13 @@ function AdjustmentView({
     }
     prepare.reset()
     setPrepareFor({ i, j })
+    if (tugas === null) return
     prepare.mutate({ tugas_id: tugas.id, objek: i + 1, jaminan: j + 1 }, { onSuccess: () => setAddFor({ i, j }) })
   }
-  const lockedReason = ownerNotice(tugas, identity, false)
+  // Tanpa tugas, SELURUH isian terkunci — bukan karena bukan milik pengguna, melainkan
+  // karena tidak ada tugas yang dapat menampungnya.
+  const lockedReason =
+    tugas === null ? 'Klaim ini tidak punya tugas terbuka.' : ownerNotice(tugas, identity, false)
   // Download Claim Face Sheet pada baris jaminan PA.
   const faceSheet = useFaceSheet(klaim.id)
   const faceSheetViolations = violationsFrom(faceSheet.error)
@@ -820,7 +877,7 @@ function AdjustmentView({
                                   <>
                                     <td className="p-2">
                                       {/* Download Claim Face Sheet: `IsAnalisator || IsPHK` → DownloadClaimFaceSheet_act (rute CFS). */}
-                                      {(tugas.analis === true || isPHKCoverage(c.id)) && (
+                                      {(tugas?.analis === true || isPHKCoverage(c.id)) && (
                                         <button
                                           type="button"
                                           disabled={lockedReason !== null || faceSheet.isPending}
@@ -828,6 +885,7 @@ function AdjustmentView({
                                           onClick={() => {
                                             faceSheet.reset()
                                             setFaceSheetFor({ i, j })
+                                            if (tugas === null) return
                                             faceSheet.mutate({ tugas_id: tugas.id, objek: i + 1, jaminan: j + 1 }, { onSuccess: (file) => simpanBerkas(file) })
                                           }}
                                           className="whitespace-nowrap rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 disabled:opacity-60"
@@ -848,7 +906,7 @@ function AdjustmentView({
                                       </button>
                                     </td>
                                     <td className="p-2">
-                                      {showTransferToAnalyst(klaim, tugas.tahap, o, j) && (
+                                      {tugas !== null && showTransferToAnalyst(klaim, tugas.tahap, o, j) && (
                                         <button
                                           type="button"
                                           disabled={lockedReason !== null}
@@ -896,7 +954,7 @@ function AdjustmentView({
                                 <td colSpan={coverageColumns.length} className="p-2">
                                   <SettlementGrid
                                     claimID={klaim.id}
-                                    taskID={tugas.id}
+                                    taskID={tugas?.id ?? ''}
                                     object={i + 1}
                                     coverage={j + 1}
                                     name={c.nama}
@@ -918,7 +976,7 @@ function AdjustmentView({
                                         <SettlementEditor
                                           key={n}
                                           claimID={klaim.id}
-                                          taskID={tugas.id}
+                                          taskID={tugas?.id ?? ''}
                                           object={i + 1}
                                           coverage={j + 1}
                                           policyCurrency={klaim.polis.mata_uang}
@@ -928,7 +986,7 @@ function AdjustmentView({
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
                                           inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
-                                          analyst={tugas.analis === true}
+                                          analyst={tugas?.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
                                           existing={{ index: n, line: s }}
                                           onClose={() => {}}
@@ -941,7 +999,7 @@ function AdjustmentView({
                                       addFor?.i === i && addFor.j === j ? (
                                         <SettlementEditor
                                           claimID={klaim.id}
-                                          taskID={tugas.id}
+                                          taskID={tugas?.id ?? ''}
                                           object={i + 1}
                                           coverage={j + 1}
                                           policyCurrency={klaim.polis.mata_uang}
@@ -951,7 +1009,7 @@ function AdjustmentView({
                                           pa={pa}
                                           exGratia={klaim.ex_gratia}
                                           inpatientDays={inpatientDays(klaim.tanggal_kejadian, klaim.tanggal_keluar_rawat_inap)}
-                                          analyst={tugas.analis === true}
+                                          analyst={tugas?.analis === true}
                                           analystTransfer={pa && (isPHKCoverage(c.id) || c.sudah_transfer_analis === true)}
                                           onCreated={(n) => {
                                             setAddFor(null)
@@ -979,13 +1037,13 @@ function AdjustmentView({
       {committeeFor && (
         <CommitteeTransferDialog
           klaim={klaim}
-          taskID={tugas.id}
-          stage={tugas.tahap}
+          taskID={tugas?.id ?? ''}
+          stage={tugas?.tahap ?? ''}
           object={committeeFor.object}
           coverage={committeeFor.coverage}
           adjustment={committeeFor.adjustment}
           receivers={klaim.penerima_klaim ?? []}
-          analyst={tugas.analis === true}
+          analyst={tugas?.analis === true}
           onClose={() => setCommitteeFor(null)}
         />
       )}

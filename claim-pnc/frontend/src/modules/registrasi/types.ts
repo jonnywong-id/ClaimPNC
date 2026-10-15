@@ -524,6 +524,14 @@ export type Claim = {
    * kata, dan kekeliruan membacanya sulit terdeteksi.
    */
   status_proses: string
+  /**
+   * Status kerja menurut PEGA (`T_CLAIMLIST_ADMIN.PYSTATUSWORK`).
+   *
+   * BERBEDA dari `status_proses`, yang dibaca dari tabel bisnis: keduanya tidak sepakat pada
+   * 157 dari 1.360 klaim warisan. Kosong berarti klaimnya tidak ada di tabel daftar Pega —
+   * bukan berarti selesai.
+   */
+  status_kerja_pega: string
   status_klaim: string
   /** Nama Status Klaim dari master V_STS_CLAIM, mis. "Register". */
   status_klaim_nama?: string

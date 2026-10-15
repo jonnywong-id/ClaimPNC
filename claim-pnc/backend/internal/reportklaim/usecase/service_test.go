@@ -80,7 +80,7 @@ func TestBahanYangTidakLengkapDitolakSaatPerakitan(t *testing.T) {
 // melaporkan laporan yang "hilang", dan membuat kemajuan migrasi tidak terbaca dari layar.
 func TestKatalogTetapMemuatPanelYangTerhalang(t *testing.T) {
 	daftar := layanan(t, nil).Catalog()
-	require.Len(t, daftar, 28)
+	require.Len(t, daftar, 23)
 
 	terhalang := 0
 	for _, r := range daftar {
@@ -110,7 +110,6 @@ func TestEksporMengalirkanBarisDanMenghitungnya(t *testing.T) {
 	require.NotEmpty(t, diterima)
 	require.Equal(t, "PNCN.26.0001", diterima[0].Value("CaseID"))
 }
-
 
 // kodeTerhalang mencari satu laporan yang BELUM siap, apa pun kodenya.
 //
@@ -300,15 +299,4 @@ func TestTanpaPencatatTetapBerjalan(t *testing.T) {
 	require.Positive(t, rows)
 }
 
-func TestPilihanBisnisDibacaDariPortalYangDiminta(t *testing.T) {
-	s := layanan(t, nil)
-
-	pilihan, err := s.BusinessOptions(t.Context(), portalUji)
-	require.NoError(t, err)
-	require.NotEmpty(t, pilihan)
-	require.NotEmpty(t, pilihan[0].Code)
-	require.NotEmpty(t, pilihan[0].Name)
-
-	_, err = s.BusinessOptions(t.Context(), "PORTAL-LAIN")
-	require.Error(t, err)
-}
+// TestPilihanBisnisDibacaDariPortalYangDiminta dicabut 2026-10-13 bersama panelnya.

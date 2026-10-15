@@ -537,17 +537,31 @@ export function WorkshopForm({
 
           Di Pega, menyetujui bengkel rekanan MEMBUAT akun operator lewat
           `GCNMCreateOperator` — dengan kata sandi yang sama untuk setiap bengkel
-          (`Local.password := "123456"`). Akun itu tidak dibawa: sistem baru tidak punya
-          operator Pega, dan kontrak identitasnya belum ada (F-3, R-14).
+          (`Local.password := "123456"`). Akun itu tidak dibawa, dan kata sandi seragam
+          itu memang tidak layak ditiru.
 
-          Tanpa kalimat ini, petugas akan mengira bengkelnya sudah bisa masuk hanya karena
-          login-nya tersimpan.
+          # Alasannya dikoreksi 2026-10-14
+
+          Kalimat ini sebelumnya menyebut penerbitan akun "menunggu kontrak identitas
+          (F-3)". Itu TIDAK akurat, dan diperiksa langsung ke basis data: wadahnya sudah
+          ada dan sudah dipakai sistem baru — `POOLDATA.M_LOGIN_PNC` memverifikasi login
+          non-karyawan, dan `POOLDATA.M_OTORISASI_PNC` memegang hak akses menunya
+          (396 baris, dikonfirmasi Work Owner).
+
+          Yang benar-benar belum ada bukan kontraknya, melainkan KEPUTUSAN: aplikasi ini
+          baru MEMBACA kedua tabel itu, dan menulisinya mengubah kepemilikan tabel selama
+          masa paralel (`ADR-0004`, `D-63`). Menyebut F-3 membuat penghalangnya terlihat
+          jauh lebih besar daripada yang sebenarnya.
+
+          Teksnya karena itu tidak lagi menyebut sebab teknis sama sekali — petugas yang
+          membacanya butuh tahu apa yang harus ia lakukan, bukan tabel mana yang belum
+          boleh ditulis.
         */}
         {isPartner && (
           <p className="rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Login aplikasi hanya <span className="font-medium">disimpan</span> di master ini.
-            Akun untuk masuk aplikasi bengkel belum diterbitkan sistem baru — pembuatannya
-            menunggu kontrak identitas (F-3).
+            Login aplikasi hanya <span className="font-medium">dicatat</span> di master ini.
+            Akun untuk masuk aplikasi bengkel belum diterbitkan otomatis — mintakan
+            pembuatannya ke administrator setelah bengkel ini disetujui.
           </p>
         )}
         <div className="grid gap-4 sm:grid-cols-2">

@@ -88,7 +88,24 @@ func (l *Service) dlaIssuedOrNew(ctx context.Context, sc dlaScope, by Caller) (D
 		return DLAList{}, err
 	}
 	if len(list) > 0 {
-		return DLAList{DLA: list, Warning: dlaWarnings(list)}, nil
+		// TANPA peringatan, dan itu memang perilaku Pega.
+		//
+		// `GenerateDLAList` membuat `WarningDLAPages` dengan `Page-New` pada langkah 4 —
+		// halaman BARU setiap kali layar dibuka, bukan nilai tersimpan. Peringatannya baru
+		// diisi pada langkah 34. Di antara keduanya ada langkah yang ber-`EXIT` ketika
+		// `@SizeOfPropertyList(DataDLA.pxResults)>0` (`Activity/GenerateDLAList-Act.xml`
+		// :6568), yaitu persis keadaan di sini: DLA sudah pernah terbit.
+		//
+		// Jadi pada klaim yang DLA-nya sudah ada, Pega keluar sebelum langkah 34, halaman
+		// peringatan tetap kosong, dan `PrintDLA-sect` menyembunyikan kotaknya karena
+		// syaratnya `WarningDLAPages.source!=''`.
+		//
+		// Ini penting karena kode reasuradur kosong adalah hal yang LAZIM pada data
+		// warisan: 4.958 dari 6.388 baris `T_DLALIST` di basis data pengembangan
+		// REINSCODE-nya kosong, menyebar di 1.836 klaim (diukur 2026-10-13). Memunculkan
+		// peringatan di sini membuat hampir setiap klaim lama tampak bermasalah, padahal
+		// Pega diam.
+		return DLAList{DLA: list}, nil
 	}
 	policy, err := l.dla.Policy(ctx, sc.claim.Policy.Number, sc.claim.Policy.ProdKe)
 	if err != nil {
@@ -109,6 +126,8 @@ func (l *Service) dlaIssuedOrNew(ctx context.Context, sc dlaScope, by Caller) (D
 	return DLAList{DLA: list, Issued: issued, Warning: dlaWarnings(list)}, nil
 }
 
+// dlaWarnings adalah `WarningDLAPages` — hanya dipakai pada jalur DLA yang BARU terbit.
+// Jalur "sudah pernah terbit" sengaja tidak memanggilnya; alasannya di `dlaIssuedOrNew`.
 func dlaWarnings(list []registrasi.DLA) []string {
 	var out []string
 	for _, d := range list {

@@ -1,5 +1,3 @@
-import { ambil } from './dokumen'
-
 /**
  * Padanan When rule Pega yang menentukan **apa yang digambar** di popup rincian.
  *
@@ -24,42 +22,54 @@ import { ambil } from './dokumen'
  *
  * # Dari mana nilainya dibaca
  *
- * Ketiga properti berada di snapshot polis di dalam dokumen JSON klaim. `IsTravel` di Pega
- * memeriksa DUA jalur yang berbeda untuk nilai yang sama, dan keduanya ikut diperiksa di sini.
+ * Ketiga properti dulu digali dari snapshot polis di dalam dokumen JSON klaim. Sejak migrasi
+ * lepas dari JSON (2026-10-12), keduanya datang dari KEPALA rincian — server membacanya dari
+ * T_CLAIMLIST_ADMIN.GROUPPANEL_1 dan T_CLAIM_PNC.POLIS_JENIS_BISNIS.
  */
 
-/** Membaca satu nilai polis dari dokumen; kosong bila jalurnya tidak ada. */
-function nilaiPolis(dokumen: Record<string, unknown>, ekor: string): string {
-  for (const jalur of [`Policy.Quotation.${ekor}`, `ClaimData.PolicyData.Quotation.${ekor}`]) {
-    const hasil = ambil(dokumen, jalur)
-    if (hasil.ada && hasil.nilai.trim() !== '') return hasil.nilai.trim()
-  }
-  return ''
+/**
+ * Lini bisnis klaim, dibawa KEPALA rincian — bukan lagi digali dari dokumen JSON.
+ *
+ * Dua kode inilah yang dibandingkan rule Pega (`IsPA`, `IsHE`, `IsFire`, …). Nama bisnis
+ * TIDAK dipakai: ia teks bebas, dan membandingkannya berarti menebak.
+ */
+export type LiniBisnisKlaim = {
+  group_panel: string
+  jenis_bisnis: string
 }
 
-const panel = (d: Record<string, unknown>) => nilaiPolis(d, 'GroupPanel')
-const jenis = (d: Record<string, unknown>) => nilaiPolis(d, 'BusinessType')
-const kode = (d: Record<string, unknown>) => nilaiPolis(d, 'BusinessCode')
+const panel = (d: LiniBisnisKlaim) => d.group_panel.trim()
+const jenis = (d: LiniBisnisKlaim) => d.jenis_bisnis.trim()
+/**
+ * `IsAneka` membandingkan BusinessCode, yang TIDAK ada di kepala rincian.
+ *
+ * Dikembalikan kosong, sehingga `IsAneka` selalu salah. Itu dinyatakan, bukan ditebak dari
+ * kolom lain — dan akibatnya terbatas: varian Aneka pada grid objek tidak terpilih, sedangkan
+ * varian lain tetap bekerja.
+ *
+ * BELUM DIPUTUSKAN — pertanyaan terbuka: kolom mana di `T_CLAIM_PNC` yang sepadan dengan
+ * `BusinessCode` (`BUSINESSCODE` ada, tetapi kesepadanannya belum diukur).
+ */
+const kode = (_d: LiniBisnisKlaim) => ''
 
 /** `IsPA` — `Policy.Quotation.GroupPanel = "002"`. Sama dengan `isPA_PNC`. */
-export const isPA = (d: Record<string, unknown>) => panel(d) === '002'
+export const isPA = (d: LiniBisnisKlaim) => panel(d) === '002'
 
 /** `IsTravel` — `Policy.Quotation.GroupPanel = "005"`. */
-export const isTravel = (d: Record<string, unknown>) => panel(d) === '005'
+export const isTravel = (d: LiniBisnisKlaim) => panel(d) === '005'
 
 /** `IsAneka` — `Policy.Quotation.BusinessCode = "10140"`. */
-export const isAneka = (d: Record<string, unknown>) => kode(d) === '10140'
+export const isAneka = (d: LiniBisnisKlaim) => kode(d) === '10140'
 
 /** `IsMarineCargo` — `BusinessType = "MarineCargo"` ATAU `GroupPanel = "004"`. */
-export const isMarineCargo = (d: Record<string, unknown>) =>
+export const isMarineCargo = (d: LiniBisnisKlaim) =>
   jenis(d) === 'MarineCargo' || panel(d) === '004'
 
 /** `IsFire` — `BusinessType = "Fire"` ATAU `GroupPanel = "006"`. */
-export const isFire = (d: Record<string, unknown>) => jenis(d) === 'Fire' || panel(d) === '006'
+export const isFire = (d: LiniBisnisKlaim) => jenis(d) === 'Fire' || panel(d) === '006'
 
 /** `IsHE` — `BusinessType = "HE"` ATAU `BusinessType = "ContractorsPM"`. */
-export const isHE = (d: Record<string, unknown>) =>
-  jenis(d) === 'HE' || jenis(d) === 'ContractorsPM'
+export const isHE = (d: LiniBisnisKlaim) => jenis(d) === 'HE' || jenis(d) === 'ContractorsPM'
 
 /**
  * Nama penjaga yang dipakai spesifikasi grid, dipetakan ke fungsinya.
@@ -67,7 +77,7 @@ export const isHE = (d: Record<string, unknown>) =>
  * Dipisahkan dari spesifikasi supaya yang tertulis di sana adalah **nama When rule Pega** apa
  * adanya — sehingga penelusuran balik ke export tetap mungkin tanpa membaca kode ini.
  */
-export const PENJAGA: Record<string, (d: Record<string, unknown>) => boolean> = {
+export const PENJAGA: Record<string, (d: LiniBisnisKlaim) => boolean> = {
   IsPA: isPA,
   isPA_PNC: isPA,
   IsTravel: isTravel,
@@ -87,10 +97,10 @@ export const PENJAGA: Record<string, (d: Record<string, unknown>) => boolean> = 
  * Nama yang tidak dikenal mengembalikan **false**, bukan true: lebih baik satu bagian tidak
  * tergambar dan ketahuan, daripada tergambar untuk lini yang salah dan tidak ketahuan.
  */
-export function penjagaTerpenuhi(ungkapan: string, dokumen: Record<string, unknown>): boolean {
+export function penjagaTerpenuhi(ungkapan: string, lini: LiniBisnisKlaim): boolean {
   return ungkapan
     .split('||')
     .map((bagian) => bagian.trim())
     .filter(Boolean)
-    .some((nama) => PENJAGA[nama]?.(dokumen) ?? false)
+    .some((nama) => PENJAGA[nama]?.(lini) ?? false)
 }

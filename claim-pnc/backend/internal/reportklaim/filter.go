@@ -25,14 +25,13 @@ const (
 	// FilterComplianceStatus: radio "Status Compliance".
 	FilterComplianceStatus
 
-	// FilterBusinessCode: autocomplete "Bisnis" pada panel Klaim Per Bisnis.
+	// FilterBusinessCode berdiri di sini sampai 2026-10-13 — autocomplete "Bisnis" milik
+	// panel REPORT KLAIM PER BISNIS, yang tidak ada di Pega produksi.
 	//
-	// Ia BERBEDA dari FilterBusinessLine meski namanya mirip. Yang ini memilih SATU kode
-	// bisnis dari master (`TempLaporan.CountryID`, sumbernya `BrowseBusiness_RD`);
-	// yang itu memilih KELOMPOK lini bisnis. Menyatukan keduanya akan membuat panel
-	// Klaim Per Bisnis menyaring kelompok, bukan satu bisnis — dan seluruh isinya salah
-	// tanpa satu pun pesan galat.
-	FilterBusinessCode
+	// Nilai bit-nya SENGAJA tidak diisi ulang oleh penyaring lain: `FilterSet` adalah
+	// himpunan bit, dan menggeser nilai yang tersisa akan mengubah arti angka yang
+	// mungkin tersimpan di tempat lain. Yang hilang cukup dibiarkan kosong.
+	_
 
 	// FilterDetail: kotak centang yang di layar berlabel "Checkbox".
 	//
@@ -186,8 +185,7 @@ type Filter struct {
 	// Nilai sahnya ada di ComplianceStatusOptions — bukan lagi string bebas.
 	ComplianceStatus string
 
-	// BusinessCode adalah kode bisnis terpilih pada panel Klaim Per Bisnis.
-	BusinessCode string
+	// BusinessCode berdiri di sini sampai 2026-10-13, dicabut bersama panelnya.
 
 	// Detail adalah kotak centang "Checkbox" — ia memilih susunan kolom, bukan baris.
 	Detail bool
@@ -245,13 +243,8 @@ func (r Report) Validate(f Filter) []Violation {
 		}
 	}
 
-	if r.Uses.Has(FilterBusinessCode) && strings.TrimSpace(f.BusinessCode) == "" {
-		v = append(v, Violation{Field: "bisnis", Message: "Bisnis wajib dipilih."})
-	}
-
 	return v
 }
-
 
 // ComplianceStatusOption adalah satu pilihan radio "Status Compliance".
 type ComplianceStatusOption struct {

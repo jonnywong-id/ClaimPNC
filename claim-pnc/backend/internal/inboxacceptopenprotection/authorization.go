@@ -47,12 +47,17 @@ const GroupPremiumQueue = "PncCollection"
 //
 // Perbandingan yang peka huruf besar-kecil akan menolak pengguna yang sah hanya karena
 // barisnya diketik dengan kapitalisasi lain, dan penolakan itu tampak seperti gangguan.
+// `it` ikut sejak 2026-10-12: Work Owner menetapkan *"IT itu pas di Pega namanya Administrator,
+// jadi semua sama aja."* Diukur hari yang sama di `M_LOGIN_GROUP_PNC`, KEDUANYA dipakai —
+// `Administrators` 8 anggota, `IT` 2 anggota — sehingga menyebut salah satu saja mencabut akses
+// orang yang hari ini memegangnya.
 var screenGroups = map[string]struct{}{
 	"pnccollection":  {},
 	"casemanager":    {},
 	"pncopcgeneral":  {},
 	"pnckomite":      {},
 	"administrators": {},
+	"it":             {},
 }
 
 // normalizeGroup merapikan satu GROUP_ID menjadi bentuk yang dibandingkan.
