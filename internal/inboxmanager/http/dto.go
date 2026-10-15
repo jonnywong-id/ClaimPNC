@@ -112,6 +112,10 @@ type TabDTO struct {
 
 	// HasDetailExport menyatakan tab ini punya blok "Export Data Detail Klaim".
 	HasDetailExport bool `json:"punya_ekspor_detail,omitempty"`
+
+	// HasPaymentDetail menyatakan baris antrean ini dibuka lewat DETAILS menjadi panel detail
+	// Payment Klaim Akseptasi.
+	HasPaymentDetail bool `json:"punya_detail_akseptasi,omitempty"`
 }
 
 // PanelShapeDTO adalah bentuk satu grid dashboard, tanpa barisnya.
@@ -164,6 +168,10 @@ type PanelDTO struct {
 	Title   string               `json:"judul"`
 	Columns []ColumnDTO          `json:"kolom"`
 	Rows    []map[string]CellDTO `json:"baris"`
+
+	// RowFilter, bila terisi, adalah kunci penyaring yang dipasang saat sel kolom pertama
+	// sebuah baris diklik — lihat inboxmanager.Panel.RowFilter.
+	RowFilter string `json:"penyaring_baris,omitempty"`
 }
 
 // FilterOptionDTO adalah satu pilihan penyaring.
@@ -274,6 +282,7 @@ func toTabDTO(tab inboxmanager.Tab) TabDTO {
 		HasPeriodFilter:  tab.HasPeriodFilter,
 		PeriodApplyLabel: tab.PeriodApplyLabel,
 		HasDetailExport:  tab.HasDetailExport,
+		HasPaymentDetail: tab.HasPaymentDetail,
 		Decision: DecisionRuleDTO{
 			Decidable:              tab.Decision.Decidable,
 			ApproveBlockedReason:   tab.Decision.ApproveBlockedReason,
@@ -306,9 +315,9 @@ func toColumnDTO(column inboxmanager.Column) ColumnDTO {
 // toMetadataResponse menyusun jawaban keterangan layar.
 func toMetadataResponse(meta usecase.Metadata) MetadataResponse {
 	response := MetadataResponse{
-		DefaultTab:         meta.DefaultTab,
-		LineBusiness:       meta.LineBusiness,
-		Tabs:               []TabDTO{},
+		DefaultTab:   meta.DefaultTab,
+		LineBusiness: meta.LineBusiness,
+		Tabs:         []TabDTO{},
 	}
 	for _, tab := range meta.Tabs {
 		response.Tabs = append(response.Tabs, toTabDTO(tab))
@@ -380,7 +389,12 @@ func toListResponse(view usecase.View) ListResponse {
 }
 
 func toPanelDTO(panel inboxmanager.Panel) PanelDTO {
-	dto := PanelDTO{Key: panel.Key, Title: panel.Title, Rows: []map[string]CellDTO{}}
+	dto := PanelDTO{
+		Key:       panel.Key,
+		Title:     panel.Title,
+		Rows:      []map[string]CellDTO{},
+		RowFilter: panel.RowFilter,
+	}
 	for _, column := range panel.Columns {
 		dto.Columns = append(dto.Columns, toColumnDTO(column))
 	}

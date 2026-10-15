@@ -164,7 +164,7 @@ type Protection struct {
 	// Dua bentuk hidup berdampingan permanen:
 	//
 	//	OPC-XXX         warisan Pega, dibaca apa adanya
-	//	OPCN.YY.xxxx    terbitan aplikasi ini (keputusan Work Owner 2026-09-23)
+	//	OPCN.YY.n       terbitan aplikasi ini (keputusan Work Owner 2026-09-23)
 	//
 	// Lihat FormatNumber untuk alasan prefixnya dibedakan.
 	Number string
@@ -333,7 +333,7 @@ func (p Protection) Accepted() bool {
 // sebuah baris terbaca langsung dari nomornya tanpa tabel pemetaan.
 const NumberPrefix = "OPCN"
 
-// FormatNumber menyusun nomor proteksi berbentuk `OPCN.YY.xxxx`.
+// FormatNumber menyusun nomor proteksi berbentuk `OPCN.YY.n`.
 //
 // # Pencacahnya sequence, bukan MAX+1
 //
@@ -341,31 +341,34 @@ const NumberPrefix = "OPCN"
 // `NEXTVAL`-nya, lalu fungsi ini menyusun bentuk teksnya.
 //
 // Sequence itu GLOBAL — tidak direset tiap awal tahun — sehingga nomor urut menembus
-// pergantian tahun (`OPCN.26.0009` diikuti `OPCN.27.0010`). Segmen tahun karena itu
-// PENANDA, bukan penghitung per tahun. Konsekuensinya diterima: yang harus unik adalah
-// nomornya, dan sequence menjaminnya tanpa bergantung pada isi tabel.
+// pergantian tahun (`OPCN.26.9` diikuti `OPCN.27.10`). Segmen tahun karena itu PENANDA,
+// bukan penghitung per tahun. Konsekuensinya diterima: yang harus unik adalah nomornya,
+// dan sequence menjaminnya tanpa bergantung pada isi tabel.
 //
-// # Dua hal yang BERBEDA dari sintaks yang Work Owner tuliskan
+// # Nomor urutnya TIDAK dipadatkan nol
 //
-// Sintaks yang diberikan berbunyi
-// `'OPCN' || '.' || TO_CHAR(SYSDATE,'RR') || '.' || TO_CHAR(seq.NEXTVAL)`. Yang dipakai di
-// sini berbeda pada dua hal, keduanya disengaja dan keduanya dilaporkan:
+// Sintaks yang Work Owner tuliskan berbunyi
+// `'OPCN' || '.' || TO_CHAR(SYSDATE,'RR') || '.' || TO_CHAR(seq.NEXTVAL)`. `TO_CHAR` tanpa
+// format mask mencetak nomor urut apa adanya, sehingga proteksi pertama tahun 2026 bernomor
+// `OPCN.26.1` — bukan `OPCN.26.0001`.
 //
-//  1. Nomor urut DIPADATKAN NOL sampai empat digit. `TO_CHAR(seq.NEXTVAL)` tanpa format
-//     mask membuat lebar segmen terakhir berubah-ubah, sehingga ".10" mendahului ".9" saat
-//     diurutkan sebagai teks — dan daftar proteksi memang diurutkan sebagai teks pada
-//     pemutus serinya. `D-71` butir 2 mencatat cacat yang sama untuk nomor klaim. Ia
-//     diketahui sebelum satu pun nomor terbit, sehingga memperbaikinya tidak memutus data
-//     historis apa pun.
+// Versi sebelumnya memadatkannya sampai empat digit dengan alasan pengurutan teks. Alasan
+// itu DITOLAK Work Owner (2026-10-13): nomor yang terbaca orang harus sependek pencacahnya,
+// dan empat digit sejak nomor pertama membuat segmen terakhir tampak seperti lebar tetap
+// padahal ia akan melebar sendiri di nomor ke-10.000.
 //
-//  2. Tahunnya datang dari PEMANGGIL, bukan dari `SYSDATE`. `SYSDATE` adalah jam server
-//     basis data; nomor yang terbit di sekitar pergantian tahun akan mengambil tahun dari
-//     sana dan bergeser terhadap tanggal WIB (`R-12`, `D-71` catatan ketiga). Di sini
-//     sumber waktunya satu dan dapat diuji.
+// Yang hilang karena itu, dan diterima: daftar proteksi memakai nomor sebagai PEMUTUS SERI
+// saat `CREATE_DATE` sama persis, dan pemutus itu membandingkan teks — sehingga di antara
+// baris sedetik yang sama, `OPCN.26.9` akan berdiri setelah `OPCN.26.10`. Urutan utamanya
+// tetap `CREATE_DATE DESC`, jadi cacatnya hanya tampak pada baris yang lahir pada detik
+// yang sama.
 //
-// Keduanya menyalin perlakuan `inboxlaporanklaim.FormatReportNumber` atas `RCVN.YY.xxxx`.
-// Perlu dicatat derajatnya: bentuk `RCVN` itu tiruan tim pengembang atas `D-71`, BUKAN
-// keputusan Work Owner — sedangkan `OPCN` di sini memang keputusan Work Owner.
+// # Tahunnya datang dari PEMANGGIL, bukan dari SYSDATE
+//
+// Ini satu-satunya hal yang masih berbeda dari sintaks Work Owner, dan ia disengaja.
+// `SYSDATE` adalah jam server basis data; nomor yang terbit di sekitar pergantian tahun
+// akan mengambil tahun dari sana dan bergeser terhadap tanggal WIB (`R-12`, `D-71` catatan
+// ketiga). Di sini sumber waktunya satu dan dapat diuji.
 //
 // # Batas kolomnya
 //
@@ -373,12 +376,8 @@ const NumberPrefix = "OPCN"
 // pemisah. Tersisa dua belas digit untuk nomor urut, sementara `MAXVALUE` sequence memuat
 // lima belas. Selisih itu baru menggigit pada nomor urut ke-1.000.000.000.000 dan dicatat
 // di `docs/kolom-open-protection.md`, bukan dijaga di kode.
-//
-// Nomor urut yang melewati empat digit TIDAK dipotong; ia tumbuh menjadi lima digit.
-// Memotongnya akan menerbitkan nomor ganda, dan nomor ganda jauh lebih mahal daripada
-// segmen yang melebar.
 func FormatNumber(year int, sequence int64) string {
-	return fmt.Sprintf("%s.%02d.%04d", NumberPrefix, year%100, sequence)
+	return fmt.Sprintf("%s.%02d.%d", NumberPrefix, year%100, sequence)
 }
 
 // IssuedHere menyatakan sebuah nomor diterbitkan aplikasi ini, bukan Pega.

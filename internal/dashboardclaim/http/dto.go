@@ -247,15 +247,15 @@ type tileDTO struct {
 // Waktu Klaim" dapat diuji dengan angka pasti.
 func adaptClaim(row dashboardclaim.ClaimRow, now time.Time, loc *time.Location) claimDTO {
 	return claimDTO{
-		KlaimID:            row.ClaimID,
-		NomorKlaim:         row.ClaimNumber,
-		NomorPolis:         row.PolicyNumber,
-		Tertanggung:        row.InsuredName,
-		NamaBisnis:         row.BusinessName,
-		SumberBisnis:       row.BusinessSource,
-		NamaCabang:         row.BranchName,
-		PICTeknik:          row.TechnicalPIC,
-		AdminPNC:           row.AdminPNC,
+		KlaimID:      row.ClaimID,
+		NomorKlaim:   row.ClaimNumber,
+		NomorPolis:   row.PolicyNumber,
+		Tertanggung:  row.InsuredName,
+		NamaBisnis:   row.BusinessName,
+		SumberBisnis: row.BusinessSource,
+		NamaCabang:   row.BranchName,
+		PICTeknik:    row.TechnicalPIC,
+		AdminPNC:     row.AdminPNC,
 		// Keduanya membawa JAM, dan `TanggalKejadian` tidak — lihat formatTimestamp.
 		TanggalPendaftaran: formatTimestamp(&row.RegisteredAt, loc),
 		TanggalLapor:       formatTimestamp(row.ReportDate, loc),

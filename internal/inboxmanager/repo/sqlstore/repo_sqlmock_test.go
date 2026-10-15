@@ -142,12 +142,13 @@ func TestDashboardOutstanding(t *testing.T) {
 
 	mock.ExpectQuery(exact("dashboard_os_pic")).WithArgs(values(picArgs)...).
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TOTAL"}).AddRow("ANDI", 3).AddRow(nil, 1))
-	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(flags)...).
+	allPIC := append(append([]any{}, flags...), 1, "")
+	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(allPIC)...).
 		WillReturnRows(sqlmock.NewRows([]string{"GRUP", "TOTAL"}).AddRow("PROPERTY", 4))
-	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(flags)...).
+	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(allPIC)...).
 		WillReturnRows(sqlmock.NewRows([]string{"TAHUN"}).AddRow(2025).AddRow(2026))
 	mock.ExpectQuery(exact("dashboard_os_summary")).
-		WithArgs(values(append(append([]any{}, flags...), 1, "", 1, ""))...).
+		WithArgs(values(append(append([]any{}, flags...), 1, "", 1, "", 1, ""))...).
 		WillReturnRows(sqlmock.NewRows([]string{"KATEGORI", "REINSURER", "TAHUN", "TOTAL"}).
 			AddRow("ACCEPTATION", "LEADER", 2026, 5).
 			AddRow("ACCEPTATION", "LEADER", 2025, 2))
@@ -158,6 +159,9 @@ func TestDashboardOutstanding(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, view.RefreshedAt, "Outstanding tidak punya penyegaran")
 	require.Len(t, view.Panels, 3)
+	require.Equal(t, inboxmanager.FilterPIC, view.Panels[0].RowFilter,
+		"nama pada grid PIC adalah tautan penyaring, seperti di Pega")
+	require.Empty(t, view.Panels[1].RowFilter)
 
 	require.Equal(t, []inboxmanager.DashboardRow{
 		{Cells: map[string]inboxmanager.DashboardCell{
@@ -223,12 +227,16 @@ func TestDashboardOutstandingPenyaringDikirimSebagaiBendera(t *testing.T) {
 
 	mock.ExpectQuery(exact("dashboard_os_pic")).WithArgs(values(picArgs)...).
 		WillReturnRows(sqlmock.NewRows([]string{"PIC", "TOTAL"}))
-	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(flags)...).
+	// Penyaring PIC berlaku pada grid COB, kolom tahun, dan grid ketiga — TIDAK pada grid
+	// PIC sendiri, sama seperti `{ASIS:tempQuery.EMAIL}` di Pega.
+	onePIC := append(append([]any{}, flags...), 0, "YOSUA")
+	mock.ExpectQuery(exact("dashboard_os_business_group")).WithArgs(values(onePIC)...).
 		WillReturnRows(sqlmock.NewRows([]string{"GRUP", "TOTAL"}))
-	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(flags)...).
+	mock.ExpectQuery(exact("dashboard_os_years")).WithArgs(values(onePIC)...).
 		WillReturnRows(sqlmock.NewRows([]string{"TAHUN"}).AddRow(2026))
 	mock.ExpectQuery(exact("dashboard_os_summary")).
-		WithArgs(values(append(append([]any{}, flags...), 0, "LEADER", 0, "SURVEY"))...).
+		WithArgs(values(append(append([]any{}, flags...),
+			0, "LEADER", 0, "SURVEY", 0, "YOSUA"))...).
 		WillReturnRows(sqlmock.NewRows([]string{"KATEGORI", "REINSURER", "TAHUN", "TOTAL"}))
 	mock.ExpectQuery(exact("dashboard_os_categories")).
 		WillReturnRows(sqlmock.NewRows([]string{"LABEL"}))
@@ -236,6 +244,7 @@ func TestDashboardOutstandingPenyaringDikirimSebagaiBendera(t *testing.T) {
 	q := outstandingQuery(t, "PA")
 	q.Reinsurer = "LEADER"
 	q.CategoryOS = "SURVEY"
+	q.PIC = "YOSUA"
 
 	_, err := repo.Dashboard(context.Background(), q)
 	require.NoError(t, err)

@@ -42,7 +42,7 @@ var created = time.Date(2026, time.September, 23, 3, 0, 0, 0, time.UTC)
 
 func dolRow() []driver.Value {
 	return []driver.Value{
-		" OPCN.26.0004 ", "POL-5", "PNCN.26.0009", "PNCN.26.0009", "7",
+		" OPCN.26.4 ", "POL-5", "PNCN.26.0009", "PNCN.26.0009", "7",
 		"Perubahan DOL", created, "catatan", nil, "TEKNIK",
 		"2026-08-14", "2026-08-17", "OBJ", " CAB ",
 		nil, nil,
@@ -68,7 +68,7 @@ func TestListCountsThenReadsPageWithoutSearch(t *testing.T) {
 	require.Len(t, page.Protections, 3)
 
 	first := page.Protections[0]
-	require.Equal(t, "OPCN.26.0004", first.Number)
+	require.Equal(t, "OPCN.26.4", first.Number)
 	require.Equal(t, "POL-5", first.PolicyNumber)
 	require.Equal(t, "PNCN.26.0009", first.ClaimReference)
 	require.Equal(t, "Perubahan DOL", first.TypeName)
@@ -162,11 +162,11 @@ func TestGetMapsRowNotFoundAndError(t *testing.T) {
 	ctx := context.Background()
 
 	db, mock := newMock(t)
-	mock.ExpectQuery(q("protection_get")).WithArgs("OPCN.26.0004").
+	mock.ExpectQuery(q("protection_get")).WithArgs("OPCN.26.4").
 		WillReturnRows(sqlmock.NewRows(protectionColumns).AddRow(dolRow()...))
-	p, err := NewRepo(db).Get(ctx, "  opcn.26.0004 ")
+	p, err := NewRepo(db).Get(ctx, "  opcn.26.4 ")
 	require.NoError(t, err)
-	require.Equal(t, "OPCN.26.0004", p.Number)
+	require.Equal(t, "OPCN.26.4", p.Number)
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	db, mock = newMock(t)
@@ -199,9 +199,9 @@ func TestHasDuplicateBindsExceptNumberTwice(t *testing.T) {
 
 	db, mock = newMock(t)
 	mock.ExpectQuery(q("protection_duplicate")).
-		WithArgs("POL-1", "1", "OPCN.26.0001", "OPCN.26.0001", day).
+		WithArgs("POL-1", "1", "OPCN.26.1", "OPCN.26.1", day).
 		WillReturnRows(sqlmock.NewRows([]string{"C"}).AddRow(0))
-	dup, err = NewRepo(db).HasDuplicate(ctx, key, " opcn.26.0001 ")
+	dup, err = NewRepo(db).HasDuplicate(ctx, key, " opcn.26.1 ")
 	require.NoError(t, err)
 	require.False(t, dup)
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -237,7 +237,7 @@ func TestCreateIssuesSequenceAndInsertsDerivedColumns(t *testing.T) {
 	mock.ExpectQuery(q("protection_next_sequence")).
 		WillReturnRows(sqlmock.NewRows([]string{"NEXTVAL"}).AddRow(42))
 	mock.ExpectExec(q("protection_insert")).
-		WithArgs("OPCN.26.0042", "POL-1", "PNC-1865", "ASM-FW-GCNMFW-WORK PNC-1865", "7",
+		WithArgs("OPCN.26.42", "POL-1", "PNC-1865", "ASM-FW-GCNMFW-WORK PNC-1865", "7",
 			at.UTC(), "ADMIN", "catatan", "2026-08-14", "2026-08-17", "OBJ", "CAB",
 			// Tipe '7' tidak punya sasaran coverage.
 			nil, nil).
@@ -246,7 +246,7 @@ func TestCreateIssuesSequenceAndInsertsDerivedColumns(t *testing.T) {
 
 	p, err := NewRepo(db).Create(context.Background(), draft, pegaClaim(), inputreqprotection.CoverageRow{}, "ADMIN", at)
 	require.NoError(t, err)
-	require.Equal(t, "OPCN.26.0042", p.Number)
+	require.Equal(t, "OPCN.26.42", p.Number)
 	require.Equal(t, "POL-1", p.PolicyNumber)
 	require.Equal(t, inputreqprotection.AcceptPending, p.AcceptStatus)
 	require.Equal(t, "ADMIN", p.CreatedBy)
@@ -289,7 +289,7 @@ func TestCreateCauseOfLossTypeStoresCauseColumns(t *testing.T) {
 	}
 
 	mock.ExpectExec(q("protection_insert")).
-		WithArgs("OPCN.26.0001", nil, "PNCN.26.0007", "PNCN.26.0007", "8",
+		WithArgs("OPCN.26.1", nil, "PNCN.26.0007", "PNCN.26.0007", "8",
 			at, "U", "n",
 			// OLD_DATA = KODE penyebab kerugian baris terpilih (`D-COL` 12003), bukan
 			// deskripsinya dan bukan milik klaim. NEW_DATA = kode yang dipilih pengguna.
@@ -338,7 +338,7 @@ func TestCreateErrorBranchesRollBack(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"NEXTVAL"}).AddRow(1))
 		// Tipe '1' tidak menyimpan OLD_DATA/NEW_DATA, dan tidak punya sasaran coverage.
 		mock.ExpectExec(q("protection_insert")).
-			WithArgs("OPCN.26.0001", "POL-1", "PNC-1865", "ASM-FW-GCNMFW-WORK PNC-1865", "1",
+			WithArgs("OPCN.26.1", "POL-1", "PNC-1865", "ASM-FW-GCNMFW-WORK PNC-1865", "1",
 				at, "U", "n", nil, nil, "OBJ", "CAB", nil, nil).
 			WillReturnError(errDB)
 		mock.ExpectRollback()
@@ -368,14 +368,14 @@ func TestUpdateRereadsRowAfterSuccess(t *testing.T) {
 
 	mock.ExpectExec(q("protection_update")).
 		WithArgs("POL-1", "PNC-1865", "ASM-FW-GCNMFW-WORK PNC-1865", "1", "baru",
-			nil, nil, "OBJ", "CAB", nil, nil, "OPCN.26.0004").
+			nil, nil, "OBJ", "CAB", nil, nil, "OPCN.26.4").
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(q("protection_get")).WithArgs("OPCN.26.0004").
+	mock.ExpectQuery(q("protection_get")).WithArgs("OPCN.26.4").
 		WillReturnRows(sqlmock.NewRows(protectionColumns).AddRow(dolRow()...))
 
-	p, err := NewRepo(db).Update(context.Background(), " opcn.26.0004", draft, pegaClaim(), inputreqprotection.CoverageRow{}, "U", created)
+	p, err := NewRepo(db).Update(context.Background(), " opcn.26.4", draft, pegaClaim(), inputreqprotection.CoverageRow{}, "U", created)
 	require.NoError(t, err)
-	require.Equal(t, "OPCN.26.0004", p.Number)
+	require.Equal(t, "OPCN.26.4", p.Number)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -401,7 +401,7 @@ func TestUpdateDistinguishesWhyNoRowWasTouched(t *testing.T) {
 			db, mock := newMock(t)
 			mock.ExpectExec(q("protection_update")).WillReturnResult(sqlmock.NewResult(0, 0))
 			mock.ExpectQuery(q("protection_get")).WillReturnRows(c.rows)
-			_, err := NewRepo(db).Update(ctx, "OPCN.26.0004", draft, pegaClaim(), inputreqprotection.CoverageRow{}, "U", created)
+			_, err := NewRepo(db).Update(ctx, "OPCN.26.4", draft, pegaClaim(), inputreqprotection.CoverageRow{}, "U", created)
 			require.ErrorIs(t, err, c.want)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

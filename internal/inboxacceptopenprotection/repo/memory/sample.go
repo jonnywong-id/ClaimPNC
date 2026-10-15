@@ -12,13 +12,13 @@ import (
 //
 // # Yang sengaja diwakili
 //
-//	OPCN.26.0002  NON PREMI, lengkap          -> tampil di antrean NON PREMI
-//	OPCN.26.0003  PREMI (tipe '2'), lengkap   -> tampil di antrean PREMI saja
-//	OPCN.26.0004  tipe '7' Perubahan DOL      -> panel "Detail Perubahan DOL" TERISI
-//	OPCN.26.0005  tipe '8' Perubahan COL      -> panel "Detail Perubahan Cause Of Loss"
+//	OPCN.26.2  NON PREMI, lengkap          -> tampil di antrean NON PREMI
+//	OPCN.26.3  PREMI (tipe '2'), lengkap   -> tampil di antrean PREMI saja
+//	OPCN.26.4  tipe '7' Perubahan DOL      -> panel "Detail Perubahan DOL" TERISI
+//	OPCN.26.5  tipe '8' Perubahan COL      -> panel "Detail Perubahan Cause Of Loss"
 //	OPC-216       tipe '7' warisan Pega       -> panel MUNCUL tetapi KOSONG
-//	OPCN.26.0006  BELUM tertaut klaim         -> TIDAK tampil di antrean mana pun
-//	OPCN.26.0007  sudah disetujui             -> TIDAK tampil; menguji penyaring status
+//	OPCN.26.6  BELUM tertaut klaim         -> TIDAK tampil di antrean mana pun
+//	OPCN.26.7  sudah disetujui             -> TIDAK tampil; menguji penyaring status
 //
 // Dua baris terakhir ada justru karena ia TIDAK BOLEH tampil. Data contoh yang seluruhnya
 // memenuhi syarat tidak membuktikan penyaringnya bekerja.
@@ -42,7 +42,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 
 	return []inboxacceptopenprotection.Protection{
 		{
-			Number:         "OPCN.26.0002",
+			Number:         "OPCN.26.2",
 			PolicyNumber:   "99.001.2026.00000003",
 			ClaimNumber:    "PNCN.26.0007",
 			ClaimReference: "PNCN.26.0007",
@@ -56,7 +56,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 			PolicyEnd:      &policyEnd,
 		},
 		{
-			Number:         "OPCN.26.0003",
+			Number:         "OPCN.26.3",
 			PolicyNumber:   "99.001.2026.00000004",
 			ClaimNumber:    "PNCN.26.0008",
 			ClaimReference: "PNCN.26.0008",
@@ -70,7 +70,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 			PolicyEnd:      &policyEnd,
 		},
 		{
-			Number:         "OPCN.26.0004",
+			Number:         "OPCN.26.4",
 			PolicyNumber:   "99.001.2026.00000005",
 			ClaimNumber:    "PNCN.26.0009",
 			ClaimReference: "PNCN.26.0009",
@@ -91,7 +91,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 		},
 		{
 			// Tipe '8': panel yang sama, tetapi isinya KODE penyebab kerugian, bukan tanggal.
-			Number:         "OPCN.26.0005",
+			Number:         "OPCN.26.5",
 			PolicyNumber:   "99.001.2026.00000006",
 			ClaimNumber:    "PNCN.26.0010",
 			ClaimReference: "PNCN.26.0010",
@@ -135,7 +135,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 		},
 		{
 			// Belum tertaut klaim: masih milik pemohon, belum layak diakseptasi.
-			Number:       "OPCN.26.0006",
+			Number:       "OPCN.26.6",
 			PolicyNumber: "99.001.2026.00000007",
 			ClaimNumber:  "",
 			Type:         "1",
@@ -146,7 +146,7 @@ func sampleProtections() []inboxacceptopenprotection.Protection {
 		},
 		{
 			// Sudah diputuskan: hilang dari antrean, tetapi tetap dapat dibuka lewat nomor.
-			Number:         "OPCN.26.0007",
+			Number:         "OPCN.26.7",
 			PolicyNumber:   "99.001.2026.00000008",
 			ClaimNumber:    "PNCN.26.0012",
 			ClaimReference: "PNCN.26.0012",

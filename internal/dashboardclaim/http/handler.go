@@ -149,9 +149,9 @@ func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
 			card(dashboardclaim.TileLossAdjuster, counts.LossAdjuster),
 			card(dashboardclaim.TileInternalSurveyor, counts.InternalSurveyor),
 		},
-		LiniBisnis:       string(result.Filter.Business),
-		Portal:           active.Alias,
-		CatatanWarisan:   inheritedNotes(),
+		LiniBisnis:     string(result.Filter.Business),
+		Portal:         active.Alias,
+		CatatanWarisan: inheritedNotes(),
 	})
 }
 

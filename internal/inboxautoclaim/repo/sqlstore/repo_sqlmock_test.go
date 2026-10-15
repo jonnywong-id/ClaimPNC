@@ -42,9 +42,11 @@ var (
 func TestListBatchAllCompanies(t *testing.T) {
 	repo, mock := newMock(t)
 	source := inboxautoclaim.SourceAneka
-	mock.ExpectQuery(q(source, "auto_claim_batch_count")).WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(41))
+	mock.ExpectQuery(q(source, "auto_claim_batch_count")).WithArgs(0, "", "").
+		WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(41))
+	// Tanpa cari: bendera 0. Tanpa urut: terbaru (1, 0).
 	mock.ExpectQuery(q(source, "auto_claim_batch_list")).
-		WithArgs(inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, 20, 20).
+		WithArgs(inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, 0, "", "", 1, 0, 20, 20).
 		WillReturnRows(sqlmock.NewRows(batchColumns).
 			AddRow(" BRI ", " Bank ", " 0001 ", processedAt, 10, 9, 8, 1, " admin ").
 			AddRow("BNI", nil, "0002", nil, nil, nil, nil, nil, nil))
@@ -65,10 +67,11 @@ func TestListBatchByCompanyAndErrors(t *testing.T) {
 	filter := inboxautoclaim.BatchFilter{Source: source, CompanyCode: " BRI "}
 
 	repo, mock := newMock(t)
-	mock.ExpectQuery(q(source, "auto_claim_batch_count_by_company")).WithArgs("BRI").
+	mock.ExpectQuery(q(source, "auto_claim_batch_count_by_company")).WithArgs("BRI", 0, "", "").
 		WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(nil))
 	mock.ExpectQuery(q(source, "auto_claim_batch_list_by_company")).
-		WithArgs(inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, "BRI", 0, inboxautoclaim.DefaultPageSize).
+		WithArgs(inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, "BRI", 0, "", "", 1, 0,
+			0, inboxautoclaim.DefaultPageSize).
 		WillReturnRows(sqlmock.NewRows(batchColumns))
 	page, err := repo.ListBatch(ctx, filter)
 	require.NoError(t, err)
@@ -99,6 +102,30 @@ func TestListBatchByCompanyAndErrors(t *testing.T) {
 		AddRow("a", "b", "c", nil, 1, 1, 1, 1, "d").RowError(0, errDB))
 	_, err = repo.ListBatch(ctx, inboxautoclaim.BatchFilter{Source: source})
 	require.ErrorIs(t, err, errDB)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Cari dan urut terlama sampai ke bind dengan bentuk yang tepat (`D-82`).
+//
+// Polanya huruf besar dan karakter pengganti LIKE di-escape: user "a_b%" dicari sebagai
+// huruf, bukan sebagai pola. Nomor batch dikirim apa adanya (sesudah dipangkas) untuk
+// perbandingan teks persis.
+func TestListBatchSearchAndOldestOrder(t *testing.T) {
+	repo, mock := newMock(t)
+	source := inboxautoclaim.SourceAneka
+
+	mock.ExpectQuery(q(source, "auto_claim_batch_count_by_company")).
+		WithArgs("BRI", 1, `%A\_B\%%`, "a_b%").
+		WillReturnRows(sqlmock.NewRows([]string{"N"}).AddRow(1))
+	mock.ExpectQuery(q(source, "auto_claim_batch_list_by_company")).
+		WithArgs(inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, "BRI",
+			1, `%A\_B\%%`, "a_b%", 0, 1, 0, inboxautoclaim.DefaultPageSize).
+		WillReturnRows(sqlmock.NewRows(batchColumns))
+
+	_, err := repo.ListBatch(context.Background(), inboxautoclaim.BatchFilter{
+		Source: source, CompanyCode: "BRI", Search: "  a_b%  ", Order: inboxautoclaim.BatchOrderOldest,
+	})
+	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

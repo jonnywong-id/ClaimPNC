@@ -102,6 +102,19 @@ func TestPenyaringHasilTidakDikenalDitolak(t *testing.T) {
 	require.ErrorIs(t, err, inboxautoclaim.ErrUnknownResult)
 }
 
+func TestUrutanBatchTidakDikenalJatuhKeTerbaru(t *testing.T) {
+	// Berbeda dengan penyaring hasil, urutan yang salah ketik TIDAK ditolak (`D-82`):
+	// urutan tidak mengubah baris mana yang tampil.
+	for masukan, harapan := range map[string]inboxautoclaim.BatchOrder{
+		"":          inboxautoclaim.BatchOrderNewest,
+		"terbaru":   inboxautoclaim.BatchOrderNewest,
+		" TERLAMA ": inboxautoclaim.BatchOrderOldest,
+		"acak":      inboxautoclaim.BatchOrderNewest,
+	} {
+		require.Equal(t, harapan, inboxautoclaim.ParseBatchOrder(masukan), "masukan %q", masukan)
+	}
+}
+
 func TestNomorBatchBerikutnyaSatuBilaBelumAda(t *testing.T) {
 	require.Equal(t, "1", inboxautoclaim.NextBatchNumber(nil))
 }

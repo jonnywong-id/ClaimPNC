@@ -132,6 +132,26 @@
 -- Cacat itu benar-benar terjadi dan baru terlihat saat layar dibuka terhadap Oracle
 -- sungguhan — tidak satu pun uji menangkapnya, karena penyimpanan memori tidak
 -- menguraikan SQL. Penjaganya sekarang TestQueryBindsAreNumberedInOrder.
+--
+-- # CARI DAN URUT (`D-82`, 2026-10-14) — TAMBAHAN, tidak ada di kueri asli
+--
+-- Grid Pega memuat seluruh batch sekaligus; grid ini dipaginasi server, sehingga cari dan
+-- urut harus ikut di sini. Bentuknya satu kueri dengan bind, BUKAN varian kueri per
+-- kombinasi dan BUKAN teks SQL yang dirangkai (TestNoQueryBuildsSQLFromText):
+--
+--   :3       0 = tanpa pencarian, 1 = cari. Bendera, bukan "pola kosong": Oracle
+--            membaca '' sebagai NULL, dan `LIKE '%'` membuang baris ber-USERINPUT NULL.
+--   :4       pola LIKE user upload, sudah huruf besar dan sudah di-escape di Go.
+--   :5       nomor batch persis. Dibandingkan sebagai TEKS lewat CAST karena tipe BATCH
+--            tabel Kredit BELUM DIVERIFIKASI (DDL-nya tidak ada di repo) — membandingkan
+--            NUMBER dengan bind teks yang bukan angka berakhir ORA-01722.
+--   :6, :7   arah urutan: tepat satu bernilai 1. CASE yang tidak aktif bernilai NULL untuk
+--            seluruh baris sehingga tidak memengaruhi susunan. Arah tidak dapat di-bind
+--            langsung, dan aritmetika (`BATCH * -1`) menuntut BATCH bertipe angka.
+--
+-- Penyaringnya berada di WHERE, SEBELUM GROUP BY: BATCH dan USERINPUT adalah kunci
+-- kelompok, jadi menyaring barisnya menghasilkan kelompok yang sama persis dengan
+-- menyaring hasil kelompoknya. Hitungan dalam subkueri berkorelasi tidak terpengaruh.
 SELECT A.{{KOLOM}},
        MAX(B.NAMA_PENERIMA) AS NAMA_PENERIMA,
        A.BATCH,
@@ -160,10 +180,15 @@ SELECT A.{{KOLOM}},
   FROM {{TABEL}} A
   LEFT JOIN POOLDATA.M_AUTO_CLAIM_PNC B
     ON B.INISIALID = A.{{KOLOM}}
+ WHERE (:3 = 0
+        OR UPPER(A.USERINPUT) LIKE :4 ESCAPE '\'
+        OR CAST(A.BATCH AS VARCHAR(40)) = :5)
  GROUP BY A.{{KOLOM}}, A.BATCH, A.USERINPUT,
           EXTRACT(YEAR FROM A.TGLPROSES), EXTRACT(MONTH FROM A.TGLPROSES), EXTRACT(DAY FROM A.TGLPROSES)
- ORDER BY A.BATCH DESC, A.{{KOLOM}}, MIN(A.TGLPROSES) DESC, A.USERINPUT
-OFFSET :3 ROWS FETCH NEXT :4 ROWS ONLY
+ ORDER BY CASE WHEN :6 = 1 THEN A.BATCH END DESC,
+          CASE WHEN :7 = 1 THEN A.BATCH END ASC,
+          A.{{KOLOM}}, MIN(A.TGLPROSES) DESC, A.USERINPUT
+OFFSET :8 ROWS FETCH NEXT :9 ROWS ONLY
 
 -- name: auto_claim_batch_list_by_company
 --
@@ -204,10 +229,15 @@ SELECT A.{{KOLOM}},
   LEFT JOIN POOLDATA.M_AUTO_CLAIM_PNC B
     ON B.INISIALID = A.{{KOLOM}}
  WHERE A.{{KOLOM}} = :3
+   AND (:4 = 0
+        OR UPPER(A.USERINPUT) LIKE :5 ESCAPE '\'
+        OR CAST(A.BATCH AS VARCHAR(40)) = :6)
  GROUP BY A.{{KOLOM}}, A.BATCH, A.USERINPUT,
           EXTRACT(YEAR FROM A.TGLPROSES), EXTRACT(MONTH FROM A.TGLPROSES), EXTRACT(DAY FROM A.TGLPROSES)
- ORDER BY A.BATCH DESC, A.{{KOLOM}}, MIN(A.TGLPROSES) DESC, A.USERINPUT
-OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
+ ORDER BY CASE WHEN :7 = 1 THEN A.BATCH END DESC,
+          CASE WHEN :8 = 1 THEN A.BATCH END ASC,
+          A.{{KOLOM}}, MIN(A.TGLPROSES) DESC, A.USERINPUT
+OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: auto_claim_batch_count
 --
@@ -219,9 +249,13 @@ OFFSET :4 ROWS FETCH NEXT :5 ROWS ONLY
 --
 -- Kueri ini karena itu TAMBAHAN. Pengelompokannya dibuat sama persis dengan kueri
 -- daftarnya, termasuk tanggal TGLPROSES, supaya keduanya tidak dapat berselisih.
+-- Penyaring cari-nya pun sama persis dengan kueri daftarnya; lihat catatan di sana.
 SELECT COUNT(*)
   FROM (SELECT A.{{KOLOM}}, A.BATCH, A.USERINPUT
           FROM {{TABEL}} A
+         WHERE (:1 = 0
+                OR UPPER(A.USERINPUT) LIKE :2 ESCAPE '\'
+                OR CAST(A.BATCH AS VARCHAR(40)) = :3)
          GROUP BY A.{{KOLOM}}, A.BATCH, A.USERINPUT,
                   EXTRACT(YEAR FROM A.TGLPROSES), EXTRACT(MONTH FROM A.TGLPROSES), EXTRACT(DAY FROM A.TGLPROSES)) RINGKAS
 
@@ -230,6 +264,9 @@ SELECT COUNT(*)
   FROM (SELECT A.{{KOLOM}}, A.BATCH, A.USERINPUT
           FROM {{TABEL}} A
          WHERE A.{{KOLOM}} = :1
+           AND (:2 = 0
+                OR UPPER(A.USERINPUT) LIKE :3 ESCAPE '\'
+                OR CAST(A.BATCH AS VARCHAR(40)) = :4)
          GROUP BY A.{{KOLOM}}, A.BATCH, A.USERINPUT,
                   EXTRACT(YEAR FROM A.TGLPROSES), EXTRACT(MONTH FROM A.TGLPROSES), EXTRACT(DAY FROM A.TGLPROSES)) RINGKAS
 

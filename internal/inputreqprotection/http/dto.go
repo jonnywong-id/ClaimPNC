@@ -21,7 +21,7 @@ import (
 type protectionDTO struct {
 	// NomorProteksi adalah kolom **"No Proteksi"**.
 	//
-	// Dua bentuk dapat muncul berdampingan: `OPC-XXX` warisan Pega dan `OPCN.YY.xxxx`
+	// Dua bentuk dapat muncul berdampingan: `OPC-XXX` warisan Pega dan `OPCN.YY.n`
 	// terbitan aplikasi ini. Layar menampilkan keduanya apa adanya.
 	NomorProteksi string `json:"nomor_proteksi"`
 

@@ -191,4 +191,3 @@ func TestLayarKerjaRCLDokter(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, recorder.Code, "milik dokter lain")
 	require.Equal(t, rclhttp.CodeClaimNotFound, decode(t, recorder)["kode"])
 }
-

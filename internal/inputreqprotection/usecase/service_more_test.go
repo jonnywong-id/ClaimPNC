@@ -122,9 +122,9 @@ func TestListWrapsRepoError(t *testing.T) {
 func TestListPassesSearchAndPagingToRepo(t *testing.T) {
 	service, repo := bangun(t, fixedAt)
 	repo.Add(
-		inputreqprotection.Protection{Number: "OPCN.26.0001", PolicyNumber: "POL-A", CreatedAt: fixedAt},
-		inputreqprotection.Protection{Number: "OPCN.26.0002", PolicyNumber: "POL-B", CreatedAt: fixedAt},
-		inputreqprotection.Protection{Number: "OPCN.26.0003", PolicyNumber: "POL-B", CreatedAt: fixedAt},
+		inputreqprotection.Protection{Number: "OPCN.26.1", PolicyNumber: "POL-A", CreatedAt: fixedAt},
+		inputreqprotection.Protection{Number: "OPCN.26.2", PolicyNumber: "POL-B", CreatedAt: fixedAt},
+		inputreqprotection.Protection{Number: "OPCN.26.3", PolicyNumber: "POL-B", CreatedAt: fixedAt},
 	)
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
@@ -133,7 +133,7 @@ func TestListPassesSearchAndPagingToRepo(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, page.Total)
 	require.Len(t, page.Protections, 1)
-	require.Equal(t, "OPCN.26.0002", page.Protections[0].Number)
+	require.Equal(t, "OPCN.26.2", page.Protections[0].Number)
 }
 
 func TestGetReturnsProtectionAndNotFound(t *testing.T) {
@@ -250,7 +250,7 @@ func TestCreateWrapsRepoCreateError(t *testing.T) {
 // editableRow adalah proteksi yang belum tertaut klaim dan belum diakseptasi.
 func editableRow() inputreqprotection.Protection {
 	return inputreqprotection.Protection{
-		Number: "OPCN.26.0050", PolicyNumber: "99.001.2026.00000001", Type: "1",
+		Number: "OPCN.26.50", PolicyNumber: "99.001.2026.00000001", Type: "1",
 		InputDate: fixedAt, CreatedAt: fixedAt, CreatedBy: "PEMBUAT",
 	}
 }
@@ -258,7 +258,7 @@ func editableRow() inputreqprotection.Protection {
 func TestUpdateRequiresCaller(t *testing.T) {
 	service, _ := bangun(t, fixedAt)
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(),
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(),
 	})
 	require.EqualError(t, err, "inputreqprotection/usecase: identitas pemanggil kosong")
 }
@@ -267,12 +267,12 @@ func TestUpdateRejectsUnknownPortalAndMissingRow(t *testing.T) {
 	service, _ := bangun(t, fixedAt)
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: "entitas-lain", Number: "OPCN.26.0050", Draft: draft(), By: "U",
+		PortalAlias: "entitas-lain", Number: "OPCN.26.50", Draft: draft(), By: "U",
 	})
 	require.EqualError(t, err, "portal tidak dikenal")
 
 	_, err = service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(), By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(), By: "U",
 	})
 	require.ErrorIs(t, err, inputreqprotection.ErrNotFound)
 }
@@ -282,7 +282,7 @@ func TestUpdateValidatesDraftOfEditableRow(t *testing.T) {
 	repo.Add(editableRow())
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: inputreqprotection.Draft{}, By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: inputreqprotection.Draft{}, By: "U",
 	})
 	var v *inputreqprotection.ValidationError
 	require.True(t, errors.As(err, &v))
@@ -296,7 +296,7 @@ func TestUpdateRejectsUnknownClaim(t *testing.T) {
 	d.ClaimNumber = "PNCN.26.9999"
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: d, By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: d, By: "U",
 	})
 	require.ErrorIs(t, err, inputreqprotection.ErrClaimNotFound)
 }
@@ -308,22 +308,22 @@ func TestUpdateExcludesItselfFromDuplicateCheck(t *testing.T) {
 	service := buildWith(t, fixedAt, defaultStores(repo))
 
 	saved, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(), By: "PENYUNTING",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(), By: "PENYUNTING",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "PNCN.26.0007", saved.ClaimNumber)
 	require.Equal(t, "PEMBUAT", saved.CreatedBy, "pembuat tidak berubah saat disunting")
-	require.Equal(t, []string{"OPCN.26.0050"}, repo.dupExcept)
+	require.Equal(t, []string{"OPCN.26.50"}, repo.dupExcept)
 }
 
 func TestUpdateRejectsDuplicateOfAnotherRow(t *testing.T) {
 	service, repo := bangun(t, fixedAt)
 	other := editableRow()
-	other.Number = "OPCN.26.0051"
+	other.Number = "OPCN.26.51"
 	repo.Add(editableRow(), other)
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(), By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(), By: "U",
 	})
 	var v *inputreqprotection.ValidationError
 	require.True(t, errors.As(err, &v))
@@ -336,7 +336,7 @@ func TestUpdateWrapsDuplicateAndRepoErrors(t *testing.T) {
 	service := buildWith(t, fixedAt, defaultStores(repo))
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(), By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(), By: "U",
 	})
 	require.ErrorIs(t, err, errBoom)
 	require.Contains(t, err.Error(), "memeriksa proteksi ganda")
@@ -344,7 +344,7 @@ func TestUpdateWrapsDuplicateAndRepoErrors(t *testing.T) {
 	repo.dupErr = nil
 	repo.updateErr = errBoom
 	_, err = service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0050", Draft: draft(), By: "U",
+		PortalAlias: portal, Number: "OPCN.26.50", Draft: draft(), By: "U",
 	})
 	require.ErrorIs(t, err, errBoom)
 	require.Contains(t, err.Error(), "menyunting proteksi")

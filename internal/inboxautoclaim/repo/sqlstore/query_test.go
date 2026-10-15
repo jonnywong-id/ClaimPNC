@@ -470,8 +470,12 @@ func TestPagedQueriesOrderDeterministically(t *testing.T) {
 			require.Contains(t, text, "OFFSET", "premis uji ini: kueri ini berpaginasi")
 
 			// Keempatnya bersama-sama adalah kunci GROUP BY, sehingga tidak ada dua baris
-			// hasil yang dapat seri.
-			for _, kolom := range []string{"A.BATCH DESC", "A.INISIALID", "MIN(A.TGLPROSES) DESC", "A.USERINPUT"} {
+			// hasil yang dapat seri. BATCH muncul dalam dua CASE — satu per arah urutan
+			// (`D-82`) — dan pada arah mana pun ketiga pemecah seri tetap mengikutinya.
+			for _, kolom := range []string{
+				"THEN A.BATCH END DESC", "THEN A.BATCH END ASC",
+				"A.INISIALID", "MIN(A.TGLPROSES) DESC", "A.USERINPUT",
+			} {
 				require.Containsf(t, text, kolom,
 					"%s: urutannya harus memuat %s supaya paginasinya tidak dapat mengulang baris", name, kolom)
 			}

@@ -40,13 +40,13 @@ func TestPersetujuanPerubahanDOLMengubahTanggalKejadianKlaim(t *testing.T) {
 	dolBaru := time.Date(2026, time.August, 5, 14, 30, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	p := proteksiDOL("OPCN.26.0100", at, &dolBaru)
+	p := proteksiDOL("OPCN.26.100", at, &dolBaru)
 	repo.Add(p)
 	repo.AddClaim(p.ClaimReference, time.Date(2026, time.August, 3, 0, 0, 0, 0, wib))
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0100",
+		Number:      "OPCN.26.100",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})
@@ -75,13 +75,13 @@ func TestPenolakanTIDAKMengubahTanggalKejadianKlaim(t *testing.T) {
 	dolAwal := time.Date(2026, time.August, 3, 0, 0, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	p := proteksiDOL("OPCN.26.0101", at, &dolBaru)
+	p := proteksiDOL("OPCN.26.101", at, &dolBaru)
 	repo.Add(p)
 	repo.AddClaim(p.ClaimReference, dolAwal)
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0101",
+		Number:      "OPCN.26.101",
 		Decision:    inboxacceptopenprotection.DecisionReject,
 		By:          loginBerwenang,
 	})
@@ -97,13 +97,13 @@ func TestTipeSelainTujuhTidakMenyentuhKlaim(t *testing.T) {
 	dolAwal := time.Date(2026, time.August, 3, 0, 0, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	p := lengkap("OPCN.26.0102", "1", at)
+	p := lengkap("OPCN.26.102", "1", at)
 	repo.Add(p)
 	repo.AddClaim(p.ClaimReference, dolAwal)
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0102",
+		Number:      "OPCN.26.102",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})
@@ -125,19 +125,19 @@ func TestKlaimYangBelumAdaDiDaftarMenolakKeputusan(t *testing.T) {
 	dolBaru := time.Date(2026, time.August, 5, 0, 0, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	repo.Add(proteksiDOL("OPCN.26.0103", at, &dolBaru))
+	repo.Add(proteksiDOL("OPCN.26.103", at, &dolBaru))
 	// Klaimnya sengaja TIDAK didaftarkan.
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0103",
+		Number:      "OPCN.26.103",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrClaimNotSynced)
 
 	// Keputusannya tidak boleh tersimpan separuh: barisnya harus tetap MENUNGGU.
-	tetap, err := service.Get(context.Background(), portal, "OPCN.26.0103", loginBerwenang)
+	tetap, err := service.Get(context.Background(), portal, "OPCN.26.103", loginBerwenang)
 	require.NoError(t, err)
 	require.True(t, tetap.Pending(),
 		"keputusan yang gagal diterapkan tidak boleh menyisakan status tersimpan")
@@ -151,13 +151,13 @@ func TestBarisWarisanTanpaTanggalBaruTetapDapatDisetujui(t *testing.T) {
 	dolAwal := time.Date(2026, time.August, 3, 0, 0, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	p := proteksiDOL("OPCN.26.0104", at, nil)
+	p := proteksiDOL("OPCN.26.104", at, nil)
 	repo.Add(p)
 	repo.AddClaim(p.ClaimReference, dolAwal)
 
 	saved, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0104",
+		Number:      "OPCN.26.104",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})
@@ -181,7 +181,7 @@ func TestKunciPenerapanAdalahIDClaimBukanNomorKlaim(t *testing.T) {
 
 	service, repo := bangun(t, at)
 
-	p := proteksiDOL("OPCN.26.0105", at, &dolBaru)
+	p := proteksiDOL("OPCN.26.105", at, &dolBaru)
 	p.ClaimNumber = "PNC-1865"
 	p.ClaimReference = "ASM-FW-GCNMFW-WORK PNC-1865"
 	repo.Add(p)
@@ -189,7 +189,7 @@ func TestKunciPenerapanAdalahIDClaimBukanNomorKlaim(t *testing.T) {
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0105",
+		Number:      "OPCN.26.105",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})
@@ -210,13 +210,13 @@ func TestProteksiTanpaIDClaimMenolakKeputusan(t *testing.T) {
 	dolBaru := time.Date(2026, time.August, 5, 0, 0, 0, 0, wib)
 
 	service, repo := bangun(t, at)
-	p := proteksiDOL("OPCN.26.0106", at, &dolBaru)
+	p := proteksiDOL("OPCN.26.106", at, &dolBaru)
 	p.ClaimReference = ""
 	repo.Add(p)
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0106",
+		Number:      "OPCN.26.106",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          loginBerwenang,
 	})

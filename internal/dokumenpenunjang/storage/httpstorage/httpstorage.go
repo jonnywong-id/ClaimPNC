@@ -214,9 +214,9 @@ func (c *Client) Upload(
 		// Pega melewati pencatatan metadata bila URLImage kosong — berkasnya tidak
 		// tersimpan. Pesan layanan dan nama field yang diterima (bukan nilainya) ikut ke log
 		// supaya penolakannya dapat ditelusuri.
-		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+		return dokumenpenunjang.HasilUnggah{}, tandaiPenolakan(fmt.Errorf(
 			"dokumenpenunjang/httpstorage: respons tidak memuat URLImage (ErrorCode: %v; ErrorMessage: %q; pesan layanan: %q; field: %s)",
-			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi))
+			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi)), hasil)
 	}
 
 	return dokumenpenunjang.HasilUnggah{
@@ -294,9 +294,9 @@ func (c *Client) PerpanjangTautan(
 			"dokumenpenunjang/httpstorage: respons tautan bukan JSON yang dikenali: %w", err)
 	}
 	if strings.TrimSpace(hasil.URL) == "" {
-		return dokumenpenunjang.HasilUnggah{}, fmt.Errorf(
+		return dokumenpenunjang.HasilUnggah{}, tandaiPenolakan(fmt.Errorf(
 			"dokumenpenunjang/httpstorage: respons tautan tidak memuat URLImage (ErrorCode: %v; ErrorMessage: %q; pesan layanan: %q; field: %s)",
-			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi))
+			hasil.ErrorCode, strings.TrimSpace(hasil.ErrorMessage), strings.TrimSpace(hasil.Pesan), fieldNames(isi)), hasil)
 	}
 	return dokumenpenunjang.HasilUnggah{
 		URL:       strings.TrimSpace(hasil.URL),
@@ -398,4 +398,31 @@ func uraiKedaluwarsa(nilai string) *time.Time {
 		}
 	}
 	return nil
+}
+
+// kodeAksesDitolak mengenali penolakan `KodeString` dari kalimat layanan.
+//
+// Dicocokkan pada kata `kodestring` saja — lihat doc `dokumenpenunjang.ErrKodeAksesDitolak`
+// untuk alasannya, beserta kedua kalimat yang dipakai layanan.
+//
+// Pemeriksaannya menjangkau `ErrorMessage` DAN `message`: keduanya pernah membawa sebab
+// penolakan, dan mana yang terisi bergantung pada jalur mana yang menolak.
+func kodeAksesDitolak(pesan ...string) bool {
+	for _, satu := range pesan {
+		if strings.Contains(strings.ToLower(satu), "kodestring") {
+			return true
+		}
+	}
+	return false
+}
+
+// tandaiPenolakan membungkus galat dengan ErrKodeAksesDitolak bila sebabnya kode akses.
+//
+// Galat aslinya TETAP dibawa, sehingga pesan layanan dan daftar field tidak hilang dari
+// log; yang ditambahkan hanya penandanya, supaya transport dapat menjawab berbeda.
+func tandaiPenolakan(err error, hasil jawaban) error {
+	if !kodeAksesDitolak(hasil.ErrorMessage, hasil.Pesan) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", dokumenpenunjang.ErrKodeAksesDitolak, err)
 }

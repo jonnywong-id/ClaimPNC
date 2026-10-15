@@ -24,7 +24,7 @@ func TestLoginDiLuarKelimaAccessGroupDitolak(t *testing.T) {
 	service, repo := bangunDenganGroup(t, at, map[string][]string{
 		"ADMINCONTOH": {"PncAdmin"},
 	})
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	_, err := service.List(context.Background(), usecase.ListQuery{
 		PortalAlias: portal,
@@ -56,7 +56,7 @@ func TestHanyaPncCollectionYangMembukaAntreanPremi(t *testing.T) {
 		"TEKNIKCONTOH":  {"CaseManager"},
 		"KOLEKSICONTOH": {"PncCollection"},
 	})
-	repo.Add(lengkap("OPCN.26.0002", inboxacceptopenprotection.TypePremium, at))
+	repo.Add(lengkap("OPCN.26.2", inboxacceptopenprotection.TypePremium, at))
 
 	premi := usecase.ListQuery{
 		PortalAlias: portal,
@@ -139,11 +139,11 @@ func TestKeputusanAtasAntreanYangBukanHaknyaDitolak(t *testing.T) {
 	service, repo := bangunDenganGroup(t, at, map[string][]string{
 		"TEKNIKCONTOH": {"CaseManager"},
 	})
-	repo.Add(lengkap("OPCN.26.0002", inboxacceptopenprotection.TypePremium, at))
+	repo.Add(lengkap("OPCN.26.2", inboxacceptopenprotection.TypePremium, at))
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0002",
+		Number:      "OPCN.26.2",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          "TEKNIKCONTOH",
 	})
@@ -151,7 +151,7 @@ func TestKeputusanAtasAntreanYangBukanHaknyaDitolak(t *testing.T) {
 
 	// Penolakan kewenangan tidak boleh menyisakan perubahan apa pun: barisnya tetap
 	// MENUNGGU keputusan.
-	tetap, err := service.Get(context.Background(), portal, "OPCN.26.0002", "TEKNIKCONTOH")
+	tetap, err := service.Get(context.Background(), portal, "OPCN.26.2", "TEKNIKCONTOH")
 	require.NoError(t, err)
 	require.True(t, tetap.Pending(), "baris tidak boleh berubah setelah keputusan ditolak")
 }
@@ -164,9 +164,9 @@ func TestPembacaanRincianTidakTundukPadaAntrean(t *testing.T) {
 	service, repo := bangunDenganGroup(t, at, map[string][]string{
 		"TEKNIKCONTOH": {"CaseManager"},
 	})
-	repo.Add(lengkap("OPCN.26.0002", inboxacceptopenprotection.TypePremium, at))
+	repo.Add(lengkap("OPCN.26.2", inboxacceptopenprotection.TypePremium, at))
 
-	p, err := service.Get(context.Background(), portal, "OPCN.26.0002", "TEKNIKCONTOH")
+	p, err := service.Get(context.Background(), portal, "OPCN.26.2", "TEKNIKCONTOH")
 	require.NoError(t, err, "pembacaan cukup menuntut kewenangan atas layar")
 	require.Equal(t, inboxacceptopenprotection.TypePremium, p.Type)
 }

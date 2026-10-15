@@ -138,26 +138,27 @@ func TestDashboardOutstandingTidakPunyaPenyaringPeriode(t *testing.T) {
 // TestPersetujuanPaymentAkseptasiDitahan mengunci keputusan yang menyangkut uang.
 //
 // Menyetujui di Pega ikut menjalankan `TransferToKasir_act_Leader`, dan rantai itu belum
-// lengkap. Menuliskan STSAPP='1' tanpa langkah itu menandai pembayaran sudah disetujui padahal
+// lengkap. Menuliskan STSAPP=1 tanpa langkah itu menandai pembayaran sudah disetujui padahal
 // tidak pernah sampai ke kasir.
 func TestPersetujuanPaymentAkseptasiDitahan(t *testing.T) {
 	tab, _ := inboxmanager.FindTab(inboxmanager.TabPaymentAkseptasi)
 
-	require.True(t, tab.Decision.Decidable)
+	// Diputuskan lewat SIMPAN di panel DETAILS, seperti Pega — bukan lewat bilah keputusan.
+	require.False(t, tab.Decision.Decidable)
+	require.True(t, tab.HasPaymentDetail)
 	require.NotEmpty(t, tab.Decision.ApproveBlockedReason,
-		"jalur setuju tab ini WAJIB ditahan sampai rantai transfer kasirnya lengkap")
+		"status Setuju WAJIB ditahan sampai rantai transfer kasirnya lengkap")
 
 	caller := inboxmanager.Caller{Login: "JONNY"}
 
-	_, err := inboxmanager.NewDecision(
-		tab.Code, inboxmanager.VerdictApprove, []string{"AKS-1"}, "", caller)
+	_, err := inboxmanager.NewPaymentSave("AKS-1", inboxmanager.PaymentAccepted, "", caller)
 	require.ErrorIs(t, err, inboxmanager.ErrApproveBlocked)
 
-	// Menolak TIDAK ditahan: jalur itu berhenti di UPDATE tabel checker.
-	decision, err := inboxmanager.NewDecision(
-		tab.Code, inboxmanager.VerdictReject, []string{"AKS-1"}, "nilai belum sesuai", caller)
+	// Tidak Setuju TIDAK ditahan.
+	save, err := inboxmanager.NewPaymentSave(" AKS-1 ", inboxmanager.PaymentNotAccepted, " nilai belum sesuai ", caller)
 	require.NoError(t, err)
-	require.Equal(t, inboxmanager.StatusRejected, decision.Verdict.Value())
+	require.Equal(t, "AKS-1", save.AcceptedNo)
+	require.Equal(t, "nilai belum sesuai", save.Remark)
 }
 
 // TestAlasanWajibHanyaPadaAntreanYangPunyaKolomnya menegakkan aturan yang LEBIH KETAT daripada

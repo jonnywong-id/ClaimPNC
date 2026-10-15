@@ -124,4 +124,3 @@ func toGroupDTOs(groups []inboxosclaimpercabang.SummaryGroup) []SummaryGroupDTO 
 	}
 	return result
 }
-

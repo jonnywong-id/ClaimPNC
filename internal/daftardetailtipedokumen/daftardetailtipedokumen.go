@@ -501,7 +501,6 @@ type Repo interface {
 type ReferenceRepo interface {
 	// ListDocumentTypes mengembalikan pilihan isian ID Tipe Dokumen.
 	ListDocumentTypes(ctx context.Context) ([]DocumentTypeOption, error)
-
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

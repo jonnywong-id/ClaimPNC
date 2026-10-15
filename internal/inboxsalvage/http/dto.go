@@ -145,7 +145,6 @@ type TabDTO struct {
 	// domain, tempat uji kesetaraan gerbang 1 memetakannya ke butir `P-5` (`D-54`) — dan
 	// `TestEveryNoticeExplainsItselfInsteadOfPointingElsewhere` tetap menjaga isinya.
 
-
 	// DetailKey menyatakan dengan APA panel rincian dibuka pada daftar ini.
 	//
 	// SETIAP daftar punya tombol Detail — itu keadaan di Pega. Yang berbeda adalah
@@ -233,12 +232,12 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		StatusOptions:      options,
-		CurrencyOptions:    currencies,
-		UploadColumns:      meta.UploadColumns,
-		Portal:             portalAlias,
+		Tabs:            tabs,
+		DefaultTab:      meta.DefaultTab,
+		StatusOptions:   options,
+		CurrencyOptions: currencies,
+		UploadColumns:   meta.UploadColumns,
+		Portal:          portalAlias,
 	}
 }
 
@@ -453,6 +452,7 @@ type NotificationResultDTO struct {
 	// Sent bernilai benar bila surelnya benar-benar terkirim.
 	Sent bool `json:"terkirim"`
 }
+
 // UploadResponse adalah hasil pembacaan berkas "Upload Detail Salvage".
 //
 // Ia TIDAK menyimpan apa pun — lihat inboxsalvage.ParseUpload. Yang dikembalikan adalah

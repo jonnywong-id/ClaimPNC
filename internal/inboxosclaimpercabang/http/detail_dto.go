@@ -326,11 +326,11 @@ func toDetailResponse(detailed usecase.Detailed, portalAlias string) DetailRespo
 			RemarkRecommendation: detail.RemarkRecommendation,
 			ProgressNote:         detail.ProgressNote,
 		},
-		Objects:            objects,
-		ProgressHistory:    progress,
-		AdjusterMessages:   messages,
-		Branch:             BranchDTO{Code: detailed.Query.Branch.Code, Name: detailed.Query.Branch.Name},
-		Portal:             portalAlias,
+		Objects:          objects,
+		ProgressHistory:  progress,
+		AdjusterMessages: messages,
+		Branch:           BranchDTO{Code: detailed.Query.Branch.Code, Name: detailed.Query.Branch.Name},
+		Portal:           portalAlias,
 	}
 }
 

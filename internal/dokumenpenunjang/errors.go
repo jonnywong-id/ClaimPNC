@@ -97,3 +97,39 @@ var ErrUnggahGagal = errors.New("dokumenpenunjang: layanan penyimpanan menolak b
 // tidak mengunggah ulang berkali-kali dan meninggalkan salinan yatim di setiap percobaan.
 var ErrMetadataGagal = errors.New(
 	"dokumenpenunjang: berkas sudah terkirim ke penyimpanan tetapi metadatanya gagal dicatat")
+
+// ErrKodeAksesDitolak dikembalikan ketika layanan penyimpanan menolak `KodeString`.
+//
+// # Kenapa ia dipisahkan dari ErrUnggahGagal
+//
+// Keduanya sama-sama berakhir di layanan penyimpanan, tetapi yang dapat dilakukan pengguna
+// BERBEDA sejauh-jauhnya:
+//
+//	ErrUnggahGagal        layanan sedang bermasalah  -> ulangi, mungkin berhasil
+//	ErrKodeAksesDitolak   kredensial salah           -> mengulang TIDAK AKAN berhasil
+//
+// Sebelum pemisahan ini, keduanya menghasilkan kalimat "Layanan penyimpanan dokumen sedang
+// tidak dapat dihubungi. Berkas belum tersimpan; silakan coba lagi." Kalimat itu salah pada
+// kasus kedua di dua hal sekaligus: layanannya TERHUBUNG dengan baik — ia menjawab HTTP 200
+// dengan sebab yang jelas — dan mengulang hanya mengulang penolakan yang sama.
+//
+// # Harganya nyata, dan terukur
+//
+// Pada 2026-10-13 penelusuran sebuah unggahan yang gagal dimulai dari proxy dan jaringan,
+// karena itulah yang disebut layar. Sebab sebenarnya — `invalid kodestring data`, jawaban
+// layanan atas token sekali pakai pada folder `klaimasmpnctest` — hanya ada di log server.
+// Deretan kejadiannya terbaca dari data: unggahan terakhir yang berhasil di folder itu
+// 2026-09-29, dan token pertama yang ditolak 2026-09-30.
+//
+// # Pengenalannya lewat kata `kodestring`, bukan kalimat utuh
+//
+// Layanan memakai dua kalimat berbeda untuk sebab yang sama:
+//
+//	"invalid kodestring data"                          kode tidak dikenal
+//	"Error, can't Kodestring null value in json data"  kode tidak dikirim
+//
+// Keduanya hanya berbagi satu kata, dan kata itulah yang dicocokkan — tidak peka huruf.
+// Mencocokkan kalimat utuh akan luput begitu seberang mengubah satu kata; mencocokkan
+// `ErrorCode` 500 akan menjaring kegagalan lain yang kebetulan bernomor sama.
+var ErrKodeAksesDitolak = errors.New(
+	"dokumenpenunjang: layanan penyimpanan menolak kode akses (KodeString)")

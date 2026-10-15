@@ -14,12 +14,20 @@ import (
 //
 // Klien membedakan jenis galat lewat kode ini, bukan dengan mencocokkan teks pesan.
 const (
-	CodeBadRequest    = "permintaan_cacat"
-	CodeNotFound      = "tidak_ditemukan"
-	CodeTooLarge      = "berkas_terlalu_besar"
-	CodeUpstream      = "layanan_penyimpanan_gagal"
-	CodeHalfDone      = "tersimpan_sebagian"
-	CodeInternalError = "galat_internal"
+	CodeBadRequest = "permintaan_cacat"
+	CodeNotFound   = "tidak_ditemukan"
+	CodeTooLarge   = "berkas_terlalu_besar"
+	CodeUpstream   = "layanan_penyimpanan_gagal"
+	// CodeAccessRejected: kredensial penyimpanan ditolak — MENGULANG TIDAK MENOLONG.
+	//
+	// Dipisahkan dari CodeUpstream supaya klien dapat memilih nada yang benar tanpa
+	// membaca teks pesan. Layar dokumen penunjang memilih nada "gangguan" HANYA untuk
+	// `layanan_penyimpanan_gagal` dan "penolakan" untuk selainnya
+	// (`DokumenPenunjangPanel.tsx:79`), sehingga kode baru ini otomatis bernada
+	// penolakan — yang memang benar: tidak ada gunanya mencoba lagi.
+	CodeAccessRejected = "kode_akses_ditolak"
+	CodeHalfDone       = "tersimpan_sebagian"
+	CodeInternalError  = "galat_internal"
 )
 
 // ErrorResponse adalah bentuk galat yang dikirim ke klien.
@@ -92,6 +100,29 @@ func WriteError(logger *slog.Logger, writeJSON JSONWriter, fallback ErrorWriter)
 				Code: CodeInternalError,
 				Message: "Folder penyimpanan dokumen belum terdaftar. " +
 					"Laporkan ke administrator — unggahan tidak dapat diproses.",
+			})
+			return
+
+		case errors.Is(err, dokumenpenunjang.ErrKodeAksesDitolak):
+			// 500 dan bukan 502, menyusul ErrFolderAplikasiTidakAda di atas: layanan
+			// TERHUBUNG dengan baik dan menjawab rapi — yang salah konfigurasi di sisi
+			// kita. Menjawab 502 akan mengulang kekeliruan yang hendak diperbaiki di
+			// sini, yaitu membuat penolakan kredensial terbaca sebagai gangguan.
+			//
+			// Pesannya TIDAK berkata "coba lagi", dan itu intinya: kode akses yang
+			// ditolak akan ditolak lagi pada percobaan berikutnya. Yang disebut adalah
+			// nama isiannya, supaya yang menerima laporan tahu persis apa yang kurang.
+			//
+			// Tetap dicatat ke log lewat catatGalatHulu: pesan asli layanan beserta
+			// daftar field-nya ada di sana, dan itulah yang dibutuhkan saat kode yang
+			// sudah diisi pun masih ditolak.
+			catatGalatHulu(logger, r, err)
+			writeJSON(w, r, http.StatusInternalServerError, ErrorResponse{
+				Code: CodeAccessRejected,
+				Message: "Kode akses penyimpanan dokumen ditolak layanan. Berkas belum " +
+					"tersimpan, dan mengulang tidak akan menolong. Laporkan ke " +
+					"administrator: PENYIMPANAN_DOKUMEN_KODE_AKSES belum terdaftar " +
+					"untuk folder aplikasi ini.",
 			})
 			return
 

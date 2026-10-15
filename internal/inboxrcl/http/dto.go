@@ -41,10 +41,10 @@ type ColumnDTO struct {
 
 // MetadataResponse adalah keterangan layar.
 type MetadataResponse struct {
-	Portal           string      `json:"portal"`
-	Kolom            []ColumnDTO `json:"kolom"`
-	Keterbatasan     []string    `json:"keterbatasan"`
-	UkuranHalaman    int         `json:"ukuran_halaman"`
+	Portal        string      `json:"portal"`
+	Kolom         []ColumnDTO `json:"kolom"`
+	Keterbatasan  []string    `json:"keterbatasan"`
+	UkuranHalaman int         `json:"ukuran_halaman"`
 }
 
 // ListResponse adalah satu halaman antrean.
@@ -101,10 +101,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Portal:           portalAlias,
-		Kolom:            columns,
-		Keterbatasan:     meta.Limitations,
-		UkuranHalaman:    meta.PageSize,
+		Portal:        portalAlias,
+		Kolom:         columns,
+		Keterbatasan:  meta.Limitations,
+		UkuranHalaman: meta.PageSize,
 	}
 }
 

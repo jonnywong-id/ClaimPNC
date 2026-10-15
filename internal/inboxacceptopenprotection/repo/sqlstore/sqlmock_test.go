@@ -192,12 +192,12 @@ func TestListErrors(t *testing.T) {
 func TestGetMapsDetailIncludingPolicySnapshot(t *testing.T) {
 	db, mock := newMock(t)
 
-	mock.ExpectQuery(reGet).WithArgs("OPCN.26.0005").
-		WillReturnRows(detailRow("OPCN.26.0005", "8", "12001", "12002", "", "REF"))
+	mock.ExpectQuery(reGet).WithArgs("OPCN.26.5").
+		WillReturnRows(detailRow("OPCN.26.5", "8", "12001", "12002", "", "REF"))
 
-	p, err := NewRepo(db).Get(context.Background(), " opcn.26.0005 ")
+	p, err := NewRepo(db).Get(context.Background(), " opcn.26.5 ")
 	require.NoError(t, err)
-	require.Equal(t, "OPCN.26.0005", p.Number)
+	require.Equal(t, "OPCN.26.5", p.Number)
 	require.Equal(t, "REF", p.ClaimReference)
 	require.Equal(t, "Nama Tipe", p.TypeName)
 	require.Equal(t, "Tertanggung", p.InsuredName)
@@ -250,18 +250,18 @@ func TestDecideApproveAppliesLossDateInOneTransaction(t *testing.T) {
 	at := time.Date(2026, 9, 25, 2, 0, 0, 0, time.UTC)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(reDecide).WithArgs("1", "PETUGAS", at, "OPCN.26.0004").
+	mock.ExpectExec(reDecide).WithArgs("1", "PETUGAS", at, "OPCN.26.4").
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery(reGet).WithArgs("OPCN.26.0004").
-		WillReturnRows(detailRow("OPCN.26.0004", "7", "2026-08-03", "2026-08-05", "1", " ref-1 "))
+	mock.ExpectQuery(reGet).WithArgs("OPCN.26.4").
+		WillReturnRows(detailRow("OPCN.26.4", "7", "2026-08-03", "2026-08-05", "1", " ref-1 "))
 	mock.ExpectExec(reApply).WithArgs(time.Date(2026, 8, 5, 0, 0, 0, 0, time.UTC), "REF-1").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	saved, err := NewRepo(db).Decide(context.Background(), "opcn.26.0004",
+	saved, err := NewRepo(db).Decide(context.Background(), "opcn.26.4",
 		inboxacceptopenprotection.DecisionApprove, " PETUGAS ", at)
 	require.NoError(t, err)
-	require.Equal(t, "OPCN.26.0004", saved.Number)
+	require.Equal(t, "OPCN.26.4", saved.Number)
 	require.True(t, saved.Approved())
 	require.NoError(t, mock.ExpectationsWereMet())
 }

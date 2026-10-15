@@ -151,7 +151,6 @@ func cekTautan(db *sql.DB) {
 	fmt.Println("hrd_lbr@ASMD    : TERBACA lewat DB Link")
 }
 
-
 // cekHakDDL melaporkan apakah akun aplikasi dapat membuat tabel sendiri.
 //
 // Ia menentukan SIAPA yang menjalankan migrasi, bukan apakah migrasinya perlu. `D-63`
@@ -171,6 +170,7 @@ func cekHakDDL(db *sql.DB) {
 	}
 	fmt.Println("hak CREATE TABLE: ADA pada akun aplikasi")
 }
+
 // cekKolomPenyaringLini memeriksa kolom yang dipakai PENYARING LINI BISNIS.
 //
 // # Kenapa ia terpisah dari probe biasa

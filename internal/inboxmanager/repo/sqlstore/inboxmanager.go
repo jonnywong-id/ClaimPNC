@@ -19,6 +19,10 @@ import (
 // yang menyentuh skema DATAPEGA, yang selama masa paralel dimiliki Pega (`P-1`).
 type Repo struct {
 	db *sql.DB
+
+	// rules adalah aturan milik modul lain yang dipakai ekspor detail klaim. Lihat
+	// WithDetailRules.
+	rules inboxmanager.DetailRules
 }
 
 // NewRepo membentuk repo di atas satu koneksi.
@@ -239,12 +243,17 @@ func (r *Repo) dashboardOutstanding(
 		return inboxmanager.DashboardView{}, err
 	}
 
-	group, err := r.countByDimension(ctx, "dashboard_os_business_group", flags)
+	// Penyaring PIC yang diklik berlaku pada grid COB, kolom tahun, dan grid ketiga — TIDAK
+	// pada grid PIC sendiri, sama seperti `{ASIS:tempQuery.EMAIL}` di Pega.
+	byPIC := picFilterArgs(q.PIC)
+	flagsPIC := append(append([]any{}, flags...), byPIC...)
+
+	group, err := r.countByDimension(ctx, "dashboard_os_business_group", flagsPIC)
 	if err != nil {
 		return inboxmanager.DashboardView{}, err
 	}
 
-	years, err := r.outstandingYears(ctx, flags)
+	years, err := r.outstandingYears(ctx, flagsPIC)
 	if err != nil {
 		return inboxmanager.DashboardView{}, err
 	}
@@ -390,6 +399,7 @@ func (r *Repo) outstandingSummary(
 		boolFlag(q.Reinsurer == ""), q.Reinsurer,
 		boolFlag(q.CategoryOS == ""), q.CategoryOS,
 	)
+	args = append(args, picFilterArgs(q.PIC)...)
 
 	rows, err := r.db.QueryContext(ctx, query("dashboard_os_summary"), args...)
 	if err != nil {
@@ -458,6 +468,11 @@ func boolFlag(on bool) int {
 		return 1
 	}
 	return 0
+}
+
+// picFilterArgs menyusun pasangan bendera-dan-nilai penyaring PIC. PIC kosong berarti seluruh PIC.
+func picFilterArgs(pic string) []any {
+	return []any{boolFlag(pic == ""), pic}
 }
 
 // countByDimension membaca grid berbentuk (dimensi, jumlah).

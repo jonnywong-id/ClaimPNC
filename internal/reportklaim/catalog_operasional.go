@@ -94,9 +94,9 @@ func catalogOperasional() []Report {
 			},
 		},
 		{
-			Code:         CodeCompliance,
-			Title:        "REPORT COMPLIANCE",
-			Group:        GroupOperasional,
+			Code:  CodeCompliance,
+			Title: "REPORT COMPLIANCE",
+			Group: GroupOperasional,
 			// Label tombolnya MENYEBUTKAN keterbatasannya, dan itu disengaja.
 			//
 			// Laporan ini berjalan tanpa penyaring Status Compliance — properti penyaringnya

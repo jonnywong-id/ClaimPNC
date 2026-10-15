@@ -20,11 +20,11 @@ import (
 // sekadar mengisi tabel:
 //
 //	OPC-201       nomor WARISAN Pega, bentuknya berbeda dari terbitan aplikasi ini
-//	OPCN.26.0001  terbitan aplikasi ini, belum tertaut klaim -> MASIH dapat disunting
-//	OPCN.26.0002  sudah tertaut klaim -> TERKUNCI, tautannya mati di layar
-//	OPCN.26.0003  tipe '2' PREMI -> muncul di antrean PncCollection, bukan di antrean lain
-//	OPCN.26.0004  tipe '7' perubahan DOL -> membawa detail perubahan tanggal
-//	OPCN.26.0005  tipe '8' perubahan Cause of Loss -> membawa detail penyebab kerugian
+//	OPCN.26.1  terbitan aplikasi ini, belum tertaut klaim -> MASIH dapat disunting
+//	OPCN.26.2  sudah tertaut klaim -> TERKUNCI, tautannya mati di layar
+//	OPCN.26.3  tipe '2' PREMI -> muncul di antrean PncCollection, bukan di antrean lain
+//	OPCN.26.4  tipe '7' perubahan DOL -> membawa detail perubahan tanggal
+//	OPCN.26.5  tipe '8' perubahan Cause of Loss -> membawa detail penyebab kerugian
 //
 // Tidak ada satu pun baris yang sudah diakseptasi. Itu disengaja: baris semacam itu TIDAK
 // AKAN TAMPIL di layar ini (penyaringnya `AcceptStatus IS NULL`), sehingga
@@ -54,7 +54,7 @@ func sampleProtections() []inputreqprotection.Protection {
 			ClaimReference: "",
 		},
 		{
-			Number:         "OPCN.26.0001",
+			Number:         "OPCN.26.1",
 			PolicyNumber:   "99.001.2026.00000002",
 			ClaimNumber:    "",
 			Type:           "1",
@@ -66,7 +66,7 @@ func sampleProtections() []inputreqprotection.Protection {
 			ClaimReference: "",
 		},
 		{
-			Number:         "OPCN.26.0002",
+			Number:         "OPCN.26.2",
 			PolicyNumber:   "99.001.2026.00000003",
 			ClaimNumber:    "PNCN.26.0007",
 			Type:           "1",
@@ -78,7 +78,7 @@ func sampleProtections() []inputreqprotection.Protection {
 			ClaimReference: "KLAIM-CONTOH-0007",
 		},
 		{
-			Number:         "OPCN.26.0003",
+			Number:         "OPCN.26.3",
 			PolicyNumber:   "99.001.2026.00000004",
 			ClaimNumber:    "PNCN.26.0008",
 			Type:           inputreqprotection.TypePremium,
@@ -90,7 +90,7 @@ func sampleProtections() []inputreqprotection.Protection {
 			ClaimReference: "KLAIM-CONTOH-0008",
 		},
 		{
-			Number:         "OPCN.26.0004",
+			Number:         "OPCN.26.4",
 			PolicyNumber:   "99.001.2026.00000005",
 			ClaimNumber:    "PNCN.26.0009",
 			Type:           inputreqprotection.TypeChangeLossDate,
@@ -108,7 +108,7 @@ func sampleProtections() []inputreqprotection.Protection {
 			},
 		},
 		{
-			Number:         "OPCN.26.0005",
+			Number:         "OPCN.26.5",
 			PolicyNumber:   "99.001.2026.00000006",
 			ClaimNumber:    "PNCN.26.0010",
 			Type:           inputreqprotection.TypeChangeCauseOfLoss,

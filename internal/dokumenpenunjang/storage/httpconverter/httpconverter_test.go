@@ -187,3 +187,87 @@ func TestBatasWaktuDihormati(t *testing.T) {
 	_, err = klien.Convert(context.Background(), []byte("gambar"))
 	require.Error(t, err, "batas waktu wajib berlaku")
 }
+
+// ── Bentuk respons layanan yang SEBENARNYA ───────────────────────────────────────
+
+// TestBentukResponsLayananSungguhan menjaga kontrak terhadap layanan yang HIDUP, bukan
+// terhadap rule Pega.
+//
+// Badan di bawah disalin apa adanya dari respons `http://aiimage.sinarmas.co.id/convert-avif`
+// yang diperiksa langsung pada 2026-10-13. Perhatikan tiga hal yang berbeda dari rule:
+//
+//	"status"   huruf kecil, dan nilainya BOOLEAN — bukan teks "true"
+//	"type"     field yang tidak disebut rule sama sekali
+//	            tidak ada "ErrorMessage" pada jalur berhasil
+//
+// Sebelum uji ini ada, seluruh uji paket ini memakai `{"Status":"true"}` — bentuk yang
+// ditulis rule, yang ternyata TIDAK PERNAH dikirim layanan. Akibatnya penguraian gagal di
+// produksi sementara seluruh uji hijau, dan unggah PNG, JPG, JPEG, serta PDF ikut mati.
+//
+// Karena itu badan ini jangan "dirapikan" menjadi bentuk rule. Justru ketidaksamaannya yang
+// dijaga.
+func TestBentukResponsLayananSungguhan(t *testing.T) {
+	const avif = "AAAAIGZ0eXBhdmlm"
+
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(
+				`{"status": true, "type": "image", "image_base64": "` + avif + `"}`))
+		}))
+	defer server.Close()
+
+	klien, err := httpconverter.NewClient(httpconverter.Options{Alamat: server.URL})
+	require.NoError(t, err)
+
+	hasil, err := klien.Convert(context.Background(), []byte("gambar"))
+	require.NoError(t, err, "respons layanan yang sungguhan harus terurai")
+
+	diharapkan, _ := base64.StdEncoding.DecodeString(avif)
+	require.Equal(t, diharapkan, hasil)
+}
+
+// TestStatusBooleanFalseDianggapGagal melengkapi TestStatusFalseDianggapGagal.
+//
+// Layanan mengirim `status` sebagai boolean, sehingga penolakannya pun akan berbentuk
+// `false` boolean — bukan teks `"false"`. Memperlakukannya sebagai nilai yang tidak dikenal
+// akan meneruskan berkas kosong sebagai keberhasilan.
+func TestStatusBooleanFalseDianggapGagal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(
+				`{"status": false, "ErrorMessage": "berkas rusak", "image_base64": ""}`))
+		}))
+	defer server.Close()
+
+	klien, _ := httpconverter.NewClient(httpconverter.Options{Alamat: server.URL})
+	_, err := klien.Convert(context.Background(), []byte("gambar"))
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "berkas rusak")
+}
+
+// TestGalatPenguraianMenyebutNamaFieldSaja menjaga agar kegagalan berikutnya terbaca.
+//
+// Nama field ikut ke pesan supaya perubahan bentuk di seberang langsung terlihat dari log.
+// NILAINYA tidak pernah ikut: respons dapat menggemakan muatan kita sendiri, yang memuat
+// berkas nasabah dalam base64. Sama seperti `httpstorage`.
+func TestGalatPenguraianMenyebutNamaFieldSaja(t *testing.T) {
+	const rahasia = "aGFsYW1hbiByYWhhc2lh"
+
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) {
+			// `image_base64` angka: bentuk yang tetap tidak dapat diurai.
+			_, _ = w.Write([]byte(
+				`{"status": true, "bocoran": "` + rahasia + `", "image_base64": 12345}`))
+		}))
+	defer server.Close()
+
+	klien, _ := httpconverter.NewClient(httpconverter.Options{Alamat: server.URL})
+	_, err := klien.Convert(context.Background(), []byte("gambar"))
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bocoran", "nama field harus disebut")
+	require.Contains(t, err.Error(), "image_base64")
+	require.NotContains(t, err.Error(), rahasia, "NILAI field tidak boleh ikut")
+}

@@ -20,6 +20,9 @@ const (
 	CodeNotDecidable   = "antrean_tidak_dapat_diputuskan"
 	CodeApproveBlocked = "persetujuan_sedang_ditahan"
 	CodeSourceDown     = "sumber_antrean_tidak_terbaca"
+	CodePaymentGone    = "akseptasi_tidak_menunggu"
+	CodeDocumentGone   = "lampiran_tidak_ditemukan"
+	CodeDocumentLink   = "tautan_lampiran_tidak_tersedia"
 	CodeInternalError  = "galat_internal"
 )
 
@@ -131,6 +134,27 @@ func mapError(err error) (int, ErrorResponse, bool) {
 				"sedang tidak dapat dibaca. Ini BUKAN kerusakan aplikasi dan tidak dapat " +
 				"diperbaiki dengan mencoba lagi. Laporkan ke tim teknis — nama objeknya " +
 				"tercatat di log server.",
+		}, true
+
+	// TEKS SEMENTARA — ketiga pesan di bawah belum berasal dari developer maupun Pega
+	// (WORKSPACE.md, "Teks pesan error & validasi"); ganti dengan teks developer.
+	case errors.Is(err, inboxmanager.ErrPaymentNotFound):
+		// 404: nomornya tidak sedang menunggu — sudah diputuskan, atau tidak ada.
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodePaymentGone,
+			Message: "Nomor akseptasi itu tidak sedang menunggu persetujuan.",
+		}, true
+
+	case errors.Is(err, inboxmanager.ErrPaymentDocumentNotFound):
+		return http.StatusNotFound, ErrorResponse{
+			Code:    CodeDocumentGone,
+			Message: "Lampiran itu tidak ditemukan atau tidak punya berkas.",
+		}, true
+
+	case errors.Is(err, inboxmanager.ErrDocumentLinkUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code:    CodeDocumentLink,
+			Message: "Tautan lampiran belum dapat dibuka dari layanan penyimpanan.",
 		}, true
 
 	default:

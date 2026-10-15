@@ -512,7 +512,43 @@ type BatchFilter struct {
 	// pengguna tetap namanya — kodenya hanya nilai di balik pilihan.
 	CompanyCode string
 
+	// Search menyaring pada nomor batch (sama persis) ATAU user upload (memuat teksnya,
+	// tanpa membedakan huruf besar-kecil); kosong berarti tanpa penyaring.
+	//
+	// Tidak ada padanannya di Pega: grid lama memuat seluruh batch sekaligus, sehingga
+	// petugas mencarinya dengan menggulir. Grid ini dipaginasi server, jadi pencariannya
+	// wajib di server juga — menyaring di peramban hanya menyaring halaman yang tampil.
+	Search string
+
+	// Order menentukan arah urutan nomor batch; nilai nolnya urutan bawaan (terbaru).
+	Order BatchOrder
+
 	Page PageRequest
+}
+
+// BatchOrder adalah arah urutan nomor batch pada grid.
+type BatchOrder string
+
+// Kedua arah urutan grid batch.
+const (
+	// BatchOrderNewest: nomor batch menurun — urutan kueri asli (`ORDER BY BATCH DESC`).
+	BatchOrderNewest BatchOrder = "terbaru"
+
+	// BatchOrderOldest: nomor batch menaik.
+	BatchOrderOldest BatchOrder = "terlama"
+)
+
+// ParseBatchOrder membaca arah urutan dari permintaan.
+//
+// Berbeda dengan ParseSource dan ParseResult, nilai yang tidak dikenal TIDAK ditolak
+// melainkan jatuh ke urutan bawaan (`D-82`). Urutan tidak mengubah ISI yang tampil —
+// baris yang sama, susunan berbeda — sehingga membulatkannya tidak menyembunyikan data
+// seperti tab atau penyaring hasil yang salah ketik.
+func ParseBatchOrder(value string) BatchOrder {
+	if BatchOrder(strings.ToLower(strings.TrimSpace(value))) == BatchOrderOldest {
+		return BatchOrderOldest
+	}
+	return BatchOrderNewest
 }
 
 // LineQuery meminta rincian satu batch.

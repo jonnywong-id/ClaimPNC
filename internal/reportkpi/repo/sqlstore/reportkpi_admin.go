@@ -346,8 +346,8 @@ func (r *Repo) adminDetailPA(
 	defer func() { _ = rows.Close() }()
 
 	type mentah struct {
-		baris                      reportkpi.AdminDetailRow
-		terima, daftar             time.Time
+		baris                       reportkpi.AdminDetailRow
+		terima, daftar              time.Time
 		terimaLOD, tanggalAkseptasi time.Time
 	}
 

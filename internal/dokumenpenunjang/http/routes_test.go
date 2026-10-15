@@ -242,6 +242,11 @@ func TestEveryDomainErrorHasItsOwnStatus(t *testing.T) {
 		{dokumenpenunjang.ErrLinkTakTerjangkau, http.StatusBadGateway, dokumenpenunjanghttp.CodeUpstream},
 		{dokumenpenunjang.ErrKonversiGagal, http.StatusBadGateway, dokumenpenunjanghttp.CodeUpstream},
 		{dokumenpenunjang.ErrUnggahGagal, http.StatusBadGateway, dokumenpenunjanghttp.CodeUpstream},
+		// Penolakan kode akses mendahului ErrUnggahGagal meski DIBUNGKUS olehnya: yang
+		// dipilih switch adalah cabang yang lebih spesifik, bukan yang lebih dulu cocok.
+		{dokumenpenunjang.ErrKodeAksesDitolak, http.StatusInternalServerError, dokumenpenunjanghttp.CodeAccessRejected},
+		{fmt.Errorf("%w: %w", dokumenpenunjang.ErrUnggahGagal, dokumenpenunjang.ErrKodeAksesDitolak), http.StatusInternalServerError, dokumenpenunjanghttp.CodeAccessRejected},
+		{fmt.Errorf("%w: %w", dokumenpenunjang.ErrTautanGagal, dokumenpenunjang.ErrKodeAksesDitolak), http.StatusInternalServerError, dokumenpenunjanghttp.CodeAccessRejected},
 		{fmt.Errorf("bungkus: %w", dokumenpenunjang.ErrMetadataGagal), http.StatusInternalServerError, dokumenpenunjanghttp.CodeHalfDone},
 		{dokumenpenunjang.ErrTidakDitemukan, http.StatusNotFound, dokumenpenunjanghttp.CodeNotFound},
 		{errors.New("tak dikenal"), http.StatusTeapot, "cadangan"},
@@ -328,4 +333,31 @@ func TestGalatHuluTercatatBesertaSebabnya(t *testing.T) {
 			require.NotContains(t, rec.Body.String(), "dial tcp")
 		})
 	}
+}
+
+// TestPesanPenolakanKodeAksesTIDAKMenyuruhMengulang menjaga kalimat yang dibaca petugas.
+//
+// Sebelum pemisahan ini, penolakan kredensial memakai kalimat gangguan jaringan — "sedang
+// tidak dapat dihubungi … silakan coba lagi". Keduanya salah: layanannya terhubung, dan
+// mengulang hanya mengulang penolakan yang sama. Pada 2026-10-13 kalimat itu mengarahkan
+// penelusuran ke proxy selama berjam-jam, sementara sebabnya ada di satu isian konfigurasi.
+func TestPesanPenolakanKodeAksesTIDAKMenyuruhMengulang(t *testing.T) {
+	err := fmt.Errorf("%w: %w", dokumenpenunjang.ErrUnggahGagal,
+		dokumenpenunjang.ErrKodeAksesDitolak)
+
+	f := newFixture(t, &stubService{err: err}, "BUDI", true)
+	recorder, content := f.do(t, httptest.NewRequest(http.MethodGet, route+"/", nil))
+
+	require.Equal(t, http.StatusInternalServerError, recorder.Code)
+	require.Equal(t, dokumenpenunjanghttp.CodeAccessRejected, content["kode"])
+
+	pesan, _ := content["pesan"].(string)
+	require.Contains(t, pesan, "PENYIMPANAN_DOKUMEN_KODE_AKSES",
+		"isian yang harus dilaporkan wajib disebut namanya")
+	require.NotContains(t, strings.ToLower(pesan), "coba lagi")
+	require.NotContains(t, strings.ToLower(pesan), "tidak dapat dihubungi")
+
+	// Sebab aslinya tetap masuk log — itu yang dibutuhkan bila kode yang sudah diisi pun
+	// masih ditolak.
+	require.Contains(t, f.logs.String(), "unggah dokumen gagal di layanan hulu")
 }

@@ -66,7 +66,17 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// Ekspor adalah GET: ia tidak mengubah apa pun.
 		perPortal.Get("/inbox-manager/ekspor", h.Export)
 
-		// SATU-SATUNYA rute yang menulis di seluruh modul inbox.
+		// Blok "Export Data Detail Klaim" tab Outstanding — berkas tersendiri, bukan ekspor
+		// antrean.
+		perPortal.Get("/inbox-manager/ekspor-detail", h.ExportDetail)
+
+		// Antrean yang menulis keputusannya.
 		perPortal.Post("/inbox-manager/keputusan", h.Decide)
+
+		// Panel detail Payment Klaim Akseptasi — DETAILS, Dokumen, dan SIMPAN.
+		perPortal.Get("/inbox-manager/payment-akseptasi/{noakseptasi}", h.PaymentDetail)
+		perPortal.Get("/inbox-manager/payment-akseptasi/{noakseptasi}/dokumen/{kunci}", h.PaymentDocument)
+		perPortal.Get("/inbox-manager/payment-akseptasi/{noakseptasi}/dokumen/{kunci}/tautan", h.PaymentDocumentLink)
+		perPortal.Post("/inbox-manager/payment-akseptasi/{noakseptasi}/simpan", h.SavePayment)
 	})
 }

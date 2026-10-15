@@ -230,6 +230,13 @@ type Panel struct {
 
 	// Rows adalah isinya.
 	Rows []DashboardRow
+
+	// RowFilter, bila terisi, menyatakan sel kolom PERTAMA setiap baris panel ini adalah
+	// TAUTAN: mengekliknya memasang penyaring berkunci RowFilter dengan nilai sel itu, lalu
+	// memuat ulang dashboard.
+	//
+	// Hanya grid PIC tab Outstanding yang punya — lihat FilterPIC.
+	RowFilter string
 }
 
 // DashboardView adalah isi satu tab dashboard.
@@ -454,6 +461,27 @@ type Repo interface {
 	// Ia mengembalikan jumlah baris yang BENAR-BENAR berubah, dan angka itu boleh lebih
 	// kecil daripada jumlah kunci yang dikirim — lihat DecisionResult.
 	Decide(ctx context.Context, d Decision) (int, error)
+
+	// DetailExport mengalirkan baris berkas "Export Data Detail Klaim" satu per satu ke
+	// emit, berurutan.
+	//
+	// Ia MENGALIRKAN, bukan mengembalikan senarai: berkasnya belasan ribu baris (klaim ×
+	// objek) dan kuerinya berjalan lebih dari satu menit, sehingga menampungnya lebih dulu
+	// berarti pengguna menunggu tanpa satu byte pun tiba. Galat dari emit menghentikan
+	// pembacaan dan dikembalikan apa adanya.
+	DetailExport(ctx context.Context, q DetailExportQuery, emit func(DetailExportRow) error) error
+
+	// PaymentDetail membaca panel detail Payment Klaim Akseptasi untuk satu nomor akseptasi
+	// yang SEDANG menunggu. ErrPaymentNotFound bila tidak ada.
+	PaymentDetail(ctx context.Context, acceptedNo string) (PaymentDetail, error)
+
+	// PaymentDocumentContent membaca isi satu lampiran lama (kolom ATTACHFILE) milik nomor
+	// akseptasi itu. ErrPaymentDocumentNotFound bila kuncinya tidak menunjuk berkas.
+	PaymentDocumentContent(ctx context.Context, acceptedNo, key string) (PaymentDocumentContent, error)
+
+	// SavePayment menuliskan SIMPAN: tabel checker, lalu penanda adjustment bila kolomnya
+	// sudah ada — dalam satu transaksi.
+	SavePayment(ctx context.Context, s PaymentSave) (PaymentSaveResult, error)
 }
 
 // LineBusinessRepo adalah seam ke lini bisnis petugas.

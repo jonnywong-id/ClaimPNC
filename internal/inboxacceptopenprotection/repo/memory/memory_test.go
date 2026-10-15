@@ -46,7 +46,7 @@ func TestSampleRepoNonPremiumQueue(t *testing.T) {
 		nomor = append(nomor, p.Number)
 	}
 	// Diurutkan menurun menurut tanggal dibuat.
-	require.Equal(t, []string{"OPCN.26.0005", "OPCN.26.0004", "OPCN.26.0002", "OPC-216"}, nomor)
+	require.Equal(t, []string{"OPCN.26.5", "OPCN.26.4", "OPCN.26.2", "OPC-216"}, nomor)
 }
 
 func TestSampleRepoPremiumQueue(t *testing.T) {
@@ -57,18 +57,18 @@ func TestSampleRepoPremiumQueue(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, page.Total)
-	require.Equal(t, "OPCN.26.0003", page.Protections[0].Number)
+	require.Equal(t, "OPCN.26.3", page.Protections[0].Number)
 }
 
 func TestListSearchMatchesNumberPolicyAndClaim(t *testing.T) {
 	repo := memory.NewRepoWithSamples()
 	ctx := context.Background()
 
-	for _, kata := range []string{"opcn.26.0004", "00000005", "pncn.26.0009"} {
+	for _, kata := range []string{"opcn.26.4", "00000005", "pncn.26.0009"} {
 		page, err := repo.List(ctx, inboxacceptopenprotection.Filter{Search: kata})
 		require.NoError(t, err)
 		require.Equal(t, 1, page.Total, "kata %q", kata)
-		require.Equal(t, "OPCN.26.0004", page.Protections[0].Number)
+		require.Equal(t, "OPCN.26.4", page.Protections[0].Number)
 	}
 
 	page, err := repo.List(ctx, inboxacceptopenprotection.Filter{Search: "tidak-ada"})
@@ -121,17 +121,17 @@ func TestCancelledContextIsReturned(t *testing.T) {
 	_, err := repo.List(ctx, inboxacceptopenprotection.Filter{})
 	require.ErrorIs(t, err, context.Canceled)
 
-	_, err = repo.Get(ctx, "OPCN.26.0002")
+	_, err = repo.Get(ctx, "OPCN.26.2")
 	require.ErrorIs(t, err, context.Canceled)
 
-	_, err = repo.Decide(ctx, "OPCN.26.0002", inboxacceptopenprotection.DecisionApprove, "X", time.Now())
+	_, err = repo.Decide(ctx, "OPCN.26.2", inboxacceptopenprotection.DecisionApprove, "X", time.Now())
 	require.ErrorIs(t, err, context.Canceled)
 }
 
 func TestGetIgnoresCaseAndStatus(t *testing.T) {
 	repo := memory.NewRepoWithSamples()
 
-	p, err := repo.Get(context.Background(), "  opcn.26.0007 ")
+	p, err := repo.Get(context.Background(), "  opcn.26.7 ")
 	require.NoError(t, err)
 	require.True(t, p.Approved())
 	require.Equal(t, "KOLEKSICONTOH", p.AcceptedBy)
@@ -148,13 +148,13 @@ func TestDecideErrors(t *testing.T) {
 	ctx := context.Background()
 	at := time.Date(2026, 9, 25, 9, 0, 0, 0, wib)
 
-	_, err := repo.Decide(ctx, "OPCN.26.0002", inboxacceptopenprotection.Decision("x"), "A", at)
+	_, err := repo.Decide(ctx, "OPCN.26.2", inboxacceptopenprotection.Decision("x"), "A", at)
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrUnknownDecision)
 
 	_, err = repo.Decide(ctx, "TIDAK-ADA", inboxacceptopenprotection.DecisionApprove, "A", at)
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrNotFound)
 
-	_, err = repo.Decide(ctx, "OPCN.26.0007", inboxacceptopenprotection.DecisionApprove, "A", at)
+	_, err = repo.Decide(ctx, "OPCN.26.7", inboxacceptopenprotection.DecisionApprove, "A", at)
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrAlreadyDecided)
 }
 
@@ -162,7 +162,7 @@ func TestDecideApprovesAndAppliesLossDate(t *testing.T) {
 	repo := memory.NewRepoWithSamples()
 	at := time.Date(2026, 9, 25, 9, 0, 0, 0, wib)
 
-	saved, err := repo.Decide(context.Background(), "OPCN.26.0004", inboxacceptopenprotection.DecisionApprove, "PETUGAS", at)
+	saved, err := repo.Decide(context.Background(), "OPCN.26.4", inboxacceptopenprotection.DecisionApprove, "PETUGAS", at)
 	require.NoError(t, err)
 	require.Equal(t, inboxacceptopenprotection.AcceptApproved, saved.AcceptStatus)
 	require.Equal(t, "PETUGAS", saved.AcceptedBy)
@@ -173,7 +173,7 @@ func TestDecideApprovesAndAppliesLossDate(t *testing.T) {
 	require.Equal(t, time.Date(2026, 8, 5, 0, 0, 0, 0, wib), tanggal)
 
 	// Keputusan tersimpan.
-	again, err := repo.Get(context.Background(), "OPCN.26.0004")
+	again, err := repo.Get(context.Background(), "OPCN.26.4")
 	require.NoError(t, err)
 	require.False(t, again.Pending())
 }
@@ -181,7 +181,7 @@ func TestDecideApprovesAndAppliesLossDate(t *testing.T) {
 func TestDecideRejectDoesNotTouchClaim(t *testing.T) {
 	repo := memory.NewRepoWithSamples()
 
-	saved, err := repo.Decide(context.Background(), "OPCN.26.0004", inboxacceptopenprotection.DecisionReject, "P", time.Now())
+	saved, err := repo.Decide(context.Background(), "OPCN.26.4", inboxacceptopenprotection.DecisionReject, "P", time.Now())
 	require.NoError(t, err)
 	require.Equal(t, inboxacceptopenprotection.AcceptRejected, saved.AcceptStatus)
 

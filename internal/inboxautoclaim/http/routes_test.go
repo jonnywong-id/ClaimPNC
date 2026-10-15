@@ -297,6 +297,40 @@ func TestPaginasiDaftarBatchDiterjemahkanKeRespons(t *testing.T) {
 	require.Len(t, content["batch"], 2)
 }
 
+// `?cari=` dan `?urut=` sampai ke repo (`D-82`); urut yang tak dikenal jatuh ke bawaan.
+func TestCariDanUrutDaftarBatchDiteruskan(t *testing.T) {
+	p := newTestServer(t)
+	nomor := func(content map[string]any) []string {
+		result := []string{}
+		for _, mentah := range content["batch"].([]any) {
+			result = append(result, mentah.(map[string]any)["batch"].(string))
+		}
+		return result
+	}
+
+	_, bawaan := p.call(t, http.MethodGet, "/api/inbox-auto-claim?sumber=aneka&ukuran=50", "ASM")
+	terbaru := nomor(bawaan)
+	require.GreaterOrEqual(t, len(terbaru), 2)
+
+	_, isiLama := p.call(t, http.MethodGet, "/api/inbox-auto-claim?sumber=aneka&ukuran=50&urut=terlama", "ASM")
+	terlama := nomor(isiLama)
+	require.Equal(t, terbaru[len(terbaru)-1], terlama[0])
+	require.Equal(t, terbaru[0], terlama[len(terlama)-1])
+
+	response, isiAcak := p.call(t, http.MethodGet, "/api/inbox-auto-claim?sumber=aneka&ukuran=50&urut=acak", "ASM")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, terbaru, nomor(isiAcak))
+
+	_, isiCari := p.call(t, http.MethodGet, "/api/inbox-auto-claim?sumber=aneka&ukuran=50&cari="+terbaru[0], "ASM")
+	for _, mentah := range isiCari["batch"].([]any) {
+		baris := mentah.(map[string]any)
+		cocok := baris["batch"] == terbaru[0] ||
+			strings.Contains(strings.ToUpper(baris["user_upload"].(string)), strings.ToUpper(terbaru[0]))
+		require.True(t, cocok, "baris %v tidak cocok dengan pencarian %q", baris, terbaru[0])
+	}
+	require.NotEmpty(t, isiCari["batch"])
+}
+
 func TestHalamanTidakSahDiperbaikiBukanDitolak(t *testing.T) {
 	// `?halaman=abc` datang dari URL yang diketik tangan. Menolaknya dengan galat hanya
 	// menampilkan layar rusak untuk kesalahan yang jelas maksudnya.

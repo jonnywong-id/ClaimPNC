@@ -77,7 +77,7 @@ func NewRepoWithSamples() *Repo {
 		r.AddClaim(claimID, time.Date(2026, time.August, 3, 0, 0, 0, 0, wib))
 	}
 
-	// Coverage contoh bagi proteksi tipe '8' `OPCN.26.0005`, yang menunjuk objek 1 coverage 2
+	// Coverage contoh bagi proteksi tipe '8' `OPCN.26.5`, yang menunjuk objek 1 coverage 2
 	// pada klaim `PNCN.26.0010`.
 	//
 	// Satu baris LAIN pada objek yang sama sengaja ikut didaftarkan: itulah yang membuat
@@ -86,7 +86,7 @@ func NewRepoWithSamples() *Repo {
 	r.AddCoverage("PNCN.26.0010", "1", "1", "12001 BANJIR")
 	r.AddCoverage("PNCN.26.0010", "1", "2", "12001 BANJIR")
 
-	// Master penyebab kerugian contoh. Kodenya mengikuti isian `OPCN.26.0005`.
+	// Master penyebab kerugian contoh. Kodenya mengikuti isian `OPCN.26.5`.
 	r.AddCauseOfLoss("12001", "BANJIR")
 	r.AddCauseOfLoss("12002", "KEBAKARAN")
 

@@ -59,6 +59,32 @@ func TestListBatchGroupsCountsAndPages(t *testing.T) {
 	require.Equal(t, 4, beyond.Total)
 }
 
+// Cari: nomor batch persis ATAU user upload memuat teksnya (tanpa membedakan huruf);
+// urut terlama membalik susunannya (`D-82`). Aturannya sama dengan kueri SQL.
+func TestListBatchSearchAndOrder(t *testing.T) {
+	repo := newRepo()
+	ctx := context.Background()
+	numbers := func(page inboxautoclaim.BatchPage) []string {
+		result := []string{}
+		for _, b := range page.Item {
+			result = append(result, b.BatchNumber)
+		}
+		return result
+	}
+
+	byNumber, err := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{Source: inboxautoclaim.SourceAneka, Search: " 1 "})
+	require.NoError(t, err)
+	require.Equal(t, []string{"1"}, numbers(byNumber), "nomor batch dicari persis: 1 tidak menemukan 10")
+	require.Equal(t, 1, byNumber.Total)
+
+	byUser, _ := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{Source: inboxautoclaim.SourceAneka, Search: "V"})
+	require.Equal(t, []string{"X", "1"}, numbers(byUser))
+
+	oldest, _ := repo.ListBatch(ctx, inboxautoclaim.BatchFilter{Source: inboxautoclaim.SourceAneka,
+		Order: inboxautoclaim.BatchOrderOldest})
+	require.Equal(t, []string{"1", "2", "10", "X"}, numbers(oldest))
+}
+
 func TestSummarizeAndListCompany(t *testing.T) {
 	repo := newRepo()
 	ctx := context.Background()

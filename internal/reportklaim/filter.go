@@ -252,7 +252,6 @@ func (r Report) Validate(f Filter) []Violation {
 	return v
 }
 
-
 // ComplianceStatusOption adalah satu pilihan radio "Status Compliance".
 type ComplianceStatusOption struct {
 	// Code adalah nilai yang DISIMPAN dan dikirim ke penyaring — "0", "1", atau "2".

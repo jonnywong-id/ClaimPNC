@@ -215,11 +215,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		Portal:             portalAlias,
+		Tabs:       tabs,
+		DefaultTab: meta.DefaultTab,
+		Portal:     portalAlias,
 	}
 }
 

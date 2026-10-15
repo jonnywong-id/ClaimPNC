@@ -193,7 +193,6 @@ func toDetailResponse(
 		})
 	}
 
-
 	return DetailResponse{
 		ClaimID:            detail.ClaimID,
 		StatusWork:         detail.StatusWork,

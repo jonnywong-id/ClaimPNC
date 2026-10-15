@@ -118,6 +118,20 @@ const (
 	FilterReinsurer  = "reinsurer"
 	FilterCategoryOS = "kategori_os"
 
+	// FilterPIC adalah penyaring yang dipasang dengan MENGEKLIK nama pada grid PIC tab
+	// Outstanding — bukan dropdown.
+	//
+	// Di Pega sel `.OPERATOR_ID` grid itu adalah tautan (`Section/PNCDashboardOS` offset
+	// ~6204): kliknya menjalankan data transform `PNCSetFilterPICDashboardOS` dengan param
+	// `pic`, lalu me-refresh section sehingga `PNCGetDashboardOSInbox_Act` berjalan ulang.
+	// Activity itu menyaring `a.userteknis_1 = tempFilter.UserTeknis` (langkah 17) pada
+	// grid COB, kolom tahun, dan grid ketiga — kecuali nilainya kosong atau "ALL".
+	FilterPIC = "pic"
+
+	// PICAll adalah baris ringkasan grid PIC sekaligus nilai bawaan `tempFilter.UserTeknis`
+	// (`PNCGetDashboardOSInbox_Act` langkah 6). Mengekliknya berarti seluruh PIC.
+	PICAll = "ALL"
+
 	// Dashboard Produktivitas dan Dashboard Klaim.
 	FieldDimensi         = "dimensi"
 	FieldPenyebab        = "penyebab_kerugian"
@@ -288,6 +302,10 @@ type Tab struct {
 	// yang memuat tombol `pyButtonLabel Export To Excel`.
 	HasDetailExport bool
 
+	// HasPaymentDetail menyatakan baris antrean ini dibuka lewat tombol DETAILS menjadi panel
+	// detail Payment Klaim Akseptasi (payment.go), bukan diputuskan lewat bilah keputusan.
+	HasPaymentDetail bool
+
 	// HasPeriodFilter menyatakan tab ini punya penyaring periode.
 	//
 	// Ia BUKAN seragam: Dashboard Outstanding tidak punya penyaring tanggal sama sekali —
@@ -321,6 +339,8 @@ var dashboardOutstandingPanels = []Panel{
 			{Key: FieldPIC, Title: "PIC"},
 			{Key: FieldJumlahKlaim, Title: "OS"},
 		},
+		// Nama PIC adalah tautan yang menyaring grid COB dan grid ketiga — lihat FilterPIC.
+		RowFilter: FilterPIC,
 	},
 	{
 		Key: "grup_bisnis",
@@ -745,37 +765,32 @@ var tabs = []Tab{
 			{Key: FieldPIC, Title: "PIC Klaim"},
 		},
 
-		// # Kenapa jalur SETUJU ditahan, dan jalur TOLAK tidak
+		// # Alurnya DETAILS + form, seperti Pega (keputusan Work Owner 2026-10-14)
 		//
-		// Keduanya menulis tabel yang sama lewat `SaveApproveAkseptasiPaymentLeader_Sql`.
-		// Yang membedakannya ada di pemanggilnya,
-		// `Activity/SaveApprovalAkseptasiPaymentLeader_Act-Act.xml:89539`: pada
-		// precondition `TEMPADJUSTMENT.AcceptanceStatus=="1"` — yakni HANYA pada
-		// persetujuan — ia memanggil `TransferToKasir_act_Leader`.
+		// `Section/Akseptasi_PaymentLeader1` tidak punya tombol APPROVE/REJECT maupun jalur
+		// massal: setiap baris punya `DETAILS`, yang membuka "Detail Penerima Akseptasi" dan
+		// form "Persetujuan Akseptasi" (Status Approval, Remark Approval, `SIMPAN`), beserta
+		// tombol `Dokumen` dan grid "History Payment Akseptasi Manager". Karena itu antrean
+		// ini TIDAK lewat bilah keputusan (Decidable false); keputusannya lewat panel detail
+		// — lihat payment.go dan NewPaymentSave.
 		//
-		// Activity itu bukan langkah kecil. Ia memanggil `InsertDataAkseptasiToLeader`,
-		// `InsertLogKasir_act`, dan `TransferCashierDataASM_act`; yang terakhir menembak
-		// Connect REST `SendDataPaidASMtoCashier_2` ke sistem Kasir. Dua rule SQL yang
-		// dibutuhkannya masih hilang dari export — `UpdateChasierIDTablePembayaran` dan
-		// `GetDataMSTDetailSales` — dan integrasi keluarnya sendiri adalah lingkup modul
-		// `S-4`, yang belum dibangun.
+		// SIMPAN di Pega (`SaveApprovalAkseptasiPaymentLeader_Act`) melakukan TIGA hal, dan
+		// ketiganya dibawa: UPDATE tabel checker (`SaveApproveAkseptasiPaymentLeader_Sql`),
+		// penanda pada adjustment di case — di sini kolom migrasi 0017 — lalu surel ke PIC.
+		//
+		// # Kenapa "Setuju" ditahan
+		//
+		// Pada `AcceptanceStatus == "1"` activity itu memanggil `TransferToKasir_act_Leader`,
+		// yang memanggil `InsertDataAkseptasiToLeader`, `InsertLogKasir_act`, dan
+		// `TransferCashierDataASM_act`; yang terakhir menembak Connect REST
+		// `SendDataPaidASMtoCashier_2` ke sistem Kasir. Dua rule SQL yang dibutuhkannya masih
+		// hilang dari export — `UpdateChasierIDTablePembayaran` dan `GetDataMSTDetailSales` —
+		// dan integrasi keluarnya adalah lingkup modul `S-4`, yang belum dibangun.
 		//
 		// Menuliskan `STSAPP='1'` tanpa langkah itu menandai pembayaran sebagai DISETUJUI
-		// padahal ia tidak pernah sampai ke kasir, dan tidak ada apa pun di layar yang
-		// menandakannya. Itu selisih yang menyangkut uang yang benar-benar dibayarkan.
-		//
-		// Jalur TOLAK tidak menyentuh satu pun dari itu: ia berhenti di UPDATE tabel
-		// checker. Karena itu ia dibangun penuh, dan hanya jalur setuju yang ditahan.
-		//
-		// # Kenapa tanpa label dan tanpa jalur massal
-		//
-		// Pega tidak punya tombol APPROVE/REJECT di sini. `Section/Akseptasi_PaymentLeader`
-		// — section yang digambar sub-tab "Approval Payment Akseptasi" — hanya punya
-		// `Refresh`, `SIMPAN`, `Dokumen`, dan `DETAILS`; keputusannya diisi DI DALAM grid
-		// lalu disimpan sekali. Dan `SaveApprovalAkseptasiPaymentLeader_Act` menyentuh satu
-		// baris saja: Obj-Open-By-Handle → Obj-Save → Commit.
+		// padahal ia tidak pernah sampai ke kasir. "Tidak Setuju" dan "Sedang Proses Komite"
+		// tidak menyentuh rantai itu, sehingga keduanya dibangun penuh.
 		Decision: DecisionRule{
-			Decidable: true,
 			ApproveBlockedReason: "Menyetujui pembayaran di Pega ikut menjalankan transfer ke " +
 				"kasir (TransferToKasir_act_Leader). Dua rule yang dibutuhkannya belum ada — " +
 				"UpdateChasierIDTablePembayaran dan GetDataMSTDetailSales — dan integrasi " +
@@ -783,8 +798,10 @@ var tabs = []Tab{
 				"itu akan menandai pembayaran sudah disetujui padahal tidak pernah sampai ke " +
 				"kasir. Penolakan tidak terpengaruh dan tetap dapat dikerjakan di sini.",
 			ReasonRequiredOnReject: true,
-			ReasonLabel:            "Catatan Atasan",
+			// Label isiannya di form Pega.
+			ReasonLabel: "Remark Approval",
 		},
+		HasPaymentDetail: true,
 	},
 	{
 		Code:        TabPenolakanKlaim,
@@ -1012,10 +1029,26 @@ var PlannedDifferences = []string{
 		"tahu pengaju kenapa barisnya ditolak, dan baris yang ditolak tanpa keterangan akan " +
 		"diajukan ulang apa adanya.",
 
-	"Menyetujui pembayaran pada tab Payment Klaim Akseptasi DITAHAN, sementara menolak " +
-		"tetap dapat dikerjakan. Di Pega persetujuan ikut menjalankan transfer ke kasir, dan " +
-		"rantai itu belum lengkap. Alasannya ditampilkan di tempat tombolnya, bukan " +
-		"disembunyikan.",
+	"Status Approval \"Setuju\" pada tab Payment Klaim Akseptasi DITAHAN, sementara \"Tidak " +
+		"Setuju\" dan \"Sedang Proses Komite\" tetap dapat disimpan. Di Pega persetujuan ikut " +
+		"menjalankan transfer ke kasir, dan rantai itu belum lengkap. Alasannya ditampilkan " +
+		"di form, bukan disembunyikan.",
+
+	"SIMPAN pada Payment Klaim Akseptasi tidak menulis case Pega. Detail dan riwayatnya " +
+		"dibaca dari tabel POOLDATA (T_CLAIM_AKSEPTASI_CHECKER, T_CLAIM_ADJUSTMENT), dan " +
+		"penanda atasan pada adjustment (FlagAtasan, StsPenerimaKlaim) ditulis ke kolom baru " +
+		"T_CLAIM_ADJUSTMENT — selama kolom itu belum dibuat DBA, SIMPAN berjalan tanpa penanda.",
+
+	"Grid \"History Payment Akseptasi Manager\" berisi nomor akseptasi klaim yang sama yang " +
+		"sudah diputuskan, dari tabel checker. Kueri aslinya tidak ada di export.",
+
+	"Tombol Dokumen pada Payment Klaim Akseptasi hanya menampilkan lampiran yang tersimpan " +
+		"(POOLDATA.DATA_ATTACHFILE). Dokumen DLA dan Draft Persetujuan yang di Pega dibentuk " +
+		"dari case tidak ikut.",
+
+	"Badan surel SIMPAN Payment Klaim Akseptasi DISUSUN ulang: rule HTML aslinya " +
+		"(EmailAkseptasiPaymentLeader) tidak ada di export. Subjek dan penerimanya (PIC) sama " +
+		"dengan Pega. Surel yang gagal terkirim tidak membatalkan SIMPAN.",
 
 	"Keputusan tidak dapat menimpa keputusan orang lain. Setiap pernyataan ikut menyaring " +
 		"status menunggu di samping kuncinya, sehingga baris yang sudah diputuskan orang " +
@@ -1031,6 +1064,19 @@ var PlannedDifferences = []string{
 		"Kuerinya menghitung status klaim `1`, `3`, dan \"selain 1, 2, dan 3\" — sehingga " +
 		"baris berstatus `2` masuk Total tetapi tidak masuk satu keranjang pun. Saat " +
 		"diperiksa 2026-09-28 ada 252 baris seperti itu dari 66.972.",
+
+	"Export Data Detail Klaim membaca tabel datar (T_CLAIMLIST_ADMIN, T_CLAIM_PNC), bukan " +
+		"tabel kerja Pega. Satu klaim kini satu baris per objek — tidak lagi berulang per " +
+		"penugasan — dan klaim tanpa penugasan terbuka ikut terekspor.",
+
+	"Kolom \"SubjectEmail\" dan \"No Polis Leader\" pada Export Data Detail Klaim KOSONG. Pega " +
+		"membacanya dari objek kerja setiap klaim; padanannya di T_CLAIM_PNC ada tetapi belum " +
+		"terisi. Kolom \"Okupasi\" diambil dari data dashboard lalu daftar okupasi polis " +
+		"(T_PROPERTYLIST), tanpa daftar okupasi tingkat polis yang hanya ada di objek kerja.",
+
+	"Export Data Detail Klaim dengan hanya satu tanggal terisi DITOLAK dengan pesan. Pega " +
+		"menjalankannya dengan tanggal kosong sebagai NULL dan menghasilkan berkas tanpa satu " +
+		"baris pun.",
 
 	"Penyaring periode dikirim sebagai parameter terikat, bukan sebagai potongan SQL. " +
 		"Sembilan kueri layar ini di Pega menyisipkan teks SQL lewat pola `ASIS` — termasuk " +

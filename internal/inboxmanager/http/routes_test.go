@@ -171,9 +171,11 @@ func TestMetadataPerCaller(t *testing.T) {
 	payment := body["tab"].([]any)[11].(map[string]any)
 	require.Equal(t, inboxmanager.TabPaymentAkseptasi, payment["kode"])
 	decision := payment["keputusan"].(map[string]any)
-	require.Equal(t, true, decision["dapat_diputuskan"])
+	// Diputuskan lewat panel DETAILS, bukan bilah keputusan — seperti Pega.
+	require.Equal(t, false, decision["dapat_diputuskan"])
+	require.Equal(t, true, payment["punya_detail_akseptasi"])
 	require.NotEmpty(t, decision["alasan_setuju_ditahan"])
-	require.Equal(t, "Catatan Atasan", decision["label_alasan"])
+	require.Equal(t, "Remark Approval", decision["label_alasan"])
 }
 
 func TestCountersIncludeOverview(t *testing.T) {
@@ -391,12 +393,13 @@ func TestDecideFlow(t *testing.T) {
 		require.Equal(t, inboxmanagerhttp.CodeNotDecidable, body["kode"])
 	})
 
-	t.Run("persetujuan ditahan", func(t *testing.T) {
+	// Payment Klaim Akseptasi diputuskan lewat SIMPAN di panel detailnya (payment_test.go).
+	t.Run("payment akseptasi bukan lewat bilah keputusan", func(t *testing.T) {
 		server, _ := newServer(t, serverOptions{login: "MGR"})
 		rec, body := call(t, server, http.MethodPost, route+"/keputusan",
-			`{"tab":"12","keputusan":"setujui","kunci":["AKS-2026-0001"]}`)
+			`{"tab":"12","keputusan":"tolak","kunci":["AKS-2026-0001"],"alasan":"x"}`)
 		require.Equal(t, http.StatusConflict, rec.Code)
-		require.Equal(t, inboxmanagerhttp.CodeApproveBlocked, body["kode"])
+		require.Equal(t, inboxmanagerhttp.CodeNotDecidable, body["kode"])
 	})
 }
 
@@ -517,4 +520,32 @@ func TestRentangLintasTahunMengirimPesanPega(t *testing.T) {
 	rec, _ = call(t, server, http.MethodGet,
 		route+"?tab=2&bentuk_periode=rentang&dari=2000-01-01&sampai=2026-01-01", "")
 	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+// TestOutstandingPICDiklikMenyaringGridCOB mengunci perilaku klik PIC di Pega: grid COB dan
+// grid ketiga menyempit ke PIC itu, grid PIC sendiri tetap utuh, dan "ALL" mengembalikan
+// seluruhnya (`Section/PNCDashboardOS` → `PNCSetFilterPICDashboardOS`).
+func TestOutstandingPICDiklikMenyaringGridCOB(t *testing.T) {
+	server, _ := newServer(t, serverOptions{login: "MGR"})
+
+	panels := func(query string) []any {
+		t.Helper()
+		rec, body := call(t, server, http.MethodGet, route+"?tab=1"+query, "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		return body["panel"].([]any)
+	}
+	rows := func(panel any) []any { return panel.(map[string]any)["baris"].([]any) }
+
+	all := panels("")
+	require.Equal(t, inboxmanager.FilterPIC, all[0].(map[string]any)["penyaring_baris"],
+		"nama PIC adalah tautan penyaring")
+	require.NotContains(t, all[1].(map[string]any), "penyaring_baris")
+	require.Len(t, rows(all[1]), 3)
+
+	budi := panels("&pic=BUDI")
+	require.Len(t, rows(budi[0]), len(rows(all[0])), "grid PIC tidak ikut tersaring")
+	require.Len(t, rows(budi[1]), 2)
+	require.Empty(t, rows(budi[2]), "PIC tanpa isi grid ketiga menghasilkan grid kosong")
+
+	require.Len(t, rows(panels("&pic=ALL")[1]), 3, "ALL berarti seluruh PIC")
 }

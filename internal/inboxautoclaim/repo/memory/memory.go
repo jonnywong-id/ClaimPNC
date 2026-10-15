@@ -130,7 +130,17 @@ func (r *Repo) ListBatch(_ context.Context, filter inboxautoclaim.BatchFilter) (
 	defer r.lock.RUnlock()
 
 	company := strings.TrimSpace(filter.CompanyCode)
-	all := r.groupBatch(filter.Source, company)
+	all := matchSearch(r.groupBatch(filter.Source, company), filter.Search)
+
+	// Urutan terlama: kebalikan dari urutan bawaan groupBatch. Membalik SELURUH senarai
+	// membalik pemecah serinya juga, sedangkan kueri SQL membalik nomor batch saja — untuk
+	// satu perusahaan (satu-satunya pemakai layar) bedanya hanya pada batch bernomor sama
+	// di dua tanggal, dan keduanya tetap bersebelahan.
+	if filter.Order == inboxautoclaim.BatchOrderOldest {
+		for left, right := 0, len(all)-1; left < right; left, right = left+1, right-1 {
+			all[left], all[right] = all[right], all[left]
+		}
+	}
 
 	page := filter.Page.Clean()
 	offset := filter.Page.Offset()
@@ -597,6 +607,23 @@ func (r *Repo) groupBatch(source inboxautoclaim.Source, companyCode string) []in
 		}
 		return result[a].CompanyCode < result[b].CompanyCode
 	})
+	return result
+}
+
+// matchSearch menyaring batch dengan aturan yang sama dengan kueri SQL-nya: nomor batch
+// sama persis, ATAU user upload memuat teksnya tanpa membedakan huruf besar-kecil.
+func matchSearch(list []inboxautoclaim.Batch, search string) []inboxautoclaim.Batch {
+	clean := strings.TrimSpace(search)
+	if clean == "" {
+		return list
+	}
+	word := strings.ToUpper(clean)
+	result := make([]inboxautoclaim.Batch, 0, len(list))
+	for _, batch := range list {
+		if batch.BatchNumber == clean || strings.Contains(strings.ToUpper(batch.UploadedBy), word) {
+			result = append(result, batch)
+		}
+	}
 	return result
 }
 

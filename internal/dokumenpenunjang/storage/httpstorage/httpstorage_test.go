@@ -267,3 +267,67 @@ func TestHapusSamaBentukDenganPega(t *testing.T) {
 	require.Equal(t, map[string]any{"UserInput": "", "App": "klaimpnc", "KodeString": "KODE-1", "NamaFile": "Doc/2026/10/a"}, diterima)
 	require.Contains(t, pesan, "deleted from bucket")
 }
+
+// ── Penolakan kode akses ─────────────────────────────────────────────────────────
+
+// TestPenolakanKodeAksesDitandai menjaga pembedaan kredensial-salah dari layanan-mati.
+//
+// Badan di bawah disalin dari jawaban `app13.sinarmas.co.id` yang diperiksa langsung pada
+// 2026-10-13. Perhatikan bentuknya: HTTP **200**, `ErrorCode` sebagai TEKS "500", dan
+// `URLImage` kosong. Layanan tidak sedang mati — ia menjawab rapi dan menolak kodenya.
+//
+// Dua kalimat dipakai layanan untuk sebab yang sama; keduanya dijaga di sini supaya
+// pengenalannya tidak menyempit menjadi salah satu saja.
+func TestPenolakanKodeAksesDitandai(t *testing.T) {
+	for _, pesan := range []string{
+		"invalid kodestring data",
+		"Error, can't Kodestring null value in json data ",
+	} {
+		server := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"URLImage":"","ErrorCode":"500",` +
+					`"ErrorMessage":"` + pesan + `","appfolder":"gs://x/Doc/2026/10/a",` +
+					`"exp":"2026-10-13T19:46:31+07:00","DateTime":"10/13/2026 19:46:31"}`))
+			}))
+
+		klien, err := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
+		require.NoError(t, err)
+
+		_, errUnggah := klien.Upload(context.Background(), perintah())
+		_, errTautan := klien.PerpanjangTautan(context.Background(),
+			dokumenpenunjang.PerintahTautan{ImageID: "X", NamaAplikasi: "app", Folder: "f",
+				NamaBerkas: "n", KodeAkses: "k", Pengunggah: "u"})
+		server.Close()
+
+		require.ErrorIs(t, errUnggah, dokumenpenunjang.ErrKodeAksesDitolak,
+			"unggah, pesan %q", pesan)
+		require.ErrorIs(t, errTautan, dokumenpenunjang.ErrKodeAksesDitolak,
+			"tautan, pesan %q", pesan)
+
+		// Galat aslinya TETAP terbawa: pesan layanan dan daftar field tidak boleh hilang
+		// dari log hanya karena penandanya dipasang.
+		require.Contains(t, errUnggah.Error(), "ErrorCode: 500")
+		require.Contains(t, errUnggah.Error(), "field: ")
+	}
+}
+
+// TestKegagalanLainTIDAKDitandaiSebagaiKodeAkses menjaga penandanya tetap sempit.
+//
+// Layanan yang menolak karena sebab lain — kuota, berkas rusak, folder salah — harus tetap
+// terbaca sebagai gangguan hulu yang boleh diulang. Menandai semuanya sebagai kode akses
+// akan menyuruh pengguna melapor ke administrator untuk hal yang sebenarnya sembuh sendiri.
+func TestKegagalanLainTIDAKDitandaiSebagaiKodeAkses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(
+				`{"URLImage":"","ErrorCode":"500","ErrorMessage":"bucket quota exceeded"}`))
+		}))
+	defer server.Close()
+
+	klien, _ := httpstorage.NewClient(httpstorage.Options{Alamat: server.URL})
+	_, err := klien.Upload(context.Background(), perintah())
+
+	require.Error(t, err)
+	require.NotErrorIs(t, err, dokumenpenunjang.ErrKodeAksesDitolak)
+}

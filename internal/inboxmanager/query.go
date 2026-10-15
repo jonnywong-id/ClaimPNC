@@ -108,6 +108,10 @@ type QueryInput struct {
 	// CategoryOS menyaring grid ketiga menurut tahapan progres klaim. Kosong berarti
 	// seluruhnya.
 	CategoryOS string
+
+	// PIC adalah PIC yang diklik pada grid PIC tab Outstanding. Kosong atau "ALL" berarti
+	// seluruh PIC — lihat FilterPIC.
+	PIC string
 }
 
 // Query adalah permintaan isi satu tab yang sudah tervalidasi.
@@ -138,6 +142,15 @@ type Query struct {
 	// kosong, dan itu jawaban yang benar.
 	Reinsurer  string
 	CategoryOS string
+
+	// PIC menyaring grid COB, kolom tahun, dan grid ketiga tab Outstanding pada satu PIC.
+	// Kosong berarti seluruh PIC; "ALL" sudah dibetulkan menjadi kosong oleh NewQuery,
+	// sama seperti `PNCGetDashboardOSInbox_Act` yang melewati penyaringnya bila
+	// `tempFilter.UserTeknis` kosong atau "ALL".
+	//
+	// Seperti Reinsurer, nilainya tidak divalidasi: PIC yang tidak dikenal menghasilkan
+	// grid kosong, dan itu jawaban yang benar.
+	PIC string
 
 	// Caller adalah identitas pemanggil.
 	Caller Caller
@@ -195,6 +208,7 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 		LineBusiness: cleanCaller.LineBusiness,
 		Reinsurer:    strings.ToUpper(strings.TrimSpace(input.Reinsurer)),
 		CategoryOS:   strings.TrimSpace(input.CategoryOS),
+		PIC:          cleanPIC(input.PIC),
 		Caller:       cleanCaller,
 	}
 
@@ -212,6 +226,19 @@ func NewQuery(input QueryInput, caller Caller) (Query, error) {
 	query.Period = period
 
 	return query, nil
+}
+
+// cleanPIC membetulkan penyaring PIC: spasi tepi dibuang, dan "ALL" — baris ringkasan grid
+// PIC — berarti seluruh PIC, yakni kosong.
+//
+// Huruf besar-kecil TIDAK diubah: nilainya dibandingkan dengan `USERTEKNIS_1` apa adanya,
+// seperti Pega, dan datang dari sel grid yang dibaca dari kolom yang sama.
+func cleanPIC(value string) string {
+	clean := strings.TrimSpace(value)
+	if strings.EqualFold(clean, PICAll) {
+		return ""
+	}
+	return clean
 }
 
 // parsePeriod membetulkan isian periode menjadi selang setengah terbuka, beserta selang yang

@@ -49,6 +49,7 @@ import (
 	"claim-pnc/internal/mastersupplier"
 	"claim-pnc/internal/platform/clock"
 	"claim-pnc/internal/platform/db"
+	"claim-pnc/internal/reportklaim"
 	"claim-pnc/internal/riwayatklaim"
 
 	authhttp "claim-pnc/internal/auth/http"
@@ -161,6 +162,30 @@ type extraServices struct {
 	claimHistory    *riwayatklaimusecase.Service
 }
 
+// inboxManagerDetailRules menyambungkan ekspor detail klaim Inbox Manager ke aturan fee
+// adjuster dan nama tahapan progres milik modul Report Klaim.
+//
+// Keduanya pengganti fungsi basis data `Get_InterpolasiPNC` dan `GET_POSISI_PROGRESS2`
+// (`D-02`) yang sudah ditulis dan diuji di sana. Modul Inbox Manager hanya menyatakan
+// kebutuhannya (`inboxmanager.DetailRules`); penyambungannya di sini supaya tidak ada modul
+// yang mengimpor modul lain.
+func inboxManagerDetailRules() inboxmanager.DetailRules {
+	return inboxmanager.DetailRules{
+		NewFeeScale: func(bands []inboxmanager.FeeBand) inboxmanager.FeeScale {
+			converted := make([]reportklaim.FeeBand, 0, len(bands))
+			for _, band := range bands {
+				converted = append(converted, reportklaim.FeeBand{
+					Index: band.Index, LossAmount: band.LossAmount, Fee: band.Fee,
+				})
+			}
+			return reportklaim.NewFeeScale(converted)
+		},
+		NewProgressNames: func(names map[string]string) inboxmanager.ProgressNames {
+			return reportklaim.NewProgressNames(names)
+		},
+	}
+}
+
 // setExtraOracleSelectors memasang pemilih di atas kolam koneksi entitas.
 //
 // Bentuknya sama persis dengan pemilih modul lain di `main.go`, dan jaminannya pun sama:
@@ -203,7 +228,7 @@ func setExtraOracleSelectors(pool *db.Pool, store *storage) {
 		if err != nil {
 			return nil, err
 		}
-		return inboxmanagersql.NewRepo(conn), nil
+		return inboxmanagersql.NewRepo(conn).WithDetailRules(inboxManagerDetailRules()), nil
 	}
 	store.extra.inboxManagerLine = func(alias string) (inboxmanager.LineBusinessRepo, error) {
 		conn, err := pool.For(alias)
@@ -473,22 +498,8 @@ func buildExtraServices(store storage, logger *slog.Logger) (extraServices, erro
 		return extraServices{}, err
 	}
 
-	if result.inboxManager, err = inboxmanagerusecase.NewService(
-		inboxmanagerusecase.Options{
-			RepoSelector:         store.extra.inboxManager,
-			LineBusinessSelector: store.extra.inboxManagerLine,
-
-			// Clock menentukan bulan bawaan tab Produktivitas Klaim. Tab itu tidak dapat
-			// berjalan tanpa periode — kedelapan pencacahnya dibangun dari perbandingan
-			// dua periode.
-			Clock: clock.System{},
-
-			// Logger WAJIB terisi. Modul ini MENULIS, dan `D-59` menjadikan jejak audit
-			// satu-satunya kontrol pengimbang karena tidak ada pemisahan tugas formal:
-			// siapa pun yang dapat membuka layar ini dapat menyetujui pengajuan yang boleh
-			// jadi diajukannya sendiri. Lihat inboxmanager/usecase.logDecision.
-			Logger: logger,
-		}); err != nil {
+	// Tanpa linker lampiran: documentService belum ada. Disusun ulang di assembleInboxManager.
+	if result.inboxManager, err = newInboxManagerService(store, logger, nil, nil); err != nil {
 		return extraServices{}, err
 	}
 

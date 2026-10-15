@@ -67,7 +67,6 @@ type DetailTypeDTO struct {
 	// warisan dapat memuat isi yang bukan angka. Mengirimnya sebagai angka akan memaksa
 	// server menolak baris yang sebenarnya tersimpan dan harus tetap dapat diperbaiki.
 	Risk string `json:"resiko"`
-
 }
 
 // BusinessRuleDTO adalah aturan dokumen pada satu lini bisnis.
@@ -125,7 +124,7 @@ type SingleResponse struct {
 // Keempat daftar dikirim dalam SATU respons meski berasal dari empat pemanggilan seam,
 // karena form selalu membutuhkan keempatnya bersamaan.
 type ReferenceResponse struct {
-	DocumentTypes   []ChoiceDTO `json:"tipe_dokumen"`
+	DocumentTypes []ChoiceDTO `json:"tipe_dokumen"`
 
 	// Unavailable menyebut master mana yang gagal dibaca.
 	//
@@ -156,14 +155,14 @@ type ReferenceResponse struct {
 // (`pyAllowFreeFormInput=true`) — dan pada keadaan itu yang tersimpan hanyalah
 // keterangannya, tanpa kode.
 type SaveRequest struct {
-	DocumentTypeID            string              `json:"id_tipe_dokumen"`
-	Detail                    string              `json:"detail_dokumen"`
-	InsuredStatus             string              `json:"status_tertanggung"`
-	CauseOfLossID             string              `json:"id_penyebab_kerugian"`
-	CauseOfLossDescription    string              `json:"keterangan_penyebab_kerugian"`
-	ObjectDocumentID          string              `json:"id_objek_dokumen"`
-	ObjectDocumentDescription string              `json:"keterangan_objek_dokumen"`
-	Risk                      string              `json:"resiko"`
+	DocumentTypeID            string `json:"id_tipe_dokumen"`
+	Detail                    string `json:"detail_dokumen"`
+	InsuredStatus             string `json:"status_tertanggung"`
+	CauseOfLossID             string `json:"id_penyebab_kerugian"`
+	CauseOfLossDescription    string `json:"keterangan_penyebab_kerugian"`
+	ObjectDocumentID          string `json:"id_objek_dokumen"`
+	ObjectDocumentDescription string `json:"keterangan_objek_dokumen"`
+	Risk                      string `json:"resiko"`
 }
 
 // ViolationDTO adalah satu pelanggaran isian.

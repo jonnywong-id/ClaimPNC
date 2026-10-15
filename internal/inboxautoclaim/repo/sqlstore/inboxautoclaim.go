@@ -62,6 +62,8 @@ func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 func (r *Repo) ListBatch(ctx context.Context, filter inboxautoclaim.BatchFilter) (inboxautoclaim.BatchPage, error) {
 	page := filter.Page.Clean()
 	company := strings.TrimSpace(filter.CompanyCode)
+	search := searchArgument(filter.Search)
+	order := orderArgument(filter.Order)
 
 	var (
 		rows  *sql.Rows
@@ -70,23 +72,28 @@ func (r *Repo) ListBatch(ctx context.Context, filter inboxautoclaim.BatchFilter)
 	)
 
 	if company == "" {
-		total, err = r.countOne(ctx, filter.Source, "auto_claim_batch_count")
+		total, err = r.countOne(ctx, filter.Source, "auto_claim_batch_count", search...)
 		if err != nil {
 			return inboxautoclaim.BatchPage{}, err
 		}
 		// MessageSuccess dikirim DUA KALI karena kuerinya memakai dua bind terpisah
 		// untuk nilai yang sama — lihat catatan pada berkas .sql.
-		rows, err = r.db.QueryContext(ctx, getQueryFor(filter.Source, "auto_claim_batch_list"),
-			inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess,
-			filter.Page.Offset(), page.Size)
+		argument := []any{inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess}
+		argument = append(argument, search...)
+		argument = append(argument, order...)
+		argument = append(argument, filter.Page.Offset(), page.Size)
+		rows, err = r.db.QueryContext(ctx, getQueryFor(filter.Source, "auto_claim_batch_list"), argument...)
 	} else {
-		total, err = r.countOne(ctx, filter.Source, "auto_claim_batch_count_by_company", company)
+		total, err = r.countOne(ctx, filter.Source, "auto_claim_batch_count_by_company",
+			append([]any{company}, search...)...)
 		if err != nil {
 			return inboxautoclaim.BatchPage{}, err
 		}
-		rows, err = r.db.QueryContext(ctx, getQueryFor(filter.Source, "auto_claim_batch_list_by_company"),
-			inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess,
-			company, filter.Page.Offset(), page.Size)
+		argument := []any{inboxautoclaim.MessageSuccess, inboxautoclaim.MessageSuccess, company}
+		argument = append(argument, search...)
+		argument = append(argument, order...)
+		argument = append(argument, filter.Page.Offset(), page.Size)
+		rows, err = r.db.QueryContext(ctx, getQueryFor(filter.Source, "auto_claim_batch_list_by_company"), argument...)
 	}
 	if err != nil {
 		return inboxautoclaim.BatchPage{}, fmt.Errorf("inboxautoclaim/sqlstore: membaca daftar batch: %w", err)
@@ -692,6 +699,30 @@ func (r *Repo) countOne(ctx context.Context, source inboxautoclaim.Source, name 
 		return 0, fmt.Errorf("inboxautoclaim/sqlstore: menghitung (%s): %w", name, err)
 	}
 	return int(total.Int64), nil
+}
+
+// searchArgument menyusun TIGA bind penyaring cari grid batch: bendera, pola LIKE user
+// upload, dan nomor batch persis — urutannya sama dengan kemunculannya di kueri.
+//
+// Pola LIKE di-escape di sini: `%` dan `_` yang diketik pengguna dicari sebagai huruf,
+// bukan sebagai karakter pengganti. Tanpa itu, mencari user "A_B" ikut menemukan "AXB".
+// Karakter escape-nya `\`, sama dengan klausa ESCAPE di kueri.
+func searchArgument(search string) []any {
+	clean := strings.TrimSpace(search)
+	if clean == "" {
+		return []any{0, "", ""}
+	}
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToUpper(clean))
+	return []any{1, "%" + escaped + "%", clean}
+}
+
+// orderArgument menyusun DUA bind arah urutan: tepat satu bernilai 1. Lihat catatan
+// "CARI DAN URUT" pada kueri auto_claim_batch_list.
+func orderArgument(order inboxautoclaim.BatchOrder) []any {
+	if order == inboxautoclaim.BatchOrderOldest {
+		return []any{0, 1}
+	}
+	return []any{1, 0}
 }
 
 type scanner interface {

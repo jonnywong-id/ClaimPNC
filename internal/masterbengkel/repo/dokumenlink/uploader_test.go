@@ -145,6 +145,10 @@ func (r repoGagal) Ambil(context.Context, string) (dokumenpenunjang.Document, er
 	return dokumenpenunjang.Document{}, r.err
 }
 
+func (r repoGagal) PerbaruiTautan(context.Context, string, dokumenpenunjang.HasilUnggah) error {
+	return r.err
+}
+
 type penyimpananDiam struct{}
 
 func (penyimpananDiam) Upload(
@@ -152,6 +156,17 @@ func (penyimpananDiam) Upload(
 	dokumenpenunjang.PerintahUnggah,
 ) (dokumenpenunjang.HasilUnggah, error) {
 	return dokumenpenunjang.HasilUnggah{ImageID: "img", URL: "https://contoh"}, nil
+}
+
+func (penyimpananDiam) PerpanjangTautan(
+	context.Context,
+	dokumenpenunjang.PerintahTautan,
+) (dokumenpenunjang.HasilUnggah, error) {
+	return dokumenpenunjang.HasilUnggah{ImageID: "img", URL: "https://contoh"}, nil
+}
+
+func (penyimpananDiam) Hapus(context.Context, dokumenpenunjang.PerintahHapus) (string, error) {
+	return "deleted from bucket", nil
 }
 
 type konversiDiam struct{}

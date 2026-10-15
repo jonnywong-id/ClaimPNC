@@ -192,7 +192,12 @@ func (s *Service) Upload(
 		Isi:          isi,
 	})
 	if err != nil {
-		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %v",
+		// `%w` DUA KALI, bukan `%w: %v`. Yang kedua menjaga rantai galat tetap utuh,
+		// sehingga penanda seperti `ErrKodeAksesDitolak` yang dipasang adapter masih
+		// terbaca `errors.Is` di transport. Dengan `%v` penandanya ikut hilang menjadi
+		// teks, dan transport hanya melihat ErrUnggahGagal — persis cacat yang membuat
+		// penolakan kode akses tampak seperti gangguan jaringan.
+		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %w",
 			dokumenpenunjang.ErrUnggahGagal, err)
 	}
 	// Kuncinya diterbitkan di sini, sesudah unggah — `GenerateImageID` pada Pega
@@ -341,7 +346,7 @@ func (s *Service) Tautan(
 		Durasi:       dokumenpenunjang.DurasiTautan,
 	})
 	if err != nil {
-		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %v", dokumenpenunjang.ErrTautanGagal, err)
+		return dokumenpenunjang.Document{}, fmt.Errorf("%w: %w", dokumenpenunjang.ErrTautanGagal, err)
 	}
 	if strings.TrimSpace(hasil.URL) == "" {
 		return dokumenpenunjang.Document{}, fmt.Errorf(
@@ -434,9 +439,15 @@ func (s *Service) Hapus(ctx context.Context, portalAlias, imageID, pengguna stri
 		Jalur:        jalur,
 	})
 	if err != nil {
-		return fmt.Errorf("%w: %v", dokumenpenunjang.ErrHapusGagal, err)
+		return fmt.Errorf("%w: %w", dokumenpenunjang.ErrHapusGagal, err)
 	}
 	if !strings.Contains(pesan, "deleted from bucket") {
+		// Penghapusan menerima sebabnya sebagai TEKS, bukan sebagai galat — sehingga
+		// penandanya dipasang di sini, bukan di adapter seperti pada unggah dan tautan.
+		if strings.Contains(strings.ToLower(pesan), "kodestring") {
+			return fmt.Errorf("%w: %w: jawaban layanan %q",
+				dokumenpenunjang.ErrHapusGagal, dokumenpenunjang.ErrKodeAksesDitolak, pesan)
+		}
 		return fmt.Errorf("%w: jawaban layanan %q", dokumenpenunjang.ErrHapusGagal, pesan)
 	}
 	return nil

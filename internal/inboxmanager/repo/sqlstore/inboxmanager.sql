@@ -302,7 +302,20 @@ SELECT a.USERTEKNIS_1   AS DIMENSION,
 -- `{ASIS:tempQuery.EMAIL}` yang diisi activity. Hasilnya sama — lihat catatan koreksi di
 -- kepala berkas.
 --
--- Bind: :1..:5 bendera lini bisnis
+-- # Penyaring PIC — grid ini berubah saat sebuah PIC diklik
+--
+-- Di Pega setiap nama pada grid PIC adalah tautan: kliknya menjalankan data transform
+-- `PNCSetFilterPICDashboardOS` (param `pic` = `.OPERATOR_ID`) lalu me-refresh section
+-- (`Section/PNCDashboardOS` offset ~6204). Refresh itu menjalankan ulang
+-- `PNCGetDashboardOSInbox_Act` (pyDeferLoadRetrievalActivity), yang langkah 17-nya menulis
+--
+--     tempQuery.EMAIL := " AND a.pystatuswork NOT IN (...) AND a.userteknis_1 ='"+tempFilter.UserTeknis+"'"
+--
+-- kecuali bila `tempFilter.UserTeknis` kosong atau "ALL". `{ASIS:tempQuery.EMAIL}` dipakai
+-- kueri ini, `GetYearDashboardOS`, dan `GetProgressAllYearDashboarOS` — TIDAK oleh
+-- `GetPICDashboardOS`, sehingga grid PIC sendiri tetap utuh.
+--
+-- Bind: :1..:5 bendera lini bisnis · :6,:7 penyaring PIC (1 = seluruh PIC)
 SELECT e.NOTE     AS DIMENSION,
        COUNT(*)   AS TOTAL
   FROM POOLDATA.T_CLAIMLIST_ADMIN a
@@ -324,6 +337,7 @@ SELECT e.NOTE     AS DIMENSION,
            AND f.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023') )
       OR ( :4 = 1 AND a.GROUPPANEL_1 = '002' )
       OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
+   AND ( :6 = 1 OR TRIM(a.USERTEKNIS_1) = :7 )
  GROUP BY e.NOTE
  ORDER BY e.NOTE ASC
 
@@ -334,7 +348,10 @@ SELECT e.NOTE     AS DIMENSION,
 -- bukan rentang tetap — di layar lama pun kolomnya melompat (2012, lalu 2015) karena tahun
 -- tanpa klaim tidak pernah muncul.
 --
--- Bind: :1..:5 bendera lini bisnis
+-- Ikut tersaring PIC yang diklik, karena kueri lamanya pun memuat `{ASIS:tempQuery.EMAIL}` —
+-- lihat dashboard_os_business_group.
+--
+-- Bind: :1..:5 bendera lini bisnis · :6,:7 penyaring PIC
 SELECT EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN
   FROM POOLDATA.T_CLAIMLIST_ADMIN a
   JOIN POOLDATA.BUSINESS f
@@ -353,6 +370,7 @@ SELECT EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN
            AND f.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023') )
       OR ( :4 = 1 AND a.GROUPPANEL_1 = '002' )
       OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
+   AND ( :6 = 1 OR TRIM(a.USERTEKNIS_1) = :7 )
  GROUP BY EXTRACT(YEAR FROM a.PXCREATEDATETIME)
  ORDER BY 1 ASC
 
@@ -387,7 +405,11 @@ SELECT EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN
 -- Baris ber-REINSURER kosong DIBUANG, mengikuti `AND NVL(d.reinsurer, g.leader_member) IS NOT
 -- NULL` pada kueri lama.
 --
+-- Penyaring PIC yang diklik ikut berlaku — `GetProgressAllYearDashboarOS` memuat
+-- `{ASIS:tempQuery.EMAIL}`; lihat dashboard_os_business_group.
+--
 -- Bind: :1..:5 bendera lini bisnis * :6,:7 penyaring Reinsurer * :8,:9 penyaring Kategori OS
+--       * :10,:11 penyaring PIC
 SELECT a.STATUSPROGRESS1                   AS KATEGORI,
        a.REINSURER                         AS REINSURER,
        EXTRACT(YEAR FROM a.PXCREATEDATETIME) AS TAHUN,
@@ -413,6 +435,7 @@ SELECT a.STATUSPROGRESS1                   AS KATEGORI,
       OR ( :5 = 1 AND a.GROUPPANEL_1 = '005' ) )
    AND ( :6 = 1 OR UPPER(TRIM(a.REINSURER)) = :7 )
    AND ( :8 = 1 OR TRIM(a.STATUSPROGRESS1) = :9 )
+   AND ( :10 = 1 OR TRIM(a.USERTEKNIS_1) = :11 )
  GROUP BY a.STATUSPROGRESS1,
           a.REINSURER,
           EXTRACT(YEAR FROM a.PXCREATEDATETIME)

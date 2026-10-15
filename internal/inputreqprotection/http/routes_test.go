@@ -137,10 +137,10 @@ func (e *env) do(t *testing.T, method, path, body string, withPortal bool) (*htt
 func TestListReturnsRowsWithDerivedFlags(t *testing.T) {
 	e := newEnv(t, options{})
 	e.repo.Add(
-		inputreqprotection.Protection{Number: "OPCN.26.0001", PolicyNumber: "POL-1", Type: "2",
+		inputreqprotection.Protection{Number: "OPCN.26.1", PolicyNumber: "POL-1", Type: "2",
 			TypeName: "Premi Belum Lunas", InputDate: time.Date(2026, 9, 22, 18, 0, 0, 0, time.UTC),
 			Note: "n", CreatedBy: "U", CreatedAt: fixedAt},
-		inputreqprotection.Protection{Number: "OPCN.26.0002", ClaimNumber: "PNCN.26.0007", Type: "1",
+		inputreqprotection.Protection{Number: "OPCN.26.2", ClaimNumber: "PNCN.26.0007", Type: "1",
 			CreatedAt: fixedAt.Add(-time.Hour)},
 	)
 
@@ -150,7 +150,7 @@ func TestListReturnsRowsWithDerivedFlags(t *testing.T) {
 
 	rows := body["proteksi"].([]any)
 	first := rows[0].(map[string]any)
-	require.Equal(t, "OPCN.26.0001", first["nomor_proteksi"])
+	require.Equal(t, "OPCN.26.1", first["nomor_proteksi"])
 	require.Equal(t, "Premi Belum Lunas", first["nama_tipe_proteksi"])
 	// 18.00 UTC adalah 01.00 WIB hari berikutnya.
 	require.Equal(t, "2026-09-23", first["tanggal_proteksi"])
@@ -222,14 +222,14 @@ func TestCreateThenGetRoundTrip(t *testing.T) {
 		`{"nomor_klaim":"PNCN.26.0007","tipe_proteksi":"7","keterangan":"ubah DOL",
 		  "detail_perubahan":{"dol_baru":"2026-08-20"}}`, true)
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
-	require.Equal(t, "OPCN.26.0001", body["nomor_proteksi"])
+	require.Equal(t, "OPCN.26.1", body["nomor_proteksi"])
 	require.Equal(t, "ADMINCONTOH", body["user_create"])
 	detail := body["detail_perubahan"].(map[string]any)
 	require.Equal(t, "2026-08-17", detail["dol_sebelum"])
 	require.Equal(t, "2026-08-20", detail["dol_baru"])
 	require.Equal(t, "OBJEK CONTOH SATU", detail["nama_objek"])
 
-	rec, body = e.do(t, http.MethodGet, base+"/OPCN.26.0001", "", true)
+	rec, body = e.do(t, http.MethodGet, base+"/OPCN.26.1", "", true)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "PNCN.26.0007", body["referensi_klaim"])
 	require.Equal(t, "ubah DOL", body["keterangan"])
@@ -282,17 +282,17 @@ func TestCreateWithEmptyCallerIsInternalError(t *testing.T) {
 func TestUpdateFlowAndConflicts(t *testing.T) {
 	e := newEnv(t, options{})
 	e.repo.Add(
-		inputreqprotection.Protection{Number: "OPCN.26.0050", PolicyNumber: "X", Type: "1",
+		inputreqprotection.Protection{Number: "OPCN.26.50", PolicyNumber: "X", Type: "1",
 			CreatedBy: "PEMBUAT", CreatedAt: fixedAt},
-		inputreqprotection.Protection{Number: "OPCN.26.0051", ClaimNumber: "PNCN.26.0001"},
-		inputreqprotection.Protection{Number: "OPCN.26.0052", AcceptStatus: inputreqprotection.AcceptApproved},
+		inputreqprotection.Protection{Number: "OPCN.26.51", ClaimNumber: "PNCN.26.0001"},
+		inputreqprotection.Protection{Number: "OPCN.26.52", AcceptStatus: inputreqprotection.AcceptApproved},
 	)
 	// Tipe '8' WAJIB menyebut baris coverage yang hendak diubah — satu klaim dapat punya
 	// banyak coverage, dan tanpa keduanya permintaannya tersimpan tanpa sasaran.
 	payload := `{"nomor_klaim":"PNCN.26.0008","tipe_proteksi":"8","keterangan":"ubah COL",
 	  "detail_perubahan":{"penyebab_kerugian_baru":"COL-2","id_objek":"1","id_coverage":"3"}}`
 
-	rec, body := e.do(t, http.MethodPut, base+"/OPCN.26.0050", payload, true)
+	rec, body := e.do(t, http.MethodPut, base+"/OPCN.26.50", payload, true)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	require.Equal(t, "PEMBUAT", body["user_create"])
 	detail := body["detail_perubahan"].(map[string]any)
@@ -305,16 +305,16 @@ func TestUpdateFlowAndConflicts(t *testing.T) {
 	require.Equal(t, "12003", detail["penyebab_kerugian"])
 	require.Equal(t, "COL-2", detail["penyebab_kerugian_master"])
 
-	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.0051", payload, true)
+	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.51", payload, true)
 	require.Equal(t, http.StatusConflict, rec.Code)
 	require.Equal(t, inputreqprotectionhttp.CodeConflict, body["kode"])
 	require.Equal(t, "Permintaan proteksi sudah tertaut ke klaim dan tidak dapat diubah lagi.", body["pesan"])
 
-	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.0052", payload, true)
+	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.52", payload, true)
 	require.Equal(t, http.StatusConflict, rec.Code)
 	require.Equal(t, "Permintaan proteksi sudah diakseptasi dan tidak dapat diubah lagi.", body["pesan"])
 
-	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.0099", payload, true)
+	rec, body = e.do(t, http.MethodPut, base+"/OPCN.26.99", payload, true)
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.Equal(t, inputreqprotectionhttp.CodeNotFound, body["kode"])
 	require.Equal(t, "Permintaan proteksi tidak ditemukan.", body["pesan"])
@@ -322,11 +322,11 @@ func TestUpdateFlowAndConflicts(t *testing.T) {
 
 func TestUpdateRejectsBadBodyAndMissingCaller(t *testing.T) {
 	e := newEnv(t, options{})
-	rec, _ := e.do(t, http.MethodPut, base+"/OPCN.26.0050", `[`, true)
+	rec, _ := e.do(t, http.MethodPut, base+"/OPCN.26.50", `[`, true)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 
 	e2 := newEnv(t, options{noCaller: true})
-	rec, _ = e2.do(t, http.MethodPut, base+"/OPCN.26.0050", `{}`, true)
+	rec, _ = e2.do(t, http.MethodPut, base+"/OPCN.26.50", `{}`, true)
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
@@ -339,7 +339,7 @@ func TestGetUnknownNumberIs404(t *testing.T) {
 
 func TestDeleteRouteIsNotRegistered(t *testing.T) {
 	e := newEnv(t, options{})
-	req := httptest.NewRequest(http.MethodDelete, base+"/OPCN.26.0001", nil)
+	req := httptest.NewRequest(http.MethodDelete, base+"/OPCN.26.1", nil)
 	req.Header.Set(portalhttp.HeaderPortal, "ASM")
 	rec := httptest.NewRecorder()
 	e.router.ServeHTTP(rec, req)
@@ -451,7 +451,7 @@ func TestNilLocationDefaultsToJakarta(t *testing.T) {
 			return inputreqprotectionhttp.Caller{Login: "U"}, true
 		},
 	})
-	e.repo.Add(inputreqprotection.Protection{Number: "OPCN.26.0001",
+	e.repo.Add(inputreqprotection.Protection{Number: "OPCN.26.1",
 		InputDate: time.Date(2026, 9, 22, 18, 0, 0, 0, time.UTC)})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

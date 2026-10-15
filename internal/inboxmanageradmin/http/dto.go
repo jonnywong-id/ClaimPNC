@@ -210,7 +210,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	lines := make([]string, 0, len(meta.ExpectedLineBusinesses))
 	lines = append(lines, meta.ExpectedLineBusinesses...)
 
-
 	return MetadataResponse{
 		Tabs:                   toTabListDTO(meta.Tabs),
 		DefaultTab:             meta.DefaultTab,

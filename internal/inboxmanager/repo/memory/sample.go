@@ -34,6 +34,34 @@ func NewSampleStore() *Store {
 		countRow(inboxmanager.FieldGrupBisnis, "MARINE CARGO", 8),
 	})
 
+	// Isi grid COB dan grid ketiga saat sebuah PIC diklik. Jumlahnya sama dengan baris PIC
+	// itu pada grid PIC, seperti di Pega.
+	store.SetPICPanel("ANDIKA", "grup_bisnis", []inboxmanager.DashboardRow{
+		countRow(inboxmanager.FieldGrupBisnis, "ANEKA", 11),
+		countRow(inboxmanager.FieldGrupBisnis, "FIRE", 7),
+	})
+	store.SetPICPanel("ANDIKA", "kategori_os", []inboxmanager.DashboardRow{
+		summaryRow("ACCEPTATION", "LEADER", map[string]int{"2025": 3, "2026": 6}),
+		summaryRow("REGISTRASI", "LEADER", map[string]int{"2025": 2, "2026": 7}),
+	})
+	store.SetPICPanel("BUDI", "grup_bisnis", []inboxmanager.DashboardRow{
+		countRow(inboxmanager.FieldGrupBisnis, "FIRE", 6),
+		countRow(inboxmanager.FieldGrupBisnis, "MARINE CARGO", 8),
+	})
+	store.SetPICPanel("CITRA", "grup_bisnis", []inboxmanager.DashboardRow{
+		countRow(inboxmanager.FieldGrupBisnis, "ANEKA", 10),
+	})
+
+	// Dua baris berkas "Export Data Detail Klaim" — cukup untuk melihat bentuk berkasnya.
+	store.SetDetailExport([]inboxmanager.DetailExportRow{
+		{"CaseID": "PNC-900001", "pyStatusMessage": "New", "AlasanDokterRejectRCL": "FIRE",
+			"TKI": "07058201600025", "DistrictID": "ANDIKA", "StatusWork": "06/07/2026",
+			"CountryID": "71453050", "Currency": "72000000", "DaftarObjek": "LEADER"},
+		{"CaseID": "PNC-900002", "pyStatusMessage": "Open", "AlasanDokterRejectRCL": "ANEKA",
+			"TKI": "12100000178354", "DistrictID": "BUDI", "StatusWork": "23/04/2026",
+			"CountryID": "0", "Currency": "1500000,5", "DaftarObjek": "MEMBER"},
+	})
+
 	// Grid ketiga — tabel silang Kategori/DOL x Reinsurer x tahun. Kolom tahunnya diisi
 	// Store.Dashboard dari kunci sel baris pertama, supaya penyimpanan memori menggambar
 	// bentuk yang sama dengan SQL tanpa perlu daftar tahun tersendiri.
@@ -144,6 +172,41 @@ func NewSampleStore() *Store {
 			inboxmanager.FieldTanggalInput: "12/09/2026",
 		}),
 	})
+	store.SetPaymentDetail(inboxmanager.PaymentDetail{
+		AcceptedNo:      "AKS-2026-0001",
+		ClaimID:         "CLAIM-PNC-1001",
+		ClaimNo:         "PNC-1001",
+		PIC:             "ANDIKA",
+		InsuredName:     "Tertanggung Contoh",
+		Receiver:        "Penerima Contoh",
+		PaymentTypeCode: "2",
+		GrossValue:      "1250000",
+		ClaimValue:      "1000000",
+		Currency:        "IDR",
+		ShareASM:        "80",
+		RemarkPIC:       "Catatan PIC contoh",
+		AdjustmentFound: true,
+		History: []inboxmanager.PaymentHistoryRow{{
+			ClaimNo:     "PNC-1001",
+			AcceptedNo:  "AKS-2026-0000",
+			NoteManager: "Catatan atasan contoh",
+			NotePIC:     "Catatan PIC contoh",
+			StatusCode:  inboxmanager.PaymentNotAccepted,
+			Status:      inboxmanager.PaymentStatusLabel(inboxmanager.PaymentNotAccepted),
+		}},
+		Documents: []inboxmanager.PaymentDocument{{
+			Key:      inboxmanager.PaymentDocumentKey(1),
+			Name:     "lampiran-contoh.txt",
+			MimeType: "text/plain",
+			HasFile:  true,
+		}},
+	})
+	store.SetPaymentDocumentContent("AKS-2026-0001", inboxmanager.PaymentDocumentKey(1),
+		inboxmanager.PaymentDocumentContent{
+			Name:     "lampiran-contoh.txt",
+			MimeType: "text/plain",
+			Content:  []byte("Lampiran contoh mode memori."),
+		})
 
 	store.SetQueue(inboxmanager.TabPenolakanKlaim, []inboxmanager.QueueRow{
 		queueRow("PEN-01", map[string]string{

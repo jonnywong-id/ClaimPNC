@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -95,10 +96,70 @@ type muatan struct {
 // Java (`Activity/Convert_Avif-Act.xml:1178`), tetapi tidak satu pun nilainya dipakai
 // sesudahnya — yang dipakai hanya `Status` dan `image_base64`. Menguraikannya di sini akan
 // menambah bentuk yang tidak dibaca siapa pun.
+//
+// # Kenapa `Status` bertipe `any` dan bukan `string`
+//
+// Rule Pega membandingkannya sebagai TEKS (`:1408`), sehingga versi pertama paket ini
+// mendeklarasikannya `string`. Layanan yang hidup ternyata mengirimkan BOOLEAN:
+//
+//	{"status": true, "type": "image", "image_base64": "..."}
+//
+// Diperiksa langsung ke layanannya pada 2026-10-13. Akibatnya `json.Unmarshal` gagal dengan
+// "cannot unmarshal bool into Go struct field jawaban.status of type string", lalu Convert
+// menolak respons yang sebenarnya BERHASIL — dan unggah PNG, JPG, JPEG, serta PDF ikut
+// gagal seluruhnya.
+//
+// Seluruh uji paket ini lolos karena stub-nya menulis `{"Status":"true"}` — menyalin
+// kontrak rule, bukan bentuk layanan yang hidup. Itulah sebabnya cacat ini tidak terlihat
+// sampai layanannya benar-benar dihubungi.
+//
+// `any` menirukan `ErrorCode` pada `httpstorage.jawaban`, yang sudah lebih dulu memakainya
+// untuk alasan yang sama: field yang tipe JSON-nya tidak dapat diandalkan. Menyempitkannya
+// kembali menjadi `string` akan mengembalikan cacat yang sama.
 type jawaban struct {
-	Status       string `json:"Status"`
+	Status       any    `json:"Status"`
 	ErrorMessage string `json:"ErrorMessage"`
 	ImageBase64  string `json:"image_base64"`
+}
+
+// menyatakanGagal membaca penanda kegagalan dari `Status`, apa pun tipe JSON-nya.
+//
+// Yang DIANGGAP gagal hanyalah nilai yang benar-benar menyatakan "false":
+//
+//	false     boolean, bentuk yang dikirim layanan sekarang
+//	"false"   teks, bentuk yang dibandingkan rule Pega (`:1408`)
+//
+// Perbandingan teksnya tidak peka huruf dan dipangkas, sama seperti sebelumnya.
+//
+// Semua nilai lain — termasuk `Status` yang TIDAK DIKIRIM SAMA SEKALI — dianggap berhasil.
+// Itu bukan kelonggaran melainkan aturan Pega apa adanya: yang dijaga hanyalah nilai
+// `"false"`, dan berkas hasilnya tetap harus lolos pemeriksaan base64 di bawah.
+func menyatakanGagal(status any) bool {
+	switch nilai := status.(type) {
+	case bool:
+		return !nilai
+	case string:
+		return strings.EqualFold(strings.TrimSpace(nilai), "false")
+	default:
+		return false
+	}
+}
+
+// fieldNames menyebut kunci tingkat atas respons JSON, terurut, tanpa nilainya.
+//
+// Hanya NAMANYA, tidak pernah nilainya: respons dapat menggemakan muatan kita sendiri, yang
+// memuat berkas nasabah dalam base64. Menirukan helper senama di `httpstorage`.
+func fieldNames(isi []byte) string {
+	var peta map[string]json.RawMessage
+	if err := json.Unmarshal(isi, &peta); err != nil {
+		return "(bukan objek JSON)"
+	}
+	nama := make([]string, 0, len(peta))
+	for k := range peta {
+		nama = append(nama, k)
+	}
+	sort.Strings(nama)
+	return strings.Join(nama, ", ")
 }
 
 // Convert memenuhi dokumenpenunjang.Converter.
@@ -142,18 +203,19 @@ func (c *Client) Convert(ctx context.Context, isi []byte) ([]byte, error) {
 
 	var hasil jawaban
 	if err := json.Unmarshal(badanRespons, &hasil); err != nil {
+		// Nama field-nya ikut disebut — bukan nilainya — supaya perubahan bentuk respons di
+		// seberang terbaca langsung dari log, persis seperti pada `httpstorage`. Cacat
+		// 2026-10-13 memakan waktu justru karena pesan lamanya tidak menyebutkan apa pun
+		// tentang respons yang diterima.
 		return nil, fmt.Errorf(
-			"dokumenpenunjang/httpconverter: respons bukan JSON yang dikenali: %w", err)
+			"dokumenpenunjang/httpconverter: respons bukan JSON yang dikenali (field: %s): %w",
+			fieldNames(badanRespons), err)
 	}
 
-	// `Status == "false"` adalah penanda gagal menurut Pega
-	// (`Activity/Convert_Avif-Act.xml:1408`). Perbandingannya TEKS, bukan boolean — itulah
-	// yang dikirim layanan, dan mengubahnya menjadi boolean akan membuat `"false"` terbaca
-	// sebagai nilai yang tidak dikenal.
-	//
-	// Perbandingannya tidak peka huruf: `"False"` dan `"FALSE"` menyatakan hal yang sama,
-	// dan memperlakukannya sebagai berhasil akan meneruskan berkas kosong.
-	if strings.EqualFold(strings.TrimSpace(hasil.Status), "false") {
+	// Penanda gagal menurut Pega adalah `Status == "false"`
+	// (`Activity/Convert_Avif-Act.xml:1408`). Layanan yang hidup mengirimkannya sebagai
+	// boolean; menyatakanGagal menerima keduanya. Lihat doc `jawaban`.
+	if menyatakanGagal(hasil.Status) {
 		pesan := strings.TrimSpace(hasil.ErrorMessage)
 		if pesan == "" {
 			pesan = "layanan konversi menolak berkas tanpa menyebut sebabnya"

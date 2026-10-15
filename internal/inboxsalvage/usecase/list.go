@@ -78,6 +78,7 @@ func NewService(o Options) (*Service, error) {
 		auction:      o.Auction,
 	}, nil
 }
+
 // Metadata adalah keterangan layar yang tidak bergantung isi daftar.
 type Metadata struct {
 	// Tabs adalah daftar yang DITAWARKAN layar beserta kolomnya — sembilan dari tiga
@@ -644,6 +645,7 @@ func (s *Service) warn(message, salvageID, portalAlias, reason string) {
 		slog.String("galat", reason),
 	)
 }
+
 // AttachedDocuments adalah hasil satu permintaan unggah, satu baris per berkas.
 type AttachedDocuments struct {
 	Items []inboxsalvage.AttachedDocument

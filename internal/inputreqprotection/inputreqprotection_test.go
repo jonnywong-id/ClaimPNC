@@ -50,28 +50,29 @@ func TestHanyaTipeDuaYangMasukAntreanPremi(t *testing.T) {
 }
 
 func TestNomorProteksiBaruBerformatOPCNTahunUrut(t *testing.T) {
-	require.Equal(t, "OPCN.26.0001", inputreqprotection.FormatNumber(2026, 1))
-	require.Equal(t, "OPCN.26.0042", inputreqprotection.FormatNumber(2026, 42))
-	require.Equal(t, "OPCN.27.0001", inputreqprotection.FormatNumber(2027, 1))
+	require.Equal(t, "OPCN.26.1", inputreqprotection.FormatNumber(2026, 1))
+	require.Equal(t, "OPCN.26.42", inputreqprotection.FormatNumber(2026, 42))
+	require.Equal(t, "OPCN.27.1", inputreqprotection.FormatNumber(2027, 1))
 }
 
-func TestNomorUrutDipadatkanNolAgarUrutSebagaiTeks(t *testing.T) {
-	// `D-71` butir 2: tanpa pemadatan, ".10" mendahului ".9" saat diurutkan sebagai teks.
-	sembilan := inputreqprotection.FormatNumber(2026, 9)
-	sepuluh := inputreqprotection.FormatNumber(2026, 10)
-
-	require.Less(t, sembilan, sepuluh,
-		"nomor ke-9 harus mendahului ke-10 saat dibandingkan sebagai teks")
-}
-
-func TestNomorUrutLimaDigitTidakDipotong(t *testing.T) {
-	// Memotongnya akan menerbitkan nomor ganda; kolom yang melebar jauh lebih murah.
-	require.Equal(t, "OPCN.26.12345", inputreqprotection.FormatNumber(2026, 12345))
+func TestNomorUrutTidakDipadatkanNol(t *testing.T) {
+	// Keputusan Work Owner 2026-10-13: nomor urut dicetak apa adanya, persis seperti
+	// `TO_CHAR(seq.NEXTVAL)` tanpa format mask. Proteksi pertama tahun 2026 karena itu
+	// `OPCN.26.1`, bukan `OPCN.26.0001`.
+	for urut, want := range map[int64]string{
+		1:     "OPCN.26.1",
+		9:     "OPCN.26.9",
+		10:    "OPCN.26.10",
+		100:   "OPCN.26.100",
+		12345: "OPCN.26.12345",
+	} {
+		require.Equal(t, want, inputreqprotection.FormatNumber(2026, urut))
+	}
 }
 
 func TestNomorWarisanPegaTidakDiakuiSebagaiTerbitanSendiri(t *testing.T) {
-	require.True(t, inputreqprotection.IssuedHere("OPCN.26.0001"))
-	require.True(t, inputreqprotection.IssuedHere("  opcn.26.0001  "))
+	require.True(t, inputreqprotection.IssuedHere("OPCN.26.1"))
+	require.True(t, inputreqprotection.IssuedHere("  opcn.26.1  "))
 
 	require.False(t, inputreqprotection.IssuedHere("OPC-201"))
 	require.False(t, inputreqprotection.IssuedHere(""))

@@ -273,7 +273,6 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 		tabs = append(tabs, toTabDTO(tab))
 	}
 
-
 	limitations := make([]string, 0, len(meta.Limitations))
 	limitations = append(limitations, meta.Limitations...)
 
@@ -287,13 +286,13 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		DecisionColumns:    decisionColumns,
-		SearchLabel:        meta.SearchLabel,
-		SearchPlaceholder:  meta.SearchPlaceholder,
-		Limitations:        limitations,
-		Portal:             portalAlias,
+		Tabs:              tabs,
+		DefaultTab:        meta.DefaultTab,
+		DecisionColumns:   decisionColumns,
+		SearchLabel:       meta.SearchLabel,
+		SearchPlaceholder: meta.SearchPlaceholder,
+		Limitations:       limitations,
+		Portal:            portalAlias,
 	}
 }
 

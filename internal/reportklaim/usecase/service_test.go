@@ -111,7 +111,6 @@ func TestEksporMengalirkanBarisDanMenghitungnya(t *testing.T) {
 	require.Equal(t, "PNCN.26.0001", diterima[0].Value("CaseID"))
 }
 
-
 // kodeTerhalang mencari satu laporan yang BELUM siap, apa pun kodenya.
 //
 // Dicari dari katalog, bukan ditulis tetap. Sejak 2026-09-30 tidak ada satu pun laporan

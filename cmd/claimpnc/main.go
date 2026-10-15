@@ -4745,6 +4745,14 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 	// menyebutkan sebabnya. Itu persis yang terjadi pada 2026-10-06.
 	extra.sparepart = sparepartService
 
+	// Inbox Manager dirakit ULANG di sini, dengan alasan yang sama dengan Master Panel: tombol
+	// Dokumen pada panel detail Payment Klaim Akseptasi membuka lampiran lewat documentService
+	// (alamat diperpanjang bila kedaluwarsa), yang baru ada setelah baris di atas.
+	if extra.inboxManager, err = assembleInboxManager(cfg, store, logger, documentService); err != nil {
+		store.close()
+		return assembly{}, err
+	}
+
 	if store.legacy != nil {
 		registrationService, err = assembleRegistration(store.legacy.DB(), logger, dokumenlink.New(documentService), store.legacy, cfg.Cashier, cfg.AttendancePIC, cfg.AcceptanceCommittee, cfg.PATechnicalPIC, plaEmailSender{queue: pladlaService.queue})
 		if err != nil {

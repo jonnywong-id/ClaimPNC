@@ -132,7 +132,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 //
 // # Kenapa POST, dan kenapa satu alamat untuk sembilan antrean
 //
-// POST karena ia MENGUBAH data — satu-satunya rute yang demikian di seluruh modul inbox.
+// POST karena ia MENGUBAH data — bersama SIMPAN Payment Klaim Akseptasi (payment.go).
 //
 // Satu alamat karena kunci antrean tidak dapat membedakan antreannya sendiri: pada enam dari
 // sembilan antrean kuncinya hanyalah sebuah ID, dan ID yang sama ada di tabel yang berbeda.
@@ -267,6 +267,10 @@ func readQuery(r *http.Request) inboxmanager.QueryInput {
 		// pilihan bawaan di layar lama.
 		Reinsurer:  strings.TrimSpace(query.Get("reinsurer")),
 		CategoryOS: strings.TrimSpace(query.Get("kategori_os")),
+
+		// PIC yang diklik pada grid PIC tab Outstanding. Kosong atau "ALL" berarti seluruh
+		// PIC.
+		PIC: strings.TrimSpace(query.Get(inboxmanager.FilterPIC)),
 	}
 
 	return input

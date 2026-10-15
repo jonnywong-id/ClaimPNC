@@ -43,9 +43,10 @@ func TestNewDecisionOrderOfChecks(t *testing.T) {
 		[]string{"A"}, "", supervisor)
 	require.ErrorIs(t, err, inboxmanager.ErrQueueNotDecidable)
 
-	_, err = inboxmanager.NewDecision(inboxmanager.TabPaymentAkseptasi, inboxmanager.VerdictApprove,
-		[]string{"A"}, "", supervisor)
-	require.ErrorIs(t, err, inboxmanager.ErrApproveBlocked)
+	// Payment Klaim Akseptasi diputuskan lewat SIMPAN (NewPaymentSave), bukan NewDecision.
+	_, err = inboxmanager.NewDecision(inboxmanager.TabPaymentAkseptasi, inboxmanager.VerdictReject,
+		[]string{"A"}, "x", supervisor)
+	require.ErrorIs(t, err, inboxmanager.ErrQueueNotDecidable)
 }
 
 // Seluruh pelanggaran isi dikumpulkan sekaligus.

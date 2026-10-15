@@ -67,12 +67,12 @@ func TestNewServiceDefaultsClockToSystemTime(t *testing.T) {
 	// Tanpa Now, waktu akseptasi diambil dari jam sistem — diperiksa hanya bahwa ia terisi
 	// dan berada di antara dua titik yang dicatat uji.
 	repo := memory.NewRepo()
-	repo.Add(lengkap("OPCN.26.0001", "1", time.Now()))
+	repo.Add(lengkap("OPCN.26.1", "1", time.Now()))
 	s := serviceWith(t, repo, memory.NewSampleGroupRepo())
 
 	sebelum := time.Now()
 	saved, err := s.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001",
+		PortalAlias: portal, Number: "OPCN.26.1",
 		Decision: inboxacceptopenprotection.DecisionApprove, By: loginBerwenang,
 	})
 	sesudah := time.Now()
@@ -148,11 +148,11 @@ func TestDecideUnknownProtectionIsNotFound(t *testing.T) {
 
 func TestDecideForwardsRepoFailure(t *testing.T) {
 	base := memory.NewRepo()
-	base.Add(lengkap("OPCN.26.0001", "1", time.Now()))
+	base.Add(lengkap("OPCN.26.1", "1", time.Now()))
 	s := serviceWith(t, failingRepo{Repo: base, decideErr: errStore}, memory.NewSampleGroupRepo())
 
 	_, err := s.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001", Decision: inboxacceptopenprotection.DecisionApprove, By: loginBerwenang,
+		PortalAlias: portal, Number: "OPCN.26.1", Decision: inboxacceptopenprotection.DecisionApprove, By: loginBerwenang,
 	})
 	require.ErrorIs(t, err, errStore)
 }

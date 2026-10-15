@@ -67,7 +67,7 @@ func TestProteksiBaruTerbitDenganNomorOPCNDanBelumDiakseptasi(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.Equal(t, "OPCN.26.0001", saved.Number)
+	require.Equal(t, "OPCN.26.1", saved.Number)
 	require.True(t, inputreqprotection.IssuedHere(saved.Number))
 	require.Equal(t, inputreqprotection.AcceptPending, saved.AcceptStatus)
 	require.Equal(t, "ADMINCONTOH", saved.CreatedBy)
@@ -182,7 +182,7 @@ func TestProteksiYangSudahTertautKlaimTidakDapatDisunting(t *testing.T) {
 	service, repo := bangun(t, at)
 
 	repo.Add(inputreqprotection.Protection{
-		Number:       "OPCN.26.0009",
+		Number:       "OPCN.26.9",
 		PolicyNumber: "99.001.2026.00000009",
 		ClaimNumber:  "PNCN.26.0011", // terisi -> terkunci
 		Type:         "1",
@@ -192,7 +192,7 @@ func TestProteksiYangSudahTertautKlaimTidakDapatDisunting(t *testing.T) {
 	})
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0009", Draft: draft(), By: "ADMINCONTOH",
+		PortalAlias: portal, Number: "OPCN.26.9", Draft: draft(), By: "ADMINCONTOH",
 	})
 	require.ErrorIs(t, err, inputreqprotection.ErrLocked)
 }
@@ -204,7 +204,7 @@ func TestProteksiYangSudahDiakseptasiPunyaPesanTersendiri(t *testing.T) {
 	service, repo := bangun(t, at)
 
 	repo.Add(inputreqprotection.Protection{
-		Number:       "OPCN.26.0010",
+		Number:       "OPCN.26.10",
 		PolicyNumber: "99.001.2026.00000010",
 		Type:         "1",
 		InputDate:    at,
@@ -213,7 +213,7 @@ func TestProteksiYangSudahDiakseptasiPunyaPesanTersendiri(t *testing.T) {
 	})
 
 	_, err := service.Update(context.Background(), usecase.SaveCommand{
-		PortalAlias: portal, Number: "OPCN.26.0010", Draft: draft(), By: "ADMINCONTOH",
+		PortalAlias: portal, Number: "OPCN.26.10", Draft: draft(), By: "ADMINCONTOH",
 	})
 	require.ErrorIs(t, err, inputreqprotection.ErrAccepted)
 }
@@ -249,16 +249,16 @@ func TestProteksiYangSudahDiakseptasiTidakTampilDiDaftar(t *testing.T) {
 	service, repo := bangun(t, at)
 
 	repo.Add(
-		inputreqprotection.Protection{Number: "OPCN.26.0001", AcceptStatus: inputreqprotection.AcceptPending, CreatedAt: at},
-		inputreqprotection.Protection{Number: "OPCN.26.0002", AcceptStatus: inputreqprotection.AcceptApproved, CreatedAt: at},
-		inputreqprotection.Protection{Number: "OPCN.26.0003", AcceptStatus: inputreqprotection.AcceptRejected, CreatedAt: at},
+		inputreqprotection.Protection{Number: "OPCN.26.1", AcceptStatus: inputreqprotection.AcceptPending, CreatedAt: at},
+		inputreqprotection.Protection{Number: "OPCN.26.2", AcceptStatus: inputreqprotection.AcceptApproved, CreatedAt: at},
+		inputreqprotection.Protection{Number: "OPCN.26.3", AcceptStatus: inputreqprotection.AcceptRejected, CreatedAt: at},
 	)
 
 	page, err := service.List(context.Background(), usecase.ListQuery{PortalAlias: portal})
 	require.NoError(t, err)
 
 	require.Equal(t, 1, page.Total)
-	require.Equal(t, "OPCN.26.0001", page.Protections[0].Number)
+	require.Equal(t, "OPCN.26.1", page.Protections[0].Number)
 }
 
 func TestPortalTidakDikenalDitolakBukanDialihkanKePortalUtama(t *testing.T) {

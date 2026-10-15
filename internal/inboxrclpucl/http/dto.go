@@ -413,10 +413,10 @@ func toMetadataResponse(meta usecase.Metadata, portalAlias string) MetadataRespo
 	}
 
 	return MetadataResponse{
-		Tabs:               tabs,
-		DefaultTab:         meta.DefaultTab,
-		ReportColumns:      toColumnListDTO(meta.ReportColumns),
-		Portal:             portalAlias,
+		Tabs:          tabs,
+		DefaultTab:    meta.DefaultTab,
+		ReportColumns: toColumnListDTO(meta.ReportColumns),
+		Portal:        portalAlias,
 	}
 }
 

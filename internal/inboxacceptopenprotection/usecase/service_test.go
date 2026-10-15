@@ -87,9 +87,9 @@ func TestAntreanPremiHanyaMemuatTipeDua(t *testing.T) {
 	service, repo := bangun(t, at)
 
 	repo.Add(
-		lengkap("OPCN.26.0001", "1", at),
-		lengkap("OPCN.26.0002", inboxacceptopenprotection.TypePremium, at),
-		lengkap("OPCN.26.0003", "7", at),
+		lengkap("OPCN.26.1", "1", at),
+		lengkap("OPCN.26.2", inboxacceptopenprotection.TypePremium, at),
+		lengkap("OPCN.26.3", "7", at),
 	)
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
@@ -100,7 +100,7 @@ func TestAntreanPremiHanyaMemuatTipeDua(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, page.Total)
-	require.Equal(t, "OPCN.26.0002", page.Protections[0].Number)
+	require.Equal(t, "OPCN.26.2", page.Protections[0].Number)
 }
 
 func TestAntreanNonPremiMemuatSeluruhTipeSelainDua(t *testing.T) {
@@ -110,10 +110,10 @@ func TestAntreanNonPremiMemuatSeluruhTipeSelainDua(t *testing.T) {
 	service, repo := bangun(t, at)
 
 	repo.Add(
-		lengkap("OPCN.26.0001", "1", at),
-		lengkap("OPCN.26.0002", inboxacceptopenprotection.TypePremium, at),
-		lengkap("OPCN.26.0003", "7", at),
-		lengkap("OPCN.26.0004", "99", at), // tipe yang belum dikenal
+		lengkap("OPCN.26.1", "1", at),
+		lengkap("OPCN.26.2", inboxacceptopenprotection.TypePremium, at),
+		lengkap("OPCN.26.3", "7", at),
+		lengkap("OPCN.26.4", "99", at), // tipe yang belum dikenal
 	)
 
 	page, err := service.List(context.Background(), usecase.ListQuery{
@@ -134,7 +134,7 @@ func TestProteksiTanpaNomorKlaimTidakSampaiKeMejaAkseptasi(t *testing.T) {
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
 
-	rancangan := lengkap("OPCN.26.0005", "1", at)
+	rancangan := lengkap("OPCN.26.5", "1", at)
 	rancangan.ClaimNumber = ""
 	repo.Add(rancangan)
 
@@ -151,7 +151,7 @@ func TestProteksiYangSudahDiputuskanHilangDariAntrean(t *testing.T) {
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
 
-	disetujui := lengkap("OPCN.26.0006", "1", at)
+	disetujui := lengkap("OPCN.26.6", "1", at)
 	disetujui.AcceptStatus = inboxacceptopenprotection.AcceptApproved
 	repo.Add(disetujui)
 
@@ -170,11 +170,11 @@ func TestProteksiYangSudahDiputuskanTetapDapatDibukaLewatNomor(t *testing.T) {
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
 
-	disetujui := lengkap("OPCN.26.0006", "1", at)
+	disetujui := lengkap("OPCN.26.6", "1", at)
 	disetujui.AcceptStatus = inboxacceptopenprotection.AcceptApproved
 	repo.Add(disetujui)
 
-	p, err := service.Get(context.Background(), portal, "OPCN.26.0006", loginBerwenang)
+	p, err := service.Get(context.Background(), portal, "OPCN.26.6", loginBerwenang)
 	require.NoError(t, err)
 	require.True(t, p.Approved())
 }
@@ -184,11 +184,11 @@ func TestPersetujuanMencatatPelakuDanWaktunya(t *testing.T) {
 	// satu-satunya kontrol pengimbang yang tersisa.
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	saved, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0001",
+		Number:      "OPCN.26.1",
 		Decision:    inboxacceptopenprotection.DecisionApprove,
 		By:          "KOLEKSICONTOH",
 	})
@@ -203,11 +203,11 @@ func TestPersetujuanMencatatPelakuDanWaktunya(t *testing.T) {
 func TestPenolakanMenyimpanKodeDuaBukanKodeSatu(t *testing.T) {
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	saved, err := service.Decide(context.Background(), usecase.DecideCommand{
 		PortalAlias: portal,
-		Number:      "OPCN.26.0001",
+		Number:      "OPCN.26.1",
 		Decision:    inboxacceptopenprotection.DecisionReject,
 		By:          "KOLEKSICONTOH",
 	})
@@ -220,16 +220,16 @@ func TestKeputusanKeduaAtasBarisYangSamaDitolak(t *testing.T) {
 	// bukan kejadian langka.
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001",
+		PortalAlias: portal, Number: "OPCN.26.1",
 		Decision: inboxacceptopenprotection.DecisionApprove, By: "PETUGAS-A",
 	})
 	require.NoError(t, err)
 
 	_, err = service.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001",
+		PortalAlias: portal, Number: "OPCN.26.1",
 		Decision: inboxacceptopenprotection.DecisionReject, By: "PETUGAS-B",
 	})
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrAlreadyDecided)
@@ -240,10 +240,10 @@ func TestKeputusanAsingDitolakTanpaNilaiBawaan(t *testing.T) {
 	// pun bermaksud menolaknya; sebagai "setuju" jauh lebih buruk.
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001",
+		PortalAlias: portal, Number: "OPCN.26.1",
 		Decision: inboxacceptopenprotection.Decision("mungkin"), By: "KOLEKSICONTOH",
 	})
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrUnknownDecision)
@@ -254,12 +254,12 @@ func TestProteksiBelumLengkapTidakDapatDiakseptasiMeskiNomornyaDiketahui(t *test
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
 
-	rancangan := lengkap("OPCN.26.0005", "1", at)
+	rancangan := lengkap("OPCN.26.5", "1", at)
 	rancangan.ClaimNumber = ""
 	repo.Add(rancangan)
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0005",
+		PortalAlias: portal, Number: "OPCN.26.5",
 		Decision: inboxacceptopenprotection.DecisionApprove, By: "KOLEKSICONTOH",
 	})
 	require.ErrorIs(t, err, inboxacceptopenprotection.ErrIncomplete)
@@ -268,10 +268,10 @@ func TestProteksiBelumLengkapTidakDapatDiakseptasiMeskiNomornyaDiketahui(t *test
 func TestPelakuAkseptasiDiambilDariSesi(t *testing.T) {
 	at := time.Date(2026, time.September, 23, 10, 0, 0, 0, wib)
 	service, repo := bangun(t, at)
-	repo.Add(lengkap("OPCN.26.0001", "1", at))
+	repo.Add(lengkap("OPCN.26.1", "1", at))
 
 	_, err := service.Decide(context.Background(), usecase.DecideCommand{
-		PortalAlias: portal, Number: "OPCN.26.0001",
+		PortalAlias: portal, Number: "OPCN.26.1",
 		Decision: inboxacceptopenprotection.DecisionApprove, By: "",
 	})
 	require.Error(t, err)

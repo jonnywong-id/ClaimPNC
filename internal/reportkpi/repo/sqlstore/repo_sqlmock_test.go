@@ -324,9 +324,9 @@ func TestAdminTotalsNonMBUMenghitungDariBaris(t *testing.T) {
 
 	// Senin 2026-03-02 sebagai awal; selisih hari kerjanya ditentukan tanggal akhir.
 	senin := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
-	hariSama := senin                    // 0 hari kerja -> TIDAK melanggar
-	duaHari := senin.AddDate(0, 0, 2)    // Rabu, 2 hari kerja -> melanggar (> 1)
-	sehari := senin.AddDate(0, 0, 1)     // Selasa, 1 hari kerja -> TIDAK melanggar
+	hariSama := senin                 // 0 hari kerja -> TIDAK melanggar
+	duaHari := senin.AddDate(0, 0, 2) // Rabu, 2 hari kerja -> melanggar (> 1)
+	sehari := senin.AddDate(0, 0, 1)  // Selasa, 1 hari kerja -> TIDAK melanggar
 
 	mock.ExpectQuery(sqlOf("admin_rows_nonmbu")).
 		WithArgs("2026-03-01", "2026-03-31").

@@ -105,6 +105,10 @@ func (h *Handler) readSource(w http.ResponseWriter, r *http.Request) (inboxautoc
 }
 
 // ListBatch menangani GET /inbox-auto-claim.
+//
+// Parameter: `sumber`, `perusahaan`, `halaman`, `ukuran`, lalu `cari` (nomor batch persis
+// atau sebagian user upload) dan `urut` (`terbaru` | `terlama`; nilai lain = `terbaru`,
+// `D-82`).
 func (h *Handler) ListBatch(w http.ResponseWriter, r *http.Request) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())
 	if !exists {
@@ -120,6 +124,8 @@ func (h *Handler) ListBatch(w http.ResponseWriter, r *http.Request) {
 	filter := inboxautoclaim.BatchFilter{
 		Source:      source,
 		CompanyCode: strings.TrimSpace(r.URL.Query().Get("perusahaan")),
+		Search:      strings.TrimSpace(r.URL.Query().Get("cari")),
+		Order:       inboxautoclaim.ParseBatchOrder(r.URL.Query().Get("urut")),
 		Page:        readPage(r),
 	}
 

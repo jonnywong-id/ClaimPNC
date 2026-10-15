@@ -27,6 +27,10 @@ type Service struct {
 	lineSelector inboxmanager.LineBusinessRepoSelector
 	clock        inboxmanager.Clock
 	logger       *slog.Logger
+
+	paymentRules inboxmanager.PaymentRules
+	linker       inboxmanager.DocumentLinker
+	notifier     inboxmanager.PaymentNotifier
 }
 
 // Options adalah bahan pembentuk Service.
@@ -52,6 +56,14 @@ type Options struct {
 	// Logger mencatat pembukaan layar, keputusan yang ditulis, dan hasil yang sangat besar.
 	// Ia boleh nil; bila nil, catatannya tidak ditulis dan tidak ada yang gagal karenanya.
 	Logger *slog.Logger
+
+	// PaymentRules, DocumentLinker, dan PaymentNotifier dipakai panel detail Payment Klaim
+	// Akseptasi (payment.go). Ketiganya boleh kosong: tanpa PaymentRules tipe pembayaran
+	// ditampilkan sebagai kodenya, tanpa DocumentLinker lampiran di layanan penyimpanan tidak
+	// dapat dibuka, dan tanpa PaymentNotifier SIMPAN tetap tertulis tanpa surel.
+	PaymentRules    inboxmanager.PaymentRules
+	DocumentLinker  inboxmanager.DocumentLinker
+	PaymentNotifier inboxmanager.PaymentNotifier
 }
 
 // NewService membentuk layanan modul Inbox Manager.
@@ -70,6 +82,9 @@ func NewService(o Options) (*Service, error) {
 		lineSelector: o.LineBusinessSelector,
 		clock:        o.Clock,
 		logger:       o.Logger,
+		paymentRules: o.PaymentRules,
+		linker:       o.DocumentLinker,
+		notifier:     o.PaymentNotifier,
 	}, nil
 }
 

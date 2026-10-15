@@ -165,7 +165,7 @@ func TestListDefaultsToNonPremiumQueue(t *testing.T) {
 	body := decode[listBody](t, rec)
 	require.Equal(t, "non-premi", body.Antrean)
 	require.Equal(t, 4, body.Total)
-	require.Equal(t, "OPCN.26.0005", body.Proteksi[0].NomorProteksi)
+	require.Equal(t, "OPCN.26.5", body.Proteksi[0].NomorProteksi)
 	require.Equal(t, "2026-09-19", body.Proteksi[0].TanggalProteksi)
 	require.Equal(t, "non-premi", body.Proteksi[0].Antrean)
 }
@@ -173,7 +173,7 @@ func TestListDefaultsToNonPremiumQueue(t *testing.T) {
 func TestListPremiumQueueWithPaginationAndSearch(t *testing.T) {
 	s, _ := realService(t, time.Now())
 	rec := do(t, server(t, s, "KOLEKSICONTOH"), http.MethodGet,
-		basePath+"?antrean=premi&batas=5&lewati=0&cari=0003", "")
+		basePath+"?antrean=premi&batas=5&lewati=0&cari=OPCN.26.3", "")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
 	body := decode[listBody](t, rec)
@@ -247,11 +247,11 @@ func TestQueuesForCaller(t *testing.T) {
 
 func TestGetLossDateChangeDetail(t *testing.T) {
 	s, _ := realService(t, time.Now())
-	rec := do(t, server(t, s, "TEKNIKCONTOH"), http.MethodGet, basePath+"/OPCN.26.0004", "")
+	rec := do(t, server(t, s, "TEKNIKCONTOH"), http.MethodGet, basePath+"/OPCN.26.4", "")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
 	body := decode[detailBody](t, rec)
-	require.Equal(t, "OPCN.26.0004", body.NomorProteksi)
+	require.Equal(t, "OPCN.26.4", body.NomorProteksi)
 	require.Equal(t, "Tertanggung Contoh", body.NamaTertanggung)
 	require.Equal(t, "2026-01-01", body.PolisMulai)
 	require.Equal(t, "2026-12-31", body.PolisAkhir)
@@ -268,7 +268,7 @@ func TestGetCauseOfLossDetailAndLegacyEmptyPanel(t *testing.T) {
 	s, _ := realService(t, time.Now())
 	h := server(t, s, "TEKNIKCONTOH")
 
-	body := decode[detailBody](t, do(t, h, http.MethodGet, basePath+"/OPCN.26.0005", ""))
+	body := decode[detailBody](t, do(t, h, http.MethodGet, basePath+"/OPCN.26.5", ""))
 	require.Equal(t, "Detail Perubahan Cause Of Loss", body.DetailPerubahan.Judul)
 	require.Equal(t, "12001", body.DetailPerubahan.PenyebabSebelum)
 	require.Equal(t, "12002", body.DetailPerubahan.PenyebabSesudah)
@@ -283,7 +283,7 @@ func TestGetCauseOfLossDetailAndLegacyEmptyPanel(t *testing.T) {
 
 func TestGetDecidedProtectionHasNoPanel(t *testing.T) {
 	s, _ := realService(t, time.Now())
-	rec := do(t, server(t, s, "TEKNIKCONTOH"), http.MethodGet, basePath+"/OPCN.26.0007", "")
+	rec := do(t, server(t, s, "TEKNIKCONTOH"), http.MethodGet, basePath+"/OPCN.26.7", "")
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	body := decode[detailBody](t, rec)
@@ -307,7 +307,7 @@ func TestDecideApprove(t *testing.T) {
 	at := time.Date(2026, 9, 25, 9, 0, 0, 0, wib)
 	s, repo := realService(t, at)
 	rec := do(t, server(t, s, "TEKNIKCONTOH"), http.MethodPut,
-		basePath+"/OPCN.26.0004/akseptasi", `{"keputusan":" setuju "}`)
+		basePath+"/OPCN.26.4/akseptasi", `{"keputusan":" setuju "}`)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
 	body := decode[detailBody](t, rec)
@@ -331,11 +331,11 @@ func TestDecideErrorMapping(t *testing.T) {
 		code       string
 		contains   string
 	}{
-		{"/OPCN.26.0002/akseptasi", `{"keputusan":"mungkin"}`, http.StatusBadRequest, accepthttp.CodeBadRequest, `"setuju" atau "tolak"`},
-		{"/OPCN.26.0002/akseptasi", `{"lain":1}`, http.StatusBadRequest, accepthttp.CodeBadRequest, "Badan permintaan tidak dapat dibaca."},
-		{"/OPCN.26.0002/akseptasi", `bukan json`, http.StatusBadRequest, accepthttp.CodeBadRequest, "Badan permintaan tidak dapat dibaca."},
-		{"/OPCN.26.0007/akseptasi", `{"keputusan":"setuju"}`, http.StatusConflict, accepthttp.CodeConflict, "sudah diakseptasi"},
-		{"/OPCN.26.0006/akseptasi", `{"keputusan":"setuju"}`, http.StatusConflict, accepthttp.CodeConflict, "belum tertaut ke klaim"},
+		{"/OPCN.26.2/akseptasi", `{"keputusan":"mungkin"}`, http.StatusBadRequest, accepthttp.CodeBadRequest, `"setuju" atau "tolak"`},
+		{"/OPCN.26.2/akseptasi", `{"lain":1}`, http.StatusBadRequest, accepthttp.CodeBadRequest, "Badan permintaan tidak dapat dibaca."},
+		{"/OPCN.26.2/akseptasi", `bukan json`, http.StatusBadRequest, accepthttp.CodeBadRequest, "Badan permintaan tidak dapat dibaca."},
+		{"/OPCN.26.7/akseptasi", `{"keputusan":"setuju"}`, http.StatusConflict, accepthttp.CodeConflict, "sudah diakseptasi"},
+		{"/OPCN.26.6/akseptasi", `{"keputusan":"setuju"}`, http.StatusConflict, accepthttp.CodeConflict, "belum tertaut ke klaim"},
 		{"/OPC-216/akseptasi", `{"keputusan":"tolak"}`, http.StatusOK, "", ""},
 		{"/TIDAK-ADA/akseptasi", `{"keputusan":"setuju"}`, http.StatusNotFound, accepthttp.CodeNotFound, "tidak ditemukan"},
 	}
@@ -352,7 +352,7 @@ func TestDecideErrorMapping(t *testing.T) {
 
 func TestDecideWithoutCallerIsInternalError(t *testing.T) {
 	s, _ := realService(t, time.Now())
-	rec := do(t, server(t, s, ""), http.MethodPut, basePath+"/OPCN.26.0002/akseptasi", `{"keputusan":"setuju"}`)
+	rec := do(t, server(t, s, ""), http.MethodPut, basePath+"/OPCN.26.2/akseptasi", `{"keputusan":"setuju"}`)
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
@@ -584,7 +584,7 @@ func TestAntreanDilayaniTanpaHeaderPortal(t *testing.T) {
 func TestDaftarTetapMenuntutPortal(t *testing.T) {
 	s, _ := realService(t, time.Now())
 
-	for _, jalur := range []string{basePath, basePath + "/OPCN.26.0007"} {
+	for _, jalur := range []string{basePath, basePath + "/OPCN.26.7"} {
 		req := httptest.NewRequest(http.MethodGet, jalur, nil)
 		rec := httptest.NewRecorder()
 		server(t, s, "KEDUACONTOH").ServeHTTP(rec, req)

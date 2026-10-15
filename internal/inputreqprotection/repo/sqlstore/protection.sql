@@ -240,7 +240,7 @@ SELECT COUNT(*)
 -- tidak lagi diperlukan.
 --
 -- Satu hal yang HILANG, dan diterima: sequence tidak direset tiap tahun, sehingga nomor
--- urut menembus pergantian tahun (`OPCN.26.0009` diikuti `OPCN.27.0010`). Segmen tahun
+-- urut menembus pergantian tahun (`OPCN.26.9` diikuti `OPCN.27.10`). Segmen tahun
 -- menjadi penanda, bukan penghitung per tahun.
 --
 -- Satu hal lain: `NOCACHE` membuat setiap pemanggilan menulis ke kamus data — lebih lambat,

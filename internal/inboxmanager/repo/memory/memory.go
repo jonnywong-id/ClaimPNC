@@ -30,6 +30,23 @@ type Store struct {
 	// panels memetakan kode tab dashboard ke barisnya per panel.
 	panels map[string]map[string][]inboxmanager.DashboardRow
 
+	// picPanels memetakan PIC ke baris panel tab Outstanding saat PIC itu diklik.
+	//
+	// Grid PIC sendiri tidak pernah diambil dari sini — di Pega ia tidak ikut tersaring.
+	// PIC yang tidak punya entri menghasilkan panel kosong, sama seperti SQL.
+	picPanels map[string]map[string][]inboxmanager.DashboardRow
+
+	// detailRows adalah isi berkas "Export Data Detail Klaim". Ia TIDAK disaring tanggal
+	// maupun lini bisnis — penyaringnya hidup di SQL, dan penyimpanan memori tidak
+	// mengarangnya ulang.
+	detailRows []inboxmanager.DetailExportRow
+
+	// payments memetakan nomor akseptasi yang menunggu ke panel detailnya; paymentFiles
+	// memetakan "nomor|kunci" ke isi lampiran lamanya; paymentSaves mencatat SIMPAN.
+	payments     map[string]inboxmanager.PaymentDetail
+	paymentFiles map[string]inboxmanager.PaymentDocumentContent
+	paymentSaves []inboxmanager.PaymentSave
+
 	// lineBusiness memetakan login petugas ke lini bisnisnya.
 	lineBusiness map[string]string
 
@@ -57,6 +74,9 @@ func NewStore() *Store {
 	return &Store{
 		queues:       map[string][]inboxmanager.QueueRow{},
 		panels:       map[string]map[string][]inboxmanager.DashboardRow{},
+		picPanels:    map[string]map[string][]inboxmanager.DashboardRow{},
+		payments:     map[string]inboxmanager.PaymentDetail{},
+		paymentFiles: map[string]inboxmanager.PaymentDocumentContent{},
 		lineBusiness: map[string]string{},
 		unavailable:  map[string]string{},
 	}
@@ -99,6 +119,43 @@ func (s *Store) SetPanel(tabCode, panelKey string, rows []inboxmanager.Dashboard
 		s.panels[tabCode] = map[string][]inboxmanager.DashboardRow{}
 	}
 	s.panels[tabCode][panelKey] = rows
+}
+
+// SetPICPanel menetapkan isi sebuah panel tab Outstanding saat satu PIC diklik.
+func (s *Store) SetPICPanel(pic, panelKey string, rows []inboxmanager.DashboardRow) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	clean := strings.TrimSpace(pic)
+	if s.picPanels[clean] == nil {
+		s.picPanels[clean] = map[string][]inboxmanager.DashboardRow{}
+	}
+	s.picPanels[clean][panelKey] = rows
+}
+
+// SetDetailExport menetapkan isi berkas "Export Data Detail Klaim".
+func (s *Store) SetDetailExport(rows []inboxmanager.DetailExportRow) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.detailRows = rows
+}
+
+// DetailExport mengalirkan isi berkas "Export Data Detail Klaim".
+func (s *Store) DetailExport(
+	_ context.Context,
+	_ inboxmanager.DetailExportQuery,
+	emit func(inboxmanager.DetailExportRow) error,
+) error {
+	s.mu.RLock()
+	rows := make([]inboxmanager.DetailExportRow, len(s.detailRows))
+	copy(rows, s.detailRows)
+	s.mu.RUnlock()
+
+	for _, row := range rows {
+		if err := emit(row); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SetUnavailable menandai sebuah antrean sebagai tidak dapat dibaca.
@@ -156,8 +213,13 @@ func (s *Store) Dashboard(
 	panels := make([]inboxmanager.Panel, len(q.Tab.Panels))
 	copy(panels, q.Tab.Panels)
 
+	byPIC := q.Tab.Code == inboxmanager.TabOutstanding && q.PIC != ""
+
 	for i := range panels {
 		panels[i].Rows = s.panels[q.Tab.Code][panels[i].Key]
+		if byPIC && panels[i].RowFilter != inboxmanager.FilterPIC {
+			panels[i].Rows = s.picPanels[q.PIC][panels[i].Key]
+		}
 		if panels[i].Rows == nil {
 			panels[i].Rows = []inboxmanager.DashboardRow{}
 		}
