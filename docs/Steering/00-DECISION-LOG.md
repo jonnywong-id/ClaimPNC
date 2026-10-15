@@ -2472,3 +2472,62 @@ dan keduanya memang punya pembaca yang berbeda.
 
 **Dampak ke Steering:** `08-TECHNICAL-STRATEGY.md` §4.1 (tabel Penamaan + bagian baru) ·
 `CLAUDE.md` dan `STEERING.md` dibangun ulang · `claim-pnc/docs/peta-penamaan.md`
+
+---
+
+### D-82 · Inbox Auto Claim — Penataan Ulang Layar, Cari dan Urut Batch di Server
+**Status:** DECIDED — **mensupersede** permintaan Work Owner 2026-09-29 tentang letak tombol
+Upload Data Klaim (tercatat di `AutoClaimInboxPage.tsx`)
+
+**Pertanyaan:** Desain arah ulang Inbox Auto Claim (berkas `PNC — Arah Redesign.html`, dua papan:
+desktop dan ponsel) mengubah susunan layar yang sudah disetujui 2026-09-29. Bagian mana yang
+diikuti, dan bagaimana fitur barunya — cari, saring, urut batch — dikerjakan pada grid yang
+dipaginasi server?
+
+**Jawaban developer (2026-10-14), per butir:**
+
+| Butir desain | Keputusan |
+|---|---|
+| Upload Data Klaim naik ke kepala halaman, sebaris dengan Refresh | **Diikuti.** Berkas tetap masuk ke tab yang terbuka; tidak ada di tab Cek Premi. Di layar sempit menjadi tombol melayang. |
+| Teks "Portal entitas · Tab" dan "Sumber: &lt;tabel&gt;" | **Dibuang** dari layar. |
+| Daftar perusahaan: lencana jumlah, kode belum terdaftar diberi label kuning dan ditaruh paling bawah | **Diikuti.** |
+| Cari no batch / user upload | **Dikerjakan di server** — parameter `?cari=`. |
+| Urutan "Batch terbaru" | **Dikerjakan di server** — `?urut=terbaru` (bawaan) \| `terlama`. |
+| Saringan segmen Semua · Ada yang gagal · Semua berhasil | **Tidak dibuat.** |
+| Kolom "Hasil" (lencana Semua berhasil / Semua gagal) | **Tidak dibuat.** |
+| Unduh Berhasil/Gagal menempel di angkanya; angka 0 tanpa tombol | **Diikuti.** |
+| Aksi sebaris: Detail · Generate DLA · Proses Klaim | **Diikuti.** Keduanya tetap nonaktif — mesinnya belum dibangun. |
+| Ponsel: pemilih perusahaan sebagai lembar bawah | **Diikuti.** Grid sudah menjadi kartu lewat `DataTable`. |
+
+**Kenapa cari dan urut wajib di server.** Grid batch dipaginasi server (`OFFSET … FETCH`).
+Menyaring di peramban hanya menyaring halaman yang sedang tampil — batch yang cocok di halaman lain
+tidak pernah muncul, tanpa satu pun tanda. Grid Pega tidak menghadapinya karena memuat seluruh page
+list sekaligus; karena itu ini **tambahan**, bukan deviasi hasil terhadap Pega (`P-5`): baris dan
+angka yang tampil tanpa cari/urut tetap sama persis.
+
+**Aturan penyaringnya:**
+
+- `cari` cocok bila **nomor batch sama persis** ATAU **user upload memuat teksnya** (tanpa membedakan
+  huruf besar-kecil; `%` dan `_` dicari sebagai huruf). Penyaringnya di `WHERE` sebelum `GROUP BY` —
+  BATCH dan USERINPUT kunci kelompok, sehingga kelompok dan hitungannya tidak berubah.
+- `urut` di luar `terbaru`/`terlama` **dianggap `terbaru`, tidak ditolak** — berbeda dengan `sumber` dan
+  `hasil`. Urutan tidak mengubah baris mana yang tampil, sehingga membulatkannya tidak menyembunyikan
+  data. Dengan begitu juga tidak ada pesan galat baru.
+- Bentuk SQL-nya satu kueri dengan bind (bendera cari, pola, nomor batch; dua bind arah urutan dalam
+  `CASE`), bukan varian kueri per kombinasi dan bukan teks SQL yang dirangkai.
+
+**BELUM DIVERIFIKASI** — pemilik: developer backend Inbox Auto Claim:
+
+1. Kueri baru belum dijalankan terhadap **Oracle sungguhan** (baru sqlmock + penyimpanan memori).
+2. Nomor batch dibandingkan lewat `CAST(A.BATCH AS VARCHAR(40))` karena **tipe kolom BATCH tabel
+   `TMP_BATCH_CLAIM_KREDIT` belum diketahui** (DDL-nya tidak ada di repo). Perlu dipastikan pada
+   ketiga tabel.
+
+**Teks layar baru yang belum berasal dari Pega maupun desain:** pesan kosong grid saat pencarian
+tidak menemukan apa pun — *"Tidak ada batch yang cocok dengan “…”."* — dan label pilihan urutan
+*"Batch terlama"*. Keduanya perlu dikonfirmasi developer.
+
+**Dampak:** `claim-pnc-backend/internal/inboxautoclaim/**` (domain `BatchFilter.Search`/`Order`,
+`ParseBatchOrder`, empat kueri grid batch, repo memori, handler) ·
+`claim-pnc-frontend/src/modules/inbox-auto-claim/**` · `src/components/Icon.tsx` (`UploadIcon`) ·
+`src/api/types.ts` (`AutoClaimBatchOrder`). Dua MR, keduanya merujuk `D-82`.
