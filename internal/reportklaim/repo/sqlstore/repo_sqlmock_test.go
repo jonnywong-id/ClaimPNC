@@ -60,7 +60,7 @@ func TestStreamRunsEveryPlanWithItsArguments(t *testing.T) {
 	sort.Strings(codes)
 
 	filter := reportklaim.Filter{From: from, To: to, BusinessLine: reportklaim.BusinessLinePA,
-		BusinessCode: "B01", FixedParam: map[string]string{"statusapprove": "1"}}
+		FixedParam: map[string]string{"statusapprove": "1"}}
 	for _, raw := range codes {
 		code := reportklaim.Code(raw)
 		t.Run(raw, func(t *testing.T) {
@@ -96,13 +96,12 @@ func TestStreamRunsEveryPlanWithItsArguments(t *testing.T) {
 }
 
 func TestStreamArgumentShapes(t *testing.T) {
-	filter := reportklaim.Filter{From: from, To: to, BusinessLine: reportklaim.BusinessLinePA, BusinessCode: "B01",
+	filter := reportklaim.Filter{From: from, To: to, BusinessLine: reportklaim.BusinessLinePA,
 		FixedParam: map[string]string{"statusapprove": "2"}}
 	require.Equal(t, []any{from, to, "002"}, dateAndLine(filter))
 	require.Equal(t, []any{from, to}, dateOnly(filter))
 	require.Equal(t, []any{"002"}, lineOnly(filter))
 	require.Nil(t, noArgs(filter))
-	require.Equal(t, []any{"B01"}, businessCodeArgs(filter))
 	// Kedua yang berikut TIDAK mengikuti pola "dari, sampai, lalu sisanya", dan itu
 	// disengaja: urutannya mengikuti URUTAN KEMUNCULAN placeholder di kuerinya, karena
 	// driver Oracle mengabaikan nomor `:n`. Lihat TestNomorBindMengikutiUrutanKemunculan.
@@ -188,29 +187,7 @@ func TestStreamFailures(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestListBusinessOptions(t *testing.T) {
-	ctx := context.Background()
-	db, mock := newDB(t)
-	repo := NewRepo(db, nil)
-
-	mock.ExpectQuery(q("report_business_options")).WillReturnRows(
-		sqlmock.NewRows([]string{"KODE", "NAMA"}).AddRow(" 01 ", " Fire ").AddRow(nil, nil))
-	got, err := repo.ListBusinessOptions(ctx)
-	require.NoError(t, err)
-	require.Equal(t, []reportklaim.BusinessOption{{Code: "01", Name: "Fire"}, {}}, got)
-
-	mock.ExpectQuery(q("report_business_options")).WillReturnError(errDB)
-	_, err = repo.ListBusinessOptions(ctx)
-	require.ErrorIs(t, err, errDB)
-	mock.ExpectQuery(q("report_business_options")).WillReturnRows(sqlmock.NewRows([]string{"A"}).AddRow("x"))
-	_, err = repo.ListBusinessOptions(ctx)
-	require.ErrorContains(t, err, "memindai pilihan bisnis")
-	mock.ExpectQuery(q("report_business_options")).WillReturnRows(
-		sqlmock.NewRows([]string{"K", "N"}).AddRow("1", "a").RowError(0, errDB))
-	_, err = repo.ListBusinessOptions(ctx)
-	require.ErrorIs(t, err, errDB)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
+// TestListBusinessOptions dicabut 2026-10-13 bersama panel REPORT KLAIM PER BISNIS.
 
 func TestTextConvertsDriverValues(t *testing.T) {
 	require.Equal(t, "", text(nil))

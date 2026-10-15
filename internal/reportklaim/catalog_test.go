@@ -10,11 +10,11 @@ import (
 	"claim-pnc/internal/reportklaim"
 )
 
-// Layar lama memuat 28 panel. Angka ini dijaga karena ia satu-satunya pemeriksaan yang
+// Layar Pega PRODUKSI memuat 23 panel. Angka ini dijaga karena ia satu-satunya pemeriksaan yang
 // menangkap panel yang hilang saat berkas katalog dipecah per kelompok — panel yang lupa
 // disebut di salah satu berkas tidak akan membuat apa pun gagal dikompilasi.
 func TestKatalogMemuatKeduapuluhDelapanPanel(t *testing.T) {
-	require.Len(t, reportklaim.Catalog(), 28)
+	require.Len(t, reportklaim.Catalog(), 23)
 }
 
 func TestKodeLaporanTidakBolehKembar(t *testing.T) {
@@ -315,22 +315,14 @@ func TestValidasiMenolakSampaiYangMendahuluiDari(t *testing.T) {
 	require.Equal(t, "sampai", v[0].Field)
 }
 
-// Panel Klaim Per Bisnis TIDAK dapat dijalankan tanpa memilih bisnis — kuerinya tidak
-// punya cabang "bila kosong", dan hasilnya akan kosong tanpa satu pun tanda.
-func TestPanelKlaimPerBisnisMewajibkanPilihanBisnis(t *testing.T) {
-	r, ok := reportklaim.Find(reportklaim.CodeKlaimPerBisnis)
-	require.True(t, ok)
-
-	v := r.Validate(reportklaim.Filter{})
-	require.Len(t, v, 1)
-	require.Equal(t, "bisnis", v[0].Field)
-
-	require.Empty(t, r.Validate(reportklaim.Filter{BusinessCode: "10076"}))
-}
+// TestPanelKlaimPerBisnisMewajibkanPilihanBisnis berdiri di sini sampai 2026-10-13,
+// dicabut bersama panelnya.
 
 // Laporan yang kuerinya tidak menerima tanggal tidak boleh MEWAJIBKAN tanggal.
 func TestLaporanTanpaPenyaringTanggalTidakMewajibkanTanggal(t *testing.T) {
-	r, ok := reportklaim.Find(reportklaim.CodeKomunikasiKlaim)
+	// Regist Simas On Line menggantikan Komunikasi Klaim sebagai contohnya sejak
+	// 2026-10-13: keduanya ber-`Uses: 0`, dan yang kedua dicabut.
+	r, ok := reportklaim.Find(reportklaim.CodeRegistSimasOnline)
 	require.True(t, ok)
 	require.Empty(t, r.Validate(reportklaim.Filter{}))
 }

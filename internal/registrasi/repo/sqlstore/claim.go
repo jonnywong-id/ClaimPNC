@@ -492,6 +492,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		salvageStatus                            sql.NullString
 		analystTransferredAt                     sql.NullTime
 		tki                                      sql.NullString
+		pegaWorkStatus                           sql.NullString
 	)
 
 	row := exec.QueryRowContext(ctx, loadQuery(queryName), value)
@@ -515,6 +516,7 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 		&tki,
 		&updateIDCard, &updatePhone, &updateEmail, &reportType,
 		&dischargeDate,
+		&pegaWorkStatus,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return registrasi.Claim{}, registrasi.ErrClaimNotFound
@@ -556,6 +558,9 @@ func (r *ClaimStore) getBy(ctx context.Context, queryName, value string) (regist
 	k.PUCLStatus = int(puclStatus.Int64)
 
 	k.ProcessStatus = registrasi.ProcessStatus(processStatus.String)
+	// Status kerja menurut Pega. Kosong bila klaimnya tidak ada di tabel daftar — keadaan
+	// yang nyata: klaim `PNCN.` terbitan aplikasi ini belum tentu punya barisnya.
+	k.PegaWorkStatus = strings.TrimSpace(pegaWorkStatus.String)
 	k.ClaimStatus = registrasi.ClaimStatus(claimStatus.String)
 
 	k.CreatedBy = createdBy.String

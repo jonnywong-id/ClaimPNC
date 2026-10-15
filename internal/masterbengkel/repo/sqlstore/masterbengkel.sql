@@ -630,38 +630,46 @@ SELECT POOLDATA.BENGKEL_HE_SEQ.NEXTVAL
 
 -- name: bengkel_branch_list
 --
--- Asal: RDB List/BrowseCabangBengkelHE-SQL.xml
+-- Sumber yang BERLAKU, ditunjukkan Work Owner 2026-10-14:
+--
+--   select BRANCHNAME as BRANCHNAME, ID as BRANCH from branch
+--
+-- # Kenapa kueri sebelumnya diganti, bukan diperbaiki
+--
+-- Versi sebelumnya menyalin `RDB List/BrowseCabangBengkelHE-SQL.xml`:
 --
 --   select ldc_nama as BRANCHNAME, cab_id as BRANCH
 --     from general.lst_user_asuransi a, lst_det_cabang b
---    where b.ldc_id = a.cab_id
---      and b.ldc_id = a.rep_cab_id
---      and a.ldi_id = '0076'
---      and a.sts_aktif = '1'
+--    where b.ldc_id = a.cab_id and b.ldc_id = a.rep_cab_id
+--      and a.ldi_id = '0076' and a.sts_aktif = '1'
 --
--- DUA PERUBAHAN terhadap kueri lama, keduanya tidak mengubah baris yang dikembalikan:
+-- Kueri itu **gagal seluruhnya** di basis data ini — `ORA-00942: table or view does not
+-- exist`. Skema `GENERAL` tidak ada di basis data Claim PNC; ia hanya terjangkau lewat
+-- DB link `@asmd` (lihat banner `dokumenpenunjang.sql` §39.5). Akibatnya dropdown Nama
+-- Cabang pada layar Tambah/Ubah **kosong sama sekali**, dan tidak ada galat yang tampil
+-- karena daftar pilihan yang gagal dimuat digambar sebagai daftar kosong.
 --
---  1. Gabungan gaya lama (dua tabel pada FROM, syarat gabung di WHERE) menjadi
---     JOIN ... ON. Bentuknya sah di kedua basis data; yang berubah hanya keterbacaannya
---     — syarat gabung tidak lagi bercampur dengan penyaring.
---  2. DISTINCT ditambahkan. `lst_user_asuransi` berisi satu baris per PENGGUNA, sehingga
---     cabang yang punya banyak pengguna aktif muncul berkali-kali pada daftar pilihan.
---     Kueri lama tidak membuangnya, dan dropdown-nya memang memuat nama yang berulang.
+-- Menambahkan `@asmd` pada kueri lama memang akan membuatnya berjalan, tetapi itu
+-- menambah satu pemakaian DB Link baru — persis yang `D-25` perintahkan dihapus. Sumber
+-- yang ditunjukkan Work Owner ada di basis data yang sama dan tidak menempuh DB link
+-- sama sekali, sehingga ia yang dipakai.
 --
--- Penyaring `ldi_id = '0076'` DIREPLIKASI APA ADANYA. Ia kode aplikasi yang tertanam di
--- kueri — persis bentuk hardcode yang D-15 perintahkan menjadi konfigurasi — tetapi tidak
--- ada satu pun keterangan di export tentang artinya, sehingga mengangkatnya menjadi
--- konfigurasi berarti menebak nilainya untuk entitas selain yang sekarang. Ia literal,
--- bukan masukan pengguna, sehingga bukan celah injeksi. Dicatat sebagai utang.
-SELECT DISTINCT b.LDC_NAMA,
-       a.CAB_ID
-  FROM GENERAL.LST_USER_ASURANSI a
-  JOIN LST_DET_CABANG b
-    ON b.LDC_ID = a.CAB_ID
-   AND b.LDC_ID = a.REP_CAB_ID
- WHERE a.LDI_ID = '0076'
-   AND a.STS_AKTIF = '1'
- ORDER BY b.LDC_NAMA
+-- `POOLDATA.BRANCH` adalah VIEW berstatus VALID berisi **803 baris** (diperiksa langsung
+-- 2026-10-14), dengan kolom `ID` dan `BRANCHNAME` yang dibutuhkan di sini.
+--
+-- # Yang tidak dibawa
+--
+-- Penyaring `ldi_id = '0076'` dan `sts_aktif = '1'` TIDAK dibawa: keduanya milik tabel
+-- lama yang tidak lagi dipakai, dan kueri yang ditunjukkan Work Owner tidak menyaring
+-- apa pun. Menambahkan penyaring sendiri di sini berarti menebak cabang mana yang boleh
+-- dipilih — keputusan bisnis yang bukan milik lapisan ini.
+--
+-- `ORDER BY` dipertahankan dari versi sebelumnya. Ia tidak mengubah baris yang
+-- dikembalikan, dan 803 pilihan tanpa urutan tidak dapat ditelusuri pengguna.
+SELECT b.BRANCHNAME,
+       b.ID
+  FROM POOLDATA.BRANCH b
+ ORDER BY b.BRANCHNAME
 
 -- name: bengkel_city_search
 --

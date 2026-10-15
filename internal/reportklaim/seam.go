@@ -12,7 +12,7 @@ import (
 //
 // # Kenapa modul ini membutuhkannya sama sekali
 //
-// Bukan untuk menyaring baris. Tidak satu pun dari 28 kueri menyaring menurut petugas
+// Bukan untuk menyaring baris. Tidak satu pun kueri modul ini menyaring menurut petugas
 // yang menjalankannya — laporan ini memang laporan lintas cabang, dan itulah gunanya.
 //
 // Ia dibutuhkan untuk **jejak audit**: berkas yang keluar dari sini memuat data nasabah
@@ -74,21 +74,13 @@ type Repo interface {
 	// harus membaca sisanya.
 	Stream(ctx context.Context, report Report, filter Filter, emit func(Row) error) error
 
-	// ListBusinessOptions mengembalikan isi autocomplete "Bisnis".
+	// ListBusinessOptions berdiri di sini sampai 2026-10-13. Ia mengisi autocomplete
+	// "Bisnis" milik panel REPORT KLAIM PER BISNIS — satu-satunya pemakainya — dan
+	// dicabut bersama panel itu, yang tidak ada di Pega produksi.
 	//
-	// Asalnya `BrowseBusiness_RD`, yang di harness mengisi `TempLaporan.CountryID`.
-	// Ia berada di Repo — bukan di seam tersendiri — karena isinya milik basis data
-	// entitas: daftar bisnis satu badan hukum bukan daftar badan hukum lain (`R-20`).
-	ListBusinessOptions(ctx context.Context) ([]BusinessOption, error)
-}
-
-// BusinessOption adalah satu baris pilihan pada autocomplete "Bisnis".
-type BusinessOption struct {
-	// Code adalah nilai yang dikirim kembali sebagai penyaring — `TempLaporan.CountryID`.
-	Code string
-
-	// Name adalah yang dibaca pengguna — `TempLaporan.Country`.
-	Name string
+	// Seam-nya menyusut karenanya, dan itu memang arah yang benar: antarmuka yang
+	// melayani satu pemanggil saja bukan seam, melainkan jalan pintas yang kebetulan
+	// berbentuk antarmuka.
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

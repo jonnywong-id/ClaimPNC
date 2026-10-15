@@ -14,7 +14,7 @@ type CatalogResponse struct {
 	// Judul adalah judul layar, disalin dari harness: "Report Claim".
 	Judul string `json:"judul"`
 
-	// Laporan adalah ke-28 panel dalam URUTAN LAYAR Pega — DATAR, tanpa pengelompokan.
+	// Laporan adalah ke-23 panel dalam URUTAN LAYAR Pega — DATAR, dua kolom di layar.
 	//
 	// Sebelumnya daftar ini dikelompokkan menjadi lima bagian berjudul (Klaim, PLA/DLA,
 	// dan seterusnya). Pengelompokan itu TIDAK ADA di layar lama: harness-nya menumpuk
@@ -72,7 +72,7 @@ type ReportDTO struct {
 
 	// Sumber adalah jejak ke rule Pega asalnya.
 	//
-	// Ia ikut ke layar dengan sengaja. Modul ini menyalin 28 kueri beserta ratusan kolom,
+	// Ia ikut ke layar dengan sengaja. Modul ini menyalin puluhan kueri beserta ratusan kolom,
 	// dan satu-satunya cara menjawab "kolom ini dari mana" adalah menunjuk berkasnya.
 	Sumber SourceDTO `json:"sumber"`
 }
@@ -89,8 +89,16 @@ type FilterUsageDTO struct {
 	RentangTanggal   bool `json:"rentang_tanggal"`
 	LiniBisnis       bool `json:"lini_bisnis"`
 	StatusCompliance bool `json:"status_compliance"`
-	Bisnis           bool `json:"bisnis"`
 	Rincian          bool `json:"rincian"`
+
+	// RincianAwal adalah keadaan AWAL kotak centang "Treaty" pada kartu ini.
+	//
+	// Dikirim peladen karena ia pengetahuan tentang Pega, dan ketiga kartu yang punya
+	// kotak ini TIDAK sama: dua tercentang, satu kosong. Layar tidak punya cara menebak
+	// yang mana.
+	//
+	// Berarti saat Rincian bernilai false.
+	RincianAwal bool `json:"rincian_awal"`
 }
 
 // SourceDTO adalah jejak ke rule Pega.
@@ -105,16 +113,8 @@ type BusinessLineDTO struct {
 	Nama  string `json:"nama"`
 }
 
-// BusinessOptionDTO adalah satu pilihan autocomplete "Bisnis".
-type BusinessOptionDTO struct {
-	Kode string `json:"kode"`
-	Nama string `json:"nama"`
-}
-
-// BusinessOptionResponse membungkus daftar pilihan bisnis.
-type BusinessOptionResponse struct {
-	Bisnis []BusinessOptionDTO `json:"bisnis"`
-}
+// BusinessOptionDTO dan BusinessOptionResponse berdiri di sini sampai 2026-10-13,
+// dicabut bersama panel REPORT KLAIM PER BISNIS.
 
 // toCatalogDTO menyusun isi layar dari katalog.
 //
@@ -162,8 +162,8 @@ func toReportDTO(r reportklaim.Report) ReportDTO {
 			RentangTanggal:   r.Uses.Has(reportklaim.FilterDateRange),
 			LiniBisnis:       r.Uses.Has(reportklaim.FilterBusinessLine),
 			StatusCompliance: r.Uses.Has(reportklaim.FilterComplianceStatus),
-			Bisnis:           r.Uses.Has(reportklaim.FilterBusinessCode),
 			Rincian:          r.Uses.Has(reportklaim.FilterDetail),
+			RincianAwal:      r.Uses.Has(reportklaim.FilterDetail) && r.DetailDefault,
 		},
 		Tersedia:   r.Availability.Ready,
 		Alasan:     r.Availability.Reason,

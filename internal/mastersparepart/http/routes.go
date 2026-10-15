@@ -409,11 +409,11 @@ func (h *Handler) readRequest(w http.ResponseWriter, r *http.Request, target any
 // dan `D-66` melarang penghapusan fisik data bernilai bisnis — sparepart yang tidak lagi
 // dipakai ditolak atau ditandai lewat STS_AKTIF, bukan dibuang.
 //
-// Tidak ada pula endpoint unggah. Kedua tombolnya di layar lama — "Upload Document" dan
-// "Upload Data Master Sparepart" — memanggil local action yang TIDAK ADA di export (`R-16`),
-// sehingga susunan kolom CSV-nya, validasinya, dan apakah baris hasil unggah masuk antrean
-// persetujuan seluruhnya tidak diketahui. Tombolnya tetap digambar dalam keadaan mati; lihat
-// SparepartPage.tsx.
+// Yang didaftarkan di luar CRUD adalah KEDUA jalur unggah layar lama — "Upload Document"
+// dan "Upload Data Master Sparepart" — beserta pembacaan dokumennya. Keduanya sempat
+// dinyatakan tidak dapat dibawa karena local action-nya dianggap hilang (`R-16`); itu
+// terkoreksi: `Activity/PNCUploadMasterSparepart_Act` terbaca utuh, dan susunan kolom CSV,
+// validasi, serta kembalinya baris ke antrean persetujuan seluruhnya diturunkan dari sana.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))

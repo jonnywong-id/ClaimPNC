@@ -116,6 +116,74 @@ func (s ApprovalStatus) Known() bool {
 	return s == StatusPending || s == StatusApproved || s == StatusRejected
 }
 
+// FlagOption adalah satu pilihan pada salah satu penanda Master Sparepart.
+//
+// Value adalah yang tersimpan di kolom; Label adalah yang dibaca pengguna.
+type FlagOption struct {
+	Value string
+	Label string
+}
+
+// Keempat daftar berikut adalah pilihan sah penanda Master Sparepart.
+//
+// # Dari mana nilainya
+//
+// Dari `pyPromptTableList` di dalam rule Property masing-masing pada kelas
+// `ASM-FW-GCNMFW-Int-SPAREPART_HE`, diterima 2026-10-14. Sebelum itu keempatnya dianggap
+// tidak diketahui (`R-16`) dan layar menawarkan nilai yang kebetulan sudah dipakai baris
+// lain. Dugaan bahwa pilihannya hidup di rule Field Value terpisah ternyata KELIRU —
+// direktori `Field Value/` memang tidak ada di export, tetapi nilainya tidak di sana.
+//
+// # Urutannya mengikuti Pega, dan karena itu TIDAK diurutkan ulang
+//
+// `REPEATINGINDEX` pada masing-masing rule menentukan urutan yang dilihat petugas pada
+// dropdown hari ini. Mengurutkannya menurut abjad atau menurut kode akan mengubah layar
+// tanpa alasan.
+//
+// # Label ditulis APA ADANYA, termasuk yang keliru
+//
+// `UnitOptions` punya satu pilihan tanpa label sama sekali, dan `ActiveStatusOptions`
+// memuat "Non AKtif" dengan huruf K besar. Keduanya memang begitu di rule Pega. Merapikannya
+// di sini akan memunculkan selisih pada uji kesetaraan yang tidak dapat dibedakan antara bug
+// dan perbaikan yang tidak tercatat (`P-5`). Perbaikannya, bila diinginkan, menempuh
+// keputusan tersendiri.
+//
+// # Kenapa konstanta di kode, padahal D-15 melarang nilai bisnis di-hardcode
+//
+// Karena di sistem lama pun ia bukan master data: nilainya ditulis di dalam rule Property,
+// bukan dibaca dari tabel acuan mana pun. Mengangkatnya menjadi master berarti membuat tabel
+// yang tidak ada padanannya — perubahan skema yang menempuh `D-63`, dan yang tidak diminta
+// siapa pun. Alasan yang sama dipakai `masterpanel.LocationOptions`.
+var (
+	// KindOptions — `JENIS_SPART`, dirender pxRadioButtons.
+	KindOptions = []FlagOption{
+		{Value: "1", Label: "Fast Moving"},
+		{Value: "2", Label: "Non Fast Moving"},
+	}
+
+	// UnitOptions — `SATUAN`, dirender pxDropdown.
+	//
+	// Satu pilihan, dan labelnya KOSONG di rule Pega (`pyLocalizedValue` tanpa isi).
+	// Ditulis apa adanya; layar yang memutuskan bagaimana pilihan tanpa label digambar.
+	UnitOptions = []FlagOption{
+		{Value: "1", Label: ""},
+	}
+
+	// ActiveStatusOptions — `STS_AKTIF`.
+	//
+	// "Non AKtif" adalah ejaan asli rule Pega, bukan salah ketik di sini.
+	ActiveStatusOptions = []FlagOption{
+		{Value: "1", Label: "Aktif"},
+		{Value: "0", Label: "Non AKtif"},
+	}
+
+	// PartStatusOptions — `STS_PART`, dirender pxDropdown.
+	PartStatusOptions = []FlagOption{
+		{Value: "1", Label: "AVAILABLE"},
+		{Value: "0", Label: "RARE"},
+	}
+)
+
 // Sparepart adalah satu baris master sparepart — satu baris `POOLDATA.SPAREPART_HE`.
 //
 // Kedua puluh tiga kolomnya dibaca dari `Report Definition/BrowseSparepartHE_RD-RD.xml`,
@@ -139,14 +207,16 @@ func (s ApprovalStatus) Known() bool {
 // # Kenapa lima kolom penanda bertipe teks bebas
 //
 // `JENIS_SPART`, `SATUAN`, `STS_AKTIF`, `STS_PART`, dan `SUBSTITUSI_SPART` dirender
-// `pxRadioButtons`, `pxDropdown`, atau `pxTextInput` dengan `pyListSource=associated` —
-// artinya pilihannya datang dari rule Field Value pada propertinya, dan tidak ada satu pun
-// direktori Property maupun Field Value di export (`R-16`).
+// `pxRadioButtons`, `pxDropdown`, atau `pxTextInput` dengan `pyListSource=associated`.
 //
-// Menebaknya berarti memutuskan domain kolom yang menentukan satuan sebuah harga. Baris
-// lama karena itu dibaca apa adanya, dan layar menawarkan nilai yang SUDAH DIPAKAI baris
-// lain sebagai pilihan — jawaban terbaik yang tersedia atas pertanyaan yang export tidak
-// jawab. Perlakuan yang sama dipakai Master Panel untuk kesembilan penandanya.
+// Daftar pilihan keempat yang pertama kini DIKETAHUI — rule Property-nya diterima
+// 2026-10-14 dan nilainya ada di dalam `pyPromptTableList` masing-masing, bukan di rule
+// Field Value terpisah. Lihat FlagOptions.
+//
+// Tipenya tetap teks bebas, dan itu disengaja: nilai di luar daftar TIDAK ditolak. Baris
+// lama dapat memuat nilai yang tidak ada di daftar hari ini, dan menolaknya berarti baris
+// yang kini sah menjadi tidak dapat disimpan ulang. Perlakuan yang sama dipakai Master
+// Panel untuk kesembilan penandanya.
 type Sparepart struct {
 	// ID adalah kolom ID — kunci baris ini.
 	//
@@ -224,7 +294,8 @@ type Sparepart struct {
 	// Pemeriksaan itu TIDAK ditiru di sini — lihat Input.Check.
 	Substitute string
 
-	// Keempat penanda berikut nilai sahnya TIDAK DIKETAHUI; lihat catatan pada tipe ini.
+	// Keempat penanda berikut nilai sahnya ada di FlagOptions; nilai di luar daftar itu
+	// tetap diterima. Lihat catatan pada tipe ini.
 	Kind         string // JENIS_SPART · "Jenis Sparepart"  · pxRadioButtons
 	Unit         string // SATUAN      · "Satuan"           · pxDropdown
 	ActiveStatus string // STS_AKTIF   · "Status Aktif"

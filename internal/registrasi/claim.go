@@ -478,6 +478,20 @@ type Claim struct {
 	ExGratia bool
 
 	// TechnicalPIC adalah PIC teknik yang menerima klaim setelah registrasi.
+	// PegaWorkStatus adalah status kerja menurut PEGA — `T_CLAIMLIST_ADMIN.PYSTATUSWORK`.
+	//
+	// Ia BERBEDA dari ProcessStatus, yang dibaca dari `T_CLAIM_PNC.STATUSWORK`. Diukur
+	// 2026-10-12: keduanya tidak sepakat pada 157 dari 1.360 klaim warisan. `PNC-6` contohnya —
+	// tabel bisnis berkata `Open`, Pega berkata `Resolved-Rejected`.
+	//
+	// Yang menentukan apakah masih ada pekerjaan adalah PEGA, karena dialah yang memegang
+	// assignment-nya selama masa paralel (`P-3`). Dipakai layar untuk memilih kalimat yang
+	// benar saat klaim tidak punya tugas di aplikasi ini: `sudah selesai` atau `masih
+	// dikerjakan di Pega`.
+	//
+	// Kosong berarti klaimnya tidak ada di tabel daftar Pega — bukan berarti selesai.
+	PegaWorkStatus string
+
 	TechnicalPIC string
 
 	// TKI adalah `ClaimData.TKI` — POOLDATA.T_CLAIM_PNC.STS_TKI bernilai "1". Hanya dibaca:

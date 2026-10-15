@@ -69,12 +69,7 @@ func TestStreamStopsWhenEmitFails(t *testing.T) {
 	require.Equal(t, 1, calls)
 }
 
-func TestListBusinessOptions(t *testing.T) {
-	options, err := memory.NewRepo().ListBusinessOptions(context.Background())
-	require.NoError(t, err)
-	require.Len(t, options, 3)
-	require.Equal(t, "10076", options[0].Code)
-}
+// TestListBusinessOptions dicabut 2026-10-13 bersama panel REPORT KLAIM PER BISNIS.
 
 func TestSelectorServesOnlyItsPortal(t *testing.T) {
 	selector := memory.Selector("ASM")

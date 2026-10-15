@@ -215,6 +215,23 @@ type ListResult struct {
 
 // List membaca satu halaman telusur untuk tile yang diminta.
 func (s *Service) List(ctx context.Context, q ListQuery) (ListResult, error) {
+	return s.list(ctx, q, false)
+}
+
+// ListForExport membaca halaman yang sama untuk BERKAS UNDUHAN.
+//
+// Bedanya hanya pada tile Outstanding: berkas unduhannya menggambar lima kolom yang tidak
+// ada di grid, dan kolom itu dibaca kueri tersendiri karena mahal (lihat catatan pada
+// `ClaimRow`). Ketiga tile lain membaca kueri yang sama persis — berkas unduhannya tidak
+// menggambar satu pun kolom di luar yang sudah dibaca.
+//
+// Barisnya WAJIB sama dengan List pada penyaring yang sama. Yang diunduh pengguna adalah
+// layar yang sedang dilihatnya.
+func (s *Service) ListForExport(ctx context.Context, q ListQuery) (ListResult, error) {
+	return s.list(ctx, q, true)
+}
+
+func (s *Service) list(ctx context.Context, q ListQuery, untukUnduhan bool) (ListResult, error) {
 	if _, known := dashboardclaim.ParseTile(string(q.Tile)); !known {
 		return ListResult{}, dashboardclaim.ErrTileNotFound
 	}
@@ -248,10 +265,49 @@ func (s *Service) List(ctx context.Context, q ListQuery) (ListResult, error) {
 		return result, nil
 	}
 
-	page, err := claims.ListOutstanding(ctx, filter)
+	baca := claims.ListOutstanding
+	if untukUnduhan {
+		baca = claims.ListOutstandingExport
+	}
+
+	page, err := baca(ctx, filter)
 	if err != nil {
 		return ListResult{}, fmt.Errorf("dashboardclaim/usecase: membaca daftar klaim berjalan: %w", err)
 	}
 	result.Claims = page
 	return result, nil
+}
+
+// AccessQuery adalah bahan pertanyaan "boleh membuka case atau tidak".
+type AccessQuery struct {
+	// PortalAlias menentukan basis data entitas mana yang dibaca.
+	//
+	// Grup dibaca dari portal yang SEDANG DIBUKA, bukan dari portal utama: hak atas data
+	// satu badan hukum tidak berlaku di badan hukum lain (`R-20`).
+	PortalAlias string
+
+	// Identity adalah `Caller.User.Identity`, yang sepadan dengan
+	// `POOLDATA.M_LOGIN_GROUP_PNC.LOGIN_ID`.
+	Identity string
+}
+
+// MayOpenCase menjawab apakah pengguna boleh membuka klaim untuk DIKERJAKAN.
+//
+// Pega memasang dua aksi pada sel nomor klaim dan memilih lewat When rule `IsManagerPNC`;
+// aturannya hidup di `dashboardclaim.BolehBukaCase`, bukan di sini dan bukan di layar.
+//
+// Galat DIKEMBALIKAN apa adanya beserta jawaban `false`. Pemanggil yang memilih meneruskan
+// layar tetap mendapat sisi yang aman, dan pemanggil yang memilih berhenti tetap tahu
+// sebabnya — keputusan itu miliknya, bukan milik fungsi ini.
+func (s *Service) MayOpenCase(ctx context.Context, q AccessQuery) (bool, error) {
+	claims, err := s.claims(q.PortalAlias)
+	if err != nil {
+		return false, err
+	}
+
+	grup, err := claims.GroupsOf(ctx, q.Identity)
+	if err != nil {
+		return false, fmt.Errorf("dashboardclaim/usecase: membaca grup pengguna: %w", err)
+	}
+	return dashboardclaim.BolehBukaCase(grup), nil
 }

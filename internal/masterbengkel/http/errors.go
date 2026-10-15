@@ -69,6 +69,12 @@ const (
 	// CodeUploadHalfDone: berkas terkirim tetapi catatannya gagal — JANGAN diulang.
 	CodeUploadHalfDone = "unggah_separuh_jalan"
 
+	// CodeDocumentLinkFailed: berkasnya ADA, tetapi alamat bacanya tidak dapat diterbitkan.
+	//
+	// Dibedakan dari CodeDocumentEmpty dengan sengaja: yang ini gangguan sementara dan aman
+	// diulang, sedangkan yang itu keadaan data yang tidak akan berubah dengan mengulang.
+	CodeDocumentLinkFailed = "tautan_dokumen_gagal"
+
 	// CodeUnknownStatus muncul bila status yang diminta di luar "0", "1", "2".
 	CodeUnknownStatus = "status_tidak_dikenal"
 )
@@ -178,6 +184,42 @@ func mapError(err error) (int, ErrorResponse, bool) {
 		return http.StatusNotFound, ErrorResponse{
 			Code:    CodeDocumentNotFound,
 			Message: "Bengkel ini belum punya dokumen terlampir.",
+		}, true
+
+	case errors.Is(err, masterbengkel.ErrDocumentLinkEmpty):
+		// 404, dan DIBEDAKAN dari "belum punya dokumen": barisnya ada, berkasnya yang
+		// tidak pernah tersimpan. Ini keadaan seluruh dokumen warisan Pega, dan pesannya
+		// menyebutkan sebabnya supaya pengguna tahu mengapa dokumen yang terlihat ada
+		// justru tidak dapat dibuka.
+		return http.StatusNotFound, ErrorResponse{
+			Code: CodeDocumentEmpty,
+			Message: "Berkas dokumen ini tidak tersimpan. Dokumen yang diunggah lewat sistem " +
+				"lama hanya mencatat keterangannya. Unggah ulang berkasnya bila masih dibutuhkan.",
+		}, true
+
+	case errors.Is(err, masterbengkel.ErrDocumentLinkRenewFailed):
+		// 503: berkasnya ada, yang gagal hanyalah menerbitkan alamat barunya. Mengulang
+		// beberapa saat lagi memang dapat berhasil, dan tidak ada akibat yang menumpuk.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeDocumentLinkFailed,
+			Message: "Alamat berkas tidak dapat diterbitkan karena layanan penyimpanan " +
+				"sedang tidak dapat dihubungi. Dokumennya tetap tersimpan; coba lagi beberapa saat lagi.",
+		}, true
+
+	case errors.Is(err, masterbengkel.ErrDocumentLinkUnavailable):
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeDocumentLinkFailed,
+			Message: "Keterangan penyimpanan dokumen sedang tidak dapat dibaca. " +
+				"Dokumennya tetap tersimpan; coba lagi beberapa saat lagi.",
+		}, true
+
+	case errors.Is(err, masterbengkel.ErrDocumentLinkUnsupported):
+		// 503, bukan 500: yang kurang adalah pemasangan, bukan cacat program. Sejalan
+		// dengan perlakuan UploadMisconfigured.
+		return http.StatusServiceUnavailable, ErrorResponse{
+			Code: CodeDocumentLinkFailed,
+			Message: "Pembuka dokumen belum terpasang pada lingkungan ini. " +
+				"Laporkan ke administrator.",
 		}, true
 
 	default:

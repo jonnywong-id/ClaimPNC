@@ -47,7 +47,6 @@ func bindUji() reportklaim.Filter {
 		// keduanya sama, dan tiga kueri lini-lain tidak pernah ikut diuji.
 		BusinessLine:     reportklaim.BusinessLinePA,
 		ComplianceStatus: "1",
-		BusinessCode:     "",
 
 		// FixedParam milik TOMBOL, bukan isian pengguna — dan tanpa ini `statusapprove`
 		// terkirim sebagai teks kosong, sehingga panel Data Komite selalu nol baris.
@@ -66,31 +65,11 @@ type hasilProbe struct {
 	lewati string
 }
 
-// kodeBisnisNyata mengambil satu kode bisnis yang BENAR-BENAR DIPAKAI KLAIM.
-//
-// Bukan dari daftar pilihan panelnya: daftar itu memuat seluruh isi master `business`,
-// sementara hanya sebagian kecil kode yang pernah dipakai klaim. Mengambil yang pertama
-// dari daftar pilihan menghasilkan nol baris — dan nol baris itu akan terbaca sebagai
-// cacat kueri, padahal yang salah masukan ujinya.
-//
-// Ini kekeliruan yang benar-benar terjadi pada putaran pertama probe ini.
-func kodeBisnisNyata(ctx context.Context, db *sql.DB) string {
-	var kode string
-	err := db.QueryRowContext(ctx, `
-		SELECT p.businesscode
-		  FROM pooldata.t_claim_pnc p
-		 WHERE p.businesscode IS NOT NULL
-		   AND EXISTS (SELECT 1 FROM pooldata.pega_dashboardpnc a WHERE a.noklaim = p.claimno)
-		 FETCH NEXT 1 ROW ONLY`).Scan(&kode)
-	if err != nil {
-		return ""
-	}
-	return kode
-}
+// kodeBisnisNyata berdiri di sini sampai 2026-10-13, dicabut bersama panel REPORT KLAIM
+// PER BISNIS — satu-satunya yang memakai kode bisnis sebagai bind.
 
 func jalankanProbe(ctx context.Context, db *sql.DB) error {
 	f := bindUji()
-	f.BusinessCode = kodeBisnisNyata(ctx, db)
 	rencana := sqlstore.PlansForCheck(f)
 	sort.Slice(rencana, func(i, j int) bool { return rencana[i].Name < rencana[j].Name })
 

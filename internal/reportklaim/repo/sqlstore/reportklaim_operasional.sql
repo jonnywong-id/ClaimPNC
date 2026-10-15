@@ -91,36 +91,6 @@ SELECT EXTRACT(YEAR FROM a.createdatetime)  AS "TahunPeriode",
  ORDER BY EXTRACT(YEAR FROM a.createdatetime), EXTRACT(MONTH FROM a.createdatetime)
 
 
--- name: report_komunikasi_klaim
---
--- REPORT DATA KOMUNIKASI KLAIM — 7 kolom.
---
--- Asal: `RDB List/ReportDataInboxKomunikasi_Klaim-SQL.xml`.
---
--- Tanpa bind: kuerinya mengambil SELURUH percakapan tanpa satu pun penyaring — termasuk
--- tanpa batas periode. Itu ditiru apa adanya; membubuhkan batas yang tidak ada di sistem
--- lama akan membuat berkasnya berbeda isi dari yang selama ini diterima.
---
--- # Empat kolom kueri asli tidak dipakai, dan satu alias kembar dibuang
---
--- Kueri aslinya memilih 11 kolom sementara `CSVProperties` hanya menyebut 7. Tiga
--- sisanya tidak pernah sampai ke berkas.
---
--- Yang keempat berbeda sebabnya: `sendername` dan `COMMUNICATE_FROM` sama-sama
--- dialiaskan `"UserName"`. Alias kembar berarti salah satunya menimpa yang lain, dan
--- yang menang bergantung pada urutan pembacaan driver. Yang dipakai di sini adalah
--- `sendername` — kolom "Pengirim" pada berkas lama — dan yang kembar dibuang.
-SELECT caseid           AS "pzInsKey",
-       createddate      AS "CloseClaimDate",
-       message          AS "Email",
-       sendername       AS "UserName",
-       replymessage     AS "CloseClaimNote",
-       createdatereply  AS "AnalystTransferDate",
-       replyfromname    AS "UserAdmin"
-  FROM pooldata.m_komunikasi_pnc
- ORDER BY createddate DESC
-
-
 -- name: report_mitra
 --
 -- Produktivitas mitra — satu baris per penugasan, beserta empat kolom rekapitulasi
@@ -419,3 +389,11 @@ SELECT a.CLAIMNO AS "CaseID",
    AND a.REGISTERDATE >= :1
    AND a.REGISTERDATE < :2 + INTERVAL '1' DAY
  ORDER BY a.REGISTERDATE, a.CLAIMNO
+
+-- ============================================================================
+-- Kueri yang DICABUT 2026-10-13
+-- ============================================================================
+--
+-- Panel pemiliknya tidak ada di Pega produksi, dan Work Owner menetapkan migrasi
+-- mengikuti produksi. Yang dicabut dari berkas ini:
+----   report_komunikasi_klaim

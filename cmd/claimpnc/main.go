@@ -431,6 +431,13 @@ func run() error {
 		"periksa integrasi basis data dan HCC/HCQ lalu berhenti; tidak menulis apa pun")
 	testLogin := flag.String("login", "",
 		"nama pengguna yang dicoba pada mode periksa; kata sandinya dibaca dari stdin")
+
+	// Mode uji unggah dipisahkan dari -periksa dengan sengaja: ia MENULIS. Lihat
+	// ujiunggah.go.
+	uploadProbe := flag.Bool("uji-unggah", false,
+		"kirim satu berkas percobaan ke layanan penyimpanan lalu berhenti; MENULIS")
+	uploadPortal := flag.String("portal", "",
+		"portal yang dipakai mode uji-unggah; kosong berarti portal utama")
 	flag.Parse()
 
 	if err := config.LoadEnvFile(defaultEnvFile); err != nil {
@@ -443,6 +450,14 @@ func run() error {
 
 	if *checkMode {
 		return check(cfg, *testLogin, os.Stdin, os.Stdout)
+	}
+
+	if *uploadProbe {
+		portalAlias := strings.ToUpper(strings.TrimSpace(*uploadPortal))
+		if portalAlias == "" {
+			portalAlias = cfg.PrimaryPortal
+		}
+		return ujiUnggah(cfg, portalAlias, os.Stdout)
 	}
 
 	logger := logging.New(slog.LevelInfo)
@@ -2046,8 +2061,9 @@ func run() error {
 				return dashboardclaimhttp.Caller{}, false
 			}
 			return dashboardclaimhttp.Caller{
-				Login: baseCtx.User.Login,
-				Name:  baseCtx.User.Name,
+				Login:    baseCtx.User.Login,
+				Name:     baseCtx.User.Name,
+				Identity: baseCtx.User.Identity,
 			}, true
 		},
 		Logger:        logger,
@@ -3020,6 +3036,14 @@ type assembly struct {
 	// inputReqProtection melayani layar Input Req Protection — permintaan pembukaan
 	// proteksi beserta form inputnya.
 	inputReqProtection *inputreqprotectionusecase.Service
+
+	// dokumenPenunjangRepos dipakai mode `-uji-unggah` untuk melaporkan folder penyimpanan
+	// yang SEBENARNYA dibaca dari `GENERAL.T_FOLDER_STORAGE`.
+	//
+	// Ia disimpan terpisah dari layanannya karena diagnosa perlu membandingkan folder tabel
+	// dengan folder yang benar-benar dipakai — dan perbedaan keduanya persis yang menahan
+	// seluruh jalur unggah pada 2026-10-14.
+	dokumenPenunjangRepos dokumenpenunjang.RepoSelector
 
 	// dokumenPenunjang melayani unggah dan daftar dokumen penunjang KLAIM.
 	//
@@ -4655,8 +4679,17 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 			Clock:          clock.System{},
 			SkipConversion: cfg.DocumentStorage.SkipConversion,
 			AccessCode:     cfg.DocumentStorage.AccessCode,
+			FolderName:     cfg.DocumentStorage.FolderName,
 		},
 	)
+	if cfg.DocumentStorage.FolderName != "" {
+		// Dicatat keras-keras: selama penimpa ini aktif, berkas TIDAK mendarat di folder
+		// yang ditunjuk `T_FOLDER_STORAGE` — dan itu berarti berbeda dari Pega.
+		logger.Warn("folder penyimpanan dokumen ditimpa konfigurasi; tabel T_FOLDER_STORAGE diabaikan",
+			slog.String("folder", cfg.DocumentStorage.FolderName),
+			slog.String("penanda", "PENYIMPANAN_DOKUMEN_FOLDER"),
+			slog.String("akibat", "berkas mendarat di folder ini, bukan di folder yang dibaca Pega"))
+	}
 	if cfg.DocumentStorage.AccessCode != "" {
 		logger.Info("unggah dokumen memakai kode akses terdaftar; token sekali pakai tidak dibuat",
 			slog.String("penanda", "PENYIMPANAN_DOKUMEN_KODE_AKSES"))
@@ -4838,6 +4871,7 @@ func build(cfg config.Config, logger *slog.Logger) (assembly, error) {
 		inputReqProtection:        protectionRequestService,
 		inboxAcceptOpenProtection: protectionAcceptService,
 		dokumenPenunjang:          documentService,
+		dokumenPenunjangRepos:     store.dokumenPenunjangSelector,
 		inboxCloseClaim:           closeClaimService,
 		dashboardClaim:            dashboardClaimService,
 		registrasi:                registrationService,

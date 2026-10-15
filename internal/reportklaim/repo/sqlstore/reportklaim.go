@@ -236,16 +236,11 @@ var plans = map[reportklaim.Code]plan{
 		komiteDerive),
 
 	// ---- kelompok Lini Bisnis & Mitra Kerja Sama ----
-	reportklaim.CodeKlaimHE:             fixed("report_klaim_he", dateOnly),
-	reportklaim.CodeRegistSimasOnline:   fixed("report_regist_simas_online", noArgs),
-	reportklaim.CodeKlaimAsuransiKredit: fixed("report_klaim_asuransi_kredit", dateOnly),
-	reportklaim.CodeKlaimPerBisnis:      fixed("report_klaim_per_bisnis", businessCodeArgs),
-	reportklaim.CodeKlaimTraveloka:      fixed("report_klaim_traveloka", dateOnly),
-	reportklaim.CodeKlaimPegiPegi:       fixed("report_klaim_pegipegi", dateOnly),
+	reportklaim.CodeKlaimHE:           fixed("report_klaim_he", dateOnly),
+	reportklaim.CodeRegistSimasOnline: fixed("report_regist_simas_online", noArgs),
 
 	// ---- kelompok Operasional ----
 	reportklaim.CodeProduksiKlaimPA: {query: satu("report_produksi_klaim_pa"), args: dateOnly, derive: staticDerive(derivePeriodeProduksiPA)},
-	reportklaim.CodeKomunikasiKlaim: fixed("report_komunikasi_klaim", noArgs),
 
 	// Satu-satunya laporan yang menyaring BARIS lewat koneksi kedua — lihat mitraKeep.
 	reportklaim.CodeMitra: {query: satu("report_mitra"), args: dateOnly, keep: mitraKeep},
@@ -283,10 +278,6 @@ func closeNonMBUArgs(pending string) func(reportklaim.Filter) []any {
 		// yang salah tanpa galat apa pun.
 		return []any{pending, pending, f.From, f.To}
 	}
-}
-
-func businessCodeArgs(f reportklaim.Filter) []any {
-	return []any{f.BusinessCode}
 }
 
 // holidayCalendar membaca kalender libur untuk satu rentang laporan.
@@ -459,27 +450,9 @@ func (r *Repo) Stream(
 	return rows.Err()
 }
 
-// ListBusinessOptions membaca isi autocomplete "Bisnis".
-func (r *Repo) ListBusinessOptions(ctx context.Context) ([]reportklaim.BusinessOption, error) {
-	rows, err := r.db.QueryContext(ctx, getQuery("report_business_options"))
-	if err != nil {
-		return nil, fmt.Errorf("reportklaim/sqlstore: membaca pilihan bisnis: %w", err)
-	}
-	defer rows.Close()
-
-	var out []reportklaim.BusinessOption
-	for rows.Next() {
-		var code, name sql.NullString
-		if err := rows.Scan(&code, &name); err != nil {
-			return nil, fmt.Errorf("reportklaim/sqlstore: memindai pilihan bisnis: %w", err)
-		}
-		out = append(out, reportklaim.BusinessOption{
-			Code: strings.TrimSpace(code.String),
-			Name: strings.TrimSpace(name.String),
-		})
-	}
-	return out, rows.Err()
-}
+// ListBusinessOptions berdiri di sini sampai 2026-10-13. Ia mengisi autocomplete "Bisnis"
+// milik panel REPORT KLAIM PER BISNIS — satu-satunya pemakainya — dan dicabut bersama
+// panel itu, yang tidak ada di Pega produksi.
 
 // text mengubah satu sel hasil kueri menjadi teks yang siap ditulis ke CSV.
 //

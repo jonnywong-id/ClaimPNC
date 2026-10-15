@@ -74,14 +74,8 @@ func (s *Service) Now() time.Time { return s.clock.Now() }
 // berarti melatih ulang tanpa ada yang meminta (`D-13`).
 func (s *Service) Catalog() []reportklaim.Report { return reportklaim.CatalogInPegaOrder() }
 
-// BusinessOptions mengembalikan isi autocomplete "Bisnis" milik satu portal.
-func (s *Service) BusinessOptions(ctx context.Context, portalAlias string) ([]reportklaim.BusinessOption, error) {
-	repo, err := s.repoSelector(portalAlias)
-	if err != nil {
-		return nil, err
-	}
-	return repo.ListBusinessOptions(ctx)
-}
+// BusinessOptions berdiri di sini sampai 2026-10-13, lalu dicabut bersama panel REPORT
+// KLAIM PER BISNIS — satu-satunya pemakainya, dan ia tidak ada di Pega produksi.
 
 // ExportRequest adalah satu permintaan unduh berkas.
 type ExportRequest struct {

@@ -34,17 +34,20 @@ import (
 // saja akan membuat dua gaya jalur hidup berdampingan. Penyeragamannya dicatat sebagai
 // utang teknis, bukan diselesaikan sepihak di satu modul.
 //
-// # Urutan pendaftaran
+// # Satu rute yang dicabut
 //
-// `/pilihan-bisnis` didaftarkan SEBELUM `/{kode}/ekspor`. Keduanya tidak benar-benar
-// bertabrakan karena bentuknya berbeda, tetapi urutan ini menjaga agar penambahan rute
-// satu segmen berikutnya tidak diam-diam terbaca sebagai kode laporan.
+// `/report-klaim/pilihan-bisnis` berdiri di sini sampai 2026-10-13, mengisi autocomplete
+// "Bisnis" milik panel REPORT KLAIM PER BISNIS. Panelnya tidak ada di Pega produksi,
+// sehingga rutenya ikut dicabut — bukan dibiarkan menjawab daftar kosong.
+//
+// Peringatan urutan yang dulu tertulis di sini ikut hilang bersamanya: ia menjaga agar
+// rute satu segmen tidak terbaca sebagai kode laporan. Bila kelak ada rute satu segmen
+// lagi, ia harus didaftarkan SEBELUM `/{kode}/ekspor` dengan alasan yang sama.
 func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 	r.Group(func(perPortal chi.Router) {
 		perPortal.Use(portalhttp.ActivePortal(portalDeps))
 
 		perPortal.Get("/report-klaim", h.Catalog)
-		perPortal.Get("/report-klaim/pilihan-bisnis", h.BusinessOptions)
 		perPortal.Get("/report-klaim/{kode}/ekspor", h.Export)
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"claim-pnc/internal/dashboardclaim"
 )
@@ -129,7 +130,7 @@ func scanSurveyRow(s scanner) (dashboardclaim.SurveyRow, error) {
 
 	row := dashboardclaim.SurveyRow{
 		SurveyID:        text(surveyID),
-		SurveyNumber:    text(surveyNumber),
+		SurveyNumber:    nomorSurveiTerbaca(text(surveyNumber)),
 		ClaimNumber:     text(claimNumber),
 		PolicyNumber:    text(policyNumber),
 		InsuredName:     text(insuredName),
@@ -146,4 +147,52 @@ func scanSurveyRow(s scanner) (dashboardclaim.SurveyRow, error) {
 		row.AssignedAt = assignedAt.Time
 	}
 	return row, nil
+}
+
+// CheckSurveyReadable membuktikan kedua tile survei dapat dibaca akun aplikasi.
+//
+// Dipanggil `claimpnc -periksa`. Ia ADA karena ketiadaannya pernah berakibat: pada
+// 2026-10-08 kedua kueri survei gagal `ORA-00904` sementara seluruh probe menjawab hijau,
+// karena tidak satu pun menyentuh kueri survei. Satu kueri gagal membuat `/ringkasan`
+// menjawab 500 dan KEEMPAT kartu menampilkan 0 — termasuk Outstanding yang sehat.
+//
+// Probe-nya menggabung `T_SURVEYORLIST` ke `T_CLAIMLIST_ADMIN`, bukan membaca salah satunya
+// saja: yang baru pada jalur ini bukan hanya tabelnya melainkan TAUTANNYA, dan tautan yang
+// tidak diuji adalah tautan yang belum terbukti.
+func (r *Repo) CheckSurveyReadable(ctx context.Context) error {
+	if _, err := r.db.ExecContext(ctx, query("survey_check")); err != nil {
+		return fmt.Errorf(
+			"berkas survei tidak terbaca akun aplikasi — periksa POOLDATA.T_SURVEYORLIST "+
+				"dan tautannya PNCCASEID = POOLDATA.T_CLAIMLIST_ADMIN.PZINSKEY: %w", err)
+	}
+	return nil
+}
+
+// nomorSurveiTerbaca membuang prefix kelas Pega dari `T_SURVEYORLIST.CASEID`.
+//
+//	ASM-FW-GCNMFW-WORK CLMS-123   ->  CLMS-123     berkas warisan Pega
+//	CLMS-123                      ->  CLMS-123     tidak ada spasi, dikembalikan apa adanya
+//
+// Kunci teknis Pega memuat nama kelas internal, dan `D-22` menetapkannya tidak dibawa ke
+// layar — itu persis utang teknis §4.1 (kunci teknis bocor ke data bisnis).
+//
+// # Kenapa di Go, bukan di SQL
+//
+// Bentuk yang terpikir lebih dulu `SUBSTR(CASEID, INSTR(CASEID,' ') + 1)`. `INSTR` ada di
+// daftar pola terlarang `09-DATABASE-STRATEGY.md` §4, dan penggantinya yang disebut di sana
+// — `POSITION(x IN y)` — **ditolak Oracle**. Keduanya sudah dicoba di sini dan gagal:
+//
+//	INSTR     -> ditolak TestNoForbiddenSQLPatterns
+//	POSITION  -> ORA-00907: missing right parenthesis
+//
+// Modul `inputreqprotection` menempuh jalan yang sama lebih dulu dan mencatat sebabnya di
+// `protection.sql`. Memotongnya di Go juga yang benar menurut `D-20`: pemformatan tampilan
+// tidak dikerjakan di SQL.
+//
+// `ID_SURVEY` tetap membawa kunci utuhnya — ia kunci baris di antarmuka, bukan untuk dibaca.
+func nomorSurveiTerbaca(kunci string) string {
+	if i := strings.LastIndex(kunci, " "); i >= 0 {
+		return kunci[i+1:]
+	}
+	return kunci
 }

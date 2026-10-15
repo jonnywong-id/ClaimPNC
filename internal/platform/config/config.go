@@ -436,6 +436,24 @@ type DocumentStorage struct {
 	// pakai dengan "invalid kodestring data" (2026-09-30). Rahasia: tidak pernah dicatat.
 	AccessCode string
 
+	// FolderName (PENYIMPANAN_DOKUMEN_FOLDER) MENIMPA nama folder penyimpanan yang
+	// biasanya dibaca dari `GENERAL.T_FOLDER_STORAGE WHERE APLIKASI='KLAIMPNC'`.
+	//
+	// # Kenapa ini ada, dan kapan dipakai
+	//
+	// Baris tabel itu dibaca Pega JUGA. Mengubahnya untuk keperluan kita berarti mengubah
+	// perilaku sistem yang sedang melayani produksi, dan itu menempuh `D-63`. Penimpa ini
+	// memberi jalan keluar yang tidak menyentuh satu baris pun milik Pega.
+	//
+	// Diperiksa 2026-10-14: tabel itu menjawab folder UJI, sementara 2.050 dokumen yang
+	// sudah tersimpan ada di folder produksi. Layanan penyimpanan menolak unggahan ke
+	// folder uji dengan "invalid kodestring data" karena kode aksesnya belum didaftarkan
+	// pemiliknya, sehingga seluruh jalur unggah tertahan di sana.
+	//
+	// Kosong = baca tabel, persis seperti Pega. Itu yang baku, dan yang seharusnya berlaku
+	// kembali setelah folder uji didaftarkan.
+	FolderName string
+
 	// Timeout membatasi satu unggahan maupun satu konversi. Kosong berarti 60 detik.
 	Timeout time.Duration
 }
@@ -907,6 +925,7 @@ func Load() (Config, error) {
 			ConverterURL:   get("KONVERSI_GAMBAR_ALAMAT", DefaultImageConverterURL),
 			SkipConversion: isTrue(os.Getenv("KONVERSI_GAMBAR_LEWATI")),
 			AccessCode:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_KODE_AKSES")),
+			FolderName:     strings.TrimSpace(os.Getenv("PENYIMPANAN_DOKUMEN_FOLDER")),
 			Timeout:        documentStorageTimeout,
 		},
 		AuctionHouse: AuctionHouse{

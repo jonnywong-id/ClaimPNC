@@ -128,6 +128,68 @@ func (h *Handler) Document(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DocumentLink menangani GET /master/bengkel/{id}/dokumen/tautan.
+//
+// Padanan tombol lihat dokumen pada `Section/ApprovalMasterBengkelHE`, yang di Pega
+// membuka flow action `ViewDocumentMasterBengkel` (@baseclass 01-01-89).
+//
+// # Kenapa alamatnya endpoint tersendiri, bukan ikut di GET .../dokumen
+//
+// Alamat berkas bermasa berlaku, dan menerbitkannya menempuh layanan penyimpanan serta
+// pencatatan izin akses. Menyertakannya pada metadata berarti membayar biaya itu setiap
+// kali layar dibuka — termasuk bagi bengkel yang dokumennya tidak akan dibuka siapa pun —
+// sekaligus menyerahkan alamat yang sudah kedaluwarsa sejak layar digambar.
+func (h *Handler) DocumentLink(w http.ResponseWriter, r *http.Request) {
+	active, exists := portalhttp.ActivePortalFrom(r.Context())
+	if !exists {
+		h.writeModuleError(w, r, portal.ErrNotStated)
+		return
+	}
+
+	by, known := h.caller(r.Context())
+	if !known {
+		h.writeError(w, r, errors.New("masterbengkel/http: identitas pemanggil tidak ada di konteks"))
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.writeModuleError(w, r, masterbengkel.ErrNotFound)
+		return
+	}
+
+	link, err := h.service.DocumentLink(r.Context(), active.Alias, id,
+		usecase.Actor{Login: by.Login})
+	if err != nil {
+		h.writeModuleError(w, r, err)
+		return
+	}
+
+	validUntil := ""
+	if !link.ExpiresAt.IsZero() {
+		validUntil = link.ExpiresAt.Format(time.RFC3339)
+	}
+
+	h.writeResponse(w, r, http.StatusOK, DocumentLinkResponse{
+		URL:           link.URL,
+		BerlakuSampai: validUntil,
+		Portal:        active.Alias,
+	})
+}
+
+// DocumentLinkResponse adalah jawaban endpoint alamat berkas.
+//
+// Nama fieldnya bahasa Indonesia — ia KONTRAK, bukan nama internal (`D-80`).
+type DocumentLinkResponse struct {
+	URL string `json:"url"`
+
+	// BerlakuSampai kosong berarti metadata tidak mencatat masa berlakunya. Layar
+	// menampilkannya apa adanya, bukan menyimpulkan alamatnya kedaluwarsa.
+	BerlakuSampai string `json:"berlaku_sampai"`
+
+	Portal string `json:"portal"`
+}
+
 // readDocument menyiapkan satu dokumen untuk endpoint pembacanya.
 func (h *Handler) readDocument(w http.ResponseWriter, r *http.Request) (masterbengkel.Document, string, bool) {
 	active, exists := portalhttp.ActivePortalFrom(r.Context())

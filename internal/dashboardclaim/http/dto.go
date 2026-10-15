@@ -226,6 +226,21 @@ type metadataResponse struct {
 	TipePengguna   []choiceDTO `json:"tipe_pengguna"`
 	Tile           []tileDTO   `json:"tile"`
 	Portal         string      `json:"portal"`
+
+	// BolehBukaCase menentukan link mana yang dipasang pada nomor klaim.
+	//
+	//	true   buka klaim untuk DIKERJAKAN — seperti link open case di My Inbox
+	//	false  popup rincian, BACA SAJA
+	//
+	// Pega memasang dua aksi pada sel yang sama dan memilih lewat When rule `IsManagerPNC`
+	// (`Section/DashboardClaimShow_Sec1`). Keputusannya dibuat di SERVER, bukan dikirim
+	// berupa daftar grup lalu dinilai ulang di layar: aturan yang disalin ke dua tempat
+	// adalah aturan yang kelak berbeda di dua tempat.
+	//
+	// Yang dikirim karena itu jawabannya saja, bukan grup penggunanya — nama grup tidak
+	// menambah apa pun bagi layar, dan setiap data yang dikirim tanpa dipakai hanya
+	// memperluas yang bocor bila jawabannya dibaca orang lain.
+	BolehBukaCase bool `json:"boleh_buka_case"`
 }
 
 // choiceDTO adalah satu pilihan pada dropdown.

@@ -26,6 +26,15 @@ const maxTransferBodyBytes = 4 << 10
 type Caller struct {
 	Login string
 	Name  string
+
+	// Identity adalah kunci alami pengguna di sistem identitas, dan bagi pengguna
+	// `POOLDATA.M_LOGIN_PNC` ia sepadan dengan `LOGIN_ID` (`internal/auth/identity.go:15`).
+	//
+	// Dipakai HANYA untuk membaca grup akses dari `M_LOGIN_GROUP_PNC`. `Login` tidak dipakai
+	// untuk itu: keduanya sering bernilai sama, tetapi yang dijanjikan sepadan dengan
+	// `LOGIN_ID` adalah `Identity` — dan memakai yang "biasanya sama" pada pemeriksaan hak
+	// akses berarti hak yang hilang diam-diam pada pengguna yang kebetulan berbeda.
+	Identity string
 }
 
 // transferRequestDTO adalah badan permintaan POST /dashboard-claim/transfer.

@@ -22,8 +22,8 @@ type Code string
 //
 // # Ia TIDAK ada di sistem lama, dan itu disengaja
 //
-// Harness lama menumpuk ke-28 panel dalam satu kolom tanpa pengelompokan apa pun. Pada
-// layar yang dapat digulir itu berarti mencari satu laporan berarti membaca 28 judul
+// Layar Pega menyusun ke-23 panelnya dalam dua kolom tanpa pengelompokan apa pun. Pada
+// layar yang dapat digulir itu berarti mencari satu laporan berarti membaca 23 judul
 // berurutan.
 //
 // Pengelompokan ini karena itu **penambahan yang disadari**, bukan hasil pembacaan rule.
@@ -73,7 +73,7 @@ func GroupLabel(g Group) string {
 // Source adalah jejak ke rule Pega yang menjadi asal satu laporan.
 //
 // Ia ikut dikirim ke layar dan ikut diuji. Alasannya bukan kerapian: modul ini menyalin
-// 28 kueri beserta ~700 kolom, dan satu-satunya cara menyanggah "kolom ini dari mana"
+// puluhan kueri beserta ratusan kolom, dan satu-satunya cara menyanggah "kolom ini dari mana"
 // adalah menunjuk berkasnya. Tanpa jejak ini, pertanyaan itu hanya dapat dijawab dengan
 // menelusuri ulang export 1,1 MiB.
 type Source struct {
@@ -190,12 +190,36 @@ type Report struct {
 	// hasilnya salah.
 	Uses FilterSet
 
+	// DetailDefault adalah keadaan AWAL kotak centang "Treaty" pada kartu ini.
+	//
+	// # Kenapa ia per kartu, bukan satu nilai bersama
+	//
+	// Karena di Pega memang begitu, dan ketiganya berbeda. Terbaca dari layar produksi
+	// 2026-10-13:
+	//
+	//	REPORT AKSEPTASI        tercentang
+	//	REPORT OS KOMITE        kosong
+	//	REPORT OS BELUM KOMITE  tercentang
+	//
+	// # Kenapa nilainya dikirim peladen, bukan ditulis di layar
+	//
+	// Ia pengetahuan tentang sistem lama, dan itu milik backend — sama seperti label
+	// tombol dan nama rule asalnya.
+	//
+	// # Kenapa ini bukan soal kenyamanan
+	//
+	// Kotak centang ini memilih SUSUNAN KOLOM berkas, bukan menyaring baris. Keadaan
+	// awal yang salah berarti berkas yang diunduh tanpa pengguna menyentuh apa pun
+	// punya susunan kolom yang berbeda dari Pega — selisih yang tidak terlihat sampai
+	// seseorang membandingkan kedua berkasnya berdampingan.
+	DetailDefault bool
+
 	Source       Source
 	Availability Availability
 
 	// variants menyusun kolom keluaran menurut penyaring yang berlaku.
 	//
-	// Sembilan dari 28 laporan punya lebih dari satu susunan kolom — sistem lama memilih
+	// Sembilan dari 23 laporan punya lebih dari satu susunan kolom — sistem lama memilih
 	// langkah `pxConvertResultsToCSV` yang berbeda lewat precondition. Ia disimpan
 	// tertutup dan dibaca lewat Columns supaya tidak ada pemanggil yang mengambil susunan
 	// yang keliru dengan memilih indeks sendiri.

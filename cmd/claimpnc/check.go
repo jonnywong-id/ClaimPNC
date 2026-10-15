@@ -1416,6 +1416,33 @@ func checkAssembledModules(ctx context.Context, primary *sql.DB, print func(stri
 		{"Dashboard Claim (rincian klaim)",
 			dashboardClaim.CheckClaimDetailReadable, nil},
 
+		// Dashboard Claim — kedua tile survei, yang sejak 2026-10-12 membaca
+		// POOLDATA.T_SURVEYORLIST dan bukan lagi baris anak di tabel kerja Pega.
+		//
+		// Probe ini ADA karena ketiadaannya pernah berakibat: pada 2026-10-08 kedua kueri
+		// survei gagal ORA-00904 sementara SELURUH probe menjawab hijau, karena tidak satu
+		// pun menyentuh kueri survei. Satu kueri gagal membuat /ringkasan menjawab 500 dan
+		// KEEMPAT kartu menampilkan 0 — termasuk Outstanding yang sebenarnya sehat.
+		{"Dashboard Claim (berkas survei)",
+			dashboardClaim.CheckSurveyReadable, nil},
+
+		// Dashboard Claim — grup akses, yang menentukan nomor klaim dipasang sebagai link
+		// "buka case" atau popup baca-saja.
+		//
+		// Tanpa probe ini, tabel yang tidak terbaca membuat SETIAP pengguna jatuh ke
+		// baca-saja — gejala yang tidak dapat dibedakan dari "memang tidak berhak", dan
+		// karena itu tidak akan pernah dilaporkan sebagai cacat.
+		{"Dashboard Claim (grup akses pengguna)",
+			dashboardClaim.CheckGroupsReadable, nil},
+
+		// Dashboard Claim — tujuh tabel isi popup rincian.
+		//
+		// Sejak 2026-10-12 isinya dibaca dari tabel relasional, bukan dari dokumen JSON
+		// (keputusan Work Owner). Satu probe untuk tujuh tabel: yang diperiksa parse-nya,
+		// dan tujuh baris keluaran tidak membuktikan lebih banyak daripada satu.
+		{"Dashboard Claim (isi rincian klaim)",
+			dashboardClaim.CheckDetailSectionsReadable, nil},
+
 		// Kueri daftarnya ikut dijalankan, dan di modul ini pembedaan itu justru paling
 		// berharga: kueri grid aslinya TIDAK ADA di export (`R-16`) dan disusun ulang dari
 		// tiga rule sekelas — lihat kepala inboxservicecenter.sql. Nama kolom yang meleset
@@ -3149,15 +3176,14 @@ func checkGroupingPanelNameColumn(
 	switch {
 	case asPanel >= rows && asLocation < rows:
 		print("  [ok]    NAMA berisi NAMA PANEL. Daftar Sisi layar ini akan terisi.")
-		print("            KONSEKUENSI UNTUK MASTER PANEL: jalur tulisnya mengisi NAMA")
-		print("            dengan nama LOKASI, dan itu akan MEMATIKAN daftar Sisi di sini")
-		print("            tanpa satu pun pesan galat. Bawa temuan ini ke Work Owner")
-		print("            sebelum jalur tulis Master Panel dinyalakan di produksi.")
+		print("            Sejalan dengan jalur tulis Master Panel sejak koreksi")
+		print("            2026-10-14, yang mengisi NAMA dengan nama panel induknya.")
 	case asLocation >= rows && asPanel < rows:
-		print("  [ok]    NAMA berisi NAMA LOKASI. Asumsi Master Panel TERBUKTI.")
-		print("            KONSEKUENSI UNTUK MODUL INI: daftar Sisi TIDAK akan terisi,")
-		print("            karena nilai yang dikirimkannya adalah nama PANEL. Kueri")
-		print("            grouping_side_list harus ditinjau sebelum layar dipakai.")
+		print("  [WASPADA] NAMA berisi NAMA LOKASI pada seluruh baris.")
+		print("            Daftar Sisi layar ini TIDAK akan terisi, karena nilai yang")
+		print("            dikirimkannya adalah nama PANEL. Seluruh barisnya warisan")
+		print("            sebelum koreksi 2026-10-14; menyimpan ulang panelnya lewat")
+		print("            layar Master Panel akan membetulkannya satu per satu.")
 	case asPanel >= rows && asLocation >= rows:
 		print("  [ok]    Keduanya sama — nama panel dan nama lokasinya memang sepadan pada")
 		print("            seluruh baris, sehingga kedua pembacaan menghasilkan hal yang")
@@ -5903,22 +5929,21 @@ func checkPanelLocation(ctx context.Context, repo *masterpanelsql.Repo, print fu
 
 	mismatch, err := repo.CountLocationNameMismatch(ctx)
 	if err != nil {
-		print("  [catat] kolom NAMA tidak dapat dibandingkan dengan LOKASI_PANEL: %v", err)
+		print("  [catat] kolom NAMA tidak dapat dibandingkan dengan nama panel induk: %v", err)
 		return
 	}
 
 	switch {
 	case mismatch == 0:
-		print("  [ok]    kolom NAMA sama dengan LOKASI_PANEL pada seluruh %d baris", total)
-		print("            Asumsi penulisan modul ini TERBUKTI untuk data yang ada:")
-		print("            panel_location_insert mengisi keduanya dengan nilai yang sama.")
+		print("  [ok]    kolom NAMA berisi nama panel induknya pada seluruh %d baris", total)
+		print("            Daftar Sisi modul Grouping Sparepart akan menemukan barisnya.")
 	default:
-		print("  [WASPADA] %d dari %d baris punya NAMA yang BERBEDA dari LOKASI_PANEL", mismatch, total)
-		print("            Asumsi penulisan modul ini SALAH: keduanya dua hal berbeda.")
-		print("            JANGAN aktifkan jalur tulis sebelum masterpanel.sql diperbaiki —")
-		print("            penulisan sekarang akan merusak kolom yang dibaca modul")
-		print("            Grouping Sparepart lewat RDB List/GetDataSisiPanel-SQL.xml.")
-		print("            Mintakan DDL kedua tabel ke DBA (R-08).")
+		print("  [WASPADA] %d dari %d baris punya NAMA yang BUKAN nama panel induknya", mismatch, total)
+		print("            Daftar Sisi modul Grouping Sparepart TIDAK akan menemukan baris")
+		print("            itu, dan layarnya tampak kosong tanpa satu pun pesan galat —")
+		print("            `grouping_side_list` menyaring UPPER(TRIM(NAMA)) = nama panel.")
+		print("            Baris warisan sebelum koreksi 2026-10-14 memang berisi nama")
+		print("            LOKASI; menyimpan ulang panelnya lewat layar akan membetulkannya.")
 	}
 }
 

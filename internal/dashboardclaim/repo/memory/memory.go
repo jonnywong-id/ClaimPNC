@@ -61,6 +61,11 @@ type Repo struct {
 	// Disimpan TERPISAH dari claims, bukan disaring darinya: di produksi keduanya memang
 	// dibaca kueri yang berbeda dengan syarat yang berbeda.
 	holding []dashboardclaim.HoldingRow
+
+	// grup adalah grup akses per identitas pengguna, untuk mode tanpa basis data.
+	//
+	// Kosong berarti BACA SAJA — lihat GroupsOf.
+	grup map[string][]dashboardclaim.Grup
 }
 
 // NewRepo membentuk penyimpanan memori.
@@ -92,9 +97,43 @@ func (r *Repo) ListOutstanding(_ context.Context, f dashboardclaim.Filter) (dash
 
 	rows := make([]dashboardclaim.ClaimRow, 0, f.Limit)
 	for _, record := range paginate(len(matched), f) {
-		rows = append(rows, matched[record].Row)
+		rows = append(rows, kosongkanKolomUnduhan(matched[record].Row))
 	}
 	return dashboardclaim.ClaimPage{Rows: rows, Total: len(matched)}, nil
+}
+
+// ListOutstandingExport membaca halaman yang sama BESERTA lima kolom berkas unduhan.
+//
+// Di sini keduanya membaca catatan yang sama; yang membedakan hanyalah kolom mana yang
+// dibiarkan terisi. Itu menirukan sisi SQL, tempat perbedaannya memang hanya kolom.
+func (r *Repo) ListOutstandingExport(ctx context.Context, f dashboardclaim.Filter) (dashboardclaim.ClaimPage, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	f = f.Normalize()
+	matched := r.matchingClaims(f)
+
+	rows := make([]dashboardclaim.ClaimRow, 0, f.Limit)
+	for _, record := range paginate(len(matched), f) {
+		rows = append(rows, matched[record].Row)
+	}
+	_ = ctx
+	return dashboardclaim.ClaimPage{Rows: rows, Total: len(matched)}, nil
+}
+
+// kosongkanKolomUnduhan membuang kelima kolom yang hanya dibaca jalur unduhan.
+//
+// Ganda-uji ini MENIRUKAN perbedaan itu alih-alih mengabaikannya. Bila ia mengembalikan
+// kolom yang sama penuhnya untuk kedua jalur, uji yang keliru memakai ListOutstanding untuk
+// berkas unduhan akan tetap lulus di sini lalu menghasilkan sel kosong di Oracle — dan
+// justru perbedaan inilah yang perlu terlihat saat uji, bukan saat produksi.
+func kosongkanKolomUnduhan(row dashboardclaim.ClaimRow) dashboardclaim.ClaimRow {
+	row.TSI = ""
+	row.EstimateIDR = ""
+	row.OriginUser = ""
+	row.AssignedOperator = ""
+	row.TransferredToPICAt = nil
+	return row
 }
 
 // CountSurvey menghitung survei menurut jenis surveyornya.
@@ -334,4 +373,28 @@ func (r *Repo) ListHolding(_ context.Context, f dashboardclaim.Filter) (dashboar
 		rows = append(rows, matched[index])
 	}
 	return dashboardclaim.HoldingPage{Rows: rows, Total: len(matched)}, nil
+}
+
+// GroupsOf membaca grup akses pengguna — versi memori.
+//
+// Mengembalikan grup yang didaftarkan lewat SetGroups. Tanpa pendaftaran, ia mengembalikan
+// daftar KOSONG, yang berarti BACA SAJA.
+//
+// Nilai bawaannya sengaja yang paling sempit, bukan yang paling longgar: mode memori dipakai
+// untuk mencoba layar tanpa basis data, dan mode coba yang memberi hak lebih besar daripada
+// produksi akan menyembunyikan justru cacat yang paling mahal.
+func (r *Repo) GroupsOf(_ context.Context, identity string) ([]dashboardclaim.Grup, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return append([]dashboardclaim.Grup(nil), r.grup[strings.TrimSpace(identity)]...), nil
+}
+
+// SetGroups mendaftarkan grup satu pengguna untuk mode memori.
+func (r *Repo) SetGroups(identity string, grup ...dashboardclaim.Grup) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.grup == nil {
+		r.grup = map[string][]dashboardclaim.Grup{}
+	}
+	r.grup[strings.TrimSpace(identity)] = append([]dashboardclaim.Grup(nil), grup...)
 }

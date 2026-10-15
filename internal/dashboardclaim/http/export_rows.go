@@ -1,79 +1,100 @@
 package dashboardclaimhttp
 
 import (
-	"strconv"
 	"time"
 
 	"claim-pnc/internal/dashboardclaim"
 )
 
-// Judul kolom unduhan mengikuti judul kolom LAYAR, bukan nama kolom basis data.
+// ============================================================================
+// SUSUNAN KOLOM BERKAS UNDUHAN — EMPAT TILE, EMPAT SUSUNAN
+// ============================================================================
 //
-// Yang membuka berkasnya adalah orang yang sama yang membaca layarnya, dan ia mencari judul
-// yang dikenalnya (`D-13`). Nama kolom Oracle justru menyulitkan: `USERTEKNIS_1` tidak
-// berarti apa-apa bagi pembacanya.
-
-// claimExportHeader adalah judul kolom unduhan kedua tile bertipe klaim.
+// Keempatnya DISALIN dari berkas unduhan Pega, bukan dikarang: judul kolomnya, urutannya,
+// jumlahnya, dan bahasanya. Sumber tiap susunan ada di parameter `pxConvertResultsToCSV`
+// pada activity-nya, tempat `CSVPropHeaders` dan `CSVProperties` berpasangan satu-satu —
+// dan pasangan itulah yang membuat pemetaannya tidak perlu ditebak.
 //
-// Tile Close Claim tidak menggambar Report Date dan Claim status di layar, tetapi KEDUANYA
-// tetap ada di berkas unduhan — dengan sel kosong. Berkas CSV dengan jumlah kolom yang
-// berbeda-beda menurut tile akan menyulitkan siapa pun yang menggabungkan keduanya, dan sel
-// kosong sudah menyatakan bahwa datanya memang tidak ada.
-func claimExportHeader() []string {
-	return []string{
-		"No Klaim",
-		"No Polis",
-		"Nama Tertanggung",
-		"Nama Bisnis",
-		"Sumber Bisnis",
-		"Nama Cabang",
-		"Tanggal Pendaftaran",
-		"Report Date",
-		"Lama Waktu Klaim (hari)",
-		"PIC Teknik",
-		"Admin PNC",
-		"Claim status",
-	}
-}
-
-// claimExportRow menuliskan satu baris klaim.
-func claimExportRow(
-	row dashboardclaim.ClaimRow,
-	tile dashboardclaim.Tile,
-	now time.Time,
-	loc *time.Location,
-) []string {
-	// Kedua kolom ini dikosongkan pada tile Close Claim karena datanya memang tidak dibaca
-	// kueri tile itu — bukan karena kebetulan kosong.
-	reportDate := ""
-	status := ""
-	if tile != dashboardclaim.TileCloseClaim {
-		reportDate = formatDate(row.ReportDate, loc)
-		status = row.ClaimStatusLabel
-	}
-
-	return []string{
-		row.ClaimNumber,
-		row.PolicyNumber,
-		row.InsuredName,
-		row.BusinessName,
-		row.BusinessSource,
-		row.BranchName,
-		formatDate(&row.RegisteredAt, loc),
-		reportDate,
-		strconv.Itoa(row.AgeInDays(now, loc)),
-		row.TechnicalPIC,
-		row.AdminPNC,
-		status,
-	}
-}
-
-// surveyExportHeader adalah judul kolom unduhan kedua tile survei.
+//	Outstanding        Activity/ExportOutstanding_Act-Act.xml   "Laporan Outstanding "
+//	Close Claim        Activity/ExportDataCloseClaim-Act.xml    "Data Close Claim"
+//	Loss Adjuster      Activity/ExportSurveyorClaim-Act.xml     "Data Lost Adjuster"
+//	Internal Surveyor  Activity/ExportSurveyorClaim-Act.xml     "Data Internal Surveyor"
 //
-// Judulnya berbeda menurut tile, sama seperti di layar: grid Loss Adjuster berjudul bahasa
-// Inggris, grid Internal Surveyor berjudul bahasa Indonesia. Keduanya ditiru apa adanya.
-func surveyExportHeader(tile dashboardclaim.Tile) []string {
-	if tile == dashboardclaim.TileLossAdjuster {
+// Kedua tile survei dilayani SATU activity dengan dua cabang; itu sebabnya judulnya berbeda
+// bahasa — Loss Adjuster berbahasa Inggris, Internal Surveyor berbahasa Indonesia. Ditiru
+// apa adanya (`D-13`): yang membuka berkasnya mencari judul yang sudah dikenalnya.
+//
+// ----------------------------------------------------------------------------
+// TIGA HAL YANG SENGAJA TIDAK DISALIN, DAN ALASANNYA
+// ----------------------------------------------------------------------------
+//
+//  1. SPASI DI DEPAN JUDUL. Pega menulis `"No Klaim, No Polis,TSI,…"` — sebagian judul
+//     berawal spasi, sebagian tidak, tanpa pola. Excel menampilkannya sebagai " No Polis".
+//     Itu kelalaian pengetikan, bukan isi; judulnya dirapikan.
+//
+//  2. TANGGAL MENTAH PEGA. Berkas Close Claim dan Internal Surveyor memuat
+//     `20171227T081806.037 GMT` — nilai internal Pega yang lolos tanpa diformat, dan dalam
+//     GMT. Excel tidak mengenalinya sebagai tanggal, dan pembacanya di Jakarta membaca jam
+//     yang meleset tujuh jam. Berkas Outstanding Pega sendiri sudah memformat tanggalnya
+//     `dd/mm/yyyy` lewat `to_char`, jadi yang dipakai di sini adalah bentuk yang Pega pakai
+//     saat ia memformat sama sekali — diterapkan ke keempat berkas, dalam WIB (`F-5`).
+//
+//  3. AWALAN KELAS PEGA PADA NOMOR KLAIM. Berkas Internal Surveyor Pega menulis
+//     `ASM-FW-GCNMFW-WORK PNC-116625`, karena kuerinya mengambil `a.CASEID_1` mentah
+//     (`RDB List/BrowseInternalSurveyor-SQL.xml`) sementara berkas Loss Adjuster mengambil
+//     `pyid` induknya sehingga bersih. `D-22` menetapkan awalan itu tidak dibawa ke sistem
+//     baru, dan grid di layar pun sudah menampilkannya tanpa awalan. Yang ditulis di sini
+//     `PNC-116625`.
+//
+// Ketiganya perbedaan yang DISENGAJA dan dinyatakan, bukan ditemukan belakangan pada
+// gerbang 1. Bila Work Owner menghendaki bentuk Pega apa adanya, ketiganya masing-masing
+// satu baris untuk dikembalikan.
+
+// exportHeader adalah judul kolom berkas unduhan satu tile.
+func exportHeader(tile dashboardclaim.Tile) []string {
+	switch tile {
+	case dashboardclaim.TileOutstanding:
+		// `CSVPropHeaders` ExportOutstanding_Act, 16 kolom.
+		return []string{
+			"No Klaim",
+			"No Polis",
+			"TSI",
+			"EstimasiValue(IDR)",
+			"Nama Tertanggung",
+			"Nama Bisnis",
+			"Sumber Bisnis",
+			"Nama Cabang",
+			"Nama Admin",
+			"Tgl Kejadian",
+			"Tgl Register",
+			"Tgl Transfer PIC",
+			"Posisi Klaim",
+			"Login Terakhir",
+			"PIC Teknik",
+			"Report Date",
+		}
+
+	case dashboardclaim.TileCloseClaim:
+		// `CSVPropHeaders` ExportDataCloseClaim, 9 kolom.
+		//
+		// Susunannya BERBEDA dari Outstanding, dan itu memang begitu di Pega: keduanya
+		// berkas yang berbeda dari activity yang berbeda. Menyatukan keduanya menjadi satu
+		// susunan — yang pernah dilakukan di sini, dengan sel kosong pada kolom yang tidak
+		// berlaku — membuat KEDUANYA tidak sama dengan berkas Pega mana pun.
+		return []string{
+			"No Klaim",
+			"No Polis",
+			"Nama Tertanggung",
+			"Nama Bisnis",
+			"Sumber Bisnis",
+			"Nama Cabang",
+			"Tanggal Pendaftaran",
+			"PIC Teknik",
+			"Admin PNC",
+		}
+
+	case dashboardclaim.TileLossAdjuster:
+		// `CSVPropHeaders` ExportSurveyorClaim cabang adjuster, 9 kolom.
 		return []string{
 			"Appointment No",
 			"Reference No",
@@ -84,32 +105,73 @@ func surveyExportHeader(tile dashboardclaim.Tile) []string {
 			"Insured Name",
 			"PIC ASM",
 			"Status",
-			"Aging (hari)",
 		}
-	}
-	return []string{
-		"Nomor Case",
-		"No Klaim",
-		"No Polis",
-		"Nama Tertanggung",
-		"Aging (hari)",
-		"Tanggal Survey",
-		"Lokasi Survey",
-		"Status Survey",
-		"PIC ASM",
-		"Surveyor",
+
+	default:
+		// `CSVPropHeaders` ExportSurveyorClaim cabang internal, 7 kolom.
+		//
+		// "Reschedule", bukan "Survey": kolomnya memang `RescheduleDate_1` dan
+		// `RescheduleLocation_1`, dan itu nama yang dibaca pengguna di berkasnya.
+		return []string{
+			"Nomor Case",
+			"No Klaim",
+			"No Polis",
+			"Nama Tertanggung",
+			"Tanggal Reschedule",
+			"Lokasi Reschedule",
+			"Status",
+		}
 	}
 }
 
-// surveyExportRow menuliskan satu baris survei, dalam urutan kolom tile-nya sendiri.
+// claimExportRow menuliskan satu baris tile bertipe klaim, dalam susunan tile-nya sendiri.
+func claimExportRow(
+	row dashboardclaim.ClaimRow,
+	tile dashboardclaim.Tile,
+	loc *time.Location,
+) []string {
+	if tile == dashboardclaim.TileCloseClaim {
+		return []string{
+			row.ClaimNumber,
+			row.PolicyNumber,
+			row.InsuredName,
+			row.BusinessName,
+			row.BusinessSource,
+			row.BranchName,
+			formatTanggalUnduhan(&row.RegisteredAt, loc),
+			row.TechnicalPIC,
+			row.AdminPNC,
+		}
+	}
+
+	// Outstanding. Urutannya mengikuti `CSVProperties` Pega satu-satu — termasuk TSI dan
+	// EstimasiValue yang duduk di kolom ketiga dan keempat, sebelum nama tertanggung.
+	return []string{
+		row.ClaimNumber,
+		row.PolicyNumber,
+		row.TSI,
+		row.EstimateIDR,
+		row.InsuredName,
+		row.BusinessName,
+		row.BusinessSource,
+		row.BranchName,
+		row.OriginUser,
+		formatTanggalUnduhan(row.LossDate, loc),
+		formatTanggalUnduhan(&row.RegisteredAt, loc),
+		formatTanggalUnduhan(row.TransferredToPICAt, loc),
+		row.ClaimStatusLabel,
+		row.AssignedOperator,
+		row.TechnicalPIC,
+		formatTanggalUnduhan(row.ReportDate, loc),
+	}
+}
+
+// surveyExportRow menuliskan satu baris survei, dalam susunan tile-nya sendiri.
 func surveyExportRow(
 	row dashboardclaim.SurveyRow,
 	tile dashboardclaim.Tile,
-	now time.Time,
 	loc *time.Location,
 ) []string {
-	umur := strconv.Itoa(row.AgeInDays(now, loc))
-
 	if tile == dashboardclaim.TileLossAdjuster {
 		return []string{
 			row.SurveyNumber,
@@ -121,19 +183,35 @@ func surveyExportRow(
 			row.InsuredName,
 			row.TechnicalPIC,
 			row.SurveyStatus,
-			umur,
 		}
 	}
+
 	return []string{
 		row.SurveyNumber,
 		row.ClaimNumber,
 		row.PolicyNumber,
 		row.InsuredName,
-		umur,
-		formatDate(row.ScheduledAt, loc),
+		formatTanggalUnduhan(row.ScheduledAt, loc),
 		row.SurveyLocation,
 		row.SurveyStatus,
-		row.TechnicalPIC,
-		row.SurveyorName,
 	}
+}
+
+// formatTanggalUnduhan menuliskan tanggal dalam bentuk yang dipakai berkas unduhan Pega.
+//
+// `dd/mm/yyyy` diambil dari `to_char(…,'dd/mm/yyyy')` pada
+// `RDB List/BrowseInboxOutstanding1-SQL.xml` — bentuk yang Pega pakai saat ia memformat
+// tanggalnya sama sekali. Bentuk ini SENGAJA BERBEDA dari `formatDate`, yang melayani JSON
+// layar dan karena itu memakai ISO `2006-01-02` agar dapat diurutkan di sisi klien.
+//
+// Berkas unduhan dibaca manusia di Excel, bukan diurutkan mesin; dan menyeragamkan keduanya
+// berarti salah satu dari dua pembacanya dilayani dengan bentuk yang bukan untuknya.
+func formatTanggalUnduhan(t *time.Time, loc *time.Location) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	if loc == nil {
+		loc = time.UTC
+	}
+	return t.In(loc).Format("02/01/2006")
 }

@@ -370,3 +370,66 @@ type DocumentFile struct {
 type DocumentUploader interface {
 	Upload(ctx context.Context, f DocumentFile) (imageID string, err error)
 }
+
+// Membuka dokumen yang sudah terunggah.
+//
+// # Bentuknya mengikuti Pega, isinya tidak
+//
+//	Section/ApprovalMasterBengkelHE   tombol lihat dokumen
+//	  -> Flow Action ViewDocumentMasterBengkel  @baseclass 01-01-89
+//	       -> Section ViewAttachment            @baseclass 01-01-93
+//
+// Tombolnya ADA di Pega dan tetap ada di sini. Yang berbeda hanya hasilnya: di Pega ia
+// selalu kosong, sebab `ATTACHFILE` tidak pernah terisi (lihat banner di kepala berkas
+// ini), sedangkan di sini berkasnya benar-benar tersimpan sehingga ada yang dapat dibuka.
+//
+// Ini sisi lain dari selisih terencana yang sudah dicatat di atas — bukan selisih baru.
+//
+// # Kenapa alamatnya diminta saat tombol ditekan, bukan ikut di metadata dokumen
+//
+// Alamat berkas BERMASA BERLAKU. Menyertakannya pada `GET .../dokumen` berarti layar
+// memegang alamat yang sudah kedaluwarsa sejak dibuka — dan pengguna baru mengetahuinya
+// setelah menekan tombol. Meminta saat ditekan membuat alamatnya selalu segar, dan
+// memperpanjangnya bila perlu.
+
+// DocumentLink adalah alamat baca satu berkas beserta masa berlakunya — kolom `URLPUBLIC`
+// dan `EXPDATE` pada `GENERAL.T_STORAGE_IMAGE`.
+type DocumentLink struct {
+	URL string
+
+	// ExpiresAt nol berarti metadata tidak mencatat masa berlaku. Itu TIDAK diperlakukan
+	// kedaluwarsa: sebagian baris produksi memang tidak memuat `EXPDATE`, dan menolaknya
+	// akan menyembunyikan dokumen yang sebenarnya dapat dibuka.
+	ExpiresAt time.Time
+}
+
+// DocumentLinker membaca alamat berkas dari metadata penyimpanan menurut IMAGEID-nya.
+//
+// Padanan `Activity/GetLinkViewDoc_Act-act.xml`: alamat tersimpan dipakai selama masih
+// berlaku; bila kosong atau kedaluwarsa, diperpanjang atas nama pengguna yang membukanya,
+// lalu disimpan kembali.
+//
+// Seam yang SAMA diisi adapter yang sama dengan DocumentUploader — keduanya menempuh
+// modul dokumen penunjang, dan memisahkannya menjadi dua perakitan hanya menambah satu
+// titik yang dapat lupa disambung.
+type DocumentLinker interface {
+	Link(ctx context.Context, portal, imageID, by string) (DocumentLink, error)
+}
+
+// Kesalahan jalur buka dokumen.
+var (
+	// ErrDocumentLinkUnsupported berarti pengunggah yang terpasang tidak dapat menerbitkan
+	// alamat baca. Ia cacat perakitan, bukan keadaan data.
+	ErrDocumentLinkUnsupported = errors.New("masterbengkel: pembuka dokumen belum terpasang")
+
+	// ErrDocumentLinkEmpty berarti barisnya ada tetapi berkasnya tidak pernah tersimpan —
+	// seluruh dokumen warisan Pega berada dalam keadaan ini.
+	ErrDocumentLinkEmpty = errors.New("masterbengkel: berkas dokumen tidak tersimpan")
+
+	// ErrDocumentLinkRenewFailed berarti layanan penyimpanan tidak dapat memperpanjang
+	// alamatnya. Berkasnya ada; yang gagal hanyalah menerbitkan alamat barunya.
+	ErrDocumentLinkRenewFailed = errors.New("masterbengkel: alamat berkas tidak dapat diperpanjang")
+
+	// ErrDocumentLinkUnavailable berarti metadata penyimpanan tidak dapat dibaca.
+	ErrDocumentLinkUnavailable = errors.New("masterbengkel: metadata penyimpanan dokumen tidak dapat dibaca")
+)

@@ -435,7 +435,11 @@ func Mount(r chi.Router, h *Handler, portalDeps portalhttp.ActivePortalDeps) {
 		// melainkan di layanan penyimpanan internal, dan yang dimiliki barisnya hanyalah
 		// `IMAGEID`. Menyediakan rute pengunduh di sini berarti aplikasi menjadi perantara
 		// berkas yang bukan miliknya, dengan masa berlaku tautan yang bukan miliknya pula.
+		//
+		// Yang ADA adalah penerbit ALAMAT-nya (`/tautan`) — peramban yang mengambil
+		// berkasnya langsung dari layanan penyimpanan, bukan lewat kita.
 		perPortal.Post("/master/bengkel/{id}/dokumen", h.UploadDocument)
 		perPortal.Get("/master/bengkel/{id}/dokumen", h.Document)
+		perPortal.Get("/master/bengkel/{id}/dokumen/tautan", h.DocumentLink)
 	})
 }

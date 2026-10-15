@@ -83,16 +83,5 @@ var colsAdjuster = []Column{
 	{Header: "Status", Field: "AdjusterStatus"},
 }
 
-// colsKomunikasiKlaim — 7 kolom.
-//
-// Disalin dari `CSVProperties` dan `CSVPropHeaders` milik langkah
-// `pxConvertResultsToCSV` pada `Activity/PNCReportDataKominukasiAdjusterKlaim-Act.xml`.
-var colsKomunikasiKlaim = []Column{
-	{Header: "Nomor Klaim", Field: "pzInsKey"},
-	{Header: "Tanggal kirim", Field: "CloseClaimDate"},
-	{Header: "Message", Field: "Email"},
-	{Header: "Pengirim", Field: "UserName"},
-	{Header: "Message Balasan", Field: "CloseClaimNote"},
-	{Header: "Tanggal Balas", Field: "AnalystTransferDate"},
-	{Header: "Nama_Replay", Field: "UserAdmin"},
-}
+// colsKomunikasiKlaim berdiri di sini sampai 2026-10-13, lalu dicabut bersama panelnya —
+// REPORT DATA KOMUNIKASI KLAIM tidak ada di Pega produksi. Lihat catalogLiniBisnis.

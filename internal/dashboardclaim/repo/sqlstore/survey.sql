@@ -8,58 +8,116 @@
 --     RDB List/Get_CountInternalSurveyor-SQL.xml    angka kartu Internal Surveyor
 --     RDB List/BrowseInternalSurveyor-SQL.xml       telusur Internal Surveyor
 --
--- Keduanya membaca tabel yang sama, dibedakan `SURVEYORTYPE_1`: '2' loss adjuster eksternal,
--- '1' surveyor internal ASM.
---
 -- ============================================================================
--- KEEMPAT KUERI LAMA TIDAK SEJAJAR SATU SAMA LAIN
+-- SUMBER BERPINDAH KE POOLDATA.T_SURVEYORLIST (2026-10-12)
 -- ============================================================================
 --
--- Ini bukan penyederhanaan bacaan — keempatnya benar-benar berbeda syarat, dan selisihnya
--- terbaca langsung dari sumbernya:
+-- Keempat rule Pega membaca `DATAPEGA.PC_ASM_FW_GCNMFW_WORK`, tempat kasus survei hidup
+-- sebagai BARIS ANAK klaim (`PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'`), ditaut
+-- `CASEID_1 -> PZINSKEY` induknya.
 --
---   a. PENYARING LINI BISNIS BERADA DI TEMPAT YANG BERBEDA.
---      Pada Loss Adjuster ia di dalam EXISTS, menyaring KLAIM INDUK.
---      Pada Internal Surveyor ia di luar, menyaring BARIS SURVEI itu sendiri.
---      Keduanya dipertahankan apa adanya (`P-5`).
+-- Skema `DATAPEGA` tidak dipakai lagi — keputusan Work Owner. Penggantinya ditetapkan
+-- `Sample Form/Perubahan nama tabel untuk Inbox.xlsx`: keempat kueri ini pindah ke
+-- **`POOLDATA.T_SURVEYORLIST`**, tabel bisnis yang memang menyimpan berkas survei.
 --
---   b. STATUS KLAIM INDUK HANYA DIPERIKSA DI SATU SISI.
---      `BrowseInternalSurveyor` menuntut induknya belum selesai; `BrowseLossAdjuster`
---      tidak memeriksanya sama sekali pada kueri daftar, meski kueri hitungnya memeriksa.
+-- # Kenapa pernah gagal, dan kenapa tidak terdeteksi
 --
---   c. STATUS SURVEI HANYA DIPERIKSA DI SATU SISI PADA KUERI HITUNG.
+-- Pada 2026-10-08 berkas ini sempat diarahkan ke `T_CLAIMLIST_ADMIN` begitu saja. Tabel itu
+-- TIDAK memuat baris kasus survei (nol baris ber-`Work-SurveyClaim`) dan tidak punya kolom
+-- `CASEID_1`, sehingga kedua kueri gagal:
+--
+--     ORA-00904: "S"."CASEID_1": invalid identifier
+--
+-- Satu kueri gagal membuat SELURUH ringkasan menjawab 500, sehingga KEEMPAT kartu
+-- menampilkan 0 — termasuk Outstanding yang sebenarnya sehat. Dan `-periksa` tetap HIJAU,
+-- karena tidak ada satu pun probe yang menyentuh kueri survei. Probe `survey_check` di
+-- bawah ada supaya kegagalan itu tidak dapat terulang diam-diam.
+--
+-- # Tautan ke klaim — diukur, bukan diduga
+--
+--     T_SURVEYORLIST.PNCCASEID  = T_CLAIMLIST_ADMIN.PZINSKEY     cocok 113 dari 113
+--     T_SURVEYORLIST.CASEID     = kunci kasus SURVEI-nya sendiri  cocok 0 — BUKAN penaut
+--
+-- Keduanya berbentuk kunci penuh Pega dan mudah tertukar. Yang menaut ke klaim adalah
+-- `PNCCASEID`. Keduanya sudah huruf besar tanpa spasi di ujung (280 dari 280 dan 2.890 dari
+-- 2.890), sehingga `UPPER`/`TRIM` TIDAK dipasang — memasangnya hanya mematikan index.
+--
+-- # Satu berkas survei punya banyak LANGKAH
+--
+--     280 baris · 189 CASEID unik · (CASEID, INDEX_SURVEY) unik 280 · maksimum 13 langkah
+--
+-- Jadi butiran barisnya adalah LANGKAH, bukan berkas. Layar menampilkan satu baris per
+-- BERKAS, dan yang diambil **langkah terakhir** — ditetapkan `Sample Form` ("langkah
+-- terakhir per berkas"). Tanpa itu satu berkas bersurvei ulang muncul berkali-kali.
+--
+-- `INDEX_SURVEY` bertipe `VARCHAR2(5)` berisi angka, sehingga diurutkan dengan `LPAD(...,5,'0')`
+-- agar '10' tidak mendahului '9'. `LPAD` dipilih, bukan `TO_NUMBER`, karena `TO_NUMBER` akan
+-- MELEDAK bila kelak ada satu isi non-angka, dan karena ia portabel (`D-20`) sementara
+-- `DEFAULT NULL ON CONVERSION ERROR` khas Oracle.
+--
+-- ============================================================================
+-- PEMETAAN KOLOM — DIBACA DARI KATALOG, BUKAN DARI DOKUMEN
+-- ============================================================================
+--
+--     Pega (PC_ASM_FW_GCNMFW_WORK)   T_SURVEYORLIST          terisi di DEV 2026-10-12
+--     SURVEYORTYPE_1                 SURVEYTYPE              279/280
+--     SURVEYORNAME_1                 SURVEYOR_NAME           266/280
+--     ADJUSTERPIC_1                  ADJUSTER_PIC            151/280
+--     ADJUSTERSTATUS_1               STS_SURVEY              279/280
+--     REFNO_1                        REFNO                   130/280
+--     RESCHEDULELOCATION_1           RESCHEDULE_LOCATION     279/280
+--     RESCHEDULEDATE_1               RESCHEDULE_DATE           1/280   <- lihat catatan
+--     PYSTATUSWORK                   PYSTATUSWORK            278/280
+--
+-- `docs/permintaan-kolom-t-surveyorlist.md` menyebut kelimanya masih KOSONG; itu benar pada
+-- 2026-10-05 dan sudah tidak berlaku. Yang dipakai di sini angka katalog hari ini.
+--
+-- # TANGGAL SURVEI — satu keputusan yang belum final
+--
+-- Padanan harfiah `RESCHEDULEDATE_1` adalah `RESCHEDULE_DATE`, tetapi kolom itu terisi
+-- **1 dari 280**; memakainya membuat kolom "Tanggal Survei" kosong hampir selalu. Yang
+-- dipakai di sini **`SURVEYDATE`** (128 dari 280) — kolom yang namanya memang tanggal survei,
+-- dan sejalan dengan catatan `Sample Form`: *"Tanggal Survei loss adjuster kini terisi (dulu
+-- selalu kosong)"*, yang mustahil terjadi lewat kolom berisi satu baris.
+--
+-- **BELUM DIPUTUSKAN — pertanyaan terbuka** (pemilik: Work Owner). Keduanya berbeda arti:
+-- `RESCHEDULE_DATE` tanggal janji ulang, `SURVEYDATE` tanggal survei dikerjakan. Bila Work
+-- Owner memilih yang pertama, yang diganti hanya DUA baris `AS TANGGAL_SURVEI` di bawah.
+--
+-- ============================================================================
+-- KETIGA KETIDAKSEJAJARAN PEGA YANG TETAP DIPERTAHANKAN (`P-5`)
+-- ============================================================================
+--
+--   a. PENYARING LINI BISNIS dulu berada di tempat berbeda — pada Loss Adjuster di dalam
+--      EXISTS menyaring KLAIM INDUK, pada Internal Surveyor di luar menyaring BARIS SURVEI.
+--      Perbedaan itu KINI TIDAK DAPAT DIPERTAHANKAN: kolom lini bisnis hanya ada pada baris
+--      klaim, sehingga keduanya menyaring klaim. Ini SATU-SATUNYA ketidaksejajaran yang
+--      hilang, dan hilangnya karena sumbernya berubah — bukan karena diseragamkan.
+--
+--   b. STATUS KLAIM INDUK hanya diperiksa di satu sisi. `BrowseInternalSurveyor` menuntut
+--      induknya belum selesai; `BrowseLossAdjuster` tidak. DIPERTAHANKAN.
+--
+--   c. STATUS SURVEI hanya diperiksa di satu sisi pada kueri hitung.
 --      `Get_CountInternalSurveyor` membuang survei yang sudah selesai; padanan loss
---      adjuster-nya tidak.
+--      adjuster-nya tidak. DIPERTAHANKAN.
 --
 -- ============================================================================
--- KEDUA KUERI HITUNG MENGIKUTI PEGA APA ADANYA — KEPUTUSAN WORK OWNER 2026-09-26
+-- KEDUA KUERI HITUNG MENGHITUNG SATUAN BERBEDA — KEPUTUSAN WORK OWNER 2026-09-26
 -- ============================================================================
 --
--- Kedua kueri hitung lama TIDAK MENGHITUNG SATUAN YANG SAMA:
+--     Get_CountLostAdjusterClaim   menghitung JUMLAH KLAIM yang punya survei adjuster
+--     Get_CountInternalSurveyor    menghitung JUMLAH SURVEI
 --
---     Get_CountLostAdjusterClaim   SUM(CASE WHEN (…) > 0 THEN 1 ELSE 0 END)
---     Get_CountInternalSurveyor    SUM(CASE WHEN (…) > 0 THEN (… COUNT … ) ELSE 0 END)
+-- Padahal kedua kartu menelusur ke daftar yang sama-sama berisi BERKAS SURVEI.
+-- Penyeragaman sempat dikerjakan lalu DICABUT: keduanya mengikuti Pega apa adanya (`P-5`),
+-- sehingga gerbang 1 dapat membandingkannya tanpa pengecualian.
 --
--- Yang pertama menghitung JUMLAH KLAIM yang punya survei adjuster. Yang kedua menghitung
--- JUMLAH SURVEI-nya. Padahal kedua kartu menelusur ke daftar yang sama-sama berisi BARIS
--- SURVEI.
+-- Akibat yang dinyatakan di layar: **angka kartu tidak akan sama dengan jumlah baris
+-- telusurnya.** Dijaga `TestCountAndListMayDifferForSurveyTiles`.
 --
--- Ditambah: kedua kueri hitung menggabung ke `PC_ASSIGN_WORKLIST` sementara `SUM` berjalan
--- atas baris hasil gabungan itu, sehingga klaim yang memegang lebih dari satu penugasan
--- TERHITUNG BERKALI-KALI.
---
--- Penyeragaman sempat dikerjakan lalu DICABUT: Work Owner memutuskan ketiganya mengikuti
--- Pega apa adanya (`P-5`), sehingga tidak ada satu pun selisih terencana pada kedua angka
--- ini dan gerbang 1 dapat membandingkannya baris per baris tanpa pengecualian.
---
--- Akibat yang harus disadari, dan yang karena itu dinyatakan di layar: **angka pada kartu
--- tidak akan sama dengan jumlah baris telusurnya.** Ia bukan cacat modul ini melainkan
--- perilaku yang diwarisi, dan menyatakannya di layar adalah satu-satunya hal yang
--- ditambahkan — bukan angkanya yang diubah.
---
--- Pemeriksaan bahwa kueri hitung dan kueri daftar memang BOLEH berbeda dijaga
--- `TestCountAndListMayDifferForSurveyTiles`. Ia menjaga keputusan ini tetap disengaja: bila
--- seseorang kelak menyeragamkannya, uji itu yang akan menanyakan alasannya.
+-- Satu penggandaan LAMA ikut hilang: kedua kueri hitung Pega menggabung ke
+-- `PC_ASSIGN_WORKLIST` sementara `SUM` berjalan atas hasil gabungan, sehingga klaim dengan
+-- lebih dari satu penugasan terhitung berkali-kali. Gabungan itu sudah tidak ada.
 --
 -- ============================================================================
 -- ALIAS MENYESATKAN YANG DIBERI NAMA YANG BENAR (`D-19`)
@@ -78,63 +136,92 @@
 --     a.AdjusterPIC_1        AS "City"         -> PIC_ADJUSTER
 --     (subquery pyid induk)  AS "NamaDokterRCL"-> NO_KLAIM
 --
--- Tiga di antaranya layak diperhatikan: `PYSTATUSWORK` dialiaskan menjadi `"NamaSurveyor"`,
--- `POLICYNO` menjadi `"CityID"`, dan nomor klaim induk menjadi `"NamaDokterRCL"`. Tidak satu
--- pun mencerminkan isinya.
---
 -- ============================================================================
--- NOMOR KLAIM INDUK, BUKAN KUNCI INTERNAL PEGA
+-- NOMOR SURVEI, BUKAN KUNCI INTERNAL PEGA
 -- ============================================================================
 --
--- `BrowseInternalSurveyor` mengembalikan `A.CASEID_1` apa adanya — kunci teknis Pega yang
--- memuat nama kelas internal (`ASM-FW-GCNMFW-WORK …`). Itu persis utang teknis §4.1: kunci
--- teknis Pega bocor ke data bisnis, dan `D-22` menetapkannya tidak dibawa ke layar.
---
--- Kedua kueri di sini karena itu memakai subquery yang sama — cara yang sudah dipakai
--- `BrowseLossAdjuster` — sehingga keduanya menampilkan NOMOR KLAIM yang terbaca pengguna.
+-- `T_SURVEYORLIST.CASEID` berisi kunci teknis Pega lengkap dengan nama kelas internal
+-- (`ASM-FW-GCNMFW-WORK …`) — persis utang teknis §4.1, dan `D-22` menetapkannya tidak
+-- dibawa ke layar. Yang ditampilkan karena itu EKORNYA setelah spasi, yaitu nomor survei
+-- yang terbaca pengguna. Kunci utuhnya tetap dikembalikan sebagai `ID_SURVEY`, dipakai
+-- sebagai kunci baris di antarmuka, bukan untuk dibaca orang.
 
 -- name: loss_adjuster_count
--- Menghitung baris survei loss adjuster yang cocok.
+-- Angka kartu LOSS ADJUSTER — `RDB List/Get_CountLostAdjusterClaim-SQL.xml`.
 --
--- Menghitung **JUMLAH KLAIM** yang punya sekurang-kurangnya satu survei loss adjuster.
---
--- Bentuknya mengikuti `RDB List/Get_CountLostAdjusterClaim-SQL.xml` apa adanya — keputusan
--- Work Owner 2026-09-26. Tiga akibatnya dinyatakan di sini supaya tidak dibaca sebagai cacat:
---
---   1. Satuannya KLAIM, sedangkan loss_adjuster_list mengembalikan baris SURVEI. Angka kartu
---      karena itu TIDAK akan sama dengan jumlah baris telusurnya, dan memang begitu di Pega.
---   2. Penyaring lini bisnis dan kotak cari berlaku atas KLAIM induk, bukan atas baris survei
---      — berbeda dari kueri daftarnya, dan itu pun apa adanya.
---   3. Gabung ke PC_ASSIGN_WORKLIST menggandakan baris klaim yang memegang lebih dari satu
---      penugasan, dan SUM berjalan di atas baris hasil gabungan itu. Klaim seperti itu
---      terhitung berkali-kali.
---
--- Status klaim induk TIDAK disaring di WHERE luar, melainkan ikut sebagai syarat di dalam
--- CASE — persis seperti aslinya. Akibatnya klaim yang sudah selesai tetap menyumbang baris,
--- hanya menyumbang nilai 0.
---
--- COALESCE ditambahkan karena SUM atas nol baris menghasilkan NULL, dan NULL tidak dapat
--- dipindai ke int di Go. Ia tidak mengubah angka yang dibaca pengguna — layar lama pun
--- menampilkan kosong sebagai nol.
---
--- ORDER BY pada kueri aslinya TIDAK dibawa: pada SELECT beragregat tanpa GROUP BY ia tidak
--- mengurutkan apa pun, dan Oracle menolaknya dengan ORA-00979.
-SELECT COALESCE(SUM(CASE
-                    WHEN (SELECT COUNT(*)
-                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '2'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')) > 0
-                    THEN 1
-                    ELSE 0
-                 END), 0)
+-- Menghitung JUMLAH KLAIM yang punya sekurang-kurangnya satu berkas survei adjuster, BUKAN
+-- jumlah berkasnya (lihat catatan kepala). Status berkas survei TIDAK diperiksa di sini —
+-- ketidaksejajaran (c) yang dipertahankan.
+SELECT COUNT(DISTINCT A.PZINSKEY)
   FROM POOLDATA.T_CLAIMLIST_ADMIN A
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
  WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+   AND A.BRANCHNAME <> 'ASNET'
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
+   AND EXISTS (SELECT 1
+                 FROM POOLDATA.T_SURVEYORLIST s
+                WHERE s.PNCCASEID = A.PZINSKEY
+                  AND s.SURVEYTYPE = '2')
+   AND (:1 = 'ALL'
+        OR (:2 = 'NONMBU'
+            AND A.GROUPPANEL_1 IN ('003', '004', '006')
+            AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
+        OR (:3 = 'BONDING'
+            AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
+        OR (:4 = 'PA' AND A.GROUPPANEL_1 = '002')
+        OR (:5 = 'TRAVEL' AND A.GROUPPANEL_1 = '005'))
+   AND (:6 IS NULL
+        OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
+        OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
+
+-- name: loss_adjuster_list
+-- Telusur LOSS ADJUSTER — `RDB List/BrowseLossAdjuster-SQL.xml`.
+--
+-- Satu baris per BERKAS survei, diambil dari LANGKAH TERAKHIRNYA. Status klaim induk TIDAK
+-- diperiksa — ketidaksejajaran (b) yang dipertahankan.
+WITH berkas AS (
+  SELECT s.CASEID,
+         s.PNCCASEID,
+         s.REFNO,
+         s.SURVEYOR_NAME,
+         s.RESCHEDULE_LOCATION,
+         s.STS_SURVEY,
+         s.PYSTATUSWORK,
+         s.ADJUSTER_PIC,
+         s.SURVEYDATE,
+         s.TGLINPUT,
+         ROW_NUMBER() OVER (PARTITION BY s.CASEID
+                                ORDER BY LPAD(s.INDEX_SURVEY, 5, '0') DESC) AS langkah_terakhir
+    FROM POOLDATA.T_SURVEYORLIST s
+   WHERE s.SURVEYTYPE = '2'
+)
+SELECT b.CASEID                                             AS ID_SURVEY,
+       b.CASEID                                             AS NO_SURVEY,
+       A.PYID                                               AS NO_KLAIM,
+       A.POLICYNO                                           AS NO_POLIS,
+       A.QQNAME                                             AS NAMA_TERTANGGUNG,
+       b.REFNO                                              AS NO_REFERENSI,
+       b.SURVEYOR_NAME                                      AS NAMA_SURVEYOR,
+       A.USERTEKNIS_1                                       AS PIC_TEKNIK,
+       b.RESCHEDULE_LOCATION                                AS LOKASI_SURVEI,
+       b.STS_SURVEY                                         AS STATUS_SURVEI,
+       b.PYSTATUSWORK                                       AS STATUS_PROSES,
+       b.ADJUSTER_PIC                                       AS PIC_ADJUSTER,
+       b.SURVEYDATE                                         AS TANGGAL_SURVEI,
+       b.TGLINPUT                                           AS TANGGAL_TUGAS
+  FROM berkas b
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN A
+               ON A.PZINSKEY = b.PNCCASEID
+              AND A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+       INNER JOIN POOLDATA.BUSINESS c
+               ON A.BUSINESSCODE_1 = c.ID
+       INNER JOIN POOLDATA.BUSINESSGROUP d
+               ON c.BUSINESSGROUPID = d.ID
+ WHERE b.langkah_terakhir = 1
    AND A.BRANCHNAME <> 'ASNET'
    AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
    AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
@@ -149,99 +236,37 @@ SELECT COALESCE(SUM(CASE
    AND (:6 IS NULL
         OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
-
--- name: loss_adjuster_list
--- Membaca satu halaman survei loss adjuster.
-SELECT A.PZINSKEY             AS ID_SURVEY,
-       A.PYID                 AS NO_SURVEY,
-       (SELECT p.PYID
-          FROM POOLDATA.T_CLAIMLIST_ADMIN p
-         WHERE p.PZINSKEY = A.CASEID_1
-           AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
-       A.POLICYNO             AS NO_POLIS,
-       A.QQNAME               AS NAMA_TERTANGGUNG,
-       A.REFNO_1              AS NO_REFERENSI,
-       A.SURVEYORNAME_1       AS NAMA_SURVEYOR,
-       A.USERTEKNIS_1         AS PIC_TEKNIK,
-       A.RESCHEDULELOCATION_1 AS LOKASI_SURVEI,
-       A.ADJUSTERSTATUS_1     AS STATUS_SURVEI,
-       A.PYSTATUSWORK         AS STATUS_PROSES,
-       A.ADJUSTERPIC_1        AS PIC_ADJUSTER,
-       CAST(NULL AS DATE)     AS TANGGAL_SURVEI,
-       A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM POOLDATA.T_CLAIMLIST_ADMIN A
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-   AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND A.SURVEYORTYPE_1 = '2'
-   AND EXISTS (SELECT 1
-                 FROM POOLDATA.T_CLAIMLIST_ADMIN z
-                      INNER JOIN POOLDATA.BUSINESS c
-                              ON z.BUSINESSCODE_1 = c.ID
-                      INNER JOIN POOLDATA.BUSINESSGROUP d
-                              ON c.BUSINESSGROUPID = d.ID
-                WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-                  AND z.BRANCHNAME <> 'ASNET'
-                  AND z.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
-                  AND z.PXTASKLABEL NOT IN ('FixCorrespondence')
-                  AND A.CASEID_1 = z.PZINSKEY
-                  AND (:1 = 'ALL'
-                       OR (:2 = 'NONMBU'
-                           AND z.GROUPPANEL_1 IN ('003', '004', '006')
-                           AND c.BUSINESSGROUPID NOT IN ('10008', '10010', '10015', '10023'))
-                       OR (:3 = 'BONDING'
-                           AND c.BUSINESSGROUPID IN ('10008', '10010', '10015', '10023'))
-                       OR (:4 = 'PA' AND z.GROUPPANEL_1 = '002')
-                       OR (:5 = 'TRAVEL' AND z.GROUPPANEL_1 = '005')))
-   AND (:6 IS NULL
-        OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
-        OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
- ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
+ ORDER BY b.TGLINPUT ASC, b.CASEID
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
 
 -- name: internal_surveyor_count
--- Menghitung **JUMLAH SURVEI** internal, dijumlahkan per klaim yang memilikinya.
+-- Angka kartu INTERNAL SURVEYOR — `RDB List/Get_CountInternalSurveyor-SQL.xml`.
 --
--- Bentuknya mengikuti `RDB List/Get_CountInternalSurveyor-SQL.xml` apa adanya — keputusan
--- Work Owner 2026-09-26.
+-- Menghitung JUMLAH BERKAS survei, bukan jumlah klaim — berbeda dari padanan loss
+-- adjuster-nya, dan itu disengaja.
 --
--- Perhatikan ia TIDAK sejajar dengan padanan loss adjuster-nya, dan ketidaksejajaran itu ada
--- di sistem lama:
---
---   * yang ini menjumlahkan BANYAKNYA survei; yang itu menghitung 1 per klaim;
---   * yang ini menyaring status survei di dalam subkueri; yang itu tidak menyaringnya.
---
--- Subkueri yang sama ditulis DUA KALI — sekali pada syarat WHEN, sekali sebagai nilai THEN —
--- persis seperti aslinya. Menggantinya dengan satu subkueri akan mengubah bentuk rencana
--- eksekusi, dan angka yang dihasilkan memang sama; ia dibiarkan supaya kesetaraannya dengan
--- kueri lama dapat dibaca berdampingan tanpa menafsirkan.
---
--- Penyaring lini bisnis dan kotak cari berlaku atas KLAIM induk, sedangkan kueri daftarnya
--- menyaring baris survei. Akibatnya angka kartu dan jumlah baris telusur dapat berbeda.
-SELECT COALESCE(SUM(CASE
-                    WHEN (SELECT COUNT(*)
-                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '1'
-                             AND s.PYSTATUSWORK <> 'Resolved-Completed'
-                             AND s.PYSTATUSWORK <> 'Resolved-Rejected'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')) > 0
-                    THEN (SELECT COUNT(*)
-                            FROM POOLDATA.T_CLAIMLIST_ADMIN s
-                           WHERE s.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
-                             AND s.SURVEYORTYPE_1 = '1'
-                             AND s.PYSTATUSWORK <> 'Resolved-Completed'
-                             AND s.PYSTATUSWORK <> 'Resolved-Rejected'
-                             AND s.CASEID_1 = A.PZINSKEY
-                             AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
-                    ELSE 0
-                 END), 0)
-  FROM POOLDATA.T_CLAIMLIST_ADMIN A
+-- Berkas yang sudah SELESAI dibuang — ketidaksejajaran (c). `PYSTATUSWORK` kosong dianggap
+-- MASIH TERBUKA, mengikuti `Sample Form` no. 9: berkas berstatus kosong ikut tampil sebagai
+-- terbuka. Tanpa penegasan itu, `NOT IN` atas NULL menghasilkan NULL dan barisnya terbuang
+-- diam-diam.
+SELECT COUNT(*)
+  FROM (SELECT s.CASEID,
+               s.PNCCASEID,
+               s.PYSTATUSWORK,
+               ROW_NUMBER() OVER (PARTITION BY s.CASEID
+                                      ORDER BY LPAD(s.INDEX_SURVEY, 5, '0') DESC) AS langkah_terakhir
+          FROM POOLDATA.T_SURVEYORLIST s
+         WHERE s.SURVEYTYPE = '1') b
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN A
+               ON A.PZINSKEY = b.PNCCASEID
+              AND A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
+ WHERE b.langkah_terakhir = 1
+   AND (b.PYSTATUSWORK IS NULL
+        OR b.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected'))
    AND A.BRANCHNAME <> 'ASNET'
    AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
    AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
@@ -258,43 +283,53 @@ SELECT COALESCE(SUM(CASE
         OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
 
 -- name: internal_surveyor_list
--- Membaca satu halaman survei internal.
+-- Telusur INTERNAL SURVEYOR — `RDB List/BrowseInternalSurveyor-SQL.xml`.
 --
--- Gabung ke `PC_ASSIGN_WORKLIST` pada kueri lama TIDAK dibawa. Di sana ia dipakai hanya
--- untuk mengambil `A.PXFLOWNAME` sebagai kolom `"RefNo"` — kolom yang tidak digambar
--- `Section/DashboardClaim_Section1-Section.xml`. Gabungnya sendiri menggandakan baris survei
--- untuk klaim yang memegang lebih dari satu penugasan, sehingga membawanya berarti menampilkan
--- survei yang sama berkali-kali demi kolom yang tidak dibaca siapa pun.
-SELECT A.PZINSKEY             AS ID_SURVEY,
-       A.PYID                 AS NO_SURVEY,
-       (SELECT p.PYID
-          FROM POOLDATA.T_CLAIMLIST_ADMIN p
-         WHERE p.PZINSKEY = A.CASEID_1
-           AND p.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC') AS NO_KLAIM,
-       A.POLICYNO             AS NO_POLIS,
-       A.QQNAME               AS NAMA_TERTANGGUNG,
-       A.REFNO_1              AS NO_REFERENSI,
-       A.SURVEYORNAME_1       AS NAMA_SURVEYOR,
-       A.USERTEKNIS_1         AS PIC_TEKNIK,
-       A.RESCHEDULELOCATION_1 AS LOKASI_SURVEI,
-       A.ADJUSTERSTATUS_1     AS STATUS_SURVEI,
-       A.PYSTATUSWORK         AS STATUS_PROSES,
-       A.SURVEYORNAME_1       AS PIC_ADJUSTER,
-       A.RESCHEDULEDATE_1     AS TANGGAL_SURVEI,
-       A.PXCREATEDATETIME     AS TANGGAL_TUGAS
-  FROM POOLDATA.T_CLAIMLIST_ADMIN A
+-- Berbeda dari telusur loss adjuster, kueri ini MENUNTUT KLAIM INDUKNYA BELUM SELESAI —
+-- ketidaksejajaran (b) yang dipertahankan.
+WITH berkas AS (
+  SELECT s.CASEID,
+         s.PNCCASEID,
+         s.REFNO,
+         s.SURVEYOR_NAME,
+         s.RESCHEDULE_LOCATION,
+         s.STS_SURVEY,
+         s.PYSTATUSWORK,
+         s.ADJUSTER_PIC,
+         s.SURVEYDATE,
+         s.TGLINPUT,
+         ROW_NUMBER() OVER (PARTITION BY s.CASEID
+                                ORDER BY LPAD(s.INDEX_SURVEY, 5, '0') DESC) AS langkah_terakhir
+    FROM POOLDATA.T_SURVEYORLIST s
+   WHERE s.SURVEYTYPE = '1'
+)
+SELECT b.CASEID                                             AS ID_SURVEY,
+       b.CASEID                                             AS NO_SURVEY,
+       A.PYID                                               AS NO_KLAIM,
+       A.POLICYNO                                           AS NO_POLIS,
+       A.QQNAME                                             AS NAMA_TERTANGGUNG,
+       b.REFNO                                              AS NO_REFERENSI,
+       b.SURVEYOR_NAME                                      AS NAMA_SURVEYOR,
+       A.USERTEKNIS_1                                       AS PIC_TEKNIK,
+       b.RESCHEDULE_LOCATION                                AS LOKASI_SURVEI,
+       b.STS_SURVEY                                         AS STATUS_SURVEI,
+       b.PYSTATUSWORK                                       AS STATUS_PROSES,
+       b.ADJUSTER_PIC                                       AS PIC_ADJUSTER,
+       b.SURVEYDATE                                         AS TANGGAL_SURVEI,
+       b.TGLINPUT                                           AS TANGGAL_TUGAS
+  FROM berkas b
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN A
+               ON A.PZINSKEY = b.PNCCASEID
+              AND A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
        INNER JOIN POOLDATA.BUSINESS c
                ON A.BUSINESSCODE_1 = c.ID
        INNER JOIN POOLDATA.BUSINESSGROUP d
                ON c.BUSINESSGROUPID = d.ID
- WHERE A.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-SurveyClaim'
+ WHERE b.langkah_terakhir = 1
    AND A.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-   AND A.SURVEYORTYPE_1 = '1'
-   AND EXISTS (SELECT 1
-                 FROM POOLDATA.T_CLAIMLIST_ADMIN z
-                WHERE z.PXOBJCLASS = 'ASM-FW-GCNMFW-Work-PNC'
-                  AND z.PYSTATUSWORK NOT IN ('Resolved-Completed', 'Resolved-Rejected')
-                  AND A.CASEID_1 = z.PZINSKEY)
+   AND A.BRANCHNAME <> 'ASNET'
+   AND A.PXFLOWNAME NOT IN ('FixCorrespondence', 'Register_Flow_1')
+   AND A.PXTASKLABEL NOT IN ('FixCorrespondence')
    AND (:1 = 'ALL'
         OR (:2 = 'NONMBU'
             AND A.GROUPPANEL_1 IN ('003', '004', '006')
@@ -306,5 +341,30 @@ SELECT A.PZINSKEY             AS ID_SURVEY,
    AND (:6 IS NULL
         OR UPPER(A.POLICYNO) LIKE :7 ESCAPE '\'
         OR UPPER(A.PYID) LIKE :8 ESCAPE '\')
- ORDER BY A.PXCREATEDATETIME ASC, A.PZINSKEY
+ ORDER BY b.TGLINPUT ASC, b.CASEID
 OFFSET :9 ROWS FETCH NEXT :10 ROWS ONLY
+
+-- name: survey_check
+-- Membuktikan kedua kueri survei dapat di-parse — termasuk kolom berkas surveinya.
+--
+-- Probe ini lahir dari kegagalan nyata 2026-10-08: `ORA-00904 "S"."CASEID_1"` membuat
+-- `/ringkasan` menjawab 500 dan KEEMPAT kartu menampilkan 0, sementara `-periksa` tetap
+-- hijau seluruhnya karena tidak ada probe yang menyentuh kueri survei.
+--
+-- Kolomnya disebut satu per satu, bukan `SELECT 1`: probe yang hanya membuktikan tabelnya
+-- ada akan LULUS terhadap kolom yang tidak ada, dan itu persis kegagalan di atas.
+--
+-- Gabungannya ikut disertakan supaya `PNCCASEID` dan `PZINSKEY` terbukti SEPADAN, bukan
+-- hanya ada — tautan antar dua tabel yang tidak pernah diuji adalah tautan yang belum
+-- terbukti. `WHERE 1 = 0` membuatnya tidak membaca satu baris pun.
+SELECT s.CASEID, s.PNCCASEID, s.INDEX_SURVEY, s.SURVEYTYPE,
+       s.SURVEYOR_NAME, s.ADJUSTER_PIC, s.STS_SURVEY, s.REFNO,
+       s.RESCHEDULE_LOCATION, s.RESCHEDULE_DATE, s.PYSTATUSWORK,
+       s.SURVEYDATE, s.TGLINPUT,
+       A.PZINSKEY, A.PYID, A.POLICYNO, A.QQNAME, A.USERTEKNIS_1,
+       A.PYSTATUSWORK, A.BRANCHNAME, A.PXFLOWNAME, A.PXTASKLABEL,
+       A.BUSINESSCODE_1, A.GROUPPANEL_1, A.PXOBJCLASS
+  FROM POOLDATA.T_SURVEYORLIST s
+       INNER JOIN POOLDATA.T_CLAIMLIST_ADMIN A
+               ON A.PZINSKEY = s.PNCCASEID
+ WHERE 1 = 0

@@ -53,35 +53,51 @@
 --
 --
 -- ============================================================================
--- KOLOM NAMA PADA LOKASI_PANEL_HE — ASUMSI YANG DISADARI
+-- KOLOM NAMA PADA LOKASI_PANEL_HE — NAMA PANEL, BUKAN NAMA LOKASI
 -- ============================================================================
 --
--- Tabel anak punya SEKURANGNYA empat kolom, dan hanya tiga yang artinya pasti:
+-- Keempat kolom tabel anak beserta artinya:
 --
 --   ID_PANEL      kunci induk        RDB List/GetLokasiSisiPanel-SQL.xml
 --   LOKASI_PANEL  nama lokasi        idem, dialiaskan "NAME"
 --   SISI_PANEL    sandi sisi         idem, dialiaskan "STS_SISI"
---   NAMA          ???                RDB List/GetDataSisiPanel-SQL.xml
+--   NAMA          NAMA PANEL induk   RDB List/GetDataSisiPanel-SQL.xml
 --
--- Yang terakhir hanya muncul sebagai PENYARING, tidak pernah sebagai kolom yang dibaca:
+-- NAMA hanya muncul sebagai PENYARING, tidak pernah sebagai kolom yang dibaca:
 --
 --   select sisi_panel from pooldata.lokasi_panel_he
---    where id_panel = {...} and nama = {...}
+--    where id_panel = {...} and nama = {TempSparepart.PANJANG}
 --
--- Pemanggilnya `Activity/GetSisiPanel-Act.xml`, yang hanya dipakai lima section modul
--- **Grouping Sparepart HE** — modul lain, di luar lingkup migrasi ini. Nilai yang
--- dikirimkannya adalah sebuah nama lokasi.
+-- Pemanggilnya `Activity/GetSisiPanel-Act.xml`, dipakai lima section modul
+-- **Grouping Sparepart HE**.
 --
--- Yang DITULIS di berkas ini: NAMA diisi nilai yang SAMA dengan LOKASI_PANEL. Itu satu-
--- satunya pembacaan yang konsisten dengan kedua kueri, dan satu-satunya yang menjaga
--- modul Grouping Sparepart tetap menemukan barisnya. Membiarkannya NULL akan MEMATIKAN
--- modul itu tanpa satu pun pesan galat — kelas kegagalan yang paling mahal ditemukan.
+-- KOREKSI 2026-10-14. Berkas ini semula mengisi NAMA dengan nilai yang SAMA dengan
+-- LOKASI_PANEL, atas dugaan bahwa keduanya memuat hal yang sama. Dugaan itu TERBANTAH
+-- oleh tiga bukti yang saling bebas:
 --
--- Asumsinya DAPAT DIPERIKSA, dan pemeriksaannya sudah terpasang: `claimpnc -periksa`
--- menghitung baris yang NAMA-nya berbeda dari LOKASI_PANEL. Nol berarti asumsi ini
--- benar; selain nol berarti keduanya memang dua hal berbeda, dan berkas ini harus
--- diperbaiki SEBELUM jalur tulis diaktifkan di produksi. Lihat checkPanel pada
--- cmd/claimpnc.
+--   (1) Bentuk kolomnya berbeda jauh. ALL_TAB_COLUMNS pada DEV_PEGA83G:
+--       NAMA adalah VARCHAR2(4000), LOKASI_PANEL hanya VARCHAR2(10). Dua kolom yang
+--       memuat hal yang sama tidak dibuat dengan selisih lebar empat ratus kali.
+--
+--   (2) Pega menyaringnya dengan NAMA PANEL. `TempSparepart.PANJANG` adalah alias
+--       menyesatkan — `RDB List/GetDataMasterGrouping-SQL.xml` menulis
+--       `NAMA_PANEL AS "PANJANG"`. Jadi yang dicocokkan adalah nama panel, bukan nama
+--       lokasi. (Alias yang tidak mencerminkan isi: utang teknis 4.2 pada Steering.)
+--
+--   (3) Datanya setuju. `claimpnc -periksa` menyandingkan keduanya lewat
+--       grouping_count_child_name_as_panel dan ..._as_location:
+--       NAMA = nama PANEL 1 dari 1 baris; NAMA = LOKASI_PANEL 0 dari 1 baris.
+--
+-- Ketiganya sejalan, jadi NAMA diisi NAMA PANEL INDUK — kolom PANEL_HE.NAME.
+--
+-- Mengisinya dengan nama lokasi, seperti sebelum koreksi ini, akan MEMATIKAN daftar Sisi
+-- modul Grouping Sparepart tanpa satu pun pesan galat: `grouping_side_list` menyaring
+-- `UPPER(TRIM(NAMA)) = <nama panel>`, dan nama lokasi tidak akan pernah cocok. Kelas
+-- kegagalan yang paling mahal ditemukan, karena layarnya tampak baik-baik saja.
+--
+-- Pemeriksaannya tetap terpasang dan ikut dikoreksi: panel_count_location_name_mismatch
+-- kini menghitung baris yang NAMA-nya berbeda dari NAME panel induknya. Lihat
+-- checkPanelLocation pada cmd/claimpnc.
 --
 --
 -- ============================================================================
@@ -378,8 +394,10 @@ DELETE FROM POOLDATA.LOKASI_PANEL_HE
 
 -- name: panel_location_insert
 --
--- NAMA diisi nilai yang SAMA dengan LOKASI_PANEL. Itu asumsi yang disadari; lihat banner
--- berkas ini, dan pemeriksaannya di `claimpnc -periksa`.
+-- Urutan nilainya: induk, nama lokasi, sandi sisi, lalu NAMA PANEL INDUK.
+--
+-- Nilai keempat BUKAN nama lokasi — ia nama panelnya, dan itulah yang dicari modul
+-- Grouping Sparepart. Lihat banner berkas ini untuk ketiga buktinya.
 INSERT INTO POOLDATA.LOKASI_PANEL_HE
        (ID_PANEL, LOKASI_PANEL, SISI_PANEL, NAMA)
 VALUES (:1, :2, :3, :4)
@@ -448,20 +466,29 @@ SELECT COUNT(L.ID_PANEL)
 
 -- name: panel_count_location_name_mismatch
 --
--- Baris yang NAMA-nya BERBEDA dari LOKASI_PANEL.
+-- Baris yang NAMA-nya BERBEDA dari NAME panel induknya.
 --
--- Inilah pemeriksaan yang menentukan apakah asumsi pada banner berkas ini benar. Nol
--- berarti keduanya memang memuat hal yang sama, dan panel_location_insert boleh dipakai
--- apa adanya. Selain nol berarti keduanya dua hal berbeda, dan berkas ini harus diperbaiki
--- SEBELUM jalur tulis diaktifkan di produksi.
+-- Inilah pemeriksaan yang menjaga koreksi 2026-10-14 tetap berlaku: nol berarti setiap
+-- baris lokasi membawa nama panelnya, sehingga daftar Sisi modul Grouping Sparepart
+-- menemukan barisnya. Selain nol berarti ada baris yang tidak akan pernah ditemukan
+-- modul itu — entah warisan sebelum koreksi, entah jalur tulis yang menyimpang lagi.
+--
+-- Pembandingnya UPPER, sama seperti grouping_side_list yang menyaring
+-- `UPPER(TRIM(NAMA))`. Memakai pembanding yang lebih ketat daripada pembacanya akan
+-- melaporkan selisih yang tidak berakibat apa-apa di layar.
 --
 -- Baris yang salah satunya NULL ikut terhitung sebagai berbeda: `NULL <> 'X'` bernilai
 -- UNKNOWN dan tidak akan pernah lolos WHERE, sehingga keadaan itu harus disebut sendiri.
-SELECT COUNT(ID_PANEL)
-  FROM POOLDATA.LOKASI_PANEL_HE
- WHERE TRIM(LOKASI_PANEL) <> TRIM(NAMA)
-    OR (LOKASI_PANEL IS NULL AND NAMA IS NOT NULL)
-    OR (LOKASI_PANEL IS NOT NULL AND NAMA IS NULL)
+--
+-- Baris yatim TIDAK terhitung di sini — tanpa induk, tidak ada nama yang dapat
+-- dibandingkan. Ia sudah dihitung terpisah oleh panel_count_location_orphan.
+SELECT COUNT(L.ID_PANEL)
+  FROM POOLDATA.LOKASI_PANEL_HE L,
+       POOLDATA.PANEL_HE P
+ WHERE TRIM(L.ID_PANEL) = TRIM(P.ID_PANEL)
+   AND (UPPER(TRIM(L.NAMA)) <> UPPER(TRIM(P.NAME))
+        OR (L.NAMA IS NULL AND P.NAME IS NOT NULL)
+        OR (L.NAMA IS NOT NULL AND P.NAME IS NULL))
 
 -- name: panel_check_json_mirror
 --

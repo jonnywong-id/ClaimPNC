@@ -17,6 +17,19 @@ type faultyRepo struct {
 	failOutstanding bool
 	failSurveyKind  dashboardclaim.SurveyorType
 	failList        bool
+
+	// failGroups membuat pembacaan grup gagal — dipakai menguji bahwa kegagalannya
+	// menjawab BACA SAJA, bukan membatalkan layar.
+	failGroups bool
+}
+
+// GroupsOf menjawab daftar kosong, yang berarti baca saja. Itu nilai bawaan yang benar
+// untuk repo uji: hak sunting harus DIBERIKAN dengan sengaja, tidak didapat karena lupa.
+func (r faultyRepo) GroupsOf(_ context.Context, _ string) ([]dashboardclaim.Grup, error) {
+	if r.failGroups {
+		return nil, errStore
+	}
+	return nil, nil
 }
 
 var errStore = errors.New("ora-03113")
@@ -36,6 +49,15 @@ func (f faultyRepo) CountSurvey(_ context.Context, kind dashboardclaim.SurveyorT
 }
 
 func (f faultyRepo) ListOutstanding(context.Context, dashboardclaim.Filter) (dashboardclaim.ClaimPage, error) {
+	if f.failList {
+		return dashboardclaim.ClaimPage{}, errStore
+	}
+	return dashboardclaim.ClaimPage{}, nil
+}
+
+func (f faultyRepo) ListOutstandingExport(
+	context.Context, dashboardclaim.Filter,
+) (dashboardclaim.ClaimPage, error) {
 	if f.failList {
 		return dashboardclaim.ClaimPage{}, errStore
 	}
@@ -64,7 +86,7 @@ func (f faultyRepo) FindClaimDetail(context.Context, string) (dashboardclaim.Cla
 	if f.failList {
 		return dashboardclaim.ClaimDetail{}, errStore
 	}
-	return dashboardclaim.ClaimDetail{Document: map[string]any{}}, nil
+	return dashboardclaim.ClaimDetail{}, nil
 }
 
 // faultyClosed selalu gagal.

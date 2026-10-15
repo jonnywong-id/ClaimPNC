@@ -256,7 +256,12 @@ type ClaimDTO struct {
 	// Keempat status di bawah sengaja dikirim terpisah dan dinamai berbeda. `ADR-0018`
 	// menetapkan keempatnya konsep yang berbeda, dan yang membuatnya sering tertukar di
 	// sistem lama adalah namanya — bukan jumlahnya.
-	ProcessStatus   string `json:"status_proses"`
+	ProcessStatus string `json:"status_proses"`
+	// PegaWorkStatus — status kerja menurut PEGA (`T_CLAIMLIST_ADMIN.PYSTATUSWORK`), yang
+	// BERBEDA dari `status_proses` pada 157 dari 1.360 klaim warisan. Layar memakainya untuk
+	// memilih kalimat yang benar saat klaim tidak punya tugas di sini. Kosong = tidak ada
+	// barisnya di tabel daftar Pega, BUKAN berarti selesai.
+	PegaWorkStatus  string `json:"status_kerja_pega"`
 	ClaimStatus     string `json:"status_klaim"`
 	ClaimStatusName string `json:"status_klaim_nama"`
 

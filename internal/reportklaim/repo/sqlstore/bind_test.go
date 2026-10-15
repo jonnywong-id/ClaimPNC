@@ -43,7 +43,6 @@ func TestJumlahBindCocokDenganParameter(t *testing.T) {
 	filter := reportklaim.Filter{
 		From:             time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		To:               time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
-		BusinessCode:     "B1",
 		ComplianceStatus: "1",
 		Detail:           true,
 		Entity:           "ASM",

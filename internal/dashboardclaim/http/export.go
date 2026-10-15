@@ -76,7 +76,7 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 	filter.Offset = 0
 	filter.Limit = exportBatchSize
 
-	first, err := h.service.List(r.Context(), usecase.ListQuery{
+	first, err := h.service.ListForExport(r.Context(), usecase.ListQuery{
 		PortalAlias: active.Alias, Tile: tile, Filter: filter,
 	})
 	if err != nil {
@@ -84,22 +84,17 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.beginCSV(w, "dashboard-"+string(tile))
+	h.beginCSV(w, namaBerkasUnduhan(tile))
 
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
 	survey := first.Shape == dashboardclaim.ShapeSurvey
-	header := claimExportHeader()
-	if survey {
-		header = surveyExportHeader(tile)
-	}
-	if err := writer.Write(header); err != nil {
+	if err := writer.Write(exportHeader(tile)); err != nil {
 		h.logStreamFailure(r, err)
 		return
 	}
 
-	now := h.now()
 	written := 0
 	page := first
 
@@ -109,7 +104,7 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 				if h.stopAtCap(writer, &written) {
 					return
 				}
-				if err := writer.Write(surveyExportRow(row, tile, now, h.location)); err != nil {
+				if err := writer.Write(surveyExportRow(row, tile, h.location)); err != nil {
 					h.logStreamFailure(r, err)
 					return
 				}
@@ -122,7 +117,7 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 				if h.stopAtCap(writer, &written) {
 					return
 				}
-				if err := writer.Write(claimExportRow(row, tile, now, h.location)); err != nil {
+				if err := writer.Write(claimExportRow(row, tile, h.location)); err != nil {
 					h.logStreamFailure(r, err)
 					return
 				}
@@ -138,7 +133,7 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 		filter.Offset += filter.Limit
 		writer.Flush()
 
-		page, err = h.service.List(r.Context(), usecase.ListQuery{
+		page, err = h.service.ListForExport(r.Context(), usecase.ListQuery{
 			PortalAlias: active.Alias, Tile: tile, Filter: filter,
 		})
 		if err != nil {
@@ -158,6 +153,30 @@ func (h *Handler) ExportTile(w http.ResponseWriter, r *http.Request) {
 // NOL aksi openUrlInWindow — cara keempat ekspor tile dipanggil, yang muncul 4x di
 // DashboardClaim_Section1 — dan tidak ada satu pun activity Export* di export yang
 // menyentuh klaim ber-USERTEKNIS_1 IS NULL.
+
+// namaBerkasUnduhan adalah nama berkas yang dipakai Pega untuk tile ini.
+//
+// Diambil dari parameter `FileName` pada `pxConvertResultsToCSV` masing-masing activity.
+// Namanya dipertahankan karena itulah nama yang sudah ada di komputer penggunanya hari ini
+// — termasuk salah ketik "Lost Adjuster" (layar menulisnya "Loss Adjuster"), yang dibiarkan
+// justru supaya berkas lama dan baru berjajar dengan nama yang sama.
+//
+// Stempel waktu tetap ditambahkan `beginCSV`, dan itu BUKAN tiruan Pega: Pega memakai nama
+// yang sama persis setiap kali (`AppendTimeStampToFileName=False`), sehingga unduhan kedua
+// menjadi "Laporan Outstanding (1).csv" oleh peramban. Stempel waktu tidak mengubah satu
+// sel pun dan membuat dua unduhan dapat dibedakan tanpa membukanya.
+func namaBerkasUnduhan(tile dashboardclaim.Tile) string {
+	switch tile {
+	case dashboardclaim.TileOutstanding:
+		return "Laporan Outstanding"
+	case dashboardclaim.TileCloseClaim:
+		return "Data Close Claim"
+	case dashboardclaim.TileLossAdjuster:
+		return "Data Lost Adjuster"
+	default:
+		return "Data Internal Surveyor"
+	}
+}
 
 // beginCSV menuliskan header respons unduhan.
 func (h *Handler) beginCSV(w http.ResponseWriter, prefix string) {

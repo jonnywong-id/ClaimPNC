@@ -269,6 +269,58 @@ type ClaimRow struct {
 
 	// RegisteredAt adalah `PXCREATEDATETIME` — dipakai sebagai urutan baku daftar.
 	RegisteredAt time.Time
+
+	// ================================================================================
+	// LIMA KOLOM BERIKUT HANYA TERISI PADA JALUR UNDUHAN
+	// ================================================================================
+	//
+	// Grid Outstanding di layar tidak menggambar satu pun dari kelimanya, tetapi berkas
+	// unduhan Pega menggambar semuanya — `Activity/ExportOutstanding_Act-Act.xml` memasang
+	// enam belas kolom, dan `RDB List/BrowseInboxOutstanding1-SQL.xml` menyediakan isinya.
+	//
+	// Keduanya DIBACA KUERI YANG BERBEDA, dan itu diputuskan dari pengukuran, bukan selera:
+	// menambahkan ketiga sub-kueri di bawah ke kueri daftar membuat satu halaman 25 baris
+	// berpindah dari 33 ms menjadi 100 ms (hangat) — empat kali lipat, untuk kolom yang
+	// tidak dilihat siapa pun di layar. Lihat `outstanding_export` di outstanding.sql.
+	//
+	// Karena itu kelimanya KOSONG saat dibaca layar. Itu bukan data yang hilang melainkan
+	// data yang memang tidak diminta, dan `ListOutstanding` versus `ListOutstandingExport`
+	// yang membedakannya.
+
+	// TSI adalah nilai pertanggungan — kolom "TSI" pada berkas unduhan.
+	//
+	// Disimpan sebagai TEKS, bukan angka, dan itu disengaja: ia nilai uang, dan `float64`
+	// kehilangan presisi pada angka sebesar `93.980.904.506.106`
+	// (`09-DATABASE-STRATEGY` §5). Yang dibutuhkan berkas unduhan hanyalah menuliskannya
+	// kembali apa adanya, sehingga tidak ada alasan mengubahnya menjadi angka sama sekali.
+	TSI string
+
+	// EstimateIDR adalah jumlah estimasi klaim dalam rupiah — "EstimasiValue(IDR)".
+	//
+	// Teks, dengan alasan yang sama seperti TSI.
+	EstimateIDR string
+
+	// OriginUser adalah `PYORIGUSERID` — kolom "Nama Admin" pada berkas unduhan.
+	//
+	// Ia BUKAN AdminPNC. Pega membaca properti yang berbeda untuk dua kolom yang keduanya
+	// berisi operator pendaftar: berkas Outstanding memakai `pyOrigUserID`, berkas Close
+	// Claim memakai `pxCreateOpName`. Keduanya ditiru apa adanya (`P-5`).
+	//
+	// Pada basis data pengembangan kolom ini terisi pada 1 dari 2.121 klaim berjalan,
+	// sehingga kolomnya akan tampak kosong saat dicoba di sana. Itu keadaan datanya, bukan
+	// pemetaan yang salah.
+	OriginUser string
+
+	// AssignedOperator adalah `PXASSIGNEDOPERATORID` — kolom "Login Terakhir".
+	//
+	// Judul kolomnya menyesatkan dan isinya bukan waktu: ia operator yang SEDANG memegang
+	// penugasan klaim ini. Itulah sebabnya ia hampir selalu sama dengan PIC Teknik, dan
+	// berbeda justru pada klaim yang belum punya PIC — di sana ia berisi admin
+	// pendaftarnya. Judul Pega dipertahankan (`D-13`); isinya tidak ditebak.
+	AssignedOperator string
+
+	// TransferredToPICAt adalah `T_CLAIM_PNC.FINISHREGISTERDATE` — "Tgl Transfer PIC".
+	TransferredToPICAt *time.Time
 }
 
 // SurveyRow adalah satu baris telusur bertipe survei — tile Loss Adjuster dan Internal
@@ -436,6 +488,18 @@ type Repo interface {
 	// ListOutstanding membaca satu halaman klaim berjalan.
 	ListOutstanding(ctx context.Context, f Filter) (ClaimPage, error)
 
+	// ListOutstandingExport membaca halaman yang SAMA, beserta lima kolom yang hanya
+	// digambar berkas unduhan.
+	//
+	// Method tersendiri, bukan penanda pada Filter: Filter menjawab "baris yang mana", dan
+	// yang berbeda di sini adalah "kolom yang mana". Menitipkannya di Filter membuat satu
+	// tipe memikul dua pertanyaan, dan penyaring yang sama akan diam-diam menghasilkan
+	// kueri yang berbeda tergantung field yang tidak ada hubungannya dengan penyaringan.
+	//
+	// Barisnya WAJIB sama persis dengan ListOutstanding pada penyaring yang sama — berkas
+	// unduhan adalah layar yang sedang dilihat pengguna, bukan himpunan lain.
+	ListOutstandingExport(ctx context.Context, f Filter) (ClaimPage, error)
+
 	// ListSurvey membaca satu halaman survei menurut jenis surveyornya.
 	ListSurvey(ctx context.Context, kind SurveyorType, f Filter) (SurveyPage, error)
 
@@ -453,6 +517,16 @@ type Repo interface {
 	// keduanya menunjuk portal yang berbeda — dan itu kebocoran data antar badan hukum
 	// (`R-20`), bukan sekadar ketidakrapian.
 	ClaimDetailReader
+
+	// GroupsOf membaca grup akses satu pengguna — `POOLDATA.M_LOGIN_GROUP_PNC`.
+	//
+	// Berada di Repo yang sama dengan alasan yang SAMA seperti ClaimDetailReader: grup
+	// menentukan apakah pengguna boleh membuka klaim milik entitas ini, dan membacanya dari
+	// portal lain berarti memberi hak atas data yang bukan haknya (`R-20`).
+	//
+	// Daftar kosong berarti pengguna tidak punya grup, dan itu dijawab BACA SAJA — bukan
+	// galat. Lihat BolehBukaCase.
+	GroupsOf(ctx context.Context, identity string) ([]Grup, error)
 }
 
 // RepoSelector memilih Repo milik satu portal entitas.

@@ -93,6 +93,8 @@ func catalogPenyelesaian() []Report {
 			// Kotak centang di panel ini TIDAK menyaring baris — ia memilih susunan
 			// kolom. Lihat FilterDetail.
 			Uses: FilterDateRange | FilterDetail,
+			// Tercentang saat layar dibuka — lihat Report.DetailDefault.
+			DetailDefault: true,
 			Source: Source{
 				Activity: "ReportAkseptasiNonMBU",
 				SQLRule:  []string{"ReportAkseptasiNonMBU", "GetFileOnPc_link_attachmentGCNM"},
@@ -110,6 +112,9 @@ func catalogPenyelesaian() []Report {
 			Actions:      oneAction("Export Data OS Komite", nil),
 			FileBaseName: "Report OS Komite Klaim Non MBU",
 			Uses:         FilterDateRange | FilterDetail,
+			// KOSONG saat layar dibuka — satu-satunya dari ketiga panel Treaty. Perbedaan
+			// itu ada di Pega produksi dan ditiru apa adanya.
+			DetailDefault: false,
 			Source: Source{
 				Activity: "ReportOSKomiteNonMBU",
 				SQLRule:  []string{"GetOSKomiteNonMBU"},
@@ -126,9 +131,10 @@ func catalogPenyelesaian() []Report {
 			Group: GroupPenyelesaian,
 			// Label tombolnya berbunyi "Export Data OS Klaim", tidak sejalan dengan judul
 			// panelnya. Disalin apa adanya — itu yang dibaca pengguna selama ini.
-			Actions:      oneAction("Export Data OS Klaim", nil),
-			FileBaseName: "Report OS Belum Komite Klaim Non MBU",
-			Uses:         FilterDateRange | FilterDetail,
+			Actions:       oneAction("Export Data OS Klaim", nil),
+			FileBaseName:  "Report OS Belum Komite Klaim Non MBU",
+			Uses:          FilterDateRange | FilterDetail,
+			DetailDefault: true,
 			Source: Source{
 				Activity: "ReportOSBlmKomiteNonMBU",
 				SQLRule:  []string{"GetOSBlmKomiteNonMBU"},
@@ -146,12 +152,17 @@ func catalogPenyelesaian() []Report {
 			// SATU-SATUNYA panel bertombol dua di seluruh layar. Keduanya memanggil
 			// activity yang sama dan dibedakan oleh `statusapprove`.
 			//
-			// Urutannya dibalik dari harness — di sana "Rejected" tergambar lebih dulu.
-			// Approve didahulukan di sini karena ia jalur yang normal; yang ditolak adalah
-			// kekecualian. Itu satu-satunya perbedaan, dan tidak menyentuh isi berkas.
+			// Urutannya MENGIKUTI PEGA: "Rejected" lebih dulu, baru "Approve".
+			//
+			// Sempat dibalik di sini dengan alasan "Approve jalur yang normal" — alasan
+			// yang masuk akal dan tetap keliru: `D-13` menetapkan tata letak ditiru supaya
+			// pengguna tidak perlu belajar ulang, dan menukar dua tombol berdampingan
+			// adalah persis jenis perubahan yang membuat orang salah tekan karena
+			// tangannya hafal posisi. Dikembalikan setelah layar produksi dibandingkan
+			// berdampingan pada 2026-10-13.
 			Actions: []Action{
-				{Code: ActionKomiteApprove, Label: "Export Data Approve", FixedParam: map[string]string{"statusapprove": "1"}},
 				{Code: ActionKomiteRejected, Label: "Export Data Rejected", FixedParam: map[string]string{"statusapprove": "2"}},
+				{Code: ActionKomiteApprove, Label: "Export Data Approve", FixedParam: map[string]string{"statusapprove": "1"}},
 			},
 			FileBaseName: "Laporan Data Komite",
 			Uses:         FilterDateRange | FilterBusinessLine,
