@@ -1,11 +1,20 @@
-# Hasil build, bukan sumber.
-#
-# `claimpnc.exe~` sempat ikut terlacak dan berukuran 28 MB. Ia bertabrakan pada SETIAP
-# merge — dua orang membangun binary yang berbeda dari sumber yang sama, dan git tidak
-# punya cara menggabungkan keduanya. Berkasnya tetap ada di komputer masing-masing;
-# yang dihentikan hanyalah pelacakannya.
-*.exe
-*.exe~
+# Dependensi — dipasang ulang dengan `npm ci` dari package-lock.json.
+node_modules/
 
-# Rahasia. `.env.example` tetap terlacak sebagai contoh yang isinya kosong.
+# Hasil build dan laporan uji
+dist/
+coverage/
+*.tsbuildinfo
+
+# Rahasia. `.env.example` tetap terlacak bila kelak dibuat.
 .env
+.env.*
+!.env.example
+
+# Log saat aplikasi dijalankan lokal
+*.log
+
+# Artefak CI dan analisis lokal
+.npm/
+.sonar/
+.scannerwork/
