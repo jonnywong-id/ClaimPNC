@@ -1,8 +1,0 @@
-# Berkas sementara editor dan hasil ekspor yang dibangun ulang dari sumbernya.
-~$*
-*.tmp
-*.log
-
-# Artefak analisis lokal
-.sonar/
-.scannerwork/
