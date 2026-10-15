@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { FilterForm, ListResponse, MetadataResponse } from './types'
+import type { FilterForm, ListResponse, MetadataResponse } from "./types";
 
-const PATH = '/api/inbox-progress-claim'
+const PATH = "/api/inbox-progress-claim";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,7 +17,7 @@ const PATH = '/api/inbox-progress-claim'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-progress-claim', 'bagian', portal, token] as const,
+    ["inbox-progress-claim", "bagian", portal, token] as const,
 
   list: (
     portal: string | null,
@@ -27,8 +27,8 @@ const keys = {
     page: number,
   ) =>
     [
-      'inbox-progress-claim',
-      'daftar',
+      "inbox-progress-claim",
+      "daftar",
       portal,
       token,
       section,
@@ -38,7 +38,7 @@ const keys = {
       filter.sampai,
       page,
     ] as const,
-}
+};
 
 /**
  * Hook keterangan layar — daftar bagian, kolomnya, dan isi dropdown penyaring.
@@ -54,12 +54,13 @@ const keys = {
  * dan arti sebenarnya hanya tercatat di backend.
  */
 export function useProgressClaimMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/bagian`, { token, portal }),
+    queryFn: () =>
+      callAPI<MetadataResponse>(`${PATH}/bagian`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan
@@ -67,7 +68,7 @@ export function useProgressClaimMetadata() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -96,14 +97,17 @@ export function useProgressClaimList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, section, filter, page),
     queryFn: () =>
-      callAPI<ListResponse>(buildPath(section, filter, page), { token, portal }),
-    enabled: enabled && section !== '' && token !== null && portal !== null,
+      callAPI<ListResponse>(buildPath(section, filter, page), {
+        token,
+        portal,
+      }),
+    enabled: enabled && section !== "" && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
     // menjadi kosong lalu terisi lagi.
@@ -113,7 +117,7 @@ export function useProgressClaimList(
     // pendek — sama dengan Inbox Admin, karena keduanya dibuka berulang kali sepanjang
     // hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -124,15 +128,15 @@ export function useProgressClaimList(
  * bawaan sementara yang pertama memang itu yang diinginkan.
  */
 function buildPath(section: string, filter: FilterForm, page: number): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  params.set('bagian', section)
+  params.set("bagian", section);
 
-  if (filter.cari.trim()) params.set('cari', filter.cari.trim())
-  if (filter.bisnis) params.set('bisnis', filter.bisnis)
-  if (filter.dari) params.set('dari', filter.dari)
-  if (filter.sampai) params.set('sampai', filter.sampai)
-  if (page > 1) params.set('halaman', String(page))
+  if (filter.cari.trim()) params.set("cari", filter.cari.trim());
+  if (filter.bisnis) params.set("bisnis", filter.bisnis);
+  if (filter.dari) params.set("dari", filter.dari);
+  if (filter.sampai) params.set("sampai", filter.sampai);
+  if (page > 1) params.set("halaman", String(page));
 
-  return `${PATH}?${params.toString()}`
+  return `${PATH}?${params.toString()}`;
 }

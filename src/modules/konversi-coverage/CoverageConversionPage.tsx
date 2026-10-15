@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { TextAreaField } from '@/components/TextAreaField'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { TextAreaField } from "@/components/TextAreaField";
 
-import { BatchError, useJalankan, useKeterangan } from './api'
-import type { FilterObjek, HasilPolis, InfoKoneksi, Laporan } from './types'
+import { BatchError, useJalankan, useKeterangan } from "./api";
+import type { FilterObjek, HasilPolis, InfoKoneksi, Laporan } from "./types";
 
 /**
  * Konversi Coverage — menu `MENU_ID 87`.
@@ -29,78 +29,112 @@ import type { FilterObjek, HasilPolis, InfoKoneksi, Laporan } from './types'
  * laporan sama persis dengan yang akan terjadi — termasuk galat bentuk data.
  */
 export function CoverageConversionPage() {
-  const info = useKeterangan()
-  const run = useJalankan()
+  const info = useKeterangan();
+  const run = useJalankan();
 
-  const [text, setText] = useState('')
-  const [touched, setTouched] = useState(false)
-  const [busy, setBusy] = useState<'uji' | 'jalan' | null>(null)
-  const [report, setReport] = useState<Laporan | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [filter, setFilter] = useState<FilterObjek>({ prodke: '', indexobject: '' })
+  const [text, setText] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [busy, setBusy] = useState<"uji" | "jalan" | null>(null);
+  const [report, setReport] = useState<Laporan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [filter, setFilter] = useState<FilterObjek>({
+    prodke: "",
+    indexobject: "",
+  });
 
   // Daftar bawaan dari KONVERSI_POLIS mengisi kotak sekali, selama pengguna belum mengetik.
   useEffect(() => {
-    if (!touched && info.data && info.data.polis.length > 0) setText(info.data.polis.join('\n'))
-  }, [info.data, touched])
+    if (!touched && info.data && info.data.polis.length > 0)
+      setText(info.data.polis.join("\n"));
+  }, [info.data, touched]);
 
-  const policies = text.split(/[\s,;]+/).filter((p) => p.trim() !== '')
-  const unique = new Set(policies).size
-  const ready = info.data?.live.lengkap && info.data?.test.lengkap && !info.data?.galat
-  const prodkeError = numberError(filter.prodke)
-  const indexError = numberError(filter.indexobject)
-  const filterValid = !prodkeError && !indexError
-  const scope = describeFilter(filter)
+  const policies = text.split(/[\s,;]+/).filter((p) => p.trim() !== "");
+  const unique = new Set(policies).size;
+  const ready =
+    info.data?.live.lengkap && info.data?.test.lengkap && !info.data?.galat;
+  const prodkeError = numberError(filter.prodke);
+  const indexError = numberError(filter.indexobject);
+  const filterValid = !prodkeError && !indexError;
+  const scope = describeFilter(filter);
 
   async function execute(ujiCoba: boolean) {
     if (!ujiCoba) {
       const ok = window.confirm(
         `Tulis hasil konversi ${unique} polis ke basis data TEST?\n` +
           `Cakupan: ${scope}.\n\n` +
-          'Coverage dan spreading lama dalam cakupan tersebut di TEST akan dihapus lalu diganti, ' +
-          'dan kolom BLOB objeknya ditimpa dengan isi LIVE.',
-      )
-      if (!ok) return
+          "Coverage dan spreading lama dalam cakupan tersebut di TEST akan dihapus lalu diganti, " +
+          "dan kolom BLOB objeknya ditimpa dengan isi LIVE.",
+      );
+      if (!ok) return;
     }
-    setBusy(ujiCoba ? 'uji' : 'jalan')
-    setError(null)
-    setReport(null)
+    setBusy(ujiCoba ? "uji" : "jalan");
+    setError(null);
+    setReport(null);
     try {
-      setReport(await run(text, ujiCoba, filter, (done, total) => setProgress({ done, total })))
+      setReport(
+        await run(text, ujiCoba, filter, (done, total) =>
+          setProgress({ done, total }),
+        ),
+      );
     } catch (e) {
       // Kelompok sebelum yang gagal sudah selesai — laporannya tetap ditampilkan.
-      setReport(e instanceof BatchError ? e.partial : null)
-      setError(e instanceof BatchError || e instanceof APIError ? e.message : 'Konversi gagal dijalankan.')
+      setReport(e instanceof BatchError ? e.partial : null);
+      setError(
+        e instanceof BatchError || e instanceof APIError
+          ? e.message
+          : "Konversi gagal dijalankan.",
+      );
     } finally {
-      setBusy(null)
-      setProgress(null)
+      setBusy(null);
+      setProgress(null);
     }
   }
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-semibold text-slate-900">Konversi Coverage</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Konversi Coverage
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Salin dokumen coverage polis dari basis data LIVE menjadi tabel coverage dan spreading
-          di basis data TEST.
+          Salin dokumen coverage polis dari basis data LIVE menjadi tabel
+          coverage dan spreading di basis data TEST.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <ConnectionCard title="LIVE (hanya dibaca)" info={info.data?.live} loading={info.isLoading} />
-        <ConnectionCard title="TEST (ditulis)" info={info.data?.test} loading={info.isLoading} />
+        <ConnectionCard
+          title="LIVE (hanya dibaca)"
+          info={info.data?.live}
+          loading={info.isLoading}
+        />
+        <ConnectionCard
+          title="TEST (ditulis)"
+          info={info.data?.test}
+          loading={info.isLoading}
+        />
       </section>
 
       {info.data?.galat && (
-        <ErrorMessage tone="penolakan" title="Konfigurasi ditolak" description={info.data.galat} />
+        <ErrorMessage
+          tone="penolakan"
+          title="Konfigurasi ditolak"
+          description={info.data.galat}
+        />
       )}
       {info.isError && (
         <ErrorMessage
           tone="gangguan"
           title="Keterangan tidak dapat dimuat"
-          description={info.error instanceof APIError ? info.error.message : 'Coba muat ulang halaman.'}
+          description={
+            info.error instanceof APIError
+              ? info.error.message
+              : "Coba muat ulang halaman."
+          }
         />
       )}
 
@@ -111,8 +145,8 @@ export function CoverageConversionPage() {
           rows={8}
           value={text}
           onChange={(e) => {
-            setTouched(true)
-            setText(e.target.value)
+            setTouched(true);
+            setText(e.target.value);
           }}
           placeholder="Satu nomor polis per baris (boleh juga dipisah koma)"
           hint={`${unique} nomor polis unik · maksimal ${info.data?.maks_polis ?? 500} per kali jalan`}
@@ -123,7 +157,9 @@ export function CoverageConversionPage() {
             label="PRODKE"
             inputMode="numeric"
             value={filter.prodke}
-            onChange={(e) => setFilter((f) => ({ ...f, prodke: e.target.value }))}
+            onChange={(e) =>
+              setFilter((f) => ({ ...f, prodke: e.target.value }))
+            }
             placeholder="Kosongkan untuk semua PRODKE"
             error={prodkeError}
           />
@@ -132,82 +168,133 @@ export function CoverageConversionPage() {
             label="Index Object"
             inputMode="numeric"
             value={filter.indexobject}
-            onChange={(e) => setFilter((f) => ({ ...f, indexobject: e.target.value }))}
+            onChange={(e) =>
+              setFilter((f) => ({ ...f, indexobject: e.target.value }))
+            }
             placeholder="Kosongkan untuk semua Index Object"
             error={indexError}
           />
         </div>
-        <p className="text-xs text-slate-500">Cakupan: {scope} — berlaku untuk setiap polis di daftar.</p>
+        <p className="text-xs text-slate-500">
+          Cakupan: {scope} — berlaku untuk setiap polis di daftar.
+        </p>
         <div className="flex flex-wrap gap-2">
-          <Button tone="kedua" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(true)}>
-            {busy === 'uji' ? `Menjalankan uji coba… ${progressText(progress)}` : 'Uji Coba'}
+          <Button
+            tone="kedua"
+            disabled={!ready || unique === 0 || !filterValid || busy !== null}
+            onClick={() => execute(true)}
+          >
+            {busy === "uji"
+              ? `Menjalankan uji coba… ${progressText(progress)}`
+              : "Uji Coba"}
           </Button>
-          <Button tone="utama" disabled={!ready || unique === 0 || !filterValid || busy !== null} onClick={() => execute(false)}>
-            {busy === 'jalan' ? `Mengonversi… ${progressText(progress)}` : 'Jalankan Konversi'}
+          <Button
+            tone="utama"
+            disabled={!ready || unique === 0 || !filterValid || busy !== null}
+            onClick={() => execute(false)}
+          >
+            {busy === "jalan"
+              ? `Mengonversi… ${progressText(progress)}`
+              : "Jalankan Konversi"}
           </Button>
         </div>
       </section>
 
-      {error && <ErrorMessage tone="gangguan" title="Konversi gagal" description={error} />}
+      {error && (
+        <ErrorMessage
+          tone="gangguan"
+          title="Konversi gagal"
+          description={error}
+        />
+      )}
       {report && <ReportView report={report} />}
     </div>
-  )
+  );
 }
 
 /** Pesan galat isian filter: kosong boleh, selain itu hanya bilangan bulat tak negatif. */
 function numberError(value: string): string | undefined {
-  const v = value.trim()
-  return v === '' || /^\d+$/.test(v) ? undefined : 'Isi dengan angka, atau kosongkan.'
+  const v = value.trim();
+  return v === "" || /^\d+$/.test(v)
+    ? undefined
+    : "Isi dengan angka, atau kosongkan.";
 }
 
 /** Uraian cakupan konversi, mis. "PRODKE 1, semua Index Object". */
-function describeFilter(f: { prodke?: string | undefined; indexobject?: string | undefined }): string {
-  const p = f.prodke?.trim()
-  const i = f.indexobject?.trim()
-  return `${p ? `PRODKE ${p}` : 'semua PRODKE'}, ${i ? `Index Object ${i}` : 'semua Index Object'}`
+function describeFilter(f: {
+  prodke?: string | undefined;
+  indexobject?: string | undefined;
+}): string {
+  const p = f.prodke?.trim();
+  const i = f.indexobject?.trim();
+  return `${p ? `PRODKE ${p}` : "semua PRODKE"}, ${i ? `Index Object ${i}` : "semua Index Object"}`;
 }
 
 /** Kemajuan per kelompok polis, mis. "30/96". */
-function progressText(progress: { done: number; total: number } | null): string {
-  return progress ? `${progress.done}/${progress.total}` : ''
+function progressText(
+  progress: { done: number; total: number } | null,
+): string {
+  return progress ? `${progress.done}/${progress.total}` : "";
 }
 
-function ConnectionCard({ title, info, loading }: { title: string; info: InfoKoneksi | undefined; loading: boolean }) {
+function ConnectionCard({
+  title,
+  info,
+  loading,
+}: {
+  title: string;
+  info: InfoKoneksi | undefined;
+  loading: boolean;
+}) {
   return (
     <div className="rounded-kontrol border border-slate-200 bg-white p-4">
       <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
       {loading || !info ? (
         <p className="mt-1 text-sm text-slate-500">Memuat…</p>
       ) : info.lengkap ? (
-        <p className="mt-1 break-all font-mono text-sm text-slate-700">{info.alamat}</p>
+        <p className="mt-1 break-all font-mono text-sm text-slate-700">
+          {info.alamat}
+        </p>
       ) : (
         <p className="mt-1 text-sm text-red-700">
-          Belum dikonfigurasi. Isi di <code>backend/.env</code>: {info.kurang.join(', ')}
+          Belum dikonfigurasi. Isi di <code>backend/.env</code>:{" "}
+          {info.kurang.join(", ")}
         </p>
       )}
     </div>
-  )
+  );
 }
 
-const statusLabel: Record<HasilPolis['status'], { text: string; cls: string }> = {
-  berhasil: { text: 'Berhasil', cls: 'bg-green-100 text-green-800' },
-  tidak_ditemukan: { text: 'Tidak ditemukan', cls: 'bg-amber-100 text-amber-800' },
-  gagal: { text: 'Gagal', cls: 'bg-red-100 text-red-800' },
-}
+const statusLabel: Record<HasilPolis["status"], { text: string; cls: string }> =
+  {
+    berhasil: { text: "Berhasil", cls: "bg-green-100 text-green-800" },
+    tidak_ditemukan: {
+      text: "Tidak ditemukan",
+      cls: "bg-amber-100 text-amber-800",
+    },
+    gagal: { text: "Gagal", cls: "bg-red-100 text-red-800" },
+  };
 
 function ReportView({ report }: { report: Laporan }) {
   return (
     <section className="space-y-3">
       <div className="rounded-kontrol border border-slate-200 bg-white p-4 text-sm">
         <p className="font-semibold text-slate-900">
-          {report.uji_coba ? 'Hasil Uji Coba — tidak ada yang tersimpan' : 'Hasil Konversi — tersimpan di TEST'}
+          {report.uji_coba
+            ? "Hasil Uji Coba — tidak ada yang tersimpan"
+            : "Hasil Konversi — tersimpan di TEST"}
         </p>
         <p className="mt-1 text-slate-700">
-          {report.berhasil} berhasil · {report.tidak_ditemukan} tidak ditemukan · {report.gagal} gagal ·{' '}
-          {report.total_coverage} baris coverage · {report.total_spreading} baris spreading
+          {report.berhasil} berhasil · {report.tidak_ditemukan} tidak ditemukan
+          · {report.gagal} gagal · {report.total_coverage} baris coverage ·{" "}
+          {report.total_spreading} baris spreading
         </p>
         <p className="mt-1 text-slate-500">
-          Cakupan: {describeFilter({ prodke: report.filter_prodke, indexobject: report.filter_indexobject })}
+          Cakupan:{" "}
+          {describeFilter({
+            prodke: report.filter_prodke,
+            indexobject: report.filter_indexobject,
+          })}
         </p>
       </div>
 
@@ -231,27 +318,47 @@ function ReportView({ report }: { report: Laporan }) {
               <tr key={p.nomor_polis} className="align-top">
                 <td className="px-3 py-2 font-mono">{p.nomor_polis}</td>
                 <td className="px-3 py-2">
-                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusLabel[p.status].cls}`}>
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs font-medium ${statusLabel[p.status].cls}`}
+                  >
                     {statusLabel[p.status].text}
                   </span>
                 </td>
-                <td className="px-3 py-2">{(p.lini ?? []).join(', ')}</td>
-                <td className="px-3 py-2">{(p.versi_prodke ?? []).join(', ')}</td>
+                <td className="px-3 py-2">{(p.lini ?? []).join(", ")}</td>
+                <td className="px-3 py-2">
+                  {(p.versi_prodke ?? []).join(", ")}
+                </td>
                 <td className="px-3 py-2 text-right">{p.jumlah_objek}</td>
                 <td className="px-3 py-2 text-right">{p.objek_diperbarui}</td>
                 <td className="px-3 py-2 text-right">
                   {p.coverage_ditulis}
-                  {p.coverage_dihapus > 0 && <span className="text-slate-500"> (ganti {p.coverage_dihapus})</span>}
+                  {p.coverage_dihapus > 0 && (
+                    <span className="text-slate-500">
+                      {" "}
+                      (ganti {p.coverage_dihapus})
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
                   {p.spreading_ditulis}
-                  {p.spreading_dihapus > 0 && <span className="text-slate-500"> (ganti {p.spreading_dihapus})</span>}
+                  {p.spreading_dihapus > 0 && (
+                    <span className="text-slate-500">
+                      {" "}
+                      (ganti {p.spreading_dihapus})
+                    </span>
+                  )}
                 </td>
                 <td className="max-w-md px-3 py-2 text-xs">
                   {p.galat && <p className="text-red-700">{p.galat}</p>}
-                  {p.dokumen_kosong > 0 && <p className="text-slate-600">{p.dokumen_kosong} objek tanpa dokumen coverage</p>}
+                  {p.dokumen_kosong > 0 && (
+                    <p className="text-slate-600">
+                      {p.dokumen_kosong} objek tanpa dokumen coverage
+                    </p>
+                  )}
                   {(p.objek_tidak_ada_di_test ?? []).length > 0 && (
-                    <p className="text-amber-700">Tidak ada di TEST: {p.objek_tidak_ada_di_test!.join('; ')}</p>
+                    <p className="text-amber-700">
+                      Tidak ada di TEST: {p.objek_tidak_ada_di_test!.join("; ")}
+                    </p>
                   )}
                   {(p.peringatan ?? []).map((w) => (
                     <p key={w} className="text-slate-600">
@@ -265,5 +372,5 @@ function ReportView({ report }: { report: Laporan }) {
         </table>
       </div>
     </section>
-  )
+  );
 }

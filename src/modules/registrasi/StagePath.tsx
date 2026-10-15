@@ -1,13 +1,13 @@
-import type { Stage } from './types'
+import type { Stage } from "./types";
 
 type Props = {
   /** Seluruh tahap alur, dipakai menerjemahkan pengenal menjadi nama. */
-  tahap: Stage[]
+  tahap: Stage[];
   /** Rangkaian pengenal tahap dari tahap sekarang sampai akhir. */
-  jalur: string[]
+  jalur: string[];
   /** Pengenal tahap tempat klaim berada sekarang. */
-  currentStage: string
-}
+  currentStage: string;
+};
 
 /**
  * StagePath menunjukkan DI MANA klaim berada dan APA yang menantinya.
@@ -28,27 +28,30 @@ type Props = {
  * janji.
  */
 export function StagePath({ tahap, jalur, currentStage }: Props) {
-  if (jalur.length === 0) return null
+  if (jalur.length === 0) return null;
 
-  const stageNames = new Map(tahap.map((t) => [t.id, t.nama]))
+  const stageNames = new Map(tahap.map((t) => [t.id, t.nama]));
 
   return (
-    <nav aria-label="Tahapan klaim" className="rounded border border-slate-200 bg-slate-50 p-4">
+    <nav
+      aria-label="Tahapan klaim"
+      className="rounded border border-slate-200 bg-slate-50 p-4"
+    >
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
         Tahapan klaim
       </h2>
 
       <ol className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">
         {jalur.map((id, order) => {
-          const current = id === currentStage
+          const current = id === currentStage;
           return (
             <li key={id} className="flex items-center gap-2">
               <span
-                aria-current={current ? 'step' : undefined}
+                aria-current={current ? "step" : undefined}
                 className={
                   current
-                    ? 'rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white'
-                    : 'rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600'
+                    ? "rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white"
+                    : "rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-600"
                 }
               >
                 {stageNames.get(id) ?? id}
@@ -59,14 +62,14 @@ export function StagePath({ tahap, jalur, currentStage }: Props) {
                 </span>
               )}
             </li>
-          )
+          );
         })}
       </ol>
 
       <p className="mt-3 text-xs text-slate-500">
-        Tahapan sesudah tahap berjalan adalah perkiraan menurut data klaim saat ini.
-        Mengubah lini bisnis atau penanda RCL/PUCL dapat mengubahnya.
+        Tahapan sesudah tahap berjalan adalah perkiraan menurut data klaim saat
+        ini. Mengubah lini bisnis atau penanda RCL/PUCL dapat mengubahnya.
       </p>
     </nav>
-  )
+  );
 }

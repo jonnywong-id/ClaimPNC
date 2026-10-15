@@ -1,31 +1,31 @@
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { CloseIcon } from '@/components/Icon'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { CloseIcon } from "@/components/Icon";
 
-import type { Baris, Daftar, Dokumen } from './types'
-import { formatTanggal, pesanGalat } from './pesan'
+import type { Baris, Daftar, Dokumen } from "./types";
+import { formatTanggal, pesanGalat } from "./pesan";
 
 type Props = {
   /** Daftar yang sedang terbuka; kolom gridnya datang dari sini. */
-  daftar: Daftar
+  daftar: Daftar;
 
   /** Baris antrean yang rinciannya sedang dibuka. */
-  baris: Baris
+  baris: Baris;
 
-  data: Dokumen[] | undefined
-  isPending: boolean
-  isError: boolean
-  error: unknown
+  data: Dokumen[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
 
-  onClose: () => void
+  onClose: () => void;
 
   /**
    * Tombol **"Upload File Penunjang"** — di ATAS grid, persis letaknya di Pega.
    *
    * Belum dibangun; menekannya menjawab alasannya.
    */
-  onUpload: () => void
+  onUpload: () => void;
 
   /**
    * Tombol **"SEND"** — satu per BARIS di dalam grid, persis letaknya di Pega.
@@ -33,14 +33,14 @@ type Props = {
    * Ia MENGIRIM SURAT ke reasuradur lalu menandai dokumennya terkirim. Akibatnya tidak
    * dapat ditarik kembali.
    */
-  onSend: (dokumen: Dokumen) => void
+  onSend: (dokumen: Dokumen) => void;
 
   /** Sedang menunggu jawaban salah satu tombol di atas. */
-  busy: boolean
+  busy: boolean;
 
   /** Pesan hasil pengiriman terakhir; kosong berarti belum ada. */
-  pesanKirim?: string
-}
+  pesanKirim?: string;
+};
 
 /**
  * DocumentPanel adalah grid "Detail PLA List" / "Detail DLA List".
@@ -158,14 +158,15 @@ export function DocumentPanel({
       />
 
       <p className="mt-3 text-xs text-slate-500">
-        Tombol <strong>Send</strong> mengirim <strong>satu</strong> {daftar.nama} beserta
-        lampirannya ke reasuradur lewat surel, lalu menandainya terkirim. Surat yang sudah
-        terkirim tidak dapat ditarik kembali. Baris yang <strong>tidak bertombol</strong>
-        adalah dokumen yang sudah dikirim — sama seperti di layar lama, dan kolom{' '}
-        <strong>Terkirim</strong> menyatakannya.
+        Tombol <strong>Send</strong> mengirim <strong>satu</strong>{" "}
+        {daftar.nama} beserta lampirannya ke reasuradur lewat surel, lalu
+        menandainya terkirim. Surat yang sudah terkirim tidak dapat ditarik
+        kembali. Baris yang <strong>tidak bertombol</strong>
+        adalah dokumen yang sudah dikirim — sama seperti di layar lama, dan
+        kolom <strong>Terkirim</strong> menyatakannya.
       </p>
 
-      {pesanKirim != null && pesanKirim !== '' && (
+      {pesanKirim != null && pesanKirim !== "" && (
         <p
           role="status"
           className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
@@ -174,7 +175,7 @@ export function DocumentPanel({
         </p>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -197,28 +198,28 @@ function kolomDokumen(
     title: item.judul,
     value: (row) => nilaiSel(row, item.kunci),
     render: (row) => gambarSel(row, item.kunci, item.tanggal),
-  }))
+  }));
 
   // Kolom "SEND" — sel tombol di dalam grid, persis seperti di Pega.
   //
   // Selnya KOSONG pada baris yang syarat tampilnya tidak terpenuhi. Syarat itu dihitung
   // peladen dan berbeda per tab — lihat catatan di kepala berkas.
   kolom.push({
-    key: 'aksi',
-    title: '',
-    width: '6rem',
+    key: "aksi",
+    title: "",
+    width: "6rem",
     noSort: true,
     alignRight: true,
-    value: () => '',
+    value: () => "",
     render: (row) =>
       bolehKirim(row) ? (
         <Button type="button" onClick={() => onSend(row)} disabled={busy}>
-          {busy ? '…' : 'Send'}
+          {busy ? "…" : "Send"}
         </Button>
       ) : null,
-  })
+  });
 
-  return kolom
+  return kolom;
 }
 
 /**
@@ -244,14 +245,14 @@ function kolomDokumen(
  * tidak boleh longgar, karena di situlah surat kedua terkirim.
  */
 function bolehKirim(row: Dokumen): boolean {
-  if (typeof row.dapat_dikirim === 'boolean') return row.dapat_dikirim
-  return row.terkirim !== '1'
+  if (typeof row.dapat_dikirim === "boolean") return row.dapat_dikirim;
+  return row.terkirim !== "1";
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
 function nilaiSel(row: Dokumen, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /**
@@ -262,25 +263,25 @@ function nilaiSel(row: Dokumen, kunci: string): string {
  * pertama berarti hal yang SAMA bagi pengguna meski berbeda di data.
  */
 function gambarSel(row: Dokumen, kunci: string, tanggal: boolean) {
-  const isi = nilaiSel(row, kunci)
+  const isi = nilaiSel(row, kunci);
 
-  if (kunci === 'terkirim') {
-    const sudah = isi === '1'
+  if (kunci === "terkirim") {
+    const sudah = isi === "1";
     return (
       <span
         className={[
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
           sudah
-            ? 'bg-emerald-50 text-emerald-700'
-            : 'bg-amber-50 text-amber-800',
-        ].join(' ')}
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-amber-50 text-amber-800",
+        ].join(" ")}
       >
-        {sudah ? 'Terkirim' : 'Belum'}
+        {sudah ? "Terkirim" : "Belum"}
       </span>
-    )
+    );
   }
 
-  if (tanggal) return formatTanggal(isi)
-  if (isi === '') return <span className="text-slate-400">—</span>
-  return isi
+  if (tanggal) return formatTanggal(isi);
+  if (isi === "") return <span className="text-slate-400">—</span>;
+  return isi;
 }

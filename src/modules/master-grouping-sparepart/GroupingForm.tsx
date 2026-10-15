@@ -1,17 +1,22 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useMemo, useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, GroupingErrorCode, type Grouping, type GroupingInput } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
-import { TextAreaField } from '@/components/TextAreaField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  GroupingErrorCode,
+  type Grouping,
+  type GroupingInput,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
+import { TextAreaField } from "@/components/TextAreaField";
 
-import { useGroupingOptions, useGroupingPart, useGroupingSides } from './api'
+import { useGroupingOptions, useGroupingPart, useGroupingSides } from "./api";
 
 /**
  * Batas panjang harus sama dengan konstanta di
@@ -32,34 +37,40 @@ const MAX = {
   sisi: 30,
   kendaraan: 100,
   catatan: 500,
-} as const
+} as const;
 
 const wajib = (max: number, label: string) =>
   z
     .string()
     .trim()
     .min(1, `${label} wajib diisi.`)
-    .max(max, `${label} paling panjang ${max} karakter.`)
+    .max(max, `${label} paling panjang ${max} karakter.`);
 
 const schema = z
   .object({
     // Keempat isian wajib adalah persis anggota kunci alami. Bukan karena layar lama
     // menandainya `pyRequired` — ia tidak menandai satu pun — melainkan karena kunci yang
     // salah satu anggotanya kosong tidak dapat membedakan dua baris.
-    nomor_sparepart: wajib(MAX.nomor, 'Nomor sparepart'),
-    nama_panel: wajib(MAX.panel, 'Nama panel'),
-    no_rangka: wajib(MAX.rangka, 'No rangka'),
-    sisi: wajib(MAX.sisi, 'Sisi'),
+    nomor_sparepart: wajib(MAX.nomor, "Nomor sparepart"),
+    nama_panel: wajib(MAX.panel, "Nama panel"),
+    no_rangka: wajib(MAX.rangka, "No rangka"),
+    sisi: wajib(MAX.sisi, "Sisi"),
 
     id_panel: z.string().trim().max(MAX.panel),
     tipe_kendaraan: z
       .string()
       .trim()
-      .max(MAX.kendaraan, `Tipe kendaraan paling panjang ${MAX.kendaraan} karakter.`),
+      .max(
+        MAX.kendaraan,
+        `Tipe kendaraan paling panjang ${MAX.kendaraan} karakter.`,
+      ),
     grouping_dengan_no_rangka: z
       .string()
       .trim()
-      .max(MAX.rangka, `Grouping dengan no rangka paling panjang ${MAX.rangka} karakter.`),
+      .max(
+        MAX.rangka,
+        `Grouping dengan no rangka paling panjang ${MAX.rangka} karakter.`,
+      ),
     catatan: z
       .string()
       .trim()
@@ -68,23 +79,23 @@ const schema = z
   // Menggabungkan baris dengan nomor rangkanya sendiri ditolak — SELISIH YANG DIRENCANAKAN
   // terhadap sistem lama, yang tidak memeriksanya sama sekali.
   .superRefine((values, ctx) => {
-    const target = values.grouping_dengan_no_rangka.trim().toUpperCase()
-    const own = values.no_rangka.trim().toUpperCase()
-    if (target !== '' && target === own) {
+    const target = values.grouping_dengan_no_rangka.trim().toUpperCase();
+    const own = values.no_rangka.trim().toUpperCase();
+    if (target !== "" && target === own) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['grouping_dengan_no_rangka'],
+        path: ["grouping_dengan_no_rangka"],
         message:
-          'Nomor rangka ini sama dengan No Rangka baris ini sendiri. ' +
-          'Kosongkan bila ingin membuka grup baru.',
-      })
+          "Nomor rangka ini sama dengan No Rangka baris ini sendiri. " +
+          "Kosongkan bila ingin membuka grup baru.",
+      });
     }
-  })
+  });
 
-export type GroupingFields = z.infer<typeof schema>
+export type GroupingFields = z.infer<typeof schema>;
 
 /** Nilai yang dikirim ke pemanggil saat form disimpan. */
-export type GroupingFormValues = GroupingInput
+export type GroupingFormValues = GroupingInput;
 
 type Props = {
   /**
@@ -93,15 +104,15 @@ type Props = {
    * Mode hanya menentukan judul dan teks tombolnya — seluruh isian dapat diubah pada kedua
    * mode, sama seperti layar lama yang memakai form yang sama untuk keduanya.
    */
-  editing: Grouping | null
+  editing: Grouping | null;
 
-  isSaving: boolean
-  error: unknown
-  onSave: (values: GroupingFormValues) => void
-  onCancel: () => void
-}
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: GroupingFormValues) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -113,68 +124,74 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case GroupingErrorCode.duplicate:
         return {
-          title: 'Data sudah ada',
+          title: "Data sudah ada",
           description:
-            'Kombinasi nomor sparepart, nama panel, no rangka, dan sisi ini sudah dipakai grouping lain. ' +
-            'Ubah salah satunya, atau buka grouping yang sudah ada.',
-          tone: 'penolakan',
-        }
+            "Kombinasi nomor sparepart, nama panel, no rangka, dan sisi ini sudah dipakai grouping lain. " +
+            "Ubah salah satunya, atau buka grouping yang sudah ada.",
+          tone: "penolakan",
+        };
       case ErrorCode.validationFailed:
         // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
         // mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
+          : {
+              title: "Belum dapat disimpan",
+              description: error.message,
+              tone: "penolakan",
+            };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Nama isian yang dikenali form ini; dipakai menyorot pelanggaran dari server. */
 const FIELD_NAMES = [
-  'nomor_sparepart',
-  'id_panel',
-  'nama_panel',
-  'sisi',
-  'no_rangka',
-  'tipe_kendaraan',
-  'grouping_dengan_no_rangka',
-  'catatan',
-] as const
+  "nomor_sparepart",
+  "id_panel",
+  "nama_panel",
+  "sisi",
+  "no_rangka",
+  "tipe_kendaraan",
+  "grouping_dengan_no_rangka",
+  "catatan",
+] as const;
 
 /**
  * GroupingForm adalah form tambah dan ubah Master Grouping Sparepart.
@@ -205,11 +222,17 @@ const FIELD_NAMES = [
  * **ID Panel.** Isian tersembunyi yang diisi pilihan Nama Panel, persis seperti
  * `pySetValueOnSelect` pada autocomplete Pega.
  */
-export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Props) {
-  const isEditing = editing !== null
-  const headingId = useId()
+export function GroupingForm({
+  editing,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const isEditing = editing !== null;
+  const headingId = useId();
 
-  const options = useGroupingOptions()
+  const options = useGroupingOptions();
 
   const {
     register,
@@ -221,23 +244,23 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
   } = useForm<GroupingFields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nomor_sparepart: editing?.nomor_sparepart ?? '',
-      id_panel: editing?.id_panel ?? '',
-      nama_panel: editing?.nama_panel ?? '',
-      sisi: editing?.sisi ?? '',
-      no_rangka: editing?.no_rangka ?? '',
-      tipe_kendaraan: editing?.tipe_kendaraan ?? '',
-      grouping_dengan_no_rangka: editing?.grouping_dengan_no_rangka ?? '',
-      catatan: editing?.catatan ?? '',
+      nomor_sparepart: editing?.nomor_sparepart ?? "",
+      id_panel: editing?.id_panel ?? "",
+      nama_panel: editing?.nama_panel ?? "",
+      sisi: editing?.sisi ?? "",
+      no_rangka: editing?.no_rangka ?? "",
+      tipe_kendaraan: editing?.tipe_kendaraan ?? "",
+      grouping_dengan_no_rangka: editing?.grouping_dengan_no_rangka ?? "",
+      catatan: editing?.catatan ?? "",
     },
-  })
+  });
 
-  const chosenPanelID = useWatch({ control, name: 'id_panel' })
-  const chosenPanelName = useWatch({ control, name: 'nama_panel' })
+  const chosenPanelID = useWatch({ control, name: "id_panel" });
+  const chosenPanelName = useWatch({ control, name: "nama_panel" });
 
   // Daftar Sisi BARU dibaca setelah panelnya dipilih — persis seperti
   // `Activity/GetSisiPanel-Act.xml` yang dipanggil belakangan, bukan saat layar dibuka.
-  const sides = useGroupingSides(chosenPanelID ?? '', chosenPanelName ?? '')
+  const sides = useGroupingSides(chosenPanelID ?? "", chosenPanelName ?? "");
 
   /*
     Nomor sparepart yang SUDAH selesai diketik.
@@ -247,26 +270,39 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
     `onBlur`. Menjalankannya per ketikan berarti satu permintaan basis data untuk setiap
     huruf, dan pesan "tidak ditemukan" yang berkedip sepanjang pengguna mengetik.
   */
-  const [settledNumber, setSettledNumber] = useState(editing?.nomor_sparepart ?? '')
-  const part = useGroupingPart(settledNumber)
+  const [settledNumber, setSettledNumber] = useState(
+    editing?.nomor_sparepart ?? "",
+  );
+  const part = useGroupingPart(settledNumber);
 
   const panelOptions = useMemo(
-    () => (options.data?.panel ?? []).map((one) => ({ value: one.kode, label: one.nama })),
+    () =>
+      (options.data?.panel ?? []).map((one) => ({
+        value: one.kode,
+        label: one.nama,
+      })),
     [options.data],
-  )
+  );
 
   const vehicleOptions = useMemo(
     // Yang DISIMPAN adalah namanya, bukan kodenya: autocomplete Pega menulis ke kolom yang
     // sama dengan yang ditampilkan kembali oleh daftar.
     () =>
-      (options.data?.tipe_kendaraan ?? []).map((one) => ({ value: one.nama, label: one.nama })),
+      (options.data?.tipe_kendaraan ?? []).map((one) => ({
+        value: one.nama,
+        label: one.nama,
+      })),
     [options.data],
-  )
+  );
 
   const sideOptions = useMemo(
-    () => (sides.data?.sisi ?? []).map((one) => ({ value: one.kode, label: one.nama })),
+    () =>
+      (sides.data?.sisi ?? []).map((one) => ({
+        value: one.kode,
+        label: one.nama,
+      })),
     [sides.data],
-  )
+  );
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan
@@ -274,28 +310,31 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
+        setError(column as (typeof FIELD_NAMES)[number], {
+          type: "server",
+          message,
+        });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   // Kelima isian turunan: hasil pencarian bila ada, jika tidak nilai baris yang sedang
   // disunting. Urutan itu penting — begitu nomornya diganti, yang tampil harus nilai BARU,
   // bukan sisa nilai lama yang menyesatkan.
   const derived = part.data ?? {
-    nama_sparepart: editing?.nama_sparepart ?? '',
-    kategori_sparepart: editing?.kategori_sparepart ?? '',
-    tipe_sparepart: editing?.tipe_sparepart ?? '',
-    kode_sparepart: editing?.kode_sparepart ?? '',
-    tanggal_produksi: editing?.tanggal_produksi ?? '',
-  }
+    nama_sparepart: editing?.nama_sparepart ?? "",
+    kategori_sparepart: editing?.kategori_sparepart ?? "",
+    tipe_sparepart: editing?.tipe_sparepart ?? "",
+    kode_sparepart: editing?.kode_sparepart ?? "",
+    tanggal_produksi: editing?.tanggal_produksi ?? "",
+  };
 
   const partNotFound =
     part.isError &&
     part.error instanceof APIError &&
-    part.error.kode === GroupingErrorCode.partNotFound
+    part.error.kode === GroupingErrorCode.partNotFound;
 
   return (
     <form
@@ -307,11 +346,15 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
       <h2 id={headingId} className="text-base font-semibold text-slate-900">
         {isEditing
           ? `Ubah grouping ${editing.nomor_sparepart} — ${editing.nama_panel}`
-          : 'Tambah Master Grouping Sparepart'}
+          : "Tambah Master Grouping Sparepart"}
       </h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/*
@@ -346,13 +389,16 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
             hint="Wajib. Nama, kategori, dan tipenya terisi sendiri dari Master Sparepart."
             error={errors.nomor_sparepart?.message}
             disabled={isSaving}
-            {...register('nomor_sparepart', {
+            {...register("nomor_sparepart", {
               onBlur: (event) => setSettledNumber(event.target.value.trim()),
             })}
           />
 
           <Turunan label="Nama Sparepart" value={derived.nama_sparepart} />
-          <Turunan label="Kategory Sparepart" value={derived.kategori_sparepart} />
+          <Turunan
+            label="Kategory Sparepart"
+            value={derived.kategori_sparepart}
+          />
           <Turunan label="Type Sparepart" value={derived.tipe_sparepart} />
         </div>
 
@@ -400,15 +446,19 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
                 value={field.value}
                 onBlur={field.onBlur}
                 onChange={(event) => {
-                  field.onChange(event)
+                  field.onChange(event);
                   // Nama panelnya ikut disimpan, bukan hanya kodenya: NAMA_PANEL yang menjadi
                   // anggota kunci alami, dan ia pula yang dipakai mencari daftar Sisi.
-                  const chosen = options.data?.panel.find((one) => one.kode === event.target.value)
-                  setValue('nama_panel', chosen?.nama ?? '', { shouldValidate: true })
+                  const chosen = options.data?.panel.find(
+                    (one) => one.kode === event.target.value,
+                  );
+                  setValue("nama_panel", chosen?.nama ?? "", {
+                    shouldValidate: true,
+                  });
                   // Sisi yang sudah dipilih dibuang saat panelnya berganti: sisi milik panel
                   // lama tidak boleh tertinggal pada panel yang baru — dan daftar pilihannya
                   // pun sudah tidak memuatnya lagi.
-                  setValue('sisi', '', { shouldValidate: false })
+                  setValue("sisi", "", { shouldValidate: false });
                 }}
               />
             )}
@@ -422,7 +472,7 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
                 id="sisi"
                 label="Sisi"
                 options={sideOptions}
-                emptyText={chosenPanelID ? '— pilih —' : '— pilih panel dulu —'}
+                emptyText={chosenPanelID ? "— pilih —" : "— pilih panel dulu —"}
                 error={errors.sisi?.message}
                 disabled={isSaving || !chosenPanelID || sides.isPending}
                 {...field}
@@ -433,8 +483,8 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
 
         {chosenPanelID && !sides.isPending && sideOptions.length === 0 && (
           <p className="text-xs text-amber-700">
-            Panel ini belum punya sisi yang terdaftar. Lengkapi lokasinya di Master Panel lebih
-            dulu — Sisi wajib diisi.
+            Panel ini belum punya sisi yang terdaftar. Lengkapi lokasinya di
+            Master Panel lebih dulu — Sisi wajib diisi.
           </p>
         )}
       </Group>
@@ -449,7 +499,7 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
             hint="Wajib. Nomor rangka kendaraan tempat sparepart ini terpasang."
             error={errors.no_rangka?.message}
             disabled={isSaving}
-            {...register('no_rangka')}
+            {...register("no_rangka")}
           />
 
           <Controller
@@ -479,7 +529,7 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
             hint="Isi nomor rangka yang sudah terdaftar untuk menggabungkan ke grupnya. Kosongkan untuk membuka grup baru."
             error={errors.grouping_dengan_no_rangka?.message}
             disabled={isSaving}
-            {...register('grouping_dengan_no_rangka')}
+            {...register("grouping_dengan_no_rangka")}
           />
         </div>
       </Group>
@@ -492,13 +542,14 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
           maxLength={MAX.catatan}
           error={errors.catatan?.message}
           disabled={isSaving}
-          {...register('catatan')}
+          {...register("catatan")}
         />
       </Group>
 
       <p className="text-xs text-slate-500">
-        Baris yang disimpan selalu kembali ke <span className="font-medium">Waiting Approval</span>{' '}
-        dan menunggu persetujuan — persetujuan sebelumnya tidak berlaku atas isi yang sudah
+        Baris yang disimpan selalu kembali ke{" "}
+        <span className="font-medium">Waiting Approval</span> dan menunggu
+        persetujuan — persetujuan sebelumnya tidak berlaku atas isi yang sudah
         berubah.
       </p>
 
@@ -507,11 +558,11 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -520,13 +571,21 @@ export function GroupingForm({ editing, isSaving, error, onSave, onCancel }: Pro
  * Ia `<fieldset>` dan bukan `<div>` supaya pembaca layar mengumumkan judulnya saat kursor
  * masuk ke salah satu isian di dalamnya.
  */
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
+      <legend className="px-1 text-sm font-semibold text-slate-700">
+        {title}
+      </legend>
       {children}
     </fieldset>
-  )
+  );
 }
 
 /**
@@ -541,21 +600,35 @@ function Turunan({ label, value }: { label: string; value: string }) {
     <div>
       <span className="block text-sm font-medium text-slate-700">{label}</span>
       <p className="mt-1 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
-        {value || <span className="text-slate-400">— terisi dari Master Sparepart —</span>}
+        {value || (
+          <span className="text-slate-400">
+            — terisi dari Master Sparepart —
+          </span>
+        )}
       </p>
     </div>
-  )
+  );
 }
 
 /** Keterangan baca-saja pada kepala form mode ubah. */
-function Keterangan({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Keterangan({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div>
       <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </span>
       <span className="mt-0.5 block text-sm text-slate-900">{value}</span>
-      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+      {hint && (
+        <span className="mt-1 block text-xs text-slate-500">{hint}</span>
+      )}
     </div>
-  )
+  );
 }

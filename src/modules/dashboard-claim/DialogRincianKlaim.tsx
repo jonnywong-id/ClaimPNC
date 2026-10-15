@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useRincianKlaim } from './api'
-import { ambil } from './dokumen'
-import { isPA, isHE, penjagaTerpenuhi } from './kondisiLiniBisnis'
-import { GridRincian, Isian_, type Isian } from './BagianRincian'
-import { SubPopupRincian } from './SubPopupRincian'
+import { useRincianKlaim } from "./api";
+import { ambil } from "./dokumen";
+import { isPA, isHE, penjagaTerpenuhi } from "./kondisiLiniBisnis";
+import { GridRincian, Isian_, type Isian } from "./BagianRincian";
+import { SubPopupRincian } from "./SubPopupRincian";
 import {
   ISIAN_CATATAN,
   ISIAN_KEPALA,
@@ -35,7 +35,7 @@ import {
   VARIAN_OBJEK_ESTIMASI,
   VARIAN_OBJEK_REGISTER,
   type VarianObjek,
-} from './spesifikasiRincian'
+} from "./spesifikasiRincian";
 
 /**
  * Popup rincian klaim — terbuka saat nomor klaim diklik.
@@ -73,9 +73,9 @@ export function DialogRincianKlaim({
   nomorKlaim,
   onTutup,
 }: {
-  klaimID: string
-  nomorKlaim: string
-  onTutup: () => void
+  klaimID: string;
+  nomorKlaim: string;
+  onTutup: () => void;
 }) {
   /*
     Baris yang sedang dibuka sub-popup-nya — padanan `pyEditAction` Pega.
@@ -85,25 +85,25 @@ export function DialogRincianKlaim({
     dua popup terbuka bersamaan.
   */
   const [sub, setSub] = useState<{
-    judul: string
-    baris: Record<string, unknown>
-    isian: Isian[]
-  } | null>(null)
+    judul: string;
+    baris: Record<string, unknown>;
+    isian: Isian[];
+  } | null>(null);
 
-  const rincian = useRincianKlaim(klaimID)
-  const tutupRef = useRef<HTMLButtonElement>(null)
+  const rincian = useRincianKlaim(klaimID);
+  const tutupRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    tutupRef.current?.focus()
+    tutupRef.current?.focus();
 
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onTutup()
+      if (event.key === "Escape") onTutup();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onTutup])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onTutup]);
 
-  const judul = `Detail Klaim ${nomorKlaim}`
+  const judul = `Detail Klaim ${nomorKlaim}`;
 
   return (
     <div
@@ -121,19 +121,20 @@ export function DialogRincianKlaim({
             onClick={onTutup}
             aria-label="Tutup"
             className={[
-              'rounded-kontrol px-3 py-1.5 text-sm text-slate-500',
-              'transition ease-halus hover:bg-slate-100 hover:text-slate-700',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-              'focus-visible:outline-blue-600',
-            ].join(' ')}
+              "rounded-kontrol px-3 py-1.5 text-sm text-slate-500",
+              "transition ease-halus hover:bg-slate-100 hover:text-slate-700",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-600",
+            ].join(" ")}
           >
             ✕
           </button>
-
         </div>
 
         {rincian.isPending ? (
-          <p className="py-8 text-center text-sm text-slate-500">Memuat rincian klaim…</p>
+          <p className="py-8 text-center text-sm text-slate-500">
+            Memuat rincian klaim…
+          </p>
         ) : null}
 
         {rincian.isError ? (
@@ -143,7 +144,7 @@ export function DialogRincianKlaim({
             description={
               rincian.error instanceof APIError
                 ? rincian.error.message
-                : 'Terjadi kesalahan pada sistem.'
+                : "Terjadi kesalahan pada sistem."
             }
           />
         ) : null}
@@ -168,7 +169,8 @@ export function DialogRincianKlaim({
 
             {Object.keys(rincian.data.dokumen).length === 0 ? (
               <p className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Klaim ini belum punya dokumen rincian di <code>POOLDATA.JSON_KLAIM</code>.
+                Klaim ini belum punya dokumen rincian di{" "}
+                <code>POOLDATA.JSON_KLAIM</code>.
               </p>
             ) : (
               <IsiBertab dokumen={rincian.data.dokumen} onSub={setSub} />
@@ -191,17 +193,21 @@ export function DialogRincianKlaim({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** Satu nilai berlabel. Nilai kosong digambar sebagai tanda pisah, bukan sel hampa. */
 function Nilai({ label, isi }: { label: string; isi: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm text-slate-900">{isi === '' ? '—' : isi}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm text-slate-900">
+        {isi === "" ? "—" : isi}
+      </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -238,8 +244,12 @@ function IsiBertab({
   dokumen,
   onSub,
 }: {
-  dokumen: Record<string, unknown>
-  onSub: (nilai: { judul: string; baris: Record<string, unknown>; isian: Isian[] }) => void
+  dokumen: Record<string, unknown>;
+  onSub: (nilai: {
+    judul: string;
+    baris: Record<string, unknown>;
+    isian: Isian[];
+  }) => void;
 }) {
   /*
     Kedua tab bersyarat memakai penjaga Pega apa adanya, bukan "ada isinya atau tidak".
@@ -253,36 +263,41 @@ function IsiBertab({
     Tujuh tab lain tanpa penjaga, jadi selalu tampil. Itu cocok dengan layar Pega yang
     memperlihatkan tujuh tab pada klaim yang bukan PA dan bukan HE.
   */
-  const tampilCatatan = isPA(dokumen)
-  const tampilHE = isHE(dokumen)
+  const tampilCatatan = isPA(dokumen);
+  const tampilHE = isHE(dokumen);
 
   /*
     Judul tab HE diambil dari `pyWorkPage.ClaimData.pyLabel` — Pega memakai nilai itu sebagai
     judul, bukan teks tetap. Dibaca dari dokumen; bila tidak ada, dipakai "Objek" supaya tabnya
     tidak muncul tanpa judul sama sekali.
   */
-  const labelHE = ambil(dokumen, 'ClaimData.pyLabel')
-  const judulHE = labelHE.ada && labelHE.nilai.trim() !== '' ? labelHE.nilai.trim() : 'Objek'
+  const labelHE = ambil(dokumen, "ClaimData.pyLabel");
+  const judulHE =
+    labelHE.ada && labelHE.nilai.trim() !== "" ? labelHE.nilai.trim() : "Objek";
 
   const tab: { kunci: string; judul: string; isi: () => ReactElement }[] = [
     {
-      kunci: 'penerima',
-      judul: 'Penerima Pembayaran Klaim',
+      kunci: "penerima",
+      judul: "Penerima Pembayaran Klaim",
       isi: () => (
         <GridRincian
           dokumen={dokumen}
           jalur="ClaimData.ReceiverClaim"
           kolom={KOLOM_PENERIMA}
           onBuka={(baris) =>
-            onSub({ judul: 'Detail Penerima Klaim', baris, isian: ISIAN_PENERIMA_DETAIL })
+            onSub({
+              judul: "Detail Penerima Klaim",
+              baris,
+              isian: ISIAN_PENERIMA_DETAIL,
+            })
           }
           kosong="Klaim ini belum punya penerima ganti rugi."
         />
       ),
     },
     {
-      kunci: 'registrasi',
-      judul: 'Registrasi',
+      kunci: "registrasi",
+      judul: "Registrasi",
       isi: () => (
         <div className="space-y-6">
           <Isian_ dokumen={dokumen} isian={ISIAN_REGISTER} />
@@ -297,15 +312,15 @@ function IsiBertab({
     ...(tampilCatatan
       ? [
           {
-            kunci: 'catatan',
-            judul: 'Catatan Untuk Analis',
+            kunci: "catatan",
+            judul: "Catatan Untuk Analis",
             isi: () => <Isian_ dokumen={dokumen} isian={ISIAN_CATATAN} />,
           },
         ]
       : []),
     {
-      kunci: 'survey',
-      judul: 'Hasil Survey',
+      kunci: "survey",
+      judul: "Hasil Survey",
       isi: () => (
         <div className="space-y-6">
           <Isian_ dokumen={dokumen} isian={ISIAN_SURVEY} />
@@ -316,7 +331,11 @@ function IsiBertab({
               kolom={KOLOM_INVESTIGASI}
               kosong="Belum ada investigasi."
               onBuka={(baris) =>
-                onSub({ judul: 'Detail Hasil Surveyor', baris, isian: ISIAN_DETAIL_SURVEYOR })
+                onSub({
+                  judul: "Detail Hasil Surveyor",
+                  baris,
+                  isian: ISIAN_DETAIL_SURVEYOR,
+                })
               }
             />
           ) : (
@@ -325,7 +344,13 @@ function IsiBertab({
               jalur="ClaimData.SurveyResults"
               kolom={KOLOM_HASIL_SURVEY}
               kosong="Belum ada hasil survey."
-              onBuka={(baris) => onSub({ judul: 'Hasil Survey', baris, isian: ISIAN_HASIL_SURVEY })}
+              onBuka={(baris) =>
+                onSub({
+                  judul: "Hasil Survey",
+                  baris,
+                  isian: ISIAN_HASIL_SURVEY,
+                })
+              }
             />
           )}
           {/*
@@ -338,8 +363,8 @@ function IsiBertab({
       ),
     },
     {
-      kunci: 'estimasi',
-      judul: 'Estimasi',
+      kunci: "estimasi",
+      judul: "Estimasi",
       isi: () => (
         <GridObjek
           dokumen={dokumen}
@@ -351,7 +376,7 @@ function IsiBertab({
     ...(tampilHE
       ? [
           {
-            kunci: 'he',
+            kunci: "he",
             judul: judulHE,
             isi: () => (
               <div className="space-y-6">
@@ -359,7 +384,13 @@ function IsiBertab({
                   dokumen={dokumen}
                   jalur="ClaimData.ObjectListHE"
                   kolom={KOLOM_OBJEK_HE}
-                  onBuka={(baris) => onSub({ judul: 'Coverage HE', baris, isian: ISIAN_COVERAGE_HE })}
+                  onBuka={(baris) =>
+                    onSub({
+                      judul: "Coverage HE",
+                      baris,
+                      isian: ISIAN_COVERAGE_HE,
+                    })
+                  }
                   kosong="Klaim ini belum punya objek Heavy Equipment."
                 />
                 <GridRincian
@@ -374,8 +405,8 @@ function IsiBertab({
         ]
       : []),
     {
-      kunci: 'adj',
-      judul: 'Adjustment & Akseptasi',
+      kunci: "adj",
+      judul: "Adjustment & Akseptasi",
       isi: () => (
         <div className="space-y-6">
           <GridObjek
@@ -387,7 +418,13 @@ function IsiBertab({
             dokumen={dokumen}
             jalur="ClaimData.ObjectCoverageList"
             kolom={KOLOM_COVERAGE}
-            onBuka={(baris) => onSub({ judul: 'Detail Coverage', baris, isian: ISIAN_COVERAGE_DETAIL })}
+            onBuka={(baris) =>
+              onSub({
+                judul: "Detail Coverage",
+                baris,
+                isian: ISIAN_COVERAGE_DETAIL,
+              })
+            }
             kosong="Klaim ini belum punya coverage."
           />
           <GridRincian
@@ -395,14 +432,16 @@ function IsiBertab({
             jalur="ClaimData.CoverageList"
             kolom={KOLOM_COVERAGE_HE}
             kosong="Belum ada coverage per objek."
-            onBuka={(baris) => onSub({ judul: 'Coverage', baris, isian: ISIAN_COVERAGE_GRID })}
+            onBuka={(baris) =>
+              onSub({ judul: "Coverage", baris, isian: ISIAN_COVERAGE_GRID })
+            }
           />
         </div>
       ),
     },
     {
-      kunci: 'dokumen',
-      judul: 'Dokumen',
+      kunci: "dokumen",
+      judul: "Dokumen",
       isi: () => (
         <GridRincian
           dokumen={dokumen}
@@ -413,26 +452,36 @@ function IsiBertab({
       ),
     },
     {
-      kunci: 'progress',
-      judul: 'Progress Klaim',
+      kunci: "progress",
+      judul: "Progress Klaim",
       isi: () => (
         <GridRincian
           dokumen={dokumen}
           jalur="ClaimData.ProgressList"
           kolom={KOLOM_POSISI}
-          onBuka={(baris) => onSub({ judul: 'Detail Progress', baris, isian: ISIAN_DETAIL_PROGRESS })}
+          onBuka={(baris) =>
+            onSub({
+              judul: "Detail Progress",
+              baris,
+              isian: ISIAN_DETAIL_PROGRESS,
+            })
+          }
           kosong="Belum ada posisi tercatat."
         />
       ),
     },
-  ]
+  ];
 
-  const [aktif, setAktif] = useState(tab[0]?.kunci ?? '')
-  const terpilih = tab.find((t) => t.kunci === aktif) ?? tab[0]
+  const [aktif, setAktif] = useState(tab[0]?.kunci ?? "");
+  const terpilih = tab.find((t) => t.kunci === aktif) ?? tab[0];
 
   return (
     <div className="mt-6">
-      <div role="tablist" aria-label="Bagian rincian klaim" className="flex flex-wrap gap-1 border-b border-slate-200">
+      <div
+        role="tablist"
+        aria-label="Bagian rincian klaim"
+        className="flex flex-wrap gap-1 border-b border-slate-200"
+      >
         {tab.map((t) => (
           <button
             key={t.kunci}
@@ -441,13 +490,13 @@ function IsiBertab({
             aria-selected={t.kunci === terpilih?.kunci}
             onClick={() => setAktif(t.kunci)}
             className={[
-              'rounded-t-kontrol px-3 py-2 text-sm font-medium transition ease-halus',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-              'focus-visible:outline-blue-600',
+              "rounded-t-kontrol px-3 py-2 text-sm font-medium transition ease-halus",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-600",
               t.kunci === terpilih?.kunci
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700",
+            ].join(" ")}
           >
             {t.judul}
           </button>
@@ -461,7 +510,9 @@ function IsiBertab({
         susunan tab, dan layar Pega menggambarnya persis begitu.
       */}
       <section className="mt-8 border-t border-slate-200 pt-6">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Attachment</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">
+          Attachment
+        </h3>
         <GridRincian
           dokumen={dokumen}
           jalur="ClaimData.AttachmentHistory"
@@ -470,7 +521,7 @@ function IsiBertab({
         />
       </section>
     </div>
-  )
+  );
 }
 
 /**
@@ -489,21 +540,27 @@ function GridObjek({
   varian,
   kosong,
 }: {
-  dokumen: Record<string, unknown>
-  varian: VarianObjek[]
-  kosong: string
+  dokumen: Record<string, unknown>;
+  varian: VarianObjek[];
+  kosong: string;
 }) {
-  const cocok = varian.find((v) => penjagaTerpenuhi(v.penjaga, dokumen))
+  const cocok = varian.find((v) => penjagaTerpenuhi(v.penjaga, dokumen));
 
   if (cocok === undefined) {
     return (
       <p className="rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        Lini bisnis klaim ini tidak termasuk yang digambar layar lama pada bagian ini.
+        Lini bisnis klaim ini tidak termasuk yang digambar layar lama pada
+        bagian ini.
       </p>
-    )
+    );
   }
 
   return (
-    <GridRincian dokumen={dokumen} jalur="ClaimData.ObjectList" kolom={cocok.kolom} kosong={kosong} />
-  )
+    <GridRincian
+      dokumen={dokumen}
+      jalur="ClaimData.ObjectList"
+      kolom={cocok.kolom}
+      kosong={kosong}
+    />
+  );
 }

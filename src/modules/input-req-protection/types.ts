@@ -10,15 +10,15 @@ export type Protection = {
   /**
    * Kolom "No Proteksi".
    *
-   * Dua bentuk hidup berdampingan: `OPC-XXX` warisan Pega dan `OPCN.YY.xxxx` terbitan
+   * Dua bentuk hidup berdampingan: `OPC-XXX` warisan Pega dan `OPCN.YY.n` terbitan
    * aplikasi ini. Layar menampilkan keduanya apa adanya.
    */
-  nomor_proteksi: string
+  nomor_proteksi: string;
 
-  nomor_polis: string // kolom "No Polis"
+  nomor_polis: string; // kolom "No Polis"
 
   /** Kolom "No Klaim". Kosong berarti proteksi belum ditautkan ke klaim mana pun. */
-  nomor_klaim: string
+  nomor_klaim: string;
 
   /**
    * Kolom "Tipe Proteksi" — KODE (`PROTECTION_TYPE_ID`).
@@ -26,20 +26,20 @@ export type Protection = {
    * Tetap dikirim meski namanya sudah ada: kodenya yang dipakai form saat menyunting, dan
    * kodenya yang menentukan antrean akseptasi.
    */
-  tipe_proteksi: string
+  tipe_proteksi: string;
 
   /**
    * Nama tipe dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
    *
    * KOSONG bila kodenya tidak terdaftar di master — lihat `protectionTypeLabel`.
    */
-  nama_tipe_proteksi: string
+  nama_tipe_proteksi: string;
 
   /** YYYY-MM-DD dalam WIB; backend yang mengonversinya dari UTC. */
-  tanggal_proteksi: string // kolom "Tanggal Proteksi Dibuat"
+  tanggal_proteksi: string; // kolom "Tanggal Proteksi Dibuat"
 
-  keterangan: string // kolom "Keterangan"
-  user_create: string // kolom "User Create"
+  keterangan: string; // kolom "Keterangan"
+  user_create: string; // kolom "User Create"
 
   /**
    * Menggantikan `pyDisabledWhen` pada layar lama: tautan baris mati begitu nomor klaim
@@ -48,17 +48,17 @@ export type Protection = {
    * Dihitung di SERVER. Layar hanya mematikan tautannya — aturannya tidak diulang di sini,
    * karena aturan yang hidup di dua tempat akan berbeda cepat atau lambat.
    */
-  dapat_disunting: boolean
+  dapat_disunting: boolean;
 
   /** Baris ini akan masuk antrean akseptasi PREMI (`tipe_proteksi === "2"`). */
-  premi: boolean
-}
+  premi: boolean;
+};
 
 /** Isi panel "Detail Perubahan"; terisi hanya untuk tipe `7` dan `8`. */
 export type ChangeDetail = {
   /** Keduanya dipakai tipe `7` (Perubahan DOL). Kosong berarti tidak diisi. */
-  dol_sebelum: string
-  dol_baru: string
+  dol_sebelum: string;
+  dol_baru: string;
 
   /**
    * Keduanya dipakai tipe `8` (Perubahan Cause Of Loss), dan sejak 2026-10-05 keduanya
@@ -67,11 +67,11 @@ export type ChangeDetail = {
    * Keputusan Work Owner: "old data new data simpan idcol aja". Dengan begitu perbandingan
    * "dari apa menjadi apa" tidak pernah bergantung pada teks yang dapat berubah di master.
    */
-  penyebab_kerugian: string
-  penyebab_kerugian_master: string
+  penyebab_kerugian: string;
+  penyebab_kerugian_master: string;
 
-  nama_objek: string
-  nama_cabang: string
+  nama_objek: string;
+  nama_cabang: string;
 
   /**
    * SASARAN perubahan tipe `8` — baris coverage yang Penyebab Kerugiannya hendak diubah.
@@ -80,9 +80,9 @@ export type ChangeDetail = {
    * KOSONG pada tipe lain dan pada seluruh baris warisan Pega: di sana sasarannya hidup di
    * dalam blob properti dan tidak pernah menjadi kolom.
    */
-  id_objek: string
-  id_coverage: string
-}
+  id_objek: string;
+  id_coverage: string;
+};
 
 /** Satu permintaan proteksi beserta isian formnya. */
 export type ProtectionDetail = Protection & {
@@ -95,15 +95,15 @@ export type ProtectionDetail = Protection & {
    * Pada baris WARISAN ia berbeda: Pega menyimpan kunci teknisnya di sana,
    * `ASM-FW-GCNMFW-WORK PNC-xxxx`. Form menampilkannya hanya ketika berbeda.
    */
-  referensi_klaim: string
+  referensi_klaim: string;
 
-  detail_perubahan: ChangeDetail
-}
+  detail_perubahan: ChangeDetail;
+};
 
 export type ProtectionListResponse = {
-  proteksi: Protection[]
-  total: number
-}
+  proteksi: Protection[];
+  total: number;
+};
 
 /**
  * Isian form yang dikirim saat menyimpan.
@@ -119,19 +119,19 @@ export type ProtectionListResponse = {
  * dari sini tidak akan terpakai.
  */
 export type ProtectionFields = {
-  nomor_klaim: string
-  tipe_proteksi: string
-  keterangan: string
-  detail_perubahan: ChangeRequestFields
-}
+  nomor_klaim: string;
+  tipe_proteksi: string;
+  keterangan: string;
+  detail_perubahan: ChangeRequestFields;
+};
 
 /** Bagian panel Detail Perubahan yang benar-benar DIPILIH pengguna. */
 export type ChangeRequestFields = {
   /** "Next Date Of Loss" — wajib untuk tipe `7`. */
-  dol_baru: string
+  dol_baru: string;
 
   /** "Next Cause Of Loss" — wajib untuk tipe `8`. Berisi KODE (`D_COL_ID`), bukan teks. */
-  penyebab_kerugian_baru: string
+  penyebab_kerugian_baru: string;
 
   /**
    * Baris coverage yang dipilih pemohon pada panel Detail Perubahan Cause Of Loss.
@@ -141,71 +141,71 @@ export type ChangeRequestFields = {
    * dapat punya banyak coverage bernama sama — pada klaim `PNC-1452`, `Resiko A` muncul
    * tiga kali dengan Penyebab Kerugian berbeda, dan yang membedakannya hanya `id_coverage`.
    */
-  id_objek: string
-  id_coverage: string
-}
+  id_objek: string;
+  id_coverage: string;
+};
 
 /** Satu baris panel "Detail Perubahan Cause Of Loss". */
 export type CoverageRow = {
-  id_objek: string
-  id_coverage: string
-  nama_objek: string
-  nama_coverage: string
+  id_objek: string;
+  id_coverage: string;
+  nama_objek: string;
+  nama_coverage: string;
 
   /** Keadaan SEKARANG baris ini — kolom "Cause of Loss". */
-  penyebab_kerugian: string
+  penyebab_kerugian: string;
 
   /**
    * Kodenya. Akseptasi mengubah deskripsi DAN kode sekaligus, sehingga keduanya ditampilkan
    * berdampingan — kolom yang namanya berkata satu hal dan kodenya berkata hal lain adalah
    * persis keadaan yang hendak dicegah.
    */
-  penyebab_kerugian_id: string
-}
+  penyebab_kerugian_id: string;
+};
 
 /** Isi respons daftar coverage. */
 export type CoverageListResponse = {
-  coverage: CoverageRow[]
-}
+  coverage: CoverageRow[];
+};
 
 /** Satu pilihan dropdown "Next Cause Of Loss". */
 export type CauseOfLossOption = {
   /** `D_COL_ID` — nilai yang DISIMPAN, dan yang kelak ditulis ke `CAUSEOFLOSSID` klaim. */
-  kode: string
+  kode: string;
 
   /** Teks yang dibaca pengguna. */
-  nama: string
+  nama: string;
 
   /** `LOSS_CODE`. Ditampilkan berdampingan supaya pilihan bernama mirip dapat dibedakan. */
-  kode_kerugian: string
-}
+  kode_kerugian: string;
+};
 
 /** Isi respons daftar penyebab kerugian. */
 export type CauseOfLossListResponse = {
-  penyebab_kerugian: CauseOfLossOption[]
-}
+  penyebab_kerugian: CauseOfLossOption[];
+};
 
 /** Hasil pencarian klaim; seluruhnya HANYA DIBACA di layar. */
 export type ClaimLookup = {
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
 
   /** "Current Date Of Loss". Kosong bila klaimnya tidak punya DOL tercatat. */
-  dol: string
+  dol: string;
 
   /** "Cause Of Loss Dipilih". */
-  penyebab_kerugian: string
+  penyebab_kerugian: string;
 
-  nama_objek: string
-  nama_cabang: string
-}
+  nama_objek: string;
+  nama_cabang: string;
+};
 
 /** Penyaring daftar. Seluruhnya opsional; kosong berarti tidak menyaring. */
 export type ProtectionFilter = {
-  search?: string
-  offset?: number
-}
+  search?: string;
+  offset?: number;
+};
 
 /**
  * Kode tipe proteksi yang ARTINYA terbukti dari export Pega.
@@ -218,9 +218,9 @@ export type ProtectionFilter = {
  *       (`Section/InputProtectionSection-Section.xml:2728`)
  *   `8` memunculkan panel "Detail Perubahan Cause Of Loss" (`:3638`)
  */
-export const TYPE_PREMIUM = '2'
-export const TYPE_CHANGE_LOSS_DATE = '7'
-export const TYPE_CHANGE_CAUSE_OF_LOSS = '8'
+export const TYPE_PREMIUM = "2";
+export const TYPE_CHANGE_LOSS_DATE = "7";
+export const TYPE_CHANGE_CAUSE_OF_LOSS = "8";
 
 /**
  * Satu pilihan tipe proteksi, dari master `POOLDATA.M_CLAIM_PROTECTION_TYPE`.
@@ -229,14 +229,14 @@ export const TYPE_CHANGE_CAUSE_OF_LOSS = '8'
  * pengguna, dan `kode` itulah yang tampil di layar ketika namanya tidak ada.
  */
 export type ProtectionType = {
-  kode: string
-  nama: string
-}
+  kode: string;
+  nama: string;
+};
 
 /** Tanggapan endpoint master tipe. */
 export type ProtectionTypeListResponse = {
-  tipe: ProtectionType[]
-}
+  tipe: ProtectionType[];
+};
 
 /**
  * Menampilkan nama tipe proteksi, atau kodenya apa adanya bila namanya tidak ada.
@@ -260,6 +260,6 @@ export type ProtectionTypeListResponse = {
  * dengan tanda hubung membuatnya tidak pernah ditanyakan.
  */
 export function protectionTypeLabel(code: string, name?: string): string {
-  const nama = name?.trim()
-  return nama ? nama : code
+  const nama = name?.trim();
+  return nama ? nama : code;
 }

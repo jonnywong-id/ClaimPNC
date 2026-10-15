@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, downloadAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, downloadAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   BalasResponse,
@@ -12,9 +12,9 @@ import type {
   MetadataResponse,
   RingkasDaftarResponse,
   RingkasResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-pla-dla'
+const PATH = "/api/inbox-pla-dla";
 
 /**
  * Kunci cache dikumpulkan di satu tempat.
@@ -26,7 +26,7 @@ const PATH = '/api/inbox-pla-dla'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-pla-dla', 'daftar', portal, token] as const,
+    ["inbox-pla-dla", "daftar", portal, token] as const,
 
   list: (
     portal: string | null,
@@ -34,22 +34,22 @@ const keys = {
     tab: string,
     page: number,
     search: string,
-  ) => ['inbox-pla-dla', 'baris', portal, token, tab, page, search] as const,
+  ) => ["inbox-pla-dla", "baris", portal, token, tab, page, search] as const,
 
   counts: (
     portal: string | null,
     token: string | null,
     tab: string,
     search: string,
-  ) => ['inbox-pla-dla', 'ringkas', portal, token, tab, search] as const,
+  ) => ["inbox-pla-dla", "ringkas", portal, token, tab, search] as const,
 
   // Tabel "Status / Jumlah" TIDAK dikunci per daftar: ia menyebut keenamnya sekaligus,
   // sehingga berpindah daftar tidak membuatnya diambil ulang.
   listCounts: (portal: string | null, token: string | null, search: string) =>
-    ['inbox-pla-dla', 'ringkas-daftar', portal, token, search] as const,
+    ["inbox-pla-dla", "ringkas-daftar", portal, token, search] as const,
 
   detail: (portal: string | null, token: string | null, kunci: string) =>
-    ['inbox-pla-dla', 'rincian', portal, token, kunci] as const,
+    ["inbox-pla-dla", "rincian", portal, token, kunci] as const,
 
   dokumen: (
     portal: string | null,
@@ -58,29 +58,30 @@ const keys = {
     nomor: string,
     jenis: string,
   ) =>
-    ['inbox-pla-dla', 'dokumen', portal, token, kunci, nomor, jenis] as const,
-}
+    ["inbox-pla-dla", "dokumen", portal, token, kunci, nomor, jenis] as const,
+};
 
 /** Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana. */
 export function useReasMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
+    queryFn: () =>
+      callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /** Isian penyaring yang dikirim ke server. */
 export type ParameterDaftar = {
-  tab: string
-  page: number
-  cari: string
-}
+  tab: string;
+  page: number;
+  cari: string;
+};
 
 /**
  * Hook isi satu daftar.
@@ -90,8 +91,8 @@ export type ParameterDaftar = {
  * SELURUH baris yang cocok ke memori sekaligus.
  */
 export function useReasList(parameter: ParameterDaftar, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(
@@ -106,7 +107,7 @@ export function useReasList(parameter: ParameterDaftar, enabled: boolean) {
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -124,8 +125,8 @@ export function useReasList(parameter: ParameterDaftar, enabled: boolean) {
  * tidak cocok adalah hal pertama yang dilaporkan pengguna sebagai kerusakan.
  */
 export function useReasCounts(parameter: ParameterDaftar, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.counts(portal, token, parameter.tab, parameter.cari),
@@ -133,9 +134,8 @@ export function useReasCounts(parameter: ParameterDaftar, enabled: boolean) {
       callAPI<RingkasResponse>(alamatRingkas(parameter), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 60 * 1000,
-  })
+  });
 }
-
 
 /**
  * Hook tabel **"Status / Jumlah"** — satu baris per DAFTAR.
@@ -151,16 +151,19 @@ export function useReasCounts(parameter: ParameterDaftar, enabled: boolean) {
  * sama seperti tabel di sebelahnya.
  */
 export function useReasListCounts(cari: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.listCounts(portal, token, cari),
     queryFn: () =>
-      callAPI<RingkasDaftarResponse>(alamatRingkasDaftar(cari), { token, portal }),
+      callAPI<RingkasDaftarResponse>(alamatRingkasDaftar(cari), {
+        token,
+        portal,
+      }),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -170,17 +173,17 @@ export function useReasListCounts(cari: string, enabled: boolean) {
  * `Authorization` dan `X-Portal`, dan `<a href>` tidak membawa keduanya.
  */
 export function useEksporReas() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (parameter: ParameterDaftar) =>
       downloadAPI(
         alamatEkspor(parameter),
-        `inbox-pla-dla-${parameter.tab || 'pla'}.csv`,
+        `inbox-pla-dla-${parameter.tab || "pla"}.csv`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /* ==========================================================================
@@ -196,8 +199,8 @@ export function useEksporReas() {
  * merender seluruh layar sekaligus.
  */
 export function useRincianKlaim(kunci: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.detail(portal, token, kunci),
@@ -206,9 +209,9 @@ export function useRincianKlaim(kunci: string, enabled: boolean) {
         token,
         portal,
       }),
-    enabled: enabled && kunci !== '' && token !== null && portal !== null,
+    enabled: enabled && kunci !== "" && token !== null && portal !== null,
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -224,26 +227,26 @@ export function useDokumenPemberitahuan(
   nomor: string,
   jenis: string,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.dokumen(portal, token, kunci, nomor, jenis),
     queryFn: () => {
-      const query = new URLSearchParams({ nomor, jenis })
+      const query = new URLSearchParams({ nomor, jenis });
       return callAPI<DokumenResponse>(
         `${PATH}/klaim/${encodeURIComponent(kunci)}/dokumen?${query.toString()}`,
         { token, portal },
-      )
+      );
     },
     enabled:
-      kunci !== '' &&
-      nomor !== '' &&
-      jenis !== '' &&
+      kunci !== "" &&
+      nomor !== "" &&
+      jenis !== "" &&
       token !== null &&
       portal !== null,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -253,18 +256,18 @@ export function useDokumenPemberitahuan(
  * `Authorization` dan `X-Portal`, dan `<a href>` tidak membawa keduanya.
  */
 export function useUnduhDokumen(kunci: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (dokumen: { id: string; nama: string }) =>
       downloadAPI(
         `${PATH}/klaim/${encodeURIComponent(kunci)}/dokumen/` +
           encodeURIComponent(dokumen.id),
-        dokumen.nama || 'dokumen',
+        dokumen.nama || "dokumen",
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -276,9 +279,9 @@ export function useUnduhDokumen(kunci: string) {
  * seluruh akibat itu di layar berarti menyalin aturan peladen ke tempat kedua.
  */
 export function useBalasKomunikasi(kunci: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (isian: { percakapan: string; balasan: string }) =>
@@ -287,7 +290,7 @@ export function useBalasKomunikasi(kunci: string) {
         {
           token,
           portal,
-          metode: 'POST',
+          metode: "POST",
           body: isian,
         },
       ),
@@ -295,13 +298,13 @@ export function useBalasKomunikasi(kunci: string) {
     onSuccess: () => {
       client.invalidateQueries({
         queryKey: keys.detail(portal, token, kunci),
-      })
+      });
       // Daftar induk ikut berubah: percakapan yang dijawab berpindah dari tab
       // "Terkirim — Belum Dijawab" ke "Terkirim — Sudah Dijawab".
-      client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'baris'] })
-      client.invalidateQueries({ queryKey: ['inbox-pla-dla', 'ringkas'] })
+      client.invalidateQueries({ queryKey: ["inbox-pla-dla", "baris"] });
+      client.invalidateQueries({ queryKey: ["inbox-pla-dla", "ringkas"] });
     },
-  })
+  });
 }
 
 /**
@@ -312,42 +315,41 @@ export function useBalasKomunikasi(kunci: string) {
  * dengan tidak ada alasan.
  */
 export function useTindakanBelumTersedia() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (tindakan: string) => {
-      const query = new URLSearchParams({ tindakan })
+      const query = new URLSearchParams({ tindakan });
       return callAPI<unknown>(`${PATH}/tindakan?${query.toString()}`, {
         token,
         portal,
-        metode: 'POST',
-      })
+        metode: "POST",
+      });
     },
-  })
+  });
 }
 
 /** alamatDaftar menyusun alamat permintaan daftar beserta penyaringnya. */
 function alamatDaftar(parameter: ParameterDaftar): string {
-  const query = parameterPenyaring(parameter)
-  if (parameter.page > 1) query.set('halaman', String(parameter.page))
+  const query = parameterPenyaring(parameter);
+  if (parameter.page > 1) query.set("halaman", String(parameter.page));
 
-  const teks = query.toString()
-  return teks ? `${PATH}?${teks}` : PATH
+  const teks = query.toString();
+  return teks ? `${PATH}?${teks}` : PATH;
 }
-
 
 /** alamatRingkasDaftar menyusun alamat tabel "Status / Jumlah" — tanpa tab, tanpa halaman. */
 function alamatRingkasDaftar(cari: string): string {
-  const bersih = cari.trim()
+  const bersih = cari.trim();
   return bersih
     ? `${PATH}/ringkas-daftar?cari=${encodeURIComponent(bersih)}`
-    : `${PATH}/ringkas-daftar`
+    : `${PATH}/ringkas-daftar`;
 }
 /** alamatRingkas menyusun alamat tabel ringkas — tanpa halaman. */
 function alamatRingkas(parameter: ParameterDaftar): string {
-  const teks = parameterPenyaring(parameter).toString()
-  return teks ? `${PATH}/ringkas?${teks}` : `${PATH}/ringkas`
+  const teks = parameterPenyaring(parameter).toString();
+  return teks ? `${PATH}/ringkas?${teks}` : `${PATH}/ringkas`;
 }
 
 /**
@@ -357,14 +359,14 @@ function alamatRingkas(parameter: ParameterDaftar): string {
  * yang sedang tampil.
  */
 function alamatEkspor(parameter: ParameterDaftar): string {
-  const teks = parameterPenyaring(parameter).toString()
-  return teks ? `${PATH}/ekspor?${teks}` : `${PATH}/ekspor`
+  const teks = parameterPenyaring(parameter).toString();
+  return teks ? `${PATH}/ekspor?${teks}` : `${PATH}/ekspor`;
 }
 
 /** parameterPenyaring menyusun bagian alamat yang sama bagi ketiga permintaan. */
 function parameterPenyaring(parameter: ParameterDaftar): URLSearchParams {
-  const query = new URLSearchParams()
-  if (parameter.tab) query.set('daftar', parameter.tab)
-  if (parameter.cari) query.set('cari', parameter.cari)
-  return query
+  const query = new URLSearchParams();
+  if (parameter.tab) query.set("daftar", parameter.tab);
+  if (parameter.cari) query.set("cari", parameter.cari);
+  return query;
 }

@@ -1,8 +1,8 @@
-import { Button } from '@/components/Button'
-import { formatDate } from '@/components/format'
-import { formatRupiah } from '@/lib/money'
+import { Button } from "@/components/Button";
+import { formatDate } from "@/components/format";
+import { formatRupiah } from "@/lib/money";
 
-import type { AgeBucket, SummaryGroup, SummaryResponse } from './types'
+import type { AgeBucket, SummaryGroup, SummaryResponse } from "./types";
 
 /**
  * Panel ringkasan di atas grid — kartu angka, sebaran umur, dan rincian per COB maupun per
@@ -29,18 +29,18 @@ export function SummaryPanel({
   onRefresh,
   isRefreshing,
 }: {
-  data: SummaryResponse | undefined
-  isLoading: boolean
-  error: unknown
-  onRefresh: () => void
-  isRefreshing: boolean
+  data: SummaryResponse | undefined;
+  isLoading: boolean;
+  error: unknown;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }) {
   if (isLoading) {
     return (
       <section className="mt-4 rounded-kartu border border-slate-200 bg-white p-4">
         <p className="text-sm text-slate-500">Memuat ringkasan…</p>
       </section>
-    )
+    );
   }
 
   // Panel yang gagal dimuat TIDAK menghentikan layar — grid di bawahnya tetap berguna.
@@ -54,13 +54,14 @@ export function SummaryPanel({
     return (
       <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-kartu border border-slate-200 bg-white p-4">
         <p className="text-sm text-slate-600">
-          Ringkasan tidak dapat dimuat. Daftar klaim di bawah tetap dapat dipakai.
+          Ringkasan tidak dapat dimuat. Daftar klaim di bawah tetap dapat
+          dipakai.
         </p>
         <Button tone="kedua" disabled={isRefreshing} onClick={onRefresh}>
-          {isRefreshing ? 'Memuat…' : 'Coba lagi'}
+          {isRefreshing ? "Memuat…" : "Coba lagi"}
         </Button>
       </section>
-    )
+    );
   }
 
   return (
@@ -73,9 +74,11 @@ export function SummaryPanel({
           bentuk panjang.
         */}
         <p className="text-sm text-slate-600">
-          Posisi{' '}
-          <span className="font-medium text-slate-900">{formatDate(data.posisi)}</span>
-          {' · '}
+          Posisi{" "}
+          <span className="font-medium text-slate-900">
+            {formatDate(data.posisi)}
+          </span>
+          {" · "}
           {data.total_berkas} berkas outstanding
         </p>
         {/*
@@ -86,7 +89,7 @@ export function SummaryPanel({
           mencegahnya.
         */}
         <Button tone="kedua" disabled={isRefreshing} onClick={onRefresh}>
-          {isRefreshing ? 'Memuat…' : 'Muat data baru'}
+          {isRefreshing ? "Memuat…" : "Muat data baru"}
         </Button>
       </header>
 
@@ -125,11 +128,15 @@ export function SummaryPanel({
       <AgeBar buckets={data.sebaran_umur} total={data.total_berkas} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <GroupTable title="Reserve OR ASM per COB" heading="COB" rows={data.per_cob} />
+        <GroupTable
+          title="Reserve OR ASM per COB"
+          heading="COB"
+          rows={data.per_cob}
+        />
         <SourceList rows={data.per_sumber_bisnis} />
       </div>
     </section>
-  )
+  );
 }
 
 /** Tile menggambar satu kartu angka. */
@@ -140,26 +147,26 @@ function Tile({
   alert = false,
   muted = false,
 }: {
-  value: string
-  label: string
-  note?: string
-  alert?: boolean
-  muted?: boolean
+  value: string;
+  label: string;
+  note?: string;
+  alert?: boolean;
+  muted?: boolean;
 }) {
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
       <p
         className={[
-          'text-2xl font-semibold tabular-nums',
-          alert ? 'text-red-700' : muted ? 'text-slate-400' : 'text-slate-900',
-        ].join(' ')}
+          "text-2xl font-semibold tabular-nums",
+          alert ? "text-red-700" : muted ? "text-slate-400" : "text-slate-900",
+        ].join(" ")}
       >
         {value}
       </p>
       <p className="mt-1 text-sm text-slate-600">{label}</p>
       {note ? <p className="mt-1 text-xs text-slate-500">{note}</p> : null}
     </div>
-  )
+  );
 }
 
 /**
@@ -173,9 +180,9 @@ function Tile({
  * tidak boleh membuat pita yang berisi satu berkas tampak menguasai seluruh batang.
  */
 function AgeBar({ buckets, total }: { buckets: AgeBucket[]; total: number }) {
-  const warna = ['bg-emerald-700', 'bg-lime-600', 'bg-amber-500', 'bg-red-700']
-  const lewatDuaTahun = buckets[3]?.berkas ?? 0
-  const persenTua = total > 0 ? Math.round((lewatDuaTahun / total) * 100) : 0
+  const warna = ["bg-emerald-700", "bg-lime-600", "bg-amber-500", "bg-red-700"];
+  const lewatDuaTahun = buckets[3]?.berkas ?? 0;
+  const persenTua = total > 0 ? Math.round((lewatDuaTahun / total) * 100) : 0;
 
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
@@ -189,7 +196,10 @@ function AgeBar({ buckets, total }: { buckets: AgeBucket[]; total: number }) {
       </div>
 
       {total > 0 ? (
-        <div className="mt-3 flex h-9 overflow-hidden rounded-md" role="presentation">
+        <div
+          className="mt-3 flex h-9 overflow-hidden rounded-md"
+          role="presentation"
+        >
           {buckets.map((b, i) =>
             b.berkas === 0 ? null : (
               <div
@@ -220,16 +230,21 @@ function AgeBar({ buckets, total }: { buckets: AgeBucket[]; total: number }) {
       <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-sm text-slate-600">
         {buckets.map((b, i) => (
           <li key={b.label} className="flex items-center gap-1.5">
-            <span className={`h-3 w-3 rounded-sm ${warna[i]}`} aria-hidden="true" />
+            <span
+              className={`h-3 w-3 rounded-sm ${warna[i]}`}
+              aria-hidden="true"
+            />
             <span>{b.label}</span>
-            <span className="font-medium text-slate-900">{b.berkas} berkas</span>
+            <span className="font-medium text-slate-900">
+              {b.berkas} berkas
+            </span>
             <span className="text-slate-400">·</span>
             <span>{formatRupiah(b.nilai)}</span>
           </li>
         ))}
       </ul>
     </div>
-  )
+  );
 }
 
 /**
@@ -241,7 +256,10 @@ function AgeBar({ buckets, total }: { buckets: AgeBucket[]; total: number }) {
  * punya judul kolom, sehingga persoalan itu hilang.
  */
 function SourceList({ rows }: { rows: SummaryGroup[] }) {
-  const terbesar = rows.reduce((max, r) => Math.max(max, Number(r.nilai) || 0), 0)
+  const terbesar = rows.reduce(
+    (max, r) => Math.max(max, Number(r.nilai) || 0),
+    0,
+  );
 
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
@@ -266,7 +284,7 @@ function SourceList({ rows }: { rows: SummaryGroup[] }) {
                     width:
                       terbesar > 0
                         ? `${((Number(r.nilai) || 0) / terbesar) * 100}%`
-                        : '0%',
+                        : "0%",
                   }}
                 />
               </div>
@@ -275,7 +293,7 @@ function SourceList({ rows }: { rows: SummaryGroup[] }) {
         </ul>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -290,11 +308,14 @@ function GroupTable({
   heading,
   rows,
 }: {
-  title: string
-  heading: string
-  rows: SummaryGroup[]
+  title: string;
+  heading: string;
+  rows: SummaryGroup[];
 }) {
-  const terbesar = rows.reduce((max, r) => Math.max(max, Number(r.nilai) || 0), 0)
+  const terbesar = rows.reduce(
+    (max, r) => Math.max(max, Number(r.nilai) || 0),
+    0,
+  );
 
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
@@ -309,7 +330,10 @@ function GroupTable({
               <th className="pb-1 font-medium">{heading}</th>
               <th className="pb-1 text-right font-medium">Berkas</th>
               <th className="pb-1 text-right font-medium">Reserve OR ASM</th>
-              <th className="pb-1 text-right font-medium" title="Umur di atas 2 tahun">
+              <th
+                className="pb-1 text-right font-medium"
+                title="Umur di atas 2 tahun"
+              >
                 &gt;2 thn
               </th>
               <th className="pb-1" />
@@ -342,7 +366,7 @@ function GroupTable({
                         width:
                           terbesar > 0
                             ? `${((Number(r.nilai) || 0) / terbesar) * 100}%`
-                            : '0%',
+                            : "0%",
                       }}
                     />
                   </div>
@@ -353,5 +377,5 @@ function GroupTable({
         </table>
       )}
     </div>
-  )
+  );
 }

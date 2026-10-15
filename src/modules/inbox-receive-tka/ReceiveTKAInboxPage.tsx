@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, ReceiveTKAErrorCode, type ReceiveTKATask } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  ReceiveTKAErrorCode,
+  type ReceiveTKATask,
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useCompleteReceiveTKA, useReceiveTKAInbox } from './api'
+import { useCompleteReceiveTKA, useReceiveTKAInbox } from "./api";
 
 /**
  * Ukuran halaman.
@@ -19,51 +23,52 @@ import { useCompleteReceiveTKA, useReceiveTKAInbox } from './api'
  * Perbedaan itu memang ada di sistem lama: ukuran halaman ditetapkan per grid, bukan per
  * aplikasi.
  */
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan, lalu muat ulang halaman ini.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Daftar klaim TKA dimiliki masing-masing entitas. Pilih portal entitas di ' +
-            'bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Daftar klaim TKA dimiliki masing-masing entitas. Pilih portal entitas di " +
+            "bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar Inbox Receive TKA tidak dapat dimuat',
+          title: "Daftar Inbox Receive TKA tidak dapat dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+    title: "Terjadi kesalahan pada sistem",
+    description:
+      "Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -75,59 +80,60 @@ function loadMessage(error: unknown): MessageContent {
 function saveMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tanggal belum tersimpan',
+      title: "Tanggal belum tersimpan",
       description:
-        'Server Claim PNC tidak dapat dihubungi. Tanggal yang Anda isi masih ada di ' +
-        'layar; coba tekan Submit lagi setelah koneksi pulih.',
-      tone: 'gangguan',
-    }
+        "Server Claim PNC tidak dapat dihubungi. Tanggal yang Anda isi masih ada di " +
+        "layar; coba tekan Submit lagi setelah koneksi pulih.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ReceiveTKAErrorCode.taskNotFound:
         return {
-          title: 'Klaim ini sudah tidak ada di daftar',
+          title: "Klaim ini sudah tidak ada di daftar",
           description:
-            'Kemungkinan tanggalnya sudah diisi petugas lain. Tekan Refresh untuk ' +
-            'melihat daftar terbaru.',
-          tone: 'penolakan',
-        }
+            "Kemungkinan tanggalnya sudah diisi petugas lain. Tekan Refresh untuk " +
+            "melihat daftar terbaru.",
+          tone: "penolakan",
+        };
       case ReceiveTKAErrorCode.claimMissing:
         return {
-          title: 'Klaim tidak ditemukan pada data klaim utama',
+          title: "Klaim tidak ditemukan pada data klaim utama",
           description:
-            'Tanggalnya tidak dapat disimpan, dan menyegarkan daftar tidak akan ' +
-            'menolong — barisnya akan muncul lagi. Laporkan nomor klaim ini ke ' +
-            'administrator Claim PNC.',
-          tone: 'penolakan',
-        }
+            "Tanggalnya tidak dapat disimpan, dan menyegarkan daftar tidak akan " +
+            "menolong — barisnya akan muncul lagi. Laporkan nomor klaim ini ke " +
+            "administrator Claim PNC.",
+          tone: "penolakan",
+        };
       case ReceiveTKAErrorCode.claimAmbiguous:
         return {
-          title: 'Nomor klaim ini menunjuk lebih dari satu data',
+          title: "Nomor klaim ini menunjuk lebih dari satu data",
           description:
-            'Tidak jelas mana yang harus diperbarui, sehingga tidak ada yang diubah. ' +
-            'Laporkan nomor klaim ini ke administrator Claim PNC.',
-          tone: 'penolakan',
-        }
+            "Tidak jelas mana yang harus diperbarui, sehingga tidak ada yang diubah. " +
+            "Laporkan nomor klaim ini ke administrator Claim PNC.",
+          tone: "penolakan",
+        };
       case ReceiveTKAErrorCode.dateRequired:
         return {
-          title: 'Tanggal belum diisi',
+          title: "Tanggal belum diisi",
           description: error.message,
-          tone: 'penolakan',
-        }
+          tone: "penolakan",
+        };
       default:
         return {
-          title: 'Tanggal belum tersimpan',
+          title: "Tanggal belum tersimpan",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Tanggal belum tersimpan',
-    description: 'Terjadi kesalahan pada sistem. Bila berulang, hubungi administrator.',
-    tone: 'gangguan',
-  }
+    title: "Tanggal belum tersimpan",
+    description:
+      "Terjadi kesalahan pada sistem. Bila berulang, hubungi administrator.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -143,24 +149,24 @@ function saveMessage(error: unknown): MessageContent {
  * Yang dilakukan di sini adalah menyusun ulang teksnya, tanpa pernah menyentuh zona waktu.
  */
 function formatDate(value: string | null): string {
-  if (!value) return '—'
-  const [year, month, day] = value.split('-')
-  if (!year || !month || !day) return value
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
   const monthName = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ][Number(month) - 1]
-  return monthName ? `${day} ${monthName} ${year}` : value
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Agu",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des",
+  ][Number(month) - 1];
+  return monthName ? `${day} ${monthName} ${year}` : value;
 }
 
 /**
@@ -184,22 +190,24 @@ function formatDate(value: string | null): string {
  * dalam hitungan tahun.
  */
 function formatAging(value: string | null): string {
-  if (!value) return '—'
-  const [year, month, day] = value.split('-').map(Number)
-  if (!year || !month || !day) return '—'
+  if (!value) return "—";
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return "—";
 
-  const now = new Date()
-  let months = (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month)
-  if (now.getDate() < day) months -= 1
-  if (months < 0) return 'baru saja'
+  const now = new Date();
+  let months = (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month);
+  if (now.getDate() < day) months -= 1;
+  if (months < 0) return "baru saja";
 
-  const years = Math.floor(months / 12)
-  const restMonths = months % 12
+  const years = Math.floor(months / 12);
+  const restMonths = months % 12;
 
   if (years === 0) {
-    return months === 0 ? 'bulan ini' : `${months} bulan lalu`
+    return months === 0 ? "bulan ini" : `${months} bulan lalu`;
   }
-  return restMonths === 0 ? `${years} tahun lalu` : `${years} tahun ${restMonths} bulan lalu`
+  return restMonths === 0
+    ? `${years} tahun lalu`
+    : `${years} tahun ${restMonths} bulan lalu`;
 }
 
 /**
@@ -238,11 +246,11 @@ function formatAging(value: string | null): string {
  * hilang tanpa jejak — tetapi Submit atasnya ditolak, dan layar menandainya lebih dulu.
  */
 export function ReceiveTKAInboxPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const inbox = useReceiveTKAInbox()
-  const complete = useCompleteReceiveTKA()
-  const rows = inbox.data?.tugas ?? []
+  const inbox = useReceiveTKAInbox();
+  const complete = useCompleteReceiveTKA();
+  const rows = inbox.data?.tugas ?? [];
 
   /*
     Tanggal yang sedang diketik, disimpan per nomor klaim.
@@ -252,28 +260,28 @@ export function ReceiveTKAInboxPage() {
     menggambar isian pada SETIAP baris, dan petugas dapat mengisi beberapa baris sebelum
     menekan Submit yang pertama.
   */
-  const [draft, setDraft] = useState<Record<string, string>>({})
+  const [draft, setDraft] = useState<Record<string, string>>({});
 
   /* Baris yang sedang dikirim, supaya hanya tombolnya sendiri yang berubah menjadi
      "Menyimpan…" — bukan seluruh tombol di tabel. */
-  const [sending, setSending] = useState<string | null>(null)
+  const [sending, setSending] = useState<string | null>(null);
 
   /* Hasil penyimpanan terakhir, ditampilkan di atas tabel. */
   const [saved, setSaved] = useState<{
-    claim: string
-    notified: boolean
-    attempted: boolean
-    error?: string | undefined
-  } | null>(null)
-  const [failure, setFailure] = useState<MessageContent | null>(null)
+    claim: string;
+    notified: boolean;
+    attempted: boolean;
+    error?: string | undefined;
+  } | null>(null);
+  const [failure, setFailure] = useState<MessageContent | null>(null);
 
   function submitRow(row: ReceiveTKATask) {
-    const value = (draft[row.nomor_klaim] ?? '').trim()
-    if (value === '') return
+    const value = (draft[row.nomor_klaim] ?? "").trim();
+    if (value === "") return;
 
-    setSending(row.nomor_klaim)
-    setFailure(null)
-    setSaved(null)
+    setSending(row.nomor_klaim);
+    setFailure(null);
+    setSaved(null);
 
     complete.mutate(
       { nomor_klaim: row.nomor_klaim, tanggal_dokumen_lengkap: value },
@@ -284,20 +292,20 @@ export function ReceiveTKAInboxPage() {
             notified: result.pemberitahuan_terkirim,
             attempted: result.pemberitahuan_dicoba,
             error: result.pemberitahuan_galat,
-          })
+          });
           // Draf barisnya dibuang: barisnya sudah hilang dari daftar, dan menyisakan
           // tanggalnya akan membuatnya muncul kembali bila nomor klaim yang sama kelak
           // masuk lagi ke inbox.
           setDraft((previous) => {
-            const next = { ...previous }
-            delete next[row.nomor_klaim]
-            return next
-          })
+            const next = { ...previous };
+            delete next[row.nomor_klaim];
+            return next;
+          });
         },
         onError: (error) => setFailure(saveMessage(error)),
         onSettled: () => setSending(null),
       },
-    )
+    );
   }
 
   /*
@@ -314,39 +322,43 @@ export function ReceiveTKAInboxPage() {
   */
   const columns: Column<ReceiveTKATask>[] = [
     {
-      key: 'nomor_klaim',
-      title: 'Nomor Klaim',
-      width: '11rem',
+      key: "nomor_klaim",
+      title: "Nomor Klaim",
+      width: "11rem",
       value: (row) => row.nomor_klaim,
       render: (row) => (
         <span className="font-medium text-slate-800">{row.nomor_klaim}</span>
       ),
     },
     {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
+      key: "nomor_polis",
+      title: "No Polis",
+      width: "12rem",
       value: (row) => row.nomor_polis,
     },
     {
-      key: 'nama_tertanggung',
-      title: 'Nama Tertanggung',
+      key: "nama_tertanggung",
+      title: "Nama Tertanggung",
       value: (row) => row.nama_tertanggung,
     },
     {
-      key: 'nama_peserta',
-      title: 'Nama Peserta',
+      key: "nama_peserta",
+      title: "Nama Peserta",
       value: (row) => row.nama_peserta,
       render: (row) =>
-        row.nama_peserta ? row.nama_peserta : <span className="text-slate-400">—</span>,
+        row.nama_peserta ? (
+          row.nama_peserta
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
     },
     {
       /* Judulnya "Date Of Loss" mengikuti caption layar lama apa adanya (`D-13`), meski
          nama field kontraknya `tanggal_kejadian` mengikuti `CONTEXT.md` (`D-80`). */
-      key: 'tanggal_kejadian',
-      title: 'Date Of Loss',
-      width: '9rem',
-      value: (row) => row.tanggal_kejadian ?? '',
+      key: "tanggal_kejadian",
+      title: "Date Of Loss",
+      width: "9rem",
+      value: (row) => row.tanggal_kejadian ?? "",
       render: (row) => formatDate(row.tanggal_kejadian),
     },
     {
@@ -359,10 +371,10 @@ export function ReceiveTKAInboxPage() {
         jatuh sebelum "5 bulan lalu" secara abjad, padahal yang pertama jauh lebih lama.
         Tanggal ISO berurut secara abjad sama dengan urutan kronologisnya.
       */
-      key: 'tanggal_registrasi',
-      title: 'Aging',
-      width: '11rem',
-      value: (row) => row.tanggal_registrasi ?? '',
+      key: "tanggal_registrasi",
+      title: "Aging",
+      width: "11rem",
+      value: (row) => row.tanggal_registrasi ?? "",
       render: (row) =>
         row.tanggal_registrasi ? (
           <span title={`Terdaftar ${formatDate(row.tanggal_registrasi)}`}>
@@ -380,20 +392,23 @@ export function ReceiveTKAInboxPage() {
         `pyReadOnly = false`. Nilainya selalu kosong saat dimuat — daftar ini menurut
         definisinya hanya memuat baris yang tanggalnya belum diisi.
       */
-      key: 'tanggal_dokumen_lengkap',
-      title: 'Tanggal Dokumen Lengkap',
-      width: '12rem',
+      key: "tanggal_dokumen_lengkap",
+      title: "Tanggal Dokumen Lengkap",
+      width: "12rem",
       noSort: true,
-      value: (row) => draft[row.nomor_klaim] ?? '',
+      value: (row) => draft[row.nomor_klaim] ?? "",
       render: (row) => (
         <input
           type="date"
           aria-label={`Tanggal dokumen lengkap untuk klaim ${row.nomor_klaim}`}
           className="w-full rounded-kontrol border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 shadow-lembut focus:border-blue-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:bg-slate-100"
-          value={draft[row.nomor_klaim] ?? ''}
+          value={draft[row.nomor_klaim] ?? ""}
           disabled={!row.klaim_tersedia}
           onChange={(event) =>
-            setDraft((previous) => ({ ...previous, [row.nomor_klaim]: event.target.value }))
+            setDraft((previous) => ({
+              ...previous,
+              [row.nomor_klaim]: event.target.value,
+            }))
           }
         />
       ),
@@ -408,16 +423,16 @@ export function ReceiveTKAInboxPage() {
         dibiarkan dicoba lalu ditolak — penolakannya sudah pasti, dan membiarkan pengguna
         menekannya hanya membuang waktunya.
       */
-      key: 'aksi',
-      title: '',
-      width: '8rem',
+      key: "aksi",
+      title: "",
+      width: "8rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => {
-        const orphan = !row.klaim_tersedia
-        const empty = (draft[row.nomor_klaim] ?? '').trim() === ''
-        const busy = sending === row.nomor_klaim
+        const orphan = !row.klaim_tersedia;
+        const empty = (draft[row.nomor_klaim] ?? "").trim() === "";
+        const busy = sending === row.nomor_klaim;
 
         return (
           <Button
@@ -426,34 +441,42 @@ export function ReceiveTKAInboxPage() {
             onClick={() => submitRow(row)}
             title={
               orphan
-                ? 'Klaim ini tidak ditemukan pada data klaim utama, sehingga tanggalnya tidak dapat disimpan.'
+                ? "Klaim ini tidak ditemukan pada data klaim utama, sehingga tanggalnya tidak dapat disimpan."
                 : empty
-                  ? 'Isi tanggal dokumen lengkap lebih dulu.'
+                  ? "Isi tanggal dokumen lengkap lebih dulu."
                   : undefined
             }
           >
-            {busy ? 'Menyimpan…' : 'Submit'}
+            {busy ? "Menyimpan…" : "Submit"}
           </Button>
-        )
+        );
       },
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-[96rem] px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya "Inbox Receive TKA" mengikuti MENU_DESC pada
               Database/m_menu_aplikasi_pnc.csv (MENU_ID 49), dan caption berformat Heading 1
               pada section lamanya berbunyi sama (`D-13`). */}
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Receive TKA</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Inbox Receive TKA
+          </h1>
           <p className="text-sm text-slate-600">
             Klaim TKA yang menunggu tanggal penerimaan dokumen asli diisi.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { inbox.refetch() }} disabled={inbox.isFetching}>
-            {inbox.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              inbox.refetch();
+            }}
+            disabled={inbox.isFetching}
+          >
+            {inbox.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -462,11 +485,13 @@ export function ReceiveTKAInboxPage() {
           lebih dari sekadar kerapian: Submit mengubah tanggal pada data klaim, dan "klaim
           milik siapa" tidak boleh hanya diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Daftar ini milik entitas yang sedang dibuka, dan Submit mengubah data klaim entitas
-        itu.
+        Daftar ini milik entitas yang sedang dibuka, dan Submit mengubah data
+        klaim entitas itu.
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{inbox.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {inbox.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -474,24 +499,26 @@ export function ReceiveTKAInboxPage() {
           lama. Batas yang diketahui adalah batas; batas yang senyap adalah data yang hilang. */}
       {inbox.data?.terpotong && (
         <p className="mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          Daftar ini <span className="font-medium">lebih panjang</span> daripada yang dapat
-          ditampilkan sekaligus. Yang tampil {inbox.data.batas_baris} pekerjaan pertama;
-          sisanya belum terlihat. Pakai kotak pencarian untuk mempersempit daftar.
+          Daftar ini <span className="font-medium">lebih panjang</span> daripada
+          yang dapat ditampilkan sekaligus. Yang tampil {inbox.data.batas_baris}{" "}
+          pekerjaan pertama; sisanya belum terlihat. Pakai kotak pencarian untuk
+          mempersempit daftar.
         </p>
       )}
 
       {saved && (
         <p className="mt-4 rounded-kartu border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900">
-          Tanggal dokumen lengkap untuk klaim{' '}
+          Tanggal dokumen lengkap untuk klaim{" "}
           <span className="font-medium">{saved.claim}</span> tersimpan.
           {/* Ketiga keadaan pemberitahuan dibedakan; menyatukan dua yang terakhir akan
               membuat lingkungan tanpa server surel terus-menerus menampilkan peringatan. */}
-          {saved.attempted && saved.notified && ' Pemberitahuan sudah dikirim.'}
+          {saved.attempted && saved.notified && " Pemberitahuan sudah dikirim."}
           {saved.attempted && !saved.notified && (
             <span className="text-amber-900">
-              {' '}
-              Namun pemberitahuannya <span className="font-medium">gagal dikirim</span> —
-              tanggalnya tetap aman, tetapi penerimanya perlu dikabari secara lain.
+              {" "}
+              Namun pemberitahuannya{" "}
+              <span className="font-medium">gagal dikirim</span> — tanggalnya
+              tetap aman, tetapi penerimanya perlu dikabari secara lain.
               {saved.error && (
                 <span className="mt-2 block break-words font-mono text-xs">
                   Rincian untuk IT Support: {saved.error}
@@ -499,7 +526,8 @@ export function ReceiveTKAInboxPage() {
               )}
             </span>
           )}
-          {!saved.attempted && ' Pemberitahuan lewat surel belum aktif di lingkungan ini.'}
+          {!saved.attempted &&
+            " Pemberitahuan lewat surel belum aktif di lingkungan ini."}
         </p>
       )}
 
@@ -521,17 +549,19 @@ export function ReceiveTKAInboxPage() {
             tone="penolakan"
           />
         ) : inbox.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar Inbox Receive TKA…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar Inbox Receive TKA…
+          </p>
         ) : inbox.isError ? (
           (() => {
-            const message = loadMessage(inbox.error)
+            const message = loadMessage(inbox.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -552,7 +582,6 @@ export function ReceiveTKAInboxPage() {
           />
         )}
       </section>
-
     </main>
-  )
+  );
 }

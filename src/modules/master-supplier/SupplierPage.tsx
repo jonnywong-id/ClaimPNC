@@ -1,55 +1,66 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, SUPPLIER_ACTIVE, type Supplier, type SupplierCode } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  SUPPLIER_ACTIVE,
+  type Supplier,
+  type SupplierCode,
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useCreateSupplier, useSaveSupplier, useSupplierCodeList, useSupplierList } from './api'
-import { SupplierForm, type SupplierFormValues } from './SupplierForm'
+import {
+  useCreateSupplier,
+  useSaveSupplier,
+  useSupplierCodeList,
+  useSupplierList,
+} from "./api";
+import { SupplierForm, type SupplierFormValues } from "./SupplierForm";
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar supplier tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar supplier tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar supplier tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar supplier tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -97,18 +108,18 @@ function loadMessage(error: unknown): MessageContent {
  * berhenti pada menyisipkan permintaannya, persis seperti sistem lama.
  */
 export function SupplierPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Supplier | null>(null)
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
 
-  const list = useSupplierList()
-  const codeList = useSupplierCodeList()
-  const create = useCreateSupplier()
-  const save = useSaveSupplier()
+  const list = useSupplierList();
+  const codeList = useSupplierCodeList();
+  const create = useCreateSupplier();
+  const save = useSaveSupplier();
 
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.supplier ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.supplier ?? [];
 
   const codes = {
     status_rekanan: codeList.data?.status_rekanan ?? [],
@@ -116,27 +127,27 @@ export function SupplierPage() {
     jenis_supplier: codeList.data?.jenis_supplier ?? [],
     status_aktif: codeList.data?.status_aktif ?? [],
     status_autopayment: codeList.data?.status_autopayment ?? [],
-  }
+  };
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(null);
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
   }
 
   function openEdit(row: Supplier) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
   }
 
   function submit(values: SupplierFormValues) {
@@ -144,10 +155,13 @@ export function SupplierPage() {
     // membuang isian pengguna saat penyimpanan gagal — dan pada form dua puluh tiga isian,
     // itu kehilangan yang tidak dapat dimaafkan.
     if (editing) {
-      save.mutate({ id: editing.id_supplier, input: values }, { onSuccess: closeForm })
-      return
+      save.mutate(
+        { id: editing.id_supplier, input: values },
+        { onSuccess: closeForm },
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
 
   /*
@@ -198,26 +212,26 @@ export function SupplierPage() {
     layar Pega yang sesungguhnya pun kolom itu tampak kosong.
   */
   const columns: Column<Supplier>[] = [
-    { key: 'id', title: 'ID', width: '8rem', value: (row) => row.id_supplier },
-    { key: 'nama', title: 'Input Nama', value: (row) => row.nama },
-    { key: 'alamat', title: 'Alamat', value: (row) => row.alamat },
-    { key: 'telp', title: 'Telp', width: '9rem', value: (row) => row.telepon },
+    { key: "id", title: "ID", width: "8rem", value: (row) => row.id_supplier },
+    { key: "nama", title: "Input Nama", value: (row) => row.nama },
+    { key: "alamat", title: "Alamat", value: (row) => row.alamat },
+    { key: "telp", title: "Telp", width: "9rem", value: (row) => row.telepon },
     {
-      key: 'jenis_supplier',
-      title: 'Jenis Supplier',
-      width: '9rem',
+      key: "jenis_supplier",
+      title: "Jenis Supplier",
+      width: "9rem",
       value: (row) => labelOf(codes.status_supply, row.status_supply),
     },
     {
-      key: 'status_rekanan',
-      title: 'Status Rekanan',
-      width: '9rem',
+      key: "status_rekanan",
+      title: "Status Rekanan",
+      width: "9rem",
       value: (row) => labelOf(codes.status_rekanan, row.status_rekanan),
     },
     {
-      key: 'status_aktif',
-      title: 'Status Aktif',
-      width: '9rem',
+      key: "status_aktif",
+      title: "Status Aktif",
+      width: "9rem",
       value: (row) => labelOf(codes.status_aktif, row.status_aktif_berlaku),
       render: (row) => (
         <StatusMark
@@ -227,42 +241,54 @@ export function SupplierPage() {
       ),
     },
     {
-      key: 'posisi',
-      title: 'Posisi',
-      width: '7rem',
+      key: "posisi",
+      title: "Posisi",
+      width: "7rem",
       noSort: true,
-      value: () => '',
+      value: () => "",
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '6rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "6rem",
       noSort: true,
       alignCenter: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Supplier</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Supplier
+          </h1>
           <p className="text-sm text-slate-600">
-            Supplier rekanan beserta syarat dagangnya — rekening pembayaran, tenggat bayar,
-            dan tenggat kirim.
+            Supplier rekanan beserta syarat dagangnya — rekening pembayaran,
+            tenggat bayar, dan tenggat kirim.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Caption tombolnya mengikuti layar lama apa adanya (D-13):
               `Harness/MasterSupplier-Harness.xml` memakai "Refresh" dan "New Supplier". */}
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             New Supplier
@@ -274,10 +300,13 @@ export function SupplierPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Total data: <span className="font-medium text-slate-700">{rows.length}</span>
+        Total data:{" "}
+        <span className="font-medium text-slate-700">{rows.length}</span>
         <span className="ml-3">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -320,14 +349,14 @@ export function SupplierPage() {
           <p className="text-sm text-slate-500">Memuat daftar supplier…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -360,7 +389,7 @@ export function SupplierPage() {
         )}
       </section>
     </main>
-  )
+  );
 }
 
 /**
@@ -374,7 +403,7 @@ export function SupplierPage() {
  * Field Value-nya diterima, tanpa satu baris kode pun berubah.
  */
 function labelOf(list: SupplierCode[], value: string): string {
-  return list.find((code) => code.nilai === value)?.label ?? value
+  return list.find((code) => code.nilai === value)?.label ?? value;
 }
 
 /**
@@ -397,8 +426,10 @@ function labelOf(list: SupplierCode[], value: string): string {
 function StatusMark({ label, waiting }: { label: string; waiting: boolean }) {
   return (
     <span className="inline-flex flex-col">
-      <span className="text-sm text-slate-900">{label || '—'}</span>
-      {waiting && <span className="text-xs text-amber-700">menunggu persetujuan</span>}
+      <span className="text-sm text-slate-900">{label || "—"}</span>
+      {waiting && (
+        <span className="text-xs text-amber-700">menunggu persetujuan</span>
+      )}
     </span>
-  )
+  );
 }

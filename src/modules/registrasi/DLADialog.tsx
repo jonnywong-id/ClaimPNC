@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { simpanBerkas } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { simpanBerkas } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useDLAList, useDocumentLink, useDocuments, usePrintDLA, violationsFrom } from './api'
-import type { Attachment, DLAListResponse, DLARow } from './types'
+import {
+  useDLAList,
+  useDocumentLink,
+  useDocuments,
+  usePrintDLA,
+  violationsFrom,
+} from "./api";
+import type { Attachment, DLAListResponse, DLARow } from "./types";
 
 /**
  * Dialog Print DLA — padanan layar `Section/PrintDLA-sect.xml` (flow action lokal `PrintDLA`,
@@ -24,58 +30,73 @@ export function DLADialog({
   address,
   onClose,
 }: {
-  claimID: string
-  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
-  onClose: () => void
+  claimID: string;
+  address: {
+    tugas_id: string;
+    objek: number;
+    jaminan: number;
+    adjustment: number;
+  };
+  onClose: () => void;
 }) {
-  const list = useDLAList(claimID)
-  const print = usePrintDLA(claimID)
-  const [data, setData] = useState<DLAListResponse | null>(null)
-  const [notes, setNotes] = useState<Record<string, string>>({})
-  const [emails, setEmails] = useState<Record<string, string>>({})
-  const [asPerPolicy, setAsPerPolicy] = useState(false)
+  const list = useDLAList(claimID);
+  const print = usePrintDLA(claimID);
+  const [data, setData] = useState<DLAListResponse | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string>>({});
+  const [asPerPolicy, setAsPerPolicy] = useState(false);
 
   function show(result: DLAListResponse) {
-    setData(result)
-    setNotes(Object.fromEntries(result.dla.map((d) => [d.nomor, d.catatan])))
-    setEmails(Object.fromEntries(result.dla.map((d) => [d.nomor, d.email])))
+    setData(result);
+    setNotes(Object.fromEntries(result.dla.map((d) => [d.nomor, d.catatan])));
+    setEmails(Object.fromEntries(result.dla.map((d) => [d.nomor, d.email])));
   }
 
   // Daftar diminta SEKALI saat dialog muncul. Membukanya dapat menerbitkan nomor DLA, dan
   // StrictMode menjalankan efek dua kali — dua permintaan bersamaan akan menerbitkan dua kali.
-  const opened = useRef(false)
+  const opened = useRef(false);
   useEffect(() => {
-    if (opened.current) return
-    opened.current = true
-    list.mutate(address, { onSuccess: show })
-  })
+    if (opened.current) return;
+    opened.current = true;
+    list.mutate(address, { onSuccess: show });
+  });
 
-  const busy = list.isPending || print.isPending
+  const busy = list.isPending || print.isPending;
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === "Escape" && !busy) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
 
-  const rows: DLARow[] = data?.dla ?? []
-  const failure = print.error ?? list.error
-  const violations = violationsFrom(failure)
+  const rows: DLARow[] = data?.dla ?? [];
+  const failure = print.error ?? list.error;
+  const violations = violationsFrom(failure);
 
   function download(nomor?: string) {
-    print.reset()
-    const catatan = Object.fromEntries(rows.filter((r) => !r.sudah_cetak).map((r) => [r.nomor, notes[r.nomor] ?? '']))
+    print.reset();
+    const catatan = Object.fromEntries(
+      rows
+        .filter((r) => !r.sudah_cetak)
+        .map((r) => [r.nomor, notes[r.nomor] ?? ""]),
+    );
     print.mutate(
-      { ...address, ...(nomor ? { nomor } : {}), catatan, email: emails, sesuai_polis: asPerPolicy },
+      {
+        ...address,
+        ...(nomor ? { nomor } : {}),
+        catatan,
+        email: emails,
+        sesuai_polis: asPerPolicy,
+      },
       {
         onSuccess: (file) => {
-          simpanBerkas(file)
+          simpanBerkas(file);
           // PRINT pertama menyimpan REMARKS dan menandai DLA tercetak — muat ulang daftarnya.
-          list.mutate(address, { onSuccess: show })
+          list.mutate(address, { onSuccess: show });
         },
       },
-    )
+    );
   }
 
   return (
@@ -86,18 +107,27 @@ export function DLADialog({
       aria-labelledby="judul-print-dla"
     >
       <div className="max-h-full w-full max-w-5xl overflow-y-auto rounded-kartu bg-white p-6 shadow-angkat">
-        <h2 id="judul-print-dla" className="text-lg font-semibold text-slate-900">
+        <h2
+          id="judul-print-dla"
+          className="text-lg font-semibold text-slate-900"
+        >
           Print DLA
         </h2>
 
         <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={asPerPolicy} onChange={(e) => setAsPerPolicy(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={asPerPolicy}
+            onChange={(e) => setAsPerPolicy(e.target.checked)}
+          />
           Coverage AS PER ORIGINAL POLICY
         </label>
 
         <SupportingFiles claimID={claimID} />
 
-        {list.isPending && !data && <p className="mt-4 text-sm text-slate-500">Menyiapkan DLA…</p>}
+        {list.isPending && !data && (
+          <p className="mt-4 text-sm text-slate-500">Menyiapkan DLA…</p>
+        )}
 
         {data?.ex_gratia && (
           <p className="mt-4 text-sm text-slate-600" role="status">
@@ -106,12 +136,14 @@ export function DLADialog({
         )}
         {data && !data.ex_gratia && rows.length === 0 && (
           <p className="mt-4 text-sm text-slate-600" role="status">
-            No DLA recipient: the policy has no co-insurance led by us, and no Fac Out, Treaty, or BPPDAN spreading
-            qualifies.
+            No DLA recipient: the policy has no co-insurance led by us, and no
+            Fac Out, Treaty, or BPPDAN spreading qualifies.
           </p>
         )}
         {data && data.peringatan.length > 0 && (
-          <p className="mt-4 whitespace-pre-line text-sm text-amber-700">{data.peringatan.join('\n')}</p>
+          <p className="mt-4 whitespace-pre-line text-sm text-amber-700">
+            {data.peringatan.join("\n")}
+          </p>
         )}
 
         {rows.length > 0 && (
@@ -129,7 +161,10 @@ export function DLADialog({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.nomor} className="border-b border-slate-100 align-top">
+                <tr
+                  key={r.nomor}
+                  className="border-b border-slate-100 align-top"
+                >
                   <td className="p-2 font-mono text-xs">{r.nomor}</td>
                   <td className="p-2">{r.penerima}</td>
                   <td className="p-2">{r.tipe}</td>
@@ -137,10 +172,12 @@ export function DLADialog({
                     <textarea
                       aria-label={`Remarks ${r.nomor}`}
                       rows={3}
-                      value={notes[r.nomor] ?? ''}
+                      value={notes[r.nomor] ?? ""}
                       readOnly={r.sudah_cetak}
                       disabled={r.sudah_kirim}
-                      onChange={(e) => setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))}
+                      onChange={(e) =>
+                        setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))
+                      }
                       className="w-64 rounded border border-slate-300 px-2 py-1 read-only:bg-slate-50"
                     />
                   </td>
@@ -149,9 +186,11 @@ export function DLADialog({
                       aria-label={`Email ${r.nomor}`}
                       rows={3}
                       maxLength={500}
-                      value={emails[r.nomor] ?? ''}
+                      value={emails[r.nomor] ?? ""}
                       disabled={r.sudah_kirim}
-                      onChange={(e) => setEmails((m) => ({ ...m, [r.nomor]: e.target.value }))}
+                      onChange={(e) =>
+                        setEmails((m) => ({ ...m, [r.nomor]: e.target.value }))
+                      }
                       className="w-64 rounded border border-slate-300 px-2 py-1 text-xs"
                     />
                   </td>
@@ -189,10 +228,10 @@ export function DLADialog({
               title="DLA belum dapat diproses"
               description={
                 violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
+                  ? violations.map((v) => v.pesan).join(" ")
                   : failure instanceof Error
                     ? failure.message
-                    : 'Terjadi kesalahan pada sistem.'
+                    : "Terjadi kesalahan pada sistem."
               }
               tone="penolakan"
             />
@@ -209,17 +248,25 @@ export function DLADialog({
             Tutup
           </Button>
           <div className="flex flex-wrap gap-3">
-            <Button tone="kedua" disabled title="Sending DLA by email is not active yet.">
+            <Button
+              tone="kedua"
+              disabled
+              title="Sending DLA by email is not active yet."
+            >
               SEND ALL DLA
             </Button>
-            <Button tone="utama" disabled={busy || rows.length === 0} onClick={() => download()}>
-              {print.isPending ? 'Mencetak…' : 'Print All DLA'}
+            <Button
+              tone="utama"
+              disabled={busy || rows.length === 0}
+              onClick={() => download()}
+            >
+              {print.isPending ? "Mencetak…" : "Print All DLA"}
             </Button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -236,50 +283,63 @@ export function DLADialog({
  * dikirim lewat email — pengiriman itu belum aktif, sehingga pilihannya belum dipakai.
  */
 function SupportingFiles({ claimID }: { claimID: string }) {
-  const documents = useDocuments(claimID)
-  const link = useDocumentLink(claimID)
-  const [selected, setSelected] = useState<Record<string, boolean>>({})
-  const [failed, setFailed] = useState<string | null>(null)
+  const documents = useDocuments(claimID);
+  const link = useDocumentLink(claimID);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [failed, setFailed] = useState<string | null>(null);
 
   // CATEGORY lampiran adalah ID jenis induk (mis. 10067); teks yang Pega tampilkan di kolom ini
   // adalah kode jenis induknya (GCNMCategory: REGISTER, COLLECTING DOCUMENT, PAYMENT…). Pemetaan
   // ID → kode diambil dari baris checklist (`jenis_id`).
   const labels = new Map(
-    (documents.data?.kategori ?? []).flatMap((c) => c.dokumen.map((d) => [d.jenis_id, c.kode] as const)),
-  )
-  const files: Attachment[] = documents.data?.berkas ?? []
+    (documents.data?.kategori ?? []).flatMap((c) =>
+      c.dokumen.map((d) => [d.jenis_id, c.kode] as const),
+    ),
+  );
+  const files: Attachment[] = documents.data?.berkas ?? [];
 
   // Jendela dibuka saat klik masih berlangsung, lalu diarahkan setelah alamatnya datang —
   // membukanya sesudah permintaan selesai akan diblokir peramban sebagai popup.
   const open = (file: Attachment) => {
-    setFailed(null)
-    const target = window.open('', '_blank')
-    if (target) target.opener = null
+    setFailed(null);
+    const target = window.open("", "_blank");
+    if (target) target.opener = null;
     link.mutate(file.id, {
       onSuccess: (found) => {
-        if (target) target.location.href = found.url
-        else window.open(found.url, '_blank', 'noopener,noreferrer')
+        if (target) target.location.href = found.url;
+        else window.open(found.url, "_blank", "noopener,noreferrer");
       },
       onError: (error) => {
-        target?.close()
-        setFailed(error instanceof Error ? error.message : 'Dokumen tidak dapat dibuka.')
+        target?.close();
+        setFailed(
+          error instanceof Error
+            ? error.message
+            : "Dokumen tidak dapat dibuka.",
+        );
       },
-    })
-  }
+    });
+  };
 
   return (
     <section className="mt-4" aria-labelledby="judul-file-pendukung-dla">
-      <h3 id="judul-file-pendukung-dla" className="text-sm font-semibold text-slate-900">
+      <h3
+        id="judul-file-pendukung-dla"
+        className="text-sm font-semibold text-slate-900"
+      >
         File Pendukung
       </h3>
-      {documents.isPending && <p className="mt-2 text-sm text-slate-500">Memuat dokumen…</p>}
+      {documents.isPending && (
+        <p className="mt-2 text-sm text-slate-500">Memuat dokumen…</p>
+      )}
       {documents.isError && (
         <p className="mt-2 text-sm text-red-700" role="alert">
           Daftar dokumen gagal dimuat.
         </p>
       )}
       {documents.isSuccess && files.length === 0 && (
-        <p className="mt-2 text-sm text-slate-600">Belum ada dokumen untuk klaim ini.</p>
+        <p className="mt-2 text-sm text-slate-600">
+          Belum ada dokumen untuk klaim ini.
+        </p>
       )}
       {files.length > 0 && (
         <table className="mt-2 w-full border-collapse text-sm">
@@ -295,7 +355,9 @@ function SupportingFiles({ claimID }: { claimID: string }) {
           <tbody>
             {files.map((f) => (
               <tr key={f.id} className="border-b border-slate-200 align-top">
-                <td className="p-2">{labels.get(f.kategori) || f.kategori || f.catatan}</td>
+                <td className="p-2">
+                  {labels.get(f.kategori) || f.kategori || f.catatan}
+                </td>
                 <td className="p-2">{f.sub_kategori}</td>
                 <td className="p-2">
                   {f.tersimpan ? (
@@ -305,7 +367,7 @@ function SupportingFiles({ claimID }: { claimID: string }) {
                       disabled={link.isPending && link.variables === f.id}
                       className="break-all text-left text-sky-700 hover:underline disabled:cursor-wait disabled:opacity-60"
                     >
-                      {f.nama || 'dokumen'}
+                      {f.nama || "dokumen"}
                     </button>
                   ) : (
                     <span className="break-all">{f.nama}</span>
@@ -316,7 +378,9 @@ function SupportingFiles({ claimID }: { claimID: string }) {
                     type="checkbox"
                     aria-label={`Pilih ${f.nama}`}
                     checked={selected[f.id] ?? false}
-                    onChange={(e) => setSelected((s) => ({ ...s, [f.id]: e.target.checked }))}
+                    onChange={(e) =>
+                      setSelected((s) => ({ ...s, [f.id]: e.target.checked }))
+                    }
                   />
                 </td>
               </tr>
@@ -330,5 +394,5 @@ function SupportingFiles({ claimID }: { claimID: string }) {
         </p>
       )}
     </section>
-  )
+  );
 }

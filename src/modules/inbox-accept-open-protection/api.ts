@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   Decision,
@@ -10,9 +10,9 @@ import type {
   ProtectionFilter,
   ProtectionListResponse,
   QueuesResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-accept-open-protection'
+const PATH = "/api/inbox-accept-open-protection";
 
 /**
  * Banyaknya baris per halaman.
@@ -23,7 +23,7 @@ const PATH = '/api/inbox-accept-open-protection'
  * angka ini, sedangkan yang benar-benar memotong hasil adalah server. Bila keduanya
  * berbeda, penomoran halaman meleset tanpa satu pun galat.
  */
-export const PAGE_SIZE = 20
+export const PAGE_SIZE = 20;
 
 /**
  * Kunci cache dikumpulkan di satu tempat.
@@ -34,35 +34,35 @@ export const PAGE_SIZE = 20
  * menampilkan isi tab sebelumnya sampai permintaan baru selesai.
  */
 const keys = {
-  all: ['inbox-accept-open-protection'] as const,
+  all: ["inbox-accept-open-protection"] as const,
   list: (portal: string | null, token: string | null, f: ProtectionFilter) =>
     [
-      'inbox-accept-open-protection',
-      'daftar',
+      "inbox-accept-open-protection",
+      "daftar",
       portal,
       token,
       f.queue,
-      f.search ?? '',
+      f.search ?? "",
       f.offset ?? 0,
     ] as const,
   detail: (portal: string | null, token: string | null, number: string) =>
-    ['inbox-accept-open-protection', 'detail', portal, token, number] as const,
+    ["inbox-accept-open-protection", "detail", portal, token, number] as const,
 
   // Kewenangan TIDAK berkunci portal: satu identitas berlaku di keempat portal (`D-78`),
   // dan tabelnya pun tinggal di basis data utama. Memasukkan portal ke kunci hanya akan
   // menembak server berkali-kali untuk jawaban yang sama.
   queues: (token: string | null) =>
-    ['inbox-accept-open-protection', 'antrean', token] as const,
-}
+    ["inbox-accept-open-protection", "antrean", token] as const,
+};
 
 function buildPath(f: ProtectionFilter): string {
-  const params = new URLSearchParams()
-  params.set('antrean', f.queue)
-  if (f.search?.trim()) params.set('cari', f.search.trim())
-  if (f.offset) params.set('lewati', String(f.offset))
-  params.set('batas', String(PAGE_SIZE))
+  const params = new URLSearchParams();
+  params.set("antrean", f.queue);
+  if (f.search?.trim()) params.set("cari", f.search.trim());
+  if (f.offset) params.set("lewati", String(f.offset));
+  params.set("batas", String(PAGE_SIZE));
 
-  return `${PATH}?${params.toString()}`
+  return `${PATH}?${params.toString()}`;
 }
 
 /**
@@ -102,7 +102,7 @@ function buildPath(f: ProtectionFilter): string {
  * lalu berhasil.
  */
 export function useAllowedQueues() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.queues(token),
@@ -112,16 +112,20 @@ export function useAllowedQueues() {
     // Tidak dicoba ulang saat 403: penolakan kewenangan BUKAN gangguan sementara, dan
     // mengulanginya hanya menunda pesan yang sudah pasti.
     retry: false,
-  })
+  });
 }
 
-export function useAcceptQueue(filter: ProtectionFilter, options?: { enabled?: boolean }) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useAcceptQueue(
+  filter: ProtectionFilter,
+  options?: { enabled?: boolean },
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter),
-    queryFn: () => callAPI<ProtectionListResponse>(buildPath(filter), { token, portal }),
+    queryFn: () =>
+      callAPI<ProtectionListResponse>(buildPath(filter), { token, portal }),
     // Ditambah syarat pemanggil: selama antrean yang boleh dibuka belum diketahui, daftar
     // TIDAK ditembak. Menembaknya lebih dulu hanya menghasilkan 403 yang pasti.
     enabled: token !== null && portal !== null && (options?.enabled ?? true),
@@ -129,23 +133,24 @@ export function useAcceptQueue(filter: ProtectionFilter, options?: { enabled?: b
     // Antrean BERSAMA: baris dapat hilang kapan saja karena diputuskan petugas lain. Data
     // dianggap usang seketika supaya perpindahan tab dan Muat ulang selalu menembak server.
     staleTime: 0,
-  })
+  });
 }
 
 /** Hook pembacaan satu proteksi untuk form akseptasi. */
 export function useProtectionDetail(number: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keys.detail(portal, token, number ?? ''),
+    queryKey: keys.detail(portal, token, number ?? ""),
     queryFn: () =>
-      callAPI<ProtectionDetail>(`${PATH}/${encodeURIComponent(number ?? '')}`, {
+      callAPI<ProtectionDetail>(`${PATH}/${encodeURIComponent(number ?? "")}`, {
         token,
         portal,
       }),
-    enabled: token !== null && portal !== null && number !== null && number !== '',
-  })
+    enabled:
+      token !== null && portal !== null && number !== null && number !== "",
+  });
 }
 
 /**
@@ -160,18 +165,24 @@ export function useProtectionDetail(number: string | null) {
  * pengguna — ia hanya kalah cepat pada antrean bersama, dan layar menyampaikannya begitu.
  */
 export function useDecideProtection() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ number, decision }: { number: string; decision: Decision }) =>
+    mutationFn: ({
+      number,
+      decision,
+    }: {
+      number: string;
+      decision: Decision;
+    }) =>
       callAPI<ProtectionDetail>(
         `${PATH}/${encodeURIComponent(number)}/akseptasi`,
-        { metode: 'PUT', body: { keputusan: decision }, token, portal },
+        { metode: "PUT", body: { keputusan: decision }, token, portal },
       ),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all });
     },
-  })
+  });
 }

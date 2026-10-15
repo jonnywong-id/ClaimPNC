@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   ClaimReportDetail,
@@ -11,9 +11,9 @@ import type {
   ClaimReportQuery,
   ClaimReportResponse,
   PolicyLookupResponse,
-} from './types'
+} from "./types";
 
-const ROUTE = '/api/inbox/laporan-klaim'
+const ROUTE = "/api/inbox/laporan-klaim";
 
 /**
  * listKey menyertakan portal DAN token, mengikuti pola modul master.
@@ -31,23 +31,27 @@ const ROUTE = '/api/inbox/laporan-klaim'
  * berbeda, dan menyatukannya dalam satu kunci membuat halaman kedua menimpa halaman
  * pertama di cache.
  */
-function listKey(portal: string | null, token: string | null, query: ClaimReportQuery) {
-  return ['inbox-laporan-klaim', portal, token, query] as const
+function listKey(
+  portal: string | null,
+  token: string | null,
+  query: ClaimReportQuery,
+) {
+  return ["inbox-laporan-klaim", portal, token, query] as const;
 }
 
 function optionKey(portal: string | null, token: string | null) {
-  return ['inbox-laporan-klaim-pilihan', portal, token] as const
+  return ["inbox-laporan-klaim-pilihan", portal, token] as const;
 }
 
 /** Menyusun parameter kueri; yang kosong tidak ikut dikirim. */
 function searchParams(query: ClaimReportQuery): string {
-  const param = new URLSearchParams()
-  param.set('kategori', query.kategori)
-  if (query.kanwil !== '') param.set('kanwil', query.kanwil)
-  if (query.bisnis !== '') param.set('bisnis', query.bisnis)
-  if (query.cari.trim() !== '') param.set('cari', query.cari.trim())
-  if (query.halaman > 1) param.set('halaman', String(query.halaman))
-  return param.toString()
+  const param = new URLSearchParams();
+  param.set("kategori", query.kategori);
+  if (query.kanwil !== "") param.set("kanwil", query.kanwil);
+  if (query.bisnis !== "") param.set("bisnis", query.bisnis);
+  if (query.cari.trim() !== "") param.set("cari", query.cari.trim());
+  if (query.halaman > 1) param.set("halaman", String(query.halaman));
+  return param.toString();
 }
 
 /**
@@ -58,19 +62,22 @@ function searchParams(query: ClaimReportQuery): string {
  * akan menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useClaimReportList(query: ClaimReportQuery) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, query),
     queryFn: () =>
-      callAPI<ClaimReportListResponse>(`${ROUTE}?${searchParams(query)}`, { token, portal }),
+      callAPI<ClaimReportListResponse>(`${ROUTE}?${searchParams(query)}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
 
     // Hasil halaman sebelumnya tetap digambar selama halaman berikutnya dimuat, sehingga
     // tabel tidak berkedip menjadi kosong setiap kali pengguna menekan Berikutnya.
     placeholderData: (previous) => previous,
-  })
+  });
 }
 
 /**
@@ -83,19 +90,20 @@ export function useClaimReportList(query: ClaimReportQuery) {
  * hidup di dua tempat, dan tempat kedua akan terlupa saat yang pertama berubah.
  */
 export function useClaimReportOptions() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: optionKey(portal, token),
-    queryFn: () => callAPI<ClaimReportOptionResponse>(`${ROUTE}/pilihan`, { token, portal }),
+    queryFn: () =>
+      callAPI<ClaimReportOptionResponse>(`${ROUTE}/pilihan`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Isinya nyaris tetap: daftar kanwil berubah ketika cabang dibuka atau ditutup,
     // yang terjadi beberapa kali setahun. Memuatnya ulang setiap kali layar dibuka hanya
     // menambah permintaan.
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -106,22 +114,22 @@ export function useClaimReportOptions() {
  * layar berikutnya (`B-14`). Lihat catatan pada usecase.Service.Create di backend.
  */
 export function useCreateClaimReport() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: () =>
-      callAPI<ClaimReportResponse>(ROUTE, { metode: 'POST', token, portal }),
+      callAPI<ClaimReportResponse>(ROUTE, { metode: "POST", token, portal }),
 
     // Daftar dimuat ulang dari server, BUKAN ditambahi barisnya di sisi klien. Nomornya
     // diterbitkan server, petugas lain dapat menambah berkas pada saat yang sama, dan
     // lencana kesembilan tab ikut berubah — daftar yang disusun sendiri di peramban akan
     // berbeda dari isi tabel yang sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({ queryKey: ["inbox-laporan-klaim"] });
     },
-  })
+  });
 }
 
 /**
@@ -132,15 +140,18 @@ export function useCreateClaimReport() {
  * digambar grid, sedangkan form membutuhkan sepuluh isian yang tidak ada di sana.
  */
 export function useClaimReport(id: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-laporan-klaim-berkas', portal, token, id],
+    queryKey: ["inbox-laporan-klaim-berkas", portal, token, id],
     queryFn: () =>
-      callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, { token, portal }),
-    enabled: token !== null && portal !== null && id !== '',
-  })
+      callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && id !== "",
+  });
 }
 
 /**
@@ -151,16 +162,19 @@ export function useClaimReport(id: string) {
  * disimpan di cache.
  */
 export function useLookupPolicy() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (number: string) =>
-      callAPI<PolicyLookupResponse>(`${ROUTE}/polis?nomor=${encodeURIComponent(number)}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<PolicyLookupResponse>(
+        `${ROUTE}/polis?nomor=${encodeURIComponent(number)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /**
@@ -171,14 +185,14 @@ export function useLookupPolicy() {
  * keadaan yang sama persis.
  */
 export function useSaveClaimReport(id: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (detail: ClaimReportDetail) =>
       callAPI<ClaimReportResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: detail,
         token,
         portal,
@@ -188,10 +202,12 @@ export function useSaveClaimReport(id: string) {
     // menampilkannya. Mengisi nomor polis atau tanggal kejadian mengubah apa yang
     // tergambar di grid, dan daftar yang tidak dimuat ulang akan menampilkan isi lama.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim-berkas', portal, token, id] })
-      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({
+        queryKey: ["inbox-laporan-klaim-berkas", portal, token, id],
+      });
+      client.invalidateQueries({ queryKey: ["inbox-laporan-klaim"] });
     },
-  })
+  });
 }
 
 /**
@@ -216,35 +232,39 @@ export function useSaveClaimReport(id: string) {
  * dijawab — yang harus berubah adalah caranya, bukan angkanya.
  */
 export function useExportClaimReport() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (query: ClaimReportQuery) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const response = await fetch(`${ROUTE}/ekspor?${searchParams(query)}`, { headers: header })
+      const response = await fetch(`${ROUTE}/ekspor?${searchParams(query)}`, {
+        headers: header,
+      });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak
         // bisa lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'laporan-klaim.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "laporan-klaim.csv");
     },
-  })
+  });
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -255,14 +275,14 @@ function filenameOf(response: Response): string | null {
  * menumpuk memori yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -286,32 +306,41 @@ function downloadBlob(blob: Blob, filename: string): void {
  * diisi — bukan mengirim permintaan yang sudah pasti gagal.
  */
 export function useRegisterClaim() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ nomorLaporan, nomorPolis }: { nomorLaporan: string; nomorPolis: string }) => {
-      if (nomorPolis.trim() === '') {
+    mutationFn: ({
+      nomorLaporan,
+      nomorPolis,
+    }: {
+      nomorLaporan: string;
+      nomorPolis: string;
+    }) => {
+      if (nomorPolis.trim() === "") {
         return Promise.reject(
           new Error(
-            'Nomor Polis harus diisi lebih dulu. Registrasi mengambil snapshot polis ' +
-              'saat klaim dibuat, dan snapshot itu tidak dapat diambil tanpa nomornya.',
+            "Nomor Polis harus diisi lebih dulu. Registrasi mengambil snapshot polis " +
+              "saat klaim dibuat, dan snapshot itu tidak dapat diambil tanpa nomornya.",
           ),
-        )
+        );
       }
-      return callAPI<{ klaim: { id: string; nomor: string } }>('/api/registrasi/klaim', {
-        metode: 'POST',
-        token,
-        portal,
-        body: { nomor_polis: nomorPolis, nomor_laporan: nomorLaporan },
-      })
+      return callAPI<{ klaim: { id: string; nomor: string } }>(
+        "/api/registrasi/klaim",
+        {
+          metode: "POST",
+          token,
+          portal,
+          body: { nomor_polis: nomorPolis, nomor_laporan: nomorLaporan },
+        },
+      );
     },
 
     // Daftar laporan dimuat ulang: begitu klaim terbit, NOKLAIM pada baris RCV terisi dan
     // berkasnya berpindah keluar dari tab Not Transferred.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['inbox-laporan-klaim'] })
+      client.invalidateQueries({ queryKey: ["inbox-laporan-klaim"] });
     },
-  })
+  });
 }

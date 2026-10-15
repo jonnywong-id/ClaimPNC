@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
-import type { KomiteAttachment } from '@/api/types'
-import type { Column } from '@/components/DataTable'
+import type { KomiteAttachment } from "@/api/types";
+import type { Column } from "@/components/DataTable";
 
-import { useAttachmentLink } from './api'
+import { useAttachmentLink } from "./api";
 
 /**
  * Membuka lampiran klaim dari layar Komite — dipakai Dokumen Pendukung dan tab Lampiran
@@ -15,21 +15,21 @@ import { useAttachmentLink } from './api'
  * BLOB tetap teks, karena activity itu berhenti bila IMAGEID kosong.
  */
 export function useAttachmentOpener(claimKey: string) {
-  const link = useAttachmentLink(claimKey)
+  const link = useAttachmentLink(claimKey);
 
   // Jendela dibuka LEBIH DULU, saat klik masih berlangsung, lalu diarahkan setelah alamatnya
   // datang — membukanya sesudah permintaan selesai akan diblokir peramban sebagai popup.
   const open = (attachment: KomiteAttachment) => {
-    const target = window.open('', '_blank')
-    if (target) target.opener = null
+    const target = window.open("", "_blank");
+    if (target) target.opener = null;
     link.mutate(attachment.id, {
       onSuccess: (found) => {
-        if (target) target.location.href = found.url
-        else window.open(found.url, '_blank', 'noopener,noreferrer')
+        if (target) target.location.href = found.url;
+        else window.open(found.url, "_blank", "noopener,noreferrer");
       },
       onError: () => target?.close(),
-    })
-  }
+    });
+  };
 
   const nameCell = (r: KomiteAttachment): ReactNode =>
     claimKey && r.tersimpan ? (
@@ -39,31 +39,33 @@ export function useAttachmentOpener(claimKey: string) {
         disabled={link.isPending && link.variables === r.id}
         onClick={() => open(r)}
       >
-        {r.nama || 'dokumen'}
+        {r.nama || "dokumen"}
       </button>
     ) : (
-      (r.nama ?? '')
-    )
+      (r.nama ?? "")
+    );
 
   /** Kolom yang kuncinya `nama` diberi sel tautan; kolom lain tidak diubah. */
-  const withNameLink = (columns: Column<KomiteAttachment>[]): Column<KomiteAttachment>[] =>
-    columns.map((c) => (c.key === 'nama' ? { ...c, render: nameCell } : c))
+  const withNameLink = (
+    columns: Column<KomiteAttachment>[],
+  ): Column<KomiteAttachment>[] =>
+    columns.map((c) => (c.key === "nama" ? { ...c, render: nameCell } : c));
 
   const error = link.isError
     ? link.error instanceof Error
       ? link.error.message
-      : 'Dokumen tidak dapat dibuka.'
-    : null
+      : "Dokumen tidak dapat dibuka."
+    : null;
 
-  return { withNameLink, error }
+  return { withNameLink, error };
 }
 
 /** Pesan galat membuka dokumen, di bawah tabelnya. */
 export function AttachmentOpenError({ message }: { message: string | null }) {
-  if (!message) return null
+  if (!message) return null;
   return (
     <p role="alert" className="mt-2 text-sm text-red-700">
       {message}
     </p>
-  )
+  );
 }

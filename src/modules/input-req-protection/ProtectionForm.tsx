@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { SelectField, type SelectOption } from '@/components/SelectField'
-import { TextAreaField } from '@/components/TextAreaField'
-import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { SelectField, type SelectOption } from "@/components/SelectField";
+import { TextAreaField } from "@/components/TextAreaField";
+import { DokumenPenunjangPanel } from "@/modules/dokumen-penunjang/DokumenPenunjangPanel";
 
-import { useClaimLookup } from './api'
-import { CoveragePicker } from './CoveragePicker'
-import { useCauseOfLossPanel } from './useCauseOfLossPanel'
+import { useClaimLookup } from "./api";
+import { CoveragePicker } from "./CoveragePicker";
+import { useCauseOfLossPanel } from "./useCauseOfLossPanel";
 import {
   TYPE_CHANGE_CAUSE_OF_LOSS,
   TYPE_CHANGE_LOSS_DATE,
@@ -18,7 +18,7 @@ import {
   type CoverageRow,
   type ProtectionDetail,
   type ProtectionFields,
-} from './types'
+} from "./types";
 
 /**
  * Form Input Open Protection.
@@ -60,19 +60,19 @@ import {
  */
 type Props = {
   /** Terisi saat menyunting; kosong saat membuat baru. */
-  existing?: ProtectionDetail | undefined
+  existing?: ProtectionDetail | undefined;
 
   /** Daftar tipe proteksi yang dapat dipilih. */
-  typeOptions: SelectOption[]
+  typeOptions: SelectOption[];
 
-  onSubmit: (values: ProtectionFields) => Promise<void>
-  onCancel: () => void
+  onSubmit: (values: ProtectionFields) => Promise<void>;
+  onCancel: () => void;
 
-  isSubmitting: boolean
+  isSubmitting: boolean;
 
   /** Galat dari backend; pelanggaran per kolom dibaca dari sini. */
-  failure: unknown
-}
+  failure: unknown;
+};
 
 export function ProtectionForm({
   existing,
@@ -82,48 +82,58 @@ export function ProtectionForm({
   isSubmitting,
   failure,
 }: Props) {
-  const [claimNumber, setClaimNumber] = useState(existing?.nomor_klaim ?? '')
-  const [type, setType] = useState(existing?.tipe_proteksi ?? '')
-  const [note, setNote] = useState(existing?.keterangan ?? '')
+  const [claimNumber, setClaimNumber] = useState(existing?.nomor_klaim ?? "");
+  const [type, setType] = useState(existing?.tipe_proteksi ?? "");
+  const [note, setNote] = useState(existing?.keterangan ?? "");
 
   // HANYA nilai "sesudah" yang disimpan sebagai keadaan form. Nilai "sebelum" datang dari
   // pencarian klaim di bawah dan tidak pernah menjadi keadaan yang dapat diubah pengguna.
-  const [lossDateAfter, setLossDateAfter] = useState(existing?.detail_perubahan.dol_baru ?? '')
+  const [lossDateAfter, setLossDateAfter] = useState(
+    existing?.detail_perubahan.dol_baru ?? "",
+  );
   const [causeAfter, setCauseAfter] = useState(
-    existing?.detail_perubahan.penyebab_kerugian_master ?? '',
-  )
+    existing?.detail_perubahan.penyebab_kerugian_master ?? "",
+  );
 
   // Baris coverage yang DIPILIH pemohon — sasaran perubahan Cause of Loss.
   //
   // Keduanya satu keadaan, bukan dua: ia diisi sekaligus oleh satu tombol Pilih, dan
   // dikosongkan sekaligus. Menyimpannya sebagai dua state terpisah membuka kemungkinan
   // terisi separuh, yang ditolak server dengan pesan yang tidak dapat diperbaiki pengguna.
-  const [selected, setSelected] = useState<{ objek: string; coverage: string }>({
-    objek: existing?.detail_perubahan.id_objek ?? '',
-    coverage: existing?.detail_perubahan.id_coverage ?? '',
-  })
+  const [selected, setSelected] = useState<{ objek: string; coverage: string }>(
+    {
+      objek: existing?.detail_perubahan.id_objek ?? "",
+      coverage: existing?.detail_perubahan.id_coverage ?? "",
+    },
+  );
 
   // Pencarian klaim menggantikan tombol CARI pada form Pega.
   //
   // `Activity/OpenProtection-Act.xml` mengisi No Polis, Nama Tertanggung, Object Name,
   // Branch Name, Current Date Of Loss, dan Cause Of Loss Dipilih dari klaim yang ditemukan.
   // Keenamnya TIDAK PERNAH diketik, dan di sini pun tidak.
-  const claim = useClaimLookup(claimNumber)
-  const found = claim.data ?? null
+  const claim = useClaimLookup(claimNumber);
+  const found = claim.data ?? null;
 
-  const violations = failure instanceof APIError ? failure.violations() : {}
+  const violations = failure instanceof APIError ? failure.violations() : {};
 
   // Galat yang TIDAK menunjuk kolom mana pun ditampilkan di atas form. Yang menunjuk kolom
   // sudah menempel di kolomnya, dan mengulangnya di atas hanya menambah kebisingan.
   const generalFailure =
-    failure instanceof APIError && Object.keys(violations).length === 0 ? failure.message : null
+    failure instanceof APIError && Object.keys(violations).length === 0
+      ? failure.message
+      : null;
 
-  const changesLossDate = type === TYPE_CHANGE_LOSS_DATE
-  const changesCauseOfLoss = type === TYPE_CHANGE_CAUSE_OF_LOSS
+  const changesLossDate = type === TYPE_CHANGE_LOSS_DATE;
+  const changesCauseOfLoss = type === TYPE_CHANGE_CAUSE_OF_LOSS;
 
   // Seluruh turunan panel Cause Of Loss hidup di satu hook, beserta alasannya. Form hanya
   // menggambar.
-  const panelCOL = useCauseOfLossPanel(claimNumber, changesCauseOfLoss, selected)
+  const panelCOL = useCauseOfLossPanel(
+    claimNumber,
+    changesCauseOfLoss,
+    selected,
+  );
 
   // Keadaan pencarian klaim DITAMPILKAN, tidak lagi ditelan.
   //
@@ -136,16 +146,17 @@ export function ProtectionForm({
   // Itulah yang membuat "Object Name kosong terus" tidak dapat dibedakan dari "klaimnya
   // memang tidak ada" — dan pada `PENYIMPANAN=memori`, hampir setiap nomor klaim nyata
   // memang tidak ada.
-  const claimSedangDicari = claimNumber.trim() !== '' && claim.isPending
+  const claimSedangDicari = claimNumber.trim() !== "" && claim.isPending;
   const claimTidakKetemu =
-    claimNumber.trim() !== '' &&
+    claimNumber.trim() !== "" &&
     claim.isError &&
     claim.error instanceof APIError &&
-    claim.error.status === 404
-  const claimGagalDibaca = claimNumber.trim() !== '' && claim.isError && !claimTidakKetemu
+    claim.error.status === 404;
+  const claimGagalDibaca =
+    claimNumber.trim() !== "" && claim.isError && !claimTidakKetemu;
 
   async function submit(event: React.FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
     await onSubmit({
       nomor_klaim: claimNumber,
       tipe_proteksi: type,
@@ -156,11 +167,16 @@ export function ProtectionForm({
         id_objek: selected.objek,
         id_coverage: selected.coverage,
       },
-    })
+    });
   }
 
   return (
-    <form onSubmit={(event) => { submit(event) }} className="space-y-5">
+    <form
+      onSubmit={(event) => {
+        submit(event);
+      }}
+      className="space-y-5"
+    >
       {generalFailure && (
         <ErrorMessage
           title="Permintaan tidak dapat disimpan"
@@ -177,9 +193,9 @@ export function ProtectionForm({
         <ErrorMessage
           title="Klaim tidak ditemukan"
           description={
-            'Nomor klaim ini tidak ada di data klaim, sehingga No Polis, Nama Tertanggung, ' +
-            'Object Name, Branch Name, Current Date Of Loss, dan Cause Of Loss tidak dapat diisi. ' +
-            'Periksa kembali nomornya.'
+            "Nomor klaim ini tidak ada di data klaim, sehingga No Polis, Nama Tertanggung, " +
+            "Object Name, Branch Name, Current Date Of Loss, dan Cause Of Loss tidak dapat diisi. " +
+            "Periksa kembali nomornya."
           }
           tone="penolakan"
         />
@@ -207,7 +223,7 @@ export function ProtectionForm({
         <FormField
           id="nomor-polis"
           label="No Polis (dari klaim)"
-          value={found?.nomor_polis ?? ''}
+          value={found?.nomor_polis ?? ""}
           onChange={() => {}}
           readOnly
           autoComplete="off"
@@ -221,7 +237,9 @@ export function ProtectionForm({
           onChange={(event) => setType(event.target.value)}
           required
           emptyText="--- Pilih ---"
-          {...(violations['tipe_proteksi'] ? { error: violations['tipe_proteksi'] } : {})}
+          {...(violations["tipe_proteksi"]
+            ? { error: violations["tipe_proteksi"] }
+            : {})}
         />
       </div>
 
@@ -233,7 +251,9 @@ export function ProtectionForm({
           onChange={(event) => setClaimNumber(event.target.value)}
           required
           autoComplete="off"
-          {...(violations['no_klaim'] ? { failure: violations['no_klaim'] } : {})}
+          {...(violations["no_klaim"]
+            ? { failure: violations["no_klaim"] }
+            : {})}
         />
 
         {/*
@@ -251,16 +271,17 @@ export function ProtectionForm({
           Nilai ClaimID baris WARISAN tetap ditampilkan di bawah, karena di sana ia memang
           berbeda: Pega menyimpan kunci teknisnya, `ASM-FW-GCNMFW-WORK PNC-xxxx`.
         */}
-        {existing?.referensi_klaim && existing.referensi_klaim !== existing.nomor_klaim && (
-          <FormField
-            id="referensi-klaim"
-            label="ID Klaim (warisan Pega)"
-            value={existing.referensi_klaim}
-            onChange={() => {}}
-            readOnly
-            autoComplete="off"
-          />
-        )}
+        {existing?.referensi_klaim &&
+          existing.referensi_klaim !== existing.nomor_klaim && (
+            <FormField
+              id="referensi-klaim"
+              label="ID Klaim (warisan Pega)"
+              value={existing.referensi_klaim}
+              onChange={() => {}}
+              readOnly
+              autoComplete="off"
+            />
+          )}
       </div>
 
       {changesLossDate && (
@@ -283,7 +304,7 @@ export function ProtectionForm({
               id="dol-sebelum"
               label="Current Date Of Loss (dari klaim)"
               type="date"
-              value={found?.dol ?? ''}
+              value={found?.dol ?? ""}
               onChange={() => {}}
               readOnly
             />
@@ -294,7 +315,9 @@ export function ProtectionForm({
               value={lossDateAfter}
               onChange={(event) => setLossDateAfter(event.target.value)}
               required
-              {...(violations['dol_baru'] ? { failure: violations['dol_baru'] } : {})}
+              {...(violations["dol_baru"]
+                ? { failure: violations["dol_baru"] }
+                : {})}
             />
           </div>
         </fieldset>
@@ -318,11 +341,11 @@ export function ProtectionForm({
             rows={panelCOL.rows}
             selected={selected}
             onSelect={(row) => {
-              setSelected({ objek: row.id_objek, coverage: row.id_coverage })
+              setSelected({ objek: row.id_objek, coverage: row.id_coverage });
             }}
             memuat={panelCOL.memuatCoverage}
             gagal={panelCOL.coverageGagal}
-            failure={violations['baris_coverage'] ?? null}
+            failure={violations["baris_coverage"] ?? null}
             pilihanHilang={panelCOL.pilihanHilang}
           />
 
@@ -355,16 +378,16 @@ export function ProtectionForm({
               onChange={(event) => setCauseAfter(event.target.value)}
               required
               emptyText="--- Pilih Cause Of Loss ---"
-              {...(violations['penyebab_kerugian_master']
-                ? { error: violations['penyebab_kerugian_master'] }
+              {...(violations["penyebab_kerugian_master"]
+                ? { error: violations["penyebab_kerugian_master"] }
                 : {})}
             />
           </div>
 
           {panelCOL.pilihanGagal && (
             <p className="mt-2 text-sm text-rose-700">
-              Daftar Cause Of Loss gagal dimuat. Muat ulang halaman; menyimpan tanpa memilih
-              akan ditolak.
+              Daftar Cause Of Loss gagal dimuat. Muat ulang halaman; menyimpan
+              tanpa memilih akan ditolak.
             </p>
           )}
         </fieldset>
@@ -376,7 +399,7 @@ export function ProtectionForm({
           <FormField
             id="nama-objek"
             label="Object Name (dari klaim)"
-            value={found?.nama_objek ?? ''}
+            value={found?.nama_objek ?? ""}
             onChange={() => {}}
             readOnly
             autoComplete="off"
@@ -384,7 +407,7 @@ export function ProtectionForm({
           <FormField
             id="nama-cabang"
             label="Branch Name (dari klaim)"
-            value={found?.nama_cabang ?? ''}
+            value={found?.nama_cabang ?? ""}
             onChange={() => {}}
             readOnly
             autoComplete="off"
@@ -399,7 +422,9 @@ export function ProtectionForm({
         onChange={(event) => setNote(event.target.value)}
         rows={3}
         required
-        {...(violations['keterangan'] ? { error: violations['keterangan'] } : {})}
+        {...(violations["keterangan"]
+          ? { error: violations["keterangan"] }
+          : {})}
       />
 
       {/*
@@ -416,7 +441,11 @@ export function ProtectionForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button tone="utama" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Menyimpan…' : existing ? 'Simpan Perubahan' : 'Simpan'}
+          {isSubmitting
+            ? "Menyimpan…"
+            : existing
+              ? "Simpan Perubahan"
+              : "Simpan"}
         </Button>
         <Button tone="halus" onClick={onCancel} disabled={isSubmitting}>
           Batal
@@ -424,7 +453,8 @@ export function ProtectionForm({
 
         {existing && (
           <span className="text-xs text-slate-500">
-            No Proteksi <span className="font-mono">{existing.nomor_proteksi}</span>
+            No Proteksi{" "}
+            <span className="font-mono">{existing.nomor_proteksi}</span>
           </span>
         )}
       </div>
@@ -434,12 +464,12 @@ export function ProtectionForm({
         // kode. Pilihan yang berasal dari kode akan membuat master yang bermasalah tampak
         // beres — dan proteksi tersimpan dengan tipe yang tidak dikenal basis datanya.
         <p className="text-xs text-amber-700">
-          Master tipe proteksi belum dapat dibaca, sehingga pilihan tipe kosong. Permintaan
-          tidak dapat disimpan tanpa tipe.
+          Master tipe proteksi belum dapat dibaca, sehingga pilihan tipe kosong.
+          Permintaan tidak dapat disimpan tanpa tipe.
         </p>
       )}
     </form>
-  )
+  );
 }
 
 /**
@@ -450,9 +480,9 @@ export function ProtectionForm({
  * sebagai satu hal, bukan diselipkan ke dalam atribut.
  */
 function penyebabTerpilih(row: CoverageRow | null): string {
-  if (row === null) return ''
-  if (row.penyebab_kerugian_id === '') return row.penyebab_kerugian
-  return `${row.penyebab_kerugian} (${row.penyebab_kerugian_id})`
+  if (row === null) return "";
+  if (row.penyebab_kerugian_id === "") return row.penyebab_kerugian;
+  return `${row.penyebab_kerugian} (${row.penyebab_kerugian_id})`;
 }
 
 /**
@@ -464,6 +494,6 @@ function penyebabTerpilih(row: CoverageRow | null): string {
 function pilihanPenyebab(o: CauseOfLossOption): SelectOption {
   return {
     value: o.kode,
-    label: o.kode_kerugian === '' ? o.nama : `${o.nama} (${o.kode_kerugian})`,
-  }
+    label: o.kode_kerugian === "" ? o.nama : `${o.nama} (${o.kode_kerugian})`,
+  };
 }

@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   ReasMemberListResponse,
   ReasMemberResponse,
   ReasMemberSaveInput,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/reas'
+const ROUTE = "/api/master/reas";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -23,7 +23,7 @@ const ROUTE = '/api/master/reas'
  * persetujuan, sehingga layar ini tidak bertab dan hanya ada satu daftar per portal.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-reas', portal, token] as const
+  return ["master-reas", portal, token] as const;
 }
 
 /**
@@ -52,14 +52,14 @@ function listKey(portal: string | null, token: string | null) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function useReasMemberList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<ReasMemberListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -80,15 +80,20 @@ export function useReasMemberList() {
  * klaim mana yang dilihat seorang mitra reasuransi.
  */
 export function useSaveReasMemberEmail() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: ReasMemberSaveInput) =>
-      callAPI<ReasMemberResponse>(ROUTE, { metode: 'PUT', body: input, token, portal }),
+      callAPI<ReasMemberResponse>(ROUTE, {
+        metode: "PUT",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-reas'] })
+      void client.invalidateQueries({ queryKey: ["master-reas"] });
     },
-  })
+  });
 }

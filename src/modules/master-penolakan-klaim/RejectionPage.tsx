@@ -1,25 +1,32 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type CommitteeRejection, type Rejection } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type CommitteeRejection,
+  type Rejection,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useCreateRejection,
   useRejectionList,
   useRejectionParentList,
   useUpdateRejection,
-} from './api'
+} from "./api";
 import {
   useCommitteeRejectionList,
   useCreateCommitteeRejection,
   useUpdateCommitteeRejection,
-} from './apiKomite'
-import { RejectionForm, toInput, type RejectionFields } from './RejectionForm'
-import { CommitteeRejectionForm, type CommitteeRejectionFields } from './CommitteeRejectionForm'
+} from "./apiKomite";
+import { RejectionForm, toInput, type RejectionFields } from "./RejectionForm";
+import {
+  CommitteeRejectionForm,
+  type CommitteeRejectionFields,
+} from "./CommitteeRejectionForm";
 
 /**
  * Dua tab layar ini, mengikuti dua tombol layar lama.
@@ -30,44 +37,49 @@ import { CommitteeRejectionForm, type CommitteeRejectionFields } from './Committ
  * ARTINYA, bukan menurut angkanya — angka itu detail penyimpanan klipboard Pega, bukan
  * kontrak apa pun.
  */
-type Tab = 'klaim' | 'komite'
+type Tab = "klaim" | "komite";
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
-  return { title: 'Daftar tidak dapat dimuat', description: 'Coba beberapa saat lagi.', tone: 'gangguan' }
+  return {
+    title: "Daftar tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -79,26 +91,26 @@ function loadMessage(error: unknown): MessageContent {
  * zona waktu mesin pengguna.
  */
 function formatDate(value: string): string {
-  if (value === '') return '—'
-  const moment = new Date(value)
-  if (Number.isNaN(moment.getTime())) return '—'
-  return moment.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  if (value === "") return "—";
+  const moment = new Date(value);
+  if (Number.isNaN(moment.getTime())) return "—";
+  return moment.toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** Nada lencana status, mengikuti arti ketiga nilai kolom STATUS. */
 function statusClass(status: string): string {
   switch (status) {
-    case '1':
-      return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-    case '2':
-      return 'bg-red-50 text-red-800 ring-1 ring-red-200'
+    case "1":
+      return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200";
+    case "2":
+      return "bg-red-50 text-red-800 ring-1 ring-red-200";
     default:
-      return 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
+      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
   }
 }
 
@@ -142,16 +154,19 @@ function statusClass(status: string): string {
  * parameter itu. Menyaringnya di sini akan menyembunyikan baris yang sudah diputuskan.
  */
 export function RejectionPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [tab, setTab] = useState<Tab>('klaim')
+  const portal = useSelectedPortal((state) => state.alias);
+  const [tab, setTab] = useState<Tab>("klaim");
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Penolakan Klaim</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Penolakan Klaim
+          </h1>
           <p className="text-sm text-slate-600">
-            Daftar baku alasan penolakan klaim, beserta catatan penolakan komite.
+            Daftar baku alasan penolakan klaim, beserta catatan penolakan
+            komite.
           </p>
         </div>
       </header>
@@ -160,7 +175,8 @@ export function RejectionPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas: <span className="font-medium text-slate-700">{portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">{portal ?? "—"}</span>
       </p>
 
       {/* Dua tab menggantikan dua tombol layar lama. Ia `role="tablist"` supaya pembaca
@@ -171,11 +187,15 @@ export function RejectionPage() {
           Work Owner 2026-10-03. Sebelumnya dipendekkan menjadi "Penolakan Klaim" dan
           "Penolakan Komite"; pemendekan itu membuat teks di layar baru tidak dapat
           dicocokkan dengan teks di layar lama saat pengguna membandingkan keduanya. */}
-      <div role="tablist" aria-label="Pilih master" className="mt-5 flex flex-wrap gap-2">
-        <TabButton active={tab === 'klaim'} onClick={() => setTab('klaim')}>
+      <div
+        role="tablist"
+        aria-label="Pilih master"
+        className="mt-5 flex flex-wrap gap-2"
+      >
+        <TabButton active={tab === "klaim"} onClick={() => setTab("klaim")}>
           Input Master Penolakan Klaim
         </TabButton>
-        <TabButton active={tab === 'komite'} onClick={() => setTab('komite')}>
+        <TabButton active={tab === "komite"} onClick={() => setTab("komite")}>
           Input Master Penolakan Komite
         </TabButton>
       </div>
@@ -188,13 +208,13 @@ export function RejectionPage() {
             tone="penolakan"
           />
         </section>
-      ) : tab === 'klaim' ? (
+      ) : tab === "klaim" ? (
         <RejectionTab />
       ) : (
         <CommitteeTab />
       )}
     </main>
-  )
+  );
 }
 
 function TabButton({
@@ -202,9 +222,9 @@ function TabButton({
   onClick,
   children,
 }: {
-  active: boolean
-  onClick: () => void
-  children: string
+  active: boolean;
+  onClick: () => void;
+  children: string;
 }) {
   return (
     <button
@@ -213,61 +233,61 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       className={
-        'rounded-kontrol px-3.5 py-2 text-sm font-medium transition-colors duration-150 ' +
-        'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 ' +
+        "rounded-kontrol px-3.5 py-2 text-sm font-medium transition-colors duration-150 " +
+        "focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 " +
         (active
-          ? 'bg-blue-600 text-white shadow-aksen'
-          : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50')
+          ? "bg-blue-600 text-white shadow-aksen"
+          : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50")
       }
     >
       {children}
     </button>
-  )
+  );
 }
 
 /** Tab pertama — POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2. */
 function RejectionTab() {
-  const [edited, setEdited] = useState<Rejection | null>(null)
-  const [isFormOpen, setFormOpen] = useState(false)
+  const [edited, setEdited] = useState<Rejection | null>(null);
+  const [isFormOpen, setFormOpen] = useState(false);
 
-  const list = useRejectionList()
-  const parents = useRejectionParentList()
-  const create = useCreateRejection()
-  const update = useUpdateRejection()
+  const list = useRejectionList();
+  const parents = useRejectionParentList();
+  const create = useCreateRejection();
+  const update = useUpdateRejection();
 
-  const saving = edited === null ? create : update
+  const saving = edited === null ? create : update;
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(true)
+    create.reset();
+    update.reset();
+    setEdited(null);
+    setFormOpen(true);
   }
 
   function openEdit(row: Rejection) {
-    create.reset()
-    update.reset()
-    setEdited(row)
-    setFormOpen(true)
+    create.reset();
+    update.reset();
+    setEdited(row);
+    setFormOpen(true);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(false)
+    create.reset();
+    update.reset();
+    setEdited(null);
+    setFormOpen(false);
   }
 
   // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
   // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
   // diketik, itu berarti mengetik ulang dari awal.
   function save(values: RejectionFields) {
-    const input = toInput(values)
+    const input = toInput(values);
     if (edited === null) {
-      create.mutate(input, { onSuccess: closeForm })
-      return
+      create.mutate(input, { onSuccess: closeForm });
+      return;
     }
-    update.mutate({ id: edited.id, input }, { onSuccess: closeForm })
+    update.mutate({ id: edited.id, input }, { onSuccess: closeForm });
   }
 
   // Susunan kolom mengikuti grid Pega SEL DEMI SEL, bukan disimpulkan dari urutan label.
@@ -301,26 +321,31 @@ function RejectionTab() {
   // Angkanya diambil dari `pyWidth` sel Pega yang bersangkutan.
   const columns: Column<Rejection>[] = [
     {
-      key: 'no',
-      title: 'No',
-      width: '55px',
+      key: "no",
+      title: "No",
+      width: "55px",
       // ID induk, bukan nomor urut — lihat catatan di atas.
       value: (row) => row.id_status_1,
     },
     {
-      key: 'status_1',
-      title: 'Status Penolakan 1',
-      width: '156px',
+      key: "status_1",
+      title: "Status Penolakan 1",
+      width: "156px",
       // ID induk TIDAK lagi ikut disisipkan di sini: sejak kolom "No" ada, ia punya
       // kolomnya sendiri, dan pencarian menemukannya dari sana. Menyebutnya dua kali
       // membuat satu nilai tampak seperti dua keterangan yang berbeda.
       value: (row) => row.nama_status_1,
     },
-    { key: 'nama', title: 'Status Penolakan 2', width: '260px', value: (row) => row.nama },
     {
-      key: 'status',
-      title: 'Status Aproval',
-      width: '100px',
+      key: "nama",
+      title: "Status Penolakan 2",
+      width: "260px",
+      value: (row) => row.nama,
+    },
+    {
+      key: "status",
+      title: "Status Aproval",
+      width: "100px",
       value: (row) => row.status_label,
       render: (row) => (
         <span
@@ -331,18 +356,18 @@ function RejectionTab() {
       ),
     },
     {
-      key: 'catatan_persetujuan',
-      title: 'Note Approval',
-      width: '100px',
+      key: "catatan_persetujuan",
+      title: "Note Approval",
+      width: "100px",
       value: (row) => row.catatan_persetujuan,
       render: (row) => (
         <span>
-          {row.catatan_persetujuan === '' ? (
+          {row.catatan_persetujuan === "" ? (
             <span className="text-slate-400">—</span>
           ) : (
             row.catatan_persetujuan
           )}
-          {row.disetujui_oleh !== '' && (
+          {row.disetujui_oleh !== "" && (
             <span className="block text-xs text-slate-500">
               {row.disetujui_oleh} · {formatDate(row.disetujui_pada)}
             </span>
@@ -351,7 +376,7 @@ function RejectionTab() {
       ),
     },
     {
-      key: 'aksi',
+      key: "aksi",
       // Sel judulnya KOSONG di Pega (`pyWidth` 97, `pyValue` kosong). "Aksi" adalah
       // satu-satunya judul kolom yang sengaja TIDAK menyalin Pega — ketetapan Work Owner
       // 2026-10-03, berlaku seluruh modul: kolom tanpa judul tidak dapat disebut namanya
@@ -359,8 +384,8 @@ function RejectionTab() {
       //
       // Judulnya digambar di TENGAH oleh `DataTable` sendiri, tanpa perlu disebut di sini —
       // ia mengenali judul "Aksi" dan meratakannya (lihat `headerAlign`).
-      title: 'Aksi',
-      width: '97px',
+      title: "Aksi",
+      width: "97px",
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
@@ -368,22 +393,36 @@ function RejectionTab() {
       // menempelkan tombolnya ke tepi tabel; di tengah ia duduk di dalam lebar kolomnya
       // sendiri dan sejajar dengan judulnya.
       alignCenter: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
+        <Button
+          tone="kedua"
+          onClick={() => openEdit(row)}
+          aria-label={`Ubah ${row.nama}`}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-          {list.isFetching ? 'Memuat…' : 'Refresh'}
+        <Button
+          tone="kedua"
+          onClick={() => {
+            list.refetch();
+          }}
+          disabled={list.isFetching}
+        >
+          {list.isFetching ? "Memuat…" : "Refresh"}
         </Button>
-        <Button tone="utama" onClick={openCreate} disabled={isFormOpen && edited === null}>
+        <Button
+          tone="utama"
+          onClick={openCreate}
+          disabled={isFormOpen && edited === null}
+        >
           Tambah
         </Button>
       </div>
@@ -403,7 +442,9 @@ function RejectionTab() {
 
       <section className="mt-6">
         {list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar penolakan klaim…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar penolakan klaim…
+          </p>
         ) : list.isError ? (
           <LoadError error={list.error} />
         ) : (
@@ -417,47 +458,47 @@ function RejectionTab() {
         )}
       </section>
     </>
-  )
+  );
 }
 
 /** Tab kedua — POOLDATA.MST_REJECTED_KOMITE. */
 function CommitteeTab() {
-  const [edited, setEdited] = useState<CommitteeRejection | null>(null)
-  const [isFormOpen, setFormOpen] = useState(false)
+  const [edited, setEdited] = useState<CommitteeRejection | null>(null);
+  const [isFormOpen, setFormOpen] = useState(false);
 
-  const list = useCommitteeRejectionList()
-  const create = useCreateCommitteeRejection()
-  const update = useUpdateCommitteeRejection()
+  const list = useCommitteeRejectionList();
+  const create = useCreateCommitteeRejection();
+  const update = useUpdateCommitteeRejection();
 
-  const saving = edited === null ? create : update
+  const saving = edited === null ? create : update;
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(true)
+    create.reset();
+    update.reset();
+    setEdited(null);
+    setFormOpen(true);
   }
 
   function openEdit(row: CommitteeRejection) {
-    create.reset()
-    update.reset()
-    setEdited(row)
-    setFormOpen(true)
+    create.reset();
+    update.reset();
+    setEdited(row);
+    setFormOpen(true);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setEdited(null)
-    setFormOpen(false)
+    create.reset();
+    update.reset();
+    setEdited(null);
+    setFormOpen(false);
   }
 
   function save(values: CommitteeRejectionFields) {
     if (edited === null) {
-      create.mutate(values, { onSuccess: closeForm })
-      return
+      create.mutate(values, { onSuccess: closeForm });
+      return;
     }
-    update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
+    update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm });
   }
 
   // Dua kolom, persis seperti kueri lama — ditambah tombol "ubah" yang di Pega dikirim
@@ -471,32 +512,50 @@ function CommitteeTab() {
   //	Note Komite Reject     76   .NoteKasir             NOTEMASTER
   //	(kosong)              100   .pyTemplateInputBox    tombol
   const columns: Column<CommitteeRejection>[] = [
-    { key: 'id', title: 'ID Master', width: '76px', value: (row) => row.id },
-    { key: 'catatan', title: 'Note Komite Reject', value: (row) => row.catatan },
+    { key: "id", title: "ID Master", width: "76px", value: (row) => row.id },
     {
-      key: 'aksi',
+      key: "catatan",
+      title: "Note Komite Reject",
+      value: (row) => row.catatan,
+    },
+    {
+      key: "aksi",
       // Sel judulnya kosong di Pega; "Aksi" ditulis dengan sengaja — alasannya sama
       // dengan grid tab sebelah.
-      title: 'Aksi',
-      width: '100px',
+      title: "Aksi",
+      width: "100px",
       noSort: true,
       alignCenter: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.catatan}`}>
+        <Button
+          tone="kedua"
+          onClick={() => openEdit(row)}
+          aria-label={`Ubah ${row.catatan}`}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-          {list.isFetching ? 'Memuat…' : 'Refresh'}
+        <Button
+          tone="kedua"
+          onClick={() => {
+            list.refetch();
+          }}
+          disabled={list.isFetching}
+        >
+          {list.isFetching ? "Memuat…" : "Refresh"}
         </Button>
-        <Button tone="utama" onClick={openCreate} disabled={isFormOpen && edited === null}>
+        <Button
+          tone="utama"
+          onClick={openCreate}
+          disabled={isFormOpen && edited === null}
+        >
           Tambah
         </Button>
       </div>
@@ -515,7 +574,9 @@ function CommitteeTab() {
 
       <section className="mt-6">
         {list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar penolakan komite…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar penolakan komite…
+          </p>
         ) : list.isError ? (
           <LoadError error={list.error} />
         ) : (
@@ -529,12 +590,16 @@ function CommitteeTab() {
         )}
       </section>
     </>
-  )
+  );
 }
 
 function LoadError({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }

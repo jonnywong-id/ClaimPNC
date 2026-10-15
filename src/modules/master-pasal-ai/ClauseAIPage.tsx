@@ -1,59 +1,60 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, Paginator, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, Paginator, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
 
-import { useClauseAIList } from './api'
-import type { ClauseAI } from './types'
+import { useClauseAIList } from "./api";
+import type { ClauseAI } from "./types";
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan, lalu muat ulang halaman ini.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data ini dimiliki masing-masing entitas. Pilih portal entitas di bagian atas ' +
-            'halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data ini dimiliki masing-masing entitas. Pilih portal entitas di bagian atas " +
+            "halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar Pasal AI tidak dapat dimuat',
+          title: "Daftar Pasal AI tidak dapat dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+    title: "Terjadi kesalahan pada sistem",
+    description:
+      "Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -103,33 +104,33 @@ function loadMessage(error: unknown): MessageContent {
  * akan menembaknya sekali per huruf.
  */
 export function ClauseAIPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Dua keadaan yang sengaja dipisah: apa yang sedang DIKETIK, dan apa yang sedang DICARI.
   // Menyatukannya berarti mencari sambil mengetik — persis yang tidak dilakukan layar lama.
-  const [draft, setDraft] = useState('')
-  const [keyword, setKeyword] = useState('')
-  const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [page, setPage] = useState(1);
 
-  const list = useClauseAIList(keyword, page)
+  const list = useClauseAIList(keyword, page);
 
-  const rows = list.data?.pasal_ai ?? []
-  const pagination = list.data?.paginasi
+  const rows = list.data?.pasal_ai ?? [];
+  const pagination = list.data?.paginasi;
 
   function submitSearch(event: FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
     // Kembali ke halaman pertama: hasil pencarian baru tidak punya halaman ketujuh.
-    setPage(1)
-    setKeyword(draft.trim())
+    setPage(1);
+    setKeyword(draft.trim());
   }
 
   function refresh() {
     // Meniru tombol Refresh Pega apa adanya: ia MENGOSONGKAN kotak cari lebih dulu
     // (`setValue TempSearch.Country := ""`), baru memuat ulang dari halaman pertama.
-    setDraft('')
-    setKeyword('')
-    setPage(1)
-    list.refetch()
+    setDraft("");
+    setKeyword("");
+    setPage(1);
+    list.refetch();
   }
 
   /*
@@ -143,40 +144,47 @@ export function ClauseAIPage() {
   */
   const columns: Column<ClauseAI>[] = [
     {
-      key: 'no_pasal',
-      title: 'No Pasal',
-      width: '7rem',
+      key: "no_pasal",
+      title: "No Pasal",
+      width: "7rem",
       noSort: true,
       value: (row) => row.no_pasal,
-      render: (row) => <span className="font-medium text-slate-800">{row.no_pasal}</span>,
+      render: (row) => (
+        <span className="font-medium text-slate-800">{row.no_pasal}</span>
+      ),
     },
     {
-      key: 'ayat',
-      title: 'Ayat',
-      width: '7rem',
+      key: "ayat",
+      title: "Ayat",
+      width: "7rem",
       noSort: true,
       value: (row) => row.ayat,
     },
     {
-      key: 'kejadian',
-      title: 'Kejadian',
+      key: "kejadian",
+      title: "Kejadian",
       noSort: true,
       value: (row) => row.kejadian,
       // Teks panjang dibiarkan membungkus, bukan dipotong: ia isi ketentuan polis, dan
       // potongannya tidak dapat dipakai menilai apa pun.
-      render: (row) => <span className="whitespace-pre-line">{row.kejadian}</span>,
+      render: (row) => (
+        <span className="whitespace-pre-line">{row.kejadian}</span>
+      ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya dibaca dari `pyCaption Detail Pasal AI` pada
               Section/GridDetailMasterPasalAI (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Detail Pasal AI</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Detail Pasal AI
+          </h1>
           <p className="text-sm text-slate-600">
-            Daftar wording polis yang dipakai penilaian AI atas klaim pada entitas ini.
+            Daftar wording polis yang dipakai penilaian AI atas klaim pada
+            entitas ini.
           </p>
         </div>
       </header>
@@ -185,8 +193,10 @@ export function ClauseAIPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">
+          {list.data?.portal ?? portal ?? "—"}
+        </span>
       </p>
 
       {/* Formulir pencarian terpisah dari tabel, meniru layar lama: satu kotak, dua tombol.
@@ -214,7 +224,7 @@ export function ClauseAIPage() {
             Cari
           </Button>
           <Button tone="kedua" onClick={refresh} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </form>
@@ -230,14 +240,14 @@ export function ClauseAIPage() {
           <p className="text-sm text-slate-500">Memuat daftar Pasal AI…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <div className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
@@ -251,8 +261,8 @@ export function ClauseAIPage() {
               rowKey={(row) => row.id}
               hideSearch
               emptyMessage={
-                keyword === ''
-                  ? 'Belum ada Pasal AI pada entitas ini.'
+                keyword === ""
+                  ? "Belum ada Pasal AI pada entitas ini."
                   : `Tidak ada Pasal AI yang cocok dengan "${keyword}".`
               }
             />
@@ -264,8 +274,13 @@ export function ClauseAIPage() {
                 senarai — panjang senarai hanya menceritakan halaman yang sedang terbuka. */}
             {pagination !== undefined && rows.length > 0 && (
               <Paginator
-                firstRow={(pagination.halaman - 1) * pagination.ukuran_halaman + 1}
-                lastRow={(pagination.halaman - 1) * pagination.ukuran_halaman + rows.length}
+                firstRow={
+                  (pagination.halaman - 1) * pagination.ukuran_halaman + 1
+                }
+                lastRow={
+                  (pagination.halaman - 1) * pagination.ukuran_halaman +
+                  rows.length
+                }
                 totalRows={pagination.jumlah_baris}
                 currentPage={pagination.halaman}
                 totalPages={pagination.jumlah_halaman}
@@ -275,7 +290,6 @@ export function ClauseAIPage() {
           </div>
         )}
       </section>
-
     </main>
-  )
+  );
 }

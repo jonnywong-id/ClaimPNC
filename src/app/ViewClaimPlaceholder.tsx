@@ -1,7 +1,7 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from "react-router-dom";
 
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
 /**
  * Tujuan sementara tombol "Lihat Detail Klaim".
@@ -33,8 +33,8 @@ import { ErrorMessage } from '@/components/ErrorMessage'
  * bentuknya belum dirancang.
  */
 export function ViewClaimPlaceholder() {
-  const { referensi } = useParams<{ referensi: string }>()
-  const navigate = useNavigate()
+  const { referensi } = useParams<{ referensi: string }>();
+  const navigate = useNavigate();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -48,8 +48,8 @@ export function ViewClaimPlaceholder() {
           title="Layar rincian klaim belum dibangun"
           description={
             'Layar ini adalah menu "View Claim", modul tersendiri yang belum termasuk ' +
-            'dalam pekerjaan yang sudah selesai. Klaim yang Anda pilih sudah dikenali dan ' +
-            'akan langsung terbuka di sini begitu modulnya ada.'
+            "dalam pekerjaan yang sudah selesai. Klaim yang Anda pilih sudah dikenali dan " +
+            "akan langsung terbuka di sini begitu modulnya ada."
           }
           tone="gangguan"
         />
@@ -57,8 +57,10 @@ export function ViewClaimPlaceholder() {
 
       {referensi && (
         <p className="mt-4 text-sm text-slate-600">
-          Klaim yang dipilih:{' '}
-          <span className="font-mono text-slate-900">{decodeURIComponent(referensi)}</span>
+          Klaim yang dipilih:{" "}
+          <span className="font-mono text-slate-900">
+            {decodeURIComponent(referensi)}
+          </span>
         </p>
       )}
 
@@ -68,5 +70,5 @@ export function ViewClaimPlaceholder() {
         </Button>
       </div>
     </div>
-  )
+  );
 }

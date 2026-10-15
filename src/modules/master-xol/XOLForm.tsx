@@ -1,20 +1,20 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
 import {
   useFieldArray,
   useForm,
   useWatch,
   type Control,
   type UseFormRegister,
-} from 'react-hook-form'
-import { z } from 'zod'
+} from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import type { XOL, XOLReinsurerOption } from '@/api/types'
-import { ErrorCode } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { AddIcon, TrashIcon } from '@/components/Icon'
+import { APIError, NetworkError } from "@/api/client";
+import type { XOL, XOLReinsurerOption } from "@/api/types";
+import { ErrorCode } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { AddIcon, TrashIcon } from "@/components/Icon";
 
 import {
   useDeleteXOLChild,
@@ -23,7 +23,7 @@ import {
   useXOLDetail,
   useXOLForm,
   useXOLReinsurerSearch,
-} from './api'
+} from "./api";
 
 /**
  * Batas panjang isian; sama dengan konstanta di internal/masterxol/masterxol.go.
@@ -44,7 +44,7 @@ const MAX = {
   layerNama: 50,
   reasID: 20,
   reasNama: 100,
-} as const
+} as const;
 
 /**
  * Isian angka disimpan sebagai TEKS di dalam form, dan baru menjadi angka saat dikirim.
@@ -75,19 +75,19 @@ const angka = (label: string) =>
     .string()
     .trim()
     .refine(
-      (nilai) => nilai === '' || /^\d+$/.test(nilai),
+      (nilai) => nilai === "" || /^\d+$/.test(nilai),
       `${label} harus bilangan bulat tidak negatif.`,
-    )
+    );
 
 /** Teks isian angka menjadi muatan JSON. Kosong berarti nol — lihat catatan `angka`. */
 function keAngka(nilai: string): number {
-  const bersih = nilai.trim()
-  return bersih === '' ? 0 : Number(bersih)
+  const bersih = nilai.trim();
+  return bersih === "" ? 0 : Number(bersih);
 }
 
 /** Muatan JSON menjadi teks isian. Dipakai saat memuat induk yang sudah tersimpan. */
 function keTeks(nilai: number): string {
-  return String(nilai)
+  return String(nilai);
 }
 
 /**
@@ -107,9 +107,15 @@ const schema = z.object({
   // supaya nilai yang sudah tersimpan ikut terbawa saat menyimpan, bukan terhapus.
   nama: z.string().trim().max(MAX.nama),
 
-  tahun: z.string().trim().max(MAX.tahun, `Tahun paling panjang ${MAX.tahun} karakter.`),
-  tipe: z.string().trim().max(MAX.tipe, `Type XOL paling panjang ${MAX.tipe} karakter.`),
-  kurs: angka('Kurs IDR'),
+  tahun: z
+    .string()
+    .trim()
+    .max(MAX.tahun, `Tahun paling panjang ${MAX.tahun} karakter.`),
+  tipe: z
+    .string()
+    .trim()
+    .max(MAX.tipe, `Type XOL paling panjang ${MAX.tipe} karakter.`),
+  kurs: angka("Kurs IDR"),
   remark_pic: z
     .string()
     .trim()
@@ -130,44 +136,47 @@ const schema = z.object({
       nama: z
         .string()
         .trim()
-        .max(MAX.layerNama, `Nama Layer paling panjang ${MAX.layerNama} karakter.`),
-      limit: angka('Limit (USD)'),
-      excess: angka('Excess (USD)'),
+        .max(
+          MAX.layerNama,
+          `Nama Layer paling panjang ${MAX.layerNama} karakter.`,
+        ),
+      limit: angka("Limit (USD)"),
+      excess: angka("Excess (USD)"),
       tersimpan: z.boolean(),
       reas: z.array(
         z.object({
           id: z.string().trim().max(MAX.reasID),
           nama: z.string().trim().max(MAX.reasNama),
-          share: angka('Share (%)'),
+          share: angka("Share (%)"),
           tersimpan: z.boolean(),
         }),
       ),
     }),
   ),
-})
+});
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 const KOSONG: FieldValues = {
-  nama: '',
-  tahun: '',
-  tipe: '',
-  kurs: '',
-  remark_pic: '',
+  nama: "",
+  tahun: "",
+  tipe: "",
+  kurs: "",
+  remark_pic: "",
   bisnis: [],
   layer: [],
-}
+};
 
 /** Kelas isian, dijaga sama di seluruh form supaya tidak terlihat dirakit dari dua tempat. */
 const INPUT =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm ' +
-  'focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100'
+  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm " +
+  "focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100";
 
-const LABEL = 'block text-sm font-medium text-slate-700'
+const LABEL = "block text-sm font-medium text-slate-700";
 
 type Props = {
   /** Null berarti menambah; terisi berarti mengubah induk itu. */
-  master: XOL | null
+  master: XOL | null;
   /**
    * Menutup form.
    *
@@ -175,8 +184,8 @@ type Props = {
    * di atas daftar. Ia tidak dapat ditampilkan di dalam form, karena form itu sendiri yang
    * pergi pada saat yang sama.
    */
-  tutup: (kabar?: string) => void
-}
+  tutup: (kabar?: string) => void;
+};
 
 /**
  * Form Master XOL — "UPDATE DATA XOL".
@@ -208,8 +217,8 @@ type Props = {
  *     seperti layar lama, yang memanggil `DeleteFromTabelMst` langsung.
  */
 export function XOLForm({ master, tutup }: Props) {
-  const editing = master !== null
-  const detail = useXOLDetail(master?.id ?? null)
+  const editing = master !== null;
+  const detail = useXOLDetail(master?.id ?? null);
 
   /**
    * Nomor induk yang sedang disunting form ini.
@@ -222,10 +231,10 @@ export function XOLForm({ master, tutup }: Props) {
    * Nilainya aman dimulai dari prop karena layar memberi `key` pada form, sehingga
    * berpindah baris membuatnya dirakit ulang dari awal.
    */
-  const [currentID, setCurrentID] = useState(master?.id ?? '')
-  const option = useXOLForm()
-  const save = useSaveXOL()
-  const removeChild = useDeleteXOLChild()
+  const [currentID, setCurrentID] = useState(master?.id ?? "");
+  const option = useXOLForm();
+  const save = useSaveXOL();
+  const removeChild = useDeleteXOLChild();
 
   const {
     control,
@@ -236,24 +245,24 @@ export function XOLForm({ master, tutup }: Props) {
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: KOSONG,
-  })
+  });
 
   // Baris induk di grid TIDAK membawa anaknya — daftar sengaja tidak menariknya. Isian
   // form karena itu diisi dari detail yang dimuat terpisah, bukan dari baris grid.
-  const loaded = detail.data?.xol
+  const loaded = detail.data?.xol;
   useEffect(() => {
     if (!editing) {
-      reset(KOSONG)
-      return
+      reset(KOSONG);
+      return;
     }
-    if (!loaded) return
-    reset(toFieldValues(loaded))
-  }, [editing, loaded, reset])
+    if (!loaded) return;
+    reset(toFieldValues(loaded));
+  }, [editing, loaded, reset]);
 
-  const tipe = useWatch({ control, name: 'tipe' }) ?? ''
+  const tipe = useWatch({ control, name: "tipe" }) ?? "";
 
-  const business = useFieldArray({ control, name: 'bisnis' })
-  const layer = useFieldArray({ control, name: 'layer' })
+  const business = useFieldArray({ control, name: "bisnis" });
+  const layer = useFieldArray({ control, name: "layer" });
 
   /**
    * Nilai baris dibaca lewat `useWatch`, BUKAN dari `fields` milik useFieldArray.
@@ -267,10 +276,10 @@ export function XOLForm({ master, tutup }: Props) {
    * berbunyi `/layer/249eccb3-…/reas/…`. `fields[i].id` karena itu hanya dipakai sebagai
    * `key` React, dan nilai sesungguhnya selalu datang dari sini.
    */
-  const businessValue = useWatch({ control, name: 'bisnis' }) ?? []
-  const layerValue = useWatch({ control, name: 'layer' }) ?? []
+  const businessValue = useWatch({ control, name: "bisnis" }) ?? [];
+  const layerValue = useWatch({ control, name: "layer" }) ?? [];
 
-  const businessOption = useXOLBusinessGroup(tipe)
+  const businessOption = useXOLBusinessGroup(tipe);
 
   function send(values: FieldValues) {
     save.mutate(
@@ -290,7 +299,11 @@ export function XOLForm({ master, tutup }: Props) {
             nama: l.nama,
             limit: keAngka(l.limit),
             excess: keAngka(l.excess),
-            reas: l.reas.map((r) => ({ id: r.id, nama: r.nama, share: keAngka(r.share) })),
+            reas: l.reas.map((r) => ({
+              id: r.id,
+              nama: r.nama,
+              share: keAngka(r.share),
+            })),
           })),
         },
       },
@@ -302,8 +315,8 @@ export function XOLForm({ master, tutup }: Props) {
           // yang membuat induk kembar. Dan isian diisi ulang dari jawaban server supaya
           // nomor layer yang baru diterbitkan ikut masuk — tanpa itu, menekan Simpan dua
           // kali akan menyisipkan lapisan yang sama untuk kedua kalinya.
-          setCurrentID(hasil.xol.id)
-          reset(toFieldValues(hasil.xol))
+          setCurrentID(hasil.xol.id);
+          reset(toFieldValues(hasil.xol));
 
           // Form ditutup HANYA bila tidak ada catatan.
           //
@@ -312,35 +325,44 @@ export function XOLForm({ master, tutup }: Props) {
           // menutupnya sendiri lewat Tutup setelah membacanya — atau memperbaiki share lalu
           // menyimpan lagi, dan form menutup diri saat catatannya habis.
           if ((hasil.peringatan?.length ?? 0) === 0) {
-            tutup(`Tersimpan dan diajukan ke komite — ID ${hasil.xol.id}.`)
+            tutup(`Tersimpan dan diajukan ke komite — ID ${hasil.xol.id}.`);
           }
         },
       },
-    )
+    );
   }
 
   /** Membuang satu baris anak: dari server bila sudah tersimpan, dari layar bila belum. */
-  function dropChild(tersimpan: boolean, hapusLokal: () => void, hapusServer: () => void) {
-    if (tersimpan && currentID) hapusServer()
-    hapusLokal()
+  function dropChild(
+    tersimpan: boolean,
+    hapusLokal: () => void,
+    hapusServer: () => void,
+  ) {
+    if (tersimpan && currentID) hapusServer();
+    hapusLokal();
   }
 
-  const memuat = editing && detail.isPending
+  const memuat = editing && detail.isPending;
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <header className="border-b border-slate-200 px-5 py-4">
         {/* Judulnya diambil apa adanya dari `pyCaption UPDATE DATA XOL`. Pega memakai judul
             yang sama untuk menambah dan mengubah; keduanya tidak dibedakan di sini. */}
-        <h2 className="text-base font-semibold tracking-wide text-slate-900">UPDATE DATA XOL</h2>
+        <h2 className="text-base font-semibold tracking-wide text-slate-900">
+          UPDATE DATA XOL
+        </h2>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Menyimpan sekaligus <strong>mengajukan ke komite</strong>. Induk yang sudah
-          disetujui akan kembali berstatus menunggu, karena strukturnya berubah.
+          Menyimpan sekaligus <strong>mengajukan ke komite</strong>. Induk yang
+          sudah disetujui akan kembali berstatus menunggu, karena strukturnya
+          berubah.
         </p>
       </header>
 
       {memuat ? (
-        <p className="px-5 py-8 text-sm text-slate-500">Memuat isi master XOL…</p>
+        <p className="px-5 py-8 text-sm text-slate-500">
+          Memuat isi master XOL…
+        </p>
       ) : detail.isError ? (
         <div className="px-5 py-5">
           <ErrorMessage
@@ -350,14 +372,22 @@ export function XOLForm({ master, tutup }: Props) {
           />
         </div>
       ) : (
-        <form onSubmit={handleSubmit(send)} className="space-y-6 px-5 py-5" noValidate>
+        <form
+          onSubmit={handleSubmit(send)}
+          className="space-y-6 px-5 py-5"
+          noValidate
+        >
           {/* ── Empat isian, urutannya persis layar Pega ──────────────── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className={LABEL} htmlFor="xol-tahun">
                 Tahun
               </label>
-              <select id="xol-tahun" className={`${INPUT} mt-1.5`} {...register('tahun')}>
+              <select
+                id="xol-tahun"
+                className={`${INPUT} mt-1.5`}
+                {...register("tahun")}
+              >
                 <option value="">--Pilih--</option>
                 {(option.data?.tahun ?? []).map((t) => (
                   <option key={t} value={t}>
@@ -382,7 +412,7 @@ export function XOLForm({ master, tutup }: Props) {
                 type="text"
                 inputMode="numeric"
                 className={`${INPUT} mt-1.5`}
-                {...register('kurs')}
+                {...register("kurs")}
               />
               <FieldError pesan={errors.kurs?.message} />
             </div>
@@ -391,7 +421,11 @@ export function XOLForm({ master, tutup }: Props) {
               <label className={LABEL} htmlFor="xol-tipe">
                 Type XOL
               </label>
-              <select id="xol-tipe" className={`${INPUT} mt-1.5`} {...register('tipe')}>
+              <select
+                id="xol-tipe"
+                className={`${INPUT} mt-1.5`}
+                {...register("tipe")}
+              >
                 <option value="">--Pilih--</option>
                 {(option.data?.tipe ?? []).map((t) => (
                   <option key={t.kode} value={t.kode}>
@@ -411,7 +445,7 @@ export function XOLForm({ master, tutup }: Props) {
                 id="xol-remark"
                 rows={3}
                 className={`${INPUT} mt-1.5`}
-                {...register('remark_pic')}
+                {...register("remark_pic")}
               />
               <FieldError pesan={errors.remark_pic?.message} />
             </div>
@@ -424,77 +458,91 @@ export function XOLForm({ master, tutup }: Props) {
               <Button
                 tone="kedua"
                 aria-label="Tambah Nama Bisnis"
-                onClick={() => business.append({ id: '', nama: '', tersimpan: false })}
+                onClick={() =>
+                  business.append({ id: "", nama: "", tersimpan: false })
+                }
               >
                 <AddIcon className="h-4 w-4" />
                 Tambah
               </Button>
             }
           >
-            <GridHead kolom={['Nama Bisnis', '']} lebar={['', '7rem']} />
+            <GridHead kolom={["Nama Bisnis", ""]} lebar={["", "7rem"]} />
             {business.fields.length === 0 ? (
               <EmptyRow kolom={2} />
             ) : (
               <tbody className="divide-y divide-slate-100">
                 {business.fields.map((row, index) => {
                   // Nilainya dari useWatch; `row` hanya menyumbang kunci React.
-                  const isi = businessValue[index] ?? { id: '', nama: '', tersimpan: false }
+                  const isi = businessValue[index] ?? {
+                    id: "",
+                    nama: "",
+                    tersimpan: false,
+                  };
                   return (
-                  <tr key={row.id}>
-                    <td className="px-3 py-2">
-                      <select
-                        aria-label={`Nama Bisnis baris ${index + 1}`}
-                        className={INPUT}
-                        value={`${isi.id}\u0000${isi.nama}`}
-                        onChange={(event) => {
-                          const [id = '', nama = ''] = event.target.value.split('\u0000')
-                          business.update(index, { id, nama, tersimpan: isi.tersimpan })
-                        }}
-                      >
-                        <option value="\u0000">--Pilih--</option>
-                        {(businessOption.data?.bisnis ?? []).map((b) => (
-                          // ID dan nama dibawa bersama dalam satu nilai: baris
-                          // "TREATY INWARD" tidak punya ID, sehingga ID saja tidak cukup
-                          // mengenali pilihan.
-                          <option key={`${b.id}-${b.nama}`} value={`${b.id}\u0000${b.nama}`}>
-                            {b.nama}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Button
-                        tone="halus"
-                        aria-label={`Hapus Nama Bisnis baris ${index + 1}`}
-                        // Baris tersimpan yang TIDAK punya ID tidak dapat dihapus, dan itu
-                        // batasan yang diwarisi apa adanya: kueri hapus lama mencocokkan
-                        // `IDBUSINESS = :id`, dan pencocokan itu tidak pernah benar untuk
-                        // NULL. Dua baris seperti itu memang ada di produksi.
-                        disabled={isi.tersimpan && isi.id === ''}
-                        title={
-                          isi.tersimpan && isi.id === ''
-                            ? 'Baris ini tidak punya ID di basis data sehingga tidak dapat dihapus dari layar.'
-                            : undefined
-                        }
-                        onClick={() =>
-                          dropChild(
-                            isi.tersimpan,
-                            () => business.remove(index),
-                            () =>
-                              removeChild.mutate({
-                                jenis: 'bisnis',
-                                masterID: currentID,
-                                id: isi.id,
-                              }),
-                          )
-                        }
-                      >
-                        <TrashIcon className="h-3.5 w-3.5" />
-                        Hapus
-                      </Button>
-                    </td>
-                  </tr>
-                  )
+                    <tr key={row.id}>
+                      <td className="px-3 py-2">
+                        <select
+                          aria-label={`Nama Bisnis baris ${index + 1}`}
+                          className={INPUT}
+                          value={`${isi.id}\u0000${isi.nama}`}
+                          onChange={(event) => {
+                            const [id = "", nama = ""] =
+                              event.target.value.split("\u0000");
+                            business.update(index, {
+                              id,
+                              nama,
+                              tersimpan: isi.tersimpan,
+                            });
+                          }}
+                        >
+                          <option value="\u0000">--Pilih--</option>
+                          {(businessOption.data?.bisnis ?? []).map((b) => (
+                            // ID dan nama dibawa bersama dalam satu nilai: baris
+                            // "TREATY INWARD" tidak punya ID, sehingga ID saja tidak cukup
+                            // mengenali pilihan.
+                            <option
+                              key={`${b.id}-${b.nama}`}
+                              value={`${b.id}\u0000${b.nama}`}
+                            >
+                              {b.nama}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          tone="halus"
+                          aria-label={`Hapus Nama Bisnis baris ${index + 1}`}
+                          // Baris tersimpan yang TIDAK punya ID tidak dapat dihapus, dan itu
+                          // batasan yang diwarisi apa adanya: kueri hapus lama mencocokkan
+                          // `IDBUSINESS = :id`, dan pencocokan itu tidak pernah benar untuk
+                          // NULL. Dua baris seperti itu memang ada di produksi.
+                          disabled={isi.tersimpan && isi.id === ""}
+                          title={
+                            isi.tersimpan && isi.id === ""
+                              ? "Baris ini tidak punya ID di basis data sehingga tidak dapat dihapus dari layar."
+                              : undefined
+                          }
+                          onClick={() =>
+                            dropChild(
+                              isi.tersimpan,
+                              () => business.remove(index),
+                              () =>
+                                removeChild.mutate({
+                                  jenis: "bisnis",
+                                  masterID: currentID,
+                                  id: isi.id,
+                                }),
+                            )
+                          }
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                          Hapus
+                        </Button>
+                      </td>
+                    </tr>
+                  );
                 })}
               </tbody>
             )}
@@ -509,10 +557,10 @@ export function XOLForm({ master, tutup }: Props) {
                 aria-label="Tambah Layer"
                 onClick={() =>
                   layer.append({
-                    id: '',
-                    nama: '',
-                    limit: '',
-                    excess: '',
+                    id: "",
+                    nama: "",
+                    limit: "",
+                    excess: "",
                     tersimpan: false,
                     reas: [],
                   })
@@ -524,8 +572,14 @@ export function XOLForm({ master, tutup }: Props) {
             }
           >
             <GridHead
-              kolom={['ID Layer', 'Nama Layer', 'Limit (USD)', 'Excess (USD)', '']}
-              lebar={['8rem', '', '10rem', '10rem', '7rem']}
+              kolom={[
+                "ID Layer",
+                "Nama Layer",
+                "Limit (USD)",
+                "Excess (USD)",
+                "",
+              ]}
+              lebar={["8rem", "", "10rem", "10rem", "7rem"]}
             />
             {layer.fields.length === 0 ? (
               <EmptyRow kolom={5} />
@@ -534,8 +588,8 @@ export function XOLForm({ master, tutup }: Props) {
                 {layer.fields.map((row, index) => {
                   // Nomor layer SELALU dari useWatch — `row.id` adalah kunci React milik
                   // useFieldArray, bukan nomor yang diterbitkan server.
-                  const isi = layerValue[index]
-                  const layerID = isi?.id ?? ''
+                  const isi = layerValue[index];
+                  const layerID = isi?.id ?? "";
                   return (
                     <LayerRow
                       key={row.id}
@@ -553,7 +607,7 @@ export function XOLForm({ master, tutup }: Props) {
                           () => layer.remove(index),
                           () =>
                             removeChild.mutate({
-                              jenis: 'layer',
+                              jenis: "layer",
                               masterID: currentID,
                               id: layerID,
                             }),
@@ -561,14 +615,14 @@ export function XOLForm({ master, tutup }: Props) {
                       }
                       onHapusReas={(reasID) =>
                         removeChild.mutate({
-                          jenis: 'reas',
+                          jenis: "reas",
                           masterID: currentID,
                           layerID,
                           id: reasID,
                         })
                       }
                     />
-                  )
+                  );
                 })}
               </tbody>
             )}
@@ -592,29 +646,33 @@ export function XOLForm({ master, tutup }: Props) {
           {/* Tidak ada kabar "berhasil" di sini: penyimpanan tanpa catatan MENUTUP form, dan
               kabarnya muncul di halaman daftar — tempat ia masih terbaca setelah form pergi. */}
 
-{save.isError && <SaveError error={save.error} />}
+          {save.isError && <SaveError error={save.error} />}
 
           {removeChild.isError && (
             <p role="alert" className="text-sm font-medium text-rose-700">
-              Baris gagal dihapus di server. Muat ulang layar untuk melihat keadaan yang
-              sebenarnya.
+              Baris gagal dihapus di server. Muat ulang layar untuk melihat
+              keadaan yang sebenarnya.
             </p>
           )}
 
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
             {/* `() => tutup()`, bukan `tutup` — tanpa pembungkus ini, objek klik terkirim
                 sebagai kabar dan halaman menampilkannya sebagai pesan berhasil. */}
-            <Button tone="kedua" onClick={() => tutup()} disabled={save.isPending}>
+            <Button
+              tone="kedua"
+              onClick={() => tutup()}
+              disabled={save.isPending}
+            >
               Tutup
             </Button>
             <Button type="submit" tone="utama" disabled={save.isPending}>
-              {save.isPending ? 'Menyimpan…' : 'Simpan'}
+              {save.isPending ? "Menyimpan…" : "Simpan"}
             </Button>
           </div>
         </form>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -637,25 +695,27 @@ function LayerRow({
   onHapus,
   onHapusReas,
 }: {
-  control: Control<FieldValues>
-  register: UseFormRegister<FieldValues>
-  index: number
-  layerID: string
-  masterID: string
-  errorNama?: string | undefined
-  errorLimit?: string | undefined
-  errorExcess?: string | undefined
-  onHapus: () => void
-  onHapusReas: (reasID: string) => void
+  control: Control<FieldValues>;
+  register: UseFormRegister<FieldValues>;
+  index: number;
+  layerID: string;
+  masterID: string;
+  errorNama?: string | undefined;
+  errorLimit?: string | undefined;
+  errorExcess?: string | undefined;
+  onHapus: () => void;
+  onHapusReas: (reasID: string) => void;
 }) {
-  const id = useWatch({ control, name: `layer.${index}.id` }) ?? ''
+  const id = useWatch({ control, name: `layer.${index}.id` }) ?? "";
 
   return (
     <>
       <tr>
         <td className="px-3 py-2">
           {/* ID Layer diterbitkan sistem; ditampilkan, tidak pernah diketik. */}
-          <span className="font-mono text-xs text-slate-500">{id || '(baru)'}</span>
+          <span className="font-mono text-xs text-slate-500">
+            {id || "(baru)"}
+          </span>
         </td>
         <td className="px-3 py-2">
           <input
@@ -686,7 +746,11 @@ function LayerRow({
           <FieldError pesan={errorExcess} />
         </td>
         <td className="px-3 py-2 text-right align-top">
-          <Button tone="halus" aria-label={`Hapus Layer baris ${index + 1}`} onClick={onHapus}>
+          <Button
+            tone="halus"
+            aria-label={`Hapus Layer baris ${index + 1}`}
+            onClick={onHapus}
+          >
             <TrashIcon className="h-3.5 w-3.5" />
             Hapus
           </Button>
@@ -705,7 +769,7 @@ function LayerRow({
         </td>
       </tr>
     </>
-  )
+  );
 }
 
 /**
@@ -745,22 +809,22 @@ function CariReas({
   layerIndex,
   onPilih,
 }: {
-  layerIndex: number
-  onPilih: (pilihan: XOLReinsurerOption) => void
+  layerIndex: number;
+  onPilih: (pilihan: XOLReinsurerOption) => void;
 }) {
-  const [ketikan, setKetikan] = useState('')
+  const [ketikan, setKetikan] = useState("");
 
   /** Kata kunci yang SUDAH ditekan Cari. Hanya ini yang menembak server. */
-  const [kunci, setKunci] = useState('')
+  const [kunci, setKunci] = useState("");
 
-  const hasil = useXOLReinsurerSearch(kunci)
+  const hasil = useXOLReinsurerSearch(kunci);
 
   function cari() {
-    setKunci(ketikan.trim())
+    setKunci(ketikan.trim());
   }
 
-  const nomor = layerIndex + 1
-  const daftar = hasil.data?.reas ?? []
+  const nomor = layerIndex + 1;
+  const daftar = hasil.data?.reas ?? [];
 
   return (
     <div className="mb-3 rounded-md border border-slate-200 bg-white p-3">
@@ -782,32 +846,36 @@ function CariReas({
           onKeyDown={(e) => {
             // Enter TIDAK boleh menembus ke form induk — di sana ia berarti Simpan, dan
             // mencari reasuradur akan diam-diam menyimpan seluruh master.
-            if (e.key !== 'Enter') return
-            e.preventDefault()
-            cari()
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            cari();
           }}
         />
         <Button
           tone="kedua"
           aria-label={`Cari Reasuransi layer baris ${nomor}`}
           onClick={cari}
-          disabled={ketikan.trim() === '' || hasil.isFetching}
+          disabled={ketikan.trim() === "" || hasil.isFetching}
         >
-          {hasil.isFetching ? 'Mencari…' : 'Cari'}
+          {hasil.isFetching ? "Mencari…" : "Cari"}
         </Button>
       </div>
 
       {hasil.isError && (
         <p role="alert" className="mt-2 text-xs font-medium text-rose-700">
-          Pencarian reasuransi gagal. Nama dan ID masih dapat diketik langsung di grid.
+          Pencarian reasuransi gagal. Nama dan ID masih dapat diketik langsung
+          di grid.
         </p>
       )}
 
-      {kunci !== '' && !hasil.isFetching && !hasil.isError && daftar.length === 0 && (
-        <p role="status" className="mt-2 text-xs text-slate-500">
-          Data Tidak Ada
-        </p>
-      )}
+      {kunci !== "" &&
+        !hasil.isFetching &&
+        !hasil.isError &&
+        daftar.length === 0 && (
+          <p role="status" className="mt-2 text-xs text-slate-500">
+            Data Tidak Ada
+          </p>
+        )}
 
       {daftar.length > 0 && (
         <ul className="mt-2 max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200">
@@ -819,14 +887,16 @@ function CariReas({
                 className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-sky-50"
               >
                 <span className="text-slate-800">{baris.nama}</span>
-                <span className="shrink-0 font-mono text-xs text-slate-500">{baris.id}</span>
+                <span className="shrink-0 font-mono text-xs text-slate-500">
+                  {baris.id}
+                </span>
               </button>
             </li>
           ))}
         </ul>
       )}
     </div>
-  )
+  );
 }
 
 function ReasGrid({
@@ -837,29 +907,34 @@ function ReasGrid({
   masterID,
   onHapusTersimpan,
 }: {
-  control: Control<FieldValues>
-  register: UseFormRegister<FieldValues>
-  layerIndex: number
-  layerID: string
-  masterID: string
-  onHapusTersimpan: (reasID: string) => void
+  control: Control<FieldValues>;
+  register: UseFormRegister<FieldValues>;
+  layerIndex: number;
+  layerID: string;
+  masterID: string;
+  onHapusTersimpan: (reasID: string) => void;
 }) {
-  const reas = useFieldArray({ control, name: `layer.${layerIndex}.reas` })
-  const isi = useWatch({ control, name: `layer.${layerIndex}.reas` }) ?? []
+  const reas = useFieldArray({ control, name: `layer.${layerIndex}.reas` });
+  const isi = useWatch({ control, name: `layer.${layerIndex}.reas` }) ?? [];
 
-  const total = isi.reduce((jumlah, baris) => jumlah + (Number(baris?.share) || 0), 0)
-  const lengkap = total === 100
+  const total = isi.reduce(
+    (jumlah, baris) => jumlah + (Number(baris?.share) || 0),
+    0,
+  );
+  const lengkap = total === 100;
 
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-700">Reas</h4>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+            Reas
+          </h4>
           <span
             className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
               lengkap
-                ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-                : 'bg-amber-50 text-amber-800 ring-amber-200'
+                ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                : "bg-amber-50 text-amber-800 ring-amber-200"
             }`}
           >
             Total share {total}%
@@ -868,7 +943,9 @@ function ReasGrid({
         <Button
           tone="kedua"
           aria-label={`Tambah Reas layer baris ${layerIndex + 1}`}
-          onClick={() => reas.append({ id: '', nama: '', share: '', tersimpan: false })}
+          onClick={() =>
+            reas.append({ id: "", nama: "", share: "", tersimpan: false })
+          }
         >
           <AddIcon className="h-4 w-4" />
           Tambah
@@ -881,16 +958,23 @@ function ReasGrid({
           // Reasuradur yang SUDAH ada di lapisan ini tidak ditambahkan dua kali. Tabel
           // MST_XOL_REAS tidak punya kunci utama, sehingga baris kembar benar-benar dapat
           // tersimpan — dan sudah terjadi di produksi pada tabel sekerabat.
-          const sudahAda = isi.some((baris) => (baris?.id ?? '') === pilihan.id)
-          if (sudahAda) return
-          reas.append({ id: pilihan.id, nama: pilihan.nama, share: '', tersimpan: false })
+          const sudahAda = isi.some(
+            (baris) => (baris?.id ?? "") === pilihan.id,
+          );
+          if (sudahAda) return;
+          reas.append({
+            id: pilihan.id,
+            nama: pilihan.nama,
+            share: "",
+            tersimpan: false,
+          });
         }}
       />
 
       <table className="w-full table-fixed border-collapse text-sm">
         <GridHead
-          kolom={['ID', 'Reasuransi', 'Share (%)', '']}
-          lebar={['9rem', '', '8rem', '7rem']}
+          kolom={["ID", "Reasuransi", "Share (%)", ""]}
+          lebar={["9rem", "", "8rem", "7rem"]}
         />
         {reas.fields.length === 0 ? (
           <EmptyRow kolom={4} />
@@ -926,10 +1010,11 @@ function ReasGrid({
                     tone="halus"
                     aria-label={`Hapus reas baris ${index + 1}`}
                     onClick={() => {
-                      const tersimpan = isi[index]?.tersimpan === true
-                      const reasID = isi[index]?.id ?? ''
-                      if (tersimpan && masterID && layerID) onHapusTersimpan(reasID)
-                      reas.remove(index)
+                      const tersimpan = isi[index]?.tersimpan === true;
+                      const reasID = isi[index]?.id ?? "";
+                      if (tersimpan && masterID && layerID)
+                        onHapusTersimpan(reasID);
+                      reas.remove(index);
                     }}
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
@@ -942,7 +1027,7 @@ function ReasGrid({
         )}
       </table>
     </div>
-  )
+  );
 }
 
 /** Panel bergrid: judul di kiri, tombol Tambah di kanan — tata letak layar Pega. */
@@ -951,9 +1036,9 @@ function Panel({
   aksi,
   children,
 }: {
-  judul: string
-  aksi: React.ReactNode
-  children: React.ReactNode
+  judul: string;
+  aksi: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <section>
@@ -962,10 +1047,12 @@ function Panel({
         {aksi}
       </div>
       <div className="overflow-x-auto rounded-md border border-slate-200">
-        <table className="w-full table-fixed border-collapse text-sm">{children}</table>
+        <table className="w-full table-fixed border-collapse text-sm">
+          {children}
+        </table>
       </div>
     </section>
-  )
+  );
 }
 
 function GridHead({ kolom, lebar }: { kolom: string[]; lebar: string[] }) {
@@ -984,7 +1071,7 @@ function GridHead({ kolom, lebar }: { kolom: string[]; lebar: string[] }) {
         ))}
       </tr>
     </thead>
-  )
+  );
 }
 
 /** Teks kosongnya "Data Tidak Ada" — diambil apa adanya dari layar Pega. */
@@ -997,16 +1084,16 @@ function EmptyRow({ kolom }: { kolom: number }) {
         </td>
       </tr>
     </tbody>
-  )
+  );
 }
 
 function FieldError({ pesan }: { pesan?: string | undefined }) {
-  if (!pesan) return null
+  if (!pesan) return null;
   return (
     <p role="alert" className="mt-1 text-xs font-medium text-rose-700">
       {pesan}
     </p>
-  )
+  );
 }
 
 function SaveError({ error }: { error: unknown }) {
@@ -1017,13 +1104,16 @@ function SaveError({ error }: { error: unknown }) {
         description="Perubahan belum tersimpan. Periksa koneksi lalu tekan Simpan lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (error instanceof APIError) {
     if (error.kode === ErrorCode.validationFailed && error.detail.length > 0) {
       return (
-        <div role="alert" className="rounded-md border border-rose-300 bg-rose-50 px-4 py-3">
+        <div
+          role="alert"
+          className="rounded-md border border-rose-300 bg-rose-50 px-4 py-3"
+        >
           <p className="text-sm font-semibold text-rose-900">{error.message}</p>
           <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-sm text-rose-800">
             {error.detail.map((v, index) => (
@@ -1031,7 +1121,7 @@ function SaveError({ error }: { error: unknown }) {
             ))}
           </ul>
         </div>
-      )
+      );
     }
 
     if (error.kode === ErrorCode.xolIDTaken) {
@@ -1041,10 +1131,16 @@ function SaveError({ error }: { error: unknown }) {
           description="Nomor yang dibuat sistem sudah dipakai. Tekan Simpan sekali lagi."
           tone="gangguan"
         />
-      )
+      );
     }
 
-    return <ErrorMessage title="Gagal menyimpan" description={error.message} tone="gangguan" />
+    return (
+      <ErrorMessage
+        title="Gagal menyimpan"
+        description={error.message}
+        tone="gangguan"
+      />
+    );
   }
 
   return (
@@ -1053,7 +1149,7 @@ function SaveError({ error }: { error: unknown }) {
       description="Terjadi kesalahan pada sistem. Coba lagi."
       tone="gangguan"
     />
-  )
+  );
 }
 
 /** Mengubah induk dari server menjadi isian form, menandai seluruh baris sebagai tersimpan. */
@@ -1064,7 +1160,11 @@ function toFieldValues(master: XOL): FieldValues {
     tipe: master.tipe,
     kurs: keTeks(master.kurs),
     remark_pic: master.remark_pic,
-    bisnis: (master.bisnis ?? []).map((b) => ({ id: b.id, nama: b.nama, tersimpan: true })),
+    bisnis: (master.bisnis ?? []).map((b) => ({
+      id: b.id,
+      nama: b.nama,
+      tersimpan: true,
+    })),
     layer: (master.layer ?? []).map((l) => ({
       id: l.id,
       nama: l.nama,
@@ -1078,5 +1178,5 @@ function toFieldValues(master: XOL): FieldValues {
         tersimpan: true,
       })),
     })),
-  }
+  };
 }

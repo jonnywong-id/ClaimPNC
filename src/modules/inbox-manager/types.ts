@@ -8,23 +8,23 @@
  */
 
 /** Jenis tab menentukan bagaimana isinya digambar. */
-export type TabKind = 'dashboard' | 'ringkasan' | 'antrean'
+export type TabKind = "dashboard" | "ringkasan" | "antrean";
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
 
   /** Kolom nilai uang — dirata-kanankan dan diformat sebagai rupiah. */
-  uang?: boolean
-}
+  uang?: boolean;
+};
 
 /** Bentuk satu grid dashboard, tanpa barisnya. */
 export type PanelShape = {
-  kunci: string
-  judul: string
-  kolom: TabColumn[]
-}
+  kunci: string;
+  judul: string;
+  kolom: TabColumn[];
+};
 
 /**
  * Apa yang boleh dilakukan pada sebuah antrean.
@@ -34,13 +34,13 @@ export type PanelShape = {
  * tetapi selalu ditolak.
  */
 export type DecisionRule = {
-  dapat_diputuskan: boolean
+  dapat_diputuskan: boolean;
 
   /** Kosong berarti tombol Setujui boleh digambar aktif. */
-  alasan_setuju_ditahan?: string
+  alasan_setuju_ditahan?: string;
 
-  alasan_wajib_saat_menolak: boolean
-  label_alasan?: string
+  alasan_wajib_saat_menolak: boolean;
+  label_alasan?: string;
 
   /**
    * Label tombol keputusan, apa adanya dari Pega.
@@ -49,8 +49,8 @@ export type DecisionRule = {
    * Akseptasi dan Penolakan Klaim memakai isian di dalam grid lalu satu tombol simpan.
    * Layar memakai kata aplikasi sendiri pada keduanya.
    */
-  label_setujui?: string
-  label_tolak?: string
+  label_setujui?: string;
+  label_tolak?: string;
 
   /**
    * Antrean ini dapat diputuskan banyak baris sekaligus.
@@ -60,15 +60,15 @@ export type DecisionRule = {
    * itu ditegakkan SERVER; di sini ia hanya menjaga layar tidak menawarkan jalur yang akan
    * ditolak.
    */
-  dapat_massal: boolean
-}
+  dapat_massal: boolean;
+};
 
 /** Satu tab beserta bentuk isinya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  jenis: TabKind
+  kode: string;
+  nama: string;
+  keterangan: string;
+  jenis: TabKind;
 
   /**
    * Kode tab induk; kosong pada keempat tab tingkat atas.
@@ -77,7 +77,7 @@ export type Tab = {
    * `CountDashbroardManager` menulis sembilan pencacah terakhir sebagai ANAK baris keempat —
    * dan tempat pembacaan itu tercatat adalah server.
    */
-  induk?: string
+  induk?: string;
 
   /**
    * Tab ini muncul di BILAH TAB induknya.
@@ -87,7 +87,7 @@ export type Tab = {
    * hanya menyertakan DELAPAN — Penolakan Klaim terhitung di sana tetapi tidak dapat dibuka
    * dari bilah tabnya.
    */
-  dalam_bilah_induk?: boolean
+  dalam_bilah_induk?: boolean;
 
   /**
    * Judul sub-tab di dalam tab ini.
@@ -96,20 +96,20 @@ export type Tab = {
    * bilah sub-tab, dan sub-tab yang tampil hanya satu — "Approval Payment Akseptasi".
    * Kosong berarti isi tab langsung gridnya.
    */
-  judul_sub_tab?: string
+  judul_sub_tab?: string;
 
   /** Terisi pada tab dashboard. */
-  panel?: PanelShape[]
+  panel?: PanelShape[];
 
   /** Terisi pada tab antrean. */
-  kolom?: TabColumn[]
+  kolom?: TabColumn[];
 
-  keputusan: DecisionRule
+  keputusan: DecisionRule;
 
   /** Kosong berarti tab tidak dibatasi lini bisnis. */
-  lini_bisnis?: string
+  lini_bisnis?: string;
 
-  punya_penyaring_periode: boolean
+  punya_penyaring_periode: boolean;
 
   /**
    * Label tombol yang MENERAPKAN penyaring periode.
@@ -117,32 +117,38 @@ export type Tab = {
    * Berbeda tiap tab di Pega — "Cari" pada Produktivitas Klaim, "Lihat Data" pada Klaim.
    * Kosong berarti tab ini tidak punya penyaring periode.
    */
-  label_terapkan_periode?: string
+  label_terapkan_periode?: string;
 
   /**
    * Tab ini punya blok "Export Data Detail Klaim" — ekspor berentang tanggal yang berdiri
    * sendiri, terpisah dari ekspor antrean di kepala layar.
    */
-  punya_ekspor_detail?: boolean
-}
+  punya_ekspor_detail?: boolean;
+
+  /**
+   * Baris antrean ini dibuka lewat tombol DETAILS menjadi panel detail Payment Klaim
+   * Akseptasi — keputusannya disimpan di sana (SIMPAN), bukan lewat bilah keputusan.
+   */
+  punya_detail_akseptasi?: boolean;
+};
 
 /** Satu pilihan penyaring dashboard. Nilai kosong berarti "seluruhnya". */
 export type FilterOption = {
-  nilai: string
-  label: string
-}
+  nilai: string;
+  label: string;
+};
 
 /** Satu penyaring dashboard beserta pilihannya. */
 export type Filter = {
-  kunci: string
-  label: string
-  pilihan: FilterOption[]
-}
+  kunci: string;
+  label: string;
+  pilihan: FilterOption[];
+};
 
 /** Jawaban keterangan layar. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
+  tab: Tab[];
+  tab_bawaan: string;
 
   /**
    * Lini bisnis pemanggil yang benar-benar terbaca dari basis data.
@@ -151,17 +157,17 @@ export type MetadataResponse = {
    * penyelia yang membandingkan layar masing-masing akan melihat angka berbeda tanpa satu
    * pun petunjuk kenapa.
    */
-  lini_bisnis_anda: string
-}
+  lini_bisnis_anda: string;
+};
 
 /** Satu pencacah di kepala layar. */
 export type Counter = {
-  tab: string
-  label: string
-  jumlah: number
+  tab: string;
+  label: string;
+  jumlah: number;
 
   /** Kosong pada pencacah tingkat atas. */
-  induk?: string
+  induk?: string;
 
   /**
    * Terisi bila sumbernya sedang tidak dapat dibaca.
@@ -170,12 +176,12 @@ export type Counter = {
    * Angka nol yang sesungguhnya berarti "tidak terbaca" membuat penyelia mengira antreannya
    * kosong.
    */
-  tidak_tersedia?: string
-}
+  tidak_tersedia?: string;
+};
 
 export type CountersResponse = {
-  pencacah: Counter[]
-}
+  pencacah: Counter[];
+};
 
 /**
  * Satu sel grid dashboard.
@@ -185,18 +191,25 @@ export type CountersResponse = {
  * melewatkannya lewat bilangan pecahan biner (`I-12`).
  */
 export type Cell = {
-  jumlah?: number
-  nilai?: string
-  teks?: string
-}
+  jumlah?: number;
+  nilai?: string;
+  teks?: string;
+};
 
 /** Satu grid dashboard beserta isinya. */
 export type Panel = {
-  kunci: string
-  judul: string
-  kolom: TabColumn[]
-  baris: Record<string, Cell>[]
-}
+  kunci: string;
+  judul: string;
+  kolom: TabColumn[];
+  baris: Record<string, Cell>[];
+
+  /**
+   * Bila terisi, sel kolom PERTAMA setiap baris adalah tautan: mengekliknya memasang
+   * penyaring berkunci ini dengan nilai sel itu. Hanya grid PIC tab Outstanding yang punya —
+   * di Pega klik nama PIC menjalankan `PNCSetFilterPICDashboardOS` lalu me-refresh section.
+   */
+  penyaring_baris?: string;
+};
 
 /** Satu baris antrean. */
 export type QueueRow = {
@@ -206,63 +219,63 @@ export type QueueRow = {
    * Layar TIDAK pernah menyusunnya sendiri: bentuknya berbeda tiap antrean, dan satu di
    * antaranya gabungan empat kolom.
    */
-  kunci: string
-  sel: Record<string, string>
-}
+  kunci: string;
+  sel: Record<string, string>;
+};
 
 export type Pagination = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Periode yang BENAR-BENAR dipakai, termasuk bila ia nilai bawaan. */
 export type Period = {
-  dari: string
-  sampai: string
-}
+  dari: string;
+  sampai: string;
+};
 
 /** Jawaban isi satu tab. */
 export type ListResponse = {
-  tab: Tab
+  tab: Tab;
 
   /** Terisi pada tab dashboard. */
-  panel?: Panel[]
+  panel?: Panel[];
 
   /**
    * Waktu cuplikan sumbernya terakhir disegarkan, pada dashboard yang sumbernya tabel
    * cuplikan. Ia BUKAN jam aplikasi.
    */
-  disegarkan_pada?: string
+  disegarkan_pada?: string;
 
   /**
    * Penyaring di bawah kedua grid pertama. Ia datang bersama DATA karena salah satu
    * pilihannya dibaca dari master yang dapat berubah tanpa deploy.
    */
-  penyaring?: Filter[]
+  penyaring?: Filter[];
 
   /** Terisi pada tab antrean. */
-  baris?: QueueRow[]
-  paginasi?: Pagination
+  baris?: QueueRow[];
+  paginasi?: Pagination;
 
   /** Terisi pada tab yang punya penyaring periode. */
-  periode?: Period
-}
+  periode?: Period;
+};
 
 /** Keputusan yang dikirim penyelia. */
-export type Verdict = 'setujui' | 'tolak'
+export type Verdict = "setujui" | "tolak";
 
 export type DecisionRequest = {
-  tab: string
-  keputusan: Verdict
-  kunci: string[]
-  alasan: string
-}
+  tab: string;
+  keputusan: Verdict;
+  kunci: string[];
+  alasan: string;
+};
 
 export type DecisionResponse = {
-  diminta: number
-  berubah: number
+  diminta: number;
+  berubah: number;
 
   /**
    * Jumlah baris yang TIDAK berubah karena sudah diputuskan lebih dulu.
@@ -270,21 +283,21 @@ export type DecisionResponse = {
    * Ia selalu dikirim, termasuk saat nol. Layar tidak boleh menghitungnya sendiri: ia
    * menyangkut keputusan orang lain, dan itu hal terakhir yang boleh ditebak layar.
    */
-  tidak_berubah: number
+  tidak_berubah: number;
 
-  pesan: string
-}
+  pesan: string;
+};
 
 /** Bentuk penyaring periode yang dipilih pengguna. */
-export type PeriodMode = 'bulan' | 'rentang'
+export type PeriodMode = "bulan" | "rentang";
 
 /** Isian penyaring periode di layar. */
 export type PeriodInput = {
-  bentuk: PeriodMode
-  bulan: string
-  dari: string
-  sampai: string
-}
+  bentuk: PeriodMode;
+  bulan: string;
+  dari: string;
+  sampai: string;
+};
 
 /**
  * Nilai kedua penyaring dashboard Outstanding.
@@ -292,12 +305,81 @@ export type PeriodInput = {
  * Kosong berarti "All" — sama seperti pilihan bawaan di layar lama.
  */
 export type DashboardFilterInput = {
-  reinsurer: string
-  kategori_os: string
-}
+  reinsurer: string;
+  kategori_os: string;
+
+  /**
+   * PIC yang diklik pada grid PIC. Kosong berarti seluruh PIC ("ALL"). Ia berlaku SEKETIKA
+   * diklik — bukan lewat tombol Filter — karena di Pega klik itu langsung me-refresh section.
+   */
+  pic: string;
+};
 
 /** Rentang tanggal blok "Export Data Detail Klaim". */
 export type DetailExportInput = {
-  dari: string
-  sampai: string
-}
+  dari: string;
+  sampai: string;
+};
+
+/** Satu baris grid "History Payment Akseptasi Manager". */
+export type PaymentHistoryRow = {
+  no_klaim: string;
+  no_akseptasi: string;
+  /** Waktu keputusan (RFC 3339); null bila kosong. */
+  tanggal: string | null;
+  note_manager: string;
+  note_pic: string;
+  kode_status: string;
+  status: string;
+};
+
+/** Satu lampiran tombol Dokumen. */
+export type PaymentDocument = {
+  /** Kunci lampiran di dalam daftar nomor akseptasi ini — opak bagi layar. */
+  kunci: string;
+  nama: string;
+  jenis: string;
+  catatan: string;
+  tanggal_input: string | null;
+  /** Dibuka lewat tautan layanan penyimpanan (diperpanjang server bila kedaluwarsa). */
+  tertaut: boolean;
+  dapat_dibuka: boolean;
+};
+
+/** Jawaban GET /api/inbox-manager/payment-akseptasi/{noakseptasi}. */
+export type PaymentDetail = {
+  no_akseptasi: string;
+  no_klaim: string;
+  pic: string;
+
+  nama_tertanggung: string;
+  penerima_klaim: string;
+  kode_tipe_pembayaran: string;
+  tipe_pembayaran: string;
+  /** Nilai uang dikirim sebagai teks presisi penuh. */
+  gross_value: string;
+  nilai_klaim: string;
+  mata_uang: string;
+  share_asm: string;
+  remark_akseptasi: string;
+  adjustment_ditemukan: boolean;
+
+  /** Pilihan "Status Approval", berurutan seperti di Pega. */
+  pilihan_status: FilterOption[];
+
+  riwayat: PaymentHistoryRow[];
+  dokumen: PaymentDocument[];
+};
+
+/** Badan SIMPAN. */
+export type PaymentSaveRequest = {
+  status: string;
+  catatan: string;
+};
+
+/** Jawaban SIMPAN. */
+export type PaymentSaveResponse = {
+  berubah: number;
+  penanda_adjustment: boolean;
+  surel_terkirim: boolean;
+};

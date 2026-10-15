@@ -1,17 +1,17 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type MaskingBulkRow } from '@/api/types'
-import { Field } from '@/components/Field'
-import { NumberField } from '@/components/NumberField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type MaskingBulkRow } from "@/api/types";
+import { Field } from "@/components/Field";
+import { NumberField } from "@/components/NumberField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
-import { useBranchOptions, useOperators, useSaveMaskingBulk } from './api'
-import { ModuleChecklist } from './ModuleChecklist'
+import { useBranchOptions, useOperators, useSaveMaskingBulk } from "./api";
+import { ModuleChecklist } from "./ModuleChecklist";
 
 /** Batas isian; sama dengan konstanta di domain Go. */
-const MAX_QUOTA = 1_000_000
+const MAX_QUOTA = 1_000_000;
 
 /**
  * Satu baris Template Akses yang sedang diisi.
@@ -20,7 +20,7 @@ const MAX_QUOTA = 1_000_000
  * petugas cabang — di portal ASM cabang terbesar memuat 30 orang — dan petugas hanya
  * memberi kewenangan kepada sebagian.
  */
-type DraftRow = MaskingBulkRow & { dipakai: boolean; nama: string }
+type DraftRow = MaskingBulkRow & { dipakai: boolean; nama: string };
 
 function emptyRow(login: string, nama: string): DraftRow {
   return {
@@ -29,17 +29,17 @@ function emptyRow(login: string, nama: string): DraftRow {
     nama,
     // Satu-satunya nilai MODUL yang ada di data produksi. Ia SARAN, bukan batasan —
     // daftar pilihannya di Pega dipasok rule yang hilang dari export (`R-16`).
-    modul: 'PNCSearchKlaim',
-    sub_modul: '',
+    modul: "PNCSearchKlaim",
+    sub_modul: "",
     maks_cari: 0,
     maks_lihat: 0,
     lihat_ktp: false,
     lihat_email: false,
     lihat_notelp: false,
-  }
+  };
 }
 
-type Props = { onClose: () => void }
+type Props = { onClose: () => void };
 
 /**
  * Form Tambah Master Masking — berbentuk DAFTAR, bukan satu baris.
@@ -68,35 +68,39 @@ type Props = { onClose: () => void }
  * dan pengisian modul yang sama tiga puluh kali.
  */
 export function MaskingAddForm({ onClose }: Props) {
-  const save = useSaveMaskingBulk()
+  const save = useSaveMaskingBulk();
 
-  const [branchKeyword, setBranchKeyword] = useState('')
-  const [branchID, setBranchID] = useState('')
-  const [branchName, setBranchName] = useState('')
-  const branches = useBranchOptions(branchKeyword)
+  const [branchKeyword, setBranchKeyword] = useState("");
+  const [branchID, setBranchID] = useState("");
+  const [branchName, setBranchName] = useState("");
+  const branches = useBranchOptions(branchKeyword);
 
-  const operators = useOperators(branchID)
-  const [row, setRow] = useState<DraftRow[]>([])
-  const [touchedBranch, setTouchedBranch] = useState('')
+  const operators = useOperators(branchID);
+  const [row, setRow] = useState<DraftRow[]>([]);
+  const [touchedBranch, setTouchedBranch] = useState("");
 
   // Tabel disusun ulang setiap cabang berganti. Dikerjakan saat render, bukan di efek,
   // supaya isian lama milik cabang sebelumnya tidak sempat terlihat di cabang baru.
   if (operators.data && touchedBranch !== branchID) {
-    setTouchedBranch(branchID)
-    setRow(operators.data.pengguna.map((p) => emptyRow(p.login, p.nama)))
+    setTouchedBranch(branchID);
+    setRow(operators.data.pengguna.map((p) => emptyRow(p.login, p.nama)));
   }
 
   function patch(login: string, change: Partial<DraftRow>) {
-    setRow((current) => current.map((r) => (r.login === login ? { ...r, ...change } : r)))
+    setRow((current) =>
+      current.map((r) => (r.login === login ? { ...r, ...change } : r)),
+    );
   }
 
-  const chosen = row.filter((r) => r.dipakai)
+  const chosen = row.filter((r) => r.dipakai);
 
   function send() {
     save.mutate(
       {
         cabang: branchID,
-        baris: chosen.map(({ dipakai: _dipakai, nama: _nama, ...rest }) => rest),
+        baris: chosen.map(
+          ({ dipakai: _dipakai, nama: _nama, ...rest }) => rest,
+        ),
       },
       {
         onSuccess: (hasil) => {
@@ -105,28 +109,31 @@ export function MaskingAddForm({ onClose }: Props) {
           // Bila sebagian ditolak, ia dibiarkan terbuka beserta laporan per barisnya —
           // menutupnya akan membuang satu-satunya tempat petugas dapat membaca baris mana
           // yang gagal, dan isian yang sudah ia ketik ikut hilang.
-          if (hasil.ditolak === 0) onClose()
+          if (hasil.ditolak === 0) onClose();
         },
       },
-    )
+    );
   }
 
-  const result = save.data
+  const result = save.data;
 
   return (
     <form
       onSubmit={(event) => {
-        event.preventDefault()
-        send()
+        event.preventDefault();
+        send();
       }}
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
       aria-label="Input data masking"
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">Input Data Masking</h3>
+        <h3 className="text-base font-semibold text-slate-900">
+          Input Data Masking
+        </h3>
         <p className="mt-1 text-sm text-slate-600">
-          Pilih cabang, lalu isi Template Akses untuk petugas yang diberi kewenangan.
+          Pilih cabang, lalu isi Template Akses untuk petugas yang diberi
+          kewenangan.
         </p>
       </div>
 
@@ -146,8 +153,8 @@ export function MaskingAddForm({ onClose }: Props) {
             role="status"
             className={`rounded-kartu border px-4 py-3 text-sm ${
               result.ditolak === 0
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                : 'border-amber-200 bg-amber-50 text-amber-900'
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "border-amber-200 bg-amber-50 text-amber-900"
             }`}
           >
             <p className="font-medium">
@@ -174,7 +181,11 @@ export function MaskingAddForm({ onClose }: Props) {
             placeholder="Ketik nama atau kode cabang"
             value={branchKeyword}
             onChange={(event) => setBranchKeyword(event.target.value)}
-            hint={branchID ? `Terpilih: ${branchName} (${branchID})` : 'Wajib dipilih.'}
+            hint={
+              branchID
+                ? `Terpilih: ${branchName} (${branchID})`
+                : "Wajib dipilih."
+            }
           />
           <div className="mt-2 max-h-40 overflow-y-auto rounded-kontrol border border-slate-200">
             {branches.isPending && (
@@ -185,17 +196,19 @@ export function MaskingAddForm({ onClose }: Props) {
                 key={branch.kode}
                 type="button"
                 onClick={() => {
-                  setBranchID(branch.kode)
-                  setBranchName(branch.nama)
+                  setBranchID(branch.kode);
+                  setBranchName(branch.nama);
                 }}
                 className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 ${
                   branchID === branch.kode
-                    ? 'bg-blue-50 font-medium text-blue-800'
-                    : 'text-slate-700'
+                    ? "bg-blue-50 font-medium text-blue-800"
+                    : "text-slate-700"
                 }`}
               >
                 <span>{branch.nama}</span>
-                <span className="font-mono text-xs text-slate-500">{branch.kode}</span>
+                <span className="font-mono text-xs text-slate-500">
+                  {branch.kode}
+                </span>
               </button>
             ))}
           </div>
@@ -220,44 +233,64 @@ export function MaskingAddForm({ onClose }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {branchID === '' && (
+              {branchID === "" && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-500">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-6 text-center text-sm text-slate-500"
+                  >
                     Pilih cabang lebih dulu.
                   </td>
                 </tr>
               )}
-              {branchID !== '' && operators.isPending && (
+              {branchID !== "" && operators.isPending && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-500">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-6 text-center text-sm text-slate-500"
+                  >
                     Memuat petugas…
                   </td>
                 </tr>
               )}
-              {branchID !== '' && operators.data && row.length === 0 && (
+              {branchID !== "" && operators.data && row.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-slate-500">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-6 text-center text-sm text-slate-500"
+                  >
                     Data Tidak Ada
                   </td>
                 </tr>
               )}
               {row.map((r) => (
-                <tr key={r.login} className={r.dipakai ? 'bg-blue-50/30' : undefined}>
+                <tr
+                  key={r.login}
+                  className={r.dipakai ? "bg-blue-50/30" : undefined}
+                >
                   <td className="px-3 py-3 align-top">
                     <input
                       type="checkbox"
                       aria-label={`Beri kewenangan kepada ${r.login}`}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
                       checked={r.dipakai}
-                      onChange={(event) => patch(r.login, { dipakai: event.target.checked })}
+                      onChange={(event) =>
+                        patch(r.login, { dipakai: event.target.checked })
+                      }
                     />
                   </td>
-                  <td className="px-3 py-3 align-top text-slate-900">{r.nama}</td>
+                  <td className="px-3 py-3 align-top text-slate-900">
+                    {r.nama}
+                  </td>
                   <td className="px-3 py-3 align-top font-mono text-xs text-slate-700">
                     {r.login}
                   </td>
                   <td className="px-3 py-3">
-                    <TemplateAkses row={r} disabled={!r.dipakai} onChange={patch} />
+                    <TemplateAkses
+                      row={r}
+                      disabled={!r.dipakai}
+                      onChange={patch}
+                    />
                   </td>
                 </tr>
               ))}
@@ -269,7 +302,7 @@ export function MaskingAddForm({ onClose }: Props) {
       <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
         <p className="text-xs text-slate-600">
           {chosen.length === 0
-            ? 'Belum ada petugas yang dipilih.'
+            ? "Belum ada petugas yang dipilih."
             : `${chosen.length} petugas akan disimpan.`}
         </p>
         <div className="flex gap-2">
@@ -279,14 +312,14 @@ export function MaskingAddForm({ onClose }: Props) {
           <Button
             tone="utama"
             type="submit"
-            disabled={save.isPending || branchID === '' || chosen.length === 0}
+            disabled={save.isPending || branchID === "" || chosen.length === 0}
           >
-            {save.isPending ? 'Menyimpan…' : 'Simpan'}
+            {save.isPending ? "Menyimpan…" : "Simpan"}
           </Button>
         </div>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -303,9 +336,9 @@ function TemplateAkses({
   disabled,
   onChange,
 }: {
-  row: DraftRow
-  disabled: boolean
-  onChange: (login: string, change: Partial<DraftRow>) => void
+  row: DraftRow;
+  disabled: boolean;
+  onChange: (login: string, change: Partial<DraftRow>) => void;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -344,15 +377,15 @@ function TemplateAkses({
         <div className="mt-1.5 flex flex-wrap gap-3">
           {(
             [
-              ['lihat_ktp', 'KTP'],
-              ['lihat_email', 'Email'],
-              ['lihat_notelp', 'Notelp'],
+              ["lihat_ktp", "KTP"],
+              ["lihat_email", "Email"],
+              ["lihat_notelp", "Notelp"],
             ] as const
           ).map(([key, label]) => (
             <label
               key={key}
               className={`flex items-center gap-2 text-sm ${
-                disabled ? 'text-slate-400' : 'text-slate-700'
+                disabled ? "text-slate-400" : "text-slate-700"
               }`}
             >
               <input
@@ -360,7 +393,9 @@ function TemplateAkses({
                 disabled={disabled}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
                 checked={row[key]}
-                onChange={(event) => onChange(row.login, { [key]: event.target.checked })}
+                onChange={(event) =>
+                  onChange(row.login, { [key]: event.target.checked })
+                }
                 aria-label={`${label} untuk ${row.login}`}
               />
               {label}
@@ -369,43 +404,60 @@ function TemplateAkses({
         </div>
       </fieldset>
     </div>
-  )
+  );
 }
 
 function SaveErrorMessage({ error }: { error: unknown }) {
-  const message = saveMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = saveMessage(error);
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function saveMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function saveMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Data belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Data belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.maskingNoRowChosen:
         return {
-          title: 'Belum ada petugas yang dipilih',
-          description: 'Centang minimal satu petugas lalu isi Template Akses-nya.',
-          tone: 'penolakan',
-        }
+          title: "Belum ada petugas yang dipilih",
+          description:
+            "Centang minimal satu petugas lalu isi Template Akses-nya.",
+          tone: "penolakan",
+        };
       case ErrorCode.maskingBranchUnknown:
         return {
-          title: 'Cabang tidak dikenal',
-          description: 'Pilih cabang dari daftar, jangan mengetik kodenya sendiri.',
-          tone: 'penolakan',
-        }
+          title: "Cabang tidak dikenal",
+          description:
+            "Pilih cabang dari daftar, jangan mengetik kodenya sendiri.",
+          tone: "penolakan",
+        };
       default:
-        return { title: 'Gagal menyimpan', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Gagal menyimpan",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Gagal menyimpan',
-    description: 'Terjadi kesalahan pada sistem. Coba simpan lagi.',
-    tone: 'gangguan',
-  }
+    title: "Gagal menyimpan",
+    description: "Terjadi kesalahan pada sistem. Coba simpan lagi.",
+    tone: "gangguan",
+  };
 }

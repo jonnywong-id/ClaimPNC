@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import type { InvestigatorInboxResponse } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import type { InvestigatorInboxResponse } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/inbox/investigator'
+const ROUTE = "/api/inbox/investigator";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -20,7 +20,7 @@ const ROUTE = '/api/inbox/investigator'
  * dan tidak melahirkan entri cache baru per huruf.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['inbox-investigator', portal, token] as const
+  return ["inbox-investigator", portal, token] as const;
 }
 
 /**
@@ -52,25 +52,25 @@ function listKey(portal: string | null, token: string | null) {
  * ditekan sendiri, sama seperti tombol Refresh pada harness lamanya.
  */
 export function useInvestigatorInbox() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<InvestigatorInboxResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Ketiga kendali tombol Export Data Investigation. */
 export type ExportInvestigationInput = {
   /** Isian "Dari", bentuk `YYYY-MM-DD`. */
-  dari: string
+  dari: string;
   /** Isian "Sampai", bentuk `YYYY-MM-DD`; hari itu IKUT terbawa. */
-  sampai: string
+  sampai: string;
   /** Dropdown "Pilih Investigation": `"1"` atau `"0"`. */
-  investigasi: string
-}
+  investigasi: string;
+};
 
 /**
  * Hook tombol **Export Data Investigation**.
@@ -95,41 +95,45 @@ export type ExportInvestigationInput = {
  * seluruh penolakan penyaring, yang terjadi sebelum satu byte pun ditulis.
  */
 export function useExportInvestigation() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (input: ExportInvestigationInput) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
       const params = new URLSearchParams({
         dari: input.dari,
         sampai: input.sampai,
         investigasi: input.investigasi,
-      })
+      });
 
       const response = await fetch(`${ROUTE}/ekspor?${params.toString()}`, {
         headers: header,
-      })
+      });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas data investigasi tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(
+          body?.pesan ?? "Berkas data investigasi tidak dapat diambil.",
+        );
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'data-investigasi.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "data-investigasi.csv");
     },
-  })
+  });
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -140,53 +144,53 @@ function filenameOf(response: Response): string | null {
  * berkas berisi data medis, "masih ada di memori" bukan hal yang dibiarkan tanpa alasan.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /** Bentuk formulir investigasi pada kontrak API. */
 export type InvestigationForm = {
-  referensi: string
-  urutan_survei: number
-  urutan: number
+  referensi: string;
+  urutan_survei: number;
+  urutan: number;
 
-  tanggal_investigasi: string | null
-  dapat_diinvestigasi: string
-  tempat_kejadian: string
-  nama_rumah_sakit: string
-  nama_tempat_lainnya: string
-  alamat_rs_klinik: string
-  nomor_rekam_medik: string
-  nama_pasien: string
-  tanggal_lahir: string | null
-  verifikasi_tanggal_lahir: string
-  keterangan_tanggal_lahir: string
-  peserta_terdaftar: string
-  keterangan_pendaftaran: string
-  tanggal_perawatan: string | null
-  tanggal_selesai_perawatan: string | null
-  total_pengajuan: string
-  tagihan_lunas: string
-  bayar_pasien: string
-  bayar_perusahaan: string
-  bayar_asuransi_lain: string
-  tidak_ada_pembayaran: string
-  nama_asuransi_lain: string
-  konfirmasi_kwitansi: string
-  nama_pic_rs: string
-  nama_penelepon: string
-  nama_karyawan: string
-  kode_area_telepon: string
-  nomor_telepon: string
-  ekstensi_telepon: string
-  hasil_investigasi: string
-}
+  tanggal_investigasi: string | null;
+  dapat_diinvestigasi: string;
+  tempat_kejadian: string;
+  nama_rumah_sakit: string;
+  nama_tempat_lainnya: string;
+  alamat_rs_klinik: string;
+  nomor_rekam_medik: string;
+  nama_pasien: string;
+  tanggal_lahir: string | null;
+  verifikasi_tanggal_lahir: string;
+  keterangan_tanggal_lahir: string;
+  peserta_terdaftar: string;
+  keterangan_pendaftaran: string;
+  tanggal_perawatan: string | null;
+  tanggal_selesai_perawatan: string | null;
+  total_pengajuan: string;
+  tagihan_lunas: string;
+  bayar_pasien: string;
+  bayar_perusahaan: string;
+  bayar_asuransi_lain: string;
+  tidak_ada_pembayaran: string;
+  nama_asuransi_lain: string;
+  konfirmasi_kwitansi: string;
+  nama_pic_rs: string;
+  nama_penelepon: string;
+  nama_karyawan: string;
+  kode_area_telepon: string;
+  nomor_telepon: string;
+  ekstensi_telepon: string;
+  hasil_investigasi: string;
+};
 
 /**
  * Keadaan tampil keenam isian bersyarat.
@@ -196,34 +200,38 @@ export type InvestigationForm = {
  * dua tempat akan berbeda pada perubahan berikutnya.
  */
 export type InvestigationVisibility = {
-  nama_rumah_sakit: boolean
-  nama_tempat_lainnya: boolean
-  alamat_rs_klinik: boolean
-  tanggal_selesai_perawatan: boolean
-  nama_asuransi_lain: boolean
-}
+  nama_rumah_sakit: boolean;
+  nama_tempat_lainnya: boolean;
+  alamat_rs_klinik: boolean;
+  tanggal_selesai_perawatan: boolean;
+  nama_asuransi_lain: boolean;
+};
 
 export type InvestigationResponse = {
-  investigasi: InvestigationForm
-  tampil: InvestigationVisibility
-  portal: string
-}
+  investigasi: InvestigationForm;
+  tampil: InvestigationVisibility;
+  portal: string;
+};
 
 export type InvestigationTransition = {
-  referensi: string
-  status_survei: string
-  status_pnc: string
-  status_klaim: string
-  pada: string
-}
+  referensi: string;
+  status_survei: string;
+  status_pnc: string;
+  status_klaim: string;
+  pada: string;
+};
 
 export type SubmitInvestigationResponse = {
-  pindah: InvestigationTransition
-}
+  pindah: InvestigationTransition;
+};
 
 /** Kunci cache formulir satu pekerjaan. */
-function formKey(reference: string, portal: string | null, token: string | null) {
-  return ['inbox-investigator-form', reference, portal, token] as const
+function formKey(
+  reference: string,
+  portal: string | null,
+  token: string | null,
+) {
+  return ["inbox-investigator-form", reference, portal, token] as const;
 }
 
 /**
@@ -241,18 +249,18 @@ function formKey(reference: string, portal: string | null, token: string | null)
  * pembukaan layar akan menembak server untuk pekerjaan yang belum dipilih siapa pun.
  */
 export function useInvestigation(reference: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: formKey(reference ?? '', portal, token),
+    queryKey: formKey(reference ?? "", portal, token),
     queryFn: () =>
       callAPI<InvestigationResponse>(
-        `${ROUTE}/${encodeURIComponent(reference ?? '')}/investigasi`,
+        `${ROUTE}/${encodeURIComponent(reference ?? "")}/investigasi`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null && Boolean(reference),
-  })
+  });
 }
 
 /**
@@ -265,19 +273,24 @@ export function useInvestigation(reference: string | null) {
  * pengguna menekan Refresh, dan ia akan menyimpulkan simpannya gagal.
  */
 export function useSubmitInvestigation() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { referensi: string; isian: Partial<InvestigationForm> }) =>
+    mutationFn: (input: {
+      referensi: string;
+      isian: Partial<InvestigationForm>;
+    }) =>
       callAPI<SubmitInvestigationResponse>(
         `${ROUTE}/${encodeURIComponent(input.referensi)}/investigasi`,
-        { metode: 'POST', body: input.isian, token, portal },
+        { metode: "POST", body: input.isian, token, portal },
       ),
     onSuccess: (_hasil, input) => {
-      apiClient.invalidateQueries({ queryKey: listKey(portal, token) })
-      apiClient.invalidateQueries({ queryKey: formKey(input.referensi, portal, token) })
+      apiClient.invalidateQueries({ queryKey: listKey(portal, token) });
+      apiClient.invalidateQueries({
+        queryKey: formKey(input.referensi, portal, token),
+      });
     },
-  })
+  });
 }

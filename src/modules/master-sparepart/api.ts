@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   SparepartDecisionInput,
   SparepartDecisionResponse,
@@ -10,13 +10,13 @@ import type {
   SparepartListResponse,
   SparepartOptionsResponse,
   SparepartResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/sparepart'
-const ROUTE_DECISION = '/api/master/sparepart/keputusan'
-const ROUTE_OPTIONS = '/api/master/sparepart/pilihan'
+const ROUTE = "/api/master/sparepart";
+const ROUTE_DECISION = "/api/master/sparepart/keputusan";
+const ROUTE_OPTIONS = "/api/master/sparepart/pilihan";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -31,7 +31,7 @@ const ROUTE_OPTIONS = '/api/master/sparepart/pilihan'
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-sparepart', portal, token, status] as const
+  return ["master-sparepart", portal, token, status] as const;
 }
 
 /**
@@ -42,7 +42,7 @@ function listKey(portal: string | null, token: string | null, status: string) {
  * konstanta yang ditanam di activity Pega, sehingga di sana portal memang tidak perlu ikut.
  */
 function optionsKey(portal: string | null, token: string | null) {
-  return ['master-sparepart-pilihan', portal, token] as const
+  return ["master-sparepart-pilihan", portal, token] as const;
 }
 
 /**
@@ -63,18 +63,21 @@ function optionsKey(portal: string | null, token: string | null) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function useSparepartList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<SparepartListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<SparepartListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -85,14 +88,15 @@ export function useSparepartList(status: string) {
  * bahkan sebelum entitas dipilih.
  */
 export function useSparepartOptions() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: optionsKey(portal, token),
-    queryFn: () => callAPI<SparepartOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
+    queryFn: () =>
+      callAPI<SparepartOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -104,17 +108,22 @@ export function useSparepartOptions() {
  * Approve.
  */
 export function useCreateSparepart() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: SparepartInput) =>
-      callAPI<SparepartResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<SparepartResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -125,22 +134,22 @@ export function useCreateSparepart() {
  * syarat apa pun — sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSaveSparepart() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: SparepartInput }) =>
       callAPI<SparepartResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -162,22 +171,22 @@ export function useSaveSparepart() {
  * TANPA catatan: tabelnya tidak punya kolom penampungnya.
  */
 export function useDecideSparepart() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: SparepartDecisionInput) =>
       callAPI<SparepartDecisionResponse>(ROUTE_DECISION, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -188,7 +197,7 @@ export function useDecideSparepart() {
  * hukum lain tanpa satu pun tanda di layar (`R-20`).
  */
 function documentKey(portal: string | null, token: string | null, id: string) {
-  return ['master-sparepart-dokumen', portal, token, id] as const
+  return ["master-sparepart-dokumen", portal, token, id] as const;
 }
 
 /**
@@ -199,19 +208,19 @@ function documentKey(portal: string | null, token: string | null, id: string) {
  * tidak diulang. Mengulanginya tiga kali hanya memperlambat form tanpa mengubah jawabannya.
  */
 export function useSparepartDocument(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: documentKey(portal, token, id ?? ''),
+    queryKey: documentKey(portal, token, id ?? ""),
     queryFn: () =>
       callAPI<SparepartDocumentResponse>(
-        `${ROUTE}/${encodeURIComponent(id ?? '')}/dokumen`,
+        `${ROUTE}/${encodeURIComponent(id ?? "")}/dokumen`,
         { token, portal },
       ),
-    enabled: token !== null && portal !== null && id !== null && id !== '',
+    enabled: token !== null && portal !== null && id !== null && id !== "",
     retry: false,
-  })
+  });
 }
 
 /**
@@ -232,28 +241,36 @@ export function useSparepartDocument(id: string | null) {
  * `APPROVAL := "0"`.
  */
 export function useUploadSparepartDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, file, note }: { id: string; file: File; note: string }) => {
-      const body = new FormData()
-      body.append('berkas', file)
-      if (note.trim() !== '') body.append('catatan', note.trim())
+    mutationFn: ({
+      id,
+      file,
+      note,
+    }: {
+      id: string;
+      file: File;
+      note: string;
+    }) => {
+      const body = new FormData();
+      body.append("berkas", file);
+      if (note.trim() !== "") body.append("catatan", note.trim());
       return callAPI<SparepartDocumentResponse>(
         `${ROUTE}/${encodeURIComponent(id)}/dokumen`,
-        { metode: 'POST', body, token, portal },
-      )
+        { metode: "POST", body, token, portal },
+      );
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-sparepart-dokumen'] })
-      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-sparepart-dokumen"] });
+      client.invalidateQueries({ queryKey: ["master-sparepart"] });
     },
-  })
+  });
 }
 
-const ROUTE_IMPORT = '/api/master/sparepart/unggah-csv'
+const ROUTE_IMPORT = "/api/master/sparepart/unggah-csv";
 
 /**
  * Hook unggah CSV master sparepart.
@@ -272,23 +289,23 @@ const ROUTE_IMPORT = '/api/master/sparepart/unggah-csv'
  * tab Approve.
  */
 export function useImportSparepartCSV() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (file: File) => {
-      const body = new FormData()
-      body.append('berkas', file)
+      const body = new FormData();
+      body.append("berkas", file);
       return callAPI<SparepartImportResponse>(ROUTE_IMPORT, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
-      })
+      });
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-sparepart"] });
     },
-  })
+  });
 }

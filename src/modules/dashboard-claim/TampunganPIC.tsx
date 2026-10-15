@@ -1,15 +1,15 @@
-import { APIError } from '@/api/client'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
+import { Button } from "@/components/Button";
 
-import { PAGE_SIZE, useTampunganPIC } from './api'
-import { DialogTransfer } from './DialogTransfer'
-import type { BarisTampungan } from './types'
+import { PAGE_SIZE, useTampunganPIC } from "./api";
+import { DialogTransfer } from "./DialogTransfer";
+import type { BarisTampungan } from "./types";
 
 /**
  * Tab **Inbox Tampungan PIC** — tab kedua layar lama.
@@ -52,16 +52,16 @@ export function TampunganPIC({
   halaman,
   onHalaman,
 }: {
-  cari: string
-  onCari: (nilai: string) => void
-  halaman: number
-  onHalaman: (halaman: number) => void
+  cari: string;
+  onCari: (nilai: string) => void;
+  halaman: number;
+  onHalaman: (halaman: number) => void;
 }) {
-  const daftar = useTampunganPIC(true, { cari, halaman })
+  const daftar = useTampunganPIC(true, { cari, halaman });
 
-  const [transfer, setTransfer] = useState<BarisTampungan | null>(null)
+  const [transfer, setTransfer] = useState<BarisTampungan | null>(null);
 
-  const keterangan = daftar.data?.halaman
+  const keterangan = daftar.data?.halaman;
   const pagination = {
     page: keterangan?.halaman ?? halaman,
     size: keterangan?.ukuran ?? PAGE_SIZE,
@@ -69,13 +69,14 @@ export function TampunganPIC({
     totalPage: keterangan?.total_halaman ?? 1,
     onPageChange: onHalaman,
     isLoading: daftar.isFetching,
-  }
+  };
 
   return (
     <>
       <p className="mb-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        Klaim yang sudah terdaftar tetapi <strong>belum dipegang PIC Teknik</strong>. Tombol{' '}
-        <em>Transfer</em> menyerahkannya kepada petugas yang dipilih, dan barisnya hilang dari
+        Klaim yang sudah terdaftar tetapi{" "}
+        <strong>belum dipegang PIC Teknik</strong>. Tombol <em>Transfer</em>{" "}
+        menyerahkannya kepada petugas yang dipilih, dan barisnya hilang dari
         sini setelah daftarnya dimuat ulang.
       </p>
 
@@ -113,7 +114,7 @@ export function TampunganPIC({
         />
       ) : null}
     </>
-  )
+  );
 }
 
 /**
@@ -130,39 +131,65 @@ function kolomTampungan(
   onTransfer: (row: BarisTampungan) => void,
 ): Column<BarisTampungan>[] {
   return [
-  { key: 'nomor_klaim', title: 'No Klaim', value: (row) => row.nomor_klaim, width: '9rem' },
-  { key: 'nomor_polis', title: 'No Polis', value: (row) => row.nomor_polis, width: '11rem' },
-  { key: 'nama_tertanggung', title: 'Nama Tertanggung', value: (row) => row.nama_tertanggung },
-  { key: 'nama_bisnis', title: 'Nama Bisnis', value: (row) => row.nama_bisnis },
-  { key: 'sumber_bisnis', title: 'Sumber Bisnis', value: (row) => row.sumber_bisnis },
-  { key: 'nama_cabang', title: 'Nama Cabang', value: (row) => row.nama_cabang },
-  {
-    key: 'tanggal_pendaftaran',
-    title: 'Tanggal Pendaftaran',
-    value: (row) => row.tanggal_pendaftaran,
-    render: (row) => formatDate(row.tanggal_pendaftaran),
-    width: '10rem',
-  },
-  { key: 'admin_pnc', title: 'Admin PNC', value: (row) => row.admin_pnc },
-  {
-    key: 'aksi',
-    title: 'Aksi',
-    // Kolom aksi tidak diurutkan dan tidak dicari: isinya tombol, bukan data.
-    noSort: true,
-    value: () => '',
-    width: '7rem',
-    render: (row) => (
-      <Button tone="kedua" onClick={() => onTransfer(row)}>
-        Transfer
-      </Button>
-    ),
-  },
-  ]
+    {
+      key: "nomor_klaim",
+      title: "No Klaim",
+      value: (row) => row.nomor_klaim,
+      width: "9rem",
+    },
+    {
+      key: "nomor_polis",
+      title: "No Polis",
+      value: (row) => row.nomor_polis,
+      width: "11rem",
+    },
+    {
+      key: "nama_tertanggung",
+      title: "Nama Tertanggung",
+      value: (row) => row.nama_tertanggung,
+    },
+    {
+      key: "nama_bisnis",
+      title: "Nama Bisnis",
+      value: (row) => row.nama_bisnis,
+    },
+    {
+      key: "sumber_bisnis",
+      title: "Sumber Bisnis",
+      value: (row) => row.sumber_bisnis,
+    },
+    {
+      key: "nama_cabang",
+      title: "Nama Cabang",
+      value: (row) => row.nama_cabang,
+    },
+    {
+      key: "tanggal_pendaftaran",
+      title: "Tanggal Pendaftaran",
+      value: (row) => row.tanggal_pendaftaran,
+      render: (row) => formatDate(row.tanggal_pendaftaran),
+      width: "10rem",
+    },
+    { key: "admin_pnc", title: "Admin PNC", value: (row) => row.admin_pnc },
+    {
+      key: "aksi",
+      title: "Aksi",
+      // Kolom aksi tidak diurutkan dan tidak dicari: isinya tombol, bukan data.
+      noSort: true,
+      value: () => "",
+      width: "7rem",
+      render: (row) => (
+        <Button tone="kedua" onClick={() => onTransfer(row)}>
+          Transfer
+        </Button>
+      ),
+    },
+  ];
 }
 
 /** Membaca pesan galat yang layak dibaca pengguna. */
 function pesanGalat(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, simpanBerkas, unduhBerkas } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   FilterInput,
@@ -10,9 +10,9 @@ import type {
   MetadataResponse,
   SaveRemarkRequest,
   SaveRemarkResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/case-study-claim'
+const PATH = "/api/case-study-claim";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -23,14 +23,18 @@ const PATH = '/api/case-study-claim'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['case-study-claim', 'penyaring', portal, token] as const,
+    ["case-study-claim", "penyaring", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, filter: FilterInput, page: number) =>
-    ['case-study-claim', 'daftar', portal, token, filter, page] as const,
-}
+  list: (
+    portal: string | null,
+    token: string | null,
+    filter: FilterInput,
+    page: number,
+  ) => ["case-study-claim", "daftar", portal, token, filter, page] as const,
+};
 
 /** Ukuran halaman, mengikuti `pyPageSize` pada section Pega. */
-export const UKURAN_HALAMAN = 20
+export const UKURAN_HALAMAN = 20;
 
 /**
  * Hook keterangan layar — isi kedua dropdown, susunan kolom, dan catatan yang berlaku.
@@ -46,12 +50,13 @@ export const UKURAN_HALAMAN = 20
  * angkanya dapat diubah tanpa deploy, layar ikut berubah tanpa satu baris pun disunting.
  */
 export function useCaseStudyMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/penyaring`, { token, portal }),
+    queryFn: () =>
+      callAPI<MetadataResponse>(`${PATH}/penyaring`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
@@ -59,7 +64,7 @@ export function useCaseStudyMetadata() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -77,13 +82,18 @@ export function useCaseStudyMetadata() {
  * dan menyaring di peramban hanya menyentuh halaman yang sedang terbuka — hasilnya BOHONG:
  * pengguna mencari klaim yang ada di halaman tiga dan diberi tahu bahwa ia tidak ada.
  */
-export function useCaseStudyList(filter: FilterInput, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useCaseStudyList(
+  filter: FilterInput,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -93,7 +103,7 @@ export function useCaseStudyList(filter: FilterInput, page: number, enabled: boo
     // Layar telaah, bukan antrean kerja: isinya berubah jauh lebih jarang daripada inbox.
     // Cache-nya karena itu lebih panjang daripada layar inbox mana pun.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -104,16 +114,16 @@ export function useCaseStudyList(filter: FilterInput, page: number, enabled: boo
  * alamatnya lebih pendek dan kuncinya lebih mudah dibaca saat menelusuri masalah.
  */
 function buildPath(filter: FilterInput, page: number): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  if (filter.dari) params.set('dari', filter.dari)
-  if (filter.sampai) params.set('sampai', filter.sampai)
-  if (filter.bisnis) params.set('bisnis', filter.bisnis)
-  if (filter.status) params.set('status', filter.status)
-  params.set('batas', String(UKURAN_HALAMAN))
-  if (page > 1) params.set('lewati', String((page - 1) * UKURAN_HALAMAN))
+  if (filter.dari) params.set("dari", filter.dari);
+  if (filter.sampai) params.set("sampai", filter.sampai);
+  if (filter.bisnis) params.set("bisnis", filter.bisnis);
+  if (filter.status) params.set("status", filter.status);
+  params.set("batas", String(UKURAN_HALAMAN));
+  if (page > 1) params.set("lewati", String((page - 1) * UKURAN_HALAMAN));
 
-  return `${PATH}?${params.toString()}`
+  return `${PATH}?${params.toString()}`;
 }
 
 /**
@@ -132,20 +142,25 @@ function buildPath(filter: FilterInput, page: number): string {
  * unduhan mengalir sampai habis.
  */
 export function useExportCaseStudy() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: FilterInput) => {
-      const params = new URLSearchParams()
-      if (filter.dari) params.set('dari', filter.dari)
-      if (filter.sampai) params.set('sampai', filter.sampai)
-      if (filter.bisnis) params.set('bisnis', filter.bisnis)
-      if (filter.status) params.set('status', filter.status)
+      const params = new URLSearchParams();
+      if (filter.dari) params.set("dari", filter.dari);
+      if (filter.sampai) params.set("sampai", filter.sampai);
+      if (filter.bisnis) params.set("bisnis", filter.bisnis);
+      if (filter.status) params.set("status", filter.status);
 
-      simpanBerkas(await unduhBerkas(`${PATH}/unduh?${params.toString()}`, { token, portal }))
+      simpanBerkas(
+        await unduhBerkas(`${PATH}/unduh?${params.toString()}`, {
+          token,
+          portal,
+        }),
+      );
     },
-  })
+  });
 }
 
 /**
@@ -162,19 +177,19 @@ export function useExportCaseStudy() {
  * yang sedang terbuka ikut termuat ulang.
  */
 export function useSaveRemark() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (body: SaveRemarkRequest) =>
       callAPI<SaveRemarkResponse>(
         `${PATH}/${encodeURIComponent(body.nomor_klaim)}/catatan`,
-        { token, portal, metode: 'PUT', body: { catatan: body.catatan } },
+        { token, portal, metode: "PUT", body: { catatan: body.catatan } },
       ),
 
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['case-study-claim', 'daftar'] })
+      client.invalidateQueries({ queryKey: ["case-study-claim", "daftar"] });
     },
-  })
+  });
 }

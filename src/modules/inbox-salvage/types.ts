@@ -25,22 +25,22 @@ export type SalvageRow = {
    * klaim, ID salvage pada ketujuh daftar berbasis pengajuan. Keenam daftar pertama
    * membaca klaim yang BELUM punya baris salvage sama sekali.
    */
-  referensi: string
+  referensi: string;
 
-  no_klaim: string
-  id_salvage: string
+  no_klaim: string;
+  id_salvage: string;
 
   /**
    * Kolom "Tanggal Input" — tanggal PENGAJUAN salvage dibuat.
    *
    * Bukan tanggal kejadian, meski alias kueri lama menyebutnya begitu.
    */
-  tanggal_input: string
+  tanggal_input: string;
 
   /** Kolom "Tgl Kejadian". Hanya daftar Salvage Outstanding menggambarnya. */
-  tanggal_kejadian: string
+  tanggal_kejadian: string;
 
-  pic: string
+  pic: string;
 
   /**
    * Kolom "COB" pada daftar Salvage Outstanding, "Lokasi" pada kelima daftar berbasis
@@ -49,14 +49,14 @@ export type SalvageRow = {
    * Kolomnya SAMA — nama lini bisnis. Judul "Lokasi" keliru di sistem lama dan dibawa apa
    * adanya (`D-13`). Jangan tertukar dengan `lokasi_salvage`, yang benar-benar lokasi.
    */
-  nama_bisnis: string
+  nama_bisnis: string;
 
-  nama_objek: string
-  jenis_salvage: string
-  lokasi_salvage: string
+  nama_objek: string;
+  jenis_salvage: string;
+  lokasi_salvage: string;
 
   /** Kolom "Status Lelang" — "Terjual" atau "Belum Terjual". */
-  status_lelang: string
+  status_lelang: string;
 
   /**
    * Nilai uang datang sebagai TEKS, bukan angka.
@@ -66,14 +66,14 @@ export type SalvageRow = {
    * pecahan biner JavaScript, yang membulatkannya sebelum pembulatan yang disengaja sempat
    * terjadi.
    */
-  nilai_pengajuan_pic: string
-  nilai_request_balai_lelang: string
+  nilai_pengajuan_pic: string;
+  nilai_request_balai_lelang: string;
 
-  email: string
-  keterangan_pic: string
+  email: string;
+  keterangan_pic: string;
 
   /** Kolom "Tipe Pengajuan" — "Pengajuan Baru" atau "Request Balai Lelang". */
-  tipe_pengajuan: string
+  tipe_pengajuan: string;
 
   /**
    * Kolom "Aging", berbentuk `"N day"`.
@@ -82,32 +82,32 @@ export type SalvageRow = {
    * `selisih_terencana`. Kosong berarti tanggal inputnya tidak terbaca, dan itu BERBEDA
    * dari nol hari.
    */
-  aging: string
+  aging: string;
 
   /**
    * Kolom "Catatan". SELALU kosong, dan itu keadaan di Pega pula — tidak ada satu pun
    * penulisnya di jalur pemuat daftar.
    */
-  catatan: string
-}
+  catatan: string;
+};
 
 /** Satu kolom grid, sebagaimana dikirim server. */
 export type TabColumn = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
   /** Ratakan ke kanan dan format sebagai angka. */
-  angka: boolean
-}
+  angka: boolean;
+};
 
 /** Satu daftar beserta kolom dan keterangannya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  kolom: TabColumn[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  kolom: TabColumn[];
 
   /** Judul kotak pencarian; kosong berarti daftar ini tidak punya. */
-  label_pencarian: string
+  label_pencarian: string;
 
   /**
    * Pencarian daftar ini COCOK PERSIS, bukan mengandung.
@@ -116,7 +116,7 @@ export type Tab = {
    * apa-apa — keterangan yang TIDAK ada di Pega, dan yang ketiadaannya membuat perilaku
    * ini terbaca sebagai kerusakan.
    */
-  pencarian_cocok_persis: boolean
+  pencarian_cocok_persis: boolean;
 
   /**
    * Dengan APA panel rincian dibuka pada daftar ini.
@@ -125,7 +125,7 @@ export type Tab = {
    * adalah kuncinya: `'pengajuan'` pada tujuh daftar yang barisnya pengajuan, `'klaim'`
    * pada enam daftar yang barisnya klaim dan tidak membawa ID pengajuan sama sekali.
    */
-  kunci_rincian: DetailKey
+  kunci_rincian: DetailKey;
 
   /**
    * Tombol Detail daftar ini membuka **form sunting**, bukan panel baca.
@@ -134,20 +134,20 @@ export type Tab = {
    * PIC, dan satu-satunya tindakan yang masuk akal di sana adalah menyunting lalu
    * mengirim ulang. Membukanya sebagai panel baca menjadikan daftar itu jalan buntu.
    */
-  membuka_form_sunting: boolean
-}
+  membuka_form_sunting: boolean;
+};
 
 /** Satu pilihan daftar "Status Salvage" pada form Tambah. */
 export type StatusOption = {
-  kode: string
-  label: string
-}
+  kode: string;
+  label: string;
+};
 
 /** Keterangan layar — bentuknya, bukan isinya. */
 export type MetadataResponse = {
-  daftar: Tab[]
-  daftar_bawaan: string
-  pilihan_status_salvage: StatusOption[]
+  daftar: Tab[];
+  daftar_bawaan: string;
+  pilihan_status_salvage: StatusOption[];
 
   /**
    * Pilihan **Mata Uang** pada form Tambah.
@@ -158,28 +158,28 @@ export type MetadataResponse = {
    * KOSONG bila tabelnya tidak terbaca. Itu bukan galat yang menutup layar: kolomnya
    * tetap digambar, hanya tanpa isi dan tanpa tanda wajib.
    */
-  pilihan_mata_uang: StatusOption[]
-  kolom_berkas_unggahan: string[]
-  portal: string
-}
+  pilihan_mata_uang: StatusOption[];
+  kolom_berkas_unggahan: string[];
+  portal: string;
+};
 
 /** Keterangan paginasi yang BENAR-BENAR dipakai server. */
 export type Paging = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Isi satu daftar. */
 export type ListResponse = {
-  daftar: Tab
-  baris: SalvageRow[]
-  paginasi: Paging
+  daftar: Tab;
+  baris: SalvageRow[];
+  paginasi: Paging;
   /** Kata kunci yang BENAR-BENAR dipakai; tidak selalu sama dengan yang dikirim. */
-  cari: string
-  portal: string
-}
+  cari: string;
+  portal: string;
+};
 
 /**
  * Satu baris tabel ringkas "Status Salvage / Jumlah".
@@ -188,23 +188,23 @@ export type ListResponse = {
  * begitu, karena di Pega pun tidak ada tab yang menerima kodenya.
  */
 export type StatusCount = {
-  status_salvage: string
-  jumlah: number
-  daftar?: string
-}
+  status_salvage: string;
+  jumlah: number;
+  daftar?: string;
+};
 
 export type CountsResponse = {
-  baris: StatusCount[]
-  portal: string
-}
+  baris: StatusCount[];
+  portal: string;
+};
 
 /** Satu baris grid "Detail Item Salvage" pada form Tambah. */
 export type DetailItem = {
-  nama_item: string
-  jumlah_item: string
-  satuan: string
-  remark: string
-}
+  nama_item: string;
+  jumlah_item: string;
+  satuan: string;
+  remark: string;
+};
 
 /**
  * Badan permintaan simpan pengajuan salvage.
@@ -214,34 +214,34 @@ export type DetailItem = {
  * kontrak.
  */
 export type CreateRequest = {
-  mode: string
-  id_salvage: string
+  mode: string;
+  id_salvage: string;
 
-  nomor_klaim: string
-  id_object: string
-  nama_object: string
-  id_coverage: string
-  nama_coverage: string
+  nomor_klaim: string;
+  id_object: string;
+  nama_object: string;
+  id_coverage: string;
+  nama_coverage: string;
 
-  tanggal_input: string
-  jenis_salvage: string
-  status_salvage: string
-  lokasi_salvage: string
-  lokasi_salvage_di_jabodetabek: boolean
-  mata_uang: string
-  minimum_salvage: string
-  quantity_salvage: string
-  nilai_penawaran: string
-  share_tertanggung: string
-  remark: string
-  email: string
+  tanggal_input: string;
+  jenis_salvage: string;
+  status_salvage: string;
+  lokasi_salvage: string;
+  lokasi_salvage_di_jabodetabek: boolean;
+  mata_uang: string;
+  minimum_salvage: string;
+  quantity_salvage: string;
+  nilai_penawaran: string;
+  share_tertanggung: string;
+  remark: string;
+  email: string;
 
-  nama_pic_survey: string
-  no_telp_pic_survey: string
-  email_pic_survey: string
+  nama_pic_survey: string;
+  no_telp_pic_survey: string;
+  email_pic_survey: string;
 
-  detail_item_salvage: DetailItem[]
-}
+  detail_item_salvage: DetailItem[];
+};
 
 /**
  * Hasil pengiriman satu pengajuan ke balai lelang SimasBid.
@@ -253,32 +253,32 @@ export type CreateRequest = {
  */
 export type HasilBalaiLelang = {
   /** Salah bila pengiriman memang belum dikonfigurasi — bukan bila dicoba lalu gagal. */
-  dicoba: boolean
+  dicoba: boolean;
 
   /** Benar hanya bila balai lelang MENERIMA pengajuan ini. */
-  diterima: boolean
+  diterima: boolean;
 
-  id_balai_lelang?: string
+  id_balai_lelang?: string;
 
   /** Jawaban balai lelang, atau sebab kegagalannya. */
-  keterangan?: string
-}
+  keterangan?: string;
+};
 
 /** Hasil pengiriman surel pemberitahuan. */
 export type HasilPemberitahuan = {
   /** Salah bila surel memang belum dikonfigurasi di lingkungan ini. */
-  dicoba: boolean
-  terkirim: boolean
-}
+  dicoba: boolean;
+  terkirim: boolean;
+};
 
 export type CreateResponse = {
-  id_salvage: string
-  jumlah_detail_item: number
-  pesan: string
-  balai_lelang: HasilBalaiLelang
-  pemberitahuan: HasilPemberitahuan
-  portal: string
-}
+  id_salvage: string;
+  jumlah_detail_item: number;
+  pesan: string;
+  balai_lelang: HasilBalaiLelang;
+  pemberitahuan: HasilPemberitahuan;
+  portal: string;
+};
 
 /**
  * Catatan yang digambar sebagai bilah di atas layar sesudah Submit.
@@ -289,9 +289,9 @@ export type CreateResponse = {
  * adalah isyarat bercampur yang justru membuat orang berhenti membacanya.
  */
 export type CatatanSimpan = {
-  pesan: string
-  perluPerhatian: boolean
-}
+  pesan: string;
+  perluPerhatian: boolean;
+};
 
 /**
  * Hasil pembacaan berkas "Upload Detail Salvage".
@@ -300,9 +300,9 @@ export type CatatanSimpan = {
  * saat pengguna menekan Submit, sama seperti di Pega.
  */
 export type UploadResponse = {
-  detail_item_salvage: DetailItem[]
-  pesan: string
-}
+  detail_item_salvage: DetailItem[];
+  pesan: string;
+};
 
 /**
  * Satu baris grid "Detail History Salvage".
@@ -311,13 +311,13 @@ export type UploadResponse = {
  * Posisi Salvage.
  */
 export type HistoryRow = {
-  id_salvage: string
-  tanggal_input: string
-  no_klaim: string
-  pic: string
+  id_salvage: string;
+  tanggal_input: string;
+  no_klaim: string;
+  pic: string;
 
   /** Berjudul "Nilai Minimum" di grid ini, "Estimasi" di panel rincian. Kolomnya sama. */
-  nilai_minimum: string
+  nilai_minimum: string;
 
   /**
    * Sudah berupa kalimat — "Sudah Aksep Checker", "Salvage Waive", dan seterusnya.
@@ -325,8 +325,8 @@ export type HistoryRow = {
    * Pemetaannya BERBEDA dari "Posisi Salvage" pada panel rincian, meski keduanya berasal
    * dari kolom yang sama.
    */
-  posisi_salvage: string
-}
+  posisi_salvage: string;
+};
 
 /**
  * Satu dokumen yang BERHASIL tersimpan lewat modal "UploadDocument_Salvage".
@@ -336,11 +336,11 @@ export type HistoryRow = {
  * ke basis data dapat dimulai dari salah satunya.
  */
 export type DokumenTersimpan = {
-  data_id: string
-  image_id: string
+  data_id: string;
+  image_id: string;
 
   /** Nama berkas yang BENAR-BENAR tersimpan — bukan nama aslinya. */
-  nama_tersimpan: string
+  nama_tersimpan: string;
 
   /**
    * Baris penaut ke pengajuan salvage ikut ditulis.
@@ -348,17 +348,17 @@ export type DokumenTersimpan = {
    * SALAH pada form pengajuan baru: di sana berkas diunggah sebelum Submit, sehingga
    * pengajuannya belum punya nomor. Dokumennya tetap menempel pada klaimnya.
    */
-  tertaut_salvage: boolean
-}
+  tertaut_salvage: boolean;
+};
 
 export type AttachDocumentsResponse = {
-  dokumen: DokumenTersimpan[]
-  pesan: string
-  portal: string
-}
+  dokumen: DokumenTersimpan[];
+  pesan: string;
+  portal: string;
+};
 
 /** Kunci yang dipakai membuka panel rincian. */
-export type DetailKey = 'pengajuan' | 'klaim'
+export type DetailKey = "pengajuan" | "klaim";
 
 /**
  * Satu pilihan pada autocomplete **"Nama Object"** di form Tambah.
@@ -369,9 +369,9 @@ export type DetailKey = 'pengajuan' | 'klaim'
  */
 export type ObjekPilihan = {
   /** `T_CLAIM_OBJECTLIST.OBJECTID` — berakhir di `PNC_SALVAGE.IDOBJECT`. */
-  id: string
-  nama: string
-}
+  id: string;
+  nama: string;
+};
 
 /**
  * Satu pilihan pada autocomplete **"Nama Coverage"**.
@@ -393,13 +393,13 @@ export type CoveragePilihan = {
    * Ia KODE JENIS jaminan, bukan penunjuk satu baris: kode yang sama dapat muncul dua
    * kali pada satu klaim bila dua objeknya punya jaminan yang sama.
    */
-  id: string
-  nama: string
-}
+  id: string;
+  nama: string;
+};
 
 /** Satu baris grid "Detail Pengajuan Salvage" pada panel Detail. */
 export type DetailBarang = {
-  nama_barang: string
+  nama_barang: string;
 
   /**
    * Jumlah dan satuan datang TERPISAH.
@@ -408,19 +408,19 @@ export type DetailBarang = {
    * jumlahnya berhenti menjadi angka dan tidak lagi dapat diratakan ke kanan. Di sini
    * keduanya dikirim sendiri-sendiri, dan layar yang merangkainya.
    */
-  jumlah: number
-  satuan: string
+  jumlah: number;
+  satuan: string;
 
-  total_nilai: string
+  total_nilai: string;
 
   /** Sudah kalimat, bukan kode — "Terjual" / "Tidak terjual" / "Waiting approval". */
-  status_terjual: string
+  status_terjual: string;
 
-  nama_pemenang: string
-  no_akseptasi: string
-  nilai_akseptasi: string
-  remark: string
-}
+  nama_pemenang: string;
+  no_akseptasi: string;
+  nilai_akseptasi: string;
+  remark: string;
+};
 
 /**
  * Isi panel "Detail Salvage".
@@ -430,9 +430,9 @@ export type DetailBarang = {
  * (`D-13`).
  */
 export type DetailResponse = {
-  id_salvage: string
-  no_klaim: string
-  nama_bisnis: string
+  id_salvage: string;
+  no_klaim: string;
+  nama_bisnis: string;
 
   /**
    * Klaim ini benar-benar punya pengajuan salvage.
@@ -441,32 +441,32 @@ export type DetailResponse = {
    * baris klaim — dan pada daftar Salvage Outstanding ia justru yang lazim, sebab daftar
    * itu berisi klaim yang salvage-nya belum ditandai sama sekali.
    */
-  ada_pengajuan: boolean
+  ada_pengajuan: boolean;
 
   /** Berasal dari KLAIM, bukan dari pengajuan. Terisi pada jalur kunci `'klaim'`. */
-  pic: string
-  tanggal_kejadian: string
+  pic: string;
+  tanggal_kejadian: string;
 
-  tanggal_input_salvage: string
-  jenis_salvage: string
-  quantity_salvage: string
-  estimasi: string
-  lokasi_salvage: string
+  tanggal_input_salvage: string;
+  jenis_salvage: string;
+  quantity_salvage: string;
+  estimasi: string;
+  lokasi_salvage: string;
 
-  tanggal_transfer_ga: string
+  tanggal_transfer_ga: string;
 
   /** Kode `STSTRANSFER` apa adanya — untuk penelusuran, bukan untuk dibaca. */
-  kode_posisi_salvage: string
+  kode_posisi_salvage: string;
   /** Label posisinya — inilah yang digambar. */
-  posisi_salvage: string
+  posisi_salvage: string;
 
-  tanggal_akseptasi: string
-  no_akseptasi: string
-  remark: string
-  mata_uang: string
+  tanggal_akseptasi: string;
+  no_akseptasi: string;
+  remark: string;
+  mata_uang: string;
 
-  nama_object: string
-  nama_coverage: string
+  nama_object: string;
+  nama_coverage: string;
 
   /**
    * Penunjuk objek dan coverage pengajuan ini.
@@ -474,21 +474,21 @@ export type DetailResponse = {
    * Tidak digambar sebagai isian. Yang membacanya adalah form Tambah, untuk memilih ulang
    * baris yang sama pada kedua autocomplete.
    */
-  id_object: string
-  id_coverage: string
+  id_object: string;
+  id_coverage: string;
 
-  nilai_salvage: string
+  nilai_salvage: string;
 
-  email: string
-  nilai_penawaran: string
-  nama_pemenang: string
-  tanggal_lelang: string
+  email: string;
+  nilai_penawaran: string;
+  nama_pemenang: string;
+  tanggal_lelang: string;
 
-  nama_pic_survey: string
-  no_telp_pic_survey: string
-  email_pic_survey: string
+  nama_pic_survey: string;
+  no_telp_pic_survey: string;
+  email_pic_survey: string;
 
-  lokasi_salvage_di_jabodetabek: boolean
+  lokasi_salvage_di_jabodetabek: boolean;
 
   /**
    * Penanda pengajuan sebelum 17 Juli 2023.
@@ -496,9 +496,9 @@ export type DetailResponse = {
    * ARTINYA tidak diketahui — tidak ada satu pun rule di export yang memakainya selain
    * menggambarnya. Layar menyebutnya apa adanya tanpa menafsirkannya.
    */
-  pengajuan_sebelum_juli_2023: boolean
+  pengajuan_sebelum_juli_2023: boolean;
 
-  barang: DetailBarang[]
+  barang: DetailBarang[];
 
   /**
    * SELURUH pengajuan salvage milik klaim ini, terbaru lebih dulu.
@@ -506,7 +506,7 @@ export type DetailResponse = {
    * Digambar pada form "Menambahkan Data Salvage" sebagai grid "Detail History Salvage".
    * Kosong berarti klaim ini belum pernah diajukan salvage sama sekali.
    */
-  riwayat: HistoryRow[]
+  riwayat: HistoryRow[];
 
   /**
    * Isi kedua autocomplete pada form "Menambahkan Data Salvage".
@@ -515,8 +515,8 @@ export type DetailResponse = {
    * mengetik Nomor Klaim memuat keduanya sekaligus. Pada jalur `/pengajuan/{id}` keduanya
    * kosong, dan itu benar: panel rincian tidak menggambar form.
    */
-  pilihan_objek: ObjekPilihan[]
-  pilihan_coverage: CoveragePilihan[]
+  pilihan_objek: ObjekPilihan[];
+  pilihan_coverage: CoveragePilihan[];
 
-  portal: string
-}
+  portal: string;
+};

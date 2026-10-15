@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from "react";
 
-import { SparepartStatus, type Sparepart } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
+import { SparepartStatus, type Sparepart } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
 
 import {
   useCreateSparepart,
@@ -13,11 +13,11 @@ import {
   useSparepartList,
   useSparepartOptions,
   useUploadSparepartDocument,
-} from './api'
-import { DocumentField } from './DocumentField'
-import { ImportCSVPanel } from './ImportCSVPanel'
-import { SparepartForm, type SparepartFormValues } from './SparepartForm'
-import { compareCodeUnits } from '@/lib/sort'
+} from "./api";
+import { DocumentField } from "./DocumentField";
+import { ImportCSVPanel } from "./ImportCSVPanel";
+import { SparepartForm, type SparepartFormValues } from "./SparepartForm";
+import { compareCodeUnits } from "@/lib/sort";
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -36,27 +36,28 @@ import { compareCodeUnits } from '@/lib/sort'
  */
 const TABS = [
   {
-    id: 'approve',
-    label: 'Approve',
+    id: "approve",
+    label: "Approve",
     status: SparepartStatus.disetujui,
-    description: 'Sparepart yang sudah disetujui dan berlaku.',
+    description: "Sparepart yang sudah disetujui dan berlaku.",
   },
   {
-    id: 'reject',
-    label: 'Reject',
+    id: "reject",
+    label: "Reject",
     status: SparepartStatus.ditolak,
-    description: 'Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.',
+    description:
+      "Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.",
   },
   {
-    id: 'menunggu',
-    label: 'Waiting Approval',
+    id: "menunggu",
+    label: "Waiting Approval",
     status: SparepartStatus.menunggu,
     description:
-      'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
+      "Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.",
   },
-] as const
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /**
  * Ukuran halaman diambil dari `pyPageSize` pada ketiga section tab Master Sparepart.
@@ -65,15 +66,15 @@ type TabId = (typeof TABS)[number]['id']
  * dua tab lainnya, dan dari Master Bengkel yang 20. Tidak ada satu angka yang benar untuk
  * seluruh layar; angkanya milik layar, bukan milik komponen tabel.
  */
-const PAGE_SIZE = 30
+const PAGE_SIZE = 30;
 
 /** Kolom penanda yang nilai sahnya tidak ada di export; pilihannya dikumpulkan dari data. */
 const MARK_COLUMNS = [
-  'jenis_sparepart',
-  'satuan',
-  'status_aktif',
-  'status_sparepart',
-] as const
+  "jenis_sparepart",
+  "satuan",
+  "status_aktif",
+  "status_sparepart",
+] as const;
 
 /**
  * Kalimat yang mengisi badan grid ketika tidak ada satu pun baris yang tergambar.
@@ -107,9 +108,9 @@ const MARK_COLUMNS = [
  */
 function emptyMessageFor(hasPortal: boolean): string {
   if (!hasPortal) {
-    return 'Pilih portal entitas di bagian atas halaman untuk menampilkan daftarnya.'
+    return "Pilih portal entitas di bagian atas halaman untuk menampilkan daftarnya.";
   }
-  return 'Data tidak ada'
+  return "Data tidak ada";
 }
 
 /**
@@ -164,17 +165,17 @@ function emptyMessageFor(hasPortal: boolean): string {
  * benar, bukan menunggu ditulis ulang.
  */
 export function SparepartPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Sparepart | null>(null)
+  const [tab, setTab] = useState<TabId>("approve");
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Sparepart | null>(null);
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
-  const list = useSparepartList(active.status)
-  const create = useCreateSparepart()
-  const save = useSaveSparepart()
-  const upload = useUploadSparepartDocument()
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const list = useSparepartList(active.status);
+  const create = useCreateSparepart();
+  const save = useSaveSparepart();
+  const upload = useUploadSparepartDocument();
 
   /*
     Berkas dan catatannya dipegang HALAMAN, bukan panelnya, karena unggahannya terjadi
@@ -185,8 +186,8 @@ export function SparepartPage() {
     satu pun tanda. Pega pun menyimpannya di halaman klipboard yang tidak ikut terhapus.
     Yang menghapusnya hanya closeForm, SESUDAH penyimpanan beserta unggahannya selesai.
   */
-  const [documentFile, setDocumentFile] = useState<File | null>(null)
-  const [documentNote, setDocumentNote] = useState('')
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentNote, setDocumentNote] = useState("");
 
   /*
     Panel unggah yang sedang terbuka — SATU saja pada satu waktu.
@@ -195,21 +196,23 @@ export function SparepartPage() {
     hanya memanjangkan layar tanpa menambah apa pun. Bentuknya sama dengan Master Panel, yang
     menampung tiga panel pada satu keadaan.
   */
-  const [panelUnggah, setPanelUnggah] = useState<'dokumen' | 'csv' | null>(null)
+  const [panelUnggah, setPanelUnggah] = useState<"dokumen" | "csv" | null>(
+    null,
+  );
 
-  function bukaPanel(nama: 'dokumen' | 'csv') {
-    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama))
+  function bukaPanel(nama: "dokumen" | "csv") {
+    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama));
   }
 
-  const importCSV = useImportSparepartCSV()
-  const options = useSparepartOptions()
-  const documentOf = useSparepartDocument(editing?.id_sparepart ?? null)
+  const importCSV = useImportSparepartCSV();
+  const options = useSparepartOptions();
+  const documentOf = useSparepartDocument(editing?.id_sparepart ?? null);
 
   /** Dibaca dari `unggah_tersedia`; menentukan hidup-matinya tombol di kepala halaman. */
-  const uploadAvailable = options.data?.unggah_tersedia ?? false
+  const uploadAvailable = options.data?.unggah_tersedia ?? false;
 
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.sparepart ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.sparepart ?? [];
 
   /*
     Pilihan nilai untuk keempat penanda yang daftar pilihannya tidak ada di export (R-16).
@@ -219,40 +222,40 @@ export function SparepartPage() {
     ChoiceField.
   */
   const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
+    const collected: Record<string, string[]> = {};
     for (const column of MARK_COLUMNS) {
-      const unique = new Set<string>()
+      const unique = new Set<string>();
       for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
+        const value = row[column];
+        if (value !== "") unique.add(value);
       }
-      collected[column] = [...unique].sort(compareCodeUnits)
+      collected[column] = [...unique].sort(compareCodeUnits);
     }
-    return collected
-  }, [rows])
+    return collected;
+  }, [rows]);
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    upload.reset()
-    setDocumentFile(null)
-    setDocumentNote('')
-    setAdding(false)
-    setEditing(null)
+    create.reset();
+    save.reset();
+    upload.reset();
+    setDocumentFile(null);
+    setDocumentNote("");
+    setAdding(false);
+    setEditing(null);
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
   }
 
   function openEdit(row: Sparepart) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
   }
 
   /**
@@ -273,20 +276,25 @@ export function SparepartPage() {
   function submit(values: SparepartFormValues) {
     const attach = (id: string) => {
       if (documentFile === null) {
-        closeForm()
-        return
+        closeForm();
+        return;
       }
-      upload.mutate({ id, file: documentFile, note: documentNote }, { onSuccess: closeForm })
-    }
+      upload.mutate(
+        { id, file: documentFile, note: documentNote },
+        { onSuccess: closeForm },
+      );
+    };
 
     if (editing) {
       save.mutate(
         { id: editing.id_sparepart, input: values },
         { onSuccess: () => attach(editing.id_sparepart) },
-      )
-      return
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: (created) => attach(created.sparepart.id_sparepart) })
+    create.mutate(values, {
+      onSuccess: (created) => attach(created.sparepart.id_sparepart),
+    });
   }
 
   /*
@@ -301,73 +309,84 @@ export function SparepartPage() {
   */
   const columns: Column<Sparepart>[] = [
     {
-      key: 'id',
-      title: 'ID Sparepart',
-      width: '9rem',
+      key: "id",
+      title: "ID Sparepart",
+      width: "9rem",
       value: (row) => row.id_sparepart,
     },
     {
-      key: 'nama',
-      title: 'Nama Sparepart',
-      width: '16rem',
+      key: "nama",
+      title: "Nama Sparepart",
+      width: "16rem",
       value: (row) => row.nama_sparepart,
     },
     {
-      key: 'harga',
-      title: 'Harga (Rp)',
-      width: '10rem',
+      key: "harga",
+      title: "Harga (Rp)",
+      width: "10rem",
       alignRight: true,
       // Yang dicari dan diurutkan adalah teks aslinya, sedangkan yang dilihat pengguna
       // adalah bentuk berpemisah ribuan. Mengurutkan bentuk terformat akan menaruh
       // "1.000.000" sebelum "900.000".
       value: (row) => row.harga_jual,
       render: (row) => (
-        <span className="tabular-nums text-sm text-slate-900">{rupiah(row.harga_jual)}</span>
+        <span className="tabular-nums text-sm text-slate-900">
+          {rupiah(row.harga_jual)}
+        </span>
       ),
     },
     {
-      key: 'user',
-      title: 'User Update',
-      width: '10rem',
+      key: "user",
+      title: "User Update",
+      width: "10rem",
       value: (row) => row.user_update,
       render: (row) => (
-        <span className="text-sm text-slate-900">{row.user_update || '—'}</span>
+        <span className="text-sm text-slate-900">{row.user_update || "—"}</span>
       ),
     },
     {
-      key: 'tanggal',
-      title: 'Tanggal Update',
-      width: '12rem',
-      value: (row) => row.tanggal_update_harga ?? '',
+      key: "tanggal",
+      title: "Tanggal Update",
+      width: "12rem",
+      value: (row) => row.tanggal_update_harga ?? "",
       render: (row) => (
-        <span className="text-sm text-slate-900">{tanggalWIB(row.tanggal_update_harga)}</span>
+        <span className="text-sm text-slate-900">
+          {tanggalWIB(row.tanggal_update_harga)}
+        </span>
       ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya dibaca dari `pyCaption Master Sparepart HE` pada
               Harness/SparePart_HE — "HE" ikut, karena itulah yang tertulis di layar lama
               (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Sparepart HE</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Sparepart HE
+          </h1>
           <p className="text-sm text-slate-600">
-            Suku cadang alat berat beserta harga jual, dimensi, dan batas stoknya.
+            Suku cadang alat berat beserta harga jual, dimensi, dan batas
+            stoknya.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -384,7 +403,9 @@ export function SparepartPage() {
           */}
           <Button
             tone="kedua"
-            onClick={() => { bukaPanel('dokumen') }}
+            onClick={() => {
+              bukaPanel("dokumen");
+            }}
             disabled={!uploadAvailable}
           >
             Upload Document
@@ -394,20 +415,34 @@ export function SparepartPage() {
             penanda itu adalah layanan penyimpanan dokumen, sedangkan unggah CSV menulis
             langsung ke tabel sparepart dan tidak menyentuh layanan itu sama sekali.
           */}
-          <Button tone="kedua" onClick={() => { bukaPanel('csv') }}>
+          <Button
+            tone="kedua"
+            onClick={() => {
+              bukaPanel("csv");
+            }}
+          >
             Upload Data Master Sparepart
           </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
 
-      {panelUnggah === 'dokumen' && (
+      {panelUnggah === "dokumen" && (
         <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Upload Document</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Upload Document
+          </h2>
           <p className="mb-3 mt-0.5 text-xs text-slate-600">
-            Dokumen pendukung untuk <span className="font-medium">satu</span> sparepart.
+            Dokumen pendukung untuk <span className="font-medium">satu</span>{" "}
+            sparepart.
           </p>
           <DocumentField
             current={documentOf.data?.data ?? null}
@@ -418,25 +453,34 @@ export function SparepartPage() {
             onNote={setDocumentNote}
             isSaving={create.isPending || save.isPending || upload.isPending}
             error={upload.error}
-            onClose={() => { setPanelUnggah(null) }}
+            onClose={() => {
+              setPanelUnggah(null);
+            }}
           />
         </section>
       )}
 
-      {panelUnggah === 'csv' && (
+      {panelUnggah === "csv" && (
         <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Upload Data Master Sparepart</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Upload Data Master Sparepart
+          </h2>
           <p className="mb-3 mt-0.5 text-xs text-slate-600">
-            Berkas CSV berisi <span className="font-medium">banyak</span> sparepart sekaligus.
-            Barisnya dicocokkan menurut <span className="font-medium">nomor sparepart</span>, dan
-            seluruhnya masuk antrean persetujuan.
+            Berkas CSV berisi <span className="font-medium">banyak</span>{" "}
+            sparepart sekaligus. Barisnya dicocokkan menurut{" "}
+            <span className="font-medium">nomor sparepart</span>, dan seluruhnya
+            masuk antrean persetujuan.
           </p>
           <ImportCSVPanel
             isSending={importCSV.isPending}
             report={importCSV.data?.data ?? null}
             error={importCSV.error}
-            onSend={(berkas) => { importCSV.mutate(berkas) }}
-            onClose={() => { setPanelUnggah(null) }}
+            onSend={(berkas) => {
+              importCSV.mutate(berkas);
+            }}
+            onClose={() => {
+              setPanelUnggah(null);
+            }}
           />
         </section>
       )}
@@ -468,19 +512,19 @@ export function SparepartPage() {
           <button
             key={t.id}
             type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => {
-              closeForm()
-              setTab(t.id)
+              closeForm();
+              setTab(t.id);
             }}
             className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+              "rounded-t px-3 py-2 text-sm font-medium",
+              "transition-colors duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
               tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:text-slate-800",
+            ].join(" ")}
           >
             {t.label}
           </button>
@@ -491,10 +535,12 @@ export function SparepartPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
+        {active.description}{" "}
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -534,7 +580,7 @@ export function SparepartPage() {
         />
       </section>
     </main>
-  )
+  );
 }
 
 /**
@@ -545,13 +591,15 @@ export function SparepartPage() {
  * berarti petugas tidak punya cara mengetahui bahwa isinya perlu diperbaiki.
  */
 function rupiah(value: string): string {
-  const clean = value.trim()
-  if (clean === '') return '—'
+  const clean = value.trim();
+  if (clean === "") return "—";
 
-  const number = Number(clean.replace(',', '.'))
-  if (!Number.isFinite(number)) return clean
+  const number = Number(clean.replace(",", "."));
+  if (!Number.isFinite(number)) return clean;
 
-  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(number)
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(
+    number,
+  );
 }
 
 /**
@@ -561,14 +609,14 @@ function rupiah(value: string): string {
  * manual (`F-5`, `08-TECHNICAL-STRATEGY.md` §4.4).
  */
 function tanggalWIB(value: string | undefined): string {
-  if (!value) return '—'
+  if (!value) return "—";
 
-  const at = new Date(value)
-  if (Number.isNaN(at.getTime())) return value
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return value;
 
-  return new Intl.DateTimeFormat('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Jakarta',
-  }).format(at)
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(at);
 }

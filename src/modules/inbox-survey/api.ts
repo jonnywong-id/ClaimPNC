@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { HEADER_PORTAL, callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { HEADER_PORTAL, callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   DaftarResponse,
@@ -10,12 +10,12 @@ import type {
   KPIResponse,
   KeteranganResponse,
   TahunKPIResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-survey'
+const PATH = "/api/inbox-survey";
 
 /** Banyaknya baris per halaman. Backend menolak permintaan di atas 100. */
-export const PAGE_SIZE = 25
+export const PAGE_SIZE = 25;
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -31,10 +31,10 @@ export const PAGE_SIZE = 25
  */
 const keys = {
   keterangan: (portal: string | null, token: string | null) =>
-    ['inbox-survey', 'keterangan', portal, token] as const,
+    ["inbox-survey", "keterangan", portal, token] as const,
 
   jumlahTab: (portal: string | null, token: string | null) =>
-    ['inbox-survey', 'jumlah-tab', portal, token] as const,
+    ["inbox-survey", "jumlah-tab", portal, token] as const,
 
   daftar: (
     portal: string | null,
@@ -42,7 +42,7 @@ const keys = {
     tab: string,
     cari: string,
     lewati: number,
-  ) => ['inbox-survey', 'daftar', portal, token, tab, cari, lewati] as const,
+  ) => ["inbox-survey", "daftar", portal, token, tab, cari, lewati] as const,
 
   kpi: (
     portal: string | null,
@@ -51,11 +51,21 @@ const keys = {
     tipe: string,
     kuartal: string,
     tahun: string,
-  ) => ['inbox-survey', 'kpi', portal, token, status, tipe, kuartal, tahun] as const,
+  ) =>
+    [
+      "inbox-survey",
+      "kpi",
+      portal,
+      token,
+      status,
+      tipe,
+      kuartal,
+      tahun,
+    ] as const,
 
   tahunKPI: (portal: string | null, token: string | null) =>
-    ['inbox-survey', 'kpi-tahun', portal, token] as const,
-}
+    ["inbox-survey", "kpi-tahun", portal, token] as const,
+};
 
 /**
  * Hook keterangan layar — judul kolom, judul tab, selisih terencana, dan keterbatasan.
@@ -72,12 +82,13 @@ const keys = {
  * menunggu DBA.
  */
 export function useKeteranganSurvei() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.keterangan(portal, token),
-    queryFn: () => callAPI<KeteranganResponse>(`${PATH}/keterangan`, { token, portal }),
+    queryFn: () =>
+      callAPI<KeteranganResponse>(`${PATH}/keterangan`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
@@ -85,7 +96,7 @@ export function useKeteranganSurvei() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -102,15 +113,16 @@ export function useKeteranganSurvei() {
  * membuat angka tab berkedip setiap huruf yang diketik.
  */
 export function useJumlahTabSurvei() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.jumlahTab(portal, token),
-    queryFn: () => callAPI<JumlahTabResponse>(`${PATH}/jumlah-tab`, { token, portal }),
+    queryFn: () =>
+      callAPI<JumlahTabResponse>(`${PATH}/jumlah-tab`, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 0,
-  })
+  });
 }
 
 /**
@@ -132,22 +144,26 @@ export function useJumlahTabSurvei() {
  * identitas yang dikirim layar adalah identitas yang dapat diganti layar.
  */
 export function useDaftarSurvei(tab: string, cari: string, lewati: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  if (cari.trim()) params.set('cari', cari.trim())
-  if (lewati > 0) params.set('lewati', String(lewati))
-  params.set('batas', String(PAGE_SIZE))
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (cari.trim()) params.set("cari", cari.trim());
+  if (lewati > 0) params.set("lewati", String(lewati));
+  params.set("batas", String(PAGE_SIZE));
 
   return useQuery({
     queryKey: keys.daftar(portal, token, tab, cari.trim(), lewati),
-    queryFn: () => callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, { token, portal }),
+    queryFn: () =>
+      callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, {
+        token,
+        portal,
+      }),
 
     // Tidak ditembak sebelum tab diketahui. Tab bawaan datang dari keterangan layar, dan
     // menembak tanpanya berarti satu permintaan yang hasilnya langsung dibuang.
-    enabled: token !== null && portal !== null && tab !== '',
+    enabled: token !== null && portal !== null && tab !== "",
 
     // Antrean berubah setiap kali sebuah janji survei diselesaikan — termasuk oleh Pega,
     // yang masih memiliki penugasannya selama masa paralel. Data dianggap usang seketika,
@@ -157,7 +173,7 @@ export function useDaftarSurvei(tab: string, cari: string, lewati: number) {
     // Halaman sebelumnya dipertahankan selama halaman berikutnya diambil, supaya tabel tidak
     // berkedip menjadi kosong lalu terisi lagi setiap kali nomor halaman atau tab berpindah.
     placeholderData: (previous) => previous,
-  })
+  });
 }
 
 /**
@@ -179,17 +195,27 @@ export function useDaftarSurvei(tab: string, cari: string, lewati: number) {
  * pernah dilihat siapa pun — tetapi tetap tercatat di log.
  */
 export function useKPISurvei(f: IsianKPI, aktif: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keys.kpi(portal, token, f.status, f.tipe, f.kuartal, f.tahun.trim()),
+    queryKey: keys.kpi(
+      portal,
+      token,
+      f.status,
+      f.tipe,
+      f.kuartal,
+      f.tahun.trim(),
+    ),
     queryFn: () =>
-      callAPI<KPIResponse>(`${PATH}/kpi?${paramKPI(f).toString()}`, { token, portal }),
+      callAPI<KPIResponse>(`${PATH}/kpi?${paramKPI(f).toString()}`, {
+        token,
+        portal,
+      }),
     enabled: aktif && token !== null && portal !== null,
     staleTime: 0,
     placeholderData: (previous) => previous,
-  })
+  });
 }
 
 /**
@@ -205,24 +231,25 @@ export function useKPISurvei(f: IsianKPI, aktif: boolean) {
  * dropdown, melainkan kotak teks yang menyamar.
  */
 export function useTahunKPI(aktif: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.tahunKPI(portal, token),
-    queryFn: () => callAPI<TahunKPIResponse>(`${PATH}/kpi/tahun`, { token, portal }),
+    queryFn: () =>
+      callAPI<TahunKPIResponse>(`${PATH}/kpi/tahun`, { token, portal }),
     enabled: aktif && token !== null && portal !== null,
     staleTime: Infinity,
-  })
+  });
 }
 
 /** IsianKPI adalah keempat kendali panel KPI, sama dengan layar lama. */
 export type IsianKPI = {
-  status: string
-  tipe: string
-  kuartal: string
-  tahun: string
-}
+  status: string;
+  tipe: string;
+  kuartal: string;
+  tahun: string;
+};
 
 /**
  * paramKPI menyusun parameter kueri dari isian.
@@ -236,12 +263,12 @@ export type IsianKPI = {
  * jawaban yang benar, dan yang berbeda dari "dipilih, tetapi kosong".
  */
 export function paramKPI(f: IsianKPI): URLSearchParams {
-  const params = new URLSearchParams()
-  if (f.status) params.set('status_survei', f.status)
-  if (f.tipe) params.set('tipe_report', f.tipe)
-  if (f.kuartal) params.set('kuartal', f.kuartal)
-  if (f.tahun.trim()) params.set('tahun', f.tahun.trim())
-  return params
+  const params = new URLSearchParams();
+  if (f.status) params.set("status_survei", f.status);
+  if (f.tipe) params.set("tipe_report", f.tipe);
+  if (f.kuartal) params.set("kuartal", f.kuartal);
+  if (f.tahun.trim()) params.set("tahun", f.tahun.trim());
+  return params;
 }
 
 /**
@@ -261,35 +288,43 @@ export function paramKPI(f: IsianKPI): URLSearchParams {
  * dicocokkan dengan apa pun.
  */
 export function useEksporKPI() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (f: IsianKPI) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const response = await fetch(`${PATH}/kpi/ekspor?${paramKPI(f).toString()}`, {
-        headers: header,
-      })
+      const response = await fetch(
+        `${PATH}/kpi/ekspor?${paramKPI(f).toString()}`,
+        {
+          headers: header,
+        },
+      );
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama satu byte pun badan belum terkirim; sesudah itu
         // tidak bisa lagi. Yang dibaca di sini kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      simpanBerkas(await response.blob(), namaBerkas(response) ?? 'kpi-adjuster.csv')
+      simpanBerkas(
+        await response.blob(),
+        namaBerkas(response) ?? "kpi-adjuster.csv",
+      );
     },
-  })
+  });
 }
 
 /** Nama berkas dari header `Content-Disposition`, bila ada. */
 function namaBerkas(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  return /filename="([^"]+)"/.exec(disposition)?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  return /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
 }
 
 /**
@@ -300,12 +335,12 @@ function namaBerkas(response: Response): string | null {
  * yang tidak pernah dilepas.
  */
 function simpanBerkas(blob: Blob, nama: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = nama
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nama;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

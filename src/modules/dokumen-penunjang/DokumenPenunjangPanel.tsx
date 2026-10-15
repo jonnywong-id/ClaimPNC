@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react'
+import { useRef, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useDokumenPenunjang, useUnggahDokumen } from './api'
-import { FITUR_DOKUMEN_PENUNJANG_AKTIF } from './fitur'
-import type { DokumenPenunjang } from './types'
+import { useDokumenPenunjang, useUnggahDokumen } from "./api";
+import { FITUR_DOKUMEN_PENUNJANG_AKTIF } from "./fitur";
+import type { DokumenPenunjang } from "./types";
 
 /**
  * Panel "Unggah File Penunjang", dipakai KEDUA layar Open Protection.
@@ -33,7 +33,7 @@ export function DokumenPenunjangPanel({
   readOnly = false,
 }: {
   /** Kosong berarti klaim belum dipilih — panel menjelaskan itu alih-alih tampil kosong. */
-  nomorKlaim: string | null
+  nomorKlaim: string | null;
 
   /**
    * Menyembunyikan tombol unggah, daftarnya tetap terbaca.
@@ -42,56 +42,63 @@ export function DokumenPenunjangPanel({
    * untuk ditinjau, tetapi menambah berkas baru pada permintaan yang sudah selesai tidak
    * lagi bermakna.
    */
-  readOnly?: boolean
+  readOnly?: boolean;
 }) {
-  const nomor = nomorKlaim?.trim() ?? ''
+  const nomor = nomorKlaim?.trim() ?? "";
 
   // Kedua hook tetap dipanggil meski fiturnya mati — aturan hook melarang pemanggilan
   // bersyarat. Yang dimatikan adalah PERMINTAANNYA: nomor `null` membuat `enabled` bernilai
   // salah, sehingga tidak ada satu pun tembakan ke server.
-  const nomorAktif = FITUR_DOKUMEN_PENUNJANG_AKTIF && nomor !== '' ? nomor : null
-  const daftar = useDokumenPenunjang(nomorAktif)
-  const unggah = useUnggahDokumen(nomorAktif)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [pesanGagal, setPesanGagal] = useState<string | null>(null)
-  const [nadaGagal, setNadaGagal] = useState<'penolakan' | 'gangguan'>('penolakan')
+  const nomorAktif =
+    FITUR_DOKUMEN_PENUNJANG_AKTIF && nomor !== "" ? nomor : null;
+  const daftar = useDokumenPenunjang(nomorAktif);
+  const unggah = useUnggahDokumen(nomorAktif);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [pesanGagal, setPesanGagal] = useState<string | null>(null);
+  const [nadaGagal, setNadaGagal] = useState<"penolakan" | "gangguan">(
+    "penolakan",
+  );
 
   // `?? []` bukan kehati-hatian berlebih. Badan respons datang dari jaringan, dan `as T`
   // pada `callAPI` TIDAK memeriksa apa pun saat berjalan — catatan yang sudah tertulis di
   // `src/api/client.ts`. Respons yang kehilangan `data` karena itu akan membuat layar ini
   // galat total, bukan menampilkan daftar kosong.
-  const isi = daftar.data?.data ?? []
+  const isi = daftar.data?.data ?? [];
 
   async function pilihBerkas(berkas: File | null) {
-    if (!berkas || nomor === '') return
-    setPesanGagal(null)
+    if (!berkas || nomor === "") return;
+    setPesanGagal(null);
 
     try {
-      await unggah.mutateAsync({ nomorKlaim: nomor, berkas })
+      await unggah.mutateAsync({ nomorKlaim: nomor, berkas });
     } catch (error) {
       if (error instanceof APIError) {
         // Nada dipilih dari KODE, bukan dari status: "tersimpan_sebagian" berstatus 500
         // tetapi bukan gangguan yang boleh diulang — pesannya justru melarang mengulang.
         setNadaGagal(
-          error.kode === 'layanan_penyimpanan_gagal' ? 'gangguan' : 'penolakan',
-        )
-        setPesanGagal(error.message)
+          error.kode === "layanan_penyimpanan_gagal" ? "gangguan" : "penolakan",
+        );
+        setPesanGagal(error.message);
       } else {
-        setNadaGagal('gangguan')
-        setPesanGagal('Berkas gagal diunggah. Periksa sambungan lalu coba lagi.')
+        setNadaGagal("gangguan");
+        setPesanGagal(
+          "Berkas gagal diunggah. Periksa sambungan lalu coba lagi.",
+        );
       }
     } finally {
       // Nilai input DIKOSONGKAN, berhasil maupun gagal. Tanpa ini, memilih berkas yang
       // SAMA dua kali berturut-turut tidak memicu `change` sama sekali — dan pengguna
       // melihat tombolnya seperti tidak bekerja.
-      if (inputRef.current) inputRef.current.value = ''
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
     <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-800">Unggah File Penunjang</h3>
+        <h3 className="text-sm font-semibold text-slate-800">
+          Unggah File Penunjang
+        </h3>
 
         {!FITUR_DOKUMEN_PENUNJANG_AKTIF && (
           // Tombolnya TAMPIL tetapi mati, bukan disembunyikan.
@@ -103,12 +110,16 @@ export function DokumenPenunjangPanel({
           // `disabled` — bukan tombol hidup yang tidak melakukan apa-apa. Tombol yang
           // ditekan tanpa akibat terbaca sebagai rusak, dan pengguna akan menekannya
           // berkali-kali sebelum melaporkannya.
-          <Button tone="kedua" disabled title="Layanan penyimpanan dokumen belum tersedia">
+          <Button
+            tone="kedua"
+            disabled
+            title="Layanan penyimpanan dokumen belum tersedia"
+          >
             Pilih berkas
           </Button>
         )}
 
-        {FITUR_DOKUMEN_PENUNJANG_AKTIF && !readOnly && nomor !== '' && (
+        {FITUR_DOKUMEN_PENUNJANG_AKTIF && !readOnly && nomor !== "" && (
           <>
             <input
               ref={inputRef}
@@ -119,7 +130,9 @@ export function DokumenPenunjangPanel({
               // menjadi labelnya. Tanpa nama sama sekali, pembaca layar mengumumkannya
               // hanya sebagai "file upload".
               aria-label="Pilih berkas untuk diunggah"
-              onChange={(e) => { pilihBerkas(e.target.files?.[0] ?? null) }}
+              onChange={(e) => {
+                pilihBerkas(e.target.files?.[0] ?? null);
+              }}
               disabled={unggah.isPending}
             />
             <Button
@@ -127,7 +140,7 @@ export function DokumenPenunjangPanel({
               onClick={() => inputRef.current?.click()}
               disabled={unggah.isPending}
             >
-              {unggah.isPending ? 'Mengunggah…' : 'Pilih berkas'}
+              {unggah.isPending ? "Mengunggah…" : "Pilih berkas"}
             </Button>
           </>
         )}
@@ -135,13 +148,13 @@ export function DokumenPenunjangPanel({
 
       {!FITUR_DOKUMEN_PENUNJANG_AKTIF ? (
         <p className="mt-3 text-sm text-slate-600">
-          Layanan penyimpanan dokumen belum tersedia, sehingga berkas belum dapat diunggah
-          maupun ditampilkan di sini.
+          Layanan penyimpanan dokumen belum tersedia, sehingga berkas belum
+          dapat diunggah maupun ditampilkan di sini.
         </p>
-      ) : nomor === '' ? (
+      ) : nomor === "" ? (
         <p className="mt-3 text-sm text-slate-600">
-          Pilih No Klaim lebih dulu. Dokumen penunjang menempel pada klaim, bukan pada
-          permintaan proteksinya.
+          Pilih No Klaim lebih dulu. Dokumen penunjang menempel pada klaim,
+          bukan pada permintaan proteksinya.
         </p>
       ) : (
         <>
@@ -156,7 +169,9 @@ export function DokumenPenunjangPanel({
           )}
 
           {daftar.isPending && (
-            <p className="mt-3 text-sm text-slate-500">Memuat daftar dokumen…</p>
+            <p className="mt-3 text-sm text-slate-500">
+              Memuat daftar dokumen…
+            </p>
           )}
 
           {daftar.isError && (
@@ -185,14 +200,14 @@ export function DokumenPenunjangPanel({
         </>
       )}
     </section>
-  )
+  );
 }
 
 function BarisDokumen({ dokumen }: { dokumen: DokumenPenunjang }) {
   // Tautan hanya dipasang bila ada alamatnya DAN belum kedaluwarsa. Tautan mati yang
   // tetap dapat diklik membuat pengguna mengira berkasnya hilang; teks tanpa tautan
   // beserta sebabnya jauh lebih terbaca.
-  const dapatDibuka = dokumen.url !== '' && !dokumen.kedaluwarsa
+  const dapatDibuka = dokumen.url !== "" && !dokumen.kedaluwarsa;
 
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
@@ -219,12 +234,16 @@ function BarisDokumen({ dokumen }: { dokumen: DokumenPenunjang }) {
         {dokumen.kedaluwarsa && (
           // Ditandai teks, bukan warna saja: pembeda yang hanya warna tidak terbaca
           // pengguna buta warna, dan yang dibedakan di sini adalah dapat-tidaknya dibuka.
-          <span className="ml-2 font-medium text-amber-700">· tautan kedaluwarsa</span>
+          <span className="ml-2 font-medium text-amber-700">
+            · tautan kedaluwarsa
+          </span>
         )}
-        {!dokumen.kedaluwarsa && dokumen.url === '' && (
-          <span className="ml-2 font-medium text-slate-600">· tautan belum siap</span>
+        {!dokumen.kedaluwarsa && dokumen.url === "" && (
+          <span className="ml-2 font-medium text-slate-600">
+            · tautan belum siap
+          </span>
         )}
       </span>
     </li>
-  )
+  );
 }

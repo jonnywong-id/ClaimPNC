@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   MaskingBulkInput,
   MaskingBulkResponse,
@@ -9,11 +9,11 @@ import type {
   MaskingListResponse,
   MaskingOperatorListResponse,
   MaskingResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/masking'
+const ROUTE = "/api/master/masking";
 
 /**
  * Tipe pencarian yang dikenal server. Nilainya sama persis dengan mastermasking.SearchBy.
@@ -25,13 +25,13 @@ const ROUTE = '/api/master/masking'
  *	'login'   Type "3"  nama pengguna, cocok sebagian
  *	'status'  Type "4"  status aktif, cocok PERSIS
  */
-export type SearchBy = '' | 'cabang' | 'login' | 'status'
+export type SearchBy = "" | "cabang" | "login" | "status";
 
 /** Dua nilai sah status, sama persis dengan kolom STS_AKTF. */
 export const MaskingStatus = {
-  aktif: 'AKTIF',
-  tidakAktif: 'TIDAK AKTIF',
-} as const
+  aktif: "AKTIF",
+  tidakAktif: "TIDAK AKTIF",
+} as const;
 
 /**
  * Pilihan MODUL beserta label yang dibaca pengguna.
@@ -48,7 +48,9 @@ export const MaskingStatus = {
  * Bila Tim Pega kelak mengirim rule-nya dan daftarnya lebih panjang, YANG BERUBAH HANYA
  * berkas ini.
  */
-export const MASKING_MODULES = [{ nilai: 'PNCSearchKlaim', label: 'VIEW HISTORY KLAIM' }] as const
+export const MASKING_MODULES = [
+  { nilai: "PNCSearchKlaim", label: "VIEW HISTORY KLAIM" },
+] as const;
 
 /**
  * Pilihan SUB MODUL beserta labelnya.
@@ -61,14 +63,14 @@ export const MASKING_MODULES = [{ nilai: 'PNCSearchKlaim', label: 'VIEW HISTORY 
  * bahkan menyimpan "Penerima" tanpa `-an`. Pencocokannya karena itu menerima kedua bentuk.
  */
 export const MASKING_SUB_MODULES = [
-  { nilai: 'Penerimaan Pembayaran Klaim', label: 'PENERIMA PEMBAYARAN KLAIM' },
-  { nilai: 'Registrasi', label: 'REGISTRASI' },
-  { nilai: 'Dokumen', label: 'DOKUMEN' },
-] as const
+  { nilai: "Penerimaan Pembayaran Klaim", label: "PENERIMA PEMBAYARAN KLAIM" },
+  { nilai: "Registrasi", label: "REGISTRASI" },
+  { nilai: "Dokumen", label: "DOKUMEN" },
+] as const;
 
 /** Membandingkan nilai sub modul tanpa peduli besar-kecil huruf, spasi tepi, dan `-an`. */
 function subModuleKey(value: string) {
-  return value.trim().toUpperCase().replace('PENERIMAAN', 'PENERIMA')
+  return value.trim().toUpperCase().replace("PENERIMAAN", "PENERIMA");
 }
 
 /**
@@ -79,21 +81,21 @@ function subModuleKey(value: string) {
  */
 export function splitSubModules(value: string): string[] {
   return value
-    .split(',')
+    .split(",")
     .map((item) => item.trim())
-    .filter((item) => item !== '')
+    .filter((item) => item !== "");
 }
 
 /** Satu baris kotak centang pada dialog VIEW maupun pada form. */
 export type ChecklistItem = {
   /** Nilai yang tersimpan di kolom. */
-  nilai: string
+  nilai: string;
   /** Teks yang dibaca pengguna. */
-  label: string
-  checked: boolean
+  label: string;
+  checked: boolean;
   /** False bila nilainya tidak ada di daftar pilihan. */
-  dikenal: boolean
-}
+  dikenal: boolean;
+};
 
 /**
  * Menyusun daftar centang SUB MODUL.
@@ -105,40 +107,55 @@ export type ChecklistItem = {
  * nilainya tanpa ada yang meminta.
  */
 export function subModuleChecklist(value: string): ChecklistItem[] {
-  const stored = splitSubModules(value)
-  const storedKey = new Set(stored.map(subModuleKey))
+  const stored = splitSubModules(value);
+  const storedKey = new Set(stored.map(subModuleKey));
 
   const known: ChecklistItem[] = MASKING_SUB_MODULES.map((option) => ({
     nilai: option.nilai,
     label: option.label,
     checked: storedKey.has(subModuleKey(option.nilai)),
     dikenal: true,
-  }))
+  }));
 
-  const knownKey = new Set(MASKING_SUB_MODULES.map((o) => subModuleKey(o.nilai)))
+  const knownKey = new Set(
+    MASKING_SUB_MODULES.map((o) => subModuleKey(o.nilai)),
+  );
   const extra: ChecklistItem[] = stored
     .filter((item) => !knownKey.has(subModuleKey(item)))
-    .map((item) => ({ nilai: item, label: item, checked: true, dikenal: false }))
+    .map((item) => ({
+      nilai: item,
+      label: item,
+      checked: true,
+      dikenal: false,
+    }));
 
-  return [...known, ...extra]
+  return [...known, ...extra];
 }
 
 /** Menyusun daftar centang MODUL dengan aturan yang sama. */
 export function moduleChecklist(value: string): ChecklistItem[] {
-  const clean = value.trim().toUpperCase()
+  const clean = value.trim().toUpperCase();
 
   const known: ChecklistItem[] = MASKING_MODULES.map((option) => ({
     nilai: option.nilai,
     label: option.label,
     checked: option.nilai.toUpperCase() === clean,
     dikenal: true,
-  }))
+  }));
 
-  const matched = MASKING_MODULES.some((o) => o.nilai.toUpperCase() === clean)
-  if (!matched && clean !== '') {
-    return [...known, { nilai: value.trim(), label: value.trim(), checked: true, dikenal: false }]
+  const matched = MASKING_MODULES.some((o) => o.nilai.toUpperCase() === clean);
+  if (!matched && clean !== "") {
+    return [
+      ...known,
+      {
+        nilai: value.trim(),
+        label: value.trim(),
+        checked: true,
+        dikenal: false,
+      },
+    ];
   }
-  return known
+  return known;
 }
 
 /**
@@ -148,7 +165,7 @@ export function moduleChecklist(value: string): ChecklistItem[] {
  * (`PNCSearchKlaim`), bukan daftar berkoma.
  */
 export function joinModules(nilai: string[]): string {
-  return nilai.join(',')
+  return nilai.join(",");
 }
 
 /**
@@ -163,8 +180,8 @@ export function joinModules(nilai: string[]): string {
  * berisi kewenangan yang sama tersimpan dengan teks yang sama pula.
  */
 export function joinSubModules(nilai: string[]): string {
-  if (nilai.length === 0) return ''
-  return nilai.join(',') + ','
+  if (nilai.length === 0) return "";
+  return nilai.join(",") + ",";
 }
 
 /** Menyalakan atau memadamkan satu pilihan, lalu menyusun ulang nilai kolomnya. */
@@ -179,13 +196,13 @@ export function toggleChecklist(
       .map((row) => (row.nilai === nilai ? { ...row, checked } : row))
       .filter((row) => row.checked)
       .map((row) => row.nilai),
-  )
+  );
 }
 
 export type MaskingFilter = {
-  cariDi: SearchBy
-  kataKunci: string
-}
+  cariDi: SearchBy;
+  kataKunci: string;
+};
 
 /**
  * listKey menyertakan portal, token, DAN penyaring.
@@ -202,22 +219,32 @@ export type MaskingFilter = {
  *
  * Penyaring ikut supaya hasil pencarian tidak saling menimpa di cache.
  */
-function listKey(portal: string | null, token: string | null, filter: MaskingFilter) {
-  return ['master-masking', portal, token, filter.cariDi, filter.kataKunci] as const
+function listKey(
+  portal: string | null,
+  token: string | null,
+  filter: MaskingFilter,
+) {
+  return [
+    "master-masking",
+    portal,
+    token,
+    filter.cariDi,
+    filter.kataKunci,
+  ] as const;
 }
 
 function listPath(filter: MaskingFilter) {
-  const query = new URLSearchParams()
+  const query = new URLSearchParams();
   // Tipe hanya dikirim bila nilainya ada. Mengirim tipe tanpa nilai akan menyaring dengan
   // pola kosong — yang cocok dengan segalanya untuk cabang dan login, dan DITOLAK server
   // untuk status. Keduanya bukan yang dimaksud pengguna yang belum mengisi apa pun.
-  if (filter.cariDi !== '' && filter.kataKunci.trim() !== '') {
-    query.set('cari_di', filter.cariDi)
-    query.set('kata_kunci', filter.kataKunci.trim())
+  if (filter.cariDi !== "" && filter.kataKunci.trim() !== "") {
+    query.set("cari_di", filter.cariDi);
+    query.set("kata_kunci", filter.kataKunci.trim());
   }
 
-  const text = query.toString()
-  return text === '' ? ROUTE : `${ROUTE}?${text}`
+  const text = query.toString();
+  return text === "" ? ROUTE : `${ROUTE}?${text}`;
 }
 
 /**
@@ -236,18 +263,19 @@ function listPath(filter: MaskingFilter) {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useMaskingList(filter: MaskingFilter) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, filter),
-    queryFn: () => callAPI<MaskingListResponse>(listPath(filter), { token, portal }),
+    queryFn: () =>
+      callAPI<MaskingListResponse>(listPath(filter), { token, portal }),
     enabled: token !== null && portal !== null,
     // Lebih pendek daripada master lain yang lima menit, dan itu disengaja: isi layar ini
     // adalah kewenangan yang aktif. Petugas yang baru saja mencabut hak seseorang harus
     // melihat keadaan terbaru, bukan daftar yang tertinggal beberapa menit.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -257,22 +285,24 @@ export function useMaskingList(filter: MaskingFilter) {
  * dimuat seluruhnya. Ini yang menggantikan autocomplete cabang pada layar lama.
  */
 export function useBranchOptions(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
-    queryKey: ['master-masking-cabang', portal, token, clean],
+    queryKey: ["master-masking-cabang", portal, token, clean],
     queryFn: () =>
       callAPI<MaskingBranchListResponse>(
-        clean === '' ? `${ROUTE}/cabang` : `${ROUTE}/cabang?kata_kunci=${encodeURIComponent(clean)}`,
+        clean === ""
+          ? `${ROUTE}/cabang`
+          : `${ROUTE}/cabang?kata_kunci=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null,
     // Daftar cabang nyaris tidak pernah berubah; ia data acuan milik sistem lain yang
     // hanya dibaca di sini.
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -282,22 +312,22 @@ export function useBranchOptions(keyword: string) {
  * daftar petugas tanpa cabang tidak punya arti, dan server pun menolaknya.
  */
 export function useOperators(branchID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = branchID.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = branchID.trim();
 
   return useQuery({
-    queryKey: ['master-masking-pengguna', portal, token, clean],
+    queryKey: ["master-masking-pengguna", portal, token, clean],
     queryFn: () =>
       callAPI<MaskingOperatorListResponse>(
         `${ROUTE}/pengguna?cabang=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
-    enabled: token !== null && portal !== null && clean !== '',
+    enabled: token !== null && portal !== null && clean !== "",
     // Daftar petugas berubah saat seseorang pindah cabang atau berganti jabatan — jarang,
     // tetapi tidak sejarang daftar cabang.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -310,23 +340,28 @@ export function useOperators(branchID: string) {
  * Jawabannya melaporkan hasil PER BARIS, bukan satu kata berhasil/gagal.
  */
 export function useSaveMaskingBulk() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: MaskingBulkInput) =>
-      callAPI<MaskingBulkResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<MaskingBulkResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['master-masking'] })
+      void client.invalidateQueries({ queryKey: ["master-masking"] });
     },
-  })
+  });
 }
 
 type SaveFields = MaskingInput & {
   /** Wajib: hook ini hanya melayani PENGUBAHAN. Penambahan memakai useSaveMaskingBulk. */
-  id: string
-}
+  id: string;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -341,14 +376,14 @@ type SaveFields = MaskingInput & {
  * Pada penambahan nilainya diabaikan server: baris baru selalu aktif.
  */
 export function useSaveMasking() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, ...input }: SaveFields) =>
       callAPI<MaskingResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
@@ -357,9 +392,9 @@ export function useSaveMasking() {
       // Seluruh daftar dimuat ulang dari server, bukan disunting di cache. Pada
       // penambahan, ID barunya hanya diketahui server; dan karena penyaring ikut di dalam
       // kunci, baris baru bisa saja tidak cocok dengan penyaring yang sedang aktif.
-      client.invalidateQueries({ queryKey: ['master-masking'] })
+      client.invalidateQueries({ queryKey: ["master-masking"] });
     },
-  })
+  });
 }
 
 /**
@@ -369,20 +404,20 @@ export function useSaveMasking() {
  * mengubah STS_AKTF (`RDB List/DeleteMstProteksi_SQL-SQL.xml`).
  */
 export function useSetMaskingStatus() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, aktif }: { id: string; aktif: boolean }) =>
       callAPI<MaskingResponse>(`${ROUTE}/${encodeURIComponent(id)}/status`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: { aktif },
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-masking'] })
+      client.invalidateQueries({ queryKey: ["master-masking"] });
     },
-  })
+  });
 }

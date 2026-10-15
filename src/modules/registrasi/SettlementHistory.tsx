@@ -1,11 +1,21 @@
-import { formatDateTimeWIB } from '@/components/format'
+import { formatDateTimeWIB } from "@/components/format";
 
-import { useSettlementHistory } from './api'
+import { useSettlementHistory } from "./api";
 
 /** Label kolom Status grid komite — kode STATUSAPPROVE T_CLAIM_KOMITE_LIST. */
-const COMMITTEE_DECISION: Record<string, string> = { '0': 'Menunggu', '1': 'Setuju', '2': 'Tolak' }
+const COMMITTEE_DECISION: Record<string, string> = {
+  "0": "Menunggu",
+  "1": "Setuju",
+  "2": "Tolak",
+};
 
-type Props = { claimID: string; object: number; coverage: number; adjustment: number; alwaysCommittee?: boolean }
+type Props = {
+  claimID: string;
+  object: number;
+  coverage: number;
+  adjustment: number;
+  alwaysCommittee?: boolean;
+};
 
 /**
  * SettlementHistory menggambar dua grid di bawah rincian satu baris Adjustment, mengikuti
@@ -19,21 +29,37 @@ type Props = { claimID: string; object: number; coverage: number; adjustment: nu
  *
  * Grid yang tidak berisi tidak digambar, sama seperti kondisi tampil XML. Keduanya baca saja.
  */
-export function SettlementHistory({ claimID, object, coverage, adjustment, alwaysCommittee = false }: Props) {
-  const history = useSettlementHistory(claimID, object, coverage, adjustment)
+export function SettlementHistory({
+  claimID,
+  object,
+  coverage,
+  adjustment,
+  alwaysCommittee = false,
+}: Props) {
+  const history = useSettlementHistory(claimID, object, coverage, adjustment);
   if (history.isError) {
-    return <p className="mt-4 text-xs text-amber-700">Riwayat komite dan transfer kasir tidak dapat dimuat.</p>
+    return (
+      <p className="mt-4 text-xs text-amber-700">
+        Riwayat komite dan transfer kasir tidak dapat dimuat.
+      </p>
+    );
   }
-  const committee = history.data?.komite ?? []
-  const cashier = history.data?.kasir ?? []
-  if (committee.length === 0 && cashier.length === 0 && !alwaysCommittee) return null
+  const committee = history.data?.komite ?? [];
+  const cashier = history.data?.kasir ?? [];
+  if (committee.length === 0 && cashier.length === 0 && !alwaysCommittee)
+    return null;
 
   return (
     <div className="mt-5 space-y-5">
       {(committee.length > 0 || alwaysCommittee) && (
         <HistoryTable
           title="Status Penerimaan Komite"
-          headers={['Nama Komite', 'Status', 'Tanggal Approve/Reject', 'Komentar']}
+          headers={[
+            "Nama Komite",
+            "Status",
+            "Tanggal Approve/Reject",
+            "Komentar",
+          ]}
           rows={committee.map((m) => [
             m.nama_komite,
             COMMITTEE_DECISION[m.status] ?? m.status,
@@ -45,15 +71,33 @@ export function SettlementHistory({ claimID, object, coverage, adjustment, alway
       {cashier.length > 0 && (
         <HistoryTable
           title="Histori Transfer Kasir"
-          headers={['PIC Teknik', 'Tanggal Transfer/Reject', 'Status Kasir', 'Komentar']}
-          rows={cashier.map((c) => [c.pic_teknik, formatDateTimeWIB(c.tanggal), c.status_kasir, c.komentar])}
+          headers={[
+            "PIC Teknik",
+            "Tanggal Transfer/Reject",
+            "Status Kasir",
+            "Komentar",
+          ]}
+          rows={cashier.map((c) => [
+            c.pic_teknik,
+            formatDateTimeWIB(c.tanggal),
+            c.status_kasir,
+            c.komentar,
+          ])}
         />
       )}
     </div>
-  )
+  );
 }
 
-function HistoryTable({ title, headers, rows }: { title: string; headers: string[]; rows: string[][] }) {
+function HistoryTable({
+  title,
+  headers,
+  rows,
+}: {
+  title: string;
+  headers: string[];
+  rows: string[][];
+}) {
   return (
     <section>
       <h4 className="mb-2 text-sm font-semibold text-slate-800">{title}</h4>
@@ -71,7 +115,10 @@ function HistoryTable({ title, headers, rows }: { title: string; headers: string
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={headers.length} className="border border-slate-200 p-2 text-slate-500">
+              <td
+                colSpan={headers.length}
+                className="border border-slate-200 p-2 text-slate-500"
+              >
                 Data Tidak Ada
               </td>
             </tr>
@@ -80,7 +127,7 @@ function HistoryTable({ title, headers, rows }: { title: string; headers: string
             <tr key={i}>
               {row.map((cell, j) => (
                 <td key={j} className="border border-slate-200 p-2">
-                  {cell?.trim() || '—'}
+                  {cell?.trim() || "—"}
                 </td>
               ))}
             </tr>
@@ -88,10 +135,23 @@ function HistoryTable({ title, headers, rows }: { title: string; headers: string
         </tbody>
       </table>
     </section>
-  )
+  );
 }
 
 /** Tabel Status Penerimaan Komite yang masih kosong — baris adjustment yang belum tersimpan. */
 export function EmptyCommitteeTable() {
-  return <div className="mt-5"><HistoryTable title="Status Penerimaan Komite" headers={['Nama Komite', 'Status', 'Tanggal Approve/Reject', 'Komentar']} rows={[]} /></div>
+  return (
+    <div className="mt-5">
+      <HistoryTable
+        title="Status Penerimaan Komite"
+        headers={[
+          "Nama Komite",
+          "Status",
+          "Tanggal Approve/Reject",
+          "Komentar",
+        ]}
+        rows={[]}
+      />
+    </div>
+  );
 }

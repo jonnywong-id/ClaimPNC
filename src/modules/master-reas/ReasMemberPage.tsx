@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ReasMember } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type ReasMember } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useReasMemberList, useSaveReasMemberEmail } from './api'
+import { useReasMemberList, useSaveReasMemberEmail } from "./api";
 
 /**
  * Ukuran halaman.
@@ -21,51 +21,52 @@ import { useReasMemberList, useSaveReasMemberEmail } from './api'
  * — memperkenalkan angka ketiga tanpa dasar hanya akan membuat satu layar terasa berbeda
  * tanpa alasan yang dapat dijelaskan.
  */
-const PAGE_SIZE = 10
+const PAGE_SIZE = 10;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan, lalu muat ulang halaman ini.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian ' +
-            'atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian " +
+            "atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar member reas tidak dapat dimuat',
+          title: "Daftar member reas tidak dapat dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+    title: "Terjadi kesalahan pada sistem",
+    description:
+      "Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -77,16 +78,16 @@ function loadMessage(error: unknown): MessageContent {
  */
 function saveMessage(error: unknown): string {
   if (error instanceof NetworkError) {
-    return 'Server Claim PNC tidak dapat dihubungi. Periksa koneksi jaringan, lalu coba lagi.'
+    return "Server Claim PNC tidak dapat dihubungi. Periksa koneksi jaringan, lalu coba lagi.";
   }
   if (error instanceof APIError) {
     // 422 membawa keterangan per isian dari server; yang pertama sudah cukup karena form
     // ini hanya punya satu isian.
-    const detail = error.detail?.[0]?.pesan
-    if (detail !== undefined && detail !== '') return detail
-    return error.message
+    const detail = error.detail?.[0]?.pesan;
+    if (detail !== undefined && detail !== "") return detail;
+    return error.message;
   }
-  return 'Terjadi kesalahan pada sistem. Coba lagi; bila berulang, hubungi administrator.'
+  return "Terjadi kesalahan pada sistem. Coba lagi; bila berulang, hubungi administrator.";
 }
 
 /**
@@ -148,32 +149,32 @@ function saveMessage(error: unknown): string {
  * selesai. Catatan resminya hidup di doc comment paket `masterreas` dan di `docs/`.
  */
 export function ReasMemberPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const list = useReasMemberList()
-  const rows = list.data?.member_reas ?? []
+  const list = useReasMemberList();
+  const rows = list.data?.member_reas ?? [];
 
   // Baris yang sedang disunting lewat tombol Ubah. null berarti formnya tertutup.
-  const [editing, setEditing] = useState<ReasMember | null>(null)
-  const [email, setEmail] = useState('')
+  const [editing, setEditing] = useState<ReasMember | null>(null);
+  const [email, setEmail] = useState("");
 
-  const save = useSaveReasMemberEmail()
+  const save = useSaveReasMemberEmail();
 
   function openEdit(row: ReasMember) {
-    save.reset()
-    setEditing(row)
-    setEmail(row.email)
+    save.reset();
+    setEditing(row);
+    setEmail(row.email);
   }
 
   function closeEdit() {
-    save.reset()
-    setEditing(null)
-    setEmail('')
+    save.reset();
+    setEditing(null);
+    setEmail("");
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (editing === null) return
+    event.preventDefault();
+    if (editing === null) return;
 
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal — dan penolakan "baris sudah tidak ada"
@@ -186,7 +187,7 @@ export function ReasMemberPage() {
         email,
       },
       { onSuccess: closeEdit },
-    )
+    );
   }
 
   /*
@@ -243,21 +244,21 @@ export function ReasMemberPage() {
         Ia sekaligus menjelaskan kenapa "Kode Reas" tidak ada di daftar kepala kolom Pega:
         kolom itulah "No".
       */
-      key: 'no',
-      title: 'No',
-      width: '3rem',
+      key: "no",
+      title: "No",
+      width: "3rem",
       // Kosong: yang digambar adalah NOMOR URUT, bukan isi baris. Nilai kosong membuatnya
       // tidak ikut tercari — mencari "3" seharusnya tidak menemukan baris ketiga.
-      value: () => '',
+      value: () => "",
       // Tidak dapat diurutkan: mengurutkan menurut nomor urut tidak berarti apa-apa, dan
       // hasilnya justru menomori ulang barisnya.
       noSort: true,
       render: (_row, nomor) => <span className="text-slate-500">{nomor}</span>,
     },
     {
-      key: 'nama_reas',
-      title: 'Nama Reinsurer',
-      width: '24rem',
+      key: "nama_reas",
+      title: "Nama Reinsurer",
+      width: "24rem",
       /*
         Kode reas TIDAK digambar di sini — Pega tidak menempelkannya di bawah nama, dan
         menambahkannya berarti mengarang tampilan (ketetapan Work Owner 2026-10-05).
@@ -292,15 +293,15 @@ export function ReasMemberPage() {
         menuntut keputusan tersendiri, bukan efek samping dari satu modul.
       */
       render: (row) => (
-        <span className="block" style={{ minWidth: '16rem' }}>
+        <span className="block" style={{ minWidth: "16rem" }}>
           {row.nama_reas}
         </span>
       ),
     },
     {
-      key: 'login',
-      title: 'Login',
-      width: '12rem',
+      key: "login",
+      title: "Login",
+      width: "12rem",
       value: (row) => row.login,
       render: (row) =>
         row.login ? (
@@ -313,9 +314,9 @@ export function ReasMemberPage() {
         ),
     },
     {
-      key: 'email',
-      title: 'Email',
-      width: '18rem',
+      key: "email",
+      title: "Email",
+      width: "18rem",
       value: (row) => row.email,
       render: (row) =>
         row.email ? (
@@ -340,9 +341,9 @@ export function ReasMemberPage() {
         Nilainya ditampilkan APA ADANYA. Artinya dalam bahasa bisnis tidak diketahui
         (`R-16`), dan menerjemahkannya menjadi label berarti mengarang.
       */
-      key: 'tipe',
-      title: 'Tipe',
-      width: '5rem',
+      key: "tipe",
+      title: "Tipe",
+      width: "5rem",
       value: (row) => row.tipe,
       /*
         Nilainya digambar APA ADANYA, tanpa penanda "cadangan" — Pega tidak punya penanda
@@ -368,22 +369,28 @@ export function ReasMemberPage() {
         memang hanya menyentuh kolom `EMAIl`; `LOGIN`, `COUNTRY`, dan `COUNTRYID` hanya
         ditulis pada jalur sisip, yang milik alur PLA/DLA dan tidak dibawa layar ini.
       */
-      key: 'aksi',
-      title: 'Aksi',
-      width: '6rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "6rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => { openEdit(row) }} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => {
+            openEdit(row);
+          }}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya "Master Reas" mengikuti MENU_DESC pada
@@ -391,16 +398,22 @@ export function ReasMemberPage() {
               berbunyi "Data Member" — dipakai sebagai keterangan di bawahnya (D-13). */}
           <h1 className="text-xl font-semibold text-slate-900">Master Reas</h1>
           <p className="text-sm text-slate-600">
-            Data Member — daftar mitra reasuransi penerima pemberitahuan PLA, Pre-DLA, dan
-            DLA pada entitas ini.
+            Data Member — daftar mitra reasuransi penerima pemberitahuan PLA,
+            Pre-DLA, dan DLA pada entitas ini.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* SATU tombol, dan itu memang satu-satunya yang ada di harness lamanya:
               `pyButtonLabel Refresh` pada Section/ListMemberReas. Captionnya dipakai apa
               adanya (D-13). */}
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -415,8 +428,10 @@ export function ReasMemberPage() {
       <p className="mt-3 text-xs text-slate-500">
         Daftar ini memuat seluruh member reas pada entitas yang sedang dibuka.
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -439,44 +454,55 @@ export function ReasMemberPage() {
           <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-xs text-slate-500">Kode Reas</dt>
-              <dd className="text-slate-800">{editing.kode_reas || '—'}</dd>
+              <dd className="text-slate-800">{editing.kode_reas || "—"}</dd>
             </div>
             <div>
               <dt className="text-xs text-slate-500">Login</dt>
-              <dd className="text-slate-800">{editing.login || 'belum ada'}</dd>
+              <dd className="text-slate-800">{editing.login || "belum ada"}</dd>
             </div>
             <div>
               <dt className="text-xs text-slate-500">Negara</dt>
-              <dd className="text-slate-800">{editing.negara || '—'}</dd>
+              <dd className="text-slate-800">{editing.negara || "—"}</dd>
             </div>
             <div>
               {/* Tanpa penanda "cadangan", dengan alasan yang sama seperti di kolomnya. */}
               <dt className="text-xs text-slate-500">Tipe</dt>
-              <dd className="text-slate-800">{editing.tipe || '—'}</dd>
+              <dd className="text-slate-800">{editing.tipe || "—"}</dd>
             </div>
           </dl>
 
           <form className="mt-4" onSubmit={submit}>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="email-reas">
+            <label
+              className="block text-sm font-medium text-slate-700"
+              htmlFor="email-reas"
+            >
               Email
             </label>
             <input
               id="email-reas"
               className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm sm:max-w-md"
               value={email}
-              onChange={(e) => { setEmail(e.target.value) }}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
               disabled={save.isPending}
             />
 
             {save.isError && (
-              <p className="mt-2 text-sm text-rose-700">{saveMessage(save.error)}</p>
+              <p className="mt-2 text-sm text-rose-700">
+                {saveMessage(save.error)}
+              </p>
             )}
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button tone="utama" type="submit" disabled={save.isPending}>
-                {save.isPending ? 'Menyimpan…' : 'Simpan'}
+                {save.isPending ? "Menyimpan…" : "Simpan"}
               </Button>
-              <Button tone="halus" onClick={closeEdit} disabled={save.isPending}>
+              <Button
+                tone="halus"
+                onClick={closeEdit}
+                disabled={save.isPending}
+              >
                 Batal
               </Button>
             </div>
@@ -495,14 +521,14 @@ export function ReasMemberPage() {
           <p className="text-sm text-slate-500">Memuat daftar member reas…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -519,7 +545,9 @@ export function ReasMemberPage() {
               Pemisahnya \u001f (unit separator), bukan tanda baca biasa yang dapat muncul di
               dalam nama perusahaan.
             */
-            rowKey={(row) => [row.kode_reas, row.nama_reas, row.tipe].join('\u001f')}
+            rowKey={(row) =>
+              [row.kode_reas, row.nama_reas, row.tipe].join("\u001f")
+            }
             description="Sumber: POOLDATA.T_REINSURER"
             searchLabel="Cari kode, nama, login, atau email"
             pageSize={PAGE_SIZE}
@@ -535,5 +563,5 @@ export function ReasMemberPage() {
         di doc comment paket `masterreas` dan di `docs/`, bukan di layar.
       */}
     </main>
-  )
+  );
 }

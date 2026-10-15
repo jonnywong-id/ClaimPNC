@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, uploadAPI } from '@/api/client'
+import { callAPI, uploadAPI } from "@/api/client";
 import type {
   WorkshopBankListResponse,
   WorkshopBranchListResponse,
@@ -11,15 +11,15 @@ import type {
   WorkshopInput,
   WorkshopListResponse,
   WorkshopResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/bengkel'
-const ROUTE_BRANCH = '/api/master/bengkel/cabang'
-const ROUTE_CITY = '/api/master/bengkel/kota'
-const ROUTE_BANK = '/api/master/bengkel/bank'
-const ROUTE_DECISION = '/api/master/bengkel/keputusan'
+const ROUTE = "/api/master/bengkel";
+const ROUTE_BRANCH = "/api/master/bengkel/cabang";
+const ROUTE_CITY = "/api/master/bengkel/kota";
+const ROUTE_BANK = "/api/master/bengkel/bank";
+const ROUTE_DECISION = "/api/master/bengkel/keputusan";
 
 /**
  * Panjang minimum kata kunci lookup Kota.
@@ -28,7 +28,7 @@ const ROUTE_DECISION = '/api/master/bengkel/keputusan'
  * berwenang — ia menjawab daftar kosong untuk kata kunci yang lebih pendek — dan angka di
  * sini hanya mencegah perjalanan jaringan yang sudah pasti kosong.
  */
-export const MIN_LOOKUP_KEYWORD = 2
+export const MIN_LOOKUP_KEYWORD = 2;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -43,19 +43,19 @@ export const MIN_LOOKUP_KEYWORD = 2
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-bengkel', portal, token, status] as const
+  return ["master-bengkel", portal, token, status] as const;
 }
 
 function branchKey(portal: string | null, token: string | null) {
-  return ['master-bengkel-cabang', portal, token] as const
+  return ["master-bengkel-cabang", portal, token] as const;
 }
 
 function cityKey(portal: string | null, token: string | null, keyword: string) {
-  return ['master-bengkel-kota', portal, token, keyword] as const
+  return ["master-bengkel-kota", portal, token, keyword] as const;
 }
 
 function bankKey(portal: string | null, token: string | null) {
-  return ['master-bengkel-bank', portal, token] as const
+  return ["master-bengkel-bank", portal, token] as const;
 }
 
 /**
@@ -77,18 +77,21 @@ function bankKey(portal: string | null, token: string | null) {
  * DataTable menyaring sebagian data yang sudah tersaring server.
  */
 export function useWorkshopList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<WorkshopListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<WorkshopListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -98,26 +101,28 @@ export function useWorkshopList(status: string) {
  * entitas yang sedang dipilih, bukan dari satu tempat bersama.
  */
 export function useWorkshopBranchList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: branchKey(portal, token),
-    queryFn: () => callAPI<WorkshopBranchListResponse>(ROUTE_BRANCH, { token, portal }),
+    queryFn: () =>
+      callAPI<WorkshopBranchListResponse>(ROUTE_BRANCH, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook daftar bank untuk dropdown Bank. */
 export function useWorkshopBankList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: bankKey(portal, token),
-    queryFn: () => callAPI<WorkshopBankListResponse>(ROUTE_BANK, { token, portal }),
+    queryFn: () =>
+      callAPI<WorkshopBankListResponse>(ROUTE_BANK, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -132,19 +137,23 @@ export function useWorkshopBankList() {
  * huruf yang diketik pada dua huruf pertama.
  */
 export function useWorkshopCityLookup(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
     queryKey: cityKey(portal, token, clean),
     queryFn: () =>
-      callAPI<WorkshopCityListResponse>(`${ROUTE_CITY}?cari=${encodeURIComponent(clean)}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
-  })
+      callAPI<WorkshopCityListResponse>(
+        `${ROUTE_CITY}?cari=${encodeURIComponent(clean)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled:
+      token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
+  });
 }
 
 /**
@@ -156,17 +165,22 @@ export function useWorkshopCityLookup(keyword: string) {
  * Approve.
  */
 export function useCreateWorkshop() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: WorkshopInput) =>
-      callAPI<WorkshopResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<WorkshopResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ["master-bengkel"] });
     },
-  })
+  });
 }
 
 /**
@@ -177,22 +191,22 @@ export function useCreateWorkshop() {
  * tanpa syarat apa pun — sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSaveWorkshop() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: WorkshopInput }) =>
       callAPI<WorkshopResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ["master-bengkel"] });
     },
-  })
+  });
 }
 
 /**
@@ -204,27 +218,27 @@ export function useSaveWorkshop() {
  * akan mengubah operasi yang di Pega utuh menjadi sesuatu yang dapat gagal separuh jalan.
  */
 export function useDecideWorkshop() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: WorkshopDecisionInput) =>
       callAPI<WorkshopDecisionResponse>(ROUTE_DECISION, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ["master-bengkel"] });
     },
-  })
+  });
 }
 
 /** Kunci cache dokumen satu bengkel. */
 const documentKey = (portal: string | null, token: string | null, id: string) =>
-  ['master-bengkel', 'dokumen', portal, token, id] as const
+  ["master-bengkel", "dokumen", portal, token, id] as const;
 
 /**
  * Hook metadata dokumen yang tertaut pada satu bengkel.
@@ -237,19 +251,22 @@ const documentKey = (portal: string | null, token: string | null, id: string) =>
  * layarnya tanpa mengubah hasilnya.
  */
 export function useWorkshopDocument(id: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: documentKey(portal, token, id),
     queryFn: () =>
-      callAPI<WorkshopDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
-        token,
-        portal,
-      }),
-    enabled: enabled && id !== '' && token !== null && portal !== null,
+      callAPI<WorkshopDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/dokumen`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: enabled && id !== "" && token !== null && portal !== null,
     retry: false,
-  })
+  });
 }
 
 /**
@@ -262,23 +279,26 @@ export function useWorkshopDocument(id: string, enabled: boolean) {
  * MENGGANTIKAN tautan yang sebelumnya. Itu perilaku Pega, bukan penyederhanaan.
  */
 export function useUploadWorkshopDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, berkas }: { id: string; berkas: File }) =>
-      uploadAPI<WorkshopDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
-        berkas,
-        token,
-        portal,
-      }),
+      uploadAPI<WorkshopDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/dokumen`,
+        {
+          berkas,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       // Daftar ikut disegarkan: DOKUMENID adalah kolom barisnya, sehingga baris yang
       // tampil di grid pun berubah — bukan hanya isi dialognya.
-      client.invalidateQueries({ queryKey: ['master-bengkel'] })
+      client.invalidateQueries({ queryKey: ["master-bengkel"] });
     },
-  })
+  });
 }
 
 /*

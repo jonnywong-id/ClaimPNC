@@ -7,11 +7,11 @@
 
 /** Satu kolom grid, dikirim server bersama daftarnya. */
 export type Kolom = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
   /** Kolom tanggal; layar memformatnya sebagai tanggal WIB. */
-  tanggal: boolean
-}
+  tanggal: boolean;
+};
 
 /**
  * Tabel asal sebuah daftar klaim.
@@ -21,53 +21,52 @@ export type Kolom = {
  * awalan kode tab — kesimpulan itu pecah diam-diam saat kodenya berubah.
  *
  */
-export type SumberDaftar = 'pemberitahuan' | 'komunikasi' | ''
+export type SumberDaftar = "pemberitahuan" | "komunikasi" | "";
 
 /** Satu tampilan beserta kolom dan keterangannya. */
 export type Daftar = {
-  kode: string
-  nama: string
-  keterangan: string
-  sumber: SumberDaftar
-  kolom: Kolom[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  sumber: SumberDaftar;
+  kolom: Kolom[];
 
   /** Barisnya punya tombol "Detail Claim". */
-  punya_rincian: boolean
-}
+  punya_rincian: boolean;
+};
 
 /** Satu baris daftar klaim. */
 export type Baris = {
   /** Kunci objek kerja Pega. Tidak digambar sebagai kolom. */
-  kunci_klaim: string
+  kunci_klaim: string;
 
-  no_klaim: string
-  no_polis: string
-  nama_tertanggung: string
-  nama_bisnis: string
-  tanggal_register: string
-  tanggal_kejadian: string
-  pic_teknik: string
+  no_klaim: string;
+  no_polis: string;
+  nama_tertanggung: string;
+  nama_bisnis: string;
+  tanggal_register: string;
+  tanggal_kejadian: string;
+  pic_teknik: string;
 
   /**
    * Kode status yang DIGAMBAR — sudah termasuk penggantian menjadi `1139` pada daftar
    * DLA untuk klaim yang menunggu penutupan.
    */
-  kode_status: string
+  kode_status: string;
 
   /** Arti kodenya. Kosong bila kodenya tidak ada di master status. */
-  status: string
+  status: string;
 
-  no_pla: string
-  catatan_tutup: string
-}
+  no_pla: string;
+  catatan_tutup: string;
+};
 
 /** Satu baris tabel ringkas "Status / Jumlah". */
 export type RingkasStatus = {
-  kode_status: string
-  status: string
-  jumlah: number
-}
-
+  kode_status: string;
+  status: string;
+  jumlah: number;
+};
 
 /**
  * Satu baris tabel **"Status / Jumlah"** — satu DAFTAR, bukan satu status klaim.
@@ -79,66 +78,65 @@ export type RingkasStatus = {
  * adanya (`D-13`), dan kontraknya mengikuti judul itu.
  */
 export type RingkasDaftar = {
-  kode: string
-  status: string
-  jumlah: number
-}
+  kode: string;
+  status: string;
+  jumlah: number;
+};
 export type Paginasi = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 export type MetadataResponse = {
-  daftar: Daftar[]
-  daftar_bawaan: string
-  portal: string
-}
+  daftar: Daftar[];
+  daftar_bawaan: string;
+  portal: string;
+};
 
 export type ListResponse = {
-  daftar: Daftar
-  baris: Baris[]
-  paginasi: Paginasi
-  cari: string
-  portal: string
-}
+  daftar: Daftar;
+  baris: Baris[];
+  paginasi: Paginasi;
+  cari: string;
+  portal: string;
+};
 
 export type RingkasResponse = {
-  baris: RingkasStatus[]
-  portal: string
-}
-
+  baris: RingkasStatus[];
+  portal: string;
+};
 
 export type RingkasDaftarResponse = {
-  baris: RingkasDaftar[]
-  portal: string
-}
+  baris: RingkasDaftar[];
+  portal: string;
+};
 /* ==========================================================================
  * LAYAR RINCIAN — tombol "Detail Claim"
  * ========================================================================== */
 
 /** Keterangan klaim di kepala layar rincian. */
 export type KlaimRincian = {
-  kunci_klaim: string
-  no_klaim: string
-  no_polis: string
-  nama_tertanggung: string
-  nama_bisnis: string
-  tanggal_register: string
-  tanggal_kejadian: string
-  pic_teknik: string
-  kode_status: string
-  status: string
-}
+  kunci_klaim: string;
+  no_klaim: string;
+  no_polis: string;
+  nama_tertanggung: string;
+  nama_bisnis: string;
+  tanggal_register: string;
+  tanggal_kejadian: string;
+  pic_teknik: string;
+  kode_status: string;
+  status: string;
+};
 
 /** Satu baris grid PLA atau DLA pada layar rincian. */
 export type BarisPemberitahuan = {
   /** `"PLA"` atau `"DLA"` — dipakai mengambil dokumennya. */
-  jenis: string
+  jenis: string;
 
-  nomor: string
-  tipe: string
+  nomor: string;
+  tipe: string;
 
   /**
    * Nilai pemberitahuan, dikirim sebagai TEKS.
@@ -147,31 +145,31 @@ export type BarisPemberitahuan = {
    * memperkenalkan pembulatan pada nilai uang yang `D-51` larang justru untuk keadaan
    * seperti ini.
    */
-  nilai: string
+  nilai: string;
 
-  no_akseptasi: string
-  tanggal_dokumen: string
-  tanggal_kirim: string
-}
+  no_akseptasi: string;
+  tanggal_dokumen: string;
+  tanggal_kirim: string;
+};
 
 /** Satu baris grid dokumen. */
 export type BarisDokumen = {
-  id: string
-  jenis_dokumen: string
-  kategori_dokumen: string
-  nama: string
-}
+  id: string;
+  jenis_dokumen: string;
+  kategori_dokumen: string;
+  nama: string;
+};
 
 /** Satu baris grid riwayat komunikasi. */
 export type BarisKomunikasi = {
-  id: string
-  tanggal: string
-  pengirim: string
-  pesan: string
-  balasan: string
-  nama_pembalas: string
-  tanggal_balasan: string
-  sudah_dijawab: boolean
+  id: string;
+  tanggal: string;
+  pengirim: string;
+  pesan: string;
+  balasan: string;
+  nama_pembalas: string;
+  tanggal_balasan: string;
+  sudah_dijawab: boolean;
 
   /**
    * Pemanggil boleh membalas percakapan ini.
@@ -180,30 +178,30 @@ export type BarisKomunikasi = {
    * DAPAT berbeda pada data lama, dan kesimpulan layar akan menggambar tombol balas pada
    * percakapan yang permintaannya justru akan ditolak.
    */
-  boleh_dibalas: boolean
-}
+  boleh_dibalas: boolean;
+};
 
 export type DetailResponse = {
-  klaim: KlaimRincian
-  pla: BarisPemberitahuan[]
-  dla: BarisPemberitahuan[]
-  komunikasi: BarisKomunikasi[]
+  klaim: KlaimRincian;
+  pla: BarisPemberitahuan[];
+  dla: BarisPemberitahuan[];
+  komunikasi: BarisKomunikasi[];
 
-  kolom_pla: Kolom[]
-  kolom_dla: Kolom[]
-  kolom_dokumen: Kolom[]
-  kolom_komunikasi: Kolom[]
+  kolom_pla: Kolom[];
+  kolom_dla: Kolom[];
+  kolom_dokumen: Kolom[];
+  kolom_komunikasi: Kolom[];
 
-  portal: string
-}
+  portal: string;
+};
 
 export type DokumenResponse = {
-  baris: BarisDokumen[]
-  kolom: Kolom[]
-  portal: string
-}
+  baris: BarisDokumen[];
+  kolom: Kolom[];
+  portal: string;
+};
 
 export type BalasResponse = {
-  pesan: string
-  portal: string
-}
+  pesan: string;
+  portal: string;
+};

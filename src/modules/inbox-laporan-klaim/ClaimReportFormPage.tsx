@@ -1,16 +1,26 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DateField } from '@/components/DateField'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { NumberField } from '@/components/NumberField'
-import { formatDate, todayWIB } from '@/components/format'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { NumberField } from "@/components/NumberField";
+import { formatDate, todayWIB } from "@/components/format";
 
-import { useClaimReport, useLookupPolicy, useRegisterClaim, useSaveClaimReport } from './api'
-import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupResponse } from './types'
+import {
+  useClaimReport,
+  useLookupPolicy,
+  useRegisterClaim,
+  useSaveClaimReport,
+} from "./api";
+import {
+  EMPTY_DETAIL,
+  FIELD_LIMIT,
+  type ClaimReportDetail,
+  type PolicyLookupResponse,
+} from "./types";
 
 /**
  * Form **Input Receive Document** — pengganti flow action dengan nama yang sama pada
@@ -33,54 +43,62 @@ import { EMPTY_DETAIL, FIELD_LIMIT, type ClaimReportDetail, type PolicyLookupRes
  * menyimpulkannya sendiri dari kolom `asal`.
  */
 export function ClaimReportFormPage() {
-  const { id = '' } = useParams()
-  const navigate = useNavigate()
+  const { id = "" } = useParams();
+  const navigate = useNavigate();
 
-  const berkas = useClaimReport(id)
-  const simpan = useSaveClaimReport(id)
-  const daftar = useRegisterClaim()
+  const berkas = useClaimReport(id);
+  const simpan = useSaveClaimReport(id);
+  const daftar = useRegisterClaim();
   // Register Klaim menyimpan berkas lebih dulu. Bila Simpan yang gagal, pesannya juga
   // ditampilkan di dekat tombol Register — pesan Simpan di atas form tidak terlihat dari
   // tombol yang ada di bawah (RCVN.26.115, 2026-10-10).
-  const [registerAttempt, setRegisterAttempt] = useState(false)
-  const polis = useLookupPolicy()
+  const [registerAttempt, setRegisterAttempt] = useState(false);
+  const polis = useLookupPolicy();
 
-  const [values, setValues] = useState<ClaimReportDetail>(withReceivedDefault(EMPTY_DETAIL))
-  const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(null)
-  const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null)
+  const [values, setValues] = useState<ClaimReportDetail>(
+    withReceivedDefault(EMPTY_DETAIL),
+  );
+  const [policyResult, setPolicyResult] = useState<PolicyLookupResponse | null>(
+    null,
+  );
+  const [lookedUpNumber, setLookedUpNumber] = useState<string | null>(null);
 
   // Isian form diisi SEKALI dari jawaban server, lalu menjadi milik pengguna. Menyalinnya
   // pada setiap render akan menimpa ketikan yang sedang berjalan setiap kali TanStack
   // Query menyegarkan datanya di latar belakang.
   useEffect(() => {
-    if (!berkas.data?.isian) return
-    setValues(withReceivedDefault(berkas.data.isian))
-  }, [berkas.data])
+    if (!berkas.data?.isian) return;
+    setValues(withReceivedDefault(berkas.data.isian));
+  }, [berkas.data]);
 
-  const [initialLookup, setInitialLookup] = useState(false)
+  const [initialLookup, setInitialLookup] = useState(false);
   useEffect(() => {
-    const number = berkas.data?.isian?.nomor_polis?.trim() ?? ''
-    if (initialLookup || number === '') return
-    setInitialLookup(true)
-    polis.mutate(number, { onSuccess: (result) => setPolicyResult(result) })
-  }, [berkas.data, initialLookup, polis])
+    const number = berkas.data?.isian?.nomor_polis?.trim() ?? "";
+    if (initialLookup || number === "") return;
+    setInitialLookup(true);
+    polis.mutate(number, { onSuccess: (result) => setPolicyResult(result) });
+  }, [berkas.data, initialLookup, polis]);
 
   // Isian khusus lini (InputReceiveDocument_sect): Group Panel polis yang tersimpan, atau
   // hasil pencarian polis terakhir.
-  const panel = (policyResult?.group_panel || values.group_panel || '').trim()
-  const hasPolicy = values.nomor_polis.trim() !== ''
-  const pa = panel === '002'
+  const panel = (policyResult?.group_panel || values.group_panel || "").trim();
+  const hasPolicy = values.nomor_polis.trim() !== "";
+  const pa = panel === "002";
 
-  const registered = berkas.data?.sudah_diregistrasi ?? false
-  const editable = (berkas.data?.dapat_disunting ?? false) && !registered
-  const violation = simpan.error instanceof APIError ? simpan.error.violations() : {}
+  const registered = berkas.data?.sudah_diregistrasi ?? false;
+  const editable = (berkas.data?.dapat_disunting ?? false) && !registered;
+  const violation =
+    simpan.error instanceof APIError ? simpan.error.violations() : {};
 
   // Tombol yang menulis berkas dimatikan untuk polis Syariah atau bukan PNC — di layar lama
   // `pyDisabledWhen` "SyariahStatus = '1' || TempError.ErrorNotes = '1'".
-  const policyBlocked = policyResult?.memblokir ?? false
+  const policyBlocked = policyResult?.memblokir ?? false;
 
-  function set<K extends keyof ClaimReportDetail>(field: K, value: ClaimReportDetail[K]) {
-    setValues((previous) => ({ ...previous, [field]: value }))
+  function set<K extends keyof ClaimReportDetail>(
+    field: K,
+    value: ClaimReportDetail[K],
+  ) {
+    setValues((previous) => ({ ...previous, [field]: value }));
   }
 
   /**
@@ -92,20 +110,20 @@ export function ClaimReportFormPage() {
    * supaya data polis lain yang tertinggal di form tidak ikut tersimpan.
    */
   function lookupPolicy() {
-    const typed = values.nomor_polis.trim()
-    if (!editable) return
-    if (typed === '') {
+    const typed = values.nomor_polis.trim();
+    if (!editable) return;
+    if (typed === "") {
       // Nomor dikosongkan: pesan dan pemblokiran polis sebelumnya tidak berlaku lagi.
-      setPolicyResult(null)
-      setLookedUpNumber(null)
-      return
+      setPolicyResult(null);
+      setLookedUpNumber(null);
+      return;
     }
-    if (typed === lookedUpNumber) return
-    setLookedUpNumber(typed)
+    if (typed === lookedUpNumber) return;
+    setLookedUpNumber(typed);
     polis.mutate(typed, {
       onSuccess: (result) => {
-        setPolicyResult(result)
-        setLookedUpNumber(result.nomor_polis)
+        setPolicyResult(result);
+        setLookedUpNumber(result.nomor_polis);
         setValues((previous) => ({
           ...previous,
           nomor_polis: result.nomor_polis,
@@ -113,10 +131,10 @@ export function ClaimReportFormPage() {
           nama_bisnis: result.nama_bisnis,
           nomor_rujukan: result.nomor_rujukan,
           group_panel: result.group_panel,
-        }))
+        }));
       },
       onError: () => setLookedUpNumber(null),
-    })
+    });
   }
 
   if (berkas.isPending) {
@@ -126,7 +144,7 @@ export function ClaimReportFormPage() {
           Memuat berkas…
         </p>
       </FormFrame>
-    )
+    );
   }
 
   if (berkas.isError) {
@@ -140,7 +158,7 @@ export function ClaimReportFormPage() {
           />
         </div>
       </FormFrame>
-    )
+    );
   }
 
   return (
@@ -150,8 +168,9 @@ export function ClaimReportFormPage() {
           className="mt-4 rounded-kartu border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-900"
           role="status"
         >
-          This Receive Document is already registered as claim{' '}
-          <strong>{berkas.data?.laporan.nomor_klaim}</strong> and can no longer be changed.
+          This Receive Document is already registered as claim{" "}
+          <strong>{berkas.data?.laporan.nomor_klaim}</strong> and can no longer
+          be changed.
         </p>
       )}
 
@@ -160,9 +179,9 @@ export function ClaimReportFormPage() {
           <ErrorMessage
             title="Berkas ini hanya dapat dibaca"
             description={
-              'Ia masih dikelola sistem lama, dan selama masa paralel hanya satu sistem ' +
-              'yang boleh menulis sebuah berkas. Isinya dapat dilihat di sini; ' +
-              'mengubahnya dilakukan di Pega.'
+              "Ia masih dikelola sistem lama, dan selama masa paralel hanya satu sistem " +
+              "yang boleh menulis sebuah berkas. Isinya dapat dilihat di sini; " +
+              "mengubahnya dilakukan di Pega."
             }
             tone="gangguan"
           />
@@ -191,30 +210,33 @@ export function ClaimReportFormPage() {
       <form
         className="mt-6 space-y-6"
         onSubmit={(e) => {
-          e.preventDefault()
-          if (!editable) return
+          e.preventDefault();
+          if (!editable) return;
           // Estimasi Kerugian tidak ditampilkan (Work Owner 2026-10-08); nilai tersimpannya
           // ikut dikirim apa adanya lewat `values`, sehingga tidak terhapus.
-          simpan.mutate(values)
+          simpan.mutate(values);
         }}
       >
         <Group title="Dokumen masuk">
-          <ReadOnly label="Tanggal Input Dokumen" value={formatDate(berkas.data?.laporan.tanggal_masuk ?? '')} />
+          <ReadOnly
+            label="Tanggal Input Dokumen"
+            value={formatDate(berkas.data?.laporan.tanggal_masuk ?? "")}
+          />
           <DateField
             id="tanggal_terima_dokumen"
             label="Tanggal Terima Dokumen"
             value={values.tanggal_terima_dokumen}
-            onChange={(v) => set('tanggal_terima_dokumen', v)}
-            error={violation['tanggal_terima_dokumen']}
+            onChange={(v) => set("tanggal_terima_dokumen", v)}
+            error={violation["tanggal_terima_dokumen"]}
             disabled={!editable}
           />
           <Field
             id="nama_pelapor"
             label="Nama Pengirim / Pelapor Dokumen"
             value={values.nama_pelapor}
-            onChange={(e) => set('nama_pelapor', e.target.value)}
+            onChange={(e) => set("nama_pelapor", e.target.value)}
             maxLength={FIELD_LIMIT.nama}
-            error={violation['nama_pelapor']}
+            error={violation["nama_pelapor"]}
             disabled={!editable}
           />
           <Field
@@ -222,27 +244,27 @@ export function ClaimReportFormPage() {
             label="Email Pengirim"
             type="email"
             value={values.email_pelapor}
-            onChange={(e) => set('email_pelapor', e.target.value)}
+            onChange={(e) => set("email_pelapor", e.target.value)}
             maxLength={FIELD_LIMIT.email}
-            error={violation['email_pelapor']}
+            error={violation["email_pelapor"]}
             disabled={!editable}
           />
           <Field
             id="telepon_pelapor"
             label="No. HP Pengirim"
             value={values.telepon_pelapor}
-            onChange={(e) => set('telepon_pelapor', e.target.value)}
+            onChange={(e) => set("telepon_pelapor", e.target.value)}
             maxLength={FIELD_LIMIT.telepon}
-            error={violation['telepon_pelapor']}
+            error={violation["telepon_pelapor"]}
             disabled={!editable}
           />
           <Field
             id="nama_kurir"
             label="Nama Kurir ASM"
             value={values.nama_kurir}
-            onChange={(e) => set('nama_kurir', e.target.value)}
+            onChange={(e) => set("nama_kurir", e.target.value)}
             maxLength={FIELD_LIMIT.nama}
-            error={violation['nama_kurir']}
+            error={violation["nama_kurir"]}
             disabled={!editable}
           />
           <NumberField
@@ -250,8 +272,10 @@ export function ClaimReportFormPage() {
             label="Total Jumlah Dokumen"
             max={FIELD_LIMIT.jumlahDokumen}
             value={values.jumlah_dokumen}
-            onValueChange={(jumlah_dokumen) => set('jumlah_dokumen', jumlah_dokumen)}
-            error={violation['jumlah_dokumen']}
+            onValueChange={(jumlah_dokumen) =>
+              set("jumlah_dokumen", jumlah_dokumen)
+            }
+            error={violation["jumlah_dokumen"]}
             disabled={!editable}
             hint="Rincian per dokumen menunggu modul penyimpanan dokumen."
           />
@@ -263,18 +287,22 @@ export function ClaimReportFormPage() {
               id="nomor_polis"
               label="Nomor Polis"
               value={values.nomor_polis}
-              onChange={(e) => set('nomor_polis', e.target.value)}
+              onChange={(e) => set("nomor_polis", e.target.value)}
               onBlur={lookupPolicy}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  lookupPolicy()
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  lookupPolicy();
                 }
               }}
               maxLength={FIELD_LIMIT.polis}
-              error={violation['nomor_polis']}
+              error={violation["nomor_polis"]}
               disabled={!editable}
-              hint={polis.isPending ? 'Mencari polis…' : 'Data polis terisi otomatis setelah nomor diisi.'}
+              hint={
+                polis.isPending
+                  ? "Mencari polis…"
+                  : "Data polis terisi otomatis setelah nomor diisi."
+              }
             />
             {polis.isError && (
               <p className="mt-1.5 text-sm text-red-700" role="alert">
@@ -286,9 +314,9 @@ export function ClaimReportFormPage() {
                 key={notice.kode}
                 role="alert"
                 className={[
-                  'mt-1.5 text-sm',
-                  notice.memblokir ? 'text-red-700' : 'text-amber-700',
-                ].join(' ')}
+                  "mt-1.5 text-sm",
+                  notice.memblokir ? "text-red-700" : "text-amber-700",
+                ].join(" ")}
               >
                 {notice.pesan}
               </p>
@@ -298,39 +326,42 @@ export function ClaimReportFormPage() {
             id="tanggal_kejadian"
             label="Tanggal Kejadian"
             value={values.tanggal_kejadian}
-            onChange={(v) => set('tanggal_kejadian', v)}
-            error={violation['tanggal_kejadian']}
+            onChange={(v) => set("tanggal_kejadian", v)}
+            error={violation["tanggal_kejadian"]}
             disabled={!editable}
           />
           {/* .Policy.PolicyLeader — tampil bila Nomor Polis terisi dan lini bukan PA (002) atau Travel (005). */}
-          {hasPolicy && panel !== '' && panel !== '002' && panel !== '005' && (
-            <ReadOnly label="Polis Leader" value={policyResult?.polis_leader ?? ''} />
+          {hasPolicy && panel !== "" && panel !== "002" && panel !== "005" && (
+            <ReadOnly
+              label="Polis Leader"
+              value={policyResult?.polis_leader ?? ""}
+            />
           )}
           <Field
             id="tertanggung"
             label="Nama Tertanggung"
             value={values.tertanggung}
-            onChange={(e) => set('tertanggung', e.target.value)}
+            onChange={(e) => set("tertanggung", e.target.value)}
             maxLength={FIELD_LIMIT.tertanggung}
-            error={violation['tertanggung']}
+            error={violation["tertanggung"]}
             disabled={!editable}
           />
           <Field
             id="nama_bisnis"
             label="Nama Bisnis"
             value={values.nama_bisnis}
-            onChange={(e) => set('nama_bisnis', e.target.value)}
+            onChange={(e) => set("nama_bisnis", e.target.value)}
             maxLength={FIELD_LIMIT.bisnis}
-            error={violation['nama_bisnis']}
+            error={violation["nama_bisnis"]}
             disabled={!editable}
           />
           <Field
             id="nomor_rujukan"
             label="No. Referensi/Placing Slip"
             value={values.nomor_rujukan}
-            onChange={(e) => set('nomor_rujukan', e.target.value)}
+            onChange={(e) => set("nomor_rujukan", e.target.value)}
             maxLength={FIELD_LIMIT.rujukan}
-            error={violation['nomor_rujukan']}
+            error={violation["nomor_rujukan"]}
             disabled={!editable}
           />
           {/* Estimasi Kerugian (InputReceiveDocument_sect) tidak ditampilkan — tidak dipakai,
@@ -339,9 +370,9 @@ export function ClaimReportFormPage() {
             id="sumber_laporan"
             label="Source Of Reports"
             value={values.sumber_laporan}
-            onChange={(value) => set('sumber_laporan', value)}
+            onChange={(value) => set("sumber_laporan", value)}
             maxLength={FIELD_LIMIT.sumber}
-            error={violation['sumber_laporan']}
+            error={violation["sumber_laporan"]}
             disabled={!editable}
             rows={2}
           />
@@ -352,9 +383,9 @@ export function ClaimReportFormPage() {
               label="Email Tertanggung"
               type="email"
               value={values.email_tertanggung}
-              onChange={(e) => set('email_tertanggung', e.target.value)}
+              onChange={(e) => set("email_tertanggung", e.target.value)}
               maxLength={FIELD_LIMIT.email}
-              error={violation['email_tertanggung']}
+              error={violation["email_tertanggung"]}
               disabled={!editable}
             />
           )}
@@ -362,9 +393,9 @@ export function ClaimReportFormPage() {
             id="lokasi_kejadian"
             label="Lokasi Kejadian"
             value={values.lokasi_kejadian}
-            onChange={(e) => set('lokasi_kejadian', e.target.value)}
+            onChange={(e) => set("lokasi_kejadian", e.target.value)}
             maxLength={FIELD_LIMIT.lokasi}
-            error={violation['lokasi_kejadian']}
+            error={violation["lokasi_kejadian"]}
             disabled={!editable}
           />
           {/*
@@ -377,9 +408,9 @@ export function ClaimReportFormPage() {
               id="sim_pengendara"
               label="SIM Pengendara"
               value={values.sim_pengendara}
-              onChange={(e) => set('sim_pengendara', e.target.value)}
+              onChange={(e) => set("sim_pengendara", e.target.value)}
               maxLength={FIELD_LIMIT.sim}
-              error={violation['sim_pengendara']}
+              error={violation["sim_pengendara"]}
               disabled={!editable}
             />
           )}
@@ -387,9 +418,9 @@ export function ClaimReportFormPage() {
             id="subjek_email"
             label="Subject Email"
             value={values.subjek_email}
-            onChange={(e) => set('subjek_email', e.target.value)}
+            onChange={(e) => set("subjek_email", e.target.value)}
             maxLength={FIELD_LIMIT.subjek}
-            error={violation['subjek_email']}
+            error={violation["subjek_email"]}
             disabled={!editable}
           />
         </Group>
@@ -399,27 +430,27 @@ export function ClaimReportFormPage() {
             id="kronologis"
             label="Kronologis Kejadian"
             value={values.kronologis}
-            onChange={(value) => set('kronologis', value)}
+            onChange={(value) => set("kronologis", value)}
             maxLength={FIELD_LIMIT.narasi}
-            error={violation['kronologis']}
+            error={violation["kronologis"]}
             disabled={!editable}
           />
           <TextArea
             id="rincian_kerusakan"
             label="Rincian Kerusakan"
             value={values.rincian_kerusakan}
-            onChange={(value) => set('rincian_kerusakan', value)}
+            onChange={(value) => set("rincian_kerusakan", value)}
             maxLength={FIELD_LIMIT.narasi}
-            error={violation['rincian_kerusakan']}
+            error={violation["rincian_kerusakan"]}
             disabled={!editable}
           />
           <TextArea
             id="alasan"
             label="Keterangan Belum Transfer"
             value={values.alasan}
-            onChange={(value) => set('alasan', value)}
+            onChange={(value) => set("alasan", value)}
             maxLength={FIELD_LIMIT.catatan}
-            error={violation['alasan']}
+            error={violation["alasan"]}
             disabled={!editable}
             rows={3}
           />
@@ -427,9 +458,9 @@ export function ClaimReportFormPage() {
             id="keterangan_belum_registrasi"
             label="Keterangan Belum Registrasi"
             value={values.keterangan_belum_registrasi}
-            onChange={(value) => set('keterangan_belum_registrasi', value)}
+            onChange={(value) => set("keterangan_belum_registrasi", value)}
             maxLength={FIELD_LIMIT.catatan}
-            error={violation['keterangan_belum_registrasi']}
+            error={violation["keterangan_belum_registrasi"]}
             disabled={!editable}
             rows={3}
           />
@@ -437,8 +468,12 @@ export function ClaimReportFormPage() {
 
         <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
           {editable && (
-            <Button type="submit" tone="utama" disabled={simpan.isPending || policyBlocked}>
-              {simpan.isPending ? 'Menyimpan…' : 'Simpan'}
+            <Button
+              type="submit"
+              tone="utama"
+              disabled={simpan.isPending || policyBlocked}
+            >
+              {simpan.isPending ? "Menyimpan…" : "Simpan"}
             </Button>
           )}
           {/*
@@ -472,37 +507,50 @@ export function ClaimReportFormPage() {
             <Button
               type="button"
               tone="kedua"
-              disabled={!editable || daftar.isPending || simpan.isPending || policyBlocked}
+              disabled={
+                !editable ||
+                daftar.isPending ||
+                simpan.isPending ||
+                policyBlocked
+              }
               // Isian disimpan LEBIH DULU, baru klaim didaftarkan: klaim baru menyalin isi
               // berkas yang TERSIMPAN — antara lain Kronologis Kejadian menjadi Deskripsi
               // Laporan (CreateRegisterKlaimPNC_act langkah 14). Tanpa itu, kronologis yang
               // baru diketik tetapi belum di-Simpan tidak ikut ke klaim.
               onClick={() => {
-                setRegisterAttempt(true)
-                daftar.reset()
+                setRegisterAttempt(true);
+                daftar.reset();
                 simpan.mutate(values, {
                   onSuccess: () =>
                     daftar.mutate(
-                      { nomorLaporan: id ?? '', nomorPolis: values.nomor_polis },
                       {
-                        onSuccess: (hasil) => navigate(`/registrasi/klaim/${hasil.klaim.id}`),
+                        nomorLaporan: id ?? "",
+                        nomorPolis: values.nomor_polis,
+                      },
+                      {
+                        onSuccess: (hasil) =>
+                          navigate(`/registrasi/klaim/${hasil.klaim.id}`),
                         // Berkas dimuat ulang: bila ternyata sudah menjadi klaim (layar
                         // lama yang belum dimuat ulang), tombolnya hilang dengan sendirinya.
                         onError: () => void berkas.refetch(),
                       },
                     ),
                   onError: () => void berkas.refetch(),
-                })
+                });
               }}
             >
-              {simpan.isPending || daftar.isPending ? 'Mendaftarkan…' : 'Register Klaim'}
+              {simpan.isPending || daftar.isPending
+                ? "Mendaftarkan…"
+                : "Register Klaim"}
             </Button>
           )}
 
           <Button
             type="button"
             tone="kedua"
-            onClick={() => navigate(backToListPath(berkas.data?.laporan.posisi))}
+            onClick={() =>
+              navigate(backToListPath(berkas.data?.laporan.posisi))
+            }
           >
             Kembali ke daftar
           </Button>
@@ -529,15 +577,14 @@ export function ClaimReportFormPage() {
       </form>
 
       <p className="mt-6 text-xs text-slate-500">
-        Tiga bagian form lama belum ada di sini: data pelapor beserta alamatnya — yang di
-        sistem lama terikat area Heavy Equipment dan berada di luar lingkup migrasi — daftar
-        rincian dokumen yang menunggu modul penyimpanan dokumen, serta riwayat komunikasi
-        dan progres yang dimiliki modul lain.
+        Tiga bagian form lama belum ada di sini: data pelapor beserta alamatnya
+        — yang di sistem lama terikat area Heavy Equipment dan berada di luar
+        lingkup migrasi — daftar rincian dokumen yang menunggu modul penyimpanan
+        dokumen, serta riwayat komunikasi dan progres yang dimiliki modul lain.
       </p>
     </FormFrame>
-  )
+  );
 }
-
 
 /**
  * withReceivedDefault mengisi Tanggal Terima Dokumen dengan tanggal hari ini bila berkas
@@ -559,8 +606,8 @@ export function ClaimReportFormPage() {
  * (`08-TECHNICAL-STRATEGY.md` bagian 4.4).
  */
 function withReceivedDefault(detail: ClaimReportDetail): ClaimReportDetail {
-  if (detail.tanggal_terima_dokumen.trim() !== '') return detail
-  return { ...detail, tanggal_terima_dokumen: todayWIB() }
+  if (detail.tanggal_terima_dokumen.trim() !== "") return detail;
+  return { ...detail, tanggal_terima_dokumen: todayWIB() };
 }
 
 function FormFrame({
@@ -568,14 +615,17 @@ function FormFrame({
   report,
   children,
 }: {
-  id: string
-  report?: string | undefined
-  children: ReactNode
+  id: string;
+  report?: string | undefined;
+  children: ReactNode;
 }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <nav className="text-xs text-slate-500">
-        <Link to="/inbox/laporan-klaim" className="underline hover:text-slate-800">
+        <Link
+          to="/inbox/laporan-klaim"
+          className="underline hover:text-slate-800"
+        >
           Inbox Laporan Klaim
         </Link>
         <span aria-hidden="true"> › </span>
@@ -583,7 +633,9 @@ function FormFrame({
       </nav>
 
       <header className="mt-2 border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Input Receive Document</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Input Receive Document
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
           Berkas <span className="font-medium text-slate-900">{id}</span>
           {report && <> · {report}</>}
@@ -592,7 +644,7 @@ function FormFrame({
 
       {children}
     </div>
-  )
+  );
 }
 
 /** Satu kelompok isian, mengikuti pengelompokan form lama. */
@@ -601,16 +653,22 @@ function Group({
   children,
   full = false,
 }: {
-  title: string
-  children: ReactNode
-  full?: boolean
+  title: string;
+  children: ReactNode;
+  full?: boolean;
 }) {
   return (
     <section className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">{title}</h2>
-      <div className={['mt-4 grid gap-4', full ? '' : 'sm:grid-cols-2'].join(' ')}>{children}</div>
+      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {title}
+      </h2>
+      <div
+        className={["mt-4 grid gap-4", full ? "" : "sm:grid-cols-2"].join(" ")}
+      >
+        {children}
+      </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -627,10 +685,10 @@ function ReadOnly({ label, value }: { label: string; value: string }) {
     <div>
       <span className="block text-sm font-medium text-slate-700">{label}</span>
       <p className="mt-1 min-h-[42px] rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900">
-        {value || '—'}
+        {value || "—"}
       </p>
     </div>
-  )
+  );
 }
 
 function TextArea({
@@ -643,16 +701,16 @@ function TextArea({
   disabled,
   rows = 5,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  maxLength: number
-  error?: string | undefined
-  disabled?: boolean
-  rows?: number
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength: number;
+  error?: string | undefined;
+  disabled?: boolean;
+  rows?: number;
 }) {
-  const errorID = `${id}-galat`
+  const errorID = `${id}-galat`;
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -668,14 +726,14 @@ function TextArea({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorID : undefined}
         className={[
-          'mt-1.5 w-full rounded-kontrol border bg-white px-3 py-2.5 text-sm text-slate-900',
-          'transition-[border-color,box-shadow] duration-150 ease-halus',
-          'focus:outline-none focus:ring-4',
+          "mt-1.5 w-full rounded-kontrol border bg-white px-3 py-2.5 text-sm text-slate-900",
+          "transition-[border-color,box-shadow] duration-150 ease-halus",
+          "focus:outline-none focus:ring-4",
           error
-            ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-            : 'border-slate-300 hover:border-slate-400 focus:border-blue-500 focus:ring-blue-500/15',
-          'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
-        ].join(' ')}
+            ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
+            : "border-slate-300 hover:border-slate-400 focus:border-blue-500 focus:ring-blue-500/15",
+          "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
+        ].join(" ")}
       />
       {error && (
         <p id={errorID} className="mt-1.5 text-sm text-red-700">
@@ -683,7 +741,7 @@ function TextArea({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -704,18 +762,20 @@ function TextArea({
  */
 export function backToListPath(position: string | undefined): string {
   const tab: Record<string, string> = {
-    Outstanding: 'outstanding',
-    'Not Registered': 'belum-registrasi',
-    'Not Transferred': 'belum-diserahkan',
-  }
-  const kode = position === undefined ? undefined : tab[position]
-  return kode === undefined ? '/inbox/laporan-klaim' : `/inbox/laporan-klaim?kategori=${kode}`
+    Outstanding: "outstanding",
+    "Not Registered": "belum-registrasi",
+    "Not Transferred": "belum-diserahkan",
+  };
+  const kode = position === undefined ? undefined : tab[position];
+  return kode === undefined
+    ? "/inbox/laporan-klaim"
+    : `/inbox/laporan-klaim?kategori=${kode}`;
 }
 
 function messageOf(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }
 
 /**
@@ -725,7 +785,7 @@ function messageOf(failure: unknown): string {
  * Menggambarkan keduanya dengan warna yang sama membuat petugas mencoba memperbaiki hal
  * yang tidak dapat mereka perbaiki.
  */
-function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
-  if (failure instanceof APIError && failure.status >= 500) return 'gangguan'
-  return 'penolakan'
+function toneOf(failure: unknown): "penolakan" | "gangguan" {
+  if (failure instanceof APIError && failure.status >= 500) return "gangguan";
+  return "penolakan";
 }

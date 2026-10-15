@@ -1,38 +1,38 @@
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { CloseIcon } from '@/components/Icon'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { CloseIcon } from "@/components/Icon";
 
-import type { Baris, Daftar, DokumenPreDLA } from './types'
-import { formatTanggal, pesanGalat } from './pesan'
+import type { Baris, Daftar, DokumenPreDLA } from "./types";
+import { formatTanggal, pesanGalat } from "./pesan";
 
 type Props = {
   /** Tab Pre DLA; kolom panelnya datang dari sini (`kolom_cetak`). */
-  daftar: Daftar
+  daftar: Daftar;
 
   /** Baris antrean yang panelnya sedang dibuka. */
-  baris: Baris
+  baris: Baris;
 
-  data: DokumenPreDLA[] | undefined
-  isPending: boolean
-  isError: boolean
-  error: unknown
+  data: DokumenPreDLA[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
 
-  onClose: () => void
+  onClose: () => void;
 
   /**
    * Tombol **"Kirim Pre DLA"** — satu per BARIS di dalam grid, persis letaknya di Pega.
    *
    * Menandai SATU Pre-DLA sebagai terkirim.
    */
-  onKirim: (dokumen: DokumenPreDLA) => void
+  onKirim: (dokumen: DokumenPreDLA) => void;
 
   /** Sedang menunggu jawaban penandaan. */
-  busy: boolean
+  busy: boolean;
 
   /** Pesan hasil penandaan terakhir; kosong berarti belum ada. */
-  pesanKirim?: string
-}
+  pesanKirim?: string;
+};
 
 /**
  * PrintPreDLAPanel adalah panel **"Print Pre DLA"**.
@@ -93,7 +93,7 @@ export function PrintPreDLAPanel({
   busy,
   pesanKirim,
 }: Props) {
-  const rows = data ?? []
+  const rows = data ?? [];
 
   return (
     <section
@@ -102,7 +102,9 @@ export function PrintPreDLAPanel({
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Print Pre DLA</h2>
+          <h2 className="text-base font-semibold text-slate-900">
+            Print Pre DLA
+          </h2>
           <p className="mt-1 text-sm text-slate-600">
             Klaim {baris.no_klaim} — {baris.nama_tertanggung}
           </p>
@@ -130,9 +132,9 @@ export function PrintPreDLAPanel({
           ) : undefined
         }
         emptyMessage={
-          'Belum ada Pre-DLA klaim ini yang dokumennya terlampir. Panel ini hanya ' +
-          'menampilkan Pre-DLA yang berkasnya sudah ada — barisnya tetap ada di ' +
-          'antrean di atas.'
+          "Belum ada Pre-DLA klaim ini yang dokumennya terlampir. Panel ini hanya " +
+          "menampilkan Pre-DLA yang berkasnya sudah ada — barisnya tetap ada di " +
+          "antrean di atas."
         }
       />
 
@@ -145,18 +147,20 @@ export function PrintPreDLAPanel({
       */}
       {rows.length > 0 && (
         <p className="mt-3 text-xs text-slate-500">
-          Menampilkan {rows.length} Pre-DLA yang dokumennya sudah terlampir. Pre-DLA yang
-          berkasnya belum ada tidak muncul di sini — sama seperti di Pega.
+          Menampilkan {rows.length} Pre-DLA yang dokumennya sudah terlampir.
+          Pre-DLA yang berkasnya belum ada tidak muncul di sini — sama seperti
+          di Pega.
         </p>
       )}
 
       <p className="mt-3 text-xs text-slate-500">
-        <strong>Kirim Pre DLA</strong> menandai <strong>satu</strong> Pre-DLA sebagai
-        terkirim beserta tanggalnya. Ia tidak mengirim surat — surat ke reasuradur dikirim
-        tombol <strong>Send</strong> di grid rincian PLA dan DLA.
+        <strong>Kirim Pre DLA</strong> menandai <strong>satu</strong> Pre-DLA
+        sebagai terkirim beserta tanggalnya. Ia tidak mengirim surat — surat ke
+        reasuradur dikirim tombol <strong>Send</strong> di grid rincian PLA dan
+        DLA.
       </p>
 
-      {pesanKirim != null && pesanKirim !== '' && (
+      {pesanKirim != null && pesanKirim !== "" && (
         <p
           role="status"
           className="mt-2 rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
@@ -165,7 +169,7 @@ export function PrintPreDLAPanel({
         </p>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -185,7 +189,7 @@ function kolomCetak(
     title: item.judul,
     value: (row) => nilaiSel(row, item.kunci),
     render: (row) => gambarSel(row, item.kunci, item.tanggal),
-  }))
+  }));
 
   // Kolom "Kirim Pre DLA" — sel tombol di dalam grid, persis seperti di Pega.
   //
@@ -194,27 +198,27 @@ function kolomCetak(
   // pada baris terkirim tidak melakukan apa pun selain menghasilkan penolakan, sehingga
   // menggambarnya hanya menjanjikan sesuatu yang tidak terjadi.
   kolom.push({
-    key: 'aksi',
-    title: '',
-    width: '9rem',
+    key: "aksi",
+    title: "",
+    width: "9rem",
     noSort: true,
     alignRight: true,
-    value: () => '',
+    value: () => "",
     render: (row) =>
-      row.terkirim === '1' ? null : (
+      row.terkirim === "1" ? null : (
         <Button type="button" onClick={() => onKirim(row)} disabled={busy}>
-          {busy ? '…' : 'Kirim Pre DLA'}
+          {busy ? "…" : "Kirim Pre DLA"}
         </Button>
       ),
-  })
+  });
 
-  return kolom
+  return kolom;
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
 function nilaiSel(row: DokumenPreDLA, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /**
@@ -225,23 +229,25 @@ function nilaiSel(row: DokumenPreDLA, kunci: string): string {
  * `NVL` — dan tidak satu pun terbaca manusia.
  */
 function gambarSel(row: DokumenPreDLA, kunci: string, tanggal: boolean) {
-  const isi = nilaiSel(row, kunci)
+  const isi = nilaiSel(row, kunci);
 
-  if (kunci === 'terkirim') {
-    const sudah = isi === '1'
+  if (kunci === "terkirim") {
+    const sudah = isi === "1";
     return (
       <span
         className={[
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          sudah ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800',
-        ].join(' ')}
+          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+          sudah
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-amber-50 text-amber-800",
+        ].join(" ")}
       >
-        {sudah ? 'Terkirim' : 'Belum'}
+        {sudah ? "Terkirim" : "Belum"}
       </span>
-    )
+    );
   }
 
-  if (tanggal) return formatTanggal(isi)
-  if (isi === '') return <span className="text-slate-400">—</span>
-  return isi
+  if (tanggal) return formatTanggal(isi);
+  if (isi === "") return <span className="text-slate-400">—</span>;
+  return isi;
 }

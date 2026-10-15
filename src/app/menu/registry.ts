@@ -56,21 +56,21 @@
  * BERBEDA, dan keduanya sempat tertukar. Lihat catatan pada barisnya di bawah.
  */
 export const MENU_ROUTES: Record<string, string> = {
-  StatusClaimInbox: '/master/status-klaim',
-  MasterRekening: '/master/rekening',
-  StatusProgress: '/master/status-progres-1',
-  StatusProgress2: '/master/status-progres-2',
+  StatusClaimInbox: "/master/status-klaim",
+  MasterRekening: "/master/rekening",
+  StatusProgress: "/master/status-progres-1",
+  StatusProgress2: "/master/status-progres-2",
   // MENU_ID 22 "Master Dokumen Travel", di bawah kelompok MASTER.
   //
   // JANGAN tertukar dengan MENU_ID 39 di bawahnya: yang ini master INDUK — hanya DOCID
   // dan judul dokumen.
-  BrowseMasterDocumentTravel_Harness: '/master/dokumen-travel',
+  BrowseMasterDocumentTravel_Harness: "/master/dokumen-travel",
   // MENU_ID 39 "Daftar Detail Dokumen Travel", di bawah kelompok MASTER.
   //
   // Master TURUNAN atas V_LST_DOC_TRAVEL: ia merujuk DOCID milik MENU_ID 22 di atas dan
   // menambahkan aturannya — wajib atau tidak, jumlah unggahan minimum, dan pembatasan per
   // plan serta jaminan pada V_LST_DOC_TRAVEL_COVERAGE.
-  ListDocumentTravel: '/master/daftar-detail-dokumen-travel',
+  ListDocumentTravel: "/master/daftar-detail-dokumen-travel",
   // MENU_ID 21 "Master COL SIMAS ONLNE", di bawah kelompok MASTER.
   //
   // Salah ketik "ONLNE" pada MENU_DESC ada di basis datanya, bukan di sini. Ia TIDAK
@@ -82,14 +82,14 @@ export const MENU_ROUTES: Record<string, string> = {
   // di bawah, layar Master COL biasa atas tabel yang SAMA tetapi tanpa isian ID Master
   // Kerugian dan tanpa pemetaan bisnis. Keduanya sudah dibangun dan menulis tabel yang
   // sama — perbedaannya hanya pada isian yang ditampilkan.
-  CauseOfLossInboxSimasOnline: '/master/col-simas-online',
+  CauseOfLossInboxSimasOnline: "/master/col-simas-online",
   // MENU_ID 40 "Daftar Tipe Dokumen", di bawah kelompok MASTER.
   //
   // JANGAN tertukar dengan kedua master TURUNANNYA, yang merujuk ID milik layar ini:
   //
   //   `ListDetTypeDocument`   "Daftar Detail Tipe Dokumen"   (V_LST_DET_TYPE_DOC)  ada di bawah
   //   `DetTypeDocumenBisnis`  "Daftar Tipe Dokumen Bisnis"   (LST_TYPE_DOC_BUSINESS) ada di bawah
-  ListDocumentTypeInbox: '/master/tipe-dokumen',
+  ListDocumentTypeInbox: "/master/tipe-dokumen",
   // MENU_ID 41 "Daftar Detail Tipe Dokumen", di bawah kelompok MASTER.
   //
   // Master TURUNAN atas V_LST_DET_TYPE_DOC: ia merujuk ID milik MENU_ID 40 di atas dan
@@ -103,7 +103,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Rutenya `detail-tipe-dokumen`, bukan nama modulnya utuh, supaya hubungan ketiganya
   // terbaca dari URL: /master/tipe-dokumen (induk), /master/detail-tipe-dokumen (ini),
   // /master/objek-dokumen (master yang dirujuknya).
-  ListDetTypeDocument: '/master/detail-tipe-dokumen',
+  ListDetTypeDocument: "/master/detail-tipe-dokumen",
   // MENU_ID 42 "Daftar Tipe Dokumen Bisnis", di bawah kelompok MASTER.
   //
   // Master TURUNAN atas V_LST_DOC_TYPE: ia merujuk ID milik MENU_ID 40 di atas dan
@@ -117,7 +117,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`), dan jalur itu sudah
   // dicadangkan sejak modul MENU_ID 40 dibangun.
-  DetTypeDocumenBisnis: '/master/tipe-dokumen-bisnis',
+  DetTypeDocumenBisnis: "/master/tipe-dokumen-bisnis",
   // MENU_ID 43 "Daftar Objek Dokumen", di bawah kelompok MASTER.
   //
   // JANGAN tertukar dengan `ListDocumentTypeInbox` tepat di atasnya. Keduanya master acuan
@@ -128,7 +128,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //   Daftar Objek Dokumen   dokumennya MELEKAT PADA APA  LST_TYPE_DOC_BUSINESS.OBJECT_DOC_ID
   //
   // Keduanya terbaca berdampingan di `Database/PEGA_LST_DET_TYPE_DOC_BUSINESS.prc:26`.
-  ListDocumentObject: '/master/objek-dokumen',
+  ListDocumentObject: "/master/objek-dokumen",
   // MENU_ID 51 **"My Inbox"** — layar daftar klaim yang masih berjalan.
   //
   // # Kuncinya sempat salah, dan menunya karena itu tidak pernah muncul
@@ -152,27 +152,27 @@ export const MENU_ROUTES: Record<string, string> = {
   // Nama modul dan alamat rutenya sengaja DIBIARKAN `inbox-outstanding` sampai Work
   // Owner memutuskan — mengganti nama modul menyentuh backend, frontend, dan tiket
   // sekaligus (`D-81`), sedangkan memperbaiki kunci ini memulihkan menunya sekarang.
-  InboxRegister_Harness: '/inbox-outstanding',
-  InboxAutoClaim: '/inbox-auto-claim',
+  InboxRegister_Harness: "/inbox-outstanding",
+  InboxAutoClaim: "/inbox-auto-claim",
   // MENU_ID 14 "Master Tipe Surveyors" — GOLONGAN petugas survei.
-  SurveyorsInbox: '/master/tipe-surveyor',
+  SurveyorsInbox: "/master/tipe-surveyor",
   // MENU_ID 15 "Master Surveyors" — daftar ORANGNYA, anak dari butir di atas. Keduanya
   // bernama mirip dan mudah tertukar; yang membedakan adalah `Detail` di awal nama
   // programnya.
-  DetailSurveyorsInbox: '/master/surveyor',
+  DetailSurveyorsInbox: "/master/surveyor",
   // MENU_ID 13 "Master PIC Teknik". Namanya mengandung "Inbox" tetapi ia layar MASTER,
   // bukan daftar pekerjaan (`D-79`) — barisnya data acuan, tidak hilang setelah
   // ditindaklanjuti, dan tidak punya tenggat.
-  UserTeknisInbox: '/master/pic-teknik',
+  UserTeknisInbox: "/master/pic-teknik",
   // MENU_ID 16 "Master Recovery". Berbeda dari butir master lain di daftar ini: layarnya
   // FORM ENTRI, bukan pengelola data acuan — tidak ada satu pun kueri di export yang
   // membaca kembali tabelnya. Letaknya tetap di bawah kelompok MASTER karena di situlah
   // butir menunya berada (`MENU_ID_LEADER 1`).
-  MasterRecovery: '/master/recovery',
+  MasterRecovery: "/master/recovery",
   // MENU_ID 18 "Master Dominan Factor". Namanya diawali `Detail` seperti
   // `DetailSurveyorsInbox`, tetapi di sini awalan itu TIDAK menandakan tingkat kedua —
   // tidak ada master "Dominan Factor" di atasnya. Ia layar master yang berdiri sendiri.
-  DetailDominanFactor: '/master/dominan-factor',
+  DetailDominanFactor: "/master/dominan-factor",
   // MENU_ID 20 "Master Penyebab Kerugian" — tingkat GOLONGAN (`M_CAUSE_OF_LOSS`).
   //
   // Satu butir menu bersaudara sengaja TIDAK dipetakan di sini, dan ia mudah tertukar
@@ -184,7 +184,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // atas. Ia menulis TABEL YANG SAMA dengan layar ini, sehingga keduanya harus dijaga
   // tetap sepakat soal aturan isiannya. Lihat
   // backend/migrations/0005_master_penyebab_kerugian.up.sql.
-  CauseOfLossInbox: '/master/penyebab-kerugian',
+  CauseOfLossInbox: "/master/penyebab-kerugian",
   // MENU_ID 17 "Master Masking". Nama programnya panjang dan tidak menyebut "masking"
   // sama sekali — rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`), karena
   // itulah nama yang dipakai Work Owner dan yang tertulis di menu.
@@ -192,11 +192,11 @@ export const MENU_ROUTES: Record<string, string> = {
   // Isinya kewenangan melihat data pribadi nasabah, sehingga layar ini yang paling berat
   // akibatnya bila terbuka oleh peran yang tidak berhak. Penegakan izin per menu masih
   // TKT-F3-005 dan belum ada.
-  MasterProteksiVisibilityData: '/master/masking',
+  MasterProteksiVisibilityData: "/master/masking",
   // MENU_ID 19 "Master XOL". Satu-satunya butir master yang layarnya BERTINGKAT EMPAT —
   // induk, grup bisnis, layer, dan reas tiap layer — dan satu-satunya yang menyimpannya
   // sekaligus mengajukan ke komite.
-  DetailMasterXOL: '/master/xol',
+  DetailMasterXOL: "/master/xol",
 
   // ── Butir yang layar DAN backend-nya baru tersambung ────────────────────────────
   //
@@ -218,13 +218,13 @@ export const MENU_ROUTES: Record<string, string> = {
 
   // MENU_ID 25. SATU layar untuk DUA master — Penolakan Klaim dan Penolakan Komite —
   // karena di Pega pun keduanya satu butir menu. Pemilihannya tab di dalam layar.
-  PNC_MasterTolakKlaim: '/master/penolakan-klaim',
+  PNC_MasterTolakKlaim: "/master/penolakan-klaim",
   // MENU_ID 26. Empat tab atas tabel yang sama, hanya berbeda saringan.
-  AutoKlaim: '/master/auto-claim',
+  AutoKlaim: "/master/auto-claim",
   // MENU_ID 27 "Master Pasal Kerugian". Nama programnya menyebut "Rejected" tetapi
   // layarnya master pasal, bukan daftar penolakan — nama itu dibaca apa adanya dari tabel
   // menu, dan memperbaikinya menempuh `D-63`.
-  DetailMasterPasalRejected: '/master/pasal-kerugian',
+  DetailMasterPasalRejected: "/master/pasal-kerugian",
   // MENU_ID 36 "Master Pasal AI". Kembaran Master Pasal Kerugian di atas — section-nya
   // memang Save-As darinya — tetapi sudah dipangkas menjadi layar PENCARIAN BACA-SAJA:
   // tanpa tab, tanpa Tambah/Simpan/Hapus, hanya Cari dan Refresh.
@@ -235,7 +235,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Tabelnya `POOLDATA.MST_PASAL_AI`; kolomnya `WP_PASAL`, `WP_AYAT`, dan `WP_KEJADIAN` —
   // nama yang baru terbaca setelah activity dan kedua Connect-SQL-nya diterima, karena
   // propertinya di layar Pega bernama warisan (`.City`, `.CityID`, `.District`).
-  DetailMasterPasalAI: '/master/pasal-ai',
+  DetailMasterPasalAI: "/master/pasal-ai",
 
   // MENU_ID 28, 30, 31 — keluarga alat berat, berbagi satu activity persetujuan yang sama
   // di Pega (`Activity/SetApprovalAllMaster`). Ketiganya beserta Master Supplier di bawah
@@ -246,9 +246,9 @@ export const MENU_ROUTES: Record<string, string> = {
   // MENU_ID 28 "Master Bengkel". Satu butir menu, satu layar, TIGA tab — Approve,
   // Waiting Approval, dan Reject — persis seperti ketiga tab pada
   // `Section/BrowseMasterHE-Section.xml`.
-  BengkelHE: '/master/bengkel',
-  MasterPanel_HE: '/master/panel',
-  SparePart_HE: '/master/sparepart',
+  BengkelHE: "/master/bengkel",
+  MasterPanel_HE: "/master/panel",
+  SparePart_HE: "/master/sparepart",
   // MENU_ID 32 "Master Grouping Sparepart". Satu butir menu, satu layar, TIGA tab —
   // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
   // `Section/PNCMasterGroupingSparepartHE-Section.xml`.
@@ -259,7 +259,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Nama kuncinya `GroupingSparePart_HE` dengan P besar di tengah, persis seperti yang
   // tertulis di POOLDATA.M_MENU_APLIKASI_PNC. Huruf besar-kecilnya dikirim server apa
   // adanya.
-  GroupingSparePart_HE: '/master/grouping-sparepart',
+  GroupingSparePart_HE: "/master/grouping-sparepart",
   // MENU_ID 33 "Master Kategori Sparepart". Satu butir menu, satu layar, TIGA tab —
   // Approve, Reject, dan Waiting Approval — persis seperti ketiga section pada
   // `Section/MasterKategoriSparepartHE-Section.xml`.
@@ -267,7 +267,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Nama kuncinya `GCNMCatSparepart`, persis seperti yang tertulis di
   // POOLDATA.M_MENU_APLIKASI_PNC — termasuk "Cat" yang merupakan singkatan dari Category,
   // bukan salah ketik. Huruf besar-kecilnya dikirim server apa adanya.
-  GCNMCatSparepart: '/master/kategori-sparepart',
+  GCNMCatSparepart: "/master/kategori-sparepart",
   // MENU_ID 34 "Master Tipe Sparepart". Satu butir menu, satu layar, TIGA tab — Approve,
   // Reject, dan Waiting Approval — persis seperti ketiga section pada
   // `Section/MasterTipeSparepartHE-Section.xml`.
@@ -276,21 +276,21 @@ export const MENU_ROUTES: Record<string, string> = {
   // POOLDATA.M_MENU_APLIKASI_PNC. Perhatikan bahwa nama programnya memakai "SparepartType"
   // sementara seluruh caption layarnya menyebut "Tipe Sparepart"; rutenya mengikuti nama
   // bisnis, kunci petanya mengikuti basis data.
-  GCNMMasterSparepartType: '/master/tipe-sparepart',
+  GCNMMasterSparepartType: "/master/tipe-sparepart",
   // MENU_ID 29 "Master Supplier". Satu butir menu, satu layar, TANPA tab — layar lamanya
   // memang satu grid dengan tiga tombol (New Supplier, Edit, Refresh) dan tidak punya
   // penyaring status apa pun (`Section/InboxMasterSupplier-Section.xml`).
   //
   // Satu-satunya master yang seluruh isinya tinggal di SATU kolom JSONDATA: `M_SUPPLIER`
   // hanya punya ID, OLDID, dan JSONDATA.
-  MasterSupplier: '/master/supplier',
+  MasterSupplier: "/master/supplier",
   // MENU_ID 37 "Master Login". Satu butir menu, satu layar, TANPA tab — layar lamanya
   // memang satu grid dengan dua tombol (Tambah, Refresh) dan tidak punya penyaring status
   // apa pun, karena POOLDATA.MST_LOGIN_SURVEYOR tidak punya kolom APPROVAL.
   //
   // Nama kuncinya `MasterLoginSurvey` — menyebut "Survey", sementara MENU_DESC-nya hanya
   // "Master Login". Rutenya mengikuti nama menu, kunci petanya mengikuti basis data.
-  MasterLoginSurvey: '/master/login',
+  MasterLoginSurvey: "/master/login",
   // MENU_ID 35 "Master Reas". Satu butir menu, satu layar, TANPA tab dan TANPA tombol
   // simpan — harness lamanya memang satu grid dengan satu tombol Refresh, dan
   // POOLDATA.T_REINSURER tidak punya kolom persetujuan.
@@ -302,7 +302,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Harness-nya dulu termasuk yang dicatat di atas sebagai TIDAK ADA di export; ia
   // diterima pada 2026-09-22. Yang MASIH hilang adalah section gridnya,
   // `BrowseListMemberReas` — sehingga daftar kolom layarnya tetap rekonstruksi (`R-16`).
-  DataMemberReas: '/master/reas',
+  DataMemberReas: "/master/reas",
   // MENU_ID 38 "Detail Penyebab Kerugian". Satu butir menu, satu layar, TANPA tab —
   // harness lamanya memang satu grid dengan form penyuntingan di bawahnya, dan
   // POOLDATA.D_CAUSE_OF_LOSS tidak punya kolom persetujuan.
@@ -314,7 +314,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Report Definition pengisi gridnya, `BrowseVDCauseOfLoss_RD`, HILANG dari export
   // (`R-16`) — sehingga cakupan daftarnya rekonstruksi dari dua rule lain atas view yang
   // sama. Lihat banner paket `detailpenyebab`.
-  DetailCauseOfLoss: '/master/detail-penyebab-kerugian',
+  DetailCauseOfLoss: "/master/detail-penyebab-kerugian",
 
   // MENU_ID 48 "Inbox Investigator". Layar INBOX pertama yang dibangun, dan yang pertama
   // berada di bawah awalan `/inbox/...` — INBOX adalah kelompok menu tersendiri di sistem
@@ -326,7 +326,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Baca-saja. Mengambil pekerjaan dari antrean dan mencatat hasil investigasi ada di layar
   // kerja yang tidak digambar harness ini dan belum dibangun.
-  InboxInvestigator_Harness: '/inbox/investigator',
+  InboxInvestigator_Harness: "/inbox/investigator",
 
   // MENU_ID 49 "Inbox Receive TKA". Layar INBOX kedua, dan yang PERTAMA yang menulis:
   // pengguna mengisi Tanggal Dokumen Lengkap langsung di dalam tabel lalu menekan Submit,
@@ -339,7 +339,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Submit menulis DUA tabel dalam satu transaksi: T_CLAIM_PNC.TGLDOKLENGKAP agar
   // tanggalnya sampai ke klaim, dan T_CLAIM_TKA_H.TGL_DOC_LENGKAP agar barisnya hilang.
-  InboxTKA_Harness: '/inbox/receive-tka',
+  InboxTKA_Harness: "/inbox/receive-tka",
 
   // MENU_ID 47 "Inbox Compliance", di bawah kelompok INBOX, urutan 1137 — tepat sebelum
   // Inbox Investigator (1138). Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang
@@ -349,7 +349,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Ini mengoreksi `22-INVENTARIS-HARNESS.md`, yang menandainya JANGGAL dengan alasan
   // `RD 0`. Report Definition-nya ADA dan dua buah — keduanya tinggal di dalam section,
   // bukan di harness, sehingga tidak terhitung pada tingkat harness.
-  inboxCompliance_Harness: '/inbox-compliance',
+  inboxCompliance_Harness: "/inbox-compliance",
 
   // MENU_ID 46 "Inbox Service Center", di bawah kelompok INBOX, urutan 1136 — tepat sebelum
   // Inbox Compliance (1137). Ia Inbox sungguhan menurut `D-79`: barisnya klaim portal
@@ -363,15 +363,15 @@ export const MENU_ROUTES: Record<string, string> = {
   // Isinya klaim PERBAIKAN PERANGKAT — IMEI, Brand, Model, Battery — dan itu bukan salah
   // baca: `When/IsServiceCenterPNC-When.xml` ikut menyalakan menu ini pada host entitas
   // Insurtech, yaitu lini yang menjual asuransi gawai.
-  InboxServiceCenter: '/inbox-service-center',
+  InboxServiceCenter: "/inbox-service-center",
 
   // MENU_ID 63, di bawah kelompok INBOX — bukan MASTER. Ia Inbox sungguhan menurut `D-79`:
   // barisnya pekerjaan, hilang setelah ditindaklanjuti, dan punya tenggat.
-  PNCInboxAdmin: '/inbox-admin',
+  PNCInboxAdmin: "/inbox-admin",
   // MENU_ID 64 "Inbox Laporan Klaim" TIDAK dipetakan di sini — lihat entri
   // `InboxRCVApp_Harness` di bawah, yang menunjuk `/inbox/laporan-klaim`.
   // MENU_ID 76 "View History Claim", di bawah kelompok VIEW.
-  PNCSearchKlaim: '/riwayat-klaim',
+  PNCSearchKlaim: "/riwayat-klaim",
   // MENU_ID 77 "Archive Dokumen Klaim", di bawah kelompok VIEW, urutan 1167 — tepat
   // sesudah View History Claim.
   //
@@ -379,7 +379,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // hilang setelah ditindaklanjuti, dan tidak punya tenggat. Itu pula yang membedakannya
   // dari bagian "Kirim ke Cabang" di dalamnya — yang ITU memang daftar pekerjaan, tetapi
   // ia satu bagian dari layar ini, bukan menu tersendiri di sistem lama.
-  PNCArchiveDokumen: '/archive-dokumen-klaim',
+  PNCArchiveDokumen: "/archive-dokumen-klaim",
   // MENU_ID 53 "Inbox XOL". Akumulasi klaim per perjanjian Excess of Loss beserta
   // pemberitahuan PLA/DLA kepada reasuradur. MEMBACA SAJA untuk sekarang — keempat
   // tabel yang ditulis sistem lama masih dimiliki Pega selama masa paralel (`P-1`).
@@ -387,7 +387,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Bedakan dari `DetailMasterXOL` di atas: itu Master XOL (`MENU_ID 19`) yang MENULIS
   // struktur treaty-nya. Keduanya menyentuh MST_XOL_PNC dan kerabatnya, dan hanya satu
   // di antaranya yang boleh menulis.
-  Inbox_XOL_Harness: '/inbox-xol',
+  Inbox_XOL_Harness: "/inbox-xol",
   // MENU_ID 78 "Monitoring SLINK OJK", di bawah kelompok yang sama dengan butir laporan.
   //
   // Ia BUKAN Inbox menurut `D-79`: barisnya data acuan laporan, tidak hilang setelah
@@ -398,17 +398,17 @@ export const MENU_ROUTES: Record<string, string> = {
   // keduanya MEMBACA SAJA. Ketiga tombol tulis layar lama tidak dapat dibangun: tabel
   // SLIK diisi jalur akseptasi dan masih dimiliki Pega (`P-1`), dan kontrak layanan
   // pengirimannya tidak ada di export (`R-16`).
-  MonitoringSLINKOJK: '/monitoring-slink-ojk',
+  MonitoringSLINKOJK: "/monitoring-slink-ojk",
   // MENU_ID 87 "Konversi Coverage" — dokumen coverage polis LIVE → tabel relasional TEST.
-  KonversiCoverage: '/konversi-coverage',
+  KonversiCoverage: "/konversi-coverage",
   // MENU_ID 88 "KonversiObjekItemFire" — PropertyItemList polis Fire LIVE → T_PROPERTYITEMLIST TEST.
-  KonversiObjekItemFire: '/konversi-object-item-fire',
+  KonversiObjekItemFire: "/konversi-object-item-fire",
   // MENU_ID 89 "Konversi Coins" — CoinsList JSON_POLIS.DATA_JSONBLOB LIVE → T_COINSLIST TEST.
-  KonversiCoins: '/konversi-coins',
+  KonversiCoins: "/konversi-coins",
   // MENU_ID 54 "Inbox Claim Treaty Prop". Antrean klaim treaty PROPORSIONAL — klaim yang
   // dialihkan perusahaan asuransi lain kepada ASM sebagai penanggung ulang.
   //
-  InboxClaimTreaty_Harness: '/inbox-claim-treaty-prop',
+  InboxClaimTreaty_Harness: "/inbox-claim-treaty-prop",
   // MENU_ID 55 "Inbox Claim Treaty Non Prop". Layar SAUDARA dari yang di atas, dan
   // rutenya sengaja BERBEDA — bukan sekadar karena namanya berbeda.
   //
@@ -417,7 +417,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // yang di atas menyaring kunci objek kerjanya atas gabungan dua tabel. Menunjuk
   // keduanya ke satu rute akan menampilkan antrean lini bisnis yang salah, dan tidak ada
   // apa pun di layar yang menandakannya.
-  InboxClaimNonProp_Harness: '/inbox-claim-treaty-non-prop',
+  InboxClaimNonProp_Harness: "/inbox-claim-treaty-non-prop",
 
   // MENU_ID 65 "Inbox Progress Claim". Inbox sungguhan menurut `D-79`: barisnya klaim
   // yang menunggu ditindaklanjuti, hilang begitu klaimnya tutup, dan punya tenggat
@@ -431,7 +431,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // `InboxRCVApp_Harness` (64) dulu ikut ditahan karena alasan yang sama; ia kini SUDAH
   // dipetakan di bawah, karena rute API-nya sudah terpasang.
-  ProgressClaim_Harness: '/inbox-progress-claim',
+  ProgressClaim_Harness: "/inbox-progress-claim",
 
   // MENU_ID 64 "Inbox Laporan Klaim", kelompok INBOX.
   //
@@ -448,7 +448,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Kunci ganda pada object literal TIDAK menghasilkan galat saat dijalankan: yang
   // terakhir menang, sehingga perilakunya kebetulan benar. Yang menangkapnya adalah
   // `tsc` (TS1117), bukan uji mana pun.
-  InboxRCVApp_Harness: '/inbox/laporan-klaim',
+  InboxRCVApp_Harness: "/inbox/laporan-klaim",
 
   // MENU_ID 56 "Inbox Manager Receive / PUCL", kelompok INBOX.
   //
@@ -466,7 +466,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Rutenya karena itu terpisah, dan tidak boleh disatukan: yang satu menyaring menurut
   // pembuat berkas, yang lain tidak menyaring menurut pemanggil sama sekali.
-  ReceiveDoucument_Harness: '/inbox-manager-receive-pucl',
+  ReceiveDoucument_Harness: "/inbox-manager-receive-pucl",
 
   // MENU_ID 57 "Inbox Manager Admin", kelompok INBOX, urutan 1147 — tepat sesudah butir di
   // atas. Ia Inbox sungguhan menurut `D-79`: barisnya pekerjaan yang diambil dari
@@ -483,7 +483,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // dan itu disengaja. Layarnya menjelaskan keadaan itu beserta jabatan yang terbaca
   // sistem; menyembunyikan butir menunya justru akan membuat pengguna mengira menunya
   // hilang. Penyaringan yang sesungguhnya ada di server (`TKT-F3-004` belum selesai).
-  InboxManagerAdmin_Harness: '/inbox-manager-admin',
+  InboxManagerAdmin_Harness: "/inbox-manager-admin",
 
   // MENU_ID 58 "Inbox Manager", kelompok INBOX, urutan 1148 — tepat sesudah butir di atas.
   //
@@ -499,8 +499,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Siapa yang melihat butirnya ditentukan `M_OTORISASI_PNC`, bukan kode di sini. Itu perlu
   // disebut karena layarnya memutuskan: `D-59` menetapkan satuan izin adalah menu dan tidak
   // ada pemisahan tugas formal, sehingga butir menu inilah kendalinya.
-  UserInbox_Harness: '/inbox-manager',
-
+  UserInbox_Harness: "/inbox-manager",
 
   // MENU_ID 52 "Inbox Komite" — case ASM-FW-GCNMFW-Work-Komite.
   //
@@ -508,7 +507,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Anggota komite yang sesungguhnya — peran PNCKomite dan PNCKomiteTeknik — belum ada
   // barisnya, sehingga mereka tidak akan melihat butirnya sampai otorisasinya diisi.
   // Itu keadaan DATA, bukan cacat kode.
-  InboxKomite_Harness: '/komite/inbox',
+  InboxKomite_Harness: "/komite/inbox",
 
   // MENU_ID 59 "Inbox Close Claim", kelompok INBOX. Harness-nya TIDAK ADA di export
   // (`K-33`); layarnya dibangun dari `GcnmBrowseReopenCase_SQL`, `GCNMCountCloseClaim`,
@@ -522,7 +521,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Di Pega butir ini dijaga `When/IsManagerPNC_CLOSE-When.xml`: empat access group ditambah
   // TIGA Operator ID perorangan yang tertanam di dalam rule. Ketiga nama itu tidak dibawa
   // (`D-15`); yang menentukan siapa melihat butirnya sekarang adalah `M_OTORISASI_PNC`.
-  InboxCloseClaim_Harness: '/inbox-close-claim',
+  InboxCloseClaim_Harness: "/inbox-close-claim",
 
   // MENU_ID 73 "Dashboard Claim" (`Database/m_menu_aplikasi_pnc.csv:68`).
   //
@@ -538,7 +537,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // tetapi yang satu menyaring `PXASSIGNEDOPERATORID` — pekerjaan MILIK PEMANGGIL — dan
   // yang ini tidak menyaringnya sama sekali. Menunjuk keduanya ke satu rute akan membuat
   // dashboard manajerial menampilkan pekerjaan satu orang, tanpa satu pun tanda di layar.
-  DashboardClaim_Harness: '/dashboard-claim',
+  DashboardClaim_Harness: "/dashboard-claim",
 
   // MENU_ID 60 "Inbox Analyst Doctor", kelompok INBOX.
   //
@@ -554,7 +553,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Yang meredam akibatnya untuk sementara adalah penyaring identitas di server: antreannya
   // milik satu orang, sehingga pengguna yang tidak punya tugas Analyst Doctor melihat layar
   // kosong — bukan antrean orang lain. Itu peredam, bukan kendali.
-  inboxAnalystDoctor_Harness: '/inbox-analyst-doctor',
+  inboxAnalystDoctor_Harness: "/inbox-analyst-doctor",
 
   // MENU_ID 50 "My Work", kelompok INBOX — antrean kerja Surveyor dan Loss Adjuster.
   //
@@ -573,7 +572,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // satu baris untuk MENU_ID 50 — grup `IT`. Pemeriksaan peran tetap `TKT-F3-005` yang belum
   // ada; yang meredam akibatnya adalah jembatan identitas di server, yang menolak pengguna
   // tak terdaftar dengan 403 yang menyebut sebabnya — bukan dengan antrean kosong.
-  InboxSurvey_Harness: '/inbox-survey',
+  InboxSurvey_Harness: "/inbox-survey",
 
   // MENU_ID 61 "Inbox RCL/PUCL", kelompok INBOX.
   //
@@ -605,7 +604,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Berbeda dari Inbox Analyst Doctor, TIDAK ADA peredam sementara di sini: antreannya
   // bersama, sehingga pengguna yang tidak berhak melihat isi penuhnya — bukan layar
   // kosong. Yang tersisa hanyalah jejak di sisi peladen (`D-59`).
-  RCLPUCL_Harness: '/inbox-rcl-pucl',
+  RCLPUCL_Harness: "/inbox-rcl-pucl",
   // MENU_ID 69 "Inbox OS Claim per Cabang", kelompok INBOX.
   //
   // Harness, section, activity pemuat, dan keempat kueri SQL-nya ADA di export, sehingga
@@ -627,7 +626,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Pengguna yang cabangnya tidak diketahui — pengguna non-karyawan, yang di
   // `POOLDATA.M_LOGIN_PNC` memang tidak punya kolom cabang — memperoleh PESAN, bukan daftar
   // kosong. Itu perilaku sistem lama, bukan tambahan.
-  OutstandingKlaimperCabang_Harness: '/inbox-os-claim-per-cabang',
+  OutstandingKlaimperCabang_Harness: "/inbox-os-claim-per-cabang",
   // MENU_ID 62 "Inbox RCL", kelompok INBOX.
   //
   // Harness-nya ADA di export (`Harness/RCL_Harness-Harness.xml`) beserta section
@@ -642,7 +641,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // `(Administrators OR ((PNCKomite OR CaseManager) AND pyPosition = PA)) AND NOT
   // ViewClaimPNC`. Aturan itu BELUM ditegakkan (`TKT-F3-005`); yang menentukan siapa melihat
   // butirnya sekarang adalah `M_OTORISASI_PNC`. Peredamnya penyaring identitas di server.
-  RCL_Harness: '/inbox-rcl',
+  RCL_Harness: "/inbox-rcl",
   // MENU_ID 82 "Laporan Hasil AI", di bawah kelompok REPORT — butir PERTAMA kelompok itu.
   //
   // Layar ini menyandingkan penilaian AI atas sebuah klaim dengan keputusan komite yang
@@ -655,7 +654,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Yang perlu diketahui sebelum membuka layarnya: LIMA dari sepuluh kolomnya SELALU
   // kosong, karena kueri layar lamanya (`pyMemo = "work in progress"`) memang tidak
   // memilih kolomnya. Work Owner memutuskan pada 2026-09-26 untuk menirunya apa adanya.
-  Har_LaporanHasilAI: '/laporan-hasil-ai',
+  Har_LaporanHasilAI: "/laporan-hasil-ai",
   // MENU_ID 84 "Report KPI PNC", di bawah kelompok REPORT.
   //
   // Rutenya `/report-kpi`, bukan `/report-kpi-pnc`: akhiran "PNC" dibuang karena seluruh
@@ -668,7 +667,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // CATATAN PEMULIHAN: baris ini sempat TERHAPUS pada 2026-09-25 oleh `git checkout`
   // yang dijalankan sesi lain untuk membatalkan pemformatan ulang Prettier. Kodenya
   // dipulihkan apa adanya; komentar aslinya tidak dapat dipulihkan utuh.
-  ReportKPIHarness: '/report-kpi',
+  ReportKPIHarness: "/report-kpi",
   // MENU_ID 85 "Report Klaim", di bawah kelompok REPORT.
   //
   // Harness-nya `PNCTATReport` — dan namanya menyesatkan: ia BUKAN layar laporan TAT
@@ -680,10 +679,10 @@ export const MENU_ROUTES: Record<string, string> = {
   // Report Definition-nya tidak ada di export (`R-16`).
   //
   // Rutenya mengikuti nama BUTIR MENU, bukan nama harness (`D-81`).
-  PNCTATReport: '/report-klaim',
+  PNCTATReport: "/report-klaim",
   // Butir menu "Input Req Protection" — permintaan pembukaan proteksi beserta form
   // inputnya, langkah PERTAMA pada `Flow/CreateProtection_Flow.xml`.
-  InputReqProtection_Harness: '/input-req-protection',
+  InputReqProtection_Harness: "/input-req-protection",
 
   // Butir menu "Inbox Open Protection" — antrean AKSEPTASI, langkah kedua alur yang sama.
   //
@@ -695,7 +694,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Rute di bawah memakai nama dari JUDUL harness-nya, karena nama butir menunya
   // bertabrakan dengan judul layar di atas. Menukar keduanya akan mengantar petugas
   // akseptasi ke layar pemohon, dan tidak ada apa pun di layar yang menandakannya.
-  InputProtection_Harness: '/inbox-accept-open-protection',
+  InputProtection_Harness: "/inbox-accept-open-protection",
 
   // Inbox Komunikasi Cabang — `MENU_ID 70`, kotak percakapan antara kantor pusat dan cabang.
   //
@@ -707,7 +706,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // menurut cabang pemanggil, diturunkan di sisi peladen dari login. Petugas yang membuka
   // menunya tanpa berhak tetap tidak melihat percakapan cabang lain — kecuali cabangnya
   // sendiri tidak dapat diturunkan, yang menjatuhkannya ke percakapan kantor pusat (`P-5`).
-  InboxKomunikasiCabang: '/inbox-komunikasi-cabang',
+  InboxKomunikasiCabang: "/inbox-komunikasi-cabang",
 
   // MENU_ID 74 "Case Study Claim", di bawah kelompok INBOX (`MENU_ID_LEADER 2`).
   //
@@ -727,7 +726,7 @@ export const MENU_ROUTES: Record<string, string> = {
   //
   // Layar ini pula satu-satunya layar telaah yang MENULIS: kolom catatan hasil telaah
   // pada `POOLDATA.T_CLAIM_PNC`.
-  PNCStudyClaim: '/case-study-claim',
+  PNCStudyClaim: "/case-study-claim",
 
   // Inbox Salvage — `MENU_ID 71`, pengelolaan barang sisa klaim.
   //
@@ -746,7 +745,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Layar ini melayani portal ASM. Portal Insurtech punya isi tersendiri di Pega
   // (`Section/InboxSalvageInsurtech`) dan belum dibangun — keputusan Work Owner
   // 2026-09-25, supaya perbedaan keduanya terbaca sebagai perbedaan, bukan kerusakan.
-  InboxSalvage: '/inbox-salvage',
+  InboxSalvage: "/inbox-salvage",
 
   // Inbox Banding Harga Salvage — `MENU_ID 72`, antrean banding harga dari balai lelang.
   //
@@ -767,7 +766,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // menyebut butir menu ini namanya). Menirunya akan membuat layar ini tidak dapat dibuka
   // siapa pun, sehingga yang menentukan siapa melihat butirnya di sini adalah
   // `M_OTORISASI_PNC` — sama seperti butir lain.
-  InboxRequestSalvage: '/inbox-banding-harga-salvage',
+  InboxRequestSalvage: "/inbox-banding-harga-salvage",
 
   // Inbox PLA, DLA, Pre DLA — `MENU_ID 44`, antrean pemberitahuan reasuransi yang sudah
   // terbit tetapi BELUM dikirim.
@@ -779,7 +778,7 @@ export const MENU_ROUTES: Record<string, string> = {
   // Nama programnya `InboxPLA_harness`, dengan garis bawah dan huruf kecil di ujungnya.
   // Ia disalin apa adanya dari `MENU_PROGRAM`; menormalkannya akan membuat butirnya
   // tampak belum tersedia.
-  InboxPLA_harness: '/inbox-pla-dla-pre-dla',
+  InboxPLA_harness: "/inbox-pla-dla-pre-dla",
 
   // Inbox PLA DLA — `MENU_ID 45`, layar milik MITRA REASURANSI.
   //
@@ -792,8 +791,8 @@ export const MENU_ROUTES: Record<string, string> = {
   // daftarnya disaring menurut kode reasuradur yang dipetakan dari login pemanggil lewat
   // `POOLDATA.T_REINSURER.LOGIN`. Petugas internal yang membuka butir ini ditolak dengan
   // pesan yang menunjuk butir di atasnya.
-  InboxPLADLA: '/inbox-pla-dla',
-}
+  InboxPLADLA: "/inbox-pla-dla",
+};
 
 /**
  * routeFor mengembalikan rute layar sebuah MENU_PROGRAM, atau null bila belum ada.
@@ -802,5 +801,5 @@ export const MENU_ROUTES: Record<string, string> = {
  * spasi di ujung akan membuat butir yang sebenarnya sudah jadi tampak belum tersedia.
  */
 export function routeFor(program: string): string | null {
-  return MENU_ROUTES[program.trim()] ?? null
+  return MENU_ROUTES[program.trim()] ?? null;
 }

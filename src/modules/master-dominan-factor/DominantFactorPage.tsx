@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DominantFactor } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type DominantFactor } from "@/api/types";
+import { ReloadIcon, AddIcon, EditIcon } from "@/components/Icon";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
-import { useDominantFactorList } from './api'
-import { DominantFactorForm } from './DominantFactorForm'
+import { useDominantFactorList } from "./api";
+import { DominantFactorForm } from "./DominantFactorForm";
 
 /**
  * Layar Master Dominan Factor.
@@ -41,33 +41,35 @@ import { DominantFactorForm } from './DominantFactorForm'
  * tidak "diseragamkan" tanpa keputusan baru.
  */
 export function DominantFactorPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useDominantFactorList()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useDominantFactorList();
 
   // null = sedang menambah; berisi = sedang mengubah baris itu.
-  const [sedangDisunting, setSedangDisunting] = useState<DominantFactor | null>(null)
-  const [formTerbuka, setFormTerbuka] = useState(false)
+  const [sedangDisunting, setSedangDisunting] = useState<DominantFactor | null>(
+    null,
+  );
+  const [formTerbuka, setFormTerbuka] = useState(false);
 
   function openAdd() {
-    setSedangDisunting(null)
-    setFormTerbuka(true)
+    setSedangDisunting(null);
+    setFormTerbuka(true);
   }
 
   function openEdit(factor: DominantFactor) {
-    setSedangDisunting(factor)
-    setFormTerbuka(true)
+    setSedangDisunting(factor);
+    setFormTerbuka(true);
   }
 
   function closeForm() {
-    setFormTerbuka(false)
-    setSedangDisunting(null)
+    setFormTerbuka(false);
+    setSedangDisunting(null);
   }
 
   const columns: Column<DominantFactor>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: '7rem',
+      key: "id",
+      title: "ID",
+      width: "7rem",
       value: (f) => f.id,
       render: (f) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
@@ -76,8 +78,8 @@ export function DominantFactorPage() {
       ),
     },
     {
-      key: 'nama',
-      title: 'Keterangan',
+      key: "nama",
+      title: "Keterangan",
       value: (f) => f.nama,
       render: (f) =>
         // Keterangan kosong DITERIMA modul ini, sehingga ia pasti akan muncul di daftar.
@@ -85,18 +87,21 @@ export function DominantFactorPage() {
         f.nama ? (
           <span className="font-medium text-slate-900">{f.nama}</span>
         ) : (
-          <span className="italic text-slate-400" title="Baris ini tidak punya keterangan">
+          <span
+            className="italic text-slate-400"
+            title="Baris ini tidak punya keterangan"
+          >
             (tanpa keterangan)
           </span>
         ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (f) => (
         <Button
           tone="halus"
@@ -108,12 +113,15 @@ export function DominantFactorPage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -126,18 +134,18 @@ export function DominantFactorPage() {
           Master Dominan Factor
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Daftar acuan faktor dominan penyebab kerugian sebuah klaim. Keterangan yang
-          diubah di sini ikut terbaca laporan Outstanding per Cabang, yang merangkai
-          seluruh faktor satu klaim menjadi satu baris.
+          Daftar acuan faktor dominan penyebab kerugian sebuah klaim. Keterangan
+          yang diubah di sini ikut terbaca laporan Outstanding per Cabang, yang
+          merangkai seluruh faktor satu klaim menjadi satu baris.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
+          Portal entitas:{" "}
           <span className="font-medium text-slate-700">
-            {list.data?.portal ?? portal ?? '—'}
+            {list.data?.portal ?? portal ?? "—"}
           </span>
         </p>
       </header>
@@ -163,23 +171,33 @@ export function DominantFactorPage() {
           description={
             list.data
               ? `${list.data.total} faktor dominan terdaftar pada entitas ini.`
-              : 'Memuat daftar faktor dominan…'
+              : "Memuat daftar faktor dominan…"
           }
           searchLabel="Cari ID atau keterangan"
           emptyMessage="Belum ada faktor dominan yang terdaftar."
           isLoading={list.isPending}
-          error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+          error={
+            list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+          }
           actions={
             <>
               <Button
                 tone="kedua"
-                onClick={() => { list.refetch() }}
+                onClick={() => {
+                  list.refetch();
+                }}
                 disabled={list.isFetching}
               >
-                <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                {list.isFetching ? 'Memuat…' : 'Refresh'}
+                <ReloadIcon
+                  className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                />
+                {list.isFetching ? "Memuat…" : "Refresh"}
               </Button>
-              <Button tone="utama" onClick={openAdd} disabled={formTerbuka && !sedangDisunting}>
+              <Button
+                tone="utama"
+                onClick={openAdd}
+                disabled={formTerbuka && !sedangDisunting}
+              >
                 <AddIcon className="h-4 w-4" />
                 Tambah
               </Button>
@@ -188,7 +206,7 @@ export function DominantFactorPage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -198,20 +216,28 @@ export function DominantFactorPage() {
  * salah — ia baru membuka layarnya.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
+      title: "Tidak dapat menghubungi server",
       description:
-        'Daftar faktor dominan belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+        "Daftar faktor dominan belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -219,30 +245,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar faktor dominan gagal dimuat',
+          title: "Daftar faktor dominan gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar faktor dominan gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar faktor dominan gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

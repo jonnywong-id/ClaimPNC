@@ -1,15 +1,19 @@
-import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ReloadIcon } from '@/components/Icon'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ReloadIcon } from "@/components/Icon";
 
-import { PAGE_SIZE, useDaftarAnalystDoctor, useKeteranganAnalystDoctor } from './api'
-import type { KolomLayar, TugasAnalystDoctor } from './types'
+import {
+  PAGE_SIZE,
+  useDaftarAnalystDoctor,
+  useKeteranganAnalystDoctor,
+} from "./api";
+import type { KolomLayar, TugasAnalystDoctor } from "./types";
 
 /**
  * Inbox Analyst Doctor — menu `MENU_ID 60`, pengganti harness `inboxAnalystDoctor_Harness`.
@@ -43,14 +47,14 @@ import type { KolomLayar, TugasAnalystDoctor } from './types'
  * (`P-1`). Tidak ada tombol yang mengubah apa pun di sini, dan ketiadaannya disengaja.
  */
 export function AnalystDoctorPage() {
-  const navigate = useNavigate()
-  const portal = useSelectedPortal((state) => state.alias)
+  const navigate = useNavigate();
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [cari, setCari] = useState('')
-  const [lewati, setLewati] = useState(0)
+  const [cari, setCari] = useState("");
+  const [lewati, setLewati] = useState(0);
 
-  const keterangan = useKeteranganAnalystDoctor()
-  const daftar = useDaftarAnalystDoctor(cari, lewati)
+  const keterangan = useKeteranganAnalystDoctor();
+  const daftar = useDaftarAnalystDoctor(cari, lewati);
 
   /**
    * Mengubah kata kunci SEKALIGUS kembali ke halaman pertama.
@@ -60,8 +64,8 @@ export function AnalystDoctorPage() {
    * sebagai "tidak ditemukan".
    */
   function ubahPencarian(nilai: string) {
-    setCari(nilai)
-    setLewati(0)
+    setCari(nilai);
+    setLewati(0);
   }
 
   /**
@@ -73,7 +77,7 @@ export function AnalystDoctorPage() {
    * masih dibutuhkan — adalah urusan modul View Claim, bukan urusan layar ini.
    */
   function bukaKlaim(nomorCase: string) {
-    navigate(`/view-claim/${encodeURIComponent(nomorCase)}`)
+    navigate(`/view-claim/${encodeURIComponent(nomorCase)}`);
   }
 
   if (portal === null) {
@@ -82,20 +86,20 @@ export function AnalystDoctorPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean penilaian medis milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
+            "Antrean penilaian medis milik satu badan hukum, dan aplikasi ini melayani " +
+            "empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const kolom = keterangan.data?.kolom ?? []
-  const baris = daftar.data?.data ?? []
-  const total = daftar.data?.total ?? 0
-  const halaman = Math.floor(lewati / PAGE_SIZE) + 1
-  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const kolom = keterangan.data?.kolom ?? [];
+  const baris = daftar.data?.data ?? [];
+  const total = daftar.data?.total ?? 0;
+  const halaman = Math.floor(lewati / PAGE_SIZE) + 1;
+  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <PageFrame>
@@ -114,7 +118,9 @@ export function AnalystDoctorPage() {
           label="Antrean Inbox Analyst Doctor"
           // Prop tidak dikirim sama sekali saat kosong, bukan dikirim bernilai undefined:
           // tsconfig memakai exactOptionalPropertyTypes, yang membedakan keduanya.
-          {...(total > 0 ? { description: `${total} tugas menunggu dinilai.` } : {})}
+          {...(total > 0
+            ? { description: `${total} tugas menunggu dinilai.` }
+            : {})}
           isLoading={daftar.isPending}
           searchLabel="Cari Nomor Case / No Polis"
           // Hanya keadaan "memang tidak ada" yang dinyatakan di sini.
@@ -124,15 +130,21 @@ export function AnalystDoctorPage() {
           // `serverSearch` terisi. Mencabangkannya di sini akan menghasilkan kode yang tidak
           // pernah berjalan — dan pesan yang berbeda dari layar lain untuk keadaan yang sama.
           emptyMessage="Tidak ada tugas penilaian medis untuk Anda saat ini."
-          serverSearch={{ value: cari, onChange: ubahPencarian, matchCount: total }}
+          serverSearch={{
+            value: cari,
+            onChange: ubahPencarian,
+            matchCount: total,
+          }}
           actions={
             <Button
               tone="halus"
-              onClick={() => { daftar.refetch() }}
+              onClick={() => {
+                daftar.refetch();
+              }}
               disabled={daftar.isFetching}
             >
               <ReloadIcon className="h-4 w-4" />
-              {daftar.isFetching ? 'Memuat…' : 'Muat ulang'}
+              {daftar.isFetching ? "Memuat…" : "Muat ulang"}
             </Button>
           }
           error={
@@ -160,7 +172,7 @@ export function AnalystDoctorPage() {
         baris={keterangan.data?.keterbatasan ?? []}
       />
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -177,19 +189,19 @@ function buildColumns(
   kolom: KolomLayar[],
   bukaKlaim: (nomorCase: string) => void,
 ): Column<TugasAnalystDoctor>[] {
-  const hasil: Column<TugasAnalystDoctor>[] = []
+  const hasil: Column<TugasAnalystDoctor>[] = [];
 
   for (const k of kolom) {
-    const dibangun = renderer[k.kunci]?.(k, bukaKlaim)
-    if (dibangun) hasil.push(dibangun)
+    const dibangun = renderer[k.kunci]?.(k, bukaKlaim);
+    if (dibangun) hasil.push(dibangun);
   }
-  return hasil
+  return hasil;
 }
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
 function Teks({ nilai }: { nilai: string }) {
-  if (!nilai) return <span className="text-slate-400">—</span>
-  return <span className="truncate">{nilai}</span>
+  if (!nilai) return <span className="text-slate-400">—</span>;
+  return <span className="truncate">{nilai}</span>;
 }
 
 /**
@@ -201,13 +213,13 @@ function Teks({ nilai }: { nilai: string }) {
 type Renderer = (
   k: KolomLayar,
   bukaKlaim: (nomorCase: string) => void,
-) => Column<TugasAnalystDoctor>
+) => Column<TugasAnalystDoctor>;
 
 const renderer: Record<string, Renderer | undefined> = {
   nomor_case: (k, bukaKlaim) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.nomor_case,
     render: (row) =>
       row.nomor_case ? (
@@ -226,7 +238,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nomor_polis: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.nomor_polis,
     render: (row) => <Teks nilai={row.nomor_polis} />,
   }),
@@ -234,7 +246,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nama_tertanggung: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '14rem',
+    width: "14rem",
     value: (row) => row.nama_tertanggung,
     render: (row) => <Teks nilai={row.nama_tertanggung} />,
   }),
@@ -242,7 +254,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nama_cabang: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.nama_cabang,
     render: (row) => <Teks nilai={row.nama_cabang} />,
   }),
@@ -250,7 +262,7 @@ const renderer: Record<string, Renderer | undefined> = {
   tanggal_pendaftaran: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '9rem',
+    width: "9rem",
     value: (row) => row.tanggal_pendaftaran,
     render: (row) => <Teks nilai={row.tanggal_pendaftaran} />,
   }),
@@ -258,7 +270,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nama_admin: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.nama_admin,
     render: (row) => <Teks nilai={row.nama_admin} />,
   }),
@@ -266,14 +278,16 @@ const renderer: Record<string, Renderer | undefined> = {
   komentar_pic_teknis: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '18rem',
+    width: "18rem",
     value: (row) => row.komentar_pic_teknis,
     render: (row) =>
       row.komentar_pic_teknis ? (
         <span className="block whitespace-pre-line text-slate-700">
           {row.komentar_pic_teknis}
           {row.pic_teknis && (
-            <span className="mt-0.5 block text-xs text-slate-500">— {row.pic_teknis}</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              — {row.pic_teknis}
+            </span>
           )}
         </span>
       ) : (
@@ -282,7 +296,7 @@ const renderer: Record<string, Renderer | undefined> = {
         // Kolom ini masih kosong terhadap Oracle karena properti Pega-nya tidak terekspos.
         // Tanpa keterangan, sel kosong terbaca sebagai "PIC Teknis memang tidak menulis
         // apa-apa" — dan tidak ada seorang pun yang menanyakannya.
-        <span className="text-xs text-slate-400" title={k.keterangan ?? ''}>
+        <span className="text-xs text-slate-400" title={k.keterangan ?? ""}>
           belum terbawa
         </span>
       ),
@@ -291,29 +305,29 @@ const renderer: Record<string, Renderer | undefined> = {
   lama_hari: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '8rem',
+    width: "8rem",
     value: (row) => String(row.lama_hari),
     render: (row) => (
-      <span className="tabular-nums text-slate-700">
-        {row.lama_hari} hari
-      </span>
+      <span className="tabular-nums text-slate-700">{row.lama_hari} hari</span>
     ),
   }),
-}
+};
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Analyst Doctor</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Analyst Doctor
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim yang menunggu penilaian medis Anda. Barisnya hilang begitu tugasnya
-          diselesaikan.
+          Klaim yang menunggu penilaian medis Anda. Barisnya hilang begitu
+          tugasnya diselesaikan.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -324,7 +338,7 @@ function PageFrame({ children }: { children: ReactNode }) {
  * ada di Pega akan dilaporkan berulang kali sebagai kerusakan.
  */
 function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
-  if (baris.length === 0) return null
+  if (baris.length === 0) return null;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
@@ -335,11 +349,11 @@ function Catatan({ judul, baris }: { judul: string; baris: string[] }) {
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 /** pesanGalat mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

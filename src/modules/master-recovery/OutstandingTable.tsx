@@ -1,18 +1,22 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type RecoveryPrincipalGroup, type RecoveryRow } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatMoney } from '@/lib/money'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type RecoveryPrincipalGroup,
+  type RecoveryRow,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatMoney } from "@/lib/money";
 
-import { PAGE_SIZE, useRecoveryList, useViewDocument } from './api'
+import { PAGE_SIZE, useRecoveryList, useViewDocument } from "./api";
 
 type Props = {
   /** Tombol-tombol di kanan judul — Tambah dan Refresh, seperti di layar lama. */
-  actions?: React.ReactNode
-}
+  actions?: React.ReactNode;
+};
 
 /**
  * Tab **Outstanding** — satu baris per principal, isinya terbuka saat diklik.
@@ -50,19 +54,19 @@ type Props = {
  * diam-diam tidak akan pernah dikeluhkan siapa pun.
  */
 export function OutstandingTable({ actions }: Props) {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
-  const list = useRecoveryList({ cari: search, halaman: page })
+  const list = useRecoveryList({ cari: search, halaman: page });
 
-  const rows = list.data?.principal ?? []
-  const total = list.data?.total ?? 0
-  const totalPage = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const rows = list.data?.principal ?? [];
+  const total = list.data?.total ?? 0;
+  const totalPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const columns: Column<RecoveryPrincipalGroup>[] = [
     {
-      key: 'nama_principal',
-      title: 'Nama Principal',
+      key: "nama_principal",
+      title: "Nama Principal",
       value: (row) => row.nama_principal,
       render: (row) => (
         <span className="font-medium text-slate-900">
@@ -75,15 +79,19 @@ export function OutstandingTable({ actions }: Props) {
         </span>
       ),
     },
-    money('nilai_klaim', 'Nilai Klaim', (row) => row.nilai_klaim),
-    money('pembayaran_sebelumnya', 'Nilai Pembayaran Sebelumnya', (row) => row.pembayaran_sebelumnya),
-    money('pembayaran', 'Pembayaran', (row) => row.pembayaran),
+    money("nilai_klaim", "Nilai Klaim", (row) => row.nilai_klaim),
+    money(
+      "pembayaran_sebelumnya",
+      "Nilai Pembayaran Sebelumnya",
+      (row) => row.pembayaran_sebelumnya,
+    ),
+    money("pembayaran", "Pembayaran", (row) => row.pembayaran),
     {
-      key: 'sisa',
-      title: 'Sisa',
-      width: '10rem',
+      key: "sisa",
+      title: "Sisa",
+      width: "10rem",
       alignRight: true,
-      value: (row) => String(row.sisa).padStart(20, '0'),
+      value: (row) => String(row.sisa).padStart(20, "0"),
       render: (row) => (
         /*
           Sisa negatif diberi warna karena ia menandakan pembayaran melampaui nilai klaim —
@@ -92,15 +100,15 @@ export function OutstandingTable({ actions }: Props) {
         */
         <span
           className={
-            'font-mono text-xs font-medium tabular-nums ' +
-            (row.sisa < 0 ? 'text-red-700' : 'text-slate-900')
+            "font-mono text-xs font-medium tabular-nums " +
+            (row.sisa < 0 ? "text-red-700" : "text-slate-900")
           }
         >
           {formatMoney(row.sisa)}
         </span>
       ),
     },
-  ]
+  ];
 
   return (
     <DataTable
@@ -118,10 +126,10 @@ export function OutstandingTable({ actions }: Props) {
       serverSearch={{
         value: search,
         onChange: (value) => {
-          setSearch(value)
+          setSearch(value);
           // Kembali ke halaman pertama: hasil pencarian baru hampir pasti lebih pendek,
           // dan bertahan di halaman lima akan menampilkan daftar kosong yang membingungkan.
-          setPage(1)
+          setPage(1);
         },
         matchCount: total,
       }}
@@ -136,7 +144,7 @@ export function OutstandingTable({ actions }: Props) {
       }}
       expandedRow={(row) => <BatchTable rows={row.batch} />}
     />
-  )
+  );
 }
 
 function money(
@@ -147,17 +155,17 @@ function money(
   return {
     key,
     title,
-    width: '11rem',
+    width: "11rem",
     alignRight: true,
     // Yang diurutkan adalah angka berlapis nol, bukan teks terformat: "1.000.000" dan
     // "900.000" diurutkan sebagai teks akan menaruh yang kecil di atas.
-    value: (row) => String(ambil(row)).padStart(20, '0'),
+    value: (row) => String(ambil(row)).padStart(20, "0"),
     render: (row) => (
       <span className="font-mono text-xs tabular-nums text-slate-800">
         {formatMoney(ambil(row))}
       </span>
     ),
-  }
+  };
 }
 
 /**
@@ -172,7 +180,7 @@ function money(
  * di tangan — dan menyarangkan dua bilah pencarian pada satu layar justru membingungkan.
  */
 function BatchTable({ rows }: { rows: RecoveryRow[] }) {
-  const [modal, setModal] = useState<RecoveryRow | null>(null)
+  const [modal, setModal] = useState<RecoveryRow | null>(null);
 
   return (
     <div className="overflow-x-auto rounded-kontrol border border-slate-200 bg-white">
@@ -181,23 +189,23 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
             {[
-              'Tanggal Input',
-              'NO HPLL',
-              'Tahun',
-              'Nilai Klaim',
-              'Nilai Pembayaran Sebelumnya',
-              'Nilai Pembayaran',
-              'Sisa Klaim',
-              'Keterangan',
-              'Posisi',
-              '',
+              "Tanggal Input",
+              "NO HPLL",
+              "Tahun",
+              "Nilai Klaim",
+              "Nilai Pembayaran Sebelumnya",
+              "Nilai Pembayaran",
+              "Sisa Klaim",
+              "Keterangan",
+              "Posisi",
+              "",
             ].map((judul, index) => (
               <th
                 key={judul || `aksi-${index}`}
                 scope="col"
                 className={
-                  'px-3 py-2 font-semibold text-slate-600 ' +
-                  (index >= 3 && index <= 6 ? 'text-right' : '')
+                  "px-3 py-2 font-semibold text-slate-600 " +
+                  (index >= 3 && index <= 6 ? "text-right" : "")
                 }
               >
                 {judul}
@@ -207,12 +215,15 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.batch} className="border-b border-slate-100 last:border-0">
+            <tr
+              key={row.batch}
+              className="border-b border-slate-100 last:border-0"
+            >
               <td className="px-3 py-2 whitespace-nowrap text-slate-800">
                 {formatInputDate(row.tanggal_input)}
               </td>
-              <td className="px-3 py-2 text-slate-800">{row.no_hpll || '—'}</td>
-              <td className="px-3 py-2 text-slate-800">{row.tahun || '—'}</td>
+              <td className="px-3 py-2 text-slate-800">{row.no_hpll || "—"}</td>
+              <td className="px-3 py-2 text-slate-800">{row.tahun || "—"}</td>
               <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-800">
                 {formatMoney(row.nilai_klaim)}
               </td>
@@ -224,14 +235,18 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
               </td>
               <td
                 className={
-                  'px-3 py-2 text-right font-mono font-medium tabular-nums ' +
-                  (row.sisa < 0 ? 'text-red-700' : 'text-slate-900')
+                  "px-3 py-2 text-right font-mono font-medium tabular-nums " +
+                  (row.sisa < 0 ? "text-red-700" : "text-slate-900")
                 }
               >
                 {formatMoney(row.sisa)}
               </td>
-              <td className="px-3 py-2 text-slate-800">{row.keterangan || '—'}</td>
-              <td className="px-3 py-2 text-slate-800">{row.posisi_kasus || '—'}</td>
+              <td className="px-3 py-2 text-slate-800">
+                {row.keterangan || "—"}
+              </td>
+              <td className="px-3 py-2 text-slate-800">
+                {row.posisi_kasus || "—"}
+              </td>
               <td className="px-3 py-2 text-right">
                 {/*
                   Tombol SELALU tampil, sama seperti layar lama — termasuk pada batch tanpa
@@ -247,8 +262,8 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
                   onClick={(event) => {
                     // Baris luar adalah tombol pembuka/penutup; tanpa ini, menekan
                     // View Document ikut menutup barisnya.
-                    event.stopPropagation()
-                    setModal(row)
+                    event.stopPropagation();
+                    setModal(row);
                   }}
                 >
                   View Document
@@ -263,7 +278,7 @@ function BatchTable({ rows }: { rows: RecoveryRow[] }) {
         <SupportingDocumentModal batch={modal} onClose={() => setModal(null)} />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -292,11 +307,11 @@ function SupportingDocumentModal({
   batch,
   onClose,
 }: {
-  batch: RecoveryRow
-  onClose: () => void
+  batch: RecoveryRow;
+  onClose: () => void;
 }) {
-  const view = useViewDocument()
-  const dokumen = batch.dokumen
+  const view = useViewDocument();
+  const dokumen = batch.dokumen;
 
   return (
     <div
@@ -313,7 +328,9 @@ function SupportingDocumentModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-900">View Dokument Pendukung</h3>
+          <h3 className="text-base font-semibold text-slate-900">
+            View Dokument Pendukung
+          </h3>
           <button
             type="button"
             onClick={onClose}
@@ -347,15 +364,19 @@ function SupportingDocumentModal({
                 </tr>
               ) : (
                 <tr className="border-b border-slate-200">
-                  <td className="py-3 text-slate-800">{dokumen.input_nama || '—'}</td>
-                  <td className="py-3 text-slate-800">{formatInputDate(dokumen.tanggal)}</td>
+                  <td className="py-3 text-slate-800">
+                    {dokumen.input_nama || "—"}
+                  </td>
+                  <td className="py-3 text-slate-800">
+                    {formatInputDate(dokumen.tanggal)}
+                  </td>
                   <td className="py-3 text-right">
                     <Button
                       tone="halus"
                       onClick={() => view.mutate(dokumen.id)}
                       disabled={view.isPending}
                     >
-                      {view.isPending ? 'Membuka…' : 'Buka berkas'}
+                      {view.isPending ? "Membuka…" : "Buka berkas"}
                     </Button>
                   </td>
                 </tr>
@@ -363,7 +384,7 @@ function SupportingDocumentModal({
             </tbody>
           </table>
 
-          {dokumen !== null && dokumen.nama_berkas !== '' && (
+          {dokumen !== null && dokumen.nama_berkas !== "" && (
             <p className="mt-3 text-xs text-slate-500">{dokumen.nama_berkas}</p>
           )}
 
@@ -375,7 +396,7 @@ function SupportingDocumentModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -388,25 +409,28 @@ function SupportingDocumentModal({
  * sama seperti layar lain, supaya pengguna di zona lain melihat jam yang sama.
  */
 function formatInputDate(raw: string): string {
-  if (raw === '') return '—'
-  const waktu = new Date(raw)
-  if (Number.isNaN(waktu.getTime())) return '—'
+  if (raw === "") return "—";
+  const waktu = new Date(raw);
+  if (Number.isNaN(waktu.getTime())) return "—";
 
   const bagian = Object.fromEntries(
-    INPUT_DATE_FORMAT.formatToParts(waktu).map((part) => [part.type, part.value]),
-  )
-  return `${bagian.day}/${bagian.month}/${bagian.year} ${bagian.hour}:${bagian.minute}`
+    INPUT_DATE_FORMAT.formatToParts(waktu).map((part) => [
+      part.type,
+      part.value,
+    ]),
+  );
+  return `${bagian.day}/${bagian.month}/${bagian.year} ${bagian.hour}:${bagian.minute}`;
 }
 
-const INPUT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Asia/Jakarta',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-})
+const INPUT_DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Jakarta",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
 function DocumentErrorMessage({ error }: { error: unknown }) {
   if (error instanceof NetworkError) {
@@ -416,7 +440,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
         description="Bukti bayar belum dapat dibuka. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (error instanceof APIError) {
@@ -428,7 +452,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
             description="Penandanya menunjuk lampiran yang tidak ada. Unggah ulang bukti bayarnya."
             tone="penolakan"
           />
-        )
+        );
       case ErrorCode.documentElsewhere:
         return (
           <ErrorMessage
@@ -436,7 +460,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
             description="Bukti bayar ini berada di penyimpanan dokumen yang belum terhubung ke aplikasi baru."
             tone="gangguan"
           />
-        )
+        );
       default:
         return (
           <ErrorMessage
@@ -444,7 +468,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
             description={error.message}
             tone="gangguan"
           />
-        )
+        );
     }
   }
 
@@ -454,7 +478,7 @@ function DocumentErrorMessage({ error }: { error: unknown }) {
       description="Terjadi kesalahan pada sistem. Coba beberapa saat lagi."
       tone="gangguan"
     />
-  )
+  );
 }
 
 /**
@@ -471,7 +495,7 @@ function ListErrorMessage({ error }: { error: unknown }) {
         description="Daftar belum dapat dimuat. Periksa koneksi lalu tekan Refresh."
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (error instanceof APIError) {
@@ -484,7 +508,7 @@ function ListErrorMessage({ error }: { error: unknown }) {
             description="Daftar recovery dimiliki masing-masing entitas. Pilih portal entitas lebih dulu."
             tone="penolakan"
           />
-        )
+        );
       case ErrorCode.portalNotReady:
         return (
           <ErrorMessage
@@ -492,11 +516,15 @@ function ListErrorMessage({ error }: { error: unknown }) {
             description="Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC."
             tone="gangguan"
           />
-        )
+        );
       default:
         return (
-          <ErrorMessage title="Daftar gagal dimuat" description={error.message} tone="gangguan" />
-        )
+          <ErrorMessage
+            title="Daftar gagal dimuat"
+            description={error.message}
+            tone="gangguan"
+          />
+        );
     }
   }
 
@@ -506,5 +534,5 @@ function ListErrorMessage({ error }: { error: unknown }) {
       description="Terjadi kesalahan pada sistem. Coba tekan Refresh."
       tone="gangguan"
     />
-  )
+  );
 }

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   XOLBusinessGroupResponse,
   XOLFormResponse,
@@ -8,11 +8,11 @@ import type {
   XOLListResponse,
   XOLReinsurerSearchResponse,
   XOLResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTES = '/api/master/xol'
+const ROUTES = "/api/master/xol";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -22,16 +22,17 @@ const ROUTES = '/api/master/xol'
  * apa pun di layar yang menandakan ia milik badan hukum lain (`R-20`).
  */
 const key = {
-  list: (portal: string | null, token: string | null) => ['master-xol', portal, token] as const,
+  list: (portal: string | null, token: string | null) =>
+    ["master-xol", portal, token] as const,
   detail: (portal: string | null, token: string | null, id: string) =>
-    ['master-xol', portal, token, 'detail', id] as const,
+    ["master-xol", portal, token, "detail", id] as const,
   form: (portal: string | null, token: string | null) =>
-    ['master-xol', portal, token, 'form'] as const,
+    ["master-xol", portal, token, "form"] as const,
   business: (portal: string | null, token: string | null, tipe: string) =>
-    ['master-xol', portal, token, 'bisnis', tipe] as const,
+    ["master-xol", portal, token, "bisnis", tipe] as const,
   reinsurer: (portal: string | null, token: string | null, cari: string) =>
-    ['master-xol', portal, token, 'reas', cari] as const,
-}
+    ["master-xol", portal, token, "reas", cari] as const,
+};
 
 /**
  * Hook daftar Master XOL.
@@ -44,8 +45,8 @@ const key = {
  * treaty: delapan baris setelah sebelas tahun dipakai.
  */
 export function useXOLList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.list(portal, token),
@@ -55,7 +56,7 @@ export function useXOLList() {
     // galat pada layar yang sebenarnya belum siap dibuka.
     enabled: token !== null && portal !== null,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -68,29 +69,34 @@ export function useXOLList() {
  * menyunting salinan basi berarti menimpa perubahan orang lain tanpa menyadarinya.
  */
 export function useXOLDetail(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: key.detail(portal, token, id ?? ''),
-    queryFn: () => callAPI<XOLResponse>(`${ROUTES}/${encodeURIComponent(id ?? '')}`, { token, portal }),
-    enabled: token !== null && portal !== null && id !== null && id !== '',
+    queryKey: key.detail(portal, token, id ?? ""),
+    queryFn: () =>
+      callAPI<XOLResponse>(`${ROUTES}/${encodeURIComponent(id ?? "")}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && id !== null && id !== "",
     staleTime: 0,
-  })
+  });
 }
 
 /** Hook bekal awal layar: pilihan Tahun dan pilihan Type XOL. */
 export function useXOLForm() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.form(portal, token),
-    queryFn: () => callAPI<XOLFormResponse>(`${ROUTES}/form`, { token, portal }),
+    queryFn: () =>
+      callAPI<XOLFormResponse>(`${ROUTES}/form`, { token, portal }),
     enabled: token !== null && portal !== null,
     // Daftar tahun treaty berubah paling sering setahun sekali.
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -100,19 +106,22 @@ export function useXOLForm() {
  * setiap kali dropdown Type XOL berubah — itulah sebabnya Type ikut di dalam kunci cache.
  */
 export function useXOLBusinessGroup(tipe: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.business(portal, token, tipe),
     queryFn: () =>
-      callAPI<XOLBusinessGroupResponse>(`${ROUTES}/bisnis?tipe=${encodeURIComponent(tipe)}`, {
-        token,
-        portal,
-      }),
+      callAPI<XOLBusinessGroupResponse>(
+        `${ROUTES}/bisnis?tipe=${encodeURIComponent(tipe)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -128,28 +137,31 @@ export function useXOLBusinessGroup(tipe: string) {
  * dengan daftar kosong, jadi memanggilnya hanya menambah lalu lintas tanpa hasil.
  */
 export function useXOLReinsurerSearch(cari: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.reinsurer(portal, token, cari),
     queryFn: () =>
-      callAPI<XOLReinsurerSearchResponse>(`${ROUTES}/reas?cari=${encodeURIComponent(cari)}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && cari.trim() !== '',
+      callAPI<XOLReinsurerSearchResponse>(
+        `${ROUTES}/reas?cari=${encodeURIComponent(cari)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: token !== null && portal !== null && cari.trim() !== "",
     // Master reasuradur jarang berubah, dan pengguna kerap mengulang kata kunci yang sama
     // saat mengisi beberapa lapisan berturut-turut.
     staleTime: 10 * 60 * 1000,
-  })
+  });
 }
 
 type SaveFields = {
   /** Kosong berarti menambah; terisi berarti mengubah induk dengan ID itu. */
-  id?: string
-  input: XOLInput
-}
+  id?: string;
+  input: XOLInput;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -164,28 +176,33 @@ type SaveFields = {
  * dan persetujuan atas bentuk sebelumnya tidak lagi berlaku.
  */
 export function useSaveXOL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: SaveFields) =>
-      callAPI<XOLResponse>(id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES, {
-        metode: id ? 'PUT' : 'POST',
-        body: input,
-        token,
-        portal,
-      }),
+      callAPI<XOLResponse>(
+        id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES,
+        {
+          metode: id ? "PUT" : "POST",
+          body: input,
+          token,
+          portal,
+        },
+      ),
     onSuccess: (_result, variables) => {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan,
       // nomornya hanya diketahui server — menebaknya di klien akan menampilkan nomor yang
       // salah sampai muat ulang berikutnya.
-      client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) });
       if (variables.id) {
-        client.invalidateQueries({ queryKey: key.detail(portal, token, variables.id) })
+        client.invalidateQueries({
+          queryKey: key.detail(portal, token, variables.id),
+        });
       }
     },
-  })
+  });
 }
 
 /**
@@ -195,23 +212,27 @@ export function useSaveXOL() {
  * meninggalkan baris yatim di produksi (keputusan Work Owner 2026-09-20).
  */
 export function useDeleteXOL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) =>
-      callAPI<void>(`${ROUTES}/${encodeURIComponent(id)}`, { metode: 'DELETE', token, portal }),
+      callAPI<void>(`${ROUTES}/${encodeURIComponent(id)}`, {
+        metode: "DELETE",
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) });
     },
-  })
+  });
 }
 
 type DeleteChildFields =
-  | { jenis: 'bisnis'; masterID: string; id: string }
-  | { jenis: 'layer'; masterID: string; id: string }
-  | { jenis: 'reas'; masterID: string; layerID: string; id: string }
+  | { jenis: "bisnis"; masterID: string; id: string }
+  | { jenis: "layer"; masterID: string; id: string }
+  | { jenis: "reas"; masterID: string; layerID: string; id: string };
 
 /**
  * Hook hapus satu baris anak: grup bisnis, lapisan, atau reas.
@@ -221,21 +242,23 @@ type DeleteChildFields =
  * sebabnya Simpan bersifat upsert dan tidak pernah menghapus baris yang tidak disebut.
  */
 export function useDeleteXOLChild() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (fields: DeleteChildFields) => {
-      const base = `${ROUTES}/${encodeURIComponent(fields.masterID)}`
+      const base = `${ROUTES}/${encodeURIComponent(fields.masterID)}`;
       const path =
-        fields.jenis === 'reas'
+        fields.jenis === "reas"
           ? `${base}/layer/${encodeURIComponent(fields.layerID)}/reas/${encodeURIComponent(fields.id)}`
-          : `${base}/${fields.jenis}/${encodeURIComponent(fields.id)}`
-      return callAPI<void>(path, { metode: 'DELETE', token, portal })
+          : `${base}/${fields.jenis}/${encodeURIComponent(fields.id)}`;
+      return callAPI<void>(path, { metode: "DELETE", token, portal });
     },
     onSuccess: (_result, fields) => {
-      client.invalidateQueries({ queryKey: key.detail(portal, token, fields.masterID) })
+      client.invalidateQueries({
+        queryKey: key.detail(portal, token, fields.masterID),
+      });
     },
-  })
+  });
 }

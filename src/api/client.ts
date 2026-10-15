@@ -1,4 +1,4 @@
-import { ErrorCode, type FieldViolation } from './types'
+import { ErrorCode, type FieldViolation } from "./types";
 
 /**
  * Galat dari API dalam bentuk yang dapat diperiksa layar.
@@ -6,8 +6,8 @@ import { ErrorCode, type FieldViolation } from './types'
  * Yang dipakai membedakan jenis galat adalah `kode`, bukan `pesan`.
  */
 export class APIError extends Error {
-  readonly kode: string
-  readonly status: number
+  readonly kode: string;
+  readonly status: number;
 
   /**
    * Pelanggaran per isian dalam bentuk SENARAI, hanya terisi pada galat validasi (`422`).
@@ -31,7 +31,7 @@ export class APIError extends Error {
    * seluruh aplikasi adalah TKT-F1-004 yang masih terhalang. Yang dikerjakan sekarang
    * adalah menampung ketiganya tanpa membuat satu layar pun menebak bentuknya.
    */
-  readonly detail: FieldViolation[]
+  readonly detail: FieldViolation[];
 
   /**
    * Pelanggaran per isian dalam bentuk PETA `kolom → pesan`.
@@ -39,7 +39,7 @@ export class APIError extends Error {
    * Dipakai modul Master Rekening. Kosong untuk galat yang tidak menunjuk isian
    * tertentu, dan kosong pula untuk modul yang memakai `detail`.
    */
-  readonly field: Record<string, string>
+  readonly field: Record<string, string>;
 
   constructor(
     kode: string,
@@ -48,12 +48,12 @@ export class APIError extends Error {
     detail?: FieldViolation[],
     field?: Record<string, string>,
   ) {
-    super(pesan)
-    this.name = 'APIError'
-    this.kode = kode
-    this.status = status
-    this.detail = detail ?? []
-    this.field = field ?? {}
+    super(pesan);
+    this.name = "APIError";
+    this.kode = kode;
+    this.status = status;
+    this.detail = detail ?? [];
+    this.field = field ?? {};
   }
 
   /**
@@ -67,20 +67,20 @@ export class APIError extends Error {
    * `detail` pun belum sepakat menamainya.
    */
   violations(): Record<string, string> {
-    const result: Record<string, string> = { ...this.field }
+    const result: Record<string, string> = { ...this.field };
     for (const item of this.detail) {
-      const column = item.field ?? item.kolom ?? item.isian
-      if (column) result[column] = item.pesan
+      const column = item.field ?? item.kolom ?? item.isian;
+      if (column) result[column] = item.pesan;
     }
-    return result
+    return result;
   }
 }
 
 /** Galat jaringan: permintaan tidak pernah sampai ke backend. */
 export class NetworkError extends Error {
   constructor() {
-    super('Tidak dapat menghubungi server Claim PNC.')
-    this.name = 'NetworkError'
+    super("Tidak dapat menghubungi server Claim PNC.");
+    this.name = "NetworkError";
   }
 }
 
@@ -100,7 +100,7 @@ type RequestOptions = {
    * menunggu Simpan. Yang diperbaiki hanyalah kaskadenya: sistem lama menghapus satu
    * tabel saja dan meninggalkan baris yatim yang masih ada di produksi hari ini.
    */
-   
+
   /**
    * Badan permintaan.
    *
@@ -108,9 +108,9 @@ type RequestOptions = {
    * JSON. Perbedaannya ditangani di sini, bukan di layar, supaya tetap ada SATU tempat
    * `fetch` dipanggil di seluruh aplikasi.
    */
-  metode?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  body?: unknown
-  token?: string | null
+  metode?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+  token?: string | null;
   /**
    * Alias portal entitas yang melayani permintaan ini.
    *
@@ -122,11 +122,11 @@ type RequestOptions = {
    * Dikirim sebagai header, bukan di URL: nilai di URL ikut tercatat di log peramban,
    * log proxy, dan header Referer.
    */
-  portal?: string | null
-}
+  portal?: string | null;
+};
 
 /** Nama header tempat portal entitas disebut. Sama dengan portalhttp.HeaderPortal. */
-export const HEADER_PORTAL = 'X-Portal'
+export const HEADER_PORTAL = "X-Portal";
 
 /**
  * callAPI adalah satu-satunya tempat `fetch` dipanggil di seluruh aplikasi.
@@ -134,55 +134,59 @@ export const HEADER_PORTAL = 'X-Portal'
  * Komponen tidak pernah memanggil fetch sendiri; mereka memakai hook TanStack Query
  * yang memanggil fungsi ini (docs/Steering/08-TECHNICAL-STRATEGY.md §3).
  */
-export async function callAPI<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { metode = 'GET', body, token, portal } = options
+export async function callAPI<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { metode = "GET", body, token, portal } = options;
 
-  const isForm = body instanceof FormData
+  const isForm = body instanceof FormData;
 
-  const header: Record<string, string> = { Accept: 'application/json' }
+  const header: Record<string, string> = { Accept: "application/json" };
   // Content-Type SENGAJA tidak diisi untuk FormData. Peramban yang mengisinya, lengkap
   // dengan `boundary` yang dibangkitkannya sendiri — menuliskannya di sini akan
   // menghilangkan boundary itu, dan server menolak badan permintaan yang tidak dapat
   // dipecah.
-  if (body !== undefined && !isForm) header['Content-Type'] = 'application/json'
+  if (body !== undefined && !isForm)
+    header["Content-Type"] = "application/json";
   // Token dikirim di header, tidak pernah di URL: nilai di URL ikut tercatat di log
   // peramban, log proxy, dan header Referer.
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  if (token) header["Authorization"] = `Bearer ${token}`;
+  if (portal) header[HEADER_PORTAL] = portal;
 
-  let response: Response
+  let response: Response;
   try {
     response = await fetch(path, {
       method: metode,
       headers: header,
       body: body === undefined ? null : isForm ? body : JSON.stringify(body),
-    })
+    });
   } catch {
-    throw new NetworkError()
+    throw new NetworkError();
   }
 
-  if (response.status === 204) return undefined as T
+  if (response.status === 204) return undefined as T;
 
-  const content = await readJSON(response)
+  const content = await readJSON(response);
   if (!response.ok) {
     // detail dan field dibaca sebagai unknown lalu diperiksa, bukan dipercaya
     // bentuknya: badan galat datang dari jaringan, dan `as` tidak memeriksa apa pun
     // saat berjalan.
     const error = content as {
-      kode?: string
-      pesan?: string
-      detail?: unknown
-      field?: unknown
-    } | null
+      kode?: string;
+      pesan?: string;
+      detail?: unknown;
+      field?: unknown;
+    } | null;
     throw new APIError(
       error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
+      error?.pesan ?? "Terjadi kesalahan pada sistem.",
       response.status,
       Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
       fieldMap(error?.field),
-    )
+    );
   }
-  return content as T
+  return content as T;
 }
 
 /**
@@ -202,34 +206,43 @@ export async function downloadAPI(
   filename: string,
   options: { token?: string | null; portal?: string | null } = {},
 ): Promise<void> {
-  const header: Record<string, string> = {}
-  if (options.token) header['Authorization'] = `Bearer ${options.token}`
-  if (options.portal) header[HEADER_PORTAL] = options.portal
+  const header: Record<string, string> = {};
+  if (options.token) header["Authorization"] = `Bearer ${options.token}`;
+  if (options.portal) header[HEADER_PORTAL] = options.portal;
 
-  let response: Response
+  let response: Response;
   try {
-    response = await fetch(path, { headers: header })
+    response = await fetch(path, { headers: header });
   } catch {
-    throw new NetworkError()
+    throw new NetworkError();
   }
 
   if (!response.ok) {
-    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
+    // Rincian per isian ikut dibaca, sama dengan callAPI: ekspor berparameter (rentang
+    // tanggal) ditolak dengan pesan yang hanya ada di `detail`.
+    const error = (await readJSON(response)) as {
+      kode?: string;
+      pesan?: string;
+      detail?: unknown;
+      field?: unknown;
+    } | null;
     throw new APIError(
       error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Berkas tidak dapat diunduh.',
+      error?.pesan ?? "Berkas tidak dapat diunduh.",
       response.status,
-    )
+      Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
+      fieldMap(error?.field),
+    );
   }
 
-  const url = URL.createObjectURL(await response.blob())
+  const url = URL.createObjectURL(await response.blob());
   try {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
   } finally {
-    URL.revokeObjectURL(url)
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -244,9 +257,9 @@ export async function downloadAPI(
  * dipasang sebagai `<a href>` biasa — navigasi peramban tidak membawa keduanya.
  */
 export type BerkasDiambil = {
-  isi: Blob
+  isi: Blob;
   /** Nama berkas dari `Content-Disposition`; kosong bila server tidak menyebutkannya. */
-  nama: string
+  nama: string;
   /**
    * Server menyatakan berkas ini AMAN ditampilkan (`inline`), bukan diunduh.
    *
@@ -254,51 +267,54 @@ export type BerkasDiambil = {
    * adalah daftar aman di server, dan menebaknya lagi di sini akan membuat kedua sisi
    * dapat berbeda pendapat.
    */
-  bolehDitampilkan: boolean
-}
+  bolehDitampilkan: boolean;
+};
 
 export async function blobAPI(
   path: string,
   options: { token?: string | null; portal?: string | null } = {},
 ): Promise<BerkasDiambil> {
-  const header: Record<string, string> = {}
-  if (options.token) header['Authorization'] = `Bearer ${options.token}`
-  if (options.portal) header[HEADER_PORTAL] = options.portal
+  const header: Record<string, string> = {};
+  if (options.token) header["Authorization"] = `Bearer ${options.token}`;
+  if (options.portal) header[HEADER_PORTAL] = options.portal;
 
-  let response: Response
+  let response: Response;
   try {
-    response = await fetch(path, { headers: header })
+    response = await fetch(path, { headers: header });
   } catch {
-    throw new NetworkError()
+    throw new NetworkError();
   }
 
   if (!response.ok) {
-    const error = (await readJSON(response)) as { kode?: string; pesan?: string } | null
+    const error = (await readJSON(response)) as {
+      kode?: string;
+      pesan?: string;
+    } | null;
     throw new APIError(
       error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Berkas tidak dapat dibuka.',
+      error?.pesan ?? "Berkas tidak dapat dibuka.",
       response.status,
-    )
+    );
   }
 
-  const disposition = response.headers.get('Content-Disposition') ?? ''
-  const namaCocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const namaCocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
 
   return {
     isi: await response.blob(),
-    nama: namaCocok ? decodeURIComponent(namaCocok[1] ?? '') : '',
-    bolehDitampilkan: disposition.toLowerCase().startsWith('inline'),
-  }
+    nama: namaCocok ? decodeURIComponent(namaCocok[1] ?? "") : "",
+    bolehDitampilkan: disposition.toLowerCase().startsWith("inline"),
+  };
 }
 
 type UploadOptions = {
   /** Berkas yang diunggah. Dikirim pada bagian bernama `berkas`, sama dengan backend. */
-  berkas: File
+  berkas: File;
   /** Keterangan singkat, hanya dipakai sebagian endpoint. */
-  keterangan?: string
-  token?: string | null
-  portal?: string | null
-}
+  keterangan?: string;
+  token?: string | null;
+  portal?: string | null;
+};
 
 /**
  * uploadAPI mengirim satu berkas sebagai `multipart/form-data`.
@@ -316,38 +332,48 @@ type UploadOptions = {
  * `Content-Type` sengaja TIDAK disetel: peramban menyusunnya sendiri lengkap dengan
  * `boundary`, dan menuliskannya sendiri justru merusak permintaannya.
  */
-export async function uploadAPI<T>(path: string, options: UploadOptions): Promise<T> {
-  const { berkas, keterangan, token, portal } = options
+export async function uploadAPI<T>(
+  path: string,
+  options: UploadOptions,
+): Promise<T> {
+  const { berkas, keterangan, token, portal } = options;
 
-  const form = new FormData()
-  form.append('berkas', berkas)
-  if (keterangan) form.append('keterangan', keterangan)
+  const form = new FormData();
+  form.append("berkas", berkas);
+  if (keterangan) form.append("keterangan", keterangan);
 
-  const header: Record<string, string> = { Accept: 'application/json' }
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  const header: Record<string, string> = { Accept: "application/json" };
+  if (token) header["Authorization"] = `Bearer ${token}`;
+  if (portal) header[HEADER_PORTAL] = portal;
 
-  let response: Response
+  let response: Response;
   try {
-    response = await fetch(path, { method: 'POST', headers: header, body: form })
+    response = await fetch(path, {
+      method: "POST",
+      headers: header,
+      body: form,
+    });
   } catch {
-    throw new NetworkError()
+    throw new NetworkError();
   }
 
-  const content = await readJSON(response)
+  const content = await readJSON(response);
   if (!response.ok) {
-    const error = content as
-      | { kode?: string; pesan?: string; detail?: unknown; field?: unknown }
-      | null
+    const error = content as {
+      kode?: string;
+      pesan?: string;
+      detail?: unknown;
+      field?: unknown;
+    } | null;
     throw new APIError(
       error?.kode ?? ErrorCode.internalError,
-      error?.pesan ?? 'Terjadi kesalahan pada sistem.',
+      error?.pesan ?? "Terjadi kesalahan pada sistem.",
       response.status,
       Array.isArray(error?.detail) ? (error.detail as FieldViolation[]) : [],
       fieldMap(error?.field),
-    )
+    );
   }
-  return content as T
+  return content as T;
 }
 
 /**
@@ -359,30 +385,31 @@ export async function uploadAPI<T>(path: string, options: UploadOptions): Promis
  * tidak boleh menghilangkan pesan isian lain yang sudah benar.
  */
 function fieldMap(value: unknown): Record<string, string> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return {};
 
-  const result: Record<string, string> = {}
+  const result: Record<string, string> = {};
   for (const [column, message] of Object.entries(value)) {
-    if (typeof message === 'string') result[column] = message
+    if (typeof message === "string") result[column] = message;
   }
-  return result
+  return result;
 }
 
 async function readJSON(response: Response): Promise<unknown> {
-  const text = await response.text()
-  if (text.trim() === '') return null
+  const text = await response.text();
+  if (text.trim() === "") return null;
   try {
-    return JSON.parse(text)
+    return JSON.parse(text);
   } catch {
-    return null
+    return null;
   }
 }
 
 /** Berkas yang diunduh dari API, beserta nama yang disarankan server. */
 export type DownloadedFile = {
-  namaBerkas: string
-  blob: Blob
-}
+  namaBerkas: string;
+  blob: Blob;
+};
 
 /**
  * unduhBerkas mengambil respons yang badannya BUKAN JSON — berkas CSV ekspor.
@@ -405,24 +432,24 @@ export async function unduhBerkas(
   path: string,
   options: RequestOptions = {},
 ): Promise<DownloadedFile> {
-  const { metode = 'GET', body, token, portal } = options
+  const { metode = "GET", body, token, portal } = options;
 
-  const header: Record<string, string> = {}
-  if (token) header['Authorization'] = `Bearer ${token}`
-  if (portal) header[HEADER_PORTAL] = portal
+  const header: Record<string, string> = {};
+  if (token) header["Authorization"] = `Bearer ${token}`;
+  if (portal) header[HEADER_PORTAL] = portal;
   // Sebagian unduhan adalah tindakan (mis. Claim Face Sheet mencatat revisi), sehingga
   // metode dan badan JSON ikut dibawa; bawaannya tetap GET tanpa badan.
-  if (body !== undefined) header['Content-Type'] = 'application/json'
+  if (body !== undefined) header["Content-Type"] = "application/json";
 
-  let response: Response
+  let response: Response;
   try {
     response = await fetch(path, {
       method: metode,
       headers: header,
       body: body === undefined ? null : JSON.stringify(body),
-    })
+    });
   } catch {
-    throw new NetworkError()
+    throw new NetworkError();
   }
 
   if (!response.ok) {
@@ -430,11 +457,11 @@ export async function unduhBerkas(
     // terbaca "Validasi gagal", dan alasan sebenarnya (mis. Print DLA, Draft Persetujuan)
     // tidak pernah sampai ke layar.
     const content = (await readJSON(response)) as {
-      kode?: string
-      pesan?: string
-      detail?: FieldViolation[]
-      field?: Record<string, string>
-    } | null
+      kode?: string;
+      pesan?: string;
+      detail?: FieldViolation[];
+      field?: Record<string, string>;
+    } | null;
 
     // Pesan cadangan MENYEBUTKAN kode HTTP-nya, dan itu bukan hiasan.
     //
@@ -459,17 +486,19 @@ export async function unduhBerkas(
       content?.kode ?? ErrorCode.internalError,
       content?.pesan ??
         `Berkas tidak dapat diunduh. Peladen menjawab HTTP ${response.status} ` +
-          'tanpa keterangan yang dapat dibaca.',
+          "tanpa keterangan yang dapat dibaca.",
       response.status,
-      Array.isArray(content?.detail) ? (content.detail as FieldViolation[]) : [],
+      Array.isArray(content?.detail)
+        ? (content.detail as FieldViolation[])
+        : [],
       fieldMap(content?.field),
-    )
+    );
   }
 
   return {
-    namaBerkas: fileNameFromHeader(response.headers.get('Content-Disposition')),
+    namaBerkas: fileNameFromHeader(response.headers.get("Content-Disposition")),
     blob: await response.blob(),
-  }
+  };
 }
 
 /**
@@ -479,14 +508,14 @@ export async function unduhBerkas(
  * di memori tab sampai halaman ditutup — dan pada ekspor beruntun itu bertumpuk.
  */
 export function simpanBerkas(file: DownloadedFile): void {
-  const url = URL.createObjectURL(file.blob)
-  const tautan = document.createElement('a')
-  tautan.href = url
-  tautan.download = file.namaBerkas
-  document.body.appendChild(tautan)
-  tautan.click()
-  document.body.removeChild(tautan)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(file.blob);
+  const tautan = document.createElement("a");
+  tautan.href = url;
+  tautan.download = file.namaBerkas;
+  document.body.appendChild(tautan);
+  tautan.click();
+  document.body.removeChild(tautan);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -497,12 +526,12 @@ export function simpanBerkas(file: DownloadedFile): void {
  * responsnya — tidak dapat mengarahkan simpanan ke luar folder Unduhan.
  */
 function fileNameFromHeader(value: string | null): string {
-  const cadangan = 'unduhan.csv'
-  if (!value) return cadangan
+  const cadangan = "unduhan.csv";
+  if (!value) return cadangan;
 
-  const cocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(value)
-  if (!cocok?.[1]) return cadangan
+  const cocok = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(value);
+  if (!cocok?.[1]) return cadangan;
 
-  const nama = decodeURIComponent(cocok[1]).replaceAll('/', '').trim()
-  return nama === '' ? cadangan : nama
+  const nama = decodeURIComponent(cocok[1]).replaceAll("/", "").trim();
+  return nama === "" ? cadangan : nama;
 }

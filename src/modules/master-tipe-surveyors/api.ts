@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   SurveyorTypeInput,
   SurveyorTypeListResponse,
   SurveyorTypeResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/tipe-surveyor'
+const ROUTE = "/api/master/tipe-surveyor";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -23,7 +23,7 @@ const ROUTE = '/api/master/tipe-surveyor'
  * peramban yang sama.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-tipe-surveyor', portal, token] as const
+  return ["master-tipe-surveyor", portal, token] as const;
 }
 
 /**
@@ -43,8 +43,8 @@ function listKey(portal: string | null, token: string | null) {
  * menuntun pengguna memilih portal lebih berguna daripada pesan galat.
  */
 export function useSurveyorTypeList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
@@ -54,13 +54,13 @@ export function useSurveyorTypeList() {
     // pemuatan ulang yang tidak perlu, sementara tombol Refresh tetap tersedia bagi
     // pengguna yang tahu datanya baru saja diubah orang lain.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 type SaveFields = SurveyorTypeInput & {
   /** Kosong berarti menambah; terisi berarti mengubah tipe dengan kode itu. */
-  kode?: string
-}
+  kode?: string;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -74,23 +74,26 @@ type SaveFields = SurveyorTypeInput & {
  * pengubahan ia berada di jalur URL. Server bahkan menolak badan yang memuat `kode`.
  */
 export function useSaveSurveyorType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ kode, deskripsi }: SaveFields) =>
-      callAPI<SurveyorTypeResponse>(kode ? `${ROUTE}/${encodeURIComponent(kode)}` : ROUTE, {
-        metode: kode ? 'PUT' : 'POST',
-        body: { deskripsi },
-        token,
-        portal,
-      }),
+      callAPI<SurveyorTypeResponse>(
+        kode ? `${ROUTE}/${encodeURIComponent(kode)}` : ROUTE,
+        {
+          metode: kode ? "PUT" : "POST",
+          body: { deskripsi },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan, kode
       // barunya hanya diketahui server — menebaknya di klien akan menampilkan kode yang
       // salah sampai muat ulang berikutnya.
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }

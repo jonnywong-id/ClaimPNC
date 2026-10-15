@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { ReloadIcon } from '@/components/Icon'
-import { DokumenPenunjangPanel } from '@/modules/dokumen-penunjang/DokumenPenunjangPanel'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { ReloadIcon } from "@/components/Icon";
+import { DokumenPenunjangPanel } from "@/modules/dokumen-penunjang/DokumenPenunjangPanel";
 
 import {
   PAGE_SIZE,
@@ -15,8 +15,13 @@ import {
   useAllowedQueues,
   useDecideProtection,
   useProtectionDetail,
-} from './api'
-import { protectionTypeLabel, type ChangeDetail, type Protection, type Queue } from './types'
+} from "./api";
+import {
+  protectionTypeLabel,
+  type ChangeDetail,
+  type Protection,
+  type Queue,
+} from "./types";
 
 /**
  * Layar Inbox Accept Open Protection.
@@ -60,15 +65,15 @@ import { protectionTypeLabel, type ChangeDetail, type Protection, type Queue } f
  * menyembunyikan menu.
  */
 export function AcceptQueuePage() {
-  const [pickedQueue, setPickedQueue] = useState<Queue | null>(null)
-  const [search, setSearch] = useState('')
-  const [offset, setOffset] = useState(0)
-  const [opened, setOpened] = useState<string | null>(null)
+  const [pickedQueue, setPickedQueue] = useState<Queue | null>(null);
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [opened, setOpened] = useState<string | null>(null);
 
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const allowed = useAllowedQueues()
-  const allowedQueues = allowed.data?.antrean ?? []
+  const allowed = useAllowedQueues();
+  const allowedQueues = allowed.data?.antrean ?? [];
 
   // Antrean aktif: yang dipilih pengguna bila masih menjadi haknya, selain itu yang pertama
   // menjadi haknya. Menahan pilihan yang sudah tidak berlaku akan menembak server untuk
@@ -76,42 +81,43 @@ export function AcceptQueuePage() {
   const queue: Queue | null =
     pickedQueue && allowedQueues.includes(pickedQueue)
       ? pickedQueue
-      : (allowedQueues[0] ?? null)
+      : (allowedQueues[0] ?? null);
 
   const list = useAcceptQueue(
-    { queue: queue ?? 'non-premi', search, offset },
+    { queue: queue ?? "non-premi", search, offset },
     { enabled: queue !== null },
-  )
-  const detail = useProtectionDetail(opened)
-  const decide = useDecideProtection()
+  );
+  const detail = useProtectionDetail(opened);
+  const decide = useDecideProtection();
 
-  const rows = list.data?.proteksi ?? []
-  const total = list.data?.total ?? 0
+  const rows = list.data?.proteksi ?? [];
+  const total = list.data?.total ?? 0;
 
   // 403 atas daftar antrean berarti access group pemanggil tidak berwenang atas layar ini.
   // Dibedakan dari gangguan supaya pesannya menjelaskan apa yang harus diminta pengguna.
-  const forbidden = allowed.error instanceof APIError && allowed.error.status === 403
+  const forbidden =
+    allowed.error instanceof APIError && allowed.error.status === 403;
 
   // Gagal selain 403: antreannya tidak diketahui, sehingga daftar TIDAK dapat ditampilkan.
-  const queuesGagal = allowed.isError && !forbidden
+  const queuesGagal = allowed.isError && !forbidden;
 
   function changeQueue(next: Queue) {
-    setPickedQueue(next)
+    setPickedQueue(next);
     // Halaman dan pencarian dikembalikan: keduanya milik antrean sebelumnya, dan
     // mempertahankannya akan menampilkan halaman empat dari daftar yang hanya punya satu.
-    setOffset(0)
-    setSearch('')
-    setOpened(null)
-    decide.reset()
+    setOffset(0);
+    setSearch("");
+    setOpened(null);
+    decide.reset();
   }
 
   function changeSearch(next: string) {
-    setSearch(next)
-    setOffset(0)
+    setSearch(next);
+    setOffset(0);
   }
 
-  async function submit(decision: 'setuju' | 'tolak') {
-    if (opened === null) return
+  async function submit(decision: "setuju" | "tolak") {
+    if (opened === null) return;
 
     // Galat DITELAN dengan sengaja; ia sudah ditampilkan lewat `decide.error`. Membiarkan
     // promise ini menolak akan menghasilkan unhandled rejection di peramban.
@@ -120,8 +126,8 @@ export function AcceptQueuePage() {
     // paling sering terjadi adalah `409` — proteksi sudah diputuskan petugas lain. Menutup
     // panelnya akan menyembunyikan pesan yang menjelaskannya.
     try {
-      await decide.mutateAsync({ number: opened, decision })
-      setOpened(null)
+      await decide.mutateAsync({ number: opened, decision });
+      setOpened(null);
     } catch {
       // Sudah tercatat di decide.error; lihat komentar di atas.
     }
@@ -129,16 +135,16 @@ export function AcceptQueuePage() {
 
   const columns: Column<Protection>[] = [
     {
-      key: 'nomor_proteksi',
-      title: 'No Proteksi',
-      width: '11rem',
+      key: "nomor_proteksi",
+      title: "No Proteksi",
+      width: "11rem",
       value: (p) => p.nomor_proteksi,
       render: (p) => (
         <button
           type="button"
           onClick={() => {
-            decide.reset()
-            setOpened(p.nomor_proteksi)
+            decide.reset();
+            setOpened(p.nomor_proteksi);
           }}
           className="truncate rounded font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
@@ -147,69 +153,81 @@ export function AcceptQueuePage() {
       ),
     },
     {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
+      key: "nomor_polis",
+      title: "No Polis",
+      width: "12rem",
       value: (p) => p.nomor_polis,
       render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_polis || '—'}</span>
+        <span className="truncate font-mono text-xs text-slate-700">
+          {p.nomor_polis || "—"}
+        </span>
       ),
     },
     {
-      key: 'nomor_klaim',
-      title: 'No Klaim',
-      width: '11rem',
+      key: "nomor_klaim",
+      title: "No Klaim",
+      width: "11rem",
       value: (p) => p.nomor_klaim,
       render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_klaim || '—'}</span>
+        <span className="truncate font-mono text-xs text-slate-700">
+          {p.nomor_klaim || "—"}
+        </span>
       ),
     },
     {
-      key: 'tipe_proteksi',
-      title: 'Tipe Proteksi',
-      width: '12rem',
+      key: "tipe_proteksi",
+      title: "Tipe Proteksi",
+      width: "12rem",
       value: (p) => p.tipe_proteksi,
-      render: (p) => <span className="truncate">{protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}</span>,
+      render: (p) => (
+        <span className="truncate">
+          {protectionTypeLabel(p.tipe_proteksi, p.nama_tipe_proteksi)}
+        </span>
+      ),
     },
     {
-      key: 'tanggal_proteksi',
-      title: 'Tanggal Proteksi Dibuat',
-      width: '10rem',
+      key: "tanggal_proteksi",
+      title: "Tanggal Proteksi Dibuat",
+      width: "10rem",
       value: (p) => p.tanggal_proteksi,
       render: (p) => (
         <span className="tabular-nums">
-          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : '—'}
+          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : "—"}
         </span>
       ),
     },
     {
-      key: 'keterangan',
-      title: 'Keterangan',
+      key: "keterangan",
+      title: "Keterangan",
       value: (p) => p.keterangan,
       render: (p) => (
         <span className="truncate" title={p.keterangan}>
-          {p.keterangan || '—'}
+          {p.keterangan || "—"}
         </span>
       ),
     },
     {
-      key: 'user_create',
-      title: 'User Create',
-      width: '10rem',
+      key: "user_create",
+      title: "User Create",
+      width: "10rem",
       value: (p) => p.user_create,
-      render: (p) => <span className="truncate">{p.user_create || '—'}</span>,
+      render: (p) => <span className="truncate">{p.user_create || "—"}</span>,
     },
-  ]
+  ];
 
-  const decisionFailure = decide.error instanceof APIError ? decide.error.message : null
+  const decisionFailure =
+    decide.error instanceof APIError ? decide.error.message : null;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Accept Open Protection</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Accept Open Protection
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Permintaan pembukaan proteksi yang sudah lengkap dan menunggu keputusan. Baris
-          hilang begitu diputuskan — juga bila yang memutuskan petugas lain.
+          Permintaan pembukaan proteksi yang sudah lengkap dan menunggu
+          keputusan. Baris hilang begitu diputuskan — juga bila yang memutuskan
+          petugas lain.
         </p>
       </header>
 
@@ -262,12 +280,26 @@ export function AcceptQueuePage() {
         sedang dilihat, dan tanpa itu daftar PREMI tidak dapat dibedakan dari NON PREMI.
       */}
       {allowedQueues.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Antrean akseptasi">
-          {allowedQueues.includes('non-premi') && (
-            <QueueTab current={queue} value="non-premi" label="Proteksi Klaim NON PREMI" onPick={changeQueue} />
+        <div
+          className="mt-6 flex flex-wrap items-center gap-2"
+          role="tablist"
+          aria-label="Antrean akseptasi"
+        >
+          {allowedQueues.includes("non-premi") && (
+            <QueueTab
+              current={queue}
+              value="non-premi"
+              label="Proteksi Klaim NON PREMI"
+              onPick={changeQueue}
+            />
           )}
-          {allowedQueues.includes('premi') && (
-            <QueueTab current={queue} value="premi" label="Proteksi Klaim PREMI" onPick={changeQueue} />
+          {allowedQueues.includes("premi") && (
+            <QueueTab
+              current={queue}
+              value="premi"
+              label="Proteksi Klaim PREMI"
+              onPick={changeQueue}
+            />
           )}
         </div>
       )}
@@ -284,7 +316,9 @@ export function AcceptQueuePage() {
 
       {opened !== null && (
         <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Akseptasi Proteksi</h2>
+          <h2 className="mb-4 text-base font-semibold text-slate-900">
+            Akseptasi Proteksi
+          </h2>
 
           {decisionFailure && (
             <div className="mb-4">
@@ -304,33 +338,53 @@ export function AcceptQueuePage() {
               description={
                 detail.error instanceof APIError
                   ? detail.error.message
-                  : 'Terjadi kesalahan saat memuat rincian.'
+                  : "Terjadi kesalahan saat memuat rincian."
               }
               tone="gangguan"
             />
           ) : detail.data ? (
             <>
               <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Detail label="No Proteksi" value={detail.data.nomor_proteksi} mono />
+                <Detail
+                  label="No Proteksi"
+                  value={detail.data.nomor_proteksi}
+                  mono
+                />
                 <Detail label="No Polis" value={detail.data.nomor_polis} mono />
                 <Detail label="No Klaim" value={detail.data.nomor_klaim} mono />
-                <Detail label="Nama Tertanggung" value={detail.data.nama_tertanggung} />
+                <Detail
+                  label="Nama Tertanggung"
+                  value={detail.data.nama_tertanggung}
+                />
                 <Detail
                   label="Start Date Time"
-                  value={detail.data.polis_mulai ? formatDate(detail.data.polis_mulai) : ''}
+                  value={
+                    detail.data.polis_mulai
+                      ? formatDate(detail.data.polis_mulai)
+                      : ""
+                  }
                 />
                 <Detail
                   label="End Date Time"
-                  value={detail.data.polis_akhir ? formatDate(detail.data.polis_akhir) : ''}
+                  value={
+                    detail.data.polis_akhir
+                      ? formatDate(detail.data.polis_akhir)
+                      : ""
+                  }
                 />
                 <Detail
                   label="Tipe Proteksi"
-                  value={protectionTypeLabel(detail.data.tipe_proteksi, detail.data.nama_tipe_proteksi)}
+                  value={protectionTypeLabel(
+                    detail.data.tipe_proteksi,
+                    detail.data.nama_tipe_proteksi,
+                  )}
                 />
                 <Detail
                   label="Tanggal Input"
                   value={
-                    detail.data.tanggal_proteksi ? formatDate(detail.data.tanggal_proteksi) : ''
+                    detail.data.tanggal_proteksi
+                      ? formatDate(detail.data.tanggal_proteksi)
+                      : ""
                   }
                 />
                 <Detail label="User Create" value={detail.data.user_create} />
@@ -361,14 +415,18 @@ export function AcceptQueuePage() {
                   <>
                     <Button
                       tone="utama"
-                      onClick={() => { submit('setuju') }}
+                      onClick={() => {
+                        submit("setuju");
+                      }}
                       disabled={decide.isPending}
                     >
-                      {decide.isPending ? 'Menyimpan…' : 'Setujui'}
+                      {decide.isPending ? "Menyimpan…" : "Setujui"}
                     </Button>
                     <Button
                       tone="kedua"
-                      onClick={() => { submit('tolak') }}
+                      onClick={() => {
+                        submit("tolak");
+                      }}
                       disabled={decide.isPending}
                     >
                       Tolak
@@ -379,11 +437,15 @@ export function AcceptQueuePage() {
                   // ditampilkan adalah keputusannya beserta pelakunya. Menampilkan tombol
                   // yang pasti ditolak hanya membuat pengguna mencobanya.
                   <p className="text-sm text-slate-600">
-                    Sudah{' '}
+                    Sudah{" "}
                     <span className="font-medium">
-                      {detail.data.status_akseptasi === '1' ? 'disetujui' : 'ditolak'}
+                      {detail.data.status_akseptasi === "1"
+                        ? "disetujui"
+                        : "ditolak"}
                     </span>
-                    {detail.data.diaksep_oleh && <> oleh {detail.data.diaksep_oleh}</>}
+                    {detail.data.diaksep_oleh && (
+                      <> oleh {detail.data.diaksep_oleh}</>
+                    )}
                     {detail.data.tanggal_akseptasi && (
                       <> pada {formatDate(detail.data.tanggal_akseptasi)}</>
                     )}
@@ -391,7 +453,11 @@ export function AcceptQueuePage() {
                   </p>
                 )}
 
-                <Button tone="halus" onClick={() => setOpened(null)} disabled={decide.isPending}>
+                <Button
+                  tone="halus"
+                  onClick={() => setOpened(null)}
+                  disabled={decide.isPending}
+                >
                   Tutup
                 </Button>
               </div>
@@ -405,11 +471,17 @@ export function AcceptQueuePage() {
           columns={columns}
           rows={rows}
           rowKey={(p) => p.nomor_proteksi}
-          title={queue === 'premi' ? 'Proteksi Klaim PREMI' : 'Proteksi Klaim NON PREMI'}
+          title={
+            queue === "premi"
+              ? "Proteksi Klaim PREMI"
+              : "Proteksi Klaim NON PREMI"
+          }
           label={`Antrean akseptasi ${queue}`}
           // Prop tidak dikirim sama sekali saat kosong: tsconfig memakai
           // exactOptionalPropertyTypes, yang membedakan "tidak ada" dari "undefined".
-          {...(total > 0 ? { description: `${total} permintaan menunggu keputusan.` } : {})}
+          {...(total > 0
+            ? { description: `${total} permintaan menunggu keputusan.` }
+            : {})}
           // `queue !== null` WAJIB ikut disyaratkan.
           //
           // Kueri yang `enabled: false` tetap berstatus `pending` di TanStack Query v5 —
@@ -419,7 +491,11 @@ export function AcceptQueuePage() {
           isLoading={list.isPending && portal !== null && queue !== null}
           searchLabel="Cari No Proteksi / No Polis / No Klaim"
           emptyMessage="Tidak ada permintaan proteksi yang menunggu keputusan pada antrean ini."
-          serverSearch={{ value: search, onChange: changeSearch, matchCount: total }}
+          serverSearch={{
+            value: search,
+            onChange: changeSearch,
+            matchCount: total,
+          }}
           pagination={{
             page: Math.floor(offset / PAGE_SIZE) + 1,
             size: PAGE_SIZE,
@@ -431,11 +507,13 @@ export function AcceptQueuePage() {
           actions={
             <Button
               tone="halus"
-              onClick={() => { list.refetch() }}
+              onClick={() => {
+                list.refetch();
+              }}
               disabled={list.isFetching || portal === null}
             >
               <ReloadIcon className="h-4 w-4" />
-              {list.isFetching ? 'Memuat…' : 'Muat ulang'}
+              {list.isFetching ? "Memuat…" : "Muat ulang"}
             </Button>
           }
         />
@@ -454,7 +532,7 @@ export function AcceptQueuePage() {
         (`authorization.go`), dan di sanalah ia dijelaskan — bukan di layar.
       */}
     </div>
-  )
+  );
 }
 
 /** Satu tab antrean. */
@@ -466,12 +544,12 @@ function QueueTab({
 }: {
   // Boleh null selama daftar antrean yang menjadi hak pemanggil belum tiba — pada saat itu
   // belum ada tab yang aktif, dan menandai salah satunya akan keliru separuh waktu.
-  current: Queue | null
-  value: Queue
-  label: string
-  onPick: (queue: Queue) => void
+  current: Queue | null;
+  value: Queue;
+  label: string;
+  onPick: (queue: Queue) => void;
 }) {
-  const active = current === value
+  const active = current === value;
 
   return (
     <button
@@ -481,13 +559,13 @@ function QueueTab({
       onClick={() => onPick(value)}
       className={
         active
-          ? 'rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white'
-          : 'rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200'
+          ? "rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white"
+          : "rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
       }
     >
       {label}
     </button>
-  )
+  );
 }
 
 /** Satu pasang label dan nilai pada rincian proteksi. */
@@ -507,19 +585,20 @@ function QueueTab({
 function ChangeDetailPanel({ detail }: { detail: ChangeDetail }) {
   // Tipe '7' mengisi pasangan tanggal, tipe '8' mengisi pasangan penyebab. Keduanya tidak
   // pernah terisi bersamaan — backend yang memastikannya.
-  const pasangan = detail.dol_sebelum || detail.dol_sesudah
-    ? {
-        label: 'Current Date Of Loss',
-        labelSesudah: 'Next Date Of Loss',
-        sebelum: detail.dol_sebelum ? formatDate(detail.dol_sebelum) : '',
-        sesudah: detail.dol_sesudah ? formatDate(detail.dol_sesudah) : '',
-      }
-    : {
-        label: 'Cause Of Loss Dipilih',
-        labelSesudah: 'Next Cause Of Loss',
-        sebelum: detail.penyebab_sebelum,
-        sesudah: detail.penyebab_sesudah,
-      }
+  const pasangan =
+    detail.dol_sebelum || detail.dol_sesudah
+      ? {
+          label: "Current Date Of Loss",
+          labelSesudah: "Next Date Of Loss",
+          sebelum: detail.dol_sebelum ? formatDate(detail.dol_sebelum) : "",
+          sesudah: detail.dol_sesudah ? formatDate(detail.dol_sesudah) : "",
+        }
+      : {
+          label: "Cause Of Loss Dipilih",
+          labelSesudah: "Next Cause Of Loss",
+          sebelum: detail.penyebab_sebelum,
+          sesudah: detail.penyebab_sesudah,
+        };
 
   return (
     <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -542,7 +621,11 @@ function ChangeDetailPanel({ detail }: { detail: ChangeDetail }) {
               <span className="sm:hidden">↓</span>
               <span className="hidden sm:inline">→</span>
             </div>
-            <ChangeSide label={pasangan.labelSesudah} value={pasangan.sesudah} highlight />
+            <ChangeSide
+              label={pasangan.labelSesudah}
+              value={pasangan.sesudah}
+              highlight
+            />
           </div>
 
           {(detail.nama_objek || detail.nama_cabang) && (
@@ -554,7 +637,7 @@ function ChangeDetailPanel({ detail }: { detail: ChangeDetail }) {
         </>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -569,39 +652,57 @@ function ChangeSide({
   value,
   highlight,
 }: {
-  label: string
-  value: string
-  highlight?: boolean
+  label: string;
+  value: string;
+  highlight?: boolean;
 }) {
   return (
     <div
       className={
         highlight
-          ? 'flex-1 rounded-md border-2 border-blue-300 bg-white px-3 py-2'
-          : 'flex-1 rounded-md border border-slate-200 bg-white px-3 py-2'
+          ? "flex-1 rounded-md border-2 border-blue-300 bg-white px-3 py-2"
+          : "flex-1 rounded-md border border-slate-200 bg-white px-3 py-2"
       }
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
       <p
         className={
           highlight
-            ? 'mt-0.5 break-words text-sm font-semibold text-slate-900'
-            : 'mt-0.5 break-words text-sm text-slate-700'
+            ? "mt-0.5 break-words text-sm font-semibold text-slate-900"
+            : "mt-0.5 break-words text-sm text-slate-700"
         }
       >
-        {value || '—'}
+        {value || "—"}
       </p>
     </div>
-  )
+  );
 }
 
-function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Detail({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className={mono ? 'mt-0.5 font-mono text-sm text-slate-800' : 'mt-0.5 text-sm text-slate-800'}>
-        {value || '—'}
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd
+        className={
+          mono
+            ? "mt-0.5 font-mono text-sm text-slate-800"
+            : "mt-0.5 text-sm text-slate-800"
+        }
+      >
+        {value || "—"}
       </dd>
     </div>
-  )
+  );
 }

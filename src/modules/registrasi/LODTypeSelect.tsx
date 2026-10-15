@@ -1,5 +1,5 @@
-import { useLODTypeOptions, useSetLODType, violationsFrom } from './api'
-import type { Settlement } from './types'
+import { useLODTypeOptions, useSetLODType, violationsFrom } from "./api";
+import type { Settlement } from "./types";
 
 /**
  * Dropdown Tipe LOD di kolom Adjustment — `.PDFType` pada `Section/ShowAdjustment_sect.xml`.
@@ -23,33 +23,43 @@ export function LODTypeSelect({
   businessType,
   lockedReason,
 }: {
-  claimID: string
-  taskID: string
+  claimID: string;
+  taskID: string;
   /** Objek, jaminan, dan adjustment berbasis 1. */
-  object: number
-  coverage: number
-  adjustment: number
-  line: Settlement
-  groupPanel: string
-  businessType: string
-  lockedReason: string | null
+  object: number;
+  coverage: number;
+  adjustment: number;
+  line: Settlement;
+  groupPanel: string;
+  businessType: string;
+  lockedReason: string | null;
 }) {
-  const visible = lodTypeVisible(groupPanel, businessType)
-  const editable = visible && lodTypeEditable(line) && lockedReason === null
-  const options = useLODTypeOptions(claimID, taskID, visible)
-  const save = useSetLODType(claimID)
-  if (!visible) return null
+  const visible = lodTypeVisible(groupPanel, businessType);
+  const editable = visible && lodTypeEditable(line) && lockedReason === null;
+  const options = useLODTypeOptions(claimID, taskID, visible);
+  const save = useSetLODType(claimID);
+  if (!visible) return null;
 
-  const current = line.tipe_pdf_lod ?? ''
-  const list = [...(options.data?.tipe ?? [])]
+  const current = line.tipe_pdf_lod ?? "";
+  const list = [...(options.data?.tipe ?? [])];
   // Baris terkunci tetap menampilkan pilihannya meski daftar belum termuat.
-  if (current !== '' && !list.some((t) => t.id === current)) {
-    list.push({ id: current, nama: line.nama_tipe_pdf_lod || current, tersedia: true })
+  if (current !== "" && !list.some((t) => t.id === current)) {
+    list.push({
+      id: current,
+      nama: line.nama_tipe_pdf_lod || current,
+      tersedia: true,
+    });
   }
-  const violations = violationsFrom(save.error)
+  const violations = violationsFrom(save.error);
   // Baris terkunci: nama tipenya saja, seperti grid Pega (mis. "Property - Interim tanpa Co Member").
-  if (!editable && current !== '') {
-    return <span className="block">{list.find((t) => t.id === current)?.nama ?? line.nama_tipe_pdf_lod ?? current}</span>
+  if (!editable && current !== "") {
+    return (
+      <span className="block">
+        {list.find((t) => t.id === current)?.nama ??
+          line.nama_tipe_pdf_lod ??
+          current}
+      </span>
+    );
   }
   return (
     <div className="mb-1">
@@ -57,10 +67,20 @@ export function LODTypeSelect({
         aria-label={`Tipe LOD adjustment ${adjustment}`}
         value={current}
         disabled={!editable || options.isPending || save.isPending}
-        title={editable ? undefined : 'Tipe LOD tidak dapat diubah setelah Persetujuan / Akseptasi.'}
+        title={
+          editable
+            ? undefined
+            : "Tipe LOD tidak dapat diubah setelah Persetujuan / Akseptasi."
+        }
         onChange={(e) => {
-          save.reset()
-          save.mutate({ tugas_id: taskID, objek: object, jaminan: coverage, adjustment, tipe_pdf: e.target.value })
+          save.reset();
+          save.mutate({
+            tugas_id: taskID,
+            objek: object,
+            jaminan: coverage,
+            adjustment,
+            tipe_pdf: e.target.value,
+          });
         }}
         className="block w-full max-w-xs rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs text-slate-800 disabled:bg-slate-100 disabled:text-slate-600"
       >
@@ -73,19 +93,29 @@ export function LODTypeSelect({
       </select>
       {save.error && (
         <p role="alert" className="mt-0.5 text-xs text-red-700">
-          {violations.length > 0 ? violations.map((v) => v.pesan).join(' ') : 'Tipe LOD belum dapat disimpan.'}
+          {violations.length > 0
+            ? violations.map((v) => v.pesan).join(" ")
+            : "Tipe LOD belum dapat disimpan."}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /** Syarat tampil `.PDFType` ShowAdjustment_sect. */
-export function lodTypeVisible(groupPanel: string, businessType: string): boolean {
-  return groupPanel !== '002' && groupPanel !== '005' && businessType !== 'Bonding'
+export function lodTypeVisible(
+  groupPanel: string,
+  businessType: string,
+): boolean {
+  return (
+    groupPanel !== "002" && groupPanel !== "005" && businessType !== "Bonding"
+  );
 }
 
 /** Dapat diubah sampai Persetujuan / Akseptasi diisi. */
 export function lodTypeEditable(line: Settlement): boolean {
-  return (line.status_akseptasi_lod ?? '').trim() === '' && (line.nomor_akseptasi ?? '').trim() === ''
+  return (
+    (line.status_akseptasi_lod ?? "").trim() === "" &&
+    (line.nomor_akseptasi ?? "").trim() === ""
+  );
 }

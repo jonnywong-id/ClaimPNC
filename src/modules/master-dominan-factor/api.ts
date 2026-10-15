@@ -1,11 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import type { DominantFactorListResponse, DominantFactorResponse } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import type {
+  DominantFactorListResponse,
+  DominantFactorResponse,
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTES = '/api/master/dominan-factor'
+const ROUTES = "/api/master/dominan-factor";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -16,8 +19,8 @@ const ROUTES = '/api/master/dominan-factor'
  */
 const key = {
   list: (portal: string | null, token: string | null) =>
-    ['master-dominan-factor', portal, token] as const,
-}
+    ["master-dominan-factor", portal, token] as const,
+};
 
 /**
  * Hook daftar Master Dominan Factor.
@@ -30,12 +33,13 @@ const key = {
  * laporan — tidak boleh mengikuti pola ini.
  */
 export function useDominantFactorList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.list(portal, token),
-    queryFn: () => callAPI<DominantFactorListResponse>(ROUTES, { token, portal }),
+    queryFn: () =>
+      callAPI<DominantFactorListResponse>(ROUTES, { token, portal }),
     // Tidak dijalankan sebelum portal dipilih: backend memang menolak permintaan tanpa
     // portal, tetapi menembaknya hanya untuk menerima penolakan akan menampilkan pesan
     // galat pada layar yang sebenarnya belum siap dibuka.
@@ -44,14 +48,14 @@ export function useDominantFactorList() {
     // pemuatan ulang yang tidak perlu, sementara tombol Refresh tetap tersedia bagi
     // pengguna yang tahu datanya baru saja diubah orang lain.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 type SaveFields = {
   /** Kosong berarti menambah; terisi berarti mengubah faktor dengan ID itu. */
-  id?: string
-  nama: string
-}
+  id?: string;
+  nama: string;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -65,23 +69,26 @@ type SaveFields = {
  * pengubahan ia berada di jalur URL.
  */
 export function useSaveDominantFactor() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, nama }: SaveFields) =>
-      callAPI<DominantFactorResponse>(id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES, {
-        metode: id ? 'PUT' : 'POST',
-        body: { nama },
-        token,
-        portal,
-      }),
+      callAPI<DominantFactorResponse>(
+        id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES,
+        {
+          metode: id ? "PUT" : "POST",
+          body: { nama },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan,
       // nomornya hanya diketahui server — menebaknya di klien akan menampilkan nomor
       // yang salah sampai muat ulang berikutnya.
-      client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) });
     },
-  })
+  });
 }

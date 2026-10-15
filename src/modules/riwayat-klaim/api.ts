@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { OpenResponse, SearchForm, SearchResponse } from './types'
+import type { OpenResponse, SearchForm, SearchResponse } from "./types";
 
-const PATH = '/api/riwayat-klaim'
+const PATH = "/api/riwayat-klaim";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,12 +17,17 @@ const PATH = '/api/riwayat-klaim'
  */
 const keys = {
   open: (portal: string | null, token: string | null) =>
-    ['riwayat-klaim', 'buka', portal, token] as const,
+    ["riwayat-klaim", "buka", portal, token] as const,
 
-  search: (portal: string | null, token: string | null, form: SearchForm, page: number) =>
+  search: (
+    portal: string | null,
+    token: string | null,
+    form: SearchForm,
+    page: number,
+  ) =>
     [
-      'riwayat-klaim',
-      'cari',
+      "riwayat-klaim",
+      "cari",
       portal,
       token,
       form.tipe,
@@ -31,7 +36,7 @@ const keys = {
       form.tanggal_lahir,
       page,
     ] as const,
-}
+};
 
 /**
  * Hook pembukaan layar — menjalankan gerbang proteksi data.
@@ -51,13 +56,13 @@ const keys = {
  * permintaan yang memakai jatah akan menghabiskannya tanpa satu pun tindakan pengguna.
  */
 export function useOpenClaimHistory() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.open(portal, token),
     queryFn: () =>
-      callAPI<OpenResponse>(`${PATH}/buka`, { metode: 'POST', token, portal }),
+      callAPI<OpenResponse>(`${PATH}/buka`, { metode: "POST", token, portal }),
 
     // Tidak ditembak sebelum portal dipilih. Backend memang menolak permintaan tanpa
     // portal (`TKT-F6-002`), tetapi menembaknya lebih dulu hanya untuk menerima
@@ -69,7 +74,7 @@ export function useOpenClaimHistory() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     retry: false,
-  })
+  });
 }
 
 /**
@@ -84,13 +89,18 @@ export function useOpenClaimHistory() {
  * Menyaringnya di peramban berarti mengirim seluruh isi tabel ke setiap pencarian —
  * bukan lambat, melainkan mustahil.
  */
-export function useClaimHistorySearch(form: SearchForm, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useClaimHistorySearch(
+  form: SearchForm,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.search(portal, token, form, page),
-    queryFn: () => callAPI<SearchResponse>(buildPath(form, page), { token, portal }),
+    queryFn: () =>
+      callAPI<SearchResponse>(buildPath(form, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel
@@ -99,7 +109,7 @@ export function useClaimHistorySearch(form: SearchForm, page: number, enabled: b
 
     // Riwayat klaim berubah saat klaim diproses petugas lain, jadi cache-nya pendek.
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -110,13 +120,14 @@ export function useClaimHistorySearch(form: SearchForm, page: number, enabled: b
  * tidak dapat dibaca.
  */
 function buildPath(form: SearchForm, page: number): string {
-  const params = new URLSearchParams()
-  params.set('tipe', form.tipe)
+  const params = new URLSearchParams();
+  params.set("tipe", form.tipe);
 
-  if (form.nilai.trim()) params.set('nilai', form.nilai.trim())
-  if (form.tanggal_pencarian) params.set('tanggal_pencarian', form.tanggal_pencarian)
-  if (form.tanggal_lahir) params.set('tanggal_lahir', form.tanggal_lahir)
-  if (page > 1) params.set('halaman', String(page))
+  if (form.nilai.trim()) params.set("nilai", form.nilai.trim());
+  if (form.tanggal_pencarian)
+    params.set("tanggal_pencarian", form.tanggal_pencarian);
+  if (form.tanggal_lahir) params.set("tanggal_lahir", form.tanggal_lahir);
+  if (page > 1) params.set("halaman", String(page));
 
-  return `${PATH}?${params.toString()}`
+  return `${PATH}?${params.toString()}`;
 }

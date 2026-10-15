@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { blobAPI, callAPI, downloadAPI, uploadAPI } from '@/api/client'
+import { blobAPI, callAPI, downloadAPI, uploadAPI } from "@/api/client";
 import type {
   RecoveryClaimLineResponse,
   RecoveryDocumentResponse,
@@ -11,11 +11,11 @@ import type {
   RecoveryPrincipalListResponse,
   RecoverySaveResponse,
   VirtualAccountResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/recovery'
+const ROUTE = "/api/master/recovery";
 
 /**
  * Kunci cache selalu menyertakan portal DAN token.
@@ -33,7 +33,7 @@ const ROUTE = '/api/master/recovery'
  * peramban yang sama.
  */
 function keyOf(part: string, portal: string | null, token: string | null) {
-  return ['master-recovery', part, portal, token] as const
+  return ["master-recovery", part, portal, token] as const;
 }
 
 /**
@@ -48,12 +48,13 @@ function keyOf(part: string, portal: string | null, token: string | null) {
  * menuntun pengguna memilih portal lebih berguna daripada pesan galat.
  */
 export function useRecoveryForm() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keyOf('form', portal, token),
-    queryFn: () => callAPI<RecoveryFormResponse>(`${ROUTE}/form`, { token, portal }),
+    queryKey: keyOf("form", portal, token),
+    queryFn: () =>
+      callAPI<RecoveryFormResponse>(`${ROUTE}/form`, { token, portal }),
     enabled: token !== null && portal !== null,
     // TIDAK di-cache lama, berbeda dari layar master lain.
     //
@@ -61,7 +62,7 @@ export function useRecoveryForm() {
     // Menahannya lima menit akan membuat angka yang ditampilkan semakin jauh dari
     // kenyataan tanpa ada yang menyadarinya.
     staleTime: 0,
-  })
+  });
 }
 
 /**
@@ -74,18 +75,22 @@ export function useRecoveryForm() {
  * datanya besar — inbox dan laporan — tidak boleh mengikuti pola ini.
  */
 export function useRecoveryPrincipals() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keyOf('principal', portal, token),
-    queryFn: () => callAPI<RecoveryPrincipalListResponse>(`${ROUTE}/principal`, { token, portal }),
+    queryKey: keyOf("principal", portal, token),
+    queryFn: () =>
+      callAPI<RecoveryPrincipalListResponse>(`${ROUTE}/principal`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     // Master principal nyaris tidak berubah dalam satu sesi kerja. Penerbitan VA baru
     // membatalkan cache ini secara eksplisit di bawah, sehingga principal yang baru
     // didaftarkan langsung muncul sebagai pilihan.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -101,16 +106,19 @@ export function useRecoveryPrincipals() {
  * kueri ini menyeberang DB Link ke basis data lain.
  */
 export function useLookupPolicy() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (policyNo: string) =>
-      callAPI<RecoveryPolicyReference>(`${ROUTE}/polis/${encodeURIComponent(policyNo)}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<RecoveryPolicyReference>(
+        `${ROUTE}/polis/${encodeURIComponent(policyNo)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /**
@@ -122,22 +130,26 @@ export function useLookupPolicy() {
  * langsung dapat dipilih pada form di bawahnya tanpa memuat ulang halaman.
  */
 export function useIssueVirtualAccount() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: { client_id: string; nama_principal: string; email_inputor_va: string }) =>
+    mutationFn: (body: {
+      client_id: string;
+      nama_principal: string;
+      email_inputor_va: string;
+    }) =>
       callAPI<VirtualAccountResponse>(`${ROUTE}/virtual-account`, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keyOf('principal', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf("principal", portal, token) });
     },
-  })
+  });
 }
 
 /**
@@ -148,18 +160,24 @@ export function useIssueVirtualAccount() {
  * bersama permintaan simpan.
  */
 export function useUploadPaymentProof() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
-    mutationFn: ({ berkas, keterangan }: { berkas: File; keterangan?: string }) =>
+    mutationFn: ({
+      berkas,
+      keterangan,
+    }: {
+      berkas: File;
+      keterangan?: string;
+    }) =>
       uploadAPI<RecoveryDocumentResponse>(`${ROUTE}/bukti-bayar`, {
         berkas,
         ...(keterangan ? { keterangan } : {}),
         token,
         portal,
       }),
-  })
+  });
 }
 
 /**
@@ -170,13 +188,17 @@ export function useUploadPaymentProof() {
  * seperti sistem lama menyusunnya di klipboard sebelum menyimpan.
  */
 export function useReadClaimLine() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (berkas: File) =>
-      uploadAPI<RecoveryClaimLineResponse>(`${ROUTE}/baris-klaim`, { berkas, token, portal }),
-  })
+      uploadAPI<RecoveryClaimLineResponse>(`${ROUTE}/baris-klaim`, {
+        berkas,
+        token,
+        portal,
+      }),
+  });
 }
 
 /**
@@ -189,20 +211,25 @@ export function useReadClaimLine() {
  * berikutnya mencerminkan yang baru saja tersimpan.
  */
 export function useSaveRecovery() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (body: RecoveryInput) =>
-      callAPI<RecoverySaveResponse>(`${ROUTE}/`, { metode: 'POST', body, token, portal }),
+      callAPI<RecoverySaveResponse>(`${ROUTE}/`, {
+        metode: "POST",
+        body,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keyOf('form', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf("form", portal, token) });
       // Tab Outstanding ikut dimuat ulang supaya batch yang baru disimpan langsung
       // terlihat. Di layar lama, hal ini menuntut petugas menekan Refresh sendiri.
-      client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
+      client.invalidateQueries({ queryKey: keyOf("daftar", portal, token) });
     },
-  })
+  });
 }
 
 /**
@@ -225,35 +252,46 @@ export function useSaveRecovery() {
  * yang disebut layar selalu jumlah yang benar-benar ada, bukan jumlah yang kebetulan
  * sudah terunduh.
  */
-export function useRecoveryList(filter: { cari?: string; tahun?: string; halaman?: number } = {}) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useRecoveryList(
+  filter: { cari?: string; tahun?: string; halaman?: number } = {},
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const cari = filter.cari?.trim() ?? ''
-  const tahun = filter.tahun?.trim() ?? ''
-  const halaman = Math.max(1, filter.halaman ?? 1)
+  const cari = filter.cari?.trim() ?? "";
+  const tahun = filter.tahun?.trim() ?? "";
+  const halaman = Math.max(1, filter.halaman ?? 1);
 
-  const query = new URLSearchParams()
-  if (cari !== '') query.set('cari', cari)
-  if (tahun !== '') query.set('tahun', tahun)
-  query.set('limit', String(PAGE_SIZE))
-  query.set('lewati', String((halaman - 1) * PAGE_SIZE))
+  const query = new URLSearchParams();
+  if (cari !== "") query.set("cari", cari);
+  if (tahun !== "") query.set("tahun", tahun);
+  query.set("limit", String(PAGE_SIZE));
+  query.set("lewati", String((halaman - 1) * PAGE_SIZE));
 
   return useQuery({
     // Filter ikut ke kunci cache: dua pencarian berbeda adalah dua hasil berbeda, dan
     // menyatukannya akan menampilkan hasil pencarian sebelumnya sesaat setelah kata
     // kuncinya diubah.
-    queryKey: [...keyOf('daftar', portal, token), cari, tahun, halaman] as const,
-    queryFn: () => callAPI<RecoveryListResponse>(`${ROUTE}/?${query.toString()}`, { token, portal }),
+    queryKey: [
+      ...keyOf("daftar", portal, token),
+      cari,
+      tahun,
+      halaman,
+    ] as const,
+    queryFn: () =>
+      callAPI<RecoveryListResponse>(`${ROUTE}/?${query.toString()}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     // Sependek bekal awal layar, dan karena alasan yang sama: petugas lain dapat menambah
     // batch kapan saja, sehingga daftar yang ditahan lama akan keliru tanpa terlihat.
     staleTime: 0,
-  })
+  });
 }
 
 /** Jumlah baris per halaman — sama dengan `pyRDLPageSize` grid Outstanding. */
-export const PAGE_SIZE = 10
+export const PAGE_SIZE = 10;
 
 /**
  * Hook tombol **View Document** pada grid dalam.
@@ -275,32 +313,35 @@ export const PAGE_SIZE = 10
  * selama tab hidup, dan di layar ini isinya dapat berupa pindaian bukti transfer nasabah.
  */
 export function useViewDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const berkas = await blobAPI(`${ROUTE}/bukti-bayar/${encodeURIComponent(id)}`, {
-        token,
-        portal,
-      })
+      const berkas = await blobAPI(
+        `${ROUTE}/bukti-bayar/${encodeURIComponent(id)}`,
+        {
+          token,
+          portal,
+        },
+      );
 
-      const alamat = URL.createObjectURL(berkas.isi)
+      const alamat = URL.createObjectURL(berkas.isi);
       if (berkas.bolehDitampilkan) {
-        window.open(alamat, '_blank', 'noopener,noreferrer')
+        window.open(alamat, "_blank", "noopener,noreferrer");
         // Dicabut setelah peramban sempat membacanya. Mencabutnya seketika akan
         // membatalkan tab yang baru saja dibuka.
-        window.setTimeout(() => URL.revokeObjectURL(alamat), 60_000)
-        return
+        window.setTimeout(() => URL.revokeObjectURL(alamat), 60_000);
+        return;
       }
 
-      const tautan = document.createElement('a')
-      tautan.href = alamat
-      tautan.download = berkas.nama || 'bukti-bayar'
-      tautan.click()
-      URL.revokeObjectURL(alamat)
+      const tautan = document.createElement("a");
+      tautan.href = alamat;
+      tautan.download = berkas.nama || "bukti-bayar";
+      tautan.click();
+      URL.revokeObjectURL(alamat);
     },
-  })
+  });
 }
 
 /**
@@ -311,13 +352,13 @@ export function useViewDocument() {
  * hanyalah cara menandainya basi.
  */
 export function useRefreshRecoveryList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return () => {
-    client.invalidateQueries({ queryKey: keyOf('daftar', portal, token) })
-  }
+    client.invalidateQueries({ queryKey: keyOf("daftar", portal, token) });
+  };
 }
 
 /**
@@ -333,14 +374,18 @@ export function useRefreshRecoveryList() {
  * tidak mengirim kedua header itu pada navigasi.
  */
 export function useDownloadTemplate() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: () =>
-      downloadAPI(`${ROUTE}/format-unggahan`, 'format-data-klaim-recovery.csv', {
-        token,
-        portal,
-      }),
-  })
+      downloadAPI(
+        `${ROUTE}/format-unggahan`,
+        "format-data-klaim-recovery.csv",
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }

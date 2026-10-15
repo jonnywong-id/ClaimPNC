@@ -1,15 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ReloadIcon } from '@/components/Icon'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ReloadIcon } from "@/components/Icon";
 
-import { PAGE_SIZE, useDaftarRCL, useKeteranganRCL } from './api'
-import type { KolomLayar, TugasRCL } from './types'
+import { PAGE_SIZE, useDaftarRCL, useKeteranganRCL } from "./api";
+import type { KolomLayar, TugasRCL } from "./types";
 
 /**
  * Inbox RCL — menu `MENU_ID 62`, pengganti harness `RCL_Harness`.
@@ -41,19 +41,19 @@ import type { KolomLayar, TugasRCL } from './types'
  * `RCLDokterPage`, bukan di sini.
  */
 export function InboxRCLPage() {
-  const navigate = useNavigate()
-  const portal = useSelectedPortal((state) => state.alias)
+  const navigate = useNavigate();
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [cari, setCari] = useState('')
-  const [lewati, setLewati] = useState(0)
+  const [cari, setCari] = useState("");
+  const [lewati, setLewati] = useState(0);
 
-  const keterangan = useKeteranganRCL()
-  const daftar = useDaftarRCL(cari, lewati)
+  const keterangan = useKeteranganRCL();
+  const daftar = useDaftarRCL(cari, lewati);
 
   /** Mengubah kata kunci SEKALIGUS kembali ke halaman pertama. */
   function ubahPencarian(nilai: string) {
-    setCari(nilai)
-    setLewati(0)
+    setCari(nilai);
+    setLewati(0);
   }
 
   /**
@@ -64,10 +64,13 @@ export function InboxRCLPage() {
    * Pega) kehilangan bilah halaman dan jalan kembali.
    */
   const halamanKosongDiLuarAwal =
-    lewati > 0 && daftar.isSuccess && !daftar.isPlaceholderData && daftar.data.data.length === 0
+    lewati > 0 &&
+    daftar.isSuccess &&
+    !daftar.isPlaceholderData &&
+    daftar.data.data.length === 0;
   useEffect(() => {
-    if (halamanKosongDiLuarAwal) setLewati(0)
-  }, [halamanKosongDiLuarAwal])
+    if (halamanKosongDiLuarAwal) setLewati(0);
+  }, [halamanKosongDiLuarAwal]);
 
   /**
    * Tujuan tautan baris: layar kerja RCL Dokter (`/inbox-rcl/klaim/:nomor`) — pengganti
@@ -75,7 +78,7 @@ export function InboxRCLPage() {
    * (Flow Action `SendToRCLDokter` -> section `RCLDokter`). Isinya dari TC_PNC_PUCL.
    */
   function bukaKlaim(nomorCase: string) {
-    navigate(`/inbox-rcl/klaim/${encodeURIComponent(nomorCase)}`)
+    navigate(`/inbox-rcl/klaim/${encodeURIComponent(nomorCase)}`);
   }
 
   if (portal === null) {
@@ -84,24 +87,23 @@ export function InboxRCLPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean RCL milik satu badan hukum, dan aplikasi ini melayani empat. Pilih ' +
-            'portal di bilah atas untuk membukanya.'
+            "Antrean RCL milik satu badan hukum, dan aplikasi ini melayani empat. Pilih " +
+            "portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const kolom = keterangan.data?.kolom ?? []
-  const baris = daftar.data?.data ?? []
-  const total = daftar.data?.total ?? 0
-  const halaman = Math.floor(lewati / PAGE_SIZE) + 1
-  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const kolom = keterangan.data?.kolom ?? [];
+  const baris = daftar.data?.data ?? [];
+  const total = daftar.data?.total ?? 0;
+  const halaman = Math.floor(lewati / PAGE_SIZE) + 1;
+  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <PageFrame>
-
       <div className="mt-6">
         <DataTable<TugasRCL>
           columns={buildColumns(kolom, bukaKlaim)}
@@ -111,19 +113,27 @@ export function InboxRCLPage() {
           rowKey={(row) => `${row.klaim_id}|${row.nomor_case}`}
           title="Antrean RCL Dokter"
           label="Antrean Inbox RCL"
-          {...(total > 0 ? { description: `${total} klaim menunggu pertimbangan Anda.` } : {})}
+          {...(total > 0
+            ? { description: `${total} klaim menunggu pertimbangan Anda.` }
+            : {})}
           isLoading={daftar.isPending}
           searchLabel="Cari Nomor Case / No Polis"
           emptyMessage="Tidak ada klaim RCL untuk Anda saat ini."
-          serverSearch={{ value: cari, onChange: ubahPencarian, matchCount: total }}
+          serverSearch={{
+            value: cari,
+            onChange: ubahPencarian,
+            matchCount: total,
+          }}
           actions={
             <Button
               tone="halus"
-              onClick={() => { daftar.refetch() }}
+              onClick={() => {
+                daftar.refetch();
+              }}
               disabled={daftar.isFetching}
             >
               <ReloadIcon className="h-4 w-4" />
-              {daftar.isFetching ? 'Memuat…' : 'Muat ulang'}
+              {daftar.isFetching ? "Memuat…" : "Muat ulang"}
             </Button>
           }
           error={
@@ -146,7 +156,7 @@ export function InboxRCLPage() {
         />
       </div>
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -157,27 +167,30 @@ function buildColumns(
   kolom: KolomLayar[],
   bukaKlaim: (nomorCase: string) => void,
 ): Column<TugasRCL>[] {
-  const hasil: Column<TugasRCL>[] = []
+  const hasil: Column<TugasRCL>[] = [];
   for (const k of kolom) {
-    const dibangun = renderer[k.kunci]?.(k, bukaKlaim)
-    if (dibangun) hasil.push(dibangun)
+    const dibangun = renderer[k.kunci]?.(k, bukaKlaim);
+    if (dibangun) hasil.push(dibangun);
   }
-  return hasil
+  return hasil;
 }
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
 function Teks({ nilai }: { nilai: string }) {
-  if (!nilai) return <span className="text-slate-400">—</span>
-  return <span className="truncate">{nilai}</span>
+  if (!nilai) return <span className="text-slate-400">—</span>;
+  return <span className="truncate">{nilai}</span>;
 }
 
-type Renderer = (k: KolomLayar, bukaKlaim: (nomorCase: string) => void) => Column<TugasRCL>
+type Renderer = (
+  k: KolomLayar,
+  bukaKlaim: (nomorCase: string) => void,
+) => Column<TugasRCL>;
 
 const renderer: Record<string, Renderer | undefined> = {
   nomor_case: (k, bukaKlaim) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.nomor_case,
     render: (row) =>
       row.nomor_case ? (
@@ -196,7 +209,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nomor_polis: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.nomor_polis,
     render: (row) => <Teks nilai={row.nomor_polis} />,
   }),
@@ -204,7 +217,7 @@ const renderer: Record<string, Renderer | undefined> = {
   nama_tertanggung: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '14rem',
+    width: "14rem",
     value: (row) => row.nama_tertanggung,
     render: (row) => <Teks nilai={row.nama_tertanggung} />,
   }),
@@ -212,10 +225,10 @@ const renderer: Record<string, Renderer | undefined> = {
   tanggal_masuk_inbox: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.tanggal_masuk_inbox,
     render: (row) => (
-      <span className="tabular-nums" title={k.keterangan ?? ''}>
+      <span className="tabular-nums" title={k.keterangan ?? ""}>
         <Teks nilai={row.tanggal_masuk_inbox} />
       </span>
     ),
@@ -224,33 +237,35 @@ const renderer: Record<string, Renderer | undefined> = {
   deskripsi_analyst: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '22rem',
+    width: "22rem",
     value: (row) => row.deskripsi_analyst,
     render: (row) =>
       row.deskripsi_analyst ? (
-        <span className="block whitespace-pre-line text-slate-700">{row.deskripsi_analyst}</span>
+        <span className="block whitespace-pre-line text-slate-700">
+          {row.deskripsi_analyst}
+        </span>
       ) : (
         <span className="text-slate-400">—</span>
       ),
   }),
-}
+};
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-xl font-semibold text-slate-900">Inbox RCL</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim yang dikirim analis untuk pertimbangan penolakan medis Anda. Barisnya hilang
-          begitu tugasnya diselesaikan.
+          Klaim yang dikirim analis untuk pertimbangan penolakan medis Anda.
+          Barisnya hilang begitu tugasnya diselesaikan.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

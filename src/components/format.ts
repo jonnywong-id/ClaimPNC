@@ -17,31 +17,41 @@
  * Pecahan biner tidak dapat mewakili rupiah dengan tepat — `0.1 + 0.2 !== 0.3` berlaku
  * di JavaScript persis seperti di Go.
  */
-export type Cents = number
+export type Cents = number;
 
 /** Persentase dikirim backend sebagai persen dikali 10.000. 100% = 1000000. */
-export type PercentE4 = number
+export type PercentE4 = number;
 
-const rupiahFormatter = new Intl.NumberFormat('id-ID', {
+const rupiahFormatter = new Intl.NumberFormat("id-ID", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
-})
+});
 
 /** formatRupiah menuliskan nilai sen sebagai rupiah: `Rp 1.000.000,00`. */
 export function formatRupiah(sen: Cents): string {
-  return `Rp ${rupiahFormatter.format(sen / 100)}`
+  return `Rp ${rupiahFormatter.format(sen / 100)}`;
 }
 
 /** formatPercent menuliskan persentase empat desimal tanpa nol di belakang: `99,9999%`. */
 export function formatPercent(value: PercentE4): string {
-  const num = (value / 10_000).toFixed(4).replace(/\.?0+$/, '')
-  return `${num.replace('.', ',')}%`
+  const num = (value / 10_000).toFixed(4).replace(/\.?0+$/, "");
+  return `${num.replace(".", ",")}%`;
 }
 
 const monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-]
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
 
 /**
  * formatDate mengubah `YYYY-MM-DD` menjadi `1 Juni 2026`.
@@ -52,25 +62,27 @@ const monthNames = [
  * tidak akan lahir kembali di sini.
  */
 export function formatDate(iso: string): string {
-  if (!iso) return '—'
-  const part = iso.split('-')
-  if (part.length !== 3) return iso
+  if (!iso) return "—";
+  const part = iso.split("-");
+  if (part.length !== 3) return iso;
 
-  const year = Number(part[0])
-  const month = Number(part[1])
-  const day = Number(part[2])
-  if (!year || !month || !day || month < 1 || month > 12) return iso
+  const year = Number(part[0]);
+  const month = Number(part[1]);
+  const day = Number(part[2]);
+  if (!year || !month || !day || month < 1 || month > 12) return iso;
 
-  return `${day} ${monthNames[month - 1]} ${year}`
+  return `${day} ${monthNames[month - 1]} ${year}`;
 }
 
 /** todayWIB mengembalikan tanggal hari ini menurut WIB dalam bentuk `YYYY-MM-DD`. */
 export function todayWIB(): string {
-  const now = new Date()
-  const wib = new Date(now.getTime() + (7 * 60 + now.getTimezoneOffset()) * 60_000)
-  const month = String(wib.getMonth() + 1).padStart(2, '0')
-  const day = String(wib.getDate()).padStart(2, '0')
-  return `${wib.getFullYear()}-${month}-${day}`
+  const now = new Date();
+  const wib = new Date(
+    now.getTime() + (7 * 60 + now.getTimezoneOffset()) * 60_000,
+  );
+  const month = String(wib.getMonth() + 1).padStart(2, "0");
+  const day = String(wib.getDate()).padStart(2, "0");
+  return `${wib.getFullYear()}-${month}-${day}`;
 }
 
 /**
@@ -78,14 +90,14 @@ export function todayWIB(): string {
  * DateTime Pega pada isian baca saja, mis. Tanggal Cetak LOD "30/09/2026 7:59".
  */
 export function formatDateTimeWIB(iso: string | undefined): string {
-  if (!iso) return ''
-  const t = new Date(iso)
-  if (Number.isNaN(t.getTime())) return iso
-  const wib = new Date(t.getTime() + 7 * 60 * 60_000)
-  const day = String(wib.getUTCDate()).padStart(2, '0')
-  const month = String(wib.getUTCMonth() + 1).padStart(2, '0')
-  const minute = String(wib.getUTCMinutes()).padStart(2, '0')
-  return `${day}/${month}/${wib.getUTCFullYear()} ${wib.getUTCHours()}:${minute}`
+  if (!iso) return "";
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return iso;
+  const wib = new Date(t.getTime() + 7 * 60 * 60_000);
+  const day = String(wib.getUTCDate()).padStart(2, "0");
+  const month = String(wib.getUTCMonth() + 1).padStart(2, "0");
+  const minute = String(wib.getUTCMinutes()).padStart(2, "0");
+  return `${day}/${month}/${wib.getUTCFullYear()} ${wib.getUTCHours()}:${minute}`;
 }
 
 /**
@@ -123,42 +135,42 @@ export function formatDateTimeWIB(iso: string | undefined): string {
  * mentah yang terbaca aneh masih dapat ditelusuri, sedangkan `—` menghapus jejaknya.
  */
 export function formatPegaDateTime(value: string): string {
-  const text = value.trim()
-  if (text === '') return ''
+  const text = value.trim();
+  if (text === "") return "";
 
   // Dipecah sendiri, bukan lewat `new Date(...)`, supaya nilai tanpa zona tidak ikut
   // ditafsirkan peramban sebagai waktu lokal atau UTC — dua tafsir yang berbeda tujuh jam.
   const parts =
     /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
       text,
-    )
-  if (!parts) return text
+    );
+  if (!parts) return text;
 
-  const [, year, month, day, hour, minute, zone] = parts
+  const [, year, month, day, hour, minute, zone] = parts;
 
   // Tanpa jam, yang ada hanyalah tanggalnya. Menambahkan "00:00" akan mengarang ketelitian
   // yang tidak ada di sumbernya.
   if (hour === undefined || minute === undefined) {
-    return `${day}/${month}/${year?.slice(2)}`
+    return `${day}/${month}/${year?.slice(2)}`;
   }
 
   if (zone === undefined) {
     // Nol di depan DIBUANG dari jamnya, termasuk pada nilai yang sumbernya sudah ber-nol:
     // yang menentukan bentuknya adalah layar, bukan cara basis data menuliskannya.
-    return `${day}/${month}/${year?.slice(2)} ${Number(hour)}:${minute}`
+    return `${day}/${month}/${year?.slice(2)} ${Number(hour)}:${minute}`;
   }
 
-  const instant = new Date(text)
-  if (Number.isNaN(instant.getTime())) return text
+  const instant = new Date(text);
+  if (Number.isNaN(instant.getTime())) return text;
 
-  const wib = new Date(instant.getTime() + 7 * 60 * 60_000)
-  const pad = (n: number) => String(n).padStart(2, '0')
+  const wib = new Date(instant.getTime() + 7 * 60 * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
     `${pad(wib.getUTCDate())}/${pad(wib.getUTCMonth() + 1)}/` +
     `${String(wib.getUTCFullYear()).slice(2)} ` +
     `${wib.getUTCHours()}:${pad(wib.getUTCMinutes())}`
-  )
+  );
 }
 
 /**
@@ -215,17 +227,21 @@ export function formatPegaDateTime(value: string): string {
  * masih dapat ditelusuri, sedangkan teks kosong menghapus jejaknya. Waktu di MASA DEPAN
  * menghasilkan teks kosong, bukan "0 minutes ago" yang menyatakan hal yang tidak benar.
  */
-export function formatPegaElapsed(value: string, now: Date = new Date()): string {
-  const text = value.trim()
-  if (text === '') return ''
+export function formatPegaElapsed(
+  value: string,
+  now: Date = new Date(),
+): string {
+  const text = value.trim();
+  if (text === "") return "";
 
   const parts =
     /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
       text,
-    )
-  if (!parts) return text
+    );
+  if (!parts) return text;
 
-  const [, year, month, day, hour = '00', minute = '00', second = '00', zone] = parts
+  const [, year, month, day, hour = "00", minute = "00", second = "00", zone] =
+    parts;
 
   // Titik waktu sumbernya. Tanpa zona, angkanya adalah jam dinding WIB — maka instannya
   // tujuh jam lebih awal daripada angka yang sama dibaca sebagai UTC.
@@ -240,49 +256,49 @@ export function formatPegaElapsed(value: string, now: Date = new Date()): string
           Number(second),
         ) -
         7 * 60 * 60_000
-      : new Date(text).getTime()
+      : new Date(text).getTime();
 
-  if (Number.isNaN(start)) return text
+  if (Number.isNaN(start)) return text;
 
-  const elapsed = now.getTime() - start
-  if (elapsed < 0) return ''
+  const elapsed = now.getTime() - start;
+  if (elapsed < 0) return "";
 
   // Tahun dan bulan dihitung secara KALENDER, bukan dengan membagi selisih milidetik.
   // Membaginya akan memakai "bulan" sepanjang 30 hari yang tidak ada di kalender mana pun,
   // dan hasilnya meleset makin jauh seiring rentangnya memanjang.
-  const a = wibParts(start)
-  const b = wibParts(now.getTime())
+  const a = wibParts(start);
+  const b = wibParts(now.getTime());
 
-  let months = (b.year - a.year) * 12 + (b.month - a.month)
-  if (b.day < a.day || (b.day === a.day && b.timeOfDay < a.timeOfDay)) months--
+  let months = (b.year - a.year) * 12 + (b.month - a.month);
+  if (b.day < a.day || (b.day === a.day && b.timeOfDay < a.timeOfDay)) months--;
 
   if (months >= 12) {
-    const years = Math.floor(months / 12)
-    const restMonth = months % 12
+    const years = Math.floor(months / 12);
+    const restMonth = months % 12;
 
     // Sisa nol tidak ditulis. "1 year 0 months ago" bukan bentuk yang ditulis pemformat
     // waktu relatif mana pun, dan ia hanya muncul tepat pada hari ulang tahun sebuah baris.
     return restMonth === 0
-      ? `${plural(years, 'year')} ago`
-      : `${plural(years, 'year')} ${plural(restMonth, 'month')} ago`
+      ? `${plural(years, "year")} ago`
+      : `${plural(years, "year")} ${plural(restMonth, "month")} ago`;
   }
 
-  if (months >= 1) return `${plural(months, 'month')} ago`
+  if (months >= 1) return `${plural(months, "month")} ago`;
 
-  const hours = Math.floor(elapsed / 3_600_000)
+  const hours = Math.floor(elapsed / 3_600_000);
 
   if (hours >= 24) {
-    const days = Math.floor(hours / 24)
-    const restHour = hours % 24
+    const days = Math.floor(hours / 24);
+    const restHour = hours % 24;
 
     return restHour === 0
-      ? `${plural(days, 'day')} ago`
-      : `${plural(days, 'day')} ${plural(restHour, 'hour')} ago`
+      ? `${plural(days, "day")} ago`
+      : `${plural(days, "day")} ${plural(restHour, "hour")} ago`;
   }
 
-  if (hours >= 1) return `${plural(hours, 'hour')} ago`
+  if (hours >= 1) return `${plural(hours, "hour")} ago`;
 
-  return `${plural(Math.floor(elapsed / 60_000), 'minute')} ago`
+  return `${plural(Math.floor(elapsed / 60_000), "minute")} ago`;
 }
 
 /**
@@ -292,18 +308,18 @@ export function formatPegaElapsed(value: string, now: Date = new Date()): string
  * dengan seam Clock di backend (`F-5`).
  */
 function wibParts(epochMs: number): {
-  year: number
-  month: number
-  day: number
-  timeOfDay: number
+  year: number;
+  month: number;
+  day: number;
+  timeOfDay: number;
 } {
-  const wib = new Date(epochMs + 7 * 60 * 60_000)
+  const wib = new Date(epochMs + 7 * 60 * 60_000);
   return {
     year: wib.getUTCFullYear(),
     month: wib.getUTCMonth(),
     day: wib.getUTCDate(),
     timeOfDay: wib.getUTCHours() * 60 + wib.getUTCMinutes(),
-  }
+  };
 }
 
 /**
@@ -317,7 +333,7 @@ function wibParts(epochMs: number): {
  * (`D-13`), bukan karena bahasa Indonesia dihindari.
  */
 function plural(count: number, unit: string): string {
-  return count === 1 ? `1 ${unit}` : `${count} ${unit}s`
+  return count === 1 ? `1 ${unit}` : `${count} ${unit}s`;
 }
 
 /**
@@ -343,30 +359,31 @@ function plural(count: number, unit: string): string {
  * sudah disimpan sebagai teks oleh procedure Pega karena itu lolos tanpa disentuh.
  */
 export function formatPegaFormDate(value: string): string {
-  const text = value.trim()
-  if (text === '') return ''
+  const text = value.trim();
+  if (text === "") return "";
 
   const parts =
     /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(
       text,
-    )
-  if (!parts) return text
+    );
+  if (!parts) return text;
 
-  const [, year, month, day, hour, minute, zone] = parts
+  const [, year, month, day, hour, minute, zone] = parts;
 
-  if (hour === undefined || minute === undefined) return `${day}/${month}/${year}`
-  if (zone === undefined) return `${day}/${month}/${year} ${hour}:${minute}`
+  if (hour === undefined || minute === undefined)
+    return `${day}/${month}/${year}`;
+  if (zone === undefined) return `${day}/${month}/${year} ${hour}:${minute}`;
 
-  const instant = new Date(text)
-  if (Number.isNaN(instant.getTime())) return text
+  const instant = new Date(text);
+  if (Number.isNaN(instant.getTime())) return text;
 
-  const wib = new Date(instant.getTime() + 7 * 60 * 60_000)
-  const pad = (n: number) => String(n).padStart(2, '0')
+  const wib = new Date(instant.getTime() + 7 * 60 * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
     `${pad(wib.getUTCDate())}/${pad(wib.getUTCMonth() + 1)}/${wib.getUTCFullYear()} ` +
     `${pad(wib.getUTCHours())}:${pad(wib.getUTCMinutes())}`
-  )
+  );
 }
 
 /**
@@ -377,15 +394,15 @@ export function formatPegaFormDate(value: string): string {
  * menolaknya lebih baik daripada nol yang tampak sah.
  */
 export function rupiahToCents(text: string): number {
-  const clean = text.trim().replaceAll('.', '').replace(',', '.')
-  if (clean === '') return 0
-  const num = Number(clean)
-  if (Number.isNaN(num)) return Number.NaN
-  return Math.round(num * 100)
+  const clean = text.trim().replaceAll(".", "").replace(",", ".");
+  if (clean === "") return 0;
+  const num = Number(clean);
+  if (Number.isNaN(num)) return Number.NaN;
+  return Math.round(num * 100);
 }
 
 /** centsToRupiah menuliskan sen menjadi teks yang dapat disunting kembali. */
 export function centsToRupiah(sen: Cents): string {
-  if (!sen) return ''
-  return (sen / 100).toFixed(2).replace('.', ',')
+  if (!sen) return "";
+  return (sen / 100).toFixed(2).replace(".", ",");
 }

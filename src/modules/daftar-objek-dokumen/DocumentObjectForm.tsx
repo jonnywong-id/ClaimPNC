@@ -1,14 +1,14 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Business, type DocumentObject } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Business, type DocumentObject } from "@/api/types";
+import { Field } from "@/components/Field";
+import { ComboField } from "@/components/ComboField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
 /**
  * Harus sama dengan MaxDescriptionLength di
@@ -29,7 +29,7 @@ import { Button } from '@/components/Button'
  * mengirim, dan di server karena API dapat ditembak tanpa melewati layar ini. Server tetap
  * yang berwenang.
  */
-const MAX_DESCRIPTION_LENGTH = 20
+const MAX_DESCRIPTION_LENGTH = 20;
 
 /**
  * Yang diperiksa di layar hanyalah PANJANG KETERANGAN, dan itu disengaja.
@@ -55,24 +55,24 @@ const schema = z.object({
   // Disimpan sebagai senarai objek, bukan senarai teks, karena useFieldArray menuntut setiap
   // barisnya berupa objek agar dapat memberinya kunci yang stabil.
   bisnis: z.array(z.object({ nama: z.string().trim() })),
-})
+});
 
-export type DocumentObjectFields = z.infer<typeof schema>
+export type DocumentObjectFields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: DocumentObject | null
+  edited: DocumentObject | null;
   /** Saran bisnis, dibaca dari POOLDATA.BUSINESS milik entitas yang aktif. */
-  businesses: Business[]
+  businesses: Business[];
   /** Pemetaan bisnis baris yang disunting masih dimuat. */
-  isLoadingBusinessMapping: boolean
-  isSaving: boolean
-  error: unknown
-  onSave: (values: DocumentObjectFields) => void
-  onCancel: () => void
-}
+  isLoadingBusinessMapping: boolean;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: DocumentObjectFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -84,10 +84,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -97,52 +98,54 @@ function messageFor(error: unknown): MessageContent | null {
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+          title: "Baris ini sudah tidak ada",
+          description:
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Menyusun nilai awal form dari baris yang disunting. */
 function valuesOf(edited: DocumentObject | null): DocumentObjectFields {
   return {
-    objek_dokumen: edited?.objek_dokumen ?? '',
+    objek_dokumen: edited?.objek_dokumen ?? "",
     bisnis: (edited?.bisnis ?? []).map((b) => ({ nama: b.nama })),
-  }
+  };
 }
 
 /**
@@ -182,7 +185,7 @@ export function DocumentObjectForm({
   onSave,
   onCancel,
 }: Props) {
-  const editMode = edited !== null
+  const editMode = edited !== null;
 
   const {
     control,
@@ -194,40 +197,40 @@ export function DocumentObjectForm({
   } = useForm<DocumentObjectFields>({
     resolver: zodResolver(schema),
     defaultValues: valuesOf(edited),
-  })
+  });
 
   // `bisnis` adalah grid, bukan satu isian. useFieldArray yang memegang barisnya supaya
   // setiap baris punya kunci stabil — tanpa itu, menghapus baris tengah akan membuat React
   // memakai ulang elemen input dan nilai baris berikutnya ikut bergeser.
-  const { fields, append, remove } = useFieldArray({ control, name: 'bisnis' })
+  const { fields, append, remove } = useFieldArray({ control, name: "bisnis" });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
   // misalnya pengguna menekan "Ubah" pada baris lain, atau saat pemetaan bisnisnya baru
   // selesai dimuat dari server.
   useEffect(() => {
-    reset(valuesOf(edited))
-  }, [edited, reset])
+    reset(valuesOf(edited));
+  }, [edited, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (`P-5`),
   // dan itu hanya berguna bila layar menyorotnya satu per satu.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'objek_dokumen') {
-        setError('objek_dokumen', { type: 'server', message })
-      } else if (column === 'bisnis') {
-        setError('bisnis', { type: 'server', message })
+      if (column === "objek_dokumen") {
+        setError("objek_dokumen", { type: "server", message });
+      } else if (column === "bisnis") {
+        setError("bisnis", { type: "server", message });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat dari
   // ada-tidaknya baris "ID" di bawahnya.
-  const title = 'Memperbaharui Data'
+  const title = "Memperbaharui Data";
 
-  const businessSuggestions = businesses.map((b) => b.nama)
+  const businessSuggestions = businesses.map((b) => b.nama);
 
   return (
     <form
@@ -239,7 +242,11 @@ export function DocumentObjectForm({
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
@@ -250,7 +257,9 @@ export function DocumentObjectForm({
           <span className="block text-sm font-medium text-slate-700">ID</span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
             {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -263,20 +272,25 @@ export function DocumentObjectForm({
         autoComplete="off"
         maxLength={MAX_DESCRIPTION_LENGTH}
         error={errors.objek_dokumen?.message}
-        {...register('objek_dokumen')}
+        {...register("objek_dokumen")}
       />
 
       {/* Bisnis adalah GRID, bukan satu isian. Di Pega ia
           `pyPageListProperty = TempDocObj.LIST_LBU_ID` dengan sel terikat `.Note` berkelas
           ASM-FW-GISFW-Int-BUSINESS — satu objek dokumen dapat dipakai banyak bisnis. */}
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">ID Bisnis</legend>
+        <legend className="px-1 text-sm font-medium text-slate-700">
+          ID Bisnis
+        </legend>
 
         {isLoadingBusinessMapping ? (
-          <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
+          <p className="text-sm text-slate-500">
+            Memuat bisnis yang sudah dipilih…
+          </p>
         ) : fields.length === 0 ? (
           <p className="text-sm text-slate-500">
-            Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat disimpan.
+            Belum ada bisnis yang dipilih. Objek dokumen ini tetap dapat
+            disimpan.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -294,7 +308,11 @@ export function DocumentObjectForm({
                     id={`bisnis-${index}`}
                     label={`Bisnis baris ${index + 1}`}
                     options={businessSuggestions}
-                    hint={index === 0 ? 'Pilih dari daftar; nama di luar daftar tidak dapat disimpan.' : undefined}
+                    hint={
+                      index === 0
+                        ? "Pilih dari daftar; nama di luar daftar tidak dapat disimpan."
+                        : undefined
+                    }
                     error={errors.bisnis?.[index]?.nama?.message}
                     {...register(`bisnis.${index}.nama` as const)}
                   />
@@ -320,15 +338,15 @@ export function DocumentObjectForm({
         )}
 
         <div className="mt-3">
-          <Button tone="kedua" onClick={() => append({ nama: '' })}>
+          <Button tone="kedua" onClick={() => append({ nama: "" })}>
             Tambah Bisnis
           </Button>
           {/* Daftar saran yang gagal dimuat TIDAK menghalangi apa pun: namanya memang boleh
               diketik sendiri. Yang hilang hanya kenyamanan memilih. */}
           {businessSuggestions.length === 0 && (
             <p className="mt-2 text-sm text-slate-500">
-              Daftar bisnis belum dapat dimuat, jadi tidak ada saran. Nama bisnis tetap dapat
-              diketik sendiri.
+              Daftar bisnis belum dapat dimuat, jadi tidak ada saran. Nama
+              bisnis tetap dapat diketik sendiri.
             </p>
           )}
         </div>
@@ -340,10 +358,14 @@ export function DocumentObjectForm({
         </Button>
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya (`pyButtonLabel` pada BrowseDocumentObject-Section). */}
-        <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessMapping}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+        <Button
+          type="submit"
+          tone="utama"
+          disabled={isSaving || isLoadingBusinessMapping}
+        >
+          {isSaving ? "Menyimpan…" : editMode ? "Ubah" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

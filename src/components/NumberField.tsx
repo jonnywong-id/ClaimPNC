@@ -1,16 +1,19 @@
-import { useEffect, useState, type InputHTMLAttributes } from 'react'
+import { useEffect, useState, type InputHTMLAttributes } from "react";
 
-import { Field } from './Field'
+import { Field } from "./Field";
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
-  id: string
-  label: string
+type Props = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "type"
+> & {
+  id: string;
+  label: string;
   /** Nilai sekarang. Kotak kosong berarti nol — lihat catatan di bawah. */
-  value: number
-  onValueChange: (value: number) => void
-  error?: string | undefined
-  hint?: string | undefined
-}
+  value: number;
+  onValueChange: (value: number) => void;
+  error?: string | undefined;
+  hint?: string | undefined;
+};
 
 /**
  * NumberField adalah isian bilangan bulat tak bertanda yang TERKENDALI.
@@ -63,14 +66,16 @@ export function NumberField({
   disabled,
   ...rest
 }: Props) {
-  const [text, setText] = useState(() => toText(value))
+  const [text, setText] = useState(() => toText(value));
 
   // Nilai dapat berganti dari luar — baris lain dipilih, form dimuat ulang, isian direset.
   // Disamakan hanya bila ANGKAnya memang berbeda; menyamakan teksnya akan menghapus apa
   // yang sedang diketik petugas pada setiap gambar ulang.
   useEffect(() => {
-    setText((current) => (toNumber(current) === value ? current : toText(value)))
-  }, [value])
+    setText((current) =>
+      toNumber(current) === value ? current : toText(value),
+    );
+  }, [value]);
 
   return (
     <Field
@@ -81,16 +86,16 @@ export function NumberField({
       placeholder="0"
       // Batas panjang, bukan batas nilai. Nilainya diperiksa server, yang menolak beserta
       // nama isiannya; yang dicegah di sini hanya ketikan sepanjang tiga puluh digit.
-      maxLength={typeof max === 'number' ? String(max).length : undefined}
+      maxLength={typeof max === "number" ? String(max).length : undefined}
       disabled={disabled}
       value={text}
       onChange={(event) => {
-        const next = sanitize(event.target.value)
-        setText(next)
-        onValueChange(toNumber(next))
+        const next = sanitize(event.target.value);
+        setText(next);
+        onValueChange(toNumber(next));
       }}
     />
-  )
+  );
 }
 
 /**
@@ -101,13 +106,13 @@ export function NumberField({
  * keduanya tergambar apa adanya sebagai teks `NaN` di dalam kotak kuota.
  */
 function toText(value: number): string {
-  return Number.isFinite(value) && value !== 0 ? String(value) : ''
+  return Number.isFinite(value) && value !== 0 ? String(value) : "";
 }
 
 function toNumber(text: string): number {
-  if (text === '') return 0
-  const parsed = Number(text)
-  return Number.isFinite(parsed) ? parsed : 0
+  if (text === "") return 0;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**
@@ -118,8 +123,8 @@ function toNumber(text: string): number {
  * `0` harus melihat `0`, bukan kotak yang kembali kosong di bawah jarinya.
  */
 function sanitize(raw: string): string {
-  const digit = raw.replace(/\D/g, '')
-  if (digit === '') return ''
-  const trimmed = digit.replace(/^0+/, '')
-  return trimmed === '' ? '0' : trimmed
+  const digit = raw.replace(/\D/g, "");
+  if (digit === "") return "";
+  const trimmed = digit.replace(/^0+/, "");
+  return trimmed === "" ? "0" : trimmed;
 }

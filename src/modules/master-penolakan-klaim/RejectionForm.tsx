@@ -1,14 +1,19 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Rejection, type RejectionInput, type RejectionParent } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type Rejection,
+  type RejectionInput,
+  type RejectionParent,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
 /**
  * Batas panjang harus sama dengan masterpenolakan.MaxNameLength di backend.
@@ -17,7 +22,7 @@ import { SelectField } from '@/components/SelectField'
  * POOLDATA.MST_PENOLAKAN_KLAIM_1 dan _2 belum ada (R-08). Bila berubah,
  * `internal/masterpenolakan/masterpenolakan.go` harus ikut berubah.
  */
-const MAX_NAME_LENGTH = 100
+const MAX_NAME_LENGTH = 100;
 
 /**
  * Nilai pilihan "buat Status Penolakan 1 baru".
@@ -28,41 +33,47 @@ const MAX_NAME_LENGTH = 100
  *
  * Nilainya tidak pernah dikirim ke server; ia diterjemahkan di toInput.
  */
-export const NEW_PARENT = '__baru__'
+export const NEW_PARENT = "__baru__";
 
 const schema = z
   .object({
-    pilihan_status_1: z.string().trim().min(1, 'Status Penolakan 1 wajib dipilih.'),
+    pilihan_status_1: z
+      .string()
+      .trim()
+      .min(1, "Status Penolakan 1 wajib dipilih."),
     nama_status_1_baru: z.string().trim(),
     nama: z
       .string()
       .trim()
-      .min(1, 'Status Penolakan 2 wajib diisi.')
-      .max(MAX_NAME_LENGTH, `Status Penolakan 2 paling panjang ${MAX_NAME_LENGTH} karakter.`),
+      .min(1, "Status Penolakan 2 wajib diisi.")
+      .max(
+        MAX_NAME_LENGTH,
+        `Status Penolakan 2 paling panjang ${MAX_NAME_LENGTH} karakter.`,
+      ),
   })
   // Nama induk baru hanya wajib bila pengguna memang meminta yang baru. Memeriksanya
   // tanpa syarat akan menuntut isian yang sedang tersembunyi di layar.
   .superRefine((values, ctx) => {
-    if (values.pilihan_status_1 !== NEW_PARENT) return
+    if (values.pilihan_status_1 !== NEW_PARENT) return;
 
-    if (values.nama_status_1_baru === '') {
+    if (values.nama_status_1_baru === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['nama_status_1_baru'],
-        message: 'Status Penolakan 1 baru wajib diisi.',
-      })
-      return
+        path: ["nama_status_1_baru"],
+        message: "Status Penolakan 1 baru wajib diisi.",
+      });
+      return;
     }
     if (values.nama_status_1_baru.length > MAX_NAME_LENGTH) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['nama_status_1_baru'],
+        path: ["nama_status_1_baru"],
         message: `Status Penolakan 1 paling panjang ${MAX_NAME_LENGTH} karakter.`,
-      })
+      });
     }
-  })
+  });
 
-export type RejectionFields = z.infer<typeof schema>
+export type RejectionFields = z.infer<typeof schema>;
 
 /**
  * toInput menerjemahkan isian layar menjadi badan permintaan.
@@ -74,22 +85,30 @@ export type RejectionFields = z.infer<typeof schema>
  */
 export function toInput(values: RejectionFields): RejectionInput {
   if (values.pilihan_status_1 === NEW_PARENT) {
-    return { nama: values.nama, id_status_1: '', nama_status_1: values.nama_status_1_baru }
+    return {
+      nama: values.nama,
+      id_status_1: "",
+      nama_status_1: values.nama_status_1_baru,
+    };
   }
-  return { nama: values.nama, id_status_1: values.pilihan_status_1, nama_status_1: '' }
+  return {
+    nama: values.nama,
+    id_status_1: values.pilihan_status_1,
+    nama_status_1: "",
+  };
 }
 
 type Props = {
   /** Baris yang sedang disunting; null berarti mode tambah. */
-  edited: Rejection | null
-  parents: RejectionParent[]
-  isSaving: boolean
-  error: unknown
-  onSave: (values: RejectionFields) => void
-  onCancel: () => void
-}
+  edited: Rejection | null;
+  parents: RejectionParent[];
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: RejectionFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -101,10 +120,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -113,41 +133,47 @@ function messageFor(error: unknown): MessageContent | null {
         // mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
+          : {
+              title: "Belum dapat disimpan",
+              description: error.message,
+              tone: "penolakan",
+            };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+          title: "Baris ini sudah tidak ada",
+          description:
+            "Mungkin sudah diubah petugas lain. Muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Menyusun isian awal dari baris yang sedang disunting. */
@@ -155,10 +181,10 @@ function initialValues(edited: Rejection | null): RejectionFields {
   return {
     // Baris yang sedang disunting SELALU menunjuk induk yang sudah ada — ia tidak dapat
     // tersimpan tanpa induk. Karena itu mode "buat baru" tidak pernah menjadi nilai awal.
-    pilihan_status_1: edited?.id_status_1 ?? '',
-    nama_status_1_baru: '',
-    nama: edited?.nama ?? '',
-  }
+    pilihan_status_1: edited?.id_status_1 ?? "",
+    nama_status_1_baru: "",
+    nama: edited?.nama ?? "",
+  };
 }
 
 /**
@@ -180,8 +206,15 @@ function initialValues(edited: Rejection | null): RejectionFields {
  * baris baru hanya lahir bila pengguna memang meminta yang baru. Itulah sebabnya isian
  * pertama di sini berupa daftar pilihan, bukan kotak teks.
  */
-export function RejectionForm({ edited, parents, isSaving, error, onSave, onCancel }: Props) {
-  const editMode = edited !== null
+export function RejectionForm({
+  edited,
+  parents,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = edited !== null;
 
   const {
     register,
@@ -193,13 +226,13 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
   } = useForm<RejectionFields>({
     resolver: zodResolver(schema),
     defaultValues: initialValues(edited),
-  })
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
   // misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
-    reset(initialValues(edited))
-  }, [edited, reset])
+    reset(initialValues(edited));
+  }, [edited, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
@@ -210,22 +243,27 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
   // kotak nama baru.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama') setError('nama', { type: 'server', message })
-      if (column === 'id_status_1') setError('pilihan_status_1', { type: 'server', message })
-      if (column === 'nama_status_1') setError('nama_status_1_baru', { type: 'server', message })
+      if (column === "nama") setError("nama", { type: "server", message });
+      if (column === "id_status_1")
+        setError("pilihan_status_1", { type: "server", message });
+      if (column === "nama_status_1")
+        setError("nama_status_1_baru", { type: "server", message });
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const parentChoice = useWatch({ control, name: 'pilihan_status_1' })
-  const creatingParent = parentChoice === NEW_PARENT
+  const parentChoice = useWatch({ control, name: "pilihan_status_1" });
+  const creatingParent = parentChoice === NEW_PARENT;
 
-  const message = messageFor(error)
-  const title = editMode ? 'Ubah Penolakan Klaim' : 'Tambah Penolakan Klaim'
+  const message = messageFor(error);
+  const title = editMode ? "Ubah Penolakan Klaim" : "Tambah Penolakan Klaim";
 
   const options = [
-    ...parents.map((parent) => ({ value: parent.id, label: `${parent.id} — ${parent.nama}` })),
-    { value: NEW_PARENT, label: '+ Status Penolakan 1 baru…' },
-  ]
+    ...parents.map((parent) => ({
+      value: parent.id,
+      label: `${parent.id} — ${parent.nama}`,
+    })),
+    { value: NEW_PARENT, label: "+ Status Penolakan 1 baru…" },
+  ];
 
   return (
     <form
@@ -237,7 +275,11 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
@@ -255,7 +297,7 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
         label="Status Penolakan 1"
         options={options}
         error={errors.pilihan_status_1?.message}
-        {...register('pilihan_status_1')}
+        {...register("pilihan_status_1")}
       />
 
       {creatingParent && (
@@ -266,7 +308,7 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
           maxLength={MAX_NAME_LENGTH}
           hint="Baris baru diterbitkan hanya bila isian ini terisi."
           error={errors.nama_status_1_baru?.message}
-          {...register('nama_status_1_baru')}
+          {...register("nama_status_1_baru")}
         />
       )}
 
@@ -276,13 +318,13 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
         type="text"
         maxLength={MAX_NAME_LENGTH}
         error={errors.nama?.message}
-        {...register('nama')}
+        {...register("nama")}
       />
 
       {/* Akibat menyimpan dinyatakan SEBELUM pengguna menekan Simpan, bukan ditemukan
           setelah terjadi. `MASTERPENOLAKANKLAIM2.prc:14` menyetel STATUS='0' pada setiap
           pengubahan, dan perilaku itu dipertahankan atas keputusan Work Owner. */}
-      {editMode && edited.status !== '0' && (
+      {editMode && edited.status !== "0" && (
         <ErrorMessage
           title="Menyimpan akan membatalkan persetujuan"
           description={`Baris ini berstatus ${edited.status_label}. Setelah disimpan, statusnya kembali MENUNGGU dan harus disetujui ulang lewat Inbox Manager.`}
@@ -295,9 +337,9 @@ export function RejectionForm({ edited, parents, isSaving, error, onSave, onCanc
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -1,16 +1,16 @@
-import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError, callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError, callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { TreatyViewSelect } from './TreatyViewSelect'
-import { useClaimTreatyPropList, useClaimTreatyPropMetadata } from './api'
+import { TreatyViewSelect } from "./TreatyViewSelect";
+import { useClaimTreatyPropList, useClaimTreatyPropMetadata } from "./api";
 import {
   EMPTY_FILTER,
   type FilterForm,
@@ -18,7 +18,7 @@ import {
   type Tab,
   type TabColumn,
   type WorkItem,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Claim Treaty Prop — menu `MENU_ID 54`, pengganti harness
@@ -63,21 +63,21 @@ import {
  * tempat.
  */
 export function ClaimTreatyPropPage() {
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useClaimTreatyPropMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useClaimTreatyPropMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = filter.tab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = filter.tab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tab terhalang TIDAK meminta isinya. Permintaannya pasti ditolak server dengan 422,
   // dan galat yang sudah diketahui pasti terjadi bukan galat yang layak ditampilkan —
   // yang layak ditampilkan adalah alasan terhalangnya.
-  const blocked = tab?.terhalang === true
-  const list = useClaimTreatyPropList(filter, page, meta.isSuccess && !blocked)
+  const blocked = tab?.terhalang === true;
+  const list = useClaimTreatyPropList(filter, page, meta.isSuccess && !blocked);
 
   /**
    * Berpindah tab MEMBERSIHKAN penyaring dan mengembalikan ke halaman pertama.
@@ -86,13 +86,13 @@ export function ClaimTreatyPropPage() {
    * yang tampak aktif padahal tidak mengubah apa pun.
    */
   function selectTab(code: string) {
-    setFilter({ ...EMPTY_FILTER, tab: code })
-    setPage(1)
+    setFilter({ ...EMPTY_FILTER, tab: code });
+    setPage(1);
   }
 
   function toggleSeeAll(value: boolean) {
-    setFilter((previous) => ({ ...previous, lihatSemua: value }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, lihatSemua: value }));
+    setPage(1);
   }
 
   if (portal === null) {
@@ -101,13 +101,13 @@ export function ClaimTreatyPropPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean klaim treaty milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
+            "Antrean klaim treaty milik satu badan hukum, dan aplikasi ini melayani " +
+            "empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -119,7 +119,7 @@ export function ClaimTreatyPropPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -184,14 +184,13 @@ export function ClaimTreatyPropPage() {
           )}
         </>
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/*
@@ -204,15 +203,15 @@ function PageFrame({ children }: { children: ReactNode }) {
             Claim Treatyin In Progress
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Antrean klaim treaty proporsional — klaim yang dialihkan perusahaan asuransi
-            lain (Ceding Co) kepada ASM sebagai penanggung ulang.
+            Antrean klaim treaty proporsional — klaim yang dialihkan perusahaan
+            asuransi lain (Ceding Co) kepada ASM sebagai penanggung ulang.
           </p>
         </div>
         <CreateClaimButton />
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -228,27 +227,27 @@ function PageFrame({ children }: { children: ReactNode }) {
  * hilang dengan sendirinya begitu kepemilikan tabelnya berpindah.
  */
 function CreateClaimButton() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const [notice, setNotice] = useState('')
-  const [asking, setAsking] = useState(false)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const [notice, setNotice] = useState("");
+  const [asking, setAsking] = useState(false);
 
   async function ask() {
-    setAsking(true)
+    setAsking(true);
     try {
-      await callAPI('/api/inbox-claim-treaty-prop/klaim', {
-        metode: 'POST',
+      await callAPI("/api/inbox-claim-treaty-prop/klaim", {
+        metode: "POST",
         token,
         portal,
-      })
+      });
       // Jalur ini tercapai hanya bila server SUDAH dapat membuat klaim. Selama itu belum
       // terjadi, ia tidak pernah berjalan — dan bila kelak berjalan, pesan di bawah yang
       // pertama memberi tahu bahwa perilakunya berubah.
-      setNotice('Pembuatan klaim treaty sudah tersedia. Muat ulang layar ini.')
+      setNotice("Pembuatan klaim treaty sudah tersedia. Muat ulang layar ini.");
     } catch (error) {
-      setNotice(messageOf(error))
+      setNotice(messageOf(error));
     } finally {
-      setAsking(false)
+      setAsking(false);
     }
   }
 
@@ -257,13 +256,13 @@ function CreateClaimButton() {
       <Button tone="utama" onClick={ask} disabled={asking || portal === null}>
         Create Claim Treaty Prop
       </Button>
-      {notice !== '' && (
+      {notice !== "" && (
         <p className="max-w-md text-right text-xs text-amber-900" role="status">
           {notice}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -282,11 +281,12 @@ function BlockedNotice({ tab }: { tab: Tab }) {
       <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
       {tab.pemilik_penghalang && (
         <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
+          <span className="font-medium">Menunggu:</span>{" "}
+          {tab.pemilik_penghalang}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -301,11 +301,11 @@ function FilterBar({
   seeAll,
   onSeeAll,
 }: {
-  tab: Tab
-  seeAll: boolean
-  onSeeAll: (value: boolean) => void
+  tab: Tab;
+  seeAll: boolean;
+  onSeeAll: (value: boolean) => void;
 }) {
-  if (!tab.pakai_lihat_semua && !tab.hanya_milik_saya) return null
+  if (!tab.pakai_lihat_semua && !tab.hanya_milik_saya) return null;
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -333,7 +333,7 @@ function FilterBar({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -357,20 +357,20 @@ function FilterBar({
  * kosong lain.
  */
 function ClaimIDLink({ item }: { item: WorkItem }) {
-  if (item.claim_id === '') return <span className="text-slate-400">—</span>
+  if (item.claim_id === "") return <span className="text-slate-400">—</span>;
 
   return (
     <Link
       to={`/outstanding-claim/${encodeURIComponent(item.claim_id)}`}
       className={[
-        'font-medium text-blue-700 underline-offset-2 hover:underline',
-        'focus:outline-none focus-visible:rounded-kontrol',
-        'focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "font-medium text-blue-700 underline-offset-2 hover:underline",
+        "focus:outline-none focus-visible:rounded-kontrol",
+        "focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       {item.claim_id}
     </Link>
-  )
+  );
 }
 
 /**
@@ -385,13 +385,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -415,7 +415,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -434,13 +434,13 @@ function columnsFor(tab: Tab): Column<WorkItem>[] {
       key: column.kunci,
       title: column.judul,
       value: (row) => cellText(row, column),
-    }
+    };
 
-    if (column.kunci === 'claim_id') {
-      return { ...base, render: (row) => <ClaimIDLink item={row} /> }
+    if (column.kunci === "claim_id") {
+      return { ...base, render: (row) => <ClaimIDLink item={row} /> };
     }
-    return base
-  })
+    return base;
+  });
 }
 
 /**
@@ -455,16 +455,16 @@ function columnsFor(tab: Tab): Column<WorkItem>[] {
  * kolom yang gagal dimuat.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
-  if (value == null || value === '') return '—'
+  const value = row[column.kunci];
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  const text = String(value);
+  return isDate(text) ? formatDate(text) : text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD`. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -478,14 +478,14 @@ function emptyMessageFor(tab: Tab, filter: FilterForm): string {
   if (tab.hanya_milik_saya && !filter.lihatSemua) {
     return (
       'Tidak ada pekerjaan klaim treaty milik Anda. Centang "See All Claim" untuk ' +
-      'melihat penugasan seluruh petugas.'
-    )
+      "melihat penugasan seluruh petugas."
+    );
   }
-  return 'Antrean ini sedang kosong.'
+  return "Antrean ini sedang kosong.";
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

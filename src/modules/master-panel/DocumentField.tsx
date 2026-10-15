@@ -1,9 +1,9 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import type { PanelDocument } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import type { PanelDocument } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
 /**
  * Isian "Upload Document" pada layar Master Panel.
@@ -59,55 +59,65 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
  */
 type Props = {
   /** Dokumen yang sudah menempel pada panel ini, bila ada. */
-  current: PanelDocument | null
+  current: PanelDocument | null;
 
   /** Jalur unggah siap dipakai. Dibaca dari `unggah_tersedia` pada endpoint pilihan. */
-  available: boolean
+  available: boolean;
 
   /** Berkas yang sedang ditahan, beserta catatannya. */
-  file: File | null
-  note: string
+  file: File | null;
+  note: string;
 
-  onPick: (file: File | null) => void
-  onNote: (note: string) => void
+  onPick: (file: File | null) => void;
+  onNote: (note: string) => void;
 
-  isSaving: boolean
+  isSaving: boolean;
 
   /** Galat unggahan, dipisahkan dari galat penyimpanan panel. */
-  error: unknown
+  error: unknown;
 
   /** Menutup panelnya. Dipakai tombol Submit dan Batal, sama seperti modal Pega. */
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
 export function DocumentField(props: Props) {
-  const { current, available, file, note, onPick, onNote, isSaving, error, onClose } = props
-  const fileId = useId()
-  const noteId = useId()
-  const input = useRef<HTMLInputElement>(null)
-  const [tooBig, setTooBig] = useState(false)
+  const {
+    current,
+    available,
+    file,
+    note,
+    onPick,
+    onNote,
+    isSaving,
+    error,
+    onClose,
+  } = props;
+  const fileId = useId();
+  const noteId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const [tooBig, setTooBig] = useState(false);
 
   // Batas yang sama dengan `dokumenpenunjang.BatasUkuranBerkas`. Diperiksa di peramban
   // JUGA, bukan hanya di server: berkas 2 GB yang ditolak server tetap harus diunggah
   // seluruhnya lebih dulu, dan pada koneksi kantor itu menit-menit yang terbuang.
-  const maxBytes = 20 * 1024 * 1024
+  const maxBytes = 20 * 1024 * 1024;
 
   function pick(chosen: File | null) {
     if (chosen !== null && chosen.size > maxBytes) {
-      setTooBig(true)
-      onPick(null)
-      if (input.current) input.current.value = ''
-      return
+      setTooBig(true);
+      onPick(null);
+      if (input.current) input.current.value = "";
+      return;
     }
-    setTooBig(false)
-    onPick(chosen)
+    setTooBig(false);
+    onPick(chosen);
   }
 
   function clear() {
-    setTooBig(false)
-    onPick(null)
-    onNote('')
-    if (input.current) input.current.value = ''
+    setTooBig(false);
+    onPick(null);
+    onNote("");
+    if (input.current) input.current.value = "";
   }
 
   return (
@@ -122,10 +132,15 @@ export function DocumentField(props: Props) {
 
       {current !== null && (
         <p className="text-sm text-slate-600">
-          Dokumen saat ini:{' '}
-          <span className="font-medium text-slate-800">{current.nama_berkas}</span>
-          {current.diunggah_oleh !== '' && (
-            <span className="text-slate-500"> — diunggah {current.diunggah_oleh}</span>
+          Dokumen saat ini:{" "}
+          <span className="font-medium text-slate-800">
+            {current.nama_berkas}
+          </span>
+          {current.diunggah_oleh !== "" && (
+            <span className="text-slate-500">
+              {" "}
+              — diunggah {current.diunggah_oleh}
+            </span>
           )}
         </p>
       )}
@@ -136,7 +151,10 @@ export function DocumentField(props: Props) {
           panelnya, dan mengulanginya tepat di bawahnya membuat layar terbaca seolah ada dua
           hal berbeda.
         */}
-        <label htmlFor={fileId} className="block text-sm font-medium text-slate-700">
+        <label
+          htmlFor={fileId}
+          className="block text-sm font-medium text-slate-700"
+        >
           Berkas dokumen
         </label>
         {/*
@@ -162,7 +180,7 @@ export function DocumentField(props: Props) {
           <Button
             tone="kedua"
             onClick={() => {
-              input.current?.click()
+              input.current?.click();
             }}
             disabled={!available || isSaving}
           >
@@ -185,7 +203,7 @@ export function DocumentField(props: Props) {
         <p className="text-sm font-medium text-slate-700">Nama File</p>
         <div className="mt-1 rounded-kontrol border border-slate-200">
           <p className="px-3 py-2 text-sm text-slate-600">
-            {file === null ? 'Data tidak ada' : file.name}
+            {file === null ? "Data tidak ada" : file.name}
           </p>
         </div>
       </div>
@@ -201,7 +219,10 @@ export function DocumentField(props: Props) {
       {file !== null && (
         <>
           <div>
-            <label htmlFor={noteId} className="block text-sm font-medium text-slate-700">
+            <label
+              htmlFor={noteId}
+              className="block text-sm font-medium text-slate-700"
+            >
               Catatan dokumen
             </label>
             <input
@@ -234,21 +255,25 @@ export function DocumentField(props: Props) {
         <Button
           tone="halus"
           onClick={() => {
-            clear()
-            onClose()
+            clear();
+            onClose();
           }}
           disabled={isSaving}
         >
           Batal
         </Button>
-        <Button tone="utama" onClick={onClose} disabled={file === null || isSaving}>
+        <Button
+          tone="utama"
+          onClick={onClose}
+          disabled={file === null || isSaving}
+        >
           Submit
         </Button>
       </div>
 
       {error !== null && error !== undefined && <UploadError error={error} />}
     </div>
-  )
+  );
 }
 
 /**
@@ -259,42 +284,42 @@ export function DocumentField(props: Props) {
  * mengulang" — dan jawaban keduanya berbeda per golongan galat.
  */
 function UploadError({ error }: { error: unknown }) {
-  let title = 'Dokumen gagal diunggah'
+  let title = "Dokumen gagal diunggah";
   let description =
-    'Panel sudah tersimpan. Dokumennya belum terkirim — buka kembali panel ini lalu unggah ulang.'
-  let tone: ErrorTone = 'gangguan'
+    "Panel sudah tersimpan. Dokumennya belum terkirim — buka kembali panel ini lalu unggah ulang.";
+  let tone: ErrorTone = "gangguan";
 
   if (error instanceof NetworkError) {
     description =
-      'Panel sudah tersimpan, tetapi dokumennya tidak terkirim karena sambungan terputus. Buka kembali panel ini lalu unggah ulang.'
+      "Panel sudah tersimpan, tetapi dokumennya tidak terkirim karena sambungan terputus. Buka kembali panel ini lalu unggah ulang.";
   } else if (error instanceof APIError) {
     switch (error.kode) {
-      case 'unggah_separuh_jalan':
+      case "unggah_separuh_jalan":
         // Satu-satunya golongan yang pengulangannya BERBAHAYA — mengulang menumpuk berkas
         // ganda di layanan penyimpanan. Nadanya dinaikkan supaya terbaca berbeda.
-        title = 'Dokumen terkirim tetapi belum tercatat'
+        title = "Dokumen terkirim tetapi belum tercatat";
         description =
-          'Berkasnya sudah sampai di penyimpanan, tetapi catatannya gagal disimpan sehingga belum tertaut ke panel. JANGAN unggah ulang — laporkan ke administrator.'
-        tone = 'penolakan'
-        break
-      case 'berkas_terlalu_besar':
-        title = 'Berkas terlalu besar'
-        description = `Panel sudah tersimpan. ${error.message}`
-        tone = 'penolakan'
-        break
-      case 'unggah_tidak_sah':
-        title = 'Berkas tidak dapat diterima'
-        description = `Panel sudah tersimpan. ${error.message}`
-        tone = 'penolakan'
-        break
-      case 'layanan_unggah_tidak_tersedia':
-        title = 'Layanan penyimpanan dokumen sedang tidak tersedia'
-        description = `Panel sudah tersimpan. ${error.message} Buka kembali panel ini lalu unggah ulang.`
-        break
+          "Berkasnya sudah sampai di penyimpanan, tetapi catatannya gagal disimpan sehingga belum tertaut ke panel. JANGAN unggah ulang — laporkan ke administrator.";
+        tone = "penolakan";
+        break;
+      case "berkas_terlalu_besar":
+        title = "Berkas terlalu besar";
+        description = `Panel sudah tersimpan. ${error.message}`;
+        tone = "penolakan";
+        break;
+      case "unggah_tidak_sah":
+        title = "Berkas tidak dapat diterima";
+        description = `Panel sudah tersimpan. ${error.message}`;
+        tone = "penolakan";
+        break;
+      case "layanan_unggah_tidak_tersedia":
+        title = "Layanan penyimpanan dokumen sedang tidak tersedia";
+        description = `Panel sudah tersimpan. ${error.message} Buka kembali panel ini lalu unggah ulang.`;
+        break;
       default:
-        description = `Panel sudah tersimpan. ${error.message}`
+        description = `Panel sudah tersimpan. ${error.message}`;
     }
   }
 
-  return <ErrorMessage title={title} description={description} tone={tone} />
+  return <ErrorMessage title={title} description={description} tone={tone} />;
 }

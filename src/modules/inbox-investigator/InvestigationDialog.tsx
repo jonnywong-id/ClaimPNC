@@ -1,20 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
 
-import type { InvestigatorTask } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DateField } from '@/components/DateField'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
-import { TextAreaField } from '@/components/TextAreaField'
-import { DocumentTab } from '@/modules/registrasi/EstimateTabs'
+import type { InvestigatorTask } from "@/api/types";
+import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
+import { TextAreaField } from "@/components/TextAreaField";
+import { DocumentTab } from "@/modules/registrasi/EstimateTabs";
 
 import {
   useInvestigation,
   useSubmitInvestigation,
   type InvestigationForm,
   type InvestigationVisibility,
-} from './api'
+} from "./api";
 
 /*
   Pilihan keenam isian radio, DISALIN dari rule Property-nya.
@@ -40,85 +40,85 @@ import {
 
 /** `IsInvestigated` — "Dapat Diinvestigasi". */
 const INVESTIGATED = [
-  { value: '1', label: 'Ya' },
-  { value: '0', label: 'Tidak' },
-]
+  { value: "1", label: "Ya" },
+  { value: "0", label: "Tidak" },
+];
 
 /** `SelectRS` — "Tempat Kejadian". */
 const PLACE_KIND = [
-  { value: '1', label: 'Rumah Sakit' },
-  { value: '0', label: 'Non Rumah Sakit' },
-]
+  { value: "1", label: "Rumah Sakit" },
+  { value: "0", label: "Non Rumah Sakit" },
+];
 
 /** `PasienTerdaftar` — "Peserta Terdaftar Di RS". */
 const PATIENT_REGISTERED = [
-  { value: '1', label: 'YA' },
-  { value: '0', label: 'TIDAK' },
-]
+  { value: "1", label: "YA" },
+  { value: "0", label: "TIDAK" },
+];
 
 /** `FlagDOB` — "Verifikasi Tanggal Lahir". */
 const BIRTH_VERIFIED = [
-  { value: '1', label: 'Sesuai' },
-  { value: '0', label: 'Tidak Sesuai' },
-]
+  { value: "1", label: "Sesuai" },
+  { value: "0", label: "Tidak Sesuai" },
+];
 
 /** `KonfirmasiModelKwitansi` — "Konfirmasi Model Kwitansi". TIGA pilihan. */
 const RECEIPT_CONFIRMATION = [
-  { value: '1', label: 'SESUAI' },
-  { value: '0', label: 'TIDAK SESUAI' },
-  { value: '2', label: 'TIDAK ADA' },
-]
+  { value: "1", label: "SESUAI" },
+  { value: "0", label: "TIDAK SESUAI" },
+  { value: "2", label: "TIDAK ADA" },
+];
 
 /** `TagihanLunasBelumLunas` — "Tagihan Lunas/Belum Lunas". */
 const BILL_SETTLED = [
-  { value: '1', label: 'LUNAS' },
-  { value: '0', label: 'BELUM LUNAS' },
-]
+  { value: "1", label: "LUNAS" },
+  { value: "0", label: "BELUM LUNAS" },
+];
 
 /** Isian kosong, dipakai sebelum jawaban server tiba. */
 const EMPTY: InvestigationForm = {
-  referensi: '',
+  referensi: "",
   urutan_survei: 1,
   urutan: 1,
   tanggal_investigasi: null,
-  dapat_diinvestigasi: '',
-  tempat_kejadian: '',
-  nama_rumah_sakit: '',
-  nama_tempat_lainnya: '',
-  alamat_rs_klinik: '',
-  nomor_rekam_medik: '',
-  nama_pasien: '',
+  dapat_diinvestigasi: "",
+  tempat_kejadian: "",
+  nama_rumah_sakit: "",
+  nama_tempat_lainnya: "",
+  alamat_rs_klinik: "",
+  nomor_rekam_medik: "",
+  nama_pasien: "",
   tanggal_lahir: null,
-  verifikasi_tanggal_lahir: '',
-  keterangan_tanggal_lahir: '',
-  peserta_terdaftar: '',
-  keterangan_pendaftaran: '',
+  verifikasi_tanggal_lahir: "",
+  keterangan_tanggal_lahir: "",
+  peserta_terdaftar: "",
+  keterangan_pendaftaran: "",
   tanggal_perawatan: null,
   tanggal_selesai_perawatan: null,
-  total_pengajuan: '',
-  tagihan_lunas: '',
-  bayar_pasien: 'false',
-  bayar_perusahaan: 'false',
-  bayar_asuransi_lain: 'false',
-  tidak_ada_pembayaran: 'false',
-  nama_asuransi_lain: '',
-  konfirmasi_kwitansi: '',
-  nama_pic_rs: '',
-  nama_penelepon: '',
-  nama_karyawan: '',
-  kode_area_telepon: '',
-  nomor_telepon: '',
-  ekstensi_telepon: '',
-  hasil_investigasi: '',
-}
+  total_pengajuan: "",
+  tagihan_lunas: "",
+  bayar_pasien: "false",
+  bayar_perusahaan: "false",
+  bayar_asuransi_lain: "false",
+  tidak_ada_pembayaran: "false",
+  nama_asuransi_lain: "",
+  konfirmasi_kwitansi: "",
+  nama_pic_rs: "",
+  nama_penelepon: "",
+  nama_karyawan: "",
+  kode_area_telepon: "",
+  nomor_telepon: "",
+  ekstensi_telepon: "",
+  hasil_investigasi: "",
+};
 
 /** Dua tab formulir, dari `pyTitle` section lamanya. */
-const TABS = ['Investigasi', 'Unggah Dokumen'] as const
+const TABS = ["Investigasi", "Unggah Dokumen"] as const;
 
 type Props = {
-  task: InvestigatorTask
-  onClose: () => void
-}
+  task: InvestigatorTask;
+  onClose: () => void;
+};
 
 /**
  * Formulir kerja Investigator.
@@ -142,33 +142,33 @@ type Props = {
  * pada perubahan berikutnya.
  */
 export function InvestigationDialog({ task, onClose }: Props) {
-  const form = useInvestigation(task.referensi)
-  const submit = useSubmitInvestigation()
+  const form = useInvestigation(task.referensi);
+  const submit = useSubmitInvestigation();
 
-  const [draft, setDraft] = useState<InvestigationForm>(EMPTY)
-  const [loaded, setLoaded] = useState(false)
+  const [draft, setDraft] = useState<InvestigationForm>(EMPTY);
+  const [loaded, setLoaded] = useState(false);
 
   // Dua tab, persis seperti di layar lama: Investigasi dan Unggah Dokumen.
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Investigasi')
+  const [tab, setTab] = useState<(typeof TABS)[number]>("Investigasi");
 
   // Isian server dipakai SEKALI, saat jawaban pertama tiba. Menyalinnya pada setiap render
   // akan membuang ketikan pengguna setiap kali TanStack Query menyegarkan datanya.
   useEffect(() => {
     if (form.data && !loaded) {
-      setDraft(form.data.investigasi)
-      setLoaded(true)
+      setDraft(form.data.investigasi);
+      setLoaded(true);
     }
-  }, [form.data, loaded])
+  }, [form.data, loaded]);
 
   // Escape menutup dialog, seperti dialog mana pun yang dikenal pengguna. Tidak saat sedang
   // menyimpan: menutupnya di tengah jalan menyembunyikan hasilnya tanpa membatalkannya.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !submit.isPending) onClose()
+      if (event.key === "Escape" && !submit.isPending) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, submit.isPending])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, submit.isPending]);
 
   /*
     Keadaan tampil dihitung dari JAWABAN SERVER, lalu disesuaikan dengan isian yang sedang
@@ -179,7 +179,7 @@ export function InvestigationDialog({ task, onClose }: Props) {
     Yang disalin di sini hanyalah penerapan aturan yang sama atas isian terbaru.
   */
   const shown: InvestigationVisibility = useMemo(() => {
-    const hospital = draft.tempat_kejadian === '1'
+    const hospital = draft.tempat_kejadian === "1";
     return {
       nama_rumah_sakit: hospital,
       nama_tempat_lainnya: !hospital,
@@ -187,29 +187,34 @@ export function InvestigationDialog({ task, onClose }: Props) {
       // Dua tanda tanya, bukan satu. `tampil` dapat tidak ada sama sekali — pada jawaban
       // yang bentuknya tak terduga, pada pemuatan pertama, dan pada versi server yang
       // belum mengirimnya. Satu tanda tanya hanya menjaga `data`, dan sisanya melempar.
-      tanggal_selesai_perawatan: form.data?.tampil?.tanggal_selesai_perawatan ?? true,
+      tanggal_selesai_perawatan:
+        form.data?.tampil?.tanggal_selesai_perawatan ?? true,
       nama_asuransi_lain:
-        draft.bayar_perusahaan === 'true' || draft.bayar_asuransi_lain === 'true',
-    }
-  }, [draft, form.data])
+        draft.bayar_perusahaan === "true" ||
+        draft.bayar_asuransi_lain === "true",
+    };
+  }, [draft, form.data]);
 
-  function set<K extends keyof InvestigationForm>(key: K, value: InvestigationForm[K]) {
-    setDraft((before) => ({ ...before, [key]: value }))
+  function set<K extends keyof InvestigationForm>(
+    key: K,
+    value: InvestigationForm[K],
+  ) {
+    setDraft((before) => ({ ...before, [key]: value }));
   }
 
   /** toggle membalik satu kotak centang; nilainya teks `"true"`/`"false"`, bukan boolean. */
   function toggle(key: keyof InvestigationForm, checked: boolean) {
-    set(key, (checked ? 'true' : 'false') as InvestigationForm[typeof key])
+    set(key, (checked ? "true" : "false") as InvestigationForm[typeof key]);
   }
 
   function save() {
     submit.mutate(
       { referensi: task.referensi, isian: draft },
       { onSuccess: onClose },
-    )
+    );
   }
 
-  const failure = submit.error instanceof Error ? submit.error.message : null
+  const failure = submit.error instanceof Error ? submit.error.message : null;
 
   return (
     <div
@@ -223,7 +228,10 @@ export function InvestigationDialog({ task, onClose }: Props) {
             Accident` pada section lama, bukan dikarang. "Input Investigator" yang dipakai
             sebelumnya adalah nama Flow Action-nya — yang di Pega muncul sebagai judul
             jendela, bukan sebagai judul formulir yang dibaca petugas. */}
-        <h2 id="judul-investigasi" className="text-lg font-semibold text-slate-900">
+        <h2
+          id="judul-investigasi"
+          className="text-lg font-semibold text-slate-900"
+        >
           Form Investigasi Personal Accident
         </h2>
 
@@ -233,15 +241,18 @@ export function InvestigationDialog({ task, onClose }: Props) {
           <dt className="text-slate-500">Nomor Case</dt>
           <dd className="font-medium text-slate-900">{task.nomor_case}</dd>
           <dt className="text-slate-500">Nama Tertanggung</dt>
-          <dd className="text-slate-900">{task.nama_tertanggung || '—'}</dd>
+          <dd className="text-slate-900">{task.nama_tertanggung || "—"}</dd>
           <dt className="text-slate-500">Nama Peserta</dt>
-          <dd className="text-slate-900">{task.nama_peserta || '—'}</dd>
+          <dd className="text-slate-900">{task.nama_peserta || "—"}</dd>
         </dl>
 
         {/* Dua tab milik Flow Action ini — `pyTitle` "Investigasi" dan "Unggah Dokumen"
             pada section lamanya. Ia BUKAN ketiga tab Pega di luar (Assignment ·
             Information · Audit), yang milik kerangka kasus, bukan milik formulir ini. */}
-        <div className="mt-5 flex gap-1 border-b border-slate-200" role="tablist">
+        <div
+          className="mt-5 flex gap-1 border-b border-slate-200"
+          role="tablist"
+        >
           {TABS.map((one) => (
             <button
               key={one}
@@ -250,10 +261,10 @@ export function InvestigationDialog({ task, onClose }: Props) {
               aria-selected={tab === one}
               onClick={() => setTab(one)}
               className={
-                'rounded-t-kontrol px-4 py-2 text-sm transition-colors ' +
+                "rounded-t-kontrol px-4 py-2 text-sm transition-colors " +
                 (tab === one
-                  ? 'border-b-2 border-blue-600 font-medium text-blue-700'
-                  : 'text-slate-600 hover:text-slate-900')
+                  ? "border-b-2 border-blue-600 font-medium text-blue-700"
+                  : "text-slate-600 hover:text-slate-900")
               }
             >
               {one}
@@ -262,7 +273,9 @@ export function InvestigationDialog({ task, onClose }: Props) {
         </div>
 
         {form.isPending ? (
-          <p className="mt-6 text-sm text-slate-500">Memuat formulir investigasi…</p>
+          <p className="mt-6 text-sm text-slate-500">
+            Memuat formulir investigasi…
+          </p>
         ) : form.isError ? (
           <div className="mt-6">
             <ErrorMessage
@@ -270,7 +283,7 @@ export function InvestigationDialog({ task, onClose }: Props) {
               description={
                 form.error instanceof Error
                   ? form.error.message
-                  : 'Coba tutup lalu buka kembali.'
+                  : "Coba tutup lalu buka kembali."
               }
               tone="gangguan"
             />
@@ -297,263 +310,316 @@ export function InvestigationDialog({ task, onClose }: Props) {
             */}
             {/* Kepala kelompok pertanyaan. Ia caption nyata di section lama
                 (`pyCaption Daftar Pertanyaan`), bukan penanda yang ditambahkan sendiri. */}
-            {tab === 'Investigasi' && (
+            {tab === "Investigasi" && (
               <>
-            <h3 className="text-base font-semibold text-slate-900">Daftar Pertanyaan</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Daftar Pertanyaan
+                </h3>
 
-            <section className="grid gap-3 sm:grid-cols-2">
-              <DateField
-                id="inv-tanggal-investigasi"
-                label="Tanggal Investigasi"
-                value={isoDay(draft.tanggal_investigasi)}
-                onChange={(iso) => set('tanggal_investigasi', dayToMoment(iso))}
-                disabled={submit.isPending}
-              />
-              <SelectField
-                id="inv-tempat-kejadian"
-                label="Tempat Kejadian"
-                options={PLACE_KIND}
-                value={draft.tempat_kejadian}
-                onChange={(event) => set('tempat_kejadian', event.target.value)}
-                disabled={submit.isPending}
-              />
-              {shown.nama_rumah_sakit && (
-                <Field
-                  id="inv-nama-rumah-sakit"
-                  label="Nama Rumah Sakit"
-                  value={draft.nama_rumah_sakit}
-                  onChange={(event) => set('nama_rumah_sakit', event.target.value)}
-                  disabled={submit.isPending}
-                />
-              )}
-              {shown.nama_tempat_lainnya && (
-                <Field
-                  id="inv-nama-tempat-lainnya"
-                  label="Nama Tempat Lainnya"
-                  value={draft.nama_tempat_lainnya}
-                  onChange={(event) => set('nama_tempat_lainnya', event.target.value)}
-                  disabled={submit.isPending}
-                />
-              )}
-            </section>
-
-            {shown.alamat_rs_klinik && (
-              <TextAreaField
-                id="inv-alamat"
-                label="Alamat RS/Klinik/Lokasi Kejadian *"
-                value={draft.alamat_rs_klinik}
-                onChange={(event) => set('alamat_rs_klinik', event.target.value)}
-                disabled={submit.isPending}
-              />
-            )}
-
-            {/* Kelompok TERSENDIRI di Pega, ber-`pyTitle` sendiri. Tanggal Keluar
-                bersyarat rawat inap. */}
-            <fieldset className="rounded-kartu border border-slate-200 p-4">
-              <legend className="px-1 text-sm font-medium text-slate-700">
-                Tanggal Perawatan/Kejadian
-              </legend>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <DateField
-                  id="inv-tanggal-perawatan"
-                  label="Tanggal Masuk"
-                  value={isoDay(draft.tanggal_perawatan)}
-                  onChange={(iso) => set('tanggal_perawatan', dayToMoment(iso))}
-                  disabled={submit.isPending}
-                />
-                {shown.tanggal_selesai_perawatan && (
+                <section className="grid gap-3 sm:grid-cols-2">
                   <DateField
-                    id="inv-tanggal-selesai"
-                    label="Tanggal Keluar"
-                    value={isoDay(draft.tanggal_selesai_perawatan)}
-                    onChange={(iso) => set('tanggal_selesai_perawatan', dayToMoment(iso))}
+                    id="inv-tanggal-investigasi"
+                    label="Tanggal Investigasi"
+                    value={isoDay(draft.tanggal_investigasi)}
+                    onChange={(iso) =>
+                      set("tanggal_investigasi", dayToMoment(iso))
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <SelectField
+                    id="inv-tempat-kejadian"
+                    label="Tempat Kejadian"
+                    options={PLACE_KIND}
+                    value={draft.tempat_kejadian}
+                    onChange={(event) =>
+                      set("tempat_kejadian", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  {shown.nama_rumah_sakit && (
+                    <Field
+                      id="inv-nama-rumah-sakit"
+                      label="Nama Rumah Sakit"
+                      value={draft.nama_rumah_sakit}
+                      onChange={(event) =>
+                        set("nama_rumah_sakit", event.target.value)
+                      }
+                      disabled={submit.isPending}
+                    />
+                  )}
+                  {shown.nama_tempat_lainnya && (
+                    <Field
+                      id="inv-nama-tempat-lainnya"
+                      label="Nama Tempat Lainnya"
+                      value={draft.nama_tempat_lainnya}
+                      onChange={(event) =>
+                        set("nama_tempat_lainnya", event.target.value)
+                      }
+                      disabled={submit.isPending}
+                    />
+                  )}
+                </section>
+
+                {shown.alamat_rs_klinik && (
+                  <TextAreaField
+                    id="inv-alamat"
+                    label="Alamat RS/Klinik/Lokasi Kejadian *"
+                    value={draft.alamat_rs_klinik}
+                    onChange={(event) =>
+                      set("alamat_rs_klinik", event.target.value)
+                    }
                     disabled={submit.isPending}
                   />
                 )}
-              </div>
-            </fieldset>
 
-            <section className="grid gap-3 sm:grid-cols-2">
-              <Field
-                id="inv-rekam-medik"
-                label="Nomor Rekam Medik *"
-                value={draft.nomor_rekam_medik}
-                onChange={(event) => set('nomor_rekam_medik', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-nama-pasien"
-                label="Nama Pasien"
-                value={draft.nama_pasien}
-                onChange={(event) => set('nama_pasien', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <SelectField
-                id="inv-peserta-terdaftar"
-                label="Peserta Terdaftar Di RS"
-                options={PATIENT_REGISTERED}
-                value={draft.peserta_terdaftar}
-                onChange={(event) => set('peserta_terdaftar', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-keterangan-pendaftaran"
-                label="PT / Reg"
-                value={draft.keterangan_pendaftaran}
-                onChange={(event) => set('keterangan_pendaftaran', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-total-pengajuan"
-                label="Total Pengajuan"
-                value={draft.total_pengajuan}
-                onChange={(event) => set('total_pengajuan', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <SelectField
-                id="inv-tagihan-lunas"
-                label="Tagihan Lunas/Belum Lunas"
-                options={BILL_SETTLED}
-                value={draft.tagihan_lunas}
-                onChange={(event) => set('tagihan_lunas', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <DateField
-                id="inv-tanggal-lahir"
-                label="Tanggal Lahir"
-                value={isoDay(draft.tanggal_lahir)}
-                onChange={(iso) => set('tanggal_lahir', dayToMoment(iso))}
-                disabled={submit.isPending}
-              />
-              <SelectField
-                id="inv-verifikasi-lahir"
-                label="Verifikasi Tanggal Lahir"
-                options={BIRTH_VERIFIED}
-                value={draft.verifikasi_tanggal_lahir}
-                onChange={(event) => set('verifikasi_tanggal_lahir', event.target.value)}
-                disabled={submit.isPending}
-              />
-            </section>
-
-            <TextAreaField
-              id="inv-keterangan-lahir"
-              label="Keterangan Tambahan"
-              value={draft.keterangan_tanggal_lahir}
-              onChange={(event) => set('keterangan_tanggal_lahir', event.target.value)}
-              disabled={submit.isPending}
-            />
-
-            <section className="grid gap-3 sm:grid-cols-2">
-              <SelectField
-                id="inv-konfirmasi-kwitansi"
-                label="Konfirmasi Model Kwitansi"
-                options={RECEIPT_CONFIRMATION}
-                value={draft.konfirmasi_kwitansi}
-                onChange={(event) => set('konfirmasi_kwitansi', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <SelectField
-                id="inv-dapat-diinvestigasi"
-                label="Dapat Diinvestigasi"
-                options={INVESTIGATED}
-                value={draft.dapat_diinvestigasi}
-                onChange={(event) => set('dapat_diinvestigasi', event.target.value)}
-                disabled={submit.isPending}
-              />
-            </section>
-
-            {/* SATU kelompok pilihan, bukan empat pertanyaan yang berdiri sendiri — itulah
-                bentuknya di formulir lama. */}
-            <fieldset className="rounded-kartu border border-slate-200 p-4">
-              <legend className="px-1 text-sm font-medium text-slate-700">
-                Yang Melakukan Pembayaran
-              </legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    ['bayar_pasien', 'Pasien'],
-                    ['bayar_perusahaan', 'Perusahaan'],
-                    ['bayar_asuransi_lain', 'Asuransi Lain'],
-                    ['tidak_ada_pembayaran', 'Tidak Ada Pembayaran'],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={draft[key] === 'true'}
+                {/* Kelompok TERSENDIRI di Pega, ber-`pyTitle` sendiri. Tanggal Keluar
+                bersyarat rawat inap. */}
+                <fieldset className="rounded-kartu border border-slate-200 p-4">
+                  <legend className="px-1 text-sm font-medium text-slate-700">
+                    Tanggal Perawatan/Kejadian
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DateField
+                      id="inv-tanggal-perawatan"
+                      label="Tanggal Masuk"
+                      value={isoDay(draft.tanggal_perawatan)}
+                      onChange={(iso) =>
+                        set("tanggal_perawatan", dayToMoment(iso))
+                      }
                       disabled={submit.isPending}
-                      onChange={(event) => toggle(key, event.target.checked)}
                     />
-                    {label}
-                  </label>
-                ))}
-              </div>
+                    {shown.tanggal_selesai_perawatan && (
+                      <DateField
+                        id="inv-tanggal-selesai"
+                        label="Tanggal Keluar"
+                        value={isoDay(draft.tanggal_selesai_perawatan)}
+                        onChange={(iso) =>
+                          set("tanggal_selesai_perawatan", dayToMoment(iso))
+                        }
+                        disabled={submit.isPending}
+                      />
+                    )}
+                  </div>
+                </fieldset>
 
-              {shown.nama_asuransi_lain && (
-                <div className="mt-3">
+                <section className="grid gap-3 sm:grid-cols-2">
                   <Field
-                    id="inv-asuransi-lain"
-                    label="Nama Asuransi/Perusahaan Lain"
-                    value={draft.nama_asuransi_lain}
-                    onChange={(event) => set('nama_asuransi_lain', event.target.value)}
+                    id="inv-rekam-medik"
+                    label="Nomor Rekam Medik *"
+                    value={draft.nomor_rekam_medik}
+                    onChange={(event) =>
+                      set("nomor_rekam_medik", event.target.value)
+                    }
                     disabled={submit.isPending}
                   />
-                </div>
-              )}
-            </fieldset>
+                  <Field
+                    id="inv-nama-pasien"
+                    label="Nama Pasien"
+                    value={draft.nama_pasien}
+                    onChange={(event) => set("nama_pasien", event.target.value)}
+                    disabled={submit.isPending}
+                  />
+                  <SelectField
+                    id="inv-peserta-terdaftar"
+                    label="Peserta Terdaftar Di RS"
+                    options={PATIENT_REGISTERED}
+                    value={draft.peserta_terdaftar}
+                    onChange={(event) =>
+                      set("peserta_terdaftar", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-keterangan-pendaftaran"
+                    label="PT / Reg"
+                    value={draft.keterangan_pendaftaran}
+                    onChange={(event) =>
+                      set("keterangan_pendaftaran", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-total-pengajuan"
+                    label="Total Pengajuan"
+                    value={draft.total_pengajuan}
+                    onChange={(event) =>
+                      set("total_pengajuan", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <SelectField
+                    id="inv-tagihan-lunas"
+                    label="Tagihan Lunas/Belum Lunas"
+                    options={BILL_SETTLED}
+                    value={draft.tagihan_lunas}
+                    onChange={(event) =>
+                      set("tagihan_lunas", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <DateField
+                    id="inv-tanggal-lahir"
+                    label="Tanggal Lahir"
+                    value={isoDay(draft.tanggal_lahir)}
+                    onChange={(iso) => set("tanggal_lahir", dayToMoment(iso))}
+                    disabled={submit.isPending}
+                  />
+                  <SelectField
+                    id="inv-verifikasi-lahir"
+                    label="Verifikasi Tanggal Lahir"
+                    options={BIRTH_VERIFIED}
+                    value={draft.verifikasi_tanggal_lahir}
+                    onChange={(event) =>
+                      set("verifikasi_tanggal_lahir", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                </section>
 
-            <section className="grid gap-3 sm:grid-cols-2">
-              <Field
-                id="inv-pic-rs"
-                label="Nama PIC Yang Dapat Dihubungi *"
-                value={draft.nama_pic_rs}
-                onChange={(event) => set('nama_pic_rs', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-penelepon"
-                label="Nama Penelepon"
-                value={draft.nama_penelepon}
-                onChange={(event) => set('nama_penelepon', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-nama-karyawan"
-                label="Nama Karyawan"
-                value={draft.nama_karyawan}
-                onChange={(event) => set('nama_karyawan', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-kode-area"
-                label="Kode"
-                value={draft.kode_area_telepon}
-                onChange={(event) => set('kode_area_telepon', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-telepon"
-                label="Nomor Telepon Yang Dapat Dihubungi *"
-                value={draft.nomor_telepon}
-                onChange={(event) => set('nomor_telepon', event.target.value)}
-                disabled={submit.isPending}
-              />
-              <Field
-                id="inv-ekstensi"
-                label="No. Ext."
-                value={draft.ekstensi_telepon}
-                onChange={(event) => set('ekstensi_telepon', event.target.value)}
-                disabled={submit.isPending}
-              />
-            </section>
+                <TextAreaField
+                  id="inv-keterangan-lahir"
+                  label="Keterangan Tambahan"
+                  value={draft.keterangan_tanggal_lahir}
+                  onChange={(event) =>
+                    set("keterangan_tanggal_lahir", event.target.value)
+                  }
+                  disabled={submit.isPending}
+                />
 
-            <TextAreaField
-              id="inv-hasil"
-              label="Hasil Investigasi"
-              value={draft.hasil_investigasi}
-              onChange={(event) => set('hasil_investigasi', event.target.value)}
-              disabled={submit.isPending}
-            />
+                <section className="grid gap-3 sm:grid-cols-2">
+                  <SelectField
+                    id="inv-konfirmasi-kwitansi"
+                    label="Konfirmasi Model Kwitansi"
+                    options={RECEIPT_CONFIRMATION}
+                    value={draft.konfirmasi_kwitansi}
+                    onChange={(event) =>
+                      set("konfirmasi_kwitansi", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <SelectField
+                    id="inv-dapat-diinvestigasi"
+                    label="Dapat Diinvestigasi"
+                    options={INVESTIGATED}
+                    value={draft.dapat_diinvestigasi}
+                    onChange={(event) =>
+                      set("dapat_diinvestigasi", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                </section>
+
+                {/* SATU kelompok pilihan, bukan empat pertanyaan yang berdiri sendiri — itulah
+                bentuknya di formulir lama. */}
+                <fieldset className="rounded-kartu border border-slate-200 p-4">
+                  <legend className="px-1 text-sm font-medium text-slate-700">
+                    Yang Melakukan Pembayaran
+                  </legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        ["bayar_pasien", "Pasien"],
+                        ["bayar_perusahaan", "Perusahaan"],
+                        ["bayar_asuransi_lain", "Asuransi Lain"],
+                        ["tidak_ada_pembayaran", "Tidak Ada Pembayaran"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={draft[key] === "true"}
+                          disabled={submit.isPending}
+                          onChange={(event) =>
+                            toggle(key, event.target.checked)
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+
+                  {shown.nama_asuransi_lain && (
+                    <div className="mt-3">
+                      <Field
+                        id="inv-asuransi-lain"
+                        label="Nama Asuransi/Perusahaan Lain"
+                        value={draft.nama_asuransi_lain}
+                        onChange={(event) =>
+                          set("nama_asuransi_lain", event.target.value)
+                        }
+                        disabled={submit.isPending}
+                      />
+                    </div>
+                  )}
+                </fieldset>
+
+                <section className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    id="inv-pic-rs"
+                    label="Nama PIC Yang Dapat Dihubungi *"
+                    value={draft.nama_pic_rs}
+                    onChange={(event) => set("nama_pic_rs", event.target.value)}
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-penelepon"
+                    label="Nama Penelepon"
+                    value={draft.nama_penelepon}
+                    onChange={(event) =>
+                      set("nama_penelepon", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-nama-karyawan"
+                    label="Nama Karyawan"
+                    value={draft.nama_karyawan}
+                    onChange={(event) =>
+                      set("nama_karyawan", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-kode-area"
+                    label="Kode"
+                    value={draft.kode_area_telepon}
+                    onChange={(event) =>
+                      set("kode_area_telepon", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-telepon"
+                    label="Nomor Telepon Yang Dapat Dihubungi *"
+                    value={draft.nomor_telepon}
+                    onChange={(event) =>
+                      set("nomor_telepon", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                  <Field
+                    id="inv-ekstensi"
+                    label="No. Ext."
+                    value={draft.ekstensi_telepon}
+                    onChange={(event) =>
+                      set("ekstensi_telepon", event.target.value)
+                    }
+                    disabled={submit.isPending}
+                  />
+                </section>
+
+                <TextAreaField
+                  id="inv-hasil"
+                  label="Hasil Investigasi"
+                  value={draft.hasil_investigasi}
+                  onChange={(event) =>
+                    set("hasil_investigasi", event.target.value)
+                  }
+                  disabled={submit.isPending}
+                />
               </>
             )}
 
@@ -564,7 +630,7 @@ export function InvestigationDialog({ task, onClose }: Props) {
 
                 `claimID` diisi `referensi`, yaitu pzInsKey — dan itu memang bentuk yang
                 disimpan `T_CLAIM_OBJECTLIST.CLAIMID`, bukan nomor kasusnya. */}
-            {tab === 'Unggah Dokumen' && (
+            {tab === "Unggah Dokumen" && (
               <DocumentTab claimID={task.referensi} line={task.lini_bisnis} />
             )}
 
@@ -574,8 +640,9 @@ export function InvestigationDialog({ task, onClose }: Props) {
                 menjelaskan AKIBAT SEBUAH TINDAKAN — dan tanpa itu barisnya hilang dari
                 antrean tanpa satu pun tanda bahwa itu memang yang terjadi. */}
             <p className="rounded-kartu border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-              Menyimpan memindahkan klaim ini ke <span className="font-medium">Analyst</span>.
-              Pekerjaannya akan hilang dari antrean investigator.
+              Menyimpan memindahkan klaim ini ke{" "}
+              <span className="font-medium">Analyst</span>. Pekerjaannya akan
+              hilang dari antrean investigator.
             </p>
 
             {failure && (
@@ -587,18 +654,22 @@ export function InvestigationDialog({ task, onClose }: Props) {
             )}
 
             <div className="flex flex-wrap justify-end gap-2">
-              <Button tone="kedua" onClick={onClose} disabled={submit.isPending}>
+              <Button
+                tone="kedua"
+                onClick={onClose}
+                disabled={submit.isPending}
+              >
                 Back
               </Button>
               <Button onClick={save} disabled={submit.isPending}>
-                {submit.isPending ? 'Menyimpan…' : 'Submit'}
+                {submit.isPending ? "Menyimpan…" : "Submit"}
               </Button>
             </div>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -609,8 +680,8 @@ export function InvestigationDialog({ task, onClose }: Props) {
  * keduanya bertemu.
  */
 function isoDay(moment: string | null): string {
-  if (!moment) return ''
-  return moment.slice(0, 10)
+  if (!moment) return "";
+  return moment.slice(0, 10);
 }
 
 /**
@@ -621,6 +692,6 @@ function isoDay(moment: string | null): string {
  * kesalahan yang melahirkan 118 penyesuaian tujuh jam di sistem lama (`R-12`).
  */
 function dayToMoment(day: string): string | null {
-  if (!day) return null
-  return `${day}T00:00:00Z`
+  if (!day) return null;
+  return `${day}T00:00:00Z`;
 }

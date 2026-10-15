@@ -1,43 +1,43 @@
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import type { ArchiveFile, BranchScope, PageInfo } from './types'
+import type { ArchiveFile, BranchScope, PageInfo } from "./types";
 
 type Props = {
-  files: ArchiveFile[]
-  page: PageInfo | undefined
-  currentPage: number
-  onPageChange: (page: number) => void
+  files: ArchiveFile[];
+  page: PageInfo | undefined;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 
-  scope: BranchScope | undefined
+  scope: BranchScope | undefined;
 
-  isLoading: boolean
-  error: string
+  isLoading: boolean;
+  error: string;
 
   /** Dipanggil saat satu berkas dikirim ke sistem Arsip. */
-  onSend: (id: number) => void
+  onSend: (id: number) => void;
 
   /** ID berkas yang sedang dikirim; tombolnya dinonaktifkan selama itu. */
-  sendingID: number | null
+  sendingID: number | null;
 
   /** Pesan galat pengiriman terakhir, sudah siap dibaca pengguna. */
-  sendError: string
+  sendError: string;
 
   /** Pesan berhasil pengiriman terakhir. */
-  sendMessage: string
-}
+  sendMessage: string;
+};
 
 /** Nama lini bisnis yang dikenali, untuk menerangkan cakupan kepada pengguna. */
 const GROUP_PANEL_NAMES: Record<string, string> = {
-  '002': 'Personal Accident',
-  '003': 'Aneka',
-  '004': 'Marine Cargo',
-  '005': 'Travel',
-  '006': 'Fire / Property',
-  '009': 'Aneka',
-}
+  "002": "Personal Accident",
+  "003": "Aneka",
+  "004": "Marine Cargo",
+  "005": "Travel",
+  "006": "Fire / Property",
+  "009": "Aneka",
+};
 
 /**
  * BranchQueue adalah bagian "Kirim ke Cabang".
@@ -69,33 +69,46 @@ export function BranchQueue({
   sendError,
   sendMessage,
 }: Props) {
-  const hidden = scope?.lini_disembunyikan ?? []
+  const hidden = scope?.lini_disembunyikan ?? [];
 
   const columns: Column<ArchiveFile>[] = [
-    { key: 'id', title: 'ID', value: (row) => String(row.id), width: '5rem' },
-    { key: 'nomor_klaim', title: 'No Klaim', value: (row) => row.nomor_klaim },
-    { key: 'nomor_polis', title: 'No Polis', value: (row) => row.nomor_polis },
-    { key: 'nama_tertanggung', title: 'Tertanggung', value: (row) => row.nama_tertanggung },
-    { key: 'nama_box', title: 'Nama BOX', value: (row) => row.nama_box },
-    { key: 'kode_filling', title: 'Kode Filling', value: (row) => row.kode_filling },
+    { key: "id", title: "ID", value: (row) => String(row.id), width: "5rem" },
+    { key: "nomor_klaim", title: "No Klaim", value: (row) => row.nomor_klaim },
+    { key: "nomor_polis", title: "No Polis", value: (row) => row.nomor_polis },
     {
-      key: 'jumlah_lembar',
-      title: 'Jumlah Lembar',
+      key: "nama_tertanggung",
+      title: "Tertanggung",
+      value: (row) => row.nama_tertanggung,
+    },
+    { key: "nama_box", title: "Nama BOX", value: (row) => row.nama_box },
+    {
+      key: "kode_filling",
+      title: "Kode Filling",
+      value: (row) => row.kode_filling,
+    },
+    {
+      key: "jumlah_lembar",
+      title: "Jumlah Lembar",
       value: (row) => String(row.jumlah_lembar),
       alignRight: true,
     },
-    { key: 'tanggal_input', title: 'TGL INPUT', value: (row) => dateText(row.tanggal_input) },
     {
-      key: 'group_panel',
-      title: 'Lini',
-      value: (row) => GROUP_PANEL_NAMES[row.group_panel] ?? row.group_panel ?? '—',
+      key: "tanggal_input",
+      title: "TGL INPUT",
+      value: (row) => dateText(row.tanggal_input),
     },
     {
-      key: 'aksi',
-      title: '',
+      key: "group_panel",
+      title: "Lini",
+      value: (row) =>
+        GROUP_PANEL_NAMES[row.group_panel] ?? row.group_panel ?? "—",
+    },
+    {
+      key: "aksi",
+      title: "",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           type="button"
@@ -103,20 +116,22 @@ export function BranchQueue({
           onClick={() => onSend(row.id)}
           disabled={sendingID !== null}
         >
-          {sendingID === row.id ? 'Mengirim…' : 'Kirim'}
+          {sendingID === row.id ? "Mengirim…" : "Kirim"}
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <section>
       {hidden.length > 0 && (
         <p className="rounded-kontrol border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          Daftar ini disaring menurut jabatan Anda: lini{' '}
+          Daftar ini disaring menurut jabatan Anda: lini{" "}
           <span className="font-medium">
-            {hidden.map((code) => GROUP_PANEL_NAMES[code] ?? code).join(' dan ')}
-          </span>{' '}
+            {hidden
+              .map((code) => GROUP_PANEL_NAMES[code] ?? code)
+              .join(" dan ")}
+          </span>{" "}
           tidak ditampilkan. Penyaringan ini mengikuti sistem lama apa adanya.
         </p>
       )}
@@ -165,9 +180,9 @@ export function BranchQueue({
         />
       </div>
     </section>
-  )
+  );
 }
 
 function dateText(iso: string | null): string {
-  return iso ? formatDate(iso) : '—'
+  return iso ? formatDate(iso) : "—";
 }

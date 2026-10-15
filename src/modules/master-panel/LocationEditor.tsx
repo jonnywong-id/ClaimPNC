@@ -1,33 +1,33 @@
-import type { FieldErrors, UseFormRegister } from 'react-hook-form'
+import type { FieldErrors, UseFormRegister } from "react-hook-form";
 
-import { Button } from '@/components/Button'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { SelectField } from "@/components/SelectField";
 
-import type { PanelFields } from './PanelForm'
+import type { PanelFields } from "./PanelForm";
 
 /** Satu baris pada daftar yang sedang disunting; `id` diterbitkan useFieldArray. */
-export type LocationRow = { id: string }
+export type LocationRow = { id: string };
 
 type Props = {
   /** Baris yang sedang digambar, berasal dari useFieldArray. */
-  rows: LocationRow[]
+  rows: LocationRow[];
 
-  register: UseFormRegister<PanelFields>
-  errors: FieldErrors<PanelFields>
+  register: UseFormRegister<PanelFields>;
+  errors: FieldErrors<PanelFields>;
 
   /** Pilihan Lokasi Panel, dibaca dari endpoint pilihan. */
-  locationOptions: string[]
+  locationOptions: string[];
 
   /** Pilihan Sisi Panel beserta sebutannya. */
-  sideOptions: { nilai: string; label: string }[]
+  sideOptions: { nilai: string; label: string }[];
 
   /** Pelanggaran per isian yang dilaporkan server, dikunci `lokasi.<indeks>.<isian>`. */
-  violation: Record<string, string>
+  violation: Record<string, string>;
 
-  isSaving: boolean
-  onAdd: () => void
-  onRemove: (index: number) => void
-}
+  isSaving: boolean;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+};
 
 /**
  * LocationEditor adalah daftar lokasi pada sebuah panel — tabel anak
@@ -76,9 +76,9 @@ export function LocationEditor({
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
-        Daftar lokasi tersimpan di tabel terpisah. Menyimpan panel akan{' '}
-        <span className="font-medium">mengganti seluruh daftar ini</span> — baris yang
-        dihapus di sini akan hilang dari basis data.
+        Daftar lokasi tersimpan di tabel terpisah. Menyimpan panel akan{" "}
+        <span className="font-medium">mengganti seluruh daftar ini</span> —
+        baris yang dihapus di sini akan hilang dari basis data.
       </p>
 
       {rows.length === 0 ? (
@@ -88,11 +88,13 @@ export function LocationEditor({
       ) : (
         <ul className="space-y-3">
           {rows.map((row, index) => {
-            const rowError = errors.lokasi?.[index]
+            const rowError = errors.lokasi?.[index];
             const nameError =
-              rowError?.lokasi_panel?.message ?? violation[`lokasi.${index}.lokasi_panel`]
+              rowError?.lokasi_panel?.message ??
+              violation[`lokasi.${index}.lokasi_panel`];
             const sideError =
-              rowError?.sisi_panel?.message ?? violation[`lokasi.${index}.sisi_panel`]
+              rowError?.sisi_panel?.message ??
+              violation[`lokasi.${index}.sisi_panel`];
 
             return (
               <li
@@ -103,7 +105,10 @@ export function LocationEditor({
                   <SelectField
                     id={`lokasi-${index}-nama`}
                     label={`Lokasi panel ${index + 1}`}
-                    options={locationOptions.map((one) => ({ value: one, label: one }))}
+                    options={locationOptions.map((one) => ({
+                      value: one,
+                      label: one,
+                    }))}
                     error={nameError}
                     disabled={isSaving}
                     {...register(`lokasi.${index}.lokasi_panel`)}
@@ -142,7 +147,7 @@ export function LocationEditor({
                   </Button>
                 </div>
               </li>
-            )
+            );
           })}
         </ul>
       )}
@@ -152,9 +157,9 @@ export function LocationEditor({
         baris yang melewati batas. Ia tidak punya isian untuk ditempeli, sehingga
         ditampilkan di bawah daftar.
       */}
-      {(errors.lokasi?.message ?? violation['lokasi']) && (
+      {(errors.lokasi?.message ?? violation["lokasi"]) && (
         <p className="text-sm text-red-700">
-          {errors.lokasi?.message ?? violation['lokasi']}
+          {errors.lokasi?.message ?? violation["lokasi"]}
         </p>
       )}
 
@@ -162,5 +167,5 @@ export function LocationEditor({
         Tambah lokasi
       </Button>
     </div>
-  )
+  );
 }

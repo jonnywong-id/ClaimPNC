@@ -1,17 +1,27 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column as TableColumn } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { SelectField, type SelectOption } from '@/components/SelectField'
-import { formatDate, formatPercent, formatRupiah } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column as TableColumn } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { SelectField, type SelectOption } from "@/components/SelectField";
+import { formatDate, formatPercent, formatRupiah } from "@/components/format";
 
-import { RemarkCell } from './RemarkCell'
-import { UKURAN_HALAMAN, useCaseStudyList, useCaseStudyMetadata, useExportCaseStudy } from './api'
-import type { CaseStudyRow, Column, FilterInput, MetadataResponse } from './types'
+import { RemarkCell } from "./RemarkCell";
+import {
+  UKURAN_HALAMAN,
+  useCaseStudyList,
+  useCaseStudyMetadata,
+  useExportCaseStudy,
+} from "./api";
+import type {
+  CaseStudyRow,
+  Column,
+  FilterInput,
+  MetadataResponse,
+} from "./types";
 
 /**
  * **Case Study Claim** — `MENU_ID 74`, pengganti harness `PNCStudyClaim`.
@@ -48,23 +58,23 @@ import type { CaseStudyRow, Column, FilterInput, MetadataResponse } from './type
  * berkas CSV, yang tidak dilihat siapa pun sampai ada yang mengunduhnya.
  */
 export function CaseStudyClaimPage() {
-  const [draft, setDraft] = useState<FilterInput>(emptyFilter)
-  const [applied, setApplied] = useState<FilterInput | null>(null)
-  const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState<FilterInput>(emptyFilter);
+  const [applied, setApplied] = useState<FilterInput | null>(null);
+  const [page, setPage] = useState(1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useCaseStudyMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useCaseStudyMetadata();
 
-  const active = applied ?? emptyFilter
-  const searched = applied !== null
+  const active = applied ?? emptyFilter;
+  const searched = applied !== null;
 
-  const list = useCaseStudyList(active, page, searched)
-  const exportFile = useExportCaseStudy()
+  const list = useCaseStudyList(active, page, searched);
+  const exportFile = useExportCaseStudy();
 
   const columns = useMemo(
     () => buildColumns(meta.data?.kolom ?? []),
     [meta.data?.kolom],
-  )
+  );
 
   if (portal === null) {
     return (
@@ -72,13 +82,13 @@ export function CaseStudyClaimPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Klaim telaah milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Klaim telaah milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -90,17 +100,17 @@ export function CaseStudyClaimPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   function submit(event: FormEvent) {
-    event.preventDefault()
-    setApplied(draft)
-    setPage(1)
+    event.preventDefault();
+    setApplied(draft);
+    setPage(1);
   }
 
-  const total = list.data?.total ?? 0
-  const totalPage = Math.max(1, Math.ceil(total / UKURAN_HALAMAN))
+  const total = list.data?.total ?? 0;
+  const totalPage = Math.max(1, Math.ceil(total / UKURAN_HALAMAN));
 
   return (
     <PageFrame>
@@ -114,14 +124,18 @@ export function CaseStudyClaimPage() {
             label="Awal"
             type="date"
             value={draft.dari}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, dari: event.target.value })
+            }
           />
           <FormField
             id="case-study-akhir"
             label="Akhir"
             type="date"
             value={draft.sampai}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, sampai: event.target.value })
+            }
           />
           <SelectField
             id="case-study-status"
@@ -129,7 +143,9 @@ export function CaseStudyClaimPage() {
             options={toSelectOptions(meta.data?.status)}
             emptyText="----- Pilih -----"
             value={draft.status}
-            onChange={(event) => setDraft({ ...draft, status: event.target.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, status: event.target.value })
+            }
           />
           <SelectField
             id="case-study-bisnis"
@@ -137,7 +153,9 @@ export function CaseStudyClaimPage() {
             options={toSelectOptions(meta.data?.bisnis)}
             emptyText="----- Pilih -----"
             value={draft.bisnis}
-            onChange={(event) => setDraft({ ...draft, bisnis: event.target.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, bisnis: event.target.value })
+            }
           />
         </div>
 
@@ -160,7 +178,7 @@ export function CaseStudyClaimPage() {
             onClick={() => exportFile.mutate(active)}
             disabled={!searched || exportFile.isPending}
           >
-            {exportFile.isPending ? 'Menyiapkan berkas…' : 'Export Data'}
+            {exportFile.isPending ? "Menyiapkan berkas…" : "Export Data"}
           </Button>
 
           {/*
@@ -187,8 +205,8 @@ export function CaseStudyClaimPage() {
 
       {!searched ? (
         <p className="mt-4 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Pilih periode, lalu tekan <strong>Lihat Data</strong>. Layar lama pun menampilkan
-          grid kosong sampai tombol itu ditekan.
+          Pilih periode, lalu tekan <strong>Lihat Data</strong>. Layar lama pun
+          menampilkan grid kosong sampai tombol itu ditekan.
         </p>
       ) : (
         <div className="mt-4">
@@ -240,26 +258,33 @@ export function CaseStudyClaimPage() {
         </div>
       )}
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[110rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Case Study Claim</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Case Study Claim
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Telaah klaim bernilai besar: nilai settlement, share ASM, dan catatan hasil
-          telaahnya.
+          Telaah klaim bernilai besar: nilai settlement, share ASM, dan catatan
+          hasil telaahnya.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /** Penyaring kosong — keadaan awal formulir. */
-const emptyFilter: FilterInput = { dari: '', sampai: '', bisnis: '', status: '' }
+const emptyFilter: FilterInput = {
+  dari: "",
+  sampai: "",
+  bisnis: "",
+  status: "",
+};
 
 /**
  * buildColumns menyusun kolom tabel dari bentuk yang ditetapkan server.
@@ -272,11 +297,11 @@ function buildColumns(columns: Column[]): TableColumn<CaseStudyRow>[] {
     key: column.kunci,
     title: column.judul,
     value: (row) => cellText(row, column),
-    alignRight: column.jenis === 'uang' || column.jenis === 'persen',
+    alignRight: column.jenis === "uang" || column.jenis === "persen",
 
     // Kolom catatan digambar sebagai isian, bukan teks. Ia satu-satunya sel yang dapat
     // disunting di seluruh layar — `pyEditOptions=Editable` pada section Pega.
-    ...(column.jenis === 'catatan'
+    ...(column.jenis === "catatan"
       ? {
           render: (row: CaseStudyRow) => <RemarkCell row={row} />,
 
@@ -284,17 +309,21 @@ function buildColumns(columns: Column[]): TableColumn<CaseStudyRow>[] {
           // kolom berisi isian yang sedang disunting akan memindahkan barisnya di bawah
           // kursor pengguna.
           noSort: true,
-          width: '20rem',
+          width: "20rem",
         }
       : {}),
 
     // Angka NEGATIF digambar merah. Lihat NumberCell.
-    ...(column.jenis === 'uang' || column.jenis === 'persen'
-      ? { render: (row: CaseStudyRow) => <NumberCell row={row} column={column} /> }
+    ...(column.jenis === "uang" || column.jenis === "persen"
+      ? {
+          render: (row: CaseStudyRow) => (
+            <NumberCell row={row} column={column} />
+          ),
+        }
       : {}),
-  }))
+  }));
 
-  return result
+  return result;
 }
 
 /**
@@ -318,12 +347,12 @@ function buildColumns(columns: Column[]): TableColumn<CaseStudyRow>[] {
  * bukan angka sama sekali.
  */
 function NumberCell({ row, column }: { row: CaseStudyRow; column: Column }) {
-  const raw = row[column.kunci as keyof CaseStudyRow]
-  const text = cellText(row, column)
+  const raw = row[column.kunci as keyof CaseStudyRow];
+  const text = cellText(row, column);
 
-  if (typeof raw !== 'number' || raw >= 0) return <>{text}</>
+  if (typeof raw !== "number" || raw >= 0) return <>{text}</>;
 
-  return <span className="font-medium text-red-600">{text}</span>
+  return <span className="font-medium text-red-600">{text}</span>;
 }
 
 /**
@@ -338,25 +367,30 @@ function NumberCell({ row, column }: { row: CaseStudyRow; column: Column }) {
  * harapan — bukan sifat.
  */
 function cellText(row: CaseStudyRow, column: Column): string {
-  const value = row[column.kunci as keyof CaseStudyRow]
+  const value = row[column.kunci as keyof CaseStudyRow];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
   switch (column.jenis) {
-    case 'uang':
-      return formatRupiah(value as number)
-    case 'persen':
-      return formatPercent(value as number)
-    case 'tanggal':
-      return formatDate(String(value))
+    case "uang":
+      return formatRupiah(value as number);
+    case "persen":
+      return formatPercent(value as number);
+    case "tanggal":
+      return formatDate(String(value));
     default:
-      return String(value)
+      return String(value);
   }
 }
 
 /** toSelectOptions mengubah pilihan dari server menjadi bentuk yang dipakai SelectField. */
-function toSelectOptions(options: { kode: string; label: string }[] | undefined): SelectOption[] {
-  return (options ?? []).map((item) => ({ value: item.kode, label: item.label }))
+function toSelectOptions(
+  options: { kode: string; label: string }[] | undefined,
+): SelectOption[] {
+  return (options ?? []).map((item) => ({
+    value: item.kode,
+    label: item.label,
+  }));
 }
 
 /**
@@ -368,12 +402,12 @@ function toSelectOptions(options: { kode: string; label: string }[] | undefined)
  * muncul" tanpa pengguna perlu bertanya.
  */
 function emptyMessageFor(metadata: MetadataResponse | undefined): string {
-  if (!metadata) return 'Tidak ada klaim yang cocok dengan penyaring ini.'
+  if (!metadata) return "Tidak ada klaim yang cocok dengan penyaring ini.";
 
   return (
-    'Tidak ada klaim yang cocok. Layar ini hanya memuat klaim yang salah satu nilai ' +
+    "Tidak ada klaim yang cocok. Layar ini hanya memuat klaim yang salah satu nilai " +
     `settlement-nya melampaui ${formatRupiah(metadata.ambang_nilai_klaim)}.`
-  )
+  );
 }
 
 /**
@@ -400,15 +434,15 @@ function emptyMessageFor(metadata: MetadataResponse | undefined): string {
  * tanggal hanya menambah panjang tanpa menambah keterangan.
  */
 function formatClock(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+  return new Date(timestamp).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

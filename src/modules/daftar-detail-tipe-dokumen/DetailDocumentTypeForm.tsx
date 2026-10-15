@@ -1,14 +1,18 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DetailDocumentType, type DetailDocumentTypeChoice } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type DetailDocumentType,
+  type DetailDocumentTypeChoice,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
 /**
  * Batas panjang isian, disamakan dengan konstanta di lapisan domain.
@@ -17,8 +21,8 @@ import { SelectField } from '@/components/SelectField'
  * `pyMaxLength` pada isian mana pun. Angkanya ada di sini supaya pesannya muncul sebelum
  * permintaan dikirim, bukan sesudah server menolaknya; server tetap memeriksanya sendiri.
  */
-const MAX_DETAIL = 200
-const MAX_REFERENCE = 50
+const MAX_DETAIL = 200;
+const MAX_REFERENCE = 50;
 
 /**
  * Yang diperiksa di layar hanyalah panjang isian.
@@ -28,81 +32,89 @@ const MAX_REFERENCE = 50
  * dan tipe dokumen kosong sama-sama sah (`P-5`).
  */
 const schema = z.object({
-  id_tipe_dokumen: z.string().trim().max(MAX_REFERENCE, `Paling panjang ${MAX_REFERENCE} karakter.`),
-  detail_dokumen: z.string().trim().max(MAX_DETAIL, `Paling panjang ${MAX_DETAIL} karakter.`),
-})
+  id_tipe_dokumen: z
+    .string()
+    .trim()
+    .max(MAX_REFERENCE, `Paling panjang ${MAX_REFERENCE} karakter.`),
+  detail_dokumen: z
+    .string()
+    .trim()
+    .max(MAX_DETAIL, `Paling panjang ${MAX_DETAIL} karakter.`),
+});
 
-export type DetailDocumentTypeFields = z.infer<typeof schema>
+export type DetailDocumentTypeFields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: DetailDocumentType | null
+  edited: DetailDocumentType | null;
   /** Pilihan ID Tipe Dokumen, dibaca dari POOLDATA.V_LST_DOC_TYPE. */
-  documentTypes: DetailDocumentTypeChoice[]
-  isSaving: boolean
-  error: unknown
-  onSave: (values: DetailDocumentTypeFields) => void
-  onCancel: () => void
-}
+  documentTypes: DetailDocumentTypeChoice[];
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: DetailDocumentTypeFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti. */
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.validationFailed:
         return {
-          title: 'Ada isian yang belum benar',
+          title: "Ada isian yang belum benar",
           description:
-            'Periksa keterangan di bawah setiap isian, perbaiki, lalu simpan lagi. Isian Anda belum tersimpan.',
-          tone: 'penolakan',
-        }
+            "Periksa keterangan di bawah setiap isian, perbaiki, lalu simpan lagi. Isian Anda belum tersimpan.",
+          tone: "penolakan",
+        };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
+          title: "Baris ini sudah tidak ada",
           description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Menyusun nilai awal form dari baris yang disunting. */
 function valuesOf(edited: DetailDocumentType | null): DetailDocumentTypeFields {
   return {
-    id_tipe_dokumen: edited?.id_tipe_dokumen ?? '',
-    detail_dokumen: edited?.detail_dokumen ?? '',
-  }
+    id_tipe_dokumen: edited?.id_tipe_dokumen ?? "",
+    detail_dokumen: edited?.detail_dokumen ?? "",
+  };
 }
 
 /**
@@ -149,7 +161,7 @@ export function DetailDocumentTypeForm({
   onSave,
   onCancel,
 }: Props) {
-  const editMode = edited !== null
+  const editMode = edited !== null;
 
   const {
     register,
@@ -159,19 +171,19 @@ export function DetailDocumentTypeForm({
   } = useForm<DetailDocumentTypeFields>({
     resolver: zodResolver(schema),
     defaultValues: valuesOf(edited),
-  })
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu
   // — misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
-    reset(valuesOf(edited))
-  }, [edited, reset])
+    reset(valuesOf(edited));
+  }, [edited, reset]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat
   // dari ada-tidaknya baris "ID" di bawahnya dan dari label tombol simpannya.
-  const title = 'Detail Tipe Dokumen'
+  const title = "Detail Tipe Dokumen";
 
   return (
     <form
@@ -183,7 +195,11 @@ export function DetailDocumentTypeForm({
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
@@ -194,7 +210,9 @@ export function DetailDocumentTypeForm({
           <span className="block text-sm font-medium text-slate-700">ID</span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
             {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -205,7 +223,7 @@ export function DetailDocumentTypeForm({
         id="id_tipe_dokumen"
         label="ID Tipe Dokumen"
         options={[
-          { value: '', label: '' },
+          { value: "", label: "" },
           ...documentTypes.map((row) => ({
             value: row.id,
             label: row.nama ? `${row.id} — ${row.nama}` : row.id,
@@ -213,7 +231,7 @@ export function DetailDocumentTypeForm({
         ]}
         autoFocus
         error={errors.id_tipe_dokumen?.message}
-        {...register('id_tipe_dokumen')}
+        {...register("id_tipe_dokumen")}
       />
 
       <Field
@@ -221,7 +239,7 @@ export function DetailDocumentTypeForm({
         label="Detail Dokumen"
         type="text"
         error={errors.detail_dokumen?.message}
-        {...register('detail_dokumen')}
+        {...register("detail_dokumen")}
       />
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -231,9 +249,9 @@ export function DetailDocumentTypeForm({
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya. */}
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : editMode ? "Ubah" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

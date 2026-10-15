@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from "react";
 
-import { Button } from '@/components/Button'
+import { Button } from "@/components/Button";
 
-import { Isian_, type Isian } from './BagianRincian'
+import { Isian_, type Isian } from "./BagianRincian";
 
 /**
  * Sub-popup yang terbuka dari satu baris grid di dalam popup rincian.
@@ -30,29 +30,29 @@ export function SubPopupRincian({
   isian,
   onTutup,
 }: {
-  judul: string
-  baris: Record<string, unknown>
-  isian: Isian[]
-  onTutup: () => void
+  judul: string;
+  baris: Record<string, unknown>;
+  isian: Isian[];
+  onTutup: () => void;
 }) {
-  const tutupRef = useRef<HTMLButtonElement>(null)
+  const tutupRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    tutupRef.current?.focus()
+    tutupRef.current?.focus();
 
     function onKey(event: KeyboardEvent) {
       // Escape menutup sub-popup SAJA, bukan popup di belakangnya.
       //
       // Tanpa stopPropagation, satu tekan Escape menutup keduanya sekaligus — dan pengguna
       // yang hanya ingin kembali ke daftar kehilangan seluruh rinciannya.
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onTutup()
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onTutup();
       }
     }
-    document.addEventListener('keydown', onKey, true)
-    return () => document.removeEventListener('keydown', onKey, true)
-  }, [onTutup])
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onTutup]);
 
   return (
     <div
@@ -70,11 +70,11 @@ export function SubPopupRincian({
             onClick={onTutup}
             aria-label="Tutup"
             className={[
-              'rounded-kontrol px-3 py-1.5 text-sm text-slate-500',
-              'transition ease-halus hover:bg-slate-100 hover:text-slate-700',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-              'focus-visible:outline-blue-600',
-            ].join(' ')}
+              "rounded-kontrol px-3 py-1.5 text-sm text-slate-500",
+              "transition ease-halus hover:bg-slate-100 hover:text-slate-700",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-600",
+            ].join(" ")}
           >
             ✕
           </button>
@@ -89,5 +89,5 @@ export function SubPopupRincian({
         </div>
       </div>
     </div>
-  )
+  );
 }

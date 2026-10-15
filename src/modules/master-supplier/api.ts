@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   SupplierBankListResponse,
   SupplierBranchListResponse,
@@ -10,16 +10,16 @@ import type {
   SupplierInput,
   SupplierListResponse,
   SupplierResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/supplier'
-const ROUTE_BRANCH = '/api/master/supplier/cabang'
-const ROUTE_CITY = '/api/master/supplier/kota'
-const ROUTE_COUNTRY = '/api/master/supplier/negara'
-const ROUTE_BANK = '/api/master/supplier/bank'
-const ROUTE_CODE = '/api/master/supplier/sandi'
+const ROUTE = "/api/master/supplier";
+const ROUTE_BRANCH = "/api/master/supplier/cabang";
+const ROUTE_CITY = "/api/master/supplier/kota";
+const ROUTE_COUNTRY = "/api/master/supplier/negara";
+const ROUTE_BANK = "/api/master/supplier/bank";
+const ROUTE_CODE = "/api/master/supplier/sandi";
 
 /**
  * Panjang minimum kata kunci lookup Kota.
@@ -28,7 +28,7 @@ const ROUTE_CODE = '/api/master/supplier/sandi'
  * berwenang — ia menjawab daftar kosong untuk kata kunci yang lebih pendek — dan angka di
  * sini hanya mencegah perjalanan jaringan yang sudah pasti kosong.
  */
-export const MIN_LOOKUP_KEYWORD = 2
+export const MIN_LOOKUP_KEYWORD = 2;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -39,27 +39,27 @@ export const MIN_LOOKUP_KEYWORD = 2
  * data itu milik badan hukum lain (R-20).
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-supplier', portal, token] as const
+  return ["master-supplier", portal, token] as const;
 }
 
 function branchKey(portal: string | null, token: string | null) {
-  return ['master-supplier-cabang', portal, token] as const
+  return ["master-supplier-cabang", portal, token] as const;
 }
 
 function cityKey(portal: string | null, token: string | null, keyword: string) {
-  return ['master-supplier-kota', portal, token, keyword] as const
+  return ["master-supplier-kota", portal, token, keyword] as const;
 }
 
 function countryKey(portal: string | null, token: string | null) {
-  return ['master-supplier-negara', portal, token] as const
+  return ["master-supplier-negara", portal, token] as const;
 }
 
 function bankKey(portal: string | null, token: string | null) {
-  return ['master-supplier-bank', portal, token] as const
+  return ["master-supplier-bank", portal, token] as const;
 }
 
 function codeKey(portal: string | null, token: string | null) {
-  return ['master-supplier-sandi', portal, token] as const
+  return ["master-supplier-sandi", portal, token] as const;
 }
 
 /**
@@ -81,14 +81,14 @@ function codeKey(portal: string | null, token: string | null) {
  * DataTable menyaring sebagian data yang sudah tersaring server.
  */
 export function useSupplierList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<SupplierListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -98,38 +98,41 @@ export function useSupplierList() {
  * entitas yang sedang dipilih, bukan dari satu tempat bersama.
  */
 export function useSupplierBranchList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: branchKey(portal, token),
-    queryFn: () => callAPI<SupplierBranchListResponse>(ROUTE_BRANCH, { token, portal }),
+    queryFn: () =>
+      callAPI<SupplierBranchListResponse>(ROUTE_BRANCH, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook daftar negara untuk isian Negara. */
 export function useSupplierCountryList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: countryKey(portal, token),
-    queryFn: () => callAPI<SupplierCountryListResponse>(ROUTE_COUNTRY, { token, portal }),
+    queryFn: () =>
+      callAPI<SupplierCountryListResponse>(ROUTE_COUNTRY, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook daftar bank untuk dropdown Bank. */
 export function useSupplierBankList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: bankKey(portal, token),
-    queryFn: () => callAPI<SupplierBankListResponse>(ROUTE_BANK, { token, portal }),
+    queryFn: () =>
+      callAPI<SupplierBankListResponse>(ROUTE_BANK, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -140,14 +143,15 @@ export function useSupplierBankList() {
  * mengisi satu form.
  */
 export function useSupplierCodeList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: codeKey(portal, token),
-    queryFn: () => callAPI<SupplierCodeListResponse>(ROUTE_CODE, { token, portal }),
+    queryFn: () =>
+      callAPI<SupplierCodeListResponse>(ROUTE_CODE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -162,19 +166,23 @@ export function useSupplierCodeList() {
  * huruf yang diketik pada dua huruf pertama.
  */
 export function useSupplierCityLookup(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
     queryKey: cityKey(portal, token, clean),
     queryFn: () =>
-      callAPI<SupplierCityListResponse>(`${ROUTE_CITY}?cari=${encodeURIComponent(clean)}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
-  })
+      callAPI<SupplierCityListResponse>(
+        `${ROUTE_CITY}?cari=${encodeURIComponent(clean)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled:
+      token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
+  });
 }
 
 /**
@@ -185,18 +193,23 @@ export function useSupplierCityLookup(keyword: string) {
  * petugas yang baru memasukkan jenis supplier baru tidak akan menemukannya lagi.
  */
 export function useCreateSupplier() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: SupplierInput) =>
-      callAPI<SupplierResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<SupplierResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-supplier'] })
-      client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
+      client.invalidateQueries({ queryKey: ["master-supplier"] });
+      client.invalidateQueries({ queryKey: ["master-supplier-sandi"] });
     },
-  })
+  });
 }
 
 /**
@@ -207,21 +220,21 @@ export function useCreateSupplier() {
  * sehingga baris di daftar berubah, bukan hanya isi formnya.
  */
 export function useSaveSupplier() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: SupplierInput }) =>
       callAPI<SupplierResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-supplier'] })
-      client.invalidateQueries({ queryKey: ['master-supplier-sandi'] })
+      client.invalidateQueries({ queryKey: ["master-supplier"] });
+      client.invalidateQueries({ queryKey: ["master-supplier-sandi"] });
     },
-  })
+  });
 }

@@ -1,17 +1,17 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
-import type { User } from '@/api/types'
+import type { User } from "@/api/types";
 
-const STORAGE_KEY = 'claim-pnc.sesi'
+const STORAGE_KEY = "claim-pnc.sesi";
 
 export type SessionState = {
-  token: string | null
-  user: User | null
-  validUntil: string | null
-  login: (value: { token: string; user: User; validUntil: string }) => void
-  refreshValidity: (validUntil: string) => void
-  clear: () => void
-}
+  token: string | null;
+  user: User | null;
+  validUntil: string | null;
+  login: (value: { token: string; user: User; validUntil: string }) => void;
+  refreshValidity: (validUntil: string) => void;
+  clear: () => void;
+};
 
 /**
  * Simpanan sesi global.
@@ -30,8 +30,8 @@ export const useSession = create<SessionState>((set) => ({
   ...loadFromBrowser(),
 
   login: ({ token, user, validUntil }) => {
-    saveToBrowser({ token, user, validUntil })
-    set({ token, user, validUntil })
+    saveToBrowser({ token, user, validUntil });
+    set({ token, user, validUntil });
   },
 
   refreshValidity: (validUntil) => {
@@ -41,38 +41,45 @@ export const useSession = create<SessionState>((set) => ({
           token: previous.token,
           user: previous.user,
           validUntil,
-        })
+        });
       }
-      return { validUntil }
-    })
+      return { validUntil };
+    });
   },
 
   clear: () => {
-    clearFromBrowser()
-    set({ token: null, user: null, validUntil: null })
+    clearFromBrowser();
+    set({ token: null, user: null, validUntil: null });
   },
-}))
+}));
 
-type StoredSession = { token: string; user: User; validUntil: string }
+type StoredSession = { token: string; user: User; validUntil: string };
 
-function loadFromBrowser(): Pick<SessionState, 'token' | 'user' | 'validUntil'> {
-  const empty = { token: null, user: null, validUntil: null }
+function loadFromBrowser(): Pick<
+  SessionState,
+  "token" | "user" | "validUntil"
+> {
+  const empty = { token: null, user: null, validUntil: null };
   try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return empty
-    const content = JSON.parse(raw) as Partial<StoredSession>
-    if (!content.token || !content.user || !content.validUntil) return empty
-    return { token: content.token, user: content.user, validUntil: content.validUntil }
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return empty;
+    const content = JSON.parse(raw) as Partial<StoredSession>;
+    if (!content.token || !content.user || !content.validUntil) return empty;
+    return {
+      token: content.token,
+      user: content.user,
+      validUntil: content.validUntil,
+    };
   } catch {
     // sessionStorage dapat ditolak peramban (mode privat, kebijakan perusahaan).
     // Aplikasi tetap harus jalan; pengguna cukup masuk ulang setelah muat ulang.
-    return empty
+    return empty;
   }
 }
 
 function saveToBrowser(content: StoredSession): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(content))
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(content));
   } catch {
     /* diabaikan dengan sadar: sesi tetap hidup di memori tab ini */
   }
@@ -80,7 +87,7 @@ function saveToBrowser(content: StoredSession): void {
 
 function clearFromBrowser(): void {
   try {
-    window.sessionStorage.removeItem(STORAGE_KEY)
+    window.sessionStorage.removeItem(STORAGE_KEY);
   } catch {
     /* diabaikan dengan sadar */
   }

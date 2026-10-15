@@ -1,11 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSession } from "@/app/session";
 
-import type { Info, ObjectFilter, Report } from './types'
+import type { Info, ObjectFilter, Report } from "./types";
 
-const PATH = '/api/konversi-object-item-fire'
+const PATH = "/api/konversi-object-item-fire";
 
 /**
  * Keterangan koneksi LIVE/TEST dan daftar polis bawaan.
@@ -14,12 +14,12 @@ const PATH = '/api/konversi-object-item-fire'
  * KONVERSI_TEST_*, sama dengan Konversi Coverage), bukan portal yang dipilih pengguna.
  */
 export function useInfo() {
-  const token = useSession((s) => s.token)
+  const token = useSession((s) => s.token);
   return useQuery({
-    queryKey: ['konversi-object-item-fire', 'keterangan', token],
+    queryKey: ["konversi-object-item-fire", "keterangan", token],
     queryFn: () => callAPI<Info>(`${PATH}/keterangan`, { token }),
     enabled: token !== null,
-  })
+  });
 }
 
 /**
@@ -27,10 +27,14 @@ export function useInfo() {
  * membatasi PRODKE dan/atau INDEXOBJECT; isian kosong berarti seluruhnya ikut dikonversi.
  */
 export function useRun() {
-  const token = useSession((s) => s.token)
-  return (polis: string, ujiCoba: boolean, filter: ObjectFilter): Promise<Report> =>
+  const token = useSession((s) => s.token);
+  return (
+    polis: string,
+    ujiCoba: boolean,
+    filter: ObjectFilter,
+  ): Promise<Report> =>
     callAPI<Report>(`${PATH}/jalankan`, {
-      metode: 'POST',
+      metode: "POST",
       token,
       body: {
         polis,
@@ -38,5 +42,5 @@ export function useRun() {
         prodke: filter.prodke.trim(),
         indexobject: filter.indexobject.trim(),
       },
-    })
+    });
 }

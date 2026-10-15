@@ -1,7 +1,7 @@
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
 
-import type { CoverageRow } from './types'
+import type { CoverageRow } from "./types";
 
 /**
  * Panel **"Detail Perubahan Cause Of Loss"** — pemilih baris coverage.
@@ -36,32 +36,34 @@ export function CoveragePicker({
   failure,
   pilihanHilang,
 }: Readonly<{
-  rows: CoverageRow[]
-  selected: { objek: string; coverage: string }
-  onSelect: (row: CoverageRow) => void
-  memuat: boolean
-  gagal: boolean
-  failure: string | null
-  pilihanHilang: boolean
+  rows: CoverageRow[];
+  selected: { objek: string; coverage: string };
+  onSelect: (row: CoverageRow) => void;
+  memuat: boolean;
+  gagal: boolean;
+  failure: string | null;
+  pilihanHilang: boolean;
 }>) {
   function terpilih(row: CoverageRow): boolean {
-    return row.id_objek === selected.objek && row.id_coverage === selected.coverage
+    return (
+      row.id_objek === selected.objek && row.id_coverage === selected.coverage
+    );
   }
 
   const columns: Column<CoverageRow>[] = [
     {
-      key: 'nama_objek',
-      title: 'Object Name',
+      key: "nama_objek",
+      title: "Object Name",
       value: (row) => row.nama_objek,
     },
     {
-      key: 'nama_coverage',
-      title: 'Coverage Name',
+      key: "nama_coverage",
+      title: "Coverage Name",
       value: (row) => row.nama_coverage,
     },
     {
-      key: 'penyebab_kerugian',
-      title: 'Cause of Loss',
+      key: "penyebab_kerugian",
+      title: "Cause of Loss",
       // Kode ditampilkan berdampingan dengan deskripsinya.
       //
       // Dua baris dapat bernama sama persis sementara kodenya berbeda, dan akseptasi
@@ -73,21 +75,27 @@ export function CoveragePicker({
           : row.penyebab_kerugian,
     },
     {
-      key: 'pilih',
-      title: '',
-      value: (row) => (terpilih(row) ? 'Terpilih' : 'Pilih'),
+      key: "pilih",
+      title: "",
+      value: (row) => (terpilih(row) ? "Terpilih" : "Pilih"),
       noSort: true,
       alignRight: true,
       render: (row) =>
         terpilih(row) ? (
           <span className="text-sm font-medium text-emerald-700">Terpilih</span>
         ) : (
-          <Button tone="halus" type="button" onClick={() => { onSelect(row) }}>
+          <Button
+            tone="halus"
+            type="button"
+            onClick={() => {
+              onSelect(row);
+            }}
+          >
             Pilih
           </Button>
         ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-2">
@@ -105,19 +113,19 @@ export function CoveragePicker({
         dense
         emptyMessage={
           gagal
-            ? 'Daftar coverage gagal dimuat.'
-            : 'Klaim ini belum punya coverage, sehingga perubahan Cause Of Loss belum dapat diajukan.'
+            ? "Daftar coverage gagal dimuat."
+            : "Klaim ini belum punya coverage, sehingga perubahan Cause Of Loss belum dapat diajukan."
         }
       />
 
       {pilihanHilang && (
         <p className="text-sm text-amber-700">
-          Baris yang dipilih sebelumnya sudah tidak ada pada klaim ini. Pilih kembali salah
-          satu baris di atas.
+          Baris yang dipilih sebelumnya sudah tidak ada pada klaim ini. Pilih
+          kembali salah satu baris di atas.
         </p>
       )}
 
       {failure && <p className="text-sm text-rose-700">{failure}</p>}
     </div>
-  )
+  );
 }

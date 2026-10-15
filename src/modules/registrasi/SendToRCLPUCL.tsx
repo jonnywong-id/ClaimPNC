@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { TextAreaField } from '@/components/TextAreaField'
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { TextAreaField } from "@/components/TextAreaField";
 
-import { usePUCLReasons, usePUCLSubjects, useSendToRCLPUCL, violationsFrom } from './api'
+import {
+  usePUCLReasons,
+  usePUCLSubjects,
+  useSendToRCLPUCL,
+  violationsFrom,
+} from "./api";
 
 /**
  * Tiga jalur penanganan — `.ClaimData.PUCLStatus.RCL_PUCL`.
@@ -14,15 +19,15 @@ import { usePUCLReasons, usePUCLSubjects, useSendToRCLPUCL, violationsFrom } fro
  * surat, dan prekondisi tiap langkah menyebut kodenya — `==2` kategori "PUCL", `==1`
  * kategori "RCL", `==3` kategori "Notification".
  */
-export const TRACK_RCL = 1
-export const TRACK_PUCL = 2
-export const TRACK_NOTIFICATION = 3
+export const TRACK_RCL = 1;
+export const TRACK_PUCL = 2;
+export const TRACK_NOTIFICATION = 3;
 
 /** Group Panel Personal Accident — When `IsPA`. */
-const PANEL_PA = '002'
+const PANEL_PA = "002";
 
 /** Panjang kolom POOLDATA.TC_PNC_PUCL yang menampung isiannya. */
-const MAX_TEXT = 4000
+const MAX_TEXT = 4000;
 
 /**
  * Pilihan dropdown "Nama Dokter" — `pyPromptTableList` property `NamaDokterRCL`.
@@ -50,9 +55,9 @@ const MAX_TEXT = 4000
  * masih berlaku (2026-10-06). Menuliskan nama Operator ID lengkap diizinkan `D-69`.
  */
 const RCL_DOCTORS = [
-  { id: 'WAHYUKRISTANTI', nama: 'WAHYUKRISTANTI' },
-  { id: 'MARGARETHAROSAGUNAWAN', nama: 'MARGARETHA ROSA GUNAWAN' },
-]
+  { id: "WAHYUKRISTANTI", nama: "WAHYUKRISTANTI" },
+  { id: "MARGARETHAROSAGUNAWAN", nama: "MARGARETHA ROSA GUNAWAN" },
+];
 
 /**
  * Isian "Nama Dokter" — `pyVisible OTHER`, kondisi
@@ -64,8 +69,8 @@ const RCL_DOCTORS = [
  * memilih apa pun hanya menimbulkan pertanyaan.
  */
 export function showDoctorName(track: number, groupPanel: string): boolean {
-  if (groupPanel !== PANEL_PA) return false
-  return track === TRACK_RCL || track === TRACK_NOTIFICATION
+  if (groupPanel !== PANEL_PA) return false;
+  return track === TRACK_RCL || track === TRACK_NOTIFICATION;
 }
 
 /**
@@ -77,16 +82,16 @@ export function showDoctorName(track: number, groupPanel: string): boolean {
  * bukan surat penolakan, sehingga daftar alasan penolakan tidak berlaku padanya.
  */
 export function showRejectReasons(track: number, groupPanel: string): boolean {
-  return groupPanel === PANEL_PA && track !== TRACK_NOTIFICATION
+  return groupPanel === PANEL_PA && track !== TRACK_NOTIFICATION;
 }
 
 type Props = {
-  claimID: string
-  taskID: string
+  claimID: string;
+  taskID: string;
   /** Group Panel polis — penentu tampilnya "Nama Dokter". */
-  groupPanel: string
-  onClose: () => void
-}
+  groupPanel: string;
+  onClose: () => void;
+};
 
 /**
  * Modal **"Kirim ke RCL/PUCL"** — local action `KomentarRCLPUCL`
@@ -126,54 +131,60 @@ type Props = {
  * layar Inbox RCL/PUCL dipegang tombol "Download Dokumen", dan membangunnya dua kali di
  * dua tempat akan membuat baris berpindah tab tanpa suratnya benar-benar tercetak.
  */
-export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Props) {
-  const send = useSendToRCLPUCL(claimID)
-  const busy = send.isPending
+export function SendToRCLPUCLDialog({
+  claimID,
+  taskID,
+  groupPanel,
+  onClose,
+}: Props) {
+  const send = useSendToRCLPUCL(claimID);
+  const busy = send.isPending;
 
-  const [track, setTrack] = useState(0)
-  const [note, setNote] = useState('')
-  const [subject, setSubject] = useState('')
-  const [opening, setOpening] = useState('')
-  const [body, setBody] = useState('')
-  const [closing, setClosing] = useState('')
-  const [doctor, setDoctor] = useState('')
-  const [search, setSearch] = useState('')
+  const [track, setTrack] = useState(0);
+  const [note, setNote] = useState("");
+  const [subject, setSubject] = useState("");
+  const [opening, setOpening] = useState("");
+  const [body, setBody] = useState("");
+  const [closing, setClosing] = useState("");
+  const [doctor, setDoctor] = useState("");
+  const [search, setSearch] = useState("");
   // Isian wajib baru ditandai merah setelah Kirim ditekan sekali — menandai form yang
   // belum tersentuh sebagai salah adalah menuduh pengguna sebelum ia berbuat apa pun.
-  const [attempted, setAttempted] = useState(false)
+  const [attempted, setAttempted] = useState(false);
 
-  const subjects = usePUCLSubjects(track)
-  const withDoctor = showDoctorName(track, groupPanel)
-  const withReasons = showRejectReasons(track, groupPanel)
-  const reasons = usePUCLReasons(search, withReasons)
+  const subjects = usePUCLSubjects(track);
+  const withDoctor = showDoctorName(track, groupPanel);
+  const withReasons = showRejectReasons(track, groupPanel);
+  const reasons = usePUCLReasons(search, withReasons);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === "Escape" && !busy) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
 
   // Pilihan Perihal menyempit menurut jalur, sehingga yang sudah terpilih dapat menjadi
   // tidak berlaku lagi. Mengosongkannya lebih baik daripada mengirim Perihal "Tolakan…"
   // pada surat permintaan kelengkapan dokumen.
   useEffect(() => {
-    setSubject('')
-  }, [track])
+    setSubject("");
+  }, [track]);
 
-  const violations = violationsFrom(send.error)
-  const failureOf = (field: string) => violations.find((v) => v.field === field)?.pesan
-  const tooLong = (value: string) => value.trim().length > MAX_TEXT
+  const violations = violationsFrom(send.error);
+  const failureOf = (field: string) =>
+    violations.find((v) => v.field === field)?.pesan;
+  const tooLong = (value: string) => value.trim().length > MAX_TEXT;
 
-  const missingTrack = attempted && track === 0
-  const missingNote = attempted && note.trim() === ''
-  const missingBody = attempted && body.trim() === ''
+  const missingTrack = attempted && track === 0;
+  const missingNote = attempted && note.trim() === "";
+  const missingBody = attempted && body.trim() === "";
 
   function submit() {
-    setAttempted(true)
-    if (track === 0 || note.trim() === '' || body.trim() === '') return
-    send.reset()
+    setAttempted(true);
+    if (track === 0 || note.trim() === "" || body.trim() === "") return;
+    send.reset();
     send.mutate(
       {
         taskID,
@@ -183,10 +194,10 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
         keterangan_pembuka: opening,
         keterangan_isi: body,
         keterangan_penutup: closing,
-        nama_dokter: withDoctor ? doctor : '',
+        nama_dokter: withDoctor ? doctor : "",
       },
       { onSuccess: onClose },
-    )
+    );
   }
 
   return (
@@ -197,24 +208,35 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
       aria-labelledby="judul-kirim-rclpucl"
     >
       <div className="max-h-full w-full max-w-3xl overflow-y-auto rounded-kartu bg-white p-6 shadow-angkat">
-        <h2 id="judul-kirim-rclpucl" className="text-lg font-semibold text-slate-900">
+        <h2
+          id="judul-kirim-rclpucl"
+          className="text-lg font-semibold text-slate-900"
+        >
           Kirim ke RCL/PUCL
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          RCL mengirim klaim ke Inbox RCL lebih dulu; PUCL dan Notification langsung ke antrean
-          Inbox RCL/PUCL.
+          RCL mengirim klaim ke Inbox RCL lebih dulu; PUCL dan Notification
+          langsung ke antrean Inbox RCL/PUCL.
         </p>
 
         {/* 1 — Pilih RCL / PUCL */}
-        <fieldset className="mt-4" aria-describedby={missingTrack ? 'galat-jalur' : undefined}>
-          <legend className="text-sm font-medium text-slate-700">Pilih RCL / PUCL</legend>
+        <fieldset
+          className="mt-4"
+          aria-describedby={missingTrack ? "galat-jalur" : undefined}
+        >
+          <legend className="text-sm font-medium text-slate-700">
+            Pilih RCL / PUCL
+          </legend>
           <div className="mt-2 flex gap-6">
             {[
-              { value: TRACK_RCL, label: 'RCL' },
-              { value: TRACK_PUCL, label: 'PUCL' },
-              { value: TRACK_NOTIFICATION, label: 'Notification' },
+              { value: TRACK_RCL, label: "RCL" },
+              { value: TRACK_PUCL, label: "PUCL" },
+              { value: TRACK_NOTIFICATION, label: "Notification" },
             ].map((o) => (
-              <label key={o.value} className="flex items-center gap-2 text-sm text-slate-800">
+              <label
+                key={o.value}
+                className="flex items-center gap-2 text-sm text-slate-800"
+              >
                 <input
                   type="radio"
                   name="jalur-rclpucl"
@@ -245,17 +267,20 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             onChange={(e) => setNote(e.target.value)}
             error={
               missingNote
-                ? 'Catatan untuk RCL/PUCL wajib diisi.'
+                ? "Catatan untuk RCL/PUCL wajib diisi."
                 : tooLong(note)
                   ? `Paling banyak ${MAX_TEXT} karakter.`
-                  : failureOf('catatan')
+                  : failureOf("catatan")
             }
           />
         </div>
 
         {/* 3 — Perihal, dari master M_PERIHAL_RCLPUCL */}
         <div className="mt-4">
-          <label htmlFor="perihal-rclpucl" className="block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="perihal-rclpucl"
+            className="block text-sm font-medium text-slate-700"
+          >
             Perihal
           </label>
           <select
@@ -265,7 +290,9 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             disabled={busy || track === 0}
             onChange={(e) => setSubject(e.target.value)}
           >
-            <option value="">{track === 0 ? '— pilih jalur lebih dulu —' : '----- PILIH -----'}</option>
+            <option value="">
+              {track === 0 ? "— pilih jalur lebih dulu —" : "----- PILIH -----"}
+            </option>
             {(subjects.data?.pilihan ?? []).map((o) => (
               <option key={o.id} value={o.nama}>
                 {o.nama}
@@ -285,7 +312,11 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             value={opening}
             disabled={busy}
             onChange={(e) => setOpening(e.target.value)}
-            error={tooLong(opening) ? `Paling banyak ${MAX_TEXT} karakter.` : failureOf('keterangan_pembuka')}
+            error={
+              tooLong(opening)
+                ? `Paling banyak ${MAX_TEXT} karakter.`
+                : failureOf("keterangan_pembuka")
+            }
           />
         </div>
         <div className="mt-4">
@@ -298,12 +329,16 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             onChange={(e) => setBody(e.target.value)}
             error={
               missingBody
-                ? 'Keterangan Isi wajib diisi.'
+                ? "Keterangan Isi wajib diisi."
                 : tooLong(body)
                   ? `Paling banyak ${MAX_TEXT} karakter.`
-                  : failureOf('keterangan_isi')
+                  : failureOf("keterangan_isi")
             }
-            hint={withReasons ? 'Tombol Pilih pada daftar alasan di bawah mengisi kolom ini.' : undefined}
+            hint={
+              withReasons
+                ? "Tombol Pilih pada daftar alasan di bawah mengisi kolom ini."
+                : undefined
+            }
           />
         </div>
         <div className="mt-4">
@@ -314,7 +349,11 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             value={closing}
             disabled={busy}
             onChange={(e) => setClosing(e.target.value)}
-            error={tooLong(closing) ? `Paling banyak ${MAX_TEXT} karakter.` : failureOf('keterangan_penutup')}
+            error={
+              tooLong(closing)
+                ? `Paling banyak ${MAX_TEXT} karakter.`
+                : failureOf("keterangan_penutup")
+            }
           />
         </div>
 
@@ -331,7 +370,10 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             RCLDokter, persis seperti lini selain PA yang tidak menampilkan isian ini. */}
         {withDoctor && (
           <div className="mt-4">
-            <label htmlFor="nama-dokter" className="block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="nama-dokter"
+              className="block text-sm font-medium text-slate-700"
+            >
               Nama Dokter
             </label>
             <select
@@ -348,79 +390,90 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
                 </option>
               ))}
             </select>
-            {failureOf('nama_dokter') && (
-              <p className="mt-1 text-sm text-red-700">{failureOf('nama_dokter')}</p>
+            {failureOf("nama_dokter") && (
+              <p className="mt-1 text-sm text-red-700">
+                {failureOf("nama_dokter")}
+              </p>
             )}
             <p className="mt-1 text-xs text-slate-500">
-              Dokter yang dipilih inilah yang melihat klaimnya di Inbox RCL. Dibiarkan kosong,
-              klaim masuk ke inbox petugas yang ditunjuk penugasan.
+              Dokter yang dipilih inilah yang melihat klaimnya di Inbox RCL.
+              Dibiarkan kosong, klaim masuk ke inbox petugas yang ditunjuk
+              penugasan.
             </p>
           </div>
         )}
 
         {/* 8 — grid alasan penolakan: `IsPA && RCL_PUCL != 3` */}
         {withReasons && (
-        <div className="mt-6">
-          <div className="flex items-end justify-between gap-3">
-            <h3 className="text-sm font-semibold text-slate-800">Daftar Alasan</h3>
-            <div className="w-64">
-              <FormField
-                id="cari-alasan"
-                label="Cari alasan"
-                value={search}
-                disabled={busy}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          <div className="mt-6">
+            <div className="flex items-end justify-between gap-3">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Daftar Alasan
+              </h3>
+              <div className="w-64">
+                <FormField
+                  id="cari-alasan"
+                  label="Cari alasan"
+                  value={search}
+                  disabled={busy}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 max-h-56 overflow-y-auto rounded border border-slate-200">
+              <table className="w-full border-collapse text-sm">
+                <caption className="sr-only">Alasan penolakan</caption>
+                <thead className="sticky top-0 bg-slate-100 text-left text-xs text-slate-700">
+                  <tr>
+                    <th className="p-2">ID</th>
+                    <th className="p-2">Reason Name</th>
+                    <th className="p-2">Reason Description</th>
+                    <th className="p-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {reasons.isPending && (
+                    <tr>
+                      <td colSpan={4} className="p-2 text-xs text-slate-500">
+                        Memuat…
+                      </td>
+                    </tr>
+                  )}
+                  {!reasons.isPending &&
+                    (reasons.data?.pilihan ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-2 text-xs text-slate-500">
+                          Data Tidak Ada
+                        </td>
+                      </tr>
+                    )}
+                  {(reasons.data?.pilihan ?? []).map((o) => (
+                    <tr
+                      key={o.id}
+                      className="border-b border-slate-100 align-top"
+                    >
+                      <td className="p-2">{o.id}</td>
+                      <td className="p-2">{o.nama}</td>
+                      <td className="p-2 text-xs text-slate-600">
+                        {o.deskripsi}
+                      </td>
+                      <td className="p-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setBody(o.deskripsi)}
+                          className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+                        >
+                          Pilih
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <div className="mt-2 max-h-56 overflow-y-auto rounded border border-slate-200">
-            <table className="w-full border-collapse text-sm">
-              <caption className="sr-only">Alasan penolakan</caption>
-              <thead className="sticky top-0 bg-slate-100 text-left text-xs text-slate-700">
-                <tr>
-                  <th className="p-2">ID</th>
-                  <th className="p-2">Reason Name</th>
-                  <th className="p-2">Reason Description</th>
-                  <th className="p-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {reasons.isPending && (
-                  <tr>
-                    <td colSpan={4} className="p-2 text-xs text-slate-500">
-                      Memuat…
-                    </td>
-                  </tr>
-                )}
-                {!reasons.isPending && (reasons.data?.pilihan ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-2 text-xs text-slate-500">
-                      Data Tidak Ada
-                    </td>
-                  </tr>
-                )}
-                {(reasons.data?.pilihan ?? []).map((o) => (
-                  <tr key={o.id} className="border-b border-slate-100 align-top">
-                    <td className="p-2">{o.id}</td>
-                    <td className="p-2">{o.nama}</td>
-                    <td className="p-2 text-xs text-slate-600">{o.deskripsi}</td>
-                    <td className="p-2">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setBody(o.deskripsi)}
-                        className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
-                      >
-                        Pilih
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
         )}
 
         {send.isError && (
@@ -430,10 +483,10 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
               title="Klaim belum terkirim ke RCL/PUCL"
               description={
                 violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
+                  ? violations.map((v) => v.pesan).join(" ")
                   : send.error instanceof Error
                     ? send.error.message
-                    : 'Terjadi kesalahan.'
+                    : "Terjadi kesalahan."
               }
             />
           </div>
@@ -445,10 +498,10 @@ export function SendToRCLPUCLDialog({ claimID, taskID, groupPanel, onClose }: Pr
             Batal
           </Button>
           <Button tone="utama" disabled={busy} onClick={submit}>
-            {busy ? 'Mengirim…' : 'Kirim'}
+            {busy ? "Mengirim…" : "Kirim"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

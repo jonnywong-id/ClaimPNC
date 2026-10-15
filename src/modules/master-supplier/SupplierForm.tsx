@@ -1,23 +1,27 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useState, type ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   ErrorCode,
   SupplierErrorCode,
   type Supplier,
   type SupplierCode,
   type SupplierInput,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useSupplierBankList, useSupplierBranchList, useSupplierCountryList } from './api'
-import { CityPicker } from './CityPicker'
+import {
+  useSupplierBankList,
+  useSupplierBranchList,
+  useSupplierCountryList,
+} from "./api";
+import { CityPicker } from "./CityPicker";
 
 /**
  * Batas panjang harus sama dengan konstanta di `internal/mastersupplier/mastersupplier.go`.
@@ -44,17 +48,17 @@ const MAX = {
   pendek: 50,
   rekening: 30,
   keterangan: 500,
-} as const
+} as const;
 
 const wajib = (max: number, label: string) =>
   z
     .string()
     .trim()
     .min(1, `${label} wajib diisi.`)
-    .max(max, `${label} paling panjang ${max} karakter.`)
+    .max(max, `${label} paling panjang ${max} karakter.`);
 
 const opsional = (max: number, label: string) =>
-  z.string().trim().max(max, `${label} paling panjang ${max} karakter.`)
+  z.string().trim().max(max, `${label} paling panjang ${max} karakter.`);
 
 /**
  * Kelima belas isian wajib dibaca langsung dari `pyRequired=true` pada
@@ -68,41 +72,41 @@ const opsional = (max: number, label: string) =>
  * ini menerimanya adalah selisih yang tidak diminta siapa pun.
  */
 const schema = z.object({
-  nama: wajib(MAX.nama, 'Nama'),
-  alamat: wajib(MAX.alamat, 'Alamat'),
-  kode_pos: opsional(MAX.kodePos, 'Kode Pos'),
-  negara: wajib(MAX.kota, 'Negara'),
+  nama: wajib(MAX.nama, "Nama"),
+  alamat: wajib(MAX.alamat, "Alamat"),
+  kode_pos: opsional(MAX.kodePos, "Kode Pos"),
+  negara: wajib(MAX.kota, "Negara"),
 
-  telepon: wajib(MAX.telepon, 'Telepon'),
-  fax: opsional(MAX.telepon, 'Fax'),
-  email: opsional(MAX.email, 'Email'),
-  npwp: opsional(MAX.npwp, 'NPWP'),
-  contact_person: wajib(MAX.nama, 'Contact Person'),
+  telepon: wajib(MAX.telepon, "Telepon"),
+  fax: opsional(MAX.telepon, "Fax"),
+  email: opsional(MAX.email, "Email"),
+  npwp: opsional(MAX.npwp, "NPWP"),
+  contact_person: wajib(MAX.nama, "Contact Person"),
 
-  status_rekanan: wajib(MAX.kode, 'Status Rekanan'),
-  status_supply: wajib(MAX.kode, 'Status Supply'),
+  status_rekanan: wajib(MAX.kode, "Status Rekanan"),
+  status_supply: wajib(MAX.kode, "Status Supply"),
 
-  term_of_payment: wajib(MAX.pendek, 'Term of Payment'),
-  term_of_delivery: wajib(MAX.pendek, 'Term of Delivery'),
-  keterangan: opsional(MAX.keterangan, 'Keterangan'),
+  term_of_payment: wajib(MAX.pendek, "Term of Payment"),
+  term_of_delivery: wajib(MAX.pendek, "Term of Delivery"),
+  keterangan: opsional(MAX.keterangan, "Keterangan"),
 
-  bank: wajib(MAX.nama, 'Bank'),
-  no_account: wajib(MAX.rekening, 'No Account'),
-  account_name: opsional(MAX.nama, 'Account Name'),
-  bank_branch: opsional(MAX.nama, 'Bank Branch'),
+  bank: wajib(MAX.nama, "Bank"),
+  no_account: wajib(MAX.rekening, "No Account"),
+  account_name: opsional(MAX.nama, "Account Name"),
+  bank_branch: opsional(MAX.nama, "Bank Branch"),
 
-  jenis_supplier: wajib(MAX.kode, 'Jenis Supplier'),
-  status_aktif: wajib(MAX.kode, 'Status Aktif'),
-  status_autopayment: opsional(MAX.kode, 'Status Autopayment'),
+  jenis_supplier: wajib(MAX.kode, "Jenis Supplier"),
+  status_aktif: wajib(MAX.kode, "Status Aktif"),
+  status_autopayment: opsional(MAX.kode, "Status Autopayment"),
 
   /** Dipilih dari daftar cabang; nama cabangnyalah yang disimpan. */
-  nama_cabang: wajib(MAX.nama, 'Cabang'),
-})
+  nama_cabang: wajib(MAX.nama, "Cabang"),
+});
 
-type SupplierFields = z.infer<typeof schema>
+type SupplierFields = z.infer<typeof schema>;
 
 /** Nilai yang dikirim ke server; `kota` ditambahkan dari CityPicker. */
-export type SupplierFormValues = SupplierInput
+export type SupplierFormValues = SupplierInput;
 
 type Props = {
   /**
@@ -111,24 +115,24 @@ type Props = {
    * Mode menentukan judul, teks tombolnya, DAN satu hal yang menyentuh aturan bisnis:
    * isian Nama dikunci pada mode ubah — lihat catatan pada isian itu.
    */
-  editing: Supplier | null
+  editing: Supplier | null;
 
   /** Kelima daftar dropdown bersandi, dari endpoint `/sandi`. */
   codes: {
-    status_rekanan: SupplierCode[]
-    status_supply: SupplierCode[]
-    jenis_supplier: SupplierCode[]
-    status_aktif: SupplierCode[]
-    status_autopayment: SupplierCode[]
-  }
+    status_rekanan: SupplierCode[];
+    status_supply: SupplierCode[];
+    jenis_supplier: SupplierCode[];
+    status_aktif: SupplierCode[];
+    status_autopayment: SupplierCode[];
+  };
 
-  isSaving: boolean
-  error: unknown
-  onSave: (values: SupplierFormValues) => void
-  onCancel: () => void
-}
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: SupplierFormValues) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -140,91 +144,98 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case SupplierErrorCode.nameTaken:
         return {
-          title: 'Nama supplier itu sudah dipakai',
-          description: 'Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.',
-          tone: 'penolakan',
-        }
+          title: "Nama supplier itu sudah dipakai",
+          description:
+            "Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.",
+          tone: "penolakan",
+        };
       case SupplierErrorCode.nameLocked:
         return {
-          title: 'Nama supplier tidak dapat diubah',
+          title: "Nama supplier tidak dapat diubah",
           description:
-            'Nama terkunci sejak baris ini tersimpan. Batalkan, lalu muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Nama terkunci sejak baris ini tersimpan. Batalkan, lalu muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.validationFailed:
         // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya akan
         // mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
+          : {
+              title: "Belum dapat disimpan",
+              description: error.message,
+              tone: "penolakan",
+            };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Nama isian yang dikenali form ini; dipakai menyorot pelanggaran dari server. */
 const FIELD_NAMES = [
-  'nama',
-  'alamat',
-  'kode_pos',
-  'negara',
-  'telepon',
-  'fax',
-  'email',
-  'npwp',
-  'contact_person',
-  'status_rekanan',
-  'status_supply',
-  'term_of_payment',
-  'term_of_delivery',
-  'keterangan',
-  'bank',
-  'no_account',
-  'account_name',
-  'bank_branch',
-  'jenis_supplier',
-  'status_aktif',
-  'status_autopayment',
-  'nama_cabang',
-] as const
+  "nama",
+  "alamat",
+  "kode_pos",
+  "negara",
+  "telepon",
+  "fax",
+  "email",
+  "npwp",
+  "contact_person",
+  "status_rekanan",
+  "status_supply",
+  "term_of_payment",
+  "term_of_delivery",
+  "keterangan",
+  "bank",
+  "no_account",
+  "account_name",
+  "bank_branch",
+  "jenis_supplier",
+  "status_aktif",
+  "status_autopayment",
+  "nama_cabang",
+] as const;
 
 /** Mengubah daftar sandi dari server menjadi pilihan dropdown. */
 function toOptions(list: SupplierCode[]) {
-  return list.map((code) => ({ value: code.nilai, label: code.label }))
+  return list.map((code) => ({ value: code.nilai, label: code.label }));
 }
 
 /**
@@ -248,15 +259,22 @@ function toOptions(list: SupplierCode[]) {
  * menambah, muncul saat menyunting. Di sini ia ditampilkan sebagai keterangan pada mode
  * ubah, bukan sebagai isian yang tidak dapat diketik.
  */
-export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel }: Props) {
-  const isEditing = editing !== null
-  const headingId = useId()
+export function SupplierForm({
+  editing,
+  codes,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const isEditing = editing !== null;
+  const headingId = useId();
 
-  const branchList = useSupplierBranchList()
-  const countryList = useSupplierCountryList()
-  const bankList = useSupplierBankList()
+  const branchList = useSupplierBranchList();
+  const countryList = useSupplierCountryList();
+  const bankList = useSupplierBankList();
 
-  const [city, setCity] = useState(editing?.kota ?? '')
+  const [city, setCity] = useState(editing?.kota ?? "");
 
   const {
     register,
@@ -266,30 +284,30 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
   } = useForm<SupplierFields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama: editing?.nama ?? '',
-      alamat: editing?.alamat ?? '',
-      nama_cabang: editing?.nama_cabang ?? '',
-      kode_pos: editing?.kode_pos ?? '',
-      negara: editing?.negara ?? '',
-      telepon: editing?.telepon ?? '',
-      fax: editing?.fax ?? '',
-      email: editing?.email ?? '',
-      npwp: editing?.npwp ?? '',
-      contact_person: editing?.contact_person ?? '',
-      status_rekanan: editing?.status_rekanan ?? '',
-      status_supply: editing?.status_supply ?? '',
-      term_of_payment: editing?.term_of_payment ?? '',
-      term_of_delivery: editing?.term_of_delivery ?? '',
-      keterangan: editing?.keterangan ?? '',
-      bank: editing?.bank ?? '',
-      no_account: editing?.no_account ?? '',
-      account_name: editing?.account_name ?? '',
-      bank_branch: editing?.bank_branch ?? '',
-      jenis_supplier: editing?.jenis_supplier ?? '',
-      status_aktif: editing?.status_aktif ?? '',
-      status_autopayment: editing?.status_autopayment ?? '',
+      nama: editing?.nama ?? "",
+      alamat: editing?.alamat ?? "",
+      nama_cabang: editing?.nama_cabang ?? "",
+      kode_pos: editing?.kode_pos ?? "",
+      negara: editing?.negara ?? "",
+      telepon: editing?.telepon ?? "",
+      fax: editing?.fax ?? "",
+      email: editing?.email ?? "",
+      npwp: editing?.npwp ?? "",
+      contact_person: editing?.contact_person ?? "",
+      status_rekanan: editing?.status_rekanan ?? "",
+      status_supply: editing?.status_supply ?? "",
+      term_of_payment: editing?.term_of_payment ?? "",
+      term_of_delivery: editing?.term_of_delivery ?? "",
+      keterangan: editing?.keterangan ?? "",
+      bank: editing?.bank ?? "",
+      no_account: editing?.no_account ?? "",
+      account_name: editing?.account_name ?? "",
+      bank_branch: editing?.bank_branch ?? "",
+      jenis_supplier: editing?.jenis_supplier ?? "",
+      status_aktif: editing?.status_aktif ?? "",
+      status_autopayment: editing?.status_autopayment ?? "",
     },
-  })
+  });
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
@@ -298,16 +316,19 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
+        setError(column as (typeof FIELD_NAMES)[number], {
+          type: "server",
+          message,
+        });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const violation = violationsOf(error)
-  const message = messageFor(error)
+  const violation = violationsOf(error);
+  const message = messageFor(error);
 
   function submit(values: SupplierFields) {
-    onSave({ ...values, kota: city })
+    onSave({ ...values, kota: city });
   }
 
   return (
@@ -318,11 +339,15 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
       className="space-y-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
     >
       <h2 id={headingId} className="text-base font-semibold text-slate-900">
-        {isEditing ? `Ubah ${editing.nama}` : 'Tambah Master Supplier'}
+        {isEditing ? `Ubah ${editing.nama}` : "Tambah Master Supplier"}
       </h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {isEditing && (
@@ -330,10 +355,13 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
             ID supplier
           </span>
-          <span className="mt-0.5 block text-sm text-slate-900">{editing.id_supplier}</span>
+          <span className="mt-0.5 block text-sm text-slate-900">
+            {editing.id_supplier}
+          </span>
           <span className="mt-1 block text-xs text-slate-500">
-            Diterbitkan sistem dari kode situs dan nomor urut. Tidak dapat diubah.
-            {editing.id_lama !== '' && <> Nomor lama: {editing.id_lama}.</>}
+            Diterbitkan sistem dari kode situs dan nomor urut. Tidak dapat
+            diubah.
+            {editing.id_lama !== "" && <> Nomor lama: {editing.id_lama}.</>}
           </span>
         </div>
       )}
@@ -359,12 +387,12 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           readOnly={isEditing}
           hint={
             isEditing
-              ? 'Nama terkunci sejak baris ini tersimpan.'
-              : 'Tidak boleh sama dengan supplier lain, dan tidak dapat diubah setelah disimpan.'
+              ? "Nama terkunci sejak baris ini tersimpan."
+              : "Tidak boleh sama dengan supplier lain, dan tidak dapat diubah setelah disimpan."
           }
           error={errors.nama?.message}
           disabled={isSaving}
-          {...register('nama')}
+          {...register("nama")}
         />
         <Field
           id="alamat"
@@ -373,14 +401,14 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           maxLength={MAX.alamat}
           error={errors.alamat?.message}
           disabled={isSaving}
-          {...register('alamat')}
+          {...register("alamat")}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <CityPicker
             value={city}
             onPick={(picked) => setCity(picked.nama)}
-            onClear={() => setCity('')}
-            error={violation['kota']}
+            onClear={() => setCity("")}
+            error={violation["kota"]}
             disabled={isSaving}
           />
           <SelectField
@@ -392,7 +420,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             }))}
             error={errors.nama_cabang?.message}
             disabled={isSaving}
-            {...register('nama_cabang')}
+            {...register("nama_cabang")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -404,7 +432,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.kodePos}
             error={errors.kode_pos?.message}
             disabled={isSaving}
-            {...register('kode_pos')}
+            {...register("kode_pos")}
           />
           <SelectField
             id="negara"
@@ -415,7 +443,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             }))}
             error={errors.negara?.message}
             disabled={isSaving}
-            {...register('negara')}
+            {...register("negara")}
           />
         </div>
       </Group>
@@ -430,7 +458,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.telepon}
             error={errors.telepon?.message}
             disabled={isSaving}
-            {...register('telepon')}
+            {...register("telepon")}
           />
           <Field
             id="fax"
@@ -440,7 +468,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.telepon}
             error={errors.fax?.message}
             disabled={isSaving}
-            {...register('fax')}
+            {...register("fax")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -451,7 +479,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.email}
             error={errors.email?.message}
             disabled={isSaving}
-            {...register('email')}
+            {...register("email")}
           />
           <Field
             id="npwp"
@@ -460,7 +488,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.npwp}
             error={errors.npwp?.message}
             disabled={isSaving}
-            {...register('npwp')}
+            {...register("npwp")}
           />
         </div>
         <Field
@@ -470,7 +498,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           maxLength={MAX.nama}
           error={errors.contact_person?.message}
           disabled={isSaving}
-          {...register('contact_person')}
+          {...register("contact_person")}
         />
       </Group>
 
@@ -491,7 +519,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             hint="Satuannya mengikuti kesepakatan; sistem lama tidak menentukannya."
             error={errors.term_of_payment?.message}
             disabled={isSaving}
-            {...register('term_of_payment')}
+            {...register("term_of_payment")}
           />
           <Field
             id="term_of_delivery"
@@ -500,11 +528,14 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.pendek}
             error={errors.term_of_delivery?.message}
             disabled={isSaving}
-            {...register('term_of_delivery')}
+            {...register("term_of_delivery")}
           />
         </div>
         <div>
-          <label htmlFor="keterangan" className="block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="keterangan"
+            className="block text-sm font-medium text-slate-700"
+          >
             Keterangan
           </label>
           <textarea
@@ -512,9 +543,9 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             rows={3}
             maxLength={MAX.keterangan}
             disabled={isSaving}
-            aria-invalid={errors.keterangan ? 'true' : 'false'}
+            aria-invalid={errors.keterangan ? "true" : "false"}
             className="mt-1.5 w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-50"
-            {...register('keterangan')}
+            {...register("keterangan")}
           />
           {/* Keterangan bukan sekadar catatan: ia ikut tersalin ke kolom ALASAN_REQ pada
               baris permintaan persetujuan, sehingga isinya dibaca pihak yang memutuskan. */}
@@ -522,7 +553,9 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             Ikut terbaca oleh yang menyetujui pengajuan ini.
           </p>
           {errors.keterangan && (
-            <p className="mt-1.5 text-sm text-red-700">{errors.keterangan.message}</p>
+            <p className="mt-1.5 text-sm text-red-700">
+              {errors.keterangan.message}
+            </p>
           )}
         </div>
       </Group>
@@ -543,7 +576,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             }))}
             error={errors.bank?.message}
             disabled={isSaving}
-            {...register('bank')}
+            {...register("bank")}
           />
           <Field
             id="no_account"
@@ -553,7 +586,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.rekening}
             error={errors.no_account?.message}
             disabled={isSaving}
-            {...register('no_account')}
+            {...register("no_account")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -564,7 +597,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.nama}
             error={errors.account_name?.message}
             disabled={isSaving}
-            {...register('account_name')}
+            {...register("account_name")}
           />
           <Field
             id="bank_branch"
@@ -573,7 +606,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             maxLength={MAX.nama}
             error={errors.bank_branch?.message}
             disabled={isSaving}
-            {...register('bank_branch')}
+            {...register("bank_branch")}
           />
         </div>
       </Group>
@@ -595,7 +628,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             options={toOptions(codes.status_rekanan)}
             error={errors.status_rekanan?.message}
             disabled={isSaving}
-            {...register('status_rekanan')}
+            {...register("status_rekanan")}
           />
           <SelectField
             id="status_supply"
@@ -603,7 +636,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             options={toOptions(codes.status_supply)}
             error={errors.status_supply?.message}
             disabled={isSaving}
-            {...register('status_supply')}
+            {...register("status_supply")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -613,7 +646,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             options={toOptions(codes.jenis_supplier)}
             error={errors.jenis_supplier?.message}
             disabled={isSaving}
-            {...register('jenis_supplier')}
+            {...register("jenis_supplier")}
           />
           <SelectField
             id="status_autopayment"
@@ -621,7 +654,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
             options={toOptions(codes.status_autopayment)}
             error={errors.status_autopayment?.message}
             disabled={isSaving}
-            {...register('status_autopayment')}
+            {...register("status_autopayment")}
           />
         </div>
         <SelectField
@@ -630,7 +663,7 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           options={toOptions(codes.status_aktif)}
           error={errors.status_aktif?.message}
           disabled={isSaving}
-          {...register('status_aktif')}
+          {...register("status_aktif")}
         />
       </Group>
 
@@ -642,14 +675,15 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
       <p className="text-xs text-slate-500">
         {isEditing ? (
           <>
-            Mengaktifkan supplier menunggu persetujuan lebih dulu. Menonaktifkannya berlaku{' '}
+            Mengaktifkan supplier menunggu persetujuan lebih dulu.
+            Menonaktifkannya berlaku{" "}
             <span className="font-medium">seketika</span>, tanpa persetujuan.
           </>
         ) : (
           <>
-            Supplier baru selalu tersimpan sebagai{' '}
-            <span className="font-medium">belum aktif</span> dan menunggu persetujuan —
-            berapa pun Status Aktif yang dipilih di atas.
+            Supplier baru selalu tersimpan sebagai{" "}
+            <span className="font-medium">belum aktif</span> dan menunggu
+            persetujuan — berapa pun Status Aktif yang dipilih di atas.
           </>
         )}
       </p>
@@ -659,11 +693,11 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -676,8 +710,10 @@ export function SupplierForm({ editing, codes, isSaving, error, onSave, onCancel
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
+      <legend className="px-1 text-sm font-semibold text-slate-700">
+        {title}
+      </legend>
       {children}
     </fieldset>
-  )
+  );
 }

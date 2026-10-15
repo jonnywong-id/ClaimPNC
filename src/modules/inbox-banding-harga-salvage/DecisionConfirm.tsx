@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useBandingHargaSalvageDecide } from './api'
-import { BandingHargaSalvageError, type AppealRow } from './types'
+import { useBandingHargaSalvageDecide } from "./api";
+import { BandingHargaSalvageError, type AppealRow } from "./types";
 
 /**
  * Kotak penegasan tombol **Approve** dan **Reject** pada kolom Action.
@@ -30,20 +30,20 @@ import { BandingHargaSalvageError, type AppealRow } from './types'
  */
 type Props = {
   /** Baris yang sedang diputuskan. `null` berarti kotak ini tertutup. */
-  row: AppealRow | null
+  row: AppealRow | null;
 
   /** `true` bila yang ditekan Approve, `false` bila Reject. */
-  approve: boolean
+  approve: boolean;
 
-  onCancel: () => void
+  onCancel: () => void;
 
   /** Dipanggil setelah putusannya benar-benar tersimpan, membawa pesan dari server. */
-  onDecided: (message: string) => void
-}
+  onDecided: (message: string) => void;
+};
 
 export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
-  const [note, setNote] = useState('')
-  const decide = useBandingHargaSalvageDecide()
+  const [note, setNote] = useState("");
+  const decide = useBandingHargaSalvageDecide();
 
   /**
    * Catatan dikosongkan setiap kali barisnya berganti.
@@ -54,20 +54,20 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
    * ini.
    */
   useEffect(() => {
-    setNote('')
-    decide.reset()
+    setNote("");
+    decide.reset();
     // Sengaja hanya bergantung pada identitas baris: menyertakan `decide` akan menjalankan
     // efek ini setiap kali keadaan mutasi berubah, termasuk tepat setelah berhasil — yang
     // justru membuang pesan yang baru saja diterima.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [row?.detail_object, approve])
+  }, [row?.detail_object, approve]);
 
-  if (row === null) return null
+  if (row === null) return null;
 
-  const putusan = approve ? 'Approve' : 'Reject'
+  const putusan = approve ? "Approve" : "Reject";
 
   function submit() {
-    if (row === null) return
+    if (row === null) return;
 
     decide.mutate(
       {
@@ -78,7 +78,7 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
         setujui: approve,
       },
       { onSuccess: (result) => onDecided(result.pesan) },
-    )
+    );
   }
 
   return (
@@ -92,7 +92,8 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
             {putusan} banding harga — {row.no_klaim}
           </h2>
           <p className="mt-1 text-xs text-slate-600">
-            {row.nama_barang || 'Barang tanpa nama'} · Detail Object {row.detail_object}
+            {row.nama_barang || "Barang tanpa nama"} · Detail Object{" "}
+            {row.detail_object}
           </p>
         </div>
         <Button tone="halus" onClick={onCancel} disabled={decide.isPending}>
@@ -122,14 +123,15 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
           onChange={(event) => setNote(event.target.value)}
           placeholder="Alasan keputusan Anda — boleh dikosongkan."
           className={[
-            'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-            'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-            'disabled:bg-slate-50 disabled:text-slate-500',
-          ].join(' ')}
+            "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+            "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+            "disabled:bg-slate-50 disabled:text-slate-500",
+          ].join(" ")}
         />
         <p className="mt-1 text-xs text-slate-500">
-          Tersimpan bersama keputusan Anda dan terbaca kembali di tab History Cheker.
-          Keputusan ini <strong>tidak dapat diubah</strong> setelah tersimpan.
+          Tersimpan bersama keputusan Anda dan terbaca kembali di tab History
+          Cheker. Keputusan ini <strong>tidak dapat diubah</strong> setelah
+          tersimpan.
         </p>
       </div>
 
@@ -145,14 +147,14 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button tone="utama" onClick={submit} disabled={decide.isPending}>
-          {decide.isPending ? 'Menyimpan…' : `Simpan ${putusan}`}
+          {decide.isPending ? "Menyimpan…" : `Simpan ${putusan}`}
         </Button>
         <Button tone="halus" onClick={onCancel} disabled={decide.isPending}>
           Batal
         </Button>
       </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -163,21 +165,24 @@ export function DecisionConfirm({ row, approve, onCancel, onDecided }: Props) {
  * sehingga pembulatan tampilan tidak pernah menjadi pembulatan nilai (`I-12`).
  */
 function PriceComparison({ row }: { row: AppealRow }) {
-  const barang = parseMoney(row.harga_barang)
-  const request = parseMoney(row.harga_request)
-  const terbaca = barang !== null && request !== null
+  const barang = parseMoney(row.harga_barang);
+  const request = parseMoney(row.harga_request);
+  const terbaca = barang !== null && request !== null;
 
   return (
     <dl className="mt-3 grid gap-3 sm:grid-cols-3">
       <Figure label="Harga Barang (PIC)" value={money(row.harga_barang)} />
-      <Figure label="Harga Request (balai lelang)" value={money(row.harga_request)} />
+      <Figure
+        label="Harga Request (balai lelang)"
+        value={money(row.harga_request)}
+      />
       <Figure
         label="Selisih"
-        value={terbaca ? money(String(request - barang)) : '—'}
-        tone={terbaca && request < barang ? 'turun' : 'biasa'}
+        value={terbaca ? money(String(request - barang)) : "—"}
+        tone={terbaca && request < barang ? "turun" : "biasa"}
       />
     </dl>
-  )
+  );
 }
 
 /**
@@ -199,42 +204,42 @@ function PriceComparison({ row }: { row: AppealRow }) {
  * teks yang bukan angka.
  */
 function parseMoney(raw: string): number | null {
-  const text = raw.trim()
-  if (text === '') return null
+  const text = raw.trim();
+  if (text === "") return null;
 
-  const parsed = Number(text.replace(',', '.'))
-  return Number.isFinite(parsed) ? parsed : null
+  const parsed = Number(text.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function Figure({
   label,
   value,
-  tone = 'biasa',
+  tone = "biasa",
 }: {
-  label: string
-  value: string
-  tone?: 'biasa' | 'turun'
+  label: string;
+  value: string;
+  tone?: "biasa" | "turun";
 }) {
   return (
     <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2">
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd
         className={[
-          'mt-0.5 text-sm font-semibold tabular-nums',
-          tone === 'turun' ? 'text-red-700' : 'text-slate-900',
-        ].join(' ')}
+          "mt-0.5 text-sm font-semibold tabular-nums",
+          tone === "turun" ? "text-red-700" : "text-slate-900",
+        ].join(" ")}
       >
         {value}
       </dd>
     </div>
-  )
+  );
 }
 
 /** money menggambar nilai uang; nilai yang tidak terbaca digambar apa adanya, bukan nol. */
 function money(raw: string): string {
-  const parsed = parseMoney(raw)
-  if (parsed === null) return raw.trim() === '' ? '—' : raw
-  return parsed.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+  const parsed = parseMoney(raw);
+  if (parsed === null) return raw.trim() === "" ? "—" : raw;
+  return parsed.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -247,20 +252,23 @@ function money(raw: string): string {
 function titleOf(error: unknown): string {
   if (error instanceof APIError) {
     if (error.kode === BandingHargaSalvageError.alreadyDecided) {
-      return 'Banding ini sudah diputus'
+      return "Banding ini sudah diputus";
     }
     if (error.kode === BandingHargaSalvageError.validationFail) {
-      return 'Keputusan belum dapat disimpan'
+      return "Keputusan belum dapat disimpan";
     }
   }
-  return 'Keputusan tidak tersimpan'
+  return "Keputusan tidak tersimpan";
 }
 
-function toneOf(error: unknown): 'penolakan' | 'gangguan' {
-  if (error instanceof APIError && error.kode === BandingHargaSalvageError.alreadyDecided) {
-    return 'gangguan'
+function toneOf(error: unknown): "penolakan" | "gangguan" {
+  if (
+    error instanceof APIError &&
+    error.kode === BandingHargaSalvageError.alreadyDecided
+  ) {
+    return "gangguan";
   }
-  return 'penolakan'
+  return "penolakan";
 }
 
 /**
@@ -273,9 +281,10 @@ function toneOf(error: unknown): 'penolakan' | 'gangguan' {
  */
 function messageOf(error: unknown): string {
   if (error instanceof APIError) {
-    const violations = Object.values(error.violations())
-    if (violations.length > 0) return `${error.message} ${violations.join(' ')}`
-    return error.message
+    const violations = Object.values(error.violations());
+    if (violations.length > 0)
+      return `${error.message} ${violations.join(" ")}`;
+    return error.message;
   }
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

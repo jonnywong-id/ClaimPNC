@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useAttachSalvageDocuments } from './api'
+import { useAttachSalvageDocuments } from "./api";
 
 /**
  * Batas yang DIBACA PENGGUNA pada modal ini, dan yang benar-benar ditegakkan.
@@ -17,8 +17,8 @@ import { useAttachSalvageDocuments } from './api'
  * penyimpanan dokumen setelah seluruh isinya terkirim, dan pada koneksi kantor cabang itu
  * berarti menunggu lama untuk sebuah penolakan yang sudah dapat diketahui sejak awal.
  */
-const MAX_DOC = 5
-const MAX_SIZE_BYTES = 1024 * 1024
+const MAX_DOC = 5;
+const MAX_SIZE_BYTES = 1024 * 1024;
 
 /**
  * Modal **"UploadDocument_Salvage"** — di balik tombol "Upload file" pada form salvage.
@@ -63,7 +63,7 @@ export function UploadDocumentModal({
   onSaved,
 }: {
   /** Klaim yang dilampiri. Kosong berarti nomor klaimnya belum diisi di form. */
-  claimNo: string
+  claimNo: string;
 
   /**
    * Pengajuan yang dilampiri.
@@ -71,74 +71,74 @@ export function UploadDocumentModal({
    * Kosong pada form pengajuan BARU — pengajuannya belum punya nomor. Dokumennya tetap
    * tersimpan dan menempel pada klaimnya; yang dilewati hanyalah baris penautnya.
    */
-  salvageID: string
+  salvageID: string;
 
-  onClose: () => void
+  onClose: () => void;
 
   /** Dipanggil setelah dokumen benar-benar tersimpan, membawa pesan dari server. */
-  onSaved: (message: string) => void
+  onSaved: (message: string) => void;
 }) {
-  const [files, setFiles] = useState<File[]>([])
-  const [failure, setFailure] = useState('')
+  const [files, setFiles] = useState<File[]>([]);
+  const [failure, setFailure] = useState("");
 
-  const input = useRef<HTMLInputElement>(null)
-  const attach = useAttachSalvageDocuments()
+  const input = useRef<HTMLInputElement>(null);
+  const attach = useAttachSalvageDocuments();
 
   // Escape menutup modal, seperti dialog mana pun yang dikenal pengguna — KECUALI saat
   // pengiriman sedang berjalan. Menutupnya di tengah jalan tidak membatalkan apa pun di
   // server, dan pengguna akan mengira unggahannya gagal padahal sedang tersimpan.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !attach.isPending) onClose()
+      if (event.key === "Escape" && !attach.isPending) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, attach.isPending])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, attach.isPending]);
 
   function submit() {
     attach.mutate(
       { nomor_klaim: claimNo, id_salvage: salvageID, berkas: files },
       {
         onSuccess: (result) => {
-          onSaved(result.pesan)
-          onClose()
+          onSaved(result.pesan);
+          onClose();
         },
       },
-    )
+    );
   }
 
   function choose(event: React.ChangeEvent<HTMLInputElement>) {
-    const chosen = [...(event.target.files ?? [])]
+    const chosen = [...(event.target.files ?? [])];
 
     // Nilai input dikosongkan supaya berkas yang SAMA dapat dipilih lagi setelah ditolak.
     // Tanpa ini, memilih berkas yang sama dua kali tidak memicu perubahan apa pun.
-    event.target.value = ''
+    event.target.value = "";
 
-    if (chosen.length === 0) return
+    if (chosen.length === 0) return;
 
     // Kedua batas diperiksa terhadap gabungan yang sudah dipilih, bukan terhadap yang
     // baru saja ditambahkan: pengguna dapat memilih tiga berkas lalu tiga lagi.
-    const gabungan = [...files, ...chosen]
+    const gabungan = [...files, ...chosen];
 
     if (gabungan.length > MAX_DOC) {
       setFailure(
         `Paling banyak ${MAX_DOC} dokumen. Anda memilih ${gabungan.length}.`,
-      )
-      return
+      );
+      return;
     }
 
-    const kebesaran = gabungan.filter((file) => file.size > MAX_SIZE_BYTES)
+    const kebesaran = gabungan.filter((file) => file.size > MAX_SIZE_BYTES);
     if (kebesaran.length > 0) {
       setFailure(
         `Setiap berkas paling besar 1 MB. Yang melewati batas: ` +
-          kebesaran.map((file) => file.name).join(', ') +
-          '.',
-      )
-      return
+          kebesaran.map((file) => file.name).join(", ") +
+          ".",
+      );
+      return;
     }
 
-    setFailure('')
-    setFiles(gabungan)
+    setFailure("");
+    setFiles(gabungan);
   }
 
   return (
@@ -151,7 +151,10 @@ export function UploadDocumentModal({
       <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-kartu bg-white shadow-angkat">
         {/* Kepala modal: judul apa adanya beserta tanda silangnya. */}
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 id="judul-unggah-salvage" className="text-base font-medium text-slate-900">
+          <h2
+            id="judul-unggah-salvage"
+            className="text-base font-medium text-slate-900"
+          >
             UploadDocument_Salvage
           </h2>
           <button
@@ -194,7 +197,7 @@ export function UploadDocumentModal({
             </button>
           </div>
 
-          {failure !== '' && (
+          {failure !== "" && (
             <p className="text-sm text-red-700" role="alert">
               {failure}
             </p>
@@ -202,18 +205,24 @@ export function UploadDocumentModal({
 
           {files.length > 0 && (
             // Judulnya "Nama File", sama seperti kolom tunggal grid pada section aslinya.
-            <ul className="space-y-1 text-sm text-slate-700" aria-label="Nama File">
+            <ul
+              className="space-y-1 text-sm text-slate-700"
+              aria-label="Nama File"
+            >
               {files.map((file, index) => (
-                <li key={`${file.name}-${index}`} className="flex items-center gap-2">
+                <li
+                  key={`${file.name}-${index}`}
+                  className="flex items-center gap-2"
+                >
                   <span className="min-w-0 grow truncate">{file.name}</span>
                   <button
                     type="button"
                     disabled={attach.isPending}
                     onClick={() => {
-                      setFailure('')
+                      setFailure("");
                       setFiles((current) =>
                         current.filter((_, position) => position !== index),
-                      )
+                      );
                     }}
                     aria-label={`Buang ${file.name}`}
                     className="rounded-kontrol px-2 text-sm text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
@@ -240,10 +249,10 @@ export function UploadDocumentModal({
             penaut ke pengajuannya memang belum dapat ditulis. Mengatakannya sesudahnya
             membuat pengguna mengira sesuatu gagal.
           */}
-          {salvageID === '' && (
+          {salvageID === "" && (
             <p className="rounded-kontrol bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Pengajuan ini belum punya nomor, jadi dokumennya menempel pada klaimnya
-              lebih dulu.
+              Pengajuan ini belum punya nomor, jadi dokumennya menempel pada
+              klaimnya lebih dulu.
             </p>
           )}
         </div>
@@ -262,20 +271,20 @@ export function UploadDocumentModal({
           <Button
             type="button"
             className="grow"
-            disabled={files.length === 0 || claimNo === '' || attach.isPending}
+            disabled={files.length === 0 || claimNo === "" || attach.isPending}
             onClick={submit}
           >
-            {attach.isPending ? 'Mengirim…' : 'Submit'}
+            {attach.isPending ? "Mengirim…" : "Submit"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** messageOf mengambil kalimat yang layak dibaca dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

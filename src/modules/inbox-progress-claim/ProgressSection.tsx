@@ -1,14 +1,14 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column as TableColumn } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
-import { ChevronIcon } from '@/components/Icon'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column as TableColumn } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { SelectField } from "@/components/SelectField";
+import { ChevronIcon } from "@/components/Icon";
+import { formatDate } from "@/components/format";
 
-import { useProgressClaimList } from './api'
+import { useProgressClaimList } from "./api";
 import {
   EMPTY_FILTER,
   type BusinessLine,
@@ -18,20 +18,20 @@ import {
   type PageInfo,
   type Row,
   type Section,
-} from './types'
+} from "./types";
 
 type Props = {
-  section: Section
-  lines: BusinessLine[]
+  section: Section;
+  lines: BusinessLine[];
 
   /** Bagian ini terbuka saat layar pertama dibuka. */
-  openByDefault: boolean
+  openByDefault: boolean;
 
   /** Metadata sudah diterima; sebelum itu tidak ada yang layak diminta. */
-  ready: boolean
+  ready: boolean;
 
-  onOpenClaim: (claimNumber: string) => void
-}
+  onOpenClaim: (claimNumber: string) => void;
+};
 
 /**
  * Satu bagian layar Inbox Progress Claim.
@@ -56,9 +56,9 @@ export function ProgressSection({
   ready,
   onOpenClaim,
 }: Props) {
-  const [open, setOpen] = useState(openByDefault)
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [open, setOpen] = useState(openByDefault);
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
   /**
    * Isi kotak cari yang sedang DIKETIK, terpisah dari kata kunci yang sudah dikirim.
@@ -68,7 +68,7 @@ export function ProgressSection({
    * karena kotak cari di sistem lama pun baru menyaring setelah tombol "Cari Data"
    * ditekan.
    */
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("");
 
   /**
    * Bagian yang memang kosong di sistem lama TIDAK meminta apa pun ke server.
@@ -77,24 +77,29 @@ export function ProgressSection({
    * tetap sia-sia: jawabannya sudah pasti kosong, dan bentuk layarnya sudah diketahui
    * dari metadata.
    */
-  const empty = section.bentuk === 'kosong'
+  const empty = section.bentuk === "kosong";
 
-  const list = useProgressClaimList(section.kode, filter, page, ready && open && !empty)
+  const list = useProgressClaimList(
+    section.kode,
+    filter,
+    page,
+    ready && open && !empty,
+  );
 
   function commitSearch() {
-    setFilter((previous) => ({ ...previous, cari: draft }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, cari: draft }));
+    setPage(1);
   }
 
   function changeFilter(patch: Partial<FilterForm>) {
-    setFilter((previous) => ({ ...previous, ...patch }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, ...patch }));
+    setPage(1);
   }
 
   function clearFilter() {
-    setFilter(EMPTY_FILTER)
-    setDraft('')
-    setPage(1)
+    setFilter(EMPTY_FILTER);
+    setDraft("");
+    setPage(1);
   }
 
   return (
@@ -162,7 +167,7 @@ export function ProgressSection({
         </div>
       )}
     </section>
-  )
+  );
 }
 
 /** Kepala bagian yang dapat dibuka dan ditutup. */
@@ -171,9 +176,9 @@ function SectionHeader({
   open,
   onToggle,
 }: {
-  section: Section
-  open: boolean
-  onToggle: () => void
+  section: Section;
+  open: boolean;
+  onToggle: () => void;
 }) {
   return (
     <button
@@ -181,23 +186,27 @@ function SectionHeader({
       onClick={onToggle}
       aria-expanded={open}
       className={[
-        'flex w-full items-start justify-between gap-4 px-4 py-3 text-left',
-        'transition-colors duration-150 ease-halus hover:bg-slate-50',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "flex w-full items-start justify-between gap-4 px-4 py-3 text-left",
+        "transition-colors duration-150 ease-halus hover:bg-slate-50",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       <span>
-        <span className="block text-sm font-semibold text-slate-900">{section.nama}</span>
-        <span className="mt-0.5 block text-xs text-slate-600">{section.keterangan}</span>
+        <span className="block text-sm font-semibold text-slate-900">
+          {section.nama}
+        </span>
+        <span className="mt-0.5 block text-xs text-slate-600">
+          {section.keterangan}
+        </span>
       </span>
       <ChevronIcon
         className={[
-          'mt-1 size-4 shrink-0 text-slate-500 transition-transform duration-150',
-          open ? 'rotate-180' : '',
-        ].join(' ')}
+          "mt-1 size-4 shrink-0 text-slate-500 transition-transform duration-150",
+          open ? "rotate-180" : "",
+        ].join(" ")}
       />
     </button>
-  )
+  );
 }
 
 /**
@@ -211,11 +220,11 @@ function SectionHeader({
 function EmptyRegionNote() {
   return (
     <p className="text-sm text-slate-600">
-      Bagian ini kosong di sistem lama: judulnya ada, tetapi tidak ada satu pun kolom
-      maupun sumber data di baliknya. Tidak ada yang dapat dipindahkan, dan isinya menunggu
-      keterangan dari pemilik proses.
+      Bagian ini kosong di sistem lama: judulnya ada, tetapi tidak ada satu pun
+      kolom maupun sumber data di baliknya. Tidak ada yang dapat dipindahkan,
+      dan isinya menunggu keterangan dari pemilik proses.
     </p>
-  )
+  );
 }
 
 /**
@@ -234,19 +243,21 @@ function FilterBar({
   onChange,
   onClear,
 }: {
-  section: Section
-  lines: BusinessLine[]
-  filter: FilterForm
-  search: string
-  onSearch: (text: string) => void
-  onCommitSearch: () => void
-  onChange: (patch: Partial<FilterForm>) => void
-  onClear: () => void
+  section: Section;
+  lines: BusinessLine[];
+  filter: FilterForm;
+  search: string;
+  onSearch: (text: string) => void;
+  onCommitSearch: () => void;
+  onChange: (patch: Partial<FilterForm>) => void;
+  onClear: () => void;
 }) {
   const anyControl =
-    section.pakai_pencarian || section.pakai_lini_bisnis || section.pakai_rentang_tanggal
+    section.pakai_pencarian ||
+    section.pakai_lini_bisnis ||
+    section.pakai_rentang_tanggal;
 
-  if (!anyControl) return null
+  if (!anyControl) return null;
 
   return (
     <div className="flex flex-wrap items-end gap-4">
@@ -265,12 +276,12 @@ function FilterBar({
             placeholder="No Klaim, No Polis, atau PIC"
             onChange={(event) => onSearch(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') onCommitSearch()
+              if (event.key === "Enter") onCommitSearch();
             }}
             className={[
-              'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-              'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-            ].join(' ')}
+              "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+              "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+            ].join(" ")}
           />
           <p className="mt-1 text-xs text-slate-500">
             Menelusuri No Klaim, No Polis, dan nama PIC sekaligus.
@@ -283,7 +294,10 @@ function FilterBar({
           <SelectField
             id={`bisnis-${section.kode}`}
             label="Lini Bisnis"
-            options={lines.map((line) => ({ value: line.kode, label: line.label }))}
+            options={lines.map((line) => ({
+              value: line.kode,
+              label: line.label,
+            }))}
             emptyText="Pilih lini bisnis"
             value={filter.bisnis}
             onChange={(event) => onChange({ bisnis: event.target.value })}
@@ -325,7 +339,7 @@ function FilterBar({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /** Satu isian tanggal. */
@@ -335,10 +349,10 @@ function DateField({
   value,
   onChange,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <div className="w-full sm:w-44">
@@ -351,12 +365,12 @@ function DateField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={[
-          'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-          'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-        ].join(' ')}
+          "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+          "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+        ].join(" ")}
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -367,18 +381,18 @@ function DateField({
  * jawaban alih-alih menduga modulnya belum selesai.
  */
 function DeadControlNotes({ section }: { section: Section }) {
-  if (section.kontrol_mati.length === 0) return null
+  if (section.kontrol_mati.length === 0) return null;
 
   return (
     <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-500">
       {section.kontrol_mati.map((control) => (
         <li key={control.nama}>
-          Penyaring <span className="font-medium">{control.nama}</span> tidak dibawa —{' '}
-          {control.alasan}.
+          Penyaring <span className="font-medium">{control.nama}</span> tidak
+          dibawa — {control.alasan}.
         </li>
       ))}
     </ul>
-  )
+  );
 }
 
 /**
@@ -395,13 +409,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -425,7 +439,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -447,20 +461,22 @@ export function columnsFor(
     // tooltip kolom supaya "District" yang berisi nama tertanggung tetap dapat dipahami.
     render: renderFor(column),
     alignRight: isCount(column.isian),
-  }))
+  }));
 
-  if (section.bentuk === 'klaim') {
+  if (section.bentuk === "klaim") {
     columns.push({
-      key: 'aksi',
-      title: '',
-      value: () => '',
-      render: (row) => <DetailButton row={row as ClaimRow} onOpen={onOpenClaim} />,
+      key: "aksi",
+      title: "",
+      value: () => "",
+      render: (row) => (
+        <DetailButton row={row as ClaimRow} onOpen={onOpenClaim} />
+      ),
       noSort: true,
       alignRight: true,
-    })
+    });
   }
 
-  return columns
+  return columns;
 }
 
 /**
@@ -476,39 +492,41 @@ export function columnsFor(
  *     dan tanpa angkanya pengguna harus menghitung koma.
  */
 function renderFor(column: Column): (row: Row) => ReactNode {
-  if (column.isian === 'no_polis') {
+  if (column.isian === "no_polis") {
     return (row) => {
-      const claim = row as ClaimRow
+      const claim = row as ClaimRow;
       return (
         <span title={column.keterangan}>
-          {claim.no_polis || '—'}
-          {claim.prod_ke !== '' && (
+          {claim.no_polis || "—"}
+          {claim.prod_ke !== "" && (
             <span className="mt-0.5 block text-xs text-slate-500">
               Prod ke-{claim.prod_ke}
             </span>
           )}
         </span>
-      )
-    }
+      );
+    };
   }
 
-  if (column.isian === 'posisi') {
+  if (column.isian === "posisi") {
     return (row) => {
-      const claim = row as ClaimRow
+      const claim = row as ClaimRow;
       return (
         <span title={column.keterangan}>
-          {claim.posisi || '—'}
+          {claim.posisi || "—"}
           {claim.jumlah_posisi > 1 && (
             <span className="mt-0.5 block text-xs text-slate-500">
               {claim.jumlah_posisi} posisi berjalan
             </span>
           )}
         </span>
-      )
-    }
+      );
+    };
   }
 
-  return (row) => <span title={column.keterangan}>{cellText(row, column)}</span>
+  return (row) => (
+    <span title={column.keterangan}>{cellText(row, column)}</span>
+  );
 }
 
 /** Tombol "Lihat Detail Klaim". */
@@ -516,29 +534,29 @@ function DetailButton({
   row,
   onOpen,
 }: {
-  row: ClaimRow
-  onOpen: (claimNumber: string) => void
+  row: ClaimRow;
+  onOpen: (claimNumber: string) => void;
 }) {
   return (
     <Button
       tone="halus"
-      disabled={row.no_klaim === ''}
+      disabled={row.no_klaim === ""}
       onClick={() => onOpen(row.no_klaim)}
     >
       Lihat Detail Klaim
     </Button>
-  )
+  );
 }
 
 /** isCount menyatakan sebuah kolom berisi angka pencacah. */
-function isCount(field: Column['isian']): boolean {
+function isCount(field: Column["isian"]): boolean {
   return (
-    field === 'jumlah_klaim' ||
-    field === 'jumlah_pembaruan' ||
-    field === 'jatuh_tempo_hari_ini' ||
-    field === 'tepat_waktu' ||
-    field === 'terlambat'
-  )
+    field === "jumlah_klaim" ||
+    field === "jumlah_pembaruan" ||
+    field === "jatuh_tempo_hari_ini" ||
+    field === "tepat_waktu" ||
+    field === "terlambat"
+  );
 }
 
 /**
@@ -553,18 +571,18 @@ function isCount(field: Column['isian']): boolean {
  * memecah teksnya lagi, dan pemecahan itu akan salah begitu sebuah nilai memuat koma.
  */
 export function cellText(row: Row, column: Column): string {
-  const value = (row as Record<string, unknown>)[column.isian]
+  const value = (row as Record<string, unknown>)[column.isian];
 
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'number') return String(value)
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "number") return String(value);
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  const text = String(value);
+  return isDate(text) ? formatDate(text) : text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk kolom tanggal tunggal. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -574,10 +592,10 @@ function isDate(text: string): boolean {
  * dalam hasilnya sendiri.
  */
 function rowKeyFor(section: Section): (row: Row) => string {
-  if (section.bentuk === 'pic') {
-    return (row) => (row as { pic: string }).pic
+  if (section.bentuk === "pic") {
+    return (row) => (row as { pic: string }).pic;
   }
-  return (row) => (row as ClaimRow).no_klaim
+  return (row) => (row as ClaimRow).no_klaim;
 }
 
 /**
@@ -587,26 +605,26 @@ function rowKeyFor(section: Section): (row: Row) => string {
  * daftar yang memang tidak punya pekerjaan, dan tindakannya pun berbeda.
  */
 export function emptyMessageFor(section: Section, filter: FilterForm): string {
-  if (section.bentuk === 'pic' && filter.bisnis === '') {
-    return 'Pilih lini bisnis lebih dulu untuk melihat rekapnya.'
+  if (section.bentuk === "pic" && filter.bisnis === "") {
+    return "Pilih lini bisnis lebih dulu untuk melihat rekapnya.";
   }
-  if (filter.cari.trim() !== '') {
-    return 'Tidak ada baris yang cocok dengan pencarian ini.'
+  if (filter.cari.trim() !== "") {
+    return "Tidak ada baris yang cocok dengan pencarian ini.";
   }
-  if (filter.dari !== '' || filter.sampai !== '') {
-    return 'Tidak ada baris pada rentang tanggal registrasi yang dipilih.'
+  if (filter.dari !== "" || filter.sampai !== "") {
+    return "Tidak ada baris pada rentang tanggal registrasi yang dipilih.";
   }
-  if (section.bentuk === 'pic') {
-    return 'Belum ada rekap untuk Anda pada lini bisnis ini. Rekap hanya muncul bila Anda terdaftar sebagai PIC teknis lini bisnis tersebut.'
+  if (section.bentuk === "pic") {
+    return "Belum ada rekap untuk Anda pada lini bisnis ini. Rekap hanya muncul bila Anda terdaftar sebagai PIC teknis lini bisnis tersebut.";
   }
-  if (section.kode === 'next-fu') {
-    return 'Tidak ada klaim yang harus ditindaklanjuti hari ini.'
+  if (section.kode === "next-fu") {
+    return "Tidak ada klaim yang harus ditindaklanjuti hari ini.";
   }
-  return 'Tidak ada klaim yang sedang berjalan.'
+  return "Tidak ada klaim yang sedang berjalan.";
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

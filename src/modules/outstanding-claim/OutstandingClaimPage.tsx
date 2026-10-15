@@ -1,14 +1,21 @@
-import type { ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import type { ReactNode } from "react";
+import { Link, useParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { useOutstandingClaimDetail, useOutstandingClaimLayout } from './api'
-import type { DetailResponse, Field, Grid, GridRow, Group, LayoutResponse } from './types'
+import { useOutstandingClaimDetail, useOutstandingClaimLayout } from "./api";
+import type {
+  DetailResponse,
+  Field,
+  Grid,
+  GridRow,
+  Group,
+  LayoutResponse,
+} from "./types";
 
 /**
  * Rincian satu klaim treaty proporsional — pengganti Flow Action `OutstandingClaim` beserta
@@ -40,11 +47,11 @@ import type { DetailResponse, Field, Grid, GridRow, Group, LayoutResponse } from
  * (`P-1`). Perubahan klaim treaty tetap dilakukan lewat Pega.
  */
 export function OutstandingClaimPage() {
-  const { no_klaim: claimID = '' } = useParams<{ no_klaim: string }>()
-  const portal = useSelectedPortal((state) => state.alias)
+  const { no_klaim: claimID = "" } = useParams<{ no_klaim: string }>();
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const layout = useOutstandingClaimLayout()
-  const detail = useOutstandingClaimDetail(claimID)
+  const layout = useOutstandingClaimLayout();
+  const detail = useOutstandingClaimDetail(claimID);
 
   if (portal === null) {
     return (
@@ -52,28 +59,30 @@ export function OutstandingClaimPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Klaim treaty milik satu badan hukum, dan aplikasi ini melayani empat. Pilih ' +
-            'portal di bilah atas untuk membukanya.'
+            "Klaim treaty milik satu badan hukum, dan aplikasi ini melayani empat. Pilih " +
+            "portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (layout.isError || detail.isError) {
-    const error = layout.error ?? detail.error
-    const notFound = error instanceof APIError && error.status === 404
+    const error = layout.error ?? detail.error;
+    const notFound = error instanceof APIError && error.status === 404;
 
     return (
       <PageFrame claimID={claimID}>
         <ErrorMessage
-          title={notFound ? 'Klaim tidak ditemukan' : 'Rincian tidak dapat dimuat'}
+          title={
+            notFound ? "Klaim tidak ditemukan" : "Rincian tidak dapat dimuat"
+          }
           description={messageOf(error)}
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (layout.isPending || detail.isPending) {
@@ -83,7 +92,7 @@ export function OutstandingClaimPage() {
           Memuat rincian klaim…
         </p>
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -99,7 +108,7 @@ export function OutstandingClaimPage() {
         ))}
       </div>
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({
@@ -107,12 +116,12 @@ function PageFrame({
   claim,
   children,
 }: {
-  claimID: string
-  claim?: DetailResponse
-  children: ReactNode
+  claimID: string;
+  claim?: DetailResponse;
+  children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         {/*
           Tautan kembali digambar SEBELUM judul, bukan sebagai tombol di kanan: layar ini
@@ -137,16 +146,17 @@ function PageFrame({
 
         {claim && (
           <p className="mt-1 text-sm text-slate-600">
-            {claim.isian['insured_name'] || 'Tertanggung tidak tercatat'}
-            {' · '}
-            {claim.status_kerja || 'Status tidak tercatat'}
-            {claim.operator_pengubah !== '' && ` · diubah terakhir oleh ${claim.operator_pengubah}`}
+            {claim.isian["insured_name"] || "Tertanggung tidak tercatat"}
+            {" · "}
+            {claim.status_kerja || "Status tidak tercatat"}
+            {claim.operator_pengubah !== "" &&
+              ` · diubah terakhir oleh ${claim.operator_pengubah}`}
           </p>
         )}
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -160,15 +170,15 @@ function GroupCard({
   claim,
   layout,
 }: {
-  group: Group
-  claim: DetailResponse
-  layout: LayoutResponse
+  group: Group;
+  claim: DetailResponse;
+  layout: LayoutResponse;
 }) {
   const grids = group.grid
     .map((code) => layout.grid.find((candidate) => candidate.kode === code))
-    .filter((grid): grid is Grid => grid !== undefined)
+    .filter((grid): grid is Grid => grid !== undefined);
 
-  if (group.isian.length === 0 && grids.length === 0) return null
+  if (group.isian.length === 0 && grids.length === 0) return null;
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-white">
@@ -192,12 +202,16 @@ function GroupCard({
       {grids.length > 0 && (
         <div className="space-y-4 px-4 pt-2 pb-4">
           {grids.map((grid) => (
-            <GridBlock key={grid.kode} grid={grid} rows={claim.baris[grid.kode] ?? []} />
+            <GridBlock
+              key={grid.kode}
+              grid={grid}
+              rows={claim.baris[grid.kode] ?? []}
+            />
           ))}
         </div>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -210,7 +224,9 @@ function GroupCard({
 function FieldCell({ field, claim }: { field: Field; claim: DetailResponse }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-medium tracking-wide text-slate-500">{field.judul}</dt>
+      <dt className="text-xs font-medium tracking-wide text-slate-500">
+        {field.judul}
+      </dt>
       <dd className="mt-0.5 text-sm break-words text-slate-900">
         {field.terhalang ? (
           <span
@@ -224,7 +240,7 @@ function FieldCell({ field, claim }: { field: Field; claim: DetailResponse }) {
         )}
       </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -243,11 +259,12 @@ function GridBlock({ grid, rows }: { grid: Grid; rows: GridRow[] }) {
         <p className="mt-1 text-sm text-slate-700">{grid.alasan_terhalang}</p>
         {grid.pemilik_penghalang && (
           <p className="mt-1 text-xs text-slate-600">
-            <span className="font-medium">Menunggu:</span> {grid.pemilik_penghalang}
+            <span className="font-medium">Menunggu:</span>{" "}
+            {grid.pemilik_penghalang}
           </p>
         )}
       </div>
-    )
+    );
   }
 
   /*
@@ -262,20 +279,23 @@ function GridBlock({ grid, rows }: { grid: Grid; rows: GridRow[] }) {
     Namanya berawalan garis bawah ganda supaya tidak dapat bertabrakan dengan kunci kolom
     yang datang dari server.
   */
-  const keyed = rows.map((row, position) => ({ ...row, __baris: String(position) }))
+  const keyed = rows.map((row, position) => ({
+    ...row,
+    __baris: String(position),
+  }));
 
   return (
     <DataTable<GridRow>
       columns={columnsFor(grid)}
       rows={keyed}
-      rowKey={(row) => `${grid.kode}-${row['__baris']}`}
+      rowKey={(row) => `${grid.kode}-${row["__baris"]}`}
       title={grid.judul}
       label={grid.judul}
       hideSearch
       showHeaderWhenEmpty
       emptyMessage="Tidak ada baris."
     />
-  )
+  );
 }
 
 /**
@@ -289,7 +309,7 @@ function columnsFor(grid: Grid): Column<GridRow>[] {
     title: column.judul,
     value: (row) => cellText(row[column.kunci]),
     noSort: true,
-  }))
+  }));
 }
 
 /**
@@ -304,17 +324,17 @@ function columnsFor(grid: Grid): Column<GridRow>[] {
  * yang gagal dimuat.
  */
 function cellText(value: string | undefined): string {
-  if (value === undefined || value === '') return '—'
-  return isDate(value) ? formatDate(value) : value
+  if (value === undefined || value === "") return "—";
+  return isDate(value) ? formatDate(value) : value;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD`. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

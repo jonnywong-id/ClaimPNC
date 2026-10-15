@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useBusinessOptions, useExportReport, useReportCatalog } from './api'
+import { useBusinessOptions, useExportReport, useReportCatalog } from "./api";
 import {
   EMPTY_FILTER,
   type BusinessLine,
@@ -15,7 +15,7 @@ import {
   type ExportRequest,
   type Report,
   type ReportFilter,
-} from './types'
+} from "./types";
 
 /**
  * Report Klaim — menu `MENU_ID 85`, pengganti harness `PNCTATReport`.
@@ -57,27 +57,27 @@ import {
  * panel, dan itulah yang sekarang digambar.
  */
 export function ReportKlaimPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER)
-  const [sedangDiunduh, setSedangDiunduh] = useState<string | null>(null)
+  const portal = useSelectedPortal((state) => state.alias);
+  const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER);
+  const [sedangDiunduh, setSedangDiunduh] = useState<string | null>(null);
 
-  const catalog = useReportCatalog()
-  const exportReport = useExportReport()
+  const catalog = useReportCatalog();
+  const exportReport = useExportReport();
 
   // Daftar bisnis ditarik hanya ketika pengguna menyentuh autocomplete-nya — ia dapat
   // berisi ratusan baris, dan 27 dari 28 panel tidak memakainya.
-  const [bisnisDiminta, setBisnisDiminta] = useState(false)
-  const businessOptions = useBusinessOptions(bisnisDiminta)
+  const [bisnisDiminta, setBisnisDiminta] = useState(false);
+  const businessOptions = useBusinessOptions(bisnisDiminta);
 
   function unduh(laporan: Report, aksi: string) {
-    setSedangDiunduh(laporan.kode)
+    setSedangDiunduh(laporan.kode);
     const request: ExportRequest = {
       kode: laporan.kode,
       aksi,
       filter,
       penyaring: laporan.penyaring,
-    }
-    exportReport.mutate(request, { onSettled: () => setSedangDiunduh(null) })
+    };
+    exportReport.mutate(request, { onSettled: () => setSedangDiunduh(null) });
   }
 
   if (portal === null) {
@@ -86,26 +86,27 @@ export function ReportKlaimPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Berkas laporan memuat data klaim milik satu badan hukum, dan aplikasi ini ' +
-            'melayani empat. Pilih portal di bilah atas untuk membuka layar ini.'
+            "Berkas laporan memuat data klaim milik satu badan hukum, dan aplikasi ini " +
+            "melayani empat. Pilih portal di bilah atas untuk membuka layar ini."
           }
           tone="penolakan"
         />
       </div>
-    )
+    );
   }
 
-  const ubah = (bagian: Partial<ReportFilter>) => setFilter({ ...filter, ...bagian })
+  const ubah = (bagian: Partial<ReportFilter>) =>
+    setFilter({ ...filter, ...bagian });
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <header>
         <h1 className="text-xl font-semibold text-slate-900">
-          {catalog.data?.judul ?? 'Report Claim'}
+          {catalog.data?.judul ?? "Report Claim"}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pilih periode dan penyaringnya, lalu tekan Export pada laporan yang dituju.
-          Berkasnya terunduh dalam bentuk CSV.
+          Pilih periode dan penyaringnya, lalu tekan Export pada laporan yang
+          dituju. Berkasnya terunduh dalam bentuk CSV.
         </p>
       </header>
 
@@ -125,7 +126,9 @@ export function ReportKlaimPage() {
         />
       )}
 
-      {catalog.isPending && <p className="text-sm text-slate-500">Memuat daftar laporan…</p>}
+      {catalog.isPending && (
+        <p className="text-sm text-slate-500">Memuat daftar laporan…</p>
+      )}
 
       {catalog.isError && (
         <ErrorMessage
@@ -154,17 +157,17 @@ export function ReportKlaimPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 type FilterBarProps = {
-  filter: ReportFilter
-  ubah: (bagian: Partial<ReportFilter>) => void
-  liniBisnis: BusinessLine[]
-  statusCompliance: ComplianceStatus[]
+  filter: ReportFilter;
+  ubah: (bagian: Partial<ReportFilter>) => void;
+  liniBisnis: BusinessLine[];
+  statusCompliance: ComplianceStatus[];
   /** Pesan per isian dari penolakan terakhir, dikunci nama isiannya. */
-  pelanggaran: Record<string, string>
-}
+  pelanggaran: Record<string, string>;
+};
 
 /**
  * Bilah penyaring bersama — EMPAT kontrol, persis seperti harness.
@@ -179,7 +182,13 @@ type FilterBarProps = {
  * Layar Pega menampilkan keempat isiannya hidup setiap saat, dan isian yang tidak dipakai
  * sebuah laporan diabaikan peladen. Itu yang ditiru.
  */
-function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: FilterBarProps) {
+function FilterBar({
+  filter,
+  ubah,
+  liniBisnis,
+  statusCompliance,
+  pelanggaran,
+}: FilterBarProps) {
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -188,7 +197,7 @@ function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: 
           label="Dari"
           type="date"
           value={filter.dari}
-          error={pelanggaran['dari']}
+          error={pelanggaran["dari"]}
           onChange={(e) => ubah({ dari: e.target.value })}
         />
         <Field
@@ -196,7 +205,7 @@ function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: 
           label="Sampai"
           type="date"
           value={filter.sampai}
-          error={pelanggaran['sampai']}
+          error={pelanggaran["sampai"]}
           onChange={(e) => ubah({ sampai: e.target.value })}
         />
         {/*
@@ -208,7 +217,7 @@ function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: 
           label="Bisnis"
           value={filter.lini}
           options={liniBisnis
-            .filter((l) => l.nilai !== '')
+            .filter((l) => l.nilai !== "")
             .map((l) => ({ value: l.nilai, label: l.nama }))}
           emptyText="----- Pilih -----"
           onChange={(e) => ubah({ lini: e.target.value })}
@@ -244,19 +253,19 @@ function FilterBar({ filter, ubah, liniBisnis, statusCompliance, pelanggaran }: 
         </fieldset>
       </div>
     </div>
-  )
+  );
 }
 
 type RowProps = {
-  laporan: Report
-  filter: ReportFilter
-  ubah: (bagian: Partial<ReportFilter>) => void
-  bisnis: { kode: string; nama: string }[]
-  bisnisMemuat: boolean
-  mintaBisnis: () => void
-  sedangDiunduh: boolean
-  onExport: (aksi: string) => void
-}
+  laporan: Report;
+  filter: ReportFilter;
+  ubah: (bagian: Partial<ReportFilter>) => void;
+  bisnis: { kode: string; nama: string }[];
+  bisnisMemuat: boolean;
+  mintaBisnis: () => void;
+  sedangDiunduh: boolean;
+  onExport: (aksi: string) => void;
+};
 
 /**
  * Satu baris laporan: judul, tombol Export di sampingnya, dan isian khusus panel itu.
@@ -275,17 +284,17 @@ function ReportRow({
   sedangDiunduh,
   onExport,
 }: RowProps) {
-  const mati = !laporan.tersedia
+  const mati = !laporan.tersedia;
 
   return (
     <article
       className={`rounded-kartu border p-4 shadow-lembut ${
-        mati ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'
+        mati ? "border-slate-200 bg-slate-50" : "border-slate-200 bg-white"
       }`}
     >
       <div className="flex flex-wrap items-center gap-3">
         <h2
-          className={`text-sm font-semibold ${mati ? 'text-slate-500' : 'text-slate-900'}`}
+          className={`text-sm font-semibold ${mati ? "text-slate-500" : "text-slate-900"}`}
         >
           {laporan.judul}
         </h2>
@@ -297,12 +306,16 @@ function ReportRow({
         ) : (
           laporan.tombol.map((tombol) => (
             <Button
-              key={tombol.kode === '' ? laporan.kode : tombol.kode}
-              tone={laporan.tombol.length > 1 && tombol.kode === 'rejected' ? 'kedua' : 'utama'}
+              key={tombol.kode === "" ? laporan.kode : tombol.kode}
+              tone={
+                laporan.tombol.length > 1 && tombol.kode === "rejected"
+                  ? "kedua"
+                  : "utama"
+              }
               disabled={sedangDiunduh}
               onClick={() => onExport(tombol.kode)}
             >
-              {sedangDiunduh ? 'Menyiapkan…' : tombol.label}
+              {sedangDiunduh ? "Menyiapkan…" : tombol.label}
             </Button>
           ))
         )}
@@ -336,13 +349,15 @@ function ReportRow({
             onMouseDown={mintaBisnis}
             onChange={(e) => ubah({ bisnis: e.target.value })}
             className={
-              'w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 ' +
-              'text-slate-900 shadow-lembut transition-[border-color,box-shadow] ' +
-              'duration-150 ease-halus focus:border-blue-500 focus:outline-none ' +
-              'focus-visible:ring-4 focus-visible:ring-blue-500/20'
+              "w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 " +
+              "text-slate-900 shadow-lembut transition-[border-color,box-shadow] " +
+              "duration-150 ease-halus focus:border-blue-500 focus:outline-none " +
+              "focus-visible:ring-4 focus-visible:ring-blue-500/20"
             }
           >
-            <option value="">{bisnisMemuat ? 'Memuat…' : '----- Pilih -----'}</option>
+            <option value="">
+              {bisnisMemuat ? "Memuat…" : "----- Pilih -----"}
+            </option>
             {bisnis.map((b) => (
               <option key={b.kode} value={b.kode}>
                 {b.nama}
@@ -373,7 +388,7 @@ function ReportRow({
       {mati && (
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
           {laporan.alasan}
-          {laporan.penghalang !== undefined && laporan.penghalang !== '' && (
+          {laporan.penghalang !== undefined && laporan.penghalang !== "" && (
             <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 font-medium text-slate-600">
               {laporan.penghalang}
             </span>
@@ -381,7 +396,7 @@ function ReportRow({
         </p>
       )}
     </article>
-  )
+  );
 }
 
 function messageOf(failure: unknown): string {
@@ -389,12 +404,12 @@ function messageOf(failure: unknown): string {
     // Pesan ringkasnya DIGANTI daftar isian yang kurang, bukan ditambahi: ringkasan
     // "Ada isian yang belum benar." tidak dapat ditindaklanjuti pada layar yang punya
     // empat isian dan 28 tombol.
-    const perIsian = Object.values(failure.violations())
-    if (perIsian.length > 0) return perIsian.join(' ')
-    return failure.message
+    const perIsian = Object.values(failure.violations());
+    if (perIsian.length > 0) return perIsian.join(" ");
+    return failure.message;
   }
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }
 
 /**
@@ -403,13 +418,13 @@ function messageOf(failure: unknown): string {
  * Isian yang belum benar dapat diperbaiki pengguna; kegagalan sistem tidak. Menyamakan
  * tampilannya membuat pengguna mencoba berulang kali pada hal yang tidak akan berubah.
  */
-function toneOf(failure: unknown): 'penolakan' | 'gangguan' {
-  if (failure instanceof APIError && failure.status < 500) return 'penolakan'
-  return 'gangguan'
+function toneOf(failure: unknown): "penolakan" | "gangguan" {
+  if (failure instanceof APIError && failure.status < 500) return "penolakan";
+  return "gangguan";
 }
 
 /** pelanggaranOf mengambil pesan PER ISIAN dari sebuah penolakan. */
 function pelanggaranOf(failure: unknown): Record<string, string> {
-  if (failure instanceof APIError) return failure.violations()
-  return {}
+  if (failure instanceof APIError) return failure.violations();
+  return {};
 }

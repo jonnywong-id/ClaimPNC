@@ -1,18 +1,18 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { ReloadIcon } from '@/components/Icon'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { ReloadIcon } from "@/components/Icon";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { downloadOutstandingCSV, PAGE_SIZE, useOutstandingList } from './api'
-import { DocumentStatusTab, PANEL_ID, tabId } from './DocumentStatusTab'
-import type { DocumentStatusCode, OutstandingClaim } from './types'
+import { downloadOutstandingCSV, PAGE_SIZE, useOutstandingList } from "./api";
+import { DocumentStatusTab, PANEL_ID, tabId } from "./DocumentStatusTab";
+import type { DocumentStatusCode, OutstandingClaim } from "./types";
 
 /**
  * Layar Inbox Outstanding.
@@ -61,15 +61,17 @@ import type { DocumentStatusCode, OutstandingClaim } from './types'
  * yang dimiliki modul lain.
  */
 export function OutstandingPage() {
-  const [search, setSearch] = useState('')
-  const [offset, setOffset] = useState(0)
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
 
   // Status dokumen yang sedang dipilih. Diisi HANYA lewat deret tab — tidak ada dropdown
   // terpisah, sama seperti Inbox Auto Claim dan sama seperti Pega, yang juga memakai tab
   // sebagai satu-satunya cara memilih. Teks kosong berarti tab "ALL Case".
-  const [documentStatus, setDocumentStatus] = useState<DocumentStatusCode | ''>('')
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatusCode | "">(
+    "",
+  );
 
-  const list = useOutstandingList({ search, documentStatus, offset })
+  const list = useOutstandingList({ search, documentStatus, offset });
 
   /**
    * Mengganti status mengembalikan paginasi ke halaman pertama.
@@ -78,38 +80,38 @@ export function OutstandingPage() {
    * baris akan melihat grid KOSONG — dan tidak ada yang memberi tahu bahwa sebabnya
    * halaman, bukan penyaringnya.
    */
-  function changeDocumentStatus(next: DocumentStatusCode | '') {
-    setDocumentStatus(next)
-    setOffset(0)
+  function changeDocumentStatus(next: DocumentStatusCode | "") {
+    setDocumentStatus(next);
+    setOffset(0);
   }
-  const portal = useSelectedPortal((state) => state.alias)
-  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias);
+  const token = useSession((state) => state.token);
 
-  const [downloading, setDownloading] = useState(false)
-  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const rows = list.data?.klaim ?? []
-  const total = list.data?.total ?? 0
+  const rows = list.data?.klaim ?? [];
+  const total = list.data?.total ?? 0;
 
   function changeSearch(next: string) {
-    setSearch(next)
+    setSearch(next);
     // Halaman dikembalikan ke awal. Tanpa ini, mencari dari halaman empat akan
     // menampilkan tabel kosong yang tampak rusak.
-    setOffset(0)
+    setOffset(0);
   }
 
   async function download() {
-    if (token === null || portal === null) return
+    if (token === null || portal === null) return;
 
-    setDownloading(true)
-    setDownloadError(null)
+    setDownloading(true);
+    setDownloadError(null);
     try {
       // Penyaring layar TIDAK dikirim: unduhan mencakup lini bisnis, bukan isi layar.
-      await downloadOutstandingCSV(token, portal)
+      await downloadOutstandingCSV(token, portal);
     } catch (failure) {
-      setDownloadError(errorMessage(failure))
+      setDownloadError(errorMessage(failure));
     } finally {
-      setDownloading(false)
+      setDownloading(false);
     }
   }
 
@@ -124,9 +126,9 @@ export function OutstandingPage() {
    */
   const columns: Column<OutstandingClaim>[] = [
     {
-      key: 'claim_no',
-      title: 'Claim no',
-      width: '11rem',
+      key: "claim_no",
+      title: "Claim no",
+      width: "11rem",
       value: (c) => c.nomor_klaim,
       render: (c) =>
         isOpenableHere(c.nomor_klaim) ? (
@@ -155,82 +157,86 @@ export function OutstandingPage() {
         ),
     },
     {
-      key: 'policy_no',
-      title: 'Policy no',
-      width: '11rem',
+      key: "policy_no",
+      title: "Policy no",
+      width: "11rem",
       value: (c) => c.nomor_polis,
       render: (c) => (
-        <span className="truncate font-mono text-xs text-slate-700">{c.nomor_polis || '—'}</span>
+        <span className="truncate font-mono text-xs text-slate-700">
+          {c.nomor_polis || "—"}
+        </span>
       ),
     },
     {
-      key: 'insured_name',
-      title: 'Insured name',
+      key: "insured_name",
+      title: "Insured name",
       value: (c) => c.nama_tertanggung,
-      render: (c) => <span className="truncate">{c.nama_tertanggung || '—'}</span>,
+      render: (c) => (
+        <span className="truncate">{c.nama_tertanggung || "—"}</span>
+      ),
     },
     {
-      key: 'business_name',
-      title: 'Business Name',
-      width: '10rem',
+      key: "business_name",
+      title: "Business Name",
+      width: "10rem",
       value: (c) => c.nama_bisnis,
-      render: (c) => <span className="truncate">{c.nama_bisnis || '—'}</span>,
+      render: (c) => <span className="truncate">{c.nama_bisnis || "—"}</span>,
     },
     {
-      key: 'business_source',
-      title: 'Business source',
-      width: '9rem',
+      key: "business_source",
+      title: "Business source",
+      width: "9rem",
       value: (c) => c.sumber_bisnis,
-      render: (c) => <span className="truncate">{c.sumber_bisnis || '—'}</span>,
+      render: (c) => <span className="truncate">{c.sumber_bisnis || "—"}</span>,
     },
     {
-      key: 'branch_name',
-      title: 'Branch name',
-      width: '8rem',
+      key: "branch_name",
+      title: "Branch name",
+      width: "8rem",
       value: (c) => c.nama_cabang,
-      render: (c) => <span className="truncate">{c.nama_cabang || '—'}</span>,
+      render: (c) => <span className="truncate">{c.nama_cabang || "—"}</span>,
     },
     {
-      key: 'admin_name',
-      title: 'Admin name',
-      width: '10rem',
+      key: "admin_name",
+      title: "Admin name",
+      width: "10rem",
       value: (c) => c.admin_pnc,
-      render: (c) => <span className="truncate">{c.admin_pnc || '—'}</span>,
+      render: (c) => <span className="truncate">{c.admin_pnc || "—"}</span>,
     },
     {
-      key: 'register_date',
-      title: 'Register Date',
-      width: '8rem',
+      key: "register_date",
+      title: "Register Date",
+      width: "8rem",
       value: (c) => c.tanggal_pendaftaran,
       render: (c) => (
         <span className="tabular-nums">
-          {c.tanggal_pendaftaran ? formatDate(c.tanggal_pendaftaran) : '—'}
+          {c.tanggal_pendaftaran ? formatDate(c.tanggal_pendaftaran) : "—"}
         </span>
       ),
     },
     {
-      key: 'date_of_loss',
-      title: 'Date of loss',
-      width: '8rem',
+      key: "date_of_loss",
+      title: "Date of loss",
+      width: "8rem",
       value: (c) => c.tanggal_kejadian,
       render: (c) => (
         <span className="tabular-nums">
-          {c.tanggal_kejadian ? formatDate(c.tanggal_kejadian) : '—'}
+          {c.tanggal_kejadian ? formatDate(c.tanggal_kejadian) : "—"}
         </span>
       ),
     },
     {
-      key: 'total_aging',
-      title: 'Total Aging',
-      width: '7rem',
+      key: "total_aging",
+      title: "Total Aging",
+      width: "7rem",
       value: (c) => String(c.umur_hari),
       render: (c) => <AgeBadge days={c.umur_hari} />,
     },
     {
-      key: 'aging',
-      title: 'Aging',
-      width: '6rem',
-      value: (c) => (c.aging_hari === null ? '' : String(c.aging_hari)),
+      key: "aging",
+      title: "Aging",
+      width: "6rem",
+      value: (c) => (c.aging_hari === null ? "" : String(c.aging_hari)),
       render: (c) =>
         // null berarti belum terisi, dan itu berbeda dari nol hari. Menampilkan "0"
         // untuk keduanya akan menyembunyikan data yang belum ada.
@@ -239,20 +245,22 @@ export function OutstandingPage() {
             —
           </span>
         ) : (
-          <span className="tabular-nums text-slate-700">{c.aging_hari} hari</span>
+          <span className="tabular-nums text-slate-700">
+            {c.aging_hari} hari
+          </span>
         ),
     },
     {
-      key: 'claim_status',
-      title: 'Claim status',
-      width: '8rem',
+      key: "claim_status",
+      title: "Claim status",
+      width: "8rem",
       value: (c) => c.status_tampil,
       render: (c) => <StatusBadge status={c.status_tampil} />,
     },
     {
-      key: 'status_asm',
-      title: 'Status ASM',
-      width: '10rem',
+      key: "status_asm",
+      title: "Status ASM",
+      width: "10rem",
       value: (c) => c.status_klaim,
       // Ditampilkan APA ADANYA, tanpa menyatakan isinya kode atau label.
       //
@@ -272,21 +280,23 @@ export function OutstandingPage() {
         ),
     },
     {
-      key: 'asm_pic',
-      title: 'ASM PIC',
-      width: '10rem',
+      key: "asm_pic",
+      title: "ASM PIC",
+      width: "10rem",
       value: (c) => c.pic_teknik,
-      render: (c) => <span className="truncate">{c.pic_teknik || '—'}</span>,
+      render: (c) => <span className="truncate">{c.pic_teknik || "—"}</span>,
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Outstanding</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Outstanding
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Seluruh klaim yang masih berjalan pada entitas yang sedang dibuka, beserta tahap
-          dan pemegang tugasnya.
+          Seluruh klaim yang masih berjalan pada entitas yang sedang dibuka,
+          beserta tahap dan pemegang tugasnya.
         </p>
       </header>
 
@@ -313,52 +323,73 @@ export function OutstandingPage() {
       )}
 
       {/*
-        Deret tab status dokumen, di ATAS grid — mengikuti tata letak Pega dan bentuk tab
-        Inbox Auto Claim.
+        Dua kolom: panel status dokumen di KIRI, grid di kanannya, atas permintaan
+        pengguna (2026-10-14; sebelumnya deret tab di atas grid). Flex, bukan grid kolom tetap: bila panelnya tidak digambar, grid mengisi
+        lebar penuh tanpa kolom kosong.
 
-        Ia memakai penyaring layar yang sama kecuali status itu sendiri, supaya lencananya
-        selalu meringkas apa yang sedang dilihat pengguna.
+        Panel baru ke samping mulai `2xl` (1536px), bukan `lg`. Keempat belas kolom grid
+        butuh ±1130px agar terbaca tanpa gulir menyamping (`fit`); di laptop 1366px, menu
+        kiri ditambah panel 16rem menyisakan ±800px. Di bawah `2xl` panelnya menumpuk di
+        atas grid sebagai kisi tiga kolom — semua status tetap terlihat sekaligus.
+
+        Panel memakai penyaring layar yang sama kecuali status itu sendiri, supaya
+        lencananya selalu meringkas apa yang sedang dilihat pengguna.
       */}
-      <DocumentStatusTab
-        filter={{ search }}
-        selected={documentStatus}
-        onSelect={changeDocumentStatus}
-      />
+      <div className="mt-6 flex flex-col gap-6 2xl:flex-row 2xl:items-start">
+        <DocumentStatusTab
+          filter={{ search }}
+          selected={documentStatus}
+          onSelect={changeDocumentStatus}
+        />
 
-      {/*
-        Grid adalah PANEL dari deret tab di atasnya, bukan daftar yang berdiri sendiri.
+        <div className="min-w-0 flex-1">
+          {/*
+        Grid adalah PANEL dari daftar tab di sampingnya, bukan daftar yang berdiri sendiri.
         Tanpa `role="tabpanel"` dan `aria-labelledby`, pembaca layar mengumumkan tabnya
         tetapi tidak pernah menyebut isi mana yang dikendalikannya.
       */}
-      <div
-        role="tabpanel"
-        id={PANEL_ID}
-        aria-labelledby={tabId(documentStatus === '' ? 'semua' : documentStatus)}
-        className="mt-6"
-      >
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={(c) => c.klaim_id}
-          title="Klaim berjalan"
-          // Prop tidak dikirim sama sekali saat kosong, bukan dikirim bernilai undefined:
-          // tsconfig memakai exactOptionalPropertyTypes, yang membedakan keduanya.
-          {...(total > 0 ? { description: `${total} klaim masih berjalan.` } : {})}
-          isLoading={list.isPending && portal !== null}
-          searchLabel="Cari No Klaim / No Polis / PIC"
-          emptyMessage="Tidak ada klaim yang masih berjalan."
-          serverSearch={{ value: search, onChange: changeSearch, matchCount: total }}
-          actions={
-            <>
-              <Button
-                tone="halus"
-                onClick={() => { list.refetch() }}
-                disabled={list.isFetching || portal === null}
-              >
-                <ReloadIcon className="h-4 w-4" />
-                {list.isFetching ? 'Memuat…' : 'Muat ulang'}
-              </Button>
-              {/*
+          <div
+            role="tabpanel"
+            id={PANEL_ID}
+            aria-labelledby={tabId(
+              documentStatus === "" ? "semua" : documentStatus,
+            )}
+          >
+            <DataTable
+              columns={columns}
+              rows={rows}
+              rowKey={(c) => c.klaim_id}
+              // Keempat belas kolom dimuatkan ke lebar kartu, tanpa gulir menyamping
+              // (permintaan pengguna 2026-10-14). `width` pada kolom di atas diabaikan
+              // selama `fit` menyala.
+              fit
+              title="Klaim berjalan"
+              // Prop tidak dikirim sama sekali saat kosong, bukan dikirim bernilai undefined:
+              // tsconfig memakai exactOptionalPropertyTypes, yang membedakan keduanya.
+              {...(total > 0
+                ? { description: `${total} klaim masih berjalan.` }
+                : {})}
+              isLoading={list.isPending && portal !== null}
+              searchLabel="Cari No Klaim / No Polis / PIC"
+              emptyMessage="Tidak ada klaim yang masih berjalan."
+              serverSearch={{
+                value: search,
+                onChange: changeSearch,
+                matchCount: total,
+              }}
+              actions={
+                <>
+                  <Button
+                    tone="halus"
+                    onClick={() => {
+                      list.refetch();
+                    }}
+                    disabled={list.isFetching || portal === null}
+                  >
+                    <ReloadIcon className="h-4 w-4" />
+                    {list.isFetching ? "Memuat…" : "Muat ulang"}
+                  </Button>
+                  {/*
                 Tombol ini SENGAJA tidak lagi dimatikan saat daftar kosong.
 
                 Sebelumnya `disabled` memuat `total === 0`, sehingga petugas yang tidak
@@ -369,40 +400,56 @@ export function OutstandingPage() {
                 Terbukti pada data ASM: seorang petugas berlini NONMBU dengan 0 pekerjaan
                 di inbox tetap mengunduh 354 baris.
               */}
-              <Button
-                tone="kedua"
-                onClick={() => { download() }}
-                disabled={downloading || portal === null}
-                title="Unduh seluruh klaim berjalan dalam lini bisnis Anda — bukan hanya isi layar ini"
-              >
-                {downloading ? 'Menyiapkan…' : 'Unduh CSV'}
-              </Button>
-            </>
-          }
-          error={
-            list.isError ? (
-              <ErrorMessage
-                title="Daftar klaim tidak dapat dimuat"
-                description={errorMessage(list.error)}
-                tone="gangguan"
-              />
-            ) : undefined
-          }
-        />
-      </div>
+                  <Button
+                    tone="kedua"
+                    onClick={() => {
+                      download();
+                    }}
+                    disabled={downloading || portal === null}
+                    title="Unduh seluruh klaim berjalan dalam lini bisnis Anda — bukan hanya isi layar ini"
+                  >
+                    {downloading ? "Menyiapkan…" : "Unduh CSV"}
+                  </Button>
+                </>
+              }
+              error={
+                list.isError ? (
+                  <ErrorMessage
+                    title="Daftar klaim tidak dapat dimuat"
+                    description={errorMessage(list.error)}
+                    tone="gangguan"
+                  />
+                ) : undefined
+              }
+            />
+          </div>
 
-      <Pagination
-        offset={offset}
-        shown={rows.length}
-        total={total}
-        onChange={setOffset}
-        busy={list.isFetching}
-      />
+          <Pagination
+            offset={offset}
+            shown={rows.length}
+            total={total}
+            onChange={setOffset}
+            busy={list.isFetching}
+          />
+        </div>
+      </div>
     </div>
-  )
+  );
 }
 
-/** * OwnerNotice menyatakan pekerjaan SIAPA yang sedang ditampilkan. * * Ini bukan hiasan. Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang * tampak persis sama — memang tidak ada pekerjaan, atau penyaringnya salah orang — dan * tanpa keterangan ini pengguna tidak punya cara membedakannya. */function OwnerNotice({ pemilik }: { pemilik: string }) {  return (    <p className="mt-4 text-sm text-slate-600">      Menampilkan pekerjaan milik{' '}      <span className="font-medium text-slate-900">{pemilik}</span>.    </p>  )}
+/** * OwnerNotice menyatakan pekerjaan SIAPA yang sedang ditampilkan. * * Ini bukan hiasan. Daftar kosong pada layar bernama "My Inbox" punya dua sebab yang * tampak persis sama — memang tidak ada pekerjaan, atau penyaringnya salah orang — dan * tanpa keterangan ini pengguna tidak punya cara membedakannya. */ function OwnerNotice({
+  pemilik,
+}: {
+  pemilik: string;
+}) {
+  return (
+    <p className="mt-4 text-sm text-slate-600">
+      {" "}
+      Menampilkan pekerjaan milik{" "}
+      <span className="font-medium text-slate-900">{pemilik}</span>.{" "}
+    </p>
+  );
+}
 
 /**
  * Umur klaim, dengan penegasan pada yang sudah lama.
@@ -412,29 +459,31 @@ export function OutstandingPage() {
  * dengan gangguan penglihatan warna.
  */
 function AgeBadge({ days }: { days: number }) {
-  const lama = days >= 30
+  const lama = days >= 30;
 
   return (
     <span
       className={[
-        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium tabular-nums',
-        lama ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : 'text-slate-700',
-      ].join(' ')}
-      title={lama ? 'Berjalan 30 hari atau lebih' : undefined}
+        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium tabular-nums",
+        lama
+          ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
+          : "text-slate-700",
+      ].join(" ")}
+      title={lama ? "Berjalan 30 hari atau lebih" : undefined}
     >
       {days} hari
     </span>
-  )
+  );
 }
 
 /** Status yang dilihat pengguna; teksnya mengikuti layar Pega apa adanya (`D-13`). */
 function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === 'Reject'
-      ? 'bg-red-50 text-red-700 ring-red-100'
-      : status === 'Close'
-        ? 'bg-slate-100 text-slate-700 ring-slate-200'
-        : 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+    status === "Reject"
+      ? "bg-red-50 text-red-700 ring-red-100"
+      : status === "Close"
+        ? "bg-slate-100 text-slate-700 ring-slate-200"
+        : "bg-emerald-50 text-emerald-700 ring-emerald-100";
 
   return (
     <span
@@ -442,7 +491,7 @@ function StatusBadge({ status }: { status: string }) {
     >
       {status}
     </span>
-  )
+  );
 }
 
 /**
@@ -459,18 +508,18 @@ function Pagination({
   onChange,
   busy,
 }: {
-  offset: number
-  shown: number
-  total: number
-  onChange: (next: number) => void
-  busy: boolean
+  offset: number;
+  shown: number;
+  total: number;
+  onChange: (next: number) => void;
+  busy: boolean;
 }) {
-  if (total === 0) return null
+  if (total === 0) return null;
 
-  const first = offset + 1
-  const last = offset + shown
-  const hasPrevious = offset > 0
-  const hasNext = last < total
+  const first = offset + 1;
+  const last = offset + shown;
+  const hasPrevious = offset > 0;
+  const hasNext = last < total;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -494,7 +543,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -502,11 +551,11 @@ function Pagination({
  * masih dikerjakan di Pega selama masa paralel (`P-3`), jadi tidak ditautkan.
  */
 export function isOpenableHere(claimNumber: string): boolean {
-  return claimNumber.startsWith('PNCN.')
+  return claimNumber.startsWith("PNCN.");
 }
 
 function errorMessage(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

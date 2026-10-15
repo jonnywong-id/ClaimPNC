@@ -1,10 +1,10 @@
-import { APIError, NetworkError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { RiwayatSalvage } from './RiwayatSalvage'
-import type { DetailBarang, DetailKey, DetailResponse } from './types'
+import { RiwayatSalvage } from "./RiwayatSalvage";
+import type { DetailBarang, DetailKey, DetailResponse } from "./types";
 
 /**
  * Baris grid barang beserta urutannya.
@@ -13,14 +13,14 @@ import type { DetailBarang, DetailKey, DetailResponse } from './types'
  * dengan isi yang sama pula — dua baut, dicatat dua kali. Urutan ditempelkan di sini
  * supaya kuncinya tetap tunggal tanpa mengubah komponen bersama.
  */
-type BarangBernomor = DetailBarang & { urutan: number }
+type BarangBernomor = DetailBarang & { urutan: number };
 
 type Props = {
   /** Dengan apa panel ini dibuka — ID pengajuan, atau nomor klaim. */
-  detailKey: DetailKey
+  detailKey: DetailKey;
 
   /** Nilai kuncinya: ID pengajuan pada jalur `'pengajuan'`, nomor klaim pada `'klaim'`. */
-  reference: string
+  reference: string;
 
   /**
    * Hasil permintaan rincian, DIPEGANG PEMANGGIL.
@@ -31,13 +31,13 @@ type Props = {
    * komponen ini menembaknya sendiri, permintaan yang sama berjalan dua kali dan
    * keputusan itu diambil atas jawaban yang belum tentu sama.
    */
-  data: DetailResponse | undefined
-  isPending: boolean
-  isError: boolean
-  error: unknown
+  data: DetailResponse | undefined;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
 
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
 /**
  * Satu isian pada kepala panel.
@@ -46,16 +46,18 @@ type Props = {
  * — lokasi salvage, remark — tidak memaksa seluruh kolom melebar.
  */
 function Isian({ label, value }: { label: string; value: string }) {
-  const clean = value.trim()
+  const clean = value.trim();
 
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
       <dd className="mt-0.5 break-words text-sm text-slate-900">
-        {clean === '' ? <span className="text-slate-400">—</span> : clean}
+        {clean === "" ? <span className="text-slate-400">—</span> : clean}
       </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -65,7 +67,13 @@ function Isian({ label, value }: { label: string; value: string }) {
  * `DataDetail_Salvage` melainkan di section lain, dan karena itu tidak boleh menumpang di
  * dalam kotak yang menyalin section tersebut.
  */
-function Kelompok({ judul, children }: { judul: string; children: React.ReactNode }) {
+function Kelompok({
+  judul,
+  children,
+}: {
+  judul: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <h4 className="mb-3 text-sm font-semibold text-slate-800">{judul}</h4>
@@ -73,83 +81,84 @@ function Kelompok({ judul, children }: { judul: string; children: React.ReactNod
         {children}
       </dl>
     </section>
-  )
+  );
 }
 
 /** adaIsi menjawab apakah sekelompok isian punya sesuatu untuk digambar. */
 function adaIsi(...values: string[]): boolean {
-  return values.some((value) => value.trim() !== '')
+  return values.some((value) => value.trim() !== "");
 }
 
 const ITEM_COLUMNS: Column<BarangBernomor>[] = [
   {
-    key: 'nama_barang',
-    title: 'Nama Barang',
-    width: '16rem',
+    key: "nama_barang",
+    title: "Nama Barang",
+    width: "16rem",
     value: (row) => row.nama_barang,
   },
   {
-    key: 'jumlah',
-    title: 'Jumlah',
-    width: '8rem',
+    key: "jumlah",
+    title: "Jumlah",
+    width: "8rem",
     // Jumlah dan satuan dirangkai DI SINI, bukan di dalam SQL. Di layar lama keduanya
     // dirangkai di dalam kueri, dan sejak itu jumlahnya berhenti menjadi angka.
     value: (row) => `${row.jumlah} ${row.satuan}`.trim(),
   },
   {
-    key: 'total_nilai',
-    title: 'Total Nilai',
-    width: '10rem',
+    key: "total_nilai",
+    title: "Total Nilai",
+    width: "10rem",
     alignRight: true,
     value: (row) => row.total_nilai,
   },
   {
-    key: 'status_terjual',
-    title: 'Status Terjual',
-    width: '10rem',
+    key: "status_terjual",
+    title: "Status Terjual",
+    width: "10rem",
     value: (row) => row.status_terjual,
   },
   {
-    key: 'nama_pemenang',
-    title: 'Pemenang',
-    width: '12rem',
+    key: "nama_pemenang",
+    title: "Pemenang",
+    width: "12rem",
     value: (row) => row.nama_pemenang,
   },
   {
-    key: 'no_akseptasi',
-    title: 'No Akseptasi',
-    width: '10rem',
+    key: "no_akseptasi",
+    title: "No Akseptasi",
+    width: "10rem",
     value: (row) => row.no_akseptasi,
   },
   {
-    key: 'nilai_akseptasi',
-    title: 'Nilai Akseptasi',
-    width: '10rem',
+    key: "nilai_akseptasi",
+    title: "Nilai Akseptasi",
+    width: "10rem",
     alignRight: true,
     value: (row) => row.nilai_akseptasi,
   },
   {
-    key: 'remark',
-    title: 'Remark',
-    width: '14rem',
+    key: "remark",
+    title: "Remark",
+    width: "14rem",
     value: (row) => row.remark,
   },
-]
+];
 
 function messageOf(error: unknown): { title: string; description: string } {
   if (error instanceof APIError) {
-    return { title: 'Detail tidak dapat dibuka', description: error.message }
+    return { title: "Detail tidak dapat dibuka", description: error.message };
   }
   if (error instanceof NetworkError) {
     return {
-      title: 'Detail tidak dapat dibuka',
-      description: 'Sambungan ke server terputus. Periksa jaringan lalu coba lagi.',
-    }
+      title: "Detail tidak dapat dibuka",
+      description:
+        "Sambungan ke server terputus. Periksa jaringan lalu coba lagi.",
+    };
   }
   return {
-    title: 'Detail tidak dapat dibuka',
-    description: 'Terjadi kesalahan pada sistem.',
-  }
+    title: "Detail tidak dapat dibuka",
+    description: "Terjadi kesalahan pada sistem.",
+  };
 }
 
 /**
@@ -209,7 +218,7 @@ export function DetailSalvagePanel({
   error,
   onClose,
 }: Props) {
-  const detail = { data, isPending, isError, error }
+  const detail = { data, isPending, isError, error };
 
   return (
     <section
@@ -218,20 +227,28 @@ export function DetailSalvagePanel({
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Detail Salvage</h3>
+          <h3 className="text-base font-semibold text-slate-900">
+            Detail Salvage
+          </h3>
           <p className="mt-0.5 text-sm text-slate-600">
-            {detailKey === 'klaim' ? 'Klaim ' : 'Pengajuan '}
+            {detailKey === "klaim" ? "Klaim " : "Pengajuan "}
             <span className="font-medium text-slate-800">{reference}</span>
-            {detail.data && detail.data.ada_pengajuan && detailKey === 'klaim' ? (
+            {detail.data &&
+            detail.data.ada_pengajuan &&
+            detailKey === "klaim" ? (
               <>
-                {' · pengajuan '}
-                <span className="font-medium text-slate-800">{detail.data.id_salvage}</span>
+                {" · pengajuan "}
+                <span className="font-medium text-slate-800">
+                  {detail.data.id_salvage}
+                </span>
               </>
             ) : null}
-            {detail.data && detailKey === 'pengajuan' ? (
+            {detail.data && detailKey === "pengajuan" ? (
               <>
-                {' · klaim '}
-                <span className="font-medium text-slate-800">{detail.data.no_klaim}</span>
+                {" · klaim "}
+                <span className="font-medium text-slate-800">
+                  {detail.data.no_klaim}
+                </span>
               </>
             ) : null}
           </p>
@@ -251,7 +268,9 @@ export function DetailSalvagePanel({
       ) : null}
 
       {detail.isPending && !detail.isError ? (
-        <p className="py-6 text-center text-sm text-slate-500">Memuat rincian…</p>
+        <p className="py-6 text-center text-sm text-slate-500">
+          Memuat rincian…
+        </p>
       ) : null}
 
       {/*
@@ -272,8 +291,14 @@ export function DetailSalvagePanel({
                 label="Tanggal Input Salvage"
                 value={detail.data.tanggal_input_salvage}
               />
-              <Isian label="Tanggal Transfer GA" value={detail.data.tanggal_transfer_ga} />
-              <Isian label="Tanggal Akseptasi" value={detail.data.tanggal_akseptasi} />
+              <Isian
+                label="Tanggal Transfer GA"
+                value={detail.data.tanggal_transfer_ga}
+              />
+              <Isian
+                label="Tanggal Akseptasi"
+                value={detail.data.tanggal_akseptasi}
+              />
 
               <Isian label="No Klaim" value={detail.data.no_klaim} />
               <Isian label="No Akseptasi" value={detail.data.no_akseptasi} />
@@ -281,9 +306,15 @@ export function DetailSalvagePanel({
 
               <Isian label="Nama Coverage" value={detail.data.nama_coverage} />
               <Isian label="Jenis Salvage" value={detail.data.jenis_salvage} />
-              <Isian label="Quantity Salvage" value={detail.data.quantity_salvage} />
+              <Isian
+                label="Quantity Salvage"
+                value={detail.data.quantity_salvage}
+              />
 
-              <Isian label="Lokasi Salvage" value={detail.data.lokasi_salvage} />
+              <Isian
+                label="Lokasi Salvage"
+                value={detail.data.lokasi_salvage}
+              />
               <Isian label="Mata Uang" value={detail.data.mata_uang} />
               <Isian label="Estimasi" value={detail.data.estimasi} />
 
@@ -295,12 +326,12 @@ export function DetailSalvagePanel({
                   Posisi Salvage
                 </dt>
                 <dd className="mt-0.5 break-words text-sm text-slate-900">
-                  {detail.data.posisi_salvage.trim() === '' ? (
+                  {detail.data.posisi_salvage.trim() === "" ? (
                     <span className="text-slate-400">—</span>
                   ) : (
                     <>
                       {detail.data.posisi_salvage}
-                      {detail.data.kode_posisi_salvage.trim() === '' ? null : (
+                      {detail.data.kode_posisi_salvage.trim() === "" ? null : (
                         <span className="ml-2 text-xs text-slate-500">
                           kode {detail.data.kode_posisi_salvage}
                         </span>
@@ -328,16 +359,29 @@ export function DetailSalvagePanel({
             Ketiganya datang dari section lain, dan digambar HANYA bila berisi. Lihat
             catatan di kepala komponen ini.
           */}
-          {adaIsi(detail.data.nama_bisnis, detail.data.pic, detail.data.tanggal_kejadian) ? (
+          {adaIsi(
+            detail.data.nama_bisnis,
+            detail.data.pic,
+            detail.data.tanggal_kejadian,
+          ) ? (
             <Kelompok judul="Data Klaim">
               <Isian label="Nama Bisnis" value={detail.data.nama_bisnis} />
               <Isian label="PIC Teknik" value={detail.data.pic} />
-              <Isian label="Tgl Kejadian" value={detail.data.tanggal_kejadian} />
+              <Isian
+                label="Tgl Kejadian"
+                value={detail.data.tanggal_kejadian}
+              />
               <Isian label="ID Salvage" value={detail.data.id_salvage} />
               <Isian label="Email" value={detail.data.email} />
               <Isian
                 label="Lokasi di Jabodetabek"
-                value={detail.data.ada_pengajuan ? (detail.data.lokasi_salvage_di_jabodetabek ? 'Ya' : 'Tidak') : ''}
+                value={
+                  detail.data.ada_pengajuan
+                    ? detail.data.lokasi_salvage_di_jabodetabek
+                      ? "Ya"
+                      : "Tidak"
+                    : ""
+                }
               />
             </Kelompok>
           ) : null}
@@ -348,9 +392,15 @@ export function DetailSalvagePanel({
             detail.data.tanggal_lelang,
           ) ? (
             <Kelompok judul="Lelang">
-              <Isian label="Nilai Penawaran" value={detail.data.nilai_penawaran} />
+              <Isian
+                label="Nilai Penawaran"
+                value={detail.data.nilai_penawaran}
+              />
               <Isian label="Nama Pemenang" value={detail.data.nama_pemenang} />
-              <Isian label="Tanggal Lelang" value={detail.data.tanggal_lelang} />
+              <Isian
+                label="Tanggal Lelang"
+                value={detail.data.tanggal_lelang}
+              />
             </Kelompok>
           ) : null}
 
@@ -360,9 +410,18 @@ export function DetailSalvagePanel({
             detail.data.email_pic_survey,
           ) ? (
             <Kelompok judul="PIC Survey">
-              <Isian label="Nama PIC Survey" value={detail.data.nama_pic_survey} />
-              <Isian label="No Telp PIC Survey" value={detail.data.no_telp_pic_survey} />
-              <Isian label="Email PIC Survey" value={detail.data.email_pic_survey} />
+              <Isian
+                label="Nama PIC Survey"
+                value={detail.data.nama_pic_survey}
+              />
+              <Isian
+                label="No Telp PIC Survey"
+                value={detail.data.no_telp_pic_survey}
+              />
+              <Isian
+                label="Email PIC Survey"
+                value={detail.data.email_pic_survey}
+              />
             </Kelompok>
           ) : null}
 
@@ -374,7 +433,10 @@ export function DetailSalvagePanel({
 
               <DataTable
                 columns={ITEM_COLUMNS}
-                rows={detail.data.barang.map((row, index) => ({ ...row, urutan: index }))}
+                rows={detail.data.barang.map((row, index) => ({
+                  ...row,
+                  urutan: index,
+                }))}
                 rowKey={(row) => String(row.urutan)}
                 emptyMessage="Pengajuan ini tidak memiliki rincian barang."
                 hideSearch
@@ -384,13 +446,14 @@ export function DetailSalvagePanel({
 
           {detail.data.pengajuan_sebelum_juli_2023 ? (
             <p className="text-xs text-slate-500">
-              Pengajuan ini dibuat sebelum 17 Juli 2023. Sistem lama menandainya, tetapi tidak
-              ada satu pun aturan di dalamnya yang menjelaskan akibat penandaan itu — sehingga
-              penanda ini ditampilkan apa adanya, tanpa tafsiran.
+              Pengajuan ini dibuat sebelum 17 Juli 2023. Sistem lama
+              menandainya, tetapi tidak ada satu pun aturan di dalamnya yang
+              menjelaskan akibat penandaan itu — sehingga penanda ini
+              ditampilkan apa adanya, tanpa tafsiran.
             </p>
           ) : null}
         </div>
       ) : null}
     </section>
-  )
+  );
 }

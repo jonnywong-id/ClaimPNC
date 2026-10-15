@@ -30,19 +30,19 @@ export type ClauseAI = {
    * TIDAK digambar sebagai kolom: layar lamanya hanya punya tiga. Ia dipakai sebagai kunci
    * baris tabel, dan kueri lamanya pun memilihnya serta mengurutkan dengannya.
    */
-  id: string
+  id: string;
   /** Kolom `WP_PASAL` — di grid berlabel "No Pasal". */
-  no_pasal: string
+  no_pasal: string;
   /** Kolom `WP_AYAT` — di grid berlabel "Ayat". */
-  ayat: string
+  ayat: string;
   /**
    * Kolom `WP_KEJADIAN` — di grid berlabel "Kejadian".
    *
    * Teks panjang: di layar Pega ia satu-satunya yang digambar `pxTextArea`, dan kolomnya
    * paling lebar (283 px berbanding 48 dan 47).
    */
-  kejadian: string
-}
+  kejadian: string;
+};
 
 /**
  * Keterangan paginasi yang menyertai setiap daftar.
@@ -55,21 +55,21 @@ export type ClauseAI = {
  */
 export type ClauseAIPagination = {
   /** Nomor halaman yang dikembalikan, mulai dari 1. */
-  halaman: number
+  halaman: number;
   /** Banyaknya baris per halaman — 25, ditetapkan server. */
-  ukuran_halaman: number
+  ukuran_halaman: number;
   /** Banyaknya halaman yang tersedia, minimal 1. */
-  jumlah_halaman: number
+  jumlah_halaman: number;
   /** Cacah **seluruh** baris yang cocok, bukan cacah baris pada halaman ini. */
-  jumlah_baris: number
-}
+  jumlah_baris: number;
+};
 
 /** Jawaban `GET /api/master/pasal-ai`. */
 export type ClauseAIListResponse = {
-  pasal_ai: ClauseAI[]
-  paginasi: ClauseAIPagination
-  portal: string
-}
+  pasal_ai: ClauseAI[];
+  paginasi: ClauseAIPagination;
+  portal: string;
+};
 
 /**
  * Modul ini TIDAK punya kode galat sendiri.

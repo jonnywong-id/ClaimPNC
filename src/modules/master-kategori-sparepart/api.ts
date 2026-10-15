@@ -1,18 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   PartCategoryDecisionInput,
   PartCategoryDecisionResponse,
   PartCategoryInput,
   PartCategoryListResponse,
   PartCategoryResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/kategori-sparepart'
-const ROUTE_DECISION = '/api/master/kategori-sparepart/keputusan'
+const ROUTE = "/api/master/kategori-sparepart";
+const ROUTE_DECISION = "/api/master/kategori-sparepart/keputusan";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -27,7 +27,7 @@ const ROUTE_DECISION = '/api/master/kategori-sparepart/keputusan'
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-kategori-sparepart', portal, token, status] as const
+  return ["master-kategori-sparepart", portal, token, status] as const;
 }
 
 /**
@@ -48,18 +48,21 @@ function listKey(portal: string | null, token: string | null, status: string) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function usePartCategoryList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<PartCategoryListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<PartCategoryListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -71,17 +74,22 @@ export function usePartCategoryList(status: string) {
  * Approve.
  */
 export function useCreatePartCategory() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: PartCategoryInput) =>
-      callAPI<PartCategoryResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<PartCategoryResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-kategori-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -92,22 +100,22 @@ export function useCreatePartCategory() {
  * tanpa syarat apa pun — sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSavePartCategory() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: PartCategoryInput }) =>
       callAPI<PartCategoryResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-kategori-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -121,20 +129,20 @@ export function useSavePartCategory() {
  * TANPA catatan: tabelnya tidak punya kolom penampungnya.
  */
 export function useDecidePartCategory() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: PartCategoryDecisionInput) =>
       callAPI<PartCategoryDecisionResponse>(ROUTE_DECISION, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-kategori-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-kategori-sparepart"] });
     },
-  })
+  });
 }

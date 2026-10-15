@@ -1,9 +1,9 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import type { SparepartImportReport } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import type { SparepartImportReport } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
 /**
  * Panel "Upload Data Master Sparepart" — unggah CSV berisi banyak sparepart sekaligus.
@@ -39,51 +39,60 @@ import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
  * langsung membukanya di penyunting teksnya.
  */
 type Props = {
-  isSending: boolean
-  report: SparepartImportReport | null
-  error: unknown
-  onSend: (file: File) => void
+  isSending: boolean;
+  report: SparepartImportReport | null;
+  error: unknown;
+  onSend: (file: File) => void;
 
   /** Menutup panelnya. Dipakai tombol Batal, sama seperti panel Upload Document. */
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
-export function ImportCSVPanel({ isSending, report, error, onSend, onClose }: Props) {
-  const fileId = useId()
-  const input = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [tooBig, setTooBig] = useState(false)
+export function ImportCSVPanel({
+  isSending,
+  report,
+  error,
+  onSend,
+  onClose,
+}: Props) {
+  const fileId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [tooBig, setTooBig] = useState(false);
 
   // Batas yang sama dengan jalur unggah dokumen — satu angka untuk seluruh aplikasi.
-  const maxBytes = 20 * 1024 * 1024
+  const maxBytes = 20 * 1024 * 1024;
 
   function pick(chosen: File | null) {
     if (chosen !== null && chosen.size > maxBytes) {
-      setTooBig(true)
-      setFile(null)
-      if (input.current) input.current.value = ''
-      return
+      setTooBig(true);
+      setFile(null);
+      if (input.current) input.current.value = "";
+      return;
     }
-    setTooBig(false)
-    setFile(chosen)
+    setTooBig(false);
+    setFile(chosen);
   }
 
   function send() {
-    if (file !== null) onSend(file)
+    if (file !== null) onSend(file);
   }
 
   // Batal mengosongkan pilihan LALU menutup — bentuk yang sama dengan panel dokumen.
   function cancel() {
-    setTooBig(false)
-    setFile(null)
-    if (input.current) input.current.value = ''
-    onClose()
+    setTooBig(false);
+    setFile(null);
+    if (input.current) input.current.value = "";
+    onClose();
   }
 
   return (
     <div className="space-y-3">
       <div>
-        <label htmlFor={fileId} className="block text-sm font-medium text-slate-700">
+        <label
+          htmlFor={fileId}
+          className="block text-sm font-medium text-slate-700"
+        >
           Berkas CSV
         </label>
         {/*
@@ -110,7 +119,7 @@ export function ImportCSVPanel({ isSending, report, error, onSend, onClose }: Pr
           <Button
             tone="kedua"
             onClick={() => {
-              input.current?.click()
+              input.current?.click();
             }}
             disabled={isSending}
           >
@@ -128,7 +137,7 @@ export function ImportCSVPanel({ isSending, report, error, onSend, onClose }: Pr
         <p className="text-sm font-medium text-slate-700">Nama File</p>
         <div className="mt-1 rounded-kontrol border border-slate-200">
           <p className="px-3 py-2 text-sm text-slate-600">
-            {file === null ? 'Data tidak ada' : file.name}
+            {file === null ? "Data tidak ada" : file.name}
           </p>
         </div>
       </div>
@@ -153,31 +162,43 @@ export function ImportCSVPanel({ isSending, report, error, onSend, onClose }: Pr
         <Button tone="halus" onClick={cancel} disabled={isSending}>
           Batal
         </Button>
-        <Button tone="utama" onClick={send} disabled={file === null || isSending}>
-          {isSending ? 'Mengunggah…' : 'Submit'}
+        <Button
+          tone="utama"
+          onClick={send}
+          disabled={file === null || isSending}
+        >
+          {isSending ? "Mengunggah…" : "Submit"}
         </Button>
       </div>
 
       {error !== null && error !== undefined && <ImportError error={error} />}
       {report !== null && <ImportReportView report={report} />}
     </div>
-  )
+  );
 }
 
 /** Ringkasan hasil, beserta daftar baris yang gagal. */
 function ImportReportView({ report }: { report: SparepartImportReport }) {
-  const berhasil = report.baru + report.diperbarui
-  const gagal = report.baris.filter((row) => row.hasil === 'gagal')
+  const berhasil = report.baru + report.diperbarui;
+  const gagal = report.baris.filter((row) => row.hasil === "gagal");
 
   return (
     <div className="space-y-3 rounded-kontrol border border-slate-200 bg-slate-50 p-3">
       <p className="text-sm text-slate-800">
-        <span className="font-medium">{report.total}</span> baris dibaca —{' '}
-        <span className="font-medium text-emerald-700">{report.baru}</span> ditambahkan,{' '}
-        <span className="font-medium text-emerald-700">{report.diperbarui}</span> diperbarui,{' '}
-        <span className={report.gagal > 0 ? 'font-medium text-rose-700' : 'font-medium'}>
+        <span className="font-medium">{report.total}</span> baris dibaca —{" "}
+        <span className="font-medium text-emerald-700">{report.baru}</span>{" "}
+        ditambahkan,{" "}
+        <span className="font-medium text-emerald-700">
+          {report.diperbarui}
+        </span>{" "}
+        diperbarui,{" "}
+        <span
+          className={
+            report.gagal > 0 ? "font-medium text-rose-700" : "font-medium"
+          }
+        >
           {report.gagal}
-        </span>{' '}
+        </span>{" "}
         gagal.
       </p>
 
@@ -186,8 +207,9 @@ function ImportReportView({ report }: { report: SparepartImportReport }) {
           {/* Dinyatakan terang-terangan: baris yang berhasil TETAP tersimpan meski ada yang
               gagal. Tanpa ini pengguna akan mengunggah ulang seluruh berkas dan menimpa
               baris yang sudah benar. */}
-          {berhasil} baris yang berhasil <span className="font-medium">tetap tersimpan</span>.
-          Perbaiki baris yang gagal saja, lalu unggah ulang bagian itu.
+          {berhasil} baris yang berhasil{" "}
+          <span className="font-medium">tetap tersimpan</span>. Perbaiki baris
+          yang gagal saja, lalu unggah ulang bagian itu.
         </p>
       )}
 
@@ -204,8 +226,12 @@ function ImportReportView({ report }: { report: SparepartImportReport }) {
             <tbody>
               {gagal.map((row) => (
                 <tr key={row.baris} className="border-t border-slate-100">
-                  <td className="px-2 py-1.5 tabular-nums text-slate-900">{row.baris}</td>
-                  <td className="px-2 py-1.5 text-slate-900">{row.nomor_sparepart || '—'}</td>
+                  <td className="px-2 py-1.5 tabular-nums text-slate-900">
+                    {row.baris}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-900">
+                    {row.nomor_sparepart || "—"}
+                  </td>
                   <td className="px-2 py-1.5 text-slate-700">{row.pesan}</td>
                 </tr>
               ))}
@@ -214,7 +240,7 @@ function ImportReportView({ report }: { report: SparepartImportReport }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -224,34 +250,35 @@ function ImportReportView({ report }: { report: SparepartImportReport }) {
  * perlu diketahui pengguna adalah berkasnya harus diperbaiki — bukan sebagiannya.
  */
 function ImportError({ error }: { error: unknown }) {
-  let title = 'Berkas gagal diunggah'
-  let description = 'Tidak ada baris yang tersimpan. Periksa berkasnya lalu unggah ulang.'
-  let tone: ErrorTone = 'gangguan'
+  let title = "Berkas gagal diunggah";
+  let description =
+    "Tidak ada baris yang tersimpan. Periksa berkasnya lalu unggah ulang.";
+  let tone: ErrorTone = "gangguan";
 
   if (error instanceof NetworkError) {
     description =
-      'Sambungan terputus sebelum berkas terkirim. Tidak ada baris yang tersimpan; silakan unggah ulang.'
+      "Sambungan terputus sebelum berkas terkirim. Tidak ada baris yang tersimpan; silakan unggah ulang.";
   } else if (error instanceof APIError) {
     switch (error.kode) {
-      case 'csv_tidak_sah':
-        title = 'Berkas tidak dapat dibaca'
-        description = error.message
-        tone = 'penolakan'
-        break
-      case 'csv_terlalu_banyak_baris':
-        title = 'Berkas terlalu banyak baris'
-        description = error.message
-        tone = 'penolakan'
-        break
-      case 'berkas_terlalu_besar':
-        title = 'Berkas terlalu besar'
-        description = error.message
-        tone = 'penolakan'
-        break
+      case "csv_tidak_sah":
+        title = "Berkas tidak dapat dibaca";
+        description = error.message;
+        tone = "penolakan";
+        break;
+      case "csv_terlalu_banyak_baris":
+        title = "Berkas terlalu banyak baris";
+        description = error.message;
+        tone = "penolakan";
+        break;
+      case "berkas_terlalu_besar":
+        title = "Berkas terlalu besar";
+        description = error.message;
+        tone = "penolakan";
+        break;
       default:
-        description = error.message
+        description = error.message;
     }
   }
 
-  return <ErrorMessage title={title} description={description} tone={tone} />
+  return <ErrorMessage title={title} description={description} tone={tone} />;
 }

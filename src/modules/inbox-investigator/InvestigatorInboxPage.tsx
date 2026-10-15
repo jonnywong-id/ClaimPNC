@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type InvestigatorTask } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type InvestigatorTask } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { ExportPanel } from './ExportPanel'
-import { InvestigationDialog } from './InvestigationDialog'
-import { useInvestigatorInbox } from './api'
+import { ExportPanel } from "./ExportPanel";
+import { InvestigationDialog } from "./InvestigationDialog";
+import { useInvestigatorInbox } from "./api";
 
 /**
  * Ukuran halaman.
@@ -21,51 +21,52 @@ import { useInvestigatorInbox } from './api'
  * Ia berbeda dari 15 dan 20 yang dipakai layar master, dan perbedaannya memang ada di sistem
  * lama: ukuran halaman di sana ditetapkan per grid, bukan per aplikasi.
  */
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat pemuatan antrean menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan, lalu muat ulang halaman ini.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Antrean pekerjaan dimiliki masing-masing entitas. Pilih portal entitas di ' +
-            'bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Antrean pekerjaan dimiliki masing-masing entitas. Pilih portal entitas di " +
+            "bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Antrean investigator tidak dapat dimuat',
+          title: "Antrean investigator tidak dapat dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+    title: "Terjadi kesalahan pada sistem",
+    description:
+      "Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -80,17 +81,16 @@ function loadMessage(error: unknown): MessageContent {
  * dirakit dari dua aplikasi berbeda.
  */
 function formatDate(value: string | null): string {
-  if (!value) return '—'
-  const moment = new Date(value)
-  if (Number.isNaN(moment.getTime())) return '—'
-  return moment.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  if (!value) return "—";
+  const moment = new Date(value);
+  if (Number.isNaN(moment.getTime())) return "—";
+  return moment.toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
-
 
 /**
  * Layar Inbox Investigator.
@@ -145,7 +145,7 @@ function formatDate(value: string | null): string {
  * daftar, pencarian, ekspor — hanya membaca.
  */
 export function InvestigatorInboxPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   /*
     Pekerjaan yang formulirnya sedang dibuka, atau null bila dialognya tertutup.
@@ -155,10 +155,10 @@ export function InvestigatorInboxPage() {
     tangan, dan mengambilnya ulang dari server hanya menambah satu permintaan untuk data
     yang tidak berubah.
   */
-  const [workingOn, setWorkingOn] = useState<InvestigatorTask | null>(null)
+  const [workingOn, setWorkingOn] = useState<InvestigatorTask | null>(null);
 
-  const inbox = useInvestigatorInbox()
-  const rows = inbox.data?.tugas ?? []
+  const inbox = useInvestigatorInbox();
+  const rows = inbox.data?.tugas ?? [];
 
   /*
     SEMBILAN kolom, pada urutan grid layar lama — dihitung dari pemasangan caption-ke-sel
@@ -191,9 +191,9 @@ export function InvestigatorInboxPage() {
         halaman itu menampilkan sedangkan yang ini mengerjakan, dan halaman itu gagal untuk
         klaim warisan — `T_CLAIM_OBJECTLIST.URUTAN` tidak pernah diisi Pega.
       */
-      key: 'nomor_case',
-      title: 'Nomor Case',
-      width: '11rem',
+      key: "nomor_case",
+      title: "Nomor Case",
+      width: "11rem",
       value: (row) => row.nomor_case,
       render: (row) =>
         row.nomor_case ? (
@@ -210,14 +210,14 @@ export function InvestigatorInboxPage() {
         ),
     },
     {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
+      key: "nomor_polis",
+      title: "No Polis",
+      width: "12rem",
       value: (row) => row.nomor_polis,
     },
     {
-      key: 'nama_tertanggung',
-      title: 'Nama Tertanggung',
+      key: "nama_tertanggung",
+      title: "Nama Tertanggung",
       value: (row) => row.nama_tertanggung,
     },
     {
@@ -226,22 +226,26 @@ export function InvestigatorInboxPage() {
         Isinya objek pertanggungan PERTAMA; klaim berobjek banyak tampil seolah berobjek
         satu, persis sistem lama (`P-5`).
       */
-      key: 'nama_peserta',
-      title: 'Nama Peserta',
+      key: "nama_peserta",
+      title: "Nama Peserta",
       value: (row) => row.nama_peserta,
       render: (row) =>
-        row.nama_peserta ? row.nama_peserta : <span className="text-slate-400">—</span>,
+        row.nama_peserta ? (
+          row.nama_peserta
+        ) : (
+          <span className="text-slate-400">—</span>
+        ),
     },
     {
-      key: 'nama_bisnis',
-      title: 'Nama Bisnis',
-      width: '12rem',
+      key: "nama_bisnis",
+      title: "Nama Bisnis",
+      width: "12rem",
       value: (row) => row.nama_bisnis,
     },
     {
-      key: 'nama_cabang',
-      title: 'Nama Cabang',
-      width: '12rem',
+      key: "nama_cabang",
+      title: "Nama Cabang",
+      width: "12rem",
       value: (row) => row.nama_cabang,
     },
     {
@@ -253,9 +257,9 @@ export function InvestigatorInboxPage() {
         ditulis apa adanya alih-alih dibiarkan sebagai sel kosong yang terbaca seperti data
         hilang.
       */
-      key: 'nama_admin',
-      title: 'Nama Admin',
-      width: '11rem',
+      key: "nama_admin",
+      title: "Nama Admin",
+      width: "11rem",
       value: (row) => row.nama_admin,
       render: (row) =>
         row.nama_admin ? (
@@ -265,9 +269,9 @@ export function InvestigatorInboxPage() {
         ),
     },
     {
-      key: 'tanggal_pendaftaran',
-      title: 'Tanggal Pendaftaran',
-      width: '10rem',
+      key: "tanggal_pendaftaran",
+      title: "Tanggal Pendaftaran",
+      width: "10rem",
       value: (row) => formatDate(row.tanggal_pendaftaran),
     },
     {
@@ -280,28 +284,37 @@ export function InvestigatorInboxPage() {
         (`P-5`). Ia sisa Save-As dari inbox Compliance, tempat kolom bernama sama memang
         berisi lama menunggu. Keterangan di kaki halaman yang menjelaskannya kepada pengguna.
       */
-      key: 'tanggal_survey',
-      title: 'Lama Masuk Inbox',
-      width: '10rem',
+      key: "tanggal_survey",
+      title: "Lama Masuk Inbox",
+      width: "10rem",
       value: (row) => formatDate(row.tanggal_survey),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-[96rem] px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya "Inbox Investigator" mengikuti MENU_DESC pada
               Database/m_menu_aplikasi_pnc.csv (MENU_ID 48), dan caption section lamanya
               berbunyi sama (`D-13`). */}
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Investigator</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Inbox Investigator
+          </h1>
           <p className="text-sm text-slate-600">
-            Daftar pekerjaan yang menunggu diselidiki, dari antrean bersama Investigator.
+            Daftar pekerjaan yang menunggu diselidiki, dari antrean bersama
+            Investigator.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { inbox.refetch() }} disabled={inbox.isFetching}>
-            {inbox.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              inbox.refetch();
+            }}
+            disabled={inbox.isFetching}
+          >
+            {inbox.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -315,8 +328,10 @@ export function InvestigatorInboxPage() {
       <p className="mt-3 text-xs text-slate-500">
         Antrean ini milik entitas yang sedang dibuka.
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{inbox.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {inbox.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -324,9 +339,10 @@ export function InvestigatorInboxPage() {
           lama. Batas yang diketahui adalah batas; batas yang senyap adalah data yang hilang. */}
       {inbox.data?.terpotong && (
         <p className="mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-          Antrean ini <span className="font-medium">lebih panjang</span> daripada yang dapat
-          ditampilkan sekaligus. Yang tampil {inbox.data.batas_baris} pekerjaan pertama;
-          sisanya belum terlihat. Pakai kotak pencarian untuk mempersempit daftar.
+          Antrean ini <span className="font-medium">lebih panjang</span>{" "}
+          daripada yang dapat ditampilkan sekaligus. Yang tampil{" "}
+          {inbox.data.batas_baris} pekerjaan pertama; sisanya belum terlihat.
+          Pakai kotak pencarian untuk mempersempit daftar.
         </p>
       )}
 
@@ -344,14 +360,14 @@ export function InvestigatorInboxPage() {
           <p className="text-sm text-slate-500">Memuat antrean investigator…</p>
         ) : inbox.isError ? (
           (() => {
-            const message = loadMessage(inbox.error)
+            const message = loadMessage(inbox.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -375,8 +391,11 @@ export function InvestigatorInboxPage() {
       {/* Formulir kerja Investigator — padanan Flow Action `InputInvestigator`, yang di
           Pega pun terbuka sebagai modal (80 × 82), bukan sebagai halaman. */}
       {workingOn !== null && (
-        <InvestigationDialog task={workingOn} onClose={() => setWorkingOn(null)} />
+        <InvestigationDialog
+          task={workingOn}
+          onClose={() => setWorkingOn(null)}
+        />
       )}
     </main>
-  )
+  );
 }

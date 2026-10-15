@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { DateField, isoToText } from '@/components/DateField'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { DateField, isoToText } from "@/components/DateField";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { SelectField } from "@/components/SelectField";
 
-import { useCauseOfLoss, useInsertDolCol, useMasters } from './api'
-import { isValidationError, messageOf, violationsOf } from './errors'
-import { EMPTY_INSERT_FORM, type InsertDolColForm, type MasterXOL } from './types'
+import { useCauseOfLoss, useInsertDolCol, useMasters } from "./api";
+import { isValidationError, messageOf, violationsOf } from "./errors";
+import {
+  EMPTY_INSERT_FORM,
+  type InsertDolColForm,
+  type MasterXOL,
+} from "./types";
 
 /**
  * Modal di balik tombol "INSERT DOL DAN COL".
@@ -53,36 +57,36 @@ import { EMPTY_INSERT_FORM, type InsertDolColForm, type MasterXOL } from './type
  * di dalam hook: yang membacanya nanti perlu melihat bahwa kedua bentuk itu memang berbeda.
  */
 export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState<InsertDolColForm>(EMPTY_INSERT_FORM)
+  const [form, setForm] = useState<InsertDolColForm>(EMPTY_INSERT_FORM);
 
   // Tanggal disimpan ISO selama di layar — bentuk yang dipakai DateField. Ia TERPISAH
   // dari form.tanggal_kejadian, yang berbentuk DD/MM/YYYY karena itulah bentuk kontrak.
   // Menyatukan keduanya berarti mengubah bentuk di setiap ketikan, dan tanggal separuh
   // jadi akan terbaca sebagai tanggal yang salah.
-  const [lossDateISO, setLossDateISO] = useState('')
+  const [lossDateISO, setLossDateISO] = useState("");
 
-  const masters = useMasters()
-  const causes = useCauseOfLoss()
-  const simpan = useInsertDolCol()
+  const masters = useMasters();
+  const causes = useCauseOfLoss();
+  const simpan = useInsertDolCol();
 
-  const closeRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   // Fokus dipindahkan ke dalam modal saat ia terbuka. Tanpa ini, pengguna papan ketik
   // tetap berada di tombol pembukanya — di BELAKANG lapisan gelap — dan menekan Tab
   // menelusuri layar yang sedang tertutup.
   useEffect(() => {
-    closeRef.current?.focus()
-  }, [])
+    closeRef.current?.focus();
+  }, []);
 
   // Pelanggaran per isian, supaya pesannya menempel di kolom yang salah — bukan satu
   // kalimat di atas formulir yang memaksa pengguna menebak kolom mana yang dimaksud.
-  const violations = violationsOf(simpan.error)
+  const violations = violationsOf(simpan.error);
 
   const causeOptions = (causes.data?.sebab_kerugian ?? []).map((cause) => ({
     // Nilainya DESKRIPSI, bukan ID: itulah yang tersimpan di kolom CAUSEOFLOSS.
     value: cause.deskripsi,
     label: cause.deskripsi,
-  }))
+  }));
 
   return (
     <div
@@ -91,16 +95,18 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       aria-label="Insert DOL dan COL"
       onKeyDown={(event) => {
-        if (event.key === 'Escape') onClose()
+        if (event.key === "Escape") onClose();
       }}
     >
       <div className="my-8 w-full max-w-3xl rounded-kartu bg-white p-6 shadow-terbang">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">INSERT DOL DAN COL</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              INSERT DOL DAN COL
+            </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Pilih perjanjian XOL untuk mengisi grid di belakang, atau tambahkan Date Of
-              Loss dan Cause Of Loss baru.
+              Pilih perjanjian XOL untuk mengisi grid di belakang, atau
+              tambahkan Date Of Loss dan Cause Of Loss baru.
             </p>
           </div>
 
@@ -123,7 +129,7 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
         <form
           className="space-y-4"
           onSubmit={(event) => {
-            event.preventDefault()
+            event.preventDefault();
             simpan.mutate(form, {
               /*
                 Isian DIKOSONGKAN setelah berhasil.
@@ -138,10 +144,10 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
                 baris tetap terbaca.
               */
               onSuccess: () => {
-                setForm(EMPTY_INSERT_FORM)
-                setLossDateISO('')
+                setForm(EMPTY_INSERT_FORM);
+                setLossDateISO("");
               },
-            })
+            });
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -149,12 +155,12 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
               id="insert-dol"
               label="Date Of Loss"
               value={lossDateISO}
-              error={violations['tanggal_kejadian']}
+              error={violations["tanggal_kejadian"]}
               onChange={(iso) => {
-                setLossDateISO(iso)
+                setLossDateISO(iso);
                 // isoToText mengembalikan '' untuk ISO yang belum lengkap, sehingga
                 // isian setengah jadi tidak pernah terkirim sebagai tanggal.
-                setForm({ ...form, tanggal_kejadian: isoToText(iso) })
+                setForm({ ...form, tanggal_kejadian: isoToText(iso) });
               }}
             />
 
@@ -162,9 +168,11 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
               id="insert-col"
               label="Cause Of Loss"
               options={causeOptions}
-              emptyText={causes.isPending ? '— memuat —' : 'Pilih Cause Of Loss'}
+              emptyText={
+                causes.isPending ? "— memuat —" : "Pilih Cause Of Loss"
+              }
               value={form.sebab_kerugian}
-              error={violations['sebab_kerugian']}
+              error={violations["sebab_kerugian"]}
               onChange={(event) =>
                 setForm({ ...form, sebab_kerugian: event.target.value })
               }
@@ -187,12 +195,12 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
             // Modal TIDAK ditutup di sini. Memilih perjanjian baru separuh pekerjaan —
             // Date Of Loss dan Cause Of Loss masih harus diisi sebelum Simpan.
             onPick={(masterID) => setForm({ ...form, id_master: masterID })}
-            violation={violations['id_master']}
+            violation={violations["id_master"]}
           />
 
           <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
             <Button type="submit" tone="utama" disabled={simpan.isPending}>
-              {simpan.isPending ? 'Menyimpan…' : 'Simpan'}
+              {simpan.isPending ? "Menyimpan…" : "Simpan"}
             </Button>
 
             <Button tone="halus" onClick={onClose}>
@@ -228,14 +236,14 @@ export function InsertDolColDialog({ onClose }: { onClose: () => void }) {
               role="status"
               className="rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
             >
-              Tersimpan — {simpan.data?.jumlah_baris ?? 0} baris ditulis, satu per Group
-              Business perjanjian. Grid di belakang sudah diperbarui.
+              Tersimpan — {simpan.data?.jumlah_baris ?? 0} baris ditulis, satu
+              per Group Business perjanjian. Grid di belakang sudah diperbarui.
             </p>
           )}
         </form>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -253,54 +261,57 @@ function MasterPicker({
   onPick,
   violation,
 }: {
-  rows: MasterXOL[]
-  loading: boolean
-  error: string | null
-  selected: string
-  onPick: (masterID: string) => void
+  rows: MasterXOL[];
+  loading: boolean;
+  error: string | null;
+  selected: string;
+  onPick: (masterID: string) => void;
   /** Pesan validasi "perjanjian wajib dipilih", bila server mengirimkannya. */
-  violation?: string | undefined
+  violation?: string | undefined;
 }) {
   const columns: Column<MasterXOL>[] = [
     {
-      key: 'tahun',
-      title: 'Tahun',
+      key: "tahun",
+      title: "Tahun",
       value: (row) => row.tahun,
-      width: '7rem',
+      width: "7rem",
     },
     {
-      key: 'kurs',
-      title: 'Kurs',
+      key: "kurs",
+      title: "Kurs",
       value: (row) => String(row.kurs),
-      render: (row) => new Intl.NumberFormat('id-ID').format(row.kurs),
+      render: (row) => new Intl.NumberFormat("id-ID").format(row.kurs),
       alignRight: true,
-      width: '8rem',
+      width: "8rem",
     },
     {
-      key: 'group_business',
-      title: 'Group Business',
+      key: "group_business",
+      title: "Group Business",
       value: (row) => row.group_business,
-      render: (row) => row.group_business || <span className="text-slate-400">—</span>,
+      render: (row) =>
+        row.group_business || <span className="text-slate-400">—</span>,
     },
     {
-      key: 'aksi',
-      title: '',
+      key: "aksi",
+      title: "",
       noSort: true,
       alignRight: true,
-      width: '6rem',
-      value: () => '',
+      width: "6rem",
+      value: () => "",
       render: (row) => (
         <Button
           tone="kedua"
           onClick={() => onPick(row.id)}
           aria-label={`Pilih perjanjian ${row.tahun}`}
-          className={row.id === selected ? 'ring-2 ring-blue-500/40' : undefined}
+          className={
+            row.id === selected ? "ring-2 ring-blue-500/40" : undefined
+          }
         >
           Pilih
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
@@ -329,5 +340,5 @@ function MasterPicker({
       */}
       {violation && <p className="mt-1.5 text-sm text-red-700">{violation}</p>}
     </div>
-  )
+  );
 }

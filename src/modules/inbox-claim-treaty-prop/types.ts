@@ -15,11 +15,11 @@ export type WorkItem = {
    *
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom.
    */
-  referensi: string
+  referensi: string;
 
-  claim_id: string
-  id_master: string
-  no_polis: string
+  claim_id: string;
+  id_master: string;
+  no_polis: string;
 
   /**
    * Tanggal Kejadian, dikirim APA ADANYA dari `DATA_JSONBLOB`.
@@ -28,15 +28,15 @@ export type WorkItem = {
    * blob itu tidak dapat diperiksa tanpa DDL (`R-08`). Layar memformatnya hanya bila
    * bentuknya memang `YYYY-MM-DD`; selain itu ditampilkan apa adanya.
    */
-  tanggal_kejadian: string
+  tanggal_kejadian: string;
 
-  nama_bisnis: string
-  sumber_bisnis: string
-  ceding_co: string
-  nama_tertanggung: string
+  nama_bisnis: string;
+  sumber_bisnis: string;
+  ceding_co: string;
+  nama_tertanggung: string;
 
   /** Hanya terisi pada tab Work Teknik Treatyin — hanya kueri itu yang membawanya. */
-  subjectivity: string
+  subjectivity: string;
 
   /**
    * Petugas yang terakhir mengubah objek kerjanya — kolom "Last update".
@@ -44,7 +44,7 @@ export type WorkItem = {
    * Dibaca lewat LEFT JOIN ke tabel objek kerja, sehingga baris yang objek kerjanya tidak
    * terbaca memang mengirimkannya kosong.
    */
-  operator_pengubah: string
+  operator_pengubah: string;
 
   /**
    * Status alur kerja Pega — kolom "Status Claim ID".
@@ -54,21 +54,21 @@ export type WorkItem = {
    * `V_STS_CLAIM`. Keduanya konsep berbeda (`D-18`). Judul kolomnya dipertahankan
    * menyesatkan karena `D-13`; nama kontraknya tidak ikut menularkan salah arti itu.
    */
-  status_kerja: string
-}
+  status_kerja: string;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type WorkItemField = keyof WorkItem
+export type WorkItemField = keyof WorkItem;
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: WorkItemField
-  judul: string
-}
+  kunci: WorkItemField;
+  judul: string;
+};
 
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
+  kode: string;
 
   /**
    * Teks PILIHAN pada dropdown pemilih antrean.
@@ -77,23 +77,23 @@ export type Tab = {
    * "Prop Treaty-in Teknik". JANGAN tertukar dengan `judul_grid` di bawah: keduanya teks
    * yang berbeda dan tampil bersamaan di layar yang sama.
    */
-  nama: string
+  nama: string;
 
   /**
    * Judul KONTAINER grid yang digambar sesudah dropdown — "Work List Treatyin Propotional".
    *
    * Kosong pada antrean yang terhalang: tidak ada grid yang digambar di sana.
    */
-  judul_grid?: string
+  judul_grid?: string;
 
-  keterangan: string
-  kolom: TabColumn[]
+  keterangan: string;
+  kolom: TabColumn[];
 
   /** Barisnya hanya milik pemanggil — hanya tab pertama begitu. */
-  hanya_milik_saya: boolean
+  hanya_milik_saya: boolean;
 
   /** Checkbox "See All Claim" berlaku pada tab ini. */
-  pakai_lihat_semua: boolean
+  pakai_lihat_semua: boolean;
 
   /**
    * Tab digambar tetapi belum dapat diisi.
@@ -101,45 +101,45 @@ export type Tab = {
    * Ia BUKAN tab yang disembunyikan: keputusan Work Owner 2026-09-21 menetapkan tabnya
    * tetap tampak supaya pengguna tahu fiturnya ada dan terhalang, bukan mengira ia hilang.
    */
-  terhalang: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Keterangan halaman dari server. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Penyaring yang BENAR-BENAR dipakai server, belum tentu sama dengan yang dikirim. */
 export type AppliedFilter = {
-  lihat_semua: boolean
-}
+  lihat_semua: boolean;
+};
 
 /** Jawaban GET /api/inbox-claim-treaty-prop/tab. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
-  portal: string
-}
+  tab: Tab[];
+  tab_bawaan: string;
+  portal: string;
+};
 
 /** Jawaban GET /api/inbox-claim-treaty-prop. */
 export type ListResponse = {
-  tab: Tab
-  baris: WorkItem[]
-  paginasi: PageInfo
-  penyaring: AppliedFilter
-  portal: string
-}
+  tab: Tab;
+  baris: WorkItem[];
+  paginasi: PageInfo;
+  penyaring: AppliedFilter;
+  portal: string;
+};
 
 /** Isian penyaring yang dipegang layar. */
 export type FilterForm = {
-  tab: string
-  lihatSemua: boolean
-}
+  tab: string;
+  lihatSemua: boolean;
+};
 
 /** EMPTY_FILTER adalah keadaan awal penyaring, dipakai pula saat berpindah tab. */
-export const EMPTY_FILTER: FilterForm = { tab: '', lihatSemua: false }
+export const EMPTY_FILTER: FilterForm = { tab: "", lihatSemua: false };

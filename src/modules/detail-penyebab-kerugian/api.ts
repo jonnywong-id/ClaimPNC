@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   CauseOfLossDetailInput,
   CauseOfLossDetailListResponse,
   CauseOfLossDetailResponse,
   CauseOfLossLookupResponse,
   CauseOfLossOptionsResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/detail-penyebab'
+const ROUTE = "/api/master/detail-penyebab";
 
 /**
  * Panjang minimum kata kunci pencarian daftar pilihan.
@@ -20,7 +20,7 @@ const ROUTE = '/api/master/detail-penyebab'
  * bukan hanya salah satu: server menjaga kontraknya, dan layar menghindari perjalanan
  * jaringan yang sudah pasti menjawab daftar kosong pada setiap ketukan huruf pertama.
  */
-const MIN_KEYWORD = 2
+const MIN_KEYWORD = 2;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -31,7 +31,7 @@ const MIN_KEYWORD = 2
  * yang dapat dipilih menentukan bagaimana klaim dinilai pada badan hukum itu (R-20).
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['detail-penyebab', portal, token] as const
+  return ["detail-penyebab", portal, token] as const;
 }
 
 /**
@@ -52,14 +52,15 @@ function listKey(portal: string | null, token: string | null) {
  * menurut induk dan lini bisnis — ikut dipertimbangkan di sana.
  */
 export function useCauseOfLossDetailList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
-    queryFn: () => callAPI<CauseOfLossDetailListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<CauseOfLossDetailListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -72,18 +73,21 @@ export function useCauseOfLossDetailList() {
  * `enabled` menahannya sampai sebuah baris benar-benar dipilih.
  */
 export function useCauseOfLossDetail(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['detail-penyebab', 'satu', portal, token, id] as const,
+    queryKey: ["detail-penyebab", "satu", portal, token, id] as const,
     queryFn: () =>
-      callAPI<CauseOfLossDetailResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && id !== null && id !== '',
-  })
+      callAPI<CauseOfLossDetailResponse>(
+        `${ROUTE}/${encodeURIComponent(id ?? "")}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: token !== null && portal !== null && id !== null && id !== "",
+  });
 }
 
 /**
@@ -96,14 +100,15 @@ export function useCauseOfLossDetail(id: string | null) {
  * `staleTime: Infinity` karena isinya tidak akan berubah selama aplikasi hidup.
  */
 export function useCauseOfLossOptions() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
-    queryKey: ['detail-penyebab', 'pilihan'] as const,
-    queryFn: () => callAPI<CauseOfLossOptionsResponse>(`${ROUTE}/pilihan`, { token }),
+    queryKey: ["detail-penyebab", "pilihan"] as const,
+    queryFn: () =>
+      callAPI<CauseOfLossOptionsResponse>(`${ROUTE}/pilihan`, { token }),
     enabled: token !== null,
     staleTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -112,36 +117,36 @@ export function useCauseOfLossOptions() {
  * Kata kunci pendek tidak ditembakkan sama sekali; lihat MIN_KEYWORD.
  */
 export function useCauseOfLossMasterSearch(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
-    queryKey: ['detail-penyebab', 'pilihan', 'master', portal, clean] as const,
+    queryKey: ["detail-penyebab", "pilihan", "master", portal, clean] as const,
     queryFn: () =>
       callAPI<CauseOfLossLookupResponse>(
         `${ROUTE}/pilihan/master?cari=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null && clean.length >= MIN_KEYWORD,
-  })
+  });
 }
 
 /** Hook pencarian lini bisnis — grid "Bisnis". */
 export function useCauseOfLossBusinessSearch(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
-    queryKey: ['detail-penyebab', 'pilihan', 'bisnis', portal, clean] as const,
+    queryKey: ["detail-penyebab", "pilihan", "bisnis", portal, clean] as const,
     queryFn: () =>
       callAPI<CauseOfLossLookupResponse>(
         `${ROUTE}/pilihan/bisnis?cari=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null && clean.length >= MIN_KEYWORD,
-  })
+  });
 }
 
 /**
@@ -151,22 +156,22 @@ export function useCauseOfLossBusinessSearch(keyword: string) {
  * tidak ada tab yang membedakannya — sehingga satu pembuangan sudah cukup.
  */
 export function useCreateCauseOfLossDetail() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: CauseOfLossDetailInput) =>
       callAPI<CauseOfLossDetailResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['detail-penyebab'] })
+      client.invalidateQueries({ queryKey: ["detail-penyebab"] });
     },
-  })
+  });
 }
 
 /**
@@ -178,20 +183,26 @@ export function useCreateCauseOfLossDetail() {
  * jalurnya.
  */
 export function useSaveCauseOfLossDetail() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: CauseOfLossDetailInput }) =>
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: CauseOfLossDetailInput;
+    }) =>
       callAPI<CauseOfLossDetailResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['detail-penyebab'] })
+      client.invalidateQueries({ queryKey: ["detail-penyebab"] });
     },
-  })
+  });
 }

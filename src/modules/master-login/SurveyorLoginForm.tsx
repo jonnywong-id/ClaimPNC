@@ -1,14 +1,18 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, SurveyorLoginErrorCode, type SurveyorLogin } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { TextAreaField } from '@/components/TextAreaField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  SurveyorLoginErrorCode,
+  type SurveyorLogin,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { TextAreaField } from "@/components/TextAreaField";
 
 /**
  * Batas panjang harus sama dengan konstanta di backend.
@@ -24,10 +28,10 @@ import { TextAreaField } from '@/components/TextAreaField'
  * Bila MAX_NAME_LENGTH berubah, `internal/masterlogin/masterlogin.go` harus ikut berubah.
  * Uji `TestMaxNameLengthMatchesFrontendForm` yang menjaganya.
  */
-const MAX_NAME_LENGTH = 100
-const MAX_EMAIL_LENGTH = 100
-const MAX_PHONE_LENGTH = 50
-const MAX_ADDRESS_LENGTH = 250
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 100;
+const MAX_PHONE_LENGTH = 50;
+const MAX_ADDRESS_LENGTH = 250;
 
 /**
  * deriveLogin menghitung LOGIN dari Nama — SAMA PERSIS dengan server.
@@ -51,48 +55,54 @@ const MAX_ADDRESS_LENGTH = 250
  * satu berubah sendirian, pengguna melihat login yang bukan yang tersimpan.
  */
 export function deriveLogin(name: string): string {
-  return name.trim().replaceAll(/[ .,-]/g, '')
+  return name.trim().replaceAll(/[ .,-]/g, "");
 }
 
 const schema = z.object({
   nama: z
     .string()
     .trim()
-    .min(1, 'Nama wajib diisi.')
+    .min(1, "Nama wajib diisi.")
     .max(MAX_NAME_LENGTH, `Nama paling panjang ${MAX_NAME_LENGTH} karakter.`)
     .refine(
-      (value) => deriveLogin(value) !== '',
-      'Nama harus memuat setidaknya satu huruf atau angka. ' +
-        'Spasi, titik, koma, dan tanda hubung dibuang saat Login dibentuk.',
+      (value) => deriveLogin(value) !== "",
+      "Nama harus memuat setidaknya satu huruf atau angka. " +
+        "Spasi, titik, koma, dan tanda hubung dibuang saat Login dibentuk.",
     ),
   email: z
     .string()
     .trim()
-    .min(1, 'Email wajib diisi.')
-    .max(MAX_EMAIL_LENGTH, `Email paling panjang ${MAX_EMAIL_LENGTH} karakter.`),
+    .min(1, "Email wajib diisi.")
+    .max(
+      MAX_EMAIL_LENGTH,
+      `Email paling panjang ${MAX_EMAIL_LENGTH} karakter.`,
+    ),
   telp: z
     .string()
     .trim()
-    .min(1, 'Telp wajib diisi.')
+    .min(1, "Telp wajib diisi.")
     .max(MAX_PHONE_LENGTH, `Telp paling panjang ${MAX_PHONE_LENGTH} karakter.`),
   alamat: z
     .string()
     .trim()
-    .max(MAX_ADDRESS_LENGTH, `Alamat paling panjang ${MAX_ADDRESS_LENGTH} karakter.`),
-})
+    .max(
+      MAX_ADDRESS_LENGTH,
+      `Alamat paling panjang ${MAX_ADDRESS_LENGTH} karakter.`,
+    ),
+});
 
-export type SurveyorLoginFormValues = z.infer<typeof schema>
+export type SurveyorLoginFormValues = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  editing: SurveyorLogin | null
-  isSaving: boolean
-  error: unknown
-  onSave: (values: SurveyorLoginFormValues) => void
-  onCancel: () => void
-}
+  editing: SurveyorLogin | null;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: SurveyorLoginFormValues) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -104,10 +114,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -117,10 +128,10 @@ function messageFor(error: unknown): MessageContent | null {
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case SurveyorLoginErrorCode.loginTaken:
         // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
         // dan itu berbeda dari galat validasi biasa.
@@ -129,61 +140,62 @@ function messageFor(error: unknown): MessageContent | null {
         // sehingga pengguna yang mencari nama itu di daftar bisa saja tidak menemukannya.
         // Sorotan di bawah isian tidak cukup menjelaskan ke mana ia harus mencari.
         return {
-          title: 'Login itu sudah terdaftar',
+          title: "Login itu sudah terdaftar",
           description:
-            'Login dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda ' +
-            'hubung — sehingga dua nama yang terlihat berbeda dapat menghasilkan login ' +
-            'yang sama. Cari login tersebut di daftar, atau pakai nama lain.',
-          tone: 'penolakan',
-        }
+            "Login dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda " +
+            "hubung — sehingga dua nama yang terlihat berbeda dapat menghasilkan login " +
+            "yang sama. Cari login tersebut di daftar, atau pakai nama lain.",
+          tone: "penolakan",
+        };
       case SurveyorLoginErrorCode.nameLocked:
         return {
-          title: 'Nama tidak dapat diubah',
+          title: "Nama tidak dapat diubah",
           description:
-            'Login dibentuk dari Nama, dan mengubahnya akan memindahkan kunci baris ini. ' +
-            'Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Login dibentuk dari Nama, dan mengubahnya akan memindahkan kunci baris ini. " +
+            "Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
+          title: "Baris ini sudah tidak ada",
           description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Isian yang dapat disorot server. Dipakai menyaring pelanggaran yang tidak dikenal. */
-const FIELDS = ['nama', 'email', 'telp', 'alamat'] as const
+const FIELDS = ["nama", "email", "telp", "alamat"] as const;
 
 /**
  * SurveyorLoginForm adalah satu form untuk DUA mode — tambah dan ubah.
@@ -215,8 +227,14 @@ const FIELDS = ['nama', 'email', 'telp', 'alamat'] as const
  * menyembunyikan hal yang tersimpan tidak membuatnya tidak tersimpan. Keduanya tidak dapat
  * diubah dari layar mana pun, dan itu dinyatakan apa adanya.
  */
-export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }: Props) {
-  const editMode = editing !== null
+export function SurveyorLoginForm({
+  editing,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = editing !== null;
 
   const {
     register,
@@ -228,29 +246,29 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
   } = useForm<SurveyorLoginFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama: editing?.nama ?? '',
-      email: editing?.email ?? '',
-      telp: editing?.telp ?? '',
-      alamat: editing?.alamat ?? '',
+      nama: editing?.nama ?? "",
+      email: editing?.email ?? "",
+      telp: editing?.telp ?? "",
+      alamat: editing?.alamat ?? "",
     },
-  })
+  });
 
   // Login diperlihatkan sementara pengguna mengetik, meniru aksi `refresh` bereven `change`
   // pada kontrol Nama di layar lama. Yang dipantau hanya isian Nama — memantau seluruh form
   // akan menggambar ulang keterangan ini pada setiap ketikan di isian mana pun.
-  const typedName = useWatch({ control, name: 'nama' })
-  const previewLogin = deriveLogin(typedName ?? '')
+  const typedName = useWatch({ control, name: "nama" });
+  const previewLogin = deriveLogin(typedName ?? "");
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
   // misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
     reset({
-      nama: editing?.nama ?? '',
-      email: editing?.email ?? '',
-      telp: editing?.telp ?? '',
-      alamat: editing?.alamat ?? '',
-    })
-  }, [editing, reset])
+      nama: editing?.nama ?? "",
+      email: editing?.email ?? "",
+      telp: editing?.telp ?? "",
+      alamat: editing?.alamat ?? "",
+    });
+  }, [editing, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan
@@ -258,13 +276,16 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELDS as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELDS)[number], { type: 'server', message })
+        setError(column as (typeof FIELDS)[number], {
+          type: "server",
+          message,
+        });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
-  const title = editMode ? 'Ubah Login Surveyor' : 'Tambah Login Surveyor'
+  const message = messageFor(error);
+  const title = editMode ? "Ubah Login Surveyor" : "Tambah Login Surveyor";
 
   return (
     <form
@@ -276,7 +297,11 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       <Field
@@ -288,11 +313,11 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         disabled={editMode}
         hint={
           editMode
-            ? 'Tidak dapat diubah — Login dibentuk dari Nama, dan Login adalah kunci baris ini.'
-            : 'Login akan dibentuk otomatis dari Nama.'
+            ? "Tidak dapat diubah — Login dibentuk dari Nama, dan Login adalah kunci baris ini."
+            : "Login akan dibentuk otomatis dari Nama."
         }
         error={errors.nama?.message}
-        {...register('nama')}
+        {...register("nama")}
       />
 
       {/* Login BACA-SAJA.
@@ -306,17 +331,22 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
           {editMode ? (
             <>
               <span className="font-medium">{editing.login}</span>
-              <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+              <span className="ml-2 text-xs text-slate-500">
+                (tidak dapat diubah)
+              </span>
             </>
-          ) : previewLogin !== '' ? (
+          ) : previewLogin !== "" ? (
             <span className="font-medium">{previewLogin}</span>
           ) : (
-            <span className="text-slate-500">Terisi otomatis setelah Nama diketik.</span>
+            <span className="text-slate-500">
+              Terisi otomatis setelah Nama diketik.
+            </span>
           )}
         </p>
         {!editMode && (
           <p className="mt-1 text-xs text-slate-500">
-            Dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda hubung.
+            Dibentuk dari Nama dengan membuang spasi, titik, koma, dan tanda
+            hubung.
           </p>
         )}
       </div>
@@ -328,7 +358,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         autoFocus={editMode}
         maxLength={MAX_EMAIL_LENGTH}
         error={errors.email?.message}
-        {...register('email')}
+        {...register("email")}
       />
 
       <Field
@@ -337,7 +367,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         type="text"
         maxLength={MAX_PHONE_LENGTH}
         error={errors.telp?.message}
-        {...register('telp')}
+        {...register("telp")}
       />
 
       <TextAreaField
@@ -347,7 +377,7 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
         maxLength={MAX_ADDRESS_LENGTH}
         hint="Tidak wajib diisi."
         error={errors.alamat?.message}
-        {...register('alamat')}
+        {...register("alamat")}
       />
 
       {/* Dua kolom yang tersimpan tetapi tidak dapat diubah dari layar mana pun.
@@ -358,20 +388,28 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
       {editMode && (
         <div className="grid gap-4 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-3 sm:grid-cols-2">
           <div>
-            <span className="block text-xs font-medium text-slate-500">Status Login</span>
-            <p className="mt-0.5 text-sm text-slate-700">{editing.status_login || '—'}</p>
+            <span className="block text-xs font-medium text-slate-500">
+              Status Login
+            </span>
+            <p className="mt-0.5 text-sm text-slate-700">
+              {editing.status_login || "—"}
+            </p>
           </div>
           <div>
-            <span className="block text-xs font-medium text-slate-500">Login Leader</span>
+            <span className="block text-xs font-medium text-slate-500">
+              Login Leader
+            </span>
             <p className="mt-0.5 text-sm text-slate-700">
               {editing.login_leader || (
-                <span className="text-slate-500">tidak bertaut ke tim mana pun</span>
+                <span className="text-slate-500">
+                  tidak bertaut ke tim mana pun
+                </span>
               )}
             </p>
           </div>
           <p className="text-xs text-slate-500 sm:col-span-2">
-            Keduanya diisi sistem dan tidak dapat diubah dari layar ini — sama seperti
-            aplikasi lama, yang juga tidak pernah menampilkannya.
+            Keduanya diisi sistem dan tidak dapat diubah dari layar ini — sama
+            seperti aplikasi lama, yang juga tidak pernah menampilkannya.
           </p>
         </div>
       )}
@@ -388,9 +426,9 @@ export function SurveyorLoginForm({ editing, isSaving, error, onSave, onCancel }
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { ListResponse, MetadataResponse } from './types'
+import type { ListResponse, MetadataResponse } from "./types";
 
-const PATH = '/api/inbox-manager-admin'
+const PATH = "/api/inbox-manager-admin";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -22,11 +22,15 @@ const PATH = '/api/inbox-manager-admin'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-manager-admin', 'tab', portal, token] as const,
+    ["inbox-manager-admin", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, tab: string, page: number) =>
-    ['inbox-manager-admin', 'daftar', portal, token, tab, page] as const,
-}
+  list: (
+    portal: string | null,
+    token: string | null,
+    tab: string,
+    page: number,
+  ) => ["inbox-manager-admin", "daftar", portal, token, tab, page] as const,
+};
 
 /**
  * Hook keterangan layar — tab yang boleh dilihat, kolomnya, dan selisih terencana.
@@ -50,8 +54,8 @@ const keys = {
  * perubahan jabatan baru terlihat setelah pengguna menutup peramban.
  */
 export function useInboxManagerAdminMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -61,7 +65,7 @@ export function useInboxManagerAdminMetadata() {
     // Lima menit: cukup lama untuk tidak diambil ulang setiap perpindahan tab, cukup
     // pendek untuk tidak menahan perubahan jabatan sepanjang hari.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -77,13 +81,18 @@ export function useInboxManagerAdminMetadata() {
  * adalah `DATAPEGA.PC_ASM_FW_GCNMFW_WORK` yang berisi puluhan juta baris (`D-10`) — yang
  * sampai ke peramban hanyalah satu halaman, dan memang harus begitu.
  */
-export function useInboxManagerAdminList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useInboxManagerAdminList(
+  tab: string,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -92,7 +101,7 @@ export function useInboxManagerAdminList(tab: string, page: number, enabled: boo
 
     // Antrean berubah saat petugas lain menyelesaikan pekerjaannya, jadi cache-nya pendek.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -119,30 +128,32 @@ export function useInboxManagerAdminList(tab: string, page: number, enabled: boo
  * 50.000 baris itu beberapa megabita, dan dapat diterima.
  */
 export function useExportInboxManagerAdmin() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const params = tabParams(tab).toString()
-      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
+      const params = tabParams(tab).toString();
+      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`;
 
-      const response = await fetch(address, { headers: header })
+      const response = await fetch(address, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
         // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-manager-admin.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "inbox-manager-admin.csv");
     },
-  })
+  });
 }
 
 /**
@@ -156,26 +167,26 @@ export function useExportInboxManagerAdmin() {
  * dilihat pemanggil.
  */
 function tabParams(tab: string): URLSearchParams {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  return params
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  return params;
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(tab: string, page: number): string {
-  const params = tabParams(tab)
-  if (page > 1) params.set('halaman', String(page))
+  const params = tabParams(tab);
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -186,12 +197,12 @@ function filenameOf(response: Response): string | null {
  * yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

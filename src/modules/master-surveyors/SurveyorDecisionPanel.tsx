@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import type { Surveyor } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import type { Surveyor } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useDecideSurveyor } from './api'
+import { useDecideSurveyor } from "./api";
 
 type Props = {
-  surveyor: Surveyor
-  onClose: () => void
-}
+  surveyor: Surveyor;
+  onClose: () => void;
+};
 
 /**
  * Panel keputusan komite atas satu surveyor.
@@ -36,12 +36,12 @@ type Props = {
  * antara saat daftar dimuat dan saat tombol ditekan.
  */
 export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
-  const decide = useDecideSurveyor()
-  const [note, setNote] = useState('')
+  const decide = useDecideSurveyor();
+  const [note, setNote] = useState("");
 
-  async function submit(status: '1' | '2') {
-    await decide.mutateAsync({ id: surveyor.id, status, catatan: note.trim() })
-    onClose()
+  async function submit(status: "1" | "2") {
+    await decide.mutateAsync({ id: surveyor.id, status, catatan: note.trim() });
+    onClose();
   }
 
   return (
@@ -49,23 +49,31 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
       aria-labelledby="judul-keputusan-surveyor"
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-keputusan-surveyor" className="text-lg font-semibold text-slate-900">
+      <h2
+        id="judul-keputusan-surveyor"
+        className="text-lg font-semibold text-slate-900"
+      >
         Keputusan Komite
       </h2>
       <p className="mt-1 text-sm text-slate-600">
-        Surveyor <span className="font-medium text-slate-900">{surveyor.nama}</span> menunggu
-        keputusan. Keputusan yang sudah diambil tidak dapat diubah dari layar ini.
+        Surveyor{" "}
+        <span className="font-medium text-slate-900">{surveyor.nama}</span>{" "}
+        menunggu keputusan. Keputusan yang sudah diambil tidak dapat diubah dari
+        layar ini.
       </p>
 
       {surveyor.komite && (
         <p className="mt-2 text-xs text-slate-500">
-          Komite yang ditunjuk:{' '}
+          Komite yang ditunjuk:{" "}
           <span className="font-mono text-slate-700">{surveyor.komite}</span>
         </p>
       )}
 
       <div className="mt-4">
-        <label htmlFor="catatan-komite" className="block text-sm font-medium text-slate-700">
+        <label
+          htmlFor="catatan-komite"
+          className="block text-sm font-medium text-slate-700"
+        >
           Catatan keputusan
         </label>
         <textarea
@@ -77,8 +85,9 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
           placeholder="Alasan menyetujui atau menolak."
         />
         <p className="mt-1 text-xs text-slate-500">
-          Catatan tersimpan bersama keputusan dan menjadi jejak audit — satu-satunya
-          kontrol pengimbang yang ada, karena tidak ada pemisahan tugas formal.
+          Catatan tersimpan bersama keputusan dan menjadi jejak audit —
+          satu-satunya kontrol pengimbang yang ada, karena tidak ada pemisahan
+          tugas formal.
         </p>
       </div>
 
@@ -88,29 +97,38 @@ export function SurveyorDecisionPanel({ surveyor, onClose }: Props) {
         <Button
           type="button"
           tone="utama"
-          onClick={() => { submit('1') }}
+          onClick={() => {
+            submit("1");
+          }}
           disabled={decide.isPending}
         >
-          {decide.isPending ? 'Menyimpan…' : 'Setujui'}
+          {decide.isPending ? "Menyimpan…" : "Setujui"}
         </Button>
         <Button
           type="button"
           tone="kedua"
-          onClick={() => { submit('2') }}
+          onClick={() => {
+            submit("2");
+          }}
           disabled={decide.isPending}
         >
           Tolak
         </Button>
-        <Button type="button" tone="halus" onClick={onClose} disabled={decide.isPending}>
+        <Button
+          type="button"
+          tone="halus"
+          onClick={onClose}
+          disabled={decide.isPending}
+        >
           Batal
         </Button>
       </div>
     </section>
-  )
+  );
 }
 
 function DecisionErrorMessage({ error }: { error: unknown }) {
-  const message = decisionMessage(error)
+  const message = decisionMessage(error);
   return (
     <div className="mt-4">
       <ErrorMessage
@@ -119,46 +137,50 @@ function DecisionErrorMessage({ error }: { error: unknown }) {
         tone={message.tone}
       />
     </div>
-  )
+  );
 }
 
 function decisionMessage(error: unknown): {
-  title: string
-  description: string
-  tone: ErrorTone
+  title: string;
+  description: string;
+  tone: ErrorTone;
 } {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Keputusan belum tersimpan. Periksa koneksi lalu coba lagi.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description: "Keputusan belum tersimpan. Periksa koneksi lalu coba lagi.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
     switch (error.kode) {
-      case 'bukan_komite_yang_ditunjuk':
+      case "bukan_komite_yang_ditunjuk":
         return {
-          title: 'Anda bukan komite yang ditunjuk',
+          title: "Anda bukan komite yang ditunjuk",
           description:
             'Surveyor ini menunggu keputusan komite lain. Tab "Antrean Komite Saya" hanya menampilkan yang menjadi tanggung jawab Anda.',
-          tone: 'penolakan',
-        }
-      case 'keputusan_komite_sudah_diambil':
+          tone: "penolakan",
+        };
+      case "keputusan_komite_sudah_diambil":
         return {
-          title: 'Keputusan sudah pernah diambil',
+          title: "Keputusan sudah pernah diambil",
           description:
-            'Komite lain mungkin baru saja memutuskannya. Tekan Refresh untuk melihat keadaan terbaru.',
-          tone: 'penolakan',
-        }
+            "Komite lain mungkin baru saja memutuskannya. Tekan Refresh untuk melihat keadaan terbaru.",
+          tone: "penolakan",
+        };
       default:
-        return { title: 'Keputusan gagal disimpan', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Keputusan gagal disimpan",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Keputusan gagal disimpan',
-    description: 'Terjadi kesalahan pada sistem. Coba lagi.',
-    tone: 'gangguan',
-  }
+    title: "Keputusan gagal disimpan",
+    description: "Terjadi kesalahan pada sistem. Coba lagi.",
+    tone: "gangguan",
+  };
 }

@@ -1,16 +1,21 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useRef } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Surveyor, type SurveyorType } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Surveyor, type SurveyorType } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useBranchList, useCountryList, useEmployeeList, useSaveSurveyor } from './api'
+import {
+  useBranchList,
+  useCountryList,
+  useEmployeeList,
+  useSaveSurveyor,
+} from "./api";
 
 /**
  * Batas panjang nama; sama dengan mastersurveyors.MaxNameLength di backend.
@@ -22,7 +27,7 @@ import { useBranchList, useCountryList, useEmployeeList, useSaveSurveyor } from 
  * Bila migrasi 0004 langkah 0c menunjukkan kolomnya lebih pendek, KEDUA tempat wajib ikut
  * berubah.
  */
-const MAX_NAME_LENGTH = 100
+const MAX_NAME_LENGTH = 100;
 
 /**
  * Kode tipe "Internal Surveyor"; sama dengan mastersurveyors.InternalTypeCode.
@@ -42,11 +47,11 @@ const MAX_NAME_LENGTH = 100
  * Bila Tim Pega mengirim daftar sebenarnya, yang berubah hanya konstanta ini.
  */
 const DIRECTOR_OPTIONS = [
-  { value: '0', label: 'Tidak' },
-  { value: '1', label: 'Ya' },
-]
+  { value: "0", label: "Tidak" },
+  { value: "1", label: "Ya" },
+];
 
-const INTERNAL_TYPE_CODE = '1001'
+const INTERNAL_TYPE_CODE = "1001";
 
 /**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
@@ -62,14 +67,17 @@ const INTERNAL_TYPE_CODE = '1001'
  */
 const schema = z
   .object({
-    kode_tipe: z.string().trim().min(1, 'Tipe surveyor wajib dipilih.'),
+    kode_tipe: z.string().trim().min(1, "Tipe surveyor wajib dipilih."),
     // Tidak wajib: layar lama menampilkannya dengan nilai awal "Tidak".
     perlu_direksi: z.string().trim(),
     nama: z
       .string()
       .trim()
-      .min(1, 'Nama surveyor wajib diisi.')
-      .max(MAX_NAME_LENGTH, `Nama surveyor paling panjang ${MAX_NAME_LENGTH} karakter.`),
+      .min(1, "Nama surveyor wajib diisi.")
+      .max(
+        MAX_NAME_LENGTH,
+        `Nama surveyor paling panjang ${MAX_NAME_LENGTH} karakter.`,
+      ),
     alamat: z.string().trim(),
     kode_pos: z.string().trim(),
     negara: z.string().trim(),
@@ -82,8 +90,8 @@ const schema = z
     email: z
       .string()
       .trim()
-      .min(1, 'Email harus diisi.')
-      .email('Format email tidak benar.'),
+      .min(1, "Email harus diisi.")
+      .email("Format email tidak benar."),
     nama_pic: z.string().trim(),
     kode_cabang: z.string().trim(),
     nama_cabang: z.string().trim(),
@@ -100,12 +108,12 @@ const schema = z
     //     BRANCHNAME  pyVisible=OTHER  pyCondition=PNCIsInternalSurveyors  pyRequired=true
     //
     // Pada tipe lain, kolomnya tidak ditampilkan sama sekali sehingga tidak dapat wajib.
-    if (value.kode_tipe === INTERNAL_TYPE_CODE && value.nama_cabang === '') {
+    if (value.kode_tipe === INTERNAL_TYPE_CODE && value.nama_cabang === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['nama_cabang'],
-        message: 'Cabang wajib diisi untuk Internal Surveyor.',
-      })
+        path: ["nama_cabang"],
+        message: "Cabang wajib diisi untuk Internal Surveyor.",
+      });
     }
 
     // Login aplikasi wajib untuk Internal Surveyor — aturan langkah 8
@@ -114,26 +122,27 @@ const schema = z
     // Pengguna tidak mengetiknya; ia terisi saat pegawai dipilih. Jadi pesan ini tidak
     // menunjuk isian login, melainkan menunjuk isian Nama — di situlah pengguna dapat
     // bertindak.
-    if (value.kode_tipe === INTERNAL_TYPE_CODE && value.login_aplikasi === '') {
+    if (value.kode_tipe === INTERNAL_TYPE_CODE && value.login_aplikasi === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['nama'],
-        message: 'Pilih nama pegawai dari daftar — login aplikasinya ikut dari pilihan itu.',
-      })
+        path: ["nama"],
+        message:
+          "Pilih nama pegawai dari daftar — login aplikasinya ikut dari pilihan itu.",
+      });
     }
-  })
+  });
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 type Props = {
   /** Null berarti mengajukan baru; terisi berarti mengubah baris itu. */
-  surveyor: Surveyor | null
+  surveyor: Surveyor | null;
 
   /** Daftar tipe surveyor untuk dropdown. Dibaca dari modul Master Tipe Surveyors. */
-  surveyorTypes: SurveyorType[]
+  surveyorTypes: SurveyorType[];
 
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
 /**
  * Form pengajuan dan penyuntingan Master Surveyors.
@@ -154,9 +163,9 @@ type Props = {
  * adanya saat menyunting — tidak dikosongkan diam-diam.
  */
 export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
-  const save = useSaveSurveyor()
-  const countries = useCountryList()
-  const firstFieldRef = useRef<HTMLSelectElement | null>(null)
+  const save = useSaveSurveyor();
+  const countries = useCountryList();
+  const firstFieldRef = useRef<HTMLSelectElement | null>(null);
 
   const {
     register,
@@ -167,29 +176,29 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      kode_tipe: surveyor?.kode_tipe ?? '',
-      perlu_direksi: surveyor?.perlu_direksi ?? '',
-      nama: surveyor?.nama ?? '',
-      alamat: surveyor?.alamat ?? '',
-      kode_pos: surveyor?.kode_pos ?? '',
-      negara: surveyor?.negara ?? '',
-      telepon: surveyor?.telepon ?? '',
-      faksimile: surveyor?.faksimile ?? '',
-      email: surveyor?.email ?? '',
-      nama_pic: surveyor?.nama_pic ?? '',
-      kode_cabang: surveyor?.kode_cabang ?? '',
-      nama_cabang: surveyor?.nama_cabang ?? '',
-      login_aplikasi: surveyor?.login_aplikasi ?? '',
+      kode_tipe: surveyor?.kode_tipe ?? "",
+      perlu_direksi: surveyor?.perlu_direksi ?? "",
+      nama: surveyor?.nama ?? "",
+      alamat: surveyor?.alamat ?? "",
+      kode_pos: surveyor?.kode_pos ?? "",
+      negara: surveyor?.negara ?? "",
+      telepon: surveyor?.telepon ?? "",
+      faksimile: surveyor?.faksimile ?? "",
+      email: surveyor?.email ?? "",
+      nama_pic: surveyor?.nama_pic ?? "",
+      kode_cabang: surveyor?.kode_cabang ?? "",
+      nama_cabang: surveyor?.nama_cabang ?? "",
+      login_aplikasi: surveyor?.login_aplikasi ?? "",
     },
-  })
+  });
 
   // Fokus dipindahkan ke isian pertama saat form terbuka, supaya pengguna papan ketik
   // tidak perlu menelusuri seluruh halaman untuk sampai ke sini.
   useEffect(() => {
-    firstFieldRef.current?.focus()
-  }, [])
+    firstFieldRef.current?.focus();
+  }, []);
 
-  const chosenType = watch('kode_tipe')
+  const chosenType = watch("kode_tipe");
 
   // Isian yang tampil BERBEDA menurut tipe surveyor — persis seperti layar lama, yang
   // mengatur tiap kontrol lewat `pyCondition` terhadap When rule `PNCIsInternalSurveyors`
@@ -208,22 +217,25 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
   // memadatkan nilai CHAR dengan spasi tanpa memberi tanda apa pun. Satu spasi di ujung
   // membuat perbandingan ini gagal diam-diam — seluruh isian muncul untuk setiap tipe,
   // dan tidak ada pesan galat yang menandainya.
-  const cleanType = chosenType.trim()
+  const cleanType = chosenType.trim();
 
   /** Tipe sudah dipilih. Sebelum itu, tidak ada isian lain yang ditampilkan. */
-  const typeChosen = cleanType !== ''
+  const typeChosen = cleanType !== "";
 
-  const isInternal = cleanType === INTERNAL_TYPE_CODE
+  const isInternal = cleanType === INTERNAL_TYPE_CODE;
 
   // Kedua daftar ini HANYA ditembak saat Internal Surveyor dipilih — untuk tipe lain,
   // Nama memang kotak teks dan Cabang memang tidak ada.
-  const employees = useEmployeeList(isInternal)
-  const branches = useBranchList(isInternal)
+  const employees = useEmployeeList(isInternal);
+  const branches = useBranchList(isInternal);
 
-  const typeOptions = surveyorTypes.map((t) => ({ value: t.kode, label: t.deskripsi }))
+  const typeOptions = surveyorTypes.map((t) => ({
+    value: t.kode,
+    label: t.deskripsi,
+  }));
 
-  const chosenName = watch('nama')
-  const chosenBranchName = watch('nama_cabang')
+  const chosenName = watch("nama");
+  const chosenBranchName = watch("nama_cabang");
 
   /**
    * Nilai yang sedang tersimpan ditambahkan ke daftar bila ia tidak ada di sana.
@@ -235,21 +247,30 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
    *
    * Hal yang sama berlaku untuk cabang yang sudah tidak aktif lagi.
    */
-  function withCurrent(options: { value: string; label: string }[], current: string) {
-    const clean = current.trim()
-    if (clean === '' || options.some((o) => o.value === clean)) return options
-    return [{ value: clean, label: clean }, ...options]
+  function withCurrent(
+    options: { value: string; label: string }[],
+    current: string,
+  ) {
+    const clean = current.trim();
+    if (clean === "" || options.some((o) => o.value === clean)) return options;
+    return [{ value: clean, label: clean }, ...options];
   }
 
   const employeeOptions = withCurrent(
-    (employees.data?.pegawai ?? []).map((p) => ({ value: p.nama, label: p.nama })),
+    (employees.data?.pegawai ?? []).map((p) => ({
+      value: p.nama,
+      label: p.nama,
+    })),
     chosenName,
-  )
+  );
 
   const branchOptions = withCurrent(
-    (branches.data?.cabang ?? []).map((b) => ({ value: b.nama, label: b.nama })),
+    (branches.data?.cabang ?? []).map((b) => ({
+      value: b.nama,
+      label: b.nama,
+    })),
     chosenBranchName,
-  )
+  );
 
   /**
    * Memilih pegawai mengisi TIGA nilai sekaligus — bukan hanya nama.
@@ -264,23 +285,27 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
    * punya email di HRD, dan kuerinya hanya menyaring login — bukan email.
    */
   function pickEmployee(name: string) {
-    setValue('nama', name, { shouldValidate: true })
-    const match = (employees.data?.pegawai ?? []).find((p) => p.nama === name)
-    if (!match) return
-    setValue('login_aplikasi', match.login_aplikasi, { shouldValidate: true })
-    if (match.email.trim() !== '') setValue('email', match.email, { shouldValidate: true })
+    setValue("nama", name, { shouldValidate: true });
+    const match = (employees.data?.pegawai ?? []).find((p) => p.nama === name);
+    if (!match) return;
+    setValue("login_aplikasi", match.login_aplikasi, { shouldValidate: true });
+    if (match.email.trim() !== "")
+      setValue("email", match.email, { shouldValidate: true });
   }
 
   /** Memilih cabang mengisi nama DAN kodenya — `BRANCHNAME` dan `BRANCH`. */
   function pickBranch(name: string) {
-    setValue('nama_cabang', name, { shouldValidate: true })
-    const match = (branches.data?.cabang ?? []).find((b) => b.nama === name)
-    setValue('kode_cabang', match?.kode ?? '', { shouldValidate: true })
+    setValue("nama_cabang", name, { shouldValidate: true });
+    const match = (branches.data?.cabang ?? []).find((b) => b.nama === name);
+    setValue("kode_cabang", match?.kode ?? "", { shouldValidate: true });
   }
 
   // Dropdown Negara menyimpan NAMA negaranya, bukan kodenya: kolom STATE di basis data
   // berisi teks negara, dan itulah yang dibaca grid maupun rule lama.
-  const countryOptions = (countries.data?.negara ?? []).map((c) => ({ value: c.nama, label: c.nama }))
+  const countryOptions = (countries.data?.negara ?? []).map((c) => ({
+    value: c.nama,
+    label: c.nama,
+  }));
 
   async function onSubmit(value: FieldValues) {
     await save.mutateAsync({
@@ -293,28 +318,28 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
       // `id_dokumen` lain halnya — ia hasil unggahan lampiran dan menunggu modul
       // `S-1 Dokumen`. Mengirimnya kosong akan MENGHAPUS lampiran yang sudah ada, dan itu
       // kelas cacat yang tidak menimbulkan pesan galat apa pun.
-      id_dokumen: surveyor?.id_dokumen ?? '',
+      id_dokumen: surveyor?.id_dokumen ?? "",
 
       // Isian yang DISEMBUNYIKAN tipe ini juga dipertahankan, bukan dikosongkan: berpindah
       // tipe pada baris yang sudah ada tidak boleh diam-diam membuang alamat atau nomor
       // faks yang pernah diisi.
       ...(isInternal
         ? {
-            perlu_direksi: surveyor?.perlu_direksi ?? '',
-            faksimile: surveyor?.faksimile ?? '',
-            negara: surveyor?.negara ?? '',
-            kode_pos: surveyor?.kode_pos ?? '',
-            nama_pic: surveyor?.nama_pic ?? '',
+            perlu_direksi: surveyor?.perlu_direksi ?? "",
+            faksimile: surveyor?.faksimile ?? "",
+            negara: surveyor?.negara ?? "",
+            kode_pos: surveyor?.kode_pos ?? "",
+            nama_pic: surveyor?.nama_pic ?? "",
           }
         : {
-            nama_cabang: surveyor?.nama_cabang ?? '',
-            kode_cabang: surveyor?.kode_cabang ?? '',
-            login_aplikasi: surveyor?.login_aplikasi ?? '',
+            nama_cabang: surveyor?.nama_cabang ?? "",
+            kode_cabang: surveyor?.kode_cabang ?? "",
+            login_aplikasi: surveyor?.login_aplikasi ?? "",
           }),
 
       ...(surveyor ? { id: surveyor.id } : {}),
-    })
-    onClose()
+    });
+    onClose();
   }
 
   return (
@@ -322,13 +347,16 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
       aria-labelledby="judul-form-surveyor"
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-form-surveyor" className="text-lg font-semibold text-slate-900">
-        {surveyor ? 'Ubah Surveyor' : 'Tambah Surveyor'}
+      <h2
+        id="judul-form-surveyor"
+        className="text-lg font-semibold text-slate-900"
+      >
+        {surveyor ? "Ubah Surveyor" : "Tambah Surveyor"}
       </h2>
       <p className="mt-1 text-sm text-slate-600">
         {surveyor
-          ? 'Menyimpan perubahan mengembalikan surveyor ini ke antrean komite — sama seperti sistem lama. Keputusan yang sudah tercatat digantikan keputusan baru.'
-          : 'Surveyor baru masuk ke antrean komite dan belum dapat ditugaskan sebelum disetujui.'}
+          ? "Menyimpan perubahan mengembalikan surveyor ini ke antrean komite — sama seperti sistem lama. Keputusan yang sudah tercatat digantikan keputusan baru."
+          : "Surveyor baru masuk ke antrean komite dan belum dapat ditugaskan sebelum disetujui."}
       </p>
 
       {/*
@@ -351,16 +379,22 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
 
         Satu kolom, bukan dua, karena layar lama pun satu kolom.
       */}
-      <form onSubmit={(e) => { handleSubmit(onSubmit)(e) }} className="mt-5 space-y-4" noValidate>
+      <form
+        onSubmit={(e) => {
+          handleSubmit(onSubmit)(e);
+        }}
+        className="mt-5 space-y-4"
+        noValidate
+      >
         <SelectField
           id="kode_tipe"
           label="Tipe Surveyor"
           options={typeOptions}
           error={errors.kode_tipe?.message}
-          {...register('kode_tipe')}
+          {...register("kode_tipe")}
           ref={(element) => {
-            register('kode_tipe').ref(element)
-            firstFieldRef.current = element
+            register("kode_tipe").ref(element);
+            firstFieldRef.current = element;
           }}
         />
 
@@ -378,22 +412,23 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
         */}
         {!typeChosen ? (
           <p className="rounded-kontrol bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
-            Pilih tipe surveyor lebih dulu. Isian berikutnya menyesuaikan tipe yang dipilih.
+            Pilih tipe surveyor lebih dulu. Isian berikutnya menyesuaikan tipe
+            yang dipilih.
           </p>
         ) : (
           <>
-        {!isInternal && (
-          <SelectField
-            id="perlu_direksi"
-            label="Apakah perlu ke direksi?"
-            options={DIRECTOR_OPTIONS}
-            emptyText="Tidak"
-            error={errors.perlu_direksi?.message}
-            {...register('perlu_direksi')}
-          />
-        )}
+            {!isInternal && (
+              <SelectField
+                id="perlu_direksi"
+                label="Apakah perlu ke direksi?"
+                options={DIRECTOR_OPTIONS}
+                emptyText="Tidak"
+                error={errors.perlu_direksi?.message}
+                {...register("perlu_direksi")}
+              />
+            )}
 
-        {/*
+            {/*
           DUA kontrol untuk satu kolom, dan itu persis seperti layar lama. Section-nya
           memuat keduanya, masing-masing dengan syaratnya sendiri:
 
@@ -403,128 +438,144 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
           Yang kedua bukan kotak teks: ia daftar pegawai, dan pemilihannya mengisi login
           aplikasi serta email sekaligus. Itulah satu-satunya jalan LOGIN_APLIKASI terisi.
         */}
-        {isInternal ? (
-          <SelectField
-            id="nama"
-            label="Nama"
-            options={employeeOptions}
-            error={errors.nama?.message}
-            value={chosenName}
-            onChange={(e) => { pickEmployee(e.target.value) }}
-          />
-        ) : (
-          <Field
-            id="nama"
-            label="Nama"
-            error={errors.nama?.message}
-            hint="Nama ganda ditolak; perbandingannya mengabaikan huruf besar-kecil dan spasi."
-            {...register('nama')}
-          />
-        )}
-
-        <Field
-          id="email"
-          label="Email"
-          type="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
-
-        {isInternal ? (
-          <Field id="telepon" label="Telp" error={errors.telepon?.message} {...register('telepon')} />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              id="telepon"
-              label="Telp"
-              error={errors.telepon?.message}
-              {...register('telepon')}
-            />
-            <Field
-              id="faksimile"
-              label="Fax"
-              error={errors.faksimile?.message}
-              {...register('faksimile')}
-            />
-          </div>
-        )}
-
-        {!isInternal && (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2">
+            {isInternal ? (
               <SelectField
-                id="negara"
-                label="Negara"
-                options={countryOptions}
-                error={errors.negara?.message}
-                {...register('negara')}
+                id="nama"
+                label="Nama"
+                options={employeeOptions}
+                error={errors.nama?.message}
+                value={chosenName}
+                onChange={(e) => {
+                  pickEmployee(e.target.value);
+                }}
               />
+            ) : (
               <Field
-                id="kode_pos"
-                label="Kode Pos"
-                error={errors.kode_pos?.message}
-                {...register('kode_pos')}
+                id="nama"
+                label="Nama"
+                error={errors.nama?.message}
+                hint="Nama ganda ditolak; perbandingannya mengabaikan huruf besar-kecil dan spasi."
+                {...register("nama")}
               />
+            )}
+
+            <Field
+              id="email"
+              label="Email"
+              type="email"
+              error={errors.email?.message}
+              {...register("email")}
+            />
+
+            {isInternal ? (
+              <Field
+                id="telepon"
+                label="Telp"
+                error={errors.telepon?.message}
+                {...register("telepon")}
+              />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  id="telepon"
+                  label="Telp"
+                  error={errors.telepon?.message}
+                  {...register("telepon")}
+                />
+                <Field
+                  id="faksimile"
+                  label="Fax"
+                  error={errors.faksimile?.message}
+                  {...register("faksimile")}
+                />
+              </div>
+            )}
+
+            {!isInternal && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    id="negara"
+                    label="Negara"
+                    options={countryOptions}
+                    error={errors.negara?.message}
+                    {...register("negara")}
+                  />
+                  <Field
+                    id="kode_pos"
+                    label="Kode Pos"
+                    error={errors.kode_pos?.message}
+                    {...register("kode_pos")}
+                  />
+                </div>
+
+                <Field
+                  id="nama_pic"
+                  label="Nama PIC"
+                  error={errors.nama_pic?.message}
+                  {...register("nama_pic")}
+                />
+              </>
+            )}
+
+            <div>
+              <label
+                htmlFor="alamat"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Alamat
+              </label>
+              <textarea
+                id="alamat"
+                rows={3}
+                className="mt-1.5 w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                {...register("alamat")}
+              />
+              {errors.alamat?.message && (
+                <p className="mt-1 text-xs text-rose-600">
+                  {errors.alamat.message}
+                </p>
+              )}
             </div>
 
-            <Field
-              id="nama_pic"
-              label="Nama PIC"
-              error={errors.nama_pic?.message}
-              {...register('nama_pic')}
-            />
-          </>
-        )}
-
-        <div>
-          <label htmlFor="alamat" className="block text-sm font-medium text-slate-700">
-            Alamat
-          </label>
-          <textarea
-            id="alamat"
-            rows={3}
-            className="mt-1.5 w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            {...register('alamat')}
-          />
-          {errors.alamat?.message && (
-            <p className="mt-1 text-xs text-rose-600">{errors.alamat.message}</p>
-          )}
-        </div>
-
-        {/*
+            {/*
           Cabang pun daftar pilihan di layar lama, bukan kotak teks:
           `pyUIElement=autocomplete` bersumber `BrowseBranch_RD`, dan pemilihannya mengisi
           DUA kolom — `.ID` ke BRANCH dan namanya ke BRANCHNAME.
 
           Mengetiknya bebas membuat kedua kolom itu berbeda tanpa satu pun pesan galat.
         */}
-        {isInternal && (
-          <SelectField
-            id="nama_cabang"
-            label="Cabang"
-            options={branchOptions}
-            error={errors.nama_cabang?.message}
-            value={chosenBranchName}
-            onChange={(e) => { pickBranch(e.target.value) }}
-          />
-        )}
+            {isInternal && (
+              <SelectField
+                id="nama_cabang"
+                label="Cabang"
+                options={branchOptions}
+                error={errors.nama_cabang?.message}
+                value={chosenBranchName}
+                onChange={(e) => {
+                  pickBranch(e.target.value);
+                }}
+              />
+            )}
 
-        {/*
+            {/*
           Daftar pegawai KOSONG dinyatakan, bukan dibiarkan tampak seperti dropdown rusak.
 
           Separuh daftarnya datang dari HRD lewat DB Link (`D-25`, `R-03`), dan separuh
           lagi dari tabel lokal. Bila keduanya tidak menghasilkan apa pun, pengguna perlu
           tahu bahwa yang salah bukan pilihannya.
         */}
-        {isInternal && !employees.isPending && employeeOptions.length === 0 && (
-          <ErrorMessage
-            title="Daftar pegawai kosong"
-            description="Tidak ada pegawai yang dapat dijadikan surveyor internal di portal ini. Daftar itu berasal dari data HRD dan Master User Teknis; sampaikan ke administrator bila seharusnya ada isinya."
-            tone="penolakan"
-          />
-        )}
+            {isInternal &&
+              !employees.isPending &&
+              employeeOptions.length === 0 && (
+                <ErrorMessage
+                  title="Daftar pegawai kosong"
+                  description="Tidak ada pegawai yang dapat dijadikan surveyor internal di portal ini. Daftar itu berasal dari data HRD dan Master User Teknis; sampaikan ke administrator bila seharusnya ada isinya."
+                  tone="penolakan"
+                />
+              )}
 
-        {/*
+            {/*
           TIDAK ADA catatan "akun belum terbit" di sini, dan itu keputusan — bukan
           kelalaian. Catatan itu pernah ada, lalu DICABUT 2026-10-11 karena premisnya
           ternyata salah.
@@ -570,15 +621,20 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
             tone="utama"
             disabled={!typeChosen || isSubmitting || save.isPending}
           >
-            {save.isPending ? 'Menyimpan…' : 'Simpan'}
+            {save.isPending ? "Menyimpan…" : "Simpan"}
           </Button>
-          <Button type="button" tone="kedua" onClick={onClose} disabled={save.isPending}>
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={onClose}
+            disabled={save.isPending}
+          >
             Batal
           </Button>
         </div>
       </form>
     </section>
-  )
+  );
 }
 
 /**
@@ -588,51 +644,64 @@ export function SurveyorForm({ surveyor, surveyorTypes, onClose }: Props) {
  * sudah dipakai — sehingga nadanya penolakan, bukan gangguan.
  */
 function SaveErrorMessage({ error }: { error: unknown }) {
-  const message = saveMessage(error)
+  const message = saveMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function saveMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function saveMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Surveyor belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Surveyor belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
     switch (error.kode) {
-      case 'nama_surveyor_sudah_ada':
+      case "nama_surveyor_sudah_ada":
         return {
-          title: 'Nama surveyor sudah terdaftar',
+          title: "Nama surveyor sudah terdaftar",
           description: error.message,
-          tone: 'penolakan',
-        }
-      case 'login_aplikasi_sudah_dipakai':
+          tone: "penolakan",
+        };
+      case "login_aplikasi_sudah_dipakai":
         return {
-          title: 'Login aplikasi sudah dipakai',
-          description: 'Pakai nama login lain, lalu tekan Simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Login aplikasi sudah dipakai",
+          description: "Pakai nama login lain, lalu tekan Simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       default:
-        return { title: 'Surveyor gagal disimpan', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Surveyor gagal disimpan",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Surveyor gagal disimpan',
-    description: 'Terjadi kesalahan pada sistem. Coba simpan lagi.',
-    tone: 'gangguan',
-  }
+    title: "Surveyor gagal disimpan",
+    description: "Terjadi kesalahan pada sistem. Coba simpan lagi.",
+    tone: "gangguan",
+  };
 }

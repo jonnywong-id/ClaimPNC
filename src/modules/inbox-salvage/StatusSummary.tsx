@@ -1,13 +1,13 @@
-import { SalvageDonut } from './SalvageDonut'
-import type { StatusCount } from './types'
+import { SalvageDonut } from "./SalvageDonut";
+import type { StatusCount } from "./types";
 
 type Props = {
-  rows: StatusCount[]
+  rows: StatusCount[];
   /** Kode daftar yang sedang terbuka, supaya barisnya dapat ditandai. */
-  active: string
-  onSelect: (code: string) => void
-  isLoading?: boolean
-}
+  active: string;
+  onSelect: (code: string) => void;
+  isLoading?: boolean;
+};
 
 /**
  * Tabel ringkas **"Status Salvage / Jumlah"** di atas grid.
@@ -54,10 +54,10 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
       >
         Menghitung ringkasan status salvage…
       </div>
-    )
+    );
   }
 
-  if (rows.length === 0) return null
+  if (rows.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-start justify-center gap-8 rounded-kartu border border-slate-200 bg-white p-4">
@@ -69,8 +69,8 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
           aria-label="Ringkasan jumlah pengajuan per status salvage"
         >
           <caption className="sr-only">
-            Ringkasan jumlah pengajuan per status salvage. Pilih satu baris untuk membuka
-            daftarnya.
+            Ringkasan jumlah pengajuan per status salvage. Pilih satu baris
+            untuk membuka daftarnya.
           </caption>
 
           <thead className="bg-slate-50 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
@@ -89,20 +89,20 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
               // Baris yang TIDAK menuju daftar mana pun digambar sebagai teks biasa, bukan
               // tombol yang tidak melakukan apa-apa. Satu baris memang begitu — "Tidak
               // Terjual", yang di Pega pun tidak punya tab.
-              const reachable = Boolean(row.daftar)
-              const selected = reachable && row.daftar === active
+              const reachable = Boolean(row.daftar);
+              const selected = reachable && row.daftar === active;
 
               return (
                 <tr
                   key={row.status_salvage}
-                  className={selected ? 'bg-blue-50' : undefined}
+                  className={selected ? "bg-blue-50" : undefined}
                 >
                   <th scope="row" className="px-4 py-2 text-left font-normal">
                     {reachable ? (
                       <button
                         type="button"
-                        onClick={() => onSelect(row.daftar ?? '')}
-                        aria-current={selected ? 'true' : undefined}
+                        onClick={() => onSelect(row.daftar ?? "")}
+                        aria-current={selected ? "true" : undefined}
 
                         // `aria-expanded` menyatakan baris ini MEMBUKA sesuatu, dan
                         // apakah yang dibukanya sedang terbuka.
@@ -112,12 +112,12 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
                         // tergambar sampai baris ini ditekan.
                         aria-expanded={selected}
                         className={[
-                          'flex items-center gap-1.5 rounded-kontrol px-1 text-left',
-                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                          "flex items-center gap-1.5 rounded-kontrol px-1 text-left",
+                          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                           selected
-                            ? 'font-semibold text-blue-700'
-                            : 'text-blue-700 hover:underline',
-                        ].join(' ')}
+                            ? "font-semibold text-blue-700"
+                            : "text-blue-700 hover:underline",
+                        ].join(" ")}
                       >
                         {/*
                           Tanda panah, dan ia BERPUTAR saat barisnya terbuka.
@@ -136,9 +136,11 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
                           aria-hidden="true"
                           viewBox="0 0 8 10"
                           className={[
-                            'h-2.5 w-2 shrink-0 transition-transform',
-                            selected ? 'rotate-90 text-blue-700' : 'text-slate-400',
-                          ].join(' ')}
+                            "h-2.5 w-2 shrink-0 transition-transform",
+                            selected
+                              ? "rotate-90 text-blue-700"
+                              : "text-slate-400",
+                          ].join(" ")}
                         >
                           <path d="M0 0l8 5-8 5z" fill="currentColor" />
                         </svg>
@@ -148,8 +150,8 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
                       <span
                         className="px-1 text-slate-600"
                         title={
-                          'Baris ini tidak punya daftar sendiri — di Pega pun tidak ada ' +
-                          'tab yang menerimanya.'
+                          "Baris ini tidak punya daftar sendiri — di Pega pun tidak ada " +
+                          "tab yang menerimanya."
                         }
                       >
                         {row.status_salvage}
@@ -158,14 +160,14 @@ export function StatusSummary({ rows, active, onSelect, isLoading }: Props) {
                   </th>
 
                   <td className="px-4 py-2 text-right tabular-nums text-slate-900">
-                    {row.jumlah.toLocaleString('id-ID')}
+                    {row.jumlah.toLocaleString("id-ID")}
                   </td>
                 </tr>
-              )
+              );
             })}
           </tbody>
         </table>
       </div>
     </div>
-  )
+  );
 }

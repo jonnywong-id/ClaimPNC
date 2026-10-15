@@ -1,227 +1,265 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { GroupingPage } from './GroupingPage'
+import { GroupingPage } from "./GroupingPage";
 
 /**
  * Uji tambahan Master Grouping Sparepart: cabang galat muat/simpan/keputusan, mode ubah,
  * dan keadaan isian yang tidak tersentuh uji utama. Seluruh data KARANGAN (`D-69`).
  */
 
-const ROUTE = '/api/master/grouping-sparepart'
+const ROUTE = "/api/master/grouping-sparepart";
 
 const OPTIONS = {
   panel: [
-    { kode: 'PNL01', nama: 'BUMPER DEPAN' },
-    { kode: 'PNL09', nama: 'PANEL TANPA SISI' },
+    { kode: "PNL01", nama: "BUMPER DEPAN" },
+    { kode: "PNL09", nama: "PANEL TANPA SISI" },
   ],
-  tipe_kendaraan: [{ kode: 'TY01', nama: 'EXCAVATOR' }],
-  portal: 'ASM',
-}
+  tipe_kendaraan: [{ kode: "TY01", nama: "EXCAVATOR" }],
+  portal: "ASM",
+};
 
 const PART = {
-  nomor_sparepart: 'SP-1001',
-  nama_sparepart: 'FILTER OLI',
-  kategori_sparepart: 'KAT01',
-  tipe_sparepart: 'TIP01',
-  kode_sparepart: 'KD-1001',
-  tanggal_produksi: '12/05/2024',
-  portal: 'ASM',
-}
+  nomor_sparepart: "SP-1001",
+  nama_sparepart: "FILTER OLI",
+  kategori_sparepart: "KAT01",
+  tipe_sparepart: "TIP01",
+  kode_sparepart: "KD-1001",
+  tanggal_produksi: "12/05/2024",
+  portal: "ASM",
+};
 
 const ROW = {
-  id_grouping: '7',
-  nomor_sparepart: 'SP-1001',
-  nama_sparepart: '',
-  kategori_sparepart: 'KAT01',
-  tipe_sparepart: 'TIP01',
-  kode_sparepart: 'KD-1001',
-  tanggal_produksi: '12/05/2024',
-  id_panel: 'PNL01',
-  nama_panel: 'BUMPER DEPAN',
-  sisi: '1',
-  sisi_label: '',
-  no_rangka: '',
-  tipe_kendaraan: 'EXCAVATOR',
-  grouping_dengan_no_rangka: '',
-  nomor_grup: '',
-  catatan: '',
-  status: '1',
-  status_label: 'Approve',
-}
+  id_grouping: "7",
+  nomor_sparepart: "SP-1001",
+  nama_sparepart: "",
+  kategori_sparepart: "KAT01",
+  tipe_sparepart: "TIP01",
+  kode_sparepart: "KD-1001",
+  tanggal_produksi: "12/05/2024",
+  id_panel: "PNL01",
+  nama_panel: "BUMPER DEPAN",
+  sisi: "1",
+  sisi_label: "",
+  no_rangka: "",
+  tipe_kendaraan: "EXCAVATOR",
+  grouping_dengan_no_rangka: "",
+  nomor_grup: "",
+  catatan: "",
+  status: "1",
+  status_label: "Approve",
+};
 
-const ROW_B = { ...ROW, id_grouping: '8', nomor_sparepart: 'SP-0001', no_rangka: 'MHF1', nomor_grup: '0004' }
+const ROW_B = {
+  ...ROW,
+  id_grouping: "8",
+  nomor_sparepart: "SP-0001",
+  no_rangka: "MHF1",
+  nomor_grup: "0004",
+};
 
-type Call = { url: string; method: string; body: unknown }
+type Call = { url: string; method: string; body: unknown };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
-type Answer = Response | Promise<Response> | 'putus' | 'rusak' | undefined
+type Answer = Response | Promise<Response> | "putus" | "rusak" | undefined;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function brokenResponse(): Response {
   return {
     get status(): number {
-      throw new TypeError('jawaban rusak')
+      throw new TypeError("jawaban rusak");
     },
-  } as unknown as Response
+  } as unknown as Response;
 }
 
 function installFetch(answer: (call: Call) => Answer = () => undefined) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
     const call: Call = {
       url,
-      method: init?.method ?? 'GET',
+      method: init?.method ?? "GET",
       body: init?.body ? JSON.parse(init.body as string) : undefined,
-    }
-    calls.push(call)
-    const custom = answer(call)
-    if (custom === 'putus') return Promise.reject(new TypeError('putus'))
-    if (custom === 'rusak') return Promise.resolve(brokenResponse())
-    if (custom) return Promise.resolve(custom)
-    if (url.startsWith(`${ROUTE}/pilihan`)) return Promise.resolve(json(200, OPTIONS))
+    };
+    calls.push(call);
+    const custom = answer(call);
+    if (custom === "putus") return Promise.reject(new TypeError("putus"));
+    if (custom === "rusak") return Promise.resolve(brokenResponse());
+    if (custom) return Promise.resolve(custom);
+    if (url.startsWith(`${ROUTE}/pilihan`))
+      return Promise.resolve(json(200, OPTIONS));
     if (url.startsWith(`${ROUTE}/sisi`)) {
-      const panel = new URL(url, 'https://x').searchParams.get('id_panel')
-      const sisi = panel === 'PNL01' ? [{ kode: '1', nama: 'KIRI' }] : []
-      return Promise.resolve(json(200, { sisi, portal: 'ASM' }))
+      const panel = new URL(url, "https://x").searchParams.get("id_panel");
+      const sisi = panel === "PNL01" ? [{ kode: "1", nama: "KIRI" }] : [];
+      return Promise.resolve(json(200, { sisi, portal: "ASM" }));
     }
-    if (url.startsWith(`${ROUTE}/sparepart`)) return Promise.resolve(json(200, PART))
-    if (url.endsWith('/keputusan')) {
+    if (url.startsWith(`${ROUTE}/sparepart`))
+      return Promise.resolve(json(200, PART));
+    if (url.endsWith("/keputusan")) {
       return Promise.resolve(
-        json(200, { jumlah_berubah: 1, status: '2', status_label: 'Reject', portal: 'ASM' }),
-      )
+        json(200, {
+          jumlah_berubah: 1,
+          status: "2",
+          status_label: "Reject",
+          portal: "ASM",
+        }),
+      );
     }
-    if (call.method === 'GET') {
-      return Promise.resolve(json(200, { grouping: [ROW, ROW_B], status: '1', portal: 'ASM' }))
+    if (call.method === "GET") {
+      return Promise.resolve(
+        json(200, { grouping: [ROW, ROW_B], status: "1", portal: "ASM" }),
+      );
     }
-    return Promise.resolve(json(200, { grouping: ROW, portal: 'ASM' }))
-  })
+    return Promise.resolve(json(200, { grouping: ROW, portal: "ASM" }));
+  });
 }
 
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
+  });
   return render(
     <QueryClientProvider client={client}>
       <GroupingPage />
     </QueryClientProvider>,
-  )
+  );
 }
 
-const isList = (call: Call) => call.method === 'GET' && call.url.startsWith(`${ROUTE}?`)
+const isList = (call: Call) =>
+  call.method === "GET" && call.url.startsWith(`${ROUTE}?`);
 
 beforeEach(() => {
-  calls = []
-  useSession.setState({ token: 'token-uji', user: null, validUntil: '2026-12-31T00:00:00Z' })
-  useSelectedPortal.getState().select('ASM')
-})
+  calls = [];
+  useSession.setState({
+    token: "token-uji",
+    user: null,
+    validUntil: "2026-12-31T00:00:00Z",
+  });
+  useSelectedPortal.getState().select("ASM");
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-  useSelectedPortal.getState().clear()
-})
+  vi.unstubAllGlobals();
+  useSelectedPortal.getState().clear();
+});
 
-describe('daftar', () => {
+describe("daftar", () => {
   it.each([
-    { name: 'jaringan putus', answer: (): Answer => 'putus', title: 'Server Claim PNC tidak dapat dihubungi' },
     {
-      name: 'portal tidak disebut',
-      answer: (): Answer => json(400, { kode: 'portal_tidak_disebut', pesan: 'x' }),
-      title: 'Portal entitas belum dipilih',
+      name: "jaringan putus",
+      answer: (): Answer => "putus",
+      title: "Server Claim PNC tidak dapat dihubungi",
     },
     {
-      name: 'portal tidak dikenal',
-      answer: (): Answer => json(400, { kode: 'portal_tidak_dikenal', pesan: 'x' }),
-      title: 'Portal entitas belum dipilih',
+      name: "portal tidak disebut",
+      answer: (): Answer =>
+        json(400, { kode: "portal_tidak_disebut", pesan: "x" }),
+      title: "Portal entitas belum dipilih",
     },
     {
-      name: 'portal belum siap',
-      answer: (): Answer => json(503, { kode: 'portal_belum_siap', pesan: 'x' }),
-      title: 'Basis data entitas ini belum tersedia',
+      name: "portal tidak dikenal",
+      answer: (): Answer =>
+        json(400, { kode: "portal_tidak_dikenal", pesan: "x" }),
+      title: "Portal entitas belum dipilih",
     },
     {
-      name: 'galat API lain',
-      answer: (): Answer => json(500, { kode: 'galat_internal', pesan: 'x' }),
-      title: 'Daftar grouping tidak dapat dimuat',
-      description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
+      name: "portal belum siap",
+      answer: (): Answer =>
+        json(503, { kode: "portal_belum_siap", pesan: "x" }),
+      title: "Basis data entitas ini belum tersedia",
     },
     {
-      name: 'galat bukan API',
-      answer: (): Answer => 'rusak',
-      title: 'Daftar grouping tidak dapat dimuat',
-      description: 'Coba beberapa saat lagi.',
+      name: "galat API lain",
+      answer: (): Answer => json(500, { kode: "galat_internal", pesan: "x" }),
+      title: "Daftar grouping tidak dapat dimuat",
+      description:
+        "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
     },
-  ])('menampilkan galat muat: $name', async ({ answer, title, description }) => {
-    installFetch((call) => (isList(call) ? answer() : undefined))
-    show()
+    {
+      name: "galat bukan API",
+      answer: (): Answer => "rusak",
+      title: "Daftar grouping tidak dapat dimuat",
+      description: "Coba beberapa saat lagi.",
+    },
+  ])(
+    "menampilkan galat muat: $name",
+    async ({ answer, title, description }) => {
+      installFetch((call) => (isList(call) ? answer() : undefined));
+      show();
 
-    expect(screen.getByText('Memuat daftar grouping…')).toBeInTheDocument()
-    expect(await screen.findByText(title)).toBeInTheDocument()
-    if (description) expect(screen.getByText(description)).toBeInTheDocument()
-  })
+      expect(screen.getByText("Memuat daftar grouping…")).toBeInTheDocument();
+      expect(await screen.findByText(title)).toBeInTheDocument();
+      if (description)
+        expect(screen.getByText(description)).toBeInTheDocument();
+    },
+  );
 
-  it('menampilkan tanda hubung untuk isian kosong dan pesan kosong per tab', async () => {
+  it("menampilkan tanda hubung untuk isian kosong dan pesan kosong per tab", async () => {
     installFetch((call) =>
-      isList(call) && call.url.includes('status=2')
-        ? json(200, { grouping: [], status: '2', portal: 'ASM' })
+      isList(call) && call.url.includes("status=2")
+        ? json(200, { grouping: [], status: "2", portal: "ASM" })
         : undefined,
-    )
-    show()
+    );
+    show();
 
-    const row = (await screen.findByText('SP-1001')).closest('tr')!
+    const row = (await screen.findByText("SP-1001")).closest("tr")!;
     // TIGA sel, bukan empat: kolom Nomor Grup dicabut atas keputusan Work Owner 2026-10-04,
     // dan sel kosongnya ikut hilang bersamanya.
-    expect(within(row).getAllByText('—')).toHaveLength(3)
+    expect(within(row).getAllByText("—")).toHaveLength(3);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
-    expect(await screen.findByText('Belum ada grouping pada tab Reject.')).toBeInTheDocument()
-  })
+    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    expect(
+      await screen.findByText("Belum ada grouping pada tab Reject."),
+    ).toBeInTheDocument();
+  });
 
-  it('mengurutkan menurut setiap kolom', async () => {
-    installFetch()
-    show()
-    const table = await screen.findByRole('table')
+  it("mengurutkan menurut setiap kolom", async () => {
+    installFetch();
+    show();
+    const table = await screen.findByRole("table");
 
     for (const title of [
-      'ID',
-      'No Sparepart',
-      'Nama Sparepart',
-      'Nama Panel',
-      'Sisi Panel',
-      'No Rangka',
+      "ID",
+      "No Sparepart",
+      "Nama Sparepart",
+      "Nama Panel",
+      "Sisi Panel",
+      "No Rangka",
     ]) {
-      const column = within(table).getByRole('columnheader', { name: new RegExp(`^${title}`) })
-      await userEvent.click(within(column).getByRole('button'))
-      expect(column).toHaveAttribute('aria-sort', 'ascending')
+      const column = within(table).getByRole("columnheader", {
+        name: new RegExp(`^${title}`),
+      });
+      await userEvent.click(within(column).getByRole("button"));
+      expect(column).toHaveAttribute("aria-sort", "ascending");
     }
-    const nomor = within(table).getByRole('columnheader', { name: /^No Sparepart/ })
-    await userEvent.click(within(nomor).getByRole('button'))
-    expect(within(table).getAllByRole('row')[1]).toHaveTextContent('SP-0001')
-  })
+    const nomor = within(table).getByRole("columnheader", {
+      name: /^No Sparepart/,
+    });
+    await userEvent.click(within(nomor).getByRole("button"));
+    expect(within(table).getAllByRole("row")[1]).toHaveTextContent("SP-0001");
+  });
 
-  it('memuat ulang daftar lewat Refresh', async () => {
-    installFetch()
-    show()
-    await screen.findByText('SP-1001')
-    const before = calls.filter(isList).length
+  it("memuat ulang daftar lewat Refresh", async () => {
+    installFetch();
+    show();
+    await screen.findByText("SP-1001");
+    const before = calls.filter(isList).length;
 
-    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
-    await waitFor(() => expect(calls.filter(isList).length).toBe(before + 1))
-  })
-})
+    await waitFor(() => expect(calls.filter(isList).length).toBe(before + 1));
+  });
+});
 
 /**
  * Layar ini TIDAK memutuskan apa pun, dan itu memang perilaku Pega.
@@ -235,227 +273,274 @@ describe('daftar', () => {
  * supaya centang borongan tidak kembali dipasang tanpa disadari (keputusan Work Owner
  * 2026-10-04).
  */
-describe('tanpa keputusan di layar ini', () => {
+describe("tanpa keputusan di layar ini", () => {
   async function openPending() {
-    show()
-    await screen.findByText('SP-1001')
-    await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
-    await screen.findByText('SP-0001')
+    show();
+    await screen.findByText("SP-1001");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Waiting Approval" }),
+    );
+    await screen.findByText("SP-0001");
   }
 
-  it('tab Waiting Approval tidak punya centang maupun tombol keputusan', async () => {
-    installFetch()
-    await openPending()
+  it("tab Waiting Approval tidak punya centang maupun tombol keputusan", async () => {
+    installFetch();
+    await openPending();
 
-    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
-    for (const name of ['Approve terpilih', 'Reject terpilih', 'Bersihkan']) {
-      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    for (const name of ["Approve terpilih", "Reject terpilih", "Bersihkan"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
-    expect(screen.queryByText('Centang grouping yang akan diputuskan.')).not.toBeInTheDocument()
-  })
+    expect(
+      screen.queryByText("Centang grouping yang akan diputuskan."),
+    ).not.toBeInTheDocument();
+  });
 
-  it('tidak pernah menembak endpoint keputusan', async () => {
-    installFetch()
-    await openPending()
+  it("tidak pernah menembak endpoint keputusan", async () => {
+    installFetch();
+    await openPending();
 
     // Seluruh tombol yang ada di tab ini ditekan; tidak satu pun boleh menghasilkan keputusan.
-    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
-    await waitFor(() => expect(calls.filter(isList).length).toBeGreaterThan(1))
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(calls.filter(isList).length).toBeGreaterThan(1));
 
-    expect(calls.some((c) => c.url.endsWith('/keputusan'))).toBe(false)
-  })
+    expect(calls.some((c) => c.url.endsWith("/keputusan"))).toBe(false);
+  });
 
-  it('susunan kolomnya sama persis dengan kedua tab lain', async () => {
-    installFetch()
-    show()
-    await screen.findByText('SP-1001')
+  it("susunan kolomnya sama persis dengan kedua tab lain", async () => {
+    installFetch();
+    show();
+    await screen.findByText("SP-1001");
 
     const titleOf = () =>
-      within(screen.getByRole('table'))
-        .getAllByRole('columnheader')
-        .map((one) => (one.textContent ?? '').replace(/\s+/g, ' ').trim())
+      within(screen.getByRole("table"))
+        .getAllByRole("columnheader")
+        .map((one) => (one.textContent ?? "").replace(/\s+/g, " ").trim());
 
-    const onApprove = titleOf()
-    await userEvent.click(screen.getByRole('button', { name: 'Waiting Approval' }))
-    await screen.findByText('SP-0001')
+    const onApprove = titleOf();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Waiting Approval" }),
+    );
+    await screen.findByText("SP-0001");
 
-    expect(titleOf()).toEqual(onApprove)
-  })
-})
+    expect(titleOf()).toEqual(onApprove);
+  });
+});
 
-describe('form ubah', () => {
-  it('menampilkan ID saja lalu mengirim PUT ke grouping itu', async () => {
-    installFetch()
-    show()
-    const row = (await screen.findByText('SP-1001')).closest('tr')!
-    await userEvent.click(within(row).getByRole('button', { name: 'Ubah' }))
+describe("form ubah", () => {
+  it("menampilkan ID saja lalu mengirim PUT ke grouping itu", async () => {
+    installFetch();
+    show();
+    const row = (await screen.findByText("SP-1001")).closest("tr")!;
+    await userEvent.click(within(row).getByRole("button", { name: "Ubah" }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Ubah grouping SP-1001 — BUMPER DEPAN' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('ID grouping').parentElement).toHaveTextContent('7')
+      await screen.findByRole("heading", {
+        name: "Ubah grouping SP-1001 — BUMPER DEPAN",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ID grouping").parentElement).toHaveTextContent(
+      "7",
+    );
     // Nomor grup TIDAK ditampilkan di mana pun — layar Pega tidak menampilkannya.
-    expect(screen.queryByText('Nomor grup kendaraan')).not.toBeInTheDocument()
+    expect(screen.queryByText("Nomor grup kendaraan")).not.toBeInTheDocument();
     // Isian turunan diambil dari pencarian sparepart yang berjalan saat form dibuka.
-    expect(await screen.findByText('FILTER OLI')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tambah' })).toBeDisabled()
+    expect(await screen.findByText("FILTER OLI")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tambah" })).toBeDisabled();
 
-    await userEvent.type(screen.getByLabelText('No Rangka'), 'MHF9')
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+    await userEvent.type(screen.getByLabelText("No Rangka"), "MHF9");
+    await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('heading', { name: /Ubah grouping/ })).not.toBeInTheDocument(),
-    )
-    const sent = calls.find((c) => c.method === 'PUT')
-    expect(sent?.url).toBe(`${ROUTE}/7`)
-    expect(sent?.body).toMatchObject({ no_rangka: 'MHF9', sisi: '1', nama_panel: 'BUMPER DEPAN' })
-  })
+      expect(
+        screen.queryByRole("heading", { name: /Ubah grouping/ }),
+      ).not.toBeInTheDocument(),
+    );
+    const sent = calls.find((c) => c.method === "PUT");
+    expect(sent?.url).toBe(`${ROUTE}/7`);
+    expect(sent?.body).toMatchObject({
+      no_rangka: "MHF9",
+      sisi: "1",
+      nama_panel: "BUMPER DEPAN",
+    });
+  });
 
-  it('menutup form saat berpindah tab', async () => {
-    installFetch()
-    show()
-    const row = (await screen.findByText('SP-1001')).closest('tr')!
-    await userEvent.click(within(row).getByRole('button', { name: 'Ubah' }))
-    await screen.findByRole('heading', { name: /Ubah grouping/ })
+  it("menutup form saat berpindah tab", async () => {
+    installFetch();
+    show();
+    const row = (await screen.findByText("SP-1001")).closest("tr")!;
+    await userEvent.click(within(row).getByRole("button", { name: "Ubah" }));
+    await screen.findByRole("heading", { name: /Ubah grouping/ });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
-    expect(screen.queryByRole('heading', { name: /Ubah grouping/ })).not.toBeInTheDocument()
-  })
-})
+    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    expect(
+      screen.queryByRole("heading", { name: /Ubah grouping/ }),
+    ).not.toBeInTheDocument();
+  });
+});
 
-describe('form tambah', () => {
+describe("form tambah", () => {
   async function openAdd() {
-    show()
-    await screen.findByText('SP-1001')
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
-    return screen.findByRole('heading', { name: 'Tambah Master Grouping Sparepart' })
+    show();
+    await screen.findByText("SP-1001");
+    await userEvent.click(screen.getByRole("button", { name: "Tambah" }));
+    return screen.findByRole("heading", {
+      name: "Tambah Master Grouping Sparepart",
+    });
   }
 
   async function fillValid() {
-    await userEvent.type(screen.getByLabelText('Nomor Sparepart'), 'SP-1001')
-    await userEvent.selectOptions(await screen.findByLabelText('Nama Panel'), 'PNL01')
-    await screen.findByRole('option', { name: 'KIRI' })
-    await userEvent.selectOptions(screen.getByLabelText('Sisi'), '1')
-    await userEvent.type(screen.getByLabelText('No Rangka'), 'MHF5')
+    await userEvent.type(screen.getByLabelText("Nomor Sparepart"), "SP-1001");
+    await userEvent.selectOptions(
+      await screen.findByLabelText("Nama Panel"),
+      "PNL01",
+    );
+    await screen.findByRole("option", { name: "KIRI" });
+    await userEvent.selectOptions(screen.getByLabelText("Sisi"), "1");
+    await userEvent.type(screen.getByLabelText("No Rangka"), "MHF5");
   }
 
-  it('menyebut panel yang belum punya sisi', async () => {
-    installFetch()
-    await openAdd()
+  it("menyebut panel yang belum punya sisi", async () => {
+    installFetch();
+    await openAdd();
 
-    await userEvent.selectOptions(await screen.findByLabelText('Nama Panel'), 'PNL09')
+    await userEvent.selectOptions(
+      await screen.findByLabelText("Nama Panel"),
+      "PNL09",
+    );
     expect(
       await screen.findByText(/Panel ini belum punya sisi yang terdaftar\./),
-    ).toBeInTheDocument()
-  })
+    ).toBeInTheDocument();
+  });
 
-  it('menyebut pencarian sparepart yang sedang berjalan', async () => {
-    let release: (r: Response) => void = () => {}
+  it("menyebut pencarian sparepart yang sedang berjalan", async () => {
+    let release: (r: Response) => void = () => {};
     installFetch((call) =>
       call.url.startsWith(`${ROUTE}/sparepart`)
         ? new Promise<Response>((resolve) => {
-            release = resolve
+            release = resolve;
           })
         : undefined,
-    )
-    await openAdd()
+    );
+    await openAdd();
 
-    await userEvent.type(screen.getByLabelText('Nomor Sparepart'), 'SP-1001')
-    await userEvent.tab()
-    expect(await screen.findByText('Mencari data sparepart…')).toBeInTheDocument()
-    release(json(200, PART))
-    expect(await screen.findByText('FILTER OLI')).toBeInTheDocument()
-  })
+    await userEvent.type(screen.getByLabelText("Nomor Sparepart"), "SP-1001");
+    await userEvent.tab();
+    expect(
+      await screen.findByText("Mencari data sparepart…"),
+    ).toBeInTheDocument();
+    release(json(200, PART));
+    expect(await screen.findByText("FILTER OLI")).toBeInTheDocument();
+  });
 
-  it('menyebut daftar panel yang gagal dimuat', async () => {
+  it("menyebut daftar panel yang gagal dimuat", async () => {
     installFetch((call) =>
-      call.url.startsWith(`${ROUTE}/pilihan`) ? json(500, { kode: 'x', pesan: 'x' }) : undefined,
-    )
-    await openAdd()
+      call.url.startsWith(`${ROUTE}/pilihan`)
+        ? json(500, { kode: "x", pesan: "x" })
+        : undefined,
+    );
+    await openAdd();
 
     expect(
-      await screen.findByText('Daftar Panel dan Tipe Kendaraan tidak dapat dimuat'),
-    ).toBeInTheDocument()
-  })
+      await screen.findByText(
+        "Daftar Panel dan Tipe Kendaraan tidak dapat dimuat",
+      ),
+    ).toBeInTheDocument();
+  });
 
-  it('menyorot pelanggaran server pada isiannya masing-masing', async () => {
+  it("menyorot pelanggaran server pada isiannya masing-masing", async () => {
     installFetch((call) =>
-      call.method === 'POST'
+      call.method === "POST"
         ? json(422, {
-            kode: 'validasi_gagal',
-            pesan: 'x',
+            kode: "validasi_gagal",
+            pesan: "x",
             detail: [
-              { kolom: 'no_rangka', pesan: 'No rangka ditolak server.' },
-              { kolom: 'catatan', pesan: 'Catatan ditolak server.' },
-              { kolom: 'kolom_asing', pesan: 'Tidak disorot.' },
+              { kolom: "no_rangka", pesan: "No rangka ditolak server." },
+              { kolom: "catatan", pesan: "Catatan ditolak server." },
+              { kolom: "kolom_asing", pesan: "Tidak disorot." },
             ],
           })
         : undefined,
-    )
-    await openAdd()
-    await fillValid()
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+    );
+    await openAdd();
+    await fillValid();
+    await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
-    expect(await screen.findByText('No rangka ditolak server.')).toBeInTheDocument()
-    expect(screen.getByText('Catatan ditolak server.')).toBeInTheDocument()
-    expect(screen.queryByText('Tidak disorot.')).not.toBeInTheDocument()
-    expect(screen.queryByText('Belum dapat disimpan')).not.toBeInTheDocument()
-  })
+    expect(
+      await screen.findByText("No rangka ditolak server."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Catatan ditolak server.")).toBeInTheDocument();
+    expect(screen.queryByText("Tidak disorot.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Belum dapat disimpan")).not.toBeInTheDocument();
+  });
 
   it.each([
     {
-      name: 'validasi tanpa rincian',
-      answer: (): Answer => json(422, { kode: 'validasi_gagal', pesan: 'Ditolak tanpa rincian.' }),
-      texts: ['Belum dapat disimpan', 'Ditolak tanpa rincian.'],
+      name: "validasi tanpa rincian",
+      answer: (): Answer =>
+        json(422, { kode: "validasi_gagal", pesan: "Ditolak tanpa rincian." }),
+      texts: ["Belum dapat disimpan", "Ditolak tanpa rincian."],
     },
     {
-      name: 'portal tidak disebut',
-      answer: (): Answer => json(400, { kode: 'portal_tidak_disebut', pesan: 'x' }),
-      texts: ['Pilih portal entitas di bagian atas halaman, lalu simpan lagi.'],
+      name: "portal tidak disebut",
+      answer: (): Answer =>
+        json(400, { kode: "portal_tidak_disebut", pesan: "x" }),
+      texts: ["Pilih portal entitas di bagian atas halaman, lalu simpan lagi."],
     },
     {
-      name: 'portal tidak dikenal',
-      answer: (): Answer => json(400, { kode: 'portal_tidak_dikenal', pesan: 'x' }),
-      texts: ['Pilih portal entitas di bagian atas halaman, lalu simpan lagi.'],
+      name: "portal tidak dikenal",
+      answer: (): Answer =>
+        json(400, { kode: "portal_tidak_dikenal", pesan: "x" }),
+      texts: ["Pilih portal entitas di bagian atas halaman, lalu simpan lagi."],
     },
     {
-      name: 'portal belum siap',
-      answer: (): Answer => json(503, { kode: 'portal_belum_siap', pesan: 'x' }),
-      texts: ['Basis data entitas ini belum tersedia'],
+      name: "portal belum siap",
+      answer: (): Answer =>
+        json(503, { kode: "portal_belum_siap", pesan: "x" }),
+      texts: ["Basis data entitas ini belum tersedia"],
     },
     {
-      name: 'galat API lain',
-      answer: (): Answer => json(500, { kode: 'galat_internal', pesan: 'x' }),
-      texts: ['Terjadi kesalahan pada sistem'],
+      name: "galat API lain",
+      answer: (): Answer => json(500, { kode: "galat_internal", pesan: "x" }),
+      texts: ["Terjadi kesalahan pada sistem"],
     },
     {
-      name: 'jaringan putus',
-      answer: (): Answer => 'putus',
-      texts: ['Server Claim PNC tidak dapat dihubungi'],
+      name: "jaringan putus",
+      answer: (): Answer => "putus",
+      texts: ["Server Claim PNC tidak dapat dihubungi"],
     },
-  ])('menampilkan galat simpan: $name', async ({ answer, texts }) => {
-    installFetch((call) => (call.method === 'POST' ? answer() : undefined))
-    await openAdd()
-    await fillValid()
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+  ])("menampilkan galat simpan: $name", async ({ answer, texts }) => {
+    installFetch((call) => (call.method === "POST" ? answer() : undefined));
+    await openAdd();
+    await fillValid();
+    await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
-    for (const text of texts) expect(await screen.findByText(text)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Tambah Master Grouping Sparepart' })).toBeInTheDocument()
-  })
-
-  it('tidak menampilkan kotak pesan untuk galat bukan API lalu menutup lewat Batal', async () => {
-    installFetch((call) => (call.method === 'POST' ? 'rusak' : undefined))
-    await openAdd()
-    await fillValid()
-    await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Simpan' })).toBeEnabled())
-    expect(calls.some((c) => c.method === 'POST')).toBe(true)
-    expect(screen.queryByText('Terjadi kesalahan pada sistem')).not.toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Batal' }))
+    for (const text of texts)
+      expect(await screen.findByText(text)).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: 'Tambah Master Grouping Sparepart' }),
-    ).not.toBeInTheDocument()
-  })
-})
+      screen.getByRole("heading", { name: "Tambah Master Grouping Sparepart" }),
+    ).toBeInTheDocument();
+  });
+
+  it("tidak menampilkan kotak pesan untuk galat bukan API lalu menutup lewat Batal", async () => {
+    installFetch((call) => (call.method === "POST" ? "rusak" : undefined));
+    await openAdd();
+    await fillValid();
+    await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Simpan" })).toBeEnabled(),
+    );
+    expect(calls.some((c) => c.method === "POST")).toBe(true);
+    expect(
+      screen.queryByText("Terjadi kesalahan pada sistem"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Batal" }));
+    expect(
+      screen.queryByRole("heading", {
+        name: "Tambah Master Grouping Sparepart",
+      }),
+    ).not.toBeInTheDocument();
+  });
+});

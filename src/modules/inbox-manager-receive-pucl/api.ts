@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { DocumentResponse, ListResponse, MetadataResponse } from './types'
+import type { DocumentResponse, ListResponse, MetadataResponse } from "./types";
 
-const PATH = '/api/inbox-manager-receive-pucl'
+const PATH = "/api/inbox-manager-receive-pucl";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -20,14 +20,25 @@ const PATH = '/api/inbox-manager-receive-pucl'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-manager-receive-pucl', 'tab', portal, token] as const,
+    ["inbox-manager-receive-pucl", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, tab: string, page: number) =>
-    ['inbox-manager-receive-pucl', 'daftar', portal, token, tab, page] as const,
+  list: (
+    portal: string | null,
+    token: string | null,
+    tab: string,
+    page: number,
+  ) =>
+    ["inbox-manager-receive-pucl", "daftar", portal, token, tab, page] as const,
 
   document: (portal: string | null, token: string | null, reference: string) =>
-    ['inbox-manager-receive-pucl', 'dokumen', portal, token, reference] as const,
-}
+    [
+      "inbox-manager-receive-pucl",
+      "dokumen",
+      portal,
+      token,
+      reference,
+    ] as const,
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana yang berlaku.
@@ -44,8 +55,8 @@ const keys = {
  * lagi mencerminkan grid aslinya.
  */
 export function useManagerReceivePUCLMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -57,7 +68,7 @@ export function useManagerReceivePUCLMetadata() {
     // tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -71,13 +82,18 @@ export function useManagerReceivePUCLMetadata() {
  * Halaman di sini benar-benar dipotong basis data dengan `OFFSET … FETCH NEXT`, sehingga
  * jumlah "total" tetap tepat tanpa menarik seluruh baris.
  */
-export function useManagerReceivePUCLList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useManagerReceivePUCLList(
+  tab: string,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -87,7 +103,7 @@ export function useManagerReceivePUCLList(tab: string, page: number, enabled: bo
     // Kedua antrean berubah saat petugas lain mengerjakan pekerjaannya, jadi cache-nya
     // pendek — sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -106,8 +122,8 @@ export function useManagerReceivePUCLList(tab: string, page: number, enabled: bo
  * mengerjakan berkasnya di Pega berdasarkan isi yang lama.
  */
 export function useReceiveDocument(reference: string, enabled = true) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.document(portal, token, reference),
@@ -116,9 +132,9 @@ export function useReceiveDocument(reference: string, enabled = true) {
         `${PATH}/dokumen/${encodeURIComponent(reference)}`,
         { token, portal },
       ),
-    enabled: enabled && reference !== '' && token !== null && portal !== null,
+    enabled: enabled && reference !== "" && token !== null && portal !== null,
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -136,21 +152,21 @@ export function useReceiveDocument(reference: string, enabled = true) {
  * dibutuhkan — dan itu yang menjadi dasar memutuskan mana yang dibangun lebih dulu.
  */
 export function useReceiveDocumentAction() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (input: { tindakan: string; berkas: string }) => {
-      const query = new URLSearchParams({ tindakan: input.tindakan })
-      if (input.berkas) query.set('berkas', input.berkas)
+      const query = new URLSearchParams({ tindakan: input.tindakan });
+      if (input.berkas) query.set("berkas", input.berkas);
 
       return callAPI<void>(`${PATH}/tindakan?${query.toString()}`, {
         token,
         portal,
-        metode: 'POST',
-      })
+        metode: "POST",
+      });
     },
-  })
+  });
 }
 
 /**
@@ -161,16 +177,16 @@ export function useReceiveDocumentAction() {
  * "tidak dikirim" dari "dikirim kosong", dan yang pertama berarti tab bawaan.
  */
 function tabParams(tab: string): URLSearchParams {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  return params
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  return params;
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(tab: string, page: number): string {
-  const params = tabParams(tab)
-  if (page > 1) params.set('halaman', String(page))
+  const params = tabParams(tab);
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }

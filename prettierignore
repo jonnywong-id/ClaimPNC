@@ -1,0 +1,8 @@
+node_modules
+dist
+.vite
+coverage
+
+# Komponen hasil `npx shadcn add` — biarkan apa adanya supaya diff terhadap
+# sumber upstream tetap terbaca saat komponennya di-update.
+src/components/ui

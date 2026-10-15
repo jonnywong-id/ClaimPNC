@@ -1,12 +1,12 @@
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatPegaFormDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatPegaFormDate } from "@/components/format";
 
-import { useReceiveDocument, useReceiveDocumentAction } from './api'
-import type { DocumentAction, DocumentField, DocumentResponse } from './types'
+import { useReceiveDocument, useReceiveDocumentAction } from "./api";
+import type { DocumentAction, DocumentField, DocumentResponse } from "./types";
 
 /**
  * Layar kerja penerimaan dokumen — flow action `InputReceiveDocument`.
@@ -52,43 +52,46 @@ import type { DocumentAction, DocumentField, DocumentResponse } from './types'
  * Kedelapan tombolnya tetap digambar; penekanannya menjawab alasan. Lihat WriteActionBar.
  */
 export function InputReceiveDocumentPage() {
-  const { referensi } = useParams<{ referensi: string }>()
-  const [params] = useSearchParams()
-  const navigate = useNavigate()
+  const { referensi } = useParams<{ referensi: string }>();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
 
-  const key = referensi ? decodeURIComponent(referensi) : ''
-  const berkas = useReceiveDocument(key)
+  const key = referensi ? decodeURIComponent(referensi) : "";
+  const berkas = useReceiveDocument(key);
 
   // `?? null` bukan kerapian. `callAPI` mengembalikan `null` — bukan melempar — untuk
   // jawaban 200 yang badannya BUKAN JSON, misalnya saat alamat `/api/...` dijawab penyaji
   // SPA dengan `index.html`. Tanpa penanganan, keadaan itu menghasilkan halaman yang
   // benar-benar kosong: bukan memuat, bukan galat, bukan data. Itu kelas kegagalan yang
   // paling sulit dilaporkan pengguna, karena tidak ada satu pun yang dapat disebutkan.
-  const detail = berkas.data ?? null
+  const detail = berkas.data ?? null;
 
   const state: ScreenState = berkas.isError
-    ? 'galat'
+    ? "galat"
     : berkas.isPending
-      ? 'memuat'
+      ? "memuat"
       : detail
-        ? 'siap'
-        : 'kosong'
+        ? "siap"
+        : "kosong";
 
   // Tab dan halaman dibawa kembali apa adanya. Petugas yang membuka berkas dari halaman
   // ketiga harus mendarat di sana lagi.
   const back = params.toString()
     ? `/inbox-manager-receive-pucl?${params.toString()}`
-    : '/inbox-manager-receive-pucl'
+    : "/inbox-manager-receive-pucl";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
-            {detail ? `Berkas ${detail.no_case}` : 'Layar kerja penerimaan dokumen'}
+            {detail
+              ? `Berkas ${detail.no_case}`
+              : "Layar kerja penerimaan dokumen"}
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Input Receive Document — layar kerja berkas penerimaan dokumen klaim.
+            Input Receive Document — layar kerja berkas penerimaan dokumen
+            klaim.
           </p>
           {detail && <CaseSummary detail={detail} />}
         </div>
@@ -109,11 +112,11 @@ export function InputReceiveDocumentPage() {
       */}
       <WorkScreen detail={detail} />
     </div>
-  )
+  );
 }
 
 /** Keadaan pengambilan isi layar kerja. */
-type ScreenState = 'memuat' | 'galat' | 'kosong' | 'siap'
+type ScreenState = "memuat" | "galat" | "kosong" | "siap";
 
 /**
  * Keterangan kepala berkas: nomor klaim PNC, jenis klaim, dan status kerjanya.
@@ -132,18 +135,18 @@ function CaseSummary({ detail }: { detail: DocumentResponse }) {
           justru itulah yang dikerjakan tombol "Register Klaim". Ia dinyatakan dengan kata,
           bukan dengan tanda pisah, supaya tidak terbaca sebagai data yang hilang.
         */}
-        <dd>{detail.no_klaim_pnc || 'belum diregistrasi'}</dd>
+        <dd>{detail.no_klaim_pnc || "belum diregistrasi"}</dd>
       </div>
       <div className="flex gap-1">
         <dt className="font-medium">Jenis Klaim:</dt>
-        <dd>{detail.jenis_klaim || '—'}</dd>
+        <dd>{detail.jenis_klaim || "—"}</dd>
       </div>
       <div className="flex gap-1">
         <dt className="font-medium">Status kerja:</dt>
-        <dd>{detail.status_kerja || '—'}</dd>
+        <dd>{detail.status_kerja || "—"}</dd>
       </div>
     </dl>
-  )
+  );
 }
 
 /**
@@ -159,19 +162,19 @@ function StateNotice({
   error,
   documentKey,
 }: {
-  state: ScreenState
-  error: unknown
-  documentKey: string
+  state: ScreenState;
+  error: unknown;
+  documentKey: string;
 }) {
-  if (state === 'memuat') {
+  if (state === "memuat") {
     return (
       <p className="mt-4 text-sm text-slate-500" role="status">
         Memuat berkas…
       </p>
-    )
+    );
   }
 
-  if (state === 'galat') {
+  if (state === "galat") {
     return (
       <div className="mt-4">
         <ErrorMessage
@@ -180,10 +183,10 @@ function StateNotice({
           tone="gangguan"
         />
       </div>
-    )
+    );
   }
 
-  if (state === 'kosong') {
+  if (state === "kosong") {
     // Jawaban 200 yang badannya bukan JSON. Dikatakan apa adanya — termasuk kuncinya —
     // supaya yang melaporkannya punya sesuatu yang dapat disebutkan.
     return (
@@ -191,16 +194,16 @@ function StateNotice({
         <ErrorMessage
           title="Berkas tidak terbaca"
           description={
-            `Peladen menjawab tanpa isi untuk berkas ${documentKey || '(tanpa kunci)'}. ` +
-            'Muat ulang halaman; bila berulang, laporkan ke tim teknis beserta kunci di atas.'
+            `Peladen menjawab tanpa isi untuk berkas ${documentKey || "(tanpa kunci)"}. ` +
+            "Muat ulang halaman; bila berulang, laporkan ke tim teknis beserta kunci di atas."
           }
           tone="gangguan"
         />
       </div>
-    )
+    );
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -210,17 +213,17 @@ function StateNotice({
  * petugas yang membandingkan kedua layar berdampingan membaca isian pada urutan yang sama.
  */
 function WorkScreen({ detail }: { detail: DocumentResponse | null }) {
-  const groups = detail?.kelompok ?? []
-  const values = detail?.nilai ?? {}
-  const actions = detail?.tindakan ?? []
-  const berkas = detail?.referensi ?? ''
+  const groups = detail?.kelompok ?? [];
+  const values = detail?.nilai ?? {};
+  const actions = detail?.tindakan ?? [];
+  const berkas = detail?.referensi ?? "";
 
   // Letak tombol datang dari SERVER, bukan disimpulkan dari kodenya di sini. Di layar lama,
   // tombol unggah dan lihat dokumen berada di puncak blok sebelum isian pertama; tombol
   // simpan, transfer, dan register berada sesudah seluruh isian. Membalik keduanya membuat
   // petugas yang membandingkan kedua layar berdampingan mencari tombol di tempat yang salah.
-  const atas = actions.filter((action) => action.di_atas)
-  const bawah = actions.filter((action) => !action.di_atas)
+  const atas = actions.filter((action) => action.di_atas);
+  const bawah = actions.filter((action) => !action.di_atas);
 
   return (
     <div className="mt-6 space-y-6">
@@ -239,7 +242,7 @@ function WorkScreen({ detail }: { detail: DocumentResponse | null }) {
 
       <ClipboardNotice groups={groups} />
     </div>
-  )
+  );
 }
 
 /** Satu kelompok isian, digambar sebagai satu panel. */
@@ -248,9 +251,9 @@ function FieldGroup({
   fields,
   values,
 }: {
-  title: string
-  fields: DocumentField[]
-  values: Record<string, string>
+  title: string;
+  fields: DocumentField[];
+  values: Record<string, string>;
 }) {
   return (
     <section className="rounded-kartu border border-slate-200">
@@ -262,12 +265,12 @@ function FieldGroup({
           <FieldRow
             key={field.kunci}
             field={field}
-            value={values[field.kunci] ?? ''}
+            value={values[field.kunci] ?? ""}
           />
         ))}
       </dl>
     </section>
-  )
+  );
 }
 
 /**
@@ -285,12 +288,12 @@ function FieldGroup({
  * bukan kehalusan.
  */
 function FieldRow({ field, value }: { field: DocumentField; value: string }) {
-  const span = field.bertingkat ? 'sm:col-span-2' : ''
+  const span = field.bertingkat ? "sm:col-span-2" : "";
 
   // Tanggal ditulis seperti isian form Pega — `29/01/2020`, `29/01/2020 11:58`. Nilai yang
   // bukan tanggal lolos apa adanya, sehingga pembantu ini aman dipakai untuk SELURUH isian
   // dan tidak perlu daftar "mana yang tanggal" yang akan tertinggal saat isian bertambah.
-  const text = formatPegaFormDate(value)
+  const text = formatPegaFormDate(value);
 
   return (
     <div className={span}>
@@ -299,13 +302,13 @@ function FieldRow({ field, value }: { field: DocumentField; value: string }) {
         {field.terhalang ? (
           <BlockedValue field={field} />
         ) : field.bertingkat ? (
-          <span className="block whitespace-pre-wrap">{text || '—'}</span>
+          <span className="block whitespace-pre-wrap">{text || "—"}</span>
         ) : (
-          text || '—'
+          text || "—"
         )}
       </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -329,15 +332,18 @@ function FieldRow({ field, value }: { field: DocumentField; value: string }) {
  * Pega — misalnya penanda halus pada judulnya, bukan lencana berwarna di tempat nilainya.
  */
 function BlockedValue({ field }: { field: DocumentField }) {
-  const reason = [field.alasan_terhalang, field.pemilik_penghalang && `Menunggu: ${field.pemilik_penghalang}`]
+  const reason = [
+    field.alasan_terhalang,
+    field.pemilik_penghalang && `Menunggu: ${field.pemilik_penghalang}`,
+  ]
     .filter(Boolean)
-    .join('\n\n')
+    .join("\n\n");
 
   return (
     <span className="cursor-help text-slate-400" title={reason}>
       —
     </span>
-  )
+  );
 }
 
 /**
@@ -363,12 +369,12 @@ function WriteActionBar({
   actions,
   berkas,
 }: {
-  actions: DocumentAction[]
-  berkas: string
+  actions: DocumentAction[];
+  berkas: string;
 }) {
-  const tindakan = useReceiveDocumentAction()
+  const tindakan = useReceiveDocumentAction();
 
-  if (actions.length === 0) return null
+  if (actions.length === 0) return null;
 
   return (
     <section className="rounded-kartu border border-slate-200 px-4 py-4">
@@ -379,9 +385,12 @@ function WriteActionBar({
         sebagai kerusakan.
       */}
       <p className="text-xs text-slate-600">
-        Tombol ini ada di layar lama dan{' '}
-        <span className="font-medium">belum satu pun dapat dijalankan di sini</span>. Tekan
-        salah satunya untuk membaca alasannya, lalu kerjakan tindakannya lewat Pega.
+        Tombol ini ada di layar lama dan{" "}
+        <span className="font-medium">
+          belum satu pun dapat dijalankan di sini
+        </span>
+        . Tekan salah satunya untuk membaca alasannya, lalu kerjakan tindakannya
+        lewat Pega.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -414,7 +423,7 @@ function WriteActionBar({
         </p>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -427,17 +436,17 @@ function WriteActionBar({
  * Jumlahnya dihitung dari bentuk layar yang dikirim server, bukan ditulis tetap di sini,
  * supaya ia ikut berkurang dengan sendirinya begitu satu penghalang hilang.
  */
-function ClipboardNotice({
-  groups,
-}: {
-  groups: DocumentResponse['kelompok']
-}) {
-  const blocked = groups.flatMap((group) => group.isian.filter((field) => field.terhalang))
-  if (blocked.length === 0) return null
+function ClipboardNotice({ groups }: { groups: DocumentResponse["kelompok"] }) {
+  const blocked = groups.flatMap((group) =>
+    group.isian.filter((field) => field.terhalang),
+  );
+  if (blocked.length === 0) return null;
 
-  const owners = [...new Set(blocked.map((field) => field.pemilik_penghalang ?? ''))]
+  const owners = [
+    ...new Set(blocked.map((field) => field.pemilik_penghalang ?? "")),
+  ]
     .filter(Boolean)
-    .join(', ')
+    .join(", ");
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
@@ -445,25 +454,26 @@ function ClipboardNotice({
         {blocked.length} isian belum terbawa dari Pega
       </h2>
       <p className="mt-2 text-xs text-slate-600">
-        Isian bertanda <span className="font-medium">belum terbawa</span> hidup di dalam blob
-        objek kerja Pega dan tidak punya kolom basis data, sehingga tidak dapat dibaca kueri
-        biasa selama objek kerjanya masih dimiliki Pega. Isian itu tetap digambar di tempatnya
-        supaya ketiadaannya terlihat, bukan tersamar sebagai isian yang memang belum diisi.
-        Tunjuk tandanya untuk membaca alasannya.
+        Isian bertanda <span className="font-medium">belum terbawa</span> hidup
+        di dalam blob objek kerja Pega dan tidak punya kolom basis data,
+        sehingga tidak dapat dibaca kueri biasa selama objek kerjanya masih
+        dimiliki Pega. Isian itu tetap digambar di tempatnya supaya ketiadaannya
+        terlihat, bukan tersamar sebagai isian yang memang belum diisi. Tunjuk
+        tandanya untuk membaca alasannya.
         {owners && (
           <>
-            {' '}
+            {" "}
             <span className="font-medium">Menunggu:</span> {owners}.
           </>
         )}
       </p>
     </section>
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

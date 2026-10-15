@@ -1,19 +1,19 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, PartTypeStatus, type PartType } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, PartTypeStatus, type PartType } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
 import {
   useCreatePartType,
   usePartTypeList,
   usePartTypeOptions,
   useSavePartType,
-} from './api'
-import { PartTypeForm, type PartTypeFormValues } from './PartTypeForm'
+} from "./api";
+import { PartTypeForm, type PartTypeFormValues } from "./PartTypeForm";
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -32,30 +32,30 @@ import { PartTypeForm, type PartTypeFormValues } from './PartTypeForm'
  */
 const TABS = [
   {
-    id: 'approve',
-    label: 'Approve',
+    id: "approve",
+    label: "Approve",
     status: PartTypeStatus.disetujui,
     description:
-      'Tipe yang sudah disetujui. Hanya yang ada di sini yang muncul sebagai pilihan Tipe ' +
-      'di layar Master Sparepart.',
+      "Tipe yang sudah disetujui. Hanya yang ada di sini yang muncul sebagai pilihan Tipe " +
+      "di layar Master Sparepart.",
   },
   {
-    id: 'reject',
-    label: 'Reject',
+    id: "reject",
+    label: "Reject",
     status: PartTypeStatus.ditolak,
     description:
-      'Tipe yang ditolak. Namanya tetap terpakai — nama yang sama tidak dapat digunakan ' +
-      'tipe lain, di kategori mana pun, sampai baris ini diubah namanya.',
+      "Tipe yang ditolak. Namanya tetap terpakai — nama yang sama tidak dapat digunakan " +
+      "tipe lain, di kategori mana pun, sampai baris ini diubah namanya.",
   },
   {
-    id: 'menunggu',
-    label: 'Waiting Approval',
+    id: "menunggu",
+    label: "Waiting Approval",
     status: PartTypeStatus.menunggu,
-    description: 'Tipe yang menunggu diputuskan.',
+    description: "Tipe yang menunggu diputuskan.",
   },
-] as const
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /**
  * Ukuran halaman diambil dari `pyPageSize` pada ketiga section tab layar ini.
@@ -64,51 +64,52 @@ type TabId = (typeof TABS)[number]['id']
  * Sparepart yang 30 dan Master Bengkel yang 20. Tidak ada satu angka yang benar untuk
  * seluruh layar; angkanya milik layar, bukan milik komponen tabel.
  */
-const PAGE_SIZE = 50
+const PAGE_SIZE = 50;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /** Mengubah galat pemuatan daftar menjadi pesan yang dapat ditindaklanjuti. */
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan, lalu muat ulang halaman ini.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan, lalu muat ulang halaman ini.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian ' +
-            'atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian " +
+            "atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tipe sparepart tidak dapat dimuat',
+          title: "Daftar tipe sparepart tidak dapat dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Terjadi kesalahan pada sistem',
-    description: 'Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.',
-    tone: 'gangguan',
-  }
+    title: "Terjadi kesalahan pada sistem",
+    description:
+      "Coba muat ulang halaman ini. Bila berulang, hubungi administrator Claim PNC.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -167,45 +168,45 @@ function loadMessage(error: unknown): MessageContent {
  * menggambarnya.
  */
 export function PartTypePage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<PartType | null>(null)
+  const [tab, setTab] = useState<TabId>("approve");
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PartType | null>(null);
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
-  const list = usePartTypeList(active.status)
-  const options = usePartTypeOptions()
-  const create = useCreatePartType()
-  const save = useSavePartType()
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const list = usePartTypeList(active.status);
+  const options = usePartTypeOptions();
+  const create = useCreatePartType();
+  const save = useSavePartType();
 
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.tipe_sparepart ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.tipe_sparepart ?? [];
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(null);
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
     // Daftar pilihan disegarkan setiap kali form dibuka. Ia bercache panjang karena jarang
     // berubah, dan justru karena itu ia dapat basi tepat pada saat ia dipakai — kategori
     // yang ditolak sejak halaman dibuka akan tetap tampak dapat dipilih.
-    options.refetch()
+    options.refetch();
   }
 
   function openEdit(row: PartType) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
-    options.refetch()
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
+    options.refetch();
   }
 
   function submit(values: PartTypeFormValues) {
@@ -213,10 +214,13 @@ export function PartTypePage() {
     // membuang isian pengguna saat penyimpanan gagal — dan penolakan nama ganda adalah
     // kegagalan yang paling sering terjadi di layar ini.
     if (editing) {
-      save.mutate({ id: editing.id_tipe_sparepart, input: values }, { onSuccess: closeForm })
-      return
+      save.mutate(
+        { id: editing.id_tipe_sparepart, input: values },
+        { onSuccess: closeForm },
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
 
   /*
@@ -241,55 +245,68 @@ export function PartTypePage() {
   */
   const columns: Column<PartType>[] = [
     {
-      key: 'id',
-      title: 'ID Tipe Sparepart',
-      width: '10rem',
+      key: "id",
+      title: "ID Tipe Sparepart",
+      width: "10rem",
       value: (row) => row.id_tipe_sparepart,
     },
     {
-      key: 'nama',
-      title: 'Nama Tipe Sparepart',
+      key: "nama",
+      title: "Nama Tipe Sparepart",
       value: (row) => row.nama_tipe_sparepart,
     },
     {
-      key: 'id_kategori',
-      title: 'ID Kategori Sparepart',
-      width: '11rem',
+      key: "id_kategori",
+      title: "ID Kategori Sparepart",
+      width: "11rem",
       value: (row) => row.id_kategori_sparepart,
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya dibaca dari `pyCaption Master Tipe Sparepart` pada
               Section/MasterTipeSparepartHE (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Tipe Sparepart</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Tipe Sparepart
+          </h1>
           <p className="text-sm text-slate-600">
-            Penggolongan tingkat kedua suku cadang alat berat. Setiap tipe berinduk pada satu
-            kategori, dan menjadi pilihan Tipe di layar Master Sparepart.
+            Penggolongan tingkat kedua suku cadang alat berat. Setiap tipe
+            berinduk pada satu kategori, dan menjadi pilihan Tipe di layar
+            Master Sparepart.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -302,22 +319,22 @@ export function PartTypePage() {
           <button
             key={t.id}
             type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => {
               // Form ditutup saat berpindah tab: baris yang sedang disunting milik tab
               // sebelumnya, dan membiarkannya terbuka membuat Simpan mengenai baris yang
               // tidak sedang dilihat siapa pun.
-              closeForm()
-              setTab(t.id)
+              closeForm();
+              setTab(t.id);
             }}
             className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+              "rounded-t px-3 py-2 text-sm font-medium",
+              "transition-colors duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
               tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:text-slate-800",
+            ].join(" ")}
           >
             {t.label}
           </button>
@@ -328,10 +345,12 @@ export function PartTypePage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
+        {active.description}{" "}
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -358,17 +377,19 @@ export function PartTypePage() {
             tone="penolakan"
           />
         ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar tipe sparepart…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar tipe sparepart…
+          </p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -383,6 +404,5 @@ export function PartTypePage() {
         )}
       </section>
     </main>
-  )
+  );
 }
-

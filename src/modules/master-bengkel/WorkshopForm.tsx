@@ -1,17 +1,23 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useId, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, NON_PARTNER, WorkshopErrorCode, type Workshop, type WorkshopInput } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  NON_PARTNER,
+  WorkshopErrorCode,
+  type Workshop,
+  type WorkshopInput,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useWorkshopBankList, useWorkshopBranchList } from './api'
-import { CityPicker } from './CityPicker'
+import { useWorkshopBankList, useWorkshopBranchList } from "./api";
+import { CityPicker } from "./CityPicker";
 
 /**
  * Batas panjang harus sama dengan konstanta di `internal/masterbengkel/masterbengkel.go`.
@@ -34,7 +40,7 @@ const MAX = {
   kode: 20,
   pendek: 50,
   alasan: 250,
-} as const
+} as const;
 
 /**
  * Persentase diperiksa sebagai angka 0–100 bila diisi, dengan koma MAUPUN titik sebagai
@@ -48,60 +54,60 @@ const percent = z
   .string()
   .trim()
   .refine((value) => {
-    if (value === '') return true
-    const parsed = Number(value.replace(',', '.'))
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100
-  }, 'Harus berupa angka antara 0 dan 100, misalnya 11 atau 12,5.')
+    if (value === "") return true;
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+  }, "Harus berupa angka antara 0 dan 100, misalnya 11 atau 12,5.");
 
 const optional = (max: number, label: string) =>
-  z.string().trim().max(max, `${label} paling panjang ${max} karakter.`)
+  z.string().trim().max(max, `${label} paling panjang ${max} karakter.`);
 
 const schema = z
   .object({
     nama_bengkel: z
       .string()
       .trim()
-      .min(1, 'Nama bengkel wajib diisi.')
+      .min(1, "Nama bengkel wajib diisi.")
       .max(MAX.nama, `Nama bengkel paling panjang ${MAX.nama} karakter.`),
-    alamat_bengkel: optional(MAX.alamat, 'Alamat bengkel'),
-    telp_bengkel: optional(MAX.telepon, 'Telepon bengkel'),
-    nohp_bengkel: optional(MAX.telepon, 'No HP bengkel'),
-    email: optional(MAX.email, 'Email'),
-    email_wo: optional(MAX.email, 'Email WO'),
+    alamat_bengkel: optional(MAX.alamat, "Alamat bengkel"),
+    telp_bengkel: optional(MAX.telepon, "Telepon bengkel"),
+    nohp_bengkel: optional(MAX.telepon, "No HP bengkel"),
+    email: optional(MAX.email, "Email"),
+    email_wo: optional(MAX.email, "Email WO"),
 
-    id_cabang: optional(MAX.kode, 'Kode cabang'),
-    status_rekanan: z.string().trim().min(1, 'Status rekanan wajib dipilih.'),
-    status_bengkel: optional(MAX.kode, 'Status bengkel'),
-    alasan_status_bengkel: optional(MAX.alasan, 'Alasan status bengkel'),
-    tanggal_status: optional(MAX.pendek, 'Tanggal status'),
+    id_cabang: optional(MAX.kode, "Kode cabang"),
+    status_rekanan: z.string().trim().min(1, "Status rekanan wajib dipilih."),
+    status_bengkel: optional(MAX.kode, "Status bengkel"),
+    alasan_status_bengkel: optional(MAX.alasan, "Alasan status bengkel"),
+    tanggal_status: optional(MAX.pendek, "Tanggal status"),
 
-    login_aplikasi: optional(MAX.login, 'Login aplikasi'),
+    login_aplikasi: optional(MAX.login, "Login aplikasi"),
 
-    id_bank: optional(MAX.kode, 'Kode bank'),
-    no_rekening: optional(MAX.rekening, 'No rekening'),
-    nama_rekening: optional(MAX.nama, 'Nama rekening'),
-    id_rekening: optional(MAX.kode, 'ID rekening'),
+    id_bank: optional(MAX.kode, "Kode bank"),
+    no_rekening: optional(MAX.rekening, "No rekening"),
+    nama_rekening: optional(MAX.nama, "Nama rekening"),
+    id_rekening: optional(MAX.kode, "ID rekening"),
 
-    nama_npwp: optional(MAX.nama, 'Nama NPWP'),
-    no_npwp: optional(MAX.npwp, 'No NPWP'),
-    alamat_npwp: optional(MAX.alamat, 'Alamat NPWP'),
-    jenis_pph: optional(MAX.pendek, 'Jenis PPh'),
+    nama_npwp: optional(MAX.nama, "Nama NPWP"),
+    no_npwp: optional(MAX.npwp, "No NPWP"),
+    alamat_npwp: optional(MAX.alamat, "Alamat NPWP"),
+    jenis_pph: optional(MAX.pendek, "Jenis PPh"),
 
     ppn: percent,
     diskon_jasa: percent,
     diskon_sparepart: percent,
     persen_material: percent,
     pct_selisih_pl: percent,
-    sla: optional(MAX.pendek, 'SLA'),
+    sla: optional(MAX.pendek, "SLA"),
 
-    status_disupply_asm: optional(MAX.kode, 'Status disupply ASM'),
-    supplier: optional(MAX.nama, 'Supplier'),
-    status_eklaim: optional(MAX.kode, 'Status e-klaim'),
-    status_auto_aksep: optional(MAX.kode, 'Status auto aksep'),
-    status_payment: optional(MAX.kode, 'Status payment'),
-    status_autopayment: optional(MAX.kode, 'Status autopayment'),
-    status_tekno: optional(MAX.kode, 'Status Tekno'),
-    status_order: optional(MAX.kode, 'Status order'),
+    status_disupply_asm: optional(MAX.kode, "Status disupply ASM"),
+    supplier: optional(MAX.nama, "Supplier"),
+    status_eklaim: optional(MAX.kode, "Status e-klaim"),
+    status_auto_aksep: optional(MAX.kode, "Status auto aksep"),
+    status_payment: optional(MAX.kode, "Status payment"),
+    status_autopayment: optional(MAX.kode, "Status autopayment"),
+    status_tekno: optional(MAX.kode, "Status Tekno"),
+    status_order: optional(MAX.kode, "Status order"),
   })
   .superRefine((values, ctx) => {
     /*
@@ -112,19 +118,22 @@ const schema = z
       akan menolak bengkel non-rekanan yang hari ini sah; tidak mewajibkannya sama sekali
       akan menyimpan bengkel rekanan yang tidak akan pernah dapat masuk.
     */
-    if (values.status_rekanan !== NON_PARTNER && values.login_aplikasi.trim() === '') {
+    if (
+      values.status_rekanan !== NON_PARTNER &&
+      values.login_aplikasi.trim() === ""
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['login_aplikasi'],
-        message: 'Login aplikasi wajib diisi untuk bengkel rekanan.',
-      })
+        path: ["login_aplikasi"],
+        message: "Login aplikasi wajib diisi untuk bengkel rekanan.",
+      });
     }
-  })
+  });
 
-export type WorkshopFields = z.infer<typeof schema>
+export type WorkshopFields = z.infer<typeof schema>;
 
 /** Nilai yang dikirim ke pemanggil saat form disimpan. */
-export type WorkshopFormValues = WorkshopInput
+export type WorkshopFormValues = WorkshopInput;
 
 type Props = {
   /**
@@ -133,7 +142,7 @@ type Props = {
    * Mode hanya menentukan judul dan teks tombolnya — seluruh isian dapat diubah pada
    * kedua mode, sama seperti layar lama yang memakai form yang sama untuk keduanya.
    */
-  editing: Workshop | null
+  editing: Workshop | null;
 
   /**
    * Nilai yang SUDAH DIPAKAI baris lain, per isian.
@@ -142,15 +151,15 @@ type Props = {
    * export Pega (R-16). Sarannya berasal dari data, bukan dari tebakan — lihat komentar
    * pada bagian "Penanda sistem" di bawah.
    */
-  knownValues: Record<string, string[]>
+  knownValues: Record<string, string[]>;
 
-  isSaving: boolean
-  error: unknown
-  onSave: (values: WorkshopFormValues) => void
-  onCancel: () => void
-}
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: WorkshopFormValues) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -162,99 +171,105 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case WorkshopErrorCode.nameTaken:
         return {
-          title: 'Nama bengkel itu sudah dipakai',
+          title: "Nama bengkel itu sudah dipakai",
           description:
-            'Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.',
-          tone: 'penolakan',
-        }
+            "Buka baris yang sudah ada untuk mengubahnya, atau pakai nama lain.",
+          tone: "penolakan",
+        };
       case WorkshopErrorCode.loginTaken:
         return {
-          title: 'Login aplikasi itu sudah dipakai bengkel lain',
-          description: 'Ganti login aplikasinya, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Login aplikasi itu sudah dipakai bengkel lain",
+          description: "Ganti login aplikasinya, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.validationFailed:
         // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
         // akan mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
-          : { title: 'Belum dapat disimpan', description: error.message, tone: 'penolakan' }
+          : {
+              title: "Belum dapat disimpan",
+              description: error.message,
+              tone: "penolakan",
+            };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Nama isian yang dikenali form ini; dipakai menyorot pelanggaran dari server. */
 const FIELD_NAMES = [
-  'nama_bengkel',
-  'alamat_bengkel',
-  'telp_bengkel',
-  'nohp_bengkel',
-  'email',
-  'email_wo',
-  'id_cabang',
-  'status_rekanan',
-  'status_bengkel',
-  'alasan_status_bengkel',
-  'tanggal_status',
-  'login_aplikasi',
-  'id_bank',
-  'no_rekening',
-  'nama_rekening',
-  'id_rekening',
-  'nama_npwp',
-  'no_npwp',
-  'alamat_npwp',
-  'jenis_pph',
-  'ppn',
-  'diskon_jasa',
-  'diskon_sparepart',
-  'persen_material',
-  'pct_selisih_pl',
-  'sla',
-  'status_disupply_asm',
-  'supplier',
-  'status_eklaim',
-  'status_auto_aksep',
-  'status_payment',
-  'status_autopayment',
-  'status_tekno',
-  'status_order',
-] as const
+  "nama_bengkel",
+  "alamat_bengkel",
+  "telp_bengkel",
+  "nohp_bengkel",
+  "email",
+  "email_wo",
+  "id_cabang",
+  "status_rekanan",
+  "status_bengkel",
+  "alasan_status_bengkel",
+  "tanggal_status",
+  "login_aplikasi",
+  "id_bank",
+  "no_rekening",
+  "nama_rekening",
+  "id_rekening",
+  "nama_npwp",
+  "no_npwp",
+  "alamat_npwp",
+  "jenis_pph",
+  "ppn",
+  "diskon_jasa",
+  "diskon_sparepart",
+  "persen_material",
+  "pct_selisih_pl",
+  "sla",
+  "status_disupply_asm",
+  "supplier",
+  "status_eklaim",
+  "status_auto_aksep",
+  "status_payment",
+  "status_autopayment",
+  "status_tekno",
+  "status_order",
+] as const;
 
 /**
  * Status rekanan adalah satu-satunya isian status yang nilai sahnya DIKETAHUI.
@@ -265,9 +280,9 @@ const FIELD_NAMES = [
  * dropdown — bukan teks bebas.
  */
 const PARTNER_OPTIONS = [
-  { value: '1', label: 'Rekanan' },
-  { value: NON_PARTNER, label: 'Non-rekanan' },
-]
+  { value: "1", label: "Rekanan" },
+  { value: NON_PARTNER, label: "Non-rekanan" },
+];
 
 /**
  * WorkshopForm adalah form tambah dan ubah Master Bengkel.
@@ -303,15 +318,17 @@ export function WorkshopForm({
   onSave,
   onCancel,
 }: Props) {
-  const isEditing = editing !== null
-  const headingId = useId()
+  const isEditing = editing !== null;
+  const headingId = useId();
 
-  const branchList = useWorkshopBranchList()
-  const bankList = useWorkshopBankList()
+  const branchList = useWorkshopBranchList();
+  const bankList = useWorkshopBankList();
 
   const [city, setCity] = useState(
-    editing && editing.id_kota !== '' ? { id: editing.id_kota, nama: editing.nama_kota } : null,
-  )
+    editing && editing.id_kota !== ""
+      ? { id: editing.id_kota, nama: editing.nama_kota }
+      : null,
+  );
 
   const {
     register,
@@ -322,42 +339,42 @@ export function WorkshopForm({
   } = useForm<WorkshopFields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama_bengkel: editing?.nama_bengkel ?? '',
-      alamat_bengkel: editing?.alamat_bengkel ?? '',
-      telp_bengkel: editing?.telp_bengkel ?? '',
-      nohp_bengkel: editing?.nohp_bengkel ?? '',
-      email: editing?.email ?? '',
-      email_wo: editing?.email_wo ?? '',
-      id_cabang: editing?.id_cabang ?? '',
-      status_rekanan: editing?.status_rekanan ?? '1',
-      status_bengkel: editing?.status_bengkel ?? '',
-      alasan_status_bengkel: editing?.alasan_status_bengkel ?? '',
-      tanggal_status: editing?.tanggal_status ?? '',
-      login_aplikasi: editing?.login_aplikasi ?? '',
-      id_bank: editing?.id_bank ?? '',
-      no_rekening: editing?.no_rekening ?? '',
-      nama_rekening: editing?.nama_rekening ?? '',
-      id_rekening: editing?.id_rekening ?? '',
-      nama_npwp: editing?.nama_npwp ?? '',
-      no_npwp: editing?.no_npwp ?? '',
-      alamat_npwp: editing?.alamat_npwp ?? '',
-      jenis_pph: editing?.jenis_pph ?? '',
-      ppn: editing?.ppn ?? '',
-      diskon_jasa: editing?.diskon_jasa ?? '',
-      diskon_sparepart: editing?.diskon_sparepart ?? '',
-      persen_material: editing?.persen_material ?? '',
-      pct_selisih_pl: editing?.pct_selisih_pl ?? '',
-      sla: editing?.sla ?? '',
-      status_disupply_asm: editing?.status_disupply_asm ?? '',
-      supplier: editing?.supplier ?? '',
-      status_eklaim: editing?.status_eklaim ?? '',
-      status_auto_aksep: editing?.status_auto_aksep ?? '',
-      status_payment: editing?.status_payment ?? '',
-      status_autopayment: editing?.status_autopayment ?? '',
-      status_tekno: editing?.status_tekno ?? '',
-      status_order: editing?.status_order ?? '',
+      nama_bengkel: editing?.nama_bengkel ?? "",
+      alamat_bengkel: editing?.alamat_bengkel ?? "",
+      telp_bengkel: editing?.telp_bengkel ?? "",
+      nohp_bengkel: editing?.nohp_bengkel ?? "",
+      email: editing?.email ?? "",
+      email_wo: editing?.email_wo ?? "",
+      id_cabang: editing?.id_cabang ?? "",
+      status_rekanan: editing?.status_rekanan ?? "1",
+      status_bengkel: editing?.status_bengkel ?? "",
+      alasan_status_bengkel: editing?.alasan_status_bengkel ?? "",
+      tanggal_status: editing?.tanggal_status ?? "",
+      login_aplikasi: editing?.login_aplikasi ?? "",
+      id_bank: editing?.id_bank ?? "",
+      no_rekening: editing?.no_rekening ?? "",
+      nama_rekening: editing?.nama_rekening ?? "",
+      id_rekening: editing?.id_rekening ?? "",
+      nama_npwp: editing?.nama_npwp ?? "",
+      no_npwp: editing?.no_npwp ?? "",
+      alamat_npwp: editing?.alamat_npwp ?? "",
+      jenis_pph: editing?.jenis_pph ?? "",
+      ppn: editing?.ppn ?? "",
+      diskon_jasa: editing?.diskon_jasa ?? "",
+      diskon_sparepart: editing?.diskon_sparepart ?? "",
+      persen_material: editing?.persen_material ?? "",
+      pct_selisih_pl: editing?.pct_selisih_pl ?? "",
+      sla: editing?.sla ?? "",
+      status_disupply_asm: editing?.status_disupply_asm ?? "",
+      supplier: editing?.supplier ?? "",
+      status_eklaim: editing?.status_eklaim ?? "",
+      status_auto_aksep: editing?.status_auto_aksep ?? "",
+      status_payment: editing?.status_payment ?? "",
+      status_autopayment: editing?.status_autopayment ?? "",
+      status_tekno: editing?.status_tekno ?? "",
+      status_order: editing?.status_order ?? "",
     },
-  })
+  });
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
@@ -365,29 +382,36 @@ export function WorkshopForm({
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELD_NAMES as readonly string[]).includes(column)) {
-        setError(column as (typeof FIELD_NAMES)[number], { type: 'server', message })
+        setError(column as (typeof FIELD_NAMES)[number], {
+          type: "server",
+          message,
+        });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const violation = violationsOf(error)
-  const message = messageFor(error)
-  const isPartner = watch('status_rekanan') !== NON_PARTNER
+  const violation = violationsOf(error);
+  const message = messageFor(error);
+  const isPartner = watch("status_rekanan") !== NON_PARTNER;
 
   function submit(values: WorkshopFields) {
     // Nama cabang dan nama bank diambil dari daftar yang sama dengan pilihannya, bukan
     // diketik: keduanya disimpan BERPASANGAN dengan kodenya, dan pasangan yang tidak
     // menunjuk baris mana pun di masternya tidak dapat dikenali siapa pun.
-    const branch = (branchList.data?.cabang ?? []).find((b) => b.id === values.id_cabang)
-    const bank = (bankList.data?.bank ?? []).find((b) => b.kode === values.id_bank)
+    const branch = (branchList.data?.cabang ?? []).find(
+      (b) => b.id === values.id_cabang,
+    );
+    const bank = (bankList.data?.bank ?? []).find(
+      (b) => b.kode === values.id_bank,
+    );
 
     onSave({
       ...values,
-      nama_cabang: branch?.nama ?? editing?.nama_cabang ?? '',
-      id_kota: city?.id ?? '',
-      nama_kota: city?.nama ?? '',
-      nama_bank: bank?.nama ?? editing?.nama_bank ?? '',
-    })
+      nama_cabang: branch?.nama ?? editing?.nama_cabang ?? "",
+      id_kota: city?.id ?? "",
+      nama_kota: city?.nama ?? "",
+      nama_bank: bank?.nama ?? editing?.nama_bank ?? "",
+    });
   }
 
   return (
@@ -398,11 +422,15 @@ export function WorkshopForm({
       className="space-y-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
     >
       <h2 id={headingId} className="text-base font-semibold text-slate-900">
-        {isEditing ? `Ubah ${editing.nama_bengkel}` : 'Tambah Master Bengkel'}
+        {isEditing ? `Ubah ${editing.nama_bengkel}` : "Tambah Master Bengkel"}
       </h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {isEditing && (
@@ -410,9 +438,12 @@ export function WorkshopForm({
           <span className="block text-xs font-medium uppercase tracking-wide text-slate-500">
             ID bengkel
           </span>
-          <span className="mt-0.5 block text-sm text-slate-900">{editing.id_bengkel}</span>
+          <span className="mt-0.5 block text-sm text-slate-900">
+            {editing.id_bengkel}
+          </span>
           <span className="mt-1 block text-xs text-slate-500">
-            Diterbitkan sistem dari kode situs dan nomor urut. Tidak dapat diubah.
+            Diterbitkan sistem dari kode situs dan nomor urut. Tidak dapat
+            diubah.
           </span>
         </div>
       )}
@@ -426,7 +457,7 @@ export function WorkshopForm({
           hint="Tidak boleh sama dengan bengkel lain."
           error={errors.nama_bengkel?.message}
           disabled={isSaving}
-          {...register('nama_bengkel')}
+          {...register("nama_bengkel")}
         />
         <Field
           id="alamat_bengkel"
@@ -435,7 +466,7 @@ export function WorkshopForm({
           maxLength={MAX.alamat}
           error={errors.alamat_bengkel?.message}
           disabled={isSaving}
-          {...register('alamat_bengkel')}
+          {...register("alamat_bengkel")}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
@@ -445,15 +476,15 @@ export function WorkshopForm({
               value: b.id,
               label: `${b.nama} (${b.id})`,
             }))}
-            error={errors.id_cabang?.message ?? violation['nama_cabang']}
+            error={errors.id_cabang?.message ?? violation["nama_cabang"]}
             disabled={isSaving}
-            {...register('id_cabang')}
+            {...register("id_cabang")}
           />
           <CityPicker
             selected={city}
             onPick={setCity}
             onClear={() => setCity(null)}
-            error={violation['id_kota'] ?? violation['nama_kota']}
+            error={violation["id_kota"] ?? violation["nama_kota"]}
             disabled={isSaving}
           />
         </div>
@@ -469,7 +500,7 @@ export function WorkshopForm({
             maxLength={MAX.telepon}
             error={errors.telp_bengkel?.message}
             disabled={isSaving}
-            {...register('telp_bengkel')}
+            {...register("telp_bengkel")}
           />
           <Field
             id="nohp_bengkel"
@@ -479,7 +510,7 @@ export function WorkshopForm({
             maxLength={MAX.telepon}
             error={errors.nohp_bengkel?.message}
             disabled={isSaving}
-            {...register('nohp_bengkel')}
+            {...register("nohp_bengkel")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -490,7 +521,7 @@ export function WorkshopForm({
             maxLength={MAX.email}
             error={errors.email?.message}
             disabled={isSaving}
-            {...register('email')}
+            {...register("email")}
           />
           <Field
             id="email_wo"
@@ -500,7 +531,7 @@ export function WorkshopForm({
             hint="Tujuan perintah kerja; terpisah dari email umum bengkel."
             error={errors.email_wo?.message}
             disabled={isSaving}
-            {...register('email_wo')}
+            {...register("email_wo")}
           />
         </div>
       </Group>
@@ -514,7 +545,7 @@ export function WorkshopForm({
             emptyText="— pilih —"
             error={errors.status_rekanan?.message}
             disabled={isSaving}
-            {...register('status_rekanan')}
+            {...register("status_rekanan")}
           />
           <Field
             id="login_aplikasi"
@@ -524,12 +555,12 @@ export function WorkshopForm({
             autoComplete="off"
             hint={
               isPartner
-                ? 'Wajib untuk bengkel rekanan, dan tidak boleh sama dengan bengkel lain.'
-                : 'Boleh dikosongkan: bengkel non-rekanan tidak diberi login.'
+                ? "Wajib untuk bengkel rekanan, dan tidak boleh sama dengan bengkel lain."
+                : "Boleh dikosongkan: bengkel non-rekanan tidak diberi login."
             }
             error={errors.login_aplikasi?.message}
             disabled={isSaving}
-            {...register('login_aplikasi')}
+            {...register("login_aplikasi")}
           />
         </div>
         {/*
@@ -545,9 +576,9 @@ export function WorkshopForm({
         */}
         {isPartner && (
           <p className="rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            Login aplikasi hanya <span className="font-medium">disimpan</span> di master ini.
-            Akun untuk masuk aplikasi bengkel belum diterbitkan sistem baru — pembuatannya
-            menunggu kontrak identitas (F-3).
+            Login aplikasi hanya <span className="font-medium">disimpan</span>{" "}
+            di master ini. Akun untuk masuk aplikasi bengkel belum diterbitkan
+            sistem baru — pembuatannya menunggu kontrak identitas (F-3).
           </p>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -559,7 +590,7 @@ export function WorkshopForm({
             list="bengkel-status_bengkel"
             error={errors.status_bengkel?.message}
             disabled={isSaving}
-            {...register('status_bengkel')}
+            {...register("status_bengkel")}
           />
           <Field
             id="tanggal_status"
@@ -569,10 +600,13 @@ export function WorkshopForm({
             hint="Ditulis apa adanya seperti di sistem lama, misalnya 01/02/2026."
             error={errors.tanggal_status?.message}
             disabled={isSaving}
-            {...register('tanggal_status')}
+            {...register("tanggal_status")}
           />
         </div>
-        <Suggestions name="status_bengkel" values={knownValues['status_bengkel'] ?? []} />
+        <Suggestions
+          name="status_bengkel"
+          values={knownValues["status_bengkel"] ?? []}
+        />
         <Field
           id="alasan_status_bengkel"
           label="Alasan status bengkel"
@@ -580,7 +614,7 @@ export function WorkshopForm({
           maxLength={MAX.alasan}
           error={errors.alasan_status_bengkel?.message}
           disabled={isSaving}
-          {...register('alasan_status_bengkel')}
+          {...register("alasan_status_bengkel")}
         />
       </Group>
 
@@ -593,9 +627,9 @@ export function WorkshopForm({
               value: b.kode,
               label: `${b.nama} (${b.kode})`,
             }))}
-            error={errors.id_bank?.message ?? violation['nama_bank']}
+            error={errors.id_bank?.message ?? violation["nama_bank"]}
             disabled={isSaving}
-            {...register('id_bank')}
+            {...register("id_bank")}
           />
           <Field
             id="no_rekening"
@@ -605,7 +639,7 @@ export function WorkshopForm({
             maxLength={MAX.rekening}
             error={errors.no_rekening?.message}
             disabled={isSaving}
-            {...register('no_rekening')}
+            {...register("no_rekening")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -617,7 +651,7 @@ export function WorkshopForm({
             hint="Tidak ditampilkan layar Pega, tetapi tersimpan di tabelnya."
             error={errors.nama_rekening?.message}
             disabled={isSaving}
-            {...register('nama_rekening')}
+            {...register("nama_rekening")}
           />
           <Field
             id="id_rekening"
@@ -626,7 +660,7 @@ export function WorkshopForm({
             maxLength={MAX.kode}
             error={errors.id_rekening?.message}
             disabled={isSaving}
-            {...register('id_rekening')}
+            {...register("id_rekening")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -637,7 +671,7 @@ export function WorkshopForm({
             maxLength={MAX.nama}
             error={errors.nama_npwp?.message}
             disabled={isSaving}
-            {...register('nama_npwp')}
+            {...register("nama_npwp")}
           />
           <Field
             id="no_npwp"
@@ -646,7 +680,7 @@ export function WorkshopForm({
             maxLength={MAX.npwp}
             error={errors.no_npwp?.message}
             disabled={isSaving}
-            {...register('no_npwp')}
+            {...register("no_npwp")}
           />
         </div>
         <Field
@@ -656,7 +690,7 @@ export function WorkshopForm({
           maxLength={MAX.alamat}
           error={errors.alamat_npwp?.message}
           disabled={isSaving}
-          {...register('alamat_npwp')}
+          {...register("alamat_npwp")}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -667,7 +701,7 @@ export function WorkshopForm({
             list="bengkel-jenis_pph"
             error={errors.jenis_pph?.message}
             disabled={isSaving}
-            {...register('jenis_pph')}
+            {...register("jenis_pph")}
           />
           <Field
             id="ppn"
@@ -676,10 +710,10 @@ export function WorkshopForm({
             inputMode="decimal"
             error={errors.ppn?.message}
             disabled={isSaving}
-            {...register('ppn')}
+            {...register("ppn")}
           />
         </div>
-        <Suggestions name="jenis_pph" values={knownValues['jenis_pph'] ?? []} />
+        <Suggestions name="jenis_pph" values={knownValues["jenis_pph"] ?? []} />
       </Group>
 
       <Group title="Syarat komersial">
@@ -691,7 +725,7 @@ export function WorkshopForm({
             inputMode="decimal"
             error={errors.diskon_jasa?.message}
             disabled={isSaving}
-            {...register('diskon_jasa')}
+            {...register("diskon_jasa")}
           />
           <Field
             id="diskon_sparepart"
@@ -700,7 +734,7 @@ export function WorkshopForm({
             inputMode="decimal"
             error={errors.diskon_sparepart?.message}
             disabled={isSaving}
-            {...register('diskon_sparepart')}
+            {...register("diskon_sparepart")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -711,7 +745,7 @@ export function WorkshopForm({
             inputMode="decimal"
             error={errors.persen_material?.message}
             disabled={isSaving}
-            {...register('persen_material')}
+            {...register("persen_material")}
           />
           <Field
             id="pct_selisih_pl"
@@ -721,7 +755,7 @@ export function WorkshopForm({
             hint="Tidak ditampilkan layar Pega, tetapi tersimpan di tabelnya."
             error={errors.pct_selisih_pl?.message}
             disabled={isSaving}
-            {...register('pct_selisih_pl')}
+            {...register("pct_selisih_pl")}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -733,7 +767,7 @@ export function WorkshopForm({
             hint="Satuannya tidak disebut di mana pun pada sistem lama."
             error={errors.sla?.message}
             disabled={isSaving}
-            {...register('sla')}
+            {...register("sla")}
           />
           <Field
             id="supplier"
@@ -742,7 +776,7 @@ export function WorkshopForm({
             maxLength={MAX.nama}
             error={errors.supplier?.message}
             disabled={isSaving}
-            {...register('supplier')}
+            {...register("supplier")}
           />
         </div>
       </Group>
@@ -758,19 +792,20 @@ export function WorkshopForm({
           BARIS LAIN — saran yang berasal dari data, bukan dari tebakan.
         */}
         <p className="text-xs text-slate-500">
-          Daftar pilihan ketujuh penanda ini tidak ada di export Pega. Saran yang muncul saat
-          mengetik adalah nilai yang sudah dipakai bengkel lain pada entitas ini.
+          Daftar pilihan ketujuh penanda ini tidak ada di export Pega. Saran
+          yang muncul saat mengetik adalah nilai yang sudah dipakai bengkel lain
+          pada entitas ini.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [
-              ['status_disupply_asm', 'Status disupply ASM'],
-              ['status_eklaim', 'Status e-klaim'],
-              ['status_auto_aksep', 'Status auto aksep'],
-              ['status_payment', 'Status payment'],
-              ['status_autopayment', 'Status autopayment'],
-              ['status_tekno', 'Status Tekno'],
-              ['status_order', 'Status order'],
+              ["status_disupply_asm", "Status disupply ASM"],
+              ["status_eklaim", "Status e-klaim"],
+              ["status_auto_aksep", "Status auto aksep"],
+              ["status_payment", "Status payment"],
+              ["status_autopayment", "Status autopayment"],
+              ["status_tekno", "Status Tekno"],
+              ["status_order", "Status order"],
             ] as const
           ).map(([name, label]) => (
             <div key={name}>
@@ -791,9 +826,10 @@ export function WorkshopForm({
       </Group>
 
       <p className="text-xs text-slate-500">
-        Baris yang disimpan selalu kembali ke{' '}
-        <span className="font-medium">Waiting Approval</span> dan menunggu persetujuan —
-        persetujuan sebelumnya tidak berlaku atas isi yang sudah berubah.
+        Baris yang disimpan selalu kembali ke{" "}
+        <span className="font-medium">Waiting Approval</span> dan menunggu
+        persetujuan — persetujuan sebelumnya tidak berlaku atas isi yang sudah
+        berubah.
       </p>
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -801,11 +837,11 @@ export function WorkshopForm({
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -815,13 +851,21 @@ export function WorkshopForm({
  * masuk ke salah satu isian di dalamnya — pada form tiga puluh tiga isian, "isian ke
  * berapa dari bagian apa" adalah satu-satunya cara menavigasinya tanpa melihat.
  */
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <fieldset className="space-y-4 rounded-kontrol border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">{title}</legend>
+      <legend className="px-1 text-sm font-semibold text-slate-700">
+        {title}
+      </legend>
       {children}
     </fieldset>
-  )
+  );
 }
 
 /**
@@ -836,7 +880,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * muncul sebagai kotak saran yang selalu hampa.
  */
 function Suggestions({ name, values }: { name: string; values: string[] }) {
-  if (values.length === 0) return null
+  if (values.length === 0) return null;
 
   return (
     <datalist id={`bengkel-${name}`}>
@@ -844,5 +888,5 @@ function Suggestions({ name, values }: { name: string; values: string[] }) {
         <option key={value} value={value} />
       ))}
     </datalist>
-  )
+  );
 }

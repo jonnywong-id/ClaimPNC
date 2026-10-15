@@ -27,13 +27,13 @@ export type WorkItem = {
    *
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom.
    */
-  referensi: string
+  referensi: string;
 
   /** Kolom "Nomor Case". Judulnya memang begitu di layar lama, bukan "Nomor Klaim". */
-  no_case: string
+  no_case: string;
 
-  no_polis: string
-  nama_tertanggung: string
+  no_polis: string;
+  nama_tertanggung: string;
 
   /**
    * Kolom "Tanggal Masuk Inbox" — tanggal klaimnya DIKIRIM ke jalur RCL/PUCL.
@@ -46,9 +46,9 @@ export type WorkItem = {
    * sekali — sehingga tabel dapat terbaca tidak urut. Itu perilaku layar lama, dan
    * dinyatakan lewat `selisih_terencana`.
    */
-  tanggal_masuk_inbox: string
+  tanggal_masuk_inbox: string;
 
-  deskripsi_analyst: string
+  deskripsi_analyst: string;
 
   /**
    * Jalur penanganan — "RCL" atau "PUCL". Kosong bila kode jalurnya tidak dikenali.
@@ -59,7 +59,7 @@ export type WorkItem = {
    * Inbox Manager Receive / PUCL, judul yang SAMA menunjuk kolom basis data yang BERBEDA.
    * Jangan menyalin pemetaan satu layar ke layar lain.
    */
-  status_rcl_pucl: string
+  status_rcl_pucl: string;
 
   /**
    * Kolom "Tanggal Cetak Surat".
@@ -70,7 +70,7 @@ export type WorkItem = {
    * `kolom` tab tersebut. Layar tidak menyaring apa pun sendiri: ia menggambar kolom yang
    * dikirim server, tidak kurang dan tidak lebih.
    */
-  tanggal_cetak_surat: string
+  tanggal_cetak_surat: string;
 
   /**
    * Kolom "Lama Klaim", dikirim sebagai teks TANGGAL.
@@ -84,10 +84,10 @@ export type WorkItem = {
    * Isinya akan sering terbaca SAMA dengan `tanggal_masuk_inbox`: keduanya ditulis pada
    * langkah yang sama dan hanya terpaut milidetik. Itu keadaan di Pega, bukan kekeliruan.
    */
-  lama_klaim: string
+  lama_klaim: string;
 
   /** Kolom "Status Kadaluarsa". Sumbernya BUKAN kolom yang dipakai menyaring tab pertama. */
-  status_kadaluarsa: string
+  status_kadaluarsa: string;
 
   /**
    * Kolom "Tanggal Dibuat" — kolom yang MENGURUTKAN tabel ini.
@@ -98,23 +98,23 @@ export type WorkItem = {
    *
    * Urutan barisnya sendiri TIDAK berubah — hanya kolomnya yang kini terlihat.
    */
-  tanggal_dibuat: string
-}
+  tanggal_dibuat: string;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type WorkItemField = keyof WorkItem
+export type WorkItemField = keyof WorkItem;
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: WorkItemField
-  judul: string
-}
+  kunci: WorkItemField;
+  judul: string;
+};
 
 /** Satu kolom berkas laporan harian. */
 export type ReportColumn = {
-  kunci: string
-  judul: string
-}
+  kunci: string;
+  judul: string;
+};
 
 /**
  * Satu selisih terhadap layar lama yang sudah diputuskan.
@@ -130,16 +130,16 @@ export type ReportColumn = {
  * tidak dibaca tidak mencegah laporan kerusakan palsu yang menjadi alasan keberadaannya.
  */
 export type PlannedDifference = {
-  ringkas: string
-  rincian: string
-}
+  ringkas: string;
+  rincian: string;
+};
 
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  kolom: TabColumn[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  kolom: TabColumn[];
 
   /**
    * Tombol ekspor tab ini menghasilkan LAPORAN HARIAN berbasis rentang tanggal, bukan
@@ -148,7 +148,7 @@ export type Tab = {
    * Hanya tab "Cetak Surat" begitu. Layar memakainya untuk menampilkan kedua isian tanggal
    * — dan untuk menjelaskan bahwa isian itu TIDAK menyaring tabel di bawahnya.
    */
-  punya_laporan_rentang_tanggal: boolean
+  punya_laporan_rentang_tanggal: boolean;
 
   /**
    * Tab ini punya tombol **"Reminder PUCL"** di bilah tindakannya.
@@ -157,7 +157,7 @@ export type Tab = {
    * di sini: kode tab adalah nilai milik modul, dan membandingkannya di layar membuat satu
    * aturan hidup di dua tempat yang dapat berselisih (`D-15`).
    */
-  punya_reminder: boolean
+  punya_reminder: boolean;
 
   /**
    * Keterangan yang berlaku pada tab ini saja, digambar di atas grid.
@@ -167,7 +167,7 @@ export type Tab = {
    * Surat" yang selalu kosong — dan keterangan itu hilang bersama kolomnya pada
    * 2026-10-11.
    */
-  catatan?: string
+  catatan?: string;
 
   /**
    * Tab digambar tetapi belum dapat diisi.
@@ -175,23 +175,23 @@ export type Tab = {
    * Tidak ada yang begitu di layar ini. Tab "Klaim MSIG" kemungkinan KOSONG, tetapi itu
    * bukan hal yang sama — kosongnya adalah jawaban, bukan ketidakmampuan menjawab.
    */
-  terhalang: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Keterangan halaman dari server. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Jawaban GET /api/inbox-rcl-pucl/tab. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
+  tab: Tab[];
+  tab_bawaan: string;
 
   /**
    * Kolom berkas laporan harian.
@@ -200,17 +200,17 @@ export type MetadataResponse = {
    * tabel yang sedang dilihat, dan perbedaan itu tidak boleh baru ketahuan setelah
    * berkasnya dibuka.
    */
-  kolom_laporan: ReportColumn[]
-  portal: string
-}
+  kolom_laporan: ReportColumn[];
+  portal: string;
+};
 
 /** Jawaban GET /api/inbox-rcl-pucl. */
 export type ListResponse = {
-  tab: Tab
-  baris: WorkItem[]
-  paginasi: PageInfo
-  portal: string
-}
+  tab: Tab;
+  baris: WorkItem[];
+  paginasi: PageInfo;
+  portal: string;
+};
 
 /**
  * Bagian "Lampiran Surat" pada layar kerja RCL/PUCL.
@@ -223,7 +223,7 @@ export type ListResponse = {
  */
 export type LetterDraft = {
   /** Jalur penanganan — "RCL" atau "PUCL". Kosong bila kodenya tidak dikenali. */
-  rcl_pucl: string
+  rcl_pucl: string;
 
   /**
    * Kode jalur MENTAH.
@@ -231,14 +231,14 @@ export type LetterDraft = {
    * Dibaca layar untuk membedakan "kode tidak dikenali" dari "kode memang kosong" — dan
    * khususnya untuk mengenali nilai `3`, yang di Pega MENYEMBUNYIKAN seluruh layar ini.
    */
-  kode_rcl_pucl: string
+  kode_rcl_pucl: string;
 
-  deskripsi_analyst: string
-  no_polis: string
-  tanggal_kejadian: string
+  deskripsi_analyst: string;
+  no_polis: string;
+  tanggal_kejadian: string;
 
   /** Diturunkan dari nama objek pertama. */
-  nama_peserta: string
+  nama_peserta: string;
 
   /**
    * "UP" (Uang Pertanggungan) — diturunkan dari SUMBER YANG SAMA dengan `nama_peserta`.
@@ -250,10 +250,10 @@ export type LetterDraft = {
    * pertanggungan pada 2026-09-24. Work Owner MERALATNYA hari itu juga: UP memang
    * ObjectName. Perbaikannya dicabut, dan `P-5` berlaku apa adanya.
    */
-  up: string
+  up: string;
 
   /** Diturunkan dari `PROPOSE_VALUE` adjustment pertama pada objek pertama. */
-  jumlah_tagihan: string
+  jumlah_tagihan: string;
 
   /**
    * Keempat isian surat, dibaca dari kolom tabel datar sejak 2026-10-01.
@@ -264,11 +264,11 @@ export type LetterDraft = {
    * `perihal` di layar lama adalah PILIHAN dari daftar baku 12 butir; yang tersimpan pada
    * klaim adalah teksnya.
    */
-  perihal: string
-  keterangan_pembuka: string
-  keterangan_isi: string
-  keterangan_penutup: string
-}
+  perihal: string;
+  keterangan_pembuka: string;
+  keterangan_isi: string;
+  keterangan_penutup: string;
+};
 
 /**
  * Bagian "Penerimaan Dokumen".
@@ -283,7 +283,7 @@ export type DocumentReceipt = {
    * Sumbernya `KETERANGAN_1` di tabel objek kerja Pega, yang `P-1` larang ditulis modul
    * ini selama masa paralel. Layar menggambarnya jelas tidak dapat diketik.
    */
-  keterangan_terima_dokumen: string
+  keterangan_terima_dokumen: string;
 
   /**
    * Sel **"Tanggal"** pada grid itu — dari `TGL_TERIMA_DOKUMEN_PUCL`.
@@ -301,7 +301,7 @@ export type DocumentReceipt = {
    * dan kedua tombol Kirim, sehingga menggantinya adalah perubahan yang merusak — bukan
    * penggantian nama (`D-80`).
    */
-  tanggal_kelengkapan_dokumen: string
+  tanggal_kelengkapan_dokumen: string;
 
   /**
    * "Email Tertanggung" — dari `T_CLAIM_PNC.EMAIL_LOD`.
@@ -309,7 +309,7 @@ export type DocumentReceipt = {
    * Kolomnya ADA tetapi kosong pada seluruh baris produksi (dihitung 2026-10-01), sehingga
    * isian ini akan tergambar kosong. Itu keadaan DATA, bukan isian yang belum terpetakan.
    */
-  email_tertanggung: string
+  email_tertanggung: string;
 
   /**
    * Judulnya di layar **"Catatan untuk Analyst"**, bukan "Komentar PUCL".
@@ -317,16 +317,16 @@ export type DocumentReceipt = {
    * Nama isian JSON-nya tetap `komentar_pucl` karena ia KONTRAK, bukan nama yang dilihat
    * pengguna (`D-80`). Yang mengikuti section adalah judul di layar.
    */
-  komentar_pucl: string
-}
+  komentar_pucl: string;
+};
 
 /** Jawaban GET /api/inbox-rcl-pucl/klaim/{referensi}. */
 export type ClaimDetailResponse = {
-  referensi: string
-  no_case: string
+  referensi: string;
+  no_case: string;
 
-  lampiran_surat: LetterDraft
-  penerimaan_dokumen: DocumentReceipt
+  lampiran_surat: LetterDraft;
+  penerimaan_dokumen: DocumentReceipt;
 
   /**
    * Isian layar lama yang tersimpan di CLIPBOARD Pega, bukan sebagai kolom tabel.
@@ -344,7 +344,7 @@ export type ClaimDetailResponse = {
    * kalimat berangka di kaki layar salah tanpa satu pun galat. Itu benar-benar terjadi:
    * sampai 2026-10-11 layar menyatakan "Kesembilannya" sementara daftarnya memuat tiga.
    */
-  isian_belum_terpetakan: string[]
+  isian_belum_terpetakan: string[];
 
   /**
    * Tab "Penerimaan Dokumen" digambar untuk klaim ini.
@@ -357,7 +357,7 @@ export type ClaimDetailResponse = {
    * milik sistem lama, dan membandingkannya di dua tempat membuat keduanya dapat
    * berselisih tanpa ketahuan.
    */
-  tab_penerimaan_dokumen_tampil: boolean
+  tab_penerimaan_dokumen_tampil: boolean;
 
   /**
    * Tombol mana yang digambar untuk klaim ini.
@@ -376,47 +376,47 @@ export type ClaimDetailResponse = {
    * Isian `sementara` yang sempat ada dicabut bersama nilai penampungnya.
    */
   parameter_tindakan: {
-    id_object: string
-    id_coverage: string
-    id_adjustment: string
-  }
+    id_object: string;
+    id_coverage: string;
+    id_adjustment: string;
+  };
 
   tombol: {
-    download_dokumen: boolean
-    tutup_klaim: boolean
-    unggah_dokumen: boolean
-    lihat_dokumen: boolean
-    save: boolean
-    tolak_klaim: boolean
-    kirim_ke_analyst: boolean
-    kirim_ke_pic_teknik: boolean
-  }
+    download_dokumen: boolean;
+    tutup_klaim: boolean;
+    unggah_dokumen: boolean;
+    lihat_dokumen: boolean;
+    save: boolean;
+    tolak_klaim: boolean;
+    kirim_ke_analyst: boolean;
+    kirim_ke_pic_teknik: boolean;
+  };
 
   /** Layar ini di Pega adalah layar TULIS; di sini baca saja. */
-  tindakan_masih_di_pega: boolean
+  tindakan_masih_di_pega: boolean;
 
-  portal: string
-}
+  portal: string;
+};
 
 /** Rentang tanggal laporan harian, berbentuk `YYYY-MM-DD`. */
 export type DateRange = {
-  dari: string
-  sampai: string
-}
+  dari: string;
+  sampai: string;
+};
 
 /** Satu baris daftar dokumen klaim — tombol "Lihat Dokumen". */
 export type DocumentRow = {
-  id: string
-  nama: string
-  kategori: string
-  sub_kategori: string
-  diunggah_pada: string
-  diunggah_oleh: string
-}
+  id: string;
+  nama: string;
+  kategori: string;
+  sub_kategori: string;
+  diunggah_pada: string;
+  diunggah_oleh: string;
+};
 
 /** Jawaban daftar dokumen satu klaim. */
 export type DocumentListResponse = {
-  dokumen: DocumentRow[]
+  dokumen: DocumentRow[];
 
   /**
    * Keterangan bahwa daftarnya mungkin TIDAK lengkap.
@@ -426,7 +426,7 @@ export type DocumentListResponse = {
    * sebagai "klaim ini tidak berdokumen". Begitu jalur itu ikut terbaca, kalimatnya hilang
    * di satu tempat.
    */
-  catatan: string
+  catatan: string;
 
   /**
    * Jumlah lampiran klaim yang TIDAK digambar.
@@ -439,7 +439,7 @@ export type DocumentListResponse = {
    * Angkanya dinyatakan di layar. Daftar yang diam-diam lebih pendek adalah kegagalan yang
    * tidak menghasilkan satu pun galat.
    */
-  disaring: number
+  disaring: number;
 
-  portal: string
-}
+  portal: string;
+};

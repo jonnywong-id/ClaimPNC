@@ -1,18 +1,18 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { useBandingHargaSalvageDecisions } from './api'
-import { DecisionCode, type Decision, type DecisionColumn } from './types'
+import { useBandingHargaSalvageDecisions } from "./api";
+import { DecisionCode, type Decision, type DecisionColumn } from "./types";
 
 type Props = {
   /** Nomor klaim yang dibuka. Kosong berarti panel tertutup. */
-  claimNo: string
-  columns: DecisionColumn[]
-}
+  claimNo: string;
+  columns: DecisionColumn[];
+};
 
 /**
  * Panel rincian pada grid **History Cheker** — seluruh keputusan banding harga satu klaim.
@@ -46,14 +46,16 @@ type Props = {
  * Tidak ada tombol "Tutup": menutupnya dengan menekan barisnya lagi, sama seperti membukanya.
  */
 export function DecisionPanel({ claimNo, columns }: Props) {
-  const decisions = useBandingHargaSalvageDecisions(claimNo)
+  const decisions = useBandingHargaSalvageDecisions(claimNo);
 
-  if (claimNo === '') return null
+  if (claimNo === "") return null;
 
   return (
     <section aria-label={`Riwayat keputusan banding klaim ${claimNo}`}>
       <header className="px-1 pt-1 pb-2">
-        <h2 className="text-sm font-semibold text-slate-900">Riwayat Keputusan Banding</h2>
+        <h2 className="text-sm font-semibold text-slate-900">
+          Riwayat Keputusan Banding
+        </h2>
         <p className="mt-0.5 text-xs text-slate-600">
           Klaim <span className="font-medium text-slate-800">{claimNo}</span>
         </p>
@@ -63,7 +65,7 @@ export function DecisionPanel({ claimNo, columns }: Props) {
         <DataTable<Decision>
           columns={columnsFor(columns)}
           rows={decisions.data?.baris ?? []}
-          rowKey={(row) => `${row.detail_object}|${row.tanggal_approve ?? ''}`}
+          rowKey={(row) => `${row.detail_object}|${row.tanggal_approve ?? ""}`}
           label={`Keputusan banding klaim ${claimNo}`}
           // Kepala kolom tetap tergambar meski belum ada keputusan — lihat catatan
           // yang sama pada layar utamanya.
@@ -80,14 +82,14 @@ export function DecisionPanel({ claimNo, columns }: Props) {
             ) : undefined
           }
           emptyMessage={
-            'Belum ada keputusan yang tercatat untuk klaim ini. Itu keadaan yang sah — ' +
-            'baris pada History menampilkan pengajuan salvage, dan keputusannya dicatat ' +
-            'per barang.'
+            "Belum ada keputusan yang tercatat untuk klaim ini. Itu keadaan yang sah — " +
+            "baris pada History menampilkan pengajuan salvage, dan keputusannya dicatat " +
+            "per barang."
           }
         />
       </div>
     </section>
-  )
+  );
 }
 
 /** columnsFor menyusun kolom panel dari bentuk yang ditetapkan server. */
@@ -98,13 +100,13 @@ function columnsFor(columns: DecisionColumn[]): Column<Decision>[] {
     value: (row) => valueOf(row, column),
     render: (row) => renderCell(row, column),
     alignRight: column.angka,
-  }))
+  }));
 }
 
 function valueOf(row: Decision, column: DecisionColumn): string {
-  const raw = row[column.kunci]
-  if (raw == null) return ''
-  return String(raw)
+  const raw = row[column.kunci];
+  if (raw == null) return "";
+  return String(raw);
 }
 
 /**
@@ -116,22 +118,22 @@ function valueOf(row: Decision, column: DecisionColumn): string {
  * sulit dibedakan sekilas pada daftar yang panjang.
  */
 function renderCell(row: Decision, column: DecisionColumn): ReactNode {
-  const raw = valueOf(row, column)
-  if (raw === '') return <span className="text-slate-400">—</span>
+  const raw = valueOf(row, column);
+  if (raw === "") return <span className="text-slate-400">—</span>;
 
-  if (column.kunci === 'tanggal_approve') {
-    return formatDate(raw)
+  if (column.kunci === "tanggal_approve") {
+    return formatDate(raw);
   }
 
-  if (column.kunci === 'jawaban_checker') {
-    return <DecisionBadge code={row.jawaban_checker_kode} label={raw} />
+  if (column.kunci === "jawaban_checker") {
+    return <DecisionBadge code={row.jawaban_checker_kode} label={raw} />;
   }
 
   if (column.angka) {
-    return <span className="tabular-nums">{formatMoney(raw)}</span>
+    return <span className="tabular-nums">{formatMoney(raw)}</span>;
   }
 
-  return raw
+  return raw;
 }
 
 /**
@@ -147,22 +149,22 @@ function renderCell(row: Decision, column: DecisionColumn): ReactNode {
 function DecisionBadge({ code, label }: { code: string; label: string }) {
   const tone =
     code === DecisionCode.approved
-      ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
       : code === DecisionCode.rejected
-        ? 'bg-rose-50 text-rose-800 ring-rose-200'
-        : 'bg-slate-100 text-slate-700 ring-slate-200'
+        ? "bg-rose-50 text-rose-800 ring-rose-200"
+        : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
     <span
       className={[
-        'inline-flex items-center rounded-full px-2 py-0.5',
-        'text-xs font-medium ring-1 ring-inset whitespace-nowrap',
+        "inline-flex items-center rounded-full px-2 py-0.5",
+        "text-xs font-medium ring-1 ring-inset whitespace-nowrap",
         tone,
-      ].join(' ')}
+      ].join(" ")}
     >
       {label}
     </span>
-  )
+  );
 }
 
 /**
@@ -173,13 +175,13 @@ function DecisionBadge({ code, label }: { code: string; label: string }) {
  * digambar apa adanya, bukan diganti nol.
  */
 function formatMoney(raw: string): string {
-  const parsed = Number(raw.replace(',', '.'))
-  if (!Number.isFinite(parsed)) return raw
-  return parsed.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+  const parsed = Number(raw.replace(",", "."));
+  if (!Number.isFinite(parsed)) return raw;
+  return parsed.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

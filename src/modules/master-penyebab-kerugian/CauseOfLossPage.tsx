@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type CauseOfLoss } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type CauseOfLoss } from "@/api/types";
+import { ReloadIcon, AddIcon, EditIcon } from "@/components/Icon";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
-import { useCauseOfLossList } from './api'
-import { CauseOfLossForm } from './CauseOfLossForm'
+import { useCauseOfLossList } from "./api";
+import { CauseOfLossForm } from "./CauseOfLossForm";
 
 /**
  * Layar Master Penyebab Kerugian.
@@ -64,33 +64,35 @@ import { CauseOfLossForm } from './CauseOfLossForm'
  * tidak dibawa (`D-68`), sehingga penanda berhasil-atau-gagal tidak lagi berupa teks.
  */
 export function CauseOfLossPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useCauseOfLossList()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useCauseOfLossList();
 
   // null = sedang menambah; berisi = sedang mengubah baris itu.
-  const [sedangDisunting, setSedangDisunting] = useState<CauseOfLoss | null>(null)
-  const [formTerbuka, setFormTerbuka] = useState(false)
+  const [sedangDisunting, setSedangDisunting] = useState<CauseOfLoss | null>(
+    null,
+  );
+  const [formTerbuka, setFormTerbuka] = useState(false);
 
   function openAdd() {
-    setSedangDisunting(null)
-    setFormTerbuka(true)
+    setSedangDisunting(null);
+    setFormTerbuka(true);
   }
 
   function openEdit(cause: CauseOfLoss) {
-    setSedangDisunting(cause)
-    setFormTerbuka(true)
+    setSedangDisunting(cause);
+    setFormTerbuka(true);
   }
 
   function closeForm() {
-    setFormTerbuka(false)
-    setSedangDisunting(null)
+    setFormTerbuka(false);
+    setSedangDisunting(null);
   }
 
   const columns: Column<CauseOfLoss>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: '7rem',
+      key: "id",
+      title: "ID",
+      width: "7rem",
       value: (c) => c.id,
       render: (c) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
@@ -99,10 +101,10 @@ export function CauseOfLossPage() {
       ),
     },
     {
-      key: 'deskripsi',
+      key: "deskripsi",
       // Judul kolom diambil apa adanya dari layar Pega (`D-13`): `pyValue` pada sel
       // ber-`pyCellHeader=true`, berdampingan dengan `pyLabelFor .COL_DESC`.
-      title: 'Deskripsi Kerugian',
+      title: "Deskripsi Kerugian",
       value: (c) => c.deskripsi,
       render: (c) =>
         // Deskripsi kosong DITERIMA modul ini, sehingga ia pasti akan muncul di daftar.
@@ -110,18 +112,21 @@ export function CauseOfLossPage() {
         c.deskripsi ? (
           <span className="font-medium text-slate-900">{c.deskripsi}</span>
         ) : (
-          <span className="italic text-slate-400" title="Baris ini tidak punya deskripsi">
+          <span
+            className="italic text-slate-400"
+            title="Baris ini tidak punya deskripsi"
+          >
             (tanpa deskripsi)
           </span>
         ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (c) => (
         <Button
           tone="halus"
@@ -135,12 +140,15 @@ export function CauseOfLossPage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -153,18 +161,18 @@ export function CauseOfLossPage() {
           Master Penyebab Kerugian
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Daftar acuan golongan sebab terjadinya kerugian sebuah klaim. Deskripsi yang
-          diubah di sini dipakai mengelompokkan laporan klaim per penyebab kerugian, jadi
-          akibatnya terbaca di luar layar ini.
+          Daftar acuan golongan sebab terjadinya kerugian sebuah klaim.
+          Deskripsi yang diubah di sini dipakai mengelompokkan laporan klaim per
+          penyebab kerugian, jadi akibatnya terbaca di luar layar ini.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
+          Portal entitas:{" "}
           <span className="font-medium text-slate-700">
-            {list.data?.portal ?? portal ?? '—'}
+            {list.data?.portal ?? portal ?? "—"}
           </span>
         </p>
       </header>
@@ -190,12 +198,14 @@ export function CauseOfLossPage() {
           description={
             list.data
               ? `${list.data.total} penyebab kerugian terdaftar pada entitas ini.`
-              : 'Memuat daftar penyebab kerugian…'
+              : "Memuat daftar penyebab kerugian…"
           }
           searchLabel="Cari ID atau Deskripsi Kerugian"
           emptyMessage="Belum ada penyebab kerugian yang terdaftar."
           isLoading={list.isPending}
-          error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+          error={
+            list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+          }
           actions={
             <>
               {/* Labelnya **Refresh**: itulah `pyButtonLabel` yang terpasang di harness
@@ -208,13 +218,21 @@ export function CauseOfLossPage() {
                   diseragamkan di seluruh modul master. */}
               <Button
                 tone="kedua"
-                onClick={() => { list.refetch() }}
+                onClick={() => {
+                  list.refetch();
+                }}
                 disabled={list.isFetching}
               >
-                <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                {list.isFetching ? 'Memuat…' : 'Refresh'}
+                <ReloadIcon
+                  className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                />
+                {list.isFetching ? "Memuat…" : "Refresh"}
               </Button>
-              <Button tone="utama" onClick={openAdd} disabled={formTerbuka && !sedangDisunting}>
+              <Button
+                tone="utama"
+                onClick={openAdd}
+                disabled={formTerbuka && !sedangDisunting}
+              >
                 <AddIcon className="h-4 w-4" />
                 Tambah
               </Button>
@@ -223,7 +241,7 @@ export function CauseOfLossPage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -233,20 +251,28 @@ export function CauseOfLossPage() {
  * — ia baru membuka layarnya.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
+      title: "Tidak dapat menghubungi server",
       description:
-        'Daftar penyebab kerugian belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+        "Daftar penyebab kerugian belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -254,30 +280,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar penyebab kerugian gagal dimuat',
+          title: "Daftar penyebab kerugian gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar penyebab kerugian gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar penyebab kerugian gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

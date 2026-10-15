@@ -1,29 +1,29 @@
-import { useState, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { formatPegaDateTime, formatPegaElapsed } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { formatPegaDateTime, formatPegaElapsed } from "@/components/format";
 
-import { RCLPUCLTabs } from './RCLPUCLTabs'
+import { RCLPUCLTabs } from "./RCLPUCLTabs";
 import {
   useExportRCLPUCL,
   useKirimReminder,
   useRCLPUCLList,
   useRCLPUCLMetadata,
-} from './api'
-import type { HasilReminder, JawabanReminder } from './api'
+} from "./api";
+import type { HasilReminder, JawabanReminder } from "./api";
 import type {
   DateRange,
   ReportColumn,
   Tab,
   TabColumn,
   WorkItem,
-} from './types'
+} from "./types";
 
 /**
  * Inbox RCL/PUCL — menu `MENU_ID 61`, pengganti harness `RCLPUCL_Harness`.
@@ -62,26 +62,26 @@ export function RCLPUCLPage() {
   //
   // Rentang tanggal TIDAK ikut ke alamat: ia hanya dipakai tombol ekspor, tidak menyaring
   // tabel, dan menaruhnya di alamat akan menyiratkan ia bagian dari apa yang sedang dilihat.
-  const [params, setParams] = useSearchParams()
-  const [range, setRange] = useState<DateRange>({ dari: '', sampai: '' })
+  const [params, setParams] = useSearchParams();
+  const [range, setRange] = useState<DateRange>({ dari: "", sampai: "" });
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const tabCode = params.get('tab') ?? ''
-  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
+  const tabCode = params.get("tab") ?? "";
+  const page = Math.max(1, Number(params.get("halaman") ?? "1") || 1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useRCLPUCLMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useRCLPUCLMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = tabCode || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = tabCode || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tab terhalang TIDAK meminta isinya. Permintaannya pasti ditolak server dengan 422, dan
   // galat yang sudah diketahui pasti terjadi bukan galat yang layak ditampilkan — yang
   // layak ditampilkan adalah alasan terhalangnya.
-  const blocked = tab?.terhalang === true
-  const list = useRCLPUCLList(active, page, meta.isSuccess && !blocked)
+  const blocked = tab?.terhalang === true;
+  const list = useRCLPUCLList(active, page, meta.isSuccess && !blocked);
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama.
@@ -91,12 +91,12 @@ export function RCLPUCLPage() {
    * layar yang ketiga tabnya tampak sama, itu sangat mudah disalahartikan.
    */
   function selectTab(code: string) {
-    setParams({ tab: code, halaman: '1' }, { replace: true })
+    setParams({ tab: code, halaman: "1" }, { replace: true });
   }
 
   /** Berpindah halaman, menjaga tab yang sedang terbuka. */
   function setPage(next: number) {
-    setParams({ tab: active, halaman: String(next) }, { replace: true })
+    setParams({ tab: active, halaman: String(next) }, { replace: true });
   }
 
   /**
@@ -107,8 +107,10 @@ export function RCLPUCLPage() {
    * spasi mentah di dalam alamat bukan alamat yang sah.
    */
   function openCase(row: WorkItem) {
-    const back = new URLSearchParams({ tab: active, halaman: String(page) })
-    navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.referensi)}?${back}`)
+    const back = new URLSearchParams({ tab: active, halaman: String(page) });
+    navigate(
+      `/inbox-rcl-pucl/klaim/${encodeURIComponent(row.referensi)}?${back}`,
+    );
   }
 
   if (portal === null) {
@@ -117,13 +119,13 @@ export function RCLPUCLPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean RCL/PUCL milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Antrean RCL/PUCL milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -135,7 +137,7 @@ export function RCLPUCLPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -229,14 +231,13 @@ export function RCLPUCLPage() {
           )}
         </>
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       {/*
         Kepala layar dijaga SEPENDEK layar lama: judul, satu kalimat, lalu bilah tab.
 
@@ -250,8 +251,8 @@ function PageFrame({ children }: { children: ReactNode }) {
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-xl font-semibold text-slate-900">Inbox RCL/PUCL</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim yang ditolak (RCL) atau diproses ulang (PUCL), dikelompokkan menurut
-          perjalanan surat PUCL-nya.
+          Klaim yang ditolak (RCL) atau diproses ulang (PUCL), dikelompokkan
+          menurut perjalanan surat PUCL-nya.
         </p>
       </header>
 
@@ -260,7 +261,7 @@ function PageFrame({ children }: { children: ReactNode }) {
       <SharedQueueNotice />
       <LetterActionNotice />
     </div>
-  )
+  );
 }
 
 /**
@@ -296,14 +297,14 @@ function ActionBar({
   exportable,
   reportColumns,
 }: {
-  tab: Tab
-  range: DateRange
-  onRangeChange: (next: DateRange) => void
+  tab: Tab;
+  range: DateRange;
+  onRangeChange: (next: DateRange) => void;
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
-  exportable: boolean
-  reportColumns: ReportColumn[]
+  exportable: boolean;
+  reportColumns: ReportColumn[];
 }) {
-  const berentang = tab.punya_laporan_rentang_tanggal
+  const berentang = tab.punya_laporan_rentang_tanggal;
 
   return (
     <section className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-3 shadow-lembut">
@@ -319,14 +320,18 @@ function ActionBar({
               label="FROM RCL/PUCL"
               type="date"
               value={range.dari}
-              onChange={(event) => onRangeChange({ ...range, dari: event.target.value })}
+              onChange={(event) =>
+                onRangeChange({ ...range, dari: event.target.value })
+              }
             />
             <FormField
               id="rcl-pucl-sampai"
               label="TO RCL/PUCL"
               type="date"
               value={range.sampai}
-              onChange={(event) => onRangeChange({ ...range, sampai: event.target.value })}
+              onChange={(event) =>
+                onRangeChange({ ...range, sampai: event.target.value })
+              }
             />
           </>
         )}
@@ -350,14 +355,17 @@ function ActionBar({
 
       {berentang && (
         <p className="mt-3 text-xs text-slate-600">
-          <span className="font-medium">Kedua tanggal ini hanya dipakai tombol unduh.</span>{' '}
-          Tabel di bawah tidak ikut tersaring — sama seperti di layar lama. Isinya pun
-          berbeda: berkas laporan memuat klaim yang suratnya sudah dicetak, klaim yang sudah
-          selesai, dan klaim Personal Accident di luar antrean ini.
+          <span className="font-medium">
+            Kedua tanggal ini hanya dipakai tombol unduh.
+          </span>{" "}
+          Tabel di bawah tidak ikut tersaring — sama seperti di layar lama.
+          Isinya pun berbeda: berkas laporan memuat klaim yang suratnya sudah
+          dicetak, klaim yang sudah selesai, dan klaim Personal Accident di luar
+          antrean ini.
         </p>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -373,11 +381,11 @@ function ActionBar({
 function SharedQueueNotice() {
   return (
     <p className="mt-6 text-xs text-slate-500">
-      Ini <span className="font-medium">antrean bersama</span>: seluruh petugas RCL/PUCL pada
-      portal yang sedang dipilih melihat daftar yang sama, bukan hanya pekerjaan Anda. Setiap
-      pembukaannya tercatat.
+      Ini <span className="font-medium">antrean bersama</span>: seluruh petugas
+      RCL/PUCL pada portal yang sedang dipilih melihat daftar yang sama, bukan
+      hanya pekerjaan Anda. Setiap pembukaannya tercatat.
     </p>
-  )
+  );
 }
 
 /**
@@ -396,7 +404,7 @@ function TabNotice({ text }: { text: string }) {
     <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-xs text-slate-700">{text}</p>
     </div>
-  )
+  );
 }
 
 /**
@@ -426,13 +434,13 @@ function ExportButton({
   enabled,
   columns,
 }: {
-  tab: Tab | undefined
-  range: DateRange
-  enabled: boolean
-  columns: ReportColumn[]
+  tab: Tab | undefined;
+  range: DateRange;
+  enabled: boolean;
+  columns: ReportColumn[];
 }) {
-  const ekspor = useExportRCLPUCL()
-  const isReport = tab?.punya_laporan_rentang_tanggal === true
+  const ekspor = useExportRCLPUCL();
+  const isReport = tab?.punya_laporan_rentang_tanggal === true;
 
   return (
     <div className="flex max-w-md flex-col items-start gap-1">
@@ -441,17 +449,17 @@ function ExportButton({
         disabled={!enabled || ekspor.isPending || tab === undefined}
         onClick={() =>
           ekspor.mutate({
-            tab: tab?.kode ?? '',
+            tab: tab?.kode ?? "",
             range: isReport ? range : undefined,
           })
         }
       >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export to Excel'}
+        {ekspor.isPending ? "Menyiapkan berkas…" : "Export to Excel"}
       </Button>
 
       {isReport && columns.length > 0 && (
         <p className="text-xs text-slate-500">
-          Berisi: {columns.map((column) => column.judul).join(' · ')}
+          Berisi: {columns.map((column) => column.judul).join(" · ")}
         </p>
       )}
 
@@ -461,7 +469,7 @@ function ExportButton({
         </p>
       )}
     </div>
-  )
+  );
 }
 /**
  * Tombol "Reminder PUCL" beserta modalnya.
@@ -494,7 +502,7 @@ function ExportButton({
  * ini untuk tindakan yang belum dapat dijalankan.
  */
 function ReminderButton({ tab }: { tab: Tab }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -504,7 +512,7 @@ function ReminderButton({ tab }: { tab: Tab }) {
 
       {open && <ReminderDialog tab={tab} onClose={() => setOpen(false)} />}
     </>
-  )
+  );
 }
 
 /**
@@ -519,13 +527,13 @@ function ReminderButton({ tab }: { tab: Tab }) {
  * halaman.
  */
 function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
-  const [page, setPage] = useState(1)
-  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
 
-  const kirim = useKirimReminder()
+  const kirim = useKirimReminder();
 
-  const list = useRCLPUCLList(tab.kode, page, true)
-  const rows = list.data?.baris ?? []
+  const list = useRCLPUCLList(tab.kode, page, true);
+  const rows = list.data?.baris ?? [];
 
   // Pilihan disimpan menurut NOMOR KLAIM, bukan kunci baris.
   //
@@ -541,28 +549,31 @@ function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   //
   // Baris tanpa nomor klaim TIDAK dapat dipilih — lihat reminderColumns. Pengingat
   // ditujukan ke sebuah klaim, dan baris tanpa nomor tidak menunjuk klaim mana pun.
-  const onPage = rows.map((row) => row.no_case).filter((number) => number !== '')
-  const allOnPage = onPage.length > 0 && onPage.every((number) => chosen.has(number))
+  const onPage = rows
+    .map((row) => row.no_case)
+    .filter((number) => number !== "");
+  const allOnPage =
+    onPage.length > 0 && onPage.every((number) => chosen.has(number));
 
   function toggle(key: string) {
     setChosen((lama) => {
-      const next = new Set(lama)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+      const next = new Set(lama);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   /** "Pilih semua" berlaku untuk HALAMAN INI — itulah yang terlihat pengguna. */
   function toggleAll() {
     setChosen((lama) => {
-      const next = new Set(lama)
+      const next = new Set(lama);
       for (const key of onPage) {
-        if (allOnPage) next.delete(key)
-        else next.add(key)
+        if (allOnPage) next.delete(key);
+        else next.add(key);
       }
-      return next
-    })
+      return next;
+    });
   }
 
   return (
@@ -575,11 +586,13 @@ function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
       <div className="w-full max-w-5xl rounded-kartu border border-slate-200 bg-white shadow-lembut">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Reminder PUCL</h2>
+            <h2 className="text-base font-semibold text-slate-900">
+              Reminder PUCL
+            </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Pilih klaim yang akan dikirimi pengingat kelengkapan dokumen. Daftarnya sama
-              dengan antrean &ldquo;Kelengkapan Dokumen&rdquo; — penyaringnya memang sama
-              persis.
+              Pilih klaim yang akan dikirimi pengingat kelengkapan dokumen.
+              Daftarnya sama dengan antrean &ldquo;Kelengkapan Dokumen&rdquo; —
+              penyaringnya memang sama persis.
             </p>
           </div>
           <Button tone="halus" onClick={onClose}>
@@ -645,7 +658,7 @@ function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
           <p className="text-xs text-slate-600">
             {chosen.size === 0
-              ? 'Belum ada klaim yang dipilih.'
+              ? "Belum ada klaim yang dipilih."
               : `${chosen.size} klaim dipilih.`}
           </p>
 
@@ -668,12 +681,12 @@ function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
             disabled={chosen.size === 0 || kirim.isPending}
             onClick={() => kirim.mutate([...chosen])}
           >
-            {kirim.isPending ? 'Mengirim…' : 'Kirim Reminder'}
+            {kirim.isPending ? "Mengirim…" : "Kirim Reminder"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -691,16 +704,16 @@ function ReminderDialog({ tab, onClose }: { tab: Tab; onClose: () => void }) {
  * daftar yang memuat empat baris terkirim.
  */
 function ReminderResult({ hasil }: { hasil: JawabanReminder }) {
-  const { ringkasan } = hasil
+  const { ringkasan } = hasil;
 
-  const gagal = hasil.hasil.filter((baris) => baris.status !== 'terkirim')
+  const gagal = hasil.hasil.filter((baris) => baris.status !== "terkirim");
 
   return (
     <div className="border-t border-slate-200 px-5 py-4">
       <p className="text-sm font-medium text-slate-900">
         {ringkasan.terkirim > 0
           ? `${ringkasan.terkirim} pengingat terkirim.`
-          : 'Tidak ada pengingat yang terkirim.'}
+          : "Tidak ada pengingat yang terkirim."}
       </p>
 
       {gagal.length > 0 && (
@@ -716,14 +729,16 @@ function ReminderResult({ hasil }: { hasil: JawabanReminder }) {
               ` · ${ringkasan.tanpa_email} belum punya Email Tertanggung`}
             {ringkasan.tidak_memenuhi_syarat > 0 &&
               ` · ${ringkasan.tidak_memenuhi_syarat} tidak lagi di antrean ini`}
-            {ringkasan.gagal > 0 && ` · ${ringkasan.gagal} ditolak peladen surel`}.
+            {ringkasan.gagal > 0 &&
+              ` · ${ringkasan.gagal} ditolak peladen surel`}
+            .
           </p>
 
           <ul className="mt-2 space-y-1">
             {gagal.map((baris) => (
               <li key={baris.nomor_klaim} className="text-xs text-slate-700">
                 <span className="font-mono">{baris.nomor_klaim}</span>
-                {' — '}
+                {" — "}
                 {alasanReminder(baris)}
               </li>
             ))}
@@ -731,7 +746,7 @@ function ReminderResult({ hasil }: { hasil: JawabanReminder }) {
         </>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -744,14 +759,14 @@ function ReminderResult({ hasil }: { hasil: JawabanReminder }) {
  */
 function alasanReminder(baris: HasilReminder): string {
   switch (baris.status) {
-    case 'tanpa-email':
-      return 'Email Tertanggung belum diisi pada klaim ini.'
-    case 'tidak-memenuhi-syarat':
-      return 'Klaim ini tidak lagi berada di antrean Kelengkapan Dokumen.'
-    case 'gagal':
-      return baris.alasan ?? 'Pengiriman ditolak peladen surel.'
+    case "tanpa-email":
+      return "Email Tertanggung belum diisi pada klaim ini.";
+    case "tidak-memenuhi-syarat":
+      return "Klaim ini tidak lagi berada di antrean Kelengkapan Dokumen.";
+    case "gagal":
+      return baris.alasan ?? "Pengiriman ditolak peladen surel.";
     default:
-      return baris.status
+      return baris.status;
   }
 }
 
@@ -768,17 +783,17 @@ function reminderColumns(
   chosen: Set<string>,
   toggle: (key: string) => void,
 ): Column<WorkItem>[] {
-  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]));
 
   return [
     {
-      key: 'pilih',
-      title: '',
-      width: '3rem',
+      key: "pilih",
+      title: "",
+      width: "3rem",
       noSort: true,
       // Dicentang menurut NOMOR KLAIM — nilai yang sama persis dengan yang dikirim ke
       // peladen. Lihat catatan pada `chosen` di ReminderDialog.
-      value: (row) => (chosen.has(row.no_case) ? 'dipilih' : ''),
+      value: (row) => (chosen.has(row.no_case) ? "dipilih" : ""),
       render: (row) => (
         <input
           type="checkbox"
@@ -787,32 +802,32 @@ function reminderColumns(
           // Baris tanpa nomor klaim tidak dapat dipilih: pengingat ditujukan ke sebuah
           // klaim, dan baris tanpa nomor tidak menunjuk klaim mana pun. Mematikannya
           // lebih jujur daripada membiarkannya dicentang lalu ditolak peladen.
-          disabled={row.no_case === ''}
+          disabled={row.no_case === ""}
           aria-label={`Pilih ${row.no_case}`}
           className="h-4 w-4 rounded border-slate-300 disabled:cursor-not-allowed"
         />
       ),
     },
     {
-      key: 'nomor',
-      title: '',
-      width: '3rem',
+      key: "nomor",
+      title: "",
+      width: "3rem",
       noSort: true,
-      value: (row) => String(nomor.get(rowKeyOf(row)) ?? ''),
+      value: (row) => String(nomor.get(rowKeyOf(row)) ?? ""),
     },
-    { key: 'no_case', title: 'Nomor Case', value: (row) => row.no_case },
-    { key: 'no_polis', title: 'No Polis', value: (row) => row.no_polis },
+    { key: "no_case", title: "Nomor Case", value: (row) => row.no_case },
+    { key: "no_polis", title: "No Polis", value: (row) => row.no_polis },
     {
-      key: 'nama_tertanggung',
-      title: 'Nama Tertanggung',
+      key: "nama_tertanggung",
+      title: "Nama Tertanggung",
       value: (row) => row.nama_tertanggung,
     },
     {
-      key: 'tanggal_cetak_surat',
-      title: 'Tanggal Cetak Surat',
-      value: (row) => formatPegaDateTime(row.tanggal_cetak_surat) || '—',
+      key: "tanggal_cetak_surat",
+      title: "Tanggal Cetak Surat",
+      value: (row) => formatPegaDateTime(row.tanggal_cetak_surat) || "—",
     },
-  ]
+  ];
 }
 
 /**
@@ -825,15 +840,18 @@ function reminderColumns(
 function BlockedNotice({ tab }: { tab: Tab }) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
+      <h2 className="text-sm font-semibold text-amber-900">
+        {tab.nama} belum tersedia
+      </h2>
       <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
       {tab.pemilik_penghalang && (
         <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
+          <span className="font-medium">Menunggu:</span>{" "}
+          {tab.pemilik_penghalang}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -864,12 +882,13 @@ function BlockedNotice({ tab }: { tab: Tab }) {
 function LetterActionNotice() {
   return (
     <p className="mt-2 text-xs text-slate-500">
-      <span className="font-medium">Mencetak surat RCL/PUCL</span> dikerjakan dari dalam
-      klaimnya: buka Nomor Case, lalu tekan &ldquo;Download Dokumen&rdquo;. Suratnya terbit,
-      melampir ke klaim, dan klaimnya berpindah sendiri dari tab &ldquo;Cetak
-      Surat&rdquo; ke &ldquo;Kelengkapan Dokumen&rdquo;.
+      <span className="font-medium">Mencetak surat RCL/PUCL</span> dikerjakan
+      dari dalam klaimnya: buka Nomor Case, lalu tekan &ldquo;Download
+      Dokumen&rdquo;. Suratnya terbit, melampir ke klaim, dan klaimnya berpindah
+      sendiri dari tab &ldquo;Cetak Surat&rdquo; ke &ldquo;Kelengkapan
+      Dokumen&rdquo;.
     </p>
-  )
+  );
 }
 
 /**
@@ -926,8 +945,14 @@ function LetterActionNotice() {
  * dibuka `PNCInboxAdmin`, `PNCSearchKlaim`, `InboxManagerReopen1_Sec`, dan
  * `InputProgressClaim` — **tidak satu pun dari RCL/PUCL**.
  */
-function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) => void }) {
-  if (item.no_case === '') return <span className="text-slate-400">—</span>
+function CaseLink({
+  item,
+  onOpen,
+}: {
+  item: WorkItem;
+  onOpen: (row: WorkItem) => void;
+}) {
+  if (item.no_case === "") return <span className="text-slate-400">—</span>;
 
   return (
     <button
@@ -935,17 +960,16 @@ function CaseLink({ item, onOpen }: { item: WorkItem; onOpen: (row: WorkItem) =>
       onClick={() => onOpen(item)}
       title={`Buka klaim ${item.no_case}`}
       className={[
-        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
-        'transition-colors duration-150 ease-halus hover:underline',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-        'disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline',
-      ].join(' ')}
+        "rounded-kontrol text-left font-medium text-blue-700 underline-offset-2",
+        "transition-colors duration-150 ease-halus hover:underline",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+        "disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline",
+      ].join(" ")}
     >
       {item.no_case}
     </button>
-  )
+  );
 }
-
 
 /**
  * columnsFor menyusun kolom tabel dari bentuk yang ditetapkan server.
@@ -979,30 +1003,30 @@ function columnsFor(
   rows: WorkItem[],
   openCase: (row: WorkItem) => ReactNode,
 ): Column<WorkItem>[] {
-  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+  const nomor = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]));
 
   const kolomNomor: Column<WorkItem> = {
-    key: 'nomor',
-    title: '',
-    width: '3rem',
+    key: "nomor",
+    title: "",
+    width: "3rem",
     noSort: true,
-    value: (row) => String(nomor.get(rowKeyOf(row)) ?? ''),
-  }
+    value: (row) => String(nomor.get(rowKeyOf(row)) ?? ""),
+  };
 
   const kolom = tab.kolom.map((column) => {
     const base: Column<WorkItem> = {
       key: column.kunci,
       title: column.judul,
       value: (row) => cellText(row, column),
-    }
+    };
 
-    if (column.kunci === 'no_case') {
-      return { ...base, render: openCase }
+    if (column.kunci === "no_case") {
+      return { ...base, render: openCase };
     }
-    return base
-  })
+    return base;
+  });
 
-  return [kolomNomor, ...kolom]
+  return [kolomNomor, ...kolom];
 }
 
 /**
@@ -1014,7 +1038,7 @@ function columnsFor(
  * kolom nomor urut yang kosong tanpa satu pun galat.
  */
 function rowKeyOf(row: WorkItem): string {
-  return `${row.referensi}|${row.no_case}`
+  return `${row.referensi}|${row.no_case}`;
 }
 
 /**
@@ -1041,19 +1065,19 @@ function rowKeyOf(row: WorkItem): string {
  *    tanda pisah bukan keterangan — ia ruang yang terpakai tanpa memberi tahu apa pun.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
+  const text = String(value);
 
-  if (column.kunci === 'lama_klaim') {
+  if (column.kunci === "lama_klaim") {
     // Kosong berarti tanggalnya di masa depan — baris seperti itu memang ada di data
     // warisan. Tanda pisah, bukan "0 minutes ago" yang menyatakan hal yang tidak benar.
-    return formatPegaElapsed(text) || '—'
+    return formatPegaElapsed(text) || "—";
   }
 
-  return formatPegaDateTime(text)
+  return formatPegaDateTime(text);
 }
 
 /**
@@ -1071,31 +1095,31 @@ function cellText(row: WorkItem, column: TabColumn): string {
 function emptyMessageFor(tab: Tab): string {
   if (tab.punya_laporan_rentang_tanggal) {
     return (
-      'Tidak ada klaim RCL/PUCL yang suratnya menunggu dicetak. Bila Anda yakin ' +
+      "Tidak ada klaim RCL/PUCL yang suratnya menunggu dicetak. Bila Anda yakin " +
       'seharusnya ada, periksa tab "Kelengkapan Dokumen" lebih dulu — klaim yang suratnya ' +
-      'sudah dicetak pindah ke sana dengan sendirinya.'
-    )
+      "sudah dicetak pindah ke sana dengan sendirinya."
+    );
   }
 
   if (tab.catatan) {
     // Tab "Klaim MSIG". Catatannya sudah menjelaskan kosongnya di atas grid, jadi pesan di
     // sini cukup mengarahkan ke sana alih-alih mengulangnya.
     return (
-      'Tidak ada klaim jalur MSIG. Lihat catatan di atas tabel — tab ini memang ' +
-      'diperkirakan kosong, dan penyebabnya sedang dipastikan ke DBA.'
-    )
+      "Tidak ada klaim jalur MSIG. Lihat catatan di atas tabel — tab ini memang " +
+      "diperkirakan kosong, dan penyebabnya sedang dipastikan ke DBA."
+    );
   }
 
   return (
-    'Tidak ada klaim yang menunggu kelengkapan dokumen. Bila Anda yakin seharusnya ada, ' +
-    'laporkan ke tim teknis: klaim yang penanda persetujuannya belum pernah diisi tidak ' +
-    'muncul di sini, dan itu perilaku yang dibawa dari sistem lama.'
-  )
+    "Tidak ada klaim yang menunggu kelengkapan dokumen. Bila Anda yakin seharusnya ada, " +
+    "laporkan ke tim teknis: klaim yang penanda persetujuannya belum pernah diisi tidak " +
+    "muncul di sini, dan itu perilaku yang dibawa dari sistem lama."
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

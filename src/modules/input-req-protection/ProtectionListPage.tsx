@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { ReloadIcon } from '@/components/Icon'
-import type { SelectOption } from '@/components/SelectField'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { ReloadIcon } from "@/components/Icon";
+import type { SelectOption } from "@/components/SelectField";
 
 import {
   PAGE_SIZE,
@@ -16,13 +16,13 @@ import {
   useProtectionList,
   useProtectionTypes,
   useUpdateProtection,
-} from './api'
-import { ProtectionForm } from './ProtectionForm'
+} from "./api";
+import { ProtectionForm } from "./ProtectionForm";
 import {
   protectionTypeLabel,
   type Protection,
   type ProtectionFields,
-} from './types'
+} from "./types";
 
 /**
  * Layar Input Req Protection.
@@ -69,40 +69,42 @@ import {
  * menembak modul klaim, yang rutenya belum tersedia.
  */
 export function ProtectionListPage() {
-  const [search, setSearch] = useState('')
-  const [offset, setOffset] = useState(0)
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
 
   // null berarti form tertutup; '' berarti form terbuka untuk membuat baru; berisi nomor
   // berarti form terbuka untuk menyunting.
-  const [editing, setEditing] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null);
 
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const list = useProtectionList({ search, offset })
-  const detail = useProtectionDetail(editing !== null && editing !== '' ? editing : null)
+  const list = useProtectionList({ search, offset });
+  const detail = useProtectionDetail(
+    editing !== null && editing !== "" ? editing : null,
+  );
 
   // Master tipe dibaca SEKALI di layar ini lalu diteruskan ke form sebagai props.
   // Memanggil hook-nya lagi di dalam form akan membuat dua komponen memegang keadaan
   // pemuatan yang sama — dan yang satu dapat menampilkan pilihan sementara yang lain masih
   // memuat.
-  const types = useProtectionTypes()
-  const create = useCreateProtection()
-  const update = useUpdateProtection()
+  const types = useProtectionTypes();
+  const create = useCreateProtection();
+  const update = useUpdateProtection();
 
-  const rows = list.data?.proteksi ?? []
-  const total = list.data?.total ?? 0
+  const rows = list.data?.proteksi ?? [];
+  const total = list.data?.total ?? 0;
 
   function changeSearch(next: string) {
-    setSearch(next)
+    setSearch(next);
     // Halaman dikembalikan ke awal. Tanpa ini, mencari dari halaman empat akan menampilkan
     // tabel kosong yang tampak rusak.
-    setOffset(0)
+    setOffset(0);
   }
 
   function closeForm() {
-    setEditing(null)
-    create.reset()
-    update.reset()
+    setEditing(null);
+    create.reset();
+    update.reset();
   }
 
   async function submit(values: ProtectionFields) {
@@ -117,12 +119,12 @@ export function ProtectionListPage() {
     // Form TIDAK ditutup saat gagal — isian pengguna dipertahankan supaya ia dapat
     // memperbaikinya, bukan mengetiknya ulang.
     try {
-      if (editing !== null && editing !== '') {
-        await update.mutateAsync({ number: editing, values })
+      if (editing !== null && editing !== "") {
+        await update.mutateAsync({ number: editing, values });
       } else {
-        await create.mutateAsync(values)
+        await create.mutateAsync(values);
       }
-      closeForm()
+      closeForm();
     } catch {
       // Sudah tercatat di mutation.error; lihat komentar di atas.
     }
@@ -142,14 +144,14 @@ export function ProtectionListPage() {
   const typeOptions: SelectOption[] = (types.data?.tipe ?? []).map((t) => ({
     value: t.kode,
     label: protectionTypeLabel(t.kode, t.nama),
-  }))
+  }));
 
   /** Ketujuh kolom mengikuti `Section/InboxReqProtection_Section-Section.xml`. */
   const columns: Column<Protection>[] = [
     {
-      key: 'nomor_proteksi',
-      title: 'No Proteksi',
-      width: '11rem',
+      key: "nomor_proteksi",
+      title: "No Proteksi",
+      width: "11rem",
       value: (p) => p.nomor_proteksi,
       render: (p) =>
         p.dapat_disunting ? (
@@ -173,32 +175,39 @@ export function ProtectionListPage() {
         ),
     },
     {
-      key: 'nomor_polis',
-      title: 'No Polis',
-      width: '12rem',
+      key: "nomor_polis",
+      title: "No Polis",
+      width: "12rem",
       value: (p) => p.nomor_polis,
       render: (p) => (
-        <span className="truncate font-mono text-xs text-slate-700">{p.nomor_polis || '—'}</span>
+        <span className="truncate font-mono text-xs text-slate-700">
+          {p.nomor_polis || "—"}
+        </span>
       ),
     },
     {
-      key: 'nomor_klaim',
-      title: 'No Klaim',
-      width: '11rem',
+      key: "nomor_klaim",
+      title: "No Klaim",
+      width: "11rem",
       value: (p) => p.nomor_klaim,
       render: (p) =>
         p.nomor_klaim ? (
-          <span className="truncate font-mono text-xs text-slate-700">{p.nomor_klaim}</span>
+          <span className="truncate font-mono text-xs text-slate-700">
+            {p.nomor_klaim}
+          </span>
         ) : (
-          <span className="text-slate-400" title="Belum ditautkan ke klaim mana pun">
+          <span
+            className="text-slate-400"
+            title="Belum ditautkan ke klaim mana pun"
+          >
             belum tertaut
           </span>
         ),
     },
     {
-      key: 'tipe_proteksi',
-      title: 'Tipe Proteksi',
-      width: '12rem',
+      key: "tipe_proteksi",
+      title: "Tipe Proteksi",
+      width: "12rem",
       value: (p) => p.tipe_proteksi,
       render: (p) => (
         <span className="truncate">
@@ -212,46 +221,48 @@ export function ProtectionListPage() {
       ),
     },
     {
-      key: 'tanggal_proteksi',
-      title: 'Tanggal Proteksi Dibuat',
-      width: '10rem',
+      key: "tanggal_proteksi",
+      title: "Tanggal Proteksi Dibuat",
+      width: "10rem",
       value: (p) => p.tanggal_proteksi,
       render: (p) => (
         <span className="tabular-nums">
-          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : '—'}
+          {p.tanggal_proteksi ? formatDate(p.tanggal_proteksi) : "—"}
         </span>
       ),
     },
     {
-      key: 'keterangan',
-      title: 'Keterangan',
+      key: "keterangan",
+      title: "Keterangan",
       value: (p) => p.keterangan,
       render: (p) => (
         <span className="truncate" title={p.keterangan}>
-          {p.keterangan || '—'}
+          {p.keterangan || "—"}
         </span>
       ),
     },
     {
-      key: 'user_create',
-      title: 'User Create',
-      width: '10rem',
+      key: "user_create",
+      title: "User Create",
+      width: "10rem",
       value: (p) => p.user_create,
-      render: (p) => <span className="truncate">{p.user_create || '—'}</span>,
+      render: (p) => <span className="truncate">{p.user_create || "—"}</span>,
     },
-  ]
+  ];
 
-  const formOpen = editing !== null
-  const submitting = create.isPending || update.isPending
-  const failure = create.error ?? update.error
+  const formOpen = editing !== null;
+  const submitting = create.isPending || update.isPending;
+  const failure = create.error ?? update.error;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Input Req Protection</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Input Req Protection
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Permintaan pembukaan proteksi yang belum diakseptasi pada entitas yang sedang
-          dibuka. Baris yang sudah tertaut klaim tidak dapat diubah lagi.
+          Permintaan pembukaan proteksi yang belum diakseptasi pada entitas yang
+          sedang dibuka. Baris yang sudah tertaut klaim tidak dapat diubah lagi.
         </p>
       </header>
 
@@ -268,24 +279,26 @@ export function ProtectionListPage() {
       {formOpen && (
         <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-semibold text-slate-900">
-            {editing ? 'Ubah Permintaan Proteksi' : 'Input Open Protection'}
+            {editing ? "Ubah Permintaan Proteksi" : "Input Open Protection"}
           </h2>
 
-          {editing !== '' && detail.isPending ? (
+          {editing !== "" && detail.isPending ? (
             <p className="text-sm text-slate-500">Memuat isian…</p>
-          ) : editing !== '' && detail.error ? (
+          ) : editing !== "" && detail.error ? (
             <ErrorMessage
               title="Permintaan tidak dapat dibuka"
               description={
                 detail.error instanceof APIError
                   ? detail.error.message
-                  : 'Terjadi kesalahan saat memuat isian.'
+                  : "Terjadi kesalahan saat memuat isian."
               }
               tone="gangguan"
             />
           ) : (
             <ProtectionForm
-              {...(editing !== '' && detail.data ? { existing: detail.data } : {})}
+              {...(editing !== "" && detail.data
+                ? { existing: detail.data }
+                : {})}
               typeOptions={typeOptions}
               onSubmit={submit}
               onCancel={closeForm}
@@ -304,11 +317,17 @@ export function ProtectionListPage() {
           title="Permintaan proteksi"
           // Prop tidak dikirim sama sekali saat kosong, bukan dikirim bernilai undefined:
           // tsconfig memakai exactOptionalPropertyTypes, yang membedakan keduanya.
-          {...(total > 0 ? { description: `${total} permintaan menunggu akseptasi.` } : {})}
+          {...(total > 0
+            ? { description: `${total} permintaan menunggu akseptasi.` }
+            : {})}
           isLoading={list.isPending && portal !== null}
           searchLabel="Cari No Proteksi / No Polis / No Klaim"
           emptyMessage="Tidak ada permintaan proteksi yang menunggu akseptasi."
-          serverSearch={{ value: search, onChange: changeSearch, matchCount: total }}
+          serverSearch={{
+            value: search,
+            onChange: changeSearch,
+            matchCount: total,
+          }}
           pagination={{
             page: Math.floor(offset / PAGE_SIZE) + 1,
             size: PAGE_SIZE,
@@ -321,18 +340,20 @@ export function ProtectionListPage() {
             <>
               <Button
                 tone="halus"
-                onClick={() => { list.refetch() }}
+                onClick={() => {
+                  list.refetch();
+                }}
                 disabled={list.isFetching || portal === null}
               >
                 <ReloadIcon className="h-4 w-4" />
-                {list.isFetching ? 'Memuat…' : 'Muat ulang'}
+                {list.isFetching ? "Memuat…" : "Muat ulang"}
               </Button>
               <Button
                 tone="utama"
                 onClick={() => {
-                  create.reset()
-                  update.reset()
-                  setEditing('')
+                  create.reset();
+                  update.reset();
+                  setEditing("");
                 }}
                 disabled={portal === null}
               >
@@ -343,5 +364,5 @@ export function ProtectionListPage() {
         />
       </div>
     </div>
-  )
+  );
 }

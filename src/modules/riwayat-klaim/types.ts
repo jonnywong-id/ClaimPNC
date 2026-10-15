@@ -18,26 +18,26 @@ export type ClaimHistory = {
    * Ia TIDAK ditampilkan di kolom mana pun — layar rincian klaim adalah `MENU_ID 75`
    * "View Claim" yang belum dibangun.
    */
-  referensi: string
+  referensi: string;
 
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  tanggal_kejadian: string | null
-  bisnis: string
-  cabang: string
-  status: string
-  posisi_klaim: string
-  tanggal_close: string | null
-  catatan_close: string
-  pic_teknis: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  tanggal_kejadian: string | null;
+  bisnis: string;
+  cabang: string;
+  status: string;
+  posisi_klaim: string;
+  tanggal_close: string | null;
+  catatan_close: string;
+  pic_teknis: string;
 
   /** Keempatnya hanya terisi pada sebagian tipe pencarian. */
-  nomor_akseptasi: string
-  nomor_balai_lelang: string
-  nama_objek: string
-  tanggal_lahir: string | null
-}
+  nomor_akseptasi: string;
+  nomor_balai_lelang: string;
+  nama_objek: string;
+  tanggal_lahir: string | null;
+};
 
 /**
  * Kolom tambahan yang hanya dibawa sebagian tipe pencarian.
@@ -47,15 +47,12 @@ export type ClaimHistory = {
  * hilang saat seluruh barisnya kebetulan kosong.
  */
 export type ExtraColumn =
-  | 'nomor_akseptasi'
-  | 'nomor_balai_lelang'
-  | 'nama_objek'
-  | 'tanggal_lahir'
+  "nomor_akseptasi" | "nomor_balai_lelang" | "nama_objek" | "tanggal_lahir";
 
 /** Satu pilihan pada dropdown "Tipe Pencarian". */
 export type SearchType = {
-  kode: string
-  label: string
+  kode: string;
+  label: string;
 
   /**
    * Ketiganya menentukan isian mana yang digambar layar.
@@ -64,65 +61,65 @@ export type SearchType = {
    * kebenaran. Tipe "No Rekening" menyalakan DUA sekaligus — dan itu memang bentuk
    * formulir lama, bukan kekeliruan.
    */
-  pakai_teks: boolean
-  pakai_tanggal_pencarian: boolean
-  pakai_tanggal_lahir: boolean
+  pakai_teks: boolean;
+  pakai_tanggal_pencarian: boolean;
+  pakai_tanggal_lahir: boolean;
 
-  kolom_tambahan: ExtraColumn[]
+  kolom_tambahan: ExtraColumn[];
 
-  tersedia: boolean
-  alasan_belum_tersedia?: string
-}
+  tersedia: boolean;
+  alasan_belum_tersedia?: string;
+};
 
 /** Keadaan gerbang proteksi data. */
 export type ProtectionAccess = {
-  jatah_total: number
-  jatah_terpakai: number
-  jatah_sisa: number
-}
+  jatah_total: number;
+  jatah_terpakai: number;
+  jatah_sisa: number;
+};
 
 /** Keterangan halaman. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Jawaban saat layar dibuka. */
 export type OpenResponse = {
-  tipe_pencarian: SearchType[]
-  proteksi: ProtectionAccess
-  portal: string
-}
+  tipe_pencarian: SearchType[];
+  proteksi: ProtectionAccess;
+  portal: string;
+};
 
 /** Jawaban satu pencarian. */
 export type SearchResponse = {
-  klaim: ClaimHistory[]
-  halaman: PageInfo
-  proteksi: ProtectionAccess
-  portal: string
-}
+  klaim: ClaimHistory[];
+  halaman: PageInfo;
+  proteksi: ProtectionAccess;
+  portal: string;
+};
 
 /** Isi formulir pencarian sebagaimana dipegang layar. */
 export type SearchForm = {
-  tipe: string
-  nilai: string
+  tipe: string;
+  nilai: string;
 
   /** Isian "Tanggal Pencarian" — tampil untuk Tgl Kejadian dan No Rekening. */
-  tanggal_pencarian: string
+  tanggal_pencarian: string;
 
   /** Isian "Tanggal Lahir" — tampil untuk tipe Tanggal Lahir. */
-  tanggal_lahir: string
-}
+  tanggal_lahir: string;
+};
 
 /** Formulir kosong. Tipe pencariannya belum dipilih. */
 export const EMPTY_FORM: SearchForm = {
-  tipe: '',
-  nilai: '',
-  tanggal_pencarian: '',
-  tanggal_lahir: '',
-}
+  tipe: "",
+  nilai: "",
+  tanggal_pencarian: "",
+  tanggal_lahir: "",
+};
 
 /**
  * Kode galat modul ini.
@@ -132,8 +129,8 @@ export const EMPTY_FORM: SearchForm = {
  */
 export const ClaimHistoryError = {
   /** Pengguna belum terdaftar di Master Proteksi Data. */
-  notRegistered: 'proteksi_belum_terdaftar',
+  notRegistered: "proteksi_belum_terdaftar",
 
   /** Jatah pencarian habis. */
-  quotaExhausted: 'jatah_pencarian_habis',
-} as const
+  quotaExhausted: "jatah_pencarian_habis",
+} as const;

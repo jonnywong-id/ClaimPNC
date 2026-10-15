@@ -209,7 +209,9 @@ function CheckerForm({
 
   // Tab yang sedang terbuka. "compliance" lebih dulu, karena ia tab pertama di
   // `Section/ComplianceChecker-Section.xml` (S1) dan satu-satunya yang selalu ada.
-  const [tab, setTab] = useState<"compliance" | "hasil-investigasi" | "dokumen">("compliance");
+  const [tab, setTab] = useState<
+    "compliance" | "hasil-investigasi" | "dokumen"
+  >("compliance");
 
   const unggah = useUploadComplianceDocument(data.klaim.referensi);
   const pemilihBerkas = useRef<HTMLInputElement>(null);
@@ -881,7 +883,6 @@ function ChoiceRadio({
 // SENGAJA dibiarkan di `api.ts`: endpointnya tetap ada dan teruji, dan keduanya yang akan
 // dipakai panel Lampiran — tempat Pega sebenarnya menampilkan lampiran klaim.
 
-
 function SurveyResultsBlock({
   rows,
   failed,
@@ -1260,7 +1261,9 @@ function ChecklistRowActions({
                     // Dokumen yang SUDAH di kategori ini tidak perlu dipindahkan ke
                     // sini. Server pun menjawabnya berhasil tanpa menulis apa pun, tetapi
                     // tombol yang tidak melakukan apa-apa membingungkan.
-                    disabled={d.kategori === row.id_kategori || pindah.isPending}
+                    disabled={
+                      d.kategori === row.id_kategori || pindah.isPending
+                    }
                     aria-label={`Pindahkan ${d.nama_file} ke ${row.kategori}`}
                     onClick={() =>
                       pindah.mutate(
@@ -1269,7 +1272,9 @@ function ChecklistRowActions({
                       )
                     }
                   >
-                    {d.kategori === row.id_kategori ? "Sudah di sini" : "Pindahkan ke sini"}
+                    {d.kategori === row.id_kategori
+                      ? "Sudah di sini"
+                      : "Pindahkan ke sini"}
                   </button>
                 )}
               </li>

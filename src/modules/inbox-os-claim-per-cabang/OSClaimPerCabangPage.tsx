@@ -1,21 +1,21 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { formatRupiah } from '@/lib/money'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { formatRupiah } from "@/lib/money";
 
 import {
   useExportOSClaimPerCabang,
   useOSClaimPerCabangList,
   useOSClaimPerCabangSummary,
-} from './api'
-import { DetailDialog } from './DetailDialog'
-import { SummaryPanel } from './SummaryPanel'
-import type { Branch, PageInfo, WorkItem } from './types'
+} from "./api";
+import { DetailDialog } from "./DetailDialog";
+import { SummaryPanel } from "./SummaryPanel";
+import type { Branch, PageInfo, WorkItem } from "./types";
 
 /**
  * Inbox OS Claim per Cabang — menu `MENU_ID 69`, pengganti harness
@@ -48,28 +48,28 @@ import type { Branch, PageInfo, WorkItem } from './types'
  * Yang dibukanya sama: `View_DetailKlaimCabang_Harness`, lihat DetailDialog.
  */
 export function OSClaimPerCabangPage() {
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(1);
 
   // Isi kotak cari. Ia dikirim ke peladen, bukan dipakai menyaring baris yang sudah di
   // tangan — lihat catatan pada DataTable di bawah.
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState("");
 
   // Nomor klaim yang popupnya sedang terbuka, atau null bila tidak ada.
   //
   // Yang disimpan NOMOR, bukan barisnya. Menyimpan barisnya berarti popup menggambar
   // salinan data yang diambil saat daftar dimuat — dan bila datanya sudah berubah sejak
   // itu, popup menampilkan angka yang tidak berlaku lagi tanpa satu pun tanda.
-  const [detailOf, setDetailOf] = useState<string | null>(null)
+  const [detailOf, setDetailOf] = useState<string | null>(null);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useOSClaimPerCabangList(page, search)
-  const summary = useOSClaimPerCabangSummary()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useOSClaimPerCabangList(page, search);
+  const summary = useOSClaimPerCabangSummary();
 
   function ubahPencarian(next: string) {
-    setSearch(next)
+    setSearch(next);
     // Halaman dikembalikan ke awal. Tanpa ini, mencari dari halaman empat menampilkan
     // tabel kosong yang tampak rusak padahal hasilnya ada di halaman satu.
-    setPage(1)
+    setPage(1);
   }
 
   if (portal === null) {
@@ -78,13 +78,13 @@ export function OSClaimPerCabangPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Klaim milik satu badan hukum, dan aplikasi ini melayani empat. Pilih portal ' +
-            'di bilah atas untuk membukanya.'
+            "Klaim milik satu badan hukum, dan aplikasi ini melayani empat. Pilih portal " +
+            "di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   // Cabang yang tidak diketahui dijawab server sebagai galat tersendiri, bukan sebagai
@@ -102,11 +102,11 @@ export function OSClaimPerCabangPage() {
           tone="penolakan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const rows = list.data?.data ?? []
-  const branch = list.data?.cabang
+  const rows = list.data?.data ?? [];
+  const branch = list.data?.cabang;
 
   return (
     // Tombol ekspor mengikuti jumlah berkas SELURUH CABANG, bukan jumlah yang cocok
@@ -117,7 +117,9 @@ export function OSClaimPerCabangPage() {
     // Jumlah dari panel ringkasan dipakai karena ia TIDAK ikut tersaring; jumlah daftar
     // dipakai hanya bila panelnya sendiri gagal dimuat.
     <PageFrame
-      exportable={(summary.data?.total_berkas ?? list.data?.paginasi.total ?? 0) > 0}
+      exportable={
+        (summary.data?.total_berkas ?? list.data?.paginasi.total ?? 0) > 0
+      }
       branch={branch}
     >
       {/*
@@ -133,8 +135,8 @@ export function OSClaimPerCabangPage() {
         isLoading={summary.isPending}
         error={summary.error}
         onRefresh={() => {
-          void summary.refetch()
-          void list.refetch()
+          void summary.refetch();
+          void list.refetch();
         }}
         isRefreshing={summary.isFetching || list.isFetching}
       />
@@ -197,7 +199,7 @@ export function OSClaimPerCabangPage() {
         <DetailDialog nomorKlaim={detailOf} onTutup={() => setDetailOf(null)} />
       )}
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -211,7 +213,7 @@ function PageFrame({
   branch,
   children,
 }: {
-  exportable: boolean
+  exportable: boolean;
   /**
    * Cabang pemanggil, atau undefined selama daftarnya belum termuat.
    *
@@ -219,11 +221,11 @@ function PageFrame({
    * `exactOptionalPropertyTypes`, sehingga "boleh tidak diisi" dan "boleh bernilai
    * undefined" adalah dua hal yang berbeda — dan yang kedua itulah yang terjadi di sini.
    */
-  branch?: Branch | undefined
-  children: ReactNode
+  branch?: Branch | undefined;
+  children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
@@ -235,15 +237,15 @@ function PageFrame({
             )}
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Klaim cabang Anda yang belum tuntas maupun belum ditolak, diurutkan dari yang
-            paling lama menunggu.
+            Klaim cabang Anda yang belum tuntas maupun belum ditolak, diurutkan
+            dari yang paling lama menunggu.
           </p>
         </div>
         <ExportButton enabled={exportable} />
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -256,7 +258,7 @@ function PageFrame({
  * pengguna mengikuti layar Pega, dan CSV memang dibuka Excel tanpa perantara.
  */
 function ExportButton({ enabled }: { enabled: boolean }) {
-  const ekspor = useExportOSClaimPerCabang()
+  const ekspor = useExportOSClaimPerCabang();
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -265,7 +267,7 @@ function ExportButton({ enabled }: { enabled: boolean }) {
         disabled={!enabled || ekspor.isPending}
         onClick={() => ekspor.mutate()}
       >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
+        {ekspor.isPending ? "Menyiapkan berkas…" : "Export To Excel"}
       </Button>
       {ekspor.isError && (
         <p className="text-sm text-red-700" role="alert">
@@ -273,7 +275,7 @@ function ExportButton({ enabled }: { enabled: boolean }) {
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -312,26 +314,26 @@ function columnsFor(
     value: read,
     render: (row) => (
       <Marked row={row} threshold={threshold}>
-        {read(row) || '—'}
+        {read(row) || "—"}
       </Marked>
     ),
-  })
+  });
 
   return [
-    text('cabang', 'Cabang', (row) => row.cabang),
-    text('sumbis', 'Sumbis', (row) => row.sumbis),
-    text('cob', 'COB', (row) => row.cob),
-    text('no_polis', 'Policy No', (row) => row.no_polis),
-    text('nama_insured', 'Nama Insured', (row) => row.nama_insured),
-    text('no_klaim', 'Claim No', (row) => row.no_klaim),
-    text('tanggal_registrasi', 'Registration Date', (row) =>
+    text("cabang", "Cabang", (row) => row.cabang),
+    text("sumbis", "Sumbis", (row) => row.sumbis),
+    text("cob", "COB", (row) => row.cob),
+    text("no_polis", "Policy No", (row) => row.no_polis),
+    text("nama_insured", "Nama Insured", (row) => row.nama_insured),
+    text("no_klaim", "Claim No", (row) => row.no_klaim),
+    text("tanggal_registrasi", "Registration Date", (row) =>
       formatDate(row.tanggal_registrasi),
     ),
-    text('tanggal_kejadian', 'DOL', (row) => formatDate(row.tanggal_kejadian)),
-    text('col', 'COL', (row) => row.col),
+    text("tanggal_kejadian", "DOL", (row) => formatDate(row.tanggal_kejadian)),
+    text("col", "COL", (row) => row.col),
     {
-      key: 'nilai_estimasi',
-      title: 'Reserve Claim ASM Share',
+      key: "nilai_estimasi",
+      title: "Reserve Claim ASM Share",
       value: (row) => row.nilai_estimasi,
       render: (row) => (
         <Marked row={row} threshold={threshold}>
@@ -340,16 +342,20 @@ function columnsFor(
       ),
       alignRight: true,
     },
-    text('tanggal_update_progres', 'Tgl Update Progress Terakhir', (row) =>
+    text("tanggal_update_progres", "Tgl Update Progress Terakhir", (row) =>
       formatDate(row.tanggal_update_progres),
     ),
-    text('status_progres_1', 'Status Progress 1', (row) => row.status_progres_1),
-    text('status_progres_2', 'Status Progress2', (row) => row.status_progres_2),
-    text('adjuster', 'Adjuster', (row) => row.adjuster),
-    text('pic', 'PIC', (row) => row.pic),
+    text(
+      "status_progres_1",
+      "Status Progress 1",
+      (row) => row.status_progres_1,
+    ),
+    text("status_progres_2", "Status Progress2", (row) => row.status_progres_2),
+    text("adjuster", "Adjuster", (row) => row.adjuster),
+    text("pic", "PIC", (row) => row.pic),
     {
-      key: 'aging_hari',
-      title: 'Aging (Hari)',
+      key: "aging_hari",
+      title: "Aging (Hari)",
       value: (row) => String(row.aging_hari),
       render: (row) => (
         <Marked row={row} threshold={threshold}>
@@ -365,9 +371,9 @@ function columnsFor(
       // Dipindahkan ke dalam baris di sini karena tabel ini tidak punya konsep "baris yang
       // disorot": tombol di bilah atas yang bekerja atas sesuatu yang tidak terlihat
       // dipilih adalah tombol yang menebak maksud pengguna.
-      key: 'aksi',
-      title: 'Detail',
-      value: () => '',
+      key: "aksi",
+      title: "Detail",
+      value: () => "",
       noSort: true,
       render: (row) => (
         <Button
@@ -380,7 +386,7 @@ function columnsFor(
         </Button>
       ),
     },
-  ]
+  ];
 }
 
 /**
@@ -395,17 +401,17 @@ function Marked({
   threshold,
   children,
 }: {
-  row: WorkItem
-  threshold: number
-  children: ReactNode
+  row: WorkItem;
+  threshold: number;
+  children: ReactNode;
 }) {
-  if (!row.perlu_perhatian) return <>{children}</>
+  if (!row.perlu_perhatian) return <>{children}</>;
 
   return (
     <span className="font-medium text-red-700" title={reasonOf(row, threshold)}>
       {children}
     </span>
-  )
+  );
 }
 
 /**
@@ -421,21 +427,21 @@ function Marked({
  * berselisih.
  */
 function reasonOf(row: WorkItem, threshold: number): string {
-  const reasons: string[] = []
+  const reasons: string[] = [];
 
   if (row.aging_hari > threshold) {
-    reasons.push(`umur klaim ${row.aging_hari} hari, lebih dari ${threshold}`)
+    reasons.push(`umur klaim ${row.aging_hari} hari, lebih dari ${threshold}`);
   }
   if (row.progres_mandek) {
-    reasons.push('progres tidak berubah pada tiga catatan terakhir')
+    reasons.push("progres tidak berubah pada tiga catatan terakhir");
   }
 
   // Daftar kosong berarti server menandai baris ini dengan syarat yang belum dikenal layar
   // — misalnya syarat ketiga yang ditambahkan kemudian. Barisnya tetap merah, dan
   // keterangannya menyatakan apa adanya alih-alih mengarang sebab.
-  if (reasons.length === 0) return 'Perlu perhatian.'
+  if (reasons.length === 0) return "Perlu perhatian.";
 
-  return `Perlu perhatian: ${reasons.join(' · ')}`
+  return `Perlu perhatian: ${reasons.join(" · ")}`;
 }
 
 /**
@@ -448,11 +454,11 @@ function reasonOf(row: WorkItem, threshold: number): string {
 function RedRuleLegend({ threshold }: { threshold: number }) {
   return (
     <p className="mt-4 text-sm text-slate-600">
-      <span className="font-medium text-red-700">Baris merah</span> menandai klaim yang
-      berumur lebih dari {threshold} hari, atau yang progresnya tidak berubah pada tiga
-      catatan terakhir.
+      <span className="font-medium text-red-700">Baris merah</span> menandai
+      klaim yang berumur lebih dari {threshold} hari, atau yang progresnya tidak
+      berubah pada tiga catatan terakhir.
     </p>
-  )
+  );
 }
 
 function Pagination({
@@ -461,13 +467,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -491,7 +497,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -502,11 +508,11 @@ function Pagination({
  * sehingga ia lebih mungkin berubah daripada kodenya.
  */
 function isBranchUnknown(error: unknown): boolean {
-  return error instanceof APIError && error.kode === 'cabang_tidak_diketahui'
+  return error instanceof APIError && error.kode === "cabang_tidak_diketahui";
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error) return error.message
-  return 'Terjadi kesalahan yang tidak dikenali.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Terjadi kesalahan yang tidak dikenali.";
 }

@@ -1,14 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
-import { ReloadIcon } from '@/components/Icon'
-import { TabBar, type TabItem } from '@/components/TabBar'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { SelectField } from "@/components/SelectField";
+import { ReloadIcon } from "@/components/Icon";
+import { TabBar, type TabItem } from "@/components/TabBar";
 
 import {
   PAGE_SIZE,
@@ -19,17 +19,17 @@ import {
   useKeteranganSurvei,
   useTahunKPI,
   type IsianKPI,
-} from './api'
+} from "./api";
 import type {
   BarisKPI,
   IdentitasSurveyor,
   KolomLayar,
   TabLayar,
   TugasSurvei,
-} from './types'
+} from "./types";
 
 /** Dua tab besar pada harness: INBOX dan KPI. */
-type Bagian = 'inbox' | 'kpi'
+type Bagian = "inbox" | "kpi";
 
 /**
  * Keadaan awal keempat kendali panel KPI — seluruhnya KOSONG.
@@ -38,7 +38,12 @@ type Bagian = 'inbox' | 'kpi'
  * layar lama, dan memilihkan salah satunya berarti menjalankan laporan yang tidak diminta
  * siapa pun, lalu menampilkan angkanya seolah itu yang dicari.
  */
-const ISIAN_KPI_KOSONG: IsianKPI = { status: '', tipe: '', kuartal: '', tahun: '' }
+const ISIAN_KPI_KOSONG: IsianKPI = {
+  status: "",
+  tipe: "",
+  kuartal: "",
+  tahun: "",
+};
 
 /**
  * My Work — menu `MENU_ID 50`, pengganti harness `InboxSurvey_Harness`.
@@ -74,13 +79,13 @@ const ISIAN_KPI_KOSONG: IsianKPI = { status: '', tipe: '', kuartal: '', tahun: '
  * (`P-1`). Tidak ada tombol yang mengubah apa pun di sini, dan ketiadaannya disengaja.
  */
 export function SurveyInboxPage() {
-  const navigate = useNavigate()
-  const portal = useSelectedPortal((state) => state.alias)
+  const navigate = useNavigate();
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [bagian, setBagian] = useState<Bagian>('inbox')
-  const [tab, setTab] = useState('')
-  const [cari, setCari] = useState('')
-  const [lewati, setLewati] = useState(0)
+  const [bagian, setBagian] = useState<Bagian>("inbox");
+  const [tab, setTab] = useState("");
+  const [cari, setCari] = useState("");
+  const [lewati, setLewati] = useState(0);
 
   /*
     DUA keadaan untuk panel KPI, bukan satu — dan pemisahannya yang membuat tombol Cari
@@ -92,15 +97,18 @@ export function SurveyInboxPage() {
     Satu keadaan saja akan membuat tabelnya memuat ulang pada setiap perubahan dropdown —
     perilaku yang berbeda dari layar lama, dan yang menjalankan laporan yang belum diminta.
   */
-  const [isianKPI, setIsianKPI] = useState<IsianKPI>(ISIAN_KPI_KOSONG)
-  const [dicariKPI, setDicariKPI] = useState<IsianKPI | null>(null)
+  const [isianKPI, setIsianKPI] = useState<IsianKPI>(ISIAN_KPI_KOSONG);
+  const [dicariKPI, setDicariKPI] = useState<IsianKPI | null>(null);
 
-  const keterangan = useKeteranganSurvei()
-  const jumlahTab = useJumlahTabSurvei()
-  const daftar = useDaftarSurvei(tab, cari, lewati)
-  const kpi = useKPISurvei(dicariKPI ?? ISIAN_KPI_KOSONG, bagian === 'kpi' && dicariKPI !== null)
-  const ekspor = useEksporKPI()
-  const tahunKPI = useTahunKPI(bagian === 'kpi')
+  const keterangan = useKeteranganSurvei();
+  const jumlahTab = useJumlahTabSurvei();
+  const daftar = useDaftarSurvei(tab, cari, lewati);
+  const kpi = useKPISurvei(
+    dicariKPI ?? ISIAN_KPI_KOSONG,
+    bagian === "kpi" && dicariKPI !== null,
+  );
+  const ekspor = useEksporKPI();
+  const tahunKPI = useTahunKPI(bagian === "kpi");
 
   /**
    * Tab bawaan datang dari SERVER, bukan ditulis tetap di sini.
@@ -112,10 +120,10 @@ export function SurveyInboxPage() {
    * Ia hanya dipasang SEKALI, saat tab masih kosong. Tanpa penjagaan itu, setiap pemuatan
    * ulang keterangan akan melempar pengguna kembali ke tab Outstanding di tengah pekerjaan.
    */
-  const tabBawaan = keterangan.data?.tab_bawaan ?? ''
+  const tabBawaan = keterangan.data?.tab_bawaan ?? "";
   useEffect(() => {
-    if (tab === '' && tabBawaan !== '') setTab(tabBawaan)
-  }, [tab, tabBawaan])
+    if (tab === "" && tabBawaan !== "") setTab(tabBawaan);
+  }, [tab, tabBawaan]);
 
   /**
    * Berpindah tab SEKALIGUS kembali ke halaman pertama dan mengosongkan pencarian.
@@ -125,9 +133,9 @@ export function SurveyInboxPage() {
    * memang kosong", bukan sebagai "pencarian Anda masih menyala".
    */
   function pindahTab(kunci: string) {
-    setTab(kunci)
-    setCari('')
-    setLewati(0)
+    setTab(kunci);
+    setCari("");
+    setLewati(0);
   }
 
   /**
@@ -138,8 +146,8 @@ export function SurveyInboxPage() {
    * sebagai "tidak ditemukan".
    */
   function ubahPencarian(nilai: string) {
-    setCari(nilai)
-    setLewati(0)
+    setCari(nilai);
+    setLewati(0);
   }
 
   /**
@@ -154,7 +162,7 @@ export function SurveyInboxPage() {
    * awalan kelas Pega lagi.
    */
   function bukaKlaim(nomorKlaim: string) {
-    navigate(`/view-claim/${encodeURIComponent(nomorKlaim)}`)
+    navigate(`/view-claim/${encodeURIComponent(nomorKlaim)}`);
   }
 
   if (portal === null) {
@@ -163,13 +171,13 @@ export function SurveyInboxPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean survei milik satu badan hukum, dan aplikasi ini melayani empat. Pilih ' +
-            'portal di bilah atas untuk membukanya.'
+            "Antrean survei milik satu badan hukum, dan aplikasi ini melayani empat. Pilih " +
+            "portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (keterangan.isError) {
@@ -190,10 +198,10 @@ export function SurveyInboxPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const identitas = daftar.data?.identitas ?? jumlahTab.data?.identitas ?? null
+  const identitas = daftar.data?.identitas ?? jumlahTab.data?.identitas ?? null;
 
   return (
     <PageFrame identitas={identitas}>
@@ -206,7 +214,7 @@ export function SurveyInboxPage() {
         />
       </div>
 
-      {bagian === 'inbox' ? (
+      {bagian === "inbox" ? (
         <BagianInbox
           tabTersedia={keterangan.data?.tab ?? []}
           jumlah={jumlahTab.data?.tab ?? []}
@@ -224,8 +232,8 @@ export function SurveyInboxPage() {
           sedangMengambil={daftar.isFetching}
           galat={daftar.isError ? pesanGalat(daftar.error) : null}
           onMuatUlang={() => {
-            daftar.refetch()
-            jumlahTab.refetch()
+            daftar.refetch();
+            jumlahTab.refetch();
           }}
           bukaKlaim={bukaKlaim}
         />
@@ -238,8 +246,12 @@ export function SurveyInboxPage() {
           pilihanTahun={tahunKPI.data?.tahun ?? []}
           isian={isianKPI}
           onUbah={setIsianKPI}
-          onCari={() => { setDicariKPI(isianKPI) }}
-          onEkspor={() => { ekspor.mutate(isianKPI) }}
+          onCari={() => {
+            setDicariKPI(isianKPI);
+          }}
+          onEkspor={() => {
+            ekspor.mutate(isianKPI);
+          }}
           sedangMengekspor={ekspor.isPending}
           galatEkspor={ekspor.isError ? (ekspor.error as Error).message : null}
           sudahDicari={dicariKPI !== null}
@@ -248,7 +260,9 @@ export function SurveyInboxPage() {
           sedangMemuat={kpi.isPending}
           sedangMengambil={kpi.isFetching}
           galat={kpi.isError ? pesanGalat(kpi.error) : null}
-          onMuatUlang={() => { kpi.refetch() }}
+          onMuatUlang={() => {
+            kpi.refetch();
+          }}
         />
       )}
 
@@ -269,7 +283,7 @@ export function SurveyInboxPage() {
         catatan migrasi.
       */}
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -281,9 +295,13 @@ export function SurveyInboxPage() {
  * jauh untuk terlihat berbeda dari layar sebelahnya di menu.
  */
 const TAB_BAGIAN: TabItem[] = [
-  { kode: 'inbox', nama: 'INBOX', keterangan: 'Antrean pekerjaan survei Anda.' },
-  { kode: 'kpi', nama: 'KPI', keterangan: 'Ringkasan penilaian adjuster.' },
-]
+  {
+    kode: "inbox",
+    nama: "INBOX",
+    keterangan: "Antrean pekerjaan survei Anda.",
+  },
+  { kode: "kpi", nama: "KPI", keterangan: "Ringkasan penilaian adjuster." },
+];
 
 /** Bagian INBOX — bilah tujuh tab status, tabel, dan paginasinya. */
 function BagianInbox({
@@ -305,31 +323,31 @@ function BagianInbox({
   onMuatUlang,
   bukaKlaim,
 }: {
-  tabTersedia: TabLayar[]
-  jumlah: { kunci: string; total: number }[]
+  tabTersedia: TabLayar[];
+  jumlah: { kunci: string; total: number }[];
   /** Jumlah baris per tab gagal diambil — angkanya tidak dapat ditampilkan. */
-  jumlahGagal: boolean
-  tabAktif: string
-  onPindahTab: (kunci: string) => void
-  kolom: KolomLayar[]
-  baris: TugasSurvei[]
-  total: number
-  lewati: number
-  onPindahHalaman: (nomor: number) => void
-  cari: string
-  onCari: (nilai: string) => void
-  sedangMemuat: boolean
-  sedangMengambil: boolean
-  galat: string | null
-  onMuatUlang: () => void
-  bukaKlaim: (nomorKlaim: string) => void
+  jumlahGagal: boolean;
+  tabAktif: string;
+  onPindahTab: (kunci: string) => void;
+  kolom: KolomLayar[];
+  baris: TugasSurvei[];
+  total: number;
+  lewati: number;
+  onPindahHalaman: (nomor: number) => void;
+  cari: string;
+  onCari: (nilai: string) => void;
+  sedangMemuat: boolean;
+  sedangMengambil: boolean;
+  galat: string | null;
+  onMuatUlang: () => void;
+  bukaKlaim: (nomorKlaim: string) => void;
 }) {
-  const halaman = Math.floor(lewati / PAGE_SIZE) + 1
-  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const halaman = Math.floor(lewati / PAGE_SIZE) + 1;
+  const totalHalaman = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Angka pada bilah tab menyatakan isi SELURUH tab, bukan isi hasil pencarian. Itu perilaku
   // Pega; menyamakan keduanya akan membuat angka tab berkedip setiap huruf yang diketik.
-  const angka = new Map(jumlah.map((j) => [j.kunci, j.total]))
+  const angka = new Map(jumlah.map((j) => [j.kunci, j.total]));
 
   // Angka dititipkan ke NAMA tabnya, bukan digambar sebagai lencana tersendiri.
   //
@@ -347,18 +365,18 @@ function BagianInbox({
       : angka.has(t.kunci)
         ? `${t.judul} (${angka.get(t.kunci)})`
         : t.judul,
-    ...(t.alasan_tak_tersedia ?? t.keterangan
+    ...((t.alasan_tak_tersedia ?? t.keterangan)
       ? { keterangan: t.alasan_tak_tersedia ?? t.keterangan }
       : {}),
-  }))
+  }));
 
   // Tab yang sedang dibuka tetapi belum dapat dihitung.
   //
   // Ia TETAP dapat dipilih, dan itu disengaja. Tab yang dimatikan tanpa penjelasan sama
   // membingungkannya dengan tab kosong; yang dibutuhkan pengguna adalah SEBABNYA, dan sebab
   // itu baru muat ditampilkan setelah tabnya dibuka.
-  const tabDibuka = tabTersedia.find((t) => t.kunci === tabAktif)
-  const tabBelumTersedia = tabDibuka && !tabDibuka.tersedia ? tabDibuka : null
+  const tabDibuka = tabTersedia.find((t) => t.kunci === tabAktif);
+  const tabBelumTersedia = tabDibuka && !tabDibuka.tersedia ? tabDibuka : null;
 
   return (
     <>
@@ -382,8 +400,9 @@ function BagianInbox({
         // tetap dapat dibaca, dan menutup layar karena penghitungnya gagal akan mengambil
         // lebih banyak daripada yang hilang.
         <p className="mt-2 text-xs text-slate-600" role="status">
-          Jumlah pekerjaan per tab tidak dapat diambil, sehingga angkanya tidak ditampilkan.
-          Daftarnya sendiri tetap dapat dibuka. Tekan Muat ulang untuk mencoba lagi.
+          Jumlah pekerjaan per tab tidak dapat diambil, sehingga angkanya tidak
+          ditampilkan. Daftarnya sendiri tetap dapat dibuka. Tekan Muat ulang
+          untuk mencoba lagi.
         </p>
       )}
 
@@ -398,8 +417,8 @@ function BagianInbox({
             title={`Tab ${tabBelumTersedia.judul} belum dapat ditampilkan`}
             description={
               (tabBelumTersedia.alasan_tak_tersedia ??
-                'Kolom penggeraknya belum tersedia di basis data.') +
-              ' Tab lain pada bilah di atas tetap berisi.'
+                "Kolom penggeraknya belum tersedia di basis data.") +
+              " Tab lain pada bilah di atas tetap berisi."
             }
             tone="gangguan"
           />
@@ -417,7 +436,9 @@ function BagianInbox({
             rowKey={(row) => `${row.survei_id}|${row.index_survei}`}
             title="Antrean pekerjaan survei"
             label="Antrean My Work"
-            {...(total > 0 ? { description: `${total} pekerjaan pada tab ini.` } : {})}
+            {...(total > 0
+              ? { description: `${total} pekerjaan pada tab ini.` }
+              : {})}
             isLoading={sedangMemuat}
             // HANYA Claim No. Layar lama juga mencari pada Reference No, dan kolom itu belum
             // tersedia — menyebutnya di sini akan menjanjikan pencarian yang tidak terjadi.
@@ -425,9 +446,13 @@ function BagianInbox({
             emptyMessage="Tidak ada pekerjaan pada tab ini untuk Anda saat ini."
             serverSearch={{ value: cari, onChange: onCari, matchCount: total }}
             actions={
-              <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
+              <Button
+                tone="halus"
+                onClick={onMuatUlang}
+                disabled={sedangMengambil}
+              >
                 <ReloadIcon className="h-4 w-4" />
-                {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
+                {sedangMengambil ? "Memuat…" : "Muat ulang"}
               </Button>
             }
             error={
@@ -451,7 +476,7 @@ function BagianInbox({
         </div>
       )}
     </>
-  )
+  );
 }
 
 /**
@@ -495,24 +520,24 @@ function BagianKPI({
   galat,
   onMuatUlang,
 }: {
-  kolom: KolomLayar[]
-  pilihanStatus: string[]
-  pilihanTipe: string[]
-  pilihanKuartal: string[]
-  pilihanTahun: string[]
-  isian: IsianKPI
-  onUbah: (nilai: IsianKPI) => void
-  onCari: () => void
-  onEkspor: () => void
-  sedangMengekspor: boolean
-  galatEkspor: string | null
-  sudahDicari: boolean
-  kolomAwal: KolomLayar[]
-  baris: BarisKPI[]
-  sedangMemuat: boolean
-  sedangMengambil: boolean
-  galat: string | null
-  onMuatUlang: () => void
+  kolom: KolomLayar[];
+  pilihanStatus: string[];
+  pilihanTipe: string[];
+  pilihanKuartal: string[];
+  pilihanTahun: string[];
+  isian: IsianKPI;
+  onUbah: (nilai: IsianKPI) => void;
+  onCari: () => void;
+  onEkspor: () => void;
+  sedangMengekspor: boolean;
+  galatEkspor: string | null;
+  sudahDicari: boolean;
+  kolomAwal: KolomLayar[];
+  baris: BarisKPI[];
+  sedangMemuat: boolean;
+  sedangMengambil: boolean;
+  galat: string | null;
+  onMuatUlang: () => void;
 }) {
   /*
     Kendali Kuartal dan Tahun Kuartal mengikuti `pyVisibleWhen` panel KPI apa adanya:
@@ -522,7 +547,7 @@ function BagianKPI({
     Itu sebabnya layar Pega hanya memperlihatkan DUA kendali ketika Status Survey masih
     `--Pilih--`: dua lainnya memang belum muncul.
   */
-  const kuartalBerlaku = isian.status === 'ALL' || isian.status === 'FINAL'
+  const kuartalBerlaku = isian.status === "ALL" || isian.status === "FINAL";
 
   /*
     Kolom kunci tabel datang dari JAWABAN, bukan dari isian yang sedang dipilih.
@@ -534,19 +559,19 @@ function BagianKPI({
   */
 
   function ubah(bagian: Partial<IsianKPI>) {
-    const berikut = { ...isian, ...bagian }
+    const berikut = { ...isian, ...bagian };
 
     // Nilai yang tertinggal dari pilihan sebelumnya dibuang bersama kendalinya. Tanpa ini,
     // hasilnya tersaring kuartal yang tidak terlihat di mana pun pada layar. Backend
     // melakukan pembuangan yang sama — ini supaya LAYARNYA pun tidak berbohong.
-    if (berikut.status !== 'ALL' && berikut.status !== 'FINAL') {
-      berikut.kuartal = ''
-      berikut.tahun = ''
+    if (berikut.status !== "ALL" && berikut.status !== "FINAL") {
+      berikut.kuartal = "";
+      berikut.tahun = "";
     }
-    onUbah(berikut)
+    onUbah(berikut);
   }
 
-  const lengkap = isian.status !== '' && isian.tipe !== ''
+  const lengkap = isian.status !== "" && isian.tipe !== "";
 
   /*
     Isian wajib ditandai SETELAH tombol ditekan, bukan sejak layar terbuka.
@@ -555,16 +580,16 @@ function BagianKPI({
     merah pada labelnya. Menandai sejak awal membuat panel yang belum disentuh siapa pun
     tampil seolah pengguna sudah berbuat salah.
   */
-  const [sudahDicoba, setSudahDicoba] = useState(false)
+  const [sudahDicoba, setSudahDicoba] = useState(false);
 
   function coba(aksi: () => void) {
-    setSudahDicoba(true)
-    if (!lengkap) return
-    aksi()
+    setSudahDicoba(true);
+    if (!lengkap) return;
+    aksi();
   }
 
   const galatWajib = (terisi: boolean) =>
-    sudahDicoba && !terisi ? 'Wajib dipilih.' : undefined
+    sudahDicoba && !terisi ? "Wajib dipilih." : undefined;
 
   return (
     <>
@@ -582,7 +607,7 @@ function BagianKPI({
               emptyText="--Pilih--"
               options={pilihanStatus.map((v) => ({ value: v, label: v }))}
               value={isian.status}
-              error={galatWajib(isian.status !== '')}
+              error={galatWajib(isian.status !== "")}
               onChange={(event) => ubah({ status: event.target.value })}
             />
           </div>
@@ -594,7 +619,7 @@ function BagianKPI({
               emptyText="--Pilih--"
               options={pilihanTipe.map((v) => ({ value: v, label: v }))}
               value={isian.tipe}
-              error={galatWajib(isian.tipe !== '')}
+              error={galatWajib(isian.tipe !== "")}
               onChange={(event) => ubah({ tipe: event.target.value })}
             />
           </div>
@@ -658,7 +683,11 @@ function BagianKPI({
             <Button onClick={() => coba(onCari)} aria-busy={sedangMengambil}>
               Cari
             </Button>
-            <Button tone="halus" onClick={() => coba(onEkspor)} aria-busy={sedangMengekspor}>
+            <Button
+              tone="halus"
+              onClick={() => coba(onEkspor)}
+              aria-busy={sedangMengekspor}
+            >
               Export Data
             </Button>
           </div>
@@ -692,9 +721,13 @@ function BagianKPI({
             isLoading={sedangMemuat}
             emptyMessage="Belum ada penilaian KPI untuk pilihan Anda."
             actions={
-              <Button tone="halus" onClick={onMuatUlang} disabled={sedangMengambil}>
+              <Button
+                tone="halus"
+                onClick={onMuatUlang}
+                disabled={sedangMengambil}
+              >
                 <ReloadIcon className="h-4 w-4" />
-                {sedangMengambil ? 'Memuat…' : 'Muat ulang'}
+                {sedangMengambil ? "Memuat…" : "Muat ulang"}
               </Button>
             }
             error={
@@ -710,7 +743,7 @@ function BagianKPI({
         </div>
       )}
     </>
-  )
+  );
 }
 
 /**
@@ -724,13 +757,13 @@ function buildColumns(
   kolom: KolomLayar[],
   bukaKlaim: (nomorKlaim: string) => void,
 ): Column<TugasSurvei>[] {
-  const hasil: Column<TugasSurvei>[] = []
+  const hasil: Column<TugasSurvei>[] = [];
 
   for (const k of kolom) {
-    const dibangun = renderer[k.kunci]?.(k, bukaKlaim)
-    if (dibangun) hasil.push(dibangun)
+    const dibangun = renderer[k.kunci]?.(k, bukaKlaim);
+    if (dibangun) hasil.push(dibangun);
   }
-  return hasil
+  return hasil;
 }
 
 /** Menyusun kesepuluh kolom tabel KPI — satu kelompok dan sembilan angka. */
@@ -738,7 +771,7 @@ function buildKPIColumns(
   kolomAwal: KolomLayar[],
   kolom: KolomLayar[],
 ): Column<BarisKPI>[] {
-  const hasil: Column<BarisKPI>[] = []
+  const hasil: Column<BarisKPI>[] = [];
 
   /*
     Kolom KUNCI datang dari server beserta judulnya, bukan disusun di sini.
@@ -749,33 +782,35 @@ function buildKPIColumns(
     hidup di dua tempat, dan yang satu akan tertinggal saat yang lain diperbaiki.
   */
   for (const k of kolomAwal) {
-    const ambil = kunciKPI[k.kunci]
-    if (!ambil) continue
+    const ambil = kunciKPI[k.kunci];
+    if (!ambil) continue;
 
     hasil.push({
       key: k.kunci,
       title: k.judul,
-      width: '12rem',
+      width: "12rem",
       value: (row) => ambil(row),
       render: (row) => <Teks nilai={ambil(row)} />,
-    })
+    });
   }
 
   for (const k of kolom) {
-    const ambil = angkaKPI[k.kunci]
-    if (!ambil) continue
+    const ambil = angkaKPI[k.kunci];
+    if (!ambil) continue;
 
     hasil.push({
       key: k.kunci,
       title: k.judul,
-      width: '10rem',
+      width: "10rem",
       value: (row) => String(ambil(row)),
       render: (row) => (
-        <span className="tabular-nums text-slate-700">{ambil(row).toFixed(2)}</span>
+        <span className="tabular-nums text-slate-700">
+          {ambil(row).toFixed(2)}
+        </span>
       ),
-    })
+    });
   }
-  return hasil
+  return hasil;
 }
 
 /**
@@ -791,7 +826,7 @@ const kunciKPI: Record<string, ((row: BarisKPI) => string) | undefined> = {
   kuartal: (row) => row.kuartal,
   bulan: (row) => row.bulan,
   case_id: (row) => row.case_id,
-}
+};
 
 /** Pengambil kesembilan angka KPI, dikunci dengan `kunci` yang dikirim server. */
 const angkaKPI: Record<string, ((row: BarisKPI) => number) | undefined> = {
@@ -804,12 +839,12 @@ const angkaKPI: Record<string, ((row: BarisKPI) => number) | undefined> = {
   propose_adjustment: (row) => row.propose_adjustment,
   final_report: (row) => row.final_report,
   nilai: (row) => row.nilai,
-}
+};
 
 /** Teks sel yang kosong digambar sebagai em dash, bukan dibiarkan hampa. */
 function Teks({ nilai }: { nilai: string }) {
-  if (!nilai) return <span className="text-slate-400">—</span>
-  return <span className="truncate">{nilai}</span>
+  if (!nilai) return <span className="text-slate-400">—</span>;
+  return <span className="truncate">{nilai}</span>;
 }
 
 /**
@@ -819,14 +854,14 @@ function Teks({ nilai }: { nilai: string }) {
  * kosong pada halaman ini — dan yang kedua terbaca sebagai "datanya belum diisi petugas".
  */
 function judulKolom(k: KolomLayar): string {
-  if (!k.tersedia) return `${k.judul} · belum tersedia`
+  if (!k.tersedia) return `${k.judul} · belum tersedia`;
 
   // Kolom PENGGANTI terisi dan tampak wajar, tetapi isinya BUKAN kolom yang digambar Pega.
   // Tanpa penanda di judulnya, selisih itu tidak dapat dilihat siapa pun — dan selisih yang
   // tidak terlihat adalah selisih yang tidak pernah dilaporkan.
-  if (k.pengganti) return `${k.judul} · pengganti`
+  if (k.pengganti) return `${k.judul} · pengganti`;
 
-  return k.judul
+  return k.judul;
 }
 
 /**
@@ -838,16 +873,16 @@ function judulKolom(k: KolomLayar): string {
  */
 function SelBelumTersedia({ keterangan }: { keterangan: string | undefined }) {
   return (
-    <span className="text-xs text-slate-400" title={keterangan ?? ''}>
+    <span className="text-xs text-slate-400" title={keterangan ?? ""}>
       belum tersedia
     </span>
-  )
+  );
 }
 
 type Renderer = (
   k: KolomLayar,
   bukaKlaim: (nomorKlaim: string) => void,
-) => Column<TugasSurvei>
+) => Column<TugasSurvei>;
 
 /**
  * Cara menggambar tiap kolom antrean, dikunci dengan `kunci` yang dikirim server.
@@ -864,7 +899,7 @@ const renderer: Record<string, Renderer | undefined> = {
   appointment_no: (k) => ({
     key: k.kunci,
     title: judulKolom(k),
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.appointment_no,
     render: (row) =>
       row.appointment_no ? (
@@ -877,7 +912,7 @@ const renderer: Record<string, Renderer | undefined> = {
   reference_no: (k) => ({
     key: k.kunci,
     title: judulKolom(k),
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.reference_no,
     render: (row) =>
       row.reference_no ? (
@@ -890,7 +925,7 @@ const renderer: Record<string, Renderer | undefined> = {
   claim_no: (k, bukaKlaim) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.claim_no,
     render: (row) =>
       row.claim_no ? (
@@ -909,7 +944,7 @@ const renderer: Record<string, Renderer | undefined> = {
   policy_no: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.policy_no,
     render: (row) => <Teks nilai={row.policy_no} />,
   }),
@@ -917,7 +952,7 @@ const renderer: Record<string, Renderer | undefined> = {
   insured_name: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '14rem',
+    width: "14rem",
     value: (row) => row.insured_name,
     render: (row) => <Teks nilai={row.insured_name} />,
   }),
@@ -925,7 +960,7 @@ const renderer: Record<string, Renderer | undefined> = {
   cob: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.cob,
     render: (row) => <Teks nilai={row.cob} />,
   }),
@@ -933,13 +968,13 @@ const renderer: Record<string, Renderer | undefined> = {
   cause_of_loss: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '12rem',
+    width: "12rem",
     value: (row) => row.cause_of_loss,
     render: (row) =>
       row.cause_of_loss ? (
         <Teks nilai={row.cause_of_loss} />
       ) : (
-        <span className="text-xs text-slate-400" title={k.keterangan ?? ''}>
+        <span className="text-xs text-slate-400" title={k.keterangan ?? ""}>
           —
         </span>
       ),
@@ -948,7 +983,7 @@ const renderer: Record<string, Renderer | undefined> = {
   location: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '12rem',
+    width: "12rem",
     value: (row) => row.location,
     render: (row) => <Teks nilai={row.location} />,
   }),
@@ -956,7 +991,7 @@ const renderer: Record<string, Renderer | undefined> = {
   pic_asm: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '10rem',
+    width: "10rem",
     value: (row) => row.pic_asm,
     render: (row) => <Teks nilai={row.pic_asm} />,
   }),
@@ -964,7 +999,7 @@ const renderer: Record<string, Renderer | undefined> = {
   pic_loss_adjuster: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '12rem',
+    width: "12rem",
     value: (row) => row.pic_loss_adjuster,
     render: (row) => <Teks nilai={row.pic_loss_adjuster} />,
   }),
@@ -972,7 +1007,7 @@ const renderer: Record<string, Renderer | undefined> = {
   date_of_loss: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '9rem',
+    width: "9rem",
     value: (row) => row.date_of_loss,
     render: (row) => <Teks nilai={row.date_of_loss} />,
   }),
@@ -980,8 +1015,8 @@ const renderer: Record<string, Renderer | undefined> = {
   aging: (k) => ({
     key: k.kunci,
     title: k.judul,
-    width: '8rem',
-    value: (row) => (row.aging === null ? '' : String(row.aging)),
+    width: "8rem",
+    value: (row) => (row.aging === null ? "" : String(row.aging)),
     render: (row) =>
       // `null` dan `0` digambar BERBEDA, dan itu inti kolomnya.
       //
@@ -989,7 +1024,7 @@ const renderer: Record<string, Renderer | undefined> = {
       // dihitung. Menggambar keduanya sama akan menampilkan "0 hari" pada baris yang
       // sebenarnya tidak punya angka — angka yang terlihat sah dan salah.
       row.aging === null ? (
-        <span className="text-xs text-slate-400" title={k.keterangan ?? ''}>
+        <span className="text-xs text-slate-400" title={k.keterangan ?? ""}>
           tidak dapat dihitung
         </span>
       ) : (
@@ -1000,7 +1035,7 @@ const renderer: Record<string, Renderer | undefined> = {
   status_asm: (k) => ({
     key: k.kunci,
     title: judulKolom(k),
-    width: '11rem',
+    width: "11rem",
     value: (row) => row.status_asm,
     render: (row) =>
       row.status_asm ? (
@@ -1009,22 +1044,22 @@ const renderer: Record<string, Renderer | undefined> = {
         <SelBelumTersedia keterangan={k.keterangan} />
       ),
   }),
-}
+};
 
 function PageFrame({
   children,
   identitas,
 }: {
-  children: ReactNode
-  identitas?: IdentitasSurveyor | null
+  children: ReactNode;
+  identitas?: IdentitasSurveyor | null;
 }) {
   return (
-    <div className="mx-auto max-w-[110rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-xl font-semibold text-slate-900">My Work</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pekerjaan survei yang menunggu Anda. Barisnya hilang begitu janji surveinya
-          diselesaikan.
+          Pekerjaan survei yang menunggu Anda. Barisnya hilang begitu janji
+          surveinya diselesaikan.
         </p>
 
         {identitas && (
@@ -1034,12 +1069,15 @@ function PageFrame({
           // tidak punya cara menjelaskan kenapa — dan yang pertama kali terpikir adalah
           // "layarnya bocor".
           <p className="mt-2 text-xs text-slate-500">
-            Ditampilkan sebagai <span className="font-medium">{identitas.nama}</span>
+            Ditampilkan sebagai{" "}
+            <span className="font-medium">{identitas.nama}</span>
             {identitas.leader && identitas.jumlah_tim > 0 && (
               <>
-                {' '}
-                — termasuk pekerjaan {identitas.jumlah_tim} anggota tim Anda:{' '}
-                {identitas.cakupan.filter((nama) => nama !== identitas.nama).join(', ')}
+                {" "}
+                — termasuk pekerjaan {identitas.jumlah_tim} anggota tim Anda:{" "}
+                {identitas.cakupan
+                  .filter((nama) => nama !== identitas.nama)
+                  .join(", ")}
               </>
             )}
           </p>
@@ -1047,11 +1085,11 @@ function PageFrame({
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /** pesanGalat mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

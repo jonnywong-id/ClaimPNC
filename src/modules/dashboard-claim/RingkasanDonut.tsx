@@ -1,6 +1,13 @@
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
-import type { Kartu, Tile } from './types'
+import type { Kartu, Tile } from "./types";
 
 /**
  * Donut komposisi keempat tile — padanan grafik pada layar lama.
@@ -25,11 +32,11 @@ export function RingkasanDonut({
   terpilih,
   onPilih,
 }: {
-  kartu: Kartu[]
-  terpilih: Tile | null
-  onPilih: (tile: Tile) => void
+  kartu: Kartu[];
+  terpilih: Tile | null;
+  onPilih: (tile: Tile) => void;
 }) {
-  const total = kartu.reduce((jumlah, item) => jumlah + item.jumlah, 0)
+  const total = kartu.reduce((jumlah, item) => jumlah + item.jumlah, 0);
 
   // Panel tetap digambar saat totalnya nol, dengan pesan yang menyebutkan sebabnya.
   // Mengembalikan null akan membuat layar melompat setiap kali penyaring mempersempit
@@ -42,12 +49,12 @@ export function RingkasanDonut({
           Tidak ada pekerjaan yang cocok dengan penyaring yang sedang berlaku.
         </p>
       </section>
-    )
+    );
   }
 
   // Irisan bernilai nol dibuang: Recharts tetap menggambarnya sebagai garis tipis yang dapat
   // diklik, dan irisan tak terlihat yang menanggapi klik membingungkan.
-  const data = kartu.filter((item) => item.jumlah > 0)
+  const data = kartu.filter((item) => item.jumlah > 0);
 
   return (
     <section className="mb-6 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut">
@@ -68,16 +75,16 @@ export function RingkasanDonut({
               // Irisan dikenali lewat INDEKS, bukan lewat isi objek yang dikirim Recharts —
               // bentuk objek itu milik pustaka dan dapat berubah antar versi.
               onClick={(_irisan, index) => {
-                const diklik = data[index]
-                if (diklik === undefined) return
-                onPilih(diklik.tile)
+                const diklik = data[index];
+                if (diklik === undefined) return;
+                onPilih(diklik.tile);
               }}
             >
               {data.map((item, index) => (
                 <Cell
                   key={item.tile}
                   fill={warnaIrisan(index)}
-                  stroke={item.tile === terpilih ? '#0f172a' : '#ffffff'}
+                  stroke={item.tile === terpilih ? "#0f172a" : "#ffffff"}
                   strokeWidth={item.tile === terpilih ? 3 : 1}
                   className="cursor-pointer"
                 />
@@ -92,32 +99,36 @@ export function RingkasanDonut({
             */}
             <Tooltip
               formatter={(nilai, nama) => {
-                const angka = typeof nilai === 'number' ? nilai : Number(nilai ?? 0)
-                return [`${angka.toLocaleString('id-ID')} (${persen(angka, total)})`, String(nama ?? '')]
+                const angka =
+                  typeof nilai === "number" ? nilai : Number(nilai ?? 0);
+                return [
+                  `${angka.toLocaleString("id-ID")} (${persen(angka, total)})`,
+                  String(nama ?? ""),
+                ];
               }}
-              contentStyle={{ fontSize: '0.8125rem', borderRadius: '0.5rem' }}
+              contentStyle={{ fontSize: "0.8125rem", borderRadius: "0.5rem" }}
             />
             <Legend
               verticalAlign="bottom"
               height={36}
-              wrapperStyle={{ fontSize: '0.75rem' }}
+              wrapperStyle={{ fontSize: "0.75rem" }}
               onClick={(entri) => {
-                const diklik = data.find((item) => item.judul === entri.value)
-                if (diklik === undefined) return
-                onPilih(diklik.tile)
+                const diklik = data.find((item) => item.judul === entri.value);
+                if (diklik === undefined) return;
+                onPilih(diklik.tile);
               }}
             />
           </PieChart>
         </ResponsiveContainer>
       </div>
     </section>
-  )
+  );
 }
 
 /** Persentase satu irisan, dibulatkan dua desimal seperti layar lama. */
 function persen(nilai: number, total: number): string {
-  if (total === 0) return '0%'
-  return `${((nilai / total) * 100).toFixed(2)}%`
+  if (total === 0) return "0%";
+  return `${((nilai / total) * 100).toFixed(2)}%`;
 }
 
 /**
@@ -128,14 +139,14 @@ function persen(nilai: number, total: number): string {
  * sifatnya.
  */
 const PALET = [
-  '#2563eb', // blue-600
-  '#d97706', // amber-600
-  '#7c3aed', // violet-600
-  '#0d9488', // teal-600
-] as const
+  "#2563eb", // blue-600
+  "#d97706", // amber-600
+  "#7c3aed", // violet-600
+  "#0d9488", // teal-600
+] as const;
 
 function warnaIrisan(index: number): string {
   // Modulo menjamin indeksnya di dalam jangkauan, tetapi TypeScript tidak dapat
   // membuktikannya. Yang dipakai `?? PALET[0]`, bukan `as string`.
-  return PALET[index % PALET.length] ?? PALET[0]
+  return PALET[index % PALET.length] ?? PALET[0];
 }

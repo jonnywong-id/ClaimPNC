@@ -1,6 +1,12 @@
-import { Fragment, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  Fragment,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
-import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
+import { SearchIcon, EmptyBoxIcon, ChevronIcon } from "./Icon";
 
 /**
  * Satu kolom tabel.
@@ -11,9 +17,9 @@ import { SearchIcon, EmptyBoxIcon, ChevronIcon } from './Icon'
  * tombol). Menyatukannya akan membuat pencarian ikut menelusuri markup.
  */
 export type Column<T> = {
-  key: string
-  title: string
-  value: (rows: T) => string
+  key: string;
+  title: string;
+  value: (rows: T) => string;
 
   /**
    * Menggambar isi sel.
@@ -28,16 +34,16 @@ export type Column<T> = {
    *
    * Opsional dan diabaikan bila tidak dipakai, sehingga seluruh pemanggil lama tetap sah.
    */
-  render?: (rows: T, nomor: number) => ReactNode
+  render?: (rows: T, nomor: number) => ReactNode;
 
   /** Lebar kolom pada tampilan meja. Diabaikan pada tampilan kartu. */
-  width?: string
+  width?: string;
 
   /** Kolom yang tidak layak diurutkan — misalnya kolom aksi. */
-  noSort?: boolean
+  noSort?: boolean;
 
   /** Ratakan isi sel ke kanan pada tampilan meja. Dipakai kolom aksi. */
-  alignRight?: boolean
+  alignRight?: boolean;
 
   /**
    * Ratakan isi sel ke tengah pada tampilan meja.
@@ -49,8 +55,8 @@ export type Column<T> = {
    * Diabaikan bila `alignRight` juga diisi — satu sel hanya punya satu perataan, dan
    * mengizinkan keduanya berarti hasilnya bergantung pada urutan kelas CSS.
    */
-  alignCenter?: boolean
-}
+  alignCenter?: boolean;
+};
 
 /**
  * Paginasi yang dikerjakan SERVER.
@@ -65,24 +71,24 @@ export type Column<T> = {
  */
 export type ServerPagination = {
   /** Halaman yang sedang tampil, dimulai dari 1. */
-  page: number
-  size: number
+  page: number;
+  size: number;
   /** Jumlah SELURUH baris di server, bukan yang tampil di halaman ini. */
-  total: number
-  totalPage: number
-  onPageChange: (page: number) => void
+  total: number;
+  totalPage: number;
+  onPageChange: (page: number) => void;
   /** Sedang mengambil halaman lain; tombolnya dinonaktifkan selama itu. */
-  isLoading?: boolean
-}
+  isLoading?: boolean;
+};
 
 type Props<T> = {
-  columns: Column<T>[]
-  rows: T[]
-  rowKey: (rows: T) => string
+  columns: Column<T>[];
+  rows: T[];
+  rowKey: (rows: T) => string;
 
   /** Judul di atas tabel; boleh dikosongkan bila layar sudah punya judulnya sendiri. */
-  title?: string
-  description?: string
+  title?: string;
+  description?: string;
 
   /**
    * Nama tabelnya bagi pembaca layar, dipasang sebagai `aria-label` pada `<table>`.
@@ -94,14 +100,14 @@ type Props<T> = {
    * Opsional supaya layar berisi satu tabel tidak perlu mengulang judul yang sudah
    * terlihat tepat di atasnya.
    */
-  label?: string
+  label?: string;
 
   /** Tombol-tombol di kanan judul — Tambah, Muat ulang, dan sejenisnya. */
   /** Tombol-tombol di kanan judul — Tambah, Refresh, dan sejenisnya. */
-  actions?: ReactNode
+  actions?: ReactNode;
 
-  isLoading?: boolean
-  error?: ReactNode
+  isLoading?: boolean;
+  error?: ReactNode;
 
   /**
    * Gambar kepala kolom meski tidak ada satu pun baris.
@@ -118,10 +124,10 @@ type Props<T> = {
    * Bawaannya tetap `false`, sehingga layar yang belum menyalakannya berperilaku persis
    * seperti sebelumnya.
    */
-  showHeaderWhenEmpty?: boolean
+  showHeaderWhenEmpty?: boolean;
 
-  searchLabel?: string
-  emptyMessage?: string
+  searchLabel?: string;
+  emptyMessage?: string;
 
   /**
    * Kalimat kekosongan saat PENCARIAN sedang terisi.
@@ -147,7 +153,7 @@ type Props<T> = {
    * Saran "coba kata kunci yang lebih pendek" IKUT PADAM saat isian ini diisi: pada
    * daftar yang mencocokkan persis, kata kunci yang lebih pendek justru yang salah.
    */
-  searchEmptyMessage?: string
+  searchEmptyMessage?: string;
   /**
    * Kotak pencarian ditampilkan.
    *
@@ -161,7 +167,7 @@ type Props<T> = {
    * begitu saja. Penyatuannya dicatat sebagai utang teknis, bukan diselesaikan sambil
    * menggabungkan cabang.
    */
-  searchable?: boolean
+  searchable?: boolean;
 
   /**
    * Menyerahkan pencarian dan pengurutan ke PEMANGGIL, bukan dikerjakan komponen ini.
@@ -179,12 +185,12 @@ type Props<T> = {
    */
   serverSearch?:
     | {
-        value: string
-        onChange: (value: string) => void
+        value: string;
+        onChange: (value: string) => void;
         /** Banyaknya baris yang cocok di server, untuk keterangan di bawah kotak cari. */
-        matchCount?: number | undefined
+        matchCount?: number | undefined;
       }
-    | undefined
+    | undefined;
 
   /**
    * Menyembunyikan kotak cari bawaan.
@@ -199,10 +205,10 @@ type Props<T> = {
    *
    * Nilai bawaannya `false`, sehingga seluruh layar yang sudah ada tidak berubah.
    */
-  hideSearch?: boolean
+  hideSearch?: boolean;
 
   /** Bilah halaman First/Previous/Next/Last beserta "Total Data". */
-  pagination?: ServerPagination
+  pagination?: ServerPagination;
 
   /**
    * Banyaknya baris per halaman. Tidak diisi berarti **tanpa paginasi** — seluruh baris
@@ -234,7 +240,7 @@ type Props<T> = {
    * pencarian dan pengurutan. Layar yang datanya besar menuntut paginasi keyset dari
    * server dan TIDAK boleh memakai ini (`TKT-U2-001`).
    */
-  pageSize?: number
+  pageSize?: number;
 
   /**
    * Isi yang terbuka di bawah sebuah baris ketika baris itu diklik.
@@ -257,9 +263,9 @@ type Props<T> = {
    * Mengembalikan `null` untuk sebuah baris berarti baris itu tidak dapat dibuka —
    * dipakai saat sebagian baris memang tidak punya isi.
    */
-  
-  expandedRow?: (row: T) => ReactNode
-   /** Jarak sel dirapatkan pada tampilan meja.
+
+  expandedRow?: (row: T) => ReactNode;
+  /** Jarak sel dirapatkan pada tampilan meja.
    *
    * Opt-in, sama alasannya dengan `showHeaderWhenEmpty`: layar yang sudah ada tidak
    * berubah. Dipakai grid yang harus muat SATU LAYAR tanpa gulir menyamping di samping
@@ -269,7 +275,7 @@ type Props<T> = {
    * dirapatkan, sehingga sel tetap ber-padding lebar dan tabel berkolom banyak tetap
    * menuntut gulir menyamping (Inbox Admin, 2026-10-07).
    */
-  dense?: boolean
+  dense?: boolean;
 
   /**
    * Garis pemisah ANTARKOLOM pada tampilan meja — grid berkotak, bukan berbaris.
@@ -281,10 +287,28 @@ type Props<T> = {
    * Hanya berlaku pada tampilan meja. Di tampilan kartu setiap sel sudah menjadi barisnya
    * sendiri, dan garis vertikal di sana memisahkan sesuatu yang tidak bersebelahan.
    */
-  gridLines?: boolean
-}
+  gridLines?: boolean;
 
-type SortOrder = { key: string; direction: 'asc' | 'desc' }
+  /**
+   * Seluruh kolom dimuatkan ke lebar kartunya — tanpa gulir menyamping.
+   *
+   * Lebar tetap per kolom (`width`) DIABAIKAN, dan peramban membagi lebar menurut isi
+   * selnya. Teks yang panjang turun baris alih-alih memaksa tabel melebar; `truncate` di
+   * dalam sel pun dilepas, karena di tabel yang lebarnya terbatas pemotongan berarti data
+   * yang tidak terlihat sama sekali. Jarak sel dirapatkan seperti `dense`.
+   *
+   * Gulir menyamping tetap tersedia sebagai jalan terakhir: bila satu kata pun (nomor
+   * klaim, nomor polis) sudah tidak muat, tabelnya digulir — bukan memotong nomor itu di
+   * tengah, yang membuatnya salah terbaca.
+   *
+   * Opt-in, sama alasannya dengan `dense`. Pemakai pertamanya My Inbox (Inbox Outstanding),
+   * atas permintaan pengguna 2026-10-14: empat belas kolom selebar total ±128rem menuntut
+   * gulir menyamping bahkan di monitor 1920px.
+   */
+  fit?: boolean;
+};
+
+type SortOrder = { key: string; direction: "asc" | "desc" };
 
 /**
  * Judul kolom aksi, dan satu-satunya judul yang komponen ini kenali namanya.
@@ -300,7 +324,7 @@ type SortOrder = { key: string; direction: 'asc' | 'desc' }
  * tiga puluhan berkas. Itu menyebar satu kesepakatan ke tiga puluh tempat yang dapat
  * berbeda — dan layar ketiga puluh satu akan lupa menyalakannya.
  */
-const ACTION_COLUMN_TITLE = 'Aksi'
+const ACTION_COLUMN_TITLE = "Aksi";
 
 /**
  * headerAlign memilih perataan **judul** kolom pada tampilan meja.
@@ -313,10 +337,10 @@ const ACTION_COLUMN_TITLE = 'Aksi'
  * judul yang sebaris dengan deret angkanya justru yang membuat kolomnya terbaca.
  */
 function headerAlign<T>(column: Column<T>): string {
-  if (column.title === ACTION_COLUMN_TITLE) return 'text-center'
-  if (column.alignRight) return 'text-right'
-  if (column.alignCenter) return 'text-center'
-  return ''
+  if (column.title === ACTION_COLUMN_TITLE) return "text-center";
+  if (column.alignRight) return "text-right";
+  if (column.alignCenter) return "text-center";
+  return "";
 }
 
 /**
@@ -330,21 +354,24 @@ function headerAlign<T>(column: Column<T>): string {
  * membungkus beberapa baris — dan justru membuat halaman yang sedang dibuka sulit
  * ditemukan.
  */
-export function pageWindow(current: number, total: number): (number | 'sela')[] {
+export function pageWindow(
+  current: number,
+  total: number,
+): (number | "sela")[] {
   if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1)
+    return Array.from({ length: total }, (_, index) => index + 1);
   }
 
-  const result: (number | 'sela')[] = [1]
-  const start = Math.max(2, current - 1)
-  const stop = Math.min(total - 1, current + 1)
+  const result: (number | "sela")[] = [1];
+  const start = Math.max(2, current - 1);
+  const stop = Math.min(total - 1, current + 1);
 
-  if (start > 2) result.push('sela')
-  for (let nomor = start; nomor <= stop; nomor++) result.push(nomor)
-  if (stop < total - 1) result.push('sela')
+  if (start > 2) result.push("sela");
+  for (let nomor = start; nomor <= stop; nomor++) result.push(nomor);
+  if (stop < total - 1) result.push("sela");
 
-  result.push(total)
-  return result
+  result.push(total);
+  return result;
 }
 
 /**
@@ -409,8 +436,8 @@ export function DataTable<T>({
   actions,
   isLoading = false,
   error,
-  searchLabel = 'Cari',
-  emptyMessage = 'Belum ada data.',
+  searchLabel = "Cari",
+  emptyMessage = "Belum ada data.",
   searchEmptyMessage,
   searchable = true,
   serverSearch,
@@ -421,61 +448,69 @@ export function DataTable<T>({
   expandedRow,
   dense = false,
   gridLines = false,
+  fit = false,
 }: Props<T>) {
-  const [localQuery, setLocalQuery] = useState('')
-  const [sort, setSort] = useState<SortOrder | null>(null)
-  const [page, setPage] = useState(1)
+  // `fit` merapatkan sel persis seperti `dense`: kolom yang dimuatkan ke satu lebar butuh
+  // setiap piksel padding yang dapat dihemat.
+  const compact = dense || fit;
+  const [localQuery, setLocalQuery] = useState("");
+  const [sort, setSort] = useState<SortOrder | null>(null);
+  const [page, setPage] = useState(1);
 
   // Kunci baris yang sedang terbuka; null berarti tidak ada. SATU saja yang terbuka pada
   // satu waktu, sama seperti grid lama — membuka baris lain menutup yang sebelumnya.
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  const onServer = serverSearch !== undefined
-  const query = serverSearch ? serverSearch.value : localQuery
-  const setQuery = serverSearch ? serverSearch.onChange : setLocalQuery
+  const onServer = serverSearch !== undefined;
+  const query = serverSearch ? serverSearch.value : localQuery;
+  const setQuery = serverSearch ? serverSearch.onChange : setLocalQuery;
 
   const visible = useMemo(() => {
     // Saat pencarian dikerjakan server, barisnya dipakai APA ADANYA. Menyaringnya lagi di
     // sini akan menyaring dua kali — dan yang kedua hanya menyentuh halaman yang sedang
     // terbuka.
-    if (onServer) return rows
+    if (onServer) return rows;
 
-    const word = query.trim().toLowerCase()
+    const word = query.trim().toLowerCase();
     const filtered = word
-      ? rows.filter((b) => columns.some((k) => k.value(b).toLowerCase().includes(word)))
-      : rows
+      ? rows.filter((b) =>
+          columns.some((k) => k.value(b).toLowerCase().includes(word)),
+        )
+      : rows;
 
-    if (!sort) return filtered
+    if (!sort) return filtered;
 
-    const sortColumn = columns.find((k) => k.key === sort.key)
-    if (!sortColumn) return filtered
+    const sortColumn = columns.find((k) => k.key === sort.key);
+    if (!sortColumn) return filtered;
 
     // Salinan dibuat lebih dulu: sort mengubah senarai di tempat, dan mengurutkan props
     // secara langsung akan mengubah data milik pemanggil.
     return [...filtered].sort((a, b) => {
-      const comparison = sortColumn.value(a).localeCompare(sortColumn.value(b), 'id', {
-        numeric: true,
-        sensitivity: 'base',
-      })
-      return sort.direction === 'asc' ? comparison : -comparison
-    })
-  }, [rows, columns, query, sort, onServer])
+      const comparison = sortColumn
+        .value(a)
+        .localeCompare(sortColumn.value(b), "id", {
+          numeric: true,
+          sensitivity: "base",
+        });
+      return sort.direction === "asc" ? comparison : -comparison;
+    });
+  }, [rows, columns, query, sort, onServer]);
 
   function toggleSort(key: string) {
     setSort((previous) => {
-      if (previous?.key !== key) return { key, direction: 'asc' }
-      if (previous.direction === 'asc') return { key, direction: 'desc' }
+      if (previous?.key !== key) return { key, direction: "asc" };
+      if (previous.direction === "asc") return { key, direction: "desc" };
       // Klik ketiga mengembalikan urutan asli dari server. Tanpa ini, pengguna tidak
       // punya cara kembali ke urutan semula selain memuat ulang halaman.
-      return null
-    })
+      return null;
+    });
     // Mengurutkan ulang menyusun ulang seluruh daftar, sehingga halaman ketujuh yang
     // sedang dibuka tidak lagi memuat baris yang sama. Kembali ke halaman pertama adalah
     // satu-satunya posisi yang artinya tidak berubah.
-    setPage(1)
+    setPage(1);
   }
 
-  const hasSearch = query.trim() !== ''
+  const hasSearch = query.trim() !== "";
 
   /*
     Kalimat kekosongan, dan saran yang menyertainya.
@@ -485,15 +520,16 @@ export function DataTable<T>({
     yang selalu berakhir berbeda begitu salah satunya disunting.
   */
   const emptyText = hasSearch
-    ? (searchEmptyMessage ?? `Tidak ada baris yang cocok dengan “${query.trim()}”.`)
-    : emptyMessage
+    ? (searchEmptyMessage ??
+      `Tidak ada baris yang cocok dengan “${query.trim()}”.`)
+    : emptyMessage;
 
   // Saran bawaan padam begitu pemanggil memberi kalimatnya sendiri — lihat
   // searchEmptyMessage.
   const emptyHint =
     hasSearch && searchEmptyMessage === undefined
-      ? 'Coba kata kunci yang lebih pendek.'
-      : undefined
+      ? "Coba kata kunci yang lebih pendek."
+      : undefined;
 
   /*
     Paginasi dikerjakan SESUDAH pencarian dan pengurutan, bukan sebelumnya.
@@ -507,26 +543,38 @@ export function DataTable<T>({
     **perubahan perilaku, bukan pemeliharaan** — layar berpuluh juta baris menuntutnya,
     layar master yang berbaris puluhan tidak.
   */
-  const paginated = pageSize !== undefined && pageSize > 0
-  const totalPages = paginated ? Math.max(1, Math.ceil(visible.length / pageSize)) : 1
+  const paginated = pageSize !== undefined && pageSize > 0;
+  const totalPages = paginated
+    ? Math.max(1, Math.ceil(visible.length / pageSize))
+    : 1;
 
   // Halaman dijepit saat menggambar, bukan disetel lewat efek. Baris dapat berkurang di
   // luar kendali komponen ini — penyaring dipersempit, atau daftarnya dimuat ulang setelah
   // sebuah baris berpindah — dan halaman yang sudah tidak ada harus menampilkan halaman
   // terakhir, bukan tabel kosong tanpa penjelasan.
-  const currentPage = Math.min(page, totalPages)
-  const firstIndex = paginated ? (currentPage - 1) * pageSize : 0
-  const shown = paginated ? visible.slice(firstIndex, firstIndex + pageSize) : visible
+  const currentPage = Math.min(page, totalPages);
+  const firstIndex = paginated ? (currentPage - 1) * pageSize : 0;
+  const shown = paginated
+    ? visible.slice(firstIndex, firstIndex + pageSize)
+    : visible;
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-lembut">
       {(title || actions) && (
         <header className="flex flex-col gap-4 border-b border-slate-200 bg-white p-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            {title && <h2 className="text-base font-semibold text-slate-900">{title}</h2>}
-            {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
+            {title && (
+              <h2 className="text-base font-semibold text-slate-900">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+            )}
           </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {actions && (
+            <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          )}
         </header>
       )}
 
@@ -547,19 +595,19 @@ export function DataTable<T>({
               type="search"
               value={query}
               onChange={(e) => {
-                setQuery(e.target.value)
+                setQuery(e.target.value);
                 // Kata kunci baru menghasilkan daftar yang berbeda, dan halaman ketujuh
                 // daftar lama hampir pasti tidak ada pada daftar baru.
-                setPage(1)
+                setPage(1);
               }}
               placeholder={searchLabel}
               className={[
-                'w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3',
-                'text-sm text-slate-900 placeholder:text-slate-400',
-                'transition-[border-color,box-shadow] duration-150 ease-halus',
-                'hover:border-slate-400',
-                'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-              ].join(' ')}
+                "w-full rounded-kontrol border border-slate-300 bg-white py-2.5 pl-10 pr-3",
+                "text-sm text-slate-900 placeholder:text-slate-400",
+                "transition-[border-color,box-shadow] duration-150 ease-halus",
+                "hover:border-slate-400",
+                "focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15",
+              ].join(" ")}
             />
           </div>
           {hasSearch && (
@@ -582,7 +630,10 @@ export function DataTable<T>({
         <div className="md:overflow-x-auto">
           <table
             aria-label={label}
-            className={['block w-full border-collapse md:table', dense ? 'text-xs' : 'text-sm'].join(' ')}
+            className={[
+              "block w-full border-collapse md:table",
+              compact ? "text-xs" : "text-sm",
+            ].join(" ")}
           >
             <thead className="hidden md:table-header-group">
               <tr className="border-b border-slate-200 bg-slate-50/80 text-left">
@@ -590,13 +641,13 @@ export function DataTable<T>({
                   <th
                     key={k.key}
                     scope="col"
-                    style={k.width ? { width: k.width } : undefined}
+                    style={k.width && !fit ? { width: k.width } : undefined}
                     aria-sort={
                       !onServer && sort?.key === k.key
-                        ? sort.direction === 'asc'
-                          ? 'ascending'
-                          : 'descending'
-                        : 'none'
+                        ? sort.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
                     }
                     /*
                       Judul kolom digambar APA ADANYA — kelas `uppercase` sengaja
@@ -614,11 +665,13 @@ export function DataTable<T>({
                       tampil kapital karena teksnya memang kapital, bukan karena CSS.
                     */
                     className={[
-                      dense ? 'px-3 py-2.5' : 'px-5 py-3',
-                      'text-xs font-semibold tracking-wide text-slate-600',
+                      compact ? "px-3 py-2.5" : "px-5 py-3",
+                      "text-xs font-semibold tracking-wide text-slate-600",
                       headerAlign(k),
-                      gridLines ? 'md:border-r md:border-slate-200 md:last:border-r-0' : '',
-                    ].join(' ')}
+                      gridLines
+                        ? "md:border-r md:border-slate-200 md:last:border-r-0"
+                        : "",
+                    ].join(" ")}
                   >
                     {/*
                       Pengurutan ikut dimatikan saat pencarian dikerjakan server:
@@ -632,16 +685,16 @@ export function DataTable<T>({
                         type="button"
                         onClick={() => toggleSort(k.key)}
                         className={[
-                          'group -mx-1.5 inline-flex items-center gap-1.5 rounded px-1.5 py-1',
-                          'transition-colors duration-150 ease-halus',
-                          'hover:bg-slate-200/70 hover:text-slate-900',
-                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-                        ].join(' ')}
+                          "group -mx-1.5 inline-flex items-center gap-1.5 rounded px-1.5 py-1",
+                          "transition-colors duration-150 ease-halus",
+                          "hover:bg-slate-200/70 hover:text-slate-900",
+                          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+                        ].join(" ")}
                       >
                         {k.title}
                         <SortMarker
                           active={sort?.key === k.key}
-                          direction={sort?.direction ?? 'asc'}
+                          direction={sort?.direction ?? "asc"}
                         />
                       </button>
                     )}
@@ -672,37 +725,40 @@ export function DataTable<T>({
                 // pertama halaman ini di dalam hasil yang sudah disaring dan diurutkan.
                 // Tanpa itu, setiap halaman akan mengulang dari 1 dan dua baris berbeda
                 // akan bernomor sama.
-                const nomorUrut = firstIndex + urutDiHalaman + 1
-                const kunci = rowKey(b)
-                const isi = expandedRow?.(b) ?? null
-                const bisaDibuka = isi != null && isi !== false
-                const terbuka = bisaDibuka && expanded === kunci
+                const nomorUrut = firstIndex + urutDiHalaman + 1;
+                const kunci = rowKey(b);
+                const isi = expandedRow?.(b) ?? null;
+                const bisaDibuka = isi != null && isi !== false;
+                const terbuka = bisaDibuka && expanded === kunci;
 
                 return (
                   <Fragment key={kunci}>
                     <tr
                       className={[
-                        'block border-b border-slate-200 py-2.5 last:border-0',
-                        'md:table-row md:border-slate-100 md:py-0',
-                        'transition-colors duration-150 ease-halus',
-                        'hover:bg-blue-50/50',
-                        bisaDibuka ? 'cursor-pointer' : '',
-                        terbuka ? 'bg-blue-50/60' : '',
-                      ].join(' ')}
+                        "block border-b border-slate-200 py-2.5 last:border-0",
+                        "md:table-row md:border-slate-100 md:py-0",
+                        "transition-colors duration-150 ease-halus",
+                        "hover:bg-blue-50/50",
+                        bisaDibuka ? "cursor-pointer" : "",
+                        terbuka ? "bg-blue-50/60" : "",
+                      ].join(" ")}
                       // Baris yang dapat dibuka dijadikan tombol bagi teknologi bantu, dan
                       // dapat dibuka dengan Enter maupun Spasi. Tanpa itu, isinya hanya
                       // terjangkau tetikus — dan grid lama pun membukanya dengan klik.
                       {...(bisaDibuka
                         ? {
                             onClick: () => setExpanded(terbuka ? null : kunci),
-                            onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
-                              if (event.key !== 'Enter' && event.key !== ' ') return
-                              event.preventDefault()
-                              setExpanded(terbuka ? null : kunci)
+                            onKeyDown: (
+                              event: KeyboardEvent<HTMLTableRowElement>,
+                            ) => {
+                              if (event.key !== "Enter" && event.key !== " ")
+                                return;
+                              event.preventDefault();
+                              setExpanded(terbuka ? null : kunci);
                             },
-                            role: 'button',
+                            role: "button",
                             tabIndex: 0,
-                            'aria-expanded': terbuka,
+                            "aria-expanded": terbuka,
                           }
                         : {})}
                     >
@@ -710,15 +766,19 @@ export function DataTable<T>({
                         <td
                           key={k.key}
                           className={[
-                            'flex items-baseline gap-3 px-5 py-1.5',
-                            dense
-                              ? 'md:table-cell md:px-3 md:py-2 md:align-middle'
-                              : 'md:table-cell md:py-3.5 md:align-middle',
-                            k.alignRight ? 'md:text-right' : k.alignCenter ? 'md:text-center' : '',
+                            "flex items-baseline gap-3 px-5 py-1.5",
+                            compact
+                              ? "md:table-cell md:px-3 md:py-2 md:align-middle"
+                              : "md:table-cell md:py-3.5 md:align-middle",
+                            k.alignRight
+                              ? "md:text-right"
+                              : k.alignCenter
+                                ? "md:text-center"
+                                : "",
                             gridLines
-                              ? 'md:border-r md:border-slate-200 md:last:border-r-0'
-                              : '',
-                          ].join(' ')}
+                              ? "md:border-r md:border-slate-200 md:last:border-r-0"
+                              : "",
+                          ].join(" ")}
                         >
                           {/*
                             Nama kolom digambar ulang di dalam sel untuk tampilan kartu.
@@ -737,8 +797,19 @@ export function DataTable<T>({
                           >
                             {k.title}
                           </span>
-                          <span className="min-w-0 flex-1 break-words text-slate-900">
-                            {k.render ? k.render(b, nomorUrut) : k.value(b) || '—'}
+                          <span
+                            className={[
+                              "min-w-0 flex-1 break-words text-slate-900",
+                              // Lihat `fit`: sel boleh turun baris, termasuk isi yang
+                              // digambar pemanggil dengan `truncate`.
+                              fit
+                                ? "[&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal"
+                                : "",
+                            ].join(" ")}
+                          >
+                            {k.render
+                              ? k.render(b, nomorUrut)
+                              : k.value(b) || "—"}
                           </span>
                         </td>
                       ))}
@@ -755,7 +826,7 @@ export function DataTable<T>({
                       </tr>
                     )}
                   </Fragment>
-                )
+                );
               })}
             </tbody>
           </table>
@@ -779,7 +850,7 @@ export function DataTable<T>({
         />
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -801,23 +872,23 @@ function PageBar({
   onPageChange,
   isLoading = false,
 }: ServerPagination) {
-  const atFirst = page <= 1
-  const atLast = totalPage === 0 || page >= totalPage
+  const atFirst = page <= 1;
+  const atLast = totalPage === 0 || page >= totalPage;
 
   // Rentang baris yang sedang tampil. Ia jauh lebih berguna daripada nomor halaman saja:
   // "16–30 dari 120" menjawab "sudah sampai mana saya" tanpa pengguna menghitung sendiri.
-  const first = total === 0 ? 0 : (page - 1) * size + 1
-  const last = Math.min(page * size, total)
+  const first = total === 0 ? 0 : (page - 1) * size + 1;
+  const last = Math.min(page * size, total);
 
   const buttonClass = [
-    'inline-flex items-center justify-center rounded-kontrol border border-slate-300 bg-white',
-    'px-2.5 py-1.5 text-xs font-medium text-slate-700',
-    'transition-[background-color,border-color,color] duration-150 ease-halus',
-    'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900',
-    'focus:outline-none focus-visible:ring-4 focus-visible:ring-slate-400/35',
-    'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-slate-300',
-    'disabled:hover:bg-white disabled:hover:text-slate-700',
-  ].join(' ')
+    "inline-flex items-center justify-center rounded-kontrol border border-slate-300 bg-white",
+    "px-2.5 py-1.5 text-xs font-medium text-slate-700",
+    "transition-[background-color,border-color,color] duration-150 ease-halus",
+    "hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900",
+    "focus:outline-none focus-visible:ring-4 focus-visible:ring-slate-400/35",
+    "disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-slate-300",
+    "disabled:hover:bg-white disabled:hover:text-slate-700",
+  ].join(" ");
 
   return (
     <nav
@@ -826,12 +897,13 @@ function PageBar({
     >
       <p className="text-xs text-slate-600" role="status">
         {total === 0 ? (
-          'Total Data : 0'
+          "Total Data : 0"
         ) : (
           <>
-            Menampilkan <span className="font-medium text-slate-800">{first}</span>–
-            <span className="font-medium text-slate-800">{last}</span> · Total Data :{' '}
-            <span className="font-medium text-slate-800">{total}</span>
+            Menampilkan{" "}
+            <span className="font-medium text-slate-800">{first}</span>–
+            <span className="font-medium text-slate-800">{last}</span> · Total
+            Data : <span className="font-medium text-slate-800">{total}</span>
           </>
         )}
       </p>
@@ -857,8 +929,10 @@ function PageBar({
         </button>
 
         <span className="px-2 text-xs text-slate-600">
-          Hal. <span className="font-medium text-slate-800">{page}</span> dari{' '}
-          <span className="font-medium text-slate-800">{Math.max(totalPage, 1)}</span>
+          Hal. <span className="font-medium text-slate-800">{page}</span> dari{" "}
+          <span className="font-medium text-slate-800">
+            {Math.max(totalPage, 1)}
+          </span>
         </span>
 
         <button
@@ -881,9 +955,9 @@ function PageBar({
         </button>
       </div>
     </nav>
- )
+  );
 }
- /* Paginator adalah pemilih halaman di kaki tabel.
+/* Paginator adalah pemilih halaman di kaki tabel.
  *
  * # Bentuknya mengikuti paginator Pega, bukan dikarang
  *
@@ -928,26 +1002,26 @@ export function Paginator({
   totalPages,
   onPick,
 }: {
-  firstRow: number
-  lastRow: number
-  totalRows: number
-  currentPage: number
-  totalPages: number
-  onPick: (page: number) => void
+  firstRow: number;
+  lastRow: number;
+  totalRows: number;
+  currentPage: number;
+  totalPages: number;
+  onPick: (page: number) => void;
 }) {
   const step =
-    'inline-flex h-8 min-w-8 items-center justify-center rounded-kontrol border px-2 text-sm ' +
-    'transition-colors duration-150 ease-halus ' +
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ' +
-    'disabled:cursor-not-allowed disabled:opacity-40'
+    "inline-flex h-8 min-w-8 items-center justify-center rounded-kontrol border px-2 text-sm " +
+    "transition-colors duration-150 ease-halus " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 " +
+    "disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-slate-600" role="status">
-        Menampilkan{' '}
+        Menampilkan{" "}
         <span className="font-medium text-slate-800">
           {firstRow}–{lastRow}
-        </span>{' '}
+        </span>{" "}
         dari {totalRows} baris.
       </p>
 
@@ -957,7 +1031,10 @@ export function Paginator({
         berguna dan tetap tampil.
       */}
       {totalPages > 1 && (
-        <nav aria-label="Halaman tabel" className="flex flex-wrap items-center gap-1">
+        <nav
+          aria-label="Halaman tabel"
+          className="flex flex-wrap items-center gap-1"
+        >
           <button
             type="button"
             onClick={() => onPick(currentPage - 1)}
@@ -969,7 +1046,7 @@ export function Paginator({
           </button>
 
           {pageWindow(currentPage, totalPages).map((item, index) =>
-            item === 'sela' ? (
+            item === "sela" ? (
               <span
                 // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
                 // dapat muncul bersamaan — indeksnya yang membedakan.
@@ -985,13 +1062,13 @@ export function Paginator({
                 type="button"
                 onClick={() => onPick(item)}
                 aria-label={`Halaman ${item}`}
-                aria-current={item === currentPage ? 'page' : undefined}
+                aria-current={item === currentPage ? "page" : undefined}
                 className={[
                   step,
                   item === currentPage
-                    ? 'border-blue-600 bg-blue-600 font-medium text-white'
-                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100',
-                ].join(' ')}
+                    ? "border-blue-600 bg-blue-600 font-medium text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100",
+                ].join(" ")}
               >
                 {item}
               </button>
@@ -1010,7 +1087,7 @@ export function Paginator({
         </nav>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -1039,10 +1116,16 @@ function LoadingState() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
-function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefined }) {
+function EmptyState({
+  pesan,
+  saran,
+}: {
+  pesan: string;
+  saran?: string | undefined;
+}) {
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-14 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
@@ -1051,7 +1134,7 @@ function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefine
       <p className="text-sm font-medium text-slate-700">{pesan}</p>
       {saran && <p className="text-sm text-slate-500">{saran}</p>}
     </div>
-  )
+  );
 }
 
 /**
@@ -1061,7 +1144,13 @@ function EmptyState({ pesan, saran }: { pesan: string; saran?: string | undefine
  * disentuh tetikus — itu yang memberi tahu bahwa judulnya dapat ditekan. Tanpa petunjuk
  * itu, pengguna tidak punya cara menduga tabelnya dapat diurutkan.
  */
-function SortMarker({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
+function SortMarker({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction: "asc" | "desc";
+}) {
   if (!active) {
     return (
       <svg
@@ -1069,17 +1158,24 @@ function SortMarker({ active, direction }: { active: boolean; direction: 'asc' |
         aria-hidden="true"
         className="h-3 w-3 text-slate-300 transition-colors duration-150 ease-halus group-hover:text-slate-500"
       >
-        <path d="m6 1.5 2.6 3H3.4L6 1.5Zm0 9L3.4 7.5h5.2L6 10.5Z" fill="currentColor" />
+        <path
+          d="m6 1.5 2.6 3H3.4L6 1.5Zm0 9L3.4 7.5h5.2L6 10.5Z"
+          fill="currentColor"
+        />
       </svg>
-    )
+    );
   }
   return (
-    <svg viewBox="0 0 12 12" aria-hidden="true" className="h-3 w-3 text-blue-600">
-      {direction === 'asc' ? (
+    <svg
+      viewBox="0 0 12 12"
+      aria-hidden="true"
+      className="h-3 w-3 text-blue-600"
+    >
+      {direction === "asc" ? (
         <path d="m6 2 3.2 4H2.8L6 2Z" fill="currentColor" />
       ) : (
         <path d="M6 10 2.8 6h6.4L6 10Z" fill="currentColor" />
       )}
     </svg>
-  )
+  );
 }

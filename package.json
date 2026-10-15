@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
     "lint:install": "npm ci --prefix tools/lint",
-    "lint": "node tools/lint/node_modules/eslint/bin/eslint.js -c tools/lint/eslint.config.js src vite.config.ts"
+    "lint": "node tools/lint/node_modules/eslint/bin/eslint.js -c tools/lint/eslint.config.js src vite.config.ts",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -44,6 +45,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "prettier": "3.9.6"
   }
 }

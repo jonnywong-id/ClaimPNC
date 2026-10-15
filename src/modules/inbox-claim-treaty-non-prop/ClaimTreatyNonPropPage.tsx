@@ -1,20 +1,20 @@
-import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError, callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError, callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { NonPropViewSelect } from './NonPropViewSelect'
+import { NonPropViewSelect } from "./NonPropViewSelect";
 import {
   useClaimTreatyNonPropList,
   useClaimTreatyNonPropMetadata,
   useExportClaimTreatyNonProp,
-} from './api'
+} from "./api";
 import {
   EMPTY_FILTER,
   type FilterForm,
@@ -22,7 +22,7 @@ import {
   type Tab,
   type TabColumn,
   type WorkItem,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Claim Treaty Non Prop — menu `MENU_ID 55`, pengganti harness
@@ -66,21 +66,25 @@ import {
  * sama hidup di dua tempat.
  */
 export function ClaimTreatyNonPropPage() {
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useClaimTreatyNonPropMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useClaimTreatyNonPropMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = filter.tab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = filter.tab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tab terhalang TIDAK meminta isinya. Permintaannya pasti ditolak server dengan 422,
   // dan galat yang sudah diketahui pasti terjadi bukan galat yang layak ditampilkan —
   // yang layak ditampilkan adalah alasan terhalangnya.
-  const blocked = tab?.terhalang === true
-  const list = useClaimTreatyNonPropList(filter, page, meta.isSuccess && !blocked)
+  const blocked = tab?.terhalang === true;
+  const list = useClaimTreatyNonPropList(
+    filter,
+    page,
+    meta.isSuccess && !blocked,
+  );
 
   /**
    * Berpindah tab MEMBERSIHKAN kedua checkbox dan mengembalikan ke halaman pertama.
@@ -89,18 +93,18 @@ export function ClaimTreatyNonPropPage() {
    * padahal tidak mengubah apa pun.
    */
   function selectTab(code: string) {
-    setFilter({ ...EMPTY_FILTER, tab: code })
-    setPage(1)
+    setFilter({ ...EMPTY_FILTER, tab: code });
+    setPage(1);
   }
 
   function toggleSeeAll(value: boolean) {
-    setFilter((previous) => ({ ...previous, lihatSemua: value }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, lihatSemua: value }));
+    setPage(1);
   }
 
   function toggleTBA(value: boolean) {
-    setFilter((previous) => ({ ...previous, lihatTBA: value }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, lihatTBA: value }));
+    setPage(1);
   }
 
   if (portal === null) {
@@ -109,13 +113,13 @@ export function ClaimTreatyNonPropPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean klaim treaty milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
+            "Antrean klaim treaty milik satu badan hukum, dan aplikasi ini melayani " +
+            "empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -127,11 +131,14 @@ export function ClaimTreatyNonPropPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
-    <PageFrame filter={filter} exportable={!blocked && (list.data?.paginasi.total ?? 0) > 0}>
+    <PageFrame
+      filter={filter}
+      exportable={!blocked && (list.data?.paginasi.total ?? 0) > 0}
+    >
       <div className="mt-4">
         <NonPropViewSelect tabs={tabs} active={active} onSelect={selectTab} />
       </div>
@@ -193,9 +200,8 @@ export function ClaimTreatyNonPropPage() {
           )}
         </>
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({
@@ -203,13 +209,13 @@ function PageFrame({
   exportable,
   children,
 }: {
-  filter: FilterForm
+  filter: FilterForm;
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
-  exportable: boolean
-  children: ReactNode
+  exportable: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/*
@@ -218,11 +224,13 @@ function PageFrame({
             Pega (`D-13`). Nama menunya — "Inbox Claim Treaty Non Prop" — tetap terlihat di
             menu kiri, tempat pengguna memilihnya.
           */}
-          <h1 className="text-xl font-semibold text-slate-900">Claims In Progress</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Claims In Progress
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Antrean klaim treaty non-proporsional — klaim yang dialihkan perusahaan
-            asuransi lain (Ceding Co) kepada ASM sebagai penanggung kerugian di atas batas
-            tertentu.
+            Antrean klaim treaty non-proporsional — klaim yang dialihkan
+            perusahaan asuransi lain (Ceding Co) kepada ASM sebagai penanggung
+            kerugian di atas batas tertentu.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -234,7 +242,7 @@ function PageFrame({
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -248,8 +256,14 @@ function PageFrame({
  * terunduh adalah jawaban yang membingungkan: pengguna tidak dapat membedakannya dari
  * ekspor yang gagal diam-diam.
  */
-function ExportButton({ filter, enabled }: { filter: FilterForm; enabled: boolean }) {
-  const ekspor = useExportClaimTreatyNonProp()
+function ExportButton({
+  filter,
+  enabled,
+}: {
+  filter: FilterForm;
+  enabled: boolean;
+}) {
+  const ekspor = useExportClaimTreatyNonProp();
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -258,7 +272,7 @@ function ExportButton({ filter, enabled }: { filter: FilterForm; enabled: boolea
         disabled={!enabled || ekspor.isPending}
         onClick={() => ekspor.mutate(filter)}
       >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export Data'}
+        {ekspor.isPending ? "Menyiapkan berkas…" : "Export Data"}
       </Button>
       {ekspor.isError && (
         <p className="max-w-md text-right text-xs text-red-700" role="alert">
@@ -266,7 +280,7 @@ function ExportButton({ filter, enabled }: { filter: FilterForm; enabled: boolea
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -282,27 +296,29 @@ function ExportButton({ filter, enabled }: { filter: FilterForm; enabled: boolea
  * hilang dengan sendirinya begitu kepemilikan tabelnya berpindah.
  */
 function CreateClaimButton() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const [notice, setNotice] = useState('')
-  const [asking, setAsking] = useState(false)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const [notice, setNotice] = useState("");
+  const [asking, setAsking] = useState(false);
 
   async function ask() {
-    setAsking(true)
+    setAsking(true);
     try {
-      await callAPI('/api/inbox-claim-treaty-non-prop/klaim', {
-        metode: 'POST',
+      await callAPI("/api/inbox-claim-treaty-non-prop/klaim", {
+        metode: "POST",
         token,
         portal,
-      })
+      });
       // Jalur ini tercapai hanya bila server SUDAH dapat membuat klaim. Selama itu belum
       // terjadi, ia tidak pernah berjalan — dan bila kelak berjalan, pesan di bawah yang
       // pertama memberi tahu bahwa perilakunya berubah.
-      setNotice('Pembuatan klaim treaty non-prop sudah tersedia. Muat ulang layar ini.')
+      setNotice(
+        "Pembuatan klaim treaty non-prop sudah tersedia. Muat ulang layar ini.",
+      );
     } catch (error) {
-      setNotice(messageOf(error))
+      setNotice(messageOf(error));
     } finally {
-      setAsking(false)
+      setAsking(false);
     }
   }
 
@@ -311,13 +327,13 @@ function CreateClaimButton() {
       <Button tone="utama" onClick={ask} disabled={asking || portal === null}>
         Create Claim Treaty Non Prop
       </Button>
-      {notice !== '' && (
+      {notice !== "" && (
         <p className="max-w-md text-right text-xs text-amber-900" role="status">
           {notice}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -330,15 +346,18 @@ function CreateClaimButton() {
 function BlockedNotice({ tab }: { tab: Tab }) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
+      <h2 className="text-sm font-semibold text-amber-900">
+        {tab.nama} belum tersedia
+      </h2>
       <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
       {tab.pemilik_penghalang && (
         <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
+          <span className="font-medium">Menunggu:</span>{" "}
+          {tab.pemilik_penghalang}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -361,12 +380,13 @@ function FilterBar({
   onSeeAll,
   onTBA,
 }: {
-  tab: Tab
-  filter: FilterForm
-  onSeeAll: (value: boolean) => void
-  onTBA: (value: boolean) => void
+  tab: Tab;
+  filter: FilterForm;
+  onSeeAll: (value: boolean) => void;
+  onTBA: (value: boolean) => void;
 }) {
-  if (!tab.pakai_lihat_semua && !tab.pakai_lihat_tba && !tab.hanya_milik_saya) return null
+  if (!tab.pakai_lihat_semua && !tab.pakai_lihat_tba && !tab.hanya_milik_saya)
+    return null;
 
   return (
     <div className="mt-4 flex flex-col gap-2">
@@ -400,7 +420,7 @@ function FilterBar({
         {filterExplanation(tab, filter)}
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -411,25 +431,25 @@ function FilterBar({
  * berarti mengira antrean kosong, itu terlalu mahal untuk dibiarkan disimpulkan.
  */
 function filterExplanation(tab: Tab, filter: FilterForm): string {
-  const milik = filter.lihatSemua ? 'seluruh petugas' : 'Anda'
+  const milik = filter.lihatSemua ? "seluruh petugas" : "Anda";
 
   if (filter.lihatTBA) {
     return (
       `Menampilkan pekerjaan milik ${milik} yang nomor polisnya BELUM terbit. ` +
       'Di layar Pega, "See TBA Claim" hanya berpengaruh bila "See All Claim" ikut ' +
-      'dicentang; di sini keduanya berdiri sendiri.'
-    )
+      "dicentang; di sini keduanya berdiri sendiri."
+    );
   }
 
   if (filter.lihatSemua) {
-    return 'Menampilkan penugasan seluruh petugas, termasuk yang bukan milik Anda.'
+    return "Menampilkan penugasan seluruh petugas, termasuk yang bukan milik Anda.";
   }
 
   if (tab.hanya_milik_saya) {
-    return 'Antrean ini hanya berisi pekerjaan milik Anda.'
+    return "Antrean ini hanya berisi pekerjaan milik Anda.";
   }
 
-  return 'Antrean bersama — belum diambil siapa pun.'
+  return "Antrean bersama — belum diambil siapa pun.";
 }
 
 /**
@@ -459,20 +479,20 @@ function filterExplanation(tab: Tab, filter: FilterForm): string {
  * gagal. Yang digambar untuk baris seperti itu adalah tanda pisah.
  */
 function ClaimIDLink({ item }: { item: WorkItem }) {
-  if (item.no_klaim === '') return <span className="text-slate-400">—</span>
+  if (item.no_klaim === "") return <span className="text-slate-400">—</span>;
 
   return (
     <Link
       to={`/input-acceptation/${encodeURIComponent(item.no_klaim)}`}
       className={[
-        'font-medium text-blue-700 underline-offset-2 hover:underline',
-        'focus:outline-none focus-visible:rounded-kontrol',
-        'focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "font-medium text-blue-700 underline-offset-2 hover:underline",
+        "focus:outline-none focus-visible:rounded-kontrol",
+        "focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       {item.no_klaim}
     </Link>
-  )
+  );
 }
 
 /**
@@ -487,13 +507,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -517,7 +537,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -536,13 +556,13 @@ function columnsFor(tab: Tab): Column<WorkItem>[] {
       key: column.kunci,
       title: column.judul,
       value: (row) => cellText(row, column),
-    }
+    };
 
-    if (column.kunci === 'no_klaim') {
-      return { ...base, render: (row) => <ClaimIDLink item={row} /> }
+    if (column.kunci === "no_klaim") {
+      return { ...base, render: (row) => <ClaimIDLink item={row} /> };
     }
-    return base
-  })
+    return base;
+  });
 }
 
 /**
@@ -563,21 +583,21 @@ function columnsFor(tab: Tab): Column<WorkItem>[] {
  *    kolom yang gagal dimuat.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (typeof value === 'number') {
-    return String(value)
+  if (typeof value === "number") {
+    return String(value);
   }
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  const text = String(value);
+  return isDate(text) ? formatDate(text) : text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD`. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -589,25 +609,28 @@ function isDate(text: string): boolean {
  */
 function emptyMessageFor(tab: Tab, filter: FilterForm): string {
   if (filter.lihatTBA) {
-    const cakupan = filter.lihatSemua ? '' : ' Centang "See All Claim" untuk memperluas.'
+    const cakupan = filter.lihatSemua
+      ? ""
+      : ' Centang "See All Claim" untuk memperluas.';
     return (
-      'Tidak ada klaim yang nomor polisnya belum terbit pada penyaring ini.' + cakupan
-    )
+      "Tidak ada klaim yang nomor polisnya belum terbit pada penyaring ini." +
+      cakupan
+    );
   }
 
   if (tab.hanya_milik_saya && !filter.lihatSemua) {
     return (
       'Tidak ada pekerjaan klaim treaty non-prop milik Anda. Centang "See All Claim" ' +
-      'untuk melihat penugasan seluruh petugas.'
-    )
+      "untuk melihat penugasan seluruh petugas."
+    );
   }
 
-  return 'Antrean ini sedang kosong.'
+  return "Antrean ini sedang kosong.";
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

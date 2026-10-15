@@ -1,4 +1,4 @@
-import type { Kartu, Tile } from './types'
+import type { Kartu, Tile } from "./types";
 
 /**
  * Satu kartu penghitung pada Dashboard Claim.
@@ -18,10 +18,10 @@ export function KartuPenghitung({
   memuat,
   onPilih,
 }: {
-  kartu: Kartu
-  terpilih: boolean
-  memuat: boolean
-  onPilih: (tile: Tile) => void
+  kartu: Kartu;
+  terpilih: boolean;
+  memuat: boolean;
+  onPilih: (tile: Tile) => void;
 }) {
   return (
     <button
@@ -29,14 +29,14 @@ export function KartuPenghitung({
       onClick={() => onPilih(kartu.tile)}
       aria-pressed={terpilih}
       className={[
-        'flex flex-col items-start gap-1 rounded-kartu border p-5 text-left',
-        'transition ease-halus',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-        'focus-visible:outline-blue-600',
+        "flex flex-col items-start gap-1 rounded-kartu border p-5 text-left",
+        "transition ease-halus",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+        "focus-visible:outline-blue-600",
         terpilih
-          ? 'border-blue-300 bg-blue-50 shadow-angkat'
-          : 'border-slate-200 bg-white shadow-lembut hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-angkat',
-      ].join(' ')}
+          ? "border-blue-300 bg-blue-50 shadow-angkat"
+          : "border-slate-200 bg-white shadow-lembut hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-angkat",
+      ].join(" ")}
     >
       <span className="text-sm font-medium text-slate-600">{kartu.judul}</span>
 
@@ -51,13 +51,13 @@ export function KartuPenghitung({
         />
       ) : (
         <span className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">
-          {kartu.jumlah.toLocaleString('id-ID')}
+          {kartu.jumlah.toLocaleString("id-ID")}
         </span>
       )}
 
       <span className="text-xs text-slate-500">
-        {kartu.bentuk === 'survei' ? 'baris survei' : 'klaim'}
+        {kartu.bentuk === "survei" ? "baris survei" : "klaim"}
       </span>
     </button>
-  )
+  );
 }

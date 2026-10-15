@@ -1,17 +1,26 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { AutoClaimErrorCode, AutoClaimStatus, ErrorCode, type AutoClaim } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  AutoClaimErrorCode,
+  AutoClaimStatus,
+  ErrorCode,
+  type AutoClaim,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useAutoClaimBankList, useBusinessSourceLookup, useClientLookup } from './api'
-import { LookupPicker, type LookupRow } from './LookupPicker'
+import {
+  useAutoClaimBankList,
+  useBusinessSourceLookup,
+  useClientLookup,
+} from "./api";
+import { LookupPicker, type LookupRow } from "./LookupPicker";
 
 /**
  * Batas panjang harus sama dengan konstanta di `internal/masterautoclaim/masterautoclaim.go`.
@@ -28,7 +37,7 @@ const MAX = {
   picLapor: 100,
   emailLapor: 100,
   alamatPenerima: 250,
-} as const
+} as const;
 
 /**
  * PCT max diperiksa sebagai angka 0–100, dengan koma MAUPUN titik sebagai pemisah
@@ -40,49 +49,61 @@ const MAX = {
 const percentSchema = z
   .string()
   .trim()
-  .min(1, 'PCT max wajib diisi.')
+  .min(1, "PCT max wajib diisi.")
   .refine((value) => {
-    const parsed = Number(value.replace(',', '.'))
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100
-  }, 'PCT max harus berupa angka antara 0 dan 100, misalnya 100 atau 82,5.')
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100;
+  }, "PCT max harus berupa angka antara 0 dan 100, misalnya 100 atau 82,5.");
 
 const schema = z.object({
   nama_bank: z
     .string()
     .trim()
-    .min(1, 'Bank penerima wajib dipilih.')
-    .max(MAX.namaBank, `Bank penerima paling panjang ${MAX.namaBank} karakter.`),
+    .min(1, "Bank penerima wajib dipilih.")
+    .max(
+      MAX.namaBank,
+      `Bank penerima paling panjang ${MAX.namaBank} karakter.`,
+    ),
   no_rekening: z
     .string()
     .trim()
-    .min(1, 'Nomor rekening wajib diisi.')
-    .max(MAX.noRekening, `Nomor rekening paling panjang ${MAX.noRekening} karakter.`),
+    .min(1, "Nomor rekening wajib diisi.")
+    .max(
+      MAX.noRekening,
+      `Nomor rekening paling panjang ${MAX.noRekening} karakter.`,
+    ),
   pct_max: percentSchema,
   pic_lapor: z
     .string()
     .trim()
-    .min(1, 'PIC lapor wajib diisi.')
+    .min(1, "PIC lapor wajib diisi.")
     .max(MAX.picLapor, `PIC lapor paling panjang ${MAX.picLapor} karakter.`),
   email_lapor: z
     .string()
     .trim()
-    .min(1, 'Email lapor wajib diisi.')
-    .max(MAX.emailLapor, `Email lapor paling panjang ${MAX.emailLapor} karakter.`),
+    .min(1, "Email lapor wajib diisi.")
+    .max(
+      MAX.emailLapor,
+      `Email lapor paling panjang ${MAX.emailLapor} karakter.`,
+    ),
   alamat_penerima: z
     .string()
     .trim()
-    .min(1, 'Alamat penerima wajib diisi.')
-    .max(MAX.alamatPenerima, `Alamat penerima paling panjang ${MAX.alamatPenerima} karakter.`),
-})
+    .min(1, "Alamat penerima wajib diisi.")
+    .max(
+      MAX.alamatPenerima,
+      `Alamat penerima paling panjang ${MAX.alamatPenerima} karakter.`,
+    ),
+});
 
-export type AutoClaimFields = z.infer<typeof schema>
+export type AutoClaimFields = z.infer<typeof schema>;
 
 /** Nilai yang dikirim ke pemanggil saat form disimpan. */
 export type AutoClaimFormValues = AutoClaimFields & {
   /** Hanya terisi pada mode tambah; pada mode ubah ia null. */
-  sumberBisnis: LookupRow | null
-  client: LookupRow | null
-}
+  sumberBisnis: LookupRow | null;
+  client: LookupRow | null;
+};
 
 type Props = {
   /**
@@ -91,27 +112,27 @@ type Props = {
    * Mode menentukan dua hal sekaligus: Sumber Bisnis dapat dipilih atau tidak, dan
    * teks tombol simpannya.
    */
-  editing: AutoClaim | null
+  editing: AutoClaim | null;
 
   /**
    * Tombol Simpan ditampilkan. Ia mengirim status `"0"` — perubahan mengembalikan baris
    * ke antrean persetujuan, persis seperti `stsapprove="0"` pada layar lama.
    */
-  canSave: boolean
+  canSave: boolean;
 
   /**
    * Tombol Approve dan Reject ditampilkan. Keduanya hanya ada di tab Komite Approval,
    * dan di Pega pun keduanya berada DI FORM — bukan di baris grid.
    */
-  canDecide: boolean
+  canDecide: boolean;
 
-  isSaving: boolean
-  error: unknown
-  onSave: (values: AutoClaimFormValues, status: string) => void
-  onCancel: () => void
-}
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: AutoClaimFormValues, status: string) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -123,68 +144,70 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case AutoClaimErrorCode.initialTaken:
         return {
-          title: 'Sumber bisnis ini sudah ada di Master Auto Claim',
+          title: "Sumber bisnis ini sudah ada di Master Auto Claim",
           description:
-            'Buka barisnya lewat tab yang sesuai untuk mengubahnya, jangan menambahkannya lagi.',
-          tone: 'penolakan',
-        }
+            "Buka barisnya lewat tab yang sesuai untuk mengubahnya, jangan menambahkannya lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.validationFailed:
         // Bila detailnya ada, isiannya sudah disorot satu per satu; kotak pesan hanya
         // akan mengulang hal yang sama.
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 const FIELD_NAMES = [
-  'nama_bank',
-  'no_rekening',
-  'pct_max',
-  'pic_lapor',
-  'email_lapor',
-  'alamat_penerima',
-] as const
+  "nama_bank",
+  "no_rekening",
+  "pct_max",
+  "pic_lapor",
+  "email_lapor",
+  "alamat_penerima",
+] as const;
 
 /**
  * AutoClaimForm adalah form tambah dan ubah Master Auto Claim.
@@ -219,25 +242,25 @@ export function AutoClaimForm({
   onSave,
   onCancel,
 }: Props) {
-  const isEditing = editing !== null
+  const isEditing = editing !== null;
 
   // Tab Waiting Approval tidak punya satu pun tombol simpan di Pega — ia baca saja.
   // Isiannya ikut dinonaktifkan supaya keadaan itu terlihat, bukan hanya terasa saat
   // pengguna mencari tombol yang tidak ada.
-  const isReadOnly = !canSave && !canDecide
+  const isReadOnly = !canSave && !canDecide;
 
-  const [sumberBisnis, setSumberBisnis] = useState<LookupRow | null>(null)
+  const [sumberBisnis, setSumberBisnis] = useState<LookupRow | null>(null);
   const [client, setClient] = useState<LookupRow | null>(
-    editing && editing.id_client !== ''
+    editing && editing.id_client !== ""
       ? { id: editing.id_client, nama: editing.nama_client }
       : null,
-  )
-  const [sourceKeyword, setSourceKeyword] = useState('')
-  const [clientKeyword, setClientKeyword] = useState('')
+  );
+  const [sourceKeyword, setSourceKeyword] = useState("");
+  const [clientKeyword, setClientKeyword] = useState("");
 
-  const sourceLookup = useBusinessSourceLookup(sourceKeyword)
-  const clientLookup = useClientLookup(clientKeyword)
-  const bankList = useAutoClaimBankList()
+  const sourceLookup = useBusinessSourceLookup(sourceKeyword);
+  const clientLookup = useClientLookup(clientKeyword);
+  const bankList = useAutoClaimBankList();
 
   const {
     register,
@@ -247,14 +270,14 @@ export function AutoClaimForm({
   } = useForm<AutoClaimFields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama_bank: editing?.nama_bank ?? '',
-      no_rekening: editing?.no_rekening ?? '',
-      pct_max: editing?.pct_max ?? '',
-      pic_lapor: editing?.pic_lapor ?? '',
-      email_lapor: editing?.email_lapor ?? '',
-      alamat_penerima: editing?.alamat_penerima ?? '',
+      nama_bank: editing?.nama_bank ?? "",
+      no_rekening: editing?.no_rekening ?? "",
+      pct_max: editing?.pct_max ?? "",
+      pic_lapor: editing?.pic_lapor ?? "",
+      email_lapor: editing?.email_lapor ?? "",
+      alamat_penerima: editing?.alamat_penerima ?? "",
     },
-  })
+  });
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
@@ -263,15 +286,15 @@ export function AutoClaimForm({
     for (const [column, message] of Object.entries(violationsOf(error))) {
       if ((FIELD_NAMES as readonly string[]).includes(column)) {
         setError(column as (typeof FIELD_NAMES)[number], {
-          type: 'server',
+          type: "server",
           message,
-        })
+        });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const violation = violationsOf(error)
-  const message = messageFor(error)
+  const violation = violationsOf(error);
+  const message = messageFor(error);
 
   /**
    * submitWith menyusun penangan untuk satu tombol beserta status yang dikirimnya.
@@ -281,11 +304,13 @@ export function AutoClaimForm({
    * yang belum lolos pemeriksaan — bukan hanya tombol Simpan.
    */
   const submitWith = (status: string) =>
-    handleSubmit((values) => onSave({ ...values, sumberBisnis, client }, status))
+    handleSubmit((values) =>
+      onSave({ ...values, sumberBisnis, client }, status),
+    );
 
   // Isian dinonaktifkan saat menyimpan DAN saat baca saja. Keduanya disatukan supaya
   // tidak ada satu isian pun yang lupa menyertakan salah satunya.
-  const isLocked = isSaving || isReadOnly
+  const isLocked = isSaving || isReadOnly;
 
   /*
     Tab Komite Approval pun TIDAK dapat menyunting — komite hanya menyetujui atau menolak
@@ -300,7 +325,7 @@ export function AutoClaimForm({
     baris — keputusan Work Owner 2026-09-19, dan itulah yang menjaga CLIENTID/CLIENTNAME
     tidak terhapus saat menyetujui.
   */
-  const isDecisionOnly = canDecide
+  const isDecisionOnly = canDecide;
 
   /*
     Pemilih Sumber Bisnis dan Client hanya ada pada section yang memang memilikinya.
@@ -309,27 +334,37 @@ export function AutoClaimForm({
     caption `SUMBER BISNIS` dan `NAMA CLIENT`. `BrowseAutoKlaimApproval` (Waiting) dan
     `BrowseAutoKlaimKomite` TIDAK memuat satu pun: keduanya hanya menampilkan baris.
   */
-  const showPickers = !isEditing || canSave
+  const showPickers = !isEditing || canSave;
 
   // Judul form mengikuti nama tombol yang membukanya, dan itu bukan kerapian belaka:
   // baris pada tab Waiting Approval dibuka lewat tombol "Detail", dan form yang terbuka
   // tidak punya satu pun tombol simpan. Menamainya "Ubah" akan menjanjikan sesuatu yang
   // tidak ada di dalamnya — keputusan Work Owner 2026-10-03.
-  const actionVerb = isReadOnly ? 'Detail' : 'Ubah'
+  const actionVerb = isReadOnly ? "Detail" : "Ubah";
 
   return (
     <form
       onSubmit={submitWith(AutoClaimStatus.menunggu)}
       noValidate
-      aria-label={isEditing ? `${actionVerb} Master Auto Claim` : 'Tambah Master Auto Claim'}
+      aria-label={
+        isEditing
+          ? `${actionVerb} Master Auto Claim`
+          : "Tambah Master Auto Claim"
+      }
       className="space-y-4 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
     >
       <h2 className="text-base font-semibold text-slate-900">
-        {isEditing ? `${actionVerb} ${editing.inisial}` : 'Tambah Master Auto Claim'}
+        {isEditing
+          ? `${actionVerb} ${editing.inisial}`
+          : "Tambah Master Auto Claim"}
       </h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/*
@@ -340,11 +375,15 @@ export function AutoClaimForm({
       {showPickers &&
         (isEditing ? (
           <div className="rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <span className="block text-sm font-medium text-slate-700">SUMBER BISNIS</span>
-            <span className="mt-0.5 block text-sm text-slate-900">{editing.nama_penerima}</span>
+            <span className="block text-sm font-medium text-slate-700">
+              SUMBER BISNIS
+            </span>
+            <span className="mt-0.5 block text-sm text-slate-900">
+              {editing.nama_penerima}
+            </span>
             <span className="mt-1 block text-xs text-slate-500">
-              Tidak dapat diubah. Sumber bisnis yang keliru diperbaiki dengan menolak baris ini,
-              lalu menambah yang baru.
+              Tidak dapat diubah. Sumber bisnis yang keliru diperbaiki dengan
+              menolak baris ini, lalu menambah yang baru.
             </span>
           </div>
         ) : (
@@ -358,7 +397,7 @@ export function AutoClaimForm({
             onKeywordChange={setSourceKeyword}
             onPick={setSumberBisnis}
             onClear={() => setSumberBisnis(null)}
-            error={violation['inisial'] ?? violation['nama_penerima']}
+            error={violation["inisial"] ?? violation["nama_penerima"]}
             hint="Kode dan namanya diambil dari master Sumber Bisnis; keduanya tidak dapat diketik."
             disabled={isLocked}
           />
@@ -385,7 +424,7 @@ export function AutoClaimForm({
           onKeywordChange={setClientKeyword}
           onPick={setClient}
           onClear={() => setClient(null)}
-          error={violation['id_client'] ?? violation['nama_client']}
+          error={violation["id_client"] ?? violation["nama_client"]}
           hint="Boleh dikosongkan. Bila diisi, pilih dari master Client."
           disabled={isLocked}
         />
@@ -417,16 +456,20 @@ export function AutoClaimForm({
           label="NAMA PENERIMA"
           type="text"
           readOnly
-          value={isEditing ? editing.nama_penerima : (sumberBisnis?.nama ?? '')}
-          placeholder={isEditing ? undefined : 'Terisi setelah Sumber Bisnis dipilih'}
+          value={isEditing ? editing.nama_penerima : (sumberBisnis?.nama ?? "")}
+          placeholder={
+            isEditing ? undefined : "Terisi setelah Sumber Bisnis dipilih"
+          }
         />
         <Field
           id="inisial"
           label="INISIAL"
           type="text"
           readOnly
-          value={isEditing ? editing.inisial : (sumberBisnis?.id ?? '')}
-          placeholder={isEditing ? undefined : 'Terisi setelah Sumber Bisnis dipilih'}
+          value={isEditing ? editing.inisial : (sumberBisnis?.id ?? "")}
+          placeholder={
+            isEditing ? undefined : "Terisi setelah Sumber Bisnis dipilih"
+          }
         />
 
         {/*
@@ -438,8 +481,20 @@ export function AutoClaimForm({
         */}
         {client !== null && (
           <>
-            <Field id="nama_client" label="NAMA CLIENT" type="text" readOnly value={client.nama} />
-            <Field id="id_client" label="CLIENT ID" type="text" readOnly value={client.id} />
+            <Field
+              id="nama_client"
+              label="NAMA CLIENT"
+              type="text"
+              readOnly
+              value={client.nama}
+            />
+            <Field
+              id="id_client"
+              label="CLIENT ID"
+              type="text"
+              readOnly
+              value={client.id}
+            />
           </>
         )}
 
@@ -454,7 +509,7 @@ export function AutoClaimForm({
           }))}
           error={errors.nama_bank?.message}
           disabled={isLocked || isDecisionOnly}
-          {...register('nama_bank')}
+          {...register("nama_bank")}
         />
         <Field
           id="no_rekening"
@@ -465,7 +520,7 @@ export function AutoClaimForm({
           error={errors.no_rekening?.message}
           disabled={isLocked}
           readOnly={isDecisionOnly}
-          {...register('no_rekening')}
+          {...register("no_rekening")}
         />
 
         <Field
@@ -477,7 +532,7 @@ export function AutoClaimForm({
           error={errors.pct_max?.message}
           disabled={isLocked}
           readOnly={isDecisionOnly}
-          {...register('pct_max')}
+          {...register("pct_max")}
         />
         <Field
           id="pic_lapor"
@@ -487,7 +542,7 @@ export function AutoClaimForm({
           error={errors.pic_lapor?.message}
           disabled={isLocked}
           readOnly={isDecisionOnly}
-          {...register('pic_lapor')}
+          {...register("pic_lapor")}
         />
 
         <Field
@@ -498,7 +553,7 @@ export function AutoClaimForm({
           error={errors.email_lapor?.message}
           disabled={isLocked}
           readOnly={isDecisionOnly}
-          {...register('email_lapor')}
+          {...register("email_lapor")}
         />
 
         {/*
@@ -527,28 +582,30 @@ export function AutoClaimForm({
           error={errors.alamat_penerima?.message}
           disabled={isLocked}
           readOnly={isDecisionOnly}
-          {...register('alamat_penerima')}
+          {...register("alamat_penerima")}
         />
       </div>
 
       {canSave && (
         <p className="text-xs text-slate-500">
-          Baris yang disimpan selalu kembali ke{' '}
-          <span className="font-medium">Waiting Approval</span> dan menunggu keputusan komite —
-          persetujuan sebelumnya tidak berlaku atas isi yang sudah berubah.
+          Baris yang disimpan selalu kembali ke{" "}
+          <span className="font-medium">Waiting Approval</span> dan menunggu
+          keputusan komite — persetujuan sebelumnya tidak berlaku atas isi yang
+          sudah berubah.
         </p>
       )}
 
       {isReadOnly && (
         <p className="text-xs text-slate-500">
-          Baca saja. Baris yang menunggu hanya dapat diputuskan komite yang ditunjuk — lihat kolom{' '}
-          <span className="font-medium">KOMITE</span> — lewat tab Komite Approval.
+          Baca saja. Baris yang menunggu hanya dapat diputuskan komite yang
+          ditunjuk — lihat kolom <span className="font-medium">KOMITE</span> —
+          lewat tab Komite Approval.
         </p>
       )}
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
         <Button tone="halus" onClick={onCancel} disabled={isSaving}>
-          {isReadOnly ? 'Tutup' : 'Batal'}
+          {isReadOnly ? "Tutup" : "Batal"}
         </Button>
 
         {canSave && (
@@ -557,7 +614,7 @@ export function AutoClaimForm({
             tone="utama"
             disabled={isSaving || (!isEditing && sumberBisnis === null)}
           >
-            {isSaving ? 'Menyimpan…' : 'Simpan'}
+            {isSaving ? "Menyimpan…" : "Simpan"}
           </Button>
         )}
 
@@ -572,7 +629,11 @@ export function AutoClaimForm({
         */}
         {canDecide && (
           <>
-            <Button tone="kedua" onClick={submitWith(AutoClaimStatus.ditolak)} disabled={isSaving}>
+            <Button
+              tone="kedua"
+              onClick={submitWith(AutoClaimStatus.ditolak)}
+              disabled={isSaving}
+            >
               Reject
             </Button>
             <Button
@@ -586,5 +647,5 @@ export function AutoClaimForm({
         )}
       </div>
     </form>
-  )
+  );
 }

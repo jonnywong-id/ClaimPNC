@@ -7,17 +7,17 @@
  * bersama akan menarik seluruh isian itu ke dalam komponen tampilan.
  */
 export type TabItem = {
-  kode: string
-  nama: string
+  kode: string;
+  nama: string;
   /** Kalimat penjelas; digambar sebagai `title` pada butirnya. Boleh kosong. */
-  keterangan?: string
-}
+  keterangan?: string;
+};
 
 type Props = {
-  tabs: TabItem[]
+  tabs: TabItem[];
   /** Kode daftar yang sedang terbuka. */
-  active: string
-  onSelect: (kode: string) => void
+  active: string;
+  onSelect: (kode: string) => void;
 
   /**
    * Nama bilahnya bagi pembaca layar.
@@ -25,8 +25,8 @@ type Props = {
    * Diperlukan begitu satu halaman memuat lebih dari satu bilah, dan berguna bahkan bila
    * hanya ada satu: tanpa nama, ia hanya dibacakan sebagai "daftar tab".
    */
-  label: string
-}
+  label: string;
+};
 
 /**
  * TabBar adalah bilah pemilih daftar yang dipakai layar-layar berisi beberapa antrean.
@@ -53,7 +53,7 @@ export function TabBar({ tabs, active, onSelect, label }: Props) {
     <div className="overflow-x-auto" role="tablist" aria-label={label}>
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
         {tabs.map((tab) => {
-          const selected = tab.kode === active
+          const selected = tab.kode === active;
           return (
             <button
               key={tab.kode}
@@ -63,20 +63,20 @@ export function TabBar({ tabs, active, onSelect, label }: Props) {
               title={tab.keterangan}
               onClick={() => onSelect(tab.kode)}
               className={[
-                'flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5',
-                'text-sm font-medium whitespace-nowrap',
-                'transition-[color,border-color,background-color] duration-150 ease-halus',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                "flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5",
+                "text-sm font-medium whitespace-nowrap",
+                "transition-[color,border-color,background-color] duration-150 ease-halus",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                 selected
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
-              ].join(' ')}
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+              ].join(" ")}
             >
               {tab.nama}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

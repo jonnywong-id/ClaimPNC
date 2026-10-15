@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { simpanBerkas } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { simpanBerkas } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { usePLAList, usePrintPLA, useSavePLANotes, useSendAllPLA, violationsFrom } from './api'
-import type { PLARow, PLASendOutcome } from './types'
+import {
+  usePLAList,
+  usePrintPLA,
+  useSavePLANotes,
+  useSendAllPLA,
+  violationsFrom,
+} from "./api";
+import type { PLARow, PLASendOutcome } from "./types";
 
 /**
  * Dialog Print PLA — padanan layar `Section/PrintPLA_dtl_sect.xml` (flow action lokal
@@ -28,79 +34,88 @@ export function PLADialog({
   coverageName,
   onClose,
 }: {
-  claimID: string
-  taskID: string
-  object: number
-  coverage: number
-  coverageName: string
-  onClose: () => void
+  claimID: string;
+  taskID: string;
+  object: number;
+  coverage: number;
+  coverageName: string;
+  onClose: () => void;
 }) {
-  const list = usePLAList(claimID)
-  const save = useSavePLANotes(claimID)
-  const print = usePrintPLA(claimID)
-  const send = useSendAllPLA(claimID)
-  const [sendResult, setSendResult] = useState<PLASendOutcome[] | null>(null)
-  const [rows, setRows] = useState<PLARow[]>([])
-  const [notes, setNotes] = useState<Record<string, string>>({})
-  const [emails, setEmails] = useState<Record<string, string>>({})
-  const request = { tugas_id: taskID, objek: object, jaminan: coverage }
+  const list = usePLAList(claimID);
+  const save = useSavePLANotes(claimID);
+  const print = usePrintPLA(claimID);
+  const send = useSendAllPLA(claimID);
+  const [sendResult, setSendResult] = useState<PLASendOutcome[] | null>(null);
+  const [rows, setRows] = useState<PLARow[]>([]);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string>>({});
+  const request = { tugas_id: taskID, objek: object, jaminan: coverage };
 
   function show(result: { pla: PLARow[] }) {
-    setRows(result.pla)
-    setNotes(Object.fromEntries(result.pla.map((p) => [p.nomor, p.catatan])))
-    setEmails(Object.fromEntries(result.pla.map((p) => [p.nomor, p.email])))
+    setRows(result.pla);
+    setNotes(Object.fromEntries(result.pla.map((p) => [p.nomor, p.catatan])));
+    setEmails(Object.fromEntries(result.pla.map((p) => [p.nomor, p.email])));
   }
 
   // Daftar diminta SEKALI saat dialog muncul. Membukanya dapat menerbitkan nomor PLA, dan
   // StrictMode menjalankan efek dua kali — dua permintaan bersamaan akan menerbitkan dua kali.
-  const opened = useRef(false)
+  const opened = useRef(false);
   useEffect(() => {
-    if (opened.current) return
-    opened.current = true
-    list.mutate(request, { onSuccess: show })
-  })
+    if (opened.current) return;
+    opened.current = true;
+    list.mutate(request, { onSuccess: show });
+  });
 
-  const busy = list.isPending || save.isPending || print.isPending || send.isPending
+  const busy =
+    list.isPending || save.isPending || print.isPending || send.isPending;
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === "Escape" && !busy) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
 
-  const notesChanged = rows.filter((r) => (notes[r.nomor] ?? '') !== r.catatan)
-  const emailsChanged = rows.filter((r) => (emails[r.nomor] ?? '').trim() !== r.email)
-  const changed = [...notesChanged, ...emailsChanged]
-  const failure = send.error ?? print.error ?? save.error ?? list.error
-  const unsent = rows.filter((r) => !r.terkirim)
-  const violations = violationsFrom(failure)
+  const notesChanged = rows.filter((r) => (notes[r.nomor] ?? "") !== r.catatan);
+  const emailsChanged = rows.filter(
+    (r) => (emails[r.nomor] ?? "").trim() !== r.email,
+  );
+  const changed = [...notesChanged, ...emailsChanged];
+  const failure = send.error ?? print.error ?? save.error ?? list.error;
+  const unsent = rows.filter((r) => !r.terkirim);
+  const violations = violationsFrom(failure);
 
   function download(nomor?: string) {
-    print.reset()
-    print.mutate(nomor ? { ...request, nomor } : request, { onSuccess: (file) => simpanBerkas(file) })
+    print.reset();
+    print.mutate(nomor ? { ...request, nomor } : request, {
+      onSuccess: (file) => simpanBerkas(file),
+    });
   }
 
   function sendAll() {
     const ok = window.confirm(
       `Kirim ${unsent.length} PLA lewat email ke alamat di kolom Email?\n\n` +
-        'Email yang sudah terkirim tidak dapat ditarik kembali.',
-    )
-    if (!ok) return
-    send.reset()
-    setSendResult(null)
+        "Email yang sudah terkirim tidak dapat ditarik kembali.",
+    );
+    if (!ok) return;
+    send.reset();
+    setSendResult(null);
     send.mutate(request, {
       onSuccess: (result) => {
-        show(result.daftar)
-        setSendResult(result.hasil)
+        show(result.daftar);
+        setSendResult(result.hasil);
       },
-    })
+    });
   }
 
   function saveNotes() {
-    const catatan = Object.fromEntries(notesChanged.map((r) => [r.nomor, notes[r.nomor] ?? '']))
-    const email = Object.fromEntries(emailsChanged.map((r) => [r.nomor, (emails[r.nomor] ?? '').trim()]))
-    save.mutate({ ...request, catatan, email }, { onSuccess: show })
+    const catatan = Object.fromEntries(
+      notesChanged.map((r) => [r.nomor, notes[r.nomor] ?? ""]),
+    );
+    const email = Object.fromEntries(
+      emailsChanged.map((r) => [r.nomor, (emails[r.nomor] ?? "").trim()]),
+    );
+    save.mutate({ ...request, catatan, email }, { onSuccess: show });
   }
 
   return (
@@ -111,12 +126,17 @@ export function PLADialog({
       aria-labelledby="judul-print-pla"
     >
       <div className="max-h-full w-full max-w-4xl overflow-y-auto rounded-kartu bg-white p-6 shadow-angkat">
-        <h2 id="judul-print-pla" className="text-lg font-semibold text-slate-900">
+        <h2
+          id="judul-print-pla"
+          className="text-lg font-semibold text-slate-900"
+        >
           Print PLA
         </h2>
         <p className="mt-1 text-sm text-slate-600">{coverageName}</p>
 
-        {list.isPending && <p className="mt-4 text-sm text-slate-500">Menyiapkan PLA…</p>}
+        {list.isPending && (
+          <p className="mt-4 text-sm text-slate-500">Menyiapkan PLA…</p>
+        )}
 
         {rows.length > 0 && (
           <table className="mt-4 w-full border-collapse text-sm">
@@ -133,11 +153,16 @@ export function PLADialog({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.nomor} className="border-b border-slate-100 align-top">
+                <tr
+                  key={r.nomor}
+                  className="border-b border-slate-100 align-top"
+                >
                   <td className="p-2 font-mono text-xs">
                     {r.nomor}
                     {r.terkirim && (
-                      <span className="mt-1 block font-sans text-[11px] font-medium text-emerald-700">Terkirim</span>
+                      <span className="mt-1 block font-sans text-[11px] font-medium text-emerald-700">
+                        Terkirim
+                      </span>
                     )}
                   </td>
                   <td className="p-2">{r.penerima}</td>
@@ -146,8 +171,10 @@ export function PLADialog({
                     <textarea
                       aria-label={`Remarks ${r.nomor}`}
                       rows={3}
-                      value={notes[r.nomor] ?? ''}
-                      onChange={(e) => setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))}
+                      value={notes[r.nomor] ?? ""}
+                      onChange={(e) =>
+                        setNotes((n) => ({ ...n, [r.nomor]: e.target.value }))
+                      }
                       className="w-64 rounded border border-slate-300 px-2 py-1"
                     />
                   </td>
@@ -156,8 +183,10 @@ export function PLADialog({
                       aria-label={`Email ${r.nomor}`}
                       rows={3}
                       maxLength={1000}
-                      value={emails[r.nomor] ?? ''}
-                      onChange={(e) => setEmails((m) => ({ ...m, [r.nomor]: e.target.value }))}
+                      value={emails[r.nomor] ?? ""}
+                      onChange={(e) =>
+                        setEmails((m) => ({ ...m, [r.nomor]: e.target.value }))
+                      }
                       className="w-56 rounded border border-slate-300 px-2 py-1 text-xs"
                     />
                   </td>
@@ -165,7 +194,11 @@ export function PLADialog({
                     <button
                       type="button"
                       disabled={busy || changed.length > 0}
-                      title={changed.length > 0 ? 'Simpan remarks dan email lebih dulu.' : undefined}
+                      title={
+                        changed.length > 0
+                          ? "Simpan remarks dan email lebih dulu."
+                          : undefined
+                      }
                       onClick={() => download(r.nomor)}
                       className="rounded bg-blue-800 px-2 py-1 text-xs text-white disabled:opacity-60"
                     >
@@ -184,10 +217,10 @@ export function PLADialog({
               title="PLA belum dapat diproses"
               description={
                 violations.length > 0
-                  ? violations.map((v) => v.pesan).join(' ')
+                  ? violations.map((v) => v.pesan).join(" ")
                   : failure instanceof Error
                     ? failure.message
-                    : 'Terjadi kesalahan pada sistem.'
+                    : "Terjadi kesalahan pada sistem."
               }
               tone="penolakan"
             />
@@ -205,57 +238,69 @@ export function PLADialog({
             Tutup
           </Button>
           <div className="flex flex-wrap gap-3">
-            <Button tone="kedua" disabled={busy || changed.length === 0} onClick={saveNotes}>
-              {save.isPending ? 'Menyimpan…' : 'Simpan Remarks & Email'}
+            <Button
+              tone="kedua"
+              disabled={busy || changed.length === 0}
+              onClick={saveNotes}
+            >
+              {save.isPending ? "Menyimpan…" : "Simpan Remarks & Email"}
             </Button>
             <Button
               tone="kedua"
               disabled={busy || unsent.length === 0 || changed.length > 0}
               title={
                 changed.length > 0
-                  ? 'Simpan remarks dan email lebih dulu.'
+                  ? "Simpan remarks dan email lebih dulu."
                   : unsent.length === 0
-                    ? 'Seluruh PLA sudah terkirim.'
+                    ? "Seluruh PLA sudah terkirim."
                     : undefined
               }
               onClick={sendAll}
             >
-              {send.isPending ? 'Mengirim…' : 'SEND ALL PLA'}
+              {send.isPending ? "Mengirim…" : "SEND ALL PLA"}
             </Button>
-            <Button tone="utama" disabled={busy || rows.length === 0 || changed.length > 0} onClick={() => download()}>
-              {print.isPending ? 'Mencetak…' : 'Print All PLA'}
+            <Button
+              tone="utama"
+              disabled={busy || rows.length === 0 || changed.length > 0}
+              onClick={() => download()}
+            >
+              {print.isPending ? "Mencetak…" : "Print All PLA"}
             </Button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** Hasil SEND ALL PLA per nomor; sebab yang gagal ditulis apa adanya untuk IT Support. */
 function SendResult({ result }: { result: PLASendOutcome[] }) {
-  const failed = result.filter((o) => o.galat)
-  const sent = result.filter((o) => o.terkirim)
-  const skipped = result.filter((o) => o.dilewati)
+  const failed = result.filter((o) => o.galat);
+  const sent = result.filter((o) => o.terkirim);
+  const skipped = result.filter((o) => o.dilewati);
   return (
     <div className="mt-4 space-y-2" role="status">
       {sent.length > 0 && (
         <p className="text-sm text-emerald-700">
-          {sent.length} PLA terkirim: {sent.map((o) => o.nomor).join(', ')}.
+          {sent.length} PLA terkirim: {sent.map((o) => o.nomor).join(", ")}.
         </p>
       )}
       {skipped.length > 0 && (
         <p className="text-sm text-slate-600">
-          {skipped.length} PLA sudah terkirim sebelumnya dan tidak dikirim ulang.
+          {skipped.length} PLA sudah terkirim sebelumnya dan tidak dikirim
+          ulang.
         </p>
       )}
       {failed.length > 0 && (
         <ErrorMessage
           tone="gangguan"
           title={`${failed.length} PLA gagal dikirim`}
-          description={failed.map((o) => `${o.nomor}: ${o.galat}`).join(' | ') + ' — lampirkan rincian ini ke IT Support.'}
+          description={
+            failed.map((o) => `${o.nomor}: ${o.galat}`).join(" | ") +
+            " — lampirkan rincian ini ke IT Support."
+          }
         />
       )}
     </div>
-  )
+  );
 }

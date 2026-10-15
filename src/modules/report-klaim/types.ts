@@ -8,9 +8,9 @@
 /** Satu tombol Export pada sebuah kartu. */
 export type ReportAction = {
   /** Kosong pada kartu bertombol tunggal. */
-  kode: string
-  label: string
-}
+  kode: string;
+  label: string;
+};
 
 /**
  * Penyaring mana yang berlaku pada satu laporan.
@@ -24,43 +24,43 @@ export type ReportAction = {
  * menjanjikan isian yang 27 dari 28 panel abaikan.
  */
 export type FilterUsage = {
-  rentang_tanggal: boolean
-  lini_bisnis: boolean
-  status_compliance: boolean
-  bisnis: boolean
-  rincian: boolean
-}
+  rentang_tanggal: boolean;
+  lini_bisnis: boolean;
+  status_compliance: boolean;
+  bisnis: boolean;
+  rincian: boolean;
+};
 
 /** Jejak ke rule Pega asal sebuah laporan. */
 export type ReportSource = {
-  activity: string
-  rule_sql?: string[]
-}
+  activity: string;
+  rule_sql?: string[];
+};
 
 /** Satu baris laporan. */
 export type Report = {
-  kode: string
-  judul: string
-  tombol: ReportAction[]
-  penyaring: FilterUsage
-  tersedia: boolean
+  kode: string;
+  judul: string;
+  tombol: ReportAction[];
+  penyaring: FilterUsage;
+  tersedia: boolean;
   /** Hanya terisi bila `tersedia` bernilai false. */
-  alasan?: string
-  penghalang?: string
-  sumber: ReportSource
-}
+  alasan?: string;
+  penghalang?: string;
+  sumber: ReportSource;
+};
 
 /** Satu pilihan dropdown "Bisnis" — lini bisnis. */
 export type BusinessLine = {
-  nilai: string
-  nama: string
-}
+  nilai: string;
+  nama: string;
+};
 
 /** Satu pilihan radio "Status Compliance". */
 export type ComplianceStatus = {
-  nilai: string
-  nama: string
-}
+  nilai: string;
+  nama: string;
+};
 
 /**
  * Isi layar sebelum satu tombol pun ditekan.
@@ -69,21 +69,21 @@ export type ComplianceStatus = {
  * ulang dan tidak mengelompokkannya: susunan itulah yang dihafal pengguna.
  */
 export type CatalogResponse = {
-  judul: string
-  laporan: Report[]
-  lini_bisnis: BusinessLine[]
-  status_compliance: ComplianceStatus[]
-}
+  judul: string;
+  laporan: Report[];
+  lini_bisnis: BusinessLine[];
+  status_compliance: ComplianceStatus[];
+};
 
 /** Satu pilihan autocomplete "Bisnis" pada panel Klaim Per Bisnis. */
 export type BusinessOption = {
-  kode: string
-  nama: string
-}
+  kode: string;
+  nama: string;
+};
 
 export type BusinessOptionResponse = {
-  bisnis: BusinessOption[]
-}
+  bisnis: BusinessOption[];
+};
 
 /**
  * Isian penyaring.
@@ -92,29 +92,29 @@ export type BusinessOptionResponse = {
  * dan yang tidak dapat dibaca dua arti, berbeda dari `dd/mm/yyyy` di dalam berkas.
  */
 export type ReportFilter = {
-  dari: string
-  sampai: string
-  lini: string
-  status_compliance: string
-  bisnis: string
-  rincian: boolean
-}
+  dari: string;
+  sampai: string;
+  lini: string;
+  status_compliance: string;
+  bisnis: string;
+  rincian: boolean;
+};
 
 export const EMPTY_FILTER: ReportFilter = {
-  dari: '',
-  sampai: '',
-  lini: '',
-  status_compliance: '',
-  bisnis: '',
+  dari: "",
+  sampai: "",
+  lini: "",
+  status_compliance: "",
+  bisnis: "",
   rincian: false,
-}
+};
 
 /** Permintaan unduh satu berkas. */
 export type ExportRequest = {
-  kode: string
+  kode: string;
   /** Kosong pada kartu bertombol tunggal. */
-  aksi: string
-  filter: ReportFilter
+  aksi: string;
+  filter: ReportFilter;
   /** Penyaring mana yang benar-benar berlaku pada laporan itu. */
-  penyaring: FilterUsage
-}
+  penyaring: FilterUsage;
+};

@@ -8,9 +8,7 @@
  */
 
 /** Hasil pembacaan satu jalur. */
-export type Terbaca =
-  | { ada: false }
-  | { ada: true; nilai: string }
+export type Terbaca = { ada: false } | { ada: true; nilai: string };
 
 /**
  * Membaca satu jalur bertitik, mis. `ClaimData.DateOfLoss`.
@@ -21,23 +19,30 @@ export type Terbaca =
  * `null` diperlakukan sebagai ADA tetapi kosong, bukan tidak ada: jalurnya memang ada di
  * dokumen, hanya nilainya yang belum diisi.
  */
-export function ambil(dokumen: Record<string, unknown>, jalur: string): Terbaca {
-  let simpul: unknown = dokumen
+export function ambil(
+  dokumen: Record<string, unknown>,
+  jalur: string,
+): Terbaca {
+  let simpul: unknown = dokumen;
 
-  for (const bagian of jalur.split('.')) {
-    if (simpul === null || typeof simpul !== 'object' || Array.isArray(simpul)) {
-      return { ada: false }
+  for (const bagian of jalur.split(".")) {
+    if (
+      simpul === null ||
+      typeof simpul !== "object" ||
+      Array.isArray(simpul)
+    ) {
+      return { ada: false };
     }
     if (!(bagian in (simpul as Record<string, unknown>))) {
-      return { ada: false }
+      return { ada: false };
     }
-    simpul = (simpul as Record<string, unknown>)[bagian]
+    simpul = (simpul as Record<string, unknown>)[bagian];
   }
 
-  if (simpul === null || simpul === undefined) return { ada: true, nilai: '' }
-  if (typeof simpul === 'object') return { ada: true, nilai: '' }
+  if (simpul === null || simpul === undefined) return { ada: true, nilai: "" };
+  if (typeof simpul === "object") return { ada: true, nilai: "" };
 
-  return { ada: true, nilai: String(simpul) }
+  return { ada: true, nilai: String(simpul) };
 }
 
 /**
@@ -51,21 +56,21 @@ export function ambilDaftar(
   dokumen: Record<string, unknown>,
   jalur: string,
 ): Record<string, unknown>[] {
-  let simpul: unknown = dokumen
+  let simpul: unknown = dokumen;
 
-  for (const bagian of jalur.split('.')) {
-    if (simpul === null || typeof simpul !== 'object') return []
-    simpul = (simpul as Record<string, unknown>)[bagian]
+  for (const bagian of jalur.split(".")) {
+    if (simpul === null || typeof simpul !== "object") return [];
+    simpul = (simpul as Record<string, unknown>)[bagian];
   }
 
   if (Array.isArray(simpul)) {
     return simpul.filter(
       (baris): baris is Record<string, unknown> =>
-        baris !== null && typeof baris === 'object' && !Array.isArray(baris),
-    )
+        baris !== null && typeof baris === "object" && !Array.isArray(baris),
+    );
   }
-  if (simpul !== null && typeof simpul === 'object') {
-    return [simpul as Record<string, unknown>]
+  if (simpul !== null && typeof simpul === "object") {
+    return [simpul as Record<string, unknown>];
   }
-  return []
+  return [];
 }

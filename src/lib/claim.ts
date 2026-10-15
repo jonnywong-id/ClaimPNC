@@ -30,5 +30,5 @@
  * Setiap layar karena itu memutuskan sendiri baris mana yang ditautkannya.
  */
 export function claimDetailPath(claimNumber: string): string {
-  return `/registrasi/klaim/${encodeURIComponent(claimNumber)}`
+  return `/registrasi/klaim/${encodeURIComponent(claimNumber)}`;
 }

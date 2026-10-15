@@ -25,7 +25,7 @@ export type WorkItem = {
    *
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom.
    */
-  referensi: string
+  referensi: string;
 
   /**
    * Nomor case yang dibaca pengguna.
@@ -33,15 +33,15 @@ export type WorkItem = {
    * Judulnya BERBEDA antar tab — "CaseID" pada kedua tab Receive dan "Nomor Case" pada tab
    * RCL/PUCL — dan perbedaan itu datang dari server lewat `kolom`, bukan ditebak layar.
    */
-  no_case: string
+  no_case: string;
 
-  no_polis: string
+  no_polis: string;
 
   /** Nomor klaim PNC yang terbit dari berkas ini. Hanya tab Receive; kosong bila berkasnya
    * belum diregistrasi menjadi klaim, dan itu keadaan yang sah. */
-  no_klaim_pnc: string
+  no_klaim_pnc: string;
 
-  nama_tertanggung: string
+  nama_tertanggung: string;
 
   /**
    * Tanggal Kejadian, dikirim APA ADANYA.
@@ -50,7 +50,7 @@ export type WorkItem = {
    * kolomnya tidak dapat diperiksa. Layar memformatnya hanya bila bentuknya memang
    * `YYYY-MM-DD`; selain itu ditampilkan apa adanya.
    */
-  tanggal_kejadian: string
+  tanggal_kejadian: string;
 
   /**
    * Jenis Klaim — "PA" atau "NONMBU".
@@ -59,10 +59,10 @@ export type WorkItem = {
    * (`.ReceiveDocument.TypeOfClaim`) tidak punya kolom basis data. Kosong pada tab
    * RCL/PUCL, yang tidak menurunkannya sama sekali.
    */
-  jenis_klaim: string
+  jenis_klaim: string;
 
-  nama_pengirim: string
-  tanggal_terima_dokumen: string
+  nama_pengirim: string;
+  tanggal_terima_dokumen: string;
 
   /**
    * SELALU kosong.
@@ -71,15 +71,15 @@ export type WorkItem = {
    * supaya isian yang belum terbawa terlihat, bukan tersamar sebagai layar yang sudah
    * setara.
    */
-  jumlah_lembar_dokumen: string
+  jumlah_lembar_dokumen: string;
 
   /** Tanggal Masuk Inbox. Digambar tab RCL/PUCL; dipakai kedua tab untuk mengurutkan. */
-  tanggal_masuk_inbox: string
+  tanggal_masuk_inbox: string;
 
-  deskripsi_analyst: string
+  deskripsi_analyst: string;
 
   /** Jalur penanganan — "RCL" atau "PUCL". Kosong bila kode jalurnya tidak dikenali. */
-  rcl_pucl: string
+  rcl_pucl: string;
 
   /**
    * Status jalur RCL/PUCL.
@@ -87,9 +87,9 @@ export type WorkItem = {
    * Ia BUKAN Status Klaim ber-33 kode `1134`–`1166` (`R-06`). Keduanya kolom berbeda pada
    * tabel yang sama, dan namanya hanya berbeda satu huruf.
    */
-  status_rcl_pucl: string
+  status_rcl_pucl: string;
 
-  tanggal_cetak_surat: string
+  tanggal_cetak_surat: string;
 
   /**
    * Lama Klaim, dikirim sebagai TEKS.
@@ -98,9 +98,9 @@ export type WorkItem = {
    * DDL yang menyatakan tipenya (`R-08`). Menambahkan kata "hari" di layar berarti
    * menetapkan satuan yang belum pernah dipastikan.
    */
-  lama_klaim: string
+  lama_klaim: string;
 
-  status_kadaluarsa: string
+  status_kadaluarsa: string;
 
   /**
    * Layar kerja di balik nomor case baris ini dapat dibuka.
@@ -110,24 +110,24 @@ export type WorkItem = {
    * mencakup seluruh klaim di antrean itu. Nomor case yang belum punya pasangan digambar
    * sebagai teks biasa — tautan yang pasti gagal lebih buruk daripada tidak ada tautan.
    */
-  layar_klaim_siap: boolean
-}
+  layar_klaim_siap: boolean;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type WorkItemField = keyof WorkItem
+export type WorkItemField = keyof WorkItem;
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: WorkItemField
-  judul: string
-}
+  kunci: WorkItemField;
+  judul: string;
+};
 
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  kolom: TabColumn[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  kolom: TabColumn[];
 
   /**
    * Barisnya diambil dari antrean BERSAMA, bukan dari penugasan per orang.
@@ -135,7 +135,7 @@ export type Tab = {
    * Hanya tab RCL/PUCL begitu. Layar memakainya untuk menjelaskan antrean yang kosong
    * menurut sebabnya.
    */
-  antrean_bersama: boolean
+  antrean_bersama: boolean;
 
   /**
    * Nomor case pada tab ini adalah TAUTAN yang membuka layar kerja penerimaan dokumen.
@@ -143,7 +143,7 @@ export type Tab = {
    * Hanya tab Receive begitu. Ia datang dari SERVER, bukan disimpulkan layar dari kode tab,
    * supaya perilaku klik ditetapkan di tempat buktinya dibaca.
    */
-  buka_layar_kerja: boolean
+  buka_layar_kerja: boolean;
 
   /**
    * Nomor case pada tab ini adalah TAUTAN yang membuka layar kerja klaim RCL/PUCL.
@@ -151,7 +151,7 @@ export type Tab = {
    * Hanya tab RCL/PUCL begitu. Keduanya tidak pernah benar bersamaan: satu sel membuka tepat
    * satu layar, dan kelas objek kerjanyalah yang menentukan layar mana.
    */
-  buka_layar_klaim: boolean
+  buka_layar_klaim: boolean;
 
   /**
    * Tab digambar tetapi belum dapat diisi.
@@ -159,33 +159,33 @@ export type Tab = {
    * Tidak ada yang begitu di layar ini hari ini. Isian tetap dibaca supaya penambahan tab
    * terhalang kelak tidak menuntut suntingan di sini.
    */
-  terhalang: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Keterangan halaman dari server. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Jawaban GET /api/inbox-manager-receive-pucl/tab. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
-  portal: string
-}
+  tab: Tab[];
+  tab_bawaan: string;
+  portal: string;
+};
 
 /** Jawaban GET /api/inbox-manager-receive-pucl. */
 export type ListResponse = {
-  tab: Tab
-  baris: WorkItem[]
-  paginasi: PageInfo
-  portal: string
-}
+  tab: Tab;
+  baris: WorkItem[];
+  paginasi: PageInfo;
+  portal: string;
+};
 
 /**
  * Satu isian pada layar kerja penerimaan dokumen — flow action `InputReceiveDocument`.
@@ -195,11 +195,11 @@ export type ListResponse = {
  * backend. Menyalin 36 judul ke sini berarti daftar yang sama hidup di dua tempat.
  */
 export type DocumentField = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
 
   /** Di Pega digambar sebagai kotak teks bertingkat, bukan satu baris. */
-  bertingkat?: boolean
+  bertingkat?: boolean;
 
   /**
    * Isian digambar tetapi belum dapat diisi.
@@ -207,16 +207,16 @@ export type DocumentField = {
    * Enam belas dari 36 isian begitu. Ia TIDAK disembunyikan: menyembunyikannya membuat
    * pengguna yang membandingkan layar ini dengan Pega mengira isiannya hilang.
    */
-  terhalang?: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang?: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Satu kelompok isian, digambar sebagai satu panel. */
 export type DocumentFieldGroup = {
-  judul: string
-  isian: DocumentField[]
-}
+  judul: string;
+  isian: DocumentField[];
+};
 
 /**
  * Satu tombol yang di layar lama MENGUBAH data.
@@ -225,28 +225,28 @@ export type DocumentFieldGroup = {
  * yang kelak memilikinya, supaya layar dapat menjawab lebih dari "belum tersedia".
  */
 export type DocumentAction = {
-  kode: string
-  label: string
-  activity_pega: string
-  pemilik: string
+  kode: string;
+  label: string;
+  activity_pega: string;
+  pemilik: string;
 
   /**
    * Tombol ini digambar DI ATAS isian, seperti di layar lama.
    *
    * Datang dari server karena letaknya dibaca dari section Pega — di sanalah buktinya.
    */
-  di_atas: boolean
-}
+  di_atas: boolean;
+};
 
 /** Jawaban GET /api/inbox-manager-receive-pucl/dokumen/{referensi}. */
 export type DocumentResponse = {
-  referensi: string
-  no_case: string
-  no_klaim_pnc: string
-  jenis_klaim: string
-  status_kerja: string
+  referensi: string;
+  no_case: string;
+  no_klaim_pnc: string;
+  jenis_klaim: string;
+  status_kerja: string;
 
-  kelompok: DocumentFieldGroup[]
+  kelompok: DocumentFieldGroup[];
 
   /**
    * Isi tiap isian, berkunci `DocumentField.kunci`.
@@ -255,9 +255,9 @@ export type DocumentResponse = {
    * membuat layar tidak dapat membedakan "belum ada sumbernya" dari "sumbernya ada tetapi
    * kosong" — dua hal yang tindak lanjutnya berbeda.
    */
-  nilai: Record<string, string>
+  nilai: Record<string, string>;
 
-  tindakan: DocumentAction[]
+  tindakan: DocumentAction[];
 
-  portal: string
-}
+  portal: string;
+};

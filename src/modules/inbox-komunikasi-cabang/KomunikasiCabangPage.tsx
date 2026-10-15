@@ -1,23 +1,23 @@
-import { useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatPegaDateTime } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatPegaDateTime } from "@/components/format";
 
-import { ConversationDetail } from './ConversationDetail'
-import { KomunikasiCabangTabs } from './KomunikasiCabangTabs'
-import { NewMessageForm } from './NewMessageForm'
-import { StatusRegisterSummary } from './StatusRegisterSummary'
+import { ConversationDetail } from "./ConversationDetail";
+import { KomunikasiCabangTabs } from "./KomunikasiCabangTabs";
+import { NewMessageForm } from "./NewMessageForm";
+import { StatusRegisterSummary } from "./StatusRegisterSummary";
 import {
   useExportKomunikasiCabang,
   useKomunikasiCabangFinish,
   useKomunikasiCabangList,
   useKomunikasiCabangMetadata,
-} from './api'
+} from "./api";
 import {
   isActionField,
   type BranchScope,
@@ -25,7 +25,7 @@ import {
   type ExportColumn,
   type Tab,
   type TabColumn,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Komunikasi Cabang — menu `MENU_ID 70`, pengganti harness `InboxKomunikasiCabang`.
@@ -58,20 +58,20 @@ export function KomunikasiCabangPage() {
   // menyegarkan halaman harus mendarat di tempat yang sama, bukan di tab pertama halaman
   // pertama. Nomor percakapan yang sedang dibuka ikut, dengan alasan tambahan — alamatnya
   // dapat dibagikan ke rekan yang berhak melihatnya.
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useSearchParams();
 
-  const tabCode = params.get('tab') ?? ''
-  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
-  const opened = params.get('komunikasi') ?? ''
+  const tabCode = params.get("tab") ?? "";
+  const page = Math.max(1, Number(params.get("halaman") ?? "1") || 1);
+  const opened = params.get("komunikasi") ?? "";
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useKomunikasiCabangMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useKomunikasiCabangMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = tabCode || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = tabCode || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
-  const list = useKomunikasiCabangList(active, page, meta.isSuccess)
+  const list = useKomunikasiCabangList(active, page, meta.isSuccess);
 
   // Form "Kirim Pesan" terbuka atau tidak.
   //
@@ -79,21 +79,21 @@ export function KomunikasiCabangPage() {
   // `TempInputKomunikasi.pyLabel = "Insert"`, dan `IsInsertKomunikasi` membacanya untuk
   // memutuskan apakah bloknya digambar. Di sini ia tinggal di layar, tempat keadaan layar
   // memang seharusnya tinggal.
-  const [composing, setComposing] = useState(false)
+  const [composing, setComposing] = useState(false);
 
   // Kalimat keberhasilan pengiriman, datang dari peladen.
   //
   // Ia disimpan DI SINI, bukan dibaca dari mutation di dalam form, karena formnya ditutup
   // begitu pesannya terkirim — dan kalimat yang hidup di dalam komponen yang baru saja
   // dilepas tidak akan pernah terbaca.
-  const [sent, setSent] = useState('')
+  const [sent, setSent] = useState("");
 
   // "Selesai Komunikasi" punya hook TERSENDIRI, bukan ikut mutation di atas.
   //
   // Ia benar-benar menulis sejak 2026-09-24, dan menyatukannya dengan tindakan yang ditolak
   // akan membuat keduanya berbagi satu `isPending` dan satu penanganan galat — sehingga
   // menekan "Tambah" akan menonaktifkan seluruh tombol "Selesai Komunikasi" di tabel.
-  const finish = useKomunikasiCabangFinish()
+  const finish = useKomunikasiCabangFinish();
 
   // Percakapan yang menunggu PENEGASAN sebelum ditutup.
   //
@@ -103,7 +103,7 @@ export function KomunikasiCabangPage() {
   //
   // Ia BUKAN `window.confirm`: dialog peramban tidak dapat diuji, tidak dapat diberi gaya,
   // dan memblokir seluruh halaman.
-  const [confirming, setConfirming] = useState<Conversation | null>(null)
+  const [confirming, setConfirming] = useState<Conversation | null>(null);
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama dan MENUTUP panel detail.
@@ -113,12 +113,12 @@ export function KomunikasiCabangPage() {
    * tabel di atasnya, dan itu terbaca seperti kekeliruan.
    */
   function selectTab(code: string) {
-    setParams({ tab: code, halaman: '1' }, { replace: true })
+    setParams({ tab: code, halaman: "1" }, { replace: true });
   }
 
   /** Berpindah halaman, menjaga tab yang sedang terbuka dan menutup panel detail. */
   function setPage(next: number) {
-    setParams({ tab: active, halaman: String(next) }, { replace: true })
+    setParams({ tab: active, halaman: String(next) }, { replace: true });
   }
 
   /** Membuka panel Detail Komunikasi untuk satu percakapan. */
@@ -126,12 +126,12 @@ export function KomunikasiCabangPage() {
     setParams(
       { tab: active, halaman: String(page), komunikasi: row.komunikasi },
       { replace: true },
-    )
+    );
   }
 
   /** Menutup panel detail tanpa mengubah tab maupun halaman. */
   function closeConversation() {
-    setParams({ tab: active, halaman: String(page) }, { replace: true })
+    setParams({ tab: active, halaman: String(page) }, { replace: true });
   }
 
   if (portal === null) {
@@ -140,13 +140,13 @@ export function KomunikasiCabangPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Percakapan cabang milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Percakapan cabang milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -158,7 +158,7 @@ export function KomunikasiCabangPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -167,7 +167,9 @@ export function KomunikasiCabangPage() {
       exportable={(list.data?.paginasi.total ?? 0) > 0}
       exportColumns={meta.data?.kolom_ekspor ?? []}
       branch={list.data?.batas_cabang}
-      onRefresh={() => { list.refetch() }}
+      onRefresh={() => {
+        list.refetch();
+      }}
       // `isRefetching`, BUKAN `isFetching`: yang kedua juga bernilai benar selama pemuatan
       // PERTAMA, sehingga tombolnya berbunyi "Menyegarkan…" sebelum seorang pun menekannya —
       // menyatakan sesuatu sedang dikerjakan atas perintah pengguna, padahal tidak.
@@ -180,9 +182,9 @@ export function KomunikasiCabangPage() {
       // tertutup lapisan gelap, dan pengguna menekan "Tambah" lalu tidak melihat apa pun
       // berubah.
       onAdd={() => {
-        setComposing(true)
-        setSent('')
-        if (opened !== '') closeConversation()
+        setComposing(true);
+        setSent("");
+        if (opened !== "") closeConversation();
       }}
       adding={false}
     >
@@ -230,13 +232,13 @@ export function KomunikasiCabangPage() {
               onSent={(pesan) => {
                 // Formnya ditutup setelah terkirim — perilaku yang sama dengan sistem lama,
                 // yang mengosongkan `pyLabel` pada langkah terakhir activity-nya.
-                setComposing(false)
-                setSent(pesan)
+                setComposing(false);
+                setSent(pesan);
               }}
             />
           )}
 
-          {sent !== '' && (
+          {sent !== "" && (
             <p
               className="mt-3 rounded-kartu border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
               role="status"
@@ -266,10 +268,10 @@ export function KomunikasiCabangPage() {
                   // orang lain, atau cabang yang tidak terbaca — muncul tanpa konteks apa
                   // pun tentang percakapan mana yang dimaksud.
                   onSuccess: () => {
-                    setConfirming(null)
-                    if (opened === confirming.komunikasi) closeConversation()
+                    setConfirming(null);
+                    if (opened === confirming.komunikasi) closeConversation();
                   },
-                })
+                });
               }}
             />
           )}
@@ -321,12 +323,11 @@ export function KomunikasiCabangPage() {
         </>
       )}
 
-      {opened !== '' && (
+      {opened !== "" && (
         <ConversationDetail id={opened} onClose={closeConversation} />
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({
@@ -340,47 +341,54 @@ function PageFrame({
   adding,
   children,
 }: {
-  tab: Tab | undefined
+  tab: Tab | undefined;
   /** Tombol unduh hanya berguna bila ada yang dapat diunduh. */
-  exportable: boolean
-  exportColumns?: ExportColumn[]
-  branch?: BranchScope | undefined
+  exportable: boolean;
+  exportColumns?: ExportColumn[];
+  branch?: BranchScope | undefined;
 
   /**
    * Kedua tombol bilah atas dibiarkan OPSIONAL supaya kerangka ini tetap dapat dipakai
    * pada keadaan galat, tempat keduanya memang tidak berguna — layar yang tidak dapat
    * memuat daftarnya tidak punya apa pun untuk disegarkan.
    */
-  onRefresh?: () => void
-  refreshing?: boolean
-  onAdd?: () => void
-  adding?: boolean
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  onAdd?: () => void;
+  adding?: boolean;
 
-  children: ReactNode
+  children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
             Inbox Komunikasi Cabang
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Percakapan antara kantor pusat dan cabang seputar klaim yang sedang berjalan.
+            Percakapan antara kantor pusat dan cabang seputar klaim yang sedang
+            berjalan.
           </p>
           {branch && <BranchNotice branch={branch} />}
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {onRefresh && <RefreshButton onRefresh={onRefresh} busy={refreshing === true} />}
+            {onRefresh && (
+              <RefreshButton onRefresh={onRefresh} busy={refreshing === true} />
+            )}
             {onAdd && <AddButton onAdd={onAdd} busy={adding === true} />}
           </div>
-          <ExportButton tab={tab} enabled={exportable} columns={exportColumns} />
+          <ExportButton
+            tab={tab}
+            enabled={exportable}
+            columns={exportColumns}
+          />
         </div>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -398,19 +406,19 @@ function PageFrame({
  * dari server, supaya penjelasannya berubah di satu tempat saat keputusannya ditinjau ulang.
  */
 function BranchNotice({ branch }: { branch: BranchScope }) {
-  const warning = !branch.terbaca
+  const warning = !branch.terbaca;
 
   return (
     <p
       className={[
-        'mt-2 rounded-kontrol px-2 py-1 text-xs',
-        warning ? 'bg-amber-50 text-amber-900' : 'text-slate-500',
-      ].join(' ')}
-      role={warning ? 'alert' : undefined}
+        "mt-2 rounded-kontrol px-2 py-1 text-xs",
+        warning ? "bg-amber-50 text-amber-900" : "text-slate-500",
+      ].join(" ")}
+      role={warning ? "alert" : undefined}
     >
       {branch.keterangan}
     </p>
-  )
+  );
 }
 
 /**
@@ -424,7 +432,7 @@ function TabNotice({ text }: { text: string }) {
     <div className="mt-3 rounded-kartu border border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-xs text-slate-700">{text}</p>
     </div>
-  )
+  );
 }
 
 /**
@@ -445,7 +453,7 @@ function ActionNotice({ message }: { message: string }) {
     >
       <p className="text-xs text-slate-700">{message}</p>
     </div>
-  )
+  );
 }
 
 /**
@@ -461,12 +469,18 @@ function ActionNotice({ message }: { message: string }) {
  * memaksa pembacaan ulang adalah menyegarkan seluruh halaman — yang ikut membuang tab dan
  * nomor halaman yang sedang dibuka.
  */
-function RefreshButton({ onRefresh, busy }: { onRefresh: () => void; busy: boolean }) {
+function RefreshButton({
+  onRefresh,
+  busy,
+}: {
+  onRefresh: () => void;
+  busy: boolean;
+}) {
   return (
     <Button tone="kedua" disabled={busy} onClick={onRefresh}>
-      {busy ? 'Menyegarkan…' : 'Refresh'}
+      {busy ? "Menyegarkan…" : "Refresh"}
     </Button>
-  )
+  );
 }
 
 /**
@@ -489,7 +503,7 @@ function AddButton({ onAdd, busy }: { onAdd: () => void; busy: boolean }) {
     <Button tone="kedua" disabled={busy} onClick={onAdd}>
       Tambah
     </Button>
-  )
+  );
 }
 
 /**
@@ -509,25 +523,25 @@ function ExportButton({
   enabled,
   columns,
 }: {
-  tab: Tab | undefined
-  enabled: boolean
-  columns: ExportColumn[]
+  tab: Tab | undefined;
+  enabled: boolean;
+  columns: ExportColumn[];
 }) {
-  const ekspor = useExportKomunikasiCabang()
+  const ekspor = useExportKomunikasiCabang();
 
   return (
     <div className="flex max-w-sm flex-col items-end gap-1">
       <Button
         tone="kedua"
         disabled={!enabled || ekspor.isPending || tab === undefined}
-        onClick={() => ekspor.mutate(tab?.kode ?? '')}
+        onClick={() => ekspor.mutate(tab?.kode ?? "")}
       >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
+        {ekspor.isPending ? "Menyiapkan berkas…" : "Export To Excel"}
       </Button>
 
       {columns.length > 0 && (
         <p className="text-right text-xs text-slate-500">
-          Berisi: {columns.map((column) => column.judul).join(' · ')}
+          Berisi: {columns.map((column) => column.judul).join(" · ")}
         </p>
       )}
 
@@ -537,7 +551,7 @@ function ExportButton({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 // CATATAN. WriteActionsNotice DIHAPUS pada 2026-09-24.
@@ -567,8 +581,8 @@ function DetailButton({
   item,
   onOpen,
 }: {
-  item: Conversation
-  onOpen: (row: Conversation) => void
+  item: Conversation;
+  onOpen: (row: Conversation) => void;
 }) {
   return (
     <button
@@ -580,15 +594,15 @@ function DetailButton({
       aria-label={`Detail Komunikasi percakapan ${item.komunikasi}`}
       title={`Buka utas percakapan ${item.komunikasi}`}
       className={[
-        'rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium',
-        'whitespace-nowrap text-slate-700',
-        'transition-colors duration-150 ease-halus hover:bg-slate-100',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium",
+        "whitespace-nowrap text-slate-700",
+        "transition-colors duration-150 ease-halus hover:bg-slate-100",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       Detail Komunikasi
     </button>
-  )
+  );
 }
 
 /**
@@ -618,9 +632,9 @@ function FinishButton({
   onFinish,
   busy,
 }: {
-  item: Conversation
-  onFinish: (row: Conversation) => void
-  busy: boolean
+  item: Conversation;
+  onFinish: (row: Conversation) => void;
+  busy: boolean;
 }) {
   return (
     <button
@@ -630,16 +644,16 @@ function FinishButton({
       aria-label={`Selesai Komunikasi percakapan ${item.komunikasi}`}
       title={`Tutup percakapan ${item.komunikasi} — akan diminta penegasan lebih dulu`}
       className={[
-        'rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium',
-        'whitespace-nowrap text-slate-700',
-        'transition-colors duration-150 ease-halus hover:bg-slate-100',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-        'disabled:cursor-not-allowed disabled:opacity-55',
-      ].join(' ')}
+        "rounded-kontrol border border-slate-300 px-2.5 py-1 text-xs font-medium",
+        "whitespace-nowrap text-slate-700",
+        "transition-colors duration-150 ease-halus hover:bg-slate-100",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+        "disabled:cursor-not-allowed disabled:opacity-55",
+      ].join(" ")}
     >
       Selesai Komunikasi
     </button>
-  )
+  );
 }
 
 /**
@@ -666,10 +680,10 @@ function FinishConfirmation({
   onConfirm,
   onCancel,
 }: {
-  item: Conversation
-  pending: boolean
-  onConfirm: () => void
-  onCancel: () => void
+  item: Conversation;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
   return (
     <section
@@ -683,33 +697,36 @@ function FinishConfirmation({
 
       <p className="mt-1.5 text-xs text-slate-700">
         <span className="font-medium tabular-nums">{item.komunikasi}</span>
-        {item.pengirim ? ` · dari ${item.pengirim}` : ''}
+        {item.pengirim ? ` · dari ${item.pengirim}` : ""}
       </p>
 
       {item.pesan && (
-        <p className="mt-1 line-clamp-2 text-xs italic text-slate-600">“{item.pesan}”</p>
+        <p className="mt-1 line-clamp-2 text-xs italic text-slate-600">
+          “{item.pesan}”
+        </p>
       )}
 
       <p className="mt-2 text-xs text-slate-700">
-        Percakapan yang ditutup <span className="font-medium">hilang dari kedua tab</span> dan
-        tidak dapat dibuka kembali dari layar ini.
+        Percakapan yang ditutup{" "}
+        <span className="font-medium">hilang dari kedua tab</span> dan tidak
+        dapat dibuka kembali dari layar ini.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Button onClick={onConfirm} disabled={pending}>
-          {pending ? 'Menutup…' : 'Ya, tutup percakapan'}
+          {pending ? "Menutup…" : "Ya, tutup percakapan"}
         </Button>
         <Button tone="kedua" onClick={onCancel} disabled={pending}>
           Batal
         </Button>
       </div>
     </section>
-  )
+  );
 }
 
 /** rowKeyOf menyusun kunci baris — dipakai `DataTable` dan penomoran baris. */
 function rowKeyOf(row: Conversation): string {
-  return `${row.komunikasi}|${row.tanggal}`
+  return `${row.komunikasi}|${row.tanggal}`;
 }
 
 /**
@@ -736,24 +753,24 @@ function columnsFor(
   tab: Tab,
   rows: Conversation[],
   actions: {
-    onOpen: (row: Conversation) => void
-    onFinish: (row: Conversation) => void
-    finishing: boolean
+    onOpen: (row: Conversation) => void;
+    onFinish: (row: Conversation) => void;
+    finishing: boolean;
   },
 ): Column<Conversation>[] {
   // Peta kunci → nomor, disusun sekali. Mencari posisi baris satu per satu saat menggambar
   // berarti menelusuri seluruh daftar untuk setiap sel nomor.
-  const numbers = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]))
+  const numbers = new Map(rows.map((row, index) => [rowKeyOf(row), index + 1]));
 
   const numberColumn: Column<Conversation> = {
-    key: 'nomor',
+    key: "nomor",
     // Tanpa judul, seperti di Pega. Pembaca layar membaca nomornya apa adanya, dan nomor
     // urut tidak menuntut penjelasan.
-    title: '',
-    width: '3rem',
+    title: "",
+    width: "3rem",
     noSort: true,
-    value: (row) => String(numbers.get(rowKeyOf(row)) ?? ''),
-  }
+    value: (row) => String(numbers.get(rowKeyOf(row)) ?? ""),
+  };
 
   const dataColumns: Column<Conversation>[] = tab.kolom.map((column) => {
     // Kolom TOMBOL tidak punya isian pada baris. `value` dibiarkan kosong dengan sengaja —
@@ -761,23 +778,25 @@ function columnsFor(
     // tidak berarti apa pun.
     if (isActionField(column.kunci)) {
       const render =
-        column.kunci === 'aksi_detail'
-          ? (row: Conversation) => <DetailButton item={row} onOpen={actions.onOpen} />
+        column.kunci === "aksi_detail"
+          ? (row: Conversation) => (
+              <DetailButton item={row} onOpen={actions.onOpen} />
+            )
           : (row: Conversation) => (
               <FinishButton
                 item={row}
                 onFinish={actions.onFinish}
                 busy={actions.finishing}
               />
-            )
+            );
 
       return {
         key: column.kunci,
         title: column.judul,
-        value: () => '',
+        value: () => "",
         noSort: true,
         render,
-      }
+      };
     }
 
     return {
@@ -785,10 +804,10 @@ function columnsFor(
       title: column.judul,
       noSort: true,
       value: (row) => cellText(row, column),
-    }
-  })
+    };
+  });
 
-  return [numberColumn, ...dataColumns]
+  return [numberColumn, ...dataColumns];
 }
 
 /**
@@ -811,14 +830,14 @@ function columnsFor(
  */
 function cellText(row: Conversation, column: TabColumn): string {
   // Kolom tombol tidak pernah sampai ke sini; columnsFor menanganinya lebih dulu.
-  if (isActionField(column.kunci)) return ''
+  if (isActionField(column.kunci)) return "";
 
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
-  return isDateField(column.kunci) ? formatPegaDateTime(text) : text
+  const text = String(value);
+  return isDateField(column.kunci) ? formatPegaDateTime(text) : text;
 }
 
 /**
@@ -828,7 +847,7 @@ function cellText(row: Conversation, column: TabColumn): string {
  * satu-satunya dua isian waktu pada baris, dan keduanya ditetapkan kontrak API.
  */
 function isDateField(key: string): boolean {
-  return key === 'tanggal' || key === 'tanggal_jawaban'
+  return key === "tanggal" || key === "tanggal_jawaban";
 }
 
 /**
@@ -841,35 +860,37 @@ function isDateField(key: string): boolean {
 function emptyMessageFor(tab: Tab, branch: BranchScope | undefined): string {
   const scope =
     branch === undefined
-      ? ''
+      ? ""
       : branch.kantor_pusat
-        ? ' pada percakapan kantor pusat'
-        : ` pada cabang ${branch.kode}`
+        ? " pada percakapan kantor pusat"
+        : ` pada cabang ${branch.kode}`;
 
   const unresolved =
     branch !== undefined && !branch.terbaca
-      ? ' Perhatikan kode cabang Anda tidak terbaca, sehingga yang ditampilkan adalah ' +
-        'percakapan kantor pusat — bukan cabang Anda. Bila Anda petugas cabang, laporkan.'
-      : ''
+      ? " Perhatikan kode cabang Anda tidak terbaca, sehingga yang ditampilkan adalah " +
+        "percakapan kantor pusat — bukan cabang Anda. Bila Anda petugas cabang, laporkan."
+      : "";
 
-  const showsReply = tab.kolom.some((column) => column.kunci === 'jawaban_terakhir')
+  const showsReply = tab.kolom.some(
+    (column) => column.kunci === "jawaban_terakhir",
+  );
 
   if (showsReply) {
     return (
       `Belum ada percakapan yang sudah dibalas${scope}. Lihat tab "Not Answered" — ` +
       `pesan yang menunggu jawaban ada di sana.${unresolved}`
-    )
+    );
   }
 
   return (
     `Tidak ada pesan yang menunggu dijawab${scope}. Percakapan yang sudah dibalas ada di ` +
     `tab "Answered", dan yang sudah ditutup tidak lagi tampil di layar ini.${unresolved}`
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

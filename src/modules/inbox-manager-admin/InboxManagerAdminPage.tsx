@@ -1,21 +1,21 @@
-import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { claimDetailPath } from '@/lib/claim'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { claimDetailPath } from "@/lib/claim";
+import { formatDate } from "@/components/format";
 
-import { ManagerAdminTabs } from './ManagerAdminTabs'
+import { ManagerAdminTabs } from "./ManagerAdminTabs";
 import {
   useExportInboxManagerAdmin,
   useInboxManagerAdminList,
   useInboxManagerAdminMetadata,
-} from './api'
-import type { MetadataResponse, Tab, TabColumn, WorkItem } from './types'
+} from "./api";
+import type { MetadataResponse, Tab, TabColumn, WorkItem } from "./types";
 
 /**
  * Inbox Manager Admin — menu `MENU_ID 57`, pengganti harness `InboxManagerAdmin_Harness`.
@@ -50,21 +50,21 @@ import type { MetadataResponse, Tab, TabColumn, WorkItem } from './types'
  * jabatan yang membuka tab — bukan menampilkan layar kosong tanpa sebab.
  */
 export function InboxManagerAdminPage() {
-  const [tabCode, setTabCode] = useState('')
-  const [page, setPage] = useState(1)
+  const [tabCode, setTabCode] = useState("");
+  const [page, setPage] = useState(1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useInboxManagerAdminMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useInboxManagerAdminMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = tabCode || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = tabCode || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tanpa tab yang boleh dilihat, isinya TIDAK diminta. Permintaannya pasti ditolak server
   // dengan 403, dan galat yang sudah diketahui pasti terjadi bukan galat yang layak
   // ditampilkan — yang layak ditampilkan adalah penjelasannya.
-  const hasTab = tabs.length > 0
-  const list = useInboxManagerAdminList(active, page, meta.isSuccess && hasTab)
+  const hasTab = tabs.length > 0;
+  const list = useInboxManagerAdminList(active, page, meta.isSuccess && hasTab);
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama.
@@ -73,8 +73,8 @@ export function InboxManagerAdminPage() {
    * menampilkan tabel kosong yang terbaca seperti antrean yang memang kosong.
    */
   function selectTab(code: string) {
-    setTabCode(code)
-    setPage(1)
+    setTabCode(code);
+    setPage(1);
   }
 
   if (portal === null) {
@@ -83,13 +83,13 @@ export function InboxManagerAdminPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean registrasi klaim milik satu badan hukum, dan aplikasi ini melayani ' +
-            'empat. Pilih portal di bilah atas untuk membukanya.'
+            "Antrean registrasi klaim milik satu badan hukum, dan aplikasi ini melayani " +
+            "empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -101,7 +101,7 @@ export function InboxManagerAdminPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -114,7 +114,11 @@ export function InboxManagerAdminPage() {
       ) : (
         <>
           <div className="mt-4">
-            <ManagerAdminTabs tabs={tabs} active={active} onSelect={selectTab} />
+            <ManagerAdminTabs
+              tabs={tabs}
+              active={active}
+              onSelect={selectTab}
+            />
           </div>
 
           {tab && (
@@ -123,7 +127,9 @@ export function InboxManagerAdminPage() {
 
               <div className="mt-4">
                 <DataTable<WorkItem>
-                  columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+                  columns={columnsFor(tab, (row) => (
+                    <DetailButton item={row} />
+                  ))}
                   rows={list.data?.baris ?? []}
                   rowKey={(row) => `${row.referensi}|${row.id}`}
                   title={tab.nama}
@@ -160,9 +166,8 @@ export function InboxManagerAdminPage() {
           )}
         </>
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({
@@ -170,19 +175,21 @@ function PageFrame({
   exportable,
   children,
 }: {
-  tab: string
+  tab: string;
   /** Tombol ekspor hanya berguna bila ada yang dapat diekspor. */
-  exportable: boolean
-  children: ReactNode
+  exportable: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Manager Admin</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Inbox Manager Admin
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Pandangan penyelia atas antrean registrasi klaim, dipisah menurut unit
-            organisasi admin.
+            Pandangan penyelia atas antrean registrasi klaim, dipisah menurut
+            unit organisasi admin.
           </p>
           {/*
             Sifat "pandangan penyelia" dinyatakan di layar, bukan hanya di kode.
@@ -193,16 +200,17 @@ function PageFrame({
             memuat pekerjaan orang lain.
           */}
           <p className="mt-2 text-xs text-slate-500">
-            Layar ini menampilkan pekerjaan{' '}
-            <span className="font-medium">seluruh petugas</span> pada unit organisasi yang
-            dipilih, bukan hanya milik Anda. Setiap pembukaannya tercatat.
+            Layar ini menampilkan pekerjaan{" "}
+            <span className="font-medium">seluruh petugas</span> pada unit
+            organisasi yang dipilih, bukan hanya milik Anda. Setiap pembukaannya
+            tercatat.
           </p>
         </div>
         <ExportButton tab={tab} enabled={exportable} />
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -216,7 +224,7 @@ function PageFrame({
  * gagal diam-diam.
  */
 function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
-  const ekspor = useExportInboxManagerAdmin()
+  const ekspor = useExportInboxManagerAdmin();
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -225,7 +233,7 @@ function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
         disabled={!enabled || ekspor.isPending}
         onClick={() => ekspor.mutate(tab)}
       >
-        {ekspor.isPending ? 'Menyiapkan berkas…' : 'Export To Excel'}
+        {ekspor.isPending ? "Menyiapkan berkas…" : "Export To Excel"}
       </Button>
       {ekspor.isError && (
         <p className="max-w-md text-right text-xs text-red-700" role="alert">
@@ -233,7 +241,7 @@ function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -258,7 +266,7 @@ function ExportButton({ tab, enabled }: { tab: string; enabled: boolean }) {
  * aturannya berubah.
  */
 function NoTabNotice({ meta }: { meta: MetadataResponse }) {
-  const belumDiisi = meta.lini_bisnis_anda.trim() === ''
+  const belumDiisi = meta.lini_bisnis_anda.trim() === "";
 
   return (
     <section className="mt-6 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
@@ -267,8 +275,8 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
       </h2>
 
       <p className="mt-2 text-sm text-slate-700">
-        Layar ini memisahkan antrean menurut unit organisasi admin, dan setiap lini bisnis
-        hanya membuka unitnya sendiri — sama seperti di sistem lama.
+        Layar ini memisahkan antrean menurut unit organisasi admin, dan setiap
+        lini bisnis hanya membuka unitnya sendiri — sama seperti di sistem lama.
       </p>
 
       <dl className="mt-3 space-y-1 text-sm text-slate-700">
@@ -284,7 +292,7 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
         </div>
         <div className="flex flex-wrap gap-x-2">
           <dt className="font-medium">Lini bisnis yang membuka antrean:</dt>
-          <dd>{meta.lini_bisnis_yang_diharapkan.join(', ')}</dd>
+          <dd>{meta.lini_bisnis_yang_diharapkan.join(", ")}</dd>
         </div>
       </dl>
 
@@ -296,7 +304,7 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
           <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-slate-600">
             {meta.semua_tab.map((tab) => (
               <li key={tab.kode}>
-                {tab.nama} — dibuka lini bisnis{' '}
+                {tab.nama} — dibuka lini bisnis{" "}
                 <span className="font-medium">{tab.lini_bisnis}</span>
               </li>
             ))}
@@ -306,15 +314,15 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
 
       <p className="mt-3 text-xs text-slate-600">
         {belumDiisi
-          ? 'Lini bisnis Anda belum diisi pada master pengguna. Laporkan ke tim teknis — ' +
-            'melengkapinya tidak menuntut perubahan aplikasi, dan antrean Anda akan ' +
-            'langsung terlihat sesudahnya.'
-          : 'Bila Anda seharusnya termasuk salah satunya, laporkan ke tim teknis beserta ' +
-            'nilai yang terbaca di atas — lini bisnis disimpan pada master pengguna dan ' +
-            'dapat dibetulkan tanpa perubahan aplikasi.'}
+          ? "Lini bisnis Anda belum diisi pada master pengguna. Laporkan ke tim teknis — " +
+            "melengkapinya tidak menuntut perubahan aplikasi, dan antrean Anda akan " +
+            "langsung terlihat sesudahnya."
+          : "Bila Anda seharusnya termasuk salah satunya, laporkan ke tim teknis beserta " +
+            "nilai yang terbaca di atas — lini bisnis disimpan pada master pengguna dan " +
+            "dapat dibetulkan tanpa perubahan aplikasi."}
       </p>
     </section>
-  )
+  );
 }
 
 /**
@@ -361,10 +369,10 @@ function NoTabNotice({ meta }: { meta: MetadataResponse }) {
  * aplikasi yang rusak.
  */
 function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const claimNumber = item.id
-  const belumBernomor = claimNumber === ''
+  const claimNumber = item.id;
+  const belumBernomor = claimNumber === "";
 
   return (
     <Button
@@ -372,14 +380,14 @@ function DetailButton({ item }: { item: WorkItem }) {
       disabled={belumBernomor}
       title={
         belumBernomor
-          ? 'Klaim ini belum bernomor. Nomor terbit setelah tahap Input Register lolos validasi.'
+          ? "Klaim ini belum bernomor. Nomor terbit setelah tahap Input Register lolos validasi."
           : `Buka rincian klaim ${claimNumber}`
       }
       onClick={() => navigate(claimDetailPath(claimNumber))}
     >
       Lihat Detail
     </Button>
-  )
+  );
 }
 
 /**
@@ -388,27 +396,30 @@ function DetailButton({ item }: { item: WorkItem }) {
  * Kolom aksi ditambahkan di ujung, bukan disebut server: ia bukan DATA melainkan kontrol,
  * dan backend tidak tahu apa pun tentang rute antarmuka.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+function columnsFor(
+  tab: Tab,
+  action: (row: WorkItem) => ReactNode,
+): Column<WorkItem>[] {
   const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
     key: column.kunci,
     title: column.judul,
     value: (row) => cellText(row, column),
-  }))
+  }));
 
   columns.push({
     // Judul "Aksi" adalah ketetapan Work Owner 2026-10-03, dan satu-satunya judul kolom
     // yang sengaja TIDAK menyalin Pega — section-nya meninggalkan sel judul tombol kosong.
     // Mengosongkannya sudah dicoba di layar lain dan DITOLAK: kolom tanpa judul terbaca
     // sebagai kolom yang TIDAK ADA, bukan sekadar sulit dibaca pembaca layar.
-    key: 'aksi',
-    title: 'Aksi',
-    value: () => '',
+    key: "aksi",
+    title: "Aksi",
+    value: () => "",
     render: action,
     noSort: true,
     alignRight: true,
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /**
@@ -425,17 +436,17 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
  *    baris yang tanggal pendaftarannya belum ada.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  const text = String(value);
+  return isDate(text) ? formatDate(text) : text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD`. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -451,15 +462,15 @@ function isDate(text: string): boolean {
 function emptyMessageFor(tab: Tab): string {
   return (
     `Tidak ada klaim yang menunggu pada unit organisasi ${tab.unit_organisasi}. ` +
-    'Bila Anda yakin seharusnya ada, laporkan ke tim teknis — antrean ini disaring ' +
-    'menurut unit organisasi penugasan, dan penugasan yang unitnya kosong tidak muncul ' +
-    'di tab mana pun tanpa pesan galat.'
-  )
+    "Bila Anda yakin seharusnya ada, laporkan ke tim teknis — antrean ini disaring " +
+    "menurut unit organisasi penugasan, dan penugasan yang unitnya kosong tidak muncul " +
+    "di tab mana pun tanpa pesan galat."
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

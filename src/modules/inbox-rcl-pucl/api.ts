@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   DocumentRow,
@@ -11,9 +11,9 @@ import type {
   DocumentListResponse,
   ListResponse,
   MetadataResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-rcl-pucl'
+const PATH = "/api/inbox-rcl-pucl";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -27,17 +27,21 @@ const PATH = '/api/inbox-rcl-pucl'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-rcl-pucl', 'tab', portal, token] as const,
+    ["inbox-rcl-pucl", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, tab: string, page: number) =>
-    ['inbox-rcl-pucl', 'daftar', portal, token, tab, page] as const,
+  list: (
+    portal: string | null,
+    token: string | null,
+    tab: string,
+    page: number,
+  ) => ["inbox-rcl-pucl", "daftar", portal, token, tab, page] as const,
 
   detail: (portal: string | null, token: string | null, reference: string) =>
-    ['inbox-rcl-pucl', 'klaim', portal, token, reference] as const,
+    ["inbox-rcl-pucl", "klaim", portal, token, reference] as const,
 
   documents: (portal: string | null, token: string | null, reference: string) =>
-    ['inbox-rcl-pucl', 'klaim', portal, token, reference, 'dokumen'] as const,
-}
+    ["inbox-rcl-pucl", "klaim", portal, token, reference, "dokumen"] as const,
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, kolom laporan, dan selisih terencana.
@@ -54,8 +58,8 @@ const keys = {
  * satunya tidak lagi mencerminkan grid aslinya — tanpa ada apa pun yang terlihat rusak.
  */
 export function useRCLPUCLMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -67,7 +71,7 @@ export function useRCLPUCLMetadata() {
     // tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -88,12 +92,13 @@ export function useRCLPUCLMetadata() {
  * tabelnya ikut tersaring.
  */
 export function useRCLPUCLList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -103,7 +108,7 @@ export function useRCLPUCLList(tab: string, page: number, enabled: boolean) {
     // Antrean berubah saat petugas lain mengerjakan pekerjaannya, jadi cache-nya pendek —
     // sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -123,22 +128,26 @@ export function useRCLPUCLList(tab: string, page: number, enabled: boolean) {
  * Portal ikut menjadi bagian kunci dengan alasan yang sama seperti hook lain (`R-20`).
  */
 export function useRCLPUCLClaim(reference: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keys.detail(portal, token, reference ?? ''),
+    queryKey: keys.detail(portal, token, reference ?? ""),
     queryFn: () =>
       callAPI<ClaimDetailResponse>(
-        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}`,
+        `${PATH}/klaim/${encodeURIComponent(reference ?? "")}`,
         { token, portal },
       ),
-    enabled: reference !== null && reference !== '' && token !== null && portal !== null,
+    enabled:
+      reference !== null &&
+      reference !== "" &&
+      token !== null &&
+      portal !== null,
 
     // Isi layar kerja berubah saat petugas lain mengerjakannya di Pega — dan selama masa
     // paralel itulah satu-satunya tempat ia berubah. Cache-nya sependek daftar.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -150,9 +159,9 @@ export function useRCLPUCLClaim(reference: string | null) {
  * mengirimkan `undefined` pada tab yang mengekspor grid.
  */
 type ExportInput = {
-  tab: string
-  range: DateRange | undefined
-}
+  tab: string;
+  range: DateRange | undefined;
+};
 
 /**
  * Hook tombol ekspor.
@@ -181,40 +190,40 @@ type ExportInput = {
  * 50.000 baris itu beberapa megabita, dan dapat diterima.
  */
 export function useExportRCLPUCL() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (input: ExportInput) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const params = exportParams(input).toString()
-      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
+      const params = exportParams(input).toString();
+      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`;
 
-      const response = await fetch(address, { headers: header })
+      const response = await fetch(address, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
         // lagi. Yang dibaca di sini adalah kasus pertama — termasuk rentang tanggal yang
         // belum diisi, yang dijawab 422 beserta isian mana yang kurang.
         const body = (await response.json().catch(() => null)) as {
-          pesan?: string
-          detail?: { pesan?: string }[]
-        } | null
+          pesan?: string;
+          detail?: { pesan?: string }[];
+        } | null;
 
         // Pesan per isian lebih berguna daripada pesan umum: ia menyebut isian MANA yang
         // harus diperbaiki, dan di layar ini isiannya ada dua.
-        const detail = body?.detail?.map((item) => item.pesan).filter(Boolean)
-        if (detail && detail.length > 0) throw new Error(detail.join(' '))
+        const detail = body?.detail?.map((item) => item.pesan).filter(Boolean);
+        if (detail && detail.length > 0) throw new Error(detail.join(" "));
 
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-rcl-pucl.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "inbox-rcl-pucl.csv");
     },
-  })
+  });
 }
 
 /**
@@ -225,32 +234,32 @@ export function useExportRCLPUCL() {
  * tidak berarti apa-apa di alamat unduhan membuat orang menduga ia berpengaruh.
  */
 function exportParams(input: ExportInput): URLSearchParams {
-  const params = new URLSearchParams()
-  if (input.tab) params.set('tab', input.tab)
+  const params = new URLSearchParams();
+  if (input.tab) params.set("tab", input.tab);
 
   if (input.range) {
-    if (input.range.dari) params.set('dari', input.range.dari)
-    if (input.range.sampai) params.set('sampai', input.range.sampai)
+    if (input.range.dari) params.set("dari", input.range.dari);
+    if (input.range.sampai) params.set("sampai", input.range.sampai);
   }
-  return params
+  return params;
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(tab: string, page: number): string {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  if (page > 1) params.set('halaman', String(page))
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -261,14 +270,14 @@ function filenameOf(response: Response): string | null {
  * yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -282,32 +291,35 @@ function downloadBlob(blob: Blob, filename: string): void {
  *
  * `enabled` menahannya sampai tombolnya benar-benar ditekan.
  */
-export function useRCLPUCLDocuments(reference: string | null, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useRCLPUCLDocuments(
+  reference: string | null,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keys.documents(portal, token, reference ?? ''),
+    queryKey: keys.documents(portal, token, reference ?? ""),
     queryFn: () =>
       callAPI<DocumentListResponse>(
-        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/dokumen`,
+        `${PATH}/klaim/${encodeURIComponent(reference ?? "")}/dokumen`,
         { token, portal },
       ),
     enabled:
       enabled &&
       reference !== null &&
-      reference !== '' &&
+      reference !== "" &&
       token !== null &&
       portal !== null,
 
     // Lampiran bertambah saat petugas mengunggahnya di Pega. Cache-nya sependek layar kerja.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /** Alamat pengambilan ISI satu dokumen. */
 function rclpuclDocumentURL(reference: string, documentID: string): string {
-  return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`
+  return `${PATH}/klaim/${encodeURIComponent(reference)}/dokumen/${encodeURIComponent(documentID)}`;
 }
 
 /**
@@ -335,56 +347,56 @@ function rclpuclDocumentURL(reference: string, documentID: string): string {
  * tanpa kabar.
  */
 export function useBukaDokumen(reference: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async ({ id, nama, tab }: PembukaanDokumen) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const response = await fetch(rclpuclDocumentURL(reference ?? '', id), {
+      const response = await fetch(rclpuclDocumentURL(reference ?? "", id), {
         headers: header,
-      })
+      });
 
       if (!response.ok) {
         // Tab kosongnya DITUTUP saat gagal. Membiarkannya menganga membuat petugas
         // menunggu halaman yang tidak akan pernah terisi.
-        tab?.close()
+        tab?.close();
         const body = (await response.json().catch(() => null)) as {
-          pesan?: string
-        } | null
-        throw new Error(body?.pesan ?? 'Dokumen tidak dapat diambil.')
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Dokumen tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
+      const blob = await response.blob();
       if (!tab) {
-        downloadBlob(blob, nama || id)
-        return
+        downloadBlob(blob, nama || id);
+        return;
       }
 
-      const url = URL.createObjectURL(blob)
-      tab.location.href = url
+      const url = URL.createObjectURL(blob);
+      tab.location.href = url;
 
       // Dicabut setelah jeda, BUKAN seketika: tab barunya belum sempat memuat isinya, dan
       // mencabutnya langsung menghasilkan halaman kosong. Tanpa pencabutan sama sekali,
       // blob-nya dipegang peramban sampai tab induknya ditutup.
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
-  })
+  });
 }
 
 /** Satu dokumen yang hendak dibuka, beserta tab yang sudah disiapkan pemanggil. */
 export type PembukaanDokumen = {
-  id: string
-  nama: string
-  tab: Window | null
-}
+  id: string;
+  nama: string;
+  tab: Window | null;
+};
 
 /** Tindakan klaim yang dikenali peladen. */
 export type TindakanKlaim =
-  'cetak' | 'tolak' | 'kirim-analyst' | 'kirim-pic-teknik' | 'save'
+  "cetak" | "tolak" | "kirim-analyst" | "kirim-pic-teknik" | "save";
 
 /**
  * Hook tindakan klaim.
@@ -397,10 +409,13 @@ export type TindakanKlaim =
  * Setelah berhasil, isi klaim dan daftar antrean dibatalkan supaya keduanya ditarik ulang —
  * klaim yang sudah diteruskan TIDAK boleh tetap terlihat di tab yang baru saja ditinggalkannya.
  */
-export function useTindakanKlaim(reference: string | null, aksi: TindakanKlaim) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+export function useTindakanKlaim(
+  reference: string | null,
+  aksi: TindakanKlaim,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     // Badan permintaan diisi TIGA tombol — "Save" dan kedua tombol Kirim — karena ketiganya
@@ -409,15 +424,15 @@ export function useTindakanKlaim(reference: string | null, aksi: TindakanKlaim) 
     // membaca badan untuk ketiga yang pertama.
     mutationFn: (isian?: IsianPenerimaanDokumen) =>
       callAPI<{ pesan: string; dokumen?: DocumentRow }>(
-        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/tindakan/${aksi}`,
+        `${PATH}/klaim/${encodeURIComponent(reference ?? "")}/tindakan/${aksi}`,
         isian === undefined
-          ? { token, portal, metode: 'POST' }
-          : { token, portal, metode: 'POST', body: isian },
+          ? { token, portal, metode: "POST" }
+          : { token, portal, metode: "POST", body: isian },
       ),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['inbox-rcl-pucl'] })
+      void client.invalidateQueries({ queryKey: ["inbox-rcl-pucl"] });
     },
-  })
+  });
 }
 
 /**
@@ -428,9 +443,9 @@ export function useTindakanKlaim(reference: string | null, aksi: TindakanKlaim) 
  * supaya aturannya hidup di satu tempat.
  */
 export type IsianPenerimaanDokumen = {
-  catatan_untuk_analyst: string
-  tanggal_kelengkapan_dokumen: string
-}
+  catatan_untuk_analyst: string;
+  tanggal_kelengkapan_dokumen: string;
+};
 
 /**
  * Mengunggah satu berkas sebagai lampiran klaim — tombol "Unggah Dokumen".
@@ -442,43 +457,43 @@ export type IsianPenerimaanDokumen = {
  * `Content-Type` sendiri — peramban yang memasangnya, lengkap dengan boundary.
  */
 export function useUnggahDokumen(reference: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ berkas, nama, kategori }: UnggahanDokumen) => {
-      const muatan = new FormData()
-      muatan.append('berkas', berkas)
+      const muatan = new FormData();
+      muatan.append("berkas", berkas);
       // Nama DAPAT berbeda dari nama berkasnya — kolom "Name" pada dialog Pega adalah isian
       // tersendiri, terpisah dari kolom "File" yang hanya menampilkan nama aslinya.
-      muatan.append('nama', nama)
+      muatan.append("nama", nama);
       // Namanya apa adanya — itulah bentuk yang dipakai Pega pada `PYCATEGORY`.
-      if (kategori) muatan.append('kategori', kategori)
+      if (kategori) muatan.append("kategori", kategori);
       return callAPI<{ pesan: string; dokumen: DocumentRow }>(
-        `${PATH}/klaim/${encodeURIComponent(reference ?? '')}/dokumen`,
-        { token, portal, metode: 'POST', body: muatan },
-      )
+        `${PATH}/klaim/${encodeURIComponent(reference ?? "")}/dokumen`,
+        { token, portal, metode: "POST", body: muatan },
+      );
     },
     onSuccess: () => {
       // Daftar dokumennya disegarkan, bukan ditambahi sendiri: yang menyusun barisnya adalah
       // peladen, dan menyalin susunannya di sini akan menjadi dua tempat yang dapat berselisih.
       void client.invalidateQueries({
-        queryKey: keys.documents(portal, token, reference ?? ''),
-      })
+        queryKey: keys.documents(portal, token, reference ?? ""),
+      });
     },
-  })
+  });
 }
 
 /** Satu berkas beserta nama yang diketik petugas pada kolom "Name". */
 export type UnggahanDokumen = {
-  berkas: File
-  nama: string
+  berkas: File;
+  nama: string;
   // Pilihan kolom "Category" — nama kategori lampiran.
   //
   // Kosong berarti petugas tidak memilih apa pun; kolom kategorinya dibiarkan kosong.
-  kategori: string
-}
+  kategori: string;
+};
 
 /**
  * Pilihan kolom "Category" pada dialog unggah.
@@ -493,11 +508,11 @@ export type UnggahanDokumen = {
  * data entitas, dan satu badan hukum boleh memakai daftar yang berbeda (`ADR-0030`).
  */
 export function useKategoriDokumen() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-rcl-pucl', 'kategori-dokumen', portal, token],
+    queryKey: ["inbox-rcl-pucl", "kategori-dokumen", portal, token],
     enabled: Boolean(token && portal),
     staleTime: 30 * 60 * 1000,
     queryFn: () =>
@@ -505,16 +520,16 @@ export function useKategoriDokumen() {
         token,
         portal,
       }),
-  })
+  });
 }
 
 /** Satu pilihan kolom "Category" — kategori lampiran. */
 export type KategoriDokumen = {
   // Yang dikirim balik saat mengunggah, dan yang tersimpan.
-  nilai: string
+  nilai: string;
   // Yang dibaca petugas. Untuk sekarang selalu sama dengan `nilai`.
-  nama: string
-}
+  nama: string;
+};
 
 /**
  * Hasil satu klaim pada pengiriman Reminder PUCL.
@@ -523,16 +538,16 @@ export type KategoriDokumen = {
  * ditetapkan peladen: `terkirim`, `tanpa-email`, `tidak-memenuhi-syarat`, `gagal`.
  */
 export type HasilReminder = {
-  nomor_klaim: string
-  status: string
+  nomor_klaim: string;
+  status: string;
 
   /** Hanya terisi pada status `gagal`. */
-  alasan?: string
-}
+  alasan?: string;
+};
 
 /** Jawaban tombol "Kirim Reminder". */
 export type JawabanReminder = {
-  hasil: HasilReminder[]
+  hasil: HasilReminder[];
 
   /**
    * Cacah per status, dihitung PELADEN.
@@ -542,12 +557,12 @@ export type JawabanReminder = {
    * empat baris terkirim.
    */
   ringkasan: {
-    terkirim: number
-    tanpa_email: number
-    tidak_memenuhi_syarat: number
-    gagal: number
-  }
-}
+    terkirim: number;
+    tanpa_email: number;
+    tidak_memenuhi_syarat: number;
+    gagal: number;
+  };
+};
 
 /**
  * Mengirim Reminder PUCL untuk klaim yang dicentang.
@@ -561,16 +576,16 @@ export type JawabanReminder = {
  * membuat daftar berkedip tanpa alasan.
  */
 export function useKirimReminder() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (nomorKlaim: string[]) =>
       callAPI<JawabanReminder>(`${PATH}/reminder`, {
         token,
         portal,
-        metode: 'POST',
+        metode: "POST",
         body: { nomor_klaim: nomorKlaim },
       }),
-  })
+  });
 }

@@ -1,32 +1,36 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import type { AutoClaimTab, AutoClaimUploadResponse } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { useSelectedPortal } from '@/app/portal'
+import type { AutoClaimTab, AutoClaimUploadResponse } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ReloadIcon, UploadIcon } from "@/components/Icon";
+import { useSelectedPortal } from "@/app/portal";
 
-import { useAutoClaimTabList, useRefreshAutoClaim } from './api'
-import { CompanyBrowser } from './CompanyBrowser'
-import { PremiumCheckPanel } from './PremiumCheckPanel'
-import { PANEL_ID, SourceTab, tabId } from './SourceTab'
-import { UploadForm } from './UploadForm'
+import { useAutoClaimTabList, useRefreshAutoClaim } from "./api";
+import { CompanyBrowser } from "./CompanyBrowser";
+import { PremiumCheckPanel } from "./PremiumCheckPanel";
+import { PANEL_ID, SourceTab, tabId } from "./SourceTab";
+import { UploadForm } from "./UploadForm";
 
 /**
  * Layar Inbox Auto Claim.
  *
  * Pengganti `InboxAutoClaim/InboxAutoClaim-Harness.xml`. Susunannya dari atas:
  *
- *   - tiga tab jenis klaim (Asuransi Kredit · ANEKA · Travel), masing-masing satu tabel;
- *   - satu panel tab berisi tombol Upload Data Klaim untuk tab itu, lalu daftar
- *     perusahaan di kiri dan grid batch perusahaan terpilih di kanan (`CompanyBrowser`).
+ *   - kepala halaman: judul, Refresh, dan Upload Data Klaim;
+ *   - satu kartu berisi empat tab (Asuransi Kredit · ANEKA · Travel · Cek Premi) dan panel
+ *     tab aktif: daftar perusahaan di kiri, grid batch perusahaan terpilih di kanan
+ *     (`CompanyBrowser`).
  *
- * # Letak tombol (permintaan Work Owner 2026-09-29)
+ * # Letak tombol (`D-82`, 2026-10-14 — mensupersede permintaan Work Owner 2026-09-29)
  *
- *   - Upload Data Klaim di DALAM panel tab, bukan di kepala halaman.
- *   - Proses Klaim dan Generate DLA per BARIS batch di grid kanan. Proses Klaim di layar
- *     lama satu per tab dan memproses semua batch; di sini per batch.
- *   - Catatan "belum tersedia" untuk kedua tombol itu dibuang. Mesinnya memang belum
- *     dibangun, sehingga keduanya nonaktif dengan alasan di `title`.
+ *   - Upload Data Klaim NAIK ke kepala halaman, sebaris dengan Refresh. Berkasnya tetap
+ *     masuk ke tab yang sedang terbuka; di tab Cek Premi tombolnya tidak ada. Di layar
+ *     sempit ia menjadi tombol melayang di pojok kanan bawah.
+ *   - Teks "Portal entitas · Tab" dibuang: portal sudah tampil di bilah atas, tab sudah
+ *     ditandai.
+ *   - Proses Klaim dan Generate DLA tetap per BARIS batch (permintaan 2026-09-29). Mesin
+ *     keduanya belum dibangun, sehingga keduanya nonaktif dengan alasan di `title`.
  *
  * # Tab keempat: Cek Premi
  *
@@ -36,96 +40,107 @@ import { UploadForm } from './UploadForm'
  */
 
 /** Kode tab Cek Premi. Tidak bertabrakan dengan kode tab server (aneka, kredit, travel). */
-const PREMIUM_TAB = 'cek-premi'
+const PREMIUM_TAB = "cek-premi";
 
-const premiumTab: AutoClaimTab = { kode: PREMIUM_TAB, label: 'Cek Premi', tabel: '' }
+const premiumTab: AutoClaimTab = {
+  kode: PREMIUM_TAB,
+  label: "Cek Premi",
+  tabel: "",
+};
 export function AutoClaimInboxPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Tab yang sedang terbuka. Bawaannya datang dari server supaya layar tidak memuat
   // daftar tab-nya sendiri.
-  const [source, setSource] = useState('')
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadNote, setUploadNote] = useState<AutoClaimUploadResponse | null>(null)
+  const [source, setSource] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadNote, setUploadNote] = useState<AutoClaimUploadResponse | null>(
+    null,
+  );
 
-  const tabList = useAutoClaimTabList()
-  const activeSource = source === '' ? (tabList.data?.bawaan ?? '') : source
-  const allTab = tabList.data ? [...tabList.data.tab, premiumTab] : []
-  const activeTab = allTab.find((t) => t.kode === activeSource)
-  const premiumActive = activeSource === PREMIUM_TAB
-  const activeTable = activeTab?.tabel ?? ''
-  const activeLabel = activeTab?.label ?? ''
+  const tabList = useAutoClaimTabList();
+  const activeSource = source === "" ? (tabList.data?.bawaan ?? "") : source;
+  const allTab = tabList.data ? [...tabList.data.tab, premiumTab] : [];
+  const activeTab = allTab.find((t) => t.kode === activeSource);
+  const premiumActive = activeSource === PREMIUM_TAB;
+  const activeLabel = activeTab?.label ?? "";
 
-  const reload = useRefreshAutoClaim()
+  const reload = useRefreshAutoClaim();
 
   return (
-    <main className="mx-auto max-w-[96rem] px-4 py-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Auto Claim</h1>
-          <p className="text-sm text-slate-600">
-            Batch klaim borongan dari perusahaan rekanan beserta hasil pemrosesannya.
+    <main className="halaman flex flex-col gap-3 px-4 py-6 max-sm:pb-24 sm:py-8">
+      <header className="flex flex-wrap items-center gap-3 rounded-kartu border border-slate-200 bg-white px-4 py-3.5 shadow-lembut sm:px-5">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold text-slate-900">
+            Inbox Auto Claim
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-600">
+            Batch klaim borongan dari perusahaan rekanan beserta hasil
+            pemrosesannya.
           </p>
         </div>
-        <Button tone="kedua" onClick={reload.refresh} disabled={reload.isFetching}>
-          {reload.isFetching ? 'Memuat…' : 'Refresh'}
+        <Button
+          tone="kedua"
+          onClick={reload.refresh}
+          disabled={reload.isFetching}
+        >
+          <ReloadIcon className="h-4 w-4" />
+          {reload.isFetching ? "Memuat…" : "Refresh"}
         </Button>
+        {/* Satu tombol untuk kedua lebar layar, bukan dua tombol yang saling
+            disembunyikan: di layar sempit kelasnya sendiri yang memindahkannya ke pojok
+            kanan bawah. Dua tombol berlabel sama membuat pembaca layar menyebutnya dua
+            kali. Tombolnya tidak ada di tab Cek Premi — tab itu tidak menerima berkas. */}
+        {activeSource !== "" && !premiumActive && (
+          <Button
+            tone="utama"
+            onClick={() => setUploadOpen(true)}
+            disabled={uploadOpen || portal === null}
+            className="max-sm:fixed max-sm:right-4 max-sm:bottom-4 max-sm:z-40 max-sm:!rounded-full max-sm:!px-5 max-sm:!py-3 max-sm:shadow-terbang"
+          >
+            <UploadIcon className="h-4 w-4" />
+            Upload Data Klaim
+          </Button>
+        )}
       </header>
 
-      {/* Tab duduk di atas segalanya: ia memilih TABEL yang dibaca seluruh layar, bukan
-          menyaring isi tabel yang sama. */}
-      <div className="mt-4">
+      <section className="rounded-kartu border border-slate-200 bg-white shadow-lembut">
+        {/* Tab duduk di atas segalanya: ia memilih TABEL yang dibaca seluruh layar, bukan
+            menyaring isi tabel yang sama. */}
         <SourceTab tab={allTab} selected={activeSource} onSelect={setSource} />
-      </div>
 
-      {activeSource !== '' && (
-        // Satu panel untuk tab aktif. Tombol Upload Data Klaim ada DI DALAM panel ini
-        // (permintaan Work Owner 2026-09-29), seperti layar lama yang menaruh satu tombol
-        // Upload pada tiap tab: berkas selalu masuk ke tab yang sedang terbuka.
-        <div
-          role="tabpanel"
-          id={PANEL_ID}
-          aria-labelledby={tabId(activeSource)}
-          className="mt-4 rounded-kartu border border-slate-200 bg-white/60 p-4 sm:p-5"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">
-              Portal entitas: <span className="font-medium text-slate-700">{portal ?? '—'}</span>
-              {' · '}
-              Tab: <span className="font-medium text-slate-700">{activeLabel || '…'}</span>
-            </p>
+        {activeSource !== "" && (
+          <div
+            role="tabpanel"
+            id={PANEL_ID}
+            aria-labelledby={tabId(activeSource)}
+            className="p-3 sm:p-4"
+          >
             {!premiumActive && (
-              <Button
-                tone="utama"
-                onClick={() => setUploadOpen(true)}
-                disabled={uploadOpen || portal === null}
-              >
-                Upload Data Klaim
-              </Button>
+              <UploadResult
+                note={uploadNote}
+                onClose={() => setUploadNote(null)}
+              />
             )}
-          </div>
 
-          {!premiumActive && <UploadResult note={uploadNote} onClose={() => setUploadNote(null)} />}
-
-          {portal === null ? (
-            <div className="mt-5">
+            {portal === null ? (
               <ErrorMessage
                 title="Portal entitas belum dipilih"
                 description="Data klaim dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu."
                 tone="penolakan"
               />
-            </div>
-          ) : premiumActive ? (
-            <PremiumCheckPanel />
-          ) : (
-            // `key` pada tab membuat berpindah tab MEMASANG ULANG isinya: kata kunci,
-            // perusahaan terpilih, dan halaman ikut hilang. Bukan kerapian — ketiga tab
-            // membaca tabel berbeda, dan kode perusahaan di satu tab belum tentu ada di tab
-            // lain.
-            <CompanyBrowser key={activeSource} source={activeSource} table={activeTable} />
-          )}
-        </div>
-      )}
+            ) : premiumActive ? (
+              <PremiumCheckPanel />
+            ) : (
+              // `key` pada tab membuat berpindah tab MEMASANG ULANG isinya: kata kunci,
+              // perusahaan terpilih, dan halaman ikut hilang. Bukan kerapian — ketiga tab
+              // membaca tabel berbeda, dan kode perusahaan di satu tab belum tentu ada di
+              // tab lain.
+              <CompanyBrowser key={activeSource} source={activeSource} />
+            )}
+          </div>
+        )}
+      </section>
 
       {uploadOpen && (
         <UploadForm
@@ -133,13 +148,13 @@ export function AutoClaimInboxPage() {
           sourceLabel={activeLabel}
           onClose={() => setUploadOpen(false)}
           onUploaded={(result) => {
-            setUploadNote(result)
-            setUploadOpen(false)
+            setUploadNote(result);
+            setUploadOpen(false);
           }}
         />
       )}
     </main>
-  )
+  );
 }
 
 /**
@@ -153,23 +168,23 @@ function UploadResult({
   note,
   onClose,
 }: {
-  note: AutoClaimUploadResponse | null
-  onClose: () => void
+  note: AutoClaimUploadResponse | null;
+  onClose: () => void;
 }) {
-  if (note === null) return null
+  if (note === null) return null;
 
   return (
     <div
       role="status"
       className={
         note.ditolak.length > 0
-          ? 'mt-4 rounded-kartu border border-amber-200 bg-amber-50/80 p-4 text-sm shadow-lembut'
-          : 'mt-4 rounded-kartu border border-emerald-200 bg-emerald-50/80 p-4 text-sm shadow-lembut'
+          ? "mb-4 rounded-kartu border border-amber-200 bg-amber-50/80 p-4 text-sm shadow-lembut"
+          : "mb-4 rounded-kartu border border-emerald-200 bg-emerald-50/80 p-4 text-sm shadow-lembut"
       }
     >
       <p className="font-medium text-slate-900">
         {note.jumlah_baris === 0
-          ? 'Tidak ada baris yang tersimpan'
+          ? "Tidak ada baris yang tersimpan"
           : `${note.jumlah_baris} baris tersimpan`}
       </p>
 
@@ -177,12 +192,14 @@ function UploadResult({
         <ul className="mt-1 space-y-0.5 text-slate-800">
           {note.batch.map((b) => (
             <li key={`${b.kode_perusahaan}-${b.batch}`}>
-              {b.nama_perusahaan === '' ? b.kode_perusahaan : b.nama_perusahaan} — batch{' '}
-              <span className="font-medium">{b.batch}</span>, {b.jumlah_baris} baris
+              {b.nama_perusahaan === "" ? b.kode_perusahaan : b.nama_perusahaan}{" "}
+              — batch <span className="font-medium">{b.batch}</span>,{" "}
+              {b.jumlah_baris} baris
               {b.jumlah_bertanda > 0 && (
                 <span className="text-amber-800">
-                  {' '}
-                  ({b.jumlah_lolos} menunggu proses, {b.jumlah_bertanda} bertanda gagal)
+                  {" "}
+                  ({b.jumlah_lolos} menunggu proses, {b.jumlah_bertanda}{" "}
+                  bertanda gagal)
                 </span>
               )}
             </li>
@@ -192,16 +209,23 @@ function UploadResult({
 
       {note.ditolak.length > 0 && (
         <div className="mt-3 border-t border-amber-200 pt-3">
-          <p className="font-medium text-amber-900">{note.ditolak.length} baris TIDAK tersimpan</p>
+          <p className="font-medium text-amber-900">
+            {note.ditolak.length} baris TIDAK tersimpan
+          </p>
           <p className="mt-0.5 text-xs text-amber-800">
-            Perusahaan rekanannya tidak dapat ditemukan dari nomor polis, sehingga barisnya tidak
-            punya tempat di grid mana pun. Perbaiki nomor polisnya lalu unggah ulang baris ini saja.
+            Perusahaan rekanannya tidak dapat ditemukan dari nomor polis,
+            sehingga barisnya tidak punya tempat di grid mana pun. Perbaiki
+            nomor polisnya lalu unggah ulang baris ini saja.
           </p>
           <ul className="mt-2 space-y-0.5 text-xs text-amber-900">
             {note.ditolak.map((row) => (
               <li key={`${row.baris}-${row.nomor_polis}`}>
-                Baris <span className="font-medium tabular-nums">{row.baris}</span> —{' '}
-                {row.nomor_polis === '' ? '(nomor polis kosong)' : row.nomor_polis} — {row.pesan}
+                Baris{" "}
+                <span className="font-medium tabular-nums">{row.baris}</span> —{" "}
+                {row.nomor_polis === ""
+                  ? "(nomor polis kosong)"
+                  : row.nomor_polis}{" "}
+                — {row.pesan}
               </li>
             ))}
           </ul>
@@ -210,7 +234,8 @@ function UploadResult({
 
       {note.batch.length > 0 && (
         <p className="mt-2 text-xs text-slate-700">
-          Baris yang menunggu proses belum menjadi klaim sampai batch-nya diproses.
+          Baris yang menunggu proses belum menjadi klaim sampai batch-nya
+          diproses.
         </p>
       )}
 
@@ -220,5 +245,5 @@ function UploadResult({
         </Button>
       </div>
     </div>
-  )
+  );
 }

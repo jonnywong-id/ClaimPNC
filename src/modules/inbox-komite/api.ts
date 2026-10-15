@@ -1,26 +1,26 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   KomiteCaseResponse,
   KomiteDecisionKind,
   KomiteInboxKind,
   KomiteInboxListResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const PATH = '/api/komite/inbox'
+const PATH = "/api/komite/inbox";
 
 /** Penyaring daftar. Kosong berarti tanpa penyaring. */
 export type InboxFilter = {
-  kind: KomiteInboxKind
-  search?: string
+  kind: KomiteInboxKind;
+  search?: string;
   /** `YYYY-MM-DD`; kosong berarti tanpa batas. */
-  from?: string
-  to?: string
-  offset?: number
-}
+  from?: string;
+  to?: string;
+  offset?: number;
+};
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -33,30 +33,30 @@ export type InboxFilter = {
  * yang bertahan melewati pergantian pengguna akan menampilkan pekerjaan orang sebelumnya.
  */
 const keys = {
-  all: (token: string | null) => ['inbox-komite', token] as const,
+  all: (token: string | null) => ["inbox-komite", token] as const,
   detail: (token: string | null, caseID: string) =>
-    ['inbox-komite', token, 'rincian', caseID] as const,
+    ["inbox-komite", token, "rincian", caseID] as const,
   list: (token: string | null, f: InboxFilter) =>
     [
-      'inbox-komite',
+      "inbox-komite",
       token,
       f.kind,
-      f.search ?? '',
-      f.from ?? '',
-      f.to ?? '',
+      f.search ?? "",
+      f.from ?? "",
+      f.to ?? "",
       f.offset ?? 0,
     ] as const,
-}
+};
 
 function buildPath(f: InboxFilter): string {
-  const params = new URLSearchParams()
-  params.set('kotak', f.kind)
-  if (f.search?.trim()) params.set('cari', f.search.trim())
-  if (f.from) params.set('dari', f.from)
-  if (f.to) params.set('sampai', f.to)
-  if (f.offset) params.set('lewati', String(f.offset))
+  const params = new URLSearchParams();
+  params.set("kotak", f.kind);
+  if (f.search?.trim()) params.set("cari", f.search.trim());
+  if (f.from) params.set("dari", f.from);
+  if (f.to) params.set("sampai", f.to);
+  if (f.offset) params.set("lewati", String(f.offset));
 
-  return `${PATH}?${params.toString()}`
+  return `${PATH}?${params.toString()}`;
 }
 
 /**
@@ -74,11 +74,12 @@ function buildPath(f: InboxFilter): string {
  * mencari sesuatu yang ada di halaman tiga lalu diberi tahu bahwa ia tidak ada.
  */
 export function useInboxList(filter: InboxFilter) {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.list(token, filter),
-    queryFn: () => callAPI<KomiteInboxListResponse>(buildPath(filter), { token }),
+    queryFn: () =>
+      callAPI<KomiteInboxListResponse>(buildPath(filter), { token }),
     enabled: token !== null,
 
     // Hasil tab sebelumnya ditahan selama tab baru dimuat, alih-alih layar berkedip
@@ -89,7 +90,7 @@ export function useInboxList(filter: InboxFilter) {
     // sini punya tenggat. Cache-nya karena itu pendek — berbeda dari master yang nyaris
     // tidak berubah dalam satu sesi kerja.
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -101,8 +102,8 @@ export function useInboxList(filter: InboxFilter) {
  * boleh menyebut jenjangnya dapat menyetujui jenjang yang bukan gilirannya.
  */
 export function useDecide() {
-  const token = useSession((state) => state.token)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({
@@ -110,25 +111,27 @@ export function useDecide() {
       decision,
       note,
     }: {
-      caseID: string
-      decision: KomiteDecisionKind
-      note: string
+      caseID: string;
+      decision: KomiteDecisionKind;
+      note: string;
     }) =>
-      callAPI<KomiteCaseResponse>(`${PATH}/${encodeURIComponent(caseID)}/keputusan`, {
-        metode: 'POST',
-        body: { keputusan: decision, catatan: note },
-        token,
-      }),
+      callAPI<KomiteCaseResponse>(
+        `${PATH}/${encodeURIComponent(caseID)}/keputusan`,
+        {
+          metode: "POST",
+          body: { keputusan: decision, catatan: note },
+          token,
+        },
+      ),
     onSuccess: () => {
       // SELURUH daftar dimuat ulang, bukan hanya kotak yang sedang terbuka: satu
       // keputusan memindahkan kasus dari satu kotak ke kotak lain dan mengubah lencana
       // keduanya. Menyunting cache satu kotak akan membuat angkanya tidak cocok dengan
       // isi kotak lain.
-      client.invalidateQueries({ queryKey: keys.all(token) })
+      client.invalidateQueries({ queryKey: keys.all(token) });
     },
-  })
+  });
 }
-
 
 /**
  * Hook rincian satu kasus komite.
@@ -152,18 +155,20 @@ export function useDecide() {
  * pemanggil — dan itu dijawab server lewat `BelongsTo`.
  */
 export function useKomiteCase(caseID: string) {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.detail(token, caseID),
     queryFn: () =>
-      callAPI<KomiteCaseResponse>(`${PATH}/${encodeURIComponent(caseID)}`, { token }),
-    enabled: token !== null && caseID !== '',
+      callAPI<KomiteCaseResponse>(`${PATH}/${encodeURIComponent(caseID)}`, {
+        token,
+      }),
+    enabled: token !== null && caseID !== "",
 
     // Sama pendeknya dengan daftarnya: keadaan sebuah kasus komite dapat berubah dari
     // Pega kapan saja selama masa paralel.
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -173,37 +178,40 @@ export function useKomiteCase(caseID: string) {
  * boleh mengimpor fitur lain. Yang dipakai hanya status dan anggota yang sedang ditunggu.
  */
 export type KmtnCommittee = {
-  id: string
-  nomor_klaim: string
+  id: string;
+  nomor_klaim: string;
   /** "berjalan", "disetujui", atau "ditolak". */
-  status: string
+  status: string;
   /** OPERATOR_ID anggota yang sedang ditunggu; kosong bila kasus selesai. */
-  menunggu?: string
-}
+  menunggu?: string;
+};
 
 const kmtnKey = (token: string | null, portal: string | null, caseID: string) =>
-  ['inbox-komite', token, 'kmtn', portal, caseID] as const
+  ["inbox-komite", token, "kmtn", portal, caseID] as const;
 
 /** Hanya untuk case KMTN — case Pega tidak dikenal modul registrasi. */
 export function isKmtnCase(caseID: string): boolean {
-  const id = caseID.trim().toUpperCase()
-  return id.startsWith('KMTN.') || id.startsWith('KMTN-')
+  const id = caseID.trim().toUpperCase();
+  return id.startsWith("KMTN.") || id.startsWith("KMTN-");
 }
 
 export function useKmtnCommittee(caseID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: kmtnKey(token, portal, caseID),
     queryFn: () =>
-      callAPI<KmtnCommittee>(`/api/registrasi/komite/${encodeURIComponent(caseID)}`, {
-        token,
-        portal,
-      }),
+      callAPI<KmtnCommittee>(
+        `/api/registrasi/komite/${encodeURIComponent(caseID)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && isKmtnCase(caseID),
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -214,30 +222,33 @@ export function useKmtnCommittee(caseID: string) {
  * Server yang memeriksa giliran: anggota yang bukan sedang ditunggu ditolak.
  */
 export function useDecideKmtn(caseID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ decision, note }: { decision: '1' | '2'; note: string }) =>
-      callAPI<KmtnCommittee>(`/api/registrasi/komite/${encodeURIComponent(caseID)}/putusan`, {
-        metode: 'POST',
-        body: { keputusan: decision, catatan: note },
-        token,
-        portal,
-      }),
+    mutationFn: ({ decision, note }: { decision: "1" | "2"; note: string }) =>
+      callAPI<KmtnCommittee>(
+        `/api/registrasi/komite/${encodeURIComponent(caseID)}/putusan`,
+        {
+          metode: "POST",
+          body: { keputusan: decision, catatan: note },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keys.all(token) })
+      client.invalidateQueries({ queryKey: keys.all(token) });
     },
-  })
+  });
 }
 
 /** Jawaban `GET /api/registrasi/klaim/{kunci}/dokumen/{lampiran}/tautan`. */
 export type AttachmentLink = {
-  url: string
+  url: string;
   /** RFC 3339 WIB; kosong bila metadata penyimpanan tidak mencatat masa berlaku. */
-  berlaku_sampai?: string
-}
+  berlaku_sampai?: string;
+};
 
 /**
  * Alamat baca satu berkas "Dokumen Pendukung" — padanan `GetLinkViewDoc2_Act`, aksi klik
@@ -250,8 +261,8 @@ export type AttachmentLink = {
  * bermasa berlaku.
  */
 export function useAttachmentLink(claimKey: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (attachmentID: string) =>
@@ -259,11 +270,11 @@ export function useAttachmentLink(claimKey: string) {
         `/api/registrasi/klaim/${encodeURIComponent(claimKey)}/dokumen/${encodeURIComponent(attachmentID)}/tautan`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /** Satu baris Master Penolakan Komite (`POOLDATA.MST_REJECTED_KOMITE`). */
-export type CommitteeRejection = { id: string; catatan: string }
+export type CommitteeRejection = { id: string; catatan: string };
 
 /**
  * Pilihan "Reject Note" pada form keputusan — `KomitePenolakanMaster.pxResults` yang diisi
@@ -273,17 +284,20 @@ export type CommitteeRejection = { id: string; catatan: string }
  * sini karena fitur tidak boleh mengimpor fitur lain.
  */
 export function useRejectionNotes(enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-komite', 'penolakan-komite', portal, token] as const,
+    queryKey: ["inbox-komite", "penolakan-komite", portal, token] as const,
     queryFn: () =>
-      callAPI<{ penolakan_komite?: CommitteeRejection[] }>('/api/master/penolakan-komite', {
-        token,
-        portal,
-      }),
+      callAPI<{ penolakan_komite?: CommitteeRejection[] }>(
+        "/api/master/penolakan-komite",
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: enabled && token !== null,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }

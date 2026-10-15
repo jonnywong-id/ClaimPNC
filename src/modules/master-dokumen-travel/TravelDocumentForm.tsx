@@ -1,13 +1,13 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type TravelDocument } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type TravelDocument } from "@/api/types";
+import { Field } from "@/components/Field";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
 /**
  * Skema ini SENGAJA tidak memuat satu pun aturan, dan itu bukan kelalaian.
@@ -32,20 +32,20 @@ import { Button } from '@/components/Button'
  */
 const schema = z.object({
   judul: z.string(),
-})
+});
 
-export type TravelDocumentFields = z.infer<typeof schema>
+export type TravelDocumentFields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: TravelDocument | null
-  isSaving: boolean
-  error: unknown
-  onSave: (values: TravelDocumentFields) => void
-  onCancel: () => void
-}
+  edited: TravelDocument | null;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: TravelDocumentFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -56,43 +56,45 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.travelDocumentNotFound:
         return {
-          title: 'Dokumen ini sudah tidak ada',
+          title: "Dokumen ini sudah tidak ada",
           description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /**
@@ -107,21 +109,27 @@ function messageFor(error: unknown): MessageContent | null {
  * hanya sebagai penyaring `WHERE` (`Database/DOCTRAVEL_CVG.prc:37`), dan baris
  * V_LST_DOC_TRAVEL beserta dokumen klaim yang sudah terunggah merujuknya.
  */
-export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }: Props) {
-  const editMode = edited !== null
+export function TravelDocumentForm({
+  edited,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = edited !== null;
 
   const { register, handleSubmit, reset } = useForm<TravelDocumentFields>({
     resolver: zodResolver(schema),
-    defaultValues: { judul: edited?.judul ?? '' },
-  })
+    defaultValues: { judul: edited?.judul ?? "" },
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih
   // dulu — misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
-    reset({ judul: edited?.judul ?? '' })
-  }, [edited, reset])
+    reset({ judul: edited?.judul ?? "" });
+  }, [edited, reset]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   /**
    * Judulnya SAMA untuk mode tambah maupun ubah, dan itu meniru Pega apa adanya.
@@ -135,7 +143,7 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
    * berjudul "Memperbaharui Data", yang menyatakan hal yang tidak sedang terjadi.
    * `D-13` menang di sini — petugas yang hafal layar lama membaca teks yang sama persis.
    */
-  const title = 'Memperbaharui Data'
+  const title = "Memperbaharui Data";
 
   return (
     <form
@@ -147,7 +155,11 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan
@@ -168,10 +180,14 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
       */}
       {editMode && (
         <div>
-          <span className="block text-sm font-medium text-slate-700">ID Kerugian</span>
+          <span className="block text-sm font-medium text-slate-700">
+            ID Kerugian
+          </span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-slate-600">
             {edited.id}
-            <span className="ml-2 font-sans text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 font-sans text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -189,7 +205,7 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
         type="text"
         autoFocus
         autoComplete="off"
-        {...register('judul')}
+        {...register("judul")}
       />
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -197,9 +213,9 @@ export function TravelDocumentForm({ edited, isSaving, error, onSave, onCancel }
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

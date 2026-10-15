@@ -5,7 +5,7 @@
  * `D-80`.
  */
 export interface DokumenPenunjang {
-  id: string
+  id: string;
 
   /**
    * Nama berkas TERSIMPAN, bukan nama yang diketik pengguna.
@@ -14,24 +14,24 @@ export interface DokumenPenunjang {
    * `Foto Kerugian.pdf` tersimpan sebagai `FotoKerugianpdf`. Perilaku itu ditiru (`P-5`),
    * dan layar menampilkan apa yang benar-benar tersimpan alih-alih menyamarkannya.
    */
-  nama_berkas: string
+  nama_berkas: string;
 
-  jenis_dokumen: string
+  jenis_dokumen: string;
 
   /** Kosong bila metadata belum memuat alamatnya; bukan berarti unggahnya gagal. */
-  url: string
+  url: string;
 
-  tanggal_unggah: string
-  berlaku_sampai: string
+  tanggal_unggah: string;
+  berlaku_sampai: string;
 
   /** Dihitung DI SERVER, bukan dari jam peramban yang dapat salah berjam-jam. */
-  kedaluwarsa: boolean
+  kedaluwarsa: boolean;
 }
 
 export interface DokumenPenunjangListResponse {
-  data: DokumenPenunjang[]
+  data: DokumenPenunjang[];
 }
 
 export interface DokumenPenunjangItemResponse {
-  data: DokumenPenunjang
+  data: DokumenPenunjang;
 }

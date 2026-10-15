@@ -1,17 +1,23 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 
-import { CloseIcon, LogoutIcon, MenuIcon, ShieldIcon, SidebarIcon } from '@/components/Icon'
-import { Button } from '@/components/Button'
-import { useLogout } from '@/modules/login/api'
-import { PortalPicker } from '@/modules/portal/PortalPicker'
-import { UserKind } from '@/api/types'
-import { useSession } from '@/app/session'
+import {
+  CloseIcon,
+  LogoutIcon,
+  MenuIcon,
+  ShieldIcon,
+  SidebarIcon,
+} from "@/components/Icon";
+import { Button } from "@/components/Button";
+import { useLogout } from "@/modules/login/api";
+import { PortalPicker } from "@/modules/portal/PortalPicker";
+import { UserKind } from "@/api/types";
+import { useSession } from "@/app/session";
 
-import { Sidebar, type GroupRequest } from './Sidebar'
+import { Sidebar, type GroupRequest } from "./Sidebar";
 
 /** Kunci penyimpanan peramban untuk pilihan menu diperkecil. */
-const COLLAPSED_KEY = 'claimpnc.menu-diperkecil'
+const COLLAPSED_KEY = "claimpnc.menu-diperkecil";
 
 /**
  * readCollapsed membaca pilihan menu diperkecil yang diingat peramban.
@@ -21,9 +27,9 @@ const COLLAPSED_KEY = 'claimpnc.menu-diperkecil'
  */
 function readCollapsed(): boolean {
   try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === '1'
+    return window.localStorage.getItem(COLLAPSED_KEY) === "1";
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -54,18 +60,20 @@ function readCollapsed(): boolean {
 export function PageShell({ children }: { children: ReactNode }) {
   // Laci menu untuk layar sempit. `D-12` menetapkan surveyor memakai tablet dan ponsel
   // di lapangan, dan kolom selebar 16rem akan memakan hampir separuh layar ponsel.
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Menu kiri dapat DIPERKECIL menjadi rel ikon (permintaan Work Owner 2026-09-28),
   // memberi ruang lebih bagi grid lebar. Pilihannya diingat per peramban — kenyamanan
   // pribadi, bukan data yang perlu dibagikan.
-  const [collapsed, setCollapsed] = useState(readCollapsed)
-  const [requestedGroup, setRequestedGroup] = useState<GroupRequest | null>(null)
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [requestedGroup, setRequestedGroup] = useState<GroupRequest | null>(
+    null,
+  );
 
   function changeCollapsed(value: boolean) {
-    setCollapsed(value)
+    setCollapsed(value);
     try {
-      window.localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0')
+      window.localStorage.setItem(COLLAPSED_KEY, value ? "1" : "0");
     } catch {
       // Penyimpanan peramban dapat ditolak (mode privat, kebijakan kantor). Menu tetap
       // berfungsi; hanya pilihannya tidak diingat.
@@ -75,11 +83,11 @@ export function PageShell({ children }: { children: ReactNode }) {
   // Wadah gulir isi halaman. Posisi gulirnya dikembalikan ke atas setiap berpindah
   // halaman — sebelumnya jendela yang digulir, dan halaman baru terbuka di tengah bila
   // halaman sebelumnya sedang tergulir ke bawah.
-  const scrollArea = useRef<HTMLDivElement>(null)
-  const { pathname } = useLocation()
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
   useEffect(() => {
-    scrollArea.current?.scrollTo?.({ top: 0 })
-  }, [pathname])
+    scrollArea.current?.scrollTo?.({ top: 0 });
+  }, [pathname]);
 
   return (
     /*
@@ -95,32 +103,38 @@ export function PageShell({ children }: { children: ReactNode }) {
       <TopBar onOpenMenu={() => setDrawerOpen(true)} />
 
       <div ref={scrollArea} className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-[100rem]">
+        {/* Selebar layar — TIDAK lagi dibatasi 100rem. Batas itu menyisakan ruang kosong
+            ±160px di kiri dan kanan pada monitor 1920px (dilaporkan pengguna 2026-10-14);
+            lebar maksimum kini diatur per halaman lewat utilitas `halaman`. */}
+        <div className="flex">
           {/* Kolom menu tetap pada layar lebar. `sticky` membuatnya tinggal di tempat saat
             isi halaman digulir — pada tabel panjang, menggulir kembali ke atas hanya
             untuk berpindah menu adalah gesekan yang tidak perlu. `top-0` kini diukur
             dari wadah gulir, yang sudah berada di bawah bilah atas. */}
           <aside
             className={[
-              'sticky top-0 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex',
-              'transition-[width] duration-200 ease-halus',
-              collapsed ? 'w-16' : 'w-64',
-            ].join(' ')}
+              "sticky top-0 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-slate-200 bg-white lg:flex",
+              "transition-[width] duration-200 ease-halus",
+              collapsed ? "w-16" : "w-64",
+            ].join(" ")}
           >
             <div
-              className={['flex px-3 pt-3', collapsed ? 'justify-center' : 'justify-end'].join(' ')}
+              className={[
+                "flex px-3 pt-3",
+                collapsed ? "justify-center" : "justify-end",
+              ].join(" ")}
             >
               <button
                 type="button"
                 onClick={() => changeCollapsed(!collapsed)}
-                aria-label={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+                aria-label={collapsed ? "Perbesar menu" : "Perkecil menu"}
                 aria-expanded={!collapsed}
-                title={collapsed ? 'Perbesar menu' : 'Perkecil menu'}
+                title={collapsed ? "Perbesar menu" : "Perkecil menu"}
                 className={[
-                  'flex h-9 w-9 items-center justify-center rounded-kontrol border border-slate-200 text-slate-600',
-                  'transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-900',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                ].join(' ')}
+                  "flex h-9 w-9 items-center justify-center rounded-kontrol border border-slate-200 text-slate-600",
+                  "transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-900",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40",
+                ].join(" ")}
               >
                 <SidebarIcon className="h-5 w-5" />
               </button>
@@ -130,8 +144,11 @@ export function PageShell({ children }: { children: ReactNode }) {
                 collapsed={collapsed}
                 requestedGroup={requestedGroup}
                 onExpandGroup={(id) => {
-                  changeCollapsed(false)
-                  setRequestedGroup((previous) => ({ id, seq: (previous?.seq ?? 0) + 1 }))
+                  changeCollapsed(false);
+                  setRequestedGroup((previous) => ({
+                    id,
+                    seq: (previous?.seq ?? 0) + 1,
+                  }));
                 }}
               />
             </div>
@@ -145,7 +162,7 @@ export function PageShell({ children }: { children: ReactNode }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -172,17 +189,23 @@ function MenuDrawer({ onClose }: { onClose: () => void }) {
             <CloseIcon className="h-4 w-4" />
           </Button>
         </div>
+        {/* Pemilih portal disembunyikan dari bilah atas di bawah `sm` karena tidak muat.
+            Tanpa salinan di sini, pengguna ponsel sama sekali tidak dapat berganti
+            entitas. */}
+        <div className="border-b border-slate-200 px-3 py-3 sm:hidden">
+          <PortalPicker id="portal-laci" />
+        </div>
         <div className="min-h-0 flex-1">
           <Sidebar onNavigate={onClose} />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const user = useSession((state) => state.user)
-  const logout = useLogout()
+  const user = useSession((state) => state.user);
+  const logout = useLogout();
 
   return (
     /*
@@ -193,9 +216,14 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       wadah tersendiri di bawahnya sehingga tidak pernah lewat di belakang bilah ini.
     */
     <header className="fixed inset-x-0 top-0 z-30 h-16 border-b border-slate-200 bg-white/85 shadow-lembut backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[100rem] items-center justify-between gap-4 px-4">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 lg:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Button tone="halus" onClick={onOpenMenu} aria-label="Buka menu" className="lg:hidden">
+          <Button
+            tone="halus"
+            onClick={onOpenMenu}
+            aria-label="Buka menu"
+            className="lg:hidden"
+          >
             <MenuIcon className="h-4 w-4" />
           </Button>
           <Brand />
@@ -206,7 +234,13 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
             <PortalPicker />
           </div>
 
-          {user && <UserChip nama={user.nama} jenis={user.jenis} identitas={user.identitas} />}
+          {user && (
+            <UserChip
+              nama={user.nama}
+              jenis={user.jenis}
+              identitas={user.identitas}
+            />
+          )}
 
           <Button
             tone="halus"
@@ -226,7 +260,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 function Brand() {
@@ -240,11 +274,15 @@ function Brand() {
         <ShieldIcon className="h-5 w-5" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold leading-tight text-slate-900">Claim PNC</p>
-        <p className="truncate text-xs leading-tight text-slate-500">Asuransi Sinar Mas</p>
+        <p className="truncate text-sm font-semibold leading-tight text-slate-900">
+          Claim PNC
+        </p>
+        <p className="truncate text-xs leading-tight text-slate-500">
+          Asuransi Sinar Mas
+        </p>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -254,7 +292,15 @@ function Brand() {
  * tidak akan punya: HCC/HCQ tidak mengirimkannya, dan menambahkan unggahan foto berarti
  * menyimpan data pribadi tanpa alasan bisnis.
  */
-function UserChip({ nama, jenis, identitas }: { nama: string; jenis: string; identitas: string }) {
+function UserChip({
+  nama,
+  jenis,
+  identitas,
+}: {
+  nama: string;
+  jenis: string;
+  identitas: string;
+}) {
   return (
     <div className="flex items-center gap-2.5 rounded-kontrol border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-lembut">
       <span
@@ -277,13 +323,13 @@ function UserChip({ nama, jenis, identitas }: { nama: string; jenis: string; ide
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 /** Mengambil paling banyak dua huruf pertama dari nama sebagai inisial. */
 function initials(nama: string): string {
-  const word = nama.trim().split(/\s+/).filter(Boolean)
-  const start = word[0]?.[0] ?? '?'
-  const end = word.length > 1 ? (word[word.length - 1]?.[0] ?? '') : ''
-  return (start + end).toUpperCase()
+  const word = nama.trim().split(/\s+/).filter(Boolean);
+  const start = word[0]?.[0] ?? "?";
+  const end = word.length > 1 ? (word[word.length - 1]?.[0] ?? "") : "";
+  return (start + end).toUpperCase();
 }

@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import type { ClaimStatusListResponse, ClaimStatusResponse } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import type { ClaimStatusListResponse, ClaimStatusResponse } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTES = '/api/master/status-klaim'
+const ROUTES = "/api/master/status-klaim";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,8 +17,8 @@ const ROUTES = '/api/master/status-klaim'
  */
 const key = {
   list: (portal: string | null, token: string | null) =>
-    ['master-status-klaim', portal, token] as const,
-}
+    ["master-status-klaim", portal, token] as const,
+};
 
 /**
  * Hook daftar Master Status Klaim.
@@ -31,8 +31,8 @@ const key = {
  * datanya besar — inbox dan laporan — tidak boleh mengikuti pola ini.
  */
 export function useClaimStatusList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.list(portal, token),
@@ -45,14 +45,14 @@ export function useClaimStatusList() {
     // pemuatan ulang yang tidak perlu, sementara tombol Refresh tetap tersedia bagi
     // pengguna yang tahu datanya baru saja diubah orang lain.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 type SaveFields = {
   /** Kosong berarti menambah; terisi berarti mengubah status dengan kode itu. */
-  kode?: string
-  label: string
-}
+  kode?: string;
+  label: string;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -65,23 +65,26 @@ type SaveFields = {
  * pengubahan ia berada di jalur URL.
  */
 export function useSaveClaimStatus() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ kode, label }: SaveFields) =>
-      callAPI<ClaimStatusResponse>(kode ? `${ROUTES}/${encodeURIComponent(kode)}` : ROUTES, {
-        metode: kode ? 'PUT' : 'POST',
-        body: { label },
-        token,
-        portal,
-      }),
+      callAPI<ClaimStatusResponse>(
+        kode ? `${ROUTES}/${encodeURIComponent(kode)}` : ROUTES,
+        {
+          metode: kode ? "PUT" : "POST",
+          body: { label },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan,
       // kode barunya hanya diketahui server — menebaknya di klien akan menampilkan
       // kode yang salah sampai muat ulang berikutnya.
-      client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) });
     },
-  })
+  });
 }

@@ -1,18 +1,18 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Masking } from '@/api/types'
-import { Field } from '@/components/Field'
-import { NumberField } from '@/components/NumberField'
-import { SelectField } from '@/components/SelectField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Masking } from "@/api/types";
+import { Field } from "@/components/Field";
+import { NumberField } from "@/components/NumberField";
+import { SelectField } from "@/components/SelectField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
-import { useBranchOptions, useSaveMasking } from './api'
-import { ModuleChecklist } from './ModuleChecklist'
+import { useBranchOptions, useSaveMasking } from "./api";
+import { ModuleChecklist } from "./ModuleChecklist";
 
 /**
  * Batas panjang isian; sama dengan konstanta di domain Go.
@@ -23,11 +23,11 @@ import { ModuleChecklist } from './ModuleChecklist'
  *
  * Bila angka ini berubah, KEDUA tempat wajib ikut berubah.
  */
-const MAX_LOGIN = 100
-const MAX_MODULE = 100
-const MAX_SUB_MODULE = 400
-const MAX_BRANCH_ID = 6
-const MAX_QUOTA = 1_000_000
+const MAX_LOGIN = 100;
+const MAX_MODULE = 100;
+const MAX_SUB_MODULE = 400;
+const MAX_BRANCH_ID = 6;
+const MAX_QUOTA = 1_000_000;
 
 /**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
@@ -46,39 +46,51 @@ const schema = z.object({
   cabang: z
     .string()
     .trim()
-    .min(1, 'Cabang wajib dipilih.')
-    .max(MAX_BRANCH_ID, `Kode cabang paling panjang ${MAX_BRANCH_ID} karakter.`),
+    .min(1, "Cabang wajib dipilih.")
+    .max(
+      MAX_BRANCH_ID,
+      `Kode cabang paling panjang ${MAX_BRANCH_ID} karakter.`,
+    ),
   login: z
     .string()
     .trim()
-    .min(1, 'Nama pengguna wajib diisi.')
+    .min(1, "Nama pengguna wajib diisi.")
     .max(MAX_LOGIN, `Nama pengguna paling panjang ${MAX_LOGIN} karakter.`),
   modul: z
     .string()
     .trim()
-    .min(1, 'Modul wajib diisi.')
+    .min(1, "Modul wajib diisi.")
     .max(MAX_MODULE, `Modul paling panjang ${MAX_MODULE} karakter.`),
   // Sub modul BOLEH kosong: satu baris produksi memang tidak punya sub modul, dan
   // memaksanya terisi akan menolak keadaan yang sah dan sudah berjalan.
   sub_modul: z
     .string()
     .trim()
-    .max(MAX_SUB_MODULE, `Sub modul paling panjang ${MAX_SUB_MODULE} karakter.`),
+    .max(
+      MAX_SUB_MODULE,
+      `Sub modul paling panjang ${MAX_SUB_MODULE} karakter.`,
+    ),
   // Kuota NOL diterima — ia berarti "tidak boleh mencari sama sekali", dan itu pernyataan
   // kewenangan yang sah, bukan isian yang belum diisi.
   // `error`, bukan `invalid_type_error`: zod 4 menyatukan pesan tipe dan pesan wajib ke
   // satu opsi. Isian yang dikosongkan menghasilkan NaN karena `valueAsNumber`, dan pesan
   // inilah yang menjelaskannya kepada pengguna.
   maks_cari: z
-    .number({ error: 'Maks. cari data harus berupa angka.' })
-    .int('Maks. cari data harus bilangan bulat.')
-    .min(0, 'Maks. cari data tidak boleh kurang dari 0.')
-    .max(MAX_QUOTA, `Maks. cari data paling besar ${MAX_QUOTA.toLocaleString('id-ID')}.`),
+    .number({ error: "Maks. cari data harus berupa angka." })
+    .int("Maks. cari data harus bilangan bulat.")
+    .min(0, "Maks. cari data tidak boleh kurang dari 0.")
+    .max(
+      MAX_QUOTA,
+      `Maks. cari data paling besar ${MAX_QUOTA.toLocaleString("id-ID")}.`,
+    ),
   maks_lihat: z
-    .number({ error: 'Maks. lihat data harus berupa angka.' })
-    .int('Maks. lihat data harus bilangan bulat.')
-    .min(0, 'Maks. lihat data tidak boleh kurang dari 0.')
-    .max(MAX_QUOTA, `Maks. lihat data paling besar ${MAX_QUOTA.toLocaleString('id-ID')}.`),
+    .number({ error: "Maks. lihat data harus berupa angka." })
+    .int("Maks. lihat data harus bilangan bulat.")
+    .min(0, "Maks. lihat data tidak boleh kurang dari 0.")
+    .max(
+      MAX_QUOTA,
+      `Maks. lihat data paling besar ${MAX_QUOTA.toLocaleString("id-ID")}.`,
+    ),
   lihat_ktp: z.boolean(),
   lihat_email: z.boolean(),
   lihat_notelp: z.boolean(),
@@ -86,16 +98,16 @@ const schema = z.object({
   // `Section/MasterProteksi_Sec-Section.xml:22449` yang terikat `InputData.BranchID` dan
   // dipetakan ke parameter `T_STSAKTF`.
   aktif: z.boolean(),
-})
+});
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang sedang diubah. Form ini HANYA untuk mengubah — penambahan dilayani
    *  MaskingAddForm, yang bentuknya berbeda karena layar lama pun memisahkan keduanya. */
-  masking: Masking
-  onClose: () => void
-}
+  masking: Masking;
+  onClose: () => void;
+};
 
 /**
  * Form tambah dan ubah Master Masking.
@@ -113,13 +125,13 @@ type Props = {
  * menimpanya demikian.
  */
 export function MaskingEditForm({ masking, onClose }: Props) {
-  const save = useSaveMasking()
-  const firstField = useRef<HTMLInputElement | null>(null)
+  const save = useSaveMasking();
+  const firstField = useRef<HTMLInputElement | null>(null);
 
   // Kata kunci pencarian cabang. Terpisah dari nilai form: yang disimpan adalah KODE
   // cabang, yang diketik adalah namanya.
-  const [branchKeyword, setBranchKeyword] = useState('')
-  const branches = useBranchOptions(branchKeyword)
+  const [branchKeyword, setBranchKeyword] = useState("");
+  const branches = useBranchOptions(branchKeyword);
 
   const {
     register,
@@ -131,16 +143,16 @@ export function MaskingEditForm({ masking, onClose }: Props) {
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      cabang: masking?.cabang ?? '',
-      login: masking?.login ?? '',
+      cabang: masking?.cabang ?? "",
+      login: masking?.login ?? "",
       // Modul diisi awal dengan satu-satunya nilai yang ada di data produksi.
       //
       // Ia SARAN, bukan batasan: isiannya tetap dapat diketik bebas (keputusan Work Owner
       // 2026-09-20, "seperti aplikasi Pega saja"). Daftar pilihannya di Pega dipasok rule
       // `MODULKLAIMMASKING` yang HILANG dari export (`R-16`), sehingga daftarnya tidak
       // dapat direproduksi tanpa mengarangnya.
-      modul: masking?.modul ?? 'PNCSearchKlaim',
-      sub_modul: masking?.sub_modul ?? '',
+      modul: masking?.modul ?? "PNCSearchKlaim",
+      sub_modul: masking?.sub_modul ?? "",
       maks_cari: masking?.maks_cari ?? 0,
       maks_lihat: masking?.maks_lihat ?? 0,
       lihat_ktp: masking?.lihat_ktp ?? false,
@@ -149,40 +161,40 @@ export function MaskingEditForm({ masking, onClose }: Props) {
       // Baris baru selalu aktif — server pun menimpanya demikian.
       aktif: masking?.aktif ?? true,
     },
-  })
+  });
 
   // Fokus dipindahkan ke isian pertama saat form terbuka. Tanpa ini, pengguna papan ketik
   // harus menekan Tab berkali-kali dari awal halaman untuk mencapainya.
   useEffect(() => {
-    firstField.current?.focus()
-  }, [])
+    firstField.current?.focus();
+  }, []);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya, bukan hanya diringkas di
   // kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan itu hanya
   // berguna bila layar menyorotnya di tempat isiannya.
   useEffect(() => {
-    if (!(save.error instanceof APIError)) return
-    const violation = save.error.violations()
+    if (!(save.error instanceof APIError)) return;
+    const violation = save.error.violations();
     for (const name of [
-      'cabang',
-      'login',
-      'modul',
-      'sub_modul',
-      'maks_cari',
-      'maks_lihat',
+      "cabang",
+      "login",
+      "modul",
+      "sub_modul",
+      "maks_cari",
+      "maks_lihat",
     ] as const) {
-      const message = violation[name]
-      if (message) setError(name, { type: 'server', message })
+      const message = violation[name];
+      if (message) setError(name, { type: "server", message });
     }
-  }, [save.error, setError])
+  }, [save.error, setError]);
 
-  const selectedBranch = watch('cabang')
-  const { ref: refLogin, ...remainingLogin } = register('login')
+  const selectedBranch = watch("cabang");
+  const { ref: refLogin, ...remainingLogin } = register("login");
 
   function send(values: FieldValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal.
-    save.mutate({ id: masking.id, ...values }, { onSuccess: onClose })
+    save.mutate({ id: masking.id, ...values }, { onSuccess: onClose });
   }
 
   return (
@@ -197,7 +209,7 @@ export function MaskingEditForm({ masking, onClose }: Props) {
       onSubmit={handleSubmit(send)}
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
-      aria-label='Ubah data masking'
+      aria-label="Ubah data masking"
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         <h3 className="text-base font-semibold text-slate-900">
@@ -223,7 +235,7 @@ export function MaskingEditForm({ masking, onClose }: Props) {
               hint={
                 selectedBranch
                   ? `Terpilih: ${selectedBranch}`
-                  : 'Pilih satu cabang dari daftar di bawah.'
+                  : "Pilih satu cabang dari daftar di bawah."
               }
             />
             {/*
@@ -233,29 +245,41 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             */}
             <div className="mt-2 max-h-40 overflow-y-auto rounded-kontrol border border-slate-200">
               {branches.isPending && (
-                <p className="px-3 py-2 text-xs text-slate-500">Memuat cabang…</p>
+                <p className="px-3 py-2 text-xs text-slate-500">
+                  Memuat cabang…
+                </p>
               )}
               {branches.isError && (
-                <p className="px-3 py-2 text-xs text-red-600">Daftar cabang gagal dimuat.</p>
+                <p className="px-3 py-2 text-xs text-red-600">
+                  Daftar cabang gagal dimuat.
+                </p>
               )}
               {branches.data?.cabang.length === 0 && (
-                <p className="px-3 py-2 text-xs text-slate-500">Tidak ada cabang yang cocok.</p>
+                <p className="px-3 py-2 text-xs text-slate-500">
+                  Tidak ada cabang yang cocok.
+                </p>
               )}
               {branches.data?.cabang.map((branch) => (
                 <button
                   key={branch.kode}
                   type="button"
-                  onClick={() => setValue('cabang', branch.kode, { shouldValidate: true })}
+                  onClick={() =>
+                    setValue("cabang", branch.kode, { shouldValidate: true })
+                  }
                   className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                    selectedBranch === branch.kode ? 'bg-blue-50 font-medium text-blue-800' : 'text-slate-700'
+                    selectedBranch === branch.kode
+                      ? "bg-blue-50 font-medium text-blue-800"
+                      : "text-slate-700"
                   }`}
                 >
                   <span>{branch.nama}</span>
-                  <span className="font-mono text-xs text-slate-500">{branch.kode}</span>
+                  <span className="font-mono text-xs text-slate-500">
+                    {branch.kode}
+                  </span>
                 </button>
               ))}
             </div>
-            <input type="hidden" {...register('cabang')} />
+            <input type="hidden" {...register("cabang")} />
           </div>
 
           <Field
@@ -265,8 +289,8 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             error={errors.login?.message}
             hint="Login yang dipakai pengguna untuk masuk aplikasi."
             ref={(element) => {
-              refLogin(element)
-              firstField.current = element
+              refLogin(element);
+              firstField.current = element;
             }}
             {...remainingLogin}
           />
@@ -276,22 +300,28 @@ export function MaskingEditForm({ masking, onClose }: Props) {
           <div className="sm:col-span-2">
             <ModuleChecklist
               idPrefix="ubah"
-              modul={watch('modul')}
-              subModul={watch('sub_modul')}
+              modul={watch("modul")}
+              subModul={watch("sub_modul")}
               onChange={(change) => {
                 if (change.modul !== undefined) {
-                  setValue('modul', change.modul, { shouldValidate: true })
+                  setValue("modul", change.modul, { shouldValidate: true });
                 }
                 if (change.sub_modul !== undefined) {
-                  setValue('sub_modul', change.sub_modul, { shouldValidate: true })
+                  setValue("sub_modul", change.sub_modul, {
+                    shouldValidate: true,
+                  });
                 }
               }}
             />
             {errors.modul?.message && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.modul.message}</p>
+              <p className="mt-1.5 text-sm text-red-600">
+                {errors.modul.message}
+              </p>
             )}
             {errors.sub_modul?.message && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.sub_modul.message}</p>
+              <p className="mt-1.5 text-sm text-red-600">
+                {errors.sub_modul.message}
+              </p>
             )}
           </div>
 
@@ -309,8 +339,10 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             id="maks_cari"
             label="Max Cari Data"
             max={MAX_QUOTA}
-            value={watch('maks_cari')}
-            onValueChange={(next) => setValue('maks_cari', next, { shouldValidate: true })}
+            value={watch("maks_cari")}
+            onValueChange={(next) =>
+              setValue("maks_cari", next, { shouldValidate: true })
+            }
             error={errors.maks_cari?.message}
             hint="Berapa kali pengguna boleh mencari. Kosong atau 0 berarti tidak boleh."
           />
@@ -319,8 +351,10 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             id="maks_lihat"
             label="Max Lihat Data"
             max={MAX_QUOTA}
-            value={watch('maks_lihat')}
-            onValueChange={(next) => setValue('maks_lihat', next, { shouldValidate: true })}
+            value={watch("maks_lihat")}
+            onValueChange={(next) =>
+              setValue("maks_lihat", next, { shouldValidate: true })
+            }
             error={errors.maks_lihat?.message}
             hint="Berapa banyak data yang boleh dilihat. Kosong atau 0 berarti tidak boleh."
           />
@@ -336,13 +370,14 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             id="aktif"
             label="Status"
             options={[
-              { value: 'true', label: 'AKTIF' },
-              { value: 'false', label: 'TIDAK AKTIF' },
+              { value: "true", label: "AKTIF" },
+              { value: "false", label: "TIDAK AKTIF" },
             ]}
             error={errors.aktif?.message}
-            {...register('aktif', {
+            {...register("aktif", {
               // Dropdown mengirim teks; skema menuntut boolean.
-              setValueAs: (value: string | boolean) => value === true || value === 'true',
+              setValueAs: (value: string | boolean) =>
+                value === true || value === "true",
             })}
           />
         </div>
@@ -363,9 +398,21 @@ export function MaskingEditForm({ masking, onClose }: Props) {
             Yang tidak dicentang tetap ditampilkan tersamar bagi pengguna ini.
           </p>
           <div className="grid gap-2 sm:grid-cols-3">
-            <Checkbox id="lihat_ktp" label="Nomor KTP" {...register('lihat_ktp')} />
-            <Checkbox id="lihat_email" label="Alamat surel" {...register('lihat_email')} />
-            <Checkbox id="lihat_notelp" label="Nomor telepon" {...register('lihat_notelp')} />
+            <Checkbox
+              id="lihat_ktp"
+              label="Nomor KTP"
+              {...register("lihat_ktp")}
+            />
+            <Checkbox
+              id="lihat_email"
+              label="Alamat surel"
+              {...register("lihat_email")}
+            />
+            <Checkbox
+              id="lihat_notelp"
+              label="Nomor telepon"
+              {...register("lihat_notelp")}
+            />
           </div>
         </fieldset>
       </div>
@@ -375,11 +422,11 @@ export function MaskingEditForm({ masking, onClose }: Props) {
           Batal
         </Button>
         <Button tone="utama" type="submit" disabled={save.isPending}>
-          {save.isPending ? 'Menyimpan…' : 'Simpan'}
+          {save.isPending ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -392,7 +439,10 @@ const Checkbox = function Checkbox({
   id,
   label,
   ...rest
-}: { id: string; label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  id: string;
+  label: string;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label
       htmlFor={id}
@@ -406,73 +456,90 @@ const Checkbox = function Checkbox({
       />
       {label}
     </label>
-  )
-}
+  );
+};
 
 /** Gagal menyimpan dibedakan dari gagal memuat: di sini pengguna baru saja melakukan sesuatu. */
 function SaveErrorMessage({ error }: { error: unknown }) {
-  const message = saveMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = saveMessage(error);
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function saveMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function saveMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Data masking belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Data masking belum tersimpan. Periksa koneksi lalu tekan Simpan lagi.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.maskingPairTaken:
         return {
-          title: 'Pengguna itu sudah punya data masking di cabang ini',
+          title: "Pengguna itu sudah punya data masking di cabang ini",
           description:
-            'Ubah data yang sudah ada, jangan menambah baris baru. Dua baris untuk orang yang sama berarti dua kewenangan yang keduanya berlaku.',
-          tone: 'penolakan',
-        }
+            "Ubah data yang sudah ada, jangan menambah baris baru. Dua baris untuk orang yang sama berarti dua kewenangan yang keduanya berlaku.",
+          tone: "penolakan",
+        };
       case ErrorCode.maskingBranchUnknown:
         return {
-          title: 'Cabang tidak dikenal',
-          description: 'Pilih cabang dari daftar, jangan mengetik kodenya sendiri.',
-          tone: 'penolakan',
-        }
+          title: "Cabang tidak dikenal",
+          description:
+            "Pilih cabang dari daftar, jangan mengetik kodenya sendiri.",
+          tone: "penolakan",
+        };
       case ErrorCode.maskingIDTaken:
         return {
-          title: 'Nomor data sedang dipakai permintaan lain',
-          description: 'Tekan Simpan sekali lagi; hampir pasti berhasil.',
-          tone: 'gangguan',
-        }
+          title: "Nomor data sedang dipakai permintaan lain",
+          description: "Tekan Simpan sekali lagi; hampir pasti berhasil.",
+          tone: "gangguan",
+        };
       case ErrorCode.maskingNotFound:
         return {
-          title: 'Data masking tidak ditemukan',
-          description: 'Mungkin baru saja diubah petugas lain. Tutup form ini lalu muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+          title: "Data masking tidak ditemukan",
+          description:
+            "Mungkin baru saja diubah petugas lain. Tutup form ini lalu muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.validationFailed:
         return {
-          title: 'Isian belum benar',
-          description: 'Perbaiki isian yang ditandai lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Isian belum benar",
+          description: "Perbaiki isian yang ditandai lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
       case ErrorCode.portalNotReady:
         return {
-          title: 'Portal entitas bermasalah',
-          description: 'Pilih ulang portal entitas di bilah atas halaman ini.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas bermasalah",
+          description: "Pilih ulang portal entitas di bilah atas halaman ini.",
+          tone: "penolakan",
+        };
       default:
-        return { title: 'Gagal menyimpan', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Gagal menyimpan",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Gagal menyimpan',
-    description: 'Terjadi kesalahan pada sistem. Coba simpan lagi.',
-    tone: 'gangguan',
-  }
+    title: "Gagal menyimpan",
+    description: "Terjadi kesalahan pada sistem. Coba simpan lagi.",
+    tone: "gangguan",
+  };
 }

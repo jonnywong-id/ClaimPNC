@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   DocumentTypeInput,
   DocumentTypeListResponse,
   DocumentTypeResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/tipe-dokumen'
+const ROUTE = "/api/master/tipe-dokumen";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -23,7 +23,7 @@ const ROUTE = '/api/master/tipe-dokumen'
  * peramban yang sama, mengikuti pola modul master lainnya.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['daftar-tipe-dokumen', portal, token] as const
+  return ["daftar-tipe-dokumen", portal, token] as const;
 }
 
 /**
@@ -43,26 +43,26 @@ function listKey(portal: string | null, token: string | null) {
  * mengikuti pola ini.
  */
 export function useDocumentTypeList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<DocumentTypeListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook penambahan tipe dokumen. */
 export function useCreateDocumentType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: DocumentTypeInput) =>
       callAPI<DocumentTypeResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
@@ -72,27 +72,27 @@ export function useCreateDocumentType() {
     // saat yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi tabel
     // yang sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }
 
 /** Hook penyuntingan tipe dokumen. */
 export function useUpdateDocumentType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: DocumentTypeInput }) =>
       callAPI<DocumentTypeResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }

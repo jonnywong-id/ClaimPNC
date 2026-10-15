@@ -1,18 +1,18 @@
-import { useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { TextAreaField } from '@/components/TextAreaField'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { TextAreaField } from "@/components/TextAreaField";
 
-import { useDetailRCL, useKeputusanRCL } from './api'
-import type { DetailRCL, KeputusanRCL } from './types'
+import { useDetailRCL, useKeputusanRCL } from "./api";
+import type { DetailRCL, KeputusanRCL } from "./types";
 
 /** Nilai `RCL_PUCL` yang menentukan isi layar. */
-const MODE_RCL = '1'
-const MODE_MSIG = '3'
+const MODE_RCL = "1";
+const MODE_MSIG = "3";
 
 /**
  * Layar kerja RCL Dokter — pengganti Flow Action `SendToRCLDokter`, yang menyertakan section
@@ -37,24 +37,24 @@ const MODE_MSIG = '3'
  * kembali ke Inbox RCL — seperti Pega yang menutup penugasan lalu kembali ke portal.
  */
 export function RCLDokterPage() {
-  const { nomor } = useParams<{ nomor: string }>()
-  const navigate = useNavigate()
-  const portal = useSelectedPortal((state) => state.alias)
+  const { nomor } = useParams<{ nomor: string }>();
+  const navigate = useNavigate();
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const key = nomor ? decodeURIComponent(nomor) : ''
-  const detail = useDetailRCL(key || null)
-  const data = detail.data ?? null
+  const key = nomor ? decodeURIComponent(nomor) : "";
+  const detail = useDetailRCL(key || null);
+  const data = detail.data ?? null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
-            {data ? `Klaim ${data.nomor_case}` : 'RCL Dokter'}
+            {data ? `Klaim ${data.nomor_case}` : "RCL Dokter"}
           </h1>
           <p className="mt-1 text-sm text-slate-600">Layar kerja dokter RCL.</p>
         </div>
-        <Button tone="kedua" onClick={() => navigate('/inbox-rcl')}>
+        <Button tone="kedua" onClick={() => navigate("/inbox-rcl")}>
           Kembali ke antrean
         </Button>
       </header>
@@ -76,31 +76,44 @@ export function RCLDokterPage() {
           <ErrorMessage
             title="Klaim tidak dapat dibuka"
             description={pesanGalat(detail.error)}
-            tone={detail.error instanceof APIError && detail.error.status === 404 ? 'penolakan' : 'gangguan'}
+            tone={
+              detail.error instanceof APIError && detail.error.status === 404
+                ? "penolakan"
+                : "gangguan"
+            }
           />
         </div>
       ) : data ? (
-        <WorkScreen detail={data} onDone={() => navigate('/inbox-rcl', { replace: true })} />
+        <WorkScreen
+          detail={data}
+          onDone={() => navigate("/inbox-rcl", { replace: true })}
+        />
       ) : null}
     </div>
-  )
+  );
 }
 
 /** Isi section `RCLDokter`, urutan dan label apa adanya — atau layar Alasan Dokter. */
-function WorkScreen({ detail, onDone }: { detail: DetailRCL; onDone: () => void }) {
-  const rcl = detail.mode === MODE_RCL
-  const msig = detail.mode === MODE_MSIG
+function WorkScreen({
+  detail,
+  onDone,
+}: {
+  detail: DetailRCL;
+  onDone: () => void;
+}) {
+  const rcl = detail.mode === MODE_RCL;
+  const msig = detail.mode === MODE_MSIG;
 
-  const keputusan = useKeputusanRCL(detail.nomor_case)
-  const [alasanTerbuka, setAlasanTerbuka] = useState(false)
-  const [alasanDokter, setAlasanDokter] = useState(detail.alasan_dokter)
+  const keputusan = useKeputusanRCL(detail.nomor_case);
+  const [alasanTerbuka, setAlasanTerbuka] = useState(false);
+  const [alasanDokter, setAlasanDokter] = useState(detail.alasan_dokter);
 
   function kirim(nilai: KeputusanRCL) {
     keputusan.mutate(
       // Alasan Dokter hanya ikut terkirim dari layar Alasan Dokter (Tidak Setuju/Back).
-      { keputusan: nilai, alasanDokter: alasanTerbuka ? alasanDokter : '' },
+      { keputusan: nilai, alasanDokter: alasanTerbuka ? alasanDokter : "" },
       { onSuccess: onDone },
-    )
+    );
   }
 
   const galat = keputusan.isError ? (
@@ -108,10 +121,14 @@ function WorkScreen({ detail, onDone }: { detail: DetailRCL; onDone: () => void 
       <ErrorMessage
         title="Keputusan tidak tersimpan"
         description={pesanGalat(keputusan.error)}
-        tone={keputusan.error instanceof APIError && keputusan.error.status < 500 ? 'penolakan' : 'gangguan'}
+        tone={
+          keputusan.error instanceof APIError && keputusan.error.status < 500
+            ? "penolakan"
+            : "gangguan"
+        }
       />
     </div>
-  ) : null
+  ) : null;
 
   if (alasanTerbuka) {
     // Section `sendToAnalystTolakRCL_sect` — satu isian (tidak wajib) dan tombol Kirim.
@@ -126,19 +143,23 @@ function WorkScreen({ detail, onDone }: { detail: DetailRCL; onDone: () => void 
         />
         {galat}
         <Actions>
-          <Button tone="kedua" disabled={keputusan.isPending} onClick={() => setAlasanTerbuka(false)}>
+          <Button
+            tone="kedua"
+            disabled={keputusan.isPending}
+            onClick={() => setAlasanTerbuka(false)}
+          >
             Cancel
           </Button>
           <Button
             tone="utama"
             disabled={keputusan.isPending}
-            onClick={() => kirim(rcl ? 'TidakSetuju' : 'BackMSIG')}
+            onClick={() => kirim(rcl ? "TidakSetuju" : "BackMSIG")}
           >
             Kirim
           </Button>
         </Actions>
       </div>
-    )
+    );
   }
 
   return (
@@ -190,43 +211,61 @@ function WorkScreen({ detail, onDone }: { detail: DetailRCL; onDone: () => void 
       <Actions>
         {rcl && (
           <>
-            <Button tone="utama" disabled={keputusan.isPending} onClick={() => kirim('SETUJU')}>
+            <Button
+              tone="utama"
+              disabled={keputusan.isPending}
+              onClick={() => kirim("SETUJU")}
+            >
               Setuju
             </Button>
-            <Button tone="kedua" disabled={keputusan.isPending} onClick={() => setAlasanTerbuka(true)}>
+            <Button
+              tone="kedua"
+              disabled={keputusan.isPending}
+              onClick={() => setAlasanTerbuka(true)}
+            >
               Tidak Setuju
             </Button>
           </>
         )}
         {msig && (
           <>
-            <Button tone="kedua" disabled={keputusan.isPending} onClick={() => setAlasanTerbuka(true)}>
+            <Button
+              tone="kedua"
+              disabled={keputusan.isPending}
+              onClick={() => setAlasanTerbuka(true)}
+            >
               Back
             </Button>
-            <Button tone="utama" disabled={keputusan.isPending} onClick={() => kirim('MSIG')}>
+            <Button
+              tone="utama"
+              disabled={keputusan.isPending}
+              onClick={() => kirim("MSIG")}
+            >
               Submit
             </Button>
           </>
         )}
       </Actions>
     </div>
-  )
+  );
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-0.5 font-medium text-slate-800">{value || '—'}</dd>
+      <dd className="mt-0.5 font-medium text-slate-800">{value || "—"}</dd>
     </div>
-  )
+  );
 }
 
 function Actions({ children }: { children: ReactNode }) {
-  return <div className="mt-6 flex flex-wrap justify-end gap-2">{children}</div>
+  return (
+    <div className="mt-6 flex flex-wrap justify-end gap-2">{children}</div>
+  );
 }
 
 function pesanGalat(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

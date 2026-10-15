@@ -1,23 +1,23 @@
-import { useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { DetailSalvagePanel } from './DetailSalvagePanel'
-import { StatusSummary } from './StatusSummary'
-import { TambahSalvageForm } from './TambahSalvageForm'
+import { DetailSalvagePanel } from "./DetailSalvagePanel";
+import { StatusSummary } from "./StatusSummary";
+import { TambahSalvageForm } from "./TambahSalvageForm";
 import {
   useExportSalvage,
   useSalvageCounts,
   useSalvageDetail,
   useSalvageList,
   useSalvageMetadata,
-} from './api'
+} from "./api";
 import type {
   CatatanSimpan,
   DetailItem,
@@ -26,7 +26,7 @@ import type {
   SalvageRow,
   Tab,
   TabColumn,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Salvage — menu `MENU_ID 71`, pengganti harness `InboxSalvage`.
@@ -89,15 +89,15 @@ export function SalvageInboxPage() {
   // petugas yang kembali dari layar lain harus mendarat di tempat ia tinggalkan. Kata
   // kunci ikut, karena pencariannya menyaring DI SERVER — ia bagian dari apa yang sedang
   // dilihat, bukan preferensi tampilan.
-  const [params, setParams] = useSearchParams()
-  const [adding, setAdding] = useState(false)
+  const [params, setParams] = useSearchParams();
+  const [adding, setAdding] = useState(false);
   // Catatan di atas layar sesudah Submit, beserta NADA-nya.
   //
   // Sebelumnya ia sekadar teks yang selalu digambar hijau. Sejak Submit benar-benar
   // mengirim ke balai lelang dan benar-benar mengirim surel, salah satunya dapat gagal
   // sementara pengajuannya tetap tersimpan — dan bilah hijau yang berbunyi "GAGAL
   // terkirim" adalah isyarat bercampur yang justru membuat orang berhenti membacanya.
-  const [saved, setSaved] = useState<CatatanSimpan | null>(null)
+  const [saved, setSaved] = useState<CatatanSimpan | null>(null);
 
   // Pengajuan yang panel rinciannya sedang terbuka; kosong berarti tertutup.
   //
@@ -105,24 +105,28 @@ export function SalvageInboxPage() {
   // dibuka untuk dibaca sekali lalu ditutup, bukan untuk ditinggalkan dan kembali — dan
   // menaruhnya di alamat membuat tombol "kembali" peramban menutup panel alih-alih
   // meninggalkan layar, yang bukan yang diharapkan orang.
-  const [opened, setOpened] = useState<{ key: DetailKey; reference: string } | null>(null)
+  const [opened, setOpened] = useState<{
+    key: DetailKey;
+    reference: string;
+  } | null>(null);
 
-  const tabCode = params.get('daftar') ?? ''
-  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
-  const search = params.get('cari') ?? ''
+  const tabCode = params.get("daftar") ?? "";
+  const page = Math.max(1, Number(params.get("halaman") ?? "1") || 1);
+  const search = params.get("cari") ?? "";
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useSalvageMetadata()
-  const counts = useSalvageCounts()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useSalvageMetadata();
+  const counts = useSalvageCounts();
 
-  const tabs: Tab[] = meta.data?.daftar ?? []
+  const tabs: Tab[] = meta.data?.daftar ?? [];
 
   // Ringkasan yang TIDAK dapat dipakai sebagai navigasi.
   //
   // Dua sebabnya, dan keduanya nyata: permintaan `/ringkas` gagal, atau ia berhasil tetapi
   // tidak mengembalikan satu baris pun.
   const ringkasTidakTerpakai =
-    counts.isError || (counts.isSuccess && (counts.data?.baris.length ?? 0) === 0)
+    counts.isError ||
+    (counts.isSuccess && (counts.data?.baris.length ?? 0) === 0);
 
   // TIDAK ada daftar yang terbuka sampai sebuah status DIKLIK.
   //
@@ -143,16 +147,22 @@ export function SalvageInboxPage() {
   // Karena itu ketika ringkasannya gagal atau kosong, layar jatuh ke `daftar_bawaan` —
   // tetap dapat dipakai, hanya tanpa navigasi. Pada keadaan normal ia tidak pernah
   // tersentuh.
-  const active = tabCode || (ringkasTidakTerpakai ? (meta.data?.daftar_bawaan ?? '') : '')
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const active =
+    tabCode || (ringkasTidakTerpakai ? (meta.data?.daftar_bawaan ?? "") : "");
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Daftar belum ditembak sama sekali selama belum ada yang dipilih.
   //
   // Bukan sekadar disembunyikan: permintaan yang tetap berjalan di balik layar membebani
   // basis data untuk jawaban yang tidak pernah dilihat siapa pun — dan di modul ini
   // kuerinya menyentuh puluhan juta baris.
-  const list = useSalvageList(active, page, search, meta.isSuccess && active !== '')
-  const exporting = useExportSalvage()
+  const list = useSalvageList(
+    active,
+    page,
+    search,
+    meta.isSuccess && active !== "",
+  );
+  const exporting = useExportSalvage();
 
   // Permintaan rincian dipegang HALAMAN, bukan panelnya.
   //
@@ -160,14 +170,17 @@ export function SalvageInboxPage() {
   // masuk ke form "Menambahkan Data Salvage" — seperti di layar lama — bukan ke panel
   // rincian. Bila panelnya yang menembak server, keputusan itu diambil sesudah panelnya
   // terlanjur tergambar, dan permintaan yang sama berjalan dua kali.
-  const detail = useSalvageDetail(opened?.key ?? 'pengajuan', opened?.reference ?? '')
+  const detail = useSalvageDetail(
+    opened?.key ?? "pengajuan",
+    opened?.reference ?? "",
+  );
 
   // Klaim tanpa pengajuan tidak dibuka sebagai panel, melainkan sebagai form pengajuan
   // baru yang sudah terisi klaimnya.
   const creatingFor =
     opened !== null && detail.data !== undefined && !detail.data.ada_pengajuan
       ? detail.data
-      : null
+      : null;
 
   // Baris daftar "Rejected Checker" membuka FORM SUNTING, bukan panel baca.
   //
@@ -182,15 +195,15 @@ export function SalvageInboxPage() {
     detail.data.ada_pengajuan &&
     tab?.membuka_form_sunting === true
       ? detail.data
-      : null
+      : null;
 
   /** Berpindah daftar mengembalikan ke halaman pertama DAN mengosongkan pencarian. */
   function selectTab(code: string) {
     setParams(
       (current) => {
-        const next = new URLSearchParams(current)
-        next.set('daftar', code)
-        next.delete('halaman')
+        const next = new URLSearchParams(current);
+        next.set("daftar", code);
+        next.delete("halaman");
 
         // Kata kunci dibuang, bukan dibawa.
         //
@@ -198,44 +211,44 @@ export function SalvageInboxPage() {
         // daftar mencocokkan persis, sepuluh mencocokkan sebagian. Membawa kata kunci
         // "PNC-20" dari daftar Histori ke daftar Checker menghasilkan daftar kosong yang
         // terlihat seperti kerusakan.
-        next.delete('cari')
-        return next
+        next.delete("cari");
+        return next;
       },
       { replace: true },
-    )
+    );
 
     // Panel rincian ikut ditutup. Pengajuan yang sedang dibuka adalah milik daftar yang
     // baru saja ditinggalkan, dan membiarkannya terbuka di bawah daftar lain membuat
     // rincian itu terbaca seolah milik baris yang sekarang tampil.
-    setOpened(null)
+    setOpened(null);
   }
 
   function setPage(next: number) {
     setParams(
       (current) => {
-        const updated = new URLSearchParams(current)
-        if (next <= 1) updated.delete('halaman')
-        else updated.set('halaman', String(next))
-        return updated
+        const updated = new URLSearchParams(current);
+        if (next <= 1) updated.delete("halaman");
+        else updated.set("halaman", String(next));
+        return updated;
       },
       { replace: true },
-    )
+    );
   }
 
   function setSearch(value: string) {
     setParams(
       (current) => {
-        const updated = new URLSearchParams(current)
-        if (value === '') updated.delete('cari')
-        else updated.set('cari', value)
+        const updated = new URLSearchParams(current);
+        if (value === "") updated.delete("cari");
+        else updated.set("cari", value);
 
         // Mencari mengembalikan ke halaman pertama. Tanpa itu, pencarian yang cocok
         // dengan tiga baris pada halaman satu akan menampilkan halaman lima yang kosong.
-        updated.delete('halaman')
-        return updated
+        updated.delete("halaman");
+        return updated;
       },
       { replace: true },
-    )
+    );
   }
 
   if (portal === null) {
@@ -244,13 +257,13 @@ export function SalvageInboxPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Pengajuan salvage milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Pengajuan salvage milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </Frame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -262,7 +275,7 @@ export function SalvageInboxPage() {
           tone="gangguan"
         />
       </Frame>
-    )
+    );
   }
 
   return (
@@ -281,8 +294,8 @@ export function SalvageInboxPage() {
               // Memanggil refetch pada permintaan yang sedang padam (`enabled: false`)
               // akan menjalankannya sekali — persis yang dihindari dengan tidak
               // menembaknya sejak awal.
-              void counts.refetch()
-              if (active !== '') void list.refetch()
+              void counts.refetch();
+              if (active !== "") void list.refetch();
             }}
             disabled={counts.isFetching || list.isFetching}
           >
@@ -295,8 +308,8 @@ export function SalvageInboxPage() {
         <div
           className={
             saved.perluPerhatian
-              ? 'rounded-kartu border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900'
-              : 'rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900'
+              ? "rounded-kartu border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+              : "rounded-kartu border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
           }
           role="status"
         >
@@ -329,8 +342,8 @@ export function SalvageInboxPage() {
           history={editingFor.riwayat}
           onClose={() => setOpened(null)}
           onSaved={(catatan) => {
-            setSaved(catatan)
-            setOpened(null)
+            setSaved(catatan);
+            setOpened(null);
           }}
         />
       ) : creatingFor !== null ? (
@@ -362,8 +375,8 @@ export function SalvageInboxPage() {
           history={creatingFor.riwayat}
           onClose={() => setOpened(null)}
           onSaved={(catatan) => {
-            setSaved(catatan)
-            setOpened(null)
+            setSaved(catatan);
+            setOpened(null);
           }}
         />
       ) : adding ? (
@@ -373,7 +386,7 @@ export function SalvageInboxPage() {
           onClose={() => setAdding(false)}
           onSaved={setSaved}
         />
-      ) : active === '' ? (
+      ) : active === "" ? (
         /*
           Belum ada status yang dipilih — daftarnya memang BELUM digambar.
 
@@ -386,7 +399,8 @@ export function SalvageInboxPage() {
           className="rounded-kartu border border-slate-200 bg-white p-4 text-sm text-slate-600"
           role="status"
         >
-          Pilih salah satu <strong className="font-semibold">Status Salvage</strong> di atas
+          Pilih salah satu{" "}
+          <strong className="font-semibold">Status Salvage</strong> di atas
           untuk membuka daftarnya.
         </p>
       ) : (
@@ -428,10 +442,12 @@ export function SalvageInboxPage() {
           */}
 
           <DataTable<SalvageRow>
-            columns={columnsOf(tab, (key, reference) => setOpened({ key, reference }))}
+            columns={columnsOf(tab, (key, reference) =>
+              setOpened({ key, reference }),
+            )}
             rows={list.data?.baris ?? []}
             rowKey={(row) => `${row.referensi}-${row.no_klaim}`}
-            label={`Daftar ${tab?.nama ?? 'salvage'}`}
+            label={`Daftar ${tab?.nama ?? "salvage"}`}
             isLoading={list.isLoading}
             error={
               list.isError ? (
@@ -442,14 +458,14 @@ export function SalvageInboxPage() {
                 />
               ) : undefined
             }
-            emptyMessage={emptyMessageFor(tab, '')}
+            emptyMessage={emptyMessageFor(tab, "")}
 
             // Penjelasan "kenapa kosong padahal saya mencari" kini BENAR-BENAR sampai
             // ke layar. Sebelum isian ini ada, DataTable selalu menimpanya dengan
             // kalimat bawaannya sendiri begitu kotak pencarian terisi — justru pada
             // satu-satunya keadaan yang menjadi alasan kalimat ini ditulis.
             searchEmptyMessage={emptyMessageFor(tab, search)}
-            searchLabel={tab?.label_pencarian ?? 'Cari'}
+            searchLabel={tab?.label_pencarian ?? "Cari"}
             serverSearch={{
               value: search,
               onChange: setSearch,
@@ -476,7 +492,7 @@ export function SalvageInboxPage() {
                 disabled={exporting.isPending}
                 onClick={() => exporting.mutate({ tab: active, search })}
               >
-                {exporting.isPending ? 'Menyiapkan…' : 'Export Data'}
+                {exporting.isPending ? "Menyiapkan…" : "Export Data"}
               </Button>
             }
           />
@@ -503,7 +519,7 @@ export function SalvageInboxPage() {
         </>
       )}
     </Frame>
-  )
+  );
 }
 
 /**
@@ -552,7 +568,7 @@ function toFormState(detail: DetailResponse) {
     nama_pic_survey: detail.nama_pic_survey,
     no_telp_pic_survey: detail.no_telp_pic_survey,
     email_pic_survey: detail.email_pic_survey,
-  }
+  };
 }
 
 /**
@@ -567,7 +583,7 @@ function toFormItems(detail: DetailResponse): DetailItem[] {
     jumlah_item: String(barang.jumlah),
     satuan: barang.satuan,
     remark: barang.remark,
-  }))
+  }));
 }
 
 /** Frame adalah judul layar beserta ruang isinya. */
@@ -584,7 +600,13 @@ function toFormItems(detail: DetailResponse): DetailItem[] {
  *
  * Letaknya di kanan judul mengikuti layar Pega apa adanya (`D-13`).
  */
-function Frame({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
+function Frame({
+  children,
+  actions,
+}: {
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -593,8 +615,8 @@ function Frame({ children, actions }: { children: ReactNode; actions?: ReactNode
             Inbox Salvage Asuransi Sinarmas
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Pengelolaan barang sisa klaim — dari penandaan awal sampai penjualan lewat balai
-            lelang.
+            Pengelolaan barang sisa klaim — dari penandaan awal sampai penjualan
+            lewat balai lelang.
           </p>
         </div>
 
@@ -603,7 +625,7 @@ function Frame({ children, actions }: { children: ReactNode; actions?: ReactNode
 
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -622,7 +644,7 @@ function columnsOf(
   tab: Tab | undefined,
   onOpenDetail: (key: DetailKey, reference: string) => void,
 ): Column<SalvageRow>[] {
-  if (!tab) return []
+  if (!tab) return [];
 
   const columns: Column<SalvageRow>[] = tab.kolom.map((column) => ({
     key: column.kunci,
@@ -630,7 +652,7 @@ function columnsOf(
     value: (row) => valueOf(row, column.kunci),
     render: (row) => renderCell(row, column),
     alignRight: column.angka,
-  }))
+  }));
 
   // Kolom aksi ada di KETIGA BELAS daftar — itu keadaan di layar lama, tempat sebelas
   // tombol `SetDataDetailSalvage_act` tersebar di seluruh grid-nya.
@@ -639,17 +661,17 @@ function columnsOf(
   // barisnya pengajuan, nomor klaim pada enam daftar yang barisnya klaim dan tidak
   // membawa ID pengajuan sama sekali.
   columns.push({
-    key: 'aksi',
-    title: 'Aksi',
-    width: '8rem',
+    key: "aksi",
+    title: "Aksi",
+    width: "8rem",
     noSort: true,
     alignRight: true,
-    value: () => '',
+    value: () => "",
     render: (row) => {
       const reference =
-        tab.kunci_rincian === 'klaim' ? row.no_klaim : row.id_salvage
+        tab.kunci_rincian === "klaim" ? row.no_klaim : row.id_salvage;
 
-      if (reference === '') return <span className="text-slate-400">—</span>
+      if (reference === "") return <span className="text-slate-400">—</span>;
 
       return (
         <Button
@@ -659,17 +681,17 @@ function columnsOf(
         >
           Detail
         </Button>
-      )
+      );
     },
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /** valueOf mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
 function valueOf(row: SalvageRow, key: string): string {
-  const cell = (row as unknown as Record<string, unknown>)[key]
-  return typeof cell === 'string' ? cell : ''
+  const cell = (row as unknown as Record<string, unknown>)[key];
+  return typeof cell === "string" ? cell : "";
 }
 
 /**
@@ -685,18 +707,18 @@ function valueOf(row: SalvageRow, key: string): string {
  * tanda tidak dapat dibedakan dari kolom yang gagal dimuat.
  */
 function renderCell(row: SalvageRow, column: TabColumn): ReactNode {
-  const raw = valueOf(row, column.kunci)
-  if (raw === '') return <span className="text-slate-400">—</span>
+  const raw = valueOf(row, column.kunci);
+  if (raw === "") return <span className="text-slate-400">—</span>;
 
-  if (column.kunci === 'tanggal_input' || column.kunci === 'tanggal_kejadian') {
-    return formatDate(raw)
+  if (column.kunci === "tanggal_input" || column.kunci === "tanggal_kejadian") {
+    return formatDate(raw);
   }
 
   if (column.angka) {
-    return <span className="tabular-nums">{formatMoney(raw)}</span>
+    return <span className="tabular-nums">{formatMoney(raw)}</span>;
   }
 
-  return raw
+  return raw;
 }
 
 /**
@@ -711,9 +733,9 @@ function renderCell(row: SalvageRow, column: TabColumn): ReactNode {
  * `GETSELISIHJAM` (`D-49` butir 10).
  */
 function formatMoney(raw: string): string {
-  const parsed = Number(raw.replace(',', '.'))
-  if (!Number.isFinite(parsed)) return raw
-  return parsed.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+  const parsed = Number(raw.replace(",", "."));
+  if (!Number.isFinite(parsed)) return raw;
+  return parsed.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -724,20 +746,20 @@ function formatMoney(raw: string): string {
  * hilang.
  */
 function emptyMessageFor(tab: Tab | undefined, search: string): string {
-  if (search !== '' && tab?.pencarian_cocok_persis === true) {
+  if (search !== "" && tab?.pencarian_cocok_persis === true) {
     return (
       `Tidak ada yang cocok dengan "${search}". Pencarian di daftar ini COCOK PERSIS — ` +
-      'ketik nomor klaim atau nama PIC selengkapnya, bukan sebagiannya.'
-    )
+      "ketik nomor klaim atau nama PIC selengkapnya, bukan sebagiannya."
+    );
   }
-  if (search !== '') {
-    return `Tidak ada pengajuan yang cocok dengan "${search}".`
+  if (search !== "") {
+    return `Tidak ada pengajuan yang cocok dengan "${search}".`;
   }
-  return 'Belum ada pengajuan pada daftar ini.'
+  return "Belum ada pengajuan pada daftar ini.";
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

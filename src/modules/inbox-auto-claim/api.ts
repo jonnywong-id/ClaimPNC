@@ -1,8 +1,14 @@
-import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useIsFetching,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
+import { callAPI, simpanBerkas, unduhBerkas } from "@/api/client";
 import type {
   AutoClaimBatchListResponse,
+  AutoClaimBatchOrder,
   AutoClaimLineListResponse,
   AutoClaimPremiumCheckResponse,
   AutoClaimPremiumChoicesResponse,
@@ -10,16 +16,16 @@ import type {
   AutoClaimTabListResponse,
   AutoClaimUploadResponse,
   AutoClaimUploadTemplateResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/inbox-auto-claim'
-const ROUTE_SUMMARY = `${ROUTE}/ringkasan`
-const ROUTE_TAB = `${ROUTE}/tab`
-const ROUTE_TEMPLATE = `${ROUTE}/format-unggahan`
-const ROUTE_UPLOAD = `${ROUTE}/unggah`
-const ROUTE_PREMIUM = `${ROUTE}/cek-premi`
+const ROUTE = "/api/inbox-auto-claim";
+const ROUTE_SUMMARY = `${ROUTE}/ringkasan`;
+const ROUTE_TAB = `${ROUTE}/tab`;
+const ROUTE_TEMPLATE = `${ROUTE}/format-unggahan`;
+const ROUTE_UPLOAD = `${ROUTE}/unggah`;
+const ROUTE_PREMIUM = `${ROUTE}/cek-premi`;
 
 /**
  * batchKey menyertakan portal DAN token, sama seperti modul master lain.
@@ -38,11 +44,22 @@ function batchKey(
   source: string,
   company: string,
   page: number,
+  search: string,
+  order: AutoClaimBatchOrder,
 ) {
   // TAB ikut menjadi kunci. Tanpa itu, berpindah tab akan menampilkan data tab
   // sebelumnya dari cache — ketiganya membaca TABEL yang berbeda, jadi yang tampil
   // adalah data yang sama sekali bukan milik tab yang disorot.
-  return ['inbox-auto-claim', portal, token, source, company, page] as const
+  return [
+    "inbox-auto-claim",
+    portal,
+    token,
+    source,
+    company,
+    page,
+    search,
+    order,
+  ] as const;
 }
 
 function lineKey(
@@ -53,7 +70,15 @@ function lineKey(
   batch: string,
   page: number,
 ) {
-  return ['inbox-auto-claim-detail', portal, token, source, company, batch, page] as const
+  return [
+    "inbox-auto-claim-detail",
+    portal,
+    token,
+    source,
+    company,
+    batch,
+    page,
+  ] as const;
 }
 
 /**
@@ -64,26 +89,43 @@ function lineKey(
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka — layar yang
  * menuntun pengguna memilih portal lebih berguna daripada pesan galat.
  */
-export function useAutoClaimBatchList(source: string, company: string, page: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useAutoClaimBatchList(
+  source: string,
+  company: string,
+  page: number,
+  search = "",
+  order: AutoClaimBatchOrder = "terbaru",
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const parameter = new URLSearchParams({ halaman: String(page), sumber: source })
-  if (company !== '') parameter.set('perusahaan', company)
+  const parameter = new URLSearchParams({
+    halaman: String(page),
+    sumber: source,
+  });
+  if (company !== "") parameter.set("perusahaan", company);
+  // Cari dan urut dikerjakan SERVER (D-82): grid ini dipaginasi server, sehingga
+  // menyaring di peramban hanya menyaring halaman yang sedang tampil.
+  const word = search.trim();
+  if (word !== "") parameter.set("cari", word);
+  if (order !== "terbaru") parameter.set("urut", order);
 
   return useQuery({
-    queryKey: batchKey(portal, token, source, company, page),
+    queryKey: batchKey(portal, token, source, company, page, word, order),
     queryFn: () =>
-      callAPI<AutoClaimBatchListResponse>(`${ROUTE}?${parameter.toString()}`, { token, portal }),
+      callAPI<AutoClaimBatchListResponse>(`${ROUTE}?${parameter.toString()}`, {
+        token,
+        portal,
+      }),
     // `source` kosong berarti daftar tab BELUM tiba, bukan "semua tab". Menembak server
     // sekarang mengambil tabel bawaan lebih dulu, lalu mengambilnya sekali lagi begitu
     // tabnya diketahui — dua permintaan untuk satu layar, dan di antaranya tabel sempat
     // menampilkan data yang tabnya belum tentu tab itu.
-    enabled: token !== null && portal !== null && source !== '',
+    enabled: token !== null && portal !== null && source !== "",
     // Halaman sebelumnya tetap tampil selama halaman baru diambil, sehingga tabel tidak
     // berkedip menjadi kosong setiap kali tombol Next ditekan.
     placeholderData: (previous) => previous,
-  })
+  });
 }
 
 /**
@@ -94,14 +136,14 @@ export function useAutoClaimBatchList(source: string, company: string, page: num
  * berjalan.
  */
 export function useAutoClaimTabList() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
-    queryKey: ['inbox-auto-claim-tab', token],
+    queryKey: ["inbox-auto-claim-tab", token],
     queryFn: () => callAPI<AutoClaimTabListResponse>(ROUTE_TAB, { token }),
     enabled: token !== null,
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -111,19 +153,22 @@ export function useAutoClaimTabList() {
  * pencarian dan paginasi tabel perusahaan dikerjakan di peramban atas seluruh barisnya.
  */
 export function useAutoClaimSummary(source: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-auto-claim-ringkasan', portal, token, source],
+    queryKey: ["inbox-auto-claim-ringkasan", portal, token, source],
     queryFn: () =>
-      callAPI<AutoClaimSummaryResponse>(`${ROUTE_SUMMARY}?sumber=${encodeURIComponent(source)}`, {
-        token,
-        portal,
-      }),
+      callAPI<AutoClaimSummaryResponse>(
+        `${ROUTE_SUMMARY}?sumber=${encodeURIComponent(source)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     // Sama seperti daftar batch: menunggu tabnya diketahui lebih dulu.
-    enabled: token !== null && portal !== null && source !== '',
-  })
+    enabled: token !== null && portal !== null && source !== "",
+  });
 }
 
 /**
@@ -134,26 +179,35 @@ export function useAutoClaimSummary(source: string) {
  * dengan grid di dalamnya, dan selisih itu terbaca sebagai kerusakan.
  */
 export function useRefreshAutoClaim() {
-  const client = useQueryClient()
-  const fetching = useIsFetching({ queryKey: ['inbox-auto-claim-ringkasan'] })
+  const client = useQueryClient();
+  const fetching = useIsFetching({ queryKey: ["inbox-auto-claim-ringkasan"] });
 
   return {
     isFetching: fetching > 0,
     refresh: () => {
-      client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
-      client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
-      client.invalidateQueries({ queryKey: ['inbox-auto-claim-detail'] })
+      client.invalidateQueries({ queryKey: ["inbox-auto-claim-ringkasan"] });
+      client.invalidateQueries({ queryKey: ["inbox-auto-claim"] });
+      client.invalidateQueries({ queryKey: ["inbox-auto-claim-detail"] });
     },
-  }
+  };
 }
 
 /** Hook rincian satu batch. */
-export function useAutoClaimLineList(source: string, company: string, batch: string, page: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useAutoClaimLineList(
+  source: string,
+  company: string,
+  batch: string,
+  page: number,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   const enabled =
-    token !== null && portal !== null && company !== '' && batch !== '' && source !== ''
+    token !== null &&
+    portal !== null &&
+    company !== "" &&
+    batch !== "" &&
+    source !== "";
 
   return useQuery({
     queryKey: lineKey(portal, token, source, company, batch, page),
@@ -164,7 +218,7 @@ export function useAutoClaimLineList(source: string, company: string, batch: str
       ),
     enabled,
     placeholderData: (previous) => previous,
-  })
+  });
 }
 
 /**
@@ -175,57 +229,57 @@ export function useAutoClaimLineList(source: string, company: string, batch: str
  * kolomnya berbeda, yang berubah hanya satu tempat.
  */
 export function useAutoClaimUploadTemplate(source: string) {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     // Tab ikut menjadi kunci: bentuk berkas BERBEDA per bisnis — Kredit tanpa tanggal
     // kejadian/lapor, Travel tanpa tanggal lapor.
-    queryKey: ['inbox-auto-claim-format', token, source],
+    queryKey: ["inbox-auto-claim-format", token, source],
     queryFn: () =>
       callAPI<AutoClaimUploadTemplateResponse>(
         `${ROUTE_TEMPLATE}?sumber=${encodeURIComponent(source)}`,
         { token },
       ),
-    enabled: token !== null && source !== '',
+    enabled: token !== null && source !== "",
     // Bentuknya tetap selama aplikasi berjalan; memuatnya ulang setiap kali form dibuka
     // hanya menambah permintaan tanpa menambah apa pun.
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /** Hook unggah berkas klaim. */
 export function useUploadAutoClaim(source: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (file: File) => {
-      const form = new FormData()
+      const form = new FormData();
       // Nama bagiannya harus sama persis dengan uploadFormField di
       // internal/inboxautoclaim/http/routes.go.
-      form.append('berkas', file)
+      form.append("berkas", file);
       return callAPI<AutoClaimUploadResponse>(
         `${ROUTE_UPLOAD}?sumber=${encodeURIComponent(source)}`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: form,
           token,
           portal,
         },
-      )
+      );
     },
     // SELURUH daftar batch dimuat ulang, bukan hanya halaman yang sedang tampil: batch
     // baru dapat muncul di halaman mana pun tergantung urutannya, dan nomor batch
     // diterbitkan server sehingga layar tidak dapat menebak di mana ia akan muncul.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['inbox-auto-claim'] })
+      client.invalidateQueries({ queryKey: ["inbox-auto-claim"] });
       // Ringkasan ikut disegarkan. Tanpa ini, grafik dan tabel ringkasan tetap
       // menampilkan angka sebelum unggahan — dan selisihnya dengan grid yang sudah
       // diperbarui terbaca sebagai kerusakan, bukan sebagai data basi.
-      client.invalidateQueries({ queryKey: ['inbox-auto-claim-ringkasan'] })
+      client.invalidateQueries({ queryKey: ["inbox-auto-claim-ringkasan"] });
     },
-  })
+  });
 }
 
 /**
@@ -237,40 +291,43 @@ export function useUploadAutoClaim(source: string) {
  * justru menjadi sifat query.
  */
 export function useExportAutoClaim() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (input: {
-      source: string
-      company: string
-      batch: string
-      hasil: 'berhasil' | 'gagal'
+      source: string;
+      company: string;
+      batch: string;
+      hasil: "berhasil" | "gagal";
     }) => {
       const path =
         `${ROUTE}/${encodeURIComponent(input.company)}/${encodeURIComponent(input.batch)}` +
-        `/ekspor?hasil=${input.hasil}&sumber=${encodeURIComponent(input.source)}`
+        `/ekspor?hasil=${input.hasil}&sumber=${encodeURIComponent(input.source)}`;
 
-      const file = await unduhBerkas(path, { token, portal })
-      simpanBerkas(file)
-      return file.namaBerkas
+      const file = await unduhBerkas(path, { token, portal });
+      simpanBerkas(file);
+      return file.namaBerkas;
     },
-  })
+  });
 }
 
 /** Hook isi kedua isian tab Cek Premi (Nama Bisnis dan Sumber Bisnis). */
 export function useAutoClaimPremiumChoices() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-auto-claim-cek-premi-pilihan', portal, token],
+    queryKey: ["inbox-auto-claim-cek-premi-pilihan", portal, token],
     queryFn: () =>
-      callAPI<AutoClaimPremiumChoicesResponse>(`${ROUTE_PREMIUM}/pilihan`, { token, portal }),
+      callAPI<AutoClaimPremiumChoicesResponse>(`${ROUTE_PREMIUM}/pilihan`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     // Master bisnis dan master auto claim jarang berubah.
     staleTime: 10 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -281,20 +338,28 @@ export function useAutoClaimPremiumChoices() {
  * setiap ada pembayaran, dan angka lama yang tampil lagi saat tab dibuka ulang akan
  * dikira angka terbaru.
  */
-export function useAutoClaimPremiumCheck(pair: { bisnis: string; sumber: string } | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useAutoClaimPremiumCheck(
+  pair: { bisnis: string; sumber: string } | null,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-auto-claim-cek-premi', portal, token, pair?.bisnis, pair?.sumber],
+    queryKey: [
+      "inbox-auto-claim-cek-premi",
+      portal,
+      token,
+      pair?.bisnis,
+      pair?.sumber,
+    ],
     queryFn: () =>
       callAPI<AutoClaimPremiumCheckResponse>(
-        `${ROUTE_PREMIUM}?kode_bisnis=${encodeURIComponent(pair?.bisnis ?? '')}` +
-          `&kode_sumber_bisnis=${encodeURIComponent(pair?.sumber ?? '')}`,
+        `${ROUTE_PREMIUM}?kode_bisnis=${encodeURIComponent(pair?.bisnis ?? "")}` +
+          `&kode_sumber_bisnis=${encodeURIComponent(pair?.sumber ?? "")}`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null && pair !== null,
     gcTime: 0,
     retry: false,
-  })
+  });
 }

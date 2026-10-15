@@ -1,31 +1,33 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppRoute } from '@/app/App'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { AppRoute } from "@/app/App";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { ArchiveFile, ClaimCandidate, OpenResponse } from './types'
+import type { ArchiveFile, ClaimCandidate, OpenResponse } from "./types";
 
-const PATH = '/api/arsip-dokumen'
-const OPEN_PATH = `${PATH}/buka`
+const PATH = "/api/arsip-dokumen";
+const OPEN_PATH = `${PATH}/buka`;
 
 const SAMPLE_PROFILE = {
-  identitas: '90000001',
-  nama: 'Contoh Administrator',
-  jenis: 'KARYAWAN',
-  login: 'adminpnc',
-  email: 'contoh.admin@example.invalid',
-  perusahaan: 'ASM',
-}
+  identitas: "90000001",
+  nama: "Contoh Administrator",
+  jenis: "KARYAWAN",
+  login: "adminpnc",
+  email: "contoh.admin@example.invalid",
+  perusahaan: "ASM",
+};
 
 const PORTAL_LIST = {
-  portal: [{ id: '202600101', nama: 'ASURANSI SINAR MAS', alias: 'ASM', siap: true }],
-  utama: 'ASM',
-}
+  portal: [
+    { id: "202600101", nama: "ASURANSI SINAR MAS", alias: "ASM", siap: true },
+  ],
+  utama: "ASM",
+};
 
 /**
  * Seluruh data uji KARANGAN — `D-69` melarang data nasabah ditulis di berkas yang
@@ -33,140 +35,144 @@ const PORTAL_LIST = {
  */
 const OPENED: OpenResponse = {
   tipe_pencarian: [
-    { kode: 'no_klaim', label: 'No Klaim' },
-    { kode: 'nama_box', label: 'Nama BOX' },
-    { kode: 'tertanggung', label: 'Tertanggung' },
+    { kode: "no_klaim", label: "No Klaim" },
+    { kode: "nama_box", label: "Nama BOX" },
+    { kode: "tertanggung", label: "Tertanggung" },
   ],
   tipe_input: [
-    { kode: 'no_klaim', label: 'No Klaim' },
-    { kode: 'no_polis', label: 'No Polis' },
-    { kode: 'nama_tertanggung', label: 'Nama Tertanggung' },
+    { kode: "no_klaim", label: "No Klaim" },
+    { kode: "no_polis", label: "No Polis" },
+    { kode: "nama_tertanggung", label: "Nama Tertanggung" },
   ],
   tipe_dokumen: [
-    { kode: '0001', label: 'Dokumen Klaim' },
-    { kode: '0002', label: 'Dokumen Survey' },
+    { kode: "0001", label: "Dokumen Klaim" },
+    { kode: "0002", label: "Dokumen Survey" },
   ],
   jenis_dokumen: [
-    { kode: '000101', label: 'Laporan Kerugian', kode_tipe_dokumen: '0001' },
-    { kode: '000201', label: 'Berita Acara Survey', kode_tipe_dokumen: '0002' },
+    { kode: "000101", label: "Laporan Kerugian", kode_tipe_dokumen: "0001" },
+    { kode: "000201", label: "Berita Acara Survey", kode_tipe_dokumen: "0002" },
   ],
-  cakupan_cabang: { lini_disembunyikan: ['002', '005'] },
-  portal: 'ASM',
-}
+  cakupan_cabang: { lini_disembunyikan: ["002", "005"] },
+  portal: "ASM",
+};
 
 const ARCHIVE_FILE: ArchiveFile = {
   id: 1,
-  nomor_klaim: 'PNC-100001',
-  nomor_polis: 'POL-CONTOH-0001',
-  nama_tertanggung: 'PT SUMBER CONTOH SENTOSA',
-  tanggal_kejadian: '2026-03-12',
-  pic_teknis: 'PIC Teknik Contoh A',
-  tanggal_terima_dokumen: '2026-03-20',
-  tanggal_input: '2026-03-21',
+  nomor_klaim: "PNC-100001",
+  nomor_polis: "POL-CONTOH-0001",
+  nama_tertanggung: "PT SUMBER CONTOH SENTOSA",
+  tanggal_kejadian: "2026-03-12",
+  pic_teknis: "PIC Teknik Contoh A",
+  tanggal_terima_dokumen: "2026-03-20",
+  tanggal_input: "2026-03-21",
   jumlah_lembar: 24,
-  kode_tipe_dokumen: '0001',
-  tipe_dokumen: 'Dokumen Klaim',
-  kode_jenis_dokumen: '000101',
-  jenis_dokumen: 'Laporan Kerugian',
-  nama_box: 'BOX-A-01',
-  kode_filling: 'FIL-2026-001',
-  user_input: 'adminpnc',
+  kode_tipe_dokumen: "0001",
+  tipe_dokumen: "Dokumen Klaim",
+  kode_jenis_dokumen: "000101",
+  jenis_dokumen: "Laporan Kerugian",
+  nama_box: "BOX-A-01",
+  kode_filling: "FIL-2026-001",
+  user_input: "adminpnc",
   tanggal_kirim_dokumen: null,
-  group_panel: '006',
+  group_panel: "006",
   sudah_dikirim: false,
-  kode_layanan: '',
-  catatan_layanan: '',
-}
+  kode_layanan: "",
+  catatan_layanan: "",
+};
 
 const CLAIM: ClaimCandidate = {
-  nomor_klaim: 'PNC-100006',
-  nomor_polis: 'POL-CONTOH-0006',
-  nama_tertanggung: 'PT CONTOH KEDUA',
-  tanggal_kejadian: '2026-07-21',
-  bisnis: 'Fire / Property',
-  cabang: 'Cabang Contoh Pusat',
-  status: 'Resolved-Completed',
-  posisi_klaim: 'Close Claim',
-  tanggal_close: '2026-08-30',
-  catatan_close: 'Selesai dibayarkan',
-  pic_teknis: 'PIC Teknik Contoh A',
-  group_panel: '006',
-}
+  nomor_klaim: "PNC-100006",
+  nomor_polis: "POL-CONTOH-0006",
+  nama_tertanggung: "PT CONTOH KEDUA",
+  tanggal_kejadian: "2026-07-21",
+  bisnis: "Fire / Property",
+  cabang: "Cabang Contoh Pusat",
+  status: "Resolved-Completed",
+  posisi_klaim: "Close Claim",
+  tanggal_close: "2026-08-30",
+  catatan_close: "Selesai dibayarkan",
+  pic_teknis: "PIC Teknik Contoh A",
+  group_panel: "006",
+};
 
-type Call = { url: string; init: RequestInit | undefined }
+type Call = { url: string; init: RequestInit | undefined };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function stubFetch(answer: (url: string, init?: RequestInit) => Response) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
     // Bilah atas memuat pemilih portal dan menu, sehingga SETIAP layar di balik sesi ikut
     // memanggil keduanya. Dijawab otomatis supaya uji layar ini menguji layarnya.
-    if (url === '/api/portal') return Promise.resolve(jsonResponse(200, PORTAL_LIST))
-    if (url === '/api/menu') return Promise.resolve(jsonResponse(200, { menu: [] }))
-    return Promise.resolve(answer(url, init))
-  })
+    if (url === "/api/portal")
+      return Promise.resolve(jsonResponse(200, PORTAL_LIST));
+    if (url === "/api/menu")
+      return Promise.resolve(jsonResponse(200, { menu: [] }));
+    return Promise.resolve(answer(url, init));
+  });
 }
 
 /** Peladen tiruan yang menjawab seluruh rute modul dengan hasil berisi. */
 function stubDefaultFetch() {
   stubFetch((url) => {
-    if (url === OPEN_PATH) return jsonResponse(200, OPENED)
+    if (url === OPEN_PATH) return jsonResponse(200, OPENED);
 
     if (url.startsWith(`${PATH}/klaim`)) {
-      return jsonResponse(200, { klaim: [CLAIM], portal: 'ASM' })
+      return jsonResponse(200, { klaim: [CLAIM], portal: "ASM" });
     }
     if (url.startsWith(`${PATH}/kode-filling`)) {
       return jsonResponse(200, {
-        kode: [{ kode: 'FIL-2026-001', nama_box: 'BOX-A-01', jumlah_pemakaian: 2 }],
+        kode: [
+          { kode: "FIL-2026-001", nama_box: "BOX-A-01", jumlah_pemakaian: 2 },
+        ],
         dari_pemakaian: true,
-        portal: 'ASM',
-      })
+        portal: "ASM",
+      });
     }
     if (url.startsWith(`${PATH}/kirim-cabang`)) {
       return jsonResponse(200, {
         berkas: [ARCHIVE_FILE],
         halaman: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
         cakupan_cabang: OPENED.cakupan_cabang,
-        portal: 'ASM',
-      })
+        portal: "ASM",
+      });
     }
     if (url.startsWith(`${PATH}?`)) {
       return jsonResponse(200, {
         berkas: [ARCHIVE_FILE],
         halaman: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
-        portal: 'ASM',
-      })
+        portal: "ASM",
+      });
     }
     return jsonResponse(200, {
       id: 6,
       baru: true,
-      pesan: 'Berkas arsip tersimpan. Berkas juga dikirim ke sistem Arsip.',
+      pesan: "Berkas arsip tersimpan. Berkas juga dikirim ke sistem Arsip.",
       terkirim: true,
-      kode_layanan: '200',
-      portal: 'ASM',
-    })
-  })
+      kode_layanan: "200",
+      portal: "ASM",
+    });
+  });
 }
 
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
+  });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/archive-dokumen-klaim']}>
+      <MemoryRouter initialEntries={["/archive-dokumen-klaim"]}>
         <AppRoute />
       </MemoryRouter>
     </QueryClientProvider>,
-  )
+  );
 }
 
 /** renderOpened menggambar layar lalu MENUNGGU isi dropdown tiba. */
@@ -179,53 +185,56 @@ function renderPage() {
  * hubungannya dengan apa yang sedang diuji.
  */
 async function renderOpened() {
-  renderPage()
-  await screen.findByRole('heading', { name: 'ARCHIVE FILE KLAIM' })
-  await screen.findByRole('option', { name: 'Nama BOX' })
+  renderPage();
+  await screen.findByRole("heading", { name: "ARCHIVE FILE KLAIM" });
+  await screen.findByRole("option", { name: "Nama BOX" });
 }
 
 function lastCallStartingWith(prefix: string): Call | undefined {
-  return [...calls].reverse().find((c) => c.url.startsWith(prefix))
+  return [...calls].reverse().find((c) => c.url.startsWith(prefix));
 }
 
 beforeEach(() => {
-  calls = []
+  calls = [];
   useSession.setState({
-    token: 'token-uji',
+    token: "token-uji",
     user: SAMPLE_PROFILE,
     validUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-  })
-  useSelectedPortal.getState().select('ASM')
-})
+  });
+  useSelectedPortal.getState().select("ASM");
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-  useSession.getState().clear()
-  useSelectedPortal.getState().clear()
-})
+  vi.unstubAllGlobals();
+  useSession.getState().clear();
+  useSelectedPortal.getState().clear();
+});
 
-describe('pencarian berkas arsip', () => {
-  it('tidak menembak server sebelum tombol Cari ditekan', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+describe("pencarian berkas arsip", () => {
+  it("tidak menembak server sebelum tombol Cari ditekan", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    expect(lastCallStartingWith(`${PATH}?`)).toBeUndefined()
-  })
+    expect(lastCallStartingWith(`${PATH}?`)).toBeUndefined();
+  });
 
-  it('mengirim mode kata kunci beserta nilainya', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("mengirim mode kata kunci beserta nilainya", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
-    await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+    await userEvent.selectOptions(
+      screen.getByLabelText("Tipe Pencarian Archive"),
+      "nama_box",
+    );
+    await userEvent.type(screen.getByLabelText("Keyword"), "BOX-A-01");
+    await userEvent.click(screen.getByRole("button", { name: "Cari" }));
 
-    expect(await screen.findByText('PNC-100001')).toBeInTheDocument()
+    expect(await screen.findByText("PNC-100001")).toBeInTheDocument();
 
-    const call = lastCallStartingWith(`${PATH}?`)
-    expect(call?.url).toContain('tipe_pencarian=nama_box')
-    expect(call?.url).toContain('kata_kunci=BOX-A-01')
-  })
+    const call = lastCallStartingWith(`${PATH}?`);
+    expect(call?.url).toContain("tipe_pencarian=nama_box");
+    expect(call?.url).toContain("kata_kunci=BOX-A-01");
+  });
 
   /**
    * Kedua penyaring TAMPIL BERSAMAAN dan boleh terisi bersama.
@@ -234,25 +243,31 @@ describe('pencarian berkas arsip', () => {
    * menggantikan. Di Pega kedua bloknya ber-`FlagASO==2` — tampil di tab yang sama
    * (`Section/SecArchiveDokumen-Section.xml` posisi 164179 dan 707930).
    */
-  it('mengirim kata kunci berikut kolomnya DAN rentang tanggal sekaligus', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("mengirim kata kunci berikut kolomnya DAN rentang tanggal sekaligus", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
     // Keempat isian ada berbarengan; tidak ada yang hilang saat yang lain diisi.
-    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
-    await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
-    await userEvent.type(screen.getByLabelText('Tgl Input Dari'), '2026-03-01')
-    await userEvent.type(screen.getByLabelText('Tgl Input Sampai'), '2026-03-31')
+    await userEvent.selectOptions(
+      screen.getByLabelText("Tipe Pencarian Archive"),
+      "nama_box",
+    );
+    await userEvent.type(screen.getByLabelText("Keyword"), "BOX-A-01");
+    await userEvent.type(screen.getByLabelText("Tgl Input Dari"), "2026-03-01");
+    await userEvent.type(
+      screen.getByLabelText("Tgl Input Sampai"),
+      "2026-03-31",
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
-    await screen.findByText('PNC-100001')
+    await userEvent.click(screen.getByRole("button", { name: "Cari" }));
+    await screen.findByText("PNC-100001");
 
-    const call = lastCallStartingWith(`${PATH}?`)
-    expect(call?.url).toContain('tipe_pencarian=nama_box')
-    expect(call?.url).toContain('kata_kunci=BOX-A-01')
-    expect(call?.url).toContain('tanggal_dari=2026-03-01')
-    expect(call?.url).toContain('tanggal_sampai=2026-03-31')
-  })
+    const call = lastCallStartingWith(`${PATH}?`);
+    expect(call?.url).toContain("tipe_pencarian=nama_box");
+    expect(call?.url).toContain("kata_kunci=BOX-A-01");
+    expect(call?.url).toContain("tanggal_dari=2026-03-01");
+    expect(call?.url).toContain("tanggal_sampai=2026-03-31");
+  });
 
   /**
    * Toolbar mengikuti URUTAN PEGA.
@@ -261,23 +276,25 @@ describe('pencarian berkas arsip', () => {
    * Refresh. Export To Excel menyusul, dan ia tampak SEJAK AWAL — pada rancangan pertama
    * ia tersembunyi di kepala tabel yang baru digambar setelah pencarian dijalankan.
    */
-  it('menggambar toolbar dalam urutan Pega, dan ekspornya tampak sejak awal', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("menggambar toolbar dalam urutan Pega, dan ekspornya tampak sejak awal", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
+    const toolbar = screen.getByRole("toolbar", {
+      name: /Archive Dokumen Klaim/,
+    });
     const labels = within(toolbar)
-      .getAllByRole('button')
-      .map((button) => button.textContent)
+      .getAllByRole("button")
+      .map((button) => button.textContent);
 
     expect(labels).toEqual([
-      'Tambah',
-      'Dokumen Cabang',
-      'Cari',
-      'Refresh',
-      'Export To Excel',
-    ])
-  })
+      "Tambah",
+      "Dokumen Cabang",
+      "Cari",
+      "Refresh",
+      "Export To Excel",
+    ]);
+  });
 
   /**
    * Refresh dan Export To Excel berdiri sebagai KELOMPOK KANAN.
@@ -290,27 +307,33 @@ describe('pencarian berkas arsip', () => {
    * "berada di kanan" hanya dapat dinyatakan sebagai "berada di satu wadah yang terdorong
    * ke kanan". Urutan bacanya diuji terpisah pada uji di atas dan tidak berubah.
    */
-  it('menaruh Refresh dan Export To Excel pada kelompok kanan', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("menaruh Refresh dan Export To Excel pada kelompok kanan", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
-    const refresh = within(toolbar).getByRole('button', { name: 'Refresh' })
-    const kanan = refresh.parentElement
+    const toolbar = screen.getByRole("toolbar", {
+      name: /Archive Dokumen Klaim/,
+    });
+    const refresh = within(toolbar).getByRole("button", { name: "Refresh" });
+    const kanan = refresh.parentElement;
 
-    expect(kanan).not.toBeNull()
-    expect(kanan).not.toBe(toolbar)
-    expect(kanan).toHaveClass('sm:ml-auto')
+    expect(kanan).not.toBeNull();
+    expect(kanan).not.toBe(toolbar);
+    expect(kanan).toHaveClass("sm:ml-auto");
 
     // Ekspor berada di wadah yang sama; Cari TIDAK.
-    expect(within(kanan!).getByRole('button', { name: 'Export To Excel' })).toBeInTheDocument()
-    expect(within(kanan!).queryByRole('button', { name: 'Cari' })).toBeNull()
+    expect(
+      within(kanan!).getByRole("button", { name: "Export To Excel" }),
+    ).toBeInTheDocument();
+    expect(within(kanan!).queryByRole("button", { name: "Cari" })).toBeNull();
 
     // Ketiga tombol pemindah bagian tetap anak langsung toolbar.
-    for (const nama of ['Tambah', 'Dokumen Cabang', 'Cari']) {
-      expect(within(toolbar).getByRole('button', { name: nama }).parentElement).toBe(toolbar)
+    for (const nama of ["Tambah", "Dokumen Cabang", "Cari"]) {
+      expect(
+        within(toolbar).getByRole("button", { name: nama }).parentElement,
+      ).toBe(toolbar);
     }
-  })
+  });
 
   /**
    * Toolbar dan bagian yang terbuka diberi jarak oleh WADAH BERSAMA keduanya.
@@ -320,23 +343,27 @@ describe('pencarian berkas arsip', () => {
    * pencarian menempel ke tombol. Uji ini menahan agar jaraknya tidak kembali turun ke
    * dalam.
    */
-  it('memberi jarak antara toolbar dan bagian yang terbuka', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("memberi jarak antara toolbar dan bagian yang terbuka", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
-    const wadah = toolbar.parentElement
+    const toolbar = screen.getByRole("toolbar", {
+      name: /Archive Dokumen Klaim/,
+    });
+    const wadah = toolbar.parentElement;
 
-    expect(wadah).not.toBeNull()
-    expect(wadah).toHaveClass('space-y-6')
+    expect(wadah).not.toBeNull();
+    expect(wadah).toHaveClass("space-y-6");
 
     // Panel pencarian adalah SAUDARA toolbar di wadah itu, bukan keturunannya — itulah
     // sebabnya jaraknya harus berasal dari wadah.
-    const panel = screen.getByLabelText('Tipe Pencarian Archive').closest('form')
-    expect(panel).not.toBeNull()
-    expect(wadah!.contains(panel!)).toBe(true)
-    expect(toolbar.contains(panel!)).toBe(false)
-  })
+    const panel = screen
+      .getByLabelText("Tipe Pencarian Archive")
+      .closest("form");
+    expect(panel).not.toBeNull();
+    expect(wadah!.contains(panel!)).toBe(true);
+    expect(toolbar.contains(panel!)).toBe(false);
+  });
 
   /**
    * Export To Excel HANYA ada di tab Cari.
@@ -348,29 +375,40 @@ describe('pencarian berkas arsip', () => {
    * Rancangan sebelumnya menampilkannya di ketiga tab. Itu over-koreksi atas laporan
    * "tidak ada export data": yang salah tempatnya, bukan ketersediaannya.
    */
-  it('menampilkan Export To Excel hanya pada tab Cari', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+  it("menampilkan Export To Excel hanya pada tab Cari", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    const toolbar = screen.getByRole('toolbar', { name: /Archive Dokumen Klaim/ })
-    const ekspor = () => within(toolbar).queryByRole('button', { name: 'Export To Excel' })
+    const toolbar = screen.getByRole("toolbar", {
+      name: /Archive Dokumen Klaim/,
+    });
+    const ekspor = () =>
+      within(toolbar).queryByRole("button", { name: "Export To Excel" });
 
     // Tab Cari adalah bawaannya.
-    expect(ekspor()).toBeInTheDocument()
+    expect(ekspor()).toBeInTheDocument();
 
-    await userEvent.click(within(toolbar).getByRole('button', { name: 'Tambah' }))
-    expect(ekspor()).toBeNull()
+    await userEvent.click(
+      within(toolbar).getByRole("button", { name: "Tambah" }),
+    );
+    expect(ekspor()).toBeNull();
 
-    await userEvent.click(within(toolbar).getByRole('button', { name: 'Dokumen Cabang' }))
-    expect(ekspor()).toBeNull()
+    await userEvent.click(
+      within(toolbar).getByRole("button", { name: "Dokumen Cabang" }),
+    );
+    expect(ekspor()).toBeNull();
 
     // Refresh tetap ada di ketiganya — ia bukan tombol Pega, melainkan tambahan sistem baru
     // yang menyegarkan bagian mana pun yang sedang terbuka.
-    expect(within(toolbar).getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+    expect(
+      within(toolbar).getByRole("button", { name: "Refresh" }),
+    ).toBeInTheDocument();
 
-    await userEvent.click(within(toolbar).getByRole('button', { name: 'Cari' }))
-    expect(ekspor()).toBeInTheDocument()
-  })
+    await userEvent.click(
+      within(toolbar).getByRole("button", { name: "Cari" }),
+    );
+    expect(ekspor()).toBeInTheDocument();
+  });
 
   /**
    * Galat validasi ditandai PADA ISIANNYA, bukan sebagai satu kotak di atas formulir.
@@ -378,48 +416,54 @@ describe('pencarian berkas arsip', () => {
    * Backend mengirim seluruh pelanggaran sekaligus beserta nama isiannya; membuangnya di
    * layar akan membuat pengguna menebak kalimat mana milik isian mana.
    */
-  it('menandai isian yang ditolak server', async () => {
+  it("menandai isian yang ditolak server", async () => {
     stubFetch((url) => {
-      if (url === OPEN_PATH) return jsonResponse(200, OPENED)
+      if (url === OPEN_PATH) return jsonResponse(200, OPENED);
       return jsonResponse(422, {
-        kode: 'validasi_gagal',
-        pesan: 'Isian belum benar.',
-        detail: [{ field: 'kata_kunci', pesan: 'Isi Keyword yang dicari.' }],
-      })
-    })
-    await renderOpened()
+        kode: "validasi_gagal",
+        pesan: "Isian belum benar.",
+        detail: [{ field: "kata_kunci", pesan: "Isi Keyword yang dicari." }],
+      });
+    });
+    await renderOpened();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+    await userEvent.click(screen.getByRole("button", { name: "Cari" }));
 
-    expect(await screen.findByText('Isi Keyword yang dicari.')).toBeInTheDocument()
-  })
-})
+    expect(
+      await screen.findByText("Isi Keyword yang dicari."),
+    ).toBeInTheDocument();
+  });
+});
 
-describe('input data archive', () => {
+describe("input data archive", () => {
   async function openInputTab() {
-    await renderOpened()
-    await userEvent.click(screen.getByRole('button', { name: 'Tambah' }))
+    await renderOpened();
+    await userEvent.click(screen.getByRole("button", { name: "Tambah" }));
   }
 
-  it('memilih klaim membuka formulir berisi keterangan klaim itu', async () => {
-    stubDefaultFetch()
-    await openInputTab()
+  it("memilih klaim membuka formulir berisi keterangan klaim itu", async () => {
+    stubDefaultFetch();
+    await openInputTab();
 
-    await userEvent.type(screen.getByLabelText('Keyword'), 'PNC-100006')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari Klaim' }))
+    await userEvent.type(screen.getByLabelText("Keyword"), "PNC-100006");
+    await userEvent.click(screen.getByRole("button", { name: "Cari Klaim" }));
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Detail" }),
+    );
 
-    expect(screen.getByRole('heading', { name: 'Berkas Archive' })).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "Berkas Archive" }),
+    ).toBeInTheDocument();
 
     // Dicari pada keterangan baca-saja formulir, BUKAN sekadar "ada di halaman": nama
     // tertanggung memang muncul dua kali — sekali di baris grid, sekali di formulir — dan
     // pencarian yang tidak membedakannya akan tetap lulus meski formulirnya kosong.
-    const term = screen.getByText('Nama Tertanggung', { selector: 'dt' })
-    expect(term.parentElement).toHaveTextContent('PT CONTOH KEDUA')
+    const term = screen.getByText("Nama Tertanggung", { selector: "dt" });
+    expect(term.parentElement).toHaveTextContent("PT CONTOH KEDUA");
 
-    expect(screen.getByLabelText('Jumlah Lembar')).toBeInTheDocument()
-  })
+    expect(screen.getByLabelText("Jumlah Lembar")).toBeInTheDocument();
+  });
 
   /**
    * Jenis Dokumen SELALU milik satu Tipe Dokumen.
@@ -428,55 +472,81 @@ describe('input data archive', () => {
    * ada di master akan tersimpan dan kemudian tampil kosong di grid, tanpa ada yang tahu
    * sebabnya.
    */
-  it('jenis dokumen hanya berisi jenis milik tipe yang dipilih', async () => {
-    stubDefaultFetch()
-    await openInputTab()
+  it("jenis dokumen hanya berisi jenis milik tipe yang dipilih", async () => {
+    stubDefaultFetch();
+    await openInputTab();
 
-    await userEvent.type(screen.getByLabelText('Keyword'), 'PNC-100006')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari Klaim' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+    await userEvent.type(screen.getByLabelText("Keyword"), "PNC-100006");
+    await userEvent.click(screen.getByRole("button", { name: "Cari Klaim" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Detail" }),
+    );
 
-    const kind = screen.getByLabelText('Jenis Dokumen')
-    expect(kind).toBeDisabled()
+    const kind = screen.getByLabelText("Jenis Dokumen");
+    expect(kind).toBeDisabled();
 
-    await userEvent.selectOptions(screen.getByLabelText('Tipe Dokumen'), '0002')
+    await userEvent.selectOptions(
+      screen.getByLabelText("Tipe Dokumen"),
+      "0002",
+    );
 
-    expect(within(kind).getByRole('option', { name: 'Berita Acara Survey' })).toBeInTheDocument()
-    expect(within(kind).queryByRole('option', { name: 'Laporan Kerugian' })).toBeNull()
-  })
+    expect(
+      within(kind).getByRole("option", { name: "Berita Acara Survey" }),
+    ).toBeInTheDocument();
+    expect(
+      within(kind).queryByRole("option", { name: "Laporan Kerugian" }),
+    ).toBeNull();
+  });
 
-  it('menyimpan berkas mengirim isian klaim beserta group panel-nya', async () => {
-    stubDefaultFetch()
-    await openInputTab()
+  it("menyimpan berkas mengirim isian klaim beserta group panel-nya", async () => {
+    stubDefaultFetch();
+    await openInputTab();
 
-    await userEvent.type(screen.getByLabelText('Keyword'), 'PNC-100006')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari Klaim' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+    await userEvent.type(screen.getByLabelText("Keyword"), "PNC-100006");
+    await userEvent.click(screen.getByRole("button", { name: "Cari Klaim" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Detail" }),
+    );
 
-    await userEvent.type(screen.getByLabelText('Tgl Terima Dokumen'), '2026-08-01')
-    await userEvent.type(screen.getByLabelText('Jumlah Lembar'), '12')
-    await userEvent.selectOptions(screen.getByLabelText('Tipe Dokumen'), '0001')
-    await userEvent.selectOptions(screen.getByLabelText('Jenis Dokumen'), '000101')
-    await userEvent.type(screen.getByLabelText('Nama BOX'), 'BOX-C-09')
-    await userEvent.type(screen.getByLabelText('Kode Filling'), 'FIL-2026-009')
+    await userEvent.type(
+      screen.getByLabelText("Tgl Terima Dokumen"),
+      "2026-08-01",
+    );
+    await userEvent.type(screen.getByLabelText("Jumlah Lembar"), "12");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Tipe Dokumen"),
+      "0001",
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText("Jenis Dokumen"),
+      "000101",
+    );
+    await userEvent.type(screen.getByLabelText("Nama BOX"), "BOX-C-09");
+    await userEvent.type(screen.getByLabelText("Kode Filling"), "FIL-2026-009");
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save To Archive' }))
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save To Archive" }),
+    );
 
-    const call = [...calls].reverse().find((c) => c.url === PATH && c.init?.method === 'POST')
-    expect(call).toBeDefined()
+    const call = [...calls]
+      .reverse()
+      .find((c) => c.url === PATH && c.init?.method === "POST");
+    expect(call).toBeDefined();
 
-    const body = JSON.parse(String(call?.init?.body))
-    expect(body.nomor_klaim).toBe('PNC-100006')
-    expect(body.jumlah_lembar).toBe(12)
-    expect(body.kode_filling).toBe('FIL-2026-009')
-    expect(body.group_panel).toBe('006')
-    expect(body.id).toBe(0)
+    const body = JSON.parse(String(call?.init?.body));
+    expect(body.nomor_klaim).toBe("PNC-100006");
+    expect(body.jumlah_lembar).toBe(12);
+    expect(body.kode_filling).toBe("FIL-2026-009");
+    expect(body.group_panel).toBe("006");
+    expect(body.id).toBe(0);
 
     // Menyimpan ikut mengirim ke sistem Arsip — perilaku sistem lama yang direplikasi.
     // Pesannya harus menyebutkannya, karena berkas yang tersimpan TETAPI belum terkirim
     // menuntut tindakan lanjutan dari tab Kirim ke Cabang.
-    expect(await screen.findByText(/dikirim ke sistem Arsip/)).toBeInTheDocument()
-  })
+    expect(
+      await screen.findByText(/dikirim ke sistem Arsip/),
+    ).toBeInTheDocument();
+  });
 
   /**
    * Pemilih Kode Filling MENYATAKAN bahwa daftarnya disusun dari pemakaian, bukan master.
@@ -484,25 +554,27 @@ describe('input data archive', () => {
    * Masternya tidak ada di export (`R-16`). Tanpa keterangan itu, pengguna akan
    * menyimpulkan kode barunya ditolak.
    */
-  it('pemilih kode menyatakan daftarnya disusun dari pemakaian', async () => {
-    stubDefaultFetch()
-    await openInputTab()
+  it("pemilih kode menyatakan daftarnya disusun dari pemakaian", async () => {
+    stubDefaultFetch();
+    await openInputTab();
 
-    await userEvent.type(screen.getByLabelText('Keyword'), 'PNC-100006')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari Klaim' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Detail' }))
+    await userEvent.type(screen.getByLabelText("Keyword"), "PNC-100006");
+    await userEvent.click(screen.getByRole("button", { name: "Cari Klaim" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Detail" }),
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Pilih Kode' }))
+    await userEvent.click(screen.getByRole("button", { name: "Pilih Kode" }));
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText(/bukan\s+dari master/i)).toBeInTheDocument()
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/bukan\s+dari master/i)).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Pilih' }))
+    await userEvent.click(await screen.findByRole("button", { name: "Pilih" }));
 
-    expect(screen.getByLabelText('Kode Filling')).toHaveValue('FIL-2026-001')
-    expect(screen.getByLabelText('Nama BOX')).toHaveValue('BOX-A-01')
-  })
-})
+    expect(screen.getByLabelText("Kode Filling")).toHaveValue("FIL-2026-001");
+    expect(screen.getByLabelText("Nama BOX")).toHaveValue("BOX-A-01");
+  });
+});
 
 /**
  * Grid arsip BACA-SAJA — tidak ada tombol Ubah.
@@ -511,67 +583,81 @@ describe('input data archive', () => {
  * cabang `update`-nya tidak pernah dipanggil dari layar ini. Keputusan Work Owner
  * 2026-09-25: samakan dengan Pega.
  */
-describe('grid arsip baca-saja', () => {
-  it('tidak menggambar tombol ubah pada baris mana pun', async () => {
-    stubDefaultFetch()
-    await renderOpened()
+describe("grid arsip baca-saja", () => {
+  it("tidak menggambar tombol ubah pada baris mana pun", async () => {
+    stubDefaultFetch();
+    await renderOpened();
 
-    await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
+    await userEvent.type(screen.getByLabelText("Keyword"), "BOX-A-01");
+    await userEvent.click(screen.getByRole("button", { name: "Cari" }));
 
-    expect(await screen.findByText('PNC-100001')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Ubah' })).toBeNull()
-  })
-})
+    expect(await screen.findByText("PNC-100001")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ubah" })).toBeNull();
+  });
+});
 
-describe('export to excel', () => {
-  it('mengirim penyaring yang sama dengan daftar yang tampil', async () => {
+describe("export to excel", () => {
+  it("mengirim penyaring yang sama dengan daftar yang tampil", async () => {
     stubFetch((url) => {
-      if (url === OPEN_PATH) return jsonResponse(200, OPENED)
+      if (url === OPEN_PATH) return jsonResponse(200, OPENED);
       if (url.startsWith(`${PATH}/ekspor`)) {
-        return new Response(['NO KLAIM', 'PNC-100001', ''].join('\n'), {
+        return new Response(["NO KLAIM", "PNC-100001", ""].join("\n"), {
           status: 200,
           headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': 'attachment; filename="archive-dokumen-klaim-20260925.csv"',
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition":
+              'attachment; filename="archive-dokumen-klaim-20260925.csv"',
           },
-        })
+        });
       }
       return jsonResponse(200, {
         berkas: [ARCHIVE_FILE],
         halaman: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
-        portal: 'ASM',
-      })
-    })
+        portal: "ASM",
+      });
+    });
 
     // `createObjectURL` tidak ada di jsdom; tanpa ini unduhannya melempar.
-    const createURL = vi.fn(() => 'blob:uji')
-    const revokeURL = vi.fn()
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: createURL, revokeObjectURL: revokeURL }))
+    const createURL = vi.fn(() => "blob:uji");
+    const revokeURL = vi.fn();
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, {
+        createObjectURL: createURL,
+        revokeObjectURL: revokeURL,
+      }),
+    );
 
-    await renderOpened()
+    await renderOpened();
     // Kolomnya sengaja DIPINDAH dari bawaannya: yang diuji adalah penyaring yang benar-benar
     // dipakai daftar ikut ke ekspor, bukan kebetulan nilai bawaan keduanya sama.
-    await userEvent.selectOptions(screen.getByLabelText('Tipe Pencarian Archive'), 'nama_box')
-    await userEvent.type(screen.getByLabelText('Keyword'), 'BOX-A-01')
-    await userEvent.click(screen.getByRole('button', { name: 'Cari' }))
-    await screen.findByText('PNC-100001')
+    await userEvent.selectOptions(
+      screen.getByLabelText("Tipe Pencarian Archive"),
+      "nama_box",
+    );
+    await userEvent.type(screen.getByLabelText("Keyword"), "BOX-A-01");
+    await userEvent.click(screen.getByRole("button", { name: "Cari" }));
+    await screen.findByText("PNC-100001");
 
-    await userEvent.click(screen.getByRole('button', { name: 'Export To Excel' }))
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export To Excel" }),
+    );
 
-    const call = lastCallStartingWith(`${PATH}/ekspor`)
-    expect(call?.url).toContain('tipe_pencarian=nama_box')
-    expect(call?.url).toContain('kata_kunci=BOX-A-01')
+    const call = lastCallStartingWith(`${PATH}/ekspor`);
+    expect(call?.url).toContain("tipe_pencarian=nama_box");
+    expect(call?.url).toContain("kata_kunci=BOX-A-01");
 
     // Blob dilepas setelah dipakai; tanpa itu setiap ekspor menyisakan satu di memori.
-    expect(revokeURL).toHaveBeenCalled()
-  })
-})
+    expect(revokeURL).toHaveBeenCalled();
+  });
+});
 
-describe('kirim ke cabang', () => {
+describe("kirim ke cabang", () => {
   async function openBranchTab() {
-    await renderOpened()
-    await userEvent.click(screen.getByRole('button', { name: 'Dokumen Cabang' }))
+    await renderOpened();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dokumen Cabang" }),
+    );
   }
 
   /**
@@ -580,42 +666,46 @@ describe('kirim ke cabang', () => {
    * Saringannya tampak terbalik dan direplikasi dengan sengaja; tanpa keterangan, berkas
    * yang hilang dari daftar akan dilaporkan berulang kali sebagai kerusakan modul.
    */
-  it('menerangkan lini bisnis yang disembunyikan', async () => {
-    stubDefaultFetch()
-    await openBranchTab()
+  it("menerangkan lini bisnis yang disembunyikan", async () => {
+    stubDefaultFetch();
+    await openBranchTab();
 
-    expect(await screen.findByText(/tidak ditampilkan/)).toBeInTheDocument()
-    expect(screen.getByText(/Personal Accident dan Travel/)).toBeInTheDocument()
-  })
+    expect(await screen.findByText(/tidak ditampilkan/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Personal Accident dan Travel/),
+    ).toBeInTheDocument();
+  });
 
-  it('mengirim satu berkas dan menampilkan jawaban sistem Arsip', async () => {
+  it("mengirim satu berkas dan menampilkan jawaban sistem Arsip", async () => {
     stubFetch((url, init) => {
-      if (url === OPEN_PATH) return jsonResponse(200, OPENED)
+      if (url === OPEN_PATH) return jsonResponse(200, OPENED);
       if (url.startsWith(`${PATH}/kirim-cabang`)) {
         return jsonResponse(200, {
           berkas: [ARCHIVE_FILE],
           halaman: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
           cakupan_cabang: OPENED.cakupan_cabang,
-          portal: 'ASM',
-        })
+          portal: "ASM",
+        });
       }
-      if (url === `${PATH}/1/kirim-cabang` && init?.method === 'POST') {
+      if (url === `${PATH}/1/kirim-cabang` && init?.method === "POST") {
         return jsonResponse(200, {
           id: 1,
-          kode_layanan: '200',
-          catatan_layanan: 'OK',
-          pesan: 'Berkas dikirim ke sistem Arsip.',
-          portal: 'ASM',
-        })
+          kode_layanan: "200",
+          catatan_layanan: "OK",
+          pesan: "Berkas dikirim ke sistem Arsip.",
+          portal: "ASM",
+        });
       }
-      return jsonResponse(200, {})
-    })
-    await openBranchTab()
+      return jsonResponse(200, {});
+    });
+    await openBranchTab();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Kirim' }))
+    await userEvent.click(await screen.findByRole("button", { name: "Kirim" }));
 
-    expect(await screen.findByText(/Berkas dikirim ke sistem Arsip/)).toBeInTheDocument()
-  })
+    expect(
+      await screen.findByText(/Berkas dikirim ke sistem Arsip/),
+    ).toBeInTheDocument();
+  });
 
   /**
    * Alamat layanan yang belum terdaftar disampaikan apa adanya.
@@ -624,30 +714,32 @@ describe('kirim ke cabang', () => {
    * Pesan umum "terjadi kesalahan" akan membuat kegagalan ini dilaporkan sebagai bug
    * aplikasi.
    */
-  it('menyampaikan alamat layanan Arsip yang belum terdaftar', async () => {
+  it("menyampaikan alamat layanan Arsip yang belum terdaftar", async () => {
     stubFetch((url, init) => {
-      if (url === OPEN_PATH) return jsonResponse(200, OPENED)
+      if (url === OPEN_PATH) return jsonResponse(200, OPENED);
       if (url.startsWith(`${PATH}/kirim-cabang`)) {
         return jsonResponse(200, {
           berkas: [ARCHIVE_FILE],
           halaman: { halaman: 1, ukuran: 20, total: 1, total_halaman: 1 },
           cakupan_cabang: OPENED.cakupan_cabang,
-          portal: 'ASM',
-        })
+          portal: "ASM",
+        });
       }
-      if (init?.method === 'POST') {
+      if (init?.method === "POST") {
         return jsonResponse(503, {
-          kode: 'alamat_layanan_arsip_kosong',
+          kode: "alamat_layanan_arsip_kosong",
           pesan:
-            'Alamat layanan Arsip belum terdaftar untuk portal ini. Mintakan penambahan barisnya pada tabel alamat layanan kepada DBA.',
-        })
+            "Alamat layanan Arsip belum terdaftar untuk portal ini. Mintakan penambahan barisnya pada tabel alamat layanan kepada DBA.",
+        });
       }
-      return jsonResponse(200, {})
-    })
-    await openBranchTab()
+      return jsonResponse(200, {});
+    });
+    await openBranchTab();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Kirim' }))
+    await userEvent.click(await screen.findByRole("button", { name: "Kirim" }));
 
-    expect(await screen.findByText(/belum terdaftar untuk portal ini/)).toBeInTheDocument()
-  })
-})
+    expect(
+      await screen.findByText(/belum terdaftar untuk portal ini/),
+    ).toBeInTheDocument();
+  });
+});

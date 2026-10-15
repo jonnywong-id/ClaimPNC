@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   ActionResponse,
@@ -11,9 +11,9 @@ import type {
   ListResponse,
   MetadataResponse,
   NewMessageRequest,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-komunikasi-cabang'
+const PATH = "/api/inbox-komunikasi-cabang";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -33,17 +33,21 @@ const PATH = '/api/inbox-komunikasi-cabang'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-komunikasi-cabang', 'tab', portal, token] as const,
+    ["inbox-komunikasi-cabang", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, tab: string, page: number) =>
-    ['inbox-komunikasi-cabang', 'daftar', portal, token, tab, page] as const,
+  list: (
+    portal: string | null,
+    token: string | null,
+    tab: string,
+    page: number,
+  ) => ["inbox-komunikasi-cabang", "daftar", portal, token, tab, page] as const,
 
   detail: (portal: string | null, token: string | null, id: string) =>
-    ['inbox-komunikasi-cabang', 'komunikasi', portal, token, id] as const,
+    ["inbox-komunikasi-cabang", "komunikasi", portal, token, id] as const,
 
   branches: (portal: string | null, token: string | null) =>
-    ['inbox-komunikasi-cabang', 'cabang', portal, token] as const,
-}
+    ["inbox-komunikasi-cabang", "cabang", portal, token] as const,
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, kolom unduhan, dan selisih terencana.
@@ -60,8 +64,8 @@ const keys = {
  * langsung dari penyaringnya.
  */
 export function useKomunikasiCabangMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -73,7 +77,7 @@ export function useKomunikasiCabangMetadata() {
     // tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -93,13 +97,18 @@ export function useKomunikasiCabangMetadata() {
  * akan saling bertentangan di mata penggunanya — tabel menampilkan satu baris sementara
  * lencananya menyebut nol.
  */
-export function useKomunikasiCabangList(tab: string, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useKomunikasiCabangList(
+  tab: string,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(tab, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -109,7 +118,7 @@ export function useKomunikasiCabangList(tab: string, page: number, enabled: bool
     // Kotak percakapan berubah saat petugas lain membalas, jadi cache-nya pendek — sama
     // dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -129,22 +138,22 @@ export function useKomunikasiCabangList(tab: string, page: number, enabled: bool
  * entitas, dan batas cabangnya diturunkan dari login.
  */
 export function useKomunikasiCabangDetail(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: keys.detail(portal, token, id ?? ''),
+    queryKey: keys.detail(portal, token, id ?? ""),
     queryFn: () =>
       callAPI<ConversationDetailResponse>(
-        `${PATH}/komunikasi/${encodeURIComponent(id ?? '')}`,
+        `${PATH}/komunikasi/${encodeURIComponent(id ?? "")}`,
         { token, portal },
       ),
-    enabled: id !== null && id !== '' && token !== null && portal !== null,
+    enabled: id !== null && id !== "" && token !== null && portal !== null,
 
     // Isi percakapan berubah saat petugas lain membalasnya di Pega — dan selama masa
     // paralel itulah satu-satunya tempat ia berubah. Cache-nya sependek daftar.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -164,30 +173,30 @@ export function useKomunikasiCabangDetail(id: string | null) {
  * dan itulah sebabnya keduanya memang dilayani satu permintaan.
  */
 export function useKomunikasiCabangReply() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: { komunikasi: string; pesan: string }) =>
       await callAPI<{ komunikasi: string; pesan: string }>(
         `${PATH}/komunikasi/${encodeURIComponent(input.komunikasi)}/balas`,
-        { token, portal, metode: 'POST', body: { pesan: input.pesan } },
+        { token, portal, metode: "POST", body: { pesan: input.pesan } },
       ),
 
     onSuccess: (_result, input) => {
       queryClient.invalidateQueries({
         queryKey: keys.detail(portal, token, input.komunikasi),
-      })
+      });
 
       // SELURUH daftar modul ini, bukan hanya tab dan halaman yang sedang terbuka: barisnya
       // meninggalkan satu tab dan masuk ke tab lain, dan halaman berapa ia mendarat tidak
       // dapat diketahui dari sini.
       queryClient.invalidateQueries({
-        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
-      })
+        queryKey: ["inbox-komunikasi-cabang", "daftar"],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -201,26 +210,26 @@ export function useKomunikasiCabangReply() {
  * layar detail percakapan itu harus melihat keadaannya yang baru, bukan yang sudah usang.
  */
 export function useKomunikasiCabangFinish() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (komunikasi: string) =>
       await callAPI<{ komunikasi: string; pesan: string }>(
         `${PATH}/komunikasi/${encodeURIComponent(komunikasi)}/selesai`,
-        { token, portal, metode: 'POST' },
+        { token, portal, metode: "POST" },
       ),
 
     onSuccess: (_result, komunikasi) => {
       queryClient.invalidateQueries({
         queryKey: keys.detail(portal, token, komunikasi),
-      })
+      });
       queryClient.invalidateQueries({
-        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
-      })
+        queryKey: ["inbox-komunikasi-cabang", "daftar"],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -239,18 +248,19 @@ export function useKomunikasiCabangFinish() {
  * daftar yang hampir selalu tidak terpakai.
  */
 export function useKomunikasiCabangBranches(enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.branches(portal, token),
-    queryFn: () => callAPI<BranchListResponse>(`${PATH}/cabang`, { token, portal }),
+    queryFn: () =>
+      callAPI<BranchListResponse>(`${PATH}/cabang`, { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Daftar cabang berubah sangat jarang — ia master, bukan data transaksi. Lima menit
     // menghindari pengambilan ulang setiap kali form dibuka-tutup dalam satu sesi kerja.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -265,25 +275,25 @@ export function useKomunikasiCabangBranches(enabled: boolean) {
  * Kedua pencacah ikut tersegarkan karena keduanya datang BERSAMA daftar.
  */
 export function useKomunikasiCabangSendMessage() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: NewMessageRequest) =>
       await callAPI<ActionResponse>(`${PATH}/pesan`, {
         token,
         portal,
-        metode: 'POST',
+        metode: "POST",
         body: input,
       }),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['inbox-komunikasi-cabang', 'daftar'],
-      })
+        queryKey: ["inbox-komunikasi-cabang", "daftar"],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -307,59 +317,59 @@ export function useKomunikasiCabangSendMessage() {
  * memorinya tetap datar — sedangkan memori peramban tumbuh sebesar berkasnya.
  */
 export function useExportKomunikasiCabang() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const params = new URLSearchParams()
-      if (tab) params.set('tab', tab)
+      const params = new URLSearchParams();
+      if (tab) params.set("tab", tab);
 
-      const query = params.toString()
-      const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`
+      const query = params.toString();
+      const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`;
 
-      const response = await fetch(address, { headers: header })
+      const response = await fetch(address, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
         // lagi. Yang dibaca di sini adalah kasus pertama — termasuk sumber cabang yang
         // sedang mati, yang dijawab 503 beserta alasannya.
         const body = (await response.json().catch(() => null)) as {
-          pesan?: string
-          detail?: { pesan?: string }[]
-        } | null
+          pesan?: string;
+          detail?: { pesan?: string }[];
+        } | null;
 
-        const detail = body?.detail?.map((item) => item.pesan).filter(Boolean)
-        if (detail && detail.length > 0) throw new Error(detail.join(' '))
+        const detail = body?.detail?.map((item) => item.pesan).filter(Boolean);
+        if (detail && detail.length > 0) throw new Error(detail.join(" "));
 
-        throw new Error(body?.pesan ?? 'Berkas unduhan tidak dapat diambil.')
+        throw new Error(body?.pesan ?? "Berkas unduhan tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'komunikasi-cabang.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "komunikasi-cabang.csv");
     },
-  })
+  });
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(tab: string, page: number): string {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  if (page > 1) params.set('halaman', String(page))
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -370,12 +380,12 @@ function filenameOf(response: Response): string | null {
  * yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

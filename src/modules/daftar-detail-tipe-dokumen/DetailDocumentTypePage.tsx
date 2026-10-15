@@ -1,67 +1,71 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DetailDocumentType } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type DetailDocumentType } from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useCreateDetailDocumentType,
   useDetailDocumentTypeList,
   useDetailDocumentTypeReferences,
   useUpdateDetailDocumentType,
-} from './api'
-import { DetailDocumentTypeForm, type DetailDocumentTypeFields } from './DetailDocumentTypeForm'
+} from "./api";
+import {
+  DetailDocumentTypeForm,
+  type DetailDocumentTypeFields,
+} from "./DetailDocumentTypeForm";
 
 /** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
+const CLOSED = "closed";
 /** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
+const CREATE = "create";
 
-type FormState = typeof CLOSED | typeof CREATE | DetailDocumentType
+type FormState = typeof CLOSED | typeof CREATE | DetailDocumentType;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -73,8 +77,8 @@ function loadMessage(error: unknown): MessageContent {
  * membingungkan petugas, karena tidak ada yang bisa dikerjakannya.
  */
 const REFERENCE_LABEL: Record<string, string> = {
-  tipe_dokumen: 'Tipe Dokumen',
-}
+  tipe_dokumen: "Tipe Dokumen",
+};
 
 /**
  * Layar Daftar Detail Tipe Dokumen.
@@ -119,46 +123,48 @@ const REFERENCE_LABEL: Record<string, string> = {
  * menghapusnya memutus seluruhnya (`D-66`, `ADR-0012`).
  */
 export function DetailDocumentTypePage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
+  const portal = useSelectedPortal((state) => state.alias);
+  const [form, setForm] = useState<FormState>(CLOSED);
 
-  const list = useDetailDocumentTypeList()
-  const references = useDetailDocumentTypeReferences()
-  const create = useCreateDetailDocumentType()
-  const update = useUpdateDetailDocumentType()
+  const list = useDetailDocumentTypeList();
+  const references = useDetailDocumentTypeReferences();
+  const create = useCreateDetailDocumentType();
+  const update = useUpdateDetailDocumentType();
 
-  const openedRow = typeof form === 'string' ? null : form
+  const openedRow = typeof form === "string" ? null : form;
 
   // Baris dari daftar dipakai langsung. Daftar membawa SELURUH kolom yang dibutuhkan
   // form maupun penyimpanan — termasuk keenam kolom yang tidak disunting tetapi harus
   // ikut ditulis kembali — sehingga tidak ada lagi alasan memuat ulang satu baris.
-  const edited = openedRow
-  const isSaving = create.isPending || update.isPending
-  const saveError = openedRow ? update.error : create.error
+  const edited = openedRow;
+  const isSaving = create.isPending || update.isPending;
+  const saveError = openedRow ? update.error : create.error;
 
   // Master yang gagal dibaca disebut server lewat `tidak_tersedia`. Kegagalan seluruh
   // permintaannya — jaringan, portal — diperlakukan sebagai keempatnya hilang, karena
   // memang tidak satu pun daftar yang di tangan.
   const unavailable = (
-    references.isError ? Object.keys(REFERENCE_LABEL) : (references.data?.tidak_tersedia ?? [])
-  ).filter((name) => name in REFERENCE_LABEL)
+    references.isError
+      ? Object.keys(REFERENCE_LABEL)
+      : (references.data?.tidak_tersedia ?? [])
+  ).filter((name) => name in REFERENCE_LABEL);
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
+    create.reset();
+    update.reset();
+    setForm(CREATE);
   }
 
   function openEdit(row: DetailDocumentType) {
-    create.reset()
-    update.reset()
-    setForm(row)
+    create.reset();
+    update.reset();
+    setForm(row);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
+    create.reset();
+    update.reset();
+    setForm(CLOSED);
   }
 
   function save(values: DetailDocumentTypeFields) {
@@ -170,47 +176,51 @@ export function DetailDocumentTypePage() {
       // sedang disunting, bukan dikirim kosong: mengirimnya kosong akan menghapus isi
       // kolomnya pada setiap penyimpanan, padahal petugas tidak pernah diberi kesempatan
       // mengubahnya. Pada penambahan baru keenamnya memang belum punya isi.
-      status_tertanggung: edited?.status_tertanggung ?? '',
-      id_penyebab_kerugian: edited?.id_penyebab_kerugian ?? '',
-      keterangan_penyebab_kerugian: edited?.keterangan_penyebab_kerugian ?? '',
-      id_objek_dokumen: edited?.id_objek_dokumen ?? '',
-      keterangan_objek_dokumen: edited?.keterangan_objek_dokumen ?? '',
-      resiko: edited?.resiko ?? '',
-    }
+      status_tertanggung: edited?.status_tertanggung ?? "",
+      id_penyebab_kerugian: edited?.id_penyebab_kerugian ?? "",
+      keterangan_penyebab_kerugian: edited?.keterangan_penyebab_kerugian ?? "",
+      id_objek_dokumen: edited?.id_objek_dokumen ?? "",
+      keterangan_objek_dokumen: edited?.keterangan_objek_dokumen ?? "",
+      resiko: edited?.resiko ?? "",
+    };
 
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
     // diketik, itu berarti mengetik ulang dari awal.
     if (openedRow) {
-      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm })
-      return
+      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm });
+      return;
     }
-    create.mutate(input, { onSuccess: closeForm })
+    create.mutate(input, { onSuccess: closeForm });
   }
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup.
   const columns: Column<DetailDocumentType>[] = [
-    { key: 'id', title: 'ID', width: 'w-28', value: (row) => row.id },
+    { key: "id", title: "ID", width: "w-28", value: (row) => row.id },
     {
-      key: 'tipe_dokumen',
-      title: 'Tipe Dokumen',
-      width: 'w-56',
+      key: "tipe_dokumen",
+      title: "Tipe Dokumen",
+      width: "w-56",
       // NAMANYA saja — kodenya tidak ditampilkan, sama seperti grid Pega. Kode itu
       // sempat ikut tampil sebagai baris kecil di bawah namanya dan DICABUT atas
       // koreksi Work Owner (2026-10-03).
       value: (row) => row.nama_tipe_dokumen,
     },
-    { key: 'detail_dokumen', title: 'Detail Dokumen', value: (row) => row.detail_dokumen },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: 'w-24',
+      key: "detail_dokumen",
+      title: "Detail Dokumen",
+      value: (row) => row.detail_dokumen,
+    },
+    {
+      key: "aksi",
+      title: "Aksi",
+      width: "w-24",
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           tone="kedua"
@@ -221,15 +231,17 @@ export function DetailDocumentTypePage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna
               mengenalinya tanpa diberi tahu. */}
-          <h1 className="text-xl font-semibold text-slate-900">Detail Tipe Dokumen</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Detail Tipe Dokumen
+          </h1>
           {/* Keterangannya sengaja satu baris pendek, sama seperti layar master lain.
               Keterangan panjang membuat blok judul melebar sampai tombol Refresh dan
               Tambah terdorong turun ke baris berikutnya — dan di sana ia rata kiri,
@@ -239,8 +251,14 @@ export function DetailDocumentTypePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
           <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
             Tambah
@@ -252,8 +270,10 @@ export function DetailDocumentTypePage() {
           empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
           hanya diandaikan pengguna (`ADR-0030`, `R-20`). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">
+          {list.data?.portal ?? portal ?? "—"}
+        </span>
       </p>
 
       {form !== CLOSED && (
@@ -267,7 +287,9 @@ export function DetailDocumentTypePage() {
                 title="Sebagian daftar pilihan tidak dapat dimuat"
                 description={`Saran untuk isian ${unavailable
                   .map((name) => REFERENCE_LABEL[name] ?? name)
-                  .join(', ')} tidak tersedia untuk sementara. Isian lain tetap dapat disimpan seperti biasa.`}
+                  .join(
+                    ", ",
+                  )} tidak tersedia untuk sementara. Isian lain tetap dapat disimpan seperti biasa.`}
                 tone="gangguan"
               />
             </div>
@@ -291,17 +313,19 @@ export function DetailDocumentTypePage() {
             tone="penolakan"
           />
         ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar detail tipe dokumen…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar detail tipe dokumen…
+          </p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -314,5 +338,5 @@ export function DetailDocumentTypePage() {
         )}
       </section>
     </main>
-  )
+  );
 }

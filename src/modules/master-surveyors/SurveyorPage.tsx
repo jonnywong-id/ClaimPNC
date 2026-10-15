@@ -1,17 +1,17 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Surveyor } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { AddIcon, EditIcon, ReloadIcon } from '@/components/Icon'
-import { useSurveyorTypeList } from '@/modules/master-tipe-surveyors/api'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Surveyor } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { AddIcon, EditIcon, ReloadIcon } from "@/components/Icon";
+import { useSurveyorTypeList } from "@/modules/master-tipe-surveyors/api";
 
-import { useSurveyorList, type SurveyorFilter } from './api'
-import { SurveyorDecisionPanel } from './SurveyorDecisionPanel'
-import { SurveyorForm } from './SurveyorForm'
+import { useSurveyorList, type SurveyorFilter } from "./api";
+import { SurveyorDecisionPanel } from "./SurveyorDecisionPanel";
+import { SurveyorForm } from "./SurveyorForm";
 
 /**
  * Lima tab: keempat tab layar lama, ditambah satu tab pencarian.
@@ -35,13 +35,13 @@ import { SurveyorForm } from './SurveyorForm'
  * diketahui menuntut membuka tab satu per satu.
  */
 const TABS = [
-  { id: 'approve', label: 'Approve' },
-  { id: 'reject', label: 'Reject' },
-  { id: 'waiting', label: 'Waiting Approval' },
-  { id: 'komite', label: 'Komite Approval' },
-] as const
+  { id: "approve", label: "Approve" },
+  { id: "reject", label: "Reject" },
+  { id: "waiting", label: "Waiting Approval" },
+  { id: "komite", label: "Komite Approval" },
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /**
  * Saringan tiap tab, diambil dari `pyRDParams` masing-masing section — bukan ditafsirkan.
@@ -54,15 +54,15 @@ type TabId = (typeof TABS)[number]['id']
  */
 function filterFor(tab: TabId): SurveyorFilter {
   switch (tab) {
-    case 'approve':
-      return { status: '1' }
-    case 'reject':
-      return { status: '2' }
-    case 'waiting':
-      return { status: '0' }
-    case 'komite':
+    case "approve":
+      return { status: "1" };
+    case "reject":
+      return { status: "2" };
+    case "waiting":
+      return { status: "0" };
+    case "komite":
     default:
-      return { antrean_saya: true }
+      return { antrean_saya: true };
   }
 }
 
@@ -100,45 +100,45 @@ function filterFor(tab: TabId): SurveyorFilter {
  * ia disebut di layar — bukan hanya di dokumen.
  */
 export function SurveyorPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Tab yang terbuka pertama adalah "Approve", sama seperti layar lama.
-  const [tab, setTab] = useState<TabId>('approve')
-  const list = useSurveyorList(filterFor(tab))
+  const [tab, setTab] = useState<TabId>("approve");
+  const list = useSurveyorList(filterFor(tab));
 
   // Daftar tipe dibaca dari modul tetangga, bukan disalin. Ia sumber yang sama dengan
   // yang dikelola layar Master Tipe Surveyors, sehingga tipe yang baru ditambahkan di
   // sana langsung dapat dipilih di sini.
-  const types = useSurveyorTypeList()
+  const types = useSurveyorTypeList();
 
-  const [beingEdited, setBeingEdited] = useState<Surveyor | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [beingDecided, setBeingDecided] = useState<Surveyor | null>(null)
+  const [beingEdited, setBeingEdited] = useState<Surveyor | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [beingDecided, setBeingDecided] = useState<Surveyor | null>(null);
 
   function openAdd() {
-    setBeingEdited(null)
-    setBeingDecided(null)
-    setFormOpen(true)
+    setBeingEdited(null);
+    setBeingDecided(null);
+    setFormOpen(true);
   }
 
   function openEdit(surveyor: Surveyor) {
-    setBeingEdited(surveyor)
-    setBeingDecided(null)
-    setFormOpen(true)
+    setBeingEdited(surveyor);
+    setBeingDecided(null);
+    setFormOpen(true);
   }
 
   function closeForm() {
-    setFormOpen(false)
-    setBeingEdited(null)
+    setFormOpen(false);
+    setBeingEdited(null);
   }
 
   function openDecision(surveyor: Surveyor) {
-    setFormOpen(false)
-    setBeingEdited(null)
-    setBeingDecided(surveyor)
+    setFormOpen(false);
+    setBeingEdited(null);
+    setBeingDecided(surveyor);
   }
 
-  const rows = list.data?.surveyor ?? []
+  const rows = list.data?.surveyor ?? [];
 
   // KOLOM DAN JUDULNYA mengikuti grid layar lama persis, dibaca dari properti yang
   // dirujuk keempat section (`.D_SURVEY_ID`, `sub1.DESCRIPTION`, `.NAME`, `.BRANCHNAME`,
@@ -148,16 +148,18 @@ export function SurveyorPage() {
   // memang tidak perlu — tab yang sedang dibuka sudah menyatakan statusnya.
   const columns: Column<Surveyor>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: '7rem',
+      key: "id",
+      title: "ID",
+      width: "7rem",
       value: (s) => s.id,
-      render: (s) => <span className="font-mono text-xs text-slate-700">{s.id}</span>,
+      render: (s) => (
+        <span className="font-mono text-xs text-slate-700">{s.id}</span>
+      ),
     },
     {
-      key: 'nama_tipe',
-      title: 'ID Survei Master',
-      width: '11rem',
+      key: "nama_tipe",
+      title: "ID Survei Master",
+      width: "11rem",
       value: (s) => s.nama_tipe || s.kode_tipe,
       render: (s) => (
         <span className="text-slate-700">
@@ -165,7 +167,9 @@ export function SurveyorPage() {
             // Tipe yang kodenya tidak lagi ada di master. Barisnya tetap ditampilkan —
             // menyembunyikannya adalah kelas cacat yang paling sulit disadari — tetapi
             // keadaannya ditandai supaya dapat diperbaiki.
-            <span title={`Kode tipe ${s.kode_tipe} tidak ada di master tipe surveyor`}>
+            <span
+              title={`Kode tipe ${s.kode_tipe} tidak ada di master tipe surveyor`}
+            >
               <span className="font-mono text-xs">{s.kode_tipe}</span>
               <span className="ml-1 text-amber-600">(tipe tidak dikenal)</span>
             </span>
@@ -174,52 +178,64 @@ export function SurveyorPage() {
       ),
     },
     {
-      key: 'nama',
+      key: "nama",
       // "Nama", bukan "Input Nama": teks itu nol kemunculan di seluruh export.
-      title: 'Nama',
+      title: "Nama",
       value: (s) => s.nama,
-      render: (s) => <span className="font-medium text-slate-900">{s.nama}</span>,
+      render: (s) => (
+        <span className="font-medium text-slate-900">{s.nama}</span>
+      ),
     },
     {
-      key: 'nama_cabang',
-      title: 'Cabang',
-      width: '10rem',
+      key: "nama_cabang",
+      title: "Cabang",
+      width: "10rem",
       value: (s) => s.nama_cabang || s.kode_cabang,
-      render: (s) => <span className="text-slate-700">{s.nama_cabang || s.kode_cabang || '—'}</span>,
+      render: (s) => (
+        <span className="text-slate-700">
+          {s.nama_cabang || s.kode_cabang || "—"}
+        </span>
+      ),
     },
     {
-      key: 'telepon',
-      title: 'Telp',
-      width: '9rem',
+      key: "telepon",
+      title: "Telp",
+      width: "9rem",
       value: (s) => s.telepon,
-      render: (s) => <span className="text-slate-700">{s.telepon || '—'}</span>,
+      render: (s) => <span className="text-slate-700">{s.telepon || "—"}</span>,
     },
     {
-      key: 'email',
-      title: 'Email',
+      key: "email",
+      title: "Email",
       value: (s) => s.email,
-      render: (s) => <span className="break-all text-slate-700">{s.email || '—'}</span>,
+      render: (s) => (
+        <span className="break-all text-slate-700">{s.email || "—"}</span>
+      ),
     },
     {
-      key: 'komite',
-      title: 'Komite',
-      width: '10rem',
+      key: "komite",
+      title: "Komite",
+      width: "10rem",
       value: (s) => s.komite,
-      render: (s) => <span className="font-mono text-xs text-slate-700">{s.komite || '—'}</span>,
+      render: (s) => (
+        <span className="font-mono text-xs text-slate-700">
+          {s.komite || "—"}
+        </span>
+      ),
     },
     {
-      key: 'aksi',
-      title: '',
-      width: '11rem',
+      key: "aksi",
+      title: "",
+      width: "11rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       // Tombol Approve dan Reject HANYA muncul di tab "Komite Approval" — sama seperti
       // layar lama, yang menaruh keduanya di section `-Komite` saja. Tab Approve, Reject,
       // dan Waiting Approval hanya punya tautan Ubah.
       render: (s) => (
         <div className="flex justify-end gap-1.5">
-          {tab === 'komite' && s.status === '0' && (
+          {tab === "komite" && s.status === "0" && (
             <Button
               tone="halus"
               onClick={() => openDecision(s)}
@@ -239,12 +255,15 @@ export function SurveyorPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -253,19 +272,23 @@ export function SurveyorPage() {
             <li className="text-slate-700">Surveyors</li>
           </ol>
         </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Surveyors</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Master Surveyors
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Daftar petugas dan lembaga yang melakukan survei kerugian. Setiap surveyor
-          digolongkan ke salah satu tipe pada Master Tipe Surveyors, dan baru dapat
-          ditugaskan pada klaim setelah komite menyetujuinya.
+          Daftar petugas dan lembaga yang melakukan survei kerugian. Setiap
+          surveyor digolongkan ke salah satu tipe pada Master Tipe Surveyors,
+          dan baru dapat ditugaskan pada klaim setelah komite menyetujuinya.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </p>
       </header>
 
@@ -321,10 +344,10 @@ export function SurveyorPage() {
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  '-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition ' +
+                  "-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition " +
                   (tab === t.id
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-700')
+                    ? "border-blue-600 text-blue-700"
+                    : "border-transparent text-slate-500 hover:text-slate-700")
                 }
               >
                 {t.label}
@@ -340,23 +363,37 @@ export function SurveyorPage() {
             description={
               list.data
                 ? `${list.data.total} surveyor pada tab ini.`
-                : 'Memuat daftar surveyor…'
+                : "Memuat daftar surveyor…"
             }
             searchLabel="Cari nama surveyor, tipe, atau cabang"
             emptyMessage={
-              tab === 'komite'
-                ? 'Tidak ada surveyor yang menunggu keputusan Anda.'
-                : 'Belum ada surveyor pada tab ini.'
+              tab === "komite"
+                ? "Tidak ada surveyor yang menunggu keputusan Anda."
+                : "Belum ada surveyor pada tab ini."
             }
             isLoading={list.isPending}
-            error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+            error={
+              list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+            }
             actions={
               <>
-                <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                  <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                  {list.isFetching ? 'Memuat…' : 'Refresh'}
+                <Button
+                  tone="kedua"
+                  onClick={() => {
+                    list.refetch();
+                  }}
+                  disabled={list.isFetching}
+                >
+                  <ReloadIcon
+                    className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                  />
+                  {list.isFetching ? "Memuat…" : "Refresh"}
                 </Button>
-                <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
+                <Button
+                  tone="utama"
+                  onClick={openAdd}
+                  disabled={formOpen && !beingEdited}
+                >
                   <AddIcon className="h-4 w-4" />
                   Tambah
                 </Button>
@@ -366,7 +403,7 @@ export function SurveyorPage() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -376,19 +413,28 @@ export function SurveyorPage() {
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Daftar surveyor belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Daftar surveyor belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -396,30 +442,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar surveyor gagal dimuat',
+          title: "Daftar surveyor gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar surveyor gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar surveyor gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

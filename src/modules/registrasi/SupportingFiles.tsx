@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { APIError } from '@/api/client'
+import { APIError } from "@/api/client";
 
-import { type SettlementAddress, useDocuments, useUploadSupportingFiles, violationsFrom } from './api'
+import {
+  type SettlementAddress,
+  useDocuments,
+  useUploadSupportingFiles,
+  violationsFrom,
+} from "./api";
 
-type Row = { berkas: File | null; jenisDokumen: string; catatan: string }
+type Row = { berkas: File | null; jenisDokumen: string; catatan: string };
 
-const emptyRow = (): Row => ({ berkas: null, jenisDokumen: '', catatan: '' })
+const emptyRow = (): Row => ({ berkas: null, jenisDokumen: "", catatan: "" });
 
 /**
  * Tombol "Unggah File Penunjang" di bawah rincian satu baris adjustment, tab Adjustment &
@@ -23,20 +28,20 @@ export function SupportingFilesButton({
   prepare,
   onClosed,
 }: {
-  claimID: string
-  address: SettlementAddress
+  claimID: string;
+  address: SettlementAddress;
   /**
    * Baris adjustment yang belum tersimpan: disimpan lebih dulu, lalu dialog dibuka untuk
    * alamat baris hasil simpan. Galat simpan ditampilkan isiannya sendiri.
    */
-  prepare?: (() => Promise<SettlementAddress>) | undefined
+  prepare?: (() => Promise<SettlementAddress>) | undefined;
   /** Dipanggil setelah dialog ditutup. */
-  onClosed?: (() => void) | undefined
+  onClosed?: (() => void) | undefined;
 }) {
-  const [open, setOpen] = useState(false)
-  const [done, setDone] = useState<number | null>(null)
-  const [target, setTarget] = useState<SettlementAddress>(address)
-  const [preparing, setPreparing] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState<number | null>(null);
+  const [target, setTarget] = useState<SettlementAddress>(address);
+  const [preparing, setPreparing] = useState(false);
 
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -44,24 +49,24 @@ export function SupportingFilesButton({
         type="button"
         disabled={preparing}
         onClick={() => {
-          setDone(null)
+          setDone(null);
           if (!prepare) {
-            setTarget(address)
-            setOpen(true)
-            return
+            setTarget(address);
+            setOpen(true);
+            return;
           }
-          setPreparing(true)
+          setPreparing(true);
           prepare()
             .then((saved) => {
-              setTarget(saved)
-              setOpen(true)
+              setTarget(saved);
+              setOpen(true);
             })
             .catch(() => {})
-            .finally(() => setPreparing(false))
+            .finally(() => setPreparing(false));
         }}
         className="rounded border border-blue-500 px-3 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60"
       >
-        {preparing ? 'Menyimpan adjustment…' : 'Unggah File Penunjang'}
+        {preparing ? "Menyimpan adjustment…" : "Unggah File Penunjang"}
       </button>
       {done !== null && (
         <span role="status" className="text-xs text-emerald-700">
@@ -73,18 +78,18 @@ export function SupportingFilesButton({
           claimID={claimID}
           address={target}
           onClose={() => {
-            setOpen(false)
-            onClosed?.()
+            setOpen(false);
+            onClosed?.();
           }}
           onSaved={(count) => {
-            setDone(count)
-            setOpen(false)
-            onClosed?.()
+            setDone(count);
+            setOpen(false);
+            onClosed?.();
           }}
         />
       )}
     </div>
-  )
+  );
 }
 
 function SupportingFilesDialog({
@@ -93,53 +98,58 @@ function SupportingFilesDialog({
   onClose,
   onSaved,
 }: {
-  claimID: string
-  address: SettlementAddress
-  onClose: () => void
-  onSaved: (count: number) => void
+  claimID: string;
+  address: SettlementAddress;
+  onClose: () => void;
+  onSaved: (count: number) => void;
 }) {
-  const documents = useDocuments(claimID)
-  const upload = useUploadSupportingFiles(claimID)
-  const [rows, setRows] = useState<Row[]>([emptyRow()])
-  const [invalid, setInvalid] = useState<string | null>(null)
-  const busy = upload.isPending
+  const documents = useDocuments(claimID);
+  const upload = useUploadSupportingFiles(claimID);
+  const [rows, setRows] = useState<Row[]>([emptyRow()]);
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const busy = upload.isPending;
 
   // Jenis dokumen dari checklist lini bisnis klaim — sama dengan Unggah Dokumen Persetujuan LOD.
   const types = (documents.data?.kategori ?? []).flatMap((k) =>
     k.dokumen.map((d) => ({ id: d.id, nama: `${k.nama} — ${d.nama}` })),
-  )
+  );
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === "Escape" && !busy) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
 
-  const update = (i: number, patch: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const update = (i: number, patch: Partial<Row>) =>
+    setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const submit = () => {
-    const chosen = rows.filter((r) => r.berkas !== null)
+    const chosen = rows.filter((r) => r.berkas !== null);
     if (chosen.length === 0) {
-      setInvalid('Pilih minimal satu berkas.')
-      return
+      setInvalid("Pilih minimal satu berkas.");
+      return;
     }
-    if (chosen.some((r) => r.jenisDokumen === '')) {
-      setInvalid('Pilih jenis dokumen untuk setiap berkas.')
-      return
+    if (chosen.some((r) => r.jenisDokumen === "")) {
+      setInvalid("Pilih jenis dokumen untuk setiap berkas.");
+      return;
     }
-    setInvalid(null)
+    setInvalid(null);
     upload.mutate(
       {
         alamat: address,
-        berkas: chosen.map((r) => ({ berkas: r.berkas as File, jenisDokumen: r.jenisDokumen, catatan: r.catatan })),
+        berkas: chosen.map((r) => ({
+          berkas: r.berkas as File,
+          jenisDokumen: r.jenisDokumen,
+          catatan: r.catatan,
+        })),
       },
       { onSuccess: () => onSaved(chosen.length) },
-    )
-  }
+    );
+  };
 
-  const field = 'mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs'
+  const field = "mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs";
 
   return (
     <div
@@ -149,7 +159,10 @@ function SupportingFilesDialog({
       aria-labelledby="judul-file-penunjang"
     >
       <div className="max-h-full w-full max-w-3xl space-y-3 overflow-y-auto rounded-kartu bg-white p-6 text-xs text-slate-700 shadow-angkat">
-        <h2 id="judul-file-penunjang" className="text-lg font-semibold text-slate-900">
+        <h2
+          id="judul-file-penunjang"
+          className="text-lg font-semibold text-slate-900"
+        >
           Unggah File Penunjang
         </h2>
 
@@ -161,14 +174,19 @@ function SupportingFilesDialog({
 
         <div className="space-y-3">
           {rows.map((row, i) => (
-            <div key={i} className="grid gap-2 rounded border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div
+              key={i}
+              className="grid gap-2 rounded border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_auto]"
+            >
               <label className="block font-semibold text-slate-800">
                 Berkas
                 <input
                   type="file"
                   aria-label={`Berkas ${i + 1}`}
                   disabled={busy}
-                  onChange={(e) => update(i, { berkas: e.target.files?.[0] ?? null })}
+                  onChange={(e) =>
+                    update(i, { berkas: e.target.files?.[0] ?? null })
+                  }
                   className="mt-1 block w-full text-xs"
                 />
               </label>
@@ -249,17 +267,18 @@ function SupportingFilesDialog({
             onClick={submit}
             className="rounded bg-orange-500 px-6 py-1.5 text-sm text-white disabled:opacity-60"
           >
-            {busy ? 'Mengunggah…' : 'Submit'}
+            {busy ? "Mengunggah…" : "Submit"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function failureText(failure: unknown): string {
-  const violations = violationsFrom(failure)
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof APIError || failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  const violations = violationsFrom(failure);
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(" ");
+  if (failure instanceof APIError || failure instanceof Error)
+    return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

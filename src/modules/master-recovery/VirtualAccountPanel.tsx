@@ -1,20 +1,20 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
 
-import { useIssueVirtualAccount } from './api'
+import { useIssueVirtualAccount } from "./api";
 
 /** Batas panjang; sama dengan masterrecovery.Max* di backend. */
-const MAX_CLIENT_ID = 100
-const MAX_PRINCIPAL_NAME = 200
-const MAX_EMAIL = 100
+const MAX_CLIENT_ID = 100;
+const MAX_PRINCIPAL_NAME = 200;
+const MAX_EMAIL = 100;
 
 /**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
@@ -32,32 +32,42 @@ const schema = z.object({
   client_id: z
     .string()
     .trim()
-    .min(1, 'Client ID wajib diisi.')
+    .min(1, "Client ID wajib diisi.")
     .max(MAX_CLIENT_ID, `Client ID paling panjang ${MAX_CLIENT_ID} karakter.`),
   nama_principal: z
     .string()
     .trim()
-    .min(1, 'Nama principal wajib diisi.')
-    .max(MAX_PRINCIPAL_NAME, `Nama principal paling panjang ${MAX_PRINCIPAL_NAME} karakter.`),
+    .min(1, "Nama principal wajib diisi.")
+    .max(
+      MAX_PRINCIPAL_NAME,
+      `Nama principal paling panjang ${MAX_PRINCIPAL_NAME} karakter.`,
+    ),
   email_inputor_va: z
     .string()
     .trim()
-    .min(1, 'Email inputor VA wajib diisi.')
+    .min(1, "Email inputor VA wajib diisi.")
     .max(MAX_EMAIL, `Email inputor VA paling panjang ${MAX_EMAIL} karakter.`)
     // Pemeriksaan sengaja dangkal, sama dengan server. Satu-satunya cara membuktikan
     // sebuah alamat surel benar adalah mengirim surat ke sana; pola yang rumit hanya
     // menolak alamat sah yang tidak umum.
-    .refine((value) => /^[^@\s]+@[^@\s]+$/.test(value), 'Email inputor VA belum berupa alamat surel.'),
-})
+    .refine(
+      (value) => /^[^@\s]+@[^@\s]+$/.test(value),
+      "Email inputor VA belum berupa alamat surel.",
+    ),
+});
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 type Props = {
   /** Dipanggil setelah nomor terbit, supaya form utama dapat memakainya langsung. */
-  onIssued: (value: { client_id: string; nama_principal: string; nomor: string }) => void
+  onIssued: (value: {
+    client_id: string;
+    nama_principal: string;
+    nomor: string;
+  }) => void;
   /** Opsional: di dalam alur Tambah panel ini bagian tetap, tidak ada yang menutupnya. */
-  onClose?: () => void
-}
+  onClose?: () => void;
+};
 
 /**
  * Panel penerbitan Virtual Account.
@@ -74,7 +84,7 @@ type Props = {
  * | Galat layanan | satu pesan untuk semua sebab | dibedakan: belum terdaftar · tidak terhubung · ditolak |
  */
 export function VirtualAccountPanel({ onIssued, onClose }: Props) {
-  const issue = useIssueVirtualAccount()
+  const issue = useIssueVirtualAccount();
 
   const {
     register,
@@ -83,20 +93,24 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
     formState: { errors },
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
-    defaultValues: { client_id: '', nama_principal: '', email_inputor_va: '' },
-  })
+    defaultValues: { client_id: "", nama_principal: "", email_inputor_va: "" },
+  });
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya, bukan hanya diringkas di
   // kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan itu hanya
   // berguna bila layar menyorotnya di tempat isiannya.
   useEffect(() => {
-    if (!(issue.error instanceof APIError)) return
-    const violation = issue.error.violations()
-    for (const name of ['client_id', 'nama_principal', 'email_inputor_va'] as const) {
-      const message = violation[name]
-      if (message) setError(name, { type: 'server', message })
+    if (!(issue.error instanceof APIError)) return;
+    const violation = issue.error.violations();
+    for (const name of [
+      "client_id",
+      "nama_principal",
+      "email_inputor_va",
+    ] as const) {
+      const message = violation[name];
+      if (message) setError(name, { type: "server", message });
     }
-  }, [issue.error, setError])
+  }, [issue.error, setError]);
 
   function send(values: FieldValues) {
     issue.mutate(values, {
@@ -105,12 +119,12 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
           client_id: values.client_id,
           nama_principal: values.nama_principal,
           nomor: answer.nomor_virtual_account,
-        })
+        });
       },
-    })
+    });
   }
 
-  const issued = issue.data
+  const issued = issue.data;
 
   return (
     <form
@@ -120,10 +134,13 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
       aria-label="Terbitkan virtual account"
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-        <h3 className="text-base font-semibold text-slate-900">Generated New VA</h3>
+        <h3 className="text-base font-semibold text-slate-900">
+          Generated New VA
+        </h3>
         <p className="mt-1 text-sm text-slate-600">
-          Nomor rekening virtual tempat principal mengembalikan dana. Bila principal ini
-          sudah punya, nomor yang lama yang dipakai — bukan diterbitkan yang baru.
+          Nomor rekening virtual tempat principal mengembalikan dana. Bila
+          principal ini sudah punya, nomor yang lama yang dipakai — bukan
+          diterbitkan yang baru.
         </p>
       </div>
 
@@ -139,26 +156,28 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
           */
           <div
             className={
-              'rounded-kartu border p-4 ' +
+              "rounded-kartu border p-4 " +
               (issued.dipakai_ulang
-                ? 'border-blue-200 bg-blue-50'
-                : 'border-emerald-200 bg-emerald-50')
+                ? "border-blue-200 bg-blue-50"
+                : "border-emerald-200 bg-emerald-50")
             }
           >
             <p
               className={
-                'text-sm font-medium ' +
-                (issued.dipakai_ulang ? 'text-blue-900' : 'text-emerald-900')
+                "text-sm font-medium " +
+                (issued.dipakai_ulang ? "text-blue-900" : "text-emerald-900")
               }
             >
               {issued.dipakai_ulang
-                ? 'Principal ini sudah punya virtual account'
-                : 'Virtual account berhasil diterbitkan'}
+                ? "Principal ini sudah punya virtual account"
+                : "Virtual account berhasil diterbitkan"}
             </p>
             <p className="mt-2 font-mono text-lg font-semibold tracking-wide text-slate-900">
               {issued.nomor_virtual_account}
             </p>
-            {issued.pesan && <p className="mt-1 text-xs text-slate-600">{issued.pesan}</p>}
+            {issued.pesan && (
+              <p className="mt-1 text-xs text-slate-600">{issued.pesan}</p>
+            )}
           </div>
         )}
 
@@ -172,7 +191,7 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
             hint="Dipakai sebagai kunci pencarian VA yang sudah ada."
             error={errors.client_id?.message}
             disabled={issue.isPending}
-            {...register('client_id')}
+            {...register("client_id")}
           />
           <Field
             id="va-nama-principal"
@@ -183,7 +202,7 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
             hint="Huruf besar-kecil tidak dibedakan saat dicocokkan."
             error={errors.nama_principal?.message}
             disabled={issue.isPending}
-            {...register('nama_principal')}
+            {...register("nama_principal")}
           />
         </div>
 
@@ -197,12 +216,12 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
           hint="Surel petugas yang menerbitkan; tercatat bersama nomor VA."
           error={errors.email_inputor_va?.message}
           disabled={issue.isPending}
-          {...register('email_inputor_va')}
+          {...register("email_inputor_va")}
         />
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={issue.isPending}>
-            {issue.isPending ? 'Memproses…' : 'Get VA'}
+            {issue.isPending ? "Memproses…" : "Get VA"}
           </Button>
           {onClose && (
             <Button tone="halus" onClick={onClose} disabled={issue.isPending}>
@@ -212,7 +231,7 @@ export function VirtualAccountPanel({ onIssued, onClose }: Props) {
         </div>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -230,7 +249,7 @@ function IssueErrorMessage({ error }: { error: unknown }) {
         description="Virtual account belum diterbitkan. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
-    )
+    );
   }
   if (!(error instanceof APIError)) {
     return (
@@ -239,15 +258,21 @@ function IssueErrorMessage({ error }: { error: unknown }) {
         description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
-  const message = parse(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = parse(error);
+  if (message === null) return null;
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function parse(error: APIError): MessageContent | null {
   switch (error.kode) {
@@ -256,52 +281,58 @@ function parse(error: APIError): MessageContent | null {
       // mengulang hal yang sama.
       return Object.keys(error.violations()).length > 0
         ? null
-        : { title: 'Isian belum benar', description: error.message, tone: 'penolakan' }
+        : {
+            title: "Isian belum benar",
+            description: error.message,
+            tone: "penolakan",
+          };
 
     case ErrorCode.vaIssuerUnconfigured:
       return {
-        title: 'Layanan penerbit VA belum terdaftar',
+        title: "Layanan penerbit VA belum terdaftar",
         description:
-          'Mengulang tidak akan menolong — alamat layanannya belum diisi untuk entitas ini. Hubungi administrator Claim PNC.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong — alamat layanannya belum diisi untuk entitas ini. Hubungi administrator Claim PNC.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.vaIssuerUnreachable:
       return {
-        title: 'Layanan penerbit VA sedang tidak dapat dihubungi',
-        description: 'Gangguan sementara di sistem penerbit. Coba lagi beberapa saat.',
-        tone: 'gangguan',
-      }
+        title: "Layanan penerbit VA sedang tidak dapat dihubungi",
+        description:
+          "Gangguan sementara di sistem penerbit. Coba lagi beberapa saat.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.vaIssuerRejected:
       return {
-        title: 'Permintaan ditolak layanan penerbit',
+        title: "Permintaan ditolak layanan penerbit",
         description:
-          'Layanan menjawab tetapi menolak menerbitkan nomor. Periksa Client ID dan nama principal, lalu coba lagi.',
-        tone: 'penolakan',
-      }
+          "Layanan menjawab tetapi menolak menerbitkan nomor. Periksa Client ID dan nama principal, lalu coba lagi.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotStated:
     case ErrorCode.portalUnknown:
       return {
-        title: 'Portal entitas belum dipilih',
-        description: 'Pilih portal entitas di bilah atas halaman, lalu coba lagi.',
-        tone: 'penolakan',
-      }
+        title: "Portal entitas belum dipilih",
+        description:
+          "Pilih portal entitas di bilah atas halaman, lalu coba lagi.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotReady:
       return {
-        title: 'Basis data entitas ini belum tersedia',
+        title: "Basis data entitas ini belum tersedia",
         description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+        tone: "gangguan",
+      };
 
     default:
       return {
-        title: 'Gagal menerbitkan virtual account',
+        title: "Gagal menerbitkan virtual account",
         description: error.message,
-        tone: 'gangguan',
-      }
+        tone: "gangguan",
+      };
   }
 }

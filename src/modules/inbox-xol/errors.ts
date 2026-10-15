@@ -1,6 +1,6 @@
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 
-import { InboxXOLError } from './types'
+import { InboxXOLError } from "./types";
 
 /**
  * messageOf mengambil pesan yang layak dibaca pengguna dari galat apa pun.
@@ -11,9 +11,9 @@ import { InboxXOLError } from './types'
  * (`11-ERROR-HANDLING.md` §1.2 butir 5).
  */
 export function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof NetworkError) return error.message
-  return 'Terjadi kesalahan yang tidak dikenali. Coba lagi beberapa saat lagi.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof NetworkError) return error.message;
+  return "Terjadi kesalahan yang tidak dikenali. Coba lagi beberapa saat lagi.";
 }
 
 /**
@@ -25,13 +25,18 @@ export function messageOf(error: unknown): string {
  * kolom mana yang dimaksud.
  */
 export function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError && error.kode === InboxXOLError.validationFail) {
-    return error.violations()
+  if (
+    error instanceof APIError &&
+    error.kode === InboxXOLError.validationFail
+  ) {
+    return error.violations();
   }
-  return {}
+  return {};
 }
 
 /** isValidationError menyatakan galat ini sudah ditandai di isiannya masing-masing. */
 export function isValidationError(error: unknown): boolean {
-  return error instanceof APIError && error.kode === InboxXOLError.validationFail
+  return (
+    error instanceof APIError && error.kode === InboxXOLError.validationFail
+  );
 }

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   BranchListResponse,
   CountryListResponse,
@@ -11,21 +11,21 @@ import type {
   SurveyorListResponse,
   SurveyorResponse,
   SurveyorStatus,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/surveyor'
+const ROUTE = "/api/master/surveyor";
 
 /** Saringan daftar, cerminan mastersurveyors.Filter di backend. */
 export type SurveyorFilter = {
-  status?: SurveyorStatus
-  nama?: string
-  login?: string
-  kode_tipe?: string
+  status?: SurveyorStatus;
+  nama?: string;
+  login?: string;
+  kode_tipe?: string;
   /** Membatasi ke antrean komite pengguna yang sedang masuk. */
-  antrean_saya?: boolean
-}
+  antrean_saya?: boolean;
+};
 
 /**
  * listKey menyertakan portal, token, DAN saringan.
@@ -39,25 +39,30 @@ export type SurveyorFilter = {
  * peramban yang sama. Saringan ikut karena kelima tab memakai saringan berbeda; tanpa itu
  * berpindah tab akan menampilkan isi tab sebelumnya.
  */
-function listKey(portal: string | null, token: string | null, filter: SurveyorFilter) {
-  return ['master-surveyor', portal, token, filter] as const
+function listKey(
+  portal: string | null,
+  token: string | null,
+  filter: SurveyorFilter,
+) {
+  return ["master-surveyor", portal, token, filter] as const;
 }
 
 function detailKey(portal: string | null, token: string | null, id: string) {
-  return ['master-surveyor', 'detail', portal, token, id] as const
+  return ["master-surveyor", "detail", portal, token, id] as const;
 }
 
 /** Menyusun query string hanya dari saringan yang benar-benar terisi. */
 function queryOf(filter: SurveyorFilter): string {
-  const params = new URLSearchParams()
-  if (filter.status) params.set('status', filter.status)
-  if (filter.nama?.trim()) params.set('nama', filter.nama.trim())
-  if (filter.login?.trim()) params.set('login', filter.login.trim())
-  if (filter.kode_tipe?.trim()) params.set('kode_tipe', filter.kode_tipe.trim())
-  if (filter.antrean_saya) params.set('antrean_saya', '1')
+  const params = new URLSearchParams();
+  if (filter.status) params.set("status", filter.status);
+  if (filter.nama?.trim()) params.set("nama", filter.nama.trim());
+  if (filter.login?.trim()) params.set("login", filter.login.trim());
+  if (filter.kode_tipe?.trim())
+    params.set("kode_tipe", filter.kode_tipe.trim());
+  if (filter.antrean_saya) params.set("antrean_saya", "1");
 
-  const text = params.toString()
-  return text ? `?${text}` : ''
+  const text = params.toString();
+  return text ? `?${text}` : "";
 }
 
 /**
@@ -76,37 +81,44 @@ function queryOf(filter: SurveyorFilter): string {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useSurveyorList(filter: SurveyorFilter) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, filter),
-    queryFn: () => callAPI<SurveyorListResponse>(`${ROUTE}${queryOf(filter)}`, { token, portal }),
+    queryFn: () =>
+      callAPI<SurveyorListResponse>(`${ROUTE}${queryOf(filter)}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     // Lebih pendek daripada Master Tipe Surveyors (lima menit): daftar ini berubah setiap
     // kali komite memutuskan, dan menampilkan antrean yang sudah kedaluwarsa membuat dua
     // komite mengerjakan baris yang sama.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Hook satu surveyor, dipakai form ubah. */
 export function useSurveyor(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: detailKey(portal, token, id ?? ''),
+    queryKey: detailKey(portal, token, id ?? ""),
     queryFn: () =>
-      callAPI<SurveyorResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, { token, portal }),
-    enabled: token !== null && portal !== null && id !== null && id !== '',
-  })
+      callAPI<SurveyorResponse>(`${ROUTE}/${encodeURIComponent(id ?? "")}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && id !== null && id !== "",
+  });
 }
 
 type SaveFields = SurveyorInput & {
   /** Kosong berarti mengajukan; terisi berarti mengubah surveyor dengan ID itu. */
-  id?: string
-}
+  id?: string;
+};
 
 /**
  * Hook simpan — mengajukan maupun mengubah.
@@ -119,20 +131,23 @@ type SaveFields = SurveyorInput & {
  * pengubahan ia berada di jalur URL.
  */
 export function useSaveSurveyor() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, ...body }: SaveFields) =>
-      callAPI<SurveyorResponse>(id ? `${ROUTE}/${encodeURIComponent(id)}` : ROUTE, {
-        metode: id ? 'PUT' : 'POST',
-        body,
-        token,
-        portal,
-      }),
+      callAPI<SurveyorResponse>(
+        id ? `${ROUTE}/${encodeURIComponent(id)}` : ROUTE,
+        {
+          metode: id ? "PUT" : "POST",
+          body,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => invalidateAll(client),
-  })
+  });
 }
 
 /**
@@ -146,20 +161,23 @@ export function useSaveSurveyor() {
  * keputusan kedua atas baris yang sama (409). Layar tidak perlu menduga keduanya.
  */
 export function useDecideSurveyor() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, ...body }: SurveyorDecisionInput & { id: string }) =>
-      callAPI<SurveyorResponse>(`${ROUTE}/${encodeURIComponent(id)}/keputusan`, {
-        metode: 'POST',
-        body,
-        token,
-        portal,
-      }),
+      callAPI<SurveyorResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/keputusan`,
+        {
+          metode: "POST",
+          body,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => invalidateAll(client),
-  })
+  });
 }
 
 /**
@@ -176,12 +194,12 @@ export function useDecideSurveyor() {
  * ditandai usang, bukan ditukar isinya.
  */
 function invalidateAll(client: ReturnType<typeof useQueryClient>) {
-  client.invalidateQueries({ queryKey: ['master-surveyor'] })
+  client.invalidateQueries({ queryKey: ["master-surveyor"] });
 }
 
 /** Menyatakan satu surveyor masih menunggu keputusan komite. */
 export function isAwaitingDecision(surveyor: Surveyor): boolean {
-  return surveyor.status === '0'
+  return surveyor.status === "0";
 }
 
 /**
@@ -195,15 +213,16 @@ export function isAwaitingDecision(surveyor: Surveyor): boolean {
  * ikut kosong dan sisa formulir tetap dapat diisi, karena Negara bukan isian wajib.
  */
 export function useCountryList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['master-surveyor', 'negara', portal, token] as const,
-    queryFn: () => callAPI<CountryListResponse>(`${ROUTE}/negara`, { token, portal }),
+    queryKey: ["master-surveyor", "negara", portal, token] as const,
+    queryFn: () =>
+      callAPI<CountryListResponse>(`${ROUTE}/negara`, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -217,17 +236,18 @@ export function useCountryList() {
  * menembak server untuk tipe lain, yang isian Namanya memang kotak teks biasa.
  */
 export function useEmployeeList(enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['master-surveyor', 'pegawai', portal, token] as const,
-    queryFn: () => callAPI<EmployeeListResponse>(`${ROUTE}/pegawai`, { token, portal }),
+    queryKey: ["master-surveyor", "pegawai", portal, token] as const,
+    queryFn: () =>
+      callAPI<EmployeeListResponse>(`${ROUTE}/pegawai`, { token, portal }),
     enabled: enabled && token !== null && portal !== null,
     // Lebih pendek daripada daftar negara: daftar ini MENYUSUT setiap kali seorang
     // pegawai didaftarkan menjadi surveyor, karena kuerinya membuang yang sudah terdaftar.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -236,13 +256,14 @@ export function useEmployeeList(enabled: boolean) {
  * Menggantikan Report Definition `BrowseBranch_RD`.
  */
 export function useBranchList(enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['master-surveyor', 'cabang', portal, token] as const,
-    queryFn: () => callAPI<BranchListResponse>(`${ROUTE}/cabang`, { token, portal }),
+    queryKey: ["master-surveyor", "cabang", portal, token] as const,
+    queryFn: () =>
+      callAPI<BranchListResponse>(`${ROUTE}/cabang`, { token, portal }),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }

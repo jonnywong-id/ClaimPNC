@@ -7,27 +7,27 @@
 
 /** Satu baris pada layar: sebuah klaim yang masih berjalan. */
 export type OutstandingClaim = {
-  klaim_id: string
+  klaim_id: string;
 
   /** Kosong untuk klaim yang belum lolos Input Register — nomornya belum terbit. */
-  nomor_klaim: string
+  nomor_klaim: string;
 
-  nomor_polis: string // kolom "Policy no"
-  nama_tertanggung: string // kolom "Insured name"
-  nama_bisnis: string // kolom "Business Name"
-  sumber_bisnis: string // kolom "Business source"
-  nama_cabang: string // kolom "Branch name"
-  group_panel: string
+  nomor_polis: string; // kolom "Policy no"
+  nama_tertanggung: string; // kolom "Insured name"
+  nama_bisnis: string; // kolom "Business Name"
+  sumber_bisnis: string; // kolom "Business source"
+  nama_cabang: string; // kolom "Branch name"
+  group_panel: string;
 
   /** YYYY-MM-DD dalam WIB; backend yang mengonversinya dari UTC. */
-  tanggal_pendaftaran: string // kolom "Register Date"
-  tanggal_kejadian: string // kolom "Date of loss"
-  tanggal_lapor: string // tidak ditampilkan
+  tanggal_pendaftaran: string; // kolom "Register Date"
+  tanggal_kejadian: string; // kolom "Date of loss"
+  tanggal_lapor: string; // tidak ditampilkan
 
-  status_proses: string
+  status_proses: string;
 
   /** Kolom "Claim status" — "On Progress" · "Close" · "Reject", diturunkan backend. */
-  status_tampil: string
+  status_tampil: string;
 
   /**
    * Kolom "Status ASM" — isi `STATUSLOCK_1` apa adanya.
@@ -36,34 +36,34 @@ export type OutstandingClaim = {
    * label, tetapi isinya belum pernah terlihat. Layar menampilkannya tanpa menyatakan
    * yang mana. Tercatat di `docs/keputusan-implementasi.md` §18.20.
    */
-  status_klaim: string
+  status_klaim: string;
 
   /** Kolom "ASM PIC". */
-  pic_teknik: string
+  pic_teknik: string;
 
   /** Kolom "Admin name". */
-  admin_pnc: string
+  admin_pnc: string;
 
   /** Kolom "Total Aging" — umur klaim dalam hari sejak didaftarkan. */
-  umur_hari: number
+  umur_hari: number;
 
   /**
    * Kolom "Aging" — dibaca apa adanya dari kolom `AGING` sistem lama.
    *
    * `null` berarti belum terisi, dan itu BERBEDA dari nol hari.
    */
-  aging_hari: number | null
+  aging_hari: number | null;
 
   // Tiga field berikut tidak ditampilkan sebagai kolom; section rujukan tidak punya
   // kolomnya. Keduanya tetap diterima karena berguna saat menelusuri satu klaim.
-  posisi_klaim: string
-  tahap_kini: string
-  pemegang_tugas: string
-}
+  posisi_klaim: string;
+  tahap_kini: string;
+  pemegang_tugas: string;
+};
 
 export type OutstandingListResponse = {
-  klaim: OutstandingClaim[]
-  total: number
+  klaim: OutstandingClaim[];
+  total: number;
 
   /**
    * Operator yang pekerjaannya ditampilkan — selalu pemanggil sendiri.
@@ -71,8 +71,8 @@ export type OutstandingListResponse = {
    * Layar menyatakannya karena daftar kosong punya dua sebab yang tampak sama: memang
    * tidak ada pekerjaan, atau penyaringnya salah orang.
    */
-  pemilik: string
-}
+  pemilik: string;
+};
 
 /**
  * Kode status kelengkapan dokumen.
@@ -83,20 +83,20 @@ export type OutstandingListResponse = {
  * pada tipe `DocumentStatus`.
  */
 export type DocumentStatusCode =
-  | 'lengkap'
-  | 'belum-lengkap'
-  | 'temporary-close'
-  | 'deadline-temporary-close'
-  | 'loss-adjuster'
-  | 'internal-surveyor'
-  | 'semua'
-  | 'komunikasi'
-  | 'tka'
+  | "lengkap"
+  | "belum-lengkap"
+  | "temporary-close"
+  | "deadline-temporary-close"
+  | "loss-adjuster"
+  | "internal-surveyor"
+  | "semua"
+  | "komunikasi"
+  | "tka";
 
 /** Satu tab status dokumen. */
 export type DocumentStatusCount = {
-  kode: DocumentStatusCode
-  judul: string
+  kode: DocumentStatusCode;
+  judul: string;
 
   /**
    * `null` berarti **belum dihitung**, dan itu berbeda dari nol.
@@ -105,29 +105,29 @@ export type DocumentStatusCount = {
    * rejected" pada Inbox Laporan Klaim: lencana bertuliskan 0 menyatakan "tidak ada", dan
    * itu tidak benar.
    */
-  jumlah: number | null
+  jumlah: number | null;
 
   /** Tab yang belum dapat dihitung juga belum dapat menyaring. */
-  dapat_dipilih: boolean
-}
+  dapat_dipilih: boolean;
+};
 
 export type OutstandingSummaryResponse = {
-  status: DocumentStatusCount[]
+  status: DocumentStatusCount[];
 
   /** Seluruh pekerjaan pemanggil — baris "All" pada tabel di samping donut. */
-  total: number
+  total: number;
 
-  pemilik: string
-}
+  pemilik: string;
+};
 
 /** Penyaring daftar. Seluruhnya opsional; kosong berarti tidak menyaring. */
 export type OutstandingFilter = {
-  search?: string
-  stage?: string
-  branch?: string
+  search?: string;
+  stage?: string;
+  branch?: string;
 
   /** Diisi saat pengguna mengeklik irisan donut; kosong berarti seluruh status. */
-  documentStatus?: DocumentStatusCode | ''
+  documentStatus?: DocumentStatusCode | "";
 
-  offset?: number
-}
+  offset?: number;
+};

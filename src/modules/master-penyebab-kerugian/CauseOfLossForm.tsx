@@ -1,15 +1,15 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useRef } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type CauseOfLoss } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type CauseOfLoss } from "@/api/types";
+import { Field } from "@/components/Field";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
-import { useSaveCauseOfLoss } from './api'
+import { useSaveCauseOfLoss } from "./api";
 
 /**
  * Batas panjang keterangan; sama dengan masterpenyebabkerugian.MaxDescriptionLength di
@@ -18,7 +18,7 @@ import { useSaveCauseOfLoss } from './api'
  * Lebar kolom `COL_DESC` yang sebenarnya BELUM DIKETAHUI (`R-08`). Bila DBA kelak
  * melaporkan kolomnya lebih sempit, yang berubah cukup konstanta ini dan pasangannya di Go.
  */
-const MAX_DESCRIPTION_LENGTH = 100
+const MAX_DESCRIPTION_LENGTH = 100;
 
 /**
  * Satu aturan saja, dan itu bukan kelalaian.
@@ -49,15 +49,15 @@ const schema = z.object({
       MAX_DESCRIPTION_LENGTH,
       `Deskripsi Kerugian paling panjang ${MAX_DESCRIPTION_LENGTH} karakter.`,
     ),
-})
+});
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 type Props = {
   /** Null berarti menambah; terisi berarti mengubah baris itu. */
-  cause: CauseOfLoss | null
-  tutup: () => void
-}
+  cause: CauseOfLoss | null;
+  tutup: () => void;
+};
 
 /**
  * Form tambah dan ubah Master Penyebab Kerugian.
@@ -87,9 +87,9 @@ type Props = {
  * Menyalinnya berarti menghadirkan isian yang sejak semula tidak berfungsi.
  */
 export function CauseOfLossForm({ cause, tutup }: Props) {
-  const save = useSaveCauseOfLoss()
-  const editing = cause !== null
-  const firstField = useRef<HTMLInputElement | null>(null)
+  const save = useSaveCauseOfLoss();
+  const editing = cause !== null;
+  const firstField = useRef<HTMLInputElement | null>(null);
 
   const {
     register,
@@ -97,22 +97,24 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
     formState: { errors },
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
-    defaultValues: { deskripsi: cause?.deskripsi ?? '' },
-  })
+    defaultValues: { deskripsi: cause?.deskripsi ?? "" },
+  });
 
   // Fokus dipindahkan ke isian pertama saat form terbuka. Tanpa ini, pengguna papan ketik
   // harus menekan Tab berkali-kali dari awal halaman untuk mencapainya.
   useEffect(() => {
-    firstField.current?.focus()
-  }, [])
+    firstField.current?.focus();
+  }, []);
 
-  const { ref: refDeskripsi, ...remainingDeskripsi } = register('deskripsi')
+  const { ref: refDeskripsi, ...remainingDeskripsi } = register("deskripsi");
 
   function send(values: FieldValues) {
     save.mutate(
-      editing ? { id: cause.id, deskripsi: values.deskripsi } : { deskripsi: values.deskripsi },
+      editing
+        ? { id: cause.id, deskripsi: values.deskripsi }
+        : { deskripsi: values.deskripsi },
       { onSuccess: tutup },
-    )
+    );
   }
 
   return (
@@ -129,12 +131,14 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
       aria-label={
-        editing ? 'Memperbaharui Data penyebab kerugian' : 'Menambah Data penyebab kerugian'
+        editing
+          ? "Memperbaharui Data penyebab kerugian"
+          : "Menambah Data penyebab kerugian"
       }
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         <h3 className="text-base font-semibold text-slate-900">
-          {editing ? 'Memperbaharui Data' : 'Menambah Data'}
+          {editing ? "Memperbaharui Data" : "Menambah Data"}
         </h3>
       </div>
 
@@ -152,8 +156,9 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
             docs/keputusan-implementasi.md, hanya tidak lagi ditampilkan di layar. */}
         {!editing && (
           <p className="rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-            Deskripsi yang sama boleh terdaftar lebih dari satu kali — sistem tidak
-            menolaknya. Periksa daftar di bawah lebih dulu agar tidak terdaftar ganda.
+            Deskripsi yang sama boleh terdaftar lebih dari satu kali — sistem
+            tidak menolaknya. Periksa daftar di bawah lebih dulu agar tidak
+            terdaftar ganda.
           </p>
         )}
 
@@ -184,15 +189,15 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
           disabled={save.isPending}
           {...remainingDeskripsi}
           ref={(element) => {
-            refDeskripsi(element)
-            firstField.current = element
+            refDeskripsi(element);
+            firstField.current = element;
           }}
         />
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={save.isPending}>
             {save.isPending && <Spinner />}
-            {save.isPending ? 'Menyimpan…' : 'Simpan'}
+            {save.isPending ? "Menyimpan…" : "Simpan"}
           </Button>
           <Button tone="halus" onClick={tutup} disabled={save.isPending}>
             Batal
@@ -200,14 +205,26 @@ export function CauseOfLossForm({ cause, tutup }: Props) {
         </div>
       </div>
     </form>
-  )
+  );
 }
 
 /** Pemutar kecil pada tombol yang sedang bekerja. */
 function Spinner() {
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 animate-spin">
-      <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className="h-4 w-4 animate-spin"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.3"
+        strokeWidth="2"
+      />
       <path
         d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5"
         fill="none"
@@ -216,7 +233,7 @@ function Spinner() {
         strokeLinecap="round"
       />
     </svg>
-  )
+  );
 }
 
 /**
@@ -235,7 +252,7 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (!(error instanceof APIError)) {
@@ -245,68 +262,75 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
-  const { title, description, tone } = parse(error)
-  return <ErrorMessage title={title} description={description} tone={tone} />
+  const { title, description, tone } = parse(error);
+  return <ErrorMessage title={title} description={description} tone={tone} />;
 }
 
-function parse(error: APIError): { title: string; description: string; tone: ErrorTone } {
+function parse(error: APIError): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   switch (error.kode) {
     case ErrorCode.validationFailed:
       return {
-        title: 'Isian belum benar',
+        title: "Isian belum benar",
         // Pesan dari server dipakai apa adanya: ia yang tahu aturan mana yang dilanggar,
         // dan menerjemahkannya ulang di sini akan membuat keduanya dapat berbeda.
-        description: error.detail.map((d) => d.pesan).join(' ') || error.message,
-        tone: 'penolakan',
-      }
+        description:
+          error.detail.map((d) => d.pesan).join(" ") || error.message,
+        tone: "penolakan",
+      };
 
     case ErrorCode.causeOfLossNotFound:
       return {
-        title: 'Penyebab kerugian tidak ditemukan',
-        description: 'Baris ini mungkin sudah diubah orang lain. Muat ulang daftarnya.',
-        tone: 'penolakan',
-      }
+        title: "Penyebab kerugian tidak ditemukan",
+        description:
+          "Baris ini mungkin sudah diubah orang lain. Muat ulang daftarnya.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.causeOfLossIDTaken:
       return {
-        title: 'Nomor bentrok',
+        title: "Nomor bentrok",
         description:
-          'Nomor yang dibuat sistem sedang dipakai penyimpanan lain. Coba simpan sekali lagi.',
-        tone: 'gangguan',
-      }
+          "Nomor yang dibuat sistem sedang dipakai penyimpanan lain. Coba simpan sekali lagi.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.causeOfLossIDUnavailable:
       return {
-        title: 'Nomor tidak dapat dibentuk',
+        title: "Nomor tidak dapat dibentuk",
         description:
-          'Mengulang tidak akan menolong: tabel situs pada basis data entitas ini belum berisi baris aktif. Hubungi administrator Claim PNC.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong: tabel situs pada basis data entitas ini belum berisi baris aktif. Hubungi administrator Claim PNC.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.portalNotStated:
     case ErrorCode.portalUnknown:
       return {
-        title: 'Portal entitas belum dipilih',
-        description: 'Pilih portal entitas di bilah atas halaman, lalu simpan lagi.',
-        tone: 'penolakan',
-      }
+        title: "Portal entitas belum dipilih",
+        description:
+          "Pilih portal entitas di bilah atas halaman, lalu simpan lagi.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotReady:
       return {
-        title: 'Basis data entitas ini belum tersedia',
+        title: "Basis data entitas ini belum tersedia",
         description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+        tone: "gangguan",
+      };
 
     default:
       return {
-        title: 'Gagal menyimpan',
+        title: "Gagal menyimpan",
         description: error.message,
-        tone: 'gangguan',
-      }
+        tone: "gangguan",
+      };
   }
 }

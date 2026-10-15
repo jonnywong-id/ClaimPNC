@@ -1,14 +1,14 @@
-import { Button } from '@/components/Button'
-import { Field } from '@/components/Field'
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 
-import type { FormPencarian } from './types'
+import type { FormPencarian } from "./types";
 
 type Props = {
-  form: FormPencarian
-  onChange: (perubahan: Partial<FormPencarian>) => void
-  onSubmit: () => void
-  onReset: () => void
-  busy: boolean
+  form: FormPencarian;
+  onChange: (perubahan: Partial<FormPencarian>) => void;
+  onSubmit: () => void;
+  onReset: () => void;
+  busy: boolean;
 
   /**
    * Jenis tanggal yang sedang disaring — "Tanggal PLA", "Tanggal DLA", atau
@@ -23,14 +23,14 @@ type Props = {
    * Nama bagi pembaca layar MEMUAT judul yang terlihat ("… — Dari"), sebagaimana dituntut
    * WCAG 2.5.3: pengguna perintah suara yang mengucapkan "Dari" tetap mengenai kotak ini.
    */
-  labelTanggal: string
+  labelTanggal: string;
 
   /** Judul kotak pencarian, datang dari server. */
-  labelPencarian: string
+  labelPencarian: string;
 
   /** Pesan galat per isian, dikirim server sebagai `detail` pada galat validasi. */
-  fieldError: Record<string, string>
-}
+  fieldError: Record<string, string>;
+};
 
 /**
  * SearchPanel adalah panel "Dari / Sampai / No Klaim" beserta tombol "CARI DATA".
@@ -72,8 +72,8 @@ export function SearchPanel({
     <form
       className="rounded-kartu border border-slate-200 bg-white px-5 py-4 shadow-lembut"
       onSubmit={(event) => {
-        event.preventDefault()
-        onSubmit()
+        event.preventDefault();
+        onSubmit();
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -85,7 +85,7 @@ export function SearchPanel({
           type="date"
           value={form.dari}
           onChange={(event) => onChange({ dari: event.target.value })}
-          error={fieldError['dari']}
+          error={fieldError["dari"]}
         />
 
         <Field
@@ -96,7 +96,7 @@ export function SearchPanel({
           type="date"
           value={form.sampai}
           onChange={(event) => onChange({ sampai: event.target.value })}
-          error={fieldError['sampai']}
+          error={fieldError["sampai"]}
         />
       </div>
 
@@ -113,18 +113,18 @@ export function SearchPanel({
             label={labelPencarian}
             value={form.cari}
             onChange={(event) => onChange({ cari: event.target.value })}
-            error={fieldError['cari']}
+            error={fieldError["cari"]}
             placeholder="Sebagian nomor klaim"
           />
         </div>
 
         <Button type="submit" disabled={busy}>
-          {busy ? 'Mencari…' : 'CARI DATA'}
+          {busy ? "Mencari…" : "CARI DATA"}
         </Button>
         <Button type="button" tone="kedua" onClick={onReset} disabled={busy}>
           Bersihkan
         </Button>
       </div>
     </form>
-  )
+  );
 }

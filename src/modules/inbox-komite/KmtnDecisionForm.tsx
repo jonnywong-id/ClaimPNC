@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSession } from '@/app/session'
-import { Button } from '@/components/Button'
+import { APIError } from "@/api/client";
+import { useSession } from "@/app/session";
+import { Button } from "@/components/Button";
 
-import { isKmtnCase, useDecideKmtn, useKmtnCommittee, useRejectionNotes } from './api'
+import {
+  isKmtnCase,
+  useDecideKmtn,
+  useKmtnCommittee,
+  useRejectionNotes,
+} from "./api";
 
 /**
  * Form keputusan komite — bagian akhir `Section/ShowTransfer`:
@@ -37,71 +42,77 @@ import { isKmtnCase, useDecideKmtn, useKmtnCommittee, useRejectionNotes } from '
  * dapat dinilai, dropdown tampil setiap kali Rejected dipilih.
  */
 export function KmtnDecisionForm({ caseID }: { caseID: string }) {
-  const login = useSession((state) => state.user?.login ?? '')
-  const committee = useKmtnCommittee(caseID)
-  const decide = useDecideKmtn(caseID)
-  const [decision, setDecision] = useState<'' | '1' | '2'>('')
-  const [note, setNote] = useState('')
-  const [rejectCode, setRejectCode] = useState('')
-  const rejections = useRejectionNotes(decision === '2')
-  const [missing, setMissing] = useState<string[]>([])
+  const login = useSession((state) => state.user?.login ?? "");
+  const committee = useKmtnCommittee(caseID);
+  const decide = useDecideKmtn(caseID);
+  const [decision, setDecision] = useState<"" | "1" | "2">("");
+  const [note, setNote] = useState("");
+  const [rejectCode, setRejectCode] = useState("");
+  const rejections = useRejectionNotes(decision === "2");
+  const [missing, setMissing] = useState<string[]>([]);
 
-  if (!isKmtnCase(caseID)) return null
+  if (!isKmtnCase(caseID)) return null;
 
-  const box = 'mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm'
+  const box =
+    "mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm";
 
   if (committee.isPending) {
     return (
       <p className="mt-5 text-sm text-slate-600" role="status">
         Loading committee status…
       </p>
-    )
+    );
   }
   if (committee.isError || !committee.data) {
     return (
       <p className={`${box} text-sm text-rose-700`} role="alert">
-        The committee status could not be loaded, so no decision can be given yet.
+        The committee status could not be loaded, so no decision can be given
+        yet.
       </p>
-    )
+    );
   }
 
-  const c = committee.data
-  if (c.status !== 'berjalan') {
+  const c = committee.data;
+  if (c.status !== "berjalan") {
     return (
       <p className={`${box} text-sm text-slate-700`} role="status">
-        This committee is closed — {c.status === 'disetujui' ? 'approved' : 'rejected'}.
+        This committee is closed —{" "}
+        {c.status === "disetujui" ? "approved" : "rejected"}.
       </p>
-    )
+    );
   }
-  const mine = (c.menunggu ?? '').trim().toUpperCase() === login.trim().toUpperCase()
+  const mine =
+    (c.menunggu ?? "").trim().toUpperCase() === login.trim().toUpperCase();
   if (!mine) {
     return (
       <p className={`${box} text-sm text-slate-700`} role="status">
-        Waiting for the decision of {c.menunggu || 'the next committee member'}.
+        Waiting for the decision of {c.menunggu || "the next committee member"}.
       </p>
-    )
+    );
   }
 
   function submit() {
-    const kurang: string[] = []
-    if (!decision) kurang.push('Keputusan Komite')
-    if (decision === '2' && !rejectCode) kurang.push('Reject Note')
-    if (!note.trim()) kurang.push('Catatan Komite')
-    setMissing(kurang)
-    if (kurang.length > 0 || !decision) return
-    decide.mutate({ decision, note: note.trim() })
+    const kurang: string[] = [];
+    if (!decision) kurang.push("Keputusan Komite");
+    if (decision === "2" && !rejectCode) kurang.push("Reject Note");
+    if (!note.trim()) kurang.push("Catatan Komite");
+    setMissing(kurang);
+    if (kurang.length > 0 || !decision) return;
+    decide.mutate({ decision, note: note.trim() });
   }
 
   const failure =
     decide.error instanceof APIError
       ? decide.error.message
       : decide.error
-        ? 'The decision could not be saved. Try again.'
-        : ''
+        ? "The decision could not be saved. Try again."
+        : "";
 
   return (
     <section aria-label="Keputusan komite" className={box}>
-      <p className="text-sm text-slate-900">Apakah anda yakin untuk akseptasi ini?</p>
+      <p className="text-sm text-slate-900">
+        Apakah anda yakin untuk akseptasi ini?
+      </p>
 
       <fieldset className="mt-4">
         <legend className="text-xs font-semibold text-slate-700">
@@ -110,8 +121,8 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
         <div className="mt-2 flex flex-wrap gap-8 text-sm text-slate-800">
           {(
             [
-              ['1', 'Approved'],
-              ['2', 'Rejected'],
+              ["1", "Approved"],
+              ["2", "Rejected"],
             ] as const
           ).map(([value, label]) => (
             <label key={value} className="inline-flex items-center gap-2">
@@ -129,19 +140,24 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
         </div>
       </fieldset>
 
-      {decision === '2' && (
+      {decision === "2" && (
         <div className="mt-4">
-          <label htmlFor="reject-note" className="block text-xs font-semibold text-slate-700">
+          <label
+            htmlFor="reject-note"
+            className="block text-xs font-semibold text-slate-700"
+          >
             Reject Note <span className="text-amber-600">*</span>
           </label>
           <select
             id="reject-note"
             value={rejectCode}
             onChange={(e) => {
-              const code = e.target.value
-              setRejectCode(code)
-              const chosen = (rejections.data?.penolakan_komite ?? []).find((r) => r.id === code)
-              if (chosen) setNote(chosen.catatan)
+              const code = e.target.value;
+              setRejectCode(code);
+              const chosen = (rejections.data?.penolakan_komite ?? []).find(
+                (r) => r.id === code,
+              );
+              if (chosen) setNote(chosen.catatan);
             }}
             disabled={decide.isPending || rejections.isPending}
             className="mt-1 w-72 max-w-full rounded-kontrol border border-slate-300 p-1.5 text-sm"
@@ -161,7 +177,10 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
         </div>
       )}
 
-      <label htmlFor="catatan-komite" className="mt-4 block text-xs font-semibold text-slate-700">
+      <label
+        htmlFor="catatan-komite"
+        className="mt-4 block text-xs font-semibold text-slate-700"
+      >
         Catatan Komite <span className="text-amber-600">*</span>
       </label>
       <textarea
@@ -175,7 +194,7 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
 
       {missing.length > 0 && (
         <p className="mt-2 text-sm text-rose-700" role="alert">
-          {missing.join(' and ')} {missing.length > 1 ? 'are' : 'is'} required.
+          {missing.join(" and ")} {missing.length > 1 ? "are" : "is"} required.
         </p>
       )}
       {failure && (
@@ -197,9 +216,9 @@ export function KmtnDecisionForm({ caseID }: { caseID: string }) {
           Back
         </Link>
         <Button tone="utama" onClick={submit} disabled={decide.isPending}>
-          {decide.isPending ? 'Saving…' : 'Submit'}
+          {decide.isPending ? "Saving…" : "Submit"}
         </Button>
       </div>
     </section>
-  )
+  );
 }

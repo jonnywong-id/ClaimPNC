@@ -93,9 +93,9 @@ export function RejectLetterDialog({
         </h2>
 
         <p className="mt-2 text-sm text-slate-600">
-          Surat yang terbit <strong>melampirkan diri ke klaim ini</strong> dan muncul di
-          grid Dokumen. Menekan Generate PDF lagi akan mengganti surat sebelumnya, bukan
-          menambah yang baru.
+          Surat yang terbit <strong>melampirkan diri ke klaim ini</strong> dan
+          muncul di grid Dokumen. Menekan Generate PDF lagi akan mengganti surat
+          sebelumnya, bukan menambah yang baru.
         </p>
 
         {/*
@@ -110,9 +110,9 @@ export function RejectLetterDialog({
           menjelaskan apa yang akan terjadi, yang di Pega memang tidak pernah dijelaskan.
         */}
         <p className="mt-2 text-sm text-slate-600">
-          Surat dicetak dalam <strong>format isian</strong>: baris data dan daftar alasan
-          sengaja dibiarkan kosong untuk dilengkapi tangan setelah dicetak, mengikuti
-          format surat yang berlaku.
+          Surat dicetak dalam <strong>format isian</strong>: baris data dan
+          daftar alasan sengaja dibiarkan kosong untuk dilengkapi tangan setelah
+          dicetak, mengikuti format surat yang berlaku.
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -181,7 +181,9 @@ export function RejectLetterDialog({
         </div>
 
         <fieldset className="mt-5">
-          <legend className="text-sm font-semibold text-slate-900">Alasan</legend>
+          <legend className="text-sm font-semibold text-slate-900">
+            Alasan
+          </legend>
 
           <div className="mt-2 space-y-2">
             {isian.alasan.map((alasan, indeks) => (
@@ -212,7 +214,10 @@ export function RejectLetterDialog({
             className="mt-2"
             disabled={sedangMenerbitkan}
             onClick={() =>
-              setIsian((sebelum) => ({ ...sebelum, alasan: [...sebelum.alasan, ""] }))
+              setIsian((sebelum) => ({
+                ...sebelum,
+                alasan: [...sebelum.alasan, ""],
+              }))
             }
           >
             Tambah Alasan

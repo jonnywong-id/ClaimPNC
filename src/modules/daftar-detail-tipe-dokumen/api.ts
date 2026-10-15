@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   DetailDocumentTypeInput,
   DetailDocumentTypeListResponse,
   DetailDocumentTypeReferenceResponse,
   DetailDocumentTypeResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/detail-tipe-dokumen'
-const ROUTE_REFERENCE = `${ROUTE}/pilihan`
+const ROUTE = "/api/master/detail-tipe-dokumen";
+const ROUTE_REFERENCE = `${ROUTE}/pilihan`;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -25,15 +25,15 @@ const ROUTE_REFERENCE = `${ROUTE}/pilihan`
  * peramban yang sama, mengikuti pola modul master lainnya.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['daftar-detail-tipe-dokumen', portal, token] as const
+  return ["daftar-detail-tipe-dokumen", portal, token] as const;
 }
 
 function detailKey(id: string, portal: string | null, token: string | null) {
-  return ['daftar-detail-tipe-dokumen', 'detail', id, portal, token] as const
+  return ["daftar-detail-tipe-dokumen", "detail", id, portal, token] as const;
 }
 
 function referenceKey(portal: string | null, token: string | null) {
-  return ['daftar-detail-tipe-dokumen', 'pilihan', portal, token] as const
+  return ["daftar-detail-tipe-dokumen", "pilihan", portal, token] as const;
 }
 
 /**
@@ -52,14 +52,15 @@ function referenceKey(portal: string | null, token: string | null) {
  * boleh mengikuti pola ini.
  */
 export function useDetailDocumentTypeList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
-    queryFn: () => callAPI<DetailDocumentTypeListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<DetailDocumentTypeListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -79,27 +80,31 @@ export function useDetailDocumentTypeList() {
  * Daftarnya jarang berubah, sehingga tidak dimuat ulang setiap kali form dibuka.
  */
 export function useDetailDocumentTypeReferences() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: referenceKey(portal, token),
-    queryFn: () => callAPI<DetailDocumentTypeReferenceResponse>(ROUTE_REFERENCE, { token, portal }),
+    queryFn: () =>
+      callAPI<DetailDocumentTypeReferenceResponse>(ROUTE_REFERENCE, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /** Hook penambahan detail tipe dokumen. */
 export function useCreateDetailDocumentType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: DetailDocumentTypeInput) =>
       callAPI<DetailDocumentTypeResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
@@ -109,31 +114,42 @@ export function useCreateDetailDocumentType() {
     // pada saat yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi
     // tabel yang sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }
 
 /** Hook penyuntingan detail tipe dokumen. */
 export function useUpdateDetailDocumentType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: DetailDocumentTypeInput }) =>
-      callAPI<DetailDocumentTypeResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
-        body: input,
-        token,
-        portal,
-      }),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: DetailDocumentTypeInput;
+    }) =>
+      callAPI<DetailDocumentTypeResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}`,
+        {
+          metode: "PUT",
+          body: input,
+          token,
+          portal,
+        },
+      ),
     // Daftar DAN baris yang disunting keduanya dibuang dari cache. Tanpa yang kedua,
     // membuka kembali baris yang sama akan menampilkan daftar bisnis sebelum perubahan —
     // dan pengguna akan mengira penyimpanannya gagal.
     onSuccess: (_result, variables) => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
-      client.invalidateQueries({ queryKey: detailKey(variables.id, portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
+      client.invalidateQueries({
+        queryKey: detailKey(variables.id, portal, token),
+      });
     },
-  })
+  });
 }

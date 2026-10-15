@@ -1,12 +1,12 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { ClauseAIListResponse } from './types'
+import type { ClauseAIListResponse } from "./types";
 
-const ROUTE = '/api/master/pasal-ai'
+const ROUTE = "/api/master/pasal-ai";
 
 /**
  * listKey menyertakan portal, token, kata kunci, DAN nomor halaman.
@@ -27,7 +27,7 @@ function listKey(
   keyword: string,
   page: number,
 ) {
-  return ['master-pasal-ai', portal, token, keyword, page] as const
+  return ["master-pasal-ai", portal, token, keyword, page] as const;
 }
 
 /**
@@ -47,18 +47,19 @@ function listKey(
  * server sama sekali.
  */
 export function useClauseAIList(keyword: string, page: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const query = new URLSearchParams()
-  if (keyword !== '') query.set('cari', keyword)
-  if (page > 1) query.set('halaman', String(page))
-  const suffix = query.toString() === '' ? '' : `?${query.toString()}`
+  const query = new URLSearchParams();
+  if (keyword !== "") query.set("cari", keyword);
+  if (page > 1) query.set("halaman", String(page));
+  const suffix = query.toString() === "" ? "" : `?${query.toString()}`;
 
   return useQuery({
     queryKey: listKey(portal, token, keyword, page),
-    queryFn: () => callAPI<ClauseAIListResponse>(`${ROUTE}${suffix}`, { token, portal }),
+    queryFn: () =>
+      callAPI<ClauseAIListResponse>(`${ROUTE}${suffix}`, { token, portal }),
     enabled: token !== null && portal !== null,
     placeholderData: keepPreviousData,
-  })
+  });
 }

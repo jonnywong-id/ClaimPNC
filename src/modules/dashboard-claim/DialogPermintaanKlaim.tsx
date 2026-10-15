@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useAjukanPermintaanKlaim } from './api'
+import { useAjukanPermintaanKlaim } from "./api";
 import type {
   BarisKlaim,
   HasilPermintaanKlaim,
   JawabanExGratia,
   JenisPermintaanKlaim,
-} from './types'
+} from "./types";
 
 /**
  * Konfirmasi pengajuan **ReOpen** dan **Copy Klaim** atas baris yang dicentang.
@@ -59,38 +59,41 @@ export function DialogPermintaanKlaim({
   baris,
   onTutup,
 }: {
-  jenis: JenisPermintaanKlaim
-  baris: BarisKlaim[]
-  onTutup: () => void
+  jenis: JenisPermintaanKlaim;
+  baris: BarisKlaim[];
+  onTutup: () => void;
 }) {
   // Ex Gratia hanya ditanyakan pada Copy Klaim; ReOpen tidak punya isian sama sekali.
-  const [exGratia, setExGratia] = useState<JawabanExGratia>('tidak')
-  const ajukan = useAjukanPermintaanKlaim()
-  const tutupRef = useRef<HTMLButtonElement>(null)
+  const [exGratia, setExGratia] = useState<JawabanExGratia>("tidak");
+  const ajukan = useAjukanPermintaanKlaim();
+  const tutupRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    tutupRef.current?.focus()
+    tutupRef.current?.focus();
 
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onTutup()
+      if (event.key === "Escape") onTutup();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onTutup])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onTutup]);
 
-  const judul = jenis === 'reopen' ? 'ReOpen Klaim' : 'Copy Klaim'
-  const hasil = ajukan.data ?? null
+  const judul = jenis === "reopen" ? "ReOpen Klaim" : "Copy Klaim";
+  const hasil = ajukan.data ?? null;
 
   function kirim(event: React.FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
     ajukan.mutate({
       jenis,
       // Jawaban Ex Gratia dititipkan pada `alasan` karena kontrak modul Inbox Close Claim
       // belum punya field-nya sendiri. Ini TITIPAN, bukan pemodelan yang benar — lihat
       // catatan pengembangan.
-      alasan: jenis === 'salin' ? 'Ex Gratia: ' + exGratia : '',
-      baris: baris.map((row) => ({ klaim_id: row.klaim_id, nomor_klaim: row.nomor_klaim })),
-    })
+      alasan: jenis === "salin" ? "Ex Gratia: " + exGratia : "",
+      baris: baris.map((row) => ({
+        klaim_id: row.klaim_id,
+        nomor_klaim: row.nomor_klaim,
+      })),
+    });
   }
 
   return (
@@ -115,11 +118,11 @@ export function DialogPermintaanKlaim({
             onClick={onTutup}
             aria-label="Tutup"
             className={[
-              'rounded-kontrol px-3 py-1.5 text-sm text-slate-500',
-              'transition ease-halus hover:bg-slate-100 hover:text-slate-700',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-              'focus-visible:outline-blue-600',
-            ].join(' ')}
+              "rounded-kontrol px-3 py-1.5 text-sm text-slate-500",
+              "transition ease-halus hover:bg-slate-100 hover:text-slate-700",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-600",
+            ].join(" ")}
           >
             ✕
           </button>
@@ -130,7 +133,7 @@ export function DialogPermintaanKlaim({
         ) : (
           <form onSubmit={kirim} className="space-y-4">
             <div className="rounded-kontrol border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
-              {jenis === 'reopen' ? (
+              {jenis === "reopen" ? (
                 <>
                   {/*
                     Kalimat ini disalin APA ADANYA dari
@@ -142,17 +145,17 @@ export function DialogPermintaanKlaim({
                 </>
               ) : (
                 <>
-                  Klaim baru akan diajukan sebagai <strong>salinan</strong> dari klaim yang
-                  dipilih, beserta polis, objek, dan coverage-nya.
+                  Klaim baru akan diajukan sebagai <strong>salinan</strong> dari
+                  klaim yang dipilih, beserta polis, objek, dan coverage-nya.
                 </>
-              )}{' '}
-              Yang tercatat sekarang adalah <strong>permintaannya</strong> — klaimnya belum
-              berubah dan barisnya masih akan tampil di daftar.
+              )}{" "}
+              Yang tercatat sekarang adalah <strong>permintaannya</strong> —
+              klaimnya belum berubah dan barisnya masih akan tampil di daftar.
             </div>
 
             <DaftarKlaim baris={baris} />
 
-            {jenis === 'salin' ? (
+            {jenis === "salin" ? (
               <fieldset className="rounded-kontrol border border-slate-200 p-4">
                 {/*
                   Pertanyaan dan radionya ada di layar lama: caption "Apakah klaim ini tipe
@@ -165,8 +168,11 @@ export function DialogPermintaanKlaim({
                   Apakah klaim ini tipe Ex Gratia?
                 </legend>
                 <div className="mt-2 flex gap-6">
-                  {(['ya', 'tidak'] as const).map((nilai) => (
-                    <label key={nilai} className="flex items-center gap-2 text-sm text-slate-700">
+                  {(["ya", "tidak"] as const).map((nilai) => (
+                    <label
+                      key={nilai}
+                      className="flex items-center gap-2 text-sm text-slate-700"
+                    >
                       <input
                         type="radio"
                         name="ex-gratia"
@@ -175,7 +181,7 @@ export function DialogPermintaanKlaim({
                         onChange={() => setExGratia(nilai)}
                         className="h-4 w-4 border-slate-300 text-blue-600"
                       />
-                      {nilai === 'ya' ? 'Ya' : 'Tidak'}
+                      {nilai === "ya" ? "Ya" : "Tidak"}
                     </label>
                   ))}
                 </div>
@@ -193,17 +199,21 @@ export function DialogPermintaanKlaim({
             <div className="flex justify-end gap-2">
               <Button tone="kedua" type="button" onClick={onTutup}>
                 {/* Layar lama memberi label "Tidak" pada tombol batal ReOpen. */}
-                {jenis === 'reopen' ? 'Tidak' : 'Batal'}
+                {jenis === "reopen" ? "Tidak" : "Batal"}
               </Button>
               <Button tone="utama" type="submit" disabled={ajukan.isPending}>
-                {ajukan.isPending ? 'Mengirim…' : jenis === 'reopen' ? 'Ya' : 'Copy Klaim'}
+                {ajukan.isPending
+                  ? "Mengirim…"
+                  : jenis === "reopen"
+                    ? "Ya"
+                    : "Copy Klaim"}
               </Button>
             </div>
           </form>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /** Daftar klaim yang akan diajukan, supaya pengguna melihat apa yang dicentangnya. */
@@ -213,13 +223,15 @@ function DaftarKlaim({ baris }: { baris: BarisKlaim[] }) {
       <ul className="divide-y divide-slate-100 text-sm">
         {baris.map((row) => (
           <li key={row.klaim_id || row.nomor_klaim} className="px-3 py-2">
-            <span className="font-medium text-slate-900">{row.nomor_klaim}</span>
+            <span className="font-medium text-slate-900">
+              {row.nomor_klaim}
+            </span>
             <span className="ml-2 text-slate-500">{row.nama_tertanggung}</span>
           </li>
         ))}
       </ul>
     </div>
-  )
+  );
 }
 
 /**
@@ -234,30 +246,33 @@ function Ringkasan({
   jenis,
   onTutup,
 }: {
-  hasil: HasilPermintaanKlaim[]
-  jenis: JenisPermintaanKlaim
-  onTutup: () => void
+  hasil: HasilPermintaanKlaim[];
+  jenis: JenisPermintaanKlaim;
+  onTutup: () => void;
 }) {
-  const berhasil = hasil.filter((item) => item.berhasil)
-  const gagal = hasil.filter((item) => !item.berhasil)
+  const berhasil = hasil.filter((item) => item.berhasil);
+  const gagal = hasil.filter((item) => !item.berhasil);
 
   return (
     <>
       {berhasil.length > 0 ? (
         <div className="rounded-kontrol border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           <p className="font-medium">
-            {berhasil.length} permintaan {jenis === 'reopen' ? 'ReOpen' : 'Copy Klaim'} tercatat.
+            {berhasil.length} permintaan{" "}
+            {jenis === "reopen" ? "ReOpen" : "Copy Klaim"} tercatat.
           </p>
           <p className="mt-1 leading-relaxed">
-            Klaimnya <strong>belum berubah</strong> — barisnya masih akan tampil di daftar.
-            Pelaksanaannya dikerjakan di Pega selama masa paralel.
+            Klaimnya <strong>belum berubah</strong> — barisnya masih akan tampil
+            di daftar. Pelaksanaannya dikerjakan di Pega selama masa paralel.
           </p>
         </div>
       ) : null}
 
       {gagal.length > 0 ? (
         <div className="mt-3 rounded-kontrol border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-          <p className="font-medium">{gagal.length} permintaan tidak tercatat:</p>
+          <p className="font-medium">
+            {gagal.length} permintaan tidak tercatat:
+          </p>
           <ul className="mt-2 space-y-1">
             {gagal.map((item) => (
               <li key={item.klaim_id || item.nomor_klaim}>
@@ -275,12 +290,12 @@ function Ringkasan({
         </Button>
       </div>
     </>
-  )
+  );
 }
 
 /** Membaca pesan galat yang layak dibaca pengguna. */
 function pesanGalat(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

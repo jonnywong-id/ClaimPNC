@@ -1,10 +1,10 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable, pageWindow, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ChevronIcon } from '@/components/Icon'
-import { TabBar } from '@/components/TabBar'
+import { Button } from "@/components/Button";
+import { DataTable, pageWindow, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ChevronIcon } from "@/components/Icon";
+import { TabBar } from "@/components/TabBar";
 
 import {
   Tindakan,
@@ -18,15 +18,15 @@ import {
   useTindakanPLADLA,
   type ParameterDaftar,
   type TindakanValue,
-} from './api'
-import { DocumentPanel } from './DocumentPanel'
-import { PrintPreDLAPanel } from './PrintPreDLAPanel'
-import { SearchPanel } from './SearchPanel'
-import { formatTanggal, galatIsian, pesanGalat, pesanMuat } from './pesan'
-import type { Baris, Daftar, FormPencarian } from './types'
+} from "./api";
+import { DocumentPanel } from "./DocumentPanel";
+import { PrintPreDLAPanel } from "./PrintPreDLAPanel";
+import { SearchPanel } from "./SearchPanel";
+import { formatTanggal, galatIsian, pesanGalat, pesanMuat } from "./pesan";
+import type { Baris, Daftar, FormPencarian } from "./types";
 
 /** Isian penyaring yang kosong. */
-const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
+const FORM_KOSONG: FormPencarian = { cari: "", dari: "", sampai: "" };
 
 /**
  * Layar Inbox PLA, DLA, Pre DLA.
@@ -92,32 +92,32 @@ const FORM_KOSONG: FormPencarian = { cari: '', dari: '', sampai: '' }
  * depan dibuat sama dengan layar lama supaya petugas tidak perlu belajar ulang.
  */
 export function InboxPLADLAPreDLAPage() {
-  const meta = usePLADLAMetadata()
+  const meta = usePLADLAMetadata();
 
-  const [tab, setTab] = useState('')
-  const [page, setPage] = useState(1)
+  const [tab, setTab] = useState("");
+  const [page, setPage] = useState(1);
 
   // Penyaring dipegang DUA KALI: yang sedang diketik, dan yang sudah dikirim.
   //
   // Tanpa pemisahan itu, setiap huruf yang diketik akan menembak basis data — dan
   // penyaring di layar ini menyentuh tabel dokumen berisi puluhan juta baris. Layar
   // lamanya pun memakai tombol "CARI DATA", bukan pencarian saat mengetik.
-  const [form, setForm] = useState<FormPencarian>(FORM_KOSONG)
-  const [dikirim, setDikirim] = useState<FormPencarian>(FORM_KOSONG)
+  const [form, setForm] = useState<FormPencarian>(FORM_KOSONG);
+  const [dikirim, setDikirim] = useState<FormPencarian>(FORM_KOSONG);
 
-  const [dibuka, setDibuka] = useState<Baris | null>(null)
+  const [dibuka, setDibuka] = useState<Baris | null>(null);
 
-  const daftar = meta.data?.daftar ?? []
-  const aktif = tab || meta.data?.daftar_bawaan || ''
-  const daftarAktif = daftar.find((item) => item.kode === aktif)
+  const daftar = meta.data?.daftar ?? [];
+  const aktif = tab || meta.data?.daftar_bawaan || "";
+  const daftarAktif = daftar.find((item) => item.kode === aktif);
 
   const parameter: ParameterDaftar = useMemo(
     () => ({ tab: aktif, page, ...dikirim }),
     [aktif, page, dikirim],
-  )
+  );
 
-  const list = usePLADLAList(parameter, aktif !== '')
-  const ekspor = useEksporPLADLA()
+  const list = usePLADLAList(parameter, aktif !== "");
+  const ekspor = useEksporPLADLA();
 
   // Panel mana yang terbuka ditentukan TABNYA, bukan penanda tersendiri.
   //
@@ -128,31 +128,31 @@ export function InboxPLADLAPreDLAPage() {
   //
   // Kunci yang KOSONG mematikan hook-nya. Itu yang membuat tab Pre DLA tidak menembak
   // kueri grid rincian yang di Pega pun tidak ada.
-  const membukaCetak = daftarAktif?.punya_cetak === true
-  const kunciDibuka = dibuka?.kunci_klaim ?? ''
+  const membukaCetak = daftarAktif?.punya_cetak === true;
+  const kunciDibuka = dibuka?.kunci_klaim ?? "";
 
-  const dokumen = usePLADLADokumen(aktif, membukaCetak ? '' : kunciDibuka)
-  const cetak = usePLADLACetak(membukaCetak ? kunciDibuka : '')
+  const dokumen = usePLADLADokumen(aktif, membukaCetak ? "" : kunciDibuka);
+  const cetak = usePLADLACetak(membukaCetak ? kunciDibuka : "");
 
   // Penandaan "Kirim Pre DLA" — satu-satunya operasi TULIS di layar ini.
   //
   // Ia terpisah dari `tindakan` yang melayani tombol-tombol yang belum dibangun: yang ini
   // benar-benar bekerja, dan jawabannya bukan alasan melainkan hasil.
-  const kirimPreDLA = useKirimPreDLA(kunciDibuka)
+  const kirimPreDLA = useKirimPreDLA(kunciDibuka);
 
   // Pengiriman surat PLA/DLA — satu-satunya operasi di layar ini yang menyentuh dunia
   // di luar perusahaan, dan satu-satunya yang tidak dapat ditarik kembali.
-  const kirimSurat = useKirimSurat(aktif, kunciDibuka)
+  const kirimSurat = useKirimSurat(aktif, kunciDibuka);
 
   // Ketiga tombol yang belum dibangun memakai SATU mutation.
   //
   // Bukan tiga: yang dijawab server berbeda-beda, tetapi cara layar menanganinya sama
   // persis — tekan, terima alasannya, gambarkan. Tiga mutation berarti tiga tempat yang
   // harus dijaga tetap sejalan.
-  const tindakan = useTindakanPLADLA()
+  const tindakan = useTindakanPLADLA();
 
   function minta(kode: TindakanValue) {
-    tindakan.mutate({ tindakan: kode, tab: aktif })
+    tindakan.mutate({ tindakan: kode, tab: aktif });
   }
 
   /**
@@ -167,36 +167,36 @@ export function InboxPLADLAPreDLAPage() {
    * ulang setiap kali ia membandingkan ketiga antrean.
    */
   function pilihDaftar(kode: string) {
-    setTab(kode)
-    setPage(1)
-    setDibuka(null)
+    setTab(kode);
+    setPage(1);
+    setDibuka(null);
 
     // Alasan penolakan milik tombol daftar SEBELUMNYA dibuang.
     //
     // Tanpa ini, penjelasan tentang "Send" tetap tergambar setelah pengguna berpindah
     // ke tab Pre DLA — yang bahkan tidak punya tombol itu.
-    tindakan.reset()
-    kirimPreDLA.reset()
-    kirimSurat.reset()
+    tindakan.reset();
+    kirimPreDLA.reset();
+    kirimSurat.reset();
   }
 
   function cari() {
-    setDikirim(form)
-    setPage(1)
-    setDibuka(null)
-    tindakan.reset()
-    kirimPreDLA.reset()
-    kirimSurat.reset()
+    setDikirim(form);
+    setPage(1);
+    setDibuka(null);
+    tindakan.reset();
+    kirimPreDLA.reset();
+    kirimSurat.reset();
   }
 
   function bersihkan() {
-    setForm(FORM_KOSONG)
-    setDikirim(FORM_KOSONG)
-    setPage(1)
-    setDibuka(null)
-    tindakan.reset()
-    kirimPreDLA.reset()
-    kirimSurat.reset()
+    setForm(FORM_KOSONG);
+    setDikirim(FORM_KOSONG);
+    setPage(1);
+    setDibuka(null);
+    tindakan.reset();
+    kirimPreDLA.reset();
+    kirimSurat.reset();
   }
 
   if (meta.isPending) {
@@ -204,11 +204,11 @@ export function InboxPLADLAPreDLAPage() {
       <Bingkai>
         <p className="text-sm text-slate-600">Memuat keterangan layar…</p>
       </Bingkai>
-    )
+    );
   }
 
   if (meta.isError) {
-    const pesan = pesanMuat(meta.error)
+    const pesan = pesanMuat(meta.error);
     return (
       <Bingkai>
         <ErrorMessage
@@ -217,7 +217,7 @@ export function InboxPLADLAPreDLAPage() {
           tone={pesan.tone}
         />
       </Bingkai>
-    )
+    );
   }
 
   return (
@@ -253,15 +253,17 @@ export function InboxPLADLAPreDLAPage() {
           disabled={ekspor.isPending}
           onClick={() => ekspor.mutate(parameter)}
         >
-          {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+          {ekspor.isPending ? "Menyiapkan…" : "Export To Excel"}
         </Button>
         <Button
           type="button"
           tone="kedua"
-          onClick={() => { list.refetch() }}
+          onClick={() => {
+            list.refetch();
+          }}
           disabled={list.isFetching}
         >
-          {list.isFetching ? 'Menyegarkan…' : 'Refresh'}
+          {list.isFetching ? "Menyegarkan…" : "Refresh"}
         </Button>
       </div>
 
@@ -271,8 +273,8 @@ export function InboxPLADLAPreDLAPage() {
         onSubmit={cari}
         onReset={bersihkan}
         busy={list.isFetching}
-        labelTanggal={daftarAktif?.label_tanggal ?? 'Tanggal'}
-        labelPencarian={daftarAktif?.label_pencarian ?? 'No Klaim'}
+        labelTanggal={daftarAktif?.label_tanggal ?? "Tanggal"}
+        labelPencarian={daftarAktif?.label_pencarian ?? "No Klaim"}
         fieldError={galatIsian(list.error)}
       />
 
@@ -287,7 +289,7 @@ export function InboxPLADLAPreDLAPage() {
       */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2 className="text-base font-semibold text-slate-900">
-          Inbox {daftarAktif?.nama ?? ''}
+          Inbox {daftarAktif?.nama ?? ""}
         </h2>
 
         <PageLinks
@@ -303,7 +305,7 @@ export function InboxPLADLAPreDLAPage() {
         columns={kolomAntrean(daftarAktif, list.data?.baris ?? [], setDibuka)}
         rows={list.data?.baris ?? []}
         rowKey={(row) => row.kunci_klaim}
-        label={`Antrean ${daftarAktif?.nama ?? ''}`}
+        label={`Antrean ${daftarAktif?.nama ?? ""}`}
         // Garis antarkolom, supaya gridnya terbaca berkotak seperti grid Pega.
         gridLines
         // Kotak cari bawaan dimatikan. Ia menyaring HANYA halaman yang sedang terbuka,
@@ -347,7 +349,7 @@ export function InboxPLADLAPreDLAPage() {
             kirimSurat.isSuccess
               ? `${kirimSurat.data.pesan} ${kirimSurat.data.penerima} penerima, ` +
                 `${kirimSurat.data.lampiran} lampiran.`
-              : ''
+              : ""
           }
         />
       )}
@@ -363,7 +365,7 @@ export function InboxPLADLAPreDLAPage() {
           onClose={() => setDibuka(null)}
           onKirim={(dokumen) => kirimPreDLA.mutate(dokumen.no_advice)}
           busy={kirimPreDLA.isPending}
-          pesanKirim={kirimPreDLA.isSuccess ? kirimPreDLA.data.pesan : ''}
+          pesanKirim={kirimPreDLA.isSuccess ? kirimPreDLA.data.pesan : ""}
         />
       )}
 
@@ -415,9 +417,8 @@ export function InboxPLADLAPreDLAPage() {
           tone="penolakan"
         />
       )}
-
     </Bingkai>
-  )
+  );
 }
 
 /**
@@ -447,21 +448,21 @@ function PageLinks({
   sibuk,
   onPilih,
 }: {
-  halaman: number
-  totalHalaman: number
-  total: number
-  sibuk: boolean
-  onPilih: (halaman: number) => void
+  halaman: number;
+  totalHalaman: number;
+  total: number;
+  sibuk: boolean;
+  onPilih: (halaman: number) => void;
 }) {
-  const jumlahHalaman = Math.max(totalHalaman, 1)
+  const jumlahHalaman = Math.max(totalHalaman, 1);
 
   const tombol =
-    'inline-flex h-7 min-w-7 items-center justify-center rounded-kontrol border px-2 text-sm ' +
-    'transition-colors duration-150 ease-halus ' +
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ' +
-    'disabled:cursor-not-allowed disabled:opacity-40'
+    "inline-flex h-7 min-w-7 items-center justify-center rounded-kontrol border px-2 text-sm " +
+    "transition-colors duration-150 ease-halus " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 " +
+    "disabled:cursor-not-allowed disabled:opacity-40";
 
-  const diam = `${tombol} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`
+  const diam = `${tombol} border-slate-300 bg-white text-slate-700 hover:enabled:border-slate-400 hover:enabled:bg-slate-100`;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -474,7 +475,10 @@ function PageLinks({
       </p>
 
       {jumlahHalaman > 1 && (
-        <nav aria-label="Navigasi halaman" className="flex flex-wrap items-center gap-1">
+        <nav
+          aria-label="Navigasi halaman"
+          className="flex flex-wrap items-center gap-1"
+        >
           <button
             type="button"
             className={diam}
@@ -486,7 +490,7 @@ function PageLinks({
           </button>
 
           {pageWindow(halaman, jumlahHalaman).map((item, urutan) =>
-            item === 'sela' ? (
+            item === "sela" ? (
               // Sela tidak punya nilai yang dapat dijadikan kunci, dan dua di antaranya
               // dapat muncul sekaligus — urutannya yang membedakan.
               <span
@@ -508,7 +512,7 @@ function PageLinks({
                 // Halaman yang sedang terbuka ditandai `aria-current`, bukan hanya oleh
                 // warna — yang tidak terbaca pembaca layar dan tidak terbedakan oleh
                 // sekitar satu dari dua belas laki-laki yang buta warna merah-hijau.
-                aria-current={item === halaman ? 'page' : undefined}
+                aria-current={item === halaman ? "page" : undefined}
                 aria-label={`Halaman ${item}`}
                 disabled={sibuk}
                 onClick={() => onPilih(item)}
@@ -530,7 +534,7 @@ function PageLinks({
         </nav>
       )}
     </div>
-  )
+  );
 }
 
 /** Bingkai adalah judul layar beserta ruang isinya. */
@@ -542,14 +546,14 @@ function Bingkai({ children }: { children: ReactNode }) {
           Inbox PLA, DLA, Pre DLA
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pemberitahuan kepada koasuransi dan reasuransi yang sudah terbit tetapi belum
-          dikirim.
+          Pemberitahuan kepada koasuransi dan reasuransi yang sudah terbit
+          tetapi belum dikirim.
         </p>
       </header>
 
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -570,7 +574,7 @@ function kolomAntrean(
   baris: Baris[],
   onBuka: (baris: Baris) => void,
 ): Column<Baris>[] {
-  if (!daftar) return []
+  if (!daftar) return [];
 
   // Kolom nomor urut, persis seperti grid Pega yang menomori barisnya 1, 2, 3, … di
   // paling kiri. Judulnya KOSONG — begitu pula di sana, dan nomor urut tidak menuntut
@@ -582,15 +586,17 @@ function kolomAntrean(
   //
   // Petanya disusun sekali. Mencari posisi sebuah baris saat menggambar setiap sel
   // berarti menelusuri seluruh daftar sebanyak jumlah barisnya.
-  const nomor = new Map(baris.map((row, index) => [row.kunci_klaim, index + 1]))
+  const nomor = new Map(
+    baris.map((row, index) => [row.kunci_klaim, index + 1]),
+  );
 
   const kolomNomor: Column<Baris> = {
-    key: 'nomor',
-    title: '',
-    width: '3rem',
+    key: "nomor",
+    title: "",
+    width: "3rem",
     noSort: true,
-    value: (row) => String(nomor.get(row.kunci_klaim) ?? ''),
-  }
+    value: (row) => String(nomor.get(row.kunci_klaim) ?? ""),
+  };
 
   const kolom: Column<Baris>[] = daftar.kolom.map((item) => ({
     key: item.kunci,
@@ -607,20 +613,20 @@ function kolomAntrean(
       // Hanya pada daftar yang PUNYA rincian. Di tab Pre DLA nomor klaimnya teks biasa,
       // dan yang membuka panelnya adalah tombol pada barisnya — tautan yang tidak
       // membuka apa-apa lebih buruk daripada teks biasa.
-      item.kunci === 'no_klaim' && daftar.punya_rincian ? (
+      item.kunci === "no_klaim" && daftar.punya_rincian ? (
         <button
           type="button"
           onClick={() => onBuka(row)}
           className="rounded-kontrol px-1 text-left font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          {nilaiSel(row, item.kunci) || '—'}
+          {nilaiSel(row, item.kunci) || "—"}
         </button>
       ) : (
         gambarSel(row, item.kunci, item.tanggal)
       ),
-  }))
+  }));
 
-  kolom.unshift(kolomNomor)
+  kolom.unshift(kolomNomor);
 
   // Kolom aksi hanya ada pada Pre DLA, dan judulnya datang dari server.
   //
@@ -628,25 +634,25 @@ function kolomAntrean(
   // nomor klaim, persis seperti di Pega. Tab Pre DLA punya tombol bernama di dalam
   // barisnya, dan letaknya terbukti dari section — label tombolnya berada DI DALAM blok
   // berulang, berdampingan dengan `pyLocalAction`-nya sendiri.
-  const judulAksi = judulTombolBaris(daftar)
+  const judulAksi = judulTombolBaris(daftar);
 
-  if (judulAksi !== '') {
+  if (judulAksi !== "") {
     kolom.push({
-      key: 'aksi',
-      title: 'Aksi',
-      width: daftar.punya_cetak ? '11rem' : '8rem',
+      key: "aksi",
+      title: "Aksi",
+      width: daftar.punya_cetak ? "11rem" : "8rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button type="button" tone="halus" onClick={() => onBuka(row)}>
           {judulAksi}
         </Button>
       ),
-    })
+    });
   }
 
-  return kolom
+  return kolom;
 }
 
 /**
@@ -674,30 +680,30 @@ function kolomAntrean(
  * daftar tab yang perlu dijaga sejalan di dua tempat.
  */
 function judulTombolBaris(daftar: Daftar): string {
-  if (daftar.label_aksi_baris !== undefined) return daftar.label_aksi_baris
+  if (daftar.label_aksi_baris !== undefined) return daftar.label_aksi_baris;
 
-  if (daftar.punya_cetak) return 'Print Pre DLA'
+  if (daftar.punya_cetak) return "Print Pre DLA";
 
   // `punya_rincian` TIDAK lagi menghasilkan tombol.
   //
   // Sejak 2026-09-27 rincian dibuka dengan mengklik nomor klaim, dan cadangan yang
   // mengembalikan 'Rincian' akan menghidupkan kembali kolom yang baru saja dihapus —
   // pada peladen lama pengguna akan melihat DUA jalan menuju panel yang sama.
-  return ''
+  return "";
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
 function nilaiSel(row: Baris, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /** gambarSel menggambar satu sel. */
 function gambarSel(row: Baris, kunci: string, tanggal: boolean) {
-  const isi = nilaiSel(row, kunci)
-  if (tanggal) return formatTanggal(isi)
-  if (isi === '') return <span className="text-slate-400">—</span>
-  return isi
+  const isi = nilaiSel(row, kunci);
+  if (tanggal) return formatTanggal(isi);
+  if (isi === "") return <span className="text-slate-400">—</span>;
+  return isi;
 }
 
 /**
@@ -708,14 +714,13 @@ function gambarSel(row: Baris, kunci: string, tanggal: boolean) {
  */
 function pesanKosong(penyaring: FormPencarian): string {
   const menyaring =
-    penyaring.cari !== '' || penyaring.dari !== '' || penyaring.sampai !== ''
+    penyaring.cari !== "" || penyaring.dari !== "" || penyaring.sampai !== "";
 
   if (menyaring) {
     return (
-      'Tidak ada yang cocok dengan penyaring ini. Longgarkan rentang tanggalnya, ' +
-      'atau kosongkan kotak No Klaim.'
-    )
+      "Tidak ada yang cocok dengan penyaring ini. Longgarkan rentang tanggalnya, " +
+      "atau kosongkan kotak No Klaim."
+    );
   }
-  return 'Tidak ada pemberitahuan yang menunggu dikirim pada daftar ini.'
+  return "Tidak ada pemberitahuan yang menunggu dikirim pada daftar ini.";
 }
-

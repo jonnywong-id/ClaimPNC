@@ -1,26 +1,26 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   ErrorCode,
   type BusinessChoice,
   type BusinessDocumentRuleInput,
   type MasterChoice,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
 import {
   DocumentRowsTable,
   emptyRow,
   labelFor,
   type RowDraft,
-} from './DocumentRowsTable'
+} from "./DocumentRowsTable";
 
 type Props = {
-  businesses: BusinessChoice[]
+  businesses: BusinessChoice[];
   /** Tombol pemilihan massal ditampilkan atau tidak — meniru `pyVisible` layar lama. */
-  mayBulkSelect: boolean
+  mayBulkSelect: boolean;
   /**
    * Baris awal, terisi saat form dibuka lewat Copy.
    *
@@ -28,58 +28,64 @@ type Props = {
    * `exactOptionalPropertyTypes` — tanpa itu, meneruskan `undefined` secara sengaja
    * ditolak kompilator.
    */
-  initialRules?: BusinessDocumentRuleInput[] | undefined
-  documentTypes: MasterChoice[]
-  detailDocuments: MasterChoice[]
-  objectDocuments: MasterChoice[]
-  isSaving: boolean
-  error: unknown
-  onSave: (businessIDs: string[], rules: BusinessDocumentRuleInput[]) => void
-  onCancel: () => void
-}
+  initialRules?: BusinessDocumentRuleInput[] | undefined;
+  documentTypes: MasterChoice[];
+  detailDocuments: MasterChoice[];
+  objectDocuments: MasterChoice[];
+  isSaving: boolean;
+  error: unknown;
+  onSave: (businessIDs: string[], rules: BusinessDocumentRuleInput[]) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa sambungan jaringan, lalu simpan sekali lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa sambungan jaringan, lalu simpan sekali lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.businessDocumentRuleBusinessRequired:
         return {
-          title: 'Nama Bisnis belum di isi',
-          description: 'Isi sekurang-kurangnya satu lini bisnis sebelum menyimpan.',
-          tone: 'penolakan',
-        }
+          title: "Nama Bisnis belum di isi",
+          description:
+            "Isi sekurang-kurangnya satu lini bisnis sebelum menyimpan.",
+          tone: "penolakan",
+        };
       // Tidak ada cabang untuk "baris dokumen kosong", dan itu disengaja: di Pega keadaan
       // itu berlalu diam-diam — perulangannya berputar nol kali lalu layar tertutup.
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih entitas di bagian atas layar, lalu simpan sekali lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih entitas di bagian atas layar, lalu simpan sekali lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
-          description: 'Hubungi tim infrastruktur bila keadaan ini berlanjut.',
-          tone: 'gangguan',
-        }
+          title: "Basis data entitas ini belum tersedia",
+          description: "Hubungi tim infrastruktur bila keadaan ini berlanjut.",
+          tone: "gangguan",
+        };
       default:
-        return { title: 'Penyimpanan gagal', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Penyimpanan gagal",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** BusinessDraft adalah satu baris isian Nama Bisnis: teks yang diketik beserta kodenya. */
-type BusinessDraft = { teks: string; id: string }
+type BusinessDraft = { teks: string; id: string };
 
 /**
  * businessIDFromLabel mencari kode bisnis dari teks yang diketik.
@@ -89,15 +95,15 @@ type BusinessDraft = { teks: string; id: string }
  * teks yang tidak cocok menghasilkan kode kosong, tidak ditolak.
  */
 function businessIDFromLabel(list: BusinessChoice[], typed: string): string {
-  const clean = typed.trim()
-  if (clean === '') return ''
+  const clean = typed.trim();
+  if (clean === "") return "";
   const matched = list.find(
     (item) =>
       `${item.nama_bisnis} (${item.id})` === clean ||
       item.nama_bisnis === clean ||
       item.id === clean,
-  )
-  return matched?.id ?? ''
+  );
+  return matched?.id ?? "";
 }
 
 /** toInput membuang `id` dan teks bantu sebelum baris dikirim ke server. */
@@ -109,7 +115,7 @@ function toInput(row: RowDraft): BusinessDocumentRuleInput {
     detail_dokumen: row.detail_dokumen,
     status_wajib: row.status_wajib,
     minimum_dokumen: row.minimum_dokumen,
-  }
+  };
 }
 
 /**
@@ -153,54 +159,63 @@ export function BusinessDocumentRuleCreateForm({
   onSave,
   onCancel,
 }: Props) {
-  const [selected, setSelected] = useState<BusinessDraft[]>([{ teks: '', id: '' }])
+  const [selected, setSelected] = useState<BusinessDraft[]>([
+    { teks: "", id: "" },
+  ]);
 
   // Baris awal dibentuk SEKALI. Bila ia dihitung ulang setiap render, setiap ketikan
   // petugas akan tertimpa oleh baris asal salinannya.
   const [rows, setRows] = useState<RowDraft[]>(() => {
-    if (initialRules === undefined || initialRules.length === 0) return [emptyRow()]
+    if (initialRules === undefined || initialRules.length === 0)
+      return [emptyRow()];
     return initialRules.map((rule) => ({
       ...rule,
       // Salinan SELALU kehilangan ID-nya, dan itulah seluruh inti tombol Copy:
       // `UpdateDetailTypeDocumentBusiness_act` memuat baris asal dengan pemetaan yang sama
       // seperti Ubah, tetapi cabang salinnya tidak pernah mengisi `.ID` — sehingga
       // penyimpanan berikutnya menerbitkan baris baru alih-alih menimpa baris asalnya.
-      id: '',
+      id: "",
       tipe_dokumen_teks: labelFor(documentTypes, rule.id_tipe_dokumen),
       object_dokumen_teks: labelFor(objectDocuments, rule.id_object_dokumen),
       detail_dokumen_teks: labelFor(detailDocuments, rule.id_detail_dokumen),
-    }))
-  })
+    }));
+  });
 
   // Bisnis yang dilewati pemilihan massal — kelimanya lini MBU. Bisnis yang sama TETAP
   // dapat diketik satu per satu, persis seperti di Pega.
-  const bulkSelectable = businesses.filter((item) => !item.dikecualikan_pilih_semua)
+  const bulkSelectable = businesses.filter(
+    (item) => !item.dikecualikan_pilih_semua,
+  );
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   // Kode yang benar-benar terkirim: baris kosong dan yang teksnya tidak cocok dengan
   // master dibuang di sini, bukan ditolak. Pega pun melewatinya diam-diam.
-  const businessIDs = selected.map((item) => item.id).filter((id) => id !== '')
+  const businessIDs = selected.map((item) => item.id).filter((id) => id !== "");
 
   function updateBusiness(index: number, teks: string) {
     setSelected((current) =>
       current.map((item, position) =>
-        position === index ? { teks, id: businessIDFromLabel(businesses, teks) } : item,
+        position === index
+          ? { teks, id: businessIDFromLabel(businesses, teks) }
+          : item,
       ),
-    )
+    );
   }
 
   function updateRow(index: number, patch: Partial<RowDraft>) {
     setRows((current) =>
-      current.map((row, position) => (position === index ? { ...row, ...patch } : row)),
-    )
+      current.map((row, position) =>
+        position === index ? { ...row, ...patch } : row,
+      ),
+    );
   }
 
   return (
     <form
       onSubmit={(event) => {
-        event.preventDefault()
-        onSave(businessIDs, rows.map(toInput))
+        event.preventDefault();
+        onSave(businessIDs, rows.map(toInput));
       }}
       noValidate
       aria-label="Tambah Data"
@@ -243,7 +258,9 @@ export function BusinessDocumentRuleCreateForm({
             )}
             <Button
               tone="kedua"
-              onClick={() => setSelected((current) => [...current, { teks: '', id: '' }])}
+              onClick={() =>
+                setSelected((current) => [...current, { teks: "", id: "" }])
+              }
             >
               Tambah
             </Button>
@@ -262,9 +279,9 @@ export function BusinessDocumentRuleCreateForm({
                 // sebelum dikirim — sama seperti di Pega. Penandaan ini satu-satunya
                 // kesempatan petugas menyadarinya sebelum menekan Simpan.
                 className={
-                  item.teks.trim() !== '' && item.id === ''
-                    ? 'w-full max-w-md rounded border border-amber-400 bg-amber-50 px-3 py-2 text-sm'
-                    : 'w-full max-w-md rounded border border-slate-300 bg-white px-3 py-2 text-sm'
+                  item.teks.trim() !== "" && item.id === ""
+                    ? "w-full max-w-md rounded border border-amber-400 bg-amber-50 px-3 py-2 text-sm"
+                    : "w-full max-w-md rounded border border-slate-300 bg-white px-3 py-2 text-sm"
                 }
                 value={item.teks}
                 onChange={(event) => updateBusiness(index, event.target.value)}
@@ -286,22 +303,26 @@ export function BusinessDocumentRuleCreateForm({
           ))}
           <datalist id="pilihan-bisnis">
             {businesses.map((item) => (
-              <option key={item.id} value={`${item.nama_bisnis} (${item.id})`} />
+              <option
+                key={item.id}
+                value={`${item.nama_bisnis} (${item.id})`}
+              />
             ))}
           </datalist>
         </div>
 
-        {selected.some((item) => item.teks.trim() !== '' && item.id === '') && (
+        {selected.some((item) => item.teks.trim() !== "" && item.id === "") && (
           <p className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Bisnis bertanda kuning belum cocok dengan daftarnya dan{' '}
-            <span className="font-medium">akan dilewati</span>. Pilih dari daftar yang muncul
-            saat mengetik.
+            Bisnis bertanda kuning belum cocok dengan daftarnya dan{" "}
+            <span className="font-medium">akan dilewati</span>. Pilih dari
+            daftar yang muncul saat mengetik.
           </p>
         )}
 
         {businesses.length === 0 && (
           <p className="mt-2 text-sm text-slate-500">
-            Daftar bisnis tidak dapat dimuat. Kodenya tetap dapat diketik langsung.
+            Daftar bisnis tidak dapat dimuat. Kodenya tetap dapat diketik
+            langsung.
           </p>
         )}
       </section>
@@ -314,7 +335,9 @@ export function BusinessDocumentRuleCreateForm({
         onChange={updateRow}
         onAdd={() => setRows((current) => [...current, emptyRow()])}
         onRemove={(index) =>
-          setRows((current) => current.filter((_row, position) => position !== index))
+          setRows((current) =>
+            current.filter((_row, position) => position !== index),
+          )
         }
       />
 
@@ -325,9 +348,12 @@ export function BusinessDocumentRuleCreateForm({
         memilih lebih banyak daripada yang dimaksud.
       */}
       <p className="text-sm text-slate-600">
-        Akan tersimpan{' '}
-        <span className="font-semibold text-slate-900">{businessIDs.length * rows.length}</span>{' '}
-        baris aturan ({businessIDs.length} bisnis × {rows.length} dokumen). Baris yang tersimpan{' '}
+        Akan tersimpan{" "}
+        <span className="font-semibold text-slate-900">
+          {businessIDs.length * rows.length}
+        </span>{" "}
+        baris aturan ({businessIDs.length} bisnis × {rows.length} dokumen).
+        Baris yang tersimpan{" "}
         <span className="font-medium">tidak dapat dihapus</span> dari layar ini.
       </p>
 
@@ -336,9 +362,9 @@ export function BusinessDocumentRuleCreateForm({
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

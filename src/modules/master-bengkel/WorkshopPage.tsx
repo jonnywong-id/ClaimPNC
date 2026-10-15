@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from "react";
 
-import { WorkshopStatus, type Workshop } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
+import { WorkshopStatus, type Workshop } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
 
-import { useCreateWorkshop, useSaveWorkshop, useWorkshopList } from './api'
-import { DocumentPanel } from './DocumentPanel'
-import { WorkshopForm, type WorkshopFormValues } from './WorkshopForm'
-import { compareCodeUnits } from '@/lib/sort'
+import { useCreateWorkshop, useSaveWorkshop, useWorkshopList } from "./api";
+import { DocumentPanel } from "./DocumentPanel";
+import { WorkshopForm, type WorkshopFormValues } from "./WorkshopForm";
+import { compareCodeUnits } from "@/lib/sort";
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -25,27 +25,28 @@ import { compareCodeUnits } from '@/lib/sort'
  */
 const TABS = [
   {
-    id: 'approve',
-    label: 'Approve',
+    id: "approve",
+    label: "Approve",
     status: WorkshopStatus.disetujui,
-    description: 'Bengkel yang sudah disetujui dan berlaku sebagai rekanan.',
+    description: "Bengkel yang sudah disetujui dan berlaku sebagai rekanan.",
   },
   {
-    id: 'reject',
-    label: 'Reject',
+    id: "reject",
+    label: "Reject",
     status: WorkshopStatus.ditolak,
-    description: 'Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.',
+    description:
+      "Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.",
   },
   {
-    id: 'menunggu',
-    label: 'Waiting Approval',
+    id: "menunggu",
+    label: "Waiting Approval",
     status: WorkshopStatus.menunggu,
     description:
-      'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
+      "Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.",
   },
-] as const
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /**
  * Banyaknya baris per halaman.
@@ -55,20 +56,20 @@ type TabId = (typeof TABS)[number]['id']
  * milik LAYAR INI — layar master lain memakai 15 — sehingga ia disebut di sini, bukan
  * dijadikan bawaan komponen tabel.
  */
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 /** Kolom yang nilai sahnya tidak ada di export; sarannya dikumpulkan dari data. */
 const SUGGESTED_COLUMNS = [
-  'status_bengkel',
-  'jenis_pph',
-  'status_disupply_asm',
-  'status_eklaim',
-  'status_auto_aksep',
-  'status_payment',
-  'status_autopayment',
-  'status_tekno',
-  'status_order',
-] as const
+  "status_bengkel",
+  "jenis_pph",
+  "status_disupply_asm",
+  "status_eklaim",
+  "status_auto_aksep",
+  "status_payment",
+  "status_autopayment",
+  "status_tekno",
+  "status_order",
+] as const;
 
 /**
  * Keterangan di dalam grid saat tidak ada satu baris pun tergambar.
@@ -97,9 +98,9 @@ const SUGGESTED_COLUMNS = [
  */
 function emptyMessageFor(hasPortal: boolean): string {
   if (!hasPortal) {
-    return 'Pilih portal entitas di bagian atas halaman untuk menampilkan daftarnya.'
+    return "Pilih portal entitas di bagian atas halaman untuk menampilkan daftarnya.";
   }
-  return 'Data tidak ada'
+  return "Data tidak ada";
 }
 
 /**
@@ -148,20 +149,20 @@ function emptyMessageFor(hasPortal: boolean): string {
  * Dicabut atas permintaan Work Owner (2026-10-03).
  */
 export function WorkshopPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Workshop | null>(null)
-  const [isDocumentOpen, setDocumentOpen] = useState(false)
+  const [tab, setTab] = useState<TabId>("approve");
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Workshop | null>(null);
+  const [isDocumentOpen, setDocumentOpen] = useState(false);
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
-  const list = useWorkshopList(active.status)
-  const create = useCreateWorkshop()
-  const save = useSaveWorkshop()
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const list = useWorkshopList(active.status);
+  const create = useCreateWorkshop();
+  const save = useSaveWorkshop();
 
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.bengkel ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.bengkel ?? [];
 
   /*
     Apakah jalur unggah siap dipakai, dibaca dari jawaban daftar.
@@ -173,7 +174,7 @@ export function WorkshopPage() {
     Bawaannya `false` selama daftar belum termuat — tombol yang sempat hidup lalu mati
     sendiri lebih membingungkan daripada tombol yang baru hidup setelah jawabannya tiba.
   */
-  const uploadAvailable = list.data?.unggah_tersedia ?? false
+  const uploadAvailable = list.data?.unggah_tersedia ?? false;
 
   /*
     Saran nilai untuk kolom yang daftar pilihannya tidak ada di export (R-16).
@@ -183,45 +184,45 @@ export function WorkshopPage() {
     lihat WorkshopForm bagian "Penanda sistem".
   */
   const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
+    const collected: Record<string, string[]> = {};
     for (const column of SUGGESTED_COLUMNS) {
-      const unique = new Set<string>()
+      const unique = new Set<string>();
       for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
+        const value = row[column];
+        if (value !== "") unique.add(value);
       }
-      collected[column] = [...unique].sort(compareCodeUnits)
+      collected[column] = [...unique].sort(compareCodeUnits);
     }
-    return collected
-  }, [rows])
+    return collected;
+  }, [rows]);
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(null);
     // Panel dokumen melekat pada baris yang sedang dibuka; menutup formnya tanpa menutup
     // panelnya menyisakan panel yang menunjuk bengkel yang sudah tidak terpilih.
-    setDocumentOpen(false)
+    setDocumentOpen(false);
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
     // Baris baru belum punya ID, sehingga belum ada yang dapat dilampiri.
-    setDocumentOpen(false)
+    setDocumentOpen(false);
   }
 
   function openEdit(row: Workshop) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
     // Berpindah baris menutup panelnya: dokumen yang tampil harus selalu milik bengkel yang
     // sedang dibuka, bukan sisa dari baris sebelumnya.
-    setDocumentOpen(false)
+    setDocumentOpen(false);
   }
 
   function submit(values: WorkshopFormValues) {
@@ -229,12 +230,14 @@ export function WorkshopPage() {
     // membuang isian pengguna saat penyimpanan gagal — dan pada form tiga puluh tiga
     // isian, itu kehilangan yang tidak dapat dimaafkan.
     if (editing) {
-      save.mutate({ id: editing.id_bengkel, input: values }, { onSuccess: closeForm })
-      return
+      save.mutate(
+        { id: editing.id_bengkel, input: values },
+        { onSuccess: closeForm },
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
-
 
   /*
     Susunan kolom mengikuti grid Pega APA ADANYA.
@@ -259,62 +262,66 @@ export function WorkshopPage() {
   */
   const columns: Column<Workshop>[] = [
     {
-      key: 'id_bengkel',
-      title: 'ID Bengkel',
-      width: '10rem',
+      key: "id_bengkel",
+      title: "ID Bengkel",
+      width: "10rem",
       value: (row) => row.id_bengkel,
     },
     {
-      key: 'nama_bengkel',
-      title: 'Nama Bengkel',
+      key: "nama_bengkel",
+      title: "Nama Bengkel",
       value: (row) => row.nama_bengkel,
     },
     {
-      key: 'alamat_bengkel',
-      title: 'Alamat Bengkel',
+      key: "alamat_bengkel",
+      title: "Alamat Bengkel",
       value: (row) => row.alamat_bengkel,
     },
     {
-      key: 'telp_bengkel',
-      title: 'Telp Bengkel',
-      width: '10rem',
+      key: "telp_bengkel",
+      title: "Telp Bengkel",
+      width: "10rem",
       value: (row) => row.telp_bengkel,
     },
     {
-      key: 'nohp_bengkel',
-      title: 'No HP Bengkel',
-      width: '10rem',
+      key: "nohp_bengkel",
+      title: "No HP Bengkel",
+      width: "10rem",
       value: (row) => row.nohp_bengkel,
     },
     {
-      key: 'login_aplikasi',
-      title: 'Login Aplikasi',
-      width: '11rem',
+      key: "login_aplikasi",
+      title: "Login Aplikasi",
+      width: "11rem",
       value: (row) => row.login_aplikasi,
       render: (row) => <LoginCell row={row} />,
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '6rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "6rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       // Hanya "Ubah".
       //
       // Tombol "Dokumen" per baris DICABUT pada 2026-10-03: di Pega unggah dokumen adalah
       // tombol tingkat layar, dan Work Owner meminta layar ini mengikutinya. Menyisakan
       // keduanya berarti layar kita punya tombol yang tidak ada di layar lama.
       render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="kedua"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/*
@@ -325,10 +332,12 @@ export function WorkshopPage() {
             Bengkel" (`M_MENU_APLIKASI_PNC.MENU_DESC`), dan keduanya memang berbeda di
             sistem lama; `D-13` menuntut teks LAYAR yang diikuti.
           */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Bengkel HE</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Bengkel HE
+          </h1>
           <p className="text-sm text-slate-600">
-            Bengkel rekanan beserta syarat kerja samanya — rekening pembayaran, diskon, pajak,
-            dan SLA.
+            Bengkel rekanan beserta syarat kerja samanya — rekening pembayaran,
+            diskon, pajak, dan SLA.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -355,13 +364,21 @@ export function WorkshopPage() {
           */}
           <Button
             tone="kedua"
-            onClick={() => { setDocumentOpen(true) }}
+            onClick={() => {
+              setDocumentOpen(true);
+            }}
             disabled={!uploadAvailable || editing === null || isDocumentOpen}
           >
             Upload Document
           </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -378,7 +395,9 @@ export function WorkshopPage() {
         <DocumentPanel
           workshop={editing}
           available={uploadAvailable}
-          onClose={() => { setDocumentOpen(false) }}
+          onClose={() => {
+            setDocumentOpen(false);
+          }}
         />
       )}
 
@@ -390,19 +409,19 @@ export function WorkshopPage() {
           <button
             key={t.id}
             type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => {
-              closeForm()
-              setTab(t.id)
+              closeForm();
+              setTab(t.id);
             }}
             className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+              "rounded-t px-3 py-2 text-sm font-medium",
+              "transition-colors duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
               tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:text-slate-800",
+            ].join(" ")}
           >
             {t.label}
           </button>
@@ -413,10 +432,12 @@ export function WorkshopPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
+        {active.description}{" "}
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -456,9 +477,8 @@ export function WorkshopPage() {
         />
       </section>
     </main>
-  )
+  );
 }
-
 
 /**
  * LoginCell menggambar kolom Login Aplikasi.
@@ -478,16 +498,16 @@ export function WorkshopPage() {
  * pada baris yang benar-benar memerlukannya, tanpa menambah kolom.
  */
 function LoginCell({ row }: { row: Workshop }) {
-  if (row.login_aplikasi !== '') {
-    return <span>{row.login_aplikasi}</span>
+  if (row.login_aplikasi !== "") {
+    return <span>{row.login_aplikasi}</span>;
   }
   if (!row.rekanan) {
-    return <span className="text-slate-400">—</span>
+    return <span className="text-slate-400">—</span>;
   }
   return (
     <span className="inline-flex flex-col">
       <span className="text-slate-400">—</span>
       <span className="text-xs text-amber-700">rekanan tanpa login</span>
     </span>
-  )
+  );
 }

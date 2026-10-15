@@ -1,18 +1,18 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { OutstandingPage } from './OutstandingPage'
+import { OutstandingPage } from "./OutstandingPage";
 import type {
   OutstandingClaim,
   OutstandingListResponse,
   OutstandingSummaryResponse,
-} from './types'
+} from "./types";
 
 /**
  * Data uji seluruhnya KARANGAN.
@@ -22,40 +22,42 @@ import type {
  */
 function claim(partial: Partial<OutstandingClaim> = {}): OutstandingClaim {
   return {
-    klaim_id: 'KLM-0001',
-    nomor_klaim: 'PNCN.26.0001',
-    nomor_polis: 'POL-FIRE-0001',
-    nama_tertanggung: 'PT Bumi Contoh Sentosa',
-    nama_bisnis: 'Fire',
-    sumber_bisnis: 'Broker',
-    nama_cabang: 'JKT',
-    group_panel: '006',
-    tanggal_pendaftaran: '2026-09-16',
-    tanggal_kejadian: '2026-09-08',
-    tanggal_lapor: '2026-09-10',
+    klaim_id: "KLM-0001",
+    nomor_klaim: "PNCN.26.0001",
+    nomor_polis: "POL-FIRE-0001",
+    nama_tertanggung: "PT Bumi Contoh Sentosa",
+    nama_bisnis: "Fire",
+    sumber_bisnis: "Broker",
+    nama_cabang: "JKT",
+    group_panel: "006",
+    tanggal_pendaftaran: "2026-09-16",
+    tanggal_kejadian: "2026-09-08",
+    tanggal_lapor: "2026-09-10",
     // Nilai `PYSTATUSWORK` sebagaimana benar-benar tersimpan — bukan 'BERJALAN', yang
     // berasal dari tabel yang sempat salah dipakai.
-    status_proses: 'New',
-    status_tampil: 'On Progress',
-    status_klaim: '1147',
-    pic_teknik: 'BUDISANTOSO',
-    admin_pnc: 'ADMINPNC',
+    status_proses: "New",
+    status_tampil: "On Progress",
+    status_klaim: "1147",
+    pic_teknik: "BUDISANTOSO",
+    admin_pnc: "ADMINPNC",
     umur_hari: 4,
     aging_hari: 2,
-    posisi_klaim: 'On Progress',
-    tahap_kini: 'Input Estimasi',
-    pemegang_tugas: 'BUDISANTOSO',
+    posisi_klaim: "On Progress",
+    tahap_kini: "Input Estimasi",
+    pemegang_tugas: "BUDISANTOSO",
     ...partial,
-  }
+  };
 }
 
-function listResponse(partial: Partial<OutstandingListResponse> = {}): OutstandingListResponse {
+function listResponse(
+  partial: Partial<OutstandingListResponse> = {},
+): OutstandingListResponse {
   return {
     klaim: [claim()],
     total: 1,
-    pemilik: 'ADMINPNC',
+    pemilik: "ADMINPNC",
     ...partial,
-  }
+  };
 }
 
 /**
@@ -76,57 +78,84 @@ function summaryResponse(
       // Urutannya disalin dari `statusOrder` di backend — "ALL Case" PALING DEPAN.
       // Stub yang urutannya dikarang sendiri akan membuat uji urutan di bawah lulus
       // terhadap dirinya sendiri, bukan terhadap yang benar-benar dikirim server.
-      { kode: 'semua', judul: 'ALL Case', jumlah: 1, dapat_dipilih: true },
-      { kode: 'lengkap', judul: 'Complete documents', jumlah: 0, dapat_dipilih: true },
-      { kode: 'belum-lengkap', judul: 'Documents not complete', jumlah: 1, dapat_dipilih: true },
-      { kode: 'temporary-close', judul: 'Temporary Close', jumlah: null, dapat_dipilih: false },
+      { kode: "semua", judul: "ALL Case", jumlah: 1, dapat_dipilih: true },
       {
-        kode: 'deadline-temporary-close',
-        judul: 'Deadline To Temporary Close',
+        kode: "lengkap",
+        judul: "Complete documents",
+        jumlah: 0,
+        dapat_dipilih: true,
+      },
+      {
+        kode: "belum-lengkap",
+        judul: "Documents not complete",
+        jumlah: 1,
+        dapat_dipilih: true,
+      },
+      {
+        kode: "temporary-close",
+        judul: "Temporary Close",
         jumlah: null,
         dapat_dipilih: false,
       },
-      { kode: 'loss-adjuster', judul: 'Loss Adjuster', jumlah: null, dapat_dipilih: false },
       {
-        kode: 'internal-surveyor',
-        judul: 'Internal Surveyor',
+        kode: "deadline-temporary-close",
+        judul: "Deadline To Temporary Close",
         jumlah: null,
         dapat_dipilih: false,
       },
-      { kode: 'komunikasi', judul: 'Communication', jumlah: null, dapat_dipilih: false },
-      { kode: 'tka', judul: 'TKA', jumlah: null, dapat_dipilih: false },
+      {
+        kode: "loss-adjuster",
+        judul: "Loss Adjuster",
+        jumlah: null,
+        dapat_dipilih: false,
+      },
+      {
+        kode: "internal-surveyor",
+        judul: "Internal Surveyor",
+        jumlah: null,
+        dapat_dipilih: false,
+      },
+      {
+        kode: "komunikasi",
+        judul: "Communication",
+        jumlah: null,
+        dapat_dipilih: false,
+      },
+      { kode: "tka", judul: "TKA", jumlah: null, dapat_dipilih: false },
     ],
     total: 1,
-    pemilik: 'ADMINPNC',
+    pemilik: "ADMINPNC",
     ...partial,
-  }
+  };
 }
 
-type Call = { url: string; init: RequestInit | undefined }
+type Call = { url: string; init: RequestInit | undefined };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
-function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promise<Response>) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
+function stubFetch(
+  answer: (url: string, init?: RequestInit) => Response | Promise<Response>,
+) {
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
 
     // `/ringkasan` dijawab di sini kecuali uji yang bersangkutan menjawabnya sendiri.
     //
     // Tanpa cabang ini, setiap uji harus mengingat untuk menjawab endpoint yang tidak
     // sedang diujinya — dan yang lupa tidak gagal dengan jelas, melainkan menjatuhkan
     // seluruh layar.
-    if (url.includes('/ringkasan')) {
-      return Promise.resolve(jsonResponse(200, summaryResponse()))
+    if (url.includes("/ringkasan")) {
+      return Promise.resolve(jsonResponse(200, summaryResponse()));
     }
-    return Promise.resolve(answer(url, init))
-  })
+    return Promise.resolve(answer(url, init));
+  });
 }
 
 function renderPage() {
@@ -134,7 +163,7 @@ function renderPage() {
   // tidak menunggu percobaan ulang.
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  })
+  });
 
   return render(
     <QueryClientProvider client={client}>
@@ -142,162 +171,180 @@ function renderPage() {
         <OutstandingPage />
       </MemoryRouter>
     </QueryClientProvider>,
-  )
+  );
 }
 
 beforeEach(() => {
-  calls = []
+  calls = [];
   useSession.setState({
-    token: 'token-uji',
+    token: "token-uji",
     user: null,
-    validUntil: '2026-09-20T12:00:00Z',
-  })
-  useSelectedPortal.setState({ alias: 'ASM' })
-})
+    validUntil: "2026-09-20T12:00:00Z",
+  });
+  useSelectedPortal.setState({ alias: "ASM" });
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-})
+  vi.unstubAllGlobals();
+});
 
 // Judul kolom mengikuti `Section/InboxRegister_Section-Section.xml` apa adanya (`D-13`).
 //
 // Uji ini menjaga kesetaraan itu: mengganti judul menjadi bahasa Indonesia akan lulus uji
 // lain tetapi membuat layar berbeda dari yang dikenal pengguna.
-it('memakai judul kolom yang sama dengan section rujukan', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("memakai judul kolom yang sama dengan section rujukan", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
+  await screen.findByText("PNCN.26.0001");
 
   for (const title of [
-    'Claim no',
-    'Policy no',
-    'Insured name',
-    'Business Name',
-    'Business source',
-    'Branch name',
-    'Admin name',
-    'Register Date',
-    'Date of loss',
-    'Total Aging',
-    'Aging',
-    'Claim status',
-    'Status ASM',
-    'ASM PIC',
+    "Claim no",
+    "Policy no",
+    "Insured name",
+    "Business Name",
+    "Business source",
+    "Branch name",
+    "Admin name",
+    "Register Date",
+    "Date of loss",
+    "Total Aging",
+    "Aging",
+    "Claim status",
+    "Status ASM",
+    "ASM PIC",
   ]) {
     // Nama dicocokkan PERSIS, bukan sebagian: "Aging" dan "Total Aging" adalah dua kolom
     // berbeda, dan pencocokan sebagian akan menemukan keduanya sekaligus.
-    expect(screen.getByRole('columnheader', { name: title })).toBeInTheDocument()
+    expect(
+      screen.getByRole("columnheader", { name: title }),
+    ).toBeInTheDocument();
   }
-})
+});
 
 // Kolom "Aging" yang belum terisi tampil sebagai tanda hubung, bukan "0".
 //
 // Keduanya berbeda: nol hari adalah angka yang diketahui, belum terisi bukan.
-it('membedakan Aging yang belum terisi dari nol hari', async () => {
+it("membedakan Aging yang belum terisi dari nol hari", async () => {
   stubFetch(() =>
     jsonResponse(
       200,
       listResponse({
-        klaim: [claim({ klaim_id: 'A', aging_hari: 0 }), claim({ klaim_id: 'B', aging_hari: null })],
+        klaim: [
+          claim({ klaim_id: "A", aging_hari: 0 }),
+          claim({ klaim_id: "B", aging_hari: null }),
+        ],
         total: 2,
       }),
     ),
-  )
-  renderPage()
+  );
+  renderPage();
 
-  expect(await screen.findByText('0 hari')).toBeInTheDocument()
-})
+  expect(await screen.findByText("0 hari")).toBeInTheDocument();
+});
 
-it('menampilkan isi kolom klaim', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menampilkan isi kolom klaim", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  expect(await screen.findByText('PNCN.26.0001')).toBeInTheDocument()
-  expect(screen.getByText('PT Bumi Contoh Sentosa')).toBeInTheDocument()
-  expect(screen.getByText('POL-FIRE-0001')).toBeInTheDocument()
+  expect(await screen.findByText("PNCN.26.0001")).toBeInTheDocument();
+  expect(screen.getByText("PT Bumi Contoh Sentosa")).toBeInTheDocument();
+  expect(screen.getByText("POL-FIRE-0001")).toBeInTheDocument();
   // ADMINPNC muncul DUA KALI: di kolom "Admin name" dan di keterangan pemilik daftar.
   // getByText akan gagal pada kecocokan ganda, dan itu bukan cacat yang diuji di sini.
-  expect(screen.getAllByText('ADMINPNC').length).toBeGreaterThan(0)
-  expect(screen.getByText('BUDISANTOSO')).toBeInTheDocument()
-  expect(screen.getByText('1147')).toBeInTheDocument()
-})
+  expect(screen.getAllByText("ADMINPNC").length).toBeGreaterThan(0);
+  expect(screen.getByText("BUDISANTOSO")).toBeInTheDocument();
+  expect(screen.getByText("1147")).toBeInTheDocument();
+});
 
 // "Status ASM" yang kosong adalah keadaan NYATA, bukan kasus tepi yang dikarang: baris
 // produksi yang diserahkan Work Owner tidak menyertakan kolom `STATUSLOCK_1` sama sekali.
 //
 // Sel yang benar-benar kosong membuat baris tampak rusak; ia dinyatakan dengan tanda hubung.
-it('menandai Status ASM yang tidak terisi, bukan membiarkan selnya kosong', async () => {
-  stubFetch(() => jsonResponse(200, listResponse({ klaim: [claim({ status_klaim: '' })] })))
-  renderPage()
+it("menandai Status ASM yang tidak terisi, bukan membiarkan selnya kosong", async () => {
+  stubFetch(() =>
+    jsonResponse(200, listResponse({ klaim: [claim({ status_klaim: "" })] })),
+  );
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
-  expect(screen.getByRole('cell', { name: '—' })).toBeInTheDocument()
-})
+  await screen.findByText("PNCN.26.0001");
+  expect(screen.getByRole("cell", { name: "—" })).toBeInTheDocument();
+});
 
-it('menampilkan sumber bisnis', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menampilkan sumber bisnis", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  expect(await screen.findByText('Broker')).toBeInTheDocument()
-})
+  expect(await screen.findByText("Broker")).toBeInTheDocument();
+});
 
-it('mengirim portal aktif pada setiap permintaan', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("mengirim portal aktif pada setiap permintaan", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
+  await screen.findByText("PNCN.26.0001");
 
-  const request = calls.find((c) => c.url.startsWith('/api/inbox-outstanding'))
-  expect(request).toBeDefined()
+  const request = calls.find((c) => c.url.startsWith("/api/inbox-outstanding"));
+  expect(request).toBeDefined();
 
-  const header = new Headers(request?.init?.headers)
-  expect(header.get('X-Portal')).toBe('ASM')
-})
+  const header = new Headers(request?.init?.headers);
+  expect(header.get("X-Portal")).toBe("ASM");
+});
 
 // Klaim yang belum lolos Input Register belum bernomor. Menampilkannya sebagai sel kosong
 // membuat layar tampak rusak; ia dinyatakan dengan kata-kata.
-it('menyatakan klaim yang belum bernomor, bukan membiarkannya kosong', async () => {
-  stubFetch(() => jsonResponse(200, listResponse({ klaim: [claim({ nomor_klaim: '' })] })))
-  renderPage()
+it("menyatakan klaim yang belum bernomor, bukan membiarkannya kosong", async () => {
+  stubFetch(() =>
+    jsonResponse(200, listResponse({ klaim: [claim({ nomor_klaim: "" })] })),
+  );
+  renderPage();
 
-  expect(await screen.findByText('belum bernomor')).toBeInTheDocument()
-})
+  expect(await screen.findByText("belum bernomor")).toBeInTheDocument();
+});
 
 // Klaim PNCN dibuka di halaman klaim registrasi lewat nomornya; klaim Pega tidak ditautkan
 // karena masih dikerjakan di Pega (`P-3`).
-it('menautkan klaim PNCN ke halaman klaimnya, tidak klaim Pega', async () => {
+it("menautkan klaim PNCN ke halaman klaimnya, tidak klaim Pega", async () => {
   stubFetch(() =>
     jsonResponse(
       200,
       listResponse({
-        klaim: [claim({ nomor_klaim: 'PNCN.26.0010' }), claim({ klaim_id: 'pega-1', nomor_klaim: 'PNC-1865' })],
+        klaim: [
+          claim({ nomor_klaim: "PNCN.26.0010" }),
+          claim({ klaim_id: "pega-1", nomor_klaim: "PNC-1865" }),
+        ],
       }),
     ),
-  )
-  renderPage()
+  );
+  renderPage();
 
-  const links = await screen.findAllByRole('link', { name: 'PNCN.26.0010' })
-  expect(links[0]).toHaveAttribute('href', '/registrasi/klaim/PNCN.26.0010')
-  expect(screen.queryByRole('link', { name: 'PNC-1865' })).not.toBeInTheDocument()
-  expect(screen.getAllByText('PNC-1865').length).toBeGreaterThan(0)
-})
+  const links = await screen.findAllByRole("link", { name: "PNCN.26.0010" });
+  expect(links[0]).toHaveAttribute("href", "/registrasi/klaim/PNCN.26.0010");
+  expect(
+    screen.queryByRole("link", { name: "PNC-1865" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getAllByText("PNC-1865").length).toBeGreaterThan(0);
+});
 
 // Pemegang tugas dan tahap TETAP diterima dari server, tetapi TIDAK ditampilkan sebagai
 // kolom — `Section/InboxRegister_Section-Section.xml` tidak punya kolomnya.
 //
 // Uji ini menjaga keputusan itu tetap disengaja. Tanpa uji, kolomnya mudah ditambahkan
 // kembali karena datanya memang ada di tangan.
-it('tidak menampilkan tahap maupun pemegang tugas sebagai kolom', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("tidak menampilkan tahap maupun pemegang tugas sebagai kolom", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
+  await screen.findByText("PNCN.26.0001");
 
-  expect(screen.queryByRole('columnheader', { name: /Tahap/ })).not.toBeInTheDocument()
-  expect(screen.queryByRole('columnheader', { name: /[Pp]emegang/ })).not.toBeInTheDocument()
-  expect(screen.queryByText('Input Estimasi')).not.toBeInTheDocument()
-})
+  expect(
+    screen.queryByRole("columnheader", { name: /Tahap/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("columnheader", { name: /[Pp]emegang/ }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("Input Estimasi")).not.toBeInTheDocument();
+});
 
 // Inilah uji yang menjaga janji terpenting layar ini.
 //
@@ -305,31 +352,35 @@ it('tidak menampilkan tahap maupun pemegang tugas sebagai kolom', async () => {
 // memang tidak ada pekerjaan, atau penyaringnya salah orang. Menyebut pemiliknya di layar
 // membedakan keduanya.
 it("menyatakan pekerjaan siapa yang ditampilkan", async () => {
-  stubFetch(() => jsonResponse(200, listResponse({ pemilik: "DEWILESTARI" })))
-  renderPage()
+  stubFetch(() => jsonResponse(200, listResponse({ pemilik: "DEWILESTARI" })));
+  renderPage();
 
-  expect(await screen.findByText(/Menampilkan pekerjaan milik/)).toBeInTheDocument()
-  expect(screen.getByText("DEWILESTARI")).toBeInTheDocument()
-})
-
+  expect(
+    await screen.findByText(/Menampilkan pekerjaan milik/),
+  ).toBeInTheDocument();
+  expect(screen.getByText("DEWILESTARI")).toBeInTheDocument();
+});
 
 // Pencarian dikerjakan SERVER. Bila ia dikerjakan di peramban, hasilnya hanya menyentuh
 // halaman yang sedang terbuka — dan pengguna diberi tahu bahwa klaimnya tidak ada padahal
 // ia ada di halaman lain.
-it('mengirim kata pencarian ke server, tidak menyaring di peramban', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("mengirim kata pencarian ke server, tidak menyaring di peramban", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
-  calls = []
+  await screen.findByText("PNCN.26.0001");
+  calls = [];
 
-  await userEvent.type(screen.getByRole('searchbox'), 'POL-FIRE')
+  await userEvent.type(
+    screen.getByRole("searchbox", { name: "Cari No Klaim / No Polis / PIC" }),
+    "POL-FIRE",
+  );
 
   await waitFor(() => {
-    const request = calls.find((c) => c.url.includes('cari='))
-    expect(request).toBeDefined()
-  })
-})
+    const request = calls.find((c) => c.url.includes("cari="));
+    expect(request).toBeDefined();
+  });
+});
 
 /**
  * Unduhan TIDAK membawa penyaring layar.
@@ -339,42 +390,43 @@ it('mengirim kata pencarian ke server, tidak menyaring di peramban', async () =>
  * dan header portal. Namanya menjanjikan hal yang tidak diujinya, dan hal itu sekarang
  * justru tidak lagi benar: backend mengabaikan penyaring layar pada unduhan.
  */
-it('meminta unduhan tanpa membawa penyaring layar', async () => {
+it("meminta unduhan tanpa membawa penyaring layar", async () => {
   stubFetch((url) => {
-    if (url.includes('/unduh')) {
-      return new Response('No Klaim\nPNCN.26.0001\n', {
+    if (url.includes("/unduh")) {
+      return new Response("No Klaim\nPNCN.26.0001\n", {
         status: 200,
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="inbox-outstanding-20260920.csv"',
+          "Content-Type": "text/csv",
+          "Content-Disposition":
+            'attachment; filename="inbox-outstanding-20260920.csv"',
         },
-      })
+      });
     }
-    return jsonResponse(200, listResponse())
-  })
+    return jsonResponse(200, listResponse());
+  });
 
   // jsdom tidak menyediakan keduanya; unduhan memakai objek URL untuk menyerahkan berkas
   // ke peramban.
-  vi.stubGlobal('URL', {
+  vi.stubGlobal("URL", {
     ...URL,
-    createObjectURL: vi.fn(() => 'blob:uji'),
+    createObjectURL: vi.fn(() => "blob:uji"),
     revokeObjectURL: vi.fn(),
-  })
+  });
 
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.click(screen.getByRole('button', { name: /Unduh CSV/ }))
+  await userEvent.click(screen.getByRole("button", { name: /Unduh CSV/ }));
 
   await waitFor(() => {
-    const request = calls.find((c) => c.url.includes('/unduh'))
-    expect(request).toBeDefined()
-    expect(new Headers(request?.init?.headers).get('X-Portal')).toBe('ASM')
-    expect(request?.url).not.toContain('cari=')
-    expect(request?.url).not.toContain('tahap=')
-    expect(request?.url).not.toContain('cabang=')
-  })
-})
+    const request = calls.find((c) => c.url.includes("/unduh"));
+    expect(request).toBeDefined();
+    expect(new Headers(request?.init?.headers).get("X-Portal")).toBe("ASM");
+    expect(request?.url).not.toContain("cari=");
+    expect(request?.url).not.toContain("tahap=");
+    expect(request?.url).not.toContain("cabang=");
+  });
+});
 
 /**
  * Tombol unduh tetap dapat ditekan meski daftarnya kosong.
@@ -386,66 +438,80 @@ it('meminta unduhan tanpa membawa penyaring layar', async () => {
  * Terbukti pada data ASM: seorang petugas berlini NONMBU dengan 0 pekerjaan di inbox tetap
  * mengunduh 354 baris.
  */
-it('tetap mengizinkan unduhan ketika daftar kosong', async () => {
+it("tetap mengizinkan unduhan ketika daftar kosong", async () => {
   stubFetch((url) => {
-    if (url.includes('/unduh')) {
-      return new Response('No Klaim\nPNCN.26.0009\n', {
+    if (url.includes("/unduh")) {
+      return new Response("No Klaim\nPNCN.26.0009\n", {
         status: 200,
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="inbox-outstanding-20260924.csv"',
+          "Content-Type": "text/csv",
+          "Content-Disposition":
+            'attachment; filename="inbox-outstanding-20260924.csv"',
         },
-      })
+      });
     }
-    return jsonResponse(200, { klaim: [], total: 0, pemilik: 'ADMINPNC' })
-  })
+    return jsonResponse(200, { klaim: [], total: 0, pemilik: "ADMINPNC" });
+  });
 
-  vi.stubGlobal('URL', {
+  vi.stubGlobal("URL", {
     ...URL,
-    createObjectURL: vi.fn(() => 'blob:uji'),
+    createObjectURL: vi.fn(() => "blob:uji"),
     revokeObjectURL: vi.fn(),
-  })
+  });
 
-  renderPage()
+  renderPage();
 
-  const tombol = await screen.findByRole('button', { name: /Unduh CSV/ })
-  expect(tombol).toBeEnabled()
+  const tombol = await screen.findByRole("button", { name: /Unduh CSV/ });
+  expect(tombol).toBeEnabled();
 
-  await userEvent.click(tombol)
+  await userEvent.click(tombol);
   await waitFor(() => {
-    expect(calls.find((c) => c.url.includes('/unduh'))).toBeDefined()
-  })
-})
+    expect(calls.find((c) => c.url.includes("/unduh"))).toBeDefined();
+  });
+});
 
-it('menuntun pengguna memilih entitas ketika portal belum dipilih', async () => {
-  useSelectedPortal.setState({ alias: null })
-  stubFetch(() => jsonResponse(200, listResponse()))
+it("menuntun pengguna memilih entitas ketika portal belum dipilih", async () => {
+  useSelectedPortal.setState({ alias: null });
+  stubFetch(() => jsonResponse(200, listResponse()));
 
-  renderPage()
+  renderPage();
 
-  expect(await screen.findByText('Pilih entitas lebih dulu')).toBeInTheDocument()
+  expect(
+    await screen.findByText("Pilih entitas lebih dulu"),
+  ).toBeInTheDocument();
 
   // Tidak ada permintaan yang ditembakkan: menembaknya hanya untuk menerima penolakan
   // adalah perjalanan jaringan yang sia-sia.
-  expect(calls.filter((c) => c.url.startsWith('/api/inbox-outstanding'))).toHaveLength(0)
-})
+  expect(
+    calls.filter((c) => c.url.startsWith("/api/inbox-outstanding")),
+  ).toHaveLength(0);
+});
 
-it('menampilkan pesan ketika daftar gagal dimuat', async () => {
+it("menampilkan pesan ketika daftar gagal dimuat", async () => {
   stubFetch(() =>
-    jsonResponse(500, { kode: 'galat_internal', pesan: 'Terjadi kesalahan pada sistem.' }),
-  )
-  renderPage()
+    jsonResponse(500, {
+      kode: "galat_internal",
+      pesan: "Terjadi kesalahan pada sistem.",
+    }),
+  );
+  renderPage();
 
-  expect(await screen.findByText('Daftar klaim tidak dapat dimuat')).toBeInTheDocument()
-})
+  expect(
+    await screen.findByText("Daftar klaim tidak dapat dimuat"),
+  ).toBeInTheDocument();
+});
 
-it('menyembunyikan paginasi ketika tidak ada klaim', async () => {
-  stubFetch(() => jsonResponse(200, listResponse({ klaim: [], total: 0 })))
-  renderPage()
+it("menyembunyikan paginasi ketika tidak ada klaim", async () => {
+  stubFetch(() => jsonResponse(200, listResponse({ klaim: [], total: 0 })));
+  renderPage();
 
-  expect(await screen.findByText('Tidak ada klaim yang masih berjalan.')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Berikutnya' })).not.toBeInTheDocument()
-})
+  expect(
+    await screen.findByText("Tidak ada klaim yang masih berjalan."),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Berikutnya" }),
+  ).not.toBeInTheDocument();
+});
 
 /**
  * Kesembilan tab digambar APA ADANYA sesuai urutan yang diterima dari server.
@@ -454,30 +520,30 @@ it('menyembunyikan paginasi ketika tidak ada klaim', async () => {
  * ikut menata ulang, dua tempat menentukan hal yang sama dan keduanya bisa menyimpang
  * tanpa satu pun galat.
  */
-it('menggambar kesembilan tab sesuai urutan dari server', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menggambar kesembilan tab sesuai urutan dari server", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole("tablist", { name: "Status dokumen" });
   const judul = within(tabs)
-    .getAllByRole('tab')
-    .map((b) => b.textContent?.replace(/\d+$/, '').trim())
+    .getAllByRole("tab")
+    .map((b) => b.textContent?.replace(/\d+$/, "").trim());
 
   // "ALL Case" PALING DEPAN — keputusan Work Owner 2026-10-05. Kedelapan sisanya tetap
   // berurutan seperti label tebal `Section/InboxRegister_Section-Section.xml`, supaya
   // yang sudah dihafal petugas tetap berdampingan.
   expect(judul).toEqual([
-    'ALL Case',
-    'Complete documents',
-    'Documents not complete',
-    'Temporary Close',
-    'Deadline To Temporary Close',
-    'Loss Adjuster',
-    'Internal Surveyor',
-    'Communication',
-    'TKA',
-  ])
-})
+    "ALL Case",
+    "Complete documents",
+    "Documents not complete",
+    "Temporary Close",
+    "Deadline To Temporary Close",
+    "Loss Adjuster",
+    "Internal Surveyor",
+    "Communication",
+    "TKA",
+  ]);
+});
 
 /**
  * Tab yang sumber datanya belum dimigrasikan TIDAK diberi lencana, dan tidak dapat
@@ -487,23 +553,25 @@ it('menggambar kesembilan tab sesuai urutan dari server', async () => {
  * "belum dihitung". Konvensi yang sama dipakai tab "Data rejected" pada Inbox Laporan
  * Klaim, dan dengan alasan yang sama.
  */
-it('tidak memberi lencana pada tab yang belum dapat dihitung', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("tidak memberi lencana pada tab yang belum dapat dihitung", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
-  const utils = within(tabs)
+  const tabs = await screen.findByRole("tablist", { name: "Status dokumen" });
+  const utils = within(tabs);
 
-  const lossAdjuster = utils.getByRole('tab', { name: 'Loss Adjuster, belum tersedia' })
-  expect(lossAdjuster).toBeDisabled()
+  const lossAdjuster = utils.getByRole("tab", {
+    name: "Loss Adjuster, belum tersedia",
+  });
+  expect(lossAdjuster).toBeDisabled();
   // Tidak ada angka menempel pada judulnya.
-  expect(lossAdjuster.textContent).toBe('Loss Adjuster')
+  expect(lossAdjuster.textContent).toBe("Loss Adjuster");
 
   // Yang terhitung justru punya angkanya.
   expect(
-    utils.getByRole('tab', { name: 'Documents not complete, 1 klaim' }),
-  ).toBeInTheDocument()
-})
+    utils.getByRole("tab", { name: "Documents not complete, 1 klaim" }),
+  ).toBeInTheDocument();
+});
 
 /**
  * Panel ringkasan TETAP TAMPIL meski inbox kosong.
@@ -513,63 +581,81 @@ it('tidak memberi lencana pada tab yang belum dapat dihitung', async () => {
  * membedakan "saya tidak punya pekerjaan" dari "fiturnya tidak ada". Persis kegagalan yang
  * sama dengan tombol Unduh yang dulu dimatikan saat daftar kosong.
  */
-it('tetap menampilkan panel ringkasan ketika inbox kosong', async () => {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
-    if (url.includes('/ringkasan')) {
+it("tetap menampilkan panel ringkasan ketika inbox kosong", async () => {
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    if (url.includes("/ringkasan")) {
       return Promise.resolve(
         jsonResponse(
           200,
           summaryResponse({
             status: [
-              { kode: 'lengkap', judul: 'Complete documents', jumlah: 0, dapat_dipilih: true },
               {
-                kode: 'belum-lengkap',
-                judul: 'Documents not complete',
+                kode: "lengkap",
+                judul: "Complete documents",
                 jumlah: 0,
                 dapat_dipilih: true,
               },
-              { kode: 'semua', judul: 'ALL Case', jumlah: 0, dapat_dipilih: true },
+              {
+                kode: "belum-lengkap",
+                judul: "Documents not complete",
+                jumlah: 0,
+                dapat_dipilih: true,
+              },
+              {
+                kode: "semua",
+                judul: "ALL Case",
+                jumlah: 0,
+                dapat_dipilih: true,
+              },
             ],
             total: 0,
           }),
         ),
-      )
+      );
     }
-    return Promise.resolve(jsonResponse(200, listResponse({ klaim: [], total: 0 })))
-  })
+    return Promise.resolve(
+      jsonResponse(200, listResponse({ klaim: [], total: 0 })),
+    );
+  });
 
-  renderPage()
+  renderPage();
 
-  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole("tablist", { name: "Status dokumen" });
 
   // Tabnya TETAP digambar, lengkap dengan lencana bernilai nol.
   //
   // Nol di sini BERARTI nol — ia dihitung, berbeda dari tab yang tidak punya lencana sama
   // sekali karena sumber datanya belum ada.
-  expect(within(tabs).getByRole('tab', { name: 'ALL Case, 0 klaim' })).toBeInTheDocument()
-  expect(within(tabs).getByRole('tab', { name: 'Complete documents, 0 klaim' })).toBeInTheDocument()
-})
+  expect(
+    within(tabs).getByRole("tab", { name: "ALL Case, 0 klaim" }),
+  ).toBeInTheDocument();
+  expect(
+    within(tabs).getByRole("tab", { name: "Complete documents, 0 klaim" }),
+  ).toBeInTheDocument();
+});
 
 /** Mengeklik satu status menyaring grid lewat parameter `status_dokumen`. */
-it('menyaring daftar saat satu status dokumen dipilih', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menyaring daftar saat satu status dokumen dipilih", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  const tabs = await screen.findByRole('tablist', { name: 'Status dokumen' })
+  const tabs = await screen.findByRole("tablist", { name: "Status dokumen" });
   await userEvent.click(
-    within(tabs).getByRole('tab', { name: 'Documents not complete, 1 klaim' }),
-  )
+    within(tabs).getByRole("tab", { name: "Documents not complete, 1 klaim" }),
+  );
 
   await waitFor(() => {
-    expect(calls.find((c) => c.url.includes('status_dokumen=belum-lengkap'))).toBeDefined()
-  })
+    expect(
+      calls.find((c) => c.url.includes("status_dokumen=belum-lengkap")),
+    ).toBeDefined();
+  });
 
   // Ringkasan TIDAK ikut disaring — seluruh irisan harus tetap terlihat supaya pilihannya
   // dapat dibatalkan. Tanpa ini, donut menyusut menjadi satu irisan begitu diklik dan
   // tidak ada jalan kembali selain memuat ulang halaman.
   const ringkasanTersaring = calls.find(
-    (c) => c.url.includes('/ringkasan') && c.url.includes('status_dokumen'),
-  )
-  expect(ringkasanTersaring).toBeUndefined()
-})
+    (c) => c.url.includes("/ringkasan") && c.url.includes("status_dokumen"),
+  );
+  expect(ringkasanTersaring).toBeUndefined();
+});

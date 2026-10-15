@@ -5,18 +5,18 @@ import {
   subModuleChecklist,
   toggleChecklist,
   type ChecklistItem,
-} from './api'
+} from "./api";
 
 type Props = {
   /** Isi kolom MODUL apa adanya. */
-  modul: string
+  modul: string;
   /** Isi kolom SUBMODUL apa adanya, termasuk koma di ujungnya. */
-  subModul: string
-  disabled?: boolean | undefined
+  subModul: string;
+  disabled?: boolean | undefined;
   /** Penanda unik supaya id kotak centang tidak bertabrakan antarbaris pada form Tambah. */
-  idPrefix: string
-  onChange: (change: { modul?: string; sub_modul?: string }) => void
-}
+  idPrefix: string;
+  onChange: (change: { modul?: string; sub_modul?: string }) => void;
+};
 
 /**
  * Isian MODUL dan SUB MODUL — berbentuk KOTAK CENTANG, sama seperti layar lama.
@@ -42,9 +42,15 @@ type Props = {
  * centang tersendiri bertanda "di luar daftar" — bukan disembunyikan. Menyembunyikannya
  * akan membuat baris itu kehilangan nilainya begitu disimpan ulang.
  */
-export function ModuleChecklist({ modul, subModul, disabled, idPrefix, onChange }: Props) {
-  const modulItem = moduleChecklist(modul)
-  const subItem = subModuleChecklist(subModul)
+export function ModuleChecklist({
+  modul,
+  subModul,
+  disabled,
+  idPrefix,
+  onChange,
+}: Props) {
+  const modulItem = moduleChecklist(modul);
+  const subItem = subModuleChecklist(subModul);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -54,7 +60,9 @@ export function ModuleChecklist({ modul, subModul, disabled, idPrefix, onChange 
         item={modulItem}
         disabled={disabled}
         onToggle={(nilai, checked) =>
-          onChange({ modul: toggleChecklist(modulItem, nilai, checked, joinModules) })
+          onChange({
+            modul: toggleChecklist(modulItem, nilai, checked, joinModules),
+          })
         }
       />
       <ChecklistGroup
@@ -63,11 +71,13 @@ export function ModuleChecklist({ modul, subModul, disabled, idPrefix, onChange 
         item={subItem}
         disabled={disabled}
         onToggle={(nilai, checked) =>
-          onChange({ sub_modul: toggleChecklist(subItem, nilai, checked, joinSubModules) })
+          onChange({
+            sub_modul: toggleChecklist(subItem, nilai, checked, joinSubModules),
+          })
         }
       />
     </div>
-  )
+  );
 }
 
 function ChecklistGroup({
@@ -77,24 +87,26 @@ function ChecklistGroup({
   disabled,
   onToggle,
 }: {
-  title: string
-  idPrefix: string
-  item: ChecklistItem[]
-  disabled?: boolean | undefined
-  onToggle: (nilai: string, checked: boolean) => void
+  title: string;
+  idPrefix: string;
+  item: ChecklistItem[];
+  disabled?: boolean | undefined;
+  onToggle: (nilai: string, checked: boolean) => void;
 }) {
   return (
     <fieldset>
       <legend className="text-sm font-medium text-slate-700">{title}</legend>
       <div className="mt-1.5 space-y-1.5">
         {item.map((row) => {
-          const id = `${idPrefix}-${row.nilai.replace(/\s+/g, '-')}`
+          const id = `${idPrefix}-${row.nilai.replace(/\s+/g, "-")}`;
           return (
             <label
               key={row.nilai}
               htmlFor={id}
               className={`flex items-center gap-2 text-sm ${
-                disabled ? 'cursor-not-allowed text-slate-400' : 'cursor-pointer text-slate-700'
+                disabled
+                  ? "cursor-not-allowed text-slate-400"
+                  : "cursor-pointer text-slate-700"
               }`}
             >
               <input
@@ -112,9 +124,9 @@ function ChecklistGroup({
                 </span>
               )}
             </label>
-          )
+          );
         })}
       </div>
     </fieldset>
-  )
+  );
 }

@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import type { MenuListResponse } from '@/api/types'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import type { MenuListResponse } from "@/api/types";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/menu'
+const ROUTE = "/api/menu";
 
 /**
  * Hook peta menu pengguna.
@@ -30,12 +30,12 @@ const ROUTE = '/api/menu'
  * permintaan; yang tertunda hanyalah tampilan menunya.
  */
 export function useMenu() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
-    queryKey: ['menu', token],
+    queryKey: ["menu", token],
     queryFn: () => callAPI<MenuListResponse>(ROUTE, { token }),
     enabled: token !== null,
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }

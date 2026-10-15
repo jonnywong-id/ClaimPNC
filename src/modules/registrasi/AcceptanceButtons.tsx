@@ -1,13 +1,25 @@
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useState } from "react";
 
-import { APIError, simpanBerkas } from '@/api/client'
+import { APIError, simpanBerkas } from "@/api/client";
 
-import { DateInput } from '@/components/DateField'
-import { centsToRupiah, formatDateTimeWIB, rupiahToCents } from '@/components/format'
+import { DateInput } from "@/components/DateField";
+import {
+  centsToRupiah,
+  formatDateTimeWIB,
+  rupiahToCents,
+} from "@/components/format";
 
-import { type LODType, useAcceptSettlement, useAcceptanceDefaults, useDocuments, useLODTypes, usePrintLOD, violationsFrom } from './api'
-import { DLADialog } from './DLADialog'
-import { PaymentType, type Receiver, type Settlement } from './types'
+import {
+  type LODType,
+  useAcceptSettlement,
+  useAcceptanceDefaults,
+  useDocuments,
+  useLODTypes,
+  usePrintLOD,
+  violationsFrom,
+} from "./api";
+import { DLADialog } from "./DLADialog";
+import { PaymentType, type Receiver, type Settlement } from "./types";
 
 /**
  * Tombol kolom Akseptasi grid Adjustment — Print LOD, Persetujuan / Akseptasi, Print DLA
@@ -56,24 +68,24 @@ export function AcceptanceButtons({
   receivers,
   cells = false,
 }: {
-  claimID: string
-  taskID: string
+  claimID: string;
+  taskID: string;
   /** Objek, jaminan, dan adjustment berbasis 1. */
-  object: number
-  coverage: number
-  adjustment: number
-  line: Settlement
-  groupPanel: string
-  businessType: string
-  receivers: Receiver[]
+  object: number;
+  coverage: number;
+  adjustment: number;
+  line: Settlement;
+  groupPanel: string;
+  businessType: string;
+  receivers: Receiver[];
   /**
    * Tiga sel grid seperti `ShowAdjustment_sect`: Print LOD · Persetujuan / Akseptasi (kolom
    * Akseptasi) · Print DLA atau Print Pre DLA (`PNCTombolDLA_sect`).
    */
-  cells?: boolean
+  cells?: boolean;
 }) {
-  const [open, setOpen] = useState<'lod' | 'accept' | 'dla' | null>(null)
-  const rules = acceptanceRules(line, groupPanel, businessType)
+  const [open, setOpen] = useState<"lod" | "accept" | "dla" | null>(null);
+  const rules = acceptanceRules(line, groupPanel, businessType);
   if (!rules.visible) {
     return cells ? (
       <>
@@ -81,17 +93,33 @@ export function AcceptanceButtons({
         <td className="p-2" />
         <td className="p-2" />
       </>
-    ) : null
+    ) : null;
   }
 
-  const address = { tugas_id: taskID, objek: object, jaminan: coverage, adjustment }
+  const address = {
+    tugas_id: taskID,
+    objek: object,
+    jaminan: coverage,
+    adjustment,
+  };
   const dialogs = (
     <>
-      {open === 'lod' && (
-        <PrintLODDialog claimID={claimID} address={address} initialType={line.tipe_pdf_lod ?? ''} onClose={() => setOpen(null)} />
+      {open === "lod" && (
+        <PrintLODDialog
+          claimID={claimID}
+          address={address}
+          initialType={line.tipe_pdf_lod ?? ""}
+          onClose={() => setOpen(null)}
+        />
       )}
-      {open === 'dla' && <DLADialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
-      {open === 'accept' && (
+      {open === "dla" && (
+        <DLADialog
+          claimID={claimID}
+          address={address}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === "accept" && (
         <AcceptationForm
           claimID={claimID}
           address={address}
@@ -102,54 +130,86 @@ export function AcceptanceButtons({
         />
       )}
     </>
-  )
+  );
 
   if (cells) {
     // PNCTombolDLA_sect: Print Pre DLA bila `.AcceptanceStatus == '1' && .AcceptationStatusLOD == ''`,
     // Print DLA bila `.AcceptationStatusLOD != ''`.
-    const preDLA = (line.status_akseptasi_lod ?? '').trim() === ''
+    const preDLA = (line.status_akseptasi_lod ?? "").trim() === "";
     return (
       <>
         <td className="p-2 text-center">
-          <ActionButton label="Print LOD" disabled={rules.printLODDisabled} onClick={() => setOpen('lod')} />
+          <ActionButton
+            label="Print LOD"
+            disabled={rules.printLODDisabled}
+            onClick={() => setOpen("lod")}
+          />
         </td>
         <td className="p-2 text-center">
-          <ActionButton label="Persetujuan / Akseptasi" disabled={rules.acceptDisabled} onClick={() => setOpen('accept')} />
+          <ActionButton
+            label="Persetujuan / Akseptasi"
+            disabled={rules.acceptDisabled}
+            onClick={() => setOpen("accept")}
+          />
           {dialogs}
         </td>
         <td className="p-2 text-center">
           {preDLA ? (
             // Local action PrintPreDLA belum dibangun di layar ini (tersedia di Inbox PLA/DLA/Pre DLA).
-            <ActionButton label="Print Pre DLA" disabled title="Print Pre DLA tersedia di Inbox PLA / DLA / Pre DLA." onClick={() => {}} />
+            <ActionButton
+              label="Print Pre DLA"
+              disabled
+              title="Print Pre DLA tersedia di Inbox PLA / DLA / Pre DLA."
+              onClick={() => {}}
+            />
           ) : (
-            <ActionButton label="Print DLA" disabled={rules.printDLADisabled} onClick={() => setOpen('dla')} />
+            <ActionButton
+              label="Print DLA"
+              disabled={rules.printDLADisabled}
+              onClick={() => setOpen("dla")}
+            />
           )}
         </td>
       </>
-    )
+    );
   }
 
   return (
     <div className="space-y-1">
       {/* Satu baris, tidak dilipat: Print DLA selalu di kanan Persetujuan / Akseptasi. */}
       <div className="flex flex-nowrap items-center gap-2">
-        <ActionButton label="Print LOD" disabled={rules.printLODDisabled} onClick={() => setOpen('lod')} />
+        <ActionButton
+          label="Print LOD"
+          disabled={rules.printLODDisabled}
+          onClick={() => setOpen("lod")}
+        />
         <ActionButton
           label="Persetujuan / Akseptasi"
           disabled={rules.acceptDisabled}
-          onClick={() => setOpen('accept')}
+          onClick={() => setOpen("accept")}
         />
         <ActionButton
           label="Print DLA"
           disabled={rules.printDLADisabled}
-          onClick={() => setOpen('dla')}
+          onClick={() => setOpen("dla")}
         />
       </div>
-      {open === 'lod' && (
-        <PrintLODDialog claimID={claimID} address={address} initialType={line.tipe_pdf_lod ?? ''} onClose={() => setOpen(null)} />
+      {open === "lod" && (
+        <PrintLODDialog
+          claimID={claimID}
+          address={address}
+          initialType={line.tipe_pdf_lod ?? ""}
+          onClose={() => setOpen(null)}
+        />
       )}
-      {open === 'dla' && <DLADialog claimID={claimID} address={address} onClose={() => setOpen(null)} />}
-      {open === 'accept' && (
+      {open === "dla" && (
+        <DLADialog
+          claimID={claimID}
+          address={address}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open === "accept" && (
         <AcceptationForm
           claimID={claimID}
           address={address}
@@ -160,10 +220,20 @@ export function AcceptanceButtons({
         />
       )}
     </div>
-  )
+  );
 }
 
-function ActionButton({ label, disabled, onClick, title }: { label: string; disabled: boolean; onClick: () => void; title?: string }) {
+function ActionButton({
+  label,
+  disabled,
+  onClick,
+  title,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
   return (
     <button
       type="button"
@@ -174,14 +244,15 @@ function ActionButton({ label, disabled, onClick, title }: { label: string; disa
     >
       {label}
     </button>
-  )
+  );
 }
 
 function failureText(failure: unknown): string {
-  const violations = violationsFrom(failure)
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof APIError || failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  const violations = violationsFrom(failure);
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(" ");
+  if (failure instanceof APIError || failure instanceof Error)
+    return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }
 
 /**
@@ -196,21 +267,21 @@ function Popup({
   children,
   wide = false,
 }: {
-  title: string
-  titleID: string
-  busy: boolean
-  onClose: () => void
-  children: ReactNode
+  title: string;
+  titleID: string;
+  busy: boolean;
+  onClose: () => void;
+  children: ReactNode;
   /** Lebar modal AcceptationLOD, yang memuat dua kolom Remark | Berita Acara. */
-  wide?: boolean
+  wide?: boolean;
 }) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === "Escape" && !busy) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
 
   return (
     <div
@@ -219,14 +290,16 @@ function Popup({
       aria-modal="true"
       aria-labelledby={titleID}
     >
-      <div className={`max-h-full w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} space-y-3 overflow-y-auto rounded-kartu bg-white p-6 text-xs text-slate-700 shadow-angkat`}>
+      <div
+        className={`max-h-full w-full ${wide ? "max-w-3xl" : "max-w-xl"} space-y-3 overflow-y-auto rounded-kartu bg-white p-6 text-xs text-slate-700 shadow-angkat`}
+      >
         <h2 id={titleID} className="text-lg font-semibold text-slate-900">
           {title}
         </h2>
         {children}
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -240,37 +313,47 @@ function PrintLODDialog({
   initialType,
   onClose,
 }: {
-  claimID: string
-  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
+  claimID: string;
+  address: {
+    tugas_id: string;
+    objek: number;
+    jaminan: number;
+    adjustment: number;
+  };
   /** Tipe LOD yang dipilih pada dropdown kolom Adjustment (PDFTYPE); kosong bila belum. */
-  initialType: string
-  onClose: () => void
+  initialType: string;
+  onClose: () => void;
 }) {
-  const types = useLODTypes(claimID)
-  const print = usePrintLOD(claimID)
-  const [choice, setChoice] = useState(initialType)
-  const [email, setEmail] = useState('')
-  const [insured, setInsured] = useState('')
-  const [note, setNote] = useState('')
-  const load = types.mutate
-  const { tugas_id, objek, jaminan, adjustment } = address
+  const types = useLODTypes(claimID);
+  const print = usePrintLOD(claimID);
+  const [choice, setChoice] = useState(initialType);
+  const [email, setEmail] = useState("");
+  const [insured, setInsured] = useState("");
+  const [note, setNote] = useState("");
+  const load = types.mutate;
+  const { tugas_id, objek, jaminan, adjustment } = address;
 
   useEffect(() => {
     load(
       { tugas_id, objek, jaminan, adjustment },
       {
         onSuccess: (dialog) => {
-          setEmail(dialog.email_lod)
-          setInsured(dialog.nama_tertanggung)
+          setEmail(dialog.email_lod);
+          setInsured(dialog.nama_tertanggung);
         },
       },
-    )
-  }, [load, tugas_id, objek, jaminan, adjustment])
-  const list: LODType[] = types.data?.tipe ?? []
-  const chosen = list.find((t) => t.id === choice)
+    );
+  }, [load, tugas_id, objek, jaminan, adjustment]);
+  const list: LODType[] = types.data?.tipe ?? [];
+  const chosen = list.find((t) => t.id === choice);
 
   return (
-    <Popup title="Email LOD" titleID="judul-email-lod" busy={print.isPending} onClose={onClose}>
+    <Popup
+      title="Email LOD"
+      titleID="judul-email-lod"
+      busy={print.isPending}
+      onClose={onClose}
+    >
       {types.isPending && <p className="text-xs text-slate-500">Memuat…</p>}
       {types.isError && (
         <p role="alert" className="text-xs text-red-700">
@@ -298,22 +381,38 @@ function PrintLODDialog({
         <>
           <label className="block text-xs text-slate-700">
             Email LOD
-            <textarea value={email} onChange={(e) => setEmail(e.target.value)} rows={2} className={field} />
+            <textarea
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              rows={2}
+              className={field}
+            />
           </label>
           {/* Nama Tertanggung tampil bila GroupPanel != 002; Print LOD sendiri mati untuk PA. */}
           <label className="block text-xs text-slate-700">
             Nama Tertanggung
-            <textarea value={insured} onChange={(e) => setInsured(e.target.value)} rows={2} className={field} />
+            <textarea
+              value={insured}
+              onChange={(e) => setInsured(e.target.value)}
+              rows={2}
+              className={field}
+            />
           </label>
           <label className="block text-xs text-slate-700">
             Catatan
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={field} />
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              className={field}
+            />
           </label>
         </>
       )}
       {chosen && !chosen.tersedia && (
         <p role="status" className="text-xs text-amber-700">
-          The template for this LOD type is not available yet: no sample PDF has been provided.
+          The template for this LOD type is not available yet: no sample PDF has
+          been provided.
         </p>
       )}
       {print.isSuccess && (
@@ -331,11 +430,14 @@ function PrintLODDialog({
           type="button"
           disabled={!chosen?.tersedia || print.isPending}
           onClick={() =>
-            print.mutate({ ...address, tipe_pdf: choice }, { onSuccess: (file) => simpanBerkas(file) })
+            print.mutate(
+              { ...address, tipe_pdf: choice },
+              { onSuccess: (file) => simpanBerkas(file) },
+            )
           }
           className="rounded bg-blue-600 px-3 py-1 text-xs text-white disabled:opacity-60"
         >
-          {print.isPending ? 'Mencetak…' : 'Print LOD'}
+          {print.isPending ? "Mencetak…" : "Print LOD"}
         </button>
         <button
           type="button"
@@ -345,15 +447,20 @@ function PrintLODDialog({
         >
           Send Email
         </button>
-        <button type="button" onClick={onClose} className="rounded border border-slate-300 px-3 py-1 text-xs">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded border border-slate-300 px-3 py-1 text-xs"
+        >
           Cancel
         </button>
       </div>
     </Popup>
-  )
+  );
 }
 
-const field = 'mt-1 block w-full rounded border border-slate-300 px-2 py-1 text-sm'
+const field =
+  "mt-1 block w-full rounded border border-slate-300 px-2 py-1 text-sm";
 
 /**
  * Form `Section/AcceptationLOD_Sect.xml` (versi 01-03-13) dalam modal flow action
@@ -384,59 +491,71 @@ function AcceptationForm({
   receivers,
   onClose,
 }: {
-  claimID: string
-  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number }
-  line: Settlement
-  groupPanel: string
-  receivers: Receiver[]
-  onClose: () => void
+  claimID: string;
+  address: {
+    tugas_id: string;
+    objek: number;
+    jaminan: number;
+    adjustment: number;
+  };
+  line: Settlement;
+  groupPanel: string;
+  receivers: Receiver[];
+  onClose: () => void;
 }) {
-  const travel = groupPanel === '005'
+  const travel = groupPanel === "005";
   // When IsNonMbu: Group Panel 003 / 004 / 006 / 009.
-  const nonMBU = ['003', '004', '006', '009'].includes(groupPanel)
-  const save = useAcceptSettlement(claimID)
-  const documents = useDocuments(claimID)
-  const defaults = useAcceptanceDefaults(claimID, address)
+  const nonMBU = ["003", "004", "006", "009"].includes(groupPanel);
+  const save = useAcceptSettlement(claimID);
+  const documents = useDocuments(claimID);
+  const defaults = useAcceptanceDefaults(claimID, address);
   const [form, setForm] = useState({
-    tipe: '',
-    persetujuan: '',
-    tanggalTerimaLOD: '',
-    tanggalBolehBayar: '',
-    nilaiLOD: '',
-    penerima: '',
-    komite: '',
-    remark: '',
-    beritaAcara: '',
-  })
-  const [files, setFiles] = useState<{ berkas: File | null; jenisDokumen: string }[]>([])
+    tipe: "",
+    persetujuan: "",
+    tanggalTerimaLOD: "",
+    tanggalBolehBayar: "",
+    nilaiLOD: "",
+    penerima: "",
+    komite: "",
+    remark: "",
+    beritaAcara: "",
+  });
+  const [files, setFiles] = useState<
+    { berkas: File | null; jenisDokumen: string }[]
+  >([]);
 
   // AcceptationLOD_PreAct: Tipe Akseptasi, Nama Komite Akseptasi, dan Nilai LOD sudah terisi
   // saat form dibuka. Diisi sekali, dan hanya isian yang masih kosong — isian yang sudah
   // diubah petugas tidak ditimpa.
-  const initial = defaults.data
+  const initial = defaults.data;
   useEffect(() => {
-    if (!initial) return
+    if (!initial) return;
     setForm((f) => ({
       ...f,
       tipe: f.tipe || initial.tipe_akseptasi,
       komite: f.komite || initial.nama_komite_akseptasi,
-      nilaiLOD: f.nilaiLOD || (initial.nilai_lod_sen !== undefined ? centsToRupiah(initial.nilai_lod_sen) : ''),
-    }))
-  }, [initial])
-  const [invalid, setInvalid] = useState<string | null>(null)
+      nilaiLOD:
+        f.nilaiLOD ||
+        (initial.nilai_lod_sen !== undefined
+          ? centsToRupiah(initial.nilai_lod_sen)
+          : ""),
+    }));
+  }, [initial]);
+  const [invalid, setInvalid] = useState<string | null>(null);
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
-    setForm({ ...form, [key]: e.target.value })
+    setForm({ ...form, [key]: e.target.value });
   const types = (documents.data?.kategori ?? []).flatMap((k) =>
     k.dokumen.map((d) => ({ id: d.id, nama: `${k.nama} — ${d.nama}` })),
-  )
+  );
 
   const submit = () => {
-    const cents = form.nilaiLOD.trim() === '' ? undefined : rupiahToCents(form.nilaiLOD)
+    const cents =
+      form.nilaiLOD.trim() === "" ? undefined : rupiahToCents(form.nilaiLOD);
     if (cents !== undefined && Number.isNaN(cents)) {
-      setInvalid('Nilai LOD is not a valid amount.')
-      return
+      setInvalid("Nilai LOD is not a valid amount.");
+      return;
     }
-    setInvalid(null)
+    setInvalid(null);
     save.mutate(
       {
         isian: {
@@ -451,26 +570,38 @@ function AcceptationForm({
           catatan_penerima: form.remark,
           berita_acara: form.beritaAcara,
         },
-        berkas: files.flatMap((f) => (f.berkas ? [{ berkas: f.berkas, jenisDokumen: f.jenisDokumen }] : [])),
+        berkas: files.flatMap((f) =>
+          f.berkas ? [{ berkas: f.berkas, jenisDokumen: f.jenisDokumen }] : [],
+        ),
       },
       { onSuccess: onClose },
-    )
-  }
+    );
+  };
 
-  const caption = 'block text-xs font-semibold text-slate-800'
-  const required = <span className="text-amber-600"> *</span>
+  const caption = "block text-xs font-semibold text-slate-800";
+  const required = <span className="text-amber-600"> *</span>;
 
   return (
-    <Popup title="AcceptationLOD" titleID="judul-akseptasi-lod" busy={save.isPending} onClose={onClose} wide>
+    <Popup
+      title="AcceptationLOD"
+      titleID="judul-akseptasi-lod"
+      busy={save.isPending}
+      onClose={onClose}
+      wide
+    >
       <div className="space-y-3">
         {(defaults.data?.peringatan ?? []).map((w) => (
-          <p key={w} role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p
+            key={w}
+            role="alert"
+            className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
             {w}
           </p>
         ))}
         <label className={caption}>
           Tipe Akseptasi Klaim
-          <select value={form.tipe} onChange={set('tipe')} className={field}>
+          <select value={form.tipe} onChange={set("tipe")} className={field}>
             <option value="">-- Pilih --</option>
             {(defaults.data?.pilihan_tipe_akseptasi ?? []).map((o) => (
               <option key={o.id} value={o.id}>
@@ -481,21 +612,33 @@ function AcceptationForm({
         </label>
         <div>
           <span className={caption}>Tipe PDF</span>
-          <p className="text-sm text-slate-900">{line.nama_tipe_pdf_lod || '—'}</p>
+          <p className="text-sm text-slate-900">
+            {line.nama_tipe_pdf_lod || "—"}
+          </p>
         </div>
         <div>
           <span className={caption}>Tanggal Cetak LOD</span>
-          <p className="text-sm text-slate-900">{formatDateTimeWIB(line.tanggal_cetak_lod) || '—'}</p>
+          <p className="text-sm text-slate-900">
+            {formatDateTimeWIB(line.tanggal_cetak_lod) || "—"}
+          </p>
         </div>
         {!travel && (
           <>
             <label className={caption}>
               Tanggal Terima LOD{required}
-              <DateInput value={form.tanggalTerimaLOD} onChange={(v) => setForm({ ...form, tanggalTerimaLOD: v })} className={field} />
+              <DateInput
+                value={form.tanggalTerimaLOD}
+                onChange={(v) => setForm({ ...form, tanggalTerimaLOD: v })}
+                className={field}
+              />
             </label>
             <label className={caption}>
               Tanggal Boleh Bayar{required}
-              <DateInput value={form.tanggalBolehBayar} onChange={(v) => setForm({ ...form, tanggalBolehBayar: v })} className={field} />
+              <DateInput
+                value={form.tanggalBolehBayar}
+                onChange={(v) => setForm({ ...form, tanggalBolehBayar: v })}
+                className={field}
+              />
             </label>
           </>
         )}
@@ -505,8 +648,8 @@ function AcceptationForm({
             {/* Nilai `.AcceptationStatusLOD` di data: 1 dan 0 (STATUSAKSEPTASILOD); label
                 mengikuti tampilan Pega — rule property-nya tidak ada di export. */}
             {[
-              ['1', 'Setuju'],
-              ['0', 'Tidak Setuju'],
+              ["1", "Setuju"],
+              ["0", "Tidak Setuju"],
             ].map(([value, label]) => (
               <label key={value} className="flex items-center gap-1">
                 <input
@@ -514,7 +657,7 @@ function AcceptationForm({
                   name="persetujuan"
                   value={value}
                   checked={form.persetujuan === value}
-                  onChange={set('persetujuan')}
+                  onChange={set("persetujuan")}
                 />
                 {label}
               </label>
@@ -524,12 +667,21 @@ function AcceptationForm({
         {nonMBU && (
           <label className={caption}>
             Nilai LOD{required}
-            <input inputMode="decimal" value={form.nilaiLOD} onChange={set('nilaiLOD')} className={field} />
+            <input
+              inputMode="decimal"
+              value={form.nilaiLOD}
+              onChange={set("nilaiLOD")}
+              className={field}
+            />
           </label>
         )}
         <label className={caption}>
-          Penerima Klaim{form.persetujuan === '1' && required}
-          <select value={form.penerima} onChange={set('penerima')} className={field}>
+          Penerima Klaim{form.persetujuan === "1" && required}
+          <select
+            value={form.penerima}
+            onChange={set("penerima")}
+            className={field}
+          >
             <option value="">-- Pilih --</option>
             {receivers.map((r) => (
               <option key={r.id} value={r.id}>
@@ -541,31 +693,51 @@ function AcceptationForm({
         {!travel && (
           <label className={caption}>
             Nama Komite Akseptasi
-            <input value={form.komite} onChange={set('komite')} className={field} />
+            <input
+              value={form.komite}
+              onChange={set("komite")}
+              className={field}
+            />
           </label>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           {!travel && (
             <label className={caption}>
               Remark
-              <textarea value={form.remark} onChange={set('remark')} rows={4} className={field} />
+              <textarea
+                value={form.remark}
+                onChange={set("remark")}
+                rows={4}
+                className={field}
+              />
             </label>
           )}
           <label className={caption}>
             Berita Acara
-            <textarea value={form.beritaAcara} onChange={set('beritaAcara')} rows={4} className={field} />
+            <textarea
+              value={form.beritaAcara}
+              onChange={set("beritaAcara")}
+              rows={4}
+              className={field}
+            />
           </label>
         </div>
         {!travel && (
           <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-slate-900">Unggah Dokumen Persetujuan LOD</legend>
+            <legend className="text-sm font-semibold text-slate-900">
+              Unggah Dokumen Persetujuan LOD
+            </legend>
             {files.map((f, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <select
                   aria-label={`Jenis dokumen ${i + 1}`}
                   value={f.jenisDokumen}
                   onChange={(e) =>
-                    setFiles(files.map((x, j) => (j === i ? { ...x, jenisDokumen: e.target.value } : x)))
+                    setFiles(
+                      files.map((x, j) =>
+                        j === i ? { ...x, jenisDokumen: e.target.value } : x,
+                      ),
+                    )
                   }
                   className="rounded border border-slate-300 px-2 py-1"
                 >
@@ -580,11 +752,19 @@ function AcceptationForm({
                   type="file"
                   aria-label={`Berkas ${i + 1}`}
                   onChange={(e) => {
-                    const picked = e.target.files?.[0] ?? null
-                    setFiles(files.map((x, j) => (j === i ? { ...x, berkas: picked } : x)))
+                    const picked = e.target.files?.[0] ?? null;
+                    setFiles(
+                      files.map((x, j) =>
+                        j === i ? { ...x, berkas: picked } : x,
+                      ),
+                    );
                   }}
                 />
-                <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-red-700">
+                <button
+                  type="button"
+                  onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                  className="text-red-700"
+                >
                   Hapus
                 </button>
               </div>
@@ -592,7 +772,9 @@ function AcceptationForm({
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setFiles([...files, { berkas: null, jenisDokumen: '' }])}
+                onClick={() =>
+                  setFiles([...files, { berkas: null, jenisDokumen: "" }])
+                }
                 className="rounded border border-blue-500 px-2 py-0.5 text-blue-700"
               >
                 Select file(s)
@@ -626,19 +808,19 @@ function AcceptationForm({
           onClick={submit}
           className="rounded bg-orange-500 px-6 py-1.5 text-sm text-white disabled:opacity-60"
         >
-          {save.isPending ? 'Menyimpan…' : 'Submit'}
+          {save.isPending ? "Menyimpan…" : "Submit"}
         </button>
       </div>
     </Popup>
-  )
+  );
 }
 
 export type AcceptanceRules = {
-  visible: boolean
-  printLODDisabled: boolean
-  acceptDisabled: boolean
-  printDLADisabled: boolean
-}
+  visible: boolean;
+  printLODDisabled: boolean;
+  acceptDisabled: boolean;
+  printDLADisabled: boolean;
+};
 
 /** Aturan tampil/mati ketiga tombol — lihat komentar AcceptanceButtons. */
 export function acceptanceRules(
@@ -646,22 +828,22 @@ export function acceptanceRules(
   groupPanel: string,
   businessType: string,
 ): AcceptanceRules {
-  const status = (line.status_akseptasi ?? '').trim()
-  const lod = (line.status_akseptasi_lod ?? '').trim()
-  const accepted = (line.nomor_akseptasi ?? '').trim()
-  const type = (line.tipe_pembayaran ?? '').trim()
-  const bonding = businessType === 'Bonding' || businessType === 'BondingKBG'
+  const status = (line.status_akseptasi ?? "").trim();
+  const lod = (line.status_akseptasi_lod ?? "").trim();
+  const accepted = (line.nomor_akseptasi ?? "").trim();
+  const type = (line.tipe_pembayaran ?? "").trim();
+  const bonding = businessType === "Bonding" || businessType === "BondingKBG";
 
   return {
-    visible: status === '1',
+    visible: status === "1",
     printLODDisabled:
-      lod !== '' ||
+      lod !== "" ||
       bonding ||
-      groupPanel === '002' ||
-      groupPanel === '005' ||
+      groupPanel === "002" ||
+      groupPanel === "005" ||
       type === PaymentType.Salvage ||
       type === PaymentType.AdjusterFee,
-    acceptDisabled: lod === '0' || accepted !== '' || status === '2',
-    printDLADisabled: lod !== '1' || status === '2',
-  }
+    acceptDisabled: lod === "0" || accepted !== "" || status === "2",
+    printDLADisabled: lod !== "1" || status === "2",
+  };
 }

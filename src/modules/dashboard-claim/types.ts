@@ -9,7 +9,8 @@
  */
 
 /** Keempat kartu penghitung, dikenali lewat nilai ini pada jalur telusurnya. */
-export type Tile = 'outstanding' | 'close-claim' | 'loss-adjuster' | 'internal-surveyor'
+export type Tile =
+  "outstanding" | "close-claim" | "loss-adjuster" | "internal-surveyor";
 
 /**
  * Bentuk baris telusur sebuah tile.
@@ -17,21 +18,21 @@ export type Tile = 'outstanding' | 'close-claim' | 'loss-adjuster' | 'internal-s
  * Ia datang dari SERVER, bukan disimpulkan dari nama tile. Menebaknya dari nama membuat
  * penambahan tile kelak diam-diam salah gambar.
  */
-export type BentukBaris = 'klaim' | 'survei'
+export type BentukBaris = "klaim" | "survei";
 
 /** Satu kartu penghitung beserta angkanya. */
 export type Kartu = {
-  tile: Tile
-  judul: string
-  jumlah: number
-  bentuk: BentukBaris
-}
+  tile: Tile;
+  judul: string;
+  jumlah: number;
+  bentuk: BentukBaris;
+};
 
 /** Jawaban ringkasan — keempat angka kartu. */
 export type RingkasanResponse = {
-  kartu: Kartu[]
-  lini_bisnis: string
-  portal: string
+  kartu: Kartu[];
+  lini_bisnis: string;
+  portal: string;
   /**
    * Perilaku yang SAMA dengan sistem lama tetapi mudah dibaca sebagai cacat.
    *
@@ -40,39 +41,39 @@ export type RingkasanResponse = {
    *
    * Butir terpentingnya: angka pada kartu tidak selalu sama dengan jumlah baris telusurnya.
    */
-  catatan_warisan: string[]
-}
+  catatan_warisan: string[];
+};
 
 /** Satu baris telusur bertipe klaim — tile Outstanding dan Close Claim. */
 export type BarisKlaim = {
   /** Kunci teknis Pega. Tidak ditampilkan sebagai teks (utang teknis §4.1). */
-  klaim_id: string
+  klaim_id: string;
 
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  nama_bisnis: string
-  sumber_bisnis: string
-  nama_cabang: string
-  pic_teknik: string
-  admin_pnc: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  nama_bisnis: string;
+  sumber_bisnis: string;
+  nama_cabang: string;
+  pic_teknik: string;
+  admin_pnc: string;
 
   /** Kolom "Tanggal Pendaftaran". */
-  tanggal_pendaftaran: string
+  tanggal_pendaftaran: string;
 
   /** Kolom "Report Date" — hanya terisi pada tile Outstanding. */
-  tanggal_lapor: string
+  tanggal_lapor: string;
 
-  tanggal_kejadian: string
+  tanggal_kejadian: string;
 
   /** Kolom "Lama Waktu Klaim", dalam HARI. Pemformatannya urusan layar. */
-  lama_hari: number
+  lama_hari: number;
 
   /** KODE status klaim, bukan artinya — pelabelannya milik master status klaim (`R-06`). */
-  status_klaim_kode: string
+  status_klaim_kode: string;
 
   /** Kolom "Claim status" — artinya, dari `V_STS_CLAIM.LSC_NOTE`. */
-  status_klaim_label: string
+  status_klaim_label: string;
 
   /**
    * Kolom "Posisi Klaim" dan "Progress Klaim".
@@ -82,41 +83,41 @@ export type BarisKlaim = {
    * `GET_POSISI_PROGRESS_PNC`.
    */
 
-  status_proses: string
-}
+  status_proses: string;
+};
 
 /** Satu baris telusur bertipe survei — tile Loss Adjuster dan Internal Surveyor. */
 export type BarisSurvei = {
-  survei_id: string
+  survei_id: string;
 
-  nomor_survei: string
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  nomor_referensi: string
-  nama_surveyor: string
-  pic_teknik: string
-  pic_adjuster: string
-  lokasi_survei: string
+  nomor_survei: string;
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  nomor_referensi: string;
+  nama_surveyor: string;
+  pic_teknik: string;
+  pic_adjuster: string;
+  lokasi_survei: string;
 
   /** Hanya terisi pada tile Internal Surveyor — kueri loss adjuster tidak mengambilnya. */
-  tanggal_survei: string
-  tanggal_tugas: string
+  tanggal_survei: string;
+  tanggal_tugas: string;
 
   /** Kolom "Aging", dalam HARI. */
-  lama_hari: number
+  lama_hari: number;
 
-  status_survei: string
-  status_proses: string
-}
+  status_survei: string;
+  status_proses: string;
+};
 
 /** Keterangan halaman. Halaman dihitung mulai 1. */
 export type KeteranganHalaman = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /**
  * Jawaban telusur satu tile.
@@ -126,31 +127,31 @@ export type KeteranganHalaman = {
  * dulu.
  */
 export type TelusurResponse = {
-  tile: Tile
-  judul: string
-  bentuk: BentukBaris
+  tile: Tile;
+  judul: string;
+  bentuk: BentukBaris;
 
-  klaim: BarisKlaim[]
-  survei: BarisSurvei[]
+  klaim: BarisKlaim[];
+  survei: BarisSurvei[];
 
-  halaman: KeteranganHalaman
+  halaman: KeteranganHalaman;
 
-  lini_bisnis: string
-  portal: string
-}
+  lini_bisnis: string;
+  portal: string;
+};
 
 /** Satu pilihan pada dropdown. */
 export type Pilihan = {
-  nilai: string
-  label: string
-}
+  nilai: string;
+  label: string;
+};
 
 /** Keterangan satu kartu tanpa angkanya. */
 export type KeteranganTile = {
-  tile: Tile
-  judul: string
-  bentuk: BentukBaris
-}
+  tile: Tile;
+  judul: string;
+  bentuk: BentukBaris;
+};
 
 /**
  * Jawaban penyaring — bentuk layar, bukan data.
@@ -159,7 +160,7 @@ export type KeteranganTile = {
  * kerangkanya dan menampilkan galatnya.
  */
 export type PenyaringResponse = {
-  lini_bisnis: Pilihan[]
+  lini_bisnis: Pilihan[];
   /**
    * Isi kedua dropdown panel penyaring, **datang dari server**.
    *
@@ -167,8 +168,8 @@ export type PenyaringResponse = {
    * sini akan menghasilkan penyaring yang tidak menyaring apa pun — tanpa galat. Karena itu
    * daftarnya tidak ditulis ulang di layar.
    */
-  status_transfer: Pilihan[]
-  status_bayar: Pilihan[]
+  status_transfer: Pilihan[];
+  status_bayar: Pilihan[];
   /**
    * Isi dropdown "Pilih Type User" pada Transfer All Case.
    *
@@ -176,16 +177,16 @@ export type PenyaringResponse = {
    * `"PIC Teknik"`, `"Other"` — sehingga daftarnya datang dari server, bukan ditulis ulang
    * di sini.
    */
-  tipe_pengguna: Pilihan[]
-  tile: KeteranganTile[]
-  portal: string
-}
+  tipe_pengguna: Pilihan[];
+  tile: KeteranganTile[];
+  portal: string;
+};
 
 /** Penyaring yang dikirim layar. */
 export type PenyaringDashboard = {
-  lini_bisnis?: string
-  cari?: string
-  halaman?: number
+  lini_bisnis?: string;
+  cari?: string;
+  halaman?: number;
 
   /**
    * Ketiga isian panel penyaring `Section/FilterDashboardClaim_sec-Section.xml`.
@@ -193,9 +194,9 @@ export type PenyaringDashboard = {
    * Dinamai menurut ISINYA. Di layar lama namanya menyesatkan: Nopolis disimpan pada
    * `TempInputFilter.CaseID`, dan PIC pada `TempInputFilter.ClaimID`.
    */
-  nomor_polis?: string
-  nomor_klaim?: string
-  pic?: string
+  nomor_polis?: string;
+  nomor_klaim?: string;
+  pic?: string;
 
   /**
    * Kedua dropdown pada panel yang sama.
@@ -203,34 +204,34 @@ export type PenyaringDashboard = {
    * Namanya pun menyesatkan di layar lama: status pembayaran disimpan pada
    * `TempInputFilter.City`, status transfer pada `TempInputFilter.CityID`.
    */
-  status_transfer?: string
-  status_bayar?: string
-}
+  status_transfer?: string;
+  status_bayar?: string;
+};
 
 /** Satu baris tab **Inbox Tampungan PIC** — klaim yang belum punya PIC Teknik. */
 export type BarisTampungan = {
-  klaim_id: string
+  klaim_id: string;
 
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  nama_bisnis: string
-  sumber_bisnis: string
-  nama_cabang: string
-  admin_pnc: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  nama_bisnis: string;
+  sumber_bisnis: string;
+  nama_cabang: string;
+  admin_pnc: string;
 
-  tanggal_pendaftaran: string
-}
+  tanggal_pendaftaran: string;
+};
 
 /** Jawaban tab Inbox Tampungan PIC. */
 export type TampunganResponse = {
-  klaim: BarisTampungan[]
-  halaman: KeteranganHalaman
-  portal: string
-}
+  klaim: BarisTampungan[];
+  halaman: KeteranganHalaman;
+  portal: string;
+};
 
 /** Kedua tab layar ini. */
-export type TabDashboard = 'dashboard' | 'tampungan'
+export type TabDashboard = "dashboard" | "tampungan";
 
 /** Lingkup permintaan transfer — tombol per baris, atau "Transfer All Case By UserID". */
 /**
@@ -240,18 +241,18 @@ export type TabDashboard = 'dashboard' | 'tampungan'
  *   massal   "Transfer All Case By UserID" — seluruh pekerjaan satu operator
  *   saring   "Select All" — seluruh klaim yang cocok penyaring, lintas halaman
  */
-export type LingkupTransfer = 'baris' | 'massal' | 'saring'
+export type LingkupTransfer = "baris" | "massal" | "saring";
 
 /** Badan permintaan transfer. */
 export type PermintaanTransfer = {
-  lingkup: LingkupTransfer
-  klaim_id?: string
-  nomor_klaim?: string
-  user_id_lama?: string
-  user_id_baru: string
-  tipe_pengguna?: string
-  alasan?: string
-}
+  lingkup: LingkupTransfer;
+  klaim_id?: string;
+  nomor_klaim?: string;
+  user_id_lama?: string;
+  user_id_baru: string;
+  tipe_pengguna?: string;
+  alasan?: string;
+};
 
 /**
  * Jawaban permintaan transfer.
@@ -263,12 +264,12 @@ export type PermintaanTransfer = {
  */
 export type TransferResponse = {
   permintaan: {
-    id: string
-    lingkup: LingkupTransfer
-    nomor_klaim?: string
-    user_id_lama?: string
-    user_id_baru: string
-    status: string
+    id: string;
+    lingkup: LingkupTransfer;
+    nomor_klaim?: string;
+    user_id_lama?: string;
+    user_id_baru: string;
+    status: string;
 
     /**
      * Berapa klaim yang benar-benar berpindah.
@@ -276,13 +277,13 @@ export type TransferResponse = {
      * Pada lingkup `massal` angkanya tidak dapat diketahui di muka — "seluruh pekerjaan si A"
      * bisa berarti satu klaim atau empat puluh — sehingga layar menyebutkannya setelah selesai.
      */
-    jumlah_pindah: number
+    jumlah_pindah: number;
 
-    pemohon: string
-    pada: string
-  }
-  portal: string
-}
+    pemohon: string;
+    pada: string;
+  };
+  portal: string;
+};
 
 /**
  * Jenis permintaan yang dapat diajukan dari tile Close Claim.
@@ -294,13 +295,13 @@ export type TransferResponse = {
  * Nilainya mengikuti kontrak modul Inbox Close Claim yang sudah berjalan, bukan nama baru:
  * `reopen` dan `salin`.
  */
-export type JenisPermintaanKlaim = 'reopen' | 'salin'
+export type JenisPermintaanKlaim = "reopen" | "salin";
 
 /** Izin mengajukan ReOpen dan Copy Klaim, dibaca dari modul Inbox Close Claim. */
 export type IzinPermintaanKlaim = {
-  boleh_mengajukan: boolean
-  alasan_tidak_boleh?: string
-}
+  boleh_mengajukan: boolean;
+  alasan_tidak_boleh?: string;
+};
 
 /**
  * Hasil satu pengajuan di dalam satu kumpulan.
@@ -310,11 +311,11 @@ export type IzinPermintaanKlaim = {
  * gagal, dan hasil per baris harus dapat dilaporkan satu per satu.
  */
 export type HasilPermintaanKlaim = {
-  klaim_id: string
-  nomor_klaim: string
-  berhasil: boolean
-  pesan?: string
-}
+  klaim_id: string;
+  nomor_klaim: string;
+  berhasil: boolean;
+  pesan?: string;
+};
 
 /**
  * Satu baris daftar **PIC Teknik** yang dapat menerima pemindahan klaim.
@@ -323,20 +324,20 @@ export type HasilPermintaanKlaim = {
  * **"Nama"** dan tombolnya **"Assign"**.
  */
 export type BarisPIC = {
-  operator_id: string
-  nama: string
-  email: string
-  tim: string
+  operator_id: string;
+  nama: string;
+  email: string;
+  tim: string;
   /** COUNTER_QUOTA — pencacah beban yang dipakai pemilihan otomatis (`R-04`). */
-  beban: number
-}
+  beban: number;
+};
 
 /** Jawaban daftar PIC Teknik. */
 export type PICResponse = {
-  pic: BarisPIC[]
-  halaman: KeteranganHalaman
-  portal: string
-}
+  pic: BarisPIC[];
+  halaman: KeteranganHalaman;
+  portal: string;
+};
 
 /**
  * Jawaban **Ex Gratia** pada konfirmasi Copy Klaim.
@@ -345,7 +346,7 @@ export type PICResponse = {
  * Gratia?"* lewat radio terikat `TempGratia.ExGratia`. Daftar nilainya tidak ikut di
  * export, sehingga dipakai bentuk paling sedikit menduga: ya / tidak.
  */
-export type JawabanExGratia = 'ya' | 'tidak'
+export type JawabanExGratia = "ya" | "tidak";
 
 /**
  * Rincian satu klaim — isi popup yang terbuka saat nomor klaim diklik.
@@ -354,13 +355,13 @@ export type JawabanExGratia = 'ya' | 'tidak'
  * bertarget `popup` dari kolom nomor klaim pada `DashboardClaimShow_Sec`.
  */
 export type RincianKlaim = {
-  klaim_id: string
-  nomor_klaim: string
-  status_proses: string
-  status_klaim: string
-  pic_teknik: string
-  admin_pnc: string
-  didaftarkan_pada: string
+  klaim_id: string;
+  nomor_klaim: string;
+  status_proses: string;
+  status_klaim: string;
+  pic_teknik: string;
+  admin_pnc: string;
+  didaftarkan_pada: string;
 
   /**
    * Isi klaim apa adanya dari `POOLDATA.JSON_KLAIM.DATA_JSON`.
@@ -372,7 +373,7 @@ export type RincianKlaim = {
    *
    * Pembacaannya lewat `ambil()`, yang membedakan "jalur tidak ada" dari "ada tetapi kosong".
    */
-  dokumen: Record<string, unknown>
+  dokumen: Record<string, unknown>;
 
-  portal: string
-}
+  portal: string;
+};

@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import type { ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
 
-import { useSession } from '@/app/session'
+import { useSession } from "@/app/session";
 
 /**
  * SessionGuard menahan rute yang menuntut pengguna sudah masuk.
@@ -11,13 +11,13 @@ import { useSession } from '@/app/session'
  * Menyembunyikan halaman di peramban tidak menutup apa pun.
  */
 export function SessionGuard({ children }: { children: ReactNode }) {
-  const token = useSession((state) => state.token)
-  const location = useLocation()
+  const token = useSession((state) => state.token);
+  const location = useLocation();
 
   if (!token) {
     // Lokasi yang dituju dititipkan supaya setelah masuk pengguna kembali ke sana,
     // bukan dilempar ke beranda.
-    return <Navigate to="/masuk" replace state={{ dari: location }} />
+    return <Navigate to="/masuk" replace state={{ dari: location }} />;
   }
-  return <>{children}</>
+  return <>{children}</>;
 }

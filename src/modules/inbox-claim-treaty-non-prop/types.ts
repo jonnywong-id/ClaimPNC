@@ -16,9 +16,9 @@ export type WorkItem = {
    *
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom.
    */
-  referensi: string
+  referensi: string;
 
-  no_klaim: string
+  no_klaim: string;
 
   /**
    * Master ID dari KOLOM objek kerja (`PC_ASM_FW_GCNMFW_WORK.MASTERID`).
@@ -26,7 +26,7 @@ export type WorkItem = {
    * Ia BUKAN isian yang sama dengan `id_master` di bawah — lihat catatan di sana.
    * Grid **Teknik** yang menggambarnya, di bawah judul "ID Master".
    */
-  master_id: string
+  master_id: string;
 
   /**
    * Master ID dari BLOB JSON klaim (`JSON_KLAIM.DATA_JSON` jalur `$.IDMaster`).
@@ -39,9 +39,9 @@ export type WorkItem = {
    * keduanya dibawa apa adanya alih-alih dipilih salah satu. Kueri tab Teknik bahkan tidak
    * mengambil yang dari blob JSON sama sekali.
    */
-  id_master: string
+  id_master: string;
 
-  no_polis: string
+  no_polis: string;
 
   /**
    * Tanggal Kejadian, dikirim APA ADANYA dari blob JSON.
@@ -50,12 +50,12 @@ export type WorkItem = {
    * blob itu tidak dapat diperiksa tanpa DDL (`R-08`). Layar memformatnya hanya bila
    * bentuknya memang `YYYY-MM-DD`; selain itu ditampilkan apa adanya.
    */
-  tanggal_kejadian: string
+  tanggal_kejadian: string;
 
-  nama_bisnis: string
-  sumber_bisnis: string
-  ceding_co: string
-  nama_tertanggung: string
+  nama_bisnis: string;
+  sumber_bisnis: string;
+  ceding_co: string;
+  nama_tertanggung: string;
 
   /**
    * Waktu objek kerja dibuat, digambar di bawah judul kolom **"Status"**.
@@ -70,7 +70,7 @@ export type WorkItem = {
    *
    * Hanya grid Teknik yang menggambarnya.
    */
-  dibuat_pada: string
+  dibuat_pada: string;
 
   /**
    * Umur pekerjaan dalam HARI KALENDER sejak objek kerja dibuat.
@@ -78,47 +78,47 @@ export type WorkItem = {
    * Angka, bukan teks: layar mengurutkannya dan menandai yang sudah lama menunggu.
    * Akhir pekan dan hari libur ikut terhitung, sehingga ia bukan TAT.
    */
-  aging: number
+  aging: number;
 
-  operator_pembuat: string
-  operator_pengubah: string
-}
+  operator_pembuat: string;
+  operator_pengubah: string;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type WorkItemField = keyof WorkItem
+export type WorkItemField = keyof WorkItem;
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: WorkItemField
-  judul: string
-}
+  kunci: WorkItemField;
+  judul: string;
+};
 
 /** Satu antrean beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
+  kode: string;
 
   /**
    * Teks PILIHAN pada dropdown pemilih antrean — "Treaty-In Admin", "Treaty-In Teknik".
    *
    * Jangan tertukar dengan `judul_grid`: keduanya tampil bersamaan dan berbunyi berbeda.
    */
-  nama: string
+  nama: string;
 
   /**
    * Judul KONTAINER grid di bawah dropdown — "Work Treatyin Non Propotional Teknik".
    *
    * Kosong pada antrean yang terhalang: tidak ada grid yang digambar di sana.
    */
-  judul_grid?: string
+  judul_grid?: string;
 
-  keterangan: string
-  kolom: TabColumn[]
+  keterangan: string;
+  kolom: TabColumn[];
 
   /** Barisnya hanya milik pemanggil — hanya tab Admin begitu. */
-  hanya_milik_saya: boolean
+  hanya_milik_saya: boolean;
 
   /** Checkbox "See All Claim" berlaku pada tab ini. */
-  pakai_lihat_semua: boolean
+  pakai_lihat_semua: boolean;
 
   /**
    * Checkbox "See TBA Claim" berlaku pada tab ini.
@@ -126,7 +126,7 @@ export type Tab = {
    * "TBA" berarti *to be advised*: klaim treaty yang sudah masuk tetapi nomor polisnya
    * belum terbit.
    */
-  pakai_lihat_tba: boolean
+  pakai_lihat_tba: boolean;
 
   /**
    * Tab digambar tetapi belum dapat diisi.
@@ -134,47 +134,51 @@ export type Tab = {
    * Ia BUKAN tab yang disembunyikan: tabnya tetap tampak supaya pengguna tahu fiturnya ada
    * dan terhalang, bukan mengira ia hilang.
    */
-  terhalang: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Keterangan halaman dari server. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Penyaring yang BENAR-BENAR dipakai server, belum tentu sama dengan yang dikirim. */
 export type AppliedFilter = {
-  lihat_semua: boolean
-  lihat_tba: boolean
-}
+  lihat_semua: boolean;
+  lihat_tba: boolean;
+};
 
 /** Jawaban GET /api/inbox-claim-treaty-non-prop/tab. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
-  portal: string
-}
+  tab: Tab[];
+  tab_bawaan: string;
+  portal: string;
+};
 
 /** Jawaban GET /api/inbox-claim-treaty-non-prop. */
 export type ListResponse = {
-  tab: Tab
-  baris: WorkItem[]
-  paginasi: PageInfo
-  penyaring: AppliedFilter
-  portal: string
-}
+  tab: Tab;
+  baris: WorkItem[];
+  paginasi: PageInfo;
+  penyaring: AppliedFilter;
+  portal: string;
+};
 
 /** Isian penyaring yang dipegang layar. */
 export type FilterForm = {
-  tab: string
-  lihatSemua: boolean
-  lihatTBA: boolean
-}
+  tab: string;
+  lihatSemua: boolean;
+  lihatTBA: boolean;
+};
 
 /** EMPTY_FILTER adalah keadaan awal penyaring, dipakai pula saat berpindah tab. */
-export const EMPTY_FILTER: FilterForm = { tab: '', lihatSemua: false, lihatTBA: false }
+export const EMPTY_FILTER: FilterForm = {
+  tab: "",
+  lihatSemua: false,
+  lihatTBA: false,
+};

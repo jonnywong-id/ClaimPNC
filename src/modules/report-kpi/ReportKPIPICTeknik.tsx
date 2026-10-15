@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { SelectField } from '@/components/SelectField'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { SelectField } from "@/components/SelectField";
 
-import { useExportPICLaporan, useExportPICTeknik, usePICTeknik } from './api'
+import { useExportPICLaporan, useExportPICTeknik, usePICTeknik } from "./api";
 import type {
   Grid,
   MetadataResponse,
   PICComponent,
   PICRow,
   PICScorecard,
-} from './types'
+} from "./types";
 
 /**
  * Tab KPI PIC Teknik — penilaian kinerja PIC Teknik, empat komponen per orang.
@@ -48,31 +48,34 @@ import type {
 export function ReportKPIPICTeknik({
   metadata,
 }: {
-  metadata: MetadataResponse | undefined
+  metadata: MetadataResponse | undefined;
 }) {
-  const [draft, setDraft] = useState<PICFilterInput>(emptyPICFilter)
-  const [applied, setApplied] = useState<PICFilterInput | null>(null)
+  const [draft, setDraft] = useState<PICFilterInput>(emptyPICFilter);
+  const [applied, setApplied] = useState<PICFilterInput | null>(null);
 
-  const active = applied ?? emptyPICFilter
-  const searched = applied !== null
+  const active = applied ?? emptyPICFilter;
+  const searched = applied !== null;
 
-  const result = usePICTeknik(active, searched)
-  const exportFile = useExportPICTeknik()
-  const exportLaporan = useExportPICLaporan()
+  const result = usePICTeknik(active, searched);
+  const exportFile = useExportPICTeknik();
+  const exportLaporan = useExportPICLaporan();
 
-  const violations = violationsOf(result.error)
-  const components = metadata?.komponen_pic ?? []
-  const grid = picGrid(metadata)
+  const violations = violationsOf(result.error);
+  const components = metadata?.komponen_pic ?? [];
+  const grid = picGrid(metadata);
 
-  const rows = searched && result.data ? flatten(result.data.kartu_skor, result.data.rekapitulasi) : []
+  const rows =
+    searched && result.data
+      ? flatten(result.data.kartu_skor, result.data.rekapitulasi)
+      : [];
 
   return (
     <div className="space-y-4">
       <form
         className="rounded-kotak border border-slate-200 bg-white p-4"
         onSubmit={(event) => {
-          event.preventDefault()
-          setApplied(draft)
+          event.preventDefault();
+          setApplied(draft);
         }}
       >
         {/*
@@ -88,8 +91,10 @@ export function ReportKPIPICTeknik({
             type="date"
             className="w-44"
             value={draft.dari}
-            failure={violations['dari']}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
+            failure={violations["dari"]}
+            onChange={(event) =>
+              setDraft({ ...draft, dari: event.target.value })
+            }
           />
 
           <FormField
@@ -98,8 +103,10 @@ export function ReportKPIPICTeknik({
             type="date"
             className="w-44"
             value={draft.sampai}
-            failure={violations['sampai']}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+            failure={violations["sampai"]}
+            onChange={(event) =>
+              setDraft({ ...draft, sampai: event.target.value })
+            }
           />
 
           <Button type="submit" tone="utama">
@@ -133,7 +140,9 @@ export function ReportKPIPICTeknik({
               label: item.judul,
             }))}
             value={draft.dataKPI}
-            onChange={(event) => setDraft({ ...draft, dataKPI: event.target.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, dataKPI: event.target.value })
+            }
             className="max-w-xs"
           />
 
@@ -162,7 +171,7 @@ export function ReportKPIPICTeknik({
       */}
       {searched && (
         <DataTable<FlatPICRow>
-          title={grid?.judul ?? 'Data KPI PIC Teknik'}
+          title={grid?.judul ?? "Data KPI PIC Teknik"}
           label="Penilaian KPI per PIC Teknik"
           columns={picColumns(grid, components)}
           rows={rows}
@@ -182,7 +191,7 @@ export function ReportKPIPICTeknik({
         />
       )}
     </div>
-  )
+  );
 }
 
 /* ─────────────────────────── Perataan baris ─────────────────────────── */
@@ -193,7 +202,7 @@ export function ReportKPIPICTeknik({
  * Ia membawa `leader` supaya baris rekapitulasi dapat dibedakan tanpa membandingkan nama —
  * nama "Leader" kebetulan juga dapat menjadi nama orang.
  */
-type FlatPICRow = PICRow & { pic: string; leader: boolean }
+type FlatPICRow = PICRow & { pic: string; leader: boolean };
 
 /**
  * flatten meratakan kartu skor menjadi baris grid.
@@ -207,15 +216,15 @@ function flatten(cards: PICScorecard[], recap: PICScorecard): FlatPICRow[] {
   // Tanpa satu pun petugas, rekapitulasinya TIDAK digambar: ia rata-rata dari nol orang,
   // dan menggambarnya akan menampilkan baris "Leader" berisi angka yang tidak merangkum
   // apa pun — sekaligus menyembunyikan pesan "tidak ada petugas terdaftar".
-  const semua = cards.length === 0 ? [] : [...cards, recap]
+  const semua = cards.length === 0 ? [] : [...cards, recap];
 
-  const rows: FlatPICRow[] = []
+  const rows: FlatPICRow[] = [];
   for (const card of semua) {
     for (const row of card.baris) {
-      rows.push({ ...row, pic: card.pic, leader: card.leader })
+      rows.push({ ...row, pic: card.pic, leader: card.leader });
     }
   }
-  return rows
+  return rows;
 }
 
 /* ─────────────────────────── Penyusun kolom ─────────────────────────── */
@@ -237,14 +246,17 @@ function picColumns(
       value: (row) => picCellText(row, column.kunci),
 
       // Keempat kolom angka dirapatkan ke kanan supaya desimalnya sejajar antar baris.
-      alignRight: column.kunci !== 'pic' && column.kunci !== 'kpi',
-    }
+      alignRight: column.kunci !== "pic" && column.kunci !== "kpi",
+    };
 
     // `render` DIHILANGKAN, bukan diisi undefined: `exactOptionalPropertyTypes` menolak
     // properti opsional yang ada tetapi bernilai undefined.
-    if (column.kunci !== 'kpi') return base
-    return { ...base, render: (row: FlatPICRow) => metricLabel(row, components) }
-  })
+    if (column.kunci !== "kpi") return base;
+    return {
+      ...base,
+      render: (row: FlatPICRow) => metricLabel(row, components),
+    };
+  });
 }
 
 /**
@@ -255,8 +267,9 @@ function picColumns(
  * memang disengaja.
  */
 function metricLabel(row: FlatPICRow, components: PICComponent[]) {
-  const descending = components.find((c) => c.kode === row.komponen)?.tangga_menurun === true
-  if (!descending) return row.judul
+  const descending =
+    components.find((c) => c.kode === row.komponen)?.tangga_menurun === true;
+  if (!descending) return row.judul;
 
   return (
     <>
@@ -268,26 +281,26 @@ function metricLabel(row: FlatPICRow, components: PICComponent[]) {
         ↓
       </span>
     </>
-  )
+  );
 }
 
 /** picCellText mengambil isi satu sel; yang kosong digambar sebagai tanda hubung. */
 function picCellText(row: FlatPICRow, key: string): string {
   switch (key) {
-    case 'pic':
-      return row.pic
-    case 'kpi':
-      return row.judul
-    case 'total':
-      return String(row.total)
-    case 'tercapai':
-      return String(row.tercapai)
-    case 'persentase':
-      return row.persentase === null ? '—' : String(round2(row.persentase))
-    case 'nilai':
-      return row.nilai === null ? '—' : String(row.nilai)
+    case "pic":
+      return row.pic;
+    case "kpi":
+      return row.judul;
+    case "total":
+      return String(row.total);
+    case "tercapai":
+      return String(row.tercapai);
+    case "persentase":
+      return row.persentase === null ? "—" : String(round2(row.persentase));
+    case "nilai":
+      return row.nilai === null ? "—" : String(row.nilai);
     default:
-      return ''
+      return "";
   }
 }
 
@@ -295,11 +308,11 @@ function picCellText(row: FlatPICRow, key: string): string {
 
 /** Isian penyaring tab KPI PIC Teknik sebagaimana dipegang layar. */
 type PICFilterInput = {
-  lini: string
-  dari: string
-  sampai: string
-  dataKPI: string
-}
+  lini: string;
+  dari: string;
+  sampai: string;
+  dataKPI: string;
+};
 
 /**
  * Penyaring awal tab KPI PIC Teknik.
@@ -319,30 +332,35 @@ type PICFilterInput = {
  * Jadi tab ini **selalu NONMBU di Pega**, dan dropdown yang sempat ada di sini adalah
  * tambahan kami — dicabut atas keputusan Work Owner "ikuti Pega as-is" (2026-10-08).
  */
-const emptyPICFilter: PICFilterInput = { lini: 'NONMBU', dari: '', sampai: '', dataKPI: '1' }
+const emptyPICFilter: PICFilterInput = {
+  lini: "NONMBU",
+  dari: "",
+  sampai: "",
+  dataKPI: "1",
+};
 
 const emptyMessage =
-  'Tidak ada petugas terdaftar pada lini bisnis ini. Daftarnya datang dari master ' +
-  'MST_USER_TEKNIK, bukan dari data klaim.'
+  "Tidak ada petugas terdaftar pada lini bisnis ini. Daftarnya datang dari master " +
+  "MST_USER_TEKNIK, bukan dari data klaim.";
 
 /** picGrid mengambil keterangan grid tab KPI PIC Teknik dari metadata. */
 function picGrid(metadata: MetadataResponse | undefined): Grid | undefined {
-  const tab = metadata?.tab.find((item) => item.kode === 'pic-teknik')
-  return tab?.grid.find((item) => item.kode === 'kartu-skor-pic')
+  const tab = metadata?.tab.find((item) => item.kode === "pic-teknik");
+  return tab?.grid.find((item) => item.kode === "kartu-skor-pic");
 }
 
 /** round2 membulatkan untuk TAMPILAN saja — nilai simpanannya tidak disentuh. */
 function round2(value: number): number {
-  return Math.round(value * 100) / 100
+  return Math.round(value * 100) / 100;
 }
 
 function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
+  if (error instanceof APIError) return error.violations();
+  return {};
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

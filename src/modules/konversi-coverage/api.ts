@@ -1,11 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSession } from "@/app/session";
 
-import type { FilterObjek, Keterangan, Laporan } from './types'
+import type { FilterObjek, Keterangan, Laporan } from "./types";
 
-const PATH = '/api/konversi-coverage'
+const PATH = "/api/konversi-coverage";
 
 /**
  * Keterangan koneksi LIVE/TEST dan daftar polis bawaan.
@@ -14,12 +14,12 @@ const PATH = '/api/konversi-coverage'
  * dipilih pengguna.
  */
 export function useKeterangan() {
-  const token = useSession((s) => s.token)
+  const token = useSession((s) => s.token);
   return useQuery({
-    queryKey: ['konversi-coverage', 'keterangan', token],
+    queryKey: ["konversi-coverage", "keterangan", token],
     queryFn: () => callAPI<Keterangan>(`${PATH}/keterangan`, { token }),
     enabled: token !== null,
-  })
+  });
 }
 
 /**
@@ -29,11 +29,18 @@ export function useKeterangan() {
  * pada sistem." tanpa laporan apa pun. Per 10 polis, setiap permintaan selesai dalam
  * hitungan detik.
  */
-export const BATCH_SIZE = 10
+export const BATCH_SIZE = 10;
 
 /** Pemisah daftar polis — sama dengan `konversicoverage.ParsePolicyList` di backend. */
 export function parsePolicies(text: string): string[] {
-  return [...new Set(text.split(/[\s,;]+/).map((p) => p.trim()).filter((p) => p !== ''))]
+  return [
+    ...new Set(
+      text
+        .split(/[\s,;]+/)
+        .map((p) => p.trim())
+        .filter((p) => p !== ""),
+    ),
+  ];
 }
 
 /** Galat satu kelompok, membawa laporan polis yang sudah selesai sebelumnya. */
@@ -42,13 +49,13 @@ export class BatchError extends Error {
     message: string,
     readonly partial: Laporan | null,
   ) {
-    super(message)
+    super(message);
   }
 }
 
 /** Menggabungkan laporan kelompok berurutan menjadi satu laporan. */
 export function mergeReports(a: Laporan | null, b: Laporan): Laporan {
-  if (!a) return b
+  if (!a) return b;
   return {
     uji_coba: b.uji_coba,
     filter_prodke: b.filter_prodke,
@@ -61,7 +68,7 @@ export function mergeReports(a: Laporan | null, b: Laporan): Laporan {
     gagal: a.gagal + b.gagal,
     total_coverage: a.total_coverage + b.total_coverage,
     total_spreading: a.total_spreading + b.total_spreading,
-  }
+  };
 }
 
 /**
@@ -71,41 +78,41 @@ export function mergeReports(a: Laporan | null, b: Laporan): Laporan {
  * sisanya; polis kelompok sebelumnya sudah selesai dan ikut dikembalikan lewat BatchError.
  */
 export function useJalankan() {
-  const token = useSession((s) => s.token)
+  const token = useSession((s) => s.token);
   return async (
     polis: string,
     ujiCoba: boolean,
     filter: FilterObjek,
     onProgress?: (done: number, total: number) => void,
   ): Promise<Laporan> => {
-    const list = parsePolicies(polis)
-    let report: Laporan | null = null
-    onProgress?.(0, list.length)
+    const list = parsePolicies(polis);
+    let report: Laporan | null = null;
+    onProgress?.(0, list.length);
     for (let i = 0; i < list.length; i += BATCH_SIZE) {
-      const batch = list.slice(i, i + BATCH_SIZE)
+      const batch = list.slice(i, i + BATCH_SIZE);
       try {
         const part = await callAPI<Laporan>(`${PATH}/jalankan`, {
-          metode: 'POST',
+          metode: "POST",
           token,
           body: {
-            polis: batch.join(','),
+            polis: batch.join(","),
             uji_coba: ujiCoba,
             prodke: filter.prodke.trim(),
             indexobject: filter.indexobject.trim(),
           },
-        })
-        report = mergeReports(report, part)
+        });
+        report = mergeReports(report, part);
       } catch (e) {
-        const reason = e instanceof Error ? e.message : String(e)
+        const reason = e instanceof Error ? e.message : String(e);
         throw new BatchError(
           `Polis ke-${i + 1} sampai ${i + batch.length} gagal: ${reason} ` +
             `${i} polis sebelumnya sudah selesai.`,
           report,
-        )
+        );
       }
-      onProgress?.(i + batch.length, list.length)
+      onProgress?.(i + batch.length, list.length);
     }
-    if (!report) throw new BatchError('Daftar nomor polis kosong.', null)
-    return report
-  }
+    if (!report) throw new BatchError("Daftar nomor polis kosong.", null);
+    return report;
+  };
 }

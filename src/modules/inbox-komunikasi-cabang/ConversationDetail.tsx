@@ -1,25 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { CloseIcon } from '@/components/Icon'
-import { formatPegaDateTime } from '@/components/format'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { CloseIcon } from "@/components/Icon";
+import { formatPegaDateTime } from "@/components/format";
 
-import { useKomunikasiCabangDetail, useKomunikasiCabangReply } from './api'
-import type { Attachment, ThreadMessage } from './types'
+import { useKomunikasiCabangDetail, useKomunikasiCabangReply } from "./api";
+import type { Attachment, ThreadMessage } from "./types";
 
 type Props = {
   /** Nomor percakapan yang sedang dibuka. */
-  id: string
-  onClose: () => void
-}
+  id: string;
+  onClose: () => void;
+};
 
 /** Satu ucapan beserta nomor urutnya pada utas. */
-type ThreadRow = ThreadMessage & { nomor: number }
+type ThreadRow = ThreadMessage & { nomor: number };
 
-const TITLE_ID = 'judul-detail-komunikasi-cabang'
+const TITLE_ID = "judul-detail-komunikasi-cabang";
 
 /**
  * Layar **Detail Komunikasi Cabang** — popup utas satu percakapan.
@@ -58,27 +58,27 @@ const TITLE_ID = 'judul-detail-komunikasi-cabang'
  * bukan lagi keterangan melainkan isian yang benar-benar menyimpan.
  */
 export function ConversationDetail({ id, onClose }: Props) {
-  const detail = useKomunikasiCabangDetail(id)
+  const detail = useKomunikasiCabangDetail(id);
 
   // Escape menutup popup, seperti dialog mana pun yang dikenal pengguna. Pola yang sama
   // dipakai popup Detail pada Inbox OS Klaim per Cabang.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === "Escape") onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   // Fokus dipindahkan KE DALAM dialog saat ia terbuka.
   //
   // Tanpa ini fokus papan ketik tertinggal di tombol "Detail Komunikasi" yang kini berada di
   // belakang lapisan gelap: penekanan Tab berikutnya menjelajahi tabel yang tidak dapat
   // disentuh, dan pembaca layar tidak pernah tahu ada dialog yang terbuka.
-  const panel = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    panel.current?.focus()
-  }, [])
+    panel.current?.focus();
+  }, []);
 
   return (
     <div
@@ -110,10 +110,10 @@ export function ConversationDetail({ id, onClose }: Props) {
             onClick={onClose}
             aria-label="Tutup Detail Komunikasi Cabang"
             className={[
-              'shrink-0 rounded-kontrol p-1 text-slate-500',
-              'transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-800',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-            ].join(' ')}
+              "shrink-0 rounded-kontrol p-1 text-slate-500",
+              "transition-colors duration-150 ease-halus hover:bg-slate-100 hover:text-slate-800",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+            ].join(" ")}
           >
             <CloseIcon className="h-4 w-4" />
           </button>
@@ -142,7 +142,7 @@ export function ConversationDetail({ id, onClose }: Props) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -169,7 +169,7 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
   const rows: ThreadRow[] = messages.map((message, index) => ({
     ...message,
     nomor: index + 1,
-  }))
+  }));
 
   return (
     <DataTable<ThreadRow>
@@ -182,11 +182,11 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
       gridLines
       hideSearch
       emptyMessage={
-        'Percakapan ini belum memuat satu pun ucapan. Ia mungkin dibuat lewat layar lain, ' +
-        'atau sebelum riwayat percakapan mulai dicatat.'
+        "Percakapan ini belum memuat satu pun ucapan. Ia mungkin dibuat lewat layar lain, " +
+        "atau sebelum riwayat percakapan mulai dicatat."
       }
     />
-  )
+  );
 }
 
 /**
@@ -199,34 +199,34 @@ function Thread({ messages }: { messages: ThreadMessage[] }) {
 function threadColumns(): Column<ThreadRow>[] {
   return [
     {
-      key: 'nomor',
+      key: "nomor",
       // Tanpa judul, seperti di Pega.
-      title: '',
-      width: '3rem',
+      title: "",
+      width: "3rem",
       noSort: true,
       value: (row) => String(row.nomor),
     },
     {
-      key: 'tanggal',
-      title: 'Tanggal',
-      width: '9rem',
+      key: "tanggal",
+      title: "Tanggal",
+      width: "9rem",
       noSort: true,
       value: (row) => formatPegaDateTime(row.tanggal),
     },
     {
-      key: 'pengirim',
-      title: 'Pengirim',
-      width: '9rem',
+      key: "pengirim",
+      title: "Pengirim",
+      width: "9rem",
       noSort: true,
       value: (row) => row.pengirim,
     },
     {
-      key: 'pesan',
-      title: 'Pesan',
+      key: "pesan",
+      title: "Pesan",
       noSort: true,
       value: (row) => row.pesan,
     },
-  ]
+  ];
 }
 
 /**
@@ -245,7 +245,7 @@ function threadColumns(): Column<ThreadRow>[] {
  * dan menyembunyikan dokumen yang ada bukan paritas melainkan kehilangan.
  */
 function Attachments({ items }: { items: Attachment[] }) {
-  if (items.length === 0) return null
+  if (items.length === 0) return null;
 
   return (
     <section className="mt-5 border-t border-slate-200 pt-4">
@@ -261,25 +261,25 @@ function Attachments({ items }: { items: Attachment[] }) {
           >
             <div className="min-w-0">
               <p className="text-sm text-slate-800">
-                {item.rincian_dokumen || item.jenis_dokumen || '—'}
+                {item.rincian_dokumen || item.jenis_dokumen || "—"}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {item.jenis_dokumen || '—'}
-                {item.catatan ? ` · ${item.catatan}` : ''}
+                {item.jenis_dokumen || "—"}
+                {item.catatan ? ` · ${item.catatan}` : ""}
               </p>
             </div>
 
             <span
               className={[
-                'rounded-full px-2 py-0.5 text-xs whitespace-nowrap',
+                "rounded-full px-2 py-0.5 text-xs whitespace-nowrap",
                 item.sudah_diunggah
-                  ? 'bg-emerald-100 text-emerald-900'
-                  : 'bg-amber-100 text-amber-900',
-              ].join(' ')}
+                  ? "bg-emerald-100 text-emerald-900"
+                  : "bg-amber-100 text-amber-900",
+              ].join(" ")}
             >
               {item.sudah_diunggah
                 ? `Sudah Upload · ${formatPegaDateTime(item.tanggal_unggah)}`
-                : 'Belum Upload'}
+                : "Belum Upload"}
             </span>
           </li>
         ))}
@@ -292,11 +292,11 @@ function Attachments({ items }: { items: Attachment[] }) {
         dibangun di modul ini. Yang ada di tabel hanyalah metadata-nya.
       */}
       <p className="mt-2 text-xs text-slate-500">
-        Berkasnya belum dapat diunduh dari sini — yang tersimpan di tabel ini hanya
-        keterangannya. Unduh lewat Pega bila isinya dibutuhkan.
+        Berkasnya belum dapat diunduh dari sini — yang tersimpan di tabel ini
+        hanya keterangannya. Unduh lewat Pega bila isinya dibutuhkan.
       </p>
     </section>
-  )
+  );
 }
 
 /**
@@ -335,22 +335,22 @@ function Attachments({ items }: { items: Attachment[] }) {
  * Yang dikosongkan hanyalah yang BERHASIL tersimpan, dan hanya setelah peladen menjawab.
  */
 function ReplyBox({ id }: { id: string }) {
-  const [message, setMessage] = useState('')
-  const reply = useKomunikasiCabangReply()
+  const [message, setMessage] = useState("");
+  const reply = useKomunikasiCabangReply();
 
-  const trimmed = message.trim()
+  const trimmed = message.trim();
 
   return (
     <form
       className="mt-5 border-t border-slate-200 pt-4"
       onSubmit={(event) => {
-        event.preventDefault()
-        if (trimmed === '' || reply.isPending) return
+        event.preventDefault();
+        if (trimmed === "" || reply.isPending) return;
 
         reply.mutate(
           { komunikasi: id, pesan: trimmed },
-          { onSuccess: () => setMessage('') },
-        )
+          { onSuccess: () => setMessage("") },
+        );
       }}
     >
       <label
@@ -370,8 +370,8 @@ function ReplyBox({ id }: { id: string }) {
       />
 
       <div className="mt-2">
-        <Button type="submit" disabled={trimmed === '' || reply.isPending}>
-          {reply.isPending ? 'Menyimpan…' : 'Balas'}
+        <Button type="submit" disabled={trimmed === "" || reply.isPending}>
+          {reply.isPending ? "Menyimpan…" : "Balas"}
         </Button>
       </div>
 
@@ -391,12 +391,12 @@ function ReplyBox({ id }: { id: string }) {
         </p>
       )}
     </form>
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

@@ -1,21 +1,21 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   KomiteInboxKind,
   KomiteOutcome,
   type KomiteCase,
   type KomiteInboxKind as Kind,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { DateField } from '@/components/DateField'
-import { ReloadIcon, ScaleIcon } from '@/components/Icon'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { DateField } from "@/components/DateField";
+import { ReloadIcon, ScaleIcon } from "@/components/Icon";
 
-import { InboxTabs } from './InboxTabs'
-import { useInboxList } from './api'
+import { InboxTabs } from "./InboxTabs";
+import { useInboxList } from "./api";
 
 /**
  * formatTanggal menggambar tanggal untuk manusia.
@@ -29,15 +29,15 @@ import { useInboxList } from './api'
  * layar tidak terasa dirakit dari tiga aplikasi berbeda.
  */
 function formatTanggal(value: string | undefined): string {
-  if (!value) return '—'
-  const saat = new Date(value)
-  if (Number.isNaN(saat.getTime())) return '—'
-  return saat.toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  if (!value) return "—";
+  const saat = new Date(value);
+  if (Number.isNaN(saat.getTime())) return "—";
+  return saat.toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /**
@@ -78,42 +78,41 @@ function formatTanggal(value: string | undefined): string {
  * diputuskan di sini tetap terbuka di sana. Itu disebutkan di layar, bukan disembunyikan.
  */
 export function InboxKomitePage() {
-  const [kind, setKind] = useState<Kind>(KomiteInboxKind.outstanding)
-  const [search, setSearch] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [offset, setOffset] = useState(0)
+  const [kind, setKind] = useState<Kind>(KomiteInboxKind.outstanding);
+  const [search, setSearch] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [offset, setOffset] = useState(0);
 
-  const list = useInboxList({ kind, search, from, to, offset })
+  const list = useInboxList({ kind, search, from, to, offset });
 
-  const data = list.data
-  const rows = data?.kasus ?? []
-
+  const data = list.data;
+  const rows = data?.kasus ?? [];
 
   function changeKind(next: Kind) {
-    setKind(next)
+    setKind(next);
     // Halaman dikembalikan ke awal. Tanpa ini, berpindah dari kotak berisi 200 baris di
     // halaman empat ke kotak berisi 3 baris akan menampilkan tabel kosong yang tampak
     // rusak.
-    setOffset(0)
+    setOffset(0);
   }
 
   function changeSearch(next: string) {
-    setSearch(next)
-    setOffset(0)
+    setSearch(next);
+    setOffset(0);
   }
 
   function changeRange(nextFrom: string, nextTo: string) {
-    setFrom(nextFrom)
-    setTo(nextTo)
-    setOffset(0)
+    setFrom(nextFrom);
+    setTo(nextTo);
+    setOffset(0);
   }
 
   const columns: Column<KomiteCase>[] = [
     {
-      key: 'nomor',
-      title: 'No case & klaim',
-      width: '12rem',
+      key: "nomor",
+      title: "No case & klaim",
+      width: "12rem",
       value: (c) => `${c.nomor_case} ${c.nomor_klaim}`,
       /*
         Nomor case DAN nomor klaim keduanya membuka rincian, dalam satu tautan.
@@ -135,63 +134,72 @@ export function InboxKomitePage() {
           <p className="truncate font-mono text-xs font-medium text-blue-700 underline-offset-2 hover:underline">
             {c.nomor_case}
           </p>
-          <p className="truncate font-mono text-xs text-slate-500">{c.nomor_klaim || '—'}</p>
+          <p className="truncate font-mono text-xs text-slate-500">
+            {c.nomor_klaim || "—"}
+          </p>
         </Link>
       ),
     },
     {
-      key: 'tertanggung',
-      title: 'Polis & tertanggung',
+      key: "tertanggung",
+      title: "Polis & tertanggung",
       value: (c) => `${c.nomor_polis} ${c.nama_tertanggung}`,
       render: (c) => (
         <div className="min-w-0">
-          <p className="truncate text-slate-900">{c.nama_tertanggung || '—'}</p>
-          <p className="truncate font-mono text-xs text-slate-500">{c.nomor_polis || '—'}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'bisnis',
-      title: 'Bisnis & cabang',
-      value: (c) => `${c.nama_bisnis} ${c.sumber_bisnis} ${c.cabang}`,
-      render: (c) => (
-        <div className="min-w-0">
-          <p className="truncate text-slate-900">{c.nama_bisnis || '—'}</p>
-          <p className="truncate text-xs text-slate-500">
-            {[c.sumber_bisnis, c.cabang].filter(Boolean).join(' · ') || '—'}
+          <p className="truncate text-slate-900">{c.nama_tertanggung || "—"}</p>
+          <p className="truncate font-mono text-xs text-slate-500">
+            {c.nomor_polis || "—"}
           </p>
         </div>
       ),
     },
     {
-      key: 'tgl-komite',
-      title: 'Tgl komite',
-      width: '9rem',
-      value: (c) => c.tanggal_komite ?? '',
+      key: "bisnis",
+      title: "Bisnis & cabang",
+      value: (c) => `${c.nama_bisnis} ${c.sumber_bisnis} ${c.cabang}`,
       render: (c) => (
-        <span className="tabular-nums text-slate-700">{formatTanggal(c.tanggal_komite)}</span>
+        <div className="min-w-0">
+          <p className="truncate text-slate-900">{c.nama_bisnis || "—"}</p>
+          <p className="truncate text-xs text-slate-500">
+            {[c.sumber_bisnis, c.cabang].filter(Boolean).join(" · ") || "—"}
+          </p>
+        </div>
       ),
     },
     {
-      key: 'aging',
-      title: 'Aging',
-      width: '7rem',
-      value: (c) => String(c.aging_komite).padStart(6, '0'),
+      key: "tgl-komite",
+      title: "Tgl komite",
+      width: "9rem",
+      value: (c) => c.tanggal_komite ?? "",
+      render: (c) => (
+        <span className="tabular-nums text-slate-700">
+          {formatTanggal(c.tanggal_komite)}
+        </span>
+      ),
+    },
+    {
+      key: "aging",
+      title: "Aging",
+      width: "7rem",
+      value: (c) => String(c.aging_komite).padStart(6, "0"),
       render: (c) => <AgingBadge days={c.aging_komite} />,
     },
     {
-      key: 'keadaan',
-      title: 'Keadaan',
-      width: '11rem',
+      key: "keadaan",
+      title: "Keadaan",
+      width: "11rem",
       value: (c) => c.penjenjangan.kesimpulan,
       render: (c) => <StateCell item={c} />,
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Proses Klaim</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -205,9 +213,9 @@ export function InboxKomitePage() {
           Inbox Komite
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Kasus yang menunggu persetujuan Anda sebagai anggota komite, beserta riwayat
-          keputusan yang pernah Anda berikan. Persetujuan komite adalah titik kewenangan
-          tertinggi atas nilai klaim.
+          Kasus yang menunggu persetujuan Anda sebagai anggota komite, beserta
+          riwayat keputusan yang pernah Anda berikan. Persetujuan komite adalah
+          titik kewenangan tertinggi atas nilai klaim.
         </p>
       </header>
 
@@ -225,10 +233,10 @@ export function InboxKomitePage() {
             tone="gangguan"
             title="Daftar ini BUKAN inbox Anda"
             description={
-              'Penyaring pemilik sedang dimatikan, sehingga daftar di bawah berisi seluruh ' +
-              'antrean komite — termasuk pekerjaan orang lain beserta nama tertanggung dan ' +
-              'nomor polisnya. Keadaan ini hanya berlaku di lingkungan pengembangan; ' +
-              'kosongkan KOMITE_TANPA_PENYARING_OPERATOR untuk mengembalikannya.'
+              "Penyaring pemilik sedang dimatikan, sehingga daftar di bawah berisi seluruh " +
+              "antrean komite — termasuk pekerjaan orang lain beserta nama tertanggung dan " +
+              "nomor polisnya. Keadaan ini hanya berlaku di lingkungan pengembangan; " +
+              "kosongkan KOMITE_TANPA_PENYARING_OPERATOR untuk mengembalikannya."
             }
           />
         </div>
@@ -255,17 +263,31 @@ export function InboxKomitePage() {
         description={
           data
             ? `${data.total} kasus pada kotak ini.`
-            : 'Memuat daftar kasus komite…'
+            : "Memuat daftar kasus komite…"
         }
         searchLabel="Cari nomor case komite atau nomor klaim"
         emptyMessage={emptyMessageFor(kind)}
         isLoading={list.isPending}
-        error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-        serverSearch={{ value: search, onChange: changeSearch, matchCount: data?.total }}
+        error={
+          list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+        }
+        serverSearch={{
+          value: search,
+          onChange: changeSearch,
+          matchCount: data?.total,
+        }}
         actions={
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-            {list.isFetching ? 'Memuat…' : 'Muat ulang'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            <ReloadIcon
+              className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+            />
+            {list.isFetching ? "Memuat…" : "Muat ulang"}
           </Button>
         }
       />
@@ -292,19 +314,20 @@ export function InboxKomitePage() {
       */}
       {data && data.total === 0 && data.penyaring_pemilik_aktif && (
         <p className="mt-4 text-xs leading-relaxed text-slate-500">
-          Inbox disaring untuk operator <span className="font-mono">{data.operator || '—'}</span>.
-          Bila Anda yakin ada kasus yang menunggu, periksa apakah nama operator Anda di
+          Inbox disaring untuk operator{" "}
+          <span className="font-mono">{data.operator || "—"}</span>. Bila Anda
+          yakin ada kasus yang menunggu, periksa apakah nama operator Anda di
           sistem lama sama dengan login yang Anda pakai masuk.
         </p>
       )}
 
       <p className="mt-6 max-w-3xl rounded-kartu border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-        <strong>Selama masa paralel:</strong> keputusan yang dicatat di sini belum
-        menutup case yang sama di Pega. Kasusnya tetap terbuka di sana sampai modul
-        penugasan dan penyelesaian nilai ikut berpindah.
+        <strong>Selama masa paralel:</strong> keputusan yang dicatat di sini
+        belum menutup case yang sama di Pega. Kasusnya tetap terbuka di sana
+        sampai modul penugasan dan penyelesaian nilai ikut berpindah.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -321,10 +344,10 @@ export function InboxKomitePage() {
 function AgingBadge({ days }: { days: number }) {
   const tone =
     days >= 7
-      ? 'bg-red-50 text-red-700 ring-red-100'
+      ? "bg-red-50 text-red-700 ring-red-100"
       : days >= 3
-        ? 'bg-amber-50 text-amber-800 ring-amber-100'
-        : 'bg-slate-100 text-slate-600 ring-slate-200'
+        ? "bg-amber-50 text-amber-800 ring-amber-100"
+        : "bg-slate-100 text-slate-600 ring-slate-200";
 
   return (
     <span
@@ -333,7 +356,7 @@ function AgingBadge({ days }: { days: number }) {
     >
       {days} hari
     </span>
-  )
+  );
 }
 
 /**
@@ -345,7 +368,7 @@ function AgingBadge({ days }: { days: number }) {
  * tidak boleh dijawab diam-diam oleh sebuah komponen tampilan.
  */
 function StateCell({ item }: { item: KomiteCase }) {
-  const progress = item.penjenjangan
+  const progress = item.penjenjangan;
 
   return (
     <div className="min-w-0">
@@ -356,31 +379,38 @@ function StateCell({ item }: { item: KomiteCase }) {
           : `Jenjang ${progress.jenjang_kini || progress.jumlah_jenjang} dari ${progress.jumlah_jenjang}`}
       </p>
       {item.keputusan_pega && (
-        <p className="truncate text-xs text-slate-400" title="Keputusan yang tercatat di Pega">
+        <p
+          className="truncate text-xs text-slate-400"
+          title="Keputusan yang tercatat di Pega"
+        >
           Pega: {item.keputusan_pega}
         </p>
       )}
     </div>
-  )
+  );
 }
 
-function OutcomeBadge({ outcome }: { outcome: KomiteCase['penjenjangan']['kesimpulan'] }) {
+function OutcomeBadge({
+  outcome,
+}: {
+  outcome: KomiteCase["penjenjangan"]["kesimpulan"];
+}) {
   const tone: Record<string, string> = {
-    [KomiteOutcome.pending]: 'bg-blue-50 text-blue-700 ring-blue-100',
-    [KomiteOutcome.approved]: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-    [KomiteOutcome.rejected]: 'bg-red-50 text-red-700 ring-red-100',
-    [KomiteOutcome.returned]: 'bg-amber-50 text-amber-800 ring-amber-100',
-  }
+    [KomiteOutcome.pending]: "bg-blue-50 text-blue-700 ring-blue-100",
+    [KomiteOutcome.approved]: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    [KomiteOutcome.rejected]: "bg-red-50 text-red-700 ring-red-100",
+    [KomiteOutcome.returned]: "bg-amber-50 text-amber-800 ring-amber-100",
+  };
 
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${
-        tone[outcome] ?? 'bg-slate-100 text-slate-600 ring-slate-200'
+        tone[outcome] ?? "bg-slate-100 text-slate-600 ring-slate-200"
       }`}
     >
       {outcome}
     </span>
-  )
+  );
 }
 
 /**
@@ -399,23 +429,33 @@ function RangeFilter({
   to,
   onChange,
 }: {
-  from: string
-  to: string
-  onChange: (from: string, to: string) => void
+  from: string;
+  to: string;
+  onChange: (from: string, to: string) => void;
 }) {
-  const inverted = from !== '' && to !== '' && to < from
+  const inverted = from !== "" && to !== "" && to < from;
 
   return (
     <div className="rounded-kartu border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-44">
-          <DateField id="tgl-input-dari" label="Tgl input dari" value={from} onChange={(v) => onChange(v, to)} />
+          <DateField
+            id="tgl-input-dari"
+            label="Tgl input dari"
+            value={from}
+            onChange={(v) => onChange(v, to)}
+          />
         </div>
         <div className="w-44">
-          <DateField id="tgl-input-sampai" label="Tgl input sampai" value={to} onChange={(v) => onChange(from, v)} />
+          <DateField
+            id="tgl-input-sampai"
+            label="Tgl input sampai"
+            value={to}
+            onChange={(v) => onChange(from, v)}
+          />
         </div>
-        {(from !== '' || to !== '') && (
-          <Button tone="halus" onClick={() => onChange('', '')}>
+        {(from !== "" || to !== "") && (
+          <Button tone="halus" onClick={() => onChange("", "")}>
             Bersihkan
           </Button>
         )}
@@ -426,7 +466,7 @@ function RangeFilter({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 function Pagination({
@@ -437,15 +477,15 @@ function Pagination({
   onMove,
   loading,
 }: {
-  offset: number
-  limit: number
-  total: number
-  visible: number
-  onMove: (offset: number) => void
-  loading: boolean
+  offset: number;
+  limit: number;
+  total: number;
+  visible: number;
+  onMove: (offset: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : offset + 1
-  const last = offset + visible
+  const first = visible === 0 ? 0 : offset + 1;
+  const last = offset + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -469,7 +509,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -482,11 +522,11 @@ function Pagination({
 function emptyMessageFor(kind: Kind): string {
   switch (kind) {
     case KomiteInboxKind.outstanding:
-      return 'Tidak ada kasus yang menunggu keputusan Anda.'
+      return "Tidak ada kasus yang menunggu keputusan Anda.";
     case KomiteInboxKind.accepted:
-      return 'Belum ada kasus yang Anda setujui.'
+      return "Belum ada kasus yang Anda setujui.";
     default:
-      return 'Belum ada kasus yang Anda tolak atau kembalikan.'
+      return "Belum ada kasus yang Anda tolak atau kembalikan.";
   }
 }
 
@@ -499,15 +539,17 @@ function LoadErrorMessage({ error }: { error: unknown }) {
         description="Daftar kasus komite belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
         tone="gangguan"
       />
-    )
+    );
   }
   return (
     <ErrorMessage
       title="Daftar kasus komite gagal dimuat"
       description={
-        error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem.'
+        error instanceof APIError
+          ? error.message
+          : "Terjadi kesalahan pada sistem."
       }
       tone="gangguan"
     />
-  )
+  );
 }

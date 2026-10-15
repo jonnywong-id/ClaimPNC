@@ -1,23 +1,28 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   KomiteIntegrityResponse,
   KomiteThresholdListResponse,
   KomiteTieringResponse,
-} from '@/api/types'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSession } from "@/app/session";
 
-const MASTER_PATH = '/api/master/ambang-komite'
-const TIERING_PATH = '/api/komite/penjenjangan'
+const MASTER_PATH = "/api/master/ambang-komite";
+const TIERING_PATH = "/api/komite/penjenjangan";
 
 /** Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran. */
 const keys = {
-  list: (token: string | null) => ['ambang-komite', token] as const,
-  integrity: (token: string | null) => ['ambang-komite-integritas', token] as const,
-  tiering: (token: string | null, value: string, line: string, applicant: string) =>
-    ['komite-penjenjangan', token, value, line, applicant] as const,
-}
+  list: (token: string | null) => ["ambang-komite", token] as const,
+  integrity: (token: string | null) =>
+    ["ambang-komite-integritas", token] as const,
+  tiering: (
+    token: string | null,
+    value: string,
+    line: string,
+    applicant: string,
+  ) => ["komite-penjenjangan", token, value, line, applicant] as const,
+};
 
 /**
  * Hook daftar master ambang komite.
@@ -31,7 +36,7 @@ const keys = {
  * datanya besar — inbox dan laporan — tidak boleh mengikuti pola ini.
  */
 export function useThresholdList() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.list(token),
@@ -40,7 +45,7 @@ export function useThresholdList() {
     // Master nyaris tidak pernah berubah dalam satu sesi kerja, dan aplikasi ini bahkan
     // tidak dapat mengubahnya — ia dibaca saja selama masa paralel.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -51,14 +56,15 @@ export function useThresholdList() {
  * rapi — dan inilah yang menjalankannya.
  */
 export function useIntegrity() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.integrity(token),
-    queryFn: () => callAPI<KomiteIntegrityResponse>(`${MASTER_PATH}/integritas`, { token }),
+    queryFn: () =>
+      callAPI<KomiteIntegrityResponse>(`${MASTER_PATH}/integritas`, { token }),
     enabled: token !== null,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -72,23 +78,30 @@ export function useIntegrity() {
  * pengguna. Server menolak pemisah ribuan dengan sengaja: artinya berbeda antar bahasa,
  * sehingga penafsirannya terjadi di layar yang tahu bahasanya.
  */
-export function useTiering(value: string, line: string, applicant: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
+export function useTiering(
+  value: string,
+  line: string,
+  applicant: string,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: keys.tiering(token, value, line, applicant),
     queryFn: () => {
-      const params = new URLSearchParams({ nilai: value, lini: line })
+      const params = new URLSearchParams({ nilai: value, lini: line });
       // Penginput hanya berpengaruh pada mode satu-penyetuju, tempat ia dikecualikan
       // supaya tidak menyetujui pengajuannya sendiri. Dikirim hanya bila terisi, supaya
       // alamat halaman tetap bersih pada portal yang tidak memakainya.
-      if (applicant !== '') params.set('penginput', applicant)
+      if (applicant !== "") params.set("penginput", applicant);
 
-      return callAPI<KomiteTieringResponse>(`${TIERING_PATH}?${params}`, { token })
+      return callAPI<KomiteTieringResponse>(`${TIERING_PATH}?${params}`, {
+        token,
+      });
     },
-    enabled: token !== null && enabled && value !== '' && line !== '',
+    enabled: token !== null && enabled && value !== "" && line !== "",
     // Hasilnya murni turunan dari master dan nilai yang diminta; selama keduanya sama,
     // jawabannya tidak akan berubah.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }

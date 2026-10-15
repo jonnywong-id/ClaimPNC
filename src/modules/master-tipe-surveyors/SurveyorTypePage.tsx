@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type SurveyorType } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type SurveyorType } from "@/api/types";
+import { ReloadIcon, AddIcon, EditIcon } from "@/components/Icon";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
-import { useSurveyorTypeList } from './api'
-import { SurveyorTypeForm } from './SurveyorTypeForm'
+import { useSurveyorTypeList } from "./api";
+import { SurveyorTypeForm } from "./SurveyorTypeForm";
 
 /**
  * Layar Master Tipe Surveyors.
@@ -43,29 +43,29 @@ import { SurveyorTypeForm } from './SurveyorTypeForm'
  * | Entitas | disimpulkan dari nama server | dipilih pengguna dan disebut di layar |
  */
 export function SurveyorTypePage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useSurveyorTypeList()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useSurveyorTypeList();
 
   // null = form tertutup; { kode: '' } = sedang menambah; berisi = sedang mengubah.
-  const [beingEdited, setBeingEdited] = useState<SurveyorType | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
+  const [beingEdited, setBeingEdited] = useState<SurveyorType | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   function openAdd() {
-    setBeingEdited(null)
-    setFormOpen(true)
+    setBeingEdited(null);
+    setFormOpen(true);
   }
 
   function openEdit(surveyorType: SurveyorType) {
-    setBeingEdited(surveyorType)
-    setFormOpen(true)
+    setBeingEdited(surveyorType);
+    setFormOpen(true);
   }
 
   function closeForm() {
-    setFormOpen(false)
-    setBeingEdited(null)
+    setFormOpen(false);
+    setBeingEdited(null);
   }
 
-  const rows = list.data?.tipe_surveyor ?? []
+  const rows = list.data?.tipe_surveyor ?? [];
 
   // Kolom kode lama hanya ditampilkan bila ADA yang mengisinya.
   //
@@ -73,13 +73,13 @@ export function SurveyorTypePage() {
   // hubung hanya menambah lebar tabel tanpa memberi tahu apa pun. Ia tetap disiapkan
   // karena basis data entitas lain belum diperiksa — bila ternyata terisi di sana,
   // kolomnya muncul dengan sendirinya tanpa perubahan kode.
-  const anyLegacyCode = rows.some((t) => t.kode_lama.trim() !== '')
+  const anyLegacyCode = rows.some((t) => t.kode_lama.trim() !== "");
 
   const columns: Column<SurveyorType>[] = [
     {
-      key: 'kode',
-      title: 'Kode',
-      width: '8rem',
+      key: "kode",
+      title: "Kode",
+      width: "8rem",
       value: (t) => t.kode,
       render: (t) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
@@ -88,17 +88,19 @@ export function SurveyorTypePage() {
       ),
     },
     {
-      key: 'deskripsi',
-      title: 'Deskripsi',
+      key: "deskripsi",
+      title: "Deskripsi",
       value: (t) => t.deskripsi,
-      render: (t) => <span className="font-medium text-slate-900">{t.deskripsi}</span>,
+      render: (t) => (
+        <span className="font-medium text-slate-900">{t.deskripsi}</span>
+      ),
     },
     ...(anyLegacyCode
       ? [
           {
-            key: 'kode_lama',
-            title: 'Kode lama',
-            width: '9rem',
+            key: "kode_lama",
+            title: "Kode lama",
+            width: "9rem",
             value: (t: SurveyorType) => t.kode_lama,
             render: (t: SurveyorType) =>
               t.kode_lama ? (
@@ -106,7 +108,10 @@ export function SurveyorTypePage() {
                   {t.kode_lama}
                 </span>
               ) : (
-                <span className="text-slate-400" title="Tipe ini tidak punya penomoran lama">
+                <span
+                  className="text-slate-400"
+                  title="Tipe ini tidak punya penomoran lama"
+                >
                   —
                 </span>
               ),
@@ -114,12 +119,12 @@ export function SurveyorTypePage() {
         ]
       : []),
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (t) => (
         <Button
           tone="halus"
@@ -131,12 +136,15 @@ export function SurveyorTypePage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -149,18 +157,18 @@ export function SurveyorTypePage() {
           Master Tipe Surveyors
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Golongan petugas survei — Internal Surveyor, Loss Adjuster, Expert, dan
-          seterusnya. Setiap surveyor digolongkan ke salah satu tipe di sini, dan nama
-          yang diubah langsung terbaca layar pemilihan surveyor.
+          Golongan petugas survei — Internal Surveyor, Loss Adjuster, Expert,
+          dan seterusnya. Setiap surveyor digolongkan ke salah satu tipe di
+          sini, dan nama yang diubah langsung terbaca layar pemilihan surveyor.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
+          Portal entitas:{" "}
           <span className="font-medium text-slate-700">
-            {list.data?.portal ?? portal ?? '—'}
+            {list.data?.portal ?? portal ?? "—"}
           </span>
         </p>
       </header>
@@ -186,23 +194,33 @@ export function SurveyorTypePage() {
           description={
             list.data
               ? `${list.data.total} tipe surveyor terdaftar pada entitas ini.`
-              : 'Memuat daftar tipe surveyor…'
+              : "Memuat daftar tipe surveyor…"
           }
           searchLabel="Cari kode atau nama tipe surveyor"
           emptyMessage="Belum ada tipe surveyor pada entitas ini."
           isLoading={list.isPending}
-          error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+          error={
+            list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+          }
           actions={
             <>
               <Button
                 tone="kedua"
-                onClick={() => { list.refetch() }}
+                onClick={() => {
+                  list.refetch();
+                }}
                 disabled={list.isFetching}
               >
-                <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                {list.isFetching ? 'Memuat…' : 'Refresh'}
+                <ReloadIcon
+                  className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                />
+                {list.isFetching ? "Memuat…" : "Refresh"}
               </Button>
-              <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
+              <Button
+                tone="utama"
+                onClick={openAdd}
+                disabled={formOpen && !beingEdited}
+              >
                 <AddIcon className="h-4 w-4" />
                 Tambah
               </Button>
@@ -211,7 +229,7 @@ export function SurveyorTypePage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -221,20 +239,28 @@ export function SurveyorTypePage() {
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
+      title: "Tidak dapat menghubungi server",
       description:
-        'Daftar tipe surveyor belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+        "Daftar tipe surveyor belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -242,30 +268,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tipe surveyor gagal dimuat',
+          title: "Daftar tipe surveyor gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar tipe surveyor gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tipe surveyor gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

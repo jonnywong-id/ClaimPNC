@@ -1,18 +1,18 @@
-import type { AutoClaimTab } from '@/api/types'
+import type { AutoClaimTab } from "@/api/types";
 
 /** Id panel isi tab — satu panel yang isinya berganti mengikuti tab aktif. */
-export const PANEL_ID = 'panel-jenis-klaim'
+export const PANEL_ID = "panel-jenis-klaim";
 
 /** Id tombol tab, dirujuk panel lewat `aria-labelledby`. */
 export function tabId(kode: string): string {
-  return `tab-jenis-klaim-${kode}`
+  return `tab-jenis-klaim-${kode}`;
 }
 
 type Props = {
-  tab: AutoClaimTab[]
-  selected: string
-  onSelect: (source: string) => void
-}
+  tab: AutoClaimTab[];
+  selected: string;
+  onSelect: (source: string) => void;
+};
 
 /**
  * Tab ANEKA / Asuransi Kredit / Travel.
@@ -36,21 +36,27 @@ type Props = {
  * seperti tab. Deretan tombol biasa terbaca sebagai tiga tombol lepas tanpa hubungan.
  */
 export function SourceTab({ tab, selected, onSelect }: Props) {
-  if (tab.length === 0) return null
+  if (tab.length === 0) return null;
 
   function pindah(arah: -1 | 1) {
-    const sekarang = tab.findIndex((t) => t.kode === selected)
-    if (sekarang < 0) return
+    const sekarang = tab.findIndex((t) => t.kode === selected);
+    if (sekarang < 0) return;
     // Berputar di ujungnya, mengikuti perilaku tab yang lazim.
-    const tujuan = (sekarang + arah + tab.length) % tab.length
-    const berikut = tab[tujuan]
-    if (berikut !== undefined) onSelect(berikut.kode)
+    const tujuan = (sekarang + arah + tab.length) % tab.length;
+    const berikut = tab[tujuan];
+    if (berikut !== undefined) onSelect(berikut.kode);
   }
 
   return (
-    <div role="tablist" aria-label="Jenis klaim" className="flex gap-1 border-b border-slate-200">
+    // Di layar sempit tab berubah menjadi deretan pil yang dapat digulir mendatar,
+    // mengikuti desain ponsel (`D-82`); di layar lebar tetap tab bergaris bawah.
+    <div
+      role="tablist"
+      aria-label="Jenis klaim"
+      className="flex gap-1.5 overflow-x-auto px-3 pt-3 sm:gap-1 sm:border-b sm:border-slate-200 sm:px-4 sm:pt-0"
+    >
       {tab.map((t) => {
-        const aktif = t.kode === selected
+        const aktif = t.kode === selected;
         return (
           <button
             key={t.kode}
@@ -65,28 +71,31 @@ export function SourceTab({ tab, selected, onSelect }: Props) {
             tabIndex={aktif ? 0 : -1}
             onClick={() => onSelect(t.kode)}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowRight') {
-                event.preventDefault()
-                pindah(1)
+              if (event.key === "ArrowRight") {
+                event.preventDefault();
+                pindah(1);
               }
-              if (event.key === 'ArrowLeft') {
-                event.preventDefault()
-                pindah(-1)
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                pindah(-1);
               }
             }}
             className={[
-              '-mb-px border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap',
-              'transition-[color,border-color] duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20',
+              "shrink-0 text-sm font-semibold whitespace-nowrap",
+              "transition-[color,border-color,background-color] duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20",
+              // Ponsel: pil. Layar lebar: garis bawah 3px pada tab aktif.
+              "rounded-full border px-3.5 py-2",
+              "sm:-mb-px sm:rounded-none sm:border-0 sm:border-b-[3px] sm:px-4 sm:py-3",
               aktif
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900',
-            ].join(' ')}
+                ? "border-slate-800 bg-slate-800 text-white sm:border-blue-600 sm:bg-transparent sm:text-blue-700"
+                : "border-slate-300 bg-white text-slate-700 hover:text-slate-900 sm:border-transparent sm:bg-transparent sm:text-slate-600 sm:hover:border-slate-300",
+            ].join(" ")}
           >
             {t.label}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

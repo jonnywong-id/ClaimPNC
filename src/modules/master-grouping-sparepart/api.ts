@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   GroupingDecisionInput,
   GroupingDecisionResponse,
@@ -10,15 +10,15 @@ import type {
   GroupingPartResponse,
   GroupingResponse,
   GroupingSideResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/grouping-sparepart'
-const ROUTE_DECISION = '/api/master/grouping-sparepart/keputusan'
-const ROUTE_OPTIONS = '/api/master/grouping-sparepart/pilihan'
-const ROUTE_SIDES = '/api/master/grouping-sparepart/sisi'
-const ROUTE_PART = '/api/master/grouping-sparepart/sparepart'
+const ROUTE = "/api/master/grouping-sparepart";
+const ROUTE_DECISION = "/api/master/grouping-sparepart/keputusan";
+const ROUTE_OPTIONS = "/api/master/grouping-sparepart/pilihan";
+const ROUTE_SIDES = "/api/master/grouping-sparepart/sisi";
+const ROUTE_PART = "/api/master/grouping-sparepart/sparepart";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -33,12 +33,12 @@ const ROUTE_PART = '/api/master/grouping-sparepart/sparepart'
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-grouping-sparepart', portal, token, status] as const
+  return ["master-grouping-sparepart", portal, token, status] as const;
 }
 
 /** Kunci daftar pilihan Panel dan Tipe Kendaraan. Keduanya data entitas, bukan konstanta. */
 function optionsKey(portal: string | null, token: string | null) {
-  return ['master-grouping-sparepart-pilihan', portal, token] as const
+  return ["master-grouping-sparepart-pilihan", portal, token] as const;
 }
 
 /**
@@ -53,12 +53,18 @@ function sidesKey(
   panelID: string,
   panelName: string,
 ) {
-  return ['master-grouping-sparepart-sisi', portal, token, panelID, panelName] as const
+  return [
+    "master-grouping-sparepart-sisi",
+    portal,
+    token,
+    panelID,
+    panelName,
+  ] as const;
 }
 
 /** Kunci pencarian sparepart. Nomornya ikut — itulah yang menentukan jawabannya. */
 function partKey(portal: string | null, token: string | null, number: string) {
-  return ['master-grouping-sparepart-part', portal, token, number] as const
+  return ["master-grouping-sparepart-part", portal, token, number] as const;
 }
 
 /**
@@ -78,18 +84,21 @@ function partKey(portal: string | null, token: string | null, number: string) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function useGroupingList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<GroupingListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<GroupingListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -99,14 +108,15 @@ export function useGroupingList(status: string) {
  * konstanta.
  */
 export function useGroupingOptions() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: optionsKey(portal, token),
-    queryFn: () => callAPI<GroupingOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
+    queryFn: () =>
+      callAPI<GroupingOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -119,17 +129,24 @@ export function useGroupingOptions() {
  * mengatakan panel itu belum punya sisi.
  */
 export function useGroupingSides(panelID: string, panelName: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const query = new URLSearchParams({ id_panel: panelID, nama_panel: panelName })
+  const query = new URLSearchParams({
+    id_panel: panelID,
+    nama_panel: panelName,
+  });
 
   return useQuery({
     queryKey: sidesKey(portal, token, panelID, panelName),
     queryFn: () =>
-      callAPI<GroupingSideResponse>(`${ROUTE_SIDES}?${query.toString()}`, { token, portal }),
-    enabled: token !== null && portal !== null && panelID !== '' && panelName !== '',
-  })
+      callAPI<GroupingSideResponse>(`${ROUTE_SIDES}?${query.toString()}`, {
+        token,
+        portal,
+      }),
+    enabled:
+      token !== null && portal !== null && panelID !== "" && panelName !== "",
+  });
 }
 
 /**
@@ -149,19 +166,22 @@ export function useGroupingSides(panelID: string, panelName: string) {
  * Galat 404 TIDAK diulang-coba — nomor yang tidak ada tidak akan menjadi ada.
  */
 export function useGroupingPart(number: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: partKey(portal, token, number),
     queryFn: () =>
-      callAPI<GroupingPartResponse>(`${ROUTE_PART}?nomor=${encodeURIComponent(number)}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && number !== '',
+      callAPI<GroupingPartResponse>(
+        `${ROUTE_PART}?nomor=${encodeURIComponent(number)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: token !== null && portal !== null && number !== "",
     retry: false,
-  })
+  });
 }
 
 /**
@@ -172,17 +192,22 @@ export function useGroupingPart(number: string) {
  * Approval — tab yang justru TIDAK sedang dilihat pengguna saat ia menambah dari tab Approve.
  */
 export function useCreateGrouping() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: GroupingInput) =>
-      callAPI<GroupingResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<GroupingResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-grouping-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -192,22 +217,22 @@ export function useCreateGrouping() {
  * Waiting Approval, sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSaveGrouping() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: GroupingInput }) =>
       callAPI<GroupingResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-grouping-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -236,20 +261,20 @@ export function useSaveGrouping() {
  * TANPA catatan: kedua tabel modul ini tidak punya kolom penampungnya.
  */
 export function useDecideGrouping() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: GroupingDecisionInput) =>
       callAPI<GroupingDecisionResponse>(ROUTE_DECISION, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-grouping-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-grouping-sparepart"] });
     },
-  })
+  });
 }

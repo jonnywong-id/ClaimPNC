@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   Clause,
   ClauseBusinessListResponse,
@@ -9,13 +9,13 @@ import type {
   ClauseInput,
   ClauseListResponse,
   ClauseResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/pasal-kerugian'
-const ROUTE_CATEGORY = '/api/master/pasal-kerugian/kategori'
-const ROUTE_BUSINESS = '/api/master/pasal-kerugian/bisnis'
+const ROUTE = "/api/master/pasal-kerugian";
+const ROUTE_CATEGORY = "/api/master/pasal-kerugian/kategori";
+const ROUTE_BUSINESS = "/api/master/pasal-kerugian/bisnis";
 
 /**
  * Panjang minimum kata kunci pencarian lini bisnis.
@@ -24,7 +24,7 @@ const ROUTE_BUSINESS = '/api/master/pasal-kerugian/bisnis'
  * berwenang — ia menjawab daftar kosong untuk kata kunci yang lebih pendek — dan angka di
  * sini hanya mencegah perjalanan jaringan yang sudah pasti kosong.
  */
-export const MIN_LOOKUP_KEYWORD = 2
+export const MIN_LOOKUP_KEYWORD = 2;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -35,15 +35,19 @@ export const MIN_LOOKUP_KEYWORD = 2
  * data itu milik badan hukum lain (R-20).
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-pasal-kerugian', portal, token] as const
+  return ["master-pasal-kerugian", portal, token] as const;
 }
 
 function detailKey(portal: string | null, token: string | null, id: string) {
-  return ['master-pasal-kerugian-detail', portal, token, id] as const
+  return ["master-pasal-kerugian-detail", portal, token, id] as const;
 }
 
-function businessKey(portal: string | null, token: string | null, keyword: string) {
-  return ['master-pasal-kerugian-bisnis', portal, token, keyword] as const
+function businessKey(
+  portal: string | null,
+  token: string | null,
+  keyword: string,
+) {
+  return ["master-pasal-kerugian-bisnis", portal, token, keyword] as const;
 }
 
 /**
@@ -54,14 +58,14 @@ function businessKey(portal: string | null, token: string | null, keyword: strin
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useClauseList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<ClauseListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -76,14 +80,18 @@ export function useClauseList() {
  * `id` kosong berarti form sedang dalam mode tambah; permintaannya tidak dijalankan.
  */
 export function useClause(id: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: detailKey(portal, token, id),
-    queryFn: () => callAPI<ClauseResponse>(`${ROUTE}/${encodeURIComponent(id)}`, { token, portal }),
-    enabled: token !== null && portal !== null && id !== '',
-  })
+    queryFn: () =>
+      callAPI<ClauseResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
+        token,
+        portal,
+      }),
+    enabled: token !== null && portal !== null && id !== "",
+  });
 }
 
 /**
@@ -96,14 +104,15 @@ export function useClause(id: string) {
  * `staleTime` panjang karena isinya tidak berubah selama aplikasi berjalan.
  */
 export function useClauseCategoryList() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
-    queryKey: ['master-pasal-kerugian-kategori', token] as const,
-    queryFn: () => callAPI<ClauseCategoryListResponse>(ROUTE_CATEGORY, { token }),
+    queryKey: ["master-pasal-kerugian-kategori", token] as const,
+    queryFn: () =>
+      callAPI<ClauseCategoryListResponse>(ROUTE_CATEGORY, { token }),
     enabled: token !== null,
     staleTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -114,9 +123,9 @@ export function useClauseCategoryList() {
  * huruf yang diketik pada dua huruf pertama.
  */
 export function useClauseBusinessLookup(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
     queryKey: businessKey(portal, token, clean),
@@ -125,23 +134,29 @@ export function useClauseBusinessLookup(keyword: string) {
         `${ROUTE_BUSINESS}?cari=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
-    enabled: token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
-  })
+    enabled:
+      token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
+  });
 }
 
 /** Hook penambahan. */
 export function useCreateClause() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: ClauseInput) =>
-      callAPI<ClauseResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<ClauseResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
+      client.invalidateQueries({ queryKey: ["master-pasal-kerugian"] });
     },
-  })
+  });
 }
 
 /**
@@ -152,23 +167,23 @@ export function useCreateClause() {
  * menampilkan isian sebelum perubahan sampai cache-nya kedaluwarsa sendiri.
  */
 export function useUpdateClause() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: ClauseInput }) =>
       callAPI<ClauseResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
-      client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
+      client.invalidateQueries({ queryKey: ["master-pasal-kerugian"] });
+      client.invalidateQueries({ queryKey: ["master-pasal-kerugian-detail"] });
     },
-  })
+  });
 }
 
 /**
@@ -185,22 +200,22 @@ export function useUpdateClause() {
  * pengguna, dan pertanyaan "yakin?" hanya bermakna di depan barisnya.
  */
 export function useDeleteClause() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) =>
       callAPI<ClauseDeleteResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'DELETE',
+        metode: "DELETE",
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-pasal-kerugian'] })
-      client.invalidateQueries({ queryKey: ['master-pasal-kerugian-detail'] })
+      client.invalidateQueries({ queryKey: ["master-pasal-kerugian"] });
+      client.invalidateQueries({ queryKey: ["master-pasal-kerugian-detail"] });
     },
-  })
+  });
 }
 
 /** Bentuk isian awal form dari sebuah baris; dipakai ClauseForm dan uji layar. */
@@ -211,5 +226,5 @@ export function inputFrom(clause: Clause): ClauseInput {
     deskripsi: clause.deskripsi,
     kategori: clause.kategori,
     bisnis: clause.bisnis,
-  }
+  };
 }

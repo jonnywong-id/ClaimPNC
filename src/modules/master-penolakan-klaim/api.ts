@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   RejectionInput,
   RejectionListResponse,
   RejectionParentListResponse,
   RejectionResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/penolakan-klaim'
-const ROUTE_PARENT = '/api/master/penolakan-klaim/status-1'
+const ROUTE = "/api/master/penolakan-klaim";
+const ROUTE_PARENT = "/api/master/penolakan-klaim/status-1";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -22,12 +22,12 @@ const ROUTE_PARENT = '/api/master/penolakan-klaim/status-1'
  * data itu milik badan hukum lain (R-20).
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-penolakan-klaim', portal, token] as const
+  return ["master-penolakan-klaim", portal, token] as const;
 }
 
 /** Kunci daftar Status Penolakan 1; ikut per portal karena isinya milik entitas. */
 function parentKey(portal: string | null, token: string | null) {
-  return ['master-penolakan-klaim-status-1', portal, token] as const
+  return ["master-penolakan-klaim-status-1", portal, token] as const;
 }
 
 /**
@@ -38,14 +38,14 @@ function parentKey(portal: string | null, token: string | null) {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useRejectionList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<RejectionListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -60,14 +60,15 @@ export function useRejectionList() {
  * dengan induk baru, termasuk dari layar ini sendiri.
  */
 export function useRejectionParentList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: parentKey(portal, token),
-    queryFn: () => callAPI<RejectionParentListResponse>(ROUTE_PARENT, { token, portal }),
+    queryFn: () =>
+      callAPI<RejectionParentListResponse>(ROUTE_PARENT, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -79,18 +80,23 @@ export function useRejectionParentList() {
  * membuatnya lagi — persis duplikasi yang modul ini perbaiki.
  */
 export function useCreateRejection() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: RejectionInput) =>
-      callAPI<RejectionResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<RejectionResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
-      client.invalidateQueries({ queryKey: parentKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
+      client.invalidateQueries({ queryKey: parentKey(portal, token) });
     },
-  })
+  });
 }
 
 /**
@@ -105,14 +111,14 @@ export function useCreateRejection() {
  * ditemukan setelah terjadi.
  */
 export function useUpdateRejection() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: RejectionInput }) =>
       callAPI<RejectionResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
@@ -121,8 +127,8 @@ export function useUpdateRejection() {
     // pengajuan keduanya diterbitkan server, dan petugas lain dapat mengubah baris yang
     // sama pada saat bersamaan.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
-      client.invalidateQueries({ queryKey: parentKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
+      client.invalidateQueries({ queryKey: parentKey(portal, token) });
     },
-  })
+  });
 }

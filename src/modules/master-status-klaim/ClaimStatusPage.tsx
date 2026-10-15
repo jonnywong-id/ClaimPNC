@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ClaimStatus } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type ClaimStatus } from "@/api/types";
+import { ReloadIcon, AddIcon, EditIcon } from "@/components/Icon";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
-import { useClaimStatusList } from './api'
-import { ClaimStatusForm } from './ClaimStatusForm'
+import { useClaimStatusList } from "./api";
+import { ClaimStatusForm } from "./ClaimStatusForm";
 
 /**
  * Layar Master Status Klaim.
@@ -35,33 +35,35 @@ import { ClaimStatusForm } from './ClaimStatusForm'
  * | Nama ganda | diterima | ditolak (idem) |
  */
 export function ClaimStatusPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useClaimStatusList()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useClaimStatusList();
 
   // null = form tertutup; { kode: '' } = sedang menambah; berisi = sedang mengubah.
-  const [sedangDisunting, setSedangDisunting] = useState<ClaimStatus | null>(null)
-  const [formTerbuka, setFormTerbuka] = useState(false)
+  const [sedangDisunting, setSedangDisunting] = useState<ClaimStatus | null>(
+    null,
+  );
+  const [formTerbuka, setFormTerbuka] = useState(false);
 
   function openAdd() {
-    setSedangDisunting(null)
-    setFormTerbuka(true)
+    setSedangDisunting(null);
+    setFormTerbuka(true);
   }
 
   function openEdit(status: ClaimStatus) {
-    setSedangDisunting(status)
-    setFormTerbuka(true)
+    setSedangDisunting(status);
+    setFormTerbuka(true);
   }
 
   function closeForm() {
-    setFormTerbuka(false)
-    setSedangDisunting(null)
+    setFormTerbuka(false);
+    setSedangDisunting(null);
   }
 
   const columns: Column<ClaimStatus>[] = [
     {
-      key: 'kode',
-      title: 'Kode',
-      width: '8rem',
+      key: "kode",
+      title: "Kode",
+      width: "8rem",
       value: (s) => s.kode,
       render: (s) => (
         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-medium text-slate-700 ring-1 ring-slate-200">
@@ -70,15 +72,17 @@ export function ClaimStatusPage() {
       ),
     },
     {
-      key: 'label',
-      title: 'Status',
+      key: "label",
+      title: "Status",
       value: (s) => s.label,
-      render: (s) => <span className="font-medium text-slate-900">{s.label}</span>,
+      render: (s) => (
+        <span className="font-medium text-slate-900">{s.label}</span>
+      ),
     },
     {
-      key: 'kode_lama',
-      title: 'Kode lama',
-      width: '9rem',
+      key: "kode_lama",
+      title: "Kode lama",
+      width: "9rem",
       value: (s) => s.kode_lama,
       render: (s) =>
         s.kode_lama ? (
@@ -86,31 +90,41 @@ export function ClaimStatusPage() {
             {s.kode_lama}
           </span>
         ) : (
-          <span className="text-slate-400" title="Kode ini tidak pernah punya penomoran lama">
+          <span
+            className="text-slate-400"
+            title="Kode ini tidak pernah punya penomoran lama"
+          >
             —
           </span>
         ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (s) => (
-        <Button tone="halus" onClick={() => openEdit(s)} aria-label={`Ubah status ${s.label}`}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(s)}
+          aria-label={`Ubah status ${s.label}`}
+        >
           <EditIcon className="h-3.5 w-3.5" />
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -123,18 +137,18 @@ export function ClaimStatusPage() {
           Master Status Klaim
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Daftar keadaan bisnis sebuah klaim — Register, Claim Committee, Paid, dan
-          seterusnya. Nama status yang diubah di sini langsung terbaca layar search
-          klaim dan laporan.
+          Daftar keadaan bisnis sebuah klaim — Register, Claim Committee, Paid,
+          dan seterusnya. Nama status yang diubah di sini langsung terbaca layar
+          search klaim dan laporan.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
+          Portal entitas:{" "}
           <span className="font-medium text-slate-700">
-            {list.data?.portal ?? portal ?? '—'}
+            {list.data?.portal ?? portal ?? "—"}
           </span>
         </p>
       </header>
@@ -152,40 +166,50 @@ export function ClaimStatusPage() {
           tone="penolakan"
         />
       ) : (
-      <DataTable
-        columns={columns}
-        rows={list.data?.status_klaim ?? []}
-        rowKey={(s) => s.kode}
-        title="Daftar Status Klaim"
-        description={
-          list.data
-            ? `${list.data.total} status terdaftar pada entitas ini.`
-            : 'Memuat daftar status…'
-        }
-        searchLabel="Cari kode atau nama status"
-        emptyMessage="Belum ada status klaim yang terdaftar."
-        isLoading={list.isPending}
-        error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
-        actions={
-          <>
-            <Button
-              tone="kedua"
-              onClick={() => { list.refetch() }}
-              disabled={list.isFetching}
-            >
-              <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-              {list.isFetching ? 'Memuat…' : 'Refresh'}
-            </Button>
-            <Button tone="utama" onClick={openAdd} disabled={formTerbuka && !sedangDisunting}>
-              <AddIcon className="h-4 w-4" />
-              Tambah
-            </Button>
-          </>
-        }
-      />
+        <DataTable
+          columns={columns}
+          rows={list.data?.status_klaim ?? []}
+          rowKey={(s) => s.kode}
+          title="Daftar Status Klaim"
+          description={
+            list.data
+              ? `${list.data.total} status terdaftar pada entitas ini.`
+              : "Memuat daftar status…"
+          }
+          searchLabel="Cari kode atau nama status"
+          emptyMessage="Belum ada status klaim yang terdaftar."
+          isLoading={list.isPending}
+          error={
+            list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+          }
+          actions={
+            <>
+              <Button
+                tone="kedua"
+                onClick={() => {
+                  list.refetch();
+                }}
+                disabled={list.isFetching}
+              >
+                <ReloadIcon
+                  className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                />
+                {list.isFetching ? "Memuat…" : "Refresh"}
+              </Button>
+              <Button
+                tone="utama"
+                onClick={openAdd}
+                disabled={formTerbuka && !sedangDisunting}
+              >
+                <AddIcon className="h-4 w-4" />
+                Tambah
+              </Button>
+            </>
+          }
+        />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -195,19 +219,28 @@ export function ClaimStatusPage() {
  * salah — ia baru membuka layarnya.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
+  const message = loadMessage(error);
   return (
-    <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
-  )
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Daftar status belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -215,30 +248,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar status gagal dimuat',
+          title: "Daftar status gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar status gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar status gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

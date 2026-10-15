@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   PartTypeInput,
   PartTypeListResponse,
   PartTypeOptionsResponse,
   PartTypeResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/tipe-sparepart'
-const ROUTE_OPTIONS = '/api/master/tipe-sparepart/pilihan'
+const ROUTE = "/api/master/tipe-sparepart";
+const ROUTE_OPTIONS = "/api/master/tipe-sparepart/pilihan";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -26,7 +26,7 @@ const ROUTE_OPTIONS = '/api/master/tipe-sparepart/pilihan'
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-tipe-sparepart', portal, token, status] as const
+  return ["master-tipe-sparepart", portal, token, status] as const;
 }
 
 /**
@@ -47,18 +47,21 @@ function listKey(portal: string | null, token: string | null, status: string) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function usePartTypeList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<PartTypeListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<PartTypeListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -73,15 +76,16 @@ export function usePartTypeList(status: string) {
  * `PartTypeErrorCode.categoryNotFound` pada form, yang menyarankan pengguna memuat ulang.
  */
 export function usePartTypeOptions() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['master-tipe-sparepart-pilihan', portal, token],
-    queryFn: () => callAPI<PartTypeOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
+    queryKey: ["master-tipe-sparepart-pilihan", portal, token],
+    queryFn: () =>
+      callAPI<PartTypeOptionsResponse>(ROUTE_OPTIONS, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -93,17 +97,22 @@ export function usePartTypeOptions() {
  * Approve.
  */
 export function useCreatePartType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: PartTypeInput) =>
-      callAPI<PartTypeResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<PartTypeResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-tipe-sparepart"] });
     },
-  })
+  });
 }
 
 /**
@@ -117,22 +126,22 @@ export function useCreatePartType() {
  * kelompok pada setiap layar yang menampilkannya.
  */
 export function useSavePartType() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: PartTypeInput }) =>
       callAPI<PartTypeResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-tipe-sparepart'] })
+      client.invalidateQueries({ queryKey: ["master-tipe-sparepart"] });
     },
-  })
+  });
 }
 
 /*

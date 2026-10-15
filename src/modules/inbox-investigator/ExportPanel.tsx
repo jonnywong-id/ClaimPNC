@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
-import { DateField } from '@/components/DateField'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { DateField } from "@/components/DateField";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { SelectField } from "@/components/SelectField";
 
-import { useExportInvestigation } from './api'
+import { useExportInvestigation } from "./api";
 
 /**
  * Pilihan dropdown "Pilih Investigation".
@@ -22,9 +22,9 @@ import { useExportInvestigation } from './api'
  * yang tidak perlu dihafal.
  */
 const INVESTIGATION_OPTIONS = [
-  { value: '1', label: 'Sudah diinvestigasi' },
-  { value: '0', label: 'Belum diinvestigasi' },
-]
+  { value: "1", label: "Sudah diinvestigasi" },
+  { value: "0", label: "Belum diinvestigasi" },
+];
 
 /**
  * ExportPanel adalah tombol **Export Data Investigation** beserta ketiga kendalinya.
@@ -67,12 +67,12 @@ const INVESTIGATION_OPTIONS = [
  * Yang ditulis untuk pengguna hanyalah pesan yang muncul ketika ada yang salah.
  */
 export function ExportPanel() {
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [investigated, setInvestigated] = useState('')
-  const [problem, setProblem] = useState<string | null>(null)
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [investigated, setInvestigated] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
 
-  const exporting = useExportInvestigation()
+  const exporting = useExportInvestigation();
 
   /*
     Ketiganya diperiksa DI LAYAR lebih dulu, meski server memeriksanya lagi.
@@ -83,22 +83,23 @@ export function ExportPanel() {
     tombolnya.
   */
   function validate(): string | null {
-    if (!from) return 'Isi tanggal "Dari" lebih dulu.'
-    if (!to) return 'Isi tanggal "Sampai" lebih dulu.'
-    if (to < from) return 'Tanggal "Sampai" tidak boleh lebih awal daripada "Dari".'
-    if (!investigated) return 'Pilih salah satu pada "Pilih Investigation".'
-    return null
+    if (!from) return 'Isi tanggal "Dari" lebih dulu.';
+    if (!to) return 'Isi tanggal "Sampai" lebih dulu.';
+    if (to < from)
+      return 'Tanggal "Sampai" tidak boleh lebih awal daripada "Dari".';
+    if (!investigated) return 'Pilih salah satu pada "Pilih Investigation".';
+    return null;
   }
 
   function run() {
-    const found = validate()
-    setProblem(found)
-    if (found) return
-    exporting.mutate({ dari: from, sampai: to, investigasi: investigated })
+    const found = validate();
+    setProblem(found);
+    if (found) return;
+    exporting.mutate({ dari: from, sampai: to, investigasi: investigated });
   }
 
   const failure =
-    exporting.error instanceof Error ? exporting.error.message : null
+    exporting.error instanceof Error ? exporting.error.message : null;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50/60 p-4">
@@ -108,7 +109,9 @@ export function ExportPanel() {
           layar lama tidak punya teks apa pun di tempat ini, dan tambahan yang tidak ada di
           Pega membuat layar baru terasa berbeda tanpa sebab. Penjelasannya tinggal di
           dokumen, tempat ia memang dibaca. */}
-      <h2 className="text-sm font-semibold text-slate-800">Export Data Investigation</h2>
+      <h2 className="text-sm font-semibold text-slate-800">
+        Export Data Investigation
+      </h2>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
         <DateField
@@ -135,7 +138,7 @@ export function ExportPanel() {
         />
         <div>
           <Button onClick={run} disabled={exporting.isPending}>
-            {exporting.isPending ? 'Menyiapkan…' : 'Export Data Investigation'}
+            {exporting.isPending ? "Menyiapkan…" : "Export Data Investigation"}
           </Button>
         </div>
       </div>
@@ -155,7 +158,6 @@ export function ExportPanel() {
           />
         </div>
       )}
-
     </section>
-  )
+  );
 }

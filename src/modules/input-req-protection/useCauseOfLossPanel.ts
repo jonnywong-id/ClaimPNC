@@ -1,24 +1,24 @@
-import { useCauseOfLossOptions, useClaimCoverages } from './api'
-import type { CauseOfLossOption, CoverageRow } from './types'
+import { useCauseOfLossOptions, useClaimCoverages } from "./api";
+import type { CauseOfLossOption, CoverageRow } from "./types";
 
 /** Baris coverage yang sedang dipilih, sebagai satu keadaan. */
 export type SelectedCoverage = {
-  objek: string
-  coverage: string
-}
+  objek: string;
+  coverage: string;
+};
 
 /** Segala yang dibutuhkan panel "Detail Perubahan Cause Of Loss" untuk menggambar dirinya. */
 export type CauseOfLossPanel = {
-  rows: CoverageRow[]
+  rows: CoverageRow[];
 
   /** Baris yang sedang dipilih, atau `null` bila belum memilih — atau pilihannya hilang. */
-  selectedRow: CoverageRow | null
+  selectedRow: CoverageRow | null;
 
-  options: CauseOfLossOption[]
+  options: CauseOfLossOption[];
 
-  memuatCoverage: boolean
-  coverageGagal: boolean
-  pilihanGagal: boolean
+  memuatCoverage: boolean;
+  coverageGagal: boolean;
+  pilihanGagal: boolean;
 
   /**
    * Pilihan menunjuk baris yang SUDAH TIDAK ADA pada klaim.
@@ -27,8 +27,8 @@ export type CauseOfLossPanel = {
    * Dibiarkan diam, panel akan tampak "sudah dipilih" tanpa baris yang tersorot — lalu
    * server menolaknya saat disimpan, dengan sebab yang tidak terlihat di layar.
    */
-  pilihanHilang: boolean
-}
+  pilihanHilang: boolean;
+};
 
 /**
  * Menyiapkan isi panel "Detail Perubahan Cause Of Loss".
@@ -54,10 +54,10 @@ export function useCauseOfLossPanel(
   aktif: boolean,
   selected: SelectedCoverage,
 ): CauseOfLossPanel {
-  const coverages = useClaimCoverages(claimNumber, aktif)
-  const causeOptions = useCauseOfLossOptions(claimNumber, aktif)
+  const coverages = useClaimCoverages(claimNumber, aktif);
+  const causeOptions = useCauseOfLossOptions(claimNumber, aktif);
 
-  const rows = coverages.data?.coverage ?? []
+  const rows = coverages.data?.coverage ?? [];
 
   // Dicari lewat PASANGAN kunci, bukan lewat nama.
   //
@@ -65,18 +65,24 @@ export function useCauseOfLossPanel(
   // sehingga pencarian berbasis nama akan menyorot baris yang salah dua dari tiga kali.
   const selectedRow =
     rows.find(
-      (row) => row.id_objek === selected.objek && row.id_coverage === selected.coverage,
-    ) ?? null
+      (row) =>
+        row.id_objek === selected.objek &&
+        row.id_coverage === selected.coverage,
+    ) ?? null;
 
   return {
     rows,
     selectedRow,
     options: causeOptions.data?.penyebab_kerugian ?? [],
 
-    memuatCoverage: aktif && claimNumber.trim() !== '' && coverages.isPending,
+    memuatCoverage: aktif && claimNumber.trim() !== "" && coverages.isPending,
     coverageGagal: coverages.isError,
     pilihanGagal: causeOptions.isError,
 
-    pilihanHilang: aktif && selected.objek !== '' && selectedRow === null && coverages.isSuccess,
-  }
+    pilihanHilang:
+      aktif &&
+      selected.objek !== "" &&
+      selectedRow === null &&
+      coverages.isSuccess,
+  };
 }

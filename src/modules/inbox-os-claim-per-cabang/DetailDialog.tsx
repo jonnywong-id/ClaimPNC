@@ -4,16 +4,16 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
-} from 'react'
+} from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { formatRupiah } from '@/lib/money'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { formatRupiah } from "@/lib/money";
 
-import { useOSClaimPerCabangDetail } from './api'
+import { useOSClaimPerCabangDetail } from "./api";
 import type {
   DetailCoverage,
   DetailEstimation,
@@ -22,7 +22,7 @@ import type {
   DetailMessage,
   DetailObject,
   DetailProgress,
-} from './types'
+} from "./types";
 
 /**
  * Popup Detail — pengganti harness `View_DetailKlaimCabang_Harness`.
@@ -49,19 +49,19 @@ export function DetailDialog({
   nomorKlaim,
   onTutup,
 }: {
-  nomorKlaim: string
-  onTutup: () => void
+  nomorKlaim: string;
+  onTutup: () => void;
 }) {
-  const detail = useOSClaimPerCabangDetail(nomorKlaim)
+  const detail = useOSClaimPerCabangDetail(nomorKlaim);
 
   // Escape menutup popup, seperti dialog mana pun yang dikenal pengguna.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onTutup()
+      if (event.key === "Escape") onTutup();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onTutup])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onTutup]);
 
   return (
     <div
@@ -79,7 +79,9 @@ export function DetailDialog({
             >
               Detail Klaim
             </h2>
-            <p className="mt-1 font-mono text-sm text-slate-600">{nomorKlaim}</p>
+            <p className="mt-1 font-mono text-sm text-slate-600">
+              {nomorKlaim}
+            </p>
           </div>
           <Button tone="kedua" onClick={onTutup}>
             Tutup
@@ -98,11 +100,11 @@ export function DetailDialog({
               pengguna memuat ulang daftarnya, yang kedua menyuruhnya mencoba lagi nanti.
             */}
             <ErrorMessage
-              tone={isNotFound(detail.error) ? 'penolakan' : 'gangguan'}
+              tone={isNotFound(detail.error) ? "penolakan" : "gangguan"}
               title={
                 isNotFound(detail.error)
-                  ? 'Klaim tidak ditemukan'
-                  : 'Detail klaim tidak dapat dimuat'
+                  ? "Klaim tidak ditemukan"
+                  : "Detail klaim tidak dapat dimuat"
               }
               description={messageOf(detail.error)}
             />
@@ -132,7 +134,9 @@ export function DetailDialog({
                 // kemampuan membuka pada baris itu, sehingga tidak ada baris yang mengundang
                 // diklik lalu membuka panel kosong.
                 expandedRow={(row) =>
-                  row.coverage.length === 0 ? null : <CoverageTable rows={row.coverage} />
+                  row.coverage.length === 0 ? null : (
+                    <CoverageTable rows={row.coverage} />
+                  )
                 }
               />
             </Section>
@@ -153,17 +157,18 @@ export function DetailDialog({
               <DataTable
                 columns={MESSAGE_COLUMNS}
                 rows={detail.data.komunikasi_adjuster}
-                rowKey={(row) => `${row.tanggal_proses}|${row.nama_user}|${row.pesan}`}
+                rowKey={(row) =>
+                  `${row.tanggal_proses}|${row.nama_user}|${row.pesan}`
+                }
                 hideSearch
                 emptyMessage="Belum ada komunikasi dengan loss adjuster."
               />
             </Section>
-
           </div>
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -176,10 +181,14 @@ export function DetailDialog({
 function Summary({ header }: { header: DetailHeader }) {
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-      <Entry label="COB">{header.cob || '—'}</Entry>
-      <Entry label="Occupation :">{header.occupation || '—'}</Entry>
-      <Entry label="Total Sum Insured :">{formatRupiah(header.total_sum_insured)}</Entry>
-      <Entry label="Total Reserve :">{formatRupiah(header.total_reserve)}</Entry>
+      <Entry label="COB">{header.cob || "—"}</Entry>
+      <Entry label="Occupation :">{header.occupation || "—"}</Entry>
+      <Entry label="Total Sum Insured :">
+        {formatRupiah(header.total_sum_insured)}
+      </Entry>
+      <Entry label="Total Reserve :">
+        {formatRupiah(header.total_reserve)}
+      </Entry>
 
       <Entry label="Aging :">
         {/*
@@ -187,10 +196,12 @@ function Summary({ header }: { header: DetailHeader }) {
           terbawa lewat `title` — bukan hanya lewat warna, yang tidak sampai ke semua orang.
         */}
         <span
-          className={header.perlu_perhatian ? 'font-semibold text-red-700' : undefined}
+          className={
+            header.perlu_perhatian ? "font-semibold text-red-700" : undefined
+          }
           title={
             header.perlu_perhatian
-              ? 'Umur klaim melewati ambang yang ditetapkan.'
+              ? "Umur klaim melewati ambang yang ditetapkan."
               : undefined
           }
         >
@@ -198,19 +209,19 @@ function Summary({ header }: { header: DetailHeader }) {
         </span>
       </Entry>
 
-      <Entry label="Dominant Factor :">{header.dominant_factor || '—'}</Entry>
+      <Entry label="Dominant Factor :">{header.dominant_factor || "—"}</Entry>
 
       <Entry label="Kronologi :" wide>
-        {header.kronologi || '—'}
+        {header.kronologi || "—"}
       </Entry>
       <Entry label="Claim Recommendation :" wide>
-        {header.claim_recommendation || '—'}
+        {header.claim_recommendation || "—"}
       </Entry>
       <Entry label="Note dari PIC :" wide>
-        {header.note_pic || '—'}
+        {header.note_pic || "—"}
       </Entry>
     </dl>
-  )
+  );
 }
 
 /** Entry menggambar satu pasang label dan nilai. */
@@ -219,18 +230,20 @@ function Entry({
   children,
   wide = false,
 }: {
-  label: string
-  children: ReactNode
-  wide?: boolean
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
 }) {
   return (
-    <div className={wide ? 'sm:col-span-2' : undefined}>
+    <div className={wide ? "sm:col-span-2" : undefined}>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </dt>
-      <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-900">{children}</dd>
+      <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
+        {children}
+      </dd>
     </div>
-  )
+  );
 }
 
 /** Section membungkus satu grid beserta judulnya. */
@@ -240,7 +253,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h3 className="mb-2 text-sm font-semibold text-slate-900">{title}</h3>
       {children}
     </section>
-  )
+  );
 }
 
 /**
@@ -309,42 +322,54 @@ function objectColumnsFor(cob: string): Column<DetailObject>[] {
   // Varian B — PA. `IsPA` berpasangan dengan susunan berkolom "Pekerjaan", BUKAN dengan
   // susunan peserta. Keduanya sempat tertukar di sini, dan tertukarnya tidak menghasilkan
   // galat apa pun: grid tetap terisi, hanya kolomnya yang milik lini lain.
-  if (cob === 'PA') {
+  if (cob === "PA") {
     return [
-      { key: 'nama', title: 'Nama Objek', value: (row) => row.nama || '—' },
-      { key: 'pekerjaan', title: 'Pekerjaan', value: (row) => row.pekerjaan || '—' },
+      { key: "nama", title: "Nama Objek", value: (row) => row.nama || "—" },
       {
-        key: 'tanggal_lahir',
-        title: 'Tanggal lahir',
-        value: (row) => formatDate(row.tanggal_lahir) || '—',
+        key: "pekerjaan",
+        title: "Pekerjaan",
+        value: (row) => row.pekerjaan || "—",
       },
-    ]
+      {
+        key: "tanggal_lahir",
+        title: "Tanggal lahir",
+        value: (row) => formatDate(row.tanggal_lahir) || "—",
+      },
+    ];
   }
 
   // Varian C — Travel. Ejaan "Tanggal Lahir" di sini memang berbeda dari "Tanggal lahir"
   // pada varian PA; keduanya dibawa apa adanya (`D-13`).
-  if (cob === 'Travel') {
+  if (cob === "Travel") {
     return [
-      { key: 'nama', title: 'Nama Peserta', value: (row) => row.nama || '—' },
+      { key: "nama", title: "Nama Peserta", value: (row) => row.nama || "—" },
       {
-        key: 'status_peserta',
-        title: 'Status',
-        value: (row) => row.status_peserta || '—',
+        key: "status_peserta",
+        title: "Status",
+        value: (row) => row.status_peserta || "—",
       },
-      { key: 'ktp_paspor', title: 'KTP/Paspor', value: (row) => row.ktp_paspor || '—' },
       {
-        key: 'tanggal_lahir',
-        title: 'Tanggal Lahir',
-        value: (row) => formatDate(row.tanggal_lahir) || '—',
+        key: "ktp_paspor",
+        title: "KTP/Paspor",
+        value: (row) => row.ktp_paspor || "—",
       },
-    ]
+      {
+        key: "tanggal_lahir",
+        title: "Tanggal Lahir",
+        value: (row) => formatDate(row.tanggal_lahir) || "—",
+      },
+    ];
   }
 
   // Varian A — Aneka, Marine Cargo, Fire, dan selebihnya.
   return [
-    { key: 'nama', title: 'Nama Objek', value: (row) => row.nama || '—' },
-    { key: 'lokasi', title: 'Lokasi Object', value: (row) => row.lokasi || '—' },
-  ]
+    { key: "nama", title: "Nama Objek", value: (row) => row.nama || "—" },
+    {
+      key: "lokasi",
+      title: "Lokasi Object",
+      value: (row) => row.lokasi || "—",
+    },
+  ];
 }
 
 /**
@@ -381,7 +406,7 @@ function CoverageTable({ rows }: { rows: DetailCoverage[] }) {
   // `pyRowEditing = masterDetail` dengan `pyEditAction = ViewObjectCoverageObjectItem`.
   // Serahan sebelumnya menggambar seluruh isinya sekaligus begitu objek dibuka — keliru, dan
   // pada klaim bercoverage banyak ia menumpahkan semuanya tanpa diminta.
-  const [terbuka, setTerbuka] = useState<string | null>(null)
+  const [terbuka, setTerbuka] = useState<string | null>(null);
 
   // TANPA kepala "Coverage" di atas tabelnya: kolom pertamanya sudah bernama Coverage, dan
   // layar lama tidak memberinya judul kedua. Permintaan Work Owner 2026-10-09.
@@ -406,92 +431,101 @@ function CoverageTable({ rows }: { rows: DetailCoverage[] }) {
             const isi =
               row.object_item.length > 0 ||
               row.list_spreading.length > 0 ||
-              row.co_member.length > 0
-            const dibuka = isi && terbuka === row.id
+              row.co_member.length > 0;
+            const dibuka = isi && terbuka === row.id;
 
             return (
-            <Fragment key={row.id}>
-              <tr
-                className={[
-                  'border-b border-slate-100 transition-colors duration-150 ease-halus',
-                  // Disamakan PERSIS dengan baris objek di DataTable: sorotan biru pada
-                  // SETIAP baris, penunjuk tangan hanya pada baris yang dapat dibuka, biru
-                  // lebih pekat saat terbuka. Tanpa penanda lain — Work Owner meminta baris
-                  // coverage tampak sama dengan baris objek sebelum dipencet (2026-10-09).
-                  'hover:bg-blue-50/50',
-                  isi ? 'cursor-pointer' : '',
-                  dibuka ? 'bg-blue-50/60' : '',
-                ].join(' ')}
-                {...(isi
-                  ? {
-                      role: 'button' as const,
-                      tabIndex: 0,
-                      'aria-expanded': dibuka,
-                      onClick: () => setTerbuka(dibuka ? null : row.id),
-                      onKeyDown: (event: ReactKeyboardEvent<HTMLTableRowElement>) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return
-                        event.preventDefault()
-                        setTerbuka(dibuka ? null : row.id)
-                      },
-                    }
-                  : {})}
-              >
-                <td className="py-1.5 pr-3 text-slate-900">{row.coverage || '—'}</td>
-                <td className="py-1.5 pr-3 text-slate-700">{row.mata_uang || '—'}</td>
-                {/*
+              <Fragment key={row.id}>
+                <tr
+                  className={[
+                    "border-b border-slate-100 transition-colors duration-150 ease-halus",
+                    // Disamakan PERSIS dengan baris objek di DataTable: sorotan biru pada
+                    // SETIAP baris, penunjuk tangan hanya pada baris yang dapat dibuka, biru
+                    // lebih pekat saat terbuka. Tanpa penanda lain — Work Owner meminta baris
+                    // coverage tampak sama dengan baris objek sebelum dipencet (2026-10-09).
+                    "hover:bg-blue-50/50",
+                    isi ? "cursor-pointer" : "",
+                    dibuka ? "bg-blue-50/60" : "",
+                  ].join(" ")}
+                  {...(isi
+                    ? {
+                        role: "button" as const,
+                        tabIndex: 0,
+                        "aria-expanded": dibuka,
+                        onClick: () => setTerbuka(dibuka ? null : row.id),
+                        onKeyDown: (
+                          event: ReactKeyboardEvent<HTMLTableRowElement>,
+                        ) => {
+                          if (event.key !== "Enter" && event.key !== " ")
+                            return;
+                          event.preventDefault();
+                          setTerbuka(dibuka ? null : row.id);
+                        },
+                      }
+                    : {})}
+                >
+                  <td className="py-1.5 pr-3 text-slate-900">
+                    {row.coverage || "—"}
+                  </td>
+                  <td className="py-1.5 pr-3 text-slate-700">
+                    {row.mata_uang || "—"}
+                  </td>
+                  {/*
                   TANPA awalan "Rp". Layar lama menggambar `2.800.000` polos, dan kolom di
                   sebelahnya sudah menyatakan mata uangnya — yang tidak selalu rupiah.
                   Menempelkan "Rp" pada baris bermata uang USD akan salah secara terang.
                 */}
-                <td className="py-1.5 text-right tabular-nums text-slate-900">
-                  {formatRupiah(row.tsi, { withoutSymbol: true })}
-                </td>
-              </tr>
-              {dibuka && (
-                <tr className="border-b border-slate-100 last:border-0">
-                  <td colSpan={3} className="space-y-3 pb-2 pl-3">
-                    {row.object_item.length > 0 && <ItemTable rows={row.object_item} />}
-                    {/*
+                  <td className="py-1.5 text-right tabular-nums text-slate-900">
+                    {formatRupiah(row.tsi, { withoutSymbol: true })}
+                  </td>
+                </tr>
+                {dibuka && (
+                  <tr className="border-b border-slate-100 last:border-0">
+                    <td colSpan={3} className="space-y-3 pb-2 pl-3">
+                      {row.object_item.length > 0 && (
+                        <ItemTable rows={row.object_item} />
+                      )}
+                      {/*
                       Keduanya berdampingan, persis seperti layar lama — bukan bertumpuk.
                       Keduanya juga TETAP digambar saat kosong, dengan "Data Tidak Ada",
                       karena begitulah layar lama menyatakannya.
                     */}
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      <ShareTable
-                        title="List Spreading"
-                        firstHeading="Tipe Treaty"
-                        rows={row.list_spreading.map((s) => ({
-                          key: s.tipe_treaty,
-                          first: s.tipe_treaty,
-                          currency: s.currency,
-                          estimasi: s.estimasi_value,
-                          persen: s.pembagian_persentase,
-                          result: s.result_value,
-                        }))}
-                      />
-                      <ShareTable
-                        title="CO MEMBER"
-                        firstHeading="Asuransi"
-                        rows={row.co_member.map((m) => ({
-                          key: m.asuransi,
-                          first: m.asuransi,
-                          currency: m.currency,
-                          estimasi: m.estimasi_value,
-                          persen: m.pembagian_persentase,
-                          result: m.result_value,
-                        }))}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </Fragment>
-            )
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <ShareTable
+                          title="List Spreading"
+                          firstHeading="Tipe Treaty"
+                          rows={row.list_spreading.map((s) => ({
+                            key: s.tipe_treaty,
+                            first: s.tipe_treaty,
+                            currency: s.currency,
+                            estimasi: s.estimasi_value,
+                            persen: s.pembagian_persentase,
+                            result: s.result_value,
+                          }))}
+                        />
+                        <ShareTable
+                          title="CO MEMBER"
+                          firstHeading="Asuransi"
+                          rows={row.co_member.map((m) => ({
+                            key: m.asuransi,
+                            first: m.asuransi,
+                            currency: m.currency,
+                            estimasi: m.estimasi_value,
+                            persen: m.pembagian_persentase,
+                            result: m.result_value,
+                          }))}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
           })}
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 /**
@@ -509,16 +543,16 @@ function ShareTable({
   firstHeading,
   rows,
 }: {
-  title: string
-  firstHeading: string
+  title: string;
+  firstHeading: string;
   rows: {
-    key: string
-    first: string
-    currency: string
-    estimasi: string
-    persen: string
-    result: string
-  }[]
+    key: string;
+    first: string;
+    currency: string;
+    estimasi: string;
+    persen: string;
+    result: string;
+  }[];
 }) {
   return (
     <div className="rounded-md border border-slate-200 bg-white p-2">
@@ -529,7 +563,9 @@ function ShareTable({
             <th className="pb-1 pr-3 font-medium">{firstHeading}</th>
             <th className="pb-1 pr-3 font-medium">Currency</th>
             <th className="pb-1 text-right font-medium">Estimasi Value</th>
-            <th className="pb-1 text-right font-medium">Pembagian Persentase (%)</th>
+            <th className="pb-1 text-right font-medium">
+              Pembagian Persentase (%)
+            </th>
             <th className="pb-1 text-right font-medium">Result Value</th>
           </tr>
         </thead>
@@ -542,9 +578,16 @@ function ShareTable({
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={row.key} className="border-b border-slate-100 last:border-0">
-                <td className="py-1.5 pr-3 text-slate-900">{row.first || '—'}</td>
-                <td className="py-1.5 pr-3 text-slate-700">{row.currency || '—'}</td>
+              <tr
+                key={row.key}
+                className="border-b border-slate-100 last:border-0"
+              >
+                <td className="py-1.5 pr-3 text-slate-900">
+                  {row.first || "—"}
+                </td>
+                <td className="py-1.5 pr-3 text-slate-700">
+                  {row.currency || "—"}
+                </td>
                 <td className="py-1.5 text-right tabular-nums text-slate-900">
                   {formatRupiah(row.estimasi, { withoutSymbol: true })}
                 </td>
@@ -561,7 +604,7 @@ function ShareTable({
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 /**
@@ -593,8 +636,12 @@ function ItemTable({ rows }: { rows: DetailItem[] }) {
           {rows.map((row) => (
             <Fragment key={row.id}>
               <tr className="border-b border-slate-100">
-                <td className="py-1.5 text-slate-900">{row.object_item || '—'}</td>
-                <td className="py-1.5 text-slate-700">{row.deskripsi_item || '—'}</td>
+                <td className="py-1.5 text-slate-900">
+                  {row.object_item || "—"}
+                </td>
+                <td className="py-1.5 text-slate-700">
+                  {row.deskripsi_item || "—"}
+                </td>
               </tr>
               {row.estimasi.length > 0 && (
                 <tr className="border-b border-slate-100 last:border-0">
@@ -608,7 +655,7 @@ function ItemTable({ rows }: { rows: DetailItem[] }) {
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 /**
@@ -634,8 +681,13 @@ function EstimationTable({ rows }: { rows: DetailEstimation[] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.estimasi_ke} className="border-b border-slate-100 last:border-0">
-              <td className="py-1.5 text-slate-700">{row.estimasi_ke || '—'}</td>
+            <tr
+              key={row.estimasi_ke}
+              className="border-b border-slate-100 last:border-0"
+            >
+              <td className="py-1.5 text-slate-700">
+                {row.estimasi_ke || "—"}
+              </td>
               {/*
                 Digambar APA ADANYA, tidak diformat ulang. Peladen sudah mengirimnya siap
                 tampil — sama seperti kolom tanggal pada grid Riwayat Progress dan Komunikasi
@@ -643,9 +695,13 @@ function EstimationTable({ rows }: { rows: DetailEstimation[] }) {
                 waktu berjam membuatnya mengembalikan tanda pisah; itulah sebab kedua kolom
                 ini sempat kosong di layar.
               */}
-              <td className="py-1.5 text-slate-700">{row.tanggal_estimasi || '—'}</td>
-              <td className="py-1.5 text-slate-700">{row.tipe_estimasi || '—'}</td>
-              <td className="py-1.5 text-slate-700">{row.mata_uang || '—'}</td>
+              <td className="py-1.5 text-slate-700">
+                {row.tanggal_estimasi || "—"}
+              </td>
+              <td className="py-1.5 text-slate-700">
+                {row.tipe_estimasi || "—"}
+              </td>
+              <td className="py-1.5 text-slate-700">{row.mata_uang || "—"}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-700">
                 {formatRupiah(row.nilai_kurs, { withoutSymbol: true })}
               </td>
@@ -657,35 +713,47 @@ function EstimationTable({ rows }: { rows: DetailEstimation[] }) {
         </tbody>
       </table>
     </div>
-  )
+  );
 }
 
 const PROGRESS_COLUMNS: Column<DetailProgress>[] = [
   {
-    key: 'tanggal_input',
-    title: 'TANGGAL INPUT',
-    value: (row) => row.tanggal_input || '—',
-  },
-  { key: 'no_klaim', title: 'NOMOR KLAIM', value: (row) => row.no_klaim || '—' },
-  {
-    key: 'status_progres_1',
-    title: 'STATUS PROGRESS 1',
-    value: (row) => row.status_progres_1 || '—',
+    key: "tanggal_input",
+    title: "TANGGAL INPUT",
+    value: (row) => row.tanggal_input || "—",
   },
   {
-    key: 'status_progres_2',
-    title: 'STATUS PROGRESS 2',
-    value: (row) => row.status_progres_2 || '—',
+    key: "no_klaim",
+    title: "NOMOR KLAIM",
+    value: (row) => row.no_klaim || "—",
   },
-  { key: 'user_input', title: 'USER INPUT', value: (row) => row.user_input || '—' },
   {
-    key: 'tanggal_next_followup',
-    title: 'TANGGAL NEXT FOLLOWUP',
-    value: (row) => formatDate(row.tanggal_next_followup) || '—',
+    key: "status_progres_1",
+    title: "STATUS PROGRESS 1",
+    value: (row) => row.status_progres_1 || "—",
   },
-  { key: 'status', title: 'STATUS', value: (row) => row.status || '—' },
-  { key: 'keterangan', title: 'Keterangan', value: (row) => row.keterangan || '—' },
-]
+  {
+    key: "status_progres_2",
+    title: "STATUS PROGRESS 2",
+    value: (row) => row.status_progres_2 || "—",
+  },
+  {
+    key: "user_input",
+    title: "USER INPUT",
+    value: (row) => row.user_input || "—",
+  },
+  {
+    key: "tanggal_next_followup",
+    title: "TANGGAL NEXT FOLLOWUP",
+    value: (row) => formatDate(row.tanggal_next_followup) || "—",
+  },
+  { key: "status", title: "STATUS", value: (row) => row.status || "—" },
+  {
+    key: "keterangan",
+    title: "Keterangan",
+    value: (row) => row.keterangan || "—",
+  },
+];
 
 /**
  * MESSAGE_COLUMNS adalah lima kolom komunikasi dengan loss adjuster.
@@ -696,12 +764,12 @@ const PROGRESS_COLUMNS: Column<DetailProgress>[] = [
  */
 const MESSAGE_COLUMNS: Column<DetailMessage>[] = [
   {
-    key: 'nama_user',
-    title: 'Nama User',
-    value: (row) => row.nama_user || '—',
+    key: "nama_user",
+    title: "Nama User",
+    value: (row) => row.nama_user || "—",
     render: (row) => (
       <span>
-        {row.nama_user || '—'}
+        {row.nama_user || "—"}
         {row.internal ? (
           <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
             internal
@@ -711,18 +779,18 @@ const MESSAGE_COLUMNS: Column<DetailMessage>[] = [
     ),
   },
   {
-    key: 'tanggal_proses',
-    title: 'Tanggal Proses',
-    value: (row) => row.tanggal_proses || '—',
+    key: "tanggal_proses",
+    title: "Tanggal Proses",
+    value: (row) => row.tanggal_proses || "—",
   },
-  { key: 'pesan', title: 'Pesan', value: (row) => row.pesan || '—' },
+  { key: "pesan", title: "Pesan", value: (row) => row.pesan || "—" },
   {
-    key: 'tanggal_balas',
-    title: 'Tanggal Balas',
-    value: (row) => row.tanggal_balas || '—',
+    key: "tanggal_balas",
+    title: "Tanggal Balas",
+    value: (row) => row.tanggal_balas || "—",
   },
-  { key: 'jawaban', title: 'Jawaban', value: (row) => row.jawaban || '—' },
-]
+  { key: "jawaban", title: "Jawaban", value: (row) => row.jawaban || "—" },
+];
 
 /**
  * isNotFound membedakan "klaim tidak ditemukan" dari gangguan lain.
@@ -731,11 +799,11 @@ const MESSAGE_COLUMNS: Column<DetailMessage>[] = [
  * mengubah artinya, dan pencocokan teks akan diam-diam berhenti bekerja ketika itu terjadi.
  */
 function isNotFound(error: unknown): boolean {
-  return error instanceof APIError && error.kode === 'klaim_tidak_ditemukan'
+  return error instanceof APIError && error.kode === "klaim_tidak_ditemukan";
 }
 
 /** messageOf membaca pesan galat yang layak dibaca pengguna. */
 function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return 'Detail klaim tidak dapat dimuat. Coba lagi beberapa saat lagi.'
+  if (error instanceof Error && error.message) return error.message;
+  return "Detail klaim tidak dapat dimuat. Coba lagi beberapa saat lagi.";
 }

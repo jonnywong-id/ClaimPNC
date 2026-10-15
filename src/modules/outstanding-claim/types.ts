@@ -11,8 +11,8 @@
 
 /** Satu isian skalar pada layar rincian. */
 export type Field = {
-  kunci: string
-  judul: string
+  kunci: string;
+  judul: string;
 
   /**
    * Isian digambar tetapi belum dapat diisi.
@@ -22,31 +22,31 @@ export type Field = {
    * membuat pengguna mengira isiannya hilang, menggambarnya dengan alasan membuat ia tahu
    * isiannya ada dan kenapa kosong.
    */
-  terhalang?: boolean
-}
+  terhalang?: boolean;
+};
 
 /** Satu kolom grid. */
 export type GridColumn = {
-  kunci: string
-  judul: string
-}
+  kunci: string;
+  judul: string;
+};
 
 /** Susunan satu tabel pada layar rincian. */
 export type Grid = {
-  kode: string
-  judul: string
-  kolom: GridColumn[]
+  kode: string;
+  judul: string;
+  kolom: GridColumn[];
 
-  terhalang?: boolean
-  alasan_terhalang?: string
-  pemilik_penghalang?: string
-}
+  terhalang?: boolean;
+  alasan_terhalang?: string;
+  pemilik_penghalang?: string;
+};
 
 /** Satu kelompok isian beserta grid yang digambar sesudahnya. */
 export type Group = {
-  kode: string
-  judul: string
-  isian: Field[]
+  kode: string;
+  judul: string;
+  isian: Field[];
 
   /**
    * Kode grid yang digambar sesudah isian kelompok ini.
@@ -55,22 +55,22 @@ export type Group = {
    * kelompok membuat satu grid yang dipakai dua kelompok punya dua susunan yang dapat
    * berselisih.
    */
-  grid: string[]
-}
+  grid: string[];
+};
 
 /** Jawaban GET /api/outstanding-claim/tata-letak. */
 export type LayoutResponse = {
-  kelompok: Group[]
-  grid: Grid[]
-  portal: string
-}
+  kelompok: Group[];
+  grid: Grid[];
+  portal: string;
+};
 
 /** Satu baris grid — peta dari kunci kolom ke teksnya. */
-export type GridRow = Record<string, string>
+export type GridRow = Record<string, string>;
 
 /** Jawaban GET /api/outstanding-claim/{no_klaim}. */
 export type DetailResponse = {
-  no_klaim: string
+  no_klaim: string;
 
   /**
    * Status alur kerja Pega — `PYSTATUSWORK`.
@@ -78,9 +78,9 @@ export type DetailResponse = {
    * Ia BUKAN Status Klaim berkode `1134`–`1166` milik master `V_STS_CLAIM`; keduanya konsep
    * berbeda (`D-18`), dan nilainya tidak diterjemahkan ke label master mana pun.
    */
-  status_kerja: string
+  status_kerja: string;
 
-  operator_pengubah: string
+  operator_pengubah: string;
 
   /**
    * Isian skalar, dikunci nama isian pada `Field.kunci`.
@@ -91,10 +91,10 @@ export type DetailResponse = {
    * — pengguna tidak dapat berbuat apa pun dengan perbedaan itu — tetapi perbedaannya
    * terbawa di respons supaya dapat diperiksa.
    */
-  isian: Record<string, string>
+  isian: Record<string, string>;
 
   /** Baris setiap grid, dikunci kode grid. */
-  baris: Record<string, GridRow[]>
+  baris: Record<string, GridRow[]>;
 
-  portal: string
-}
+  portal: string;
+};

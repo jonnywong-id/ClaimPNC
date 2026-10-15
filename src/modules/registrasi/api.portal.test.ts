@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
 /**
  * Setiap panggilan API modul ini WAJIB membawa portal entitas.
@@ -24,25 +24,28 @@ import { describe, expect, it } from 'vitest'
  * Panggilan tanpa portal ditolak, bukan jatuh ke portal bawaan — itulah yang mencegah
  * `R-20`, kebocoran data antar badan hukum yang tidak terlihat sebagai galat.
  */
-describe('setiap panggilan API registrasi membawa portal', () => {
-  const source = readFileSync(join(__dirname, 'api.ts'), 'utf8')
+describe("setiap panggilan API registrasi membawa portal", () => {
+  const source = readFileSync(join(__dirname, "api.ts"), "utf8");
 
-  it('tidak ada callAPI tanpa portal', () => {
+  it("tidak ada callAPI tanpa portal", () => {
     // Setiap pemanggilan dipotong sampai kurung tutup argumennya, lalu diperiksa.
-    const calls = source.match(/callAPI<[^>]*>\([\s\S]*?\}\)/g) ?? []
+    const calls = source.match(/callAPI<[^>]*>\([\s\S]*?\}\)/g) ?? [];
 
-    expect(calls.length).toBeGreaterThan(0)
+    expect(calls.length).toBeGreaterThan(0);
 
-    const tanpaPortal = calls.filter((call) => !/\bportal\b/.test(call))
-    expect(tanpaPortal, 'panggilan berikut tidak menyebut portal').toEqual([])
-  })
+    const tanpaPortal = calls.filter((call) => !/\bportal\b/.test(call));
+    expect(tanpaPortal, "panggilan berikut tidak menyebut portal").toEqual([]);
+  });
 
-  it('setiap hook membaca portal aktif dari store', () => {
-    const jumlahHook = (source.match(/useSession\(\(state\) => state\.token\)/g) ?? []).length
-    const jumlahPortal = (source.match(/useSelectedPortal\(\(state\) => state\.alias\)/g) ?? [])
-      .length
+  it("setiap hook membaca portal aktif dari store", () => {
+    const jumlahHook = (
+      source.match(/useSession\(\(state\) => state\.token\)/g) ?? []
+    ).length;
+    const jumlahPortal = (
+      source.match(/useSelectedPortal\(\(state\) => state\.alias\)/g) ?? []
+    ).length;
 
-    expect(jumlahHook).toBeGreaterThan(0)
-    expect(jumlahPortal).toBe(jumlahHook)
-  })
-})
+    expect(jumlahHook).toBeGreaterThan(0);
+    expect(jumlahPortal).toBe(jumlahHook);
+  });
+});

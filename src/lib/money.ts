@@ -28,7 +28,6 @@
  * tanpa ada yang berwenang menyeragamkannya.
  */
 
-
 /**
  * formatMoney menampilkan nilai uang dengan pemisah ribuan Indonesia.
  *
@@ -41,8 +40,10 @@
  * akan menyembunyikan kelebihan bayar dari orang yang membaca layar.
  */
 export function formatMoney(value: number): string {
-  if (!Number.isFinite(value)) return '0'
-  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value)
+  if (!Number.isFinite(value)) return "0";
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(
+    value,
+  );
 }
 
 /**
@@ -57,15 +58,15 @@ export function formatMoney(value: number): string {
  * nol.
  */
 export function parseMoney(text: string): number | null {
-  const clean = text.trim().replaceAll('.', '').replaceAll(',', '')
-  if (clean === '') return null
+  const clean = text.trim().replaceAll(".", "").replaceAll(",", "");
+  if (clean === "") return null;
   // Regex, bukan Number(): Number("") bernilai 0, Number("1e3") bernilai 1000, dan
   // Number(" 12 ") bernilai 12 — ketiganya menerima bentuk yang tidak pernah diketik
   // orang sebagai nilai uang, dan server akan menolaknya.
-  if (!/^-?\d+$/.test(clean)) return null
+  if (!/^-?\d+$/.test(clean)) return null;
 
-  const value = Number(clean)
-  return Number.isSafeInteger(value) ? value : null
+  const value = Number(clean);
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 /**
@@ -90,9 +91,13 @@ export function parseMoney(text: string): number | null {
  *
  * Bila rumus ini berubah, `masterrecovery.Remainder` di backend WAJIB ikut berubah.
  */
-export function remainder(claimAmount: number, previousPayment: number, payment: number): number {
-  if (previousPayment === 0) return claimAmount - payment
-  return claimAmount - previousPayment
+export function remainder(
+  claimAmount: number,
+  previousPayment: number,
+  payment: number,
+): number {
+  if (previousPayment === 0) return claimAmount - payment;
+  return claimAmount - previousPayment;
 }
 
 /* ========================================================================== */
@@ -101,10 +106,9 @@ export function remainder(claimAmount: number, previousPayment: number, payment:
 /* JSON adalah floating point ganda di hampir seluruh peramban.               */
 /* ========================================================================== */
 
-
 /** Pemisah ribuan dan desimal mengikuti kebiasaan Indonesia: titik dan koma. */
-const THOUSANDS_SEPARATOR = '.'
-const DECIMAL_SEPARATOR = ','
+const THOUSANDS_SEPARATOR = ".";
+const DECIMAL_SEPARATOR = ",";
 
 /**
  * Mengubah bentuk kanonik dari server menjadi teks yang enak dibaca.
@@ -116,25 +120,28 @@ const DECIMAL_SEPARATOR = ','
  * menambah keterangan. Sen yang tidak nol tetap ditampilkan — membuangnya akan
  * menyembunyikan selisih yang justru menentukan.
  */
-export function formatRupiah(canonical: string, options?: { withoutSymbol?: boolean }): string {
-  const trimmed = (canonical ?? '').trim()
-  if (trimmed === '') return '—'
+export function formatRupiah(
+  canonical: string,
+  options?: { withoutSymbol?: boolean },
+): string {
+  const trimmed = (canonical ?? "").trim();
+  if (trimmed === "") return "—";
 
-  const negative = trimmed.startsWith('-')
-  const unsigned = negative ? trimmed.slice(1) : trimmed
+  const negative = trimmed.startsWith("-");
+  const unsigned = negative ? trimmed.slice(1) : trimmed;
 
-  const [whole = '0', fraction = ''] = unsigned.split('.')
-  if (!/^\d+$/.test(whole)) return canonical
+  const [whole = "0", fraction = ""] = unsigned.split(".");
+  if (!/^\d+$/.test(whole)) return canonical;
 
-  let formatted = groupThousands(whole)
-  if (fraction !== '' && /[1-9]/.test(fraction)) {
-    formatted += DECIMAL_SEPARATOR + fraction
+  let formatted = groupThousands(whole);
+  if (fraction !== "" && /[1-9]/.test(fraction)) {
+    formatted += DECIMAL_SEPARATOR + fraction;
   }
-  if (!options?.withoutSymbol) formatted = `Rp ${formatted}`
+  if (!options?.withoutSymbol) formatted = `Rp ${formatted}`;
 
   // Tanda minus di depan lambang, bukan di antara lambang dan angka: "-Rp 7,25" terbaca
   // sebagai satu nilai negatif, sedangkan "Rp -7,25" sekilas terbaca seperti salah ketik.
-  return negative ? `-${formatted}` : formatted
+  return negative ? `-${formatted}` : formatted;
 }
 
 /**
@@ -149,35 +156,35 @@ export function formatRupiah(canonical: string, options?: { withoutSymbol?: bool
  * Mengembalikan `null` bila yang diketik bukan nilai uang yang sah.
  */
 export function parseRupiah(input: string): string | null {
-  let cleaned = (input ?? '').trim()
-  if (cleaned === '') return null
+  let cleaned = (input ?? "").trim();
+  if (cleaned === "") return null;
 
-  cleaned = cleaned.replace(/^Rp\s*/i, '')
+  cleaned = cleaned.replace(/^Rp\s*/i, "");
   // Spasi dan spasi-tak-terputus kadang ikut saat pengguna menyalin dari layar lain.
   // `\s` di JavaScript sudah mencakup spasi-tak-terputus (U+00A0).
-  cleaned = cleaned.replaceAll(/\s/g, '')
+  cleaned = cleaned.replaceAll(/\s/g, "");
 
-  const negative = cleaned.startsWith('-')
-  if (negative || cleaned.startsWith('+')) cleaned = cleaned.slice(1)
+  const negative = cleaned.startsWith("-");
+  if (negative || cleaned.startsWith("+")) cleaned = cleaned.slice(1);
 
   // Pemisah ribuan dibuang; koma menjadi titik desimal.
-  cleaned = cleaned.split(THOUSANDS_SEPARATOR).join('')
-  cleaned = cleaned.replace(DECIMAL_SEPARATOR, '.')
+  cleaned = cleaned.split(THOUSANDS_SEPARATOR).join("");
+  cleaned = cleaned.replace(DECIMAL_SEPARATOR, ".");
 
-  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
 
-  const [whole, fraction = ''] = cleaned.split('.')
-  const canonical = `${whole}.${(fraction + '00').slice(0, 2)}`
-  return negative ? `-${canonical}` : canonical
+  const [whole, fraction = ""] = cleaned.split(".");
+  const canonical = `${whole}.${(fraction + "00").slice(0, 2)}`;
+  return negative ? `-${canonical}` : canonical;
 }
 
 function groupThousands(digits: string): string {
   // Dikerjakan dari belakang supaya kelompok terakhir yang boleh kurang dari tiga digit,
   // bukan yang pertama.
-  let result = ''
+  let result = "";
   for (let i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 === 0) result += THOUSANDS_SEPARATOR
-    result += digits[i]
+    if (i > 0 && (digits.length - i) % 3 === 0) result += THOUSANDS_SEPARATOR;
+    result += digits[i];
   }
-  return result
+  return result;
 }

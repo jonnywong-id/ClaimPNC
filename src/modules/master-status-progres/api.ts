@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   ClaimPositionListResponse,
   ProgressStatusInput,
   ProgressStatusListResponse,
   ProgressStatusResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/status-progres-1'
-const ROUTE_POSITION = '/api/master/posisi-klaim'
+const ROUTE = "/api/master/status-progres-1";
+const ROUTE_POSITION = "/api/master/posisi-klaim";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -25,7 +25,7 @@ const ROUTE_POSITION = '/api/master/posisi-klaim'
  * peramban yang sama, mengikuti pola usePortalList.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-status-progres-1', portal, token] as const
+  return ["master-status-progres-1", portal, token] as const;
 }
 
 /**
@@ -37,14 +37,15 @@ function listKey(portal: string | null, token: string | null) {
  * yang menuntun pengguna memilih portal lebih berguna daripada pesan galat.
  */
 export function useProgressStatusList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
-    queryFn: () => callAPI<ProgressStatusListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<ProgressStatusListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -58,28 +59,29 @@ export function useProgressStatusList() {
  * pindah menjadi master data `F-4`.
  */
 export function useClaimPositionList() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
-    queryKey: ['posisi-klaim', token],
-    queryFn: () => callAPI<ClaimPositionListResponse>(ROUTE_POSITION, { token }),
+    queryKey: ["posisi-klaim", token],
+    queryFn: () =>
+      callAPI<ClaimPositionListResponse>(ROUTE_POSITION, { token }),
     enabled: token !== null,
     // Daftarnya tetap selama aplikasi berjalan; memuatnya ulang setiap kali komponen
     // dipasang hanya menambah permintaan tanpa menambah apa pun.
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /** Hook penambahan status progres. */
 export function useCreateProgressStatus() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: ProgressStatusInput) =>
       callAPI<ProgressStatusResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
@@ -89,27 +91,27 @@ export function useCreateProgressStatus() {
     // saat yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi
     // tabel yang sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }
 
 /** Hook penyuntingan status progres. */
 export function useUpdateProgressStatus() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: ProgressStatusInput }) =>
       callAPI<ProgressStatusResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }

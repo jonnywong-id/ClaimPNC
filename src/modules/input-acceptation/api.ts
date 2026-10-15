@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { DetailResponse, SubmitRequest, SubmitResponse } from './types'
+import type { DetailResponse, SubmitRequest, SubmitResponse } from "./types";
 
-const PATH = '/api/input-acceptation'
+const PATH = "/api/input-acceptation";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,8 +17,8 @@ const PATH = '/api/input-acceptation'
  */
 const keys = {
   detail: (portal: string | null, token: string | null, claimID: string) =>
-    ['input-acceptation', portal, token, claimID] as const,
-}
+    ["input-acceptation", portal, token, claimID] as const,
+};
 
 /**
  * Hook rincian akseptasi satu klaim.
@@ -30,8 +30,8 @@ const keys = {
  * layar, dan kemungkinan keduanya menjawab keadaan yang berbeda.
  */
 export function useInputAcceptation(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.detail(portal, token, claimID),
@@ -40,13 +40,13 @@ export function useInputAcceptation(claimID: string) {
         token,
         portal,
       }),
-    enabled: token !== null && portal !== null && claimID !== '',
+    enabled: token !== null && portal !== null && claimID !== "",
 
     // Akseptasi berubah saat petugas lain menyimpannya, jadi cache-nya pendek. Ia tidak
     // dibuat nol: membuka ulang layar yang sama dalam hitungan detik — yang terjadi setiap
     // kali pengguna menekan kembali dari sebuah tautan — tidak perlu menembak server lagi.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -68,14 +68,14 @@ export function useInputAcceptation(claimID: string) {
  * daftar itu akan memaksa pengguna menebak isian mana yang ditolak dari satu kalimat.
  */
 export function useSubmitInputAcceptation(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (body: SubmitRequest) =>
       callAPI<SubmitResponse>(`${PATH}/${encodeURIComponent(claimID)}`, {
-        metode: 'POST',
+        metode: "POST",
         token,
         portal,
         body,
@@ -87,7 +87,7 @@ export function useSubmitInputAcceptation(claimID: string) {
     onSuccess: () => {
       client.invalidateQueries({
         queryKey: keys.detail(portal, token, claimID),
-      })
+      });
     },
-  })
+  });
 }

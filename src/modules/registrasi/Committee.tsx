@@ -1,12 +1,21 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { useCommittee, useDecideCommittee, usePendingCommittees, violationsFrom } from './api'
-import { CommitteeDecision, type CommitteeItem, type Settlement } from './types'
+import {
+  useCommittee,
+  useDecideCommittee,
+  usePendingCommittees,
+  violationsFrom,
+} from "./api";
+import {
+  CommitteeDecision,
+  type CommitteeItem,
+  type Settlement,
+} from "./types";
 
 /**
  * Komite adjustment klaim PNCN.
@@ -21,52 +30,79 @@ import { CommitteeDecision, type CommitteeItem, type Settlement } from './types'
  */
 
 function failureText(failure: unknown): string {
-  const violations = violationsFrom(failure)
-  if (violations.length > 0) return violations.map((v) => v.pesan).join(' ')
-  if (failure instanceof APIError || failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  const violations = violationsFrom(failure);
+  if (violations.length > 0) return violations.map((v) => v.pesan).join(" ");
+  if (failure instanceof APIError || failure instanceof Error)
+    return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }
 
 const decisionLabel: Record<string, string> = {
-  [CommitteeDecision.pending]: 'menunggu',
-  [CommitteeDecision.approve]: 'setuju',
-  [CommitteeDecision.reject]: 'tolak',
-}
+  [CommitteeDecision.pending]: "menunggu",
+  [CommitteeDecision.approve]: "setuju",
+  [CommitteeDecision.reject]: "tolak",
+};
 
 /** Kolom Akseptasi: status komite baris yang sudah ditransfer. */
 export function CommitteeStatus({ line }: { line: Settlement }) {
-  const committee = useCommittee(line.komite_id)
-  if (!line.komite_id) return <span>Belum ditransfer</span>
-  const c = committee.data
-  if (!c) return <span>Komite {line.komite_id}</span>
+  const committee = useCommittee(line.komite_id);
+  if (!line.komite_id) return <span>Belum ditransfer</span>;
+  const c = committee.data;
+  if (!c) return <span>Komite {line.komite_id}</span>;
 
-  if (c.status === 'disetujui') {
-    return <span>Diakseptasi komite{line.nomor_akseptasi ? ` · ${line.nomor_akseptasi}` : ''} · {c.id}</span>
+  if (c.status === "disetujui") {
+    return (
+      <span>
+        Diakseptasi komite
+        {line.nomor_akseptasi ? ` · ${line.nomor_akseptasi}` : ""} · {c.id}
+      </span>
+    );
   }
-  if (c.status === 'ditolak') return <span>Ditolak komite · {c.id}</span>
+  if (c.status === "ditolak") return <span>Ditolak komite · {c.id}</span>;
 
-  const current = c.anggota.find((m) => m.keputusan === CommitteeDecision.pending)
+  const current = c.anggota.find(
+    (m) => m.keputusan === CommitteeDecision.pending,
+  );
   return (
-    <span title={c.anggota.map((m) => `${m.jenjang}. ${m.komite}: ${decisionLabel[m.keputusan] ?? m.keputusan}`).join('\n')}>
-      Komite {c.id} · jenjang {current?.jenjang ?? '—'}/{c.anggota.length} menunggu {c.menunggu ?? '—'}
+    <span
+      title={c.anggota
+        .map(
+          (m) =>
+            `${m.jenjang}. ${m.komite}: ${decisionLabel[m.keputusan] ?? m.keputusan}`,
+        )
+        .join("\n")}
+    >
+      Komite {c.id} · jenjang {current?.jenjang ?? "—"}/{c.anggota.length}{" "}
+      menunggu {c.menunggu ?? "—"}
     </span>
-  )
+  );
 }
 
-const amount = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const amount = new Intl.NumberFormat("id-ID", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 /** Daftar Komite di Inbox: putusan komite klaim PNCN yang menunggu pengguna ini. */
 export function CommitteeInbox() {
-  const pending = usePendingCommittees()
-  const items = pending.data?.komite ?? []
+  const pending = usePendingCommittees();
+  const items = pending.data?.komite ?? [];
 
   return (
     <section className="mt-8" aria-label="Komite">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Komite</h2>
-      {pending.isPending && <p className="mt-3 text-sm text-slate-500">Memuat putusan komite…</p>}
+      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        Komite
+      </h2>
+      {pending.isPending && (
+        <p className="mt-3 text-sm text-slate-500">Memuat putusan komite…</p>
+      )}
       {pending.isError && (
         <div className="mt-3">
-          <ErrorMessage title="Daftar komite tidak dapat dimuat" description={failureText(pending.error)} tone="gangguan" />
+          <ErrorMessage
+            title="Daftar komite tidak dapat dimuat"
+            description={failureText(pending.error)}
+            tone="gangguan"
+          />
         </div>
       )}
       {pending.data && items.length === 0 && (
@@ -77,39 +113,55 @@ export function CommitteeInbox() {
       {items.length > 0 && (
         <div className="mt-3 space-y-3">
           {items.map((item) => (
-            <CommitteeRow key={`${item.komite_id}-${item.jenjang}`} item={item} />
+            <CommitteeRow
+              key={`${item.komite_id}-${item.jenjang}`}
+              item={item}
+            />
           ))}
         </div>
       )}
     </section>
-  )
+  );
 }
 
 function CommitteeRow({ item }: { item: CommitteeItem }) {
-  const [note, setNote] = useState('')
-  const decide = useDecideCommittee()
-  const send = (keputusan: string) => decide.mutate({ komiteID: item.komite_id, keputusan, catatan: note })
+  const [note, setNote] = useState("");
+  const decide = useDecideCommittee();
+  const send = (keputusan: string) =>
+    decide.mutate({ komiteID: item.komite_id, keputusan, catatan: note });
 
   return (
-    <div role="group" aria-label={`Komite ${item.komite_id}`} className="rounded border border-slate-200 p-3 text-sm">
+    <div
+      role="group"
+      aria-label={`Komite ${item.komite_id}`}
+      className="rounded border border-slate-200 p-3 text-sm"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-medium text-slate-900">
           {item.klaim_id ? (
-            <Link to={`/registrasi/klaim/${encodeURIComponent(item.klaim_id)}`} className="underline">
+            <Link
+              to={`/registrasi/klaim/${encodeURIComponent(item.klaim_id)}`}
+              className="underline"
+            >
               {item.nomor_klaim}
             </Link>
           ) : (
             item.nomor_klaim
-          )}{' '}
-          · {item.komite_id} · jenjang {item.jenjang}/{item.jumlah_jenjang || '—'}
+          )}{" "}
+          · {item.komite_id} · jenjang {item.jenjang}/
+          {item.jumlah_jenjang || "—"}
         </p>
-        <p className="text-xs text-slate-500">Ditransfer {formatDate(item.tanggal_transfer)}</p>
+        <p className="text-xs text-slate-500">
+          Ditransfer {formatDate(item.tanggal_transfer)}
+        </p>
       </div>
       <p className="mt-1 text-slate-700">
-        {item.nama_tertanggung || '—'} · {item.nama_objek || '—'} / {item.nama_coverage || '—'} · Adjustment {item.adjustment || '—'}
+        {item.nama_tertanggung || "—"} · {item.nama_objek || "—"} /{" "}
+        {item.nama_coverage || "—"} · Adjustment {item.adjustment || "—"}
       </p>
       <p className="text-slate-700">
-        {item.nama_tipe_pembayaran} · {item.mata_uang} {amount.format(item.nilai_asm_sen / 100)} · Nilai komite IDR{' '}
+        {item.nama_tipe_pembayaran} · {item.mata_uang}{" "}
+        {amount.format(item.nilai_asm_sen / 100)} · Nilai komite IDR{" "}
         {amount.format(item.nilai_komite_sen / 100)}
       </p>
       <label className="mt-2 block text-xs font-semibold text-slate-800">
@@ -145,5 +197,5 @@ function CommitteeRow({ item }: { item: CommitteeItem }) {
         </p>
       )}
     </div>
-  )
+  );
 }

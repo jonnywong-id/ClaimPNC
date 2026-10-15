@@ -1,13 +1,20 @@
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
-import type { RingkasDaftar } from './types'
+import type { RingkasDaftar } from "./types";
 
 type Props = {
-  rows: RingkasDaftar[]
-  active: string
-  isLoading: boolean
-  onSelect: (kode: string) => void
-}
+  rows: RingkasDaftar[];
+  active: string;
+  isLoading: boolean;
+  onSelect: (kode: string) => void;
+};
 
 /**
  * Palet irisan donat, berurutan mengikuti urutan baris tabel.
@@ -16,13 +23,13 @@ type Props = {
  * sebagai satu sistem — keduanya memang grafik komposisi antrean yang sama sifatnya.
  */
 const WARNA_IRISAN = [
-  '#2f9fd0',
-  '#f59e0b',
-  '#10b981',
-  '#8b5cf6',
-  '#ef4444',
-  '#64748b',
-] as const
+  "#2f9fd0",
+  "#f59e0b",
+  "#10b981",
+  "#8b5cf6",
+  "#ef4444",
+  "#64748b",
+] as const;
 
 /**
  * StatusSummary adalah panel atas layar: **donat** di kiri, tabel **"Status / Jumlah"** di
@@ -67,7 +74,7 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
       ...baris,
       warna: WARNA_IRISAN[index % WARNA_IRISAN.length] ?? WARNA_IRISAN[0],
     }))
-    .filter((baris) => baris.jumlah > 0)
+    .filter((baris) => baris.jumlah > 0);
 
   return (
     <section
@@ -76,9 +83,13 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
     >
       <div className="flex min-h-56 items-center justify-center">
         {isLoading ? (
-          <p className="text-sm text-slate-500">Menghitung jumlah tiap daftar…</p>
+          <p className="text-sm text-slate-500">
+            Menghitung jumlah tiap daftar…
+          </p>
         ) : irisan.length === 0 ? (
-          <p className="text-sm text-slate-500">Tidak ada daftar yang berisi.</p>
+          <p className="text-sm text-slate-500">
+            Tidak ada daftar yang berisi.
+          </p>
         ) : (
           <div className="h-64 w-full" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
@@ -90,36 +101,43 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
                   innerRadius="45%"
                   outerRadius="75%"
                   paddingAngle={irisan.length > 1 ? 1 : 0}
-                  label={({ value }) => String(value ?? '')}
+                  label={({ value }) => String(value ?? "")}
                   // Animasi dimatikan: ia membuat uji komponen harus menunggu tanpa alasan.
                   isAnimationActive={false}
                   // Irisan dikenali lewat INDEKS, bukan lewat isi objek yang dikirim
                   // Recharts — bentuk objek itu milik pustaka dan dapat berubah antarversi.
                   onClick={(_irisan, index) => {
-                    const diklik = irisan[index]
-                    if (diklik === undefined) return
-                    onSelect(diklik.kode)
+                    const diklik = irisan[index];
+                    if (diklik === undefined) return;
+                    onSelect(diklik.kode);
                   }}
                 >
                   {irisan.map((baris) => (
                     <Cell
                       key={baris.kode}
                       fill={baris.warna}
-                      stroke={baris.kode === active ? '#0f172a' : '#ffffff'}
+                      stroke={baris.kode === active ? "#0f172a" : "#ffffff"}
                       strokeWidth={baris.kode === active ? 3 : 1}
                       className="cursor-pointer"
                     />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ fontSize: '0.8125rem', borderRadius: '0.5rem' }} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: "0.8125rem",
+                    borderRadius: "0.5rem",
+                  }}
+                />
                 <Legend
                   verticalAlign="bottom"
                   height={36}
-                  wrapperStyle={{ fontSize: '0.75rem' }}
+                  wrapperStyle={{ fontSize: "0.75rem" }}
                   onClick={(entri) => {
-                    const diklik = irisan.find((baris) => baris.status === entri.value)
-                    if (diklik === undefined) return
-                    onSelect(diklik.kode)
+                    const diklik = irisan.find(
+                      (baris) => baris.status === entri.value,
+                    );
+                    if (diklik === undefined) return;
+                    onSelect(diklik.kode);
                   }}
                 />
               </PieChart>
@@ -130,14 +148,21 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
 
       <table className="w-full self-start border-collapse text-sm">
         <caption className="sr-only">
-          Jumlah klaim pada setiap daftar. Pilih angkanya untuk membuka daftar itu.
+          Jumlah klaim pada setiap daftar. Pilih angkanya untuk membuka daftar
+          itu.
         </caption>
         <thead>
           <tr className="border-b border-slate-300">
-            <th scope="col" className="px-2 py-2 text-left font-semibold text-slate-700">
+            <th
+              scope="col"
+              className="px-2 py-2 text-left font-semibold text-slate-700"
+            >
               Status
             </th>
-            <th scope="col" className="w-28 px-2 py-2 text-left font-semibold text-slate-700">
+            <th
+              scope="col"
+              className="w-28 px-2 py-2 text-left font-semibold text-slate-700"
+            >
               Jumlah
             </th>
           </tr>
@@ -153,18 +178,18 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
 
           {!isLoading &&
             rows.map((baris) => {
-              const terbuka = baris.kode === active
+              const terbuka = baris.kode === active;
               return (
                 <tr
                   key={baris.kode}
                   className={`border-b border-slate-200 last:border-b-0 ${
-                    terbuka ? 'bg-blue-50' : ''
+                    terbuka ? "bg-blue-50" : ""
                   }`}
                 >
                   <th
                     scope="row"
                     className={`px-2 py-2 text-left font-normal ${
-                      terbuka ? 'font-semibold text-blue-900' : 'text-slate-800'
+                      terbuka ? "font-semibold text-blue-900" : "text-slate-800"
                     }`}
                   >
                     {/*
@@ -189,19 +214,21 @@ export function StatusSummary({ rows, active, isLoading, onSelect }: Props) {
                     */}
                     <button
                       type="button"
-                      onClick={() => { onSelect(baris.kode) }}
+                      onClick={() => {
+                        onSelect(baris.kode);
+                      }}
                       aria-label={`${baris.jumlah} klaim pada daftar ${baris.status}`}
-                      aria-current={terbuka ? 'true' : undefined}
+                      aria-current={terbuka ? "true" : undefined}
                       className="rounded-kontrol px-1 font-semibold text-blue-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       {baris.jumlah}
                     </button>
                   </td>
                 </tr>
-              )
+              );
             })}
         </tbody>
       </table>
     </section>
-  )
+  );
 }

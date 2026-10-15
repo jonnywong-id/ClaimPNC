@@ -1,22 +1,22 @@
-import { useMemo } from 'react'
+import { useMemo } from "react";
 
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useData } from './api'
-import type { Baris, Kolom, Penyaring, Segmen } from './types'
+import { useData } from "./api";
+import type { Baris, Kolom, Penyaring, Segmen } from "./types";
 
 type Props = {
-  segmen: Segmen
-  penyaring: Penyaring
-  halaman: number
-  onHalamanChange: (halaman: number) => void
+  segmen: Segmen;
+  penyaring: Penyaring;
+  halaman: number;
+  onHalamanChange: (halaman: number) => void;
 
   /** Pencarian sudah ditekan sekali; sebelum itu tabel tidak menembak permintaan. */
-  aktif: boolean
+  aktif: boolean;
 
-  kunciBaris: string
-}
+  kunciBaris: string;
+};
 
 /**
  * SegmentPanel menggambar grid satu segmen dari KATALOG kolom, bukan dari daftar kolom
@@ -39,22 +39,22 @@ export function SegmentPanel({
   aktif,
   kunciBaris,
 }: Props) {
-  const query = useData(penyaring, halaman, aktif)
+  const query = useData(penyaring, halaman, aktif);
 
   const columns = useMemo(
     () => segmen.kolom.map((kolom) => toColumn(kolom)),
     [segmen.kolom],
-  )
+  );
 
-  const rows = query.data?.baris ?? []
-  const meta = query.data?.meta
+  const rows = query.data?.baris ?? [];
+  const meta = query.data?.meta;
 
   return (
     <div className="mt-4 space-y-3">
       <DataTable<Baris>
         columns={columns}
         rows={rows}
-        rowKey={(row) => row[kunciBaris] ?? ''}
+        rowKey={(row) => row[kunciBaris] ?? ""}
         label={`Tabel ${segmen.label}`}
         title={segmen.label}
         description={keterangan(segmen)}
@@ -66,7 +66,7 @@ export function SegmentPanel({
         showHeaderWhenEmpty
         emptyMessage={
           aktif
-            ? 'Tidak ada data yang cocok dengan penyaring ini.'
+            ? "Tidak ada data yang cocok dengan penyaring ini."
             : 'Tekan "Cari Data" untuk menampilkan isinya.'
         }
         error={
@@ -76,7 +76,7 @@ export function SegmentPanel({
               description={
                 query.error instanceof Error
                   ? query.error.message
-                  : 'Terjadi kesalahan saat membaca data.'
+                  : "Terjadi kesalahan saat membaca data."
               }
               tone="gangguan"
             />
@@ -103,7 +103,7 @@ export function SegmentPanel({
           : {})}
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -126,15 +126,15 @@ function toColumn(kolom: Kolom): Column<Baris> {
   const column: Column<Baris> = {
     key: kolom.kunci,
     title: kolom.judul,
-    value: (row) => row[kolom.kunci] ?? '',
+    value: (row) => row[kolom.kunci] ?? "",
     // Pengurutan dimatikan seluruhnya: barisnya dipaginasi server, dan mengurutkan satu
     // halaman dari sepuluh bukan pengurutan.
     noSort: true,
-  }
+  };
 
-  if (kolom.angka) column.alignRight = true
+  if (kolom.angka) column.alignRight = true;
 
-  return column
+  return column;
 }
 
 /**
@@ -145,7 +145,7 @@ function toColumn(kolom: Kolom): Column<Baris> {
  * dan F06 sebagai data FASILITAS.
  */
 function keterangan(segmen: Segmen): string {
-  return segmen.kode === 'D01'
-    ? 'Data identitas debitur perorangan — segmen D01 laporan SLIK OJK.'
-    : 'Data fasilitas kredit yang sudah tersusun sebagai laporan — segmen F06.'
+  return segmen.kode === "D01"
+    ? "Data identitas debitur perorangan — segmen D01 laporan SLIK OJK."
+    : "Data fasilitas kredit yang sudah tersusun sebagai laporan — segmen F06.";
 }

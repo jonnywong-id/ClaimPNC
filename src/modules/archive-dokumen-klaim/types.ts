@@ -12,49 +12,49 @@
 
 /** Satu baris grid ARCHIVE FILE KLAIM. */
 export type ArchiveFile = {
-  id: number
+  id: number;
 
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  tanggal_kejadian: string | null
-  pic_teknis: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  tanggal_kejadian: string | null;
+  pic_teknis: string;
 
-  tanggal_terima_dokumen: string | null
-  tanggal_input: string | null
-  jumlah_lembar: number
+  tanggal_terima_dokumen: string | null;
+  tanggal_input: string | null;
+  jumlah_lembar: number;
 
-  kode_tipe_dokumen: string
-  tipe_dokumen: string
-  kode_jenis_dokumen: string
-  jenis_dokumen: string
+  kode_tipe_dokumen: string;
+  tipe_dokumen: string;
+  kode_jenis_dokumen: string;
+  jenis_dokumen: string;
 
-  nama_box: string
-  kode_filling: string
-  user_input: string
+  nama_box: string;
+  kode_filling: string;
+  user_input: string;
 
-  tanggal_kirim_dokumen: string | null
+  tanggal_kirim_dokumen: string | null;
 
   /** Keempatnya dipakai bagian Kirim ke Cabang. */
-  group_panel: string
-  sudah_dikirim: boolean
-  kode_layanan: string
-  catatan_layanan: string
-}
+  group_panel: string;
+  sudah_dikirim: boolean;
+  kode_layanan: string;
+  catatan_layanan: string;
+};
 
 /** Satu baris grid Input Data Archive — klaim yang berkasnya hendak diarsipkan. */
 export type ClaimCandidate = {
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  tanggal_kejadian: string | null
-  bisnis: string
-  cabang: string
-  status: string
-  posisi_klaim: string
-  tanggal_close: string | null
-  catatan_close: string
-  pic_teknis: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  tanggal_kejadian: string | null;
+  bisnis: string;
+  cabang: string;
+  status: string;
+  posisi_klaim: string;
+  tanggal_close: string | null;
+  catatan_close: string;
+  pic_teknis: string;
 
   /**
    * Tidak ditampilkan di grid, tetapi IKUT dikirim balik saat menyimpan.
@@ -63,64 +63,64 @@ export type ClaimCandidate = {
    * cabang — membuangnya di layar berarti berkasnya hilang dari daftar orang yang
    * seharusnya mengirimnya.
    */
-  group_panel: string
-}
+  group_panel: string;
+};
 
 /** Satu pilihan dropdown berkode dan berlabel. */
 export type Option = {
-  kode: string
-  label: string
-}
+  kode: string;
+  label: string;
+};
 
 /** Satu pilihan Jenis Dokumen beserta tipe pemiliknya. */
 export type DocumentKind = Option & {
-  kode_tipe_dokumen: string
-}
+  kode_tipe_dokumen: string;
+};
 
 /** Satu baris pemilih "Pilih Kode". */
 export type FillingCode = {
-  kode: string
-  nama_box: string
-  jumlah_pemakaian: number
-}
+  kode: string;
+  nama_box: string;
+  jumlah_pemakaian: number;
+};
 
 /** Lini bisnis yang disembunyikan dari daftar kirim ke cabang. */
 export type BranchScope = {
-  lini_disembunyikan: string[]
-}
+  lini_disembunyikan: string[];
+};
 
 /** Keterangan halaman. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 export type OpenResponse = {
   /** Isi dropdown "Tipe Pencarian Archive" — No Klaim, Nama BOX, Tertanggung. */
-  tipe_pencarian: Option[]
+  tipe_pencarian: Option[];
 
-  tipe_input: Option[]
-  tipe_dokumen: Option[]
-  jenis_dokumen: DocumentKind[]
-  cakupan_cabang: BranchScope
-  portal: string
-}
+  tipe_input: Option[];
+  tipe_dokumen: Option[];
+  jenis_dokumen: DocumentKind[];
+  cakupan_cabang: BranchScope;
+  portal: string;
+};
 
 export type SearchResponse = {
-  berkas: ArchiveFile[]
-  halaman: PageInfo
-  portal: string
-}
+  berkas: ArchiveFile[];
+  halaman: PageInfo;
+  portal: string;
+};
 
 export type ClaimSearchResponse = {
-  klaim: ClaimCandidate[]
-  portal: string
-}
+  klaim: ClaimCandidate[];
+  portal: string;
+};
 
 export type FillingCodeResponse = {
-  kode: FillingCode[]
+  kode: FillingCode[];
 
   /**
    * Selalu true, dan layar MENAMPILKANNYA sebagai keterangan.
@@ -129,22 +129,22 @@ export type FillingCodeResponse = {
    * masternya tidak ada di export (`R-16`). Tanpa keterangan itu, pengguna akan menduga
    * kode yang belum pernah dipakai memang tidak boleh dipakai.
    */
-  dari_pemakaian: boolean
+  dari_pemakaian: boolean;
 
-  portal: string
-}
+  portal: string;
+};
 
 export type PendingResponse = {
-  berkas: ArchiveFile[]
-  halaman: PageInfo
-  cakupan_cabang: BranchScope
-  portal: string
-}
+  berkas: ArchiveFile[];
+  halaman: PageInfo;
+  cakupan_cabang: BranchScope;
+  portal: string;
+};
 
 export type SaveResponse = {
-  id: number
-  baru: boolean
-  pesan: string
+  id: number;
+  baru: boolean;
+  pesan: string;
 
   /**
    * Keempatnya melaporkan PENGIRIMAN yang menyertai penyimpanan.
@@ -153,51 +153,51 @@ export type SaveResponse = {
    * direplikasi. Pengiriman yang gagal TIDAK menggagalkan penyimpanan, sehingga jawaban
    * ini tetap berhasil dengan `terkirim` bernilai false dan `galat_kirim` terisi.
    */
-  terkirim: boolean
-  kode_layanan?: string
-  catatan_layanan?: string
-  galat_kirim?: string
+  terkirim: boolean;
+  kode_layanan?: string;
+  catatan_layanan?: string;
+  galat_kirim?: string;
 
-  portal: string
-}
+  portal: string;
+};
 
 export type SendResponse = {
-  id: number
-  kode_layanan: string
-  catatan_layanan: string
-  pesan: string
-  portal: string
-}
+  id: number;
+  kode_layanan: string;
+  catatan_layanan: string;
+  pesan: string;
+  portal: string;
+};
 
 /** Badan permintaan penyimpanan berkas arsip. */
 export type SaveRequest = {
   /** Nol berarti baris baru. */
-  id: number
+  id: number;
 
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  tanggal_kejadian: string | null
-  pic_teknis: string
-  group_panel: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  tanggal_kejadian: string | null;
+  pic_teknis: string;
+  group_panel: string;
 
-  tanggal_terima_dokumen: string | null
-  jumlah_lembar: number
-  kode_tipe_dokumen: string
-  kode_jenis_dokumen: string
-  nama_box: string
-  kode_filling: string
-}
+  tanggal_terima_dokumen: string | null;
+  jumlah_lembar: number;
+  kode_tipe_dokumen: string;
+  kode_jenis_dokumen: string;
+  nama_box: string;
+  kode_filling: string;
+};
 
 /** Kode galat yang dikenali layar. Nilainya sama dengan konstanta di backend. */
 export const ArchiveError = {
-  validationFail: 'validasi_gagal',
-  callerUnknown: 'profil_pemanggil_tidak_lengkap',
-  notFound: 'berkas_tidak_ditemukan',
-  alreadySent: 'berkas_sudah_dikirim',
-  serviceFailed: 'layanan_arsip_gagal',
-  serviceAddress: 'alamat_layanan_arsip_kosong',
-} as const
+  validationFail: "validasi_gagal",
+  callerUnknown: "profil_pemanggil_tidak_lengkap",
+  notFound: "berkas_tidak_ditemukan",
+  alreadySent: "berkas_sudah_dikirim",
+  serviceFailed: "layanan_arsip_gagal",
+  serviceAddress: "alamat_layanan_arsip_kosong",
+} as const;
 
 /**
  * Isi formulir pencarian arsip.
@@ -213,66 +213,66 @@ export const ArchiveError = {
  */
 export type SearchForm = {
   /** Kolom yang dicari: `no_klaim`, `nama_box`, atau `tertanggung`. */
-  tipe_pencarian: string
-  kata_kunci: string
-  tanggal_dari: string
-  tanggal_sampai: string
-}
+  tipe_pencarian: string;
+  kata_kunci: string;
+  tanggal_dari: string;
+  tanggal_sampai: string;
+};
 
 export const EMPTY_SEARCH: SearchForm = {
-  tipe_pencarian: 'no_klaim',
-  kata_kunci: '',
-  tanggal_dari: '',
-  tanggal_sampai: '',
-}
+  tipe_pencarian: "no_klaim",
+  kata_kunci: "",
+  tanggal_dari: "",
+  tanggal_sampai: "",
+};
 
 /** Isi formulir pencarian klaim pada bagian Input Data Archive. */
 export type ClaimSearchForm = {
-  tipe: string
-  nilai: string
-}
+  tipe: string;
+  nilai: string;
+};
 
 export const EMPTY_CLAIM_SEARCH: ClaimSearchForm = {
-  tipe: 'no_klaim',
-  nilai: '',
-}
+  tipe: "no_klaim",
+  nilai: "",
+};
 
 /** Isi formulir berkas arsip. */
 export type ArchiveForm = {
-  id: number
+  id: number;
 
   /** Keenam isian berikut ikut dari klaim yang dipilih; tidak diketik pengguna. */
-  nomor_klaim: string
-  nomor_polis: string
-  nama_tertanggung: string
-  tanggal_kejadian: string | null
-  pic_teknis: string
-  group_panel: string
+  nomor_klaim: string;
+  nomor_polis: string;
+  nama_tertanggung: string;
+  tanggal_kejadian: string | null;
+  pic_teknis: string;
+  group_panel: string;
 
   /** Keenam isian berikut diketik pengguna. */
-  tanggal_terima_dokumen: string
-  jumlah_lembar: string
-  kode_tipe_dokumen: string
-  kode_jenis_dokumen: string
-  nama_box: string
-  kode_filling: string
-}
+  tanggal_terima_dokumen: string;
+  jumlah_lembar: string;
+  kode_tipe_dokumen: string;
+  kode_jenis_dokumen: string;
+  nama_box: string;
+  kode_filling: string;
+};
 
 export const EMPTY_ARCHIVE_FORM: ArchiveForm = {
   id: 0,
-  nomor_klaim: '',
-  nomor_polis: '',
-  nama_tertanggung: '',
+  nomor_klaim: "",
+  nomor_polis: "",
+  nama_tertanggung: "",
   tanggal_kejadian: null,
-  pic_teknis: '',
-  group_panel: '',
-  tanggal_terima_dokumen: '',
-  jumlah_lembar: '',
-  kode_tipe_dokumen: '',
-  kode_jenis_dokumen: '',
-  nama_box: '',
-  kode_filling: '',
-}
+  pic_teknis: "",
+  group_panel: "",
+  tanggal_terima_dokumen: "",
+  jumlah_lembar: "",
+  kode_tipe_dokumen: "",
+  kode_jenis_dokumen: "",
+  nama_box: "",
+  kode_filling: "",
+};
 
 /** formFromClaim menyiapkan formulir dari klaim yang dipilih di grid. */
 export function formFromClaim(claim: ClaimCandidate): ArchiveForm {
@@ -284,7 +284,7 @@ export function formFromClaim(claim: ClaimCandidate): ArchiveForm {
     tanggal_kejadian: claim.tanggal_kejadian,
     pic_teknis: claim.pic_teknis,
     group_panel: claim.group_panel,
-  }
+  };
 }
 
 /*
@@ -319,5 +319,5 @@ export function toSaveRequest(form: ArchiveForm): SaveRequest {
     kode_jenis_dokumen: form.kode_jenis_dokumen,
     nama_box: form.nama_box,
     kode_filling: form.kode_filling,
-  }
+  };
 }

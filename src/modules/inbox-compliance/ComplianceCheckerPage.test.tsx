@@ -1037,7 +1037,9 @@ describe("ComplianceCheckerPage — Surat Penolakan", () => {
   function badanSurat(): Record<string, unknown> {
     const kirim = [...calls]
       .reverse()
-      .find((c) => c.url.endsWith("/surat-penolakan") && c.init?.method === "POST");
+      .find(
+        (c) => c.url.endsWith("/surat-penolakan") && c.init?.method === "POST",
+      );
     return JSON.parse(String(kirim?.init?.body)) as Record<string, unknown>;
   }
 
@@ -1092,7 +1094,10 @@ describe("ComplianceCheckerPage — Surat Penolakan", () => {
     );
 
     await userEvent.type(screen.getByLabelText("Up"), "Bagian Umum");
-    await userEvent.type(screen.getByLabelText("Alasan 1"), "Dokumen tidak lengkap");
+    await userEvent.type(
+      screen.getByLabelText("Alasan 1"),
+      "Dokumen tidak lengkap",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
 
     await waitFor(() =>
@@ -1113,7 +1118,9 @@ describe("ComplianceCheckerPage — Surat Penolakan", () => {
     );
 
     await userEvent.type(screen.getByLabelText("Alasan 1"), "Pertama");
-    await userEvent.click(screen.getByRole("button", { name: "Tambah Alasan" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tambah Alasan" }),
+    );
     await userEvent.type(screen.getByLabelText("Alasan 2"), "Kedua");
     await userEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
 

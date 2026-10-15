@@ -1,13 +1,13 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
-const STORAGE_KEY = 'claim-pnc.portal'
+const STORAGE_KEY = "claim-pnc.portal";
 
 type PortalState = {
   /** Alias portal yang sedang dipilih; null berarti belum ditentukan. */
-  alias: string | null
-  select: (alias: string) => void
-  clear: () => void
-}
+  alias: string | null;
+  select: (alias: string) => void;
+  clear: () => void;
+};
 
 /**
  * Simpanan portal yang sedang aktif.
@@ -21,29 +21,29 @@ export const useSelectedPortal = create<PortalState>((set) => ({
   alias: loadFromBrowser(),
 
   select: (alias) => {
-    saveToBrowser(alias)
-    set({ alias })
+    saveToBrowser(alias);
+    set({ alias });
   },
 
   clear: () => {
-    clearFromBrowser()
-    set({ alias: null })
+    clearFromBrowser();
+    set({ alias: null });
   },
-}))
+}));
 
 function loadFromBrowser(): string | null {
   try {
-    return window.sessionStorage.getItem(STORAGE_KEY)
+    return window.sessionStorage.getItem(STORAGE_KEY);
   } catch {
     // sessionStorage dapat ditolak peramban (mode privat, kebijakan perusahaan).
     // Aplikasi tetap harus jalan; pengguna cukup memilih portalnya lagi.
-    return null
+    return null;
   }
 }
 
 function saveToBrowser(alias: string): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, alias)
+    window.sessionStorage.setItem(STORAGE_KEY, alias);
   } catch {
     /* diabaikan dengan sadar: pilihan tetap hidup di memori tab ini */
   }
@@ -51,7 +51,7 @@ function saveToBrowser(alias: string): void {
 
 function clearFromBrowser(): void {
   try {
-    window.sessionStorage.removeItem(STORAGE_KEY)
+    window.sessionStorage.removeItem(STORAGE_KEY);
   } catch {
     /* diabaikan dengan sadar */
   }

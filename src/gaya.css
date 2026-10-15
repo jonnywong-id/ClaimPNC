@@ -38,13 +38,17 @@
      Warnanya slate-900 beropasitas rendah, bukan hitam murni: bayangan hitam di atas
      latar kebiruan terlihat kotor.
      ------------------------------------------------------------------ */
-  --shadow-lembut: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
-  --shadow-angkat: 0 2px 4px -2px rgb(15 23 42 / 0.06), 0 8px 16px -6px rgb(15 23 42 / 0.10);
-  --shadow-terbang: 0 4px 8px -4px rgb(15 23 42 / 0.06), 0 20px 40px -16px rgb(15 23 42 / 0.18);
+  --shadow-lembut:
+    0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+  --shadow-angkat:
+    0 2px 4px -2px rgb(15 23 42 / 0.06), 0 8px 16px -6px rgb(15 23 42 / 0.1);
+  --shadow-terbang:
+    0 4px 8px -4px rgb(15 23 42 / 0.06), 0 20px 40px -16px rgb(15 23 42 / 0.18);
   /* Bayangan tombol utama memakai warna aksennya sendiri — blue-700 (29 78 216) —
      bukan abu-abu. Bayangan berwarna membuat tombol terasa menyala, bukan sekadar
      berwarna. */
-  --shadow-aksen: 0 1px 2px 0 rgb(29 78 216 / 0.16), 0 6px 16px -6px rgb(29 78 216 / 0.35);
+  --shadow-aksen:
+    0 1px 2px 0 rgb(29 78 216 / 0.16), 0 6px 16px -6px rgb(29 78 216 / 0.35);
 
   /* Lengkung. Satu tangga saja supaya tidak ada tiga radius berbeda di satu layar. */
   --radius-kartu: 0.875rem;

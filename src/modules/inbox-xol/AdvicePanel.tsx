@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { downloadURL, useAdviceSearch, useCauseOfLoss, useUnduhBerkas } from './api'
-import { isValidationError, messageOf, violationsOf } from './errors'
-import { EMPTY_ADVICE_FORM, type Advice, type AdviceForm, type AdviceType } from './types'
+import {
+  downloadURL,
+  useAdviceSearch,
+  useCauseOfLoss,
+  useUnduhBerkas,
+} from "./api";
+import { isValidationError, messageOf, violationsOf } from "./errors";
+import {
+  EMPTY_ADVICE_FORM,
+  type Advice,
+  type AdviceForm,
+  type AdviceType,
+} from "./types";
 
 /**
  * Panel PLA/DLA — isi "Cari Data DLA PLA XOL", sekaligus grid bawah "Generated DLA PLA XOL".
@@ -30,43 +40,46 @@ import { EMPTY_ADVICE_FORM, type Advice, type AdviceForm, type AdviceType } from
  * Insurance · Nama Layer · Tahun · Kurs (IDR) · Share Percent · Email · Remark.
  */
 export function AdvicePanel() {
-  const [form, setForm] = useState<AdviceForm>(EMPTY_ADVICE_FORM)
-  const [picks, setPicks] = useState<Picks>(NOTHING_PICKED)
-  const [blocked, setBlocked] = useState(false)
-  const [submitted, setSubmitted] = useState<AdviceForm | null>(null)
+  const [form, setForm] = useState<AdviceForm>(EMPTY_ADVICE_FORM);
+  const [picks, setPicks] = useState<Picks>(NOTHING_PICKED);
+  const [blocked, setBlocked] = useState(false);
+  const [submitted, setSubmitted] = useState<AdviceForm | null>(null);
 
-  const causes = useCauseOfLoss()
-  const search = useAdviceSearch(submitted ?? EMPTY_ADVICE_FORM, submitted !== null)
+  const causes = useCauseOfLoss();
+  const search = useAdviceSearch(
+    submitted ?? EMPTY_ADVICE_FORM,
+    submitted !== null,
+  );
 
-  const violations = violationsOf(search.error)
-  const rows = search.data?.pemberitahuan ?? []
-  const tipe = resolveType(picks)
+  const violations = violationsOf(search.error);
+  const rows = search.data?.pemberitahuan ?? [];
+  const tipe = resolveType(picks);
 
   const causeOptions = (causes.data?.sebab_kerugian ?? []).map((cause) => ({
     // Nilainya DESKRIPSI, bukan ID: itulah yang tersimpan di kolom CAUSEOFLOSS pada
     // tabel PLA/DLA. Mengirim ID akan menghasilkan daftar kosong tanpa pesan galat.
     value: cause.deskripsi,
     label: cause.deskripsi,
-  }))
+  }));
 
   return (
     <div className="mt-4 space-y-4">
       <form
         className="rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut"
         onSubmit={(event) => {
-          event.preventDefault()
+          event.preventDefault();
 
           // Tanpa PLA maupun DLA, aktivitas lama menempuh cabang "DATA" yang tidak
           // menjalankan satu pun kueri PLA/DLA. Permintaannya DITAHAN di sini, bukan
           // dikirim untuk ditolak server: `tipe` kosong menghasilkan galat validasi yang
           // menyalahkan pengguna atas pilihan yang memang belum ada padanannya.
-          if (tipe === '') {
-            setBlocked(true)
-            return
+          if (tipe === "") {
+            setBlocked(true);
+            return;
           }
 
-          setBlocked(false)
-          setSubmitted({ ...form, tipe })
+          setBlocked(false);
+          setSubmitted({ ...form, tipe });
         }}
       >
         <div className="max-w-xl space-y-4">
@@ -74,10 +87,12 @@ export function AdvicePanel() {
             id="xol-sebab"
             label="Cause Of Loss"
             options={causeOptions}
-            emptyText={causes.isPending ? '— memuat —' : '— pilih penyebab —'}
+            emptyText={causes.isPending ? "— memuat —" : "— pilih penyebab —"}
             value={form.sebab_kerugian}
-            error={violations['sebab_kerugian']}
-            onChange={(event) => setForm({ ...form, sebab_kerugian: event.target.value })}
+            error={violations["sebab_kerugian"]}
+            onChange={(event) =>
+              setForm({ ...form, sebab_kerugian: event.target.value })
+            }
           />
 
           <Field
@@ -86,22 +101,24 @@ export function AdvicePanel() {
             inputMode="numeric"
             placeholder="2024"
             hint={
-              'Diisi TAHUN perjanjian. Judulnya dipertahankan seperti di aplikasi lama, ' +
-              'tetapi kueri lama membandingkannya dengan kolom TAHUN — bukan dengan tanggal.'
+              "Diisi TAHUN perjanjian. Judulnya dipertahankan seperti di aplikasi lama, " +
+              "tetapi kueri lama membandingkannya dengan kolom TAHUN — bukan dengan tanggal."
             }
             value={form.tahun}
-            error={violations['tahun']}
-            onChange={(event) => setForm({ ...form, tahun: event.target.value })}
+            error={violations["tahun"]}
+            onChange={(event) =>
+              setForm({ ...form, tahun: event.target.value })
+            }
           />
         </div>
 
         <TypePicker
           picks={picks}
           onChange={(next) => {
-            setPicks(next)
-            setBlocked(false)
+            setPicks(next);
+            setBlocked(false);
           }}
-          error={violations['tipe']}
+          error={violations["tipe"]}
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -114,7 +131,7 @@ export function AdvicePanel() {
             satu layar memuat tiga tombol bernama persis sama yang berbuat hal berbeda.
           */}
           <Button type="submit" tone="utama" disabled={search.isFetching}>
-            {search.isFetching ? 'Mencari…' : 'Cari Data'}
+            {search.isFetching ? "Mencari…" : "Cari Data"}
           </Button>
 
           {submitted !== null && rows.length > 0 && (
@@ -159,7 +176,7 @@ export function AdvicePanel() {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -173,9 +190,9 @@ export function AdvicePanel() {
  * `Province`, `ProvinceID`, dan `Imei` — sisa penggunaan ulang properti bawaan yang
  * namanya tidak pernah dibetulkan. Di sini namanya dibetulkan; perilakunya tidak.
  */
-type Picks = { pla: boolean; dla: boolean; data: boolean }
+type Picks = { pla: boolean; dla: boolean; data: boolean };
 
-const NOTHING_PICKED: Picks = { pla: false, dla: false, data: false }
+const NOTHING_PICKED: Picks = { pla: false, dla: false, data: false };
 
 /**
  * resolveType menyatukan tiga kotak centang menjadi satu tipe, memakai URUTAN PRIORITAS.
@@ -193,10 +210,10 @@ const NOTHING_PICKED: Picks = { pla: false, dla: false, data: false }
  * masih sah di layar lama, dan mengubahnya menjadi radio akan menghalangi kombinasi yang
  * hari ini dapat dilakukan pengguna.
  */
-function resolveType(picks: Picks): AdviceType | '' {
-  if (picks.pla) return 'PLA'
-  if (picks.dla) return 'DLA'
-  return ''
+function resolveType(picks: Picks): AdviceType | "" {
+  if (picks.pla) return "PLA";
+  if (picks.dla) return "DLA";
+  return "";
 }
 
 /** TypePicker menggambar ketiga kotak centang sebaris, seperti di layar lama. */
@@ -205,15 +222,15 @@ function TypePicker({
   onChange,
   error,
 }: {
-  picks: Picks
-  onChange: (next: Picks) => void
-  error: string | undefined
+  picks: Picks;
+  onChange: (next: Picks) => void;
+  error: string | undefined;
 }) {
   const boxes: Array<{ key: keyof Picks; label: string }> = [
-    { key: 'pla', label: 'PLA' },
-    { key: 'dla', label: 'DLA' },
-    { key: 'data', label: 'DATA' },
-  ]
+    { key: "pla", label: "PLA" },
+    { key: "dla", label: "DLA" },
+    { key: "data", label: "DATA" },
+  ];
 
   return (
     <fieldset className="mt-4">
@@ -221,11 +238,16 @@ function TypePicker({
 
       <div className="mt-2 flex flex-wrap items-center gap-x-10 gap-y-2">
         {boxes.map((box) => (
-          <label key={box.key} className="flex items-center gap-2 text-sm text-slate-700">
+          <label
+            key={box.key}
+            className="flex items-center gap-2 text-sm text-slate-700"
+          >
             <input
               type="checkbox"
               checked={picks[box.key]}
-              onChange={(event) => onChange({ ...picks, [box.key]: event.target.checked })}
+              onChange={(event) =>
+                onChange({ ...picks, [box.key]: event.target.checked })
+              }
               className="size-4 rounded border-slate-300"
             />
             {box.label}
@@ -235,7 +257,7 @@ function TypePicker({
 
       {error && <p className="mt-1.5 text-sm text-red-700">{error}</p>}
     </fieldset>
-  )
+  );
 }
 
 /**
@@ -248,12 +270,12 @@ function TypePicker({
 function DataModeNotice() {
   return (
     <p className="mt-3 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      Centang <span className="font-medium">PLA</span> atau{' '}
-      <span className="font-medium">DLA</span> lebih dulu. Pilihan{' '}
-      <span className="font-medium">DATA</span> saja tidak menjalankan pencarian — di
-      aplikasi lama pun tidak ada kueri PLA/DLA untuk pilihan itu.
+      Centang <span className="font-medium">PLA</span> atau{" "}
+      <span className="font-medium">DLA</span> lebih dulu. Pilihan{" "}
+      <span className="font-medium">DATA</span> saja tidak menjalankan pencarian
+      — di aplikasi lama pun tidak ada kueri PLA/DLA untuk pilihan itu.
     </p>
-  )
+  );
 }
 
 /**
@@ -276,7 +298,7 @@ function DataModeNotice() {
  * polos selalu dijawab `sesi_tidak_sah`.
  */
 function DownloadButton({ form }: { form: AdviceForm }) {
-  const unduh = useUnduhBerkas()
+  const unduh = useUnduhBerkas();
 
   return (
     <div>
@@ -291,7 +313,7 @@ function DownloadButton({ form }: { form: AdviceForm }) {
           })
         }
       >
-        {unduh.isPending ? 'Menyiapkan…' : 'Unduh perhitungan (CSV)'}
+        {unduh.isPending ? "Menyiapkan…" : "Unduh perhitungan (CSV)"}
       </button>
 
       {unduh.isError && (
@@ -304,68 +326,68 @@ function DownloadButton({ form }: { form: AdviceForm }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 const adviceColumns: Column<Advice>[] = [
   {
-    key: 'nomor',
-    title: 'NO PLA / DLA',
+    key: "nomor",
+    title: "NO PLA / DLA",
     value: (row) => row.nomor,
-    width: '12rem',
+    width: "12rem",
   },
   {
-    key: 'nama_insurance',
-    title: 'Nama Insurance',
+    key: "nama_insurance",
+    title: "Nama Insurance",
     value: (row) => row.nama_insurance,
   },
   {
-    key: 'nama_layer',
-    title: 'Nama Layer',
+    key: "nama_layer",
+    title: "Nama Layer",
     value: (row) => row.nama_layer,
-    width: '8rem',
+    width: "8rem",
   },
   {
-    key: 'tahun',
-    title: 'Tahun',
+    key: "tahun",
+    title: "Tahun",
     value: (row) => row.tahun,
-    width: '6rem',
+    width: "6rem",
   },
   {
-    key: 'kurs',
-    title: 'Kurs (IDR)',
+    key: "kurs",
+    title: "Kurs (IDR)",
     value: (row) => String(row.kurs),
-    render: (row) => new Intl.NumberFormat('id-ID').format(row.kurs),
+    render: (row) => new Intl.NumberFormat("id-ID").format(row.kurs),
     alignRight: true,
-    width: '8rem',
+    width: "8rem",
   },
   {
-    key: 'share_percent',
-    title: 'Share Percent',
+    key: "share_percent",
+    title: "Share Percent",
     value: (row) => String(row.share_percent),
     // Tanda persen ditambahkan DI SINI, bukan di SQL. Nilai bersatuan tidak dapat
     // dijumlahkan maupun diurutkan — kueri lama merangkainya sebagai `PERCENT || ' %'`.
     render: (row) =>
-      `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(row.share_percent)} %`,
+      `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 4 }).format(row.share_percent)} %`,
     alignRight: true,
-    width: '8rem',
+    width: "8rem",
   },
   {
-    key: 'email',
-    title: 'Email',
+    key: "email",
+    title: "Email",
     value: (row) => row.email,
   },
   {
-    key: 'remark',
-    title: 'Remark',
+    key: "remark",
+    title: "Remark",
     value: (row) => row.remark,
   },
   {
-    key: 'status',
-    title: 'Status',
+    key: "status",
+    title: "Status",
     noSort: true,
-    width: '9rem',
-    value: (row) => (row.sudah_disetujui ? 'Disetujui' : 'Menunggu'),
+    width: "9rem",
+    value: (row) => (row.sudah_disetujui ? "Disetujui" : "Menunggu"),
     render: (row) =>
       row.sudah_disetujui ? (
         <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
@@ -377,4 +399,4 @@ const adviceColumns: Column<Advice>[] = [
         </span>
       ),
   },
-]
+];

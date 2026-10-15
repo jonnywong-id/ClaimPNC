@@ -1,19 +1,19 @@
-import { useRef } from 'react'
+import { useRef } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type RecoveryClaimLine } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { formatMoney } from '@/lib/money'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type RecoveryClaimLine } from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { formatMoney } from "@/lib/money";
 
-import { useDownloadTemplate, useReadClaimLine } from './api'
+import { useDownloadTemplate, useReadClaimLine } from "./api";
 
 type Props = {
-  claimLine: RecoveryClaimLine[]
-  onChange: (line: RecoveryClaimLine[]) => void
-  disabled: boolean
-}
+  claimLine: RecoveryClaimLine[];
+  onChange: (line: RecoveryClaimLine[]) => void;
+  disabled: boolean;
+};
 
 /**
  * Panel **Upload Data Klaim** beserta grid hasilnya.
@@ -39,50 +39,56 @@ type Props = {
  * | Membatalkan unggahan | tidak ada | daftar dapat dikosongkan kembali |
  */
 export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
-  const read = useReadClaimLine()
-  const template = useDownloadTemplate()
-  const picker = useRef<HTMLInputElement | null>(null)
+  const read = useReadClaimLine();
+  const template = useDownloadTemplate();
+  const picker = useRef<HTMLInputElement | null>(null);
 
   function choose(file: File | undefined) {
-    if (!file) return
-    read.mutate(file, { onSuccess: (answer) => onChange(answer.baris_klaim) })
+    if (!file) return;
+    read.mutate(file, { onSuccess: (answer) => onChange(answer.baris_klaim) });
   }
 
-  const total = claimLine.reduce((sum, row) => sum + row.nilai_klaim, 0)
-  const rejected = read.data?.baris_ditolak ?? []
+  const total = claimLine.reduce((sum, row) => sum + row.nilai_klaim, 0);
+  const rejected = read.data?.baris_ditolak ?? [];
 
   const columns: Column<RecoveryClaimLine>[] = [
     {
-      key: 'nomor_polis',
-      title: 'No Polis',
+      key: "nomor_polis",
+      title: "No Polis",
       value: (row) => row.nomor_polis,
-      render: (row) => <span className="font-mono text-xs text-slate-800">{row.nomor_polis}</span>,
+      render: (row) => (
+        <span className="font-mono text-xs text-slate-800">
+          {row.nomor_polis}
+        </span>
+      ),
     },
     {
-      key: 'nilai_klaim',
-      title: 'Nilai Klaims',
-      width: '12rem',
+      key: "nilai_klaim",
+      title: "Nilai Klaims",
+      width: "12rem",
       alignRight: true,
       // Yang diurutkan adalah nilai POLOS, bukan yang sudah diformat: "1.000.000" dan
       // "900.000" diurutkan sebagai teks akan menaruh yang kecil di atas.
-      value: (row) => String(row.nilai_klaim).padStart(20, '0'),
+      value: (row) => String(row.nilai_klaim).padStart(20, "0"),
       render: (row) => (
         <span className="font-mono text-xs tabular-nums text-slate-800">
           {formatMoney(row.nilai_klaim)}
         </span>
       ),
     },
-  ]
+  ];
 
   return (
     <section className="overflow-hidden rounded-kartu border border-slate-200 bg-white">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Tambah Data</h3>
+          <h3 className="text-base font-semibold text-slate-900">
+            Tambah Data
+          </h3>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Daftar polis yang tercakup batch ini, diunggah sebagai berkas CSV. Kolom nilai
-            klaim boleh dikosongkan — berkas contoh hanya memuat nomor polis, sama seperti
-            sistem lama.
+            Daftar polis yang tercakup batch ini, diunggah sebagai berkas CSV.
+            Kolom nilai klaim boleh dikosongkan — berkas contoh hanya memuat
+            nomor polis, sama seperti sistem lama.
           </p>
         </div>
 
@@ -95,21 +101,27 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
           */}
           <button
             type="button"
-            onClick={() => { template.mutate() }}
+            onClick={() => {
+              template.mutate();
+            }}
             disabled={template.isPending}
             className="self-center text-sm font-medium text-blue-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-55"
           >
-            {template.isPending ? 'Menyiapkan…' : 'Format File'}
+            {template.isPending ? "Menyiapkan…" : "Format File"}
           </button>
           <Button
             tone="kedua"
             onClick={() => picker.current?.click()}
             disabled={disabled || read.isPending}
           >
-            {read.isPending ? 'Membaca…' : 'Upload Data Klaim'}
+            {read.isPending ? "Membaca…" : "Upload Data Klaim"}
           </Button>
           {claimLine.length > 0 && (
-            <Button tone="halus" onClick={() => onChange([])} disabled={disabled}>
+            <Button
+              tone="halus"
+              onClick={() => onChange([])}
+              disabled={disabled}
+            >
               Kosongkan
             </Button>
           )}
@@ -129,11 +141,11 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
           className="sr-only"
           aria-label="Pilih berkas CSV data klaim"
           onChange={(event) => {
-            choose(event.target.files?.[0])
+            choose(event.target.files?.[0]);
             // Dikosongkan supaya memilih berkas yang SAMA dua kali tetap memicu
             // pembacaan. Tanpa ini, mengunggah ulang berkas yang baru diperbaiki tidak
             // akan terjadi apa-apa, dan petugas mengira aplikasinya menggantung.
-            event.target.value = ''
+            event.target.value = "";
           }}
         />
 
@@ -194,7 +206,7 @@ export function ClaimLineUpload({ claimLine, onChange, disabled }: Props) {
         )}
       </div>
     </section>
-  )
+  );
 }
 
 function ReadErrorMessage({ error }: { error: unknown }) {
@@ -205,7 +217,7 @@ function ReadErrorMessage({ error }: { error: unknown }) {
         description="Berkas belum terbaca. Periksa koneksi lalu unggah lagi."
         tone="gangguan"
       />
-    )
+    );
   }
   if (!(error instanceof APIError)) {
     return (
@@ -214,36 +226,50 @@ function ReadErrorMessage({ error }: { error: unknown }) {
         description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
-  const message = parse(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = parse(error);
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function parse(error: APIError): { title: string; description: string; tone: ErrorTone } {
+function parse(error: APIError): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   switch (error.kode) {
     case ErrorCode.claimFileEmpty:
       return {
-        title: 'Berkas tidak memuat data',
+        title: "Berkas tidak memuat data",
         description:
-          'Tidak ada satu baris pun yang dapat dibaca. Pakai berkas contoh sebagai acuan bentuknya.',
-        tone: 'penolakan',
-      }
+          "Tidak ada satu baris pun yang dapat dibaca. Pakai berkas contoh sebagai acuan bentuknya.",
+        tone: "penolakan",
+      };
     case ErrorCode.claimFileTooBig:
       return {
-        title: 'Berkas terlalu besar',
-        description: 'Pecah menjadi beberapa berkas lalu unggah bergantian.',
-        tone: 'penolakan',
-      }
+        title: "Berkas terlalu besar",
+        description: "Pecah menjadi beberapa berkas lalu unggah bergantian.",
+        tone: "penolakan",
+      };
     case ErrorCode.claimFileUnreadable:
       return {
-        title: 'Bentuk berkas tidak dikenali',
+        title: "Bentuk berkas tidak dikenali",
         description:
-          'Pakai berkas CSV berkolom nomor polis, dan nilai klaim bila ada. Unduh berkas contoh untuk acuannya.',
-        tone: 'penolakan',
-      }
+          "Pakai berkas CSV berkolom nomor polis, dan nilai klaim bila ada. Unduh berkas contoh untuk acuannya.",
+        tone: "penolakan",
+      };
     default:
-      return { title: 'Berkas gagal dibaca', description: error.message, tone: 'gangguan' }
+      return {
+        title: "Berkas gagal dibaca",
+        description: error.message,
+        tone: "gangguan",
+      };
   }
 }

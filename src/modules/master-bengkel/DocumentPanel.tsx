@@ -1,11 +1,11 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import type { Workshop } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import type { Workshop } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useUploadWorkshopDocument, useWorkshopDocument } from './api'
+import { useUploadWorkshopDocument, useWorkshopDocument } from "./api";
 
 /**
  * Panel "Upload Document" Master Bengkel.
@@ -44,61 +44,62 @@ export function DocumentPanel({
   available,
   onClose,
 }: {
-  workshop: Workshop
+  workshop: Workshop;
   /** Jalur unggah siap dipakai. Dibaca dari `unggah_tersedia` pada daftar bengkel. */
-  available: boolean
-  onClose: () => void
+  available: boolean;
+  onClose: () => void;
 }) {
-  const fileId = useId()
-  const input = useRef<HTMLInputElement>(null)
+  const fileId = useId();
+  const input = useRef<HTMLInputElement>(null);
 
-  const document = useWorkshopDocument(workshop.id_bengkel, true)
-  const upload = useUploadWorkshopDocument()
+  const document = useWorkshopDocument(workshop.id_bengkel, true);
+  const upload = useUploadWorkshopDocument();
 
-  const [chosen, setChosen] = useState<File | null>(null)
-  const [tooBig, setTooBig] = useState(false)
+  const [chosen, setChosen] = useState<File | null>(null);
+  const [tooBig, setTooBig] = useState(false);
 
-  const attached = document.data?.dokumen ?? null
+  const attached = document.data?.dokumen ?? null;
 
   // Batas yang sama dengan backend. Diperiksa di peramban JUGA, bukan hanya di server:
   // berkas yang ditolak server tetap harus diunggah seluruhnya lebih dulu, dan pada koneksi
   // kantor itu menit-menit yang terbuang.
-  const maxBytes = 10 * 1024 * 1024
+  const maxBytes = 10 * 1024 * 1024;
 
   // 404 di sini berarti "belum ada dokumen", bukan kerusakan — dan itu keadaan yang wajar
   // bagi sebagian besar bengkel. Ia karena itu TIDAK digambar sebagai galat.
   const loadFailed =
-    document.isError && !(document.error instanceof APIError && document.error.status === 404)
+    document.isError &&
+    !(document.error instanceof APIError && document.error.status === 404);
 
   function pick(file: File | null) {
-    upload.reset()
+    upload.reset();
     if (file !== null && file.size > maxBytes) {
-      setTooBig(true)
-      setChosen(null)
-      if (input.current) input.current.value = ''
-      return
+      setTooBig(true);
+      setChosen(null);
+      if (input.current) input.current.value = "";
+      return;
     }
-    setTooBig(false)
-    setChosen(file)
+    setTooBig(false);
+    setChosen(file);
   }
 
   function clear() {
-    setTooBig(false)
-    setChosen(null)
-    if (input.current) input.current.value = ''
+    setTooBig(false);
+    setChosen(null);
+    if (input.current) input.current.value = "";
   }
 
   function submit() {
-    if (chosen === null) return
+    if (chosen === null) return;
     upload.mutate(
       { id: workshop.id_bengkel, berkas: chosen },
       {
         onSuccess: () => {
-          clear()
-          onClose()
+          clear();
+          onClose();
         },
       },
-    )
+    );
   }
 
   return (
@@ -107,7 +108,9 @@ export function DocumentPanel({
       aria-label={`Unggah dokumen bengkel ${workshop.nama_bengkel}`}
     >
       <header className="mb-4">
-        <h2 className="text-base font-semibold text-slate-900">Upload Document</h2>
+        <h2 className="text-base font-semibold text-slate-900">
+          Upload Document
+        </h2>
         <p className="mt-0.5 text-sm text-slate-600">
           {workshop.id_bengkel} · {workshop.nama_bengkel}
         </p>
@@ -132,10 +135,15 @@ export function DocumentPanel({
 
         {attached !== null && (
           <p className="text-sm text-slate-600">
-            Dokumen saat ini:{' '}
-            <span className="font-medium text-slate-800">{attached.nama_berkas}</span>
-            {attached.diunggah_oleh !== '' && (
-              <span className="text-slate-500"> — diunggah {attached.diunggah_oleh}</span>
+            Dokumen saat ini:{" "}
+            <span className="font-medium text-slate-800">
+              {attached.nama_berkas}
+            </span>
+            {attached.diunggah_oleh !== "" && (
+              <span className="text-slate-500">
+                {" "}
+                — diunggah {attached.diunggah_oleh}
+              </span>
             )}
           </p>
         )}
@@ -147,13 +155,17 @@ export function DocumentPanel({
             mengapa dokumen yang "ada" tidak dapat dibuka.
           */
           <p className="text-sm text-amber-700">
-            Berkas dokumen ini tidak tersimpan. Dokumen yang diunggah lewat sistem lama hanya
-            mencatat keterangannya. Unggah ulang berkasnya bila masih dibutuhkan.
+            Berkas dokumen ini tidak tersimpan. Dokumen yang diunggah lewat
+            sistem lama hanya mencatat keterangannya. Unggah ulang berkasnya
+            bila masih dibutuhkan.
           </p>
         )}
 
         <div>
-          <label htmlFor={fileId} className="block text-sm font-medium text-slate-700">
+          <label
+            htmlFor={fileId}
+            className="block text-sm font-medium text-slate-700"
+          >
             Berkas dokumen
           </label>
           <input
@@ -168,7 +180,7 @@ export function DocumentPanel({
             <Button
               tone="kedua"
               onClick={() => {
-                input.current?.click()
+                input.current?.click();
               }}
               disabled={!available || upload.isPending}
             >
@@ -183,7 +195,7 @@ export function DocumentPanel({
           <p className="text-sm font-medium text-slate-700">Nama File</p>
           <div className="mt-1 rounded-kontrol border border-slate-200">
             <p className="px-3 py-2 text-sm text-slate-600">
-              {chosen === null ? 'Data tidak ada' : chosen.name}
+              {chosen === null ? "Data tidak ada" : chosen.name}
             </p>
           </div>
         </div>
@@ -208,8 +220,8 @@ export function DocumentPanel({
           <Button
             tone="halus"
             onClick={() => {
-              clear()
-              onClose()
+              clear();
+              onClose();
             }}
             disabled={upload.isPending}
           >
@@ -220,12 +232,12 @@ export function DocumentPanel({
             onClick={submit}
             disabled={!available || chosen === null || upload.isPending}
           >
-            {upload.isPending ? 'Mengunggah…' : 'Submit'}
+            {upload.isPending ? "Mengunggah…" : "Submit"}
           </Button>
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -236,40 +248,42 @@ export function DocumentPanel({
  * SAMA PERSIS dengan Master Sparepart dan Master Panel.
  */
 function UploadError({ error }: { error: unknown }) {
-  let title = 'Dokumen gagal diunggah'
-  let description = 'Berkasnya belum terkirim. Pilih berkasnya lalu unggah ulang.'
-  let tone: ErrorTone = 'gangguan'
+  let title = "Dokumen gagal diunggah";
+  let description =
+    "Berkasnya belum terkirim. Pilih berkasnya lalu unggah ulang.";
+  let tone: ErrorTone = "gangguan";
 
   if (error instanceof NetworkError) {
-    description = 'Berkasnya tidak terkirim karena sambungan terputus. Unggah ulang.'
+    description =
+      "Berkasnya tidak terkirim karena sambungan terputus. Unggah ulang.";
   } else if (error instanceof APIError) {
     switch (error.kode) {
-      case 'unggah_separuh_jalan':
+      case "unggah_separuh_jalan":
         // Satu-satunya golongan yang pengulangannya BERBAHAYA — mengulang menumpuk berkas
         // ganda di layanan penyimpanan. Nadanya dinaikkan supaya terbaca berbeda.
-        title = 'Dokumen terkirim tetapi belum tercatat'
+        title = "Dokumen terkirim tetapi belum tercatat";
         description =
-          'Berkasnya sudah sampai di penyimpanan, tetapi catatannya gagal disimpan sehingga belum tertaut ke bengkel. JANGAN unggah ulang — laporkan ke administrator.'
-        tone = 'penolakan'
-        break
-      case 'berkas_terlalu_besar':
-        title = 'Berkas terlalu besar'
-        description = error.message
-        tone = 'penolakan'
-        break
-      case 'unggah_tidak_sah':
-        title = 'Berkas tidak dapat diterima'
-        description = error.message
-        tone = 'penolakan'
-        break
-      case 'layanan_unggah_tidak_tersedia':
-        title = 'Layanan penyimpanan dokumen sedang tidak tersedia'
-        description = `${error.message} Unggah ulang setelah layanannya pulih.`
-        break
+          "Berkasnya sudah sampai di penyimpanan, tetapi catatannya gagal disimpan sehingga belum tertaut ke bengkel. JANGAN unggah ulang — laporkan ke administrator.";
+        tone = "penolakan";
+        break;
+      case "berkas_terlalu_besar":
+        title = "Berkas terlalu besar";
+        description = error.message;
+        tone = "penolakan";
+        break;
+      case "unggah_tidak_sah":
+        title = "Berkas tidak dapat diterima";
+        description = error.message;
+        tone = "penolakan";
+        break;
+      case "layanan_unggah_tidak_tersedia":
+        title = "Layanan penyimpanan dokumen sedang tidak tersedia";
+        description = `${error.message} Unggah ulang setelah layanannya pulih.`;
+        break;
       default:
-        description = error.message
+        description = error.message;
     }
   }
 
-  return <ErrorMessage title={title} description={description} tone={tone} />
+  return <ErrorMessage title={title} description={description} tone={tone} />;
 }

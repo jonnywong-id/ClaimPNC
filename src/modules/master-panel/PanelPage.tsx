@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, PanelStatus, type Panel } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, PanelStatus, type Panel } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
 import {
   useCreatePanel,
@@ -16,11 +16,11 @@ import {
   usePanelOptions,
   useSavePanel,
   useUploadPanelDocument,
-} from './api'
-import { DocumentField } from './DocumentField'
-import { ImportCSVPanel } from './ImportCSVPanel'
-import { PanelForm, type PanelFormValues } from './PanelForm'
-import { compareCodeUnits } from '@/lib/sort'
+} from "./api";
+import { DocumentField } from "./DocumentField";
+import { ImportCSVPanel } from "./ImportCSVPanel";
+import { PanelForm, type PanelFormValues } from "./PanelForm";
+import { compareCodeUnits } from "@/lib/sort";
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -67,84 +67,86 @@ import { compareCodeUnits } from '@/lib/sort'
 */
 const TABS = [
   {
-    id: 'approve',
-    label: 'Approve',
+    id: "approve",
+    label: "Approve",
     status: PanelStatus.disetujui,
     pageSize: 15,
-    description: 'Panel yang sudah disetujui dan berlaku.',
+    description: "Panel yang sudah disetujui dan berlaku.",
   },
   {
-    id: 'reject',
-    label: 'Reject',
+    id: "reject",
+    label: "Reject",
     status: PanelStatus.ditolak,
     pageSize: 50,
-    description: 'Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.',
+    description:
+      "Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.",
   },
   {
-    id: 'menunggu',
-    label: 'Waiting Approval',
+    id: "menunggu",
+    label: "Waiting Approval",
     status: PanelStatus.menunggu,
     pageSize: 50,
     description:
-      'Pengajuan dan perubahan yang belum diputuskan. Keputusannya diambil di layar Inbox Manager.',
+      "Pengajuan dan perubahan yang belum diputuskan. Keputusannya diambil di layar Inbox Manager.",
   },
-] as const
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /** Kolom yang nilai sahnya tidak ada di export; sarannya dikumpulkan dari data. */
 const SUGGESTED_COLUMNS = [
-  'status_repair',
-  'status_edit_quantity',
-  'status_premium_repair',
-  'status_pecah',
-  'status_sticker',
-  'status_sisi',
-  'status_rusak_parah',
-  'status_aktif',
-  'exclusion_c',
-] as const
+  "status_repair",
+  "status_edit_quantity",
+  "status_premium_repair",
+  "status_pecah",
+  "status_sticker",
+  "status_sisi",
+  "status_rusak_parah",
+  "status_aktif",
+  "exclusion_c",
+] as const;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar panel tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar panel tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar panel tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar panel tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -188,44 +190,45 @@ function loadMessage(error: unknown): MessageContent {
  * layar ini tidak pernah memanggilnya.
  */
 export function PanelPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Panel | null>(null)
+  const [tab, setTab] = useState<TabId>("approve");
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Panel | null>(null);
 
   // Berkas DITAHAN di sini, bukan dikirim saat dipilih. Pega menahannya juga —
   // `SaveFilePenunjang` hanya menaruhnya di halaman sementara, dan `CNMUpdatePanelHE_act`
   // yang menyimpannya saat panel disimpan. Lihat DocumentField.
-  const [file, setFile] = useState<File | null>(null)
-  const [note, setNote] = useState('')
+  const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState("");
   // Panel unggah yang sedang terbuka. Satu saja pada satu waktu — ketiganya menempati
   // tempat yang sama di bawah kepala halaman, dan membuka dua sekaligus hanya memanjangkan
   // layar tanpa menambah apa pun.
-  const [panelUnggah, setPanelUnggah] = useState<'dokumen' | 'csv' | 'csv-lokasi' | null>(null)
+  const [panelUnggah, setPanelUnggah] = useState<
+    "dokumen" | "csv" | "csv-lokasi" | null
+  >(null);
 
-  function bukaPanel(nama: 'dokumen' | 'csv' | 'csv-lokasi') {
-    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama))
+  function bukaPanel(nama: "dokumen" | "csv" | "csv-lokasi") {
+    setPanelUnggah((sekarang) => (sekarang === nama ? null : nama));
   }
 
-  const upload = useUploadPanelDocument()
-  const importCSV = useImportPanelCSV()
-  const importLocationCSV = useImportLocationCSV()
-  const options = usePanelOptions()
+  const upload = useUploadPanelDocument();
+  const importCSV = useImportPanelCSV();
+  const importLocationCSV = useImportLocationCSV();
+  const options = usePanelOptions();
 
   // Dokumen panel yang sedang disunting. Null pada mode Tambah: panel yang belum ada tidak
   // mungkin punya dokumen, dan menembak endpoint-nya hanya untuk menerima 404 akan mengisi
   // konsol dengan galat yang bukan galat.
-  const currentDocument = usePanelDocument(editing?.id_panel ?? null)
+  const currentDocument = usePanelDocument(editing?.id_panel ?? null);
 
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const list = usePanelList(active.status);
+  const create = useCreatePanel();
+  const save = useSavePanel();
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
-  const list = usePanelList(active.status)
-  const create = useCreatePanel()
-  const save = useSavePanel()
-
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.panel ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.panel ?? [];
 
   /*
     Saran nilai untuk kolom yang daftar pilihannya tidak ada di export (R-16).
@@ -235,40 +238,40 @@ export function PanelPage() {
     PanelForm bagian "Penanda perlakuan klaim".
   */
   const knownValues = useMemo(() => {
-    const collected: Record<string, string[]> = {}
+    const collected: Record<string, string[]> = {};
     for (const column of SUGGESTED_COLUMNS) {
-      const unique = new Set<string>()
+      const unique = new Set<string>();
       for (const row of rows) {
-        const value = row[column]
-        if (value !== '') unique.add(value)
+        const value = row[column];
+        if (value !== "") unique.add(value);
       }
-      collected[column] = [...unique].sort(compareCodeUnits)
+      collected[column] = [...unique].sort(compareCodeUnits);
     }
-    return collected
-  }, [rows])
+    return collected;
+  }, [rows]);
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    upload.reset()
-    setAdding(false)
-    setEditing(null)
-    setFile(null)
-    setNote('')
+    create.reset();
+    save.reset();
+    upload.reset();
+    setAdding(false);
+    setEditing(null);
+    setFile(null);
+    setNote("");
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
   }
 
   function openEdit(row: Panel) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
   }
 
   /**
@@ -284,8 +287,8 @@ export function PanelPage() {
   function submit(values: PanelFormValues) {
     const attach = (id: string) => {
       if (file === null) {
-        closeForm()
-        return
+        closeForm();
+        return;
       }
       upload.mutate(
         { id, file, note },
@@ -297,19 +300,23 @@ export function PanelPage() {
           // lewat Submit jauh sebelum Simpan ditekan. Tanpa membukanya kembali, kegagalan
           // yang paling berbahaya — berkas terkirim tetapi catatannya gagal — tidak
           // terlihat sama sekali.
-          onError: () => { setPanelUnggah('dokumen') },
+          onError: () => {
+            setPanelUnggah("dokumen");
+          },
         },
-      )
-    }
+      );
+    };
 
     if (editing) {
       save.mutate(
         { id: editing.id_panel, input: values },
         { onSuccess: () => attach(editing.id_panel) },
-      )
-      return
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: (created) => attach(created.panel.id_panel) })
+    create.mutate(values, {
+      onSuccess: (created) => attach(created.panel.id_panel),
+    });
   }
 
   /*
@@ -335,10 +342,12 @@ export function PanelPage() {
   ): Column<Panel> => ({
     key,
     title,
-    width: '7.5rem',
+    width: "7.5rem",
     value: read,
-    render: (row) => <span className="text-sm text-slate-900">{read(row) || '—'}</span>,
-  })
+    render: (row) => (
+      <span className="text-sm text-slate-900">{read(row) || "—"}</span>
+    ),
+  });
 
   /*
     TIDAK ADA kolom "Pilih" di sini, dan itu mengikuti Pega.
@@ -353,51 +362,69 @@ export function PanelPage() {
   */
   const columns: Column<Panel>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: '7rem',
+      key: "id",
+      title: "ID",
+      width: "7rem",
       value: (row) => row.id_panel,
     },
     {
-      key: 'nama',
-      title: 'NAMA PANEL',
-      width: '12rem',
+      key: "nama",
+      title: "NAMA PANEL",
+      width: "12rem",
       value: (row) => row.nama_panel,
     },
-    statusColumn('repair', 'STATUS REPAIR', (row) => row.status_repair),
-    statusColumn('edit_qty', 'STATUS EDIT QUANTITY', (row) => row.status_edit_quantity),
-    statusColumn('premium', 'STATUS PREMIUM REPAIR', (row) => row.status_premium_repair),
-    statusColumn('pecah', 'STATUS PECAH', (row) => row.status_pecah),
-    statusColumn('sticker', 'STATUS STICKER', (row) => row.status_sticker),
-    statusColumn('sisi', 'STATUS SISI', (row) => row.status_sisi),
-    statusColumn('rusak_parah', 'STATUS RUSAK PARAH', (row) => row.status_rusak_parah),
-    statusColumn('aktif', 'STATUS AKTIF', (row) => row.status_aktif),
-    statusColumn('exclusion_c', 'Exclusion C', (row) => row.exclusion_c),
+    statusColumn("repair", "STATUS REPAIR", (row) => row.status_repair),
+    statusColumn(
+      "edit_qty",
+      "STATUS EDIT QUANTITY",
+      (row) => row.status_edit_quantity,
+    ),
+    statusColumn(
+      "premium",
+      "STATUS PREMIUM REPAIR",
+      (row) => row.status_premium_repair,
+    ),
+    statusColumn("pecah", "STATUS PECAH", (row) => row.status_pecah),
+    statusColumn("sticker", "STATUS STICKER", (row) => row.status_sticker),
+    statusColumn("sisi", "STATUS SISI", (row) => row.status_sisi),
+    statusColumn(
+      "rusak_parah",
+      "STATUS RUSAK PARAH",
+      (row) => row.status_rusak_parah,
+    ),
+    statusColumn("aktif", "STATUS AKTIF", (row) => row.status_aktif),
+    statusColumn("exclusion_c", "Exclusion C", (row) => row.exclusion_c),
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya dibaca dari `pyCaption Master Panel HE` pada Section/ListPanelHE —
               "HE" ikut, karena itulah yang tertulis di layar lama (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Panel HE</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Panel HE
+          </h1>
           <p className="text-sm text-slate-600">
-            Panel bodi kendaraan berat beserta perlakuan klaimnya, dan daftar lokasi pada
-            setiap panel.
+            Panel bodi kendaraan berat beserta perlakuan klaimnya, dan daftar
+            lokasi pada setiap panel.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -414,28 +441,51 @@ export function PanelPage() {
             mekanisme dialog hanya untuk satu tombol akan menjadikannya satu-satunya di
             seluruh aplikasi.
           */}
-          <Button tone="kedua" onClick={() => { bukaPanel('dokumen') }}>
+          <Button
+            tone="kedua"
+            onClick={() => {
+              bukaPanel("dokumen");
+            }}
+          >
             Upload Document
           </Button>
-          <Button tone="kedua" onClick={() => { bukaPanel('csv') }}>
+          <Button
+            tone="kedua"
+            onClick={() => {
+              bukaPanel("csv");
+            }}
+          >
             Upload Data Master Panel
           </Button>
-          <Button tone="kedua" onClick={() => { bukaPanel('csv-lokasi') }}>
+          <Button
+            tone="kedua"
+            onClick={() => {
+              bukaPanel("csv-lokasi");
+            }}
+          >
             Upload Data Lokasi Panel
           </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
 
-      {panelUnggah === 'dokumen' && (
+      {panelUnggah === "dokumen" && (
         <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Upload Document</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Upload Document
+          </h2>
           <p className="mb-3 mt-0.5 text-xs text-slate-600">
-            Dokumen pendukung untuk <span className="font-medium">satu</span> panel. Berkasnya
-            disimpan di layanan penyimpanan internal (GCS); yang tersimpan di basis data
-            hanya catatannya.
+            Dokumen pendukung untuk <span className="font-medium">satu</span>{" "}
+            panel. Berkasnya disimpan di layanan penyimpanan internal (GCS);
+            yang tersimpan di basis data hanya catatannya.
           </p>
           <DocumentField
             current={currentDocument.data?.data ?? null}
@@ -446,44 +496,60 @@ export function PanelPage() {
             onNote={setNote}
             isSaving={create.isPending || save.isPending || upload.isPending}
             error={upload.error}
-            onClose={() => { setPanelUnggah(null) }}
+            onClose={() => {
+              setPanelUnggah(null);
+            }}
           />
         </section>
       )}
 
-      {panelUnggah === 'csv' && (
+      {panelUnggah === "csv" && (
         <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Upload Data Master Panel</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Upload Data Master Panel
+          </h2>
           <p className="mb-3 mt-0.5 text-xs text-slate-600">
-            Berkas CSV berisi <span className="font-medium">banyak</span> panel sekaligus.
-            Barisnya dicocokkan menurut <span className="font-medium">nama panel</span>, dan
-            seluruhnya masuk antrean persetujuan.
+            Berkas CSV berisi <span className="font-medium">banyak</span> panel
+            sekaligus. Barisnya dicocokkan menurut{" "}
+            <span className="font-medium">nama panel</span>, dan seluruhnya
+            masuk antrean persetujuan.
           </p>
           <ImportCSVPanel
             isSending={importCSV.isPending}
             report={importCSV.data?.data ?? null}
             error={importCSV.error}
-            onSend={(berkas) => { importCSV.mutate(berkas) }}
-            onClose={() => { setPanelUnggah(null) }}
+            onSend={(berkas) => {
+              importCSV.mutate(berkas);
+            }}
+            onClose={() => {
+              setPanelUnggah(null);
+            }}
             rowLabel="Nama Panel"
           />
         </section>
       )}
 
-      {panelUnggah === 'csv-lokasi' && (
+      {panelUnggah === "csv-lokasi" && (
         <section className="mt-4 rounded-kontrol border border-slate-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Upload Data Lokasi Panel</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Upload Data Lokasi Panel
+          </h2>
           <p className="mb-3 mt-0.5 text-xs text-slate-600">
-            Berkas CSV berisi daftar lokasi. Barisnya{' '}
-            <span className="font-medium">ditambahkan</span> ke panel yang disebut — lokasi
-            lain panel itu tidak dihapus, dan yang sudah ada tidak digandakan.
+            Berkas CSV berisi daftar lokasi. Barisnya{" "}
+            <span className="font-medium">ditambahkan</span> ke panel yang
+            disebut — lokasi lain panel itu tidak dihapus, dan yang sudah ada
+            tidak digandakan.
           </p>
           <ImportCSVPanel
             isSending={importLocationCSV.isPending}
             report={importLocationCSV.data?.data ?? null}
             error={importLocationCSV.error}
-            onSend={(berkas) => { importLocationCSV.mutate(berkas) }}
-            onClose={() => { setPanelUnggah(null) }}
+            onSend={(berkas) => {
+              importLocationCSV.mutate(berkas);
+            }}
+            onClose={() => {
+              setPanelUnggah(null);
+            }}
             rowLabel="Panel"
           />
         </section>
@@ -517,19 +583,19 @@ export function PanelPage() {
           <button
             key={t.id}
             type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => {
-              closeForm()
-              setTab(t.id)
+              closeForm();
+              setTab(t.id);
             }}
             className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+              "rounded-t px-3 py-2 text-sm font-medium",
+              "transition-colors duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
               tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:text-slate-800",
+            ].join(" ")}
           >
             {t.label}
           </button>
@@ -540,13 +606,14 @@ export function PanelPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
+        {active.description}{" "}
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
-
 
       {isFormOpen && (
         <section className="mt-5">
@@ -572,14 +639,14 @@ export function PanelPage() {
           <p className="text-sm text-slate-500">Memuat daftar panel…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -606,7 +673,7 @@ export function PanelPage() {
         )}
       </section>
     </main>
-  )
+  );
 }
 
 /*

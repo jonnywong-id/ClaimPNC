@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { TextAreaField } from '@/components/TextAreaField'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { TextAreaField } from "@/components/TextAreaField";
 
 import {
   useBalasKomunikasi,
@@ -11,14 +11,14 @@ import {
   useRincianKlaim,
   useTindakanBelumTersedia,
   useUnduhDokumen,
-} from './api'
-import { formatTanggal, pesanGalat, pesanMuat } from './pesan'
+} from "./api";
+import { formatTanggal, pesanGalat, pesanMuat } from "./pesan";
 import type {
   BarisDokumen,
   BarisKomunikasi,
   BarisPemberitahuan,
   Kolom,
-} from './types'
+} from "./types";
 
 /**
  * Panel rincian satu klaim — tombol **"Detail Claim"**.
@@ -42,22 +42,22 @@ import type {
  */
 type Props = {
   /** Kunci objek kerja klaim — `T_CLAIM_PNC.CLAIMID`. */
-  kunciKlaim: string
+  kunciKlaim: string;
 
   /** Nomor klaim, dipakai judul panel supaya pengguna tahu apa yang sedang dibuka. */
-  nomorKlaim: string
+  nomorKlaim: string;
 
-  onClose: () => void
-}
+  onClose: () => void;
+};
 
 /** Pilihan dokumen yang sedang dibuka — nomor pemberitahuan beserta jenisnya. */
-type PilihanDokumen = { nomor: string; jenis: string }
+type PilihanDokumen = { nomor: string; jenis: string };
 
 export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
-  const rincian = useRincianKlaim(kunciKlaim, true)
-  const [dokumen, setDokumen] = useState<PilihanDokumen | null>(null)
+  const rincian = useRincianKlaim(kunciKlaim, true);
+  const [dokumen, setDokumen] = useState<PilihanDokumen | null>(null);
 
-  const isi = rincian.data
+  const isi = rincian.data;
 
   return (
     <section
@@ -70,8 +70,8 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
             Rincian Klaim {nomorKlaim}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Pemberitahuan dan dokumen yang dikirimkan kepada Anda atas klaim ini,
-            beserta riwayat komunikasinya.
+            Pemberitahuan dan dokumen yang dikirimkan kepada Anda atas klaim
+            ini, beserta riwayat komunikasinya.
           </p>
         </div>
 
@@ -84,9 +84,7 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
         <p className="text-sm text-slate-600">Memuat rincian klaim…</p>
       )}
 
-      {rincian.isError && (
-        <ErrorMessage {...pesanMuat(rincian.error)} />
-      )}
+      {rincian.isError && <ErrorMessage {...pesanMuat(rincian.error)} />}
 
       {isi && (
         <>
@@ -99,7 +97,7 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
             dipilih={dokumen}
             onPilih={setDokumen}
             pesanKosong={
-              'Belum ada PLA yang dikirimkan kepada Anda atas klaim ini.'
+              "Belum ada PLA yang dikirimkan kepada Anda atas klaim ini."
             }
           />
 
@@ -110,7 +108,7 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
             dipilih={dokumen}
             onPilih={setDokumen}
             pesanKosong={
-              'Belum ada DLA yang dikirimkan kepada Anda atas klaim ini.'
+              "Belum ada DLA yang dikirimkan kepada Anda atas klaim ini."
             }
           />
 
@@ -131,11 +129,15 @@ export function DetailKlaimPanel({ kunciKlaim, nomorKlaim, onClose }: Props) {
         </>
       )}
     </section>
-  )
+  );
 }
 
 /** KepalaKlaim menggambar keterangan klaim di kepala panel. */
-function KepalaKlaim({ isi }: { isi: NonNullable<ReturnType<typeof useRincianKlaim>['data']>['klaim'] }) {
+function KepalaKlaim({
+  isi,
+}: {
+  isi: NonNullable<ReturnType<typeof useRincianKlaim>["data"]>["klaim"];
+}) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
       <Isian label="Claim No" nilai={isi.no_klaim} />
@@ -143,19 +145,19 @@ function KepalaKlaim({ isi }: { isi: NonNullable<ReturnType<typeof useRincianKla
       <Isian label="Insured" nilai={isi.nama_tertanggung} />
       <Isian label="Business Name" nilai={isi.nama_bisnis} />
       <Isian label="DOL" nilai={formatTanggal(isi.tanggal_kejadian)} />
-      <Isian label="Register Date" nilai={formatTanggal(isi.tanggal_register)} />
-      <Isian label="PIC ASM" nilai={isi.pic_teknik} />
       <Isian
-        label="Claim Progress"
-        nilai={isi.status || isi.kode_status}
+        label="Register Date"
+        nilai={formatTanggal(isi.tanggal_register)}
       />
+      <Isian label="PIC ASM" nilai={isi.pic_teknik} />
+      <Isian label="Claim Progress" nilai={isi.status || isi.kode_status} />
     </dl>
-  )
+  );
 }
 
 /** Isian adalah satu label beserta isinya. */
 function Isian({ label, nilai }: { label: string; nilai: string }) {
-  const bersih = nilai.trim()
+  const bersih = nilai.trim();
 
   return (
     <div className="min-w-0">
@@ -163,10 +165,10 @@ function Isian({ label, nilai }: { label: string; nilai: string }) {
         {label}
       </dt>
       <dd className="mt-0.5 break-words text-sm text-slate-900">
-        {bersih === '' ? <span className="text-slate-400">—</span> : bersih}
+        {bersih === "" ? <span className="text-slate-400">—</span> : bersih}
       </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -183,14 +185,14 @@ function GridPemberitahuan({
   onPilih,
   pesanKosong,
 }: {
-  judul: string
-  kolom: Kolom[]
-  baris: BarisPemberitahuan[]
-  dipilih: PilihanDokumen | null
-  onPilih: (pilihan: PilihanDokumen) => void
-  pesanKosong: string
+  judul: string;
+  kolom: Kolom[];
+  baris: BarisPemberitahuan[];
+  dipilih: PilihanDokumen | null;
+  onPilih: (pilihan: PilihanDokumen) => void;
+  pesanKosong: string;
 }) {
-  const tindakan = useTindakanBelumTersedia()
+  const tindakan = useTindakanBelumTersedia();
 
   const kolomTabel: Column<BarisPemberitahuan>[] = [
     ...kolom.map((item) => ({
@@ -203,11 +205,11 @@ function GridPemberitahuan({
           : isiAtauStrip(selPemberitahuan(row, item.kunci)),
     })),
     {
-      key: 'dokumen',
-      title: 'Dokumen',
+      key: "dokumen",
+      title: "Dokumen",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           type="button"
@@ -221,7 +223,7 @@ function GridPemberitahuan({
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-2">
@@ -239,7 +241,7 @@ function GridPemberitahuan({
             disabled={tindakan.isPending}
             onClick={() =>
               tindakan.mutate(
-                judul === 'PLA' ? 'unduh-semua-pla' : 'unduh-semua-dla',
+                judul === "PLA" ? "unduh-semua-pla" : "unduh-semua-dla",
               )
             }
           >
@@ -259,7 +261,7 @@ function GridPemberitahuan({
         />
       )}
     </div>
-  )
+  );
 }
 
 /** PanelDokumen menggambar dokumen satu nomor pemberitahuan. */
@@ -269,32 +271,31 @@ function PanelDokumen({
   kolom,
   onClose,
 }: {
-  kunciKlaim: string
-  pilihan: PilihanDokumen
-  kolom: Kolom[]
-  onClose: () => void
+  kunciKlaim: string;
+  pilihan: PilihanDokumen;
+  kolom: Kolom[];
+  onClose: () => void;
 }) {
   const dokumen = useDokumenPemberitahuan(
     kunciKlaim,
     pilihan.nomor,
     pilihan.jenis,
-  )
-  const unduh = useUnduhDokumen(kunciKlaim)
+  );
+  const unduh = useUnduhDokumen(kunciKlaim);
 
   const kolomTabel: Column<BarisDokumen>[] = [
     ...kolom.map((item) => ({
       key: item.kunci,
       title: item.judul,
       value: (row: BarisDokumen) => selDokumen(row, item.kunci),
-      render: (row: BarisDokumen) =>
-        isiAtauStrip(selDokumen(row, item.kunci)),
+      render: (row: BarisDokumen) => isiAtauStrip(selDokumen(row, item.kunci)),
     })),
     {
-      key: 'aksi',
-      title: 'Berkas',
+      key: "aksi",
+      title: "Berkas",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           type="button"
@@ -302,11 +303,11 @@ function PanelDokumen({
           disabled={unduh.isPending}
           onClick={() => unduh.mutate({ id: row.id, nama: row.nama })}
         >
-          {unduh.isPending ? 'Menyiapkan…' : 'View Document'}
+          {unduh.isPending ? "Menyiapkan…" : "View Document"}
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-2">
@@ -327,7 +328,7 @@ function PanelDokumen({
           ) : undefined
         }
         emptyMessage={
-          'Tidak ada dokumen yang dikirimkan kepada Anda pada nomor ini.'
+          "Tidak ada dokumen yang dikirimkan kepada Anda pada nomor ini."
         }
         actions={
           <Button type="button" tone="kedua" onClick={onClose}>
@@ -344,7 +345,7 @@ function PanelDokumen({
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -361,31 +362,31 @@ function PanelKomunikasi({
   kolom,
   baris,
 }: {
-  kunciKlaim: string
-  kolom: Kolom[]
-  baris: BarisKomunikasi[]
+  kunciKlaim: string;
+  kolom: Kolom[];
+  baris: BarisKomunikasi[];
 }) {
-  const [membalas, setMembalas] = useState<string | null>(null)
-  const [isian, setIsian] = useState('')
-  const balas = useBalasKomunikasi(kunciKlaim)
+  const [membalas, setMembalas] = useState<string | null>(null);
+  const [isian, setIsian] = useState("");
+  const balas = useBalasKomunikasi(kunciKlaim);
 
   function mulaiMembalas(id: string) {
-    setMembalas(id)
-    setIsian('')
-    balas.reset()
+    setMembalas(id);
+    setIsian("");
+    balas.reset();
   }
 
   function kirim() {
-    if (membalas === null) return
+    if (membalas === null) return;
     balas.mutate(
       { percakapan: membalas, balasan: isian },
       {
         onSuccess: () => {
-          setMembalas(null)
-          setIsian('')
+          setMembalas(null);
+          setIsian("");
         },
       },
-    )
+    );
   }
 
   const kolomTabel: Column<BarisKomunikasi>[] = [
@@ -399,11 +400,11 @@ function PanelKomunikasi({
           : isiAtauStrip(selKomunikasi(row, item.kunci)),
     })),
     {
-      key: 'aksi',
-      title: 'Aksi',
+      key: "aksi",
+      title: "Aksi",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) =>
         // Tombolnya digambar menurut jawaban SERVER, bukan menurut kesimpulan layar.
         // Layar yang menyimpulkannya sendiri akan menggambar tombol pada percakapan
@@ -420,7 +421,7 @@ function PanelKomunikasi({
           <span className="text-xs text-slate-500">Sudah dijawab</span>
         ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-3">
@@ -437,8 +438,8 @@ function PanelKomunikasi({
         <form
           className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
           onSubmit={(event) => {
-            event.preventDefault()
-            kirim()
+            event.preventDefault();
+            kirim();
           }}
         >
           <TextAreaField
@@ -448,14 +449,14 @@ function PanelKomunikasi({
             onChange={(event) => setIsian(event.target.value)}
             rows={4}
             hint={
-              'Balasan hanya dapat dikirim SATU KALI per percakapan, dan langsung ' +
-              'terbaca petugas Asuransi Sinar Mas.'
+              "Balasan hanya dapat dikirim SATU KALI per percakapan, dan langsung " +
+              "terbaca petugas Asuransi Sinar Mas."
             }
           />
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={balas.isPending}>
-              {balas.isPending ? 'Mengirim…' : 'Kirim Balasan'}
+              {balas.isPending ? "Mengirim…" : "Kirim Balasan"}
             </Button>
             <Button
               type="button"
@@ -477,29 +478,29 @@ function PanelKomunikasi({
         </form>
       )}
     </div>
-  )
+  );
 }
 
 /** selPemberitahuan mengambil isi satu sel grid pemberitahuan sebagai teks. */
 function selPemberitahuan(row: BarisPemberitahuan, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /** selDokumen mengambil isi satu sel grid dokumen sebagai teks. */
 function selDokumen(row: BarisDokumen, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /** selKomunikasi mengambil isi satu sel grid komunikasi sebagai teks. */
 function selKomunikasi(row: BarisKomunikasi, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /** isiAtauStrip menggambar tanda pisah untuk sel yang kosong. */
 function isiAtauStrip(isi: string): ReactNode {
-  if (isi.trim() === '') return <span className="text-slate-400">—</span>
-  return isi
+  if (isi.trim() === "") return <span className="text-slate-400">—</span>;
+  return isi;
 }

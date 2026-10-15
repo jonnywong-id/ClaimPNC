@@ -1,14 +1,18 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ProgressStatus2, type ProgressStatus2Parent } from '@/api/types'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type ProgressStatus2,
+  type ProgressStatus2Parent,
+} from "@/api/types";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
 /**
  * Batas panjang nama harus sama dengan masterstatusprogres.MaxNameLength2 di backend.
@@ -20,30 +24,33 @@ import { Button } from '@/components/Button'
  * Bila angka ini berubah, `internal/masterstatusprogres/masterstatusprogres2.go` harus ikut
  * berubah.
  */
-const MAX_NAME_LENGTH = 100
+const MAX_NAME_LENGTH = 100;
 
 const schema = z.object({
   nama: z
     .string()
     .trim()
-    .min(1, 'Nama status progres 2 wajib diisi.')
-    .max(MAX_NAME_LENGTH, `Nama status progres 2 paling panjang ${MAX_NAME_LENGTH} karakter.`),
-  id_induk: z.string().trim().min(1, 'Status Progres 1 wajib dipilih.'),
-})
+    .min(1, "Nama status progres 2 wajib diisi.")
+    .max(
+      MAX_NAME_LENGTH,
+      `Nama status progres 2 paling panjang ${MAX_NAME_LENGTH} karakter.`,
+    ),
+  id_induk: z.string().trim().min(1, "Status Progres 1 wajib dipilih."),
+});
 
-export type ProgressStatus2Fields = z.infer<typeof schema>
+export type ProgressStatus2Fields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: ProgressStatus2 | null
-  parents: ProgressStatus2Parent[]
-  isSaving: boolean
-  error: unknown
-  onSave: (values: ProgressStatus2Fields) => void
-  onCancel: () => void
-}
+  edited: ProgressStatus2 | null;
+  parents: ProgressStatus2Parent[];
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: ProgressStatus2Fields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -55,10 +62,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -69,38 +77,39 @@ function messageFor(error: unknown): MessageContent | null {
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /**
@@ -132,7 +141,7 @@ export function ProgressStatus2Form({
   onSave,
   onCancel,
 }: Props) {
-  const editMode = edited !== null
+  const editMode = edited !== null;
 
   const {
     register,
@@ -143,30 +152,30 @@ export function ProgressStatus2Form({
   } = useForm<ProgressStatus2Fields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama: edited?.nama ?? '',
-      id_induk: edited?.id_induk ?? '',
+      nama: edited?.nama ?? "",
+      id_induk: edited?.id_induk ?? "",
     },
-  })
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu
   // — misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
-    reset({ nama: edited?.nama ?? '', id_induk: edited?.id_induk ?? '' })
-  }, [edited, reset])
+    reset({ nama: edited?.nama ?? "", id_induk: edited?.id_induk ?? "" });
+  }, [edited, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
   // dan itu hanya berguna bila layar menyorotnya satu per satu.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama' || column === 'id_induk') {
-        setError(column, { type: 'server', message })
+      if (column === "nama" || column === "id_induk") {
+        setError(column, { type: "server", message });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
-  const title = editMode ? 'Ubah Status Progres 2' : 'Tambah Status Progres 2'
+  const message = messageFor(error);
+  const title = editMode ? "Ubah Status Progres 2" : "Tambah Status Progres 2";
 
   return (
     <form
@@ -178,7 +187,11 @@ export function ProgressStatus2Form({
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
@@ -193,7 +206,9 @@ export function ProgressStatus2Form({
           <span className="block text-sm font-medium text-slate-700">No</span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
             {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -203,9 +218,12 @@ export function ProgressStatus2Form({
       <SelectField
         id="id_induk"
         label="Status Progres 1"
-        options={parents.map((p) => ({ value: p.id, label: `${p.id} — ${p.nama}` }))}
+        options={parents.map((p) => ({
+          value: p.id,
+          label: `${p.id} — ${p.nama}`,
+        }))}
         error={errors.id_induk?.message}
-        {...register('id_induk')}
+        {...register("id_induk")}
       />
 
       <Field
@@ -214,7 +232,7 @@ export function ProgressStatus2Form({
         type="text"
         maxLength={MAX_NAME_LENGTH}
         error={errors.nama?.message}
-        {...register('nama')}
+        {...register("nama")}
       />
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -222,9 +240,9 @@ export function ProgressStatus2Form({
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

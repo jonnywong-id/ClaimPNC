@@ -1,14 +1,18 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { AnalystDoctorPage } from './AnalystDoctorPage'
-import type { DaftarResponse, KeteranganResponse, TugasAnalystDoctor } from './types'
+import { AnalystDoctorPage } from "./AnalystDoctorPage";
+import type {
+  DaftarResponse,
+  KeteranganResponse,
+  TugasAnalystDoctor,
+} from "./types";
 
 /**
  * Data uji seluruhnya KARANGAN.
@@ -20,20 +24,20 @@ import type { DaftarResponse, KeteranganResponse, TugasAnalystDoctor } from './t
  */
 function tugas(partial: Partial<TugasAnalystDoctor> = {}): TugasAnalystDoctor {
   return {
-    klaim_id: 'ASM-FW-GCNMFW-WORK PNCN.26.0311',
-    nomor_case: 'PNCN.26.0311',
-    nomor_polis: '26.002.2026.00311',
-    nama_tertanggung: 'Bayu Pratama Contoh',
-    nama_cabang: 'JAKARTA PUSAT',
-    nama_admin: 'ADMINREG1',
-    komentar_pic_teknis: 'Mohon dinilai kelayakan biaya rawat inap.',
-    pic_teknis: 'PICTEKNIKPA1',
-    tanggal_pendaftaran: '2026-09-18',
+    klaim_id: "ASM-FW-GCNMFW-WORK PNCN.26.0311",
+    nomor_case: "PNCN.26.0311",
+    nomor_polis: "26.002.2026.00311",
+    nama_tertanggung: "Bayu Pratama Contoh",
+    nama_cabang: "JAKARTA PUSAT",
+    nama_admin: "ADMINREG1",
+    komentar_pic_teknis: "Mohon dinilai kelayakan biaya rawat inap.",
+    pic_teknis: "PICTEKNIKPA1",
+    tanggal_pendaftaran: "2026-09-18",
     lama_hari: 5,
-    status_proses: 'Open',
-    operator_penerima: 'ADMINKLAIM',
+    status_proses: "Open",
+    operator_penerima: "ADMINKLAIM",
     ...partial,
-  }
+  };
 }
 
 /**
@@ -43,46 +47,46 @@ function tugas(partial: Partial<TugasAnalystDoctor> = {}): TugasAnalystDoctor {
  * `Harness/inboxAnalystDoctor_Harness-Harness.xml`.
  */
 const keteranganResponse: KeteranganResponse = {
-  portal: 'ASM',
+  portal: "ASM",
   kolom: [
-    { kunci: 'nomor_case', judul: 'Nomor Case' },
-    { kunci: 'nomor_polis', judul: 'No Polis' },
-    { kunci: 'nama_tertanggung', judul: 'Nama Tertanggung' },
-    { kunci: 'nama_cabang', judul: 'Nama Cabang' },
-    { kunci: 'tanggal_pendaftaran', judul: 'Tanggal Pendaftaran' },
-    { kunci: 'nama_admin', judul: 'Nama Admin' },
+    { kunci: "nomor_case", judul: "Nomor Case" },
+    { kunci: "nomor_polis", judul: "No Polis" },
+    { kunci: "nama_tertanggung", judul: "Nama Tertanggung" },
+    { kunci: "nama_cabang", judul: "Nama Cabang" },
+    { kunci: "tanggal_pendaftaran", judul: "Tanggal Pendaftaran" },
+    { kunci: "nama_admin", judul: "Nama Admin" },
     {
-      kunci: 'komentar_pic_teknis',
-      judul: 'Komentar dari PIC Teknis',
-      keterangan: 'Belum terbawa. Properti Pega-nya tidak terekspos.',
+      kunci: "komentar_pic_teknis",
+      judul: "Komentar dari PIC Teknis",
+      keterangan: "Belum terbawa. Properti Pega-nya tidak terekspos.",
     },
-    { kunci: 'lama_hari', judul: 'Lama Waktu Klaim' },
+    { kunci: "lama_hari", judul: "Lama Waktu Klaim" },
   ],
   keterbatasan: ['Kolom "Komentar dari PIC Teknis" masih kosong.'],
   ukuran_halaman: 25,
-}
+};
 
 function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
   return {
-    portal: 'ASM',
+    portal: "ASM",
     data: [tugas()],
     total: 1,
     lewati: 0,
     batas: 25,
-    cari: '',
+    cari: "",
     ...partial,
-  }
+  };
 }
 
-type Call = { url: string; init: RequestInit | undefined }
+type Call = { url: string; init: RequestInit | undefined };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
@@ -92,22 +96,27 @@ function jsonResponse(status: number, body: unknown): Response {
  * membuat tiap uji hanya perlu menyatakan yang berbeda.
  */
 function stubFetch(daftar: DaftarResponse | (() => Response)) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
 
-    if (url.includes('/keterangan')) {
-      return Promise.resolve(jsonResponse(200, keteranganResponse))
+    if (url.includes("/keterangan")) {
+      return Promise.resolve(jsonResponse(200, keteranganResponse));
     }
-    return Promise.resolve(typeof daftar === 'function' ? daftar() : jsonResponse(200, daftar))
-  })
+    return Promise.resolve(
+      typeof daftar === "function" ? daftar() : jsonResponse(200, daftar),
+    );
+  });
 }
 
 function renderPage() {
   // Cache dimatikan supaya tiap uji berdiri sendiri; retry dimatikan supaya jalur galat
   // tidak menunggu percobaan ulang.
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
-  })
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
 
   return render(
     <QueryClientProvider client={client}>
@@ -115,28 +124,28 @@ function renderPage() {
         <AnalystDoctorPage />
       </MemoryRouter>
     </QueryClientProvider>,
-  )
+  );
 }
 
 /** urlDaftar mengambil permintaan daftar TERAKHIR yang dikirim layar. */
 function urlDaftar(): string {
-  const daftar = calls.filter((c) => !c.url.includes('/keterangan'))
-  return daftar[daftar.length - 1]?.url ?? ''
+  const daftar = calls.filter((c) => !c.url.includes("/keterangan"));
+  return daftar[daftar.length - 1]?.url ?? "";
 }
 
 beforeEach(() => {
-  calls = []
+  calls = [];
   useSession.setState({
-    token: 'token-uji',
+    token: "token-uji",
     user: null,
-    validUntil: '2026-09-24T12:00:00Z',
-  })
-  useSelectedPortal.setState({ alias: 'ASM' })
-})
+    validUntil: "2026-09-24T12:00:00Z",
+  });
+  useSelectedPortal.setState({ alias: "ASM" });
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-})
+  vi.unstubAllGlobals();
+});
 
 /**
  * Judul kolom mengikuti harness apa adanya (`D-13`).
@@ -145,40 +154,40 @@ afterEach(() => {
  * dari SERVER: bila layar mengetiknya sendiri, uji ini tetap lulus sekarang tetapi akan
  * menyimpang diam-diam begitu bacaan export dikoreksi di backend.
  */
-it('menggambar kedelapan judul kolom dari keterangan server', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("menggambar kedelapan judul kolom dari keterangan server", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
   for (const judul of [
-    'Nomor Case',
-    'No Polis',
-    'Nama Tertanggung',
-    'Nama Cabang',
-    'Tanggal Pendaftaran',
-    'Nama Admin',
-    'Komentar dari PIC Teknis',
-    'Lama Waktu Klaim',
+    "Nomor Case",
+    "No Polis",
+    "Nama Tertanggung",
+    "Nama Cabang",
+    "Tanggal Pendaftaran",
+    "Nama Admin",
+    "Komentar dari PIC Teknis",
+    "Lama Waktu Klaim",
   ]) {
     // getAllByText, bukan getByText: `DataTable` menggambar judul DUA KALI — sebagai `<th>`
     // pada tampilan meja, dan sebagai label sel pada tampilan kartu di layar sempit.
     // Keduanya memang harus ada, dan menuntut satu kemunculan akan menolak tabel yang benar.
-    expect(screen.getAllByText(judul).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(judul).length).toBeGreaterThan(0);
   }
-})
+});
 
-it('menampilkan isi baris beserta umur tugas dalam hari', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("menampilkan isi baris beserta umur tugas dalam hari", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
-  expect(screen.getByText('26.002.2026.00311')).toBeInTheDocument()
-  expect(screen.getByText('Bayu Pratama Contoh')).toBeInTheDocument()
-  expect(screen.getByText('2026-09-18')).toBeInTheDocument()
-  expect(screen.getByText('5 hari')).toBeInTheDocument()
-})
+  expect(screen.getByText("26.002.2026.00311")).toBeInTheDocument();
+  expect(screen.getByText("Bayu Pratama Contoh")).toBeInTheDocument();
+  expect(screen.getByText("2026-09-18")).toBeInTheDocument();
+  expect(screen.getByText("5 hari")).toBeInTheDocument();
+});
 
 /**
  * Sel yang belum terbawa MENJELASKAN dirinya.
@@ -186,23 +195,23 @@ it('menampilkan isi baris beserta umur tugas dalam hari', async () => {
  * Tanpa ini, sel kosong terbaca sebagai "PIC Teknis memang tidak menulis apa-apa" — dan
  * tidak ada seorang pun yang menanyakannya.
  */
-it('menandai kolom komentar yang belum terbawa, bukan membiarkannya hampa', async () => {
-  stubFetch(daftarResponse({ data: [tugas({ komentar_pic_teknis: '' })] }))
-  renderPage()
+it("menandai kolom komentar yang belum terbawa, bukan membiarkannya hampa", async () => {
+  stubFetch(daftarResponse({ data: [tugas({ komentar_pic_teknis: "" })] }));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
-  expect(screen.getByText('belum terbawa')).toBeInTheDocument()
-})
+  expect(screen.getByText("belum terbawa")).toBeInTheDocument();
+});
 
-it('menampilkan nama PIC Teknis sebagai keterangan komentarnya', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("menampilkan nama PIC Teknis sebagai keterangan komentarnya", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
-  expect(screen.getByText('— PICTEKNIKPA1')).toBeInTheDocument()
-})
+  expect(screen.getByText("— PICTEKNIKPA1")).toBeInTheDocument();
+});
 
 /**
  * Pencarian dikerjakan SERVER.
@@ -210,18 +219,18 @@ it('menampilkan nama PIC Teknis sebagai keterangan komentarnya', async () => {
  * Menyaring di peramban hanya menyentuh halaman yang sedang terbuka, sehingga hasilnya
  * BOHONG: pengguna diberi tahu sesuatu tidak ada padahal ia di halaman berikutnya.
  */
-it('mengirim kata kunci ke server, bukan menyaring di peramban', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("mengirim kata kunci ke server, bukan menyaring di peramban", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
-  await userEvent.type(screen.getByLabelText(/Cari Nomor Case/i), '0298')
+  await userEvent.type(screen.getByLabelText(/Cari Nomor Case/i), "0298");
 
   await waitFor(() => {
-    expect(urlDaftar()).toContain('cari=0298')
-  })
-})
+    expect(urlDaftar()).toContain("cari=0298");
+  });
+});
 
 /**
  * Mengetik kata kunci mengembalikan ke halaman pertama.
@@ -229,38 +238,40 @@ it('mengirim kata kunci ke server, bukan menyaring di peramban', async () => {
  * Tanpa itu, mencari saat berada di halaman lima menampilkan halaman lima dari hasil baru —
  * yang hampir selalu kosong, dan terbaca sebagai "tidak ditemukan".
  */
-it('kembali ke halaman pertama saat kata kunci berubah', async () => {
-  stubFetch(daftarResponse({ total: 120 }))
-  renderPage()
+it("kembali ke halaman pertama saat kata kunci berubah", async () => {
+  stubFetch(daftarResponse({ total: 120 }));
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
   // Bilah halaman berpaginasi server berbentuk First/Previous/Next/Last, mengikuti
   // `Section/ButtonPagingInbox-Section.xml` — bukan deretan nomor. Tombolnya dikenali lewat
   // `aria-label`, karena teks yang terlihat disingkat pada layar sempit.
-  await userEvent.click(screen.getByRole('button', { name: 'Halaman berikutnya' }))
-  await waitFor(() => expect(urlDaftar()).toContain('lewati=25'))
+  await userEvent.click(
+    screen.getByRole("button", { name: "Halaman berikutnya" }),
+  );
+  await waitFor(() => expect(urlDaftar()).toContain("lewati=25"));
 
-  await userEvent.type(screen.getByLabelText(/Cari Nomor Case/i), '0298')
+  await userEvent.type(screen.getByLabelText(/Cari Nomor Case/i), "0298");
 
   await waitFor(() => {
-    const url = urlDaftar()
-    expect(url).toContain('cari=0298')
-    expect(url).not.toContain('lewati=')
-  })
-})
+    const url = urlDaftar();
+    expect(url).toContain("cari=0298");
+    expect(url).not.toContain("lewati=");
+  });
+});
 
-it('mengirim header portal pada setiap permintaan', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("mengirim header portal pada setiap permintaan", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
   for (const call of calls) {
-    const headers = new Headers(call.init?.headers)
-    expect(headers.get('X-Portal')).toBe('ASM')
+    const headers = new Headers(call.init?.headers);
+    expect(headers.get("X-Portal")).toBe("ASM");
   }
-})
+});
 
 /**
  * Layar tidak menembak server sebelum portal dipilih.
@@ -269,21 +280,30 @@ it('mengirim header portal pada setiap permintaan', async () => {
  * menerima penolakan adalah perjalanan yang sia-sia — dan pesannya tidak menjelaskan apa yang
  * harus dilakukan pengguna.
  */
-it('meminta pengguna memilih entitas lebih dulu, tanpa menembak server', async () => {
-  useSelectedPortal.setState({ alias: null })
-  stubFetch(daftarResponse())
-  renderPage()
+it("meminta pengguna memilih entitas lebih dulu, tanpa menembak server", async () => {
+  useSelectedPortal.setState({ alias: null });
+  stubFetch(daftarResponse());
+  renderPage();
 
-  expect(await screen.findByText('Pilih entitas lebih dulu')).toBeInTheDocument()
-  expect(calls).toHaveLength(0)
-})
+  expect(
+    await screen.findByText("Pilih entitas lebih dulu"),
+  ).toBeInTheDocument();
+  expect(calls).toHaveLength(0);
+});
 
-it('menampilkan pesan galat saat antrean gagal dimuat', async () => {
-  stubFetch(() => jsonResponse(500, { kode: 'galat_internal', pesan: 'Basis data tidak siap.' }))
-  renderPage()
+it("menampilkan pesan galat saat antrean gagal dimuat", async () => {
+  stubFetch(() =>
+    jsonResponse(500, {
+      kode: "galat_internal",
+      pesan: "Basis data tidak siap.",
+    }),
+  );
+  renderPage();
 
-  expect(await screen.findByText('Antrean tidak dapat dimuat')).toBeInTheDocument()
-})
+  expect(
+    await screen.findByText("Antrean tidak dapat dimuat"),
+  ).toBeInTheDocument();
+});
 
 /**
  * Antrean kosong tidak boleh terbaca sebagai kerusakan — atau sebaliknya.
@@ -293,26 +313,30 @@ it('menampilkan pesan galat saat antrean gagal dimuat', async () => {
  * Menyamakannya membuat pengguna yang lupa mengosongkan kotak cari mengira ia tidak punya
  * pekerjaan.
  */
-it('menyatakan antrean memang kosong saat tidak ada pencarian', async () => {
-  stubFetch(daftarResponse({ data: [], total: 0 }))
-  renderPage()
+it("menyatakan antrean memang kosong saat tidak ada pencarian", async () => {
+  stubFetch(daftarResponse({ data: [], total: 0 }));
+  renderPage();
 
   expect(
-    await screen.findByText('Tidak ada tugas penilaian medis untuk Anda saat ini.'),
-  ).toBeInTheDocument()
-})
+    await screen.findByText(
+      "Tidak ada tugas penilaian medis untuk Anda saat ini.",
+    ),
+  ).toBeInTheDocument();
+});
 
-it('menyatakan pencarian tidak cocok saat kotak cari terisi', async () => {
-  stubFetch(daftarResponse({ data: [], total: 0 }))
-  renderPage()
+it("menyatakan pencarian tidak cocok saat kotak cari terisi", async () => {
+  stubFetch(daftarResponse({ data: [], total: 0 }));
+  renderPage();
 
-  await userEvent.type(await screen.findByLabelText(/Cari Nomor Case/i), 'zzz')
+  await userEvent.type(await screen.findByLabelText(/Cari Nomor Case/i), "zzz");
 
   // Pesannya milik `DataTable`, bukan layar ini — dan menyebut kata kuncinya, sehingga
   // pengguna melihat APA yang dicari saat hasilnya nihil.
-  expect(await screen.findByText(/Tidak ada baris yang cocok dengan/)).toBeInTheDocument()
-  expect(screen.getByText(/zzz/)).toBeInTheDocument()
-})
+  expect(
+    await screen.findByText(/Tidak ada baris yang cocok dengan/),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/zzz/)).toBeInTheDocument();
+});
 
 /**
  * Keterbatasan TETAP ditampilkan; selisih terencana TIDAK lagi.
@@ -322,20 +346,20 @@ it('menyatakan pencarian tidak cocok saat kotak cari terisi', async () => {
  * isi layar. Panel "Yang perlu diketahui" tidak ikut dihapus: ia menjawab pertanyaan yang
  * muncul justru saat layarnya dipakai, bukan saat dibandingkan dengan Pega.
  */
-it('menampilkan keterbatasan, tanpa panel selisih terencana', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("menampilkan keterbatasan, tanpa panel selisih terencana", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
+  await screen.findByText("PNCN.26.0311");
 
   expect(
-    screen.queryByText('Perbedaan yang disengaja terhadap layar lama'),
-  ).not.toBeInTheDocument()
-  expect(screen.getByText('Yang perlu diketahui')).toBeInTheDocument()
+    screen.queryByText("Perbedaan yang disengaja terhadap layar lama"),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText("Yang perlu diketahui")).toBeInTheDocument();
   expect(
     screen.getByText('Kolom "Komentar dari PIC Teknis" masih kosong.'),
-  ).toBeInTheDocument()
-})
+  ).toBeInTheDocument();
+});
 
 /**
  * Klaim yang sama dengan DUA penugasan terbuka muncul dua kali.
@@ -344,24 +368,24 @@ it('menampilkan keterbatasan, tanpa panel selisih terencana', async () => {
  * menggabungkan klaim_id dengan nomor case — memakai klaim_id saja akan membuat React
  * menemukan kunci ganda pada baris yang memang seharusnya kembar.
  */
-it('menggambar baris kembar tanpa kunci ganda', async () => {
-  const warn = vi.spyOn(console, 'error').mockImplementation(() => {})
+it("menggambar baris kembar tanpa kunci ganda", async () => {
+  const warn = vi.spyOn(console, "error").mockImplementation(() => {});
 
   stubFetch(
     daftarResponse({
-      data: [tugas(), tugas({ nomor_case: 'PNCN.26.0312' })],
+      data: [tugas(), tugas({ nomor_case: "PNCN.26.0312" })],
       total: 2,
     }),
-  )
-  renderPage()
+  );
+  renderPage();
 
-  await screen.findByText('PNCN.26.0311')
-  expect(screen.getByText('PNCN.26.0312')).toBeInTheDocument()
+  await screen.findByText("PNCN.26.0311");
+  expect(screen.getByText("PNCN.26.0312")).toBeInTheDocument();
 
   const duplicateKeyWarning = warn.mock.calls.some((args) =>
-    String(args[0]).includes('same key'),
-  )
-  expect(duplicateKeyWarning).toBe(false)
+    String(args[0]).includes("same key"),
+  );
+  expect(duplicateKeyWarning).toBe(false);
 
-  warn.mockRestore()
-})
+  warn.mockRestore();
+});

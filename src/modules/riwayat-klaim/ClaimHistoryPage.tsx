@@ -1,14 +1,14 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { SearchPanel } from './SearchPanel'
-import { useClaimHistorySearch, useOpenClaimHistory } from './api'
+import { SearchPanel } from "./SearchPanel";
+import { useClaimHistorySearch, useOpenClaimHistory } from "./api";
 import {
   ClaimHistoryError,
   EMPTY_FORM,
@@ -17,7 +17,7 @@ import {
   type PageInfo,
   type SearchForm,
   type SearchType,
-} from './types'
+} from "./types";
 
 /**
  * View History Claim — menu `MENU_ID 76`, pengganti harness `PNCSearchKlaim`.
@@ -42,16 +42,20 @@ import {
  * menyalakannya kelak tidak menuntut perubahan kontrak.
  */
 export function ClaimHistoryPage() {
-  const [form, setForm] = useState<SearchForm>(EMPTY_FORM)
-  const [submitted, setSubmitted] = useState<SearchForm | null>(null)
-  const [page, setPage] = useState(1)
+  const [form, setForm] = useState<SearchForm>(EMPTY_FORM);
+  const [submitted, setSubmitted] = useState<SearchForm | null>(null);
+  const [page, setPage] = useState(1);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const opened = useOpenClaimHistory()
-  const search = useClaimHistorySearch(submitted ?? EMPTY_FORM, page, submitted !== null)
+  const portal = useSelectedPortal((state) => state.alias);
+  const opened = useOpenClaimHistory();
+  const search = useClaimHistorySearch(
+    submitted ?? EMPTY_FORM,
+    page,
+    submitted !== null,
+  );
 
-  const types: SearchType[] = opened.data?.tipe_pencarian ?? []
-  const selected = types.find((t) => t.kode === (submitted ?? form).tipe)
+  const types: SearchType[] = opened.data?.tipe_pencarian ?? [];
+  const selected = types.find((t) => t.kode === (submitted ?? form).tipe);
 
   /** Mengubah tipe pencarian MEMBERSIHKAN isian lain. */
   function change(patch: Partial<SearchForm>) {
@@ -59,7 +63,7 @@ export function ClaimHistoryPage() {
       patch.tipe !== undefined && patch.tipe !== previous.tipe
         ? { ...EMPTY_FORM, tipe: patch.tipe }
         : { ...previous, ...patch },
-    )
+    );
   }
 
   if (portal === null) {
@@ -68,13 +72,13 @@ export function ClaimHistoryPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Riwayat klaim milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Riwayat klaim milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   // Gerbang proteksi data menutup SELURUH layar, bukan sekadar tombolnya: pengguna yang
@@ -84,20 +88,22 @@ export function ClaimHistoryPage() {
       <PageFrame>
         <GateBlocked error={opened.error} />
       </PageFrame>
-    )
+    );
   }
 
   return (
     <PageFrame>
-      {opened.data && <QuotaNotice remaining={opened.data.proteksi.jatah_sisa} />}
+      {opened.data && (
+        <QuotaNotice remaining={opened.data.proteksi.jatah_sisa} />
+      )}
 
       <SearchPanel
         types={types}
         form={form}
         onChange={change}
         onSubmit={() => {
-          setSubmitted(form)
-          setPage(1)
+          setSubmitted(form);
+          setPage(1);
         }}
         busy={opened.isPending || search.isFetching}
         fieldError={fieldErrorOf(search.error)}
@@ -140,26 +146,29 @@ export function ClaimHistoryPage() {
       )}
 
       <p className="mt-4 text-xs text-slate-500">
-        Membuka rincian sebuah klaim belum tersedia di sini: layarnya adalah menu{' '}
-        <span className="font-medium">View Claim</span> yang belum dibangun.
+        Membuka rincian sebuah klaim belum tersedia di sini: layarnya adalah
+        menu <span className="font-medium">View Claim</span> yang belum
+        dibangun.
       </p>
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">View History Claim</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          View History Claim
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pencarian riwayat klaim menurut nomor polis, nama, tanggal, dan sembilan acuan
-          lain.
+          Pencarian riwayat klaim menurut nomor polis, nama, tanggal, dan
+          sembilan acuan lain.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -170,19 +179,19 @@ function PageFrame({ children }: { children: ReactNode }) {
  * menebak mana yang berlaku padanya.
  */
 function GateBlocked({ error }: { error: unknown }) {
-  const code = error instanceof APIError ? error.kode : ''
+  const code = error instanceof APIError ? error.kode : "";
 
   if (code === ClaimHistoryError.quotaExhausted) {
     return (
       <ErrorMessage
         title="Jatah pencarian data Anda sudah habis"
         description={
-          'Layar ini membatasi berapa kali seorang pengguna dapat membuka data klaim. ' +
-          'Minta penambahan jatah di Master Proteksi Data, lalu buka layar ini lagi.'
+          "Layar ini membatasi berapa kali seorang pengguna dapat membuka data klaim. " +
+          "Minta penambahan jatah di Master Proteksi Data, lalu buka layar ini lagi."
         }
         tone="penolakan"
       />
-    )
+    );
   }
 
   if (code === ClaimHistoryError.notRegistered) {
@@ -190,12 +199,12 @@ function GateBlocked({ error }: { error: unknown }) {
       <ErrorMessage
         title="Anda belum terdaftar di Master Proteksi Data"
         description={
-          'Layar ini hanya dapat dibuka pengguna yang terdaftar beserta jatah ' +
-          'pencariannya. Hubungi pengelola proteksi data sebelum membukanya.'
+          "Layar ini hanya dapat dibuka pengguna yang terdaftar beserta jatah " +
+          "pencariannya. Hubungi pengelola proteksi data sebelum membukanya."
         }
         tone="penolakan"
       />
-    )
+    );
   }
 
   return (
@@ -204,7 +213,7 @@ function GateBlocked({ error }: { error: unknown }) {
       description={messageOf(error)}
       tone="gangguan"
     />
-  )
+  );
 }
 
 /**
@@ -215,24 +224,24 @@ function GateBlocked({ error }: { error: unknown }) {
  * (`D-12`: bukan hanya warna), melainkan lewat kalimatnya.
  */
 function QuotaNotice({ remaining }: { remaining: number }) {
-  const low = remaining <= 3
+  const low = remaining <= 3;
 
   return (
     <p
       className={[
-        'mt-4 rounded-kartu border px-4 py-3 text-sm',
+        "mt-4 rounded-kartu border px-4 py-3 text-sm",
         low
-          ? 'border-amber-200 bg-amber-50/80 text-amber-900'
-          : 'border-slate-200 bg-slate-50 text-slate-700',
-      ].join(' ')}
+          ? "border-amber-200 bg-amber-50/80 text-amber-900"
+          : "border-slate-200 bg-slate-50 text-slate-700",
+      ].join(" ")}
     >
-      {low ? 'Jatah pencarian Anda tinggal ' : 'Sisa jatah pencarian Anda '}
+      {low ? "Jatah pencarian Anda tinggal " : "Sisa jatah pencarian Anda "}
       <span className="font-medium">{remaining}</span>
       {low
-        ? ' kali lagi. Setiap kali layar ini dibuka, satu jatah terpakai.'
-        : ' kali. Setiap kali layar ini dibuka, satu jatah terpakai.'}
+        ? " kali lagi. Setiap kali layar ini dibuka, satu jatah terpakai."
+        : " kali. Setiap kali layar ini dibuka, satu jatah terpakai."}
     </p>
-  )
+  );
 }
 
 /**
@@ -250,13 +259,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -280,7 +289,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -294,57 +303,77 @@ function Pagination({
  * kolom tambahan disisipkan di tempat yang sama seperti di sana.
  */
 function columnsFor(extra: ExtraColumn[]): Column<ClaimHistory>[] {
-  const has = (column: ExtraColumn) => extra.includes(column)
+  const has = (column: ExtraColumn) => extra.includes(column);
 
   const columns: Column<ClaimHistory>[] = [
-    { key: 'nomor_klaim', title: 'No Klaim', value: (r) => r.nomor_klaim },
-    { key: 'nomor_polis', title: 'No Polis', value: (r) => r.nomor_polis },
-  ]
+    { key: "nomor_klaim", title: "No Klaim", value: (r) => r.nomor_klaim },
+    { key: "nomor_polis", title: "No Polis", value: (r) => r.nomor_polis },
+  ];
 
-  if (has('nomor_akseptasi')) {
+  if (has("nomor_akseptasi")) {
     columns.push({
-      key: 'nomor_akseptasi',
-      title: 'No Akseptasi',
+      key: "nomor_akseptasi",
+      title: "No Akseptasi",
       value: (r) => r.nomor_akseptasi,
-    })
+    });
   }
-  if (has('nomor_balai_lelang')) {
+  if (has("nomor_balai_lelang")) {
     columns.push({
-      key: 'nomor_balai_lelang',
-      title: 'No Balai Lelang',
+      key: "nomor_balai_lelang",
+      title: "No Balai Lelang",
       value: (r) => r.nomor_balai_lelang,
-    })
+    });
   }
 
   columns.push({
-    key: 'nama_tertanggung',
-    title: 'Nama Tertanggung',
+    key: "nama_tertanggung",
+    title: "Nama Tertanggung",
     value: (r) => r.nama_tertanggung,
-  })
+  });
 
-  if (has('nama_objek')) {
-    columns.push({ key: 'nama_objek', title: 'Nama Objek', value: (r) => r.nama_objek })
-  }
-  if (has('tanggal_lahir')) {
+  if (has("nama_objek")) {
     columns.push({
-      key: 'tanggal_lahir',
-      title: 'Tanggal Lahir',
+      key: "nama_objek",
+      title: "Nama Objek",
+      value: (r) => r.nama_objek,
+    });
+  }
+  if (has("tanggal_lahir")) {
+    columns.push({
+      key: "tanggal_lahir",
+      title: "Tanggal Lahir",
       value: (r) => dateText(r.tanggal_lahir),
-    })
+    });
   }
 
   columns.push(
-    { key: 'tanggal_kejadian', title: 'Tgl Kejadian', value: (r) => dateText(r.tanggal_kejadian) },
-    { key: 'bisnis', title: 'Bisnis', value: (r) => r.bisnis },
-    { key: 'cabang', title: 'Cabang', value: (r) => r.cabang },
-    { key: 'status', title: 'Status', value: (r) => r.status },
-    { key: 'posisi_klaim', title: 'Posisi Klaim', value: (r) => r.posisi_klaim || '—' },
-    { key: 'tanggal_close', title: 'Tanggal Close', value: (r) => dateText(r.tanggal_close) },
-    { key: 'catatan_close', title: 'Catatan Close', value: (r) => r.catatan_close },
-    { key: 'pic_teknis', title: 'PIC Teknis', value: (r) => r.pic_teknis },
-  )
+    {
+      key: "tanggal_kejadian",
+      title: "Tgl Kejadian",
+      value: (r) => dateText(r.tanggal_kejadian),
+    },
+    { key: "bisnis", title: "Bisnis", value: (r) => r.bisnis },
+    { key: "cabang", title: "Cabang", value: (r) => r.cabang },
+    { key: "status", title: "Status", value: (r) => r.status },
+    {
+      key: "posisi_klaim",
+      title: "Posisi Klaim",
+      value: (r) => r.posisi_klaim || "—",
+    },
+    {
+      key: "tanggal_close",
+      title: "Tanggal Close",
+      value: (r) => dateText(r.tanggal_close),
+    },
+    {
+      key: "catatan_close",
+      title: "Catatan Close",
+      value: (r) => r.catatan_close,
+    },
+    { key: "pic_teknis", title: "PIC Teknis", value: (r) => r.pic_teknis },
+  );
 
-  return columns
+  return columns;
 }
 
 /**
@@ -360,26 +389,26 @@ function columnsFor(extra: ExtraColumn[]): Column<ClaimHistory>[] {
  * memang tidak menggambar apa pun untuk teks kosong.
  */
 function descriptionFor(selected: SearchType | undefined): string {
-  if (!selected) return ''
+  if (!selected) return "";
 
-  if (selected.kode === '9') {
+  if (selected.kode === "9") {
     return (
-      'Pencarian Tanggal Lahir mengikuti perilaku sistem lama, yang tidak membawa ' +
-      'tanggal yang diisi ke dalam kuerinya — hasilnya karena itu selalu kosong.'
-    )
+      "Pencarian Tanggal Lahir mengikuti perilaku sistem lama, yang tidak membawa " +
+      "tanggal yang diisi ke dalam kuerinya — hasilnya karena itu selalu kosong."
+    );
   }
-  if (selected.kode === '3') {
-    return 'Pada pencarian Nama Objek, kolom Posisi Klaim kosong — sama seperti sistem lama.'
+  if (selected.kode === "3") {
+    return "Pada pencarian Nama Objek, kolom Posisi Klaim kosong — sama seperti sistem lama.";
   }
-  return ''
+  return "";
 }
 
 function dateText(iso: string | null): string {
-  return iso ? formatDate(iso) : '—'
+  return iso ? formatDate(iso) : "—";
 }
 
 function isValidationError(error: unknown): boolean {
-  return error instanceof APIError && error.detail.length > 0
+  return error instanceof APIError && error.detail.length > 0;
 }
 
 /**
@@ -392,17 +421,17 @@ function isValidationError(error: unknown): boolean {
  * ke bentuk yang lain.
  */
 function fieldErrorOf(error: unknown): Record<string, string> {
-  if (!(error instanceof APIError)) return {}
+  if (!(error instanceof APIError)) return {};
 
-  const result: Record<string, string> = {}
+  const result: Record<string, string> = {};
   for (const violation of error.detail) {
-    const name = violation.field ?? violation.kolom
-    if (name) result[name] = violation.pesan
+    const name = violation.field ?? violation.kolom;
+    if (name) result[name] = violation.pesan;
   }
-  return result
+  return result;
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (error instanceof Error && error.message) return error.message;
+  return "Terjadi kesalahan pada sistem.";
 }

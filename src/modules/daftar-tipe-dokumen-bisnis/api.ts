@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   BusinessChoiceListResponse,
   BusinessDocumentRuleBatchInput,
@@ -10,15 +10,15 @@ import type {
   BusinessDocumentRuleResponse,
   BusinessDocumentRuleRowInput,
   MasterChoiceListResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/tipe-dokumen-bisnis'
-const ROUTE_BUSINESS = '/api/master/bisnis-pilihan'
-const ROUTE_DOCUMENT_TYPE = '/api/master/tipe-dokumen-pilihan'
-const ROUTE_DETAIL_DOCUMENT = '/api/master/detail-dokumen-pilihan'
-const ROUTE_OBJECT_DOCUMENT = '/api/master/objek-dokumen-pilihan'
+const ROUTE = "/api/master/tipe-dokumen-bisnis";
+const ROUTE_BUSINESS = "/api/master/bisnis-pilihan";
+const ROUTE_DOCUMENT_TYPE = "/api/master/tipe-dokumen-pilihan";
+const ROUTE_DETAIL_DOCUMENT = "/api/master/detail-dokumen-pilihan";
+const ROUTE_OBJECT_DOCUMENT = "/api/master/objek-dokumen-pilihan";
 
 /**
  * Seluruh kunci cache menyertakan portal DAN token.
@@ -32,19 +32,35 @@ const ROUTE_OBJECT_DOCUMENT = '/api/master/objek-dokumen-pilihan'
  * peramban yang sama.
  */
 function businessKey(portal: string | null, token: string | null) {
-  return ['daftar-tipe-dokumen-bisnis', portal, token] as const
+  return ["daftar-tipe-dokumen-bisnis", portal, token] as const;
 }
 
-function ruleListKey(businessID: string, portal: string | null, token: string | null) {
-  return ['daftar-tipe-dokumen-bisnis', 'bisnis', businessID, portal, token] as const
+function ruleListKey(
+  businessID: string,
+  portal: string | null,
+  token: string | null,
+) {
+  return [
+    "daftar-tipe-dokumen-bisnis",
+    "bisnis",
+    businessID,
+    portal,
+    token,
+  ] as const;
 }
 
 function ruleKey(id: string, portal: string | null, token: string | null) {
-  return ['daftar-tipe-dokumen-bisnis', 'aturan', id, portal, token] as const
+  return ["daftar-tipe-dokumen-bisnis", "aturan", id, portal, token] as const;
 }
 
 function choiceKey(name: string, portal: string | null, token: string | null) {
-  return ['daftar-tipe-dokumen-bisnis', 'pilihan', name, portal, token] as const
+  return [
+    "daftar-tipe-dokumen-bisnis",
+    "pilihan",
+    name,
+    portal,
+    token,
+  ] as const;
 }
 
 /**
@@ -57,14 +73,15 @@ function choiceKey(name: string, portal: string | null, token: string | null) {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useBusinessList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: businessKey(portal, token),
-    queryFn: () => callAPI<BusinessChoiceListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<BusinessChoiceListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -75,18 +92,18 @@ export function useBusinessList() {
  * `businessID` null berarti belum ada bisnis yang dipilih — hook-nya diam.
  */
 export function useBusinessDocumentRuleList(businessID: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ruleListKey(businessID ?? '', portal, token),
+    queryKey: ruleListKey(businessID ?? "", portal, token),
     queryFn: () =>
       callAPI<BusinessDocumentRuleListResponse>(
-        `${ROUTE}/bisnis/${encodeURIComponent(businessID ?? '')}`,
+        `${ROUTE}/bisnis/${encodeURIComponent(businessID ?? "")}`,
         { token, portal },
       ),
     enabled: token !== null && portal !== null && businessID !== null,
-  })
+  });
 }
 
 /**
@@ -97,18 +114,21 @@ export function useBusinessDocumentRuleList(businessID: string | null) {
  * punya jaminan — dan itu perbedaan antara dokumen yang wajib dan yang tidak.
  */
 export function useBusinessDocumentRule(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ruleKey(id ?? '', portal, token),
+    queryKey: ruleKey(id ?? "", portal, token),
     queryFn: () =>
-      callAPI<BusinessDocumentRuleResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}`, {
-        token,
-        portal,
-      }),
+      callAPI<BusinessDocumentRuleResponse>(
+        `${ROUTE}/${encodeURIComponent(id ?? "")}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null && id !== null,
-  })
+  });
 }
 
 /**
@@ -121,33 +141,34 @@ export function useBusinessDocumentRule(id: string | null) {
  * sehingga yang hilang hanya kenyamanan memilih.
  */
 function useChoiceList(name: string, route: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: choiceKey(name, portal, token),
     queryFn: () => callAPI<MasterChoiceListResponse>(route, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /** Daftar SELURUH lini bisnis — termasuk yang belum punya satu aturan pun. */
 export function useBusinessChoiceList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: choiceKey('bisnis', portal, token),
-    queryFn: () => callAPI<BusinessChoiceListResponse>(ROUTE_BUSINESS, { token, portal }),
+    queryKey: choiceKey("bisnis", portal, token),
+    queryFn: () =>
+      callAPI<BusinessChoiceListResponse>(ROUTE_BUSINESS, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 60 * 60 * 1000,
-  })
+  });
 }
 
 /** Daftar tahap dokumen — REGISTER, SURVEY, COMMITEE, PAYMENT, SALVAGE, COLLECTING DOCUMENT. */
 export function useDocumentTypeChoiceList() {
-  return useChoiceList('tipe-dokumen', ROUTE_DOCUMENT_TYPE)
+  return useChoiceList("tipe-dokumen", ROUTE_DOCUMENT_TYPE);
 }
 
 /**
@@ -157,12 +178,12 @@ export function useDocumentTypeChoiceList() {
  * penyaringan yang di Pega dikerjakan server lewat parameter `idDocument`.
  */
 export function useDetailDocumentChoiceList() {
-  return useChoiceList('detail-dokumen', ROUTE_DETAIL_DOCUMENT)
+  return useChoiceList("detail-dokumen", ROUTE_DETAIL_DOCUMENT);
 }
 
 /** Daftar objek dokumen. */
 export function useObjectDocumentChoiceList() {
-  return useChoiceList('objek-dokumen', ROUTE_OBJECT_DOCUMENT)
+  return useChoiceList("objek-dokumen", ROUTE_OBJECT_DOCUMENT);
 }
 
 /**
@@ -173,22 +194,22 @@ export function useObjectDocumentChoiceList() {
  * ulang di peramban apa yang sudah diketahui server.
  */
 export function useCreateBusinessDocumentRule() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: BusinessDocumentRuleBatchInput) =>
       callAPI<BusinessDocumentRuleCreateResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
+      client.invalidateQueries({ queryKey: ["daftar-tipe-dokumen-bisnis"] });
     },
-  })
+  });
 }
 
 /**
@@ -202,50 +223,61 @@ export function useCreateBusinessDocumentRule() {
  * pemanggilan terprogram, yang ini dipakai layar.
  */
 export function useSaveBusinessDocumentRules() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       businessID,
       rows,
     }: {
-      businessID: string
-      rows: BusinessDocumentRuleRowInput[]
+      businessID: string;
+      rows: BusinessDocumentRuleRowInput[];
     }) =>
       callAPI<BusinessDocumentRuleListResponse>(
         `${ROUTE}/bisnis/${encodeURIComponent(businessID)}`,
-        { metode: 'PUT', body: { dokumen: rows }, token, portal },
+        { metode: "PUT", body: { dokumen: rows }, token, portal },
       ),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
+      client.invalidateQueries({ queryKey: ["daftar-tipe-dokumen-bisnis"] });
     },
-  })
+  });
 }
 
 /** Hook penyuntingan satu baris aturan. */
 export function useUpdateBusinessDocumentRule() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: BusinessDocumentRuleInput }) =>
-      callAPI<BusinessDocumentRuleResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
-        body: input,
-        token,
-        portal,
-      }),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: BusinessDocumentRuleInput;
+    }) =>
+      callAPI<BusinessDocumentRuleResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}`,
+        {
+          metode: "PUT",
+          body: input,
+          token,
+          portal,
+        },
+      ),
     // Daftar DAN baris yang disunting keduanya dibuang dari cache. Tanpa yang kedua,
     // membuka kembali baris yang sama akan menampilkan isi sebelum perubahan — dan
     // pengguna akan mengira penyimpanannya gagal.
     onSuccess: (_result, variables) => {
-      client.invalidateQueries({ queryKey: ['daftar-tipe-dokumen-bisnis'] })
-      client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
+      client.invalidateQueries({ queryKey: ["daftar-tipe-dokumen-bisnis"] });
+      client.invalidateQueries({
+        queryKey: ruleKey(variables.id, portal, token),
+      });
     },
-  })
+  });
 }
 
 /**
@@ -257,20 +289,25 @@ export function useUpdateBusinessDocumentRule() {
  * wajib pada klaim yang sedang berjalan.
  */
 export function useAddBusinessDocumentRuleCoverage() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, coverageID }: { id: string; coverageID: string }) =>
-      callAPI<BusinessDocumentRuleResponse>(`${ROUTE}/${encodeURIComponent(id)}/jenis-klaim`, {
-        metode: 'POST',
-        body: { id_jenis_klaim: coverageID },
-        token,
-        portal,
-      }),
+      callAPI<BusinessDocumentRuleResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/jenis-klaim`,
+        {
+          metode: "POST",
+          body: { id_jenis_klaim: coverageID },
+          token,
+          portal,
+        },
+      ),
     onSuccess: (_result, variables) => {
-      client.invalidateQueries({ queryKey: ruleKey(variables.id, portal, token) })
+      client.invalidateQueries({
+        queryKey: ruleKey(variables.id, portal, token),
+      });
     },
-  })
+  });
 }

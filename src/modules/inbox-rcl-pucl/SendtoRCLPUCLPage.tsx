@@ -1,10 +1,10 @@
-import { createContext, useContext, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { createContext, useContext, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
 import {
   useBukaDokumen,
@@ -13,9 +13,9 @@ import {
   useTindakanKlaim,
   useKategoriDokumen,
   useUnggahDokumen,
-} from './api'
-import type { IsianPenerimaanDokumen, TindakanKlaim } from './api'
-import type { ClaimDetailResponse } from './types'
+} from "./api";
+import type { IsianPenerimaanDokumen, TindakanKlaim } from "./api";
+import type { ClaimDetailResponse } from "./types";
 
 /**
  * Layar kerja RCL/PUCL — section `SendtoRCLPUCL`.
@@ -59,40 +59,40 @@ import type { ClaimDetailResponse } from './types'
  * Yang dipakai: digambar di TEMPATNYA, bertanda "di clipboard Pega".
  */
 export function SendtoRCLPUCLPage() {
-  const { referensi } = useParams<{ referensi: string }>()
-  const [params] = useSearchParams()
-  const navigate = useNavigate()
+  const { referensi } = useParams<{ referensi: string }>();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
 
-  const key = referensi ? decodeURIComponent(referensi) : ''
-  const claim = useRCLPUCLClaim(key || null)
+  const key = referensi ? decodeURIComponent(referensi) : "";
+  const claim = useRCLPUCLClaim(key || null);
 
   // `?? null` bukan kerapian. `callAPI` mengembalikan `null` — bukan melempar — untuk
   // jawaban 200 yang badannya BUKAN JSON, misalnya saat alamat `/api/...` dijawab penyaji
   // SPA dengan `index.html`. Tanpa penanganan, keadaan itu menghasilkan halaman yang
   // benar-benar kosong: bukan memuat, bukan galat, bukan data. Itu kelas kegagalan yang
   // paling sulit dilaporkan pengguna, karena tidak ada satu pun yang dapat disebutkan.
-  const detail = claim.data ?? null
+  const detail = claim.data ?? null;
 
   const state: ScreenState = claim.isError
-    ? 'galat'
+    ? "galat"
     : claim.isPending
-      ? 'memuat'
+      ? "memuat"
       : detail
-        ? 'siap'
-        : 'kosong'
+        ? "siap"
+        : "kosong";
 
   // Tab dan halaman dibawa kembali apa adanya. Petugas yang membuka klaim dari halaman
   // ketiga tab "Kelengkapan Dokumen" harus mendarat di sana lagi.
   const back = params.toString()
     ? `/inbox-rcl-pucl?${params.toString()}`
-    : '/inbox-rcl-pucl'
+    : "/inbox-rcl-pucl";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
-            {detail ? `Klaim ${detail.no_case}` : 'Layar kerja RCL/PUCL'}
+            {detail ? `Klaim ${detail.no_case}` : "Layar kerja RCL/PUCL"}
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             Lampiran Surat dan Penerimaan Dokumen — layar kerja jalur RCL/PUCL.
@@ -114,11 +114,11 @@ export function SendtoRCLPUCLPage() {
       */}
       <WorkScreen detail={detail} />
     </div>
-  )
+  );
 }
 
 /** Keadaan pengambilan isi layar kerja. */
-type ScreenState = 'memuat' | 'galat' | 'kosong' | 'siap'
+type ScreenState = "memuat" | "galat" | "kosong" | "siap";
 
 /**
  * Sebaris keterangan keadaan, digambar DI ATAS layar — bukan menggantikannya.
@@ -133,17 +133,19 @@ function StateNotice({
   error,
   claimKey,
 }: {
-  state: ScreenState
-  error: unknown
-  claimKey: string
+  state: ScreenState;
+  error: unknown;
+  claimKey: string;
 }) {
-  if (state === 'siap') return null
+  if (state === "siap") return null;
 
-  if (state === 'memuat') {
-    return <p className="mt-4 text-sm text-slate-600">Memuat isi layar kerja…</p>
+  if (state === "memuat") {
+    return (
+      <p className="mt-4 text-sm text-slate-600">Memuat isi layar kerja…</p>
+    );
   }
 
-  if (state === 'galat') {
+  if (state === "galat") {
     return (
       <div className="mt-4">
         <ErrorMessage
@@ -152,7 +154,7 @@ function StateNotice({
           tone="gangguan"
         />
       </div>
-    )
+    );
   }
 
   // 'kosong' — permintaannya selesai tanpa galat, tetapi tidak membawa data.
@@ -166,16 +168,16 @@ function StateNotice({
       <ErrorMessage
         title="Isi klaim tidak terbaca"
         description={
-          'Permintaan selesai tanpa galat, tetapi jawabannya tidak memuat data klaim. ' +
-          'Layar di bawah digambar kosong supaya bentuknya tetap terlihat. Periksa apakah ' +
-          'alamat /api/inbox-rcl-pucl/klaim/' +
-          (claimKey === '' ? '…' : claimKey) +
-          ' benar-benar dilayani peladen aplikasi, bukan dijawab penyaji halaman.'
+          "Permintaan selesai tanpa galat, tetapi jawabannya tidak memuat data klaim. " +
+          "Layar di bawah digambar kosong supaya bentuknya tetap terlihat. Periksa apakah " +
+          "alamat /api/inbox-rcl-pucl/klaim/" +
+          (claimKey === "" ? "…" : claimKey) +
+          " benar-benar dilayani peladen aplikasi, bukan dijawab penyaji halaman."
         }
         tone="gangguan"
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -190,12 +192,12 @@ function StateNotice({
  * kolom pada tabel yang berjalan, dan tiga lagi menyusul terpetakan. Jumlahnya karena itu
  * tidak pernah disebut sebagai angka di layar — lihat ScreenFooter.
  */
-const DI_CLIPBOARD = Symbol('tersimpan di clipboard Pega')
+const DI_CLIPBOARD = Symbol("tersimpan di clipboard Pega");
 
-type FieldValue = string | typeof DI_CLIPBOARD
+type FieldValue = string | typeof DI_CLIPBOARD;
 
 /** Kedua bagian layar kerja, sebagaimana Pega menamainya. */
-type WorkTab = 'lampiran' | 'penerimaan'
+type WorkTab = "lampiran" | "penerimaan";
 
 /**
  * Kedua bagian layar, digambar menurut section-nya.
@@ -222,11 +224,11 @@ type WorkTab = 'lampiran' | 'penerimaan'
  * tombol kembali mendarat di antrean yang keliru.
  */
 function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
-  const [tab, setTab] = useState<WorkTab>('lampiran')
+  const [tab, setTab] = useState<WorkTab>("lampiran");
 
   // Nama tombol yang panelnya sedang terbuka. Satu nilai untuk seluruh layar — lihat
   // WriteActionPanel.
-  const [openAction, setOpenAction] = useState<string | null>(null)
+  const [openAction, setOpenAction] = useState<string | null>(null);
 
   // Tab kedua disembunyikan untuk klaim berstatus Notification, mengikuti syarat pada
   // kontainernya di layar lama. Keputusannya milik SERVER — lihat `types.ts`.
@@ -239,29 +241,30 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
   // isiannya sekadar tidak ada. Jawaban yang kehilangan isian ini akan menyembunyikan
   // separuh layar tanpa satu pun galat, dan kegagalan seperti itu tidak dapat dilaporkan
   // penggunanya: yang terlihat hanyalah tab yang tidak pernah ada.
-  const showsReceipt = detail?.tab_penerimaan_dokumen_tampil !== false
+  const showsReceipt = detail?.tab_penerimaan_dokumen_tampil !== false;
 
   // Klaim Notification yang dibuka saat tab kedua sedang terpilih dikembalikan ke tab
   // pertama, bukan dibiarkan menggambar tab yang seharusnya tidak ada.
-  const active: WorkTab = showsReceipt ? tab : 'lampiran'
+  const active: WorkTab = showsReceipt ? tab : "lampiran";
 
   return (
     <>
       <WorkTabs
         active={active}
         onChange={(next) => {
-          setTab(next)
-          setOpenAction(null)
+          setTab(next);
+          setOpenAction(null);
         }}
         showsReceipt={showsReceipt}
       />
 
       {!showsReceipt && (
         <p className="mt-3 text-xs text-slate-500">
-          Klaim berstatus <span className="font-medium">Notification</span> hanya memiliki
-          Lampiran Surat. Layar lama menyembunyikan tab &ldquo;Penerimaan Dokumen&rdquo;
-          untuk klaim seperti ini, karena pemberitahuan tidak menunggu dokumen dan tidak
-          dikirim kembali ke Analyst.
+          Klaim berstatus <span className="font-medium">Notification</span>{" "}
+          hanya memiliki Lampiran Surat. Layar lama menyembunyikan tab
+          &ldquo;Penerimaan Dokumen&rdquo; untuk klaim seperti ini, karena
+          pemberitahuan tidak menunggu dokumen dan tidak dikirim kembali ke
+          Analyst.
         </p>
       )}
 
@@ -282,14 +285,14 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
           toggle: (label) => setOpenAction((v) => (v === label ? null : label)),
         }}
       >
-        {active === 'lampiran' ? (
+        {active === "lampiran" ? (
           <LetterTab detail={detail} />
         ) : (
-          <ReceiptTab key={detail?.referensi ?? 'kosong'} detail={detail} />
+          <ReceiptTab key={detail?.referensi ?? "kosong"} detail={detail} />
         )}
       </WriteActionPanel.Provider>
     </>
-  )
+  );
 }
 
 /**
@@ -300,9 +303,9 @@ function WorkScreen({ detail }: { detail: ClaimDetailResponse | null }) {
  * perantara adalah satu tempat yang dapat lupa meneruskannya.
  */
 const WriteActionPanel = createContext<{
-  open: string | null
-  toggle: (label: string) => void
-}>({ open: null, toggle: () => {} })
+  open: string | null;
+  toggle: (label: string) => void;
+}>({ open: null, toggle: () => {} });
 
 /**
  * Kepala tab layar kerja.
@@ -315,16 +318,16 @@ function WorkTabs({
   onChange,
   showsReceipt,
 }: {
-  active: WorkTab
-  onChange: (tab: WorkTab) => void
-  showsReceipt: boolean
+  active: WorkTab;
+  onChange: (tab: WorkTab) => void;
+  showsReceipt: boolean;
 }) {
   const tabs: { key: WorkTab; label: string }[] = [
-    { key: 'lampiran', label: 'Lampiran Surat' },
+    { key: "lampiran", label: "Lampiran Surat" },
     ...(showsReceipt
-      ? [{ key: 'penerimaan' as const, label: 'Penerimaan Dokumen' }]
+      ? [{ key: "penerimaan" as const, label: "Penerimaan Dokumen" }]
       : []),
-  ]
+  ];
 
   return (
     <div
@@ -340,19 +343,19 @@ function WorkTabs({
           aria-selected={active === item.key}
           onClick={() => onChange(item.key)}
           className={[
-            'rounded-t-kontrol px-4 py-2 text-sm font-medium transition-colors',
-            'duration-150 ease-halus focus:outline-none',
-            'focus-visible:ring-2 focus-visible:ring-blue-500/50',
+            "rounded-t-kontrol px-4 py-2 text-sm font-medium transition-colors",
+            "duration-150 ease-halus focus:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-blue-500/50",
             active === item.key
-              ? 'border-b-2 border-blue-600 text-blue-700'
-              : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800',
-          ].join(' ')}
+              ? "border-b-2 border-blue-600 text-blue-700"
+              : "border-b-2 border-transparent text-slate-500 hover:text-slate-800",
+          ].join(" ")}
         >
           {item.label}
         </button>
       ))}
     </div>
-  )
+  );
 }
 
 /**
@@ -362,7 +365,7 @@ function WorkTabs({
  * membuat layar berkedip, dan sekejap menyatakan tindakan yang ternyata tidak tersedia untuk
  * klaim itu.
  */
-const NO_BUTTONS: ClaimDetailResponse['tombol'] = {
+const NO_BUTTONS: ClaimDetailResponse["tombol"] = {
   download_dokumen: false,
   tutup_klaim: false,
   unggah_dokumen: false,
@@ -371,7 +374,7 @@ const NO_BUTTONS: ClaimDetailResponse['tombol'] = {
   tolak_klaim: false,
   kirim_ke_analyst: false,
   kirim_ke_pic_teknik: false,
-}
+};
 
 /**
  * Bagian pertama — `SectionLampiranSuratPUCL`.
@@ -385,8 +388,8 @@ const NO_BUTTONS: ClaimDetailResponse['tombol'] = {
  * **Download Dokumen**, dan **Tutup Klaim**.
  */
 function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
-  const letter = detail?.lampiran_surat
-  const buttons = detail?.tombol ?? NO_BUTTONS
+  const letter = detail?.lampiran_surat;
+  const buttons = detail?.tombol ?? NO_BUTTONS;
 
   return (
     <>
@@ -405,21 +408,26 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
         {/* Keduanya TANPA kotak — di Pega pun keduanya teks polos di bawah judulnya. */}
         <StackedFields
           fields={[
-            ['Status RCL / PUCL / MSIG', letter?.rcl_pucl ?? ''],
-            ['Catatan dari Analyst', letter?.deskripsi_analyst ?? ''],
+            ["Status RCL / PUCL / MSIG", letter?.rcl_pucl ?? ""],
+            ["Catatan dari Analyst", letter?.deskripsi_analyst ?? ""],
           ]}
         />
 
         <FieldGroup
           fields={[
-            ['UP', letter?.up ?? '', false, 'kotak'],
-            ['No Kontrak', DI_CLIPBOARD, false, 'kotak'],
-            ['No Polis', letter?.no_polis ?? '', false, 'kotak'],
-            ['Business Unit / Seksi', DI_CLIPBOARD, false, 'kotak'],
-            ['Nama Peserta', letter?.nama_peserta ?? '', false, 'kotak'],
-            ['Jumlah Tagihan', letter?.jumlah_tagihan ?? '', false, 'kotak'],
-            ['Perihal', letter?.perihal ?? '', false, 'pilihan'],
-            ['Tanggal Kejadian', letter?.tanggal_kejadian ?? '', false, 'tanggal'],
+            ["UP", letter?.up ?? "", false, "kotak"],
+            ["No Kontrak", DI_CLIPBOARD, false, "kotak"],
+            ["No Polis", letter?.no_polis ?? "", false, "kotak"],
+            ["Business Unit / Seksi", DI_CLIPBOARD, false, "kotak"],
+            ["Nama Peserta", letter?.nama_peserta ?? "", false, "kotak"],
+            ["Jumlah Tagihan", letter?.jumlah_tagihan ?? "", false, "kotak"],
+            ["Perihal", letter?.perihal ?? "", false, "pilihan"],
+            [
+              "Tanggal Kejadian",
+              letter?.tanggal_kejadian ?? "",
+              false,
+              "tanggal",
+            ],
           ]}
         />
 
@@ -429,9 +437,19 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
       */}
         <StackedFields
           fields={[
-            ['Keterangan Pembuka', letter?.keterangan_pembuka ?? '', false, 'area'],
-            ['Keterangan Isi', letter?.keterangan_isi ?? '', false, 'area'],
-            ['Keterangan Penutup', letter?.keterangan_penutup ?? '', false, 'area'],
+            [
+              "Keterangan Pembuka",
+              letter?.keterangan_pembuka ?? "",
+              false,
+              "area",
+            ],
+            ["Keterangan Isi", letter?.keterangan_isi ?? "", false, "area"],
+            [
+              "Keterangan Penutup",
+              letter?.keterangan_penutup ?? "",
+              false,
+              "area",
+            ],
           ]}
         />
 
@@ -457,9 +475,9 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
         benar sejak kolom `PERIHAL` ditemukan (§84.2), dan sudah diperbaiki.
       */}
         <p className="mt-2 text-xs text-slate-500">
-          <span className="font-medium">Perihal</span> dipilih dari daftar baku berisi 12
-          pilihan (master Perihal RCL/PUCL). Yang tersimpan pada klaim adalah teks
-          pilihannya, dan itulah yang digambar di atas.
+          <span className="font-medium">Perihal</span> dipilih dari daftar baku
+          berisi 12 pilihan (master Perihal RCL/PUCL). Yang tersimpan pada klaim
+          adalah teks pilihannya, dan itulah yang digambar di atas.
         </p>
 
         {/*
@@ -468,11 +486,11 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
         ekspresi yang sama — dan Work Owner menegaskan itu memang benar. Dinyatakan di
         tempat, bukan hanya di dokumen, karena di sinilah pengguna akan bertanya.
       */}
-        {letter && letter.up !== '' && letter.up === letter.nama_peserta && (
+        {letter && letter.up !== "" && letter.up === letter.nama_peserta && (
           <p className="mt-2 text-xs text-slate-500">
-            Kolom <span className="font-medium">UP</span> berisi nama objek yang sama
-            dengan Nama Peserta. Itu bukan kekeliruan tampilan — keduanya memang diisi
-            dari sumber yang sama di sistem lama.
+            Kolom <span className="font-medium">UP</span> berisi nama objek yang
+            sama dengan Nama Peserta. Itu bukan kekeliruan tampilan — keduanya
+            memang diisi dari sumber yang sama di sistem lama.
           </p>
         )}
 
@@ -505,7 +523,7 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
               aksi="cetak"
               reference={detail?.referensi}
               note={
-                'Menerbitkan surat RCL/PUCL, melampirkannya ke klaim, lalu mengunduhnya. ' +
+                "Menerbitkan surat RCL/PUCL, melampirkannya ke klaim, lalu mengunduhnya. " +
                 'Klaimnya berpindah dari tab "Cetak Surat" ke "Kelengkapan Dokumen".'
               }
             />
@@ -522,7 +540,7 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
 
       <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
-  )
+  );
 }
 
 /**
@@ -553,8 +571,8 @@ function LetterTab({ detail }: { detail: ClaimDetailResponse | null }) {
  * Hal yang sama berlaku pada sel "Tolak Klaim" KEDUA, yang syaratnya juga `1==2`.
  */
 function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
-  const receipt = detail?.penerimaan_dokumen
-  const buttons = detail?.tombol ?? NO_BUTTONS
+  const receipt = detail?.penerimaan_dokumen;
+  const buttons = detail?.tombol ?? NO_BUTTONS;
 
   // Kedua isian WAJIB disimpan sebagai keadaan layar, bukan dibaca langsung dari `detail`.
   //
@@ -566,10 +584,10 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
   // kunci klaim, sehingga komponen ini lahir kembali — beserta nilai awalnya — setiap kali
   // klaim yang dibuka berganti atau isinya baru tiba. useEffect yang menyamakan keadaan
   // dengan prop akan menimpa ketikan petugas setiap kali data disegarkan di latar.
-  const [note, setNote] = useState(receipt?.komentar_pucl ?? '')
+  const [note, setNote] = useState(receipt?.komentar_pucl ?? "");
   const [completeAt, setCompleteAt] = useState(
-    untukIsianWaktu(receipt?.tanggal_kelengkapan_dokumen ?? ''),
-  )
+    untukIsianWaktu(receipt?.tanggal_kelengkapan_dokumen ?? ""),
+  );
 
   // Pelanggaran per isian dari penolakan peladen yang TERAKHIR, dikunci nama field-nya
   // (`catatan_untuk_analyst`, `tanggal_kelengkapan_dokumen`).
@@ -577,7 +595,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
   // Ia hidup di sini, bukan di dalam tombolnya, karena KETIGA tombol yang membawa isian
   // menuju dua isian yang sama — dan isian yang ditandai oleh "Save" tetap harus tergambar
   // merah ketika petugas berpindah menekan "Kirim Ke Analyst".
-  const [violations, setViolations] = useState<Record<string, string>>({})
+  const [violations, setViolations] = useState<Record<string, string>>({});
 
   return (
     <>
@@ -592,7 +610,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           detail={detail}
           value={completeAt}
           onChange={setCompleteAt}
-          failure={violations['tanggal_kelengkapan_dokumen']}
+          failure={violations["tanggal_kelengkapan_dokumen"]}
         />
 
         {/*
@@ -616,7 +634,12 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
         */}
         <StackedFields
           fields={[
-            ['Email Tertanggung', receipt?.email_tertanggung ?? '', false, 'kotak'],
+            [
+              "Email Tertanggung",
+              receipt?.email_tertanggung ?? "",
+              false,
+              "kotak",
+            ],
           ]}
         />
 
@@ -640,7 +663,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
           value={note}
           onChange={setNote}
           type="area"
-          failure={violations['catatan_untuk_analyst']}
+          failure={violations["catatan_untuk_analyst"]}
         />
 
         {/*
@@ -727,7 +750,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
                 note="Menutup klaim sebagai ditolak. Hanya pada jalur RCL, dan tidak dapat dibatalkan dari layar ini."
               />
             )}
-              {/*
+            {/*
           Kedua tombol Kirim MEMBAWA kedua isian di atas, sama seperti "Save".
 
           Di Pega ketiganya mem-posting form yang sama: Finish Assignment mengirim seluruh
@@ -778,7 +801,7 @@ function ReceiptTab({ detail }: { detail: ClaimDetailResponse | null }) {
 
       <ScreenFooter detail={detail} actionCount="Tindakan di atas" />
     </>
-  )
+  );
 }
 
 /**
@@ -813,8 +836,8 @@ function ScreenFooter({
   detail,
   actionCount,
 }: {
-  detail: ClaimDetailResponse | null
-  actionCount: string
+  detail: ClaimDetailResponse | null;
+  actionCount: string;
 }) {
   return (
     <>
@@ -837,23 +860,24 @@ function ScreenFooter({
       */}
       {detail && (
         <p className="mt-6 border-t border-slate-200 pt-3 text-xs text-slate-600">
-          Nomor Case: <span className="font-mono text-slate-900">{detail.referensi}</span>
+          Nomor Case:{" "}
+          <span className="font-mono text-slate-900">{detail.referensi}</span>
         </p>
       )}
 
       {detail?.tindakan_masih_di_pega && (
         <div className="mt-3 rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs text-slate-700">
-            <span className="font-medium">Layar ini baca saja.</span> {actionCount}{' '}
-            MENYIMPAN data, dan selama Pega dan sistem baru berjalan berdampingan data
-            klaim hanya boleh diubah dari satu sistem. Kerjakan tindakannya di Pega, cari
-            klaimnya dengan Nomor Case di atas.
+            <span className="font-medium">Layar ini baca saja.</span>{" "}
+            {actionCount} MENYIMPAN data, dan selama Pega dan sistem baru
+            berjalan berdampingan data klaim hanya boleh diubah dari satu
+            sistem. Kerjakan tindakannya di Pega, cari klaimnya dengan Nomor
+            Case di atas.
           </p>
         </div>
       )}
-
     </>
-  )
+  );
 }
 
 /**
@@ -896,22 +920,22 @@ function ReceivedDocumentGrid({
   onChange,
   failure,
 }: {
-  detail: ClaimDetailResponse | null
+  detail: ClaimDetailResponse | null;
 
   /** Tanggalnya, berbentuk `YYYY-MM-DDTHH:mm`. Dimiliki ReceiptTab, bukan grid ini. */
-  value: string
-  onChange: (next: string) => void
+  value: string;
+  onChange: (next: string) => void;
 
   /** Pelanggaran peladen untuk `tanggal_kelengkapan_dokumen`. */
-  failure?: string | undefined
+  failure?: string | undefined;
 }) {
-  const note = detail?.penerimaan_dokumen?.keterangan_terima_dokumen ?? ''
+  const note = detail?.penerimaan_dokumen?.keterangan_terima_dokumen ?? "";
 
   // Keadaan salah ditandai TIGA cara — tepi merah, pesan tertulis, dan `aria-invalid` —
   // supaya terbaca juga oleh yang tidak membedakan warna dan oleh pembaca layar. Sama
   // seperti EditableField, karena sejak isian terpisahnya dihapus sel inilah yang menerima
   // penolakan peladen atas isian WAJIB itu.
-  const pesanID = failure ? 'galat-tanggal-terima-dokumen' : undefined
+  const pesanID = failure ? "galat-tanggal-terima-dokumen" : undefined;
 
   return (
     // Grid-nya punya BINGKAINYA SENDIRI di layar lama — kotak di dalam kotak, bukan sekadar
@@ -949,12 +973,12 @@ function ReceivedDocumentGrid({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className={[
-                  'w-full rounded-sm border bg-white px-2 py-1 text-sm text-slate-900',
-                  'focus:outline-none focus:ring-2',
+                  "w-full rounded-sm border bg-white px-2 py-1 text-sm text-slate-900",
+                  "focus:outline-none focus:ring-2",
                   failure
-                    ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30'
-                    : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/30',
-                ].join(' ')}
+                    ? "border-red-400 focus:border-red-500 focus:ring-red-500/30"
+                    : "border-slate-300 focus:border-blue-500 focus:ring-blue-500/30",
+                ].join(" ")}
               />
             </td>
 
@@ -965,7 +989,7 @@ function ReceivedDocumentGrid({
             */}
             <td className="py-1.5">
               <div className="w-full rounded-sm bg-slate-50 px-2 py-1 text-sm text-slate-700">
-                {note === '' ? <span className="text-slate-400">—</span> : note}
+                {note === "" ? <span className="text-slate-400">—</span> : note}
               </div>
             </td>
           </tr>
@@ -987,12 +1011,12 @@ function ReceivedDocumentGrid({
         Yang tersisa hanyalah batas pada kolom Keterangan.
       */}
       <p className="mt-1 text-[11px] leading-snug text-slate-500">
-        Kolom <span className="font-medium">Keterangan</span> hanya dapat dibaca — ia
-        tersimpan di objek kerja Pega, yang selama masa paralel hanya boleh ditulis dari
-        Pega. Tanggalnya tersimpan dari sini lewat tombol Save.
+        Kolom <span className="font-medium">Keterangan</span> hanya dapat dibaca
+        — ia tersimpan di objek kerja Pega, yang selama masa paralel hanya boleh
+        ditulis dari Pega. Tanggalnya tersimpan dari sini lewat tombol Save.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -1024,15 +1048,25 @@ function ReceivedDocumentGrid({
  * Yang hilang karenanya ada dua, dan keduanya nyata: berkas dapat dipilih BANYAK sekaligus,
  * dan namanya dapat diubah SEBELUM dikirim. Keduanya kembali di sini.
  */
-function UploadDocumentAction({ reference }: { reference?: string | undefined }) {
-  const [terbuka, setTerbuka] = useState(false)
+function UploadDocumentAction({
+  reference,
+}: {
+  reference?: string | undefined;
+}) {
+  const [terbuka, setTerbuka] = useState(false);
 
   return (
     <div className="mt-4">
-      <Button tone="utama" disabled={!reference} onClick={() => setTerbuka(true)}>
+      <Button
+        tone="utama"
+        disabled={!reference}
+        onClick={() => setTerbuka(true)}
+      >
         Unggah Dokumen
       </Button>
-      <p className="mt-1 text-xs text-slate-500">Melampirkan berkas dokumen ke klaim.</p>
+      <p className="mt-1 text-xs text-slate-500">
+        Melampirkan berkas dokumen ke klaim.
+      </p>
 
       {/*
         Dialognya dilahirkan hanya saat terbuka, bukan disembunyikan dengan CSS: keadaannya —
@@ -1040,36 +1074,39 @@ function UploadDocumentAction({ reference }: { reference?: string | undefined })
         menjaminnya tanpa satu baris kode pembersih.
       */}
       {terbuka && reference && (
-        <UploadDocumentDialog reference={reference} onClose={() => setTerbuka(false)} />
+        <UploadDocumentDialog
+          reference={reference}
+          onClose={() => setTerbuka(false)}
+        />
       )}
     </div>
-  )
+  );
 }
 
 /** Satu baris pada grid dialog unggah. */
 type UploadRow = {
-  berkas: File
+  berkas: File;
   // Nama yang DAPAT diketik ulang — kolom "Name". Bawaannya nama berkasnya sendiri.
-  nama: string
+  nama: string;
   // Pilihan kolom "Category" — nama kategori lampiran.
   //
   // Kosong berarti "belum disentuh petugas", BUKAN "tanpa kategori": yang berlaku lalu
   // bawaannya, persis seperti di Pega. Lihat `bawaanKategori`.
-  kategori: string
-}
+  kategori: string;
+};
 
 function UploadDocumentDialog({
   reference,
   onClose,
 }: {
-  reference: string
-  onClose: () => void
+  reference: string;
+  onClose: () => void;
 }) {
-  const pilih = useRef<HTMLInputElement>(null)
-  const [rows, setRows] = useState<UploadRow[]>([])
-  const [gagal, setGagal] = useState<string | null>(null)
-  const unggah = useUnggahDokumen(reference)
-  const kategori = useKategoriDokumen()
+  const pilih = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<UploadRow[]>([]);
+  const [gagal, setGagal] = useState<string | null>(null);
+  const unggah = useUnggahDokumen(reference);
+  const kategori = useKategoriDokumen();
 
   /**
    * Kategori bawaan, mengikuti Pega.
@@ -1085,13 +1122,13 @@ function UploadDocumentDialog({
    * terpilih yang tidak ada di dalam daftarnya membuat dropdown tergambar kosong.
    */
   const bawaanKategori =
-    (kategori.data?.kategori ?? []).find((pilihan) => pilihan.nilai === 'File')?.nilai ??
-    ''
+    (kategori.data?.kategori ?? []).find((pilihan) => pilihan.nilai === "File")
+      ?.nilai ?? "";
 
-  const kategoriBaris = (row: UploadRow) => row.kategori || bawaanKategori
+  const kategoriBaris = (row: UploadRow) => row.kategori || bawaanKategori;
 
   async function submit() {
-    setGagal(null)
+    setGagal(null);
     try {
       // Berurutan, bukan serentak. Ketiga pernyataan basis data tiap unggahan mengambil nomor
       // dari sequence yang sama; mengirimnya serentak tidak salah, tetapi membuat urutan
@@ -1101,13 +1138,13 @@ function UploadDocumentDialog({
           berkas: row.berkas,
           nama: row.nama,
           kategori: kategoriBaris(row),
-        })
+        });
       }
-      onClose()
+      onClose();
     } catch (error) {
       // Dialognya TIDAK ditutup saat gagal: berkas yang sudah dipilih akan hilang, dan
       // petugas harus memilihnya lagi satu per satu tanpa tahu mana yang sudah masuk.
-      setGagal(messageOf(error))
+      setGagal(messageOf(error));
     }
   }
 
@@ -1157,16 +1194,16 @@ function UploadDocumentDialog({
             className="hidden"
             aria-label="Berkas yang diunggah"
             onChange={(e) => {
-              const dipilih = Array.from(e.target.files ?? [])
-              e.target.value = ''
+              const dipilih = Array.from(e.target.files ?? []);
+              e.target.value = "";
               setRows((lama) => [
                 ...lama,
                 ...dipilih.map((berkas) => ({
                   berkas,
                   nama: berkas.name,
-                  kategori: '',
+                  kategori: "",
                 })),
-              ])
+              ]);
             }}
           />
 
@@ -1223,7 +1260,9 @@ function UploadDocumentDialog({
                         onChange={(e) =>
                           setRows((lama) =>
                             lama.map((r, i) =>
-                              i === index ? { ...r, kategori: e.target.value } : r,
+                              i === index
+                                ? { ...r, kategori: e.target.value }
+                                : r,
                             ),
                           )
                         }
@@ -1236,10 +1275,10 @@ function UploadDocumentDialog({
                         */}
                         <option value="">
                           {kategori.isPending
-                            ? 'Memuat kategori…'
+                            ? "Memuat kategori…"
                             : kategori.isError
-                              ? 'Kategori gagal dimuat — muat ulang halaman'
-                              : 'Select..'}
+                              ? "Kategori gagal dimuat — muat ulang halaman"
+                              : "Select.."}
                         </option>
                         {(kategori.data?.kategori ?? []).map((pilihan) => (
                           <option key={pilihan.nilai} value={pilihan.nilai}>
@@ -1282,12 +1321,12 @@ function UploadDocumentDialog({
             disabled={rows.length === 0 || unggah.isPending}
             onClick={() => void submit()}
           >
-            {unggah.isPending ? 'Mengunggah…' : 'Submit'}
+            {unggah.isPending ? "Mengunggah…" : "Submit"}
           </OrangeButton>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -1312,10 +1351,14 @@ function UploadDocumentDialog({
  * Biaya yang disadari: berkasnya memang melewati memori halaman. Penampil bawaan peramban
  * TETAP dipakai — yang diserahkan ke tab baru adalah blob beserta jenis isinya.
  */
-function ViewDocumentsAction({ reference }: { reference?: string | undefined }) {
-  const [open, setOpen] = useState(false)
-  const documents = useRCLPUCLDocuments(reference ?? null, open)
-  const bukaDokumen = useBukaDokumen(reference ?? null)
+function ViewDocumentsAction({
+  reference,
+}: {
+  reference?: string | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+  const documents = useRCLPUCLDocuments(reference ?? null, open);
+  const bukaDokumen = useBukaDokumen(reference ?? null);
 
   return (
     <div className="mt-4">
@@ -1375,7 +1418,7 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
                   <button
                     type="button"
                     onClick={() => {
-                      const tab = window.open('', '_blank')
+                      const tab = window.open("", "_blank");
                       void bukaDokumen
                         .mutateAsync({
                           id: document.id,
@@ -1385,7 +1428,7 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
                         .catch(() => {
                           // Pesannya digambar dari `bukaDokumen.error` di bawah daftar;
                           // yang ditangkap di sini hanya penolakan yang tidak tertangani.
-                        })
+                        });
                     }}
                     className="text-left text-sm font-medium text-biru-700 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                   >
@@ -1394,7 +1437,7 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
                   <span className="text-xs text-slate-500">
                     {[document.kategori, document.sub_kategori]
                       .filter(Boolean)
-                      .join(' · ')}
+                      .join(" · ")}
                   </span>
                   <span className="ml-auto text-xs text-slate-500">
                     {document.diunggah_pada}
@@ -1432,8 +1475,8 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
           */}
           {(documents.data?.disaring ?? 0) > 0 && (
             <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-snug text-slate-500">
-              {documents.data?.disaring} lampiran lama tidak ditampilkan — seluruhnya
-              tidak tergambar di layar Pega pula.
+              {documents.data?.disaring} lampiran lama tidak ditampilkan —
+              seluruhnya tidak tergambar di layar Pega pula.
             </p>
           )}
 
@@ -1445,7 +1488,7 @@ function ViewDocumentsAction({ reference }: { reference?: string | undefined }) 
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -1467,19 +1510,19 @@ function ClaimAction({
   aksi,
   reference,
   isian,
-  warna = 'biru',
+  warna = "biru",
   bukaBerkas = true,
   onViolations,
 }: {
-  label: string
-  note: string
-  aksi: TindakanKlaim
-  reference?: string | undefined
+  label: string;
+  note: string;
+  aksi: TindakanKlaim;
+  reference?: string | undefined;
 
   // isian diisi TIGA tombol — "Save" dan kedua tombol Kirim — karena ketiganya membawa apa
   // yang DIKETIK petugas. "Download Dokumen" dan "Tolak Klaim" memanggil tanpa badan, dan
   // peladen pun hanya membacanya untuk ketiga yang pertama (lihat `carriesReceipt`).
-  isian?: IsianPenerimaanDokumen | undefined
+  isian?: IsianPenerimaanDokumen | undefined;
 
   // bukaBerkas menyatakan surat yang terbit juga DIBUKA di tab baru.
   //
@@ -1487,7 +1530,7 @@ function ClaimAction({
   // Kirim menerbitkan surat yang sama dan MELAMPIRKANNYA, persis seperti `AttachAsPDFC` di
   // Pega, tetapi tidak mengunduhkannya: petugas yang menekan "Kirim" bermaksud meneruskan
   // klaim, bukan membuka berkas. Suratnya tetap dapat diambil lewat "Lihat Dokumen".
-  bukaBerkas?: boolean
+  bukaBerkas?: boolean;
 
   // Warna tombolnya mengikuti layar lama (`D-13`), bukan nada sistem desain kami.
   //
@@ -1497,17 +1540,17 @@ function ClaimAction({
   //
   // `Button` tidak diberi nada baru untuk ini. Nada adalah kosakata sistem desain yang
   // dipakai puluhan layar, dan oranye di sini hanya berlaku karena layar lama memakainya.
-  warna?: 'biru' | 'oranye'
+  warna?: "biru" | "oranye";
 
   // onViolations menyerahkan pelanggaran per isian KE ATAS, supaya isian yang salah dapat
   // ditandai di tempatnya — bukan hanya diringkas satu kalimat di dekat tombol.
   //
   // Peladen sudah mengirimkannya sejak awal (`detail: [{field, pesan}]`), dan `APIError`
   // sudah menyatukannya. Yang hilang hanyalah langkah terakhir ini.
-  onViolations?: ((violations: Record<string, string>) => void) | undefined
+  onViolations?: ((violations: Record<string, string>) => void) | undefined;
 }) {
-  const tindakan = useTindakanKlaim(reference ?? null, aksi)
-  const bukaDokumen = useBukaDokumen(reference ?? null)
+  const tindakan = useTindakanKlaim(reference ?? null, aksi);
+  const bukaDokumen = useBukaDokumen(reference ?? null);
 
   /**
    * Menjalankan tindakannya, lalu MENGUNDUH berkas yang dihasilkannya bila diminta.
@@ -1525,37 +1568,37 @@ function ClaimAction({
   async function jalankan() {
     // Tanda lama dibersihkan lebih dulu: isian yang sudah diperbaiki tidak boleh tetap
     // tergambar merah sementara permintaannya sedang berjalan.
-    onViolations?.({})
+    onViolations?.({});
 
-    let hasil
+    let hasil;
     try {
-      hasil = await tindakan.mutateAsync(isian)
+      hasil = await tindakan.mutateAsync(isian);
     } catch (galat) {
-      onViolations?.(galat instanceof APIError ? galat.violations() : {})
-      throw galat
+      onViolations?.(galat instanceof APIError ? galat.violations() : {});
+      throw galat;
     }
 
-    const surat = hasil.dokumen
-    if (!surat || !bukaBerkas) return
+    const surat = hasil.dokumen;
+    if (!surat || !bukaBerkas) return;
 
     // Tab dibuka lebih dulu, masih di dalam rantai klik — lihat useBukaDokumen.
-    const tab = window.open('', '_blank')
+    const tab = window.open("", "_blank");
     await bukaDokumen
       .mutateAsync({ id: surat.id, nama: surat.nama || surat.id, tab })
       .catch(() => {
         // Suratnya SUDAH melampir ke klaim; gagal membukanya bukan gagal menerbitkannya.
         // Petugas tetap dapat mengambilnya lewat "Lihat Dokumen".
-      })
+      });
   }
 
   return (
     <div className="mt-4">
-      {warna === 'oranye' ? (
+      {warna === "oranye" ? (
         <OrangeButton
           disabled={!reference || tindakan.isPending}
           onClick={() => void jalankan().catch(() => {})}
         >
-          {tindakan.isPending ? 'Menjalankan…' : label}
+          {tindakan.isPending ? "Menjalankan…" : label}
         </OrangeButton>
       ) : (
         <Button
@@ -1563,14 +1606,14 @@ function ClaimAction({
           disabled={!reference || tindakan.isPending}
           onClick={() => void jalankan().catch(() => {})}
         >
-          {tindakan.isPending ? 'Menjalankan…' : label}
+          {tindakan.isPending ? "Menjalankan…" : label}
         </Button>
       )}
       <p className="mt-1 text-xs text-slate-500">{note}</p>
 
       {tindakan.isSuccess && (
         <p className="mt-2 max-w-md rounded-kontrol border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-slate-700">
-          {tindakan.data?.pesan ?? 'Tindakan dijalankan.'}
+          {tindakan.data?.pesan ?? "Tindakan dijalankan."}
         </p>
       )}
 
@@ -1620,7 +1663,7 @@ function ClaimAction({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -1637,7 +1680,9 @@ function ClaimAction({
  * tidak dilihat satu pun pengguna.
  */
 function perluDilaporkan(error: unknown): boolean {
-  return error instanceof APIError && error.kode === 'layanan_pega_belum_tersedia'
+  return (
+    error instanceof APIError && error.kode === "layanan_pega_belum_tersedia"
+  );
 }
 
 function WriteAction({
@@ -1645,28 +1690,32 @@ function WriteAction({
   note,
   caseNumber,
 }: {
-  label: string
-  note: string
+  label: string;
+  note: string;
   // `| undefined` eksplisit karena project memakai `exactOptionalPropertyTypes`: detailnya
   // boleh belum tiba, dan tombolnya tetap digambar.
-  caseNumber?: string | undefined
+  caseNumber?: string | undefined;
 }) {
-  const panel = useContext(WriteActionPanel)
-  const open = panel.open === label
+  const panel = useContext(WriteActionPanel);
+  const open = panel.open === label;
 
   // Varian TAUTAN dibuang 2026-10-02, bersama panel kedua tautan grid. Keduanya kini bekerja
   // sendiri — lihat ReceivedDocumentGrid — sehingga tidak ada lagi yang memakainya, dan jalur
   // yang tidak dipakai siapa pun adalah jalur yang tidak pernah teruji.
   return (
     <div className="mt-4">
-      <Button tone="kedua" aria-expanded={open} onClick={() => panel.toggle(label)}>
+      <Button
+        tone="kedua"
+        aria-expanded={open}
+        onClick={() => panel.toggle(label)}
+      >
         {label}
       </Button>
       <p className="mt-1 text-xs text-slate-500">{note}</p>
 
       {open && <ActionNote label={label} caseNumber={caseNumber} />}
     </div>
-  )
+  );
 }
 
 /**
@@ -1696,22 +1745,23 @@ function ActionNote({
   label,
   caseNumber,
 }: {
-  label: string
-  caseNumber?: string | undefined
+  label: string;
+  caseNumber?: string | undefined;
 }) {
   return (
     <div className="mt-2 max-w-md rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2">
       <p className="text-xs text-slate-700">
-        <span className="font-medium">{label}</span> belum dibangun di sini. Di layar lama ia
-        membuka formulir konfirmasi tersendiri berisi sebelas isian, dan formulir itulah yang
-        belum ada — bukan datanya. Untuk sekarang, kerjakan di Pega.
+        <span className="font-medium">{label}</span> belum dibangun di sini. Di
+        layar lama ia membuka formulir konfirmasi tersendiri berisi sebelas
+        isian, dan formulir itulah yang belum ada — bukan datanya. Untuk
+        sekarang, kerjakan di Pega.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-xs text-slate-700">Nomor case:</span>
         <CopyCaseNumber caseNumber={caseNumber} />
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -1733,35 +1783,37 @@ function ActionNote({
  * komponen ini hanya saat panelnya terbuka, sehingga ia lahir kembali bersama panelnya.
  */
 function CopyCaseNumber({ caseNumber }: { caseNumber?: string | undefined }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   async function salin() {
-    if (!caseNumber) return
+    if (!caseNumber) return;
     try {
-      await navigator.clipboard.writeText(caseNumber)
-      setCopied(true)
+      await navigator.clipboard.writeText(caseNumber);
+      setCopied(true);
     } catch {
       // Penyalinan ditolak peramban — nomornya tetap tergambar supaya dapat disalin dengan
       // tangan. Kegagalan ini TIDAK dilaporkan sebagai galat: ia bukan kerusakan, dan
       // pesannya akan mengalihkan perhatian dari nomornya.
-      setCopied(false)
+      setCopied(false);
     }
   }
 
   return (
     <>
-      <span className="font-mono text-sm text-slate-900">{caseNumber ?? '—'}</span>
+      <span className="font-mono text-sm text-slate-900">
+        {caseNumber ?? "—"}
+      </span>
       {caseNumber && (
         <button
           type="button"
           onClick={salin}
           className="rounded-kontrol border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
         >
-          {copied ? 'Tersalin' : 'Salin nomor case'}
+          {copied ? "Tersalin" : "Salin nomor case"}
         </button>
       )}
     </>
-  )
+  );
 }
 
 /**
@@ -1771,7 +1823,12 @@ function CopyCaseNumber({ caseNumber }: { caseNumber?: string | undefined }) {
  * tidak ada yang divalidasi — tetapi ia bagian dari BENTUK layar lama, dan petugas yang
  * membandingkan keduanya berdampingan mencarinya.
  */
-type Field = [label: string, value: FieldValue, required?: boolean, kind?: FieldKind]
+type Field = [
+  label: string,
+  value: FieldValue,
+  required?: boolean,
+  kind?: FieldKind,
+];
 
 /**
  * Bentuk sebuah isian di layar lama — dan karenanya di layar ini (`D-13`).
@@ -1790,7 +1847,7 @@ type Field = [label: string, value: FieldValue, required?: boolean, kind?: Field
  *   `pilihan`  kotak dengan tanda daftar pilihan — "Perihal"
  *   `tanggal`  kotak dengan tanda kalender — "Tanggal Kejadian", "Tanggal Kelengkapan"
  */
-type FieldKind = 'teks' | 'kotak' | 'area' | 'pilihan' | 'tanggal'
+type FieldKind = "teks" | "kotak" | "area" | "pilihan" | "tanggal";
 
 /**
  * Sekelompok isian dalam DUA KOLOM, berpasangan kiri-kanan menurut urutan section.
@@ -1820,31 +1877,33 @@ function EditableField({
   type,
   failure,
 }: {
-  label: string
-  value: string
-  onChange: (next: string) => void
-  required?: boolean
-  type: 'teks' | 'area' | 'datetime-local'
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  required?: boolean;
+  type: "teks" | "area" | "datetime-local";
 
   // failure adalah pesan pelanggaran peladen untuk isian INI.
   //
   // Tanpanya, galat `422` hanya tergambar sebagai satu kalimat di dekat tombol —
   // "Perbaiki yang ditandai lalu coba lagi" — sementara tidak ada satu pun isian yang
   // ditandai. Kalimat itu menyuruh petugas mencari sesuatu yang tidak ada.
-  failure?: string | undefined
+  failure?: string | undefined;
 }) {
   const kelas = [
-    'mt-1 w-full rounded-sm border bg-white px-2 py-1.5',
-    'text-sm text-slate-900 focus:outline-none focus:ring-2',
+    "mt-1 w-full rounded-sm border bg-white px-2 py-1.5",
+    "text-sm text-slate-900 focus:outline-none focus:ring-2",
     failure
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/30'
-      : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/30',
-  ].join(' ')
+      ? "border-red-400 focus:border-red-500 focus:ring-red-500/30"
+      : "border-slate-300 focus:border-blue-500 focus:ring-blue-500/30",
+  ].join(" ");
 
   // Keadaan salah ditandai TIGA cara sekaligus — warna tepi, pesan tertulis, dan
   // `aria-invalid` — supaya ia terbaca juga oleh yang tidak dapat membedakan warna dan
   // oleh pembaca layar.
-  const pesanID = failure ? `galat-${label.replace(/\s+/g, '-').toLowerCase()}` : undefined
+  const pesanID = failure
+    ? `galat-${label.replace(/\s+/g, "-").toLowerCase()}`
+    : undefined;
 
   return (
     <div className="mt-6 flex flex-col">
@@ -1852,7 +1911,7 @@ function EditableField({
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
 
-        {type === 'area' ? (
+        {type === "area" ? (
           <textarea
             className={`${kelas} min-h-[72px]`}
             value={value}
@@ -1862,7 +1921,7 @@ function EditableField({
           />
         ) : (
           <input
-            type={type === 'datetime-local' ? 'datetime-local' : 'text'}
+            type={type === "datetime-local" ? "datetime-local" : "text"}
             className={kelas}
             value={value}
             aria-invalid={failure ? true : undefined}
@@ -1877,7 +1936,7 @@ function EditableField({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -1892,33 +1951,37 @@ function EditableField({
  * jujur menyatakan "silakan pilih", sementara nilai yang ditolak peramban berbohong.
  */
 function untukIsianWaktu(raw: string): string {
-  const bersih = raw.trim()
-  if (bersih === '') return ''
+  const bersih = raw.trim();
+  if (bersih === "") return "";
 
   // `2026-10-01T18:03…` atau `2026-10-01 18:03…` — keduanya dipotong di menit.
-  const cocok = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(bersih)
-  if (cocok) return `${cocok[1]}T${cocok[2]}`
+  const cocok = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(bersih);
+  if (cocok) return `${cocok[1]}T${cocok[2]}`;
 
   // `2026-10-01` saja — jam diisi awal hari, sama seperti bawaan peramban.
-  const tanggalSaja = /^(\d{4}-\d{2}-\d{2})$/.exec(bersih)
-  if (tanggalSaja) return `${tanggalSaja[1]}T00:00`
+  const tanggalSaja = /^(\d{4}-\d{2}-\d{2})$/.exec(bersih);
+  if (tanggalSaja) return `${tanggalSaja[1]}T00:00`;
 
   // `11/09/2024 21:35` — bentuk TAMPILAN yang dikirim peladen untuk grid.
   //
   // Ia perlu diterima sejak baris grid dapat diketik: tanpa ini, tanggal yang SUDAH ada
   // tergambar kosong pada isiannya, dan petugas menyangka datanya hilang.
-  const tampilan = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}:\d{2}))?/.exec(bersih)
+  const tampilan = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}:\d{2}))?/.exec(
+    bersih,
+  );
   if (tampilan) {
-    return `${tampilan[3]}-${tampilan[2]}-${tampilan[1]}T${tampilan[4] ?? '00:00'}`
+    return `${tampilan[3]}-${tampilan[2]}-${tampilan[1]}T${tampilan[4] ?? "00:00"}`;
   }
 
-  return ''
+  return "";
 }
 
 function Panel({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-4 rounded-sm border border-slate-300 bg-white p-5">{children}</div>
-  )
+    <div className="mt-4 rounded-sm border border-slate-300 bg-white p-5">
+      {children}
+    </div>
+  );
 }
 
 function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
@@ -1935,7 +1998,7 @@ function FieldGroup({ title, fields }: { title?: string; fields: Field[] }) {
         ))}
       </dl>
     </div>
-  )
+  );
 }
 
 /**
@@ -1960,16 +2023,20 @@ function StackedFields({ title, fields }: { title?: string; fields: Field[] }) {
         ))}
       </dl>
     </div>
-  )
+  );
 }
 
 /** Satu baris isian, dipakai kedua susunan supaya keduanya tidak dapat menyimpang. */
 function FieldRow({ field }: { field: Field }) {
-  const [label, value, required, kind = 'teks'] = field
+  const [label, value, required, kind = "teks"] = field;
 
   const teks =
-    value === DI_CLIPBOARD ? 'di clipboard Pega' : value === '' ? '' : String(value)
-  const kosong = value === DI_CLIPBOARD || value === ''
+    value === DI_CLIPBOARD
+      ? "di clipboard Pega"
+      : value === ""
+        ? ""
+        : String(value);
+  const kosong = value === DI_CLIPBOARD || value === "";
 
   return (
     <div className="flex flex-col">
@@ -1981,27 +2048,32 @@ function FieldRow({ field }: { field: Field }) {
       <dt className="text-[13px] font-semibold text-slate-800">
         {label}
         {required && (
-          <span className="ml-0.5 text-red-500" title="Wajib diisi di layar lama">
+          <span
+            className="ml-0.5 text-red-500"
+            title="Wajib diisi di layar lama"
+          >
             *
           </span>
         )}
       </dt>
 
       <dd className="mt-1">
-        {kind === 'teks' ? (
+        {kind === "teks" ? (
           <span
             className={
-              kosong ? 'text-sm text-slate-400 italic' : 'text-sm text-slate-900'
+              kosong
+                ? "text-sm text-slate-400 italic"
+                : "text-sm text-slate-900"
             }
           >
-            {kosong ? teks || '—' : teks}
+            {kosong ? teks || "—" : teks}
           </span>
         ) : (
           <FieldBox kind={kind} teks={teks} kosong={kosong} />
         )}
       </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -2023,42 +2095,42 @@ function FieldBox({
   teks,
   kosong,
 }: {
-  kind: FieldKind
-  teks: string
-  kosong: boolean
+  kind: FieldKind;
+  teks: string;
+  kosong: boolean;
 }) {
   const dasar = [
-    'w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5',
-    'text-sm text-slate-900',
-  ].join(' ')
+    "w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5",
+    "text-sm text-slate-900",
+  ].join(" ");
 
-  if (kind === 'area') {
+  if (kind === "area") {
     return (
       <div className={`${dasar} min-h-[72px] whitespace-pre-wrap`}>
         {kosong ? <span className="text-slate-400 italic">{teks}</span> : teks}
       </div>
-    )
+    );
   }
 
   return (
     <div className={`${dasar} flex items-center justify-between gap-2`}>
-      <span className={kosong ? 'truncate text-slate-400 italic' : 'truncate'}>
+      <span className={kosong ? "truncate text-slate-400 italic" : "truncate"}>
         {teks}
       </span>
 
       {/* Tanda daftar pilihan dan tanda kalender — keduanya ada di layar lama. */}
-      {kind === 'pilihan' && (
+      {kind === "pilihan" && (
         <span aria-hidden className="text-[10px] text-blue-600">
           ▾
         </span>
       )}
-      {kind === 'tanggal' && (
+      {kind === "tanggal" && (
         <span aria-hidden className="text-xs text-slate-500">
           🗓
         </span>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -2069,14 +2141,14 @@ function FieldBox({
  * petugas klaim.
  */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Sambungan ke peladen gagal. Coba lagi beberapa saat lagi.'
+  if (error instanceof APIError) return error.message;
+  return "Sambungan ke peladen gagal. Coba lagi beberapa saat lagi.";
 }
 
 /** Pesan pelanggaran per isian, atau senarai kosong untuk galat yang bukan validasi. */
 function pelanggaranDari(error: unknown): string[] {
-  if (!(error instanceof APIError)) return []
-  return Object.values(error.violations())
+  if (!(error instanceof APIError)) return [];
+  return Object.values(error.violations());
 }
 
 /**
@@ -2098,9 +2170,9 @@ function OrangeButton({
   disabled,
   onClick,
 }: {
-  children: ReactNode
-  disabled?: boolean
-  onClick: () => void
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
@@ -2108,16 +2180,16 @@ function OrangeButton({
       disabled={disabled}
       onClick={onClick}
       className={[
-        'inline-flex items-center justify-center rounded-kontrol px-3.5 py-2',
-        'text-sm font-medium whitespace-nowrap select-none',
-        'bg-orange-500 text-white shadow-aksen',
-        'transition-colors duration-150 hover:bg-orange-600 active:bg-orange-700',
-        'focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/35',
-        'disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none',
-        'disabled:hover:bg-orange-500',
-      ].join(' ')}
+        "inline-flex items-center justify-center rounded-kontrol px-3.5 py-2",
+        "text-sm font-medium whitespace-nowrap select-none",
+        "bg-orange-500 text-white shadow-aksen",
+        "transition-colors duration-150 hover:bg-orange-600 active:bg-orange-700",
+        "focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/35",
+        "disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none",
+        "disabled:hover:bg-orange-500",
+      ].join(" ")}
     >
       {children}
     </button>
-  )
+  );
 }

@@ -1,13 +1,17 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, PartCategoryErrorCode, type PartCategory } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  PartCategoryErrorCode,
+  type PartCategory,
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
 
 /**
  * Batas panjang nama harus sama dengan masterkategorisparepart.MaxNameLength di backend.
@@ -25,31 +29,31 @@ import { Field } from '@/components/Field'
  * Bila angka ini berubah, `internal/masterkategorisparepart/masterkategorisparepart.go`
  * harus ikut berubah. Uji `TestMaxNameLengthMatchesFrontendForm` yang menjaganya.
  */
-const MAX_NAME_LENGTH = 100
+const MAX_NAME_LENGTH = 100;
 
 const schema = z.object({
   nama_kategori_sparepart: z
     .string()
     .trim()
-    .min(1, 'Nama kategori sparepart wajib diisi.')
+    .min(1, "Nama kategori sparepart wajib diisi.")
     .max(
       MAX_NAME_LENGTH,
       `Nama kategori sparepart paling panjang ${MAX_NAME_LENGTH} karakter.`,
     ),
-})
+});
 
-export type PartCategoryFormValues = z.infer<typeof schema>
+export type PartCategoryFormValues = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  editing: PartCategory | null
-  isSaving: boolean
-  error: unknown
-  onSave: (values: PartCategoryFormValues) => void
-  onCancel: () => void
-}
+  editing: PartCategory | null;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: PartCategoryFormValues) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -61,10 +65,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -74,10 +79,10 @@ function messageFor(error: unknown): MessageContent | null {
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case PartCategoryErrorCode.nameTaken:
         // Ia sudah disorot pada isiannya, tetapi TETAP ditampilkan sebagai kotak pesan —
         // dan itu berbeda dari galat validasi biasa.
@@ -87,48 +92,49 @@ function messageFor(error: unknown): MessageContent | null {
         // Reject yang TIDAK terlihat dari tab yang sedang dibuka. Sorotan di bawah isian
         // tidak cukup menjelaskan ke mana pengguna harus mencari.
         return {
-          title: 'Nama itu sudah dipakai',
+          title: "Nama itu sudah dipakai",
           description:
-            'Kategori lain sudah memakai nama ini. Periksa juga tab Reject — kategori ' +
-            'yang sudah ditolak pun tetap memakai namanya.',
-          tone: 'penolakan',
-        }
+            "Kategori lain sudah memakai nama ini. Periksa juga tab Reject — kategori " +
+            "yang sudah ditolak pun tetap memakai namanya.",
+          tone: "penolakan",
+        };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
+          title: "Baris ini sudah tidak ada",
           description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk ' +
-            'melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk " +
+            "melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /**
@@ -157,8 +163,14 @@ function violationsOf(error: unknown): Record<string, string> {
  * Tabelnya tidak punya kolom penampung alasan penolakan. Menggambar isian yang diam-diam
  * membuang isinya lebih buruk daripada tidak menggambarnya.
  */
-export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }: Props) {
-  const editMode = editing !== null
+export function PartCategoryForm({
+  editing,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = editing !== null;
 
   const {
     register,
@@ -169,29 +181,31 @@ export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }:
   } = useForm<PartCategoryFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama_kategori_sparepart: editing?.nama_kategori_sparepart ?? '',
+      nama_kategori_sparepart: editing?.nama_kategori_sparepart ?? "",
     },
-  })
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
   // misalnya pengguna menekan "Ubah" pada baris lain.
   useEffect(() => {
-    reset({ nama_kategori_sparepart: editing?.nama_kategori_sparepart ?? '' })
-  }, [editing, reset])
+    reset({ nama_kategori_sparepart: editing?.nama_kategori_sparepart ?? "" });
+  }, [editing, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5),
   // dan itu hanya berguna bila layar menyorotnya satu per satu.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama_kategori_sparepart') {
-        setError(column, { type: 'server', message })
+      if (column === "nama_kategori_sparepart") {
+        setError(column, { type: "server", message });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
-  const title = editMode ? 'Ubah Kategori Sparepart' : 'Tambah Kategori Sparepart'
+  const message = messageFor(error);
+  const title = editMode
+    ? "Ubah Kategori Sparepart"
+    : "Tambah Kategori Sparepart";
 
   return (
     <form
@@ -203,17 +217,25 @@ export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }:
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
           belum ada — nomornya diterbitkan server dari isi tabel. */}
       {editMode && (
         <div>
-          <span className="block text-sm font-medium text-slate-700">ID Kategori Sparepart</span>
+          <span className="block text-sm font-medium text-slate-700">
+            ID Kategori Sparepart
+          </span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
             {editing.id_kategori_sparepart}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -225,7 +247,7 @@ export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }:
         autoFocus
         maxLength={MAX_NAME_LENGTH}
         error={errors.nama_kategori_sparepart?.message}
-        {...register('nama_kategori_sparepart')}
+        {...register("nama_kategori_sparepart")}
       />
 
       {/* Akibat menyimpan dinyatakan di muka, bukan ditemukan setelah tombol ditekan.
@@ -233,9 +255,10 @@ export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }:
           Sparepart selama ia menunggu persetujuan ulang — dan tidak ada apa pun di layar
           ini yang akan menunjukkannya bila tidak disebutkan di sini. */}
       <p className="rounded-kontrol border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        Menyimpan mengembalikan kategori ini ke tab <strong>Waiting Approval</strong>, persis
-        seperti aplikasi lama. Selama menunggu, kategori ini tidak muncul sebagai pilihan di
-        layar Master Sparepart dan Master Tipe Sparepart.
+        Menyimpan mengembalikan kategori ini ke tab{" "}
+        <strong>Waiting Approval</strong>, persis seperti aplikasi lama. Selama
+        menunggu, kategori ini tidak muncul sebagai pilihan di layar Master
+        Sparepart dan Master Tipe Sparepart.
       </p>
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -243,9 +266,9 @@ export function PartCategoryForm({ editing, isSaving, error, onSave, onCancel }:
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

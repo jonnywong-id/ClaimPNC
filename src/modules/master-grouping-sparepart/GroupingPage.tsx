@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, GroupingStatus, type Grouping } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, GroupingStatus, type Grouping } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
 
-import { useCreateGrouping, useGroupingList, useSaveGrouping } from './api'
-import { GroupingForm, type GroupingFormValues } from './GroupingForm'
+import { useCreateGrouping, useGroupingList, useSaveGrouping } from "./api";
+import { GroupingForm, type GroupingFormValues } from "./GroupingForm";
 
 /**
  * Tiga tab, sama persis dengan layar lama — termasuk URUTANNYA.
@@ -27,27 +27,28 @@ import { GroupingForm, type GroupingFormValues } from './GroupingForm'
  */
 const TABS = [
   {
-    id: 'approve',
-    label: 'Approve',
+    id: "approve",
+    label: "Approve",
     status: GroupingStatus.disetujui,
-    description: 'Grouping yang sudah disetujui dan berlaku.',
+    description: "Grouping yang sudah disetujui dan berlaku.",
   },
   {
-    id: 'reject',
-    label: 'Reject',
+    id: "reject",
+    label: "Reject",
     status: GroupingStatus.ditolak,
-    description: 'Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.',
+    description:
+      "Pengajuan yang ditolak. Dapat diperbaiki lalu diajukan ulang.",
   },
   {
-    id: 'menunggu',
-    label: 'Waiting Approval',
+    id: "menunggu",
+    label: "Waiting Approval",
     status: GroupingStatus.menunggu,
     description:
-      'Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.',
+      "Pengajuan dan perubahan yang belum diputuskan. Centang barisnya untuk menyetujui atau menolak.",
   },
-] as const
+] as const;
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof TABS)[number]["id"];
 
 /**
  * Ukuran halaman diambil dari `pyPageSizeOther` pada ketiga section tab.
@@ -56,48 +57,49 @@ type TabId = (typeof TABS)[number]['id']
  * dan Master Panel yang 15 pada satu tab dan 50 pada dua tab lainnya. Tidak ada satu angka
  * yang benar untuk seluruh layar; angkanya milik layar, bukan milik komponen tabel.
  */
-const PAGE_SIZE = 15
+const PAGE_SIZE = 15;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar grouping tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar grouping tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar grouping tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar grouping tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -152,49 +154,52 @@ function loadMessage(error: unknown): MessageContent {
  * tombolnya `Approve`, `Reject`, dan `DETAILS`, tanpa satu pun centang.
  */
 export function GroupingPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [tab, setTab] = useState<TabId>('approve')
-  const [isAdding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<Grouping | null>(null)
+  const [tab, setTab] = useState<TabId>("approve");
+  const [isAdding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Grouping | null>(null);
 
-  const active = TABS.find((t) => t.id === tab) ?? TABS[0]
-  const list = useGroupingList(active.status)
-  const create = useCreateGrouping()
-  const save = useSaveGrouping()
+  const active = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const list = useGroupingList(active.status);
+  const create = useCreateGrouping();
+  const save = useSaveGrouping();
 
-  const isFormOpen = isAdding || editing !== null
-  const rows = list.data?.grouping ?? []
+  const isFormOpen = isAdding || editing !== null;
+  const rows = list.data?.grouping ?? [];
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(null)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(null);
   }
 
   function openAdd() {
-    create.reset()
-    save.reset()
-    setEditing(null)
-    setAdding(true)
+    create.reset();
+    save.reset();
+    setEditing(null);
+    setAdding(true);
   }
 
   function openEdit(row: Grouping) {
-    create.reset()
-    save.reset()
-    setAdding(false)
-    setEditing(row)
+    create.reset();
+    save.reset();
+    setAdding(false);
+    setEditing(row);
   }
 
   function submit(values: GroupingFormValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan membuang
     // isian pengguna saat penyimpanan gagal.
     if (editing) {
-      save.mutate({ id: editing.id_grouping, input: values }, { onSuccess: closeForm })
-      return
+      save.mutate(
+        { id: editing.id_grouping, input: values },
+        { onSuccess: closeForm },
+      );
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
 
   /*
@@ -213,75 +218,87 @@ export function GroupingPage() {
   */
   const columns: Column<Grouping>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: '6rem',
+      key: "id",
+      title: "ID",
+      width: "6rem",
       value: (row) => row.id_grouping,
     },
     {
-      key: 'nomor',
-      title: 'No Sparepart',
-      width: '10rem',
+      key: "nomor",
+      title: "No Sparepart",
+      width: "10rem",
       value: (row) => row.nomor_sparepart,
     },
     {
-      key: 'nama',
-      title: 'Nama Sparepart',
-      width: '14rem',
+      key: "nama",
+      title: "Nama Sparepart",
+      width: "14rem",
       value: (row) => row.nama_sparepart,
       render: (row) => (
-        <span className="text-sm text-slate-900">{row.nama_sparepart || '—'}</span>
+        <span className="text-sm text-slate-900">
+          {row.nama_sparepart || "—"}
+        </span>
       ),
     },
     {
-      key: 'panel',
-      title: 'Nama Panel',
-      width: '12rem',
+      key: "panel",
+      title: "Nama Panel",
+      width: "12rem",
       value: (row) => row.nama_panel,
     },
     {
-      key: 'sisi',
-      title: 'Sisi Panel',
-      width: '7rem',
+      key: "sisi",
+      title: "Sisi Panel",
+      width: "7rem",
       // Yang dicari dan diurutkan adalah sebutannya, bukan sandinya: pengguna mencari "KIRI",
       // bukan "1".
       value: (row) => row.sisi_label,
-      render: (row) => <span className="text-sm text-slate-900">{row.sisi_label || '—'}</span>,
-    },
-    {
-      key: 'rangka',
-      title: 'No Rangka',
-      width: '13rem',
-      value: (row) => row.no_rangka,
       render: (row) => (
-        <span className="font-mono text-xs text-slate-900">{row.no_rangka || '—'}</span>
+        <span className="text-sm text-slate-900">{row.sisi_label || "—"}</span>
       ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "rangka",
+      title: "No Rangka",
+      width: "13rem",
+      value: (row) => row.no_rangka,
+      render: (row) => (
+        <span className="font-mono text-xs text-slate-900">
+          {row.no_rangka || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="halus" onClick={() => openEdit(row)} disabled={save.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => openEdit(row)}
+          disabled={save.isPending}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya dibaca dari Section/MasterGroupingSparepartHE — "HE" ikut, karena itulah
               yang tertulis di layar lama (D-13). */}
-          <h1 className="text-xl font-semibold text-slate-900">Master Grouping Sparepart HE</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Grouping Sparepart HE
+          </h1>
           <p className="text-sm text-slate-600">
-            Penautan suku cadang ke panel bodi pada sebuah kendaraan, dikelompokkan menurut nomor
-            rangka.
+            Penautan suku cadang ke panel bodi pada sebuah kendaraan,
+            dikelompokkan menurut nomor rangka.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -290,8 +307,14 @@ export function GroupingPage() {
           <Button tone="utama" onClick={openAdd} disabled={isFormOpen}>
             Tambah
           </Button>
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
         </div>
       </header>
@@ -304,19 +327,19 @@ export function GroupingPage() {
           <button
             key={t.id}
             type="button"
-            aria-current={tab === t.id ? 'page' : undefined}
+            aria-current={tab === t.id ? "page" : undefined}
             onClick={() => {
-              closeForm()
-              setTab(t.id)
+              closeForm();
+              setTab(t.id);
             }}
             className={[
-              'rounded-t px-3 py-2 text-sm font-medium',
-              'transition-colors duration-150 ease-halus',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+              "rounded-t px-3 py-2 text-sm font-medium",
+              "transition-colors duration-150 ease-halus",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
               tab === t.id
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-slate-500 hover:text-slate-800',
-            ].join(' ')}
+                ? "border-b-2 border-blue-600 text-blue-700"
+                : "text-slate-500 hover:text-slate-800",
+            ].join(" ")}
           >
             {t.label}
           </button>
@@ -327,10 +350,12 @@ export function GroupingPage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        {active.description}{' '}
+        {active.description}{" "}
         <span className="ml-1">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </span>
       </p>
 
@@ -357,14 +382,14 @@ export function GroupingPage() {
           <p className="text-sm text-slate-500">Memuat daftar grouping…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -379,5 +404,5 @@ export function GroupingPage() {
         )}
       </section>
     </main>
-  )
+  );
 }

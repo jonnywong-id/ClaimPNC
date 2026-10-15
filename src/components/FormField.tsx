@@ -1,11 +1,11 @@
-import { forwardRef, type InputHTMLAttributes } from 'react'
+import { forwardRef, type InputHTMLAttributes } from "react";
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
-  id: string
-  label: string
+  id: string;
+  label: string;
   /** Pesan kesalahan validasi; bila terisi, kolom ditandai dan pesannya ditampilkan. */
-  failure?: string | undefined
-}
+  failure?: string | undefined;
+};
 
 /**
  * FormField adalah satu baris isian: label, input, dan pesan kesalahannya.
@@ -26,10 +26,10 @@ export const FormField = forwardRef<HTMLInputElement, Props>(function FormField(
   ref,
 ) {
   const baseClass =
-    'mt-1 w-full rounded border px-3 py-2 text-slate-900 focus:outline-none ' +
+    "mt-1 w-full rounded border px-3 py-2 text-slate-900 focus:outline-none " +
     (failure
-      ? 'border-red-400 focus:border-red-500'
-      : 'border-slate-300 focus:border-slate-500')
+      ? "border-red-400 focus:border-red-500"
+      : "border-slate-300 focus:border-slate-500");
 
   return (
     <div>
@@ -39,7 +39,7 @@ export const FormField = forwardRef<HTMLInputElement, Props>(function FormField(
       <input
         id={id}
         ref={ref}
-        aria-invalid={failure ? 'true' : 'false'}
+        aria-invalid={failure ? "true" : "false"}
         aria-describedby={failure ? `${id}-failure` : undefined}
         className={className ? `${baseClass} ${className}` : baseClass}
         {...remaining}
@@ -50,5 +50,5 @@ export const FormField = forwardRef<HTMLInputElement, Props>(function FormField(
         </p>
       )}
     </div>
-  )
-})
+  );
+});

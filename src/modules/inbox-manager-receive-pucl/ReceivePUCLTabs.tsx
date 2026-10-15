@@ -1,11 +1,11 @@
-import type { Tab } from './types'
+import type { Tab } from "./types";
 
 type Props = {
-  tabs: Tab[]
+  tabs: Tab[];
   /** Kode tab yang sedang terbuka. */
-  active: string
-  onSelect: (code: string) => void
-}
+  active: string;
+  onSelect: (code: string) => void;
+};
 
 /**
  * Bilah tab Inbox Manager Receive / PUCL.
@@ -56,7 +56,7 @@ export function ReceivePUCLTabs({ tabs, active, onSelect }: Props) {
     >
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
         {tabs.map((tab) => {
-          const selected = tab.kode === active
+          const selected = tab.kode === active;
           return (
             <button
               key={tab.kode}
@@ -66,14 +66,14 @@ export function ReceivePUCLTabs({ tabs, active, onSelect }: Props) {
               title={tab.terhalang ? tab.alasan_terhalang : tab.keterangan}
               onClick={() => onSelect(tab.kode)}
               className={[
-                'flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5',
-                'text-sm font-medium whitespace-nowrap',
-                'transition-[color,border-color,background-color] duration-150 ease-halus',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                "flex items-center gap-2 rounded-t-kontrol border-b-2 px-3.5 py-2.5",
+                "text-sm font-medium whitespace-nowrap",
+                "transition-[color,border-color,background-color] duration-150 ease-halus",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                 selected
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
-              ].join(' ')}
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+              ].join(" ")}
             >
               {tab.nama}
 
@@ -87,9 +87,9 @@ export function ReceivePUCLTabs({ tabs, active, onSelect }: Props) {
                 </span>
               )}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

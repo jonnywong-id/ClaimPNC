@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   ProgressStatus2Input,
   ProgressStatus2ListResponse,
   ProgressStatus2ParentListResponse,
   ProgressStatus2Response,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/status-progres-2'
-const ROUTE_PARENT = '/api/master/status-progres-2/induk'
+const ROUTE = "/api/master/status-progres-2";
+const ROUTE_PARENT = "/api/master/status-progres-2/induk";
 
 /**
  * listKey2 menyertakan portal DAN token, alasannya sama persis dengan tingkat 1.
@@ -25,12 +25,12 @@ const ROUTE_PARENT = '/api/master/status-progres-2/induk'
  * pernah saling menimpa cache meski hidup di modul yang sama.
  */
 function listKey2(portal: string | null, token: string | null) {
-  return ['master-status-progres-2', portal, token] as const
+  return ["master-status-progres-2", portal, token] as const;
 }
 
 /** Kunci daftar induk; ikut per portal karena isinya milik entitas, bukan aplikasi. */
 function parentKey2(portal: string | null, token: string | null) {
-  return ['master-status-progres-2-induk', portal, token] as const
+  return ["master-status-progres-2-induk", portal, token] as const;
 }
 
 /**
@@ -41,14 +41,15 @@ function parentKey2(portal: string | null, token: string | null) {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useProgressStatus2List() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey2(portal, token),
-    queryFn: () => callAPI<ProgressStatus2ListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<ProgressStatus2ListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -63,26 +64,30 @@ export function useProgressStatus2List() {
  * dapat berubah kapan saja lewat layar Master Status Progres 1.
  */
 export function useProgressStatus2ParentList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: parentKey2(portal, token),
-    queryFn: () => callAPI<ProgressStatus2ParentListResponse>(ROUTE_PARENT, { token, portal }),
+    queryFn: () =>
+      callAPI<ProgressStatus2ParentListResponse>(ROUTE_PARENT, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook penambahan status progres 2. */
 export function useCreateProgressStatus2() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: ProgressStatus2Input) =>
       callAPI<ProgressStatus2Response>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
@@ -92,9 +97,9 @@ export function useCreateProgressStatus2() {
     // yang sama — daftar yang disusun sendiri di peramban akan berbeda dari isi tabel yang
     // sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey2(portal, token) })
+      client.invalidateQueries({ queryKey: listKey2(portal, token) });
     },
-  })
+  });
 }
 
 /**
@@ -108,14 +113,14 @@ export function useCreateProgressStatus2() {
  * lengkapnya ada pada doc comment `masterstatusprogres.Repo2.Update` di backend.
  */
 export function useUpdateProgressStatus2() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: ProgressStatus2Input }) =>
       callAPI<ProgressStatus2Response>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
@@ -123,7 +128,7 @@ export function useUpdateProgressStatus2() {
     // Daftar dimuat ulang dari server, bukan disunting di tempat: bila induk berpindah,
     // nama induk yang disalin server bisa berbeda dari yang ada di layar.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey2(portal, token) })
+      client.invalidateQueries({ queryKey: listKey2(portal, token) });
     },
-  })
+  });
 }

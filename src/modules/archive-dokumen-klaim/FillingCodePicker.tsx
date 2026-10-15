@@ -1,19 +1,19 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
-import { Field } from '@/components/Field'
-import { CloseIcon, SearchIcon } from '@/components/Icon'
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
+import { CloseIcon, SearchIcon } from "@/components/Icon";
 
-import { useFillingCodes } from './api'
-import type { FillingCode } from './types'
+import { useFillingCodes } from "./api";
+import type { FillingCode } from "./types";
 
 type Props = {
-  open: boolean
-  onClose: () => void
+  open: boolean;
+  onClose: () => void;
 
   /** Dipanggil saat satu kode dipilih; membawa kode DAN nama boks pasangannya. */
-  onPick: (code: FillingCode) => void
-}
+  onPick: (code: FillingCode) => void;
+};
 
 /**
  * FillingCodePicker adalah pengganti tombol "Pilih Kode" pada layar lama.
@@ -43,13 +43,13 @@ type Props = {
  * Yang menggantikannya adalah jumlah pemakaian, keterangan yang benar-benar ada.
  */
 export function FillingCodePicker({ open, onClose, onPick }: Props) {
-  const [keyword, setKeyword] = useState('')
+  const [keyword, setKeyword] = useState("");
 
-  const codes = useFillingCodes(keyword, open)
+  const codes = useFillingCodes(keyword, open);
 
-  if (!open) return null
+  if (!open) return null;
 
-  const rows: FillingCode[] = codes.data?.kode ?? []
+  const rows: FillingCode[] = codes.data?.kode ?? [];
 
   return (
     <div
@@ -61,12 +61,16 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
       <div className="w-full max-w-2xl rounded-kartu border border-slate-200 bg-white shadow-angkat">
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
           <div>
-            <h2 id="judul-pilih-kode" className="text-lg font-semibold text-slate-900">
+            <h2
+              id="judul-pilih-kode"
+              className="text-lg font-semibold text-slate-900"
+            >
               Pilih Kode Filling
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Daftar ini disusun dari kode yang sudah pernah dipakai berkas arsip — bukan
-              dari master. Kode baru tetap boleh diketik langsung di isian Kode Filling.
+              Daftar ini disusun dari kode yang sudah pernah dipakai berkas
+              arsip — bukan dari master. Kode baru tetap boleh diketik langsung
+              di isian Kode Filling.
             </p>
           </div>
 
@@ -93,7 +97,9 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
 
           <div className="mt-4 max-h-80 overflow-y-auto rounded-kontrol border border-slate-200">
             <table className="w-full text-left text-sm">
-              <caption className="sr-only">Daftar kode filling yang sudah dipakai</caption>
+              <caption className="sr-only">
+                Daftar kode filling yang sudah dipakai
+              </caption>
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-medium">
@@ -102,7 +108,10 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
                   <th scope="col" className="px-4 py-2.5 font-medium">
                     Nama Box
                   </th>
-                  <th scope="col" className="px-4 py-2.5 text-right font-medium">
+                  <th
+                    scope="col"
+                    className="px-4 py-2.5 text-right font-medium"
+                  >
                     Dipakai
                   </th>
                   <th scope="col" className="px-4 py-2.5">
@@ -114,7 +123,10 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
               <tbody className="divide-y divide-slate-200">
                 {codes.isPending && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                    <td
+                      colSpan={4}
+                      className="px-4 py-6 text-center text-slate-500"
+                    >
                       Memuat kode…
                     </td>
                   </tr>
@@ -122,22 +134,36 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
 
                 {!codes.isPending && rows.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                      Belum ada kode yang cocok. Ketik kode baru langsung di isian Kode
-                      Filling.
+                    <td
+                      colSpan={4}
+                      className="px-4 py-6 text-center text-slate-500"
+                    >
+                      Belum ada kode yang cocok. Ketik kode baru langsung di
+                      isian Kode Filling.
                     </td>
                   </tr>
                 )}
 
                 {rows.map((code) => (
-                  <tr key={`${code.kode}|${code.nama_box}`} className="hover:bg-slate-50">
-                    <td className="px-4 py-2.5 font-medium text-slate-900">{code.kode}</td>
-                    <td className="px-4 py-2.5 text-slate-700">{code.nama_box || '—'}</td>
+                  <tr
+                    key={`${code.kode}|${code.nama_box}`}
+                    className="hover:bg-slate-50"
+                  >
+                    <td className="px-4 py-2.5 font-medium text-slate-900">
+                      {code.kode}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-700">
+                      {code.nama_box || "—"}
+                    </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
                       {code.jumlah_pemakaian}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <Button type="button" tone="kedua" onClick={() => onPick(code)}>
+                      <Button
+                        type="button"
+                        tone="kedua"
+                        onClick={() => onPick(code)}
+                      >
                         Pilih
                       </Button>
                     </td>
@@ -155,5 +181,5 @@ export function FillingCodePicker({ open, onClose, onPick }: Props) {
         </footer>
       </div>
     </div>
-  )
+  );
 }

@@ -1,16 +1,16 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useQueryClient } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { ArchiveFormPanel } from './ArchiveFormPanel'
-import { ArchiveSearchPanel } from './ArchiveSearchPanel'
-import { BranchQueue } from './BranchQueue'
-import { ClaimPicker } from './ClaimPicker'
+import { ArchiveFormPanel } from "./ArchiveFormPanel";
+import { ArchiveSearchPanel } from "./ArchiveSearchPanel";
+import { BranchQueue } from "./BranchQueue";
+import { ClaimPicker } from "./ClaimPicker";
 import {
   ArchiveError,
   EMPTY_CLAIM_SEARCH,
@@ -20,7 +20,7 @@ import {
   type ArchiveForm,
   type ClaimSearchForm,
   type SearchForm,
-} from './types'
+} from "./types";
 import {
   useArchiveSearch,
   useClaimSearch,
@@ -29,7 +29,7 @@ import {
   useExportArchive,
   useSaveArchive,
   useSendToBranch,
-} from './api'
+} from "./api";
 
 /**
  * Ketiga bagian layar, dengan kode yang dipakai Pega.
@@ -45,11 +45,11 @@ import {
  * Yang berpindah bagian di Pega adalah TOMBOL, bukan tab — ketiganya memanggil
  * `FlagForArchiveData` yang menyetel penanda itu.
  */
-const VIEW_INPUT = 1
-const VIEW_ARCHIVE = 2
-const VIEW_BRANCH = 3
+const VIEW_INPUT = 1;
+const VIEW_ARCHIVE = 2;
+const VIEW_BRANCH = 3;
 
-type ViewID = typeof VIEW_INPUT | typeof VIEW_ARCHIVE | typeof VIEW_BRANCH
+type ViewID = typeof VIEW_INPUT | typeof VIEW_ARCHIVE | typeof VIEW_BRANCH;
 
 /**
  * Archive Dokumen Klaim — menu `MENU_ID 77`, pengganti harness `PNCArchiveDokumen`.
@@ -71,38 +71,46 @@ type ViewID = typeof VIEW_INPUT | typeof VIEW_ARCHIVE | typeof VIEW_BRANCH
  * "Nama BOX", "Kode Filling", serta "TGL INPUT" adalah teks yang selama ini mereka baca.
  */
 export function ArchiveDocumentPage() {
-  const [view, setView] = useState<ViewID>(VIEW_ARCHIVE)
+  const [view, setView] = useState<ViewID>(VIEW_ARCHIVE);
 
-  const [searchForm, setSearchForm] = useState<SearchForm>(EMPTY_SEARCH)
-  const [submittedSearch, setSubmittedSearch] = useState<SearchForm | null>(null)
-  const [searchPage, setSearchPage] = useState(1)
+  const [searchForm, setSearchForm] = useState<SearchForm>(EMPTY_SEARCH);
+  const [submittedSearch, setSubmittedSearch] = useState<SearchForm | null>(
+    null,
+  );
+  const [searchPage, setSearchPage] = useState(1);
 
-  const [claimForm, setClaimForm] = useState<ClaimSearchForm>(EMPTY_CLAIM_SEARCH)
-  const [submittedClaim, setSubmittedClaim] = useState<ClaimSearchForm | null>(null)
+  const [claimForm, setClaimForm] =
+    useState<ClaimSearchForm>(EMPTY_CLAIM_SEARCH);
+  const [submittedClaim, setSubmittedClaim] = useState<ClaimSearchForm | null>(
+    null,
+  );
 
-  const [archiveForm, setArchiveForm] = useState<ArchiveForm | null>(null)
-  const [savedMessage, setSavedMessage] = useState('')
+  const [archiveForm, setArchiveForm] = useState<ArchiveForm | null>(null);
+  const [savedMessage, setSavedMessage] = useState("");
 
-  const [exportError, setExportError] = useState('')
+  const [exportError, setExportError] = useState("");
 
-  const [branchPage, setBranchPage] = useState(1)
-  const [sendingID, setSendingID] = useState<number | null>(null)
-  const [sendMessage, setSendMessage] = useState('')
+  const [branchPage, setBranchPage] = useState(1);
+  const [sendingID, setSendingID] = useState<number | null>(null);
+  const [sendMessage, setSendMessage] = useState("");
 
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const opened = useOpenArchive()
+  const opened = useOpenArchive();
   const search = useArchiveSearch(
     submittedSearch ?? EMPTY_SEARCH,
     searchPage,
     submittedSearch !== null,
-  )
-  const claims = useClaimSearch(submittedClaim ?? EMPTY_CLAIM_SEARCH, submittedClaim !== null)
-  const pending = usePendingBranch(branchPage, view === VIEW_BRANCH)
-  const save = useSaveArchive()
-  const send = useSendToBranch()
-  const exportFile = useExportArchive()
-  const client = useQueryClient()
+  );
+  const claims = useClaimSearch(
+    submittedClaim ?? EMPTY_CLAIM_SEARCH,
+    submittedClaim !== null,
+  );
+  const pending = usePendingBranch(branchPage, view === VIEW_BRANCH);
+  const save = useSaveArchive();
+  const send = useSendToBranch();
+  const exportFile = useExportArchive();
+  const client = useQueryClient();
 
   if (portal === null) {
     return (
@@ -113,7 +121,7 @@ export function ArchiveDocumentPage() {
           tone="penolakan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (opened.isError) {
@@ -125,7 +133,7 @@ export function ArchiveDocumentPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   /**
@@ -135,12 +143,12 @@ export function ArchiveDocumentPage() {
    * pertama: kedua penyaring berdiri sendiri dan boleh terisi bersamaan.
    */
   function changeSearch(patch: Partial<SearchForm>) {
-    setSearchForm((previous) => ({ ...previous, ...patch }))
+    setSearchForm((previous) => ({ ...previous, ...patch }));
   }
 
   function runSearch() {
-    setSearchPage(1)
-    setSubmittedSearch(searchForm)
+    setSearchPage(1);
+    setSubmittedSearch(searchForm);
   }
 
   /**
@@ -150,29 +158,29 @@ export function ArchiveDocumentPage() {
    * semuanya akan menembak ulang daftar portal dan menu pada setiap penekanan.
    */
   function runRefresh() {
-    setSendMessage('')
-    setExportError('')
-    void client.invalidateQueries({ queryKey: ['arsip-dokumen'] })
+    setSendMessage("");
+    setExportError("");
+    void client.invalidateQueries({ queryKey: ["arsip-dokumen"] });
   }
 
   function runClaimSearch() {
-    setSubmittedClaim(claimForm)
+    setSubmittedClaim(claimForm);
   }
 
   function saveArchive() {
-    if (!archiveForm) return
+    if (!archiveForm) return;
 
-    setSavedMessage('')
+    setSavedMessage("");
     save.mutate(archiveForm, {
       onSuccess: (result) => {
-        setSavedMessage(result.pesan)
+        setSavedMessage(result.pesan);
 
         // Formulirnya DIKOSONGKAN setelah berhasil, dan klaim terpilih ikut dilepas.
         // Membiarkannya terisi mengundang penyimpanan kedua yang menghasilkan berkas
         // ganda untuk klaim yang sama — dan layar ini tidak punya tombol hapus.
-        setArchiveForm(null)
+        setArchiveForm(null);
       },
-    })
+    });
   }
 
   /**
@@ -183,33 +191,35 @@ export function ArchiveDocumentPage() {
    * sepanjang hari.
    */
   function runExport() {
-    setExportError('')
+    setExportError("");
 
     exportFile.mutate(submittedSearch ?? searchForm, {
       onSuccess: ({ blob, filename }) => {
-        const url = URL.createObjectURL(blob)
-        const anchor = document.createElement('a')
-        anchor.href = url
-        anchor.download = filename
-        document.body.appendChild(anchor)
-        anchor.click()
-        anchor.remove()
-        URL.revokeObjectURL(url)
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
       },
       onError: (error) => setExportError(messageOf(error)),
-    })
+    });
   }
 
   function sendToBranch(id: number) {
-    setSendMessage('')
-    setSendingID(id)
+    setSendMessage("");
+    setSendingID(id);
 
     send.mutate(id, {
       onSuccess: (result) => {
-        setSendMessage(`${result.pesan} Jawaban sistem Arsip: ${result.kode_layanan || '—'}.`)
+        setSendMessage(
+          `${result.pesan} Jawaban sistem Arsip: ${result.kode_layanan || "—"}.`,
+        );
       },
       onSettled: () => setSendingID(null),
-    })
+    });
   }
 
   return (
@@ -266,12 +276,12 @@ export function ArchiveDocumentPage() {
           onClick={() => setView(VIEW_BRANCH)}
         />
         <ToolbarButton
-          label={search.isFetching ? 'Mencari…' : 'Cari'}
+          label={search.isFetching ? "Mencari…" : "Cari"}
           active={view === VIEW_ARCHIVE}
           disabled={search.isFetching}
           onClick={() => {
-            setView(VIEW_ARCHIVE)
-            runSearch()
+            setView(VIEW_ARCHIVE);
+            runSearch();
           }}
         />
 
@@ -279,7 +289,7 @@ export function ArchiveDocumentPage() {
           <ToolbarButton label="Refresh" onClick={runRefresh} />
           {view === VIEW_ARCHIVE && (
             <ToolbarButton
-              label={exportFile.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+              label={exportFile.isPending ? "Menyiapkan…" : "Export To Excel"}
               disabled={exportFile.isPending}
               onClick={runExport}
             />
@@ -320,7 +330,9 @@ export function ArchiveDocumentPage() {
               label="Daftar berkas klaim yang sudah diarsipkan"
               isLoading={search.isFetching}
               error={
-                search.isError && !isValidationError(search.error) ? messageOf(search.error) : ''
+                search.isError && !isValidationError(search.error)
+                  ? messageOf(search.error)
+                  : ""
               }
               emptyMessage="Tidak ada berkas yang cocok. Pencocokan kata kunci PERSIS, bukan sebagian."
               hideSearch
@@ -346,18 +358,22 @@ export function ArchiveDocumentPage() {
           <ClaimPicker
             types={opened.data?.tipe_input ?? []}
             form={claimForm}
-            onChange={(patch) => setClaimForm((previous) => ({ ...previous, ...patch }))}
+            onChange={(patch) =>
+              setClaimForm((previous) => ({ ...previous, ...patch }))
+            }
             onSubmit={runClaimSearch}
             claims={claims.data?.klaim ?? []}
             isLoading={claims.isFetching}
             error={
-              claims.isError && !isValidationError(claims.error) ? messageOf(claims.error) : ''
+              claims.isError && !isValidationError(claims.error)
+                ? messageOf(claims.error)
+                : ""
             }
             onPick={(claim) => {
-              setArchiveForm(formFromClaim(claim))
-              setSavedMessage('')
+              setArchiveForm(formFromClaim(claim));
+              setSavedMessage("");
             }}
-            pickedNumber={archiveForm?.nomor_klaim ?? ''}
+            pickedNumber={archiveForm?.nomor_klaim ?? ""}
             fieldError={fieldErrorOf(claims.error)}
             searched={submittedClaim !== null}
           />
@@ -366,12 +382,14 @@ export function ArchiveDocumentPage() {
             <ArchiveFormPanel
               form={archiveForm}
               onChange={(patch) =>
-                setArchiveForm((previous) => (previous ? { ...previous, ...patch } : previous))
+                setArchiveForm((previous) =>
+                  previous ? { ...previous, ...patch } : previous,
+                )
               }
               onSubmit={saveArchive}
               onCancel={() => {
-                setArchiveForm(null)
-                setSavedMessage('')
+                setArchiveForm(null);
+                setSavedMessage("");
               }}
               documentTypes={opened.data?.tipe_dokumen ?? []}
               documentKinds={opened.data?.jenis_dokumen ?? []}
@@ -382,7 +400,7 @@ export function ArchiveDocumentPage() {
           ) : (
             <p className="rounded-kartu border border-dashed border-slate-300 bg-white px-5 py-8 text-center text-sm text-slate-600">
               {savedMessage ||
-                'Cari klaim di atas, lalu tekan Detail pada barisnya untuk mengisi berkas arsip.'}
+                "Cari klaim di atas, lalu tekan Detail pada barisnya untuk mengisi berkas arsip."}
             </p>
           )}
         </div>
@@ -397,16 +415,16 @@ export function ArchiveDocumentPage() {
             onPageChange={setBranchPage}
             scope={pending.data?.cakupan_cabang ?? opened.data?.cakupan_cabang}
             isLoading={pending.isFetching}
-            error={pending.isError ? messageOf(pending.error) : ''}
+            error={pending.isError ? messageOf(pending.error) : ""}
             onSend={sendToBranch}
             sendingID={sendingID}
-            sendError={send.isError ? messageOf(send.error) : ''}
+            sendError={send.isError ? messageOf(send.error) : ""}
             sendMessage={sendMessage}
           />
         </div>
       )}
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -422,29 +440,29 @@ function ToolbarButton({
   active = false,
   disabled = false,
 }: {
-  label: string
-  onClick: () => void
-  active?: boolean
-  disabled?: boolean
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-current={active ? 'page' : undefined}
+      aria-current={active ? "page" : undefined}
       className={[
-        'rounded-kontrol px-4 py-2 text-sm font-medium transition-colors',
-        'focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20',
-        'disabled:cursor-not-allowed disabled:opacity-55',
+        "rounded-kontrol px-4 py-2 text-sm font-medium transition-colors",
+        "focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20",
+        "disabled:cursor-not-allowed disabled:opacity-55",
         active
-          ? 'bg-blue-600 text-white shadow-aksen'
-          : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50',
-      ].join(' ')}
+          ? "bg-blue-600 text-white shadow-aksen"
+          : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50",
+      ].join(" ")}
     >
       {label}
     </button>
-  )
+  );
 }
 
 /** PageFrame menggambar judul dan kerangka halaman. */
@@ -453,7 +471,7 @@ function ToolbarButton({
  *
  * Ukurannya BUKAN selera. Disurvei dari seluruh modul yang ada:
  *
- *	mx-auto max-w-[96rem] px-4 py-8   dipakai 25 modul; `py-8` dipakai 75 dari 76 bingkai
+ *	halaman px-4 py-8   lebar bersama layar tabel (`src/styles.css`); `py-8` dipakai 75 dari 76 bingkai
  *	header border-b border-slate-200 pb-4   dipakai 22 modul
  *	mt-6 sebagai jarak antar bagian   kemunculan terbanyak di seluruh frontend
  *
@@ -462,11 +480,14 @@ function ToolbarButton({
  */
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">ARCHIVE FILE KLAIM</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          ARCHIVE FILE KLAIM
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pencatatan berkas fisik klaim yang diarsipkan, beserta pengirimannya ke sistem Arsip.
+          Pencatatan berkas fisik klaim yang diarsipkan, beserta pengirimannya
+          ke sistem Arsip.
         </p>
       </header>
 
@@ -480,7 +501,7 @@ function PageFrame({ children }: { children: ReactNode }) {
       */}
       <div className="mt-6 space-y-6">{children}</div>
     </div>
-  )
+  );
 }
 
 /**
@@ -498,68 +519,70 @@ function PageFrame({ children }: { children: ReactNode }) {
  */
 function archiveColumns(): Column<ArchiveFile>[] {
   return [
-    { key: 'nomor_klaim', title: 'NO KLAIM', value: (row) => row.nomor_klaim },
-    { key: 'nomor_polis', title: 'NO POLIS', value: (row) => row.nomor_polis },
+    { key: "nomor_klaim", title: "NO KLAIM", value: (row) => row.nomor_klaim },
+    { key: "nomor_polis", title: "NO POLIS", value: (row) => row.nomor_polis },
     {
-      key: 'nama_tertanggung',
-      title: 'TERTANGGUNG',
+      key: "nama_tertanggung",
+      title: "TERTANGGUNG",
       value: (row) => row.nama_tertanggung,
     },
     {
-      key: 'tanggal_kejadian',
-      title: 'DOL',
+      key: "tanggal_kejadian",
+      title: "DOL",
       value: (row) => dateText(row.tanggal_kejadian),
     },
-    { key: 'pic_teknis', title: 'PIC Teknis', value: (row) => row.pic_teknis },
+    { key: "pic_teknis", title: "PIC Teknis", value: (row) => row.pic_teknis },
     {
-      key: 'tanggal_terima_dokumen',
-      title: 'Tgl Terima Dokumen',
+      key: "tanggal_terima_dokumen",
+      title: "Tgl Terima Dokumen",
       value: (row) => dateText(row.tanggal_terima_dokumen),
     },
     {
-      key: 'tanggal_input',
-      title: 'TGL INPUT',
+      key: "tanggal_input",
+      title: "TGL INPUT",
       value: (row) => dateText(row.tanggal_input),
     },
     {
-      key: 'jumlah_lembar',
-      title: 'Jumlah Lembar',
+      key: "jumlah_lembar",
+      title: "Jumlah Lembar",
       value: (row) => String(row.jumlah_lembar),
       alignRight: true,
     },
     {
-      key: 'tipe_dokumen',
-      title: 'Tipe Dokumen',
+      key: "tipe_dokumen",
+      title: "Tipe Dokumen",
       // Kode ikut ditampilkan saat namanya kosong. Kosong total membuat pengguna
       // mengira barisnya rusak; kodenya setidaknya dapat dicari di master.
-      value: (row) => row.tipe_dokumen || row.kode_tipe_dokumen || '—',
+      value: (row) => row.tipe_dokumen || row.kode_tipe_dokumen || "—",
     },
     {
-      key: 'jenis_dokumen',
-      title: 'Jenis Dokumen',
-      value: (row) => row.jenis_dokumen || row.kode_jenis_dokumen || '—',
+      key: "jenis_dokumen",
+      title: "Jenis Dokumen",
+      value: (row) => row.jenis_dokumen || row.kode_jenis_dokumen || "—",
     },
-    { key: 'nama_box', title: 'Nama BOX', value: (row) => row.nama_box },
+    { key: "nama_box", title: "Nama BOX", value: (row) => row.nama_box },
     {
-      key: 'kode_filling',
-      title: 'Kode Filling',
+      key: "kode_filling",
+      title: "Kode Filling",
       value: (row) => row.kode_filling,
     },
-    { key: 'user_input', title: 'USER INPUT', value: (row) => row.user_input },
+    { key: "user_input", title: "USER INPUT", value: (row) => row.user_input },
     {
-      key: 'tanggal_kirim_dokumen',
-      title: 'Tanggal Kirim Dok',
+      key: "tanggal_kirim_dokumen",
+      title: "Tanggal Kirim Dok",
       value: (row) => dateText(row.tanggal_kirim_dokumen),
     },
-  ]
+  ];
 }
 
 function dateText(iso: string | null): string {
-  return iso ? formatDate(iso) : '—'
+  return iso ? formatDate(iso) : "—";
 }
 
 function isValidationError(error: unknown): boolean {
-  return error instanceof APIError && error.kode === ArchiveError.validationFail
+  return (
+    error instanceof APIError && error.kode === ArchiveError.validationFail
+  );
 }
 
 /**
@@ -571,14 +594,14 @@ function isValidationError(error: unknown): boolean {
  * kontraknya kelak berubah.
  */
 function fieldErrorOf(error: unknown): Record<string, string> {
-  if (!(error instanceof APIError)) return {}
+  if (!(error instanceof APIError)) return {};
 
-  const result: Record<string, string> = {}
+  const result: Record<string, string> = {};
   for (const violation of error.detail) {
-    const name = violation.field ?? violation.kolom
-    if (name) result[name] = violation.pesan
+    const name = violation.field ?? violation.kolom;
+    if (name) result[name] = violation.pesan;
   }
-  return result
+  return result;
 }
 
 /**
@@ -589,14 +612,14 @@ function fieldErrorOf(error: unknown): Record<string, string> {
  * tampak seperti tidak menanggapi tombol Simpan.
  */
 function saveFieldError(error: unknown): Record<string, string> {
-  const result = fieldErrorOf(error)
+  const result = fieldErrorOf(error);
   if (error && Object.keys(result).length === 0) {
-    result['__umum'] = messageOf(error)
+    result["__umum"] = messageOf(error);
   }
-  return result
+  return result;
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (error instanceof Error && error.message) return error.message;
+  return "Terjadi kesalahan pada sistem.";
 }

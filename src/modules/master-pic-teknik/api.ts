@@ -1,16 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   EmployeeResponse,
   TechnicianInput,
   TechnicianListResponse,
   TechnicianResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/pic-teknik'
+const ROUTE = "/api/master/pic-teknik";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -24,7 +24,7 @@ const ROUTE = '/api/master/pic-teknik'
  * peramban yang sama.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-pic-teknik', portal, token] as const
+  return ["master-pic-teknik", portal, token] as const;
 }
 
 /**
@@ -48,8 +48,8 @@ function listKey(portal: string | null, token: string | null) {
  * menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useTechnicianList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
@@ -59,7 +59,7 @@ export function useTechnicianList() {
     // pemuatan ulang yang tidak perlu, sementara tombol Refresh tetap tersedia bagi
     // pengguna yang tahu datanya baru saja diubah orang lain.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -72,18 +72,21 @@ export function useTechnicianList() {
  * Dinonaktifkan saat `operatorID` kosong supaya membuka form tambah tidak menembak server.
  */
 export function useTechnician(operatorID: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['master-pic-teknik', 'satu', portal, token, operatorID] as const,
+    queryKey: ["master-pic-teknik", "satu", portal, token, operatorID] as const,
     queryFn: () =>
-      callAPI<TechnicianResponse>(`${ROUTE}/${encodeURIComponent(operatorID ?? '')}`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && (operatorID ?? '') !== '',
-  })
+      callAPI<TechnicianResponse>(
+        `${ROUTE}/${encodeURIComponent(operatorID ?? "")}`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: token !== null && portal !== null && (operatorID ?? "") !== "",
+  });
 }
 
 /**
@@ -102,22 +105,25 @@ export function useTechnician(operatorID: string | null) {
  * nama yang dikirim klien tidak pernah dipercaya.
  */
 export function useLookupEmployee() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (operatorID: string) =>
-      callAPI<EmployeeResponse>(`${ROUTE}/direktori/${encodeURIComponent(operatorID)}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<EmployeeResponse>(
+        `${ROUTE}/direktori/${encodeURIComponent(operatorID)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 type SaveFields = TechnicianInput & {
   /** Kosong berarti menambah; terisi berarti mengubah petugas dengan ID itu. */
-  ubah?: boolean
-}
+  ubah?: boolean;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -130,16 +136,16 @@ type SaveFields = TechnicianInput & {
  * satu nilai berarti keduanya dapat berbeda, dan yang menang menjadi soal urutan baca.
  */
 export function useSaveTechnician() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ ubah, ...input }: SaveFields) =>
       callAPI<TechnicianResponse>(
         ubah ? `${ROUTE}/${encodeURIComponent(input.id_operator)}` : ROUTE,
         {
-          metode: ubah ? 'PUT' : 'POST',
+          metode: ubah ? "PUT" : "POST",
           body: input,
           token,
           portal,
@@ -152,8 +158,8 @@ export function useSaveTechnician() {
       //
       // Menonaktifkan petugas juga MENGHILANGKAN barisnya dari daftar; cache yang disunting
       // sendiri tidak akan mencerminkan itu.
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
-      client.invalidateQueries({ queryKey: ['master-pic-teknik', 'satu'] })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
+      client.invalidateQueries({ queryKey: ["master-pic-teknik", "satu"] });
     },
-  })
+  });
 }

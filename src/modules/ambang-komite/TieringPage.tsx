@@ -1,14 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { KomiteMode, type KomiteApprover, type KomiteTieringResponse } from '@/api/types'
-import { WarningIcon, ScaleIcon } from '@/components/Icon'
-import { Field } from '@/components/Field'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
-import { formatRupiah, parseRupiah } from '@/lib/money'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  KomiteMode,
+  type KomiteApprover,
+  type KomiteTieringResponse,
+} from "@/api/types";
+import { WarningIcon, ScaleIcon } from "@/components/Icon";
+import { Field } from "@/components/Field";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
+import { formatRupiah, parseRupiah } from "@/lib/money";
 
-import { useThresholdList, useTiering } from './api'
+import { useThresholdList, useTiering } from "./api";
 
 /**
  * Layar Penjenjangan Komite.
@@ -36,53 +40,56 @@ import { useThresholdList, useTiering } from './api'
  * mengirimkan tautannya apa adanya kepada Work Owner.
  */
 export function TieringPage() {
-  const master = useThresholdList()
+  const master = useThresholdList();
 
-  const [typedValue, setTypedValue] = useState('')
-  const [line, setLine] = useState('')
-  const [applicant, setApplicant] = useState('')
-  const [requested, setRequested] = useState<Requested | null>(null)
-  const [fieldError, setFieldError] = useState<string | undefined>(undefined)
+  const [typedValue, setTypedValue] = useState("");
+  const [line, setLine] = useState("");
+  const [applicant, setApplicant] = useState("");
+  const [requested, setRequested] = useState<Requested | null>(null);
+  const [fieldError, setFieldError] = useState<string | undefined>(undefined);
 
   // Mode ditentukan per PORTAL, bukan per lini, sehingga ia dibaca dari master — bukan
   // disimpulkan dari lini yang sedang dipilih.
-  const singleApproverMode = master.data?.mode === KomiteMode.singleApprover
+  const singleApproverMode = master.data?.mode === KomiteMode.singleApprover;
 
   const result = useTiering(
-    requested?.value ?? '',
-    requested?.line ?? '',
-    requested?.applicant ?? '',
+    requested?.value ?? "",
+    requested?.line ?? "",
+    requested?.applicant ?? "",
     requested !== null,
-  )
+  );
 
   function compute(event: FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
 
     // Diurai di layar, bukan di server: pemisah ribuan berarti berbeda antar bahasa —
     // titik adalah ribuan di Indonesia dan desimal di Inggris — sehingga penafsirannya
     // harus terjadi di tempat yang tahu bahasanya.
-    const canonical = parseRupiah(typedValue)
+    const canonical = parseRupiah(typedValue);
     if (canonical === null) {
-      setFieldError('Masukkan nilai klaim, misalnya 75.000.000.')
-      setRequested(null)
-      return
+      setFieldError("Masukkan nilai klaim, misalnya 75.000.000.");
+      setRequested(null);
+      return;
     }
-    if (line === '') {
-      setFieldError(undefined)
-      setRequested(null)
-      return
+    if (line === "") {
+      setFieldError(undefined);
+      setRequested(null);
+      return;
     }
 
-    setFieldError(undefined)
-    setRequested({ value: canonical, line, applicant: applicant.trim() })
+    setFieldError(undefined);
+    setRequested({ value: canonical, line, applicant: applicant.trim() });
   }
 
-  const lineOptions = master.data?.lini ?? []
+  const lineOptions = master.data?.lini ?? [];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Komite</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -95,9 +102,9 @@ export function TieringPage() {
           Penjenjangan Komite
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Masukkan nilai klaim dan lini bisnisnya untuk melihat siapa saja yang harus
-          menyetujui. Aturannya <strong>kumulatif</strong>: setiap jenjang yang ambang
-          bawahnya sudah terlampaui ikut menyetujui.
+          Masukkan nilai klaim dan lini bisnisnya untuk melihat siapa saja yang
+          harus menyetujui. Aturannya <strong>kumulatif</strong>: setiap jenjang
+          yang ambang bawahnya sudah terlampaui ikut menyetujui.
         </p>
       </header>
 
@@ -133,12 +140,12 @@ export function TieringPage() {
                 required
                 disabled={master.isPending || lineOptions.length === 0}
                 className={[
-                  'w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2.5',
-                  'text-sm text-slate-900',
-                  'transition-[border-color,box-shadow] duration-150 ease-halus',
-                  'hover:border-slate-400 disabled:bg-slate-50 disabled:text-slate-400',
-                  'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-                ].join(' ')}
+                  "w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2.5",
+                  "text-sm text-slate-900",
+                  "transition-[border-color,box-shadow] duration-150 ease-halus",
+                  "hover:border-slate-400 disabled:bg-slate-50 disabled:text-slate-400",
+                  "focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15",
+                ].join(" ")}
               >
                 <option value="">Pilih lini bisnis…</option>
                 {lineOptions.map((l) => (
@@ -154,7 +161,7 @@ export function TieringPage() {
               */}
               <p className="mt-1.5 text-xs text-slate-500">
                 {master.isPending
-                  ? 'Memuat daftar lini…'
+                  ? "Memuat daftar lini…"
                   : `${lineOptions.length} lini punya jenjang persetujuan.`}
               </p>
             </div>
@@ -173,15 +180,15 @@ export function TieringPage() {
               onChange={(e) => setApplicant(e.target.value)}
               hint={
                 singleApproverMode
-                  ? 'Dikecualikan dari calon penyetuju. Opsional.'
-                  : 'Dikecualikan supaya tidak menyetujui pengajuannya sendiri. Opsional.'
+                  ? "Dikecualikan dari calon penyetuju. Opsional."
+                  : "Dikecualikan supaya tidak menyetujui pengajuannya sendiri. Opsional."
               }
             />
           </div>
 
           <Button tone="utama" type="submit" disabled={result.isFetching}>
             <ScaleIcon className="h-4 w-4" />
-            {result.isFetching ? 'Menghitung…' : 'Hitung'}
+            {result.isFetching ? "Menghitung…" : "Hitung"}
           </Button>
         </div>
       </form>
@@ -192,33 +199,34 @@ export function TieringPage() {
 
       {requested === null && !result.isError && <ExampleCases />}
     </div>
-  )
+  );
 }
 
 /** Isian yang sudah dikirim ke server; berbeda dari isian yang masih diketik. */
-type Requested = { value: string; line: string; applicant: string }
+type Requested = { value: string; line: string; applicant: string };
 
 function TieringResult({ result }: { result: KomiteTieringResponse }) {
-  const singleApprover = result.mode === KomiteMode.singleApprover
+  const singleApprover = result.mode === KomiteMode.singleApprover;
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-white shadow-lembut">
       <header className="border-b border-slate-200 p-5">
         <h2 className="text-base font-semibold text-slate-900">
           {result.jumlah_jenjang === 0
-            ? 'Tidak ada yang menyetujui'
+            ? "Tidak ada yang menyetujui"
             : singleApprover
-              ? 'Satu penyetuju dipilih'
+              ? "Satu penyetuju dipilih"
               : `${result.jumlah_jenjang} jenjang harus menyetujui`}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim <strong className="tabular-nums">{formatRupiah(result.nilai)}</strong> pada
-          lini <strong>{result.lini}</strong>
+          Klaim{" "}
+          <strong className="tabular-nums">{formatRupiah(result.nilai)}</strong>{" "}
+          pada lini <strong>{result.lini}</strong>
           {result.berpita_nilai && (
             <>
-              {' '}
-              — masuk <strong>pita {result.pita}</strong>, dan akumulasi berjalan di dalam
-              pita itu saja
+              {" "}
+              — masuk <strong>pita {result.pita}</strong>, dan akumulasi
+              berjalan di dalam pita itu saja
             </>
           )}
           .
@@ -238,7 +246,7 @@ function TieringResult({ result }: { result: KomiteTieringResponse }) {
               title="Seluruh penyetuju tersingkir"
               description={
                 `Satu-satunya yang berwenang pada tangga ini adalah ` +
-                `${result.tersingkir?.map((a) => a.nama || a.operator_id).join(', ')}, ` +
+                `${result.tersingkir?.map((a) => a.nama || a.operator_id).join(", ")}, ` +
                 `dan mereka dikecualikan karena mengajukan klaim ini sendiri. ` +
                 `Klaim seperti ini akan berhenti tanpa penyetuju — laporkan ke Work Owner.`
               }
@@ -248,9 +256,9 @@ function TieringResult({ result }: { result: KomiteTieringResponse }) {
             <ErrorMessage
               title="Tidak ada jenjang yang cocok"
               description={
-                'Tidak satu pun baris master yang ambang bawahnya terlampaui nilai ini. ' +
-                'Klaim sebesar ini tidak akan mendapat persetujuan siapa pun — laporkan ' +
-                'ke Work Owner sebelum alur komite dipakai.'
+                "Tidak satu pun baris master yang ambang bawahnya terlampaui nilai ini. " +
+                "Klaim sebesar ini tidak akan mendapat persetujuan siapa pun — laporkan " +
+                "ke Work Owner sebelum alur komite dipakai."
               }
               tone="penolakan"
             />
@@ -266,13 +274,15 @@ function TieringResult({ result }: { result: KomiteTieringResponse }) {
 
       {singleApprover && <SingleApproverNote result={result} />}
 
-      {!singleApprover && (result.tersingkir?.length ?? 0) > 0 && !result.tanpa_penyetuju && (
-        <ExcludedNote excluded={result.tersingkir ?? []} />
-      )}
+      {!singleApprover &&
+        (result.tersingkir?.length ?? 0) > 0 &&
+        !result.tanpa_penyetuju && (
+          <ExcludedNote excluded={result.tersingkir ?? []} />
+        )}
 
       {result.urutan_tidak_pasti && <OrderNote />}
     </section>
-  )
+  );
 }
 
 /**
@@ -284,7 +294,7 @@ function TieringResult({ result }: { result: KomiteTieringResponse }) {
  * tidak ada cara memastikan aturannya berjalan benar.
  */
 function SingleApproverNote({ result }: { result: KomiteTieringResponse }) {
-  const candidates = result.kandidat ?? []
+  const candidates = result.kandidat ?? [];
 
   return (
     <div className="border-t border-slate-200 bg-slate-50/70 p-5">
@@ -292,14 +302,14 @@ function SingleApproverNote({ result }: { result: KomiteTieringResponse }) {
         Dipilih acak dari {candidates.length} calon
       </h3>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Portal ini memilih <strong>satu</strong> penyetuju, bukan mengakumulasi jenjang.
-        Calonnya adalah semua yang berwenang pada jenjang terendah, dan satu di antaranya
-        dipilih acak untuk menyebar beban.
+        Portal ini memilih <strong>satu</strong> penyetuju, bukan mengakumulasi
+        jenjang. Calonnya adalah semua yang berwenang pada jenjang terendah, dan
+        satu di antaranya dipilih acak untuk menyebar beban.
         {result.dikecualikan_penginput ? (
           <>
-            {' '}
-            <strong>{result.dikecualikan_penginput}</strong> dikeluarkan dari daftar calon
-            karena dialah yang mengajukan.
+            {" "}
+            <strong>{result.dikecualikan_penginput}</strong> dikeluarkan dari
+            daftar calon karena dialah yang mengajukan.
           </>
         ) : null}
       </p>
@@ -310,25 +320,27 @@ function SingleApproverNote({ result }: { result: KomiteTieringResponse }) {
             <li
               key={c.id_ambang}
               className={[
-                'rounded-full px-3 py-1 text-xs font-medium',
+                "rounded-full px-3 py-1 text-xs font-medium",
                 c.operator_id === result.penyetuju[0]?.operator_id
-                  ? 'bg-blue-100 text-blue-900'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200',
-              ].join(' ')}
+                  ? "bg-blue-100 text-blue-900"
+                  : "bg-white text-slate-600 ring-1 ring-slate-200",
+              ].join(" ")}
             >
               {c.nama || c.operator_id}
-              {c.operator_id === result.penyetuju[0]?.operator_id && ' · terpilih'}
+              {c.operator_id === result.penyetuju[0]?.operator_id &&
+                " · terpilih"}
             </li>
           ))}
         </ul>
       )}
 
       <p className="mt-3 text-xs leading-relaxed text-slate-500">
-        Karena pemilihannya acak, hasil yang berbeda pada nilai yang sama <strong>bukan</strong>{' '}
-        cacat. Yang harus tetap sama adalah daftar calonnya.
+        Karena pemilihannya acak, hasil yang berbeda pada nilai yang sama{" "}
+        <strong>bukan</strong> cacat. Yang harus tetap sama adalah daftar
+        calonnya.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -353,15 +365,17 @@ function ApproverRow({ approver }: { approver: KomiteApprover }) {
           )}
         </p>
         <p className="mt-0.5 text-sm text-slate-600">
-          {approver.operator_id} · ikut karena nilai klaim melampaui{' '}
-          <span className="tabular-nums">{formatRupiah(approver.batas_bawah)}</span>
+          {approver.operator_id} · ikut karena nilai klaim melampaui{" "}
+          <span className="tabular-nums">
+            {formatRupiah(approver.batas_bawah)}
+          </span>
         </p>
       </div>
       <span className="shrink-0 text-xs text-slate-400">
         jenjang {approver.jenjang} · baris {approver.id_ambang}
       </span>
     </li>
-  )
+  );
 }
 
 /**
@@ -375,13 +389,15 @@ function ExcludedNote({ excluded }: { excluded: KomiteApprover[] }) {
     <div className="flex items-start gap-3 border-t border-amber-200 bg-amber-50/70 p-4">
       <WarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
       <p className="text-sm leading-relaxed text-amber-900">
-        <strong>{excluded.map((a) => a.nama || a.operator_id).join(', ')}</strong>{' '}
-        dikeluarkan dari daftar penyetuju karena mengajukan klaim ini sendiri. Jumlah
-        penyetujunya karena itu{' '}
+        <strong>
+          {excluded.map((a) => a.nama || a.operator_id).join(", ")}
+        </strong>{" "}
+        dikeluarkan dari daftar penyetuju karena mengajukan klaim ini sendiri.
+        Jumlah penyetujunya karena itu{" "}
         <strong>berkurang {excluded.length}</strong> dari tangga masternya.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -397,13 +413,14 @@ function OrderNote() {
     <div className="flex items-start gap-3 border-t border-amber-200 bg-amber-50/70 p-4">
       <WarningIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
       <p className="text-sm leading-relaxed text-amber-900">
-        Ada dua penyetuju atau lebih dengan nomor jenjang yang sama. Master tidak
-        menentukan siapa lebih dulu di antara mereka, sehingga sistem lama dapat
-        mengurutkannya berbeda-beda. Di sini urutannya ditetapkan dari ambang terkecil ke
-        terbesar — <strong>siapa</strong> yang menyetujui tetap sama.
+        Ada dua penyetuju atau lebih dengan nomor jenjang yang sama. Master
+        tidak menentukan siapa lebih dulu di antara mereka, sehingga sistem lama
+        dapat mengurutkannya berbeda-beda. Di sini urutannya ditetapkan dari
+        ambang terkecil ke terbesar — <strong>siapa</strong> yang menyetujui
+        tetap sama.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -415,27 +432,32 @@ function OrderNote() {
  */
 function ExampleCases() {
   const cases = [
-    { line: 'PA', value: 'Rp 5.000.000', tiers: 1 },
-    { line: 'PA', value: 'Rp 75.000.000', tiers: 3 },
-    { line: 'PA', value: 'Rp 150.000.000', tiers: 4 },
-    { line: 'TRAVEL', value: 'Rp 150.000.000', tiers: 3 },
-    { line: 'NONMBU', value: 'Rp 80.000.000', tiers: 2 },
-    { line: 'NONMBU', value: 'Rp 750.000.000', tiers: 2 },
-    { line: 'NONMBU', value: 'Rp 2.000.000.000', tiers: 3 },
-  ]
+    { line: "PA", value: "Rp 5.000.000", tiers: 1 },
+    { line: "PA", value: "Rp 75.000.000", tiers: 3 },
+    { line: "PA", value: "Rp 150.000.000", tiers: 4 },
+    { line: "TRAVEL", value: "Rp 150.000.000", tiers: 3 },
+    { line: "NONMBU", value: "Rp 80.000.000", tiers: 2 },
+    { line: "NONMBU", value: "Rp 750.000.000", tiers: 2 },
+    { line: "NONMBU", value: "Rp 2.000.000.000", tiers: 3 },
+  ];
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-slate-50/60 p-5">
-      <h2 className="text-sm font-semibold text-slate-900">Kasus yang dapat dicoba</h2>
+      <h2 className="text-sm font-semibold text-slate-900">
+        Kasus yang dapat dicoba
+      </h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Tujuh kasus berikut dipakai membuktikan aturan penjenjangan. Cobalah salah satunya
-        untuk memastikan hasilnya sesuai.
+        Tujuh kasus berikut dipakai membuktikan aturan penjenjangan. Cobalah
+        salah satunya untuk memastikan hasilnya sesuai.
       </p>
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 text-sm text-slate-700 sm:grid-cols-2">
         {cases.map((c) => (
-          <li key={`${c.line}-${c.value}`} className="flex items-baseline justify-between gap-3">
+          <li
+            key={`${c.line}-${c.value}`}
+            className="flex items-baseline justify-between gap-3"
+          >
             <span>
-              <strong className="font-medium text-slate-900">{c.line}</strong>{' '}
+              <strong className="font-medium text-slate-900">{c.line}</strong>{" "}
               <span className="tabular-nums">{c.value}</span>
             </span>
             <span className="shrink-0 text-slate-500">{c.tiers} jenjang</span>
@@ -443,7 +465,7 @@ function ExampleCases() {
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 function ComputeErrorMessage({ error }: { error: unknown }) {
@@ -454,10 +476,16 @@ function ComputeErrorMessage({ error }: { error: unknown }) {
         description="Perhitungan belum dapat dijalankan. Periksa koneksi lalu tekan Hitung lagi."
         tone="gangguan"
       />
-    )
+    );
   }
   if (error instanceof APIError) {
-    return <ErrorMessage title="Tidak dapat menghitung" description={error.message} tone="penolakan" />
+    return (
+      <ErrorMessage
+        title="Tidak dapat menghitung"
+        description={error.message}
+        tone="penolakan"
+      />
+    );
   }
   return (
     <ErrorMessage
@@ -465,5 +493,5 @@ function ComputeErrorMessage({ error }: { error: unknown }) {
       description="Perhitungan belum dapat dijalankan. Coba tekan Hitung lagi."
       tone="gangguan"
     />
-  )
+  );
 }

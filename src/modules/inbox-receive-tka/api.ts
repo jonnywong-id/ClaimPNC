@@ -1,16 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   ReceiveTKACompleteRequest,
   ReceiveTKACompleteResponse,
   ReceiveTKAInboxResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/inbox/receive-tka'
-const COMPLETE_ROUTE = '/api/inbox/receive-tka/kelengkapan-dokumen'
+const ROUTE = "/api/inbox/receive-tka";
+const COMPLETE_ROUTE = "/api/inbox/receive-tka/kelengkapan-dokumen";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -28,7 +28,7 @@ const COMPLETE_ROUTE = '/api/inbox/receive-tka/kelengkapan-dokumen'
  * baru per huruf.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['inbox-receive-tka', portal, token] as const
+  return ["inbox-receive-tka", portal, token] as const;
 }
 
 /**
@@ -54,14 +54,14 @@ function listKey(portal: string | null, token: string | null) {
  * tombol Refresh yang ditekan sendiri, sama seperti tombol Refresh pada harness lamanya.
  */
 export function useReceiveTKAInbox() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
     queryFn: () => callAPI<ReceiveTKAInboxResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -83,20 +83,20 @@ export function useReceiveTKAInbox() {
  * tanggal yang sudah diketik pengguna tidak boleh hilang dari layar.
  */
 export function useCompleteReceiveTKA() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (body: ReceiveTKACompleteRequest) =>
       callAPI<ReceiveTKACompleteResponse>(COMPLETE_ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: listKey(portal, token) })
+      queryClient.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }

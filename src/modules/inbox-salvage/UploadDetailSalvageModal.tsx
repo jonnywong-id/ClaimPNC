@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useUploadSalvageDetail } from './api'
-import type { UploadResponse } from './types'
+import { useUploadSalvageDetail } from "./api";
+import type { UploadResponse } from "./types";
 
 /**
  * Modal **"UploadDetailSalvage"** — di balik tombol "Upload Detail Salvage" pada form
@@ -43,34 +43,34 @@ export function UploadDetailSalvageModal({
   onClose,
   onLoaded,
 }: {
-  onClose: () => void
+  onClose: () => void;
 
   /** Dipanggil setelah berkasnya terbaca, membawa baris yang dihasilkannya. */
-  onLoaded: (result: UploadResponse) => void
+  onLoaded: (result: UploadResponse) => void;
 }) {
-  const [file, setFile] = useState<File | null>(null)
-  const upload = useUploadSalvageDetail()
+  const [file, setFile] = useState<File | null>(null);
+  const upload = useUploadSalvageDetail();
 
   // Escape menutup modal, seperti dialog mana pun yang dikenal pengguna — KECUALI saat
   // berkasnya sedang dibaca. Menutupnya di tengah jalan membuang hasil yang sebentar lagi
   // tiba, dan pengguna akan mengira unggahannya gagal.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !upload.isPending) onClose()
+      if (event.key === "Escape" && !upload.isPending) onClose();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, upload.isPending])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, upload.isPending]);
 
   function submit() {
-    if (file === null) return
+    if (file === null) return;
 
     upload.mutate(file, {
       onSuccess: (result) => {
-        onLoaded(result)
-        onClose()
+        onLoaded(result);
+        onClose();
       },
-    })
+    });
   }
 
   return (
@@ -152,17 +152,17 @@ export function UploadDetailSalvageModal({
             disabled={file === null || upload.isPending}
             onClick={submit}
           >
-            {upload.isPending ? 'Membaca berkas…' : 'Submit'}
+            {upload.isPending ? "Membaca berkas…" : "Submit"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** messageOf mengambil kalimat yang layak dibaca dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

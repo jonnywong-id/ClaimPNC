@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable } from '@/components/DataTable'
-import { Field } from '@/components/Field'
+import { Button } from "@/components/Button";
+import { DataTable } from "@/components/DataTable";
+import { Field } from "@/components/Field";
 
-import { useDiagnosisSearch } from './api'
-import type { DiagnosisOption } from './types'
+import { useDiagnosisSearch } from "./api";
+import type { DiagnosisOption } from "./types";
 
 /**
  * "Detail Diagnosa" modal Transfer Claim ke Komite (PA) — isian "Cari Kode / Desc Diagnose"
@@ -20,12 +20,12 @@ export function DiagnosisSearch({
   disabled,
   onPick,
 }: {
-  disabled: boolean
-  onPick: (d: DiagnosisOption) => void
+  disabled: boolean;
+  onPick: (d: DiagnosisOption) => void;
 }) {
-  const [text, setText] = useState('')
-  const [term, setTerm] = useState('')
-  const search = useDiagnosisSearch(term)
+  const [text, setText] = useState("");
+  const [term, setTerm] = useState("");
+  const search = useDiagnosisSearch(term);
 
   return (
     <div className="mt-3 rounded border border-slate-200 p-3">
@@ -39,39 +39,53 @@ export function DiagnosisSearch({
             disabled={disabled}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                setTerm(text.trim())
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setTerm(text.trim());
               }
             }}
           />
         </div>
-        <Button tone="kedua" disabled={disabled || text.trim() === ''} onClick={() => setTerm(text.trim())}>
+        <Button
+          tone="kedua"
+          disabled={disabled || text.trim() === ""}
+          onClick={() => setTerm(text.trim())}
+        >
           Cari
         </Button>
       </div>
-      {term !== '' && (
+      {term !== "" && (
         <div className="mt-2">
           <DataTable<DiagnosisOption>
             label="Hasil pencarian diagnosa"
             hideSearch
             showHeaderWhenEmpty
             isLoading={search.isPending}
-            error={search.isError ? 'Kode diagnosa tidak dapat dicari.' : undefined}
+            error={
+              search.isError ? "Kode diagnosa tidak dapat dicari." : undefined
+            }
             emptyMessage="Kode diagnosa tidak ditemukan."
             rows={search.data?.pilihan ?? []}
             rowKey={(d) => `${d.kode}|${d.deskripsi}`}
             columns={[
-              { key: 'kode', title: 'Kode Diagnose', value: (d) => d.kode },
-              { key: 'deskripsi', title: 'Desc Diagnose', value: (d) => d.deskripsi },
+              { key: "kode", title: "Kode Diagnose", value: (d) => d.kode },
               {
-                key: 'pilih',
-                title: '',
+                key: "deskripsi",
+                title: "Desc Diagnose",
+                value: (d) => d.deskripsi,
+              },
+              {
+                key: "pilih",
+                title: "",
                 noSort: true,
                 alignRight: true,
-                value: () => '',
+                value: () => "",
                 render: (d) => (
-                  <Button tone="kedua" disabled={disabled} onClick={() => onPick(d)}>
+                  <Button
+                    tone="kedua"
+                    disabled={disabled}
+                    onClick={() => onPick(d)}
+                  >
                     Pilih
                   </Button>
                 ),
@@ -81,5 +95,5 @@ export function DiagnosisSearch({
         </div>
       )}
     </div>
-  )
+  );
 }

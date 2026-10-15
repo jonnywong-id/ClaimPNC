@@ -1,31 +1,31 @@
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   KomiteOutcome,
   type KomiteAdjustmentLine,
   type KomiteCase,
   type KomiteTransferDetail,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { ReloadIcon, ScaleIcon } from '@/components/Icon'
-import { TabBar } from '@/components/TabBar'
-import { formatRupiah } from '@/lib/money'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { ReloadIcon, ScaleIcon } from "@/components/Icon";
+import { TabBar } from "@/components/TabBar";
+import { formatRupiah } from "@/lib/money";
 
-import { useKomiteCase } from './api'
-import { AttachmentTab, ClaimSheet, PolicyTab } from './ClaimSheet'
-import { CommitteeBottom } from './CommitteeBottom'
-import { KmtnDecisionForm } from './KmtnDecisionForm'
-import { formatTanggal } from './format'
+import { useKomiteCase } from "./api";
+import { AttachmentTab, ClaimSheet, PolicyTab } from "./ClaimSheet";
+import { CommitteeBottom } from "./CommitteeBottom";
+import { KmtnDecisionForm } from "./KmtnDecisionForm";
+import { formatTanggal } from "./format";
 
 /** Ketiga tab `Section/ShowTransfer` — Claim Detail, Policy Detail, Lampiran Dokumen. */
 const TABS = [
-  { kode: 'klaim', nama: 'Claim Detail' },
-  { kode: 'polis', nama: 'Policy Detail' },
-  { kode: 'lampiran', nama: 'Lampiran Dokumen' },
-]
+  { kode: "klaim", nama: "Claim Detail" },
+  { kode: "polis", nama: "Policy Detail" },
+  { kode: "lampiran", nama: "Lampiran Dokumen" },
+];
 
 /**
  * Layar rincian kasus komite — "Lihat Detail Transfer".
@@ -80,25 +80,31 @@ const TABS = [
  * tertutup.
  */
 export function KomiteCasePage() {
-  const params = useParams<{ nomor: string }>()
-  const caseID = params.nomor ?? ''
-  const detail = useKomiteCase(caseID)
-  const [tab, setTab] = useState('klaim')
+  const params = useParams<{ nomor: string }>();
+  const caseID = params.nomor ?? "";
+  const detail = useKomiteCase(caseID);
+  const [tab, setTab] = useState("klaim");
 
-  const found = detail.data?.kasus
-  const transfer = detail.data?.transfer
+  const found = detail.data?.kasus;
+  const transfer = detail.data?.transfer;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Proses Klaim</li>
             <li aria-hidden="true" className="text-slate-300">
               /
             </li>
             <li>
-              <Link to="/komite/inbox" className="hover:text-slate-700 hover:underline">
+              <Link
+                to="/komite/inbox"
+                className="hover:text-slate-700 hover:underline"
+              >
                 Inbox Komite
               </Link>
             </li>
@@ -121,7 +127,7 @@ export function KomiteCasePage() {
         */}
         <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900">
           <ScaleIcon className="h-6 w-6 text-slate-400" />
-          {detail.data?.transfer?.judul ?? 'CLAIM COMMITTEE'}
+          {detail.data?.transfer?.judul ?? "CLAIM COMMITTEE"}
         </h1>
         <p className="mt-2 font-mono text-sm text-slate-600">
           Claim No. {found?.nomor_klaim || caseID}
@@ -129,9 +135,17 @@ export function KomiteCasePage() {
       </header>
 
       <div className="mb-5 flex flex-wrap gap-2">
-        <Button tone="kedua" onClick={() => { detail.refetch() }} disabled={detail.isFetching}>
-          <ReloadIcon className={`h-4 w-4 ${detail.isFetching ? 'animate-spin' : ''}`} />
-          {detail.isFetching ? 'Memuat…' : 'Muat ulang'}
+        <Button
+          tone="kedua"
+          onClick={() => {
+            detail.refetch();
+          }}
+          disabled={detail.isFetching}
+        >
+          <ReloadIcon
+            className={`h-4 w-4 ${detail.isFetching ? "animate-spin" : ""}`}
+          />
+          {detail.isFetching ? "Memuat…" : "Muat ulang"}
         </Button>
         <Link
           to="/komite/inbox"
@@ -151,9 +165,14 @@ export function KomiteCasePage() {
 
       {found && (
         <>
-          <TabBar tabs={TABS} active={tab} onSelect={setTab} label="Bagian kasus komite" />
+          <TabBar
+            tabs={TABS}
+            active={tab}
+            onSelect={setTab}
+            label="Bagian kasus komite"
+          />
           <div className="mt-4">
-            {tab === 'klaim' && (
+            {tab === "klaim" && (
               <>
                 <ClaimSheet kasus={found} transfer={transfer} />
                 <CaseFacts item={found} />
@@ -164,16 +183,18 @@ export function KomiteCasePage() {
                 {transfer && <TransferSection transfer={transfer} />}
                 {transfer && <CommitteeBottom transfer={transfer} />}
                 <KmtnDecisionForm caseID={caseID} />
-                <MissingParts heDapatDinilai={transfer?.he_dapat_dinilai ?? false} />
+                <MissingParts
+                  heDapatDinilai={transfer?.he_dapat_dinilai ?? false}
+                />
               </>
             )}
-            {tab === 'polis' && <PolicyTab kasus={found} transfer={transfer} />}
-            {tab === 'lampiran' && <AttachmentTab transfer={transfer} />}
+            {tab === "polis" && <PolicyTab kasus={found} transfer={transfer} />}
+            {tab === "lampiran" && <AttachmentTab transfer={transfer} />}
           </div>
         </>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -185,29 +206,37 @@ export function KomiteCasePage() {
  */
 function CaseFacts({ item }: { item: KomiteCase }) {
   const rows: { label: string; value: string }[] = [
-    { label: 'Nomor case', value: item.nomor_case },
-    { label: 'Tgl komite', value: formatTanggal(item.tanggal_komite) },
-    { label: 'Tgl input', value: formatTanggal(item.tanggal_input) },
-    { label: 'Aging komite', value: `${item.aging_komite} hari` },
-    { label: 'Status kerja', value: item.status_kerja || '—' },
-  ]
+    { label: "Nomor case", value: item.nomor_case },
+    { label: "Tgl komite", value: formatTanggal(item.tanggal_komite) },
+    { label: "Tgl input", value: formatTanggal(item.tanggal_input) },
+    { label: "Aging komite", value: `${item.aging_komite} hari` },
+    { label: "Status kerja", value: item.status_kerja || "—" },
+  ];
 
   return (
     <section
       aria-labelledby="judul-fakta-komite"
       className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-fakta-komite" className="text-base font-semibold text-slate-900">
+      <h2
+        id="judul-fakta-komite"
+        className="text-base font-semibold text-slate-900"
+      >
         Data kasus
       </h2>
 
       <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
         {rows.map((row) => (
-          <div key={row.label} className="min-w-0 border-b border-slate-100 pb-2">
+          <div
+            key={row.label}
+            className="min-w-0 border-b border-slate-100 pb-2"
+          >
             <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
               {row.label}
             </dt>
-            <dd className="mt-0.5 truncate text-sm text-slate-900">{row.value}</dd>
+            <dd className="mt-0.5 truncate text-sm text-slate-900">
+              {row.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -225,11 +254,11 @@ function CaseFacts({ item }: { item: KomiteCase }) {
         <p className="mt-1 text-sm text-slate-900">
           {item.keputusan_pega
             ? outcomeLabel(item.keputusan_pega)
-            : 'Belum ada keputusan yang tercatat.'}
+            : "Belum ada keputusan yang tercatat."}
         </p>
       </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -242,68 +271,73 @@ function CaseFacts({ item }: { item: KomiteCase }) {
 function MissingParts({ heDapatDinilai }: { heDapatDinilai: boolean }) {
   const parts: { name: string; reason: string }[] = [
     {
-      name: 'ShowTransferDetailHE',
+      name: "ShowTransferDetailHE",
       reason: heDapatDinilai
-        ? 'varian Heavy Equipment — rule-nya ada, tetapi lini HE belum ditangani modul ini'
-        : 'varian Heavy Equipment — rule-nya ada, dan syaratnya (IsHE) belum dapat dinilai ' +
-          'sama sekali: kolom BUSINESSTYPE kosong pada seluruh case komite',
+        ? "varian Heavy Equipment — rule-nya ada, tetapi lini HE belum ditangani modul ini"
+        : "varian Heavy Equipment — rule-nya ada, dan syaratnya (IsHE) belum dapat dinilai " +
+          "sama sekali: kolom BUSINESSTYPE kosong pada seluruh case komite",
     },
     {
-      name: 'Blok surveyor',
+      name: "Blok surveyor",
       reason:
-        'ShowTransfer menampilkannya pada komite jenis Survey — kolom SURVEYORNAME_1, ' +
-        'SURVEYORTYPE_1, dan SURVEYDATE_1 ada, tetapi terisi 0 dari 610 case komite: ' +
-        'datanya hidup di case klaim, bukan di case komite',
+        "ShowTransfer menampilkannya pada komite jenis Survey — kolom SURVEYORNAME_1, " +
+        "SURVEYORTYPE_1, dan SURVEYDATE_1 ada, tetapi terisi 0 dari 610 case komite: " +
+        "datanya hidup di case klaim, bukan di case komite",
     },
     {
-      name: 'UploadDocumentKomite',
+      name: "UploadDocumentKomite",
       reason:
-        'unggah ke case komite — tab Lampiran Dokumen menampilkan lampiran klaimnya, ' +
-        'tetapi kunci PC_LINK_ATTACHMENT ke case komite belum ditemukan',
+        "unggah ke case komite — tab Lampiran Dokumen menampilkan lampiran klaimnya, " +
+        "tetapi kunci PC_LINK_ATTACHMENT ke case komite belum ditemukan",
     },
     {
-      name: 'ViewPolicyDetail',
+      name: "ViewPolicyDetail",
       reason:
-        'rincian penuh polis — tab Policy Detail menampilkan kepala polis; objek, coverage, ' +
-        'dan premi milik modul B-1 Polis & Snapshot',
+        "rincian penuh polis — tab Policy Detail menampilkan kepala polis; objek, coverage, " +
+        "dan premi milik modul B-1 Polis & Snapshot",
     },
     {
-      name: 'STATUS PREMI · Detail Premi',
+      name: "STATUS PREMI · Detail Premi",
       reason:
-        'Pega membacanya dari layanan premi (GetPremiumPaymentStatus, Connect-REST) dan ' +
-        'tidak menyimpannya di basis data',
+        "Pega membacanya dari layanan premi (GetPremiumPaymentStatus, Connect-REST) dan " +
+        "tidak menyimpannya di basis data",
     },
     {
-      name: 'Hitungan Fac-Out',
+      name: "Hitungan Fac-Out",
       reason:
-        'Spreding (%) dan Result Value Fac-Out diturunkan dari ShareOffered, TSI Sublimit, dan ' +
-        'Limit of Liability per coverage polis dengan syarat yang tidak terbaca di export',
+        "Spreding (%) dan Result Value Fac-Out diturunkan dari ShareOffered, TSI Sublimit, dan " +
+        "Limit of Liability per coverage polis dengan syarat yang tidak terbaca di export",
     },
-  ]
+  ];
 
   return (
     <section
       aria-labelledby="judul-bagian-belum-ada"
       className="mt-5 rounded-kartu border border-slate-200 bg-white p-5"
     >
-      <h2 id="judul-bagian-belum-ada" className="text-base font-semibold text-slate-900">
+      <h2
+        id="judul-bagian-belum-ada"
+        className="text-base font-semibold text-slate-900"
+      >
         Bagian yang belum dibangun
       </h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-600">
-        Layar lama merakit beberapa bagian di bawah satu flow action{' '}
-        <code>ViewTransferDtl</code>. Rincian transfernya sudah ada di atas; sisanya belum, dan
-        sebabnya berbeda-beda:
+        Layar lama merakit beberapa bagian di bawah satu flow action{" "}
+        <code>ViewTransferDtl</code>. Rincian transfernya sudah ada di atas;
+        sisanya belum, dan sebabnya berbeda-beda:
       </p>
       <ul className="mt-3 space-y-2">
         {parts.map((part) => (
           <li key={part.name} className="text-sm text-slate-700">
-            <span className="font-mono text-xs text-slate-900">{part.name}</span>
+            <span className="font-mono text-xs text-slate-900">
+              {part.name}
+            </span>
             <span className="text-slate-500"> — {part.reason}</span>
           </li>
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 /**
@@ -321,7 +355,7 @@ function LoadError({ error, caseID }: { error: unknown; caseID: string }) {
         description="Rincian kasus komite belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
         tone="gangguan"
       />
-    )
+    );
   }
   if (error instanceof APIError && error.status === 404) {
     return (
@@ -330,27 +364,31 @@ function LoadError({ error, caseID }: { error: unknown; caseID: string }) {
         description={`Nomor ${caseID} tidak ditemukan, atau ia bukan pekerjaan Anda. Kembali ke inbox lalu pilih dari daftar.`}
         tone="penolakan"
       />
-    )
+    );
   }
   return (
     <ErrorMessage
       title="Rincian kasus gagal dimuat"
-      description={error instanceof APIError ? error.message : 'Terjadi kesalahan pada sistem.'}
+      description={
+        error instanceof APIError
+          ? error.message
+          : "Terjadi kesalahan pada sistem."
+      }
       tone="gangguan"
     />
-  )
+  );
 }
 
-function outcomeLabel(outcome: KomiteCase['keputusan_pega']): string {
+function outcomeLabel(outcome: KomiteCase["keputusan_pega"]): string {
   switch (outcome) {
     case KomiteOutcome.approved:
-      return 'Diterima'
+      return "Diterima";
     case KomiteOutcome.rejected:
-      return 'Ditolak'
+      return "Ditolak";
     case KomiteOutcome.returned:
-      return 'Dikembalikan'
+      return "Dikembalikan";
     default:
-      return 'Menunggu'
+      return "Menunggu";
   }
 }
 
@@ -378,7 +416,10 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
       aria-labelledby="judul-detail-transfer"
       className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-detail-transfer" className="text-base font-semibold text-slate-900">
+      <h2
+        id="judul-detail-transfer"
+        className="text-base font-semibold text-slate-900"
+      >
         Detail transfer
       </h2>
 
@@ -390,9 +431,10 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
       */}
       {transfer.nilai_uang_kosong ? (
         <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Belum ada baris transfer untuk kasus ini. Baris adjustment lahir pada tahap
-          tertentu, dan komite jenis Survey maupun Liable Klaim memang tidak memilikinya —
-          jadi ini bukan angka nol, melainkan belum ada angkanya.
+          Belum ada baris transfer untuk kasus ini. Baris adjustment lahir pada
+          tahap tertentu, dan komite jenis Survey maupun Liable Klaim memang
+          tidak memilikinya — jadi ini bukan angka nol, melainkan belum ada
+          angkanya.
         </p>
       ) : (
         <>
@@ -410,7 +452,7 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
         </>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -419,30 +461,45 @@ function TransferSection({ transfer }: { transfer: KomiteTransferDetail }) {
  * Dibaca dari `POOLDATA.T_CLAIM_PNC` lewat kunci BER-PREFIX. Terbaca pada 189 dari 189
  * case, jadi blok ini nyaris selalu tergambar.
  */
-function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klaim']> }) {
+function ClaimSection({
+  klaim,
+}: {
+  klaim: NonNullable<KomiteTransferDetail["klaim"]>;
+}) {
   // Tanggal kejadian, tanggal register, dan lokasi sudah di kolom kiri ClaimSheet.
   const rows: { label: string; value: string }[] = [
-    { label: 'Status klaim', value: klaim.status_klaim || '—' },
-    { label: 'Share ASM', value: klaim.persen_asm_share ? `${klaim.persen_asm_share}%` : '—' },
-    { label: 'Koasuransi', value: klaim.koasuransi || '—' },
-  ]
+    { label: "Status klaim", value: klaim.status_klaim || "—" },
+    {
+      label: "Share ASM",
+      value: klaim.persen_asm_share ? `${klaim.persen_asm_share}%` : "—",
+    },
+    { label: "Koasuransi", value: klaim.koasuransi || "—" },
+  ];
 
   return (
     <section
       aria-labelledby="judul-klaim-komite"
       className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-klaim-komite" className="text-base font-semibold text-slate-900">
+      <h2
+        id="judul-klaim-komite"
+        className="text-base font-semibold text-slate-900"
+      >
         Klaim yang dikomitekan
       </h2>
 
       <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
         {rows.map((row) => (
-          <div key={row.label} className="min-w-0 border-b border-slate-100 pb-2">
+          <div
+            key={row.label}
+            className="min-w-0 border-b border-slate-100 pb-2"
+          >
             <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
               {row.label}
             </dt>
-            <dd className="mt-0.5 truncate text-sm text-slate-900">{row.value}</dd>
+            <dd className="mt-0.5 truncate text-sm text-slate-900">
+              {row.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -453,7 +510,9 @@ function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klai
       */}
       {klaim.kronologi && (
         <div className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Kronologi</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Kronologi
+          </p>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-800">
             {klaim.kronologi}
           </p>
@@ -471,7 +530,7 @@ function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klai
         </div>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -486,47 +545,57 @@ function ClaimSection({ klaim }: { klaim: NonNullable<KomiteTransferDetail['klai
 function CoverageSection({
   coverages,
 }: {
-  coverages: KomiteTransferDetail['coverage']
+  coverages: KomiteTransferDetail["coverage"];
 }) {
   return (
     <section
       aria-labelledby="judul-analisis-komite"
       className="mt-5 rounded-kartu border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 id="judul-analisis-komite" className="text-base font-semibold text-slate-900">
+      <h2
+        id="judul-analisis-komite"
+        className="text-base font-semibold text-slate-900"
+      >
         Objek dan analisis komite
       </h2>
 
       <div className="mt-4 space-y-4">
         {coverages.map((c, index) => (
-          <CoverageCard key={`${c.id_objek}-${c.id_coverage}-${index}`} coverage={c} />
+          <CoverageCard
+            key={`${c.id_objek}-${c.id_coverage}-${index}`}
+            coverage={c}
+          />
         ))}
       </div>
     </section>
-  )
+  );
 }
 
 function CoverageCard({
   coverage,
 }: {
-  coverage: KomiteTransferDetail['coverage'][number]
+  coverage: KomiteTransferDetail["coverage"][number];
 }) {
   const analisis: { label: string; value: string }[] = [
-    { label: 'Keadaan kerugian', value: coverage.keadaan_kerugian ?? '' },
-    { label: 'Luas kerugian', value: coverage.luas_kerugian ?? '' },
-    { label: 'Tanggung jawab hukum', value: coverage.tanggung_jawab_hukum ?? '' },
-    { label: 'Catatan', value: coverage.catatan ?? '' },
-    { label: 'Diagnosa', value: coverage.diagnosa ?? '' },
-  ].filter((row) => row.value.trim() !== '')
+    { label: "Keadaan kerugian", value: coverage.keadaan_kerugian ?? "" },
+    { label: "Luas kerugian", value: coverage.luas_kerugian ?? "" },
+    {
+      label: "Tanggung jawab hukum",
+      value: coverage.tanggung_jawab_hukum ?? "",
+    },
+    { label: "Catatan", value: coverage.catatan ?? "" },
+    { label: "Diagnosa", value: coverage.diagnosa ?? "" },
+  ].filter((row) => row.value.trim() !== "");
 
   return (
     <article className="rounded-kartu border border-slate-200 bg-slate-50/60 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="min-w-0 text-sm font-medium text-slate-900">
-          {coverage.nama_coverage || 'Coverage tanpa nama'}
+          {coverage.nama_coverage || "Coverage tanpa nama"}
         </p>
         <p className="font-mono text-xs text-slate-500">
-          Objek {coverage.id_objek || '—'} · Coverage {coverage.id_coverage || '—'}
+          Objek {coverage.id_objek || "—"} · Coverage{" "}
+          {coverage.id_coverage || "—"}
         </p>
       </div>
 
@@ -535,7 +604,9 @@ function CoverageCard({
           <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Sebab kerugian
           </dt>
-          <dd className="mt-0.5 text-sm text-slate-900">{coverage.sebab_kerugian || '—'}</dd>
+          <dd className="mt-0.5 text-sm text-slate-900">
+            {coverage.sebab_kerugian || "—"}
+          </dd>
         </div>
         <div className="min-w-0">
           <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -567,19 +638,26 @@ function CoverageCard({
         </div>
       )}
     </article>
-  )
+  );
 }
 
 /** Keputusan komite menurut PEGA — diberi nama yang menyebut asalnya. */
-function CommitteeRecord({ record }: { record: NonNullable<KomiteTransferDetail['komite']> }) {
+function CommitteeRecord({
+  record,
+}: {
+  record: NonNullable<KomiteTransferDetail["komite"]>;
+}) {
   const rows: { label: string; value: string }[] = [
-    { label: 'Tipe komite', value: record.tipe_komite || '—' },
-    { label: 'Anggota komite', value: record.nama_komite || '—' },
-    { label: 'Jenjang', value: record.jenjang ? String(record.jenjang) : '—' },
-    { label: 'Nilai klaim', value: formatRupiah(record.nilai_klaim) },
-    { label: 'Share ASM', value: record.persen_asm_share ? `${record.persen_asm_share}%` : '—' },
-    { label: 'Tgl keputusan', value: formatTanggal(record.tanggal_komite) },
-  ]
+    { label: "Tipe komite", value: record.tipe_komite || "—" },
+    { label: "Anggota komite", value: record.nama_komite || "—" },
+    { label: "Jenjang", value: record.jenjang ? String(record.jenjang) : "—" },
+    { label: "Nilai klaim", value: formatRupiah(record.nilai_klaim) },
+    {
+      label: "Share ASM",
+      value: record.persen_asm_share ? `${record.persen_asm_share}%` : "—",
+    },
+    { label: "Tgl keputusan", value: formatTanggal(record.tanggal_komite) },
+  ];
 
   return (
     <div className="mt-3 rounded-kartu border border-slate-200 bg-slate-50 p-3">
@@ -600,7 +678,7 @@ function CommitteeRecord({ record }: { record: NonNullable<KomiteTransferDetail[
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -612,21 +690,29 @@ function CommitteeRecord({ record }: { record: NonNullable<KomiteTransferDetail[
  */
 function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
   const uang: { label: string; value: string; tegas?: boolean }[] = [
-    { label: 'Gross', value: formatRupiah(line.nilai_gross) },
-    { label: 'Usulan', value: formatRupiah(line.nilai_usulan) },
-    { label: 'Akseptasi', value: formatRupiah(line.nilai_akseptasi), tegas: true },
-    { label: 'Salvage', value: formatRupiah(line.nilai_salvage) },
+    { label: "Gross", value: formatRupiah(line.nilai_gross) },
+    { label: "Usulan", value: formatRupiah(line.nilai_usulan) },
     {
-      label: line.persen_asm_share ? `Share ASM (${line.persen_asm_share}%)` : 'Share ASM',
+      label: "Akseptasi",
+      value: formatRupiah(line.nilai_akseptasi),
+      tegas: true,
+    },
+    { label: "Salvage", value: formatRupiah(line.nilai_salvage) },
+    {
+      label: line.persen_asm_share
+        ? `Share ASM (${line.persen_asm_share}%)`
+        : "Share ASM",
       value: formatRupiah(line.nilai_asm_share),
     },
-    { label: 'Risiko sendiri', value: formatRupiah(line.nilai_risiko_sendiri) },
-  ]
+    { label: "Risiko sendiri", value: formatRupiah(line.nilai_risiko_sendiri) },
+  ];
 
   return (
     <div className="rounded-kartu border border-slate-200 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="font-mono text-sm font-medium text-slate-900">{line.nomor_klaim}</p>
+        <p className="font-mono text-sm font-medium text-slate-900">
+          {line.nomor_klaim}
+        </p>
         <p className="text-xs text-slate-500">
           {[
             line.id_objek && `Objek ${line.id_objek}`,
@@ -634,7 +720,7 @@ function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
             line.jenis_pembayaran && `Jenis ${line.jenis_pembayaran}`,
           ]
             .filter(Boolean)
-            .join(' · ') || '—'}
+            .join(" · ") || "—"}
         </p>
       </div>
 
@@ -650,7 +736,9 @@ function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
             <dt className="text-xs text-slate-500">{item.label}</dt>
             <dd
               className={`truncate tabular-nums ${
-                item.tegas ? 'text-sm font-semibold text-slate-900' : 'text-sm text-slate-700'
+                item.tegas
+                  ? "text-sm font-semibold text-slate-900"
+                  : "text-sm text-slate-700"
               }`}
             >
               {item.value}
@@ -661,7 +749,8 @@ function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
 
       {line.nomor_akseptasi && (
         <p className="mt-2 text-xs text-slate-500">
-          Akseptasi {line.nomor_akseptasi} · {formatTanggal(line.tanggal_akseptasi)}
+          Akseptasi {line.nomor_akseptasi} ·{" "}
+          {formatTanggal(line.tanggal_akseptasi)}
         </p>
       )}
       {line.sebab_kerugian && (
@@ -669,7 +758,9 @@ function AdjustmentCard({ line }: { line: KomiteAdjustmentLine }) {
           {line.sebab_kerugian}
         </p>
       )}
-      {line.catatan && <p className="mt-1 text-sm text-slate-600">{line.catatan}</p>}
+      {line.catatan && (
+        <p className="mt-1 text-sm text-slate-600">{line.catatan}</p>
+      )}
     </div>
-  )
+  );
 }

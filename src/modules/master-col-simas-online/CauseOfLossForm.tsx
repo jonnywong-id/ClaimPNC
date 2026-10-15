@@ -1,14 +1,18 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Business, type SimasOnlineCauseOfLoss } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import {
+  ErrorCode,
+  type Business,
+  type SimasOnlineCauseOfLoss,
+} from "@/api/types";
+import { Field } from "@/components/Field";
+import { ComboField } from "@/components/ComboField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
 /**
  * Kedua batas harus sama dengan MaxDescriptionLength dan MaxBusinessNameLength di
@@ -24,8 +28,8 @@ import { Button } from '@/components/Button'
  * Bila angka ini berubah, berkas Go di atas harus ikut berubah — dan uji
  * `TestLengthLimitsAreMirroredInTheFrontend` yang menjaga pengingat itu tetap terlihat.
  */
-const MAX_NAME_LENGTH = 100
-const MAX_BUSINESS_NAME_LENGTH = 100
+const MAX_NAME_LENGTH = 100;
+const MAX_BUSINESS_NAME_LENGTH = 100;
 
 /**
  * Yang diperiksa di layar hanyalah PANJANG, dan itu disengaja.
@@ -41,7 +45,10 @@ const schema = z.object({
   nama: z
     .string()
     .trim()
-    .max(MAX_NAME_LENGTH, `Nama Cause of loss paling panjang ${MAX_NAME_LENGTH} karakter.`),
+    .max(
+      MAX_NAME_LENGTH,
+      `Nama Cause of loss paling panjang ${MAX_NAME_LENGTH} karakter.`,
+    ),
   // Disimpan sebagai senarai objek, bukan senarai teks, karena useFieldArray menuntut
   // setiap barisnya berupa objek agar dapat memberinya kunci yang stabil.
   bisnis: z.array(
@@ -55,24 +62,24 @@ const schema = z.object({
         ),
     }),
   ),
-})
+});
 
-export type CauseOfLossFields = z.infer<typeof schema>
+export type CauseOfLossFields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: SimasOnlineCauseOfLoss | null
+  edited: SimasOnlineCauseOfLoss | null;
   /** Saran bisnis, dibaca dari POOLDATA.BUSINESS milik entitas yang aktif. */
-  businesses: Business[]
+  businesses: Business[];
   /** Pemetaan bisnis baris yang disunting masih dimuat. */
-  isLoadingBusinessMapping: boolean
-  isSaving: boolean
-  error: unknown
-  onSave: (values: CauseOfLossFields) => void
-  onCancel: () => void
-}
+  isLoadingBusinessMapping: boolean;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: CauseOfLossFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -84,10 +91,11 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
@@ -97,52 +105,54 @@ function messageFor(error: unknown): MessageContent | null {
         return Object.keys(error.violations()).length > 0
           ? null
           : {
-              title: 'Belum dapat disimpan',
+              title: "Belum dapat disimpan",
               description: error.message,
-              tone: 'penolakan',
-            }
+              tone: "penolakan",
+            };
       case ErrorCode.notFound:
         return {
-          title: 'Baris ini sudah tidak ada',
-          description: 'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+          title: "Baris ini sudah tidak ada",
+          description:
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /** Mengambil pelanggaran per isian dari galat validasi server. */
 function violationsOf(error: unknown): Record<string, string> {
-  return error instanceof APIError ? error.violations() : {}
+  return error instanceof APIError ? error.violations() : {};
 }
 
 /** Menyusun nilai awal form dari baris yang disunting. */
 function valuesOf(edited: SimasOnlineCauseOfLoss | null): CauseOfLossFields {
   return {
-    nama: edited?.nama ?? '',
+    nama: edited?.nama ?? "",
     bisnis: (edited?.bisnis ?? []).map((b) => ({ nama: b.nama })),
-  }
+  };
 }
 
 /**
@@ -180,7 +190,7 @@ export function CauseOfLossForm({
   onSave,
   onCancel,
 }: Props) {
-  const editMode = edited !== null
+  const editMode = edited !== null;
 
   const {
     control,
@@ -192,40 +202,40 @@ export function CauseOfLossForm({
   } = useForm<CauseOfLossFields>({
     resolver: zodResolver(schema),
     defaultValues: valuesOf(edited),
-  })
+  });
 
   // `bisnis` adalah grid, bukan satu isian. useFieldArray yang memegang barisnya supaya
   // setiap baris punya kunci stabil — tanpa itu, menghapus baris tengah akan membuat
   // React memakai ulang elemen input dan nilai baris berikutnya ikut bergeser.
-  const { fields, append, remove } = useFieldArray({ control, name: 'bisnis' })
+  const { fields, append, remove } = useFieldArray({ control, name: "bisnis" });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu
   // — misalnya pengguna menekan "Ubah" pada baris lain, atau saat pemetaan bisnisnya
   // baru selesai dimuat dari server.
   useEffect(() => {
-    reset(valuesOf(edited))
-  }, [edited, reset])
+    reset(valuesOf(edited));
+  }, [edited, reset]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya masing-masing, bukan hanya
   // diringkas di satu kotak pesan. Server mengirim SELURUH pelanggaran sekaligus
   // (`P-5`), dan itu hanya berguna bila layar menyorotnya satu per satu.
   useEffect(() => {
     for (const [column, message] of Object.entries(violationsOf(error))) {
-      if (column === 'nama') {
-        setError(column, { type: 'server', message })
-      } else if (column === 'bisnis') {
-        setError('bisnis', { type: 'server', message })
+      if (column === "nama") {
+        setError(column, { type: "server", message });
+      } else if (column === "bisnis") {
+        setError("bisnis", { type: "server", message });
       }
     }
-  }, [error, setError])
+  }, [error, setError]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   // Judul yang sama untuk kedua modus, mengikuti layar lama. Beda modus tetap terlihat
   // dari ada-tidaknya baris "ID Kerugian" di bawahnya.
-  const title = 'Memperbaharui Data Simas Online'
+  const title = "Memperbaharui Data Simas Online";
 
-  const businessSuggestions = businesses.map((b) => b.nama)
+  const businessSuggestions = businesses.map((b) => b.nama);
 
   return (
     <form
@@ -237,7 +247,11 @@ export function CauseOfLossForm({
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID Kerugian hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada
@@ -245,10 +259,14 @@ export function CauseOfLossForm({
           Di Pega pun isiannya `pyReadOnly=true`. */}
       {editMode && (
         <div>
-          <span className="block text-sm font-medium text-slate-700">ID Kerugian</span>
+          <span className="block text-sm font-medium text-slate-700">
+            ID Kerugian
+          </span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
             {edited.id}
-            <span className="ml-2 text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -260,20 +278,25 @@ export function CauseOfLossForm({
         autoFocus
         maxLength={MAX_NAME_LENGTH}
         error={errors.nama?.message}
-        {...register('nama')}
+        {...register("nama")}
       />
 
       {/* Bisnis adalah GRID, bukan satu isian. Di Pega ia
           `pyPageListProperty = TempCauseOfLoss.BISNISID` berkelas
           ASM-FW-GISFW-Int-BUSINESS — satu cause of loss dapat dipakai banyak bisnis. */}
       <fieldset className="rounded-kontrol border border-slate-200 p-4">
-        <legend className="px-1 text-sm font-medium text-slate-700">Bisnis</legend>
+        <legend className="px-1 text-sm font-medium text-slate-700">
+          Bisnis
+        </legend>
 
         {isLoadingBusinessMapping ? (
-          <p className="text-sm text-slate-500">Memuat bisnis yang sudah dipilih…</p>
+          <p className="text-sm text-slate-500">
+            Memuat bisnis yang sudah dipilih…
+          </p>
         ) : fields.length === 0 ? (
           <p className="text-sm text-slate-500">
-            Belum ada bisnis yang dipilih. Cause of loss ini tetap dapat disimpan.
+            Belum ada bisnis yang dipilih. Cause of loss ini tetap dapat
+            disimpan.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -314,15 +337,15 @@ export function CauseOfLossForm({
         )}
 
         <div className="mt-3">
-          <Button tone="kedua" onClick={() => append({ nama: '' })}>
+          <Button tone="kedua" onClick={() => append({ nama: "" })}>
             Tambah Bisnis
           </Button>
           {/* Daftar saran yang gagal dimuat TIDAK menghalangi apa pun: namanya memang
               boleh diketik sendiri. Yang hilang hanya kenyamanan memilih. */}
           {businessSuggestions.length === 0 && (
             <p className="mt-2 text-sm text-slate-500">
-              Daftar bisnis belum dapat dimuat, jadi tidak ada saran. Nama bisnis tetap dapat
-              diketik sendiri.
+              Daftar bisnis belum dapat dimuat, jadi tidak ada saran. Nama
+              bisnis tetap dapat diketik sendiri.
             </p>
           )}
         </div>
@@ -334,10 +357,14 @@ export function CauseOfLossForm({
         </Button>
         {/* Label tombolnya mengikuti layar Pega, yang memakai "Simpan" dan "Ubah" untuk
             kedua modusnya. */}
-        <Button type="submit" tone="utama" disabled={isSaving || isLoadingBusinessMapping}>
-          {isSaving ? 'Menyimpan…' : editMode ? 'Ubah' : 'Simpan'}
+        <Button
+          type="submit"
+          tone="utama"
+          disabled={isSaving || isLoadingBusinessMapping}
+        >
+          {isSaving ? "Menyimpan…" : editMode ? "Ubah" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

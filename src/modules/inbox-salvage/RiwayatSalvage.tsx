@@ -1,6 +1,6 @@
-import { DataTable, type Column } from '@/components/DataTable'
+import { DataTable, type Column } from "@/components/DataTable";
 
-import type { HistoryRow } from './types'
+import type { HistoryRow } from "./types";
 
 /**
  * Kolom grid **"Detail History Salvage"** — lima, dan kelimanya apa adanya.
@@ -14,27 +14,32 @@ import type { HistoryRow } from './types'
  */
 const HISTORY_COLUMNS: Column<HistoryRow>[] = [
   {
-    key: 'tanggal_input',
-    title: 'Tanggal Input',
-    width: '10rem',
+    key: "tanggal_input",
+    title: "Tanggal Input",
+    width: "10rem",
     value: (row) => row.tanggal_input,
   },
-  { key: 'no_klaim', title: 'Nomor Klaim', width: '10rem', value: (row) => row.no_klaim },
-  { key: 'pic', title: 'PIC', width: '12rem', value: (row) => row.pic },
   {
-    key: 'nilai_minimum',
-    title: 'Nilai Minimum',
-    width: '10rem',
+    key: "no_klaim",
+    title: "Nomor Klaim",
+    width: "10rem",
+    value: (row) => row.no_klaim,
+  },
+  { key: "pic", title: "PIC", width: "12rem", value: (row) => row.pic },
+  {
+    key: "nilai_minimum",
+    title: "Nilai Minimum",
+    width: "10rem",
     alignRight: true,
     value: (row) => row.nilai_minimum,
   },
   {
-    key: 'posisi_salvage',
-    title: 'Posisi Salvage',
-    width: '14rem',
+    key: "posisi_salvage",
+    title: "Posisi Salvage",
+    width: "14rem",
     value: (row) => row.posisi_salvage,
   },
-]
+];
 
 /**
  * Grid **"Detail History Salvage"**.
@@ -54,7 +59,9 @@ const HISTORY_COLUMNS: Column<HistoryRow>[] = [
 export function RiwayatSalvage({ rows }: { rows: HistoryRow[] }) {
   return (
     <section aria-label="Detail History Salvage">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">Detail History Salvage</h3>
+      <h3 className="mb-3 text-sm font-semibold text-slate-800">
+        Detail History Salvage
+      </h3>
 
       <DataTable
         columns={HISTORY_COLUMNS}
@@ -64,5 +71,5 @@ export function RiwayatSalvage({ rows }: { rows: HistoryRow[] }) {
         hideSearch
       />
     </section>
-  )
+  );
 }

@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Technician } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { AddIcon, EditIcon, ReloadIcon } from '@/components/Icon'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Technician } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { AddIcon, EditIcon, ReloadIcon } from "@/components/Icon";
 
-import { useTechnicianList } from './api'
-import { TechnicianForm } from './TechnicianForm'
+import { useTechnicianList } from "./api";
+import { TechnicianForm } from "./TechnicianForm";
 
 /**
  * Layar Master PIC Teknik.
@@ -48,28 +48,28 @@ import { TechnicianForm } from './TechnicianForm'
  * | Entitas | disimpulkan dari nama server | dipilih pengguna dan disebut di layar |
  */
 export function TechnicianPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const list = useTechnicianList()
+  const portal = useSelectedPortal((state) => state.alias);
+  const list = useTechnicianList();
 
-  const [beingEdited, setBeingEdited] = useState<Technician | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
+  const [beingEdited, setBeingEdited] = useState<Technician | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   function openAdd() {
-    setBeingEdited(null)
-    setFormOpen(true)
+    setBeingEdited(null);
+    setFormOpen(true);
   }
 
   function openEdit(technician: Technician) {
-    setBeingEdited(technician)
-    setFormOpen(true)
+    setBeingEdited(technician);
+    setFormOpen(true);
   }
 
   function closeForm() {
-    setFormOpen(false)
-    setBeingEdited(null)
+    setFormOpen(false);
+    setBeingEdited(null);
   }
 
-  const rows = list.data?.pic_teknik ?? []
+  const rows = list.data?.pic_teknik ?? [];
 
   /*
     TUJUH kolom, dengan label dan urutan yang SAMA PERSIS dengan grid Pega.
@@ -94,10 +94,10 @@ export function TechnicianPage() {
   */
   const columns: Column<Technician>[] = [
     {
-      key: 'id_operator',
+      key: "id_operator",
       // Label Pega apa adanya. Isinya ID operator, bukan nama.
-      title: 'Input Nama',
-      width: '14rem',
+      title: "Input Nama",
+      width: "14rem",
       // Nama dan surel ikut dicari meski tidak ditampilkan: petugas sering mencari lewat
       // keduanya, dan menyembunyikannya dari penyaring membuat pencarian gagal tanpa
       // sebab yang terlihat.
@@ -107,9 +107,9 @@ export function TechnicianPage() {
       ),
     },
     {
-      key: 'atasan',
-      title: 'Atasan',
-      width: '14rem',
+      key: "atasan",
+      title: "Atasan",
+      width: "14rem",
       value: (t) => t.atasan,
       render: (t) =>
         t.atasan ? (
@@ -119,22 +119,22 @@ export function TechnicianPage() {
         ),
     },
     {
-      key: 'aktif',
-      title: 'Status Aktif',
-      width: '7rem',
+      key: "aktif",
+      title: "Status Aktif",
+      width: "7rem",
       // Ditampilkan sebagai sandi 1/0, sama dengan layar lama. Sandinya disebut di
       // keterangan tabel supaya tetap terbaca orang yang belum terbiasa.
-      value: (t) => (t.aktif ? '1' : '0'),
+      value: (t) => (t.aktif ? "1" : "0"),
       render: (t) => (
-        <span className={t.aktif ? 'text-slate-900' : 'text-slate-400'}>
-          {t.aktif ? '1' : '0'}
+        <span className={t.aktif ? "text-slate-900" : "text-slate-400"}>
+          {t.aktif ? "1" : "0"}
         </span>
       ),
     },
     {
-      key: 'bisnis',
-      title: 'Bisnis',
-      width: '9rem',
+      key: "bisnis",
+      title: "Bisnis",
+      width: "9rem",
       value: (t) => t.bisnis,
       render: (t) =>
         t.bisnis ? (
@@ -144,9 +144,9 @@ export function TechnicianPage() {
         ),
     },
     {
-      key: 'kelompok',
-      title: 'Kelompok',
-      width: '7rem',
+      key: "kelompok",
+      title: "Kelompok",
+      width: "7rem",
       value: (t) => t.kelompok,
       render: (t) =>
         t.kelompok ? (
@@ -156,30 +156,34 @@ export function TechnicianPage() {
         ),
     },
     {
-      key: 'counter_klaim_kurang_1m',
-      title: 'Counter Klaim <1M',
-      width: '8rem',
+      key: "counter_klaim_kurang_1m",
+      title: "Counter Klaim <1M",
+      width: "8rem",
       alignRight: true,
       // Diurutkan sebagai ANGKA, bukan teks: tanpa pelapisan nol, "9" akan berada di
       // bawah "1463".
-      value: (t) => String(t.counter_klaim_kurang_1m).padStart(8, '0'),
-      render: (t) => <span className="text-slate-700">{t.counter_klaim_kurang_1m}</span>,
+      value: (t) => String(t.counter_klaim_kurang_1m).padStart(8, "0"),
+      render: (t) => (
+        <span className="text-slate-700">{t.counter_klaim_kurang_1m}</span>
+      ),
     },
     {
-      key: 'counter_klaim_lebih_1m',
-      title: 'Counter Klaim >1M',
-      width: '8rem',
+      key: "counter_klaim_lebih_1m",
+      title: "Counter Klaim >1M",
+      width: "8rem",
       alignRight: true,
-      value: (t) => String(t.counter_klaim_lebih_1m).padStart(8, '0'),
-      render: (t) => <span className="text-slate-700">{t.counter_klaim_lebih_1m}</span>,
+      value: (t) => String(t.counter_klaim_lebih_1m).padStart(8, "0"),
+      render: (t) => (
+        <span className="text-slate-700">{t.counter_klaim_lebih_1m}</span>
+      ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '7rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "7rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (t) => (
         <Button
           tone="halus"
@@ -191,12 +195,15 @@ export function TechnicianPage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -205,19 +212,23 @@ export function TechnicianPage() {
             <li className="text-slate-700">PIC Teknik</li>
           </ol>
         </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master PIC Teknik</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Master PIC Teknik
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
           Petugas teknik yang menangani klaim, beserta grup, atasan, dan kuota
-          pekerjaannya. Daftar inilah yang dipakai penugasan klaim untuk memilih petugas
-          berikutnya.
+          pekerjaannya. Daftar inilah yang dipakai penugasan klaim untuk memilih
+          petugas berikutnya.
         </p>
 
         {/* Entitas yang sedang dilihat disebut terang-terangan. Satu aplikasi melayani
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </p>
       </header>
 
@@ -242,19 +253,33 @@ export function TechnicianPage() {
           description={
             list.data
               ? `${list.data.total} petugas pada entitas ini. Kolom Status Aktif bernilai 1 untuk yang aktif dan 0 untuk yang tidak.`
-              : 'Memuat daftar PIC teknik…'
+              : "Memuat daftar PIC teknik…"
           }
           searchLabel="Cari ID operator, nama, surel, atasan, bisnis, atau kelompok"
           emptyMessage="Belum ada PIC teknik pada entitas ini."
           isLoading={list.isPending}
-          error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+          error={
+            list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+          }
           actions={
             <>
-              <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                {list.isFetching ? 'Memuat…' : 'Refresh'}
+              <Button
+                tone="kedua"
+                onClick={() => {
+                  list.refetch();
+                }}
+                disabled={list.isFetching}
+              >
+                <ReloadIcon
+                  className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                />
+                {list.isFetching ? "Memuat…" : "Refresh"}
               </Button>
-              <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
+              <Button
+                tone="utama"
+                onClick={openAdd}
+                disabled={formOpen && !beingEdited}
+              >
                 <AddIcon className="h-4 w-4" />
                 Tambah
               </Button>
@@ -263,7 +288,7 @@ export function TechnicianPage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -273,17 +298,28 @@ export function TechnicianPage() {
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = loadMessage(error);
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Daftar PIC teknik belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Daftar PIC teknik belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -291,30 +327,30 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar PIC teknik gagal dimuat',
+          title: "Daftar PIC teknik gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Daftar PIC teknik gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Daftar PIC teknik gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

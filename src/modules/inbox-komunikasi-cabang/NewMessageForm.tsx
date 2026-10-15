@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useKomunikasiCabangBranches, useKomunikasiCabangSendMessage } from './api'
+import {
+  useKomunikasiCabangBranches,
+  useKomunikasiCabangSendMessage,
+} from "./api";
 
 type Props = {
   /** Menutup form tanpa mengirim apa pun. */
-  onClose: () => void
+  onClose: () => void;
 
   /** Dipanggil setelah pesannya benar-benar tersimpan. */
-  onSent: (pesan: string) => void
-}
+  onSent: (pesan: string) => void;
+};
 
 /**
  * Form **"Kirim Pesan"** — pembuatan percakapan BARU.
@@ -46,31 +49,32 @@ type Props = {
  * nama itu dibawa (`D-19`).
  */
 export function NewMessageForm({ onClose, onSent }: Props) {
-  const [destination, setDestination] = useState('PUSAT')
-  const [branch, setBranch] = useState('')
-  const [message, setMessage] = useState('')
+  const [destination, setDestination] = useState("PUSAT");
+  const [branch, setBranch] = useState("");
+  const [message, setMessage] = useState("");
 
   // Daftar cabang diambil hanya selama form ini hidup. Mayoritas pembukaan layar tidak
   // berakhir dengan pengiriman pesan, sehingga mengambilnya lebih awal berarti satu
   // perjalanan jaringan yang hampir selalu tidak terpakai.
-  const branches = useKomunikasiCabangBranches(true)
-  const send = useKomunikasiCabangSendMessage()
+  const branches = useKomunikasiCabangBranches(true);
+  const send = useKomunikasiCabangSendMessage();
 
-  const toBranch = destination === 'CABANG'
-  const trimmed = message.trim()
+  const toBranch = destination === "CABANG";
+  const trimmed = message.trim();
 
   // Tombolnya menunggu SELURUH isian yang wajib, bukan hanya pesannya. Membiarkannya aktif
   // lalu menolak di peladen memang menghasilkan pesan galat yang benar, tetapi menyuruh
   // pengguna menekan tombol untuk diberi tahu apa yang sudah terlihat kosong di layarnya.
-  const ready = trimmed !== '' && (!toBranch || branch !== '') && !send.isPending
+  const ready =
+    trimmed !== "" && (!toBranch || branch !== "") && !send.isPending;
 
   return (
     <form
       className="mt-4 rounded-kartu border border-slate-200 bg-white px-4 py-4 shadow-sm"
       aria-label="Kirim pesan baru"
       onSubmit={(event) => {
-        event.preventDefault()
-        if (!ready) return
+        event.preventDefault();
+        if (!ready) return;
 
         send.mutate(
           {
@@ -78,17 +82,17 @@ export function NewMessageForm({ onClose, onSent }: Props) {
             // Cabang dikosongkan saat tujuannya PUSAT. Peladen mengabaikannya juga, tetapi
             // mengirim isian yang tidak berlaku membuat badan permintaan menyatakan sesuatu
             // yang tidak dimaksudkan penggunanya.
-            cabang: toBranch ? branch : '',
+            cabang: toBranch ? branch : "",
             pesan: trimmed,
           },
           {
             onSuccess: (result) => {
-              setMessage('')
-              setBranch('')
-              onSent(result.pesan)
+              setMessage("");
+              setBranch("");
+              onSent(result.pesan);
             },
           },
-        )
+        );
       }}
     >
       <h2 className="text-sm font-semibold text-slate-900">Kirim Pesan</h2>
@@ -105,14 +109,14 @@ export function NewMessageForm({ onClose, onSent }: Props) {
             id="komunikasi-tujuan"
             value={destination}
             onChange={(event) => {
-              setDestination(event.target.value)
+              setDestination(event.target.value);
               // Pemilih cabang dikosongkan saat tujuannya berpindah ke PUSAT, supaya
               // pilihannya tidak tertinggal tak terlihat lalu ikut terkirim.
-              if (event.target.value !== 'CABANG') setBranch('')
+              if (event.target.value !== "CABANG") setBranch("");
             }}
             className="mt-1.5 w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
           >
-            {(branches.data?.tujuan ?? ['PUSAT', 'CABANG']).map((option) => (
+            {(branches.data?.tujuan ?? ["PUSAT", "CABANG"]).map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
@@ -144,7 +148,7 @@ export function NewMessageForm({ onClose, onSent }: Props) {
               className="mt-1.5 w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 disabled:bg-slate-50"
             >
               <option value="">
-                {branches.isPending ? 'Memuat cabang…' : 'Pilih cabang…'}
+                {branches.isPending ? "Memuat cabang…" : "Pilih cabang…"}
               </option>
               {(branches.data?.cabang ?? []).map((option) => (
                 <option key={option.kode} value={option.kode}>
@@ -155,8 +159,9 @@ export function NewMessageForm({ onClose, onSent }: Props) {
 
             {branches.isSuccess && branches.data.cabang.length === 0 && (
               <p className="mt-1.5 text-xs text-amber-800">
-                Tidak ada cabang yang dapat dipilih. Laporkan ke tim teknis — daftar ini
-                dibaca dari data surveyor, dan kosongnya berarti sumber itu tidak terbaca.
+                Tidak ada cabang yang dapat dipilih. Laporkan ke tim teknis —
+                daftar ini dibaca dari data surveyor, dan kosongnya berarti
+                sumber itu tidak terbaca.
               </p>
             )}
           </div>
@@ -164,7 +169,10 @@ export function NewMessageForm({ onClose, onSent }: Props) {
       </div>
 
       <div className="mt-3">
-        <label htmlFor="komunikasi-pesan" className="block text-xs font-medium text-slate-800">
+        <label
+          htmlFor="komunikasi-pesan"
+          className="block text-xs font-medium text-slate-800"
+        >
           Pesan
         </label>
         <textarea
@@ -180,12 +188,12 @@ export function NewMessageForm({ onClose, onSent }: Props) {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-slate-500">
-          {message.length >= 3500 ? `${message.length} / 4.000 karakter` : ''}
+          {message.length >= 3500 ? `${message.length} / 4.000 karakter` : ""}
         </span>
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={!ready}>
-            {send.isPending ? 'Mengirim…' : 'Kirim Pesan'}
+            {send.isPending ? "Mengirim…" : "Kirim Pesan"}
           </Button>
           <Button tone="kedua" onClick={onClose} disabled={send.isPending}>
             Batal
@@ -213,12 +221,12 @@ export function NewMessageForm({ onClose, onSent }: Props) {
         </div>
       )}
     </form>
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, simpanBerkas, unduhBerkas } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { isComplete, type FilterInput, type SearchResponse } from './types'
+import { isComplete, type FilterInput, type SearchResponse } from "./types";
 
-const ROUTE = '/api/laporan-hasil-ai'
+const ROUTE = "/api/laporan-hasil-ai";
 
 /**
  * Kunci cache menyertakan portal DAN token.
@@ -25,16 +25,23 @@ function searchKey(
   filter: FilterInput,
   page: number,
 ) {
-  return ['laporan-hasil-ai', portal, token, filter.dari, filter.sampai, page] as const
+  return [
+    "laporan-hasil-ai",
+    portal,
+    token,
+    filter.dari,
+    filter.sampai,
+    page,
+  ] as const;
 }
 
 /** Menyusun parameter kueri; nama parameternya sama dengan yang dibaca handler. */
 function searchParams(filter: FilterInput, page: number): string {
-  const param = new URLSearchParams()
-  if (filter.dari !== '') param.set('dari', filter.dari)
-  if (filter.sampai !== '') param.set('sampai', filter.sampai)
-  param.set('halaman', String(page))
-  return param.toString()
+  const param = new URLSearchParams();
+  if (filter.dari !== "") param.set("dari", filter.dari);
+  if (filter.sampai !== "") param.set("sampai", filter.sampai);
+  param.set("halaman", String(page));
+  return param.toString();
 }
 
 /**
@@ -49,16 +56,24 @@ function searchParams(filter: FilterInput, page: number): string {
  * layar akan menembak server pada pemuatan pertama hanya untuk menerima 422, lalu
  * menampilkan pesan galat pada layar yang belum pernah disentuh pengguna.
  */
-export function useLaporanHasilAI(filter: FilterInput, page: number, searched: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useLaporanHasilAI(
+  filter: FilterInput,
+  page: number,
+  searched: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: searchKey(portal, token, filter, page),
-    enabled: searched && isComplete(filter) && portal !== null && token !== null,
+    enabled:
+      searched && isComplete(filter) && portal !== null && token !== null,
     queryFn: () =>
-      callAPI<SearchResponse>(`${ROUTE}?${searchParams(filter, page)}`, { token, portal }),
-  })
+      callAPI<SearchResponse>(`${ROUTE}?${searchParams(filter, page)}`, {
+        token,
+        portal,
+      }),
+  });
 }
 
 /**
@@ -79,18 +94,21 @@ export function useLaporanHasilAI(filter: FilterInput, page: number, searched: b
  * pun begitu: grid-nya memuat semuanya sekaligus, dan CSV-nya dibuat dari muatan itu.
  */
 export function useExportLaporanHasilAI() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: FilterInput) => {
-      const param = new URLSearchParams()
-      if (filter.dari !== '') param.set('dari', filter.dari)
-      if (filter.sampai !== '') param.set('sampai', filter.sampai)
+      const param = new URLSearchParams();
+      if (filter.dari !== "") param.set("dari", filter.dari);
+      if (filter.sampai !== "") param.set("sampai", filter.sampai);
 
-      const berkas = await unduhBerkas(`${ROUTE}/ekspor?${param.toString()}`, { token, portal })
-      simpanBerkas(berkas)
-      return berkas
+      const berkas = await unduhBerkas(`${ROUTE}/ekspor?${param.toString()}`, {
+        token,
+        portal,
+      });
+      simpanBerkas(berkas);
+      return berkas;
     },
-  })
+  });
 }

@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { APIError, callAPI, unduhBerkas } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { APIError, callAPI, unduhBerkas } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import {
   AreaLevel,
@@ -54,7 +54,7 @@ import {
   type ProgressInputRequest,
   type ProgressInputResponse,
   type ProgressOption,
-} from './types'
+} from "./types";
 
 // Seluruh panggilan API modul ini lewat hook di berkas ini. Tidak ada `fetch` di dalam
 // komponen — aturan 9 pada README repository.
@@ -65,11 +65,11 @@ import {
 // basis data mana yang dibaca (`D-75`); panggilan tanpa portal DITOLAK, bukan jatuh ke
 // portal bawaan — itulah yang mencegah `R-20`.
 
-const inboxKey = ['registrasi', 'inbox'] as const
-const flowKey = ['registrasi', 'alur'] as const
+const inboxKey = ["registrasi", "inbox"] as const;
+const flowKey = ["registrasi", "alur"] as const;
 
 function claimKey(claimID: string) {
-  return ['registrasi', 'klaim', claimID] as const
+  return ["registrasi", "klaim", claimID] as const;
 }
 
 /**
@@ -79,82 +79,88 @@ function claimKey(claimID: string) {
  * kerja; memuatnya ulang setiap kali komponen dipasang hanya membebani server.
  */
 export function useFlow() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: [...flowKey, token],
-    queryFn: () => callAPI<FlowResponse>('/api/registrasi/alur', { token, portal }),
+    queryFn: () =>
+      callAPI<FlowResponse>("/api/registrasi/alur", { token, portal }),
     enabled: token !== null,
     staleTime: 30 * 60 * 1000,
-  })
+  });
 }
 
 /** Daftar pekerjaan yang menunggu pengguna (`D-79`). */
 export function useInbox() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: [...inboxKey, token],
-    queryFn: () => callAPI<InboxResponse>('/api/registrasi/inbox', { token, portal }),
+    queryFn: () =>
+      callAPI<InboxResponse>("/api/registrasi/inbox", { token, portal }),
     enabled: token !== null,
-  })
+  });
 }
 
 /** Satu klaim beserta tugas terbukanya dan jalur tahap yang akan dilaluinya. */
 export function useClaim(claimID: string | undefined) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: [...claimKey(claimID ?? ''), token],
-    queryFn: () => callAPI<ClaimResponse>(`/api/registrasi/klaim/${claimID}`, { token, portal }),
+    queryKey: [...claimKey(claimID ?? ""), token],
+    queryFn: () =>
+      callAPI<ClaimResponse>(`/api/registrasi/klaim/${claimID}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && Boolean(claimID),
-  })
+  });
 }
 
 /** Membuka klaim baru dari sebuah polis. */
 export function useStartClaim() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     // Portal TIDAK ikut di badan permintaan: server mengambilnya dari portal aktif,
     // supaya pemanggil tidak dapat menuliskan klaim atas nama entitas lain (`R-20`).
     mutationFn: (content: { nomor_polis: string }) =>
-      callAPI<ClaimResponse>('/api/registrasi/klaim', {
-        metode: 'POST',
+      callAPI<ClaimResponse>("/api/registrasi/klaim", {
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
     },
-  })
+  });
 }
 
 /** Menyimpan tahap Input Register, atau mengembalikannya dengan tombol Back. */
 export function useSaveRegister() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register', {
-        metode: 'POST',
+      callAPI<ClaimResponse>("/api/registrasi/register", {
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
     onSuccess: (result) => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) });
     },
-  })
+  });
 }
 
 /**
@@ -162,22 +168,22 @@ export function useSaveRegister() {
  * menjalankan gerbang validasi — seperti Save pada layar tahap Pega.
  */
 export function useSaveDraft() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: RegisterRequest) =>
-      callAPI<ClaimResponse>('/api/registrasi/register/simpan', {
-        metode: 'POST',
+      callAPI<ClaimResponse>("/api/registrasi/register/simpan", {
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
     onSuccess: (result) => {
-      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) });
     },
-  })
+  });
 }
 
 /**
@@ -185,20 +191,20 @@ export function useSaveDraft() {
  * induknya dipilih; tanpa induk, daftarnya memang kosong.
  */
 export function useAreaOptions(level: AreaLevel, parent: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const needsParent = level !== AreaLevel.Country
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const needsParent = level !== AreaLevel.Country;
 
   return useQuery({
-    queryKey: ['registrasi', 'wilayah', level, parent, token],
-    enabled: !needsParent || parent !== '',
+    queryKey: ["registrasi", "wilayah", level, parent, token],
+    enabled: !needsParent || parent !== "",
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
       callAPI<AreaOptionsResponse>(
         `/api/registrasi/wilayah/${level}?induk=${encodeURIComponent(parent)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -206,19 +212,19 @@ export function useAreaOptions(level: AreaLevel, parent: string) {
  * BrowseCouseOfLoss_Business. Kode bisnis kosong tidak memanggil server.
  */
 export function useCauseOfLossOptions(businessCode: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'penyebab-kerugian', businessCode, token],
-    enabled: businessCode !== '',
+    queryKey: ["registrasi", "penyebab-kerugian", businessCode, token],
+    enabled: businessCode !== "",
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
       callAPI<CauseOfLossOptionsResponse>(
         `/api/registrasi/penyebab-kerugian?bisnis=${encodeURIComponent(businessCode)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -226,45 +232,56 @@ export function useCauseOfLossOptions(businessCode: string) {
  * ditutup — Next, atau Back bila `kembali`.
  */
 export function useSaveEstimate(simpan: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: EstimateRequest) =>
       callAPI<ClaimResponse>(
-        simpan ? '/api/registrasi/estimasi/simpan' : '/api/registrasi/estimasi',
+        simpan ? "/api/registrasi/estimasi/simpan" : "/api/registrasi/estimasi",
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
     onSuccess: (result) => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) });
     },
-  })
+  });
 }
 
 /**
  * Pilihan Objek untuk item estimasi satu jaminan. coverageID adalah kode coverage jaminan —
  * plan untuk lini Travel; lini lain tidak memakainya.
  */
-export function useItemOptions(claimID: string, objectID: string, coverageID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useItemOptions(
+  claimID: string,
+  objectID: string,
+  coverageID: string,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'pilihan-item', claimID, objectID, coverageID, token],
+    queryKey: [
+      "registrasi",
+      "pilihan-item",
+      claimID,
+      objectID,
+      coverageID,
+      token,
+    ],
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
       callAPI<ItemOptionsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-item?objek=${encodeURIComponent(objectID)}&coverage=${encodeURIComponent(coverageID)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -272,19 +289,19 @@ export function useItemOptions(claimID: string, objectID: string, coverageID: st
  * tersimpan bersama klaim saat Save/Submit, tidak ke tabel lain.
  */
 export function useCoverageOptions(claimID: string, objectID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'pilihan-coverage', claimID, objectID, token],
-    enabled: claimID !== '' && objectID !== '',
+    queryKey: ["registrasi", "pilihan-coverage", claimID, objectID, token],
+    enabled: claimID !== "" && objectID !== "",
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
       callAPI<CoverageOptionsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pilihan-coverage?objek=${encodeURIComponent(objectID)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -293,7 +310,7 @@ export function useCoverageOptions(claimID: string, objectID: string) {
  */
 /** Awalan kunci riwayat adjustment satu klaim — dipakai juga untuk menyegarkannya. */
 export const settlementHistoryKey = (claimID: string) =>
-  ['registrasi', 'riwayat-adjustment', claimID] as const
+  ["registrasi", "riwayat-adjustment", claimID] as const;
 
 export function useSettlementHistory(
   claimID: string,
@@ -301,23 +318,29 @@ export function useSettlementHistory(
   coverage: number,
   adjustment: number,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
   const query = new URLSearchParams({
     objek: String(object),
     coverage: String(coverage),
     adjustment: String(adjustment),
-  }).toString()
+  }).toString();
 
   return useQuery({
-    queryKey: [...settlementHistoryKey(claimID), object, coverage, adjustment, token],
-    enabled: claimID !== '',
+    queryKey: [
+      ...settlementHistoryKey(claimID),
+      object,
+      coverage,
+      adjustment,
+      token,
+    ],
+    enabled: claimID !== "",
     queryFn: () =>
       callAPI<SettlementHistoryResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/riwayat?${query}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -325,85 +348,106 @@ export function useSettlementHistory(
  * yang tidak dapat dihubungi dijawab `tersedia: false`, bukan galat.
  */
 export function usePremiumAging(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'aging', claimID, portal, token],
-    enabled: claimID !== '',
+    queryKey: ["registrasi", "aging", claimID, portal, token],
+    enabled: claimID !== "",
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
-      callAPI<PremiumAgingResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/aging`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<PremiumAgingResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/aging`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Pilihan Mata Uang dari master POOLDATA.CURRENCY. */
 export function useCurrencies() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'mata-uang', token],
+    queryKey: ["registrasi", "mata-uang", token],
     staleTime: 10 * 60 * 1000,
-    queryFn: () => callAPI<CurrenciesResponse>('/api/registrasi/mata-uang', { token, portal }),
-  })
+    queryFn: () =>
+      callAPI<CurrenciesResponse>("/api/registrasi/mata-uang", {
+        token,
+        portal,
+      }),
+  });
 }
 
 /** Cari Kode / Desc Diagnose (modal Transfer Claim ke Komite, PA). Kosong: tidak mencari. */
 export function useDiagnosisSearch(term: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'diagnosa', term, token, portal],
-    enabled: term !== '',
+    queryKey: ["registrasi", "diagnosa", term, token, portal],
+    enabled: term !== "",
     retry: false,
     queryFn: () =>
-      callAPI<DiagnosisResponse>(`/api/registrasi/diagnosa?cari=${encodeURIComponent(term)}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<DiagnosisResponse>(
+        `/api/registrasi/diagnosa?cari=${encodeURIComponent(term)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Mengambil tugas dari antrean bersama. */
 export function useClaimTask() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (taskID: string) =>
-      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, { metode: 'POST', token, portal }),
+      callAPI<Task>(`/api/registrasi/tugas/${taskID}/ambil`, {
+        metode: "POST",
+        token,
+        portal,
+      }),
     onSuccess: (tugas) => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(tugas.klaim_id) });
     },
-  })
+  });
 }
 
 /** Menutup tahap yang aturan isiannya milik modul lain. */
 export function useCompleteStage() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (content: { taskID: string; action: string; kembali?: boolean }) =>
-      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/selesai`, {
-        metode: 'POST',
-        body: { action: content.action, kembali: content.kembali ?? false },
-        token,
-        portal,
-      }),
+    mutationFn: (content: {
+      taskID: string;
+      action: string;
+      kembali?: boolean;
+    }) =>
+      callAPI<ClaimResponse>(
+        `/api/registrasi/tugas/${content.taskID}/selesai`,
+        {
+          metode: "POST",
+          body: { action: content.action, kembali: content.kembali ?? false },
+          token,
+          portal,
+        },
+      ),
     onSuccess: (result) => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(result.klaim.id) });
     },
-  })
+  });
 }
 
 /**
@@ -411,25 +455,30 @@ export function useCompleteStage() {
  * melompatkan klaim ke Input Register milik Inputor, dengan catatan analis.
  */
 export function useSendToInputor(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: { taskID: string; catatan: string }) =>
-      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/kirim-inputor`, {
-        metode: 'POST',
-        body: { catatan: content.catatan },
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/tugas/${content.taskID}/kirim-inputor`,
+        {
+          metode: "POST",
+          body: { catatan: content.catatan },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
       // Catatan baru tampil di tab Progress dan sebagai Catatan dari Analyst.
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "progres", claimID],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -437,11 +486,11 @@ export function useSendToInputor(claimID: string) {
  * menurut jalur yang sedang dipilih. Jalur 0 (belum dipilih) tidak memanggil apa pun.
  */
 export function usePUCLSubjects(jalur: number) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'rclpucl', 'perihal', jalur, token],
+    queryKey: ["registrasi", "rclpucl", "perihal", jalur, token],
     enabled: jalur > 0,
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
@@ -449,7 +498,7 @@ export function usePUCLSubjects(jalur: number) {
         `/api/registrasi/rclpucl/perihal?jalur=${jalur}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -459,11 +508,11 @@ export function usePUCLSubjects(jalur: number) {
  * browser lalu menyaringnya di sana adalah persis cacat yang `NFR-12` larang.
  */
 export function usePUCLReasons(cari: string, aktif: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'rclpucl', 'alasan', cari, token],
+    queryKey: ["registrasi", "rclpucl", "alasan", cari, token],
     // Grid ini tidak tampil pada jalur Notification maupun di luar lini PA; tanpa
     // sakelar ini layar tetap menarik 200 baris yang tidak pernah digambar.
     enabled: aktif,
@@ -473,7 +522,7 @@ export function usePUCLReasons(cari: string, aktif: boolean) {
         `/api/registrasi/rclpucl/alasan?cari=${encodeURIComponent(cari)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -489,110 +538,127 @@ export function usePUCLReasons(cari: string, aktif: boolean) {
  * (`pyLocalizedValue`). Keduanya berbeda pada baris kedua, jadi tidak boleh tertukar.
  */
 export function useRCLDoctors(aktif: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'rclpucl', 'dokter', token],
+    queryKey: ["registrasi", "rclpucl", "dokter", token],
     // Isiannya hanya tampil pada jalur RCL atau Notification lini PA; tanpa sakelar ini
     // layar menarik daftarnya pada setiap modal yang tidak pernah menggambarnya.
     enabled: aktif,
     staleTime: 10 * 60 * 1000,
     queryFn: () =>
-      callAPI<{ pilihan: { id: string; nama: string }[] }>('/api/registrasi/rclpucl/dokter', {
-        token,
-        portal,
-      }),
-  })
+      callAPI<{ pilihan: { id: string; nama: string }[] }>(
+        "/api/registrasi/rclpucl/dokter",
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Isi modal "Kirim ke RCL/PUCL" — `Section/SectionPUCL-sect.xml`. */
 export type SendToRCLPUCLContent = {
-  taskID: string
-  jalur: number
-  catatan: string
-  perihal: string
-  keterangan_pembuka: string
-  keterangan_isi: string
-  keterangan_penutup: string
-  nama_dokter: string
-}
+  taskID: string;
+  jalur: number;
+  catatan: string;
+  perihal: string;
+  keterangan_pembuka: string;
+  keterangan_isi: string;
+  keterangan_penutup: string;
+  nama_dokter: string;
+};
 
 /**
  * Tombol Kirim pada modal "Kirim ke RCL/PUCL": menyimpan suratnya, menutup tugas
  * berjalan, dan melompatkan klaim ke RCL/PUCL (jalur 2) atau RCLDokter (jalur 1).
  */
 export function useSendToRCLPUCL(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskID, ...body }: SendToRCLPUCLContent) =>
       callAPI<ClaimResponse>(`/api/registrasi/tugas/${taskID}/kirim-rclpucl`, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
       }),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "progres", claimID],
+      });
     },
-  })
+  });
 }
 
 /** Isian dialog "Prevent Close Claim" yang dikirim ke server. */
 export interface CloseClaimBody {
-  catatan_tutup: string
-  usulan: string
-  effort_tutup: string
-  kendala_tutup: string
-  tutup_sementara: boolean
+  catatan_tutup: string;
+  usulan: string;
+  effort_tutup: string;
+  kendala_tutup: string;
+  tutup_sementara: boolean;
 }
 
 /** Tombol Ya pada dialog "Prevent Close Claim" — `CloseClaim`. */
 export function useCloseClaim(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: { taskID: string; body: CloseClaimBody }) =>
-      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/tutup-klaim`, {
-        metode: 'POST',
-        body: content.body,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/tugas/${content.taskID}/tutup-klaim`,
+        {
+          metode: "POST",
+          body: content.body,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /** Tombol Kirim Analyst pada modal "Transfer Claim ke Komite" — `setTicketToAnalyst`. */
 export function useTransferToAnalyst(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (content: { taskID: string; objekID: string; coverageID: string }) =>
-      callAPI<ClaimResponse>(`/api/registrasi/tugas/${content.taskID}/transfer-analis`, {
-        metode: 'POST',
-        body: { objek_id: content.objekID, coverage_id: content.coverageID },
-        token,
-        portal,
-      }),
+    mutationFn: (content: {
+      taskID: string;
+      objekID: string;
+      coverageID: string;
+    }) =>
+      callAPI<ClaimResponse>(
+        `/api/registrasi/tugas/${content.taskID}/transfer-analis`,
+        {
+          metode: "POST",
+          body: { objek_id: content.objekID, coverage_id: content.coverageID },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: inboxKey })
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
+      apiClient.invalidateQueries({ queryKey: inboxKey });
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "progres", claimID],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -602,14 +668,18 @@ export function useTransferToAnalyst(claimID: string) {
  * memeriksa kode galat sebelum memanggilnya.
  */
 export function violationsFrom(failure: unknown): Violation[] {
-  if (!(failure instanceof APIError)) return []
-  if (failure.kode !== RegistrationErrorCode.validationFailed) return []
-  if (!Array.isArray(failure.detail)) return []
+  if (!(failure instanceof APIError)) return [];
+  if (failure.kode !== RegistrationErrorCode.validationFailed) return [];
+  if (!Array.isArray(failure.detail)) return [];
 
   return failure.detail.filter(
     (p): p is Violation =>
-      typeof p === 'object' && p != null && 'kode' in p && 'field' in p && 'pesan' in p,
-  )
+      typeof p === "object" &&
+      p != null &&
+      "kode" in p &&
+      "field" in p &&
+      "pesan" in p,
+  );
 }
 
 /**
@@ -620,13 +690,17 @@ export function violationsFrom(failure: unknown): Violation[] {
  * pertama: memperbaiki satu lalu menemukan yang lain adalah pengalaman yang sistem lama
  * berikan, dan itu yang sedang diperbaiki.
  */
-export function messagesByField(violations: Violation[]): Record<string, string> {
-  const result: Record<string, string> = {}
+export function messagesByField(
+  violations: Violation[],
+): Record<string, string> {
+  const result: Record<string, string> = {};
   for (const p of violations) {
-    if (!p.field) continue
-    result[p.field] = result[p.field] ? `${result[p.field]} ${p.pesan}` : p.pesan
+    if (!p.field) continue;
+    result[p.field] = result[p.field]
+      ? `${result[p.field]} ${p.pesan}`
+      : p.pesan;
   }
-  return result
+  return result;
 }
 
 /**
@@ -635,101 +709,129 @@ export function messagesByField(violations: Violation[]): Record<string, string>
  */
 function useClaimRecord<T>(
   claimID: string,
-  path: 'survey' | 'dokumen' | 'progres' | 'tertanggung',
+  path: "survey" | "dokumen" | "progres" | "tertanggung",
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', path, claimID, token, portal],
+    queryKey: ["registrasi", path, claimID, token, portal],
     enabled,
     queryFn: () =>
-      callAPI<T>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/${path}`, { token, portal }),
-  })
+      callAPI<T>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/${path}`,
+        { token, portal },
+      ),
+  });
 }
 
 /** Tab Survey — T_SURVEYORLIST. */
 export function useSurveys(claimID: string, enabled = true) {
-  return useClaimRecord<SurveysResponse>(claimID, 'survey', enabled)
+  return useClaimRecord<SurveysResponse>(claimID, "survey", enabled);
 }
 
 /** Tab Survey tahap Choose Surveyor (`TabSurvey_sect`) — grid Tambah Survey dan Permintaan Survey. */
 export function useSurveyTab(claimID: string, enabled = true) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
   return useQuery({
-    queryKey: ['registrasi', 'survey-tab', claimID, token, portal],
+    queryKey: ["registrasi", "survey-tab", claimID, token, portal],
     enabled,
     queryFn: () =>
-      callAPI<SurveyTabResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/tab`, { token, portal }),
-  })
+      callAPI<SurveyTabResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/tab`,
+        { token, portal },
+      ),
+  });
 }
 
 /** Pilihan surveyor satu Tipe Surveyor (`ChooseSurveyorType_act`), atau "nominasi". */
 export function useSurveyorOptions(type: string, enabled = true) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
   return useQuery({
-    queryKey: ['registrasi', 'surveyor', type, token, portal],
-    enabled: enabled && type !== '',
+    queryKey: ["registrasi", "surveyor", type, token, portal],
+    enabled: enabled && type !== "",
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
-      callAPI<SurveyorOption[]>(`/api/registrasi/surveyor?tipe=${encodeURIComponent(type)}`, { token, portal }),
-  })
+      callAPI<SurveyorOption[]>(
+        `/api/registrasi/surveyor?tipe=${encodeURIComponent(type)}`,
+        { token, portal },
+      ),
+  });
 }
 
 function useSurveyAction<TBody, TResult>(claimID: string, path: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (body: TBody) =>
-      callAPI<TResult>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/${path}`, {
-        metode: 'POST',
-        body,
-        token,
-        portal,
-      }),
+      callAPI<TResult>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/survey/${path}`,
+        {
+          metode: "POST",
+          body,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['registrasi', 'survey-tab', claimID] })
-      void client.invalidateQueries({ queryKey: ['registrasi', 'survey', claimID] })
-      void client.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+      void client.invalidateQueries({
+        queryKey: ["registrasi", "survey-tab", claimID],
+      });
+      void client.invalidateQueries({
+        queryKey: ["registrasi", "survey", claimID],
+      });
+      void client.invalidateQueries({ queryKey: ["registrasi", "klaim"] });
     },
-  })
+  });
 }
 
 /** Tombol Simpan tab Survey (`PNCSaveButton`). */
 export function useSaveSurvey(claimID: string) {
-  return useSurveyAction<SurveySaveRequest, SurveyTabResponse>(claimID, 'simpan')
+  return useSurveyAction<SurveySaveRequest, SurveyTabResponse>(
+    claimID,
+    "simpan",
+  );
 }
 
 /** Tombol Transfer Survei (`InternalSurveyor_act`). */
 export function useTransferSurvey(claimID: string) {
-  return useSurveyAction<SurveySaveRequest, SurveyActionResponse>(claimID, 'transfer')
+  return useSurveyAction<SurveySaveRequest, SurveyActionResponse>(
+    claimID,
+    "transfer",
+  );
 }
 
 /** Modal Transfer Komite (`ClaimComitee` → `ValidationAnalysis`). */
 export function useTransferSurveyCommittee(claimID: string) {
-  return useSurveyAction<SurveyCommitteeRequest, SurveyActionResponse>(claimID, 'komite')
+  return useSurveyAction<SurveyCommitteeRequest, SurveyActionResponse>(
+    claimID,
+    "komite",
+  );
 }
 
 /** Tombol "Ya" modal Batal Survei (`CancelSurvey`). */
 export function useCancelSurvey(claimID: string) {
-  return useSurveyAction<{ tugas_id: string; objek_id: string }, SurveyTabResponse>(claimID, 'batal')
+  return useSurveyAction<
+    { tugas_id: string; objek_id: string },
+    SurveyTabResponse
+  >(claimID, "batal");
 }
 
 /** Tab Unggah Dokumen — checklist jenis dokumen dan berkas yang sudah diunggah. */
 export function useDocuments(claimID: string, enabled = true) {
-  return useClaimRecord<DocumentsResponse>(claimID, 'dokumen', enabled)
+  return useClaimRecord<DocumentsResponse>(claimID, "dokumen", enabled);
 }
 
 /** Bahan satu unggahan dari baris checklist. */
 export interface UploadDocumentInput {
   /** DOC_TYPE_DT_ID baris checklist. */
-  jenisDokumen: string
-  berkas: File
-  catatan?: string
+  jenisDokumen: string;
+  berkas: File;
+  catatan?: string;
 }
 
 /**
@@ -737,32 +839,34 @@ export interface UploadDocumentInput {
  * yang sudah diperbarui, dan tab Unggah Dokumen dimuat ulang dari server.
  */
 export function useUploadDocument(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: UploadDocumentInput) => {
-      const form = new FormData()
+      const form = new FormData();
       // Nama bagian `berkas`, `jenis_dokumen`, dan `catatan` harus sama dengan yang dibaca
       // handler (UploadDocument).
-      form.append('berkas', input.berkas, input.berkas.name)
-      form.append('jenis_dokumen', input.jenisDokumen)
-      if (input.catatan?.trim()) form.append('catatan', input.catatan.trim())
+      form.append("berkas", input.berkas, input.berkas.name);
+      form.append("jenis_dokumen", input.jenisDokumen);
+      if (input.catatan?.trim()) form.append("catatan", input.catatan.trim());
       return callAPI<DocumentsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: form,
           token,
           portal,
         },
-      )
+      );
     },
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "dokumen", claimID],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -770,8 +874,8 @@ export function useUploadDocument(claimID: string) {
  * tombol ditekan, bukan dimuat bersama daftar — alamatnya bermasa berlaku.
  */
 export function useDocumentLink(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (attachmentID: string) =>
@@ -779,7 +883,7 @@ export function useDocumentLink(claimID: string) {
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/tautan`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -787,30 +891,32 @@ export function useDocumentLink(claimID: string) {
  * checklist yang sudah diperbarui, sehingga "Lihat dokumen (n)" langsung berkurang.
  */
 export function useDeleteDocument(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (attachmentID: string) =>
       callAPI<DocumentsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dokumen/${encodeURIComponent(attachmentID)}/hapus`,
-        { metode: 'POST', token, portal },
+        { metode: "POST", token, portal },
       ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "dokumen", claimID],
+      });
     },
-  })
+  });
 }
 
 /** Data tertanggung dari CIF polis — tab Register (DATA TERTANGGUNG KLAIM, Alamat). */
 export function useInsuredProfile(claimID: string, enabled = true) {
-  return useClaimRecord<InsuredResponse>(claimID, 'tertanggung', enabled)
+  return useClaimRecord<InsuredResponse>(claimID, "tertanggung", enabled);
 }
 
 /** Tab Progress Claim & Komunikasi. */
 export function useProgressRecords(claimID: string, enabled = true) {
-  return useClaimRecord<ProgressResponse>(claimID, 'progres', enabled)
+  return useClaimRecord<ProgressResponse>(claimID, "progres", enabled);
 }
 
 /**
@@ -818,22 +924,22 @@ export function useProgressRecords(claimID: string, enabled = true) {
  * mengunci estimasinya. Jawabannya berkas, bukan JSON.
  */
 export function useFaceSheet(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: FaceSheetRequest) =>
       unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/cfs`, {
-        metode: 'POST',
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /**
@@ -841,66 +947,75 @@ export function useFaceSheet(claimID: string) {
  * mengembalikan daftarnya. Mutasi, bukan kueri, karena membukanya dapat menerbitkan nomor.
  */
 export function usePLAList(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: PLARequest) =>
-      callAPI<PLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/daftar`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      callAPI<PLAListResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/daftar`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Menyimpan isian REMARKS PLA. */
 export function useSavePLANotes(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: PLARequest) =>
-      callAPI<PLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/catatan`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      callAPI<PLAListResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/catatan`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** SEND ALL PLA — mengirim PLA yang belum terkirim lewat email; hasil per PLA dan daftar terbaru. */
 export function useSendAllPLA(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: PLARequest) =>
-      callAPI<PLASendResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/kirim`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      callAPI<PLASendResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla/kirim`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Print PLA (satu nomor) dan Print All PLA — PDF, atau ZIP bila lebih dari satu. */
 export function usePrintPLA(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: PLARequest) =>
       unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/pla`, {
-        metode: 'POST',
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
-  })
+  });
 }
 
 /**
@@ -908,34 +1023,37 @@ export function usePrintPLA(claimID: string) {
  * daftarnya. Mutasi, bukan kueri, karena membukanya dapat menerbitkan nomor.
  */
 export function useDLAList(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: DLARequest) =>
-      callAPI<DLAListResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla/daftar`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      callAPI<DLAListResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla/daftar`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** PRINT (satu nomor) dan Print All DLA — PDF, atau ZIP bila lebih dari satu. */
 export function usePrintDLA(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: DLARequest) =>
       unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/dla`, {
-        metode: 'POST',
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
-  })
+  });
 }
 
 /**
@@ -943,156 +1061,184 @@ export function usePrintDLA(claimID: string) {
  * Badannya sama dengan Transfer Kasir: tugas beserta objek, jaminan, dan adjustment.
  */
 export function usePrintAcceptanceNote(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: CashierRequest) =>
-      unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/draft`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      unduhBerkas(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/draft`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Isi dialog konfirmasi Transfer Kasir (penerima, rekening, nilai nett, galat pertama). */
 export function useCashierPreview(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: CashierRequest) =>
       callAPI<CashierPreview>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir/pratinjau`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
-  })
+  });
 }
 
 /** Submit Transfer Kasir — mengirim pembayaran ke sistem Kasir (TransferToKasir_act). */
 export function useTransferCashier(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: CashierRequest) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/kasir`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
       // Histori Transfer Kasir membaca TRF_KASIR_LOG lewat kuncinya sendiri; tanpa ini grid
       // riwayat tetap menampilkan keadaan sebelum transfer sampai halaman dimuat ulang.
-      apiClient.invalidateQueries({ queryKey: settlementHistoryKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: settlementHistoryKey(claimID) });
     },
-  })
+  });
 }
 
 /** Alamat satu baris adjustment untuk dialog Print LOD. Indeks berbasis 1. */
 export type LODRequest = {
-  tugas_id: string
-  objek: number
-  jaminan: number
-  adjustment: number
-  tipe_pdf?: string
-}
+  tugas_id: string;
+  objek: number;
+  jaminan: number;
+  adjustment: number;
+  tipe_pdf?: string;
+};
 
-export type LODType = { id: string; nama: string; tersedia: boolean }
+export type LODType = { id: string; nama: string; tersedia: boolean };
 
 /** Isi awal dialog Print LOD — pilihan Tipe PDF dan isian section PrintLODdanEmail. */
-export type LODDialog = { tipe: LODType[]; email_lod: string; nama_tertanggung: string }
+export type LODDialog = {
+  tipe: LODType[];
+  email_lod: string;
+  nama_tertanggung: string;
+};
 
 /** Isi awal dialog Print LOD (`SetTypePDFAdjustment`, `SetDataEmailTertanggung`). */
 export function useLODTypes(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: LODRequest) =>
-      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-  })
+      callAPI<LODDialog>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /**
  * Pilihan dropdown Tipe LOD kolom Adjustment — daftar yang sama dengan dialog Print LOD
  * (`SetTypePDFAdjustment`), dimuat sekali per tugas karena tidak berbeda antarbaris.
  */
-export function useLODTypeOptions(claimID: string, taskID: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useLODTypeOptions(
+  claimID: string,
+  taskID: string,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'lod-tipe', claimID, taskID, token],
-    enabled: enabled && taskID !== '',
+    queryKey: ["registrasi", "lod-tipe", claimID, taskID, token],
+    enabled: enabled && taskID !== "",
     staleTime: 5 * 60_000,
     queryFn: () =>
-      callAPI<LODDialog>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`, {
-        metode: 'POST',
-        body: { tugas_id: taskID, objek: 1, jaminan: 1, adjustment: 1 },
-        token,
-        portal,
-      }),
-  })
+      callAPI<LODDialog>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/tipe`,
+        {
+          metode: "POST",
+          body: { tugas_id: taskID, objek: 1, jaminan: 1, adjustment: 1 },
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Isian awal form AcceptationLOD satu baris adjustment (POST …/akseptasi/awal). */
 export function useAcceptanceDefaults(
   claimID: string,
-  address: { tugas_id: string; objek: number; jaminan: number; adjustment: number },
+  address: {
+    tugas_id: string;
+    objek: number;
+    jaminan: number;
+    adjustment: number;
+  },
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['registrasi', 'akseptasi-awal', claimID, address, token],
+    queryKey: ["registrasi", "akseptasi-awal", claimID, address, token],
     staleTime: 0,
     queryFn: () =>
       callAPI<AcceptanceDefaults>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi/awal`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: address,
           token,
           portal,
         },
       ),
-  })
+  });
 }
 
 /** Menyimpan pilihan dropdown Tipe LOD (PDFTYPE) satu baris adjustment, lalu memuat ulang klaim. */
 export function useSetLODType(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: LODRequest) =>
-      callAPI<unknown>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/pilih`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<unknown>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod/pilih`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      void apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /**
@@ -1101,199 +1247,231 @@ export function useSetLODType(claimID: string) {
  * form AcceptationLOD menampilkan Tipe PDF dan Tanggal Cetak LOD yang baru.
  */
 export function usePrintLOD(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: LODRequest) =>
       unduhBerkas(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/lod`, {
-        metode: 'POST',
+        metode: "POST",
         body: content,
         token,
         portal,
       }),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /** Isian form Persetujuan / Akseptasi (AcceptationLOD_Sect). Tanggal YYYY-MM-DD. */
 export type AcceptanceInput = {
-  tugas_id: string
-  objek: number
-  jaminan: number
-  adjustment: number
+  tugas_id: string;
+  objek: number;
+  jaminan: number;
+  adjustment: number;
   /** `.TipeAkseptasi` — terisi dari AcceptationLOD_PreAct, dapat diubah. */
-  tipe_akseptasi?: string
-  persetujuan_tertanggung: string
-  tanggal_terima_lod: string
-  tanggal_boleh_bayar: string
-  nilai_lod_sen?: number
-  penerima: string
-  nama_komite_akseptasi: string
-  catatan_penerima: string
-  berita_acara: string
-}
+  tipe_akseptasi?: string;
+  persetujuan_tertanggung: string;
+  tanggal_terima_lod: string;
+  tanggal_boleh_bayar: string;
+  nilai_lod_sen?: number;
+  penerima: string;
+  nama_komite_akseptasi: string;
+  catatan_penerima: string;
+  berita_acara: string;
+};
 
 /** Satu berkas "Unggah Dokumen Persetujuan LOD" beserta jenis dokumennya (DOC_TYPE_DT_ID). */
-export type AcceptanceFileInput = { berkas: File; jenisDokumen: string }
+export type AcceptanceFileInput = { berkas: File; jenisDokumen: string };
 
 /** Simpan form Persetujuan / Akseptasi — menerbitkan nomor akseptasi (SetAdjustmentAcceptation). */
 export function useAcceptSettlement(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ isian, berkas }: { isian: AcceptanceInput; berkas: AcceptanceFileInput[] }) => {
-      const form = new FormData()
+    mutationFn: ({
+      isian,
+      berkas,
+    }: {
+      isian: AcceptanceInput;
+      berkas: AcceptanceFileInput[];
+    }) => {
+      const form = new FormData();
       // Nama bagian harus sama dengan yang dibaca handler (AcceptSettlement).
-      form.append('isian', JSON.stringify(isian))
+      form.append("isian", JSON.stringify(isian));
       for (const f of berkas) {
-        form.append('berkas', f.berkas, f.berkas.name)
-        form.append('jenis_dokumen', f.jenisDokumen)
+        form.append("berkas", f.berkas, f.berkas.name);
+        form.append("jenis_dokumen", f.jenisDokumen);
       }
       return callAPI<ClaimResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/akseptasi`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: form,
           token,
           portal,
         },
-      )
+      );
     },
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "dokumen", claimID],
+      });
     },
-  })
+  });
 }
 
 /** Alamat satu baris adjustment beserta tugas yang sedang dikerjakan; indeks berbasis 1. */
-export type SettlementAddress = { tugas_id: string; objek: number; jaminan: number; adjustment: number }
+export type SettlementAddress = {
+  tugas_id: string;
+  objek: number;
+  jaminan: number;
+  adjustment: number;
+};
 
 /** Satu berkas "Unggah File Penunjang": jenis dokumen (DOC_TYPE_DT_ID) dan catatan opsional. */
-export type SupportingFileInput = { berkas: File; jenisDokumen: string; catatan: string }
+export type SupportingFileInput = {
+  berkas: File;
+  jenisDokumen: string;
+  catatan: string;
+};
 
 /**
  * Tombol Unggah File Penunjang pada satu baris adjustment (local action `UploadDokumen_Adj`).
  * Berkas langsung tersimpan sebagai lampiran klaim, tidak menunggu Submit akseptasi.
  */
 export function useUploadSupportingFiles(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ alamat, berkas }: { alamat: SettlementAddress; berkas: SupportingFileInput[] }) => {
-      const form = new FormData()
+    mutationFn: ({
+      alamat,
+      berkas,
+    }: {
+      alamat: SettlementAddress;
+      berkas: SupportingFileInput[];
+    }) => {
+      const form = new FormData();
       // Nama bagian harus sama dengan yang dibaca handler (UploadSupportingFiles).
-      form.append('tugas_id', alamat.tugas_id)
-      form.append('objek', String(alamat.objek))
-      form.append('jaminan', String(alamat.jaminan))
-      form.append('adjustment', String(alamat.adjustment))
+      form.append("tugas_id", alamat.tugas_id);
+      form.append("objek", String(alamat.objek));
+      form.append("jaminan", String(alamat.jaminan));
+      form.append("adjustment", String(alamat.adjustment));
       for (const f of berkas) {
-        form.append('berkas', f.berkas, f.berkas.name)
-        form.append('jenis_dokumen', f.jenisDokumen)
-        form.append('catatan_berkas', f.catatan.trim())
+        form.append("berkas", f.berkas, f.berkas.name);
+        form.append("jenis_dokumen", f.jenisDokumen);
+        form.append("catatan_berkas", f.catatan.trim());
       }
       return callAPI<DocumentsResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/file-penunjang`,
-        { metode: 'POST', body: form, token, portal },
-      )
+        { metode: "POST", body: form, token, portal },
+      );
     },
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'dokumen', claimID] })
+      apiClient.invalidateQueries({
+        queryKey: ["registrasi", "dokumen", claimID],
+      });
     },
-  })
+  });
 }
 
 /** Tombol Tambah pada grid Adjustment (tab Adjustment & Akseptasi, layar InputSurveyor). */
 export function useAddSettlement(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
-    onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-    },
-  })
-}
-
-/** Tombol Tambah grid Adjustment — ValidationAdjustment; untuk PA menambahkan estimasi NewEstimationPA. */
-export function usePrepareSettlement(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (content: { tugas_id: string; objek: number; jaminan: number }) =>
       callAPI<ClaimResponse>(
-        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/tambah`,
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
+}
+
+/** Tombol Tambah grid Adjustment — ValidationAdjustment; untuk PA menambahkan estimasi NewEstimationPA. */
+export function usePrepareSettlement(claimID: string) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (content: {
+      tugas_id: string;
+      objek: number;
+      jaminan: number;
+    }) =>
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/tambah`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
+    onSuccess: () => {
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
+    },
+  });
 }
 
 /** Menyimpan ulang baris Adjustment yang sudah ada setelah isiannya berubah (SetNilaiResikoSendiri). */
 export function useUpdateSettlement(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
       callAPI<ClaimResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/ubah`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /** Menghitung ulang nilai tampilan baris Adjustment tanpa menyimpan (SetNilaiResikoSendiri). */
 export function usePreviewSettlement(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (content: SettlementRequest) =>
       callAPI<SettlementPreviewResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/hitung`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
-  })
+  });
 }
 
 /**
@@ -1301,183 +1479,226 @@ export function usePreviewSettlement(claimID: string) {
  * `GetDataBankMaster` Pega, yang dipanggil setiap nomor berubah. Nomor kosong tidak dibaca.
  */
 export function useBankAccount(number: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const trimmed = number.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const trimmed = number.trim();
 
   return useQuery({
-    queryKey: ['registrasi', 'rekening', trimmed, token, portal],
-    enabled: trimmed !== '',
+    queryKey: ["registrasi", "rekening", trimmed, token, portal],
+    enabled: trimmed !== "",
     retry: false,
     queryFn: () =>
-      callAPI<BankAccount>(`/api/registrasi/rekening/${encodeURIComponent(trimmed)}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<BankAccount>(
+        `/api/registrasi/rekening/${encodeURIComponent(trimmed)}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
-const committeeKey = ['registrasi', 'komite'] as const
+const committeeKey = ["registrasi", "komite"] as const;
 
 /** Tombol Transfer Komite pada satu baris Adjustment. */
 export function useTransferCommittee(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: CommitteeTransferRequest) =>
       callAPI<CommitteeTransferResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/adjustment/komite`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
-      apiClient.invalidateQueries({ queryKey: committeeKey })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
+      apiClient.invalidateQueries({ queryKey: committeeKey });
     },
-  })
+  });
 }
 
 /** Simpan isian modal "Transfer Claim ke Komite" satu jaminan. Objek dan jaminan berbasis 1. */
 export function useSaveCommitteeNote(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (content: { tugas_id: string; objek: number; jaminan: number } & CommitteeNote) =>
+    mutationFn: (
+      content: {
+        tugas_id: string;
+        objek: number;
+        jaminan: number;
+      } & CommitteeNote,
+    ) =>
       callAPI<ClaimResponse>(
         `/api/registrasi/klaim/${encodeURIComponent(claimID)}/jaminan/isian-komite`,
         {
-          metode: 'POST',
+          metode: "POST",
           body: content,
           token,
           portal,
         },
       ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /** Status satu kasus komite per jenjang. */
 export function useCommittee(committeeID: string | undefined) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: [...committeeKey, committeeID ?? '', token, portal],
+    queryKey: [...committeeKey, committeeID ?? "", token, portal],
     enabled: !!committeeID,
     queryFn: () =>
-      callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(committeeID ?? '')}`, {
-        token,
-        portal,
-      }),
-  })
+      callAPI<Committee>(
+        `/api/registrasi/komite/${encodeURIComponent(committeeID ?? "")}`,
+        {
+          token,
+          portal,
+        },
+      ),
+  });
 }
 
 /** Putusan komite klaim PNCN yang menunggu pengguna ini. */
 export function usePendingCommittees() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: [...committeeKey, 'menunggu', token, portal],
-    queryFn: () => callAPI<CommitteeListResponse>('/api/registrasi/komite', { token, portal }),
-  })
+    queryKey: [...committeeKey, "menunggu", token, portal],
+    queryFn: () =>
+      callAPI<CommitteeListResponse>("/api/registrasi/komite", {
+        token,
+        portal,
+      }),
+  });
 }
 
 /** Tombol Setuju/Tolak anggota komite. */
 export function useDecideCommittee() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (content: { komiteID: string; keputusan: string; catatan: string }) =>
-      callAPI<Committee>(`/api/registrasi/komite/${encodeURIComponent(content.komiteID)}/putusan`, {
-        metode: 'POST',
-        body: { keputusan: content.keputusan, catatan: content.catatan },
-        token,
-        portal,
-      }),
+    mutationFn: (content: {
+      komiteID: string;
+      keputusan: string;
+      catatan: string;
+    }) =>
+      callAPI<Committee>(
+        `/api/registrasi/komite/${encodeURIComponent(content.komiteID)}/putusan`,
+        {
+          metode: "POST",
+          body: { keputusan: content.keputusan, catatan: content.catatan },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: committeeKey })
-      apiClient.invalidateQueries({ queryKey: ['registrasi', 'klaim'] })
+      apiClient.invalidateQueries({ queryKey: committeeKey });
+      apiClient.invalidateQueries({ queryKey: ["registrasi", "klaim"] });
     },
-  })
+  });
 }
 
 /** Tombol Simpan InputReceiver — penerima baru (Tambah) atau yang sedang dibuka. */
 export function useSaveReceiver(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const apiClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const apiClient = useQueryClient();
 
   return useMutation({
     mutationFn: (content: ReceiverRequest) =>
-      callAPI<ClaimResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/penerima`, {
-        metode: 'POST',
-        body: content,
-        token,
-        portal,
-      }),
+      callAPI<ClaimResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/penerima`,
+        {
+          metode: "POST",
+          body: content,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      apiClient.invalidateQueries({ queryKey: claimKey(claimID) })
+      apiClient.invalidateQueries({ queryKey: claimKey(claimID) });
     },
-  })
+  });
 }
 
 /** Isi awal modal Input Progress Claim. */
 export function useProgressInputForm(claimID: string, enabled = true) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
   return useQuery({
-    queryKey: ['registrasi', 'progres-form', claimID, token, portal],
+    queryKey: ["registrasi", "progres-form", claimID, token, portal],
     enabled,
     queryFn: () =>
-      callAPI<ProgressInputForm>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres/form`, { token, portal }),
-  })
+      callAPI<ProgressInputForm>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres/form`,
+        { token, portal },
+      ),
+  });
 }
 
 /** Daftar STATUS PERLU satu Status Progress 1 (BrowseStsProgress2_act2 / BrowseStsProgressDoc). */
 export function useProgressNeedOptions(status1: string, docType: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
   return useQuery({
-    queryKey: ['registrasi', 'progres-status-perlu', status1, docType, token, portal],
-    enabled: status1 !== '',
+    queryKey: [
+      "registrasi",
+      "progres-status-perlu",
+      status1,
+      docType,
+      token,
+      portal,
+    ],
+    enabled: status1 !== "",
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
       callAPI<ProgressOption[]>(
         `/api/registrasi/progres/status-perlu?status1=${encodeURIComponent(status1)}&tipe_dokumen=${encodeURIComponent(docType)}`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /** Tombol Submit modal Input Progress Claim; grid progres dimuat ulang. */
 export function useInputProgress(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (body: ProgressInputRequest) =>
-      callAPI<ProgressInputResponse>(`/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres`, {
-        metode: 'POST',
-        body,
-        token,
-        portal,
-      }),
+      callAPI<ProgressInputResponse>(
+        `/api/registrasi/klaim/${encodeURIComponent(claimID)}/progres`,
+        {
+          metode: "POST",
+          body,
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['registrasi', 'progres', claimID] })
-      void client.invalidateQueries({ queryKey: ['registrasi', 'progres-form', claimID] })
+      void client.invalidateQueries({
+        queryKey: ["registrasi", "progres", claimID],
+      });
+      void client.invalidateQueries({
+        queryKey: ["registrasi", "progres-form", claimID],
+      });
     },
-  })
+  });
 }

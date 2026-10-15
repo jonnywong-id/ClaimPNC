@@ -1,71 +1,72 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type TravelDocumentDetail } from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type TravelDocumentDetail } from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useCreateTravelDocumentDetail,
   useTravelDocumentChoiceList,
   useTravelDocumentDetailList,
   useUpdateTravelDocumentDetail,
-} from './api'
+} from "./api";
 import {
   MANDATORY_YES,
   TravelDocumentDetailForm,
   type TravelDocumentDetailFields,
-} from './TravelDocumentDetailForm'
+} from "./TravelDocumentDetailForm";
 
 /** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
+const CLOSED = "closed";
 /** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
+const CREATE = "create";
 
-type FormState = typeof CLOSED | typeof CREATE | TravelDocumentDetail
+type FormState = typeof CLOSED | typeof CREATE | TravelDocumentDetail;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -107,15 +108,15 @@ function loadMessage(error: unknown): MessageContent {
  * `ADR-0012`).
  */
 export function TravelDocumentDetailPage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
+  const portal = useSelectedPortal((state) => state.alias);
+  const [form, setForm] = useState<FormState>(CLOSED);
 
-  const list = useTravelDocumentDetailList()
-  const documents = useTravelDocumentChoiceList()
-  const create = useCreateTravelDocumentDetail()
-  const update = useUpdateTravelDocumentDetail()
+  const list = useTravelDocumentDetailList();
+  const documents = useTravelDocumentChoiceList();
+  const create = useCreateTravelDocumentDetail();
+  const update = useUpdateTravelDocumentDetail();
 
-  const openedRow = typeof form === 'string' ? null : form
+  const openedRow = typeof form === "string" ? null : form;
 
   // Form dibuka LANGSUNG dari baris yang ada di daftar, tanpa memuat ulang dari server.
   //
@@ -124,27 +125,27 @@ export function TravelDocumentDetailPage() {
   // sempat memuat ulang ketika masih memuat pembatasan Plan dan Jaminan, yang memang
   // tidak dibawa daftar; pembatasan itu dicabut 2026-10-03 dan kewajiban itu hilang
   // bersamanya.
-  const edited = openedRow
+  const edited = openedRow;
 
-  const isSaving = create.isPending || update.isPending
-  const saveError = openedRow ? update.error : create.error
+  const isSaving = create.isPending || update.isPending;
+  const saveError = openedRow ? update.error : create.error;
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
+    create.reset();
+    update.reset();
+    setForm(CREATE);
   }
 
   function openEdit(row: TravelDocumentDetail) {
-    create.reset()
-    update.reset()
-    setForm(row)
+    create.reset();
+    update.reset();
+    setForm(row);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
+    create.reset();
+    update.reset();
+    setForm(CLOSED);
   }
 
   function save(values: TravelDocumentDetailFields) {
@@ -155,61 +156,70 @@ export function TravelDocumentDetailPage() {
       // Isian kosong dibaca sebagai nol — pada layar tanpa validasi, "belum diisi"
       // tidak boleh menjadi penolakan. Bentuknya sudah dijaga skema form berupa angka
       // saja, sehingga Number() di sini tidak pernah menghasilkan NaN.
-      minimal_unggah: Number(values.minimal_unggah || '0'),
-    }
+      minimal_unggah: Number(values.minimal_unggah || "0"),
+    };
 
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
     // diketik, itu berarti mengetik ulang dari awal.
     if (openedRow) {
-      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm })
-      return
+      update.mutate({ id: openedRow.id, input }, { onSuccess: closeForm });
+      return;
     }
-    create.mutate(input, { onSuccess: closeForm })
+    create.mutate(input, { onSuccess: closeForm });
   }
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang dicari dan diurutkan
   // adalah teks polos, yang dilihat pengguna boleh berisi markup.
   const columns: Column<TravelDocumentDetail>[] = [
-    { key: 'id', title: 'ID', width: 'w-24', value: (row) => row.id },
-    { key: 'id_dokumen', title: 'ID Dokumen', width: 'w-32', value: (row) => row.id_dokumen },
-    { key: 'nama_dokumen', title: 'Nama Dokumen', value: (row) => row.nama_dokumen },
+    { key: "id", title: "ID", width: "w-24", value: (row) => row.id },
     {
-      key: 'status_wajib',
-      title: 'Status Wajib',
-      width: 'w-32',
+      key: "id_dokumen",
+      title: "ID Dokumen",
+      width: "w-32",
+      value: (row) => row.id_dokumen,
+    },
+    {
+      key: "nama_dokumen",
+      title: "Nama Dokumen",
+      value: (row) => row.nama_dokumen,
+    },
+    {
+      key: "status_wajib",
+      title: "Status Wajib",
+      width: "w-32",
       // Teks "Ya"/"Tidak" mengikuti `Activity/BrowseDocTravel-Act.xml`, yang mengubah
       // STSWAJIB menjadi kedua kata itu sebelum menampilkannya. Yang tersimpan tetap 1
       // atau 0.
-      value: (row) => (row.status_wajib ? 'Ya' : 'Tidak'),
+      value: (row) => (row.status_wajib ? "Ya" : "Tidak"),
       render: (row) => (
         <span
           className={
             row.status_wajib
-              ? 'rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700'
-              : 'rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600'
+              ? "rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700"
+              : "rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
           }
         >
-          {row.status_wajib ? 'Ya' : 'Tidak'}
+          {row.status_wajib ? "Ya" : "Tidak"}
         </span>
       ),
     },
     {
-      key: 'minimal_unggah',
-      title: 'Minimal Unggah',
-      width: 'w-36',
+      key: "minimal_unggah",
+      title: "Minimal Unggah",
+      width: "w-36",
       alignRight: true,
       value: (row) => String(row.minimal_unggah),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: 'w-24',
+      key: "aksi",
+      title: "Aksi",
+      width: "w-24",
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data.
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           tone="kedua"
@@ -220,23 +230,31 @@ export function TravelDocumentDetailPage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya diambil apa adanya dari caption layar Pega, supaya pengguna
               mengenalinya tanpa diberi tahu. */}
-          <h1 className="text-xl font-semibold text-slate-900">Detail Dokumen Travel</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Detail Dokumen Travel
+          </h1>
           <p className="text-sm text-slate-600">
-            Dokumen apa saja yang diminta pada klaim Travel, wajib atau tidak, dan paling sedikit
-            berapa berkas yang harus diunggah.
+            Dokumen apa saja yang diminta pada klaim Travel, wajib atau tidak,
+            dan paling sedikit berapa berkas yang harus diunggah.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
           <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
             Tambah
@@ -248,8 +266,10 @@ export function TravelDocumentDetailPage() {
           empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
           hanya diandaikan pengguna (`ADR-0030`, `R-20`). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">
+          {list.data?.portal ?? portal ?? "—"}
+        </span>
       </p>
 
       {form !== CLOSED && (
@@ -285,17 +305,19 @@ export function TravelDocumentDetailPage() {
             tone="penolakan"
           />
         ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar detail dokumen travel…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar detail dokumen travel…
+          </p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -308,5 +330,5 @@ export function TravelDocumentDetailPage() {
         )}
       </section>
     </main>
-  )
+  );
 }

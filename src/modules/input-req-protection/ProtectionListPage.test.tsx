@@ -1,14 +1,14 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { ProtectionListPage } from './ProtectionListPage'
-import type { Protection, ProtectionListResponse } from './types'
+import { ProtectionListPage } from "./ProtectionListPage";
+import type { Protection, ProtectionListResponse } from "./types";
 
 /**
  * Data uji seluruhnya KARANGAN.
@@ -18,33 +18,35 @@ import type { Protection, ProtectionListResponse } from './types'
  */
 function protection(partial: Partial<Protection> = {}): Protection {
   return {
-    nomor_proteksi: 'OPCN.26.0001',
-    nomor_polis: '99.001.2026.00000001',
-    nomor_klaim: '',
-    tipe_proteksi: '1',
-    nama_tipe_proteksi: 'General',
-    tanggal_proteksi: '2026-09-16',
-    keterangan: 'Permintaan contoh.',
-    user_create: 'ADMINCONTOH',
+    nomor_proteksi: "OPCN.26.1",
+    nomor_polis: "99.001.2026.00000001",
+    nomor_klaim: "",
+    tipe_proteksi: "1",
+    nama_tipe_proteksi: "General",
+    tanggal_proteksi: "2026-09-16",
+    keterangan: "Permintaan contoh.",
+    user_create: "ADMINCONTOH",
     dapat_disunting: true,
     premi: false,
     ...partial,
-  }
+  };
 }
 
-function listResponse(partial: Partial<ProtectionListResponse> = {}): ProtectionListResponse {
-  return { proteksi: [protection()], total: 1, ...partial }
+function listResponse(
+  partial: Partial<ProtectionListResponse> = {},
+): ProtectionListResponse {
+  return { proteksi: [protection()], total: 1, ...partial };
 }
 
-type Call = { url: string; init: RequestInit | undefined }
+type Call = { url: string; init: RequestInit | undefined };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
@@ -55,14 +57,14 @@ function jsonResponse(status: number, body: unknown): Response {
  * baru terlihat di layar pengguna.
  */
 const KLAIM = {
-  nomor_klaim: 'PNCN.26.0007',
-  nomor_polis: '99.001.2026.00000001',
-  nama_tertanggung: 'TERTANGGUNG CONTOH',
-  dol: '2026-08-01',
-  penyebab_kerugian: 'Kebakaran',
-  nama_objek: 'OBJEK CONTOH',
-  nama_cabang: 'CABANG CONTOH',
-}
+  nomor_klaim: "PNCN.26.0007",
+  nomor_polis: "99.001.2026.00000001",
+  nama_tertanggung: "TERTANGGUNG CONTOH",
+  dol: "2026-08-01",
+  penyebab_kerugian: "Kebakaran",
+  nama_objek: "OBJEK CONTOH",
+  nama_cabang: "CABANG CONTOH",
+};
 
 /**
  * Coverage klaim, sebagaimana dikirim `GET …/klaim/{nomor}/coverage`.
@@ -75,45 +77,61 @@ const KLAIM = {
 const COVERAGE = {
   coverage: [
     {
-      id_objek: '1', id_coverage: '1', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
-      penyebab_kerugian: 'ILLNESS', penyebab_kerugian_id: '12001',
+      id_objek: "1",
+      id_coverage: "1",
+      nama_objek: "JackHugh",
+      nama_coverage: "Resiko A",
+      penyebab_kerugian: "ILLNESS",
+      penyebab_kerugian_id: "12001",
     },
     {
-      id_objek: '1', id_coverage: '2', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
-      penyebab_kerugian: 'STORM', penyebab_kerugian_id: '12002',
+      id_objek: "1",
+      id_coverage: "2",
+      nama_objek: "JackHugh",
+      nama_coverage: "Resiko A",
+      penyebab_kerugian: "STORM",
+      penyebab_kerugian_id: "12002",
     },
     {
-      id_objek: '1', id_coverage: '3', nama_objek: 'JackHugh', nama_coverage: 'Katastropi',
-      penyebab_kerugian: 'WINDSTORM', penyebab_kerugian_id: '12003',
+      id_objek: "1",
+      id_coverage: "3",
+      nama_objek: "JackHugh",
+      nama_coverage: "Katastropi",
+      penyebab_kerugian: "WINDSTORM",
+      penyebab_kerugian_id: "12003",
     },
     {
-      id_objek: '1', id_coverage: '4', nama_objek: 'JackHugh', nama_coverage: 'Resiko A',
-      penyebab_kerugian: 'HURRICANE', penyebab_kerugian_id: '12004',
+      id_objek: "1",
+      id_coverage: "4",
+      nama_objek: "JackHugh",
+      nama_coverage: "Resiko A",
+      penyebab_kerugian: "HURRICANE",
+      penyebab_kerugian_id: "12004",
     },
   ],
-}
+};
 
 /** Pilihan dropdown "Next Cause Of Loss", dari `POOLDATA.D_CAUSE_OF_LOSS`. */
 const PENYEBAB = {
   penyebab_kerugian: [
-    { kode: '11997', nama: 'FIRE - OPEN FLAME', kode_kerugian: 'A' },
-    { kode: '12033', nama: 'WRECK REMOVAL', kode_kerugian: '' },
+    { kode: "11997", nama: "FIRE - OPEN FLAME", kode_kerugian: "A" },
+    { kode: "12033", nama: "WRECK REMOVAL", kode_kerugian: "" },
   ],
-}
+};
 
 const TIPE = {
   tipe: [
-    { kode: '1', nama: 'General' },
-    { kode: '2', nama: 'Premi Belum Lunas' },
-    { kode: '3', nama: 'Asuransi Kredit' },
-    { kode: '4', nama: 'Pengkinian Data' },
-    { kode: '5', nama: 'Currency Klaim' },
-    { kode: '6', nama: 'Klaim >= 50 M' },
-    { kode: '7', nama: 'Perubahan DOL' },
-    { kode: '8', nama: 'Perubahan COL' },
-    { kode: '9', nama: 'Nama Rekening Tidak Sesuai' },
+    { kode: "1", nama: "General" },
+    { kode: "2", nama: "Premi Belum Lunas" },
+    { kode: "3", nama: "Asuransi Kredit" },
+    { kode: "4", nama: "Pengkinian Data" },
+    { kode: "5", nama: "Currency Klaim" },
+    { kode: "6", nama: "Klaim >= 50 M" },
+    { kode: "7", nama: "Perubahan DOL" },
+    { kode: "8", nama: "Perubahan COL" },
+    { kode: "9", nama: "Nama Rekening Tidak Sesuai" },
   ],
-}
+};
 
 /**
  * Memasang tiruan fetch.
@@ -130,11 +148,13 @@ const TIPE = {
  * yang membutuhkannya, dan menyiapkan sakelar untuk kebutuhan yang belum ada hanya menambah
  * bentuk yang harus dibaca.
  */
-function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promise<Response>) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
+function stubFetch(
+  answer: (url: string, init?: RequestInit) => Response | Promise<Response>,
+) {
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
 
-    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
+    if (url.includes("/tipe")) return Promise.resolve(jsonResponse(200, TIPE));
 
     // Dokumen penunjang diperiksa SEBELUM `/klaim/`, dan urutannya menentukan.
     //
@@ -145,26 +165,32 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promi
     // Sejak sakelar `FITUR_DOKUMEN_PENUNJANG_AKTIF` dinyalakan (2026-10-03), cabang ini
     // BENAR-BENAR terpakai: panelnya dirender pada form dan menembak jalur ini setiap kali
     // form dibuka. Sebelumnya ia dipasang untuk saat itu tiba.
-    if (url.includes('/dokumen-penunjang')) {
-      return Promise.resolve(jsonResponse(200, { data: [] }))
+    if (url.includes("/dokumen-penunjang")) {
+      return Promise.resolve(jsonResponse(200, { data: [] }));
     }
 
     // Keduanya diperiksa SEBELUM `/klaim/`, dengan alasan yang sama seperti dokumen
     // penunjang di atas: jalurnya bersarang di bawah klaim, sehingga `/klaim/` ikut cocok.
     // Bila urutannya terbalik, panel pemilih menerima badan pencarian klaim — yang tidak
     // punya `coverage`, dan tabelnya kosong tanpa satu pun galat.
-    if (url.includes('/coverage')) return Promise.resolve(jsonResponse(200, COVERAGE))
-    if (url.includes('/penyebab-kerugian')) return Promise.resolve(jsonResponse(200, PENYEBAB))
+    if (url.includes("/coverage"))
+      return Promise.resolve(jsonResponse(200, COVERAGE));
+    if (url.includes("/penyebab-kerugian"))
+      return Promise.resolve(jsonResponse(200, PENYEBAB));
 
-    if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(200, KLAIM))
-    return Promise.resolve(answer(url, init))
-  })
+    if (url.includes("/klaim/"))
+      return Promise.resolve(jsonResponse(200, KLAIM));
+    return Promise.resolve(answer(url, init));
+  });
 }
 
 function renderPage() {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
-  })
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
 
   return render(
     <QueryClientProvider client={client}>
@@ -172,143 +198,157 @@ function renderPage() {
         <ProtectionListPage />
       </MemoryRouter>
     </QueryClientProvider>,
-  )
+  );
 }
 
 beforeEach(() => {
-  calls = []
-  useSession.setState({ token: 'token-uji', user: null, validUntil: '2026-09-30T12:00:00Z' })
-  useSelectedPortal.setState({ alias: 'ASM' })
-})
+  calls = [];
+  useSession.setState({
+    token: "token-uji",
+    user: null,
+    validUntil: "2026-09-30T12:00:00Z",
+  });
+  useSelectedPortal.setState({ alias: "ASM" });
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-})
+  vi.unstubAllGlobals();
+});
 
 // Judul kolom mengikuti `Section/InboxReqProtection_Section-Section.xml` apa adanya
 // (`D-13`). Uji ini menjaga kesetaraan itu: mengganti judul akan lulus uji lain tetapi
 // membuat layar berbeda dari yang dikenal pengguna.
-it('memakai ketujuh judul kolom yang sama dengan section rujukan', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("memakai ketujuh judul kolom yang sama dengan section rujukan", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('OPCN.26.0001')
+  await screen.findByText("OPCN.26.1");
 
   // Ditanyakan lewat peran `columnheader`, bukan lewat teks: sebagian judul kolom juga
   // muncul sebagai label isian pada form, dan pencarian berbasis teks akan menemukan
   // keduanya lalu gagal karena ganda.
-  const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent ?? '')
+  const headers = screen
+    .getAllByRole("columnheader")
+    .map((cell) => cell.textContent ?? "");
 
   for (const title of [
-    'No Proteksi',
-    'No Polis',
-    'No Klaim',
-    'Tipe Proteksi',
-    'Tanggal Proteksi Dibuat',
-    'Keterangan',
-    'User Create',
+    "No Proteksi",
+    "No Polis",
+    "No Klaim",
+    "Tipe Proteksi",
+    "Tanggal Proteksi Dibuat",
+    "Keterangan",
+    "User Create",
   ]) {
-    expect(headers.some((header) => header.includes(title))).toBe(true)
+    expect(headers.some((header) => header.includes(title))).toBe(true);
   }
-})
+});
 
 // Aturannya dari `Section/InboxReqProtection_Section-Section.xml:8657`, yang menonaktifkan
 // tautan baris ketika `.CaseID` terisi.
-it('mematikan tautan baris yang sudah tertaut klaim', async () => {
+it("mematikan tautan baris yang sudah tertaut klaim", async () => {
   stubFetch(() =>
     jsonResponse(
       200,
       listResponse({
         proteksi: [
-          protection({ nomor_proteksi: 'OPCN.26.0001', dapat_disunting: true }),
+          protection({ nomor_proteksi: "OPCN.26.1", dapat_disunting: true }),
           protection({
-            nomor_proteksi: 'OPCN.26.0002',
-            nomor_klaim: 'PNCN.26.0007',
+            nomor_proteksi: "OPCN.26.2",
+            nomor_klaim: "PNCN.26.0007",
             dapat_disunting: false,
           }),
         ],
         total: 2,
       }),
     ),
-  )
-  renderPage()
+  );
+  renderPage();
 
   // Yang masih dapat disunting berupa tombol; yang terkunci bukan.
-  expect(await screen.findByRole('button', { name: 'OPCN.26.0001' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'OPCN.26.0002' })).not.toBeInTheDocument()
-  expect(screen.getByText('OPCN.26.0002')).toBeInTheDocument()
-})
+  expect(
+    await screen.findByRole("button", { name: "OPCN.26.1" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "OPCN.26.2" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText("OPCN.26.2")).toBeInTheDocument();
+});
 
-it('menyatakan proteksi yang belum tertaut klaim, bukan membiarkan selnya kosong', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menyatakan proteksi yang belum tertaut klaim, bukan membiarkan selnya kosong", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  expect(await screen.findByText('belum tertaut')).toBeInTheDocument()
-})
+  expect(await screen.findByText("belum tertaut")).toBeInTheDocument();
+});
 
 // Nama tipe datang BERSAMA barisnya, dari master `M_CLAIM_PROTECTION_TYPE`. Kode yang tidak
 // terdaftar di master tetap TAMPIL sebagai kodenya — bukan kosong dan bukan tanda hubung.
 //
 // Aturan itu yang menyelamatkan tipe '9': ia dipakai 25 baris produksi dan NOL kemunculan di
 // export Pega, sehingga daftar tebakan mana pun akan melewatkannya.
-it('menampilkan nama tipe dari master, dan kodenya apa adanya bila tak terdaftar', async () => {
+it("menampilkan nama tipe dari master, dan kodenya apa adanya bila tak terdaftar", async () => {
   stubFetch(() =>
     jsonResponse(
       200,
       listResponse({
         proteksi: [
           protection({
-            nomor_proteksi: 'OPCN.26.0001',
-            tipe_proteksi: '7',
-            nama_tipe_proteksi: 'Perubahan DOL',
+            nomor_proteksi: "OPCN.26.1",
+            tipe_proteksi: "7",
+            nama_tipe_proteksi: "Perubahan DOL",
           }),
           // Kode yang tidak ada di master: namanya kosong, sehingga kodenya yang tampil.
           protection({
-            nomor_proteksi: 'OPCN.26.0002',
-            tipe_proteksi: '99',
-            nama_tipe_proteksi: '',
+            nomor_proteksi: "OPCN.26.2",
+            tipe_proteksi: "99",
+            nama_tipe_proteksi: "",
           }),
         ],
         total: 2,
       }),
     ),
-  )
-  renderPage()
+  );
+  renderPage();
 
-  expect(await screen.findByText('Perubahan DOL')).toBeInTheDocument()
-  expect(screen.getByText('99')).toBeInTheDocument()
-})
+  expect(await screen.findByText("Perubahan DOL")).toBeInTheDocument();
+  expect(screen.getByText("99")).toBeInTheDocument();
+});
 
 // Pencarian dikerjakan SERVER: daftarnya hanya dibatasi "belum diakseptasi", sehingga
 // menyaring satu halaman dari sepuluh akan memberi jawaban yang salah.
-it('mengirim kata pencarian ke server, bukan menyaring di peramban', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("mengirim kata pencarian ke server, bukan menyaring di peramban", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('OPCN.26.0001')
+  await screen.findByText("OPCN.26.1");
 
   await userEvent.type(
-    screen.getByLabelText('Cari No Proteksi / No Polis / No Klaim'),
-    '99.001',
-  )
+    screen.getByLabelText("Cari No Proteksi / No Polis / No Klaim"),
+    "99.001",
+  );
 
   await waitFor(() => {
-    expect(calls.some((call) => call.url.includes('cari=99.001'))).toBe(true)
-  })
-})
+    expect(calls.some((call) => call.url.includes("cari=99.001"))).toBe(true);
+  });
+});
 
-it('membuka form kosong saat tombol Input Open Protection ditekan', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("membuka form kosong saat tombol Input Open Protection ditekan", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  await screen.findByText('OPCN.26.0001')
-  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
+  await screen.findByText("OPCN.26.1");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Input Open Protection" }),
+  );
 
-  expect(screen.getByRole('heading', { name: 'Input Open Protection' })).toBeInTheDocument()
+  expect(
+    screen.getByRole("heading", { name: "Input Open Protection" }),
+  ).toBeInTheDocument();
   // Pencocokan label PERSIS, bukan pola: judul kolom tabel memuat teks yang sama, dan pola
   // akan menemukan keduanya.
-  expect(screen.getByLabelText('No Polis (dari klaim)')).toHaveValue('')
-})
+  expect(screen.getByLabelText("No Polis (dari klaim)")).toHaveValue("");
+});
 
 // Work Owner menegaskan 2026-09-24 bahwa ClaimNo dan ClaimID berisi nilai yang SAMA, dan
 // server menurunkan ClaimID dari No Klaim.
@@ -316,78 +356,93 @@ it('membuka form kosong saat tombol Input Open Protection ditekan', async () => 
 // Dua isian yang wajib sama tetapi diketik terpisah akan berbeda cepat atau lambat, dan
 // perbedaannya tidak menghasilkan galat apa pun — hanya proteksi yang menunjuk dua klaim
 // berbeda. Uji ini menggagalkan pengembalian isian kedua itu.
-it('tidak menanyakan ClaimID kedua kalinya, dan tidak mengirimkannya', async () => {
-  let badan: Record<string, unknown> = {}
+it("tidak menanyakan ClaimID kedua kalinya, dan tidak mengirimkannya", async () => {
+  let badan: Record<string, unknown> = {};
 
   stubFetch((_url, init) => {
-    if (init?.method === 'POST') {
-      badan = JSON.parse(String(init.body)) as Record<string, unknown>
-      return jsonResponse(201, {})
+    if (init?.method === "POST") {
+      badan = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return jsonResponse(201, {});
     }
-    return jsonResponse(200, listResponse())
-  })
-  renderPage()
+    return jsonResponse(200, listResponse());
+  });
+  renderPage();
 
-  await screen.findByText('OPCN.26.0001')
-  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
+  await screen.findByText("OPCN.26.1");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Input Open Protection" }),
+  );
 
-  expect(screen.queryByLabelText(/Referensi Klaim/)).not.toBeInTheDocument()
+  expect(screen.queryByLabelText(/Referensi Klaim/)).not.toBeInTheDocument();
 
-  await userEvent.type(screen.getByLabelText('No Klaim'), 'PNCN.26.0007')
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '1')
-  await userEvent.type(screen.getByLabelText('Keterangan'), 'Keterangan contoh.')
-  await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+  await userEvent.type(screen.getByLabelText("No Klaim"), "PNCN.26.0007");
+  await userEvent.selectOptions(screen.getByLabelText("Tipe Proteksi"), "1");
+  await userEvent.type(
+    screen.getByLabelText("Keterangan"),
+    "Keterangan contoh.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
-  await waitFor(() => expect(badan['nomor_klaim']).toBe('PNCN.26.0007'))
-  expect(badan).not.toHaveProperty('referensi_klaim')
-})
+  await waitFor(() => expect(badan["nomor_klaim"]).toBe("PNCN.26.0007"));
+  expect(badan).not.toHaveProperty("referensi_klaim");
+});
 
 // Pelanggaran validasi dikirim backend SEKALIGUS dan ditempelkan ke kolomnya masing-masing
 // (`11-CROSSCUTTING` §1.2 butir 1). Menampilkannya sebagai satu pesan di atas form akan
 // membuat pengguna menebak kolom mana yang dimaksud.
-it('menempelkan pelanggaran validasi ke kolomnya masing-masing', async () => {
+it("menempelkan pelanggaran validasi ke kolomnya masing-masing", async () => {
   stubFetch((_url, init) => {
-    if (init?.method === 'POST') {
+    if (init?.method === "POST") {
       return jsonResponse(422, {
-        kode: 'validasi_gagal',
-        pesan: 'Isian belum lengkap atau belum benar.',
+        kode: "validasi_gagal",
+        pesan: "Isian belum lengkap atau belum benar.",
         detail: [
-          { field: 'no_klaim', pesan: 'No Klaim wajib diisi.' },
-          { field: 'keterangan', pesan: 'Keterangan wajib diisi.' },
+          { field: "no_klaim", pesan: "No Klaim wajib diisi." },
+          { field: "keterangan", pesan: "Keterangan wajib diisi." },
         ],
-      })
+      });
     }
-    return jsonResponse(200, listResponse())
-  })
-  renderPage()
+    return jsonResponse(200, listResponse());
+  });
+  renderPage();
 
-  await screen.findByText('OPCN.26.0001')
-  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
+  await screen.findByText("OPCN.26.1");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Input Open Protection" }),
+  );
 
   // Isian wajib diisi lebih dulu supaya peramban benar-benar MENGIRIM permintaannya —
   // isian ber-`required` yang kosong ditahan peramban, dan penolakan backend tidak akan
   // pernah terjadi. Yang diuji di sini adalah penolakan BACKEND, bukan penolakan peramban.
-  await userEvent.type(screen.getByLabelText('No Klaim'), 'PNCN.26.0007')
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '7')
-  await userEvent.type(screen.getByLabelText('Next Date Of Loss'), '2026-08-17')
-  await userEvent.type(screen.getByLabelText('Keterangan'), 'Keterangan contoh.')
+  await userEvent.type(screen.getByLabelText("No Klaim"), "PNCN.26.0007");
+  await userEvent.selectOptions(screen.getByLabelText("Tipe Proteksi"), "7");
+  await userEvent.type(
+    screen.getByLabelText("Next Date Of Loss"),
+    "2026-08-17",
+  );
+  await userEvent.type(
+    screen.getByLabelText("Keterangan"),
+    "Keterangan contoh.",
+  );
 
-  await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+  await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
-  expect(await screen.findByText('No Klaim wajib diisi.')).toBeInTheDocument()
-  expect(screen.getByText('Keterangan wajib diisi.')).toBeInTheDocument()
-})
+  expect(await screen.findByText("No Klaim wajib diisi.")).toBeInTheDocument();
+  expect(screen.getByText("Keterangan wajib diisi.")).toBeInTheDocument();
+});
 
 // `TKT-F6-002`: permintaan tanpa portal ditolak server, dan layar tidak menembaknya lebih
 // dulu hanya untuk menerima penolakan.
-it('menuntun memilih entitas lebih dulu dan tidak menembak server', async () => {
-  useSelectedPortal.setState({ alias: null })
-  stubFetch(() => jsonResponse(200, listResponse()))
-  renderPage()
+it("menuntun memilih entitas lebih dulu dan tidak menembak server", async () => {
+  useSelectedPortal.setState({ alias: null });
+  stubFetch(() => jsonResponse(200, listResponse()));
+  renderPage();
 
-  expect(await screen.findByText('Pilih entitas lebih dulu')).toBeInTheDocument()
-  expect(calls).toHaveLength(0)
-})
+  expect(
+    await screen.findByText("Pilih entitas lebih dulu"),
+  ).toBeInTheDocument();
+  expect(calls).toHaveLength(0);
+});
 
 // ── Klaim yang tidak ditemukan ───────────────────────────────────────────────────
 //
@@ -405,66 +460,76 @@ it('menuntun memilih entitas lebih dulu dan tidak menembak server', async () => 
 
 /** stubKlaimGagal menjawab pencarian klaim dengan galat, sisanya normal. */
 function stubKlaimGagal(status: number, badan: unknown) {
-  vi.stubGlobal('fetch', (url: string) => {
-    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
-    if (url.includes('/dokumen-penunjang')) {
-      return Promise.resolve(jsonResponse(200, { data: [] }))
+  vi.stubGlobal("fetch", (url: string) => {
+    if (url.includes("/tipe")) return Promise.resolve(jsonResponse(200, TIPE));
+    if (url.includes("/dokumen-penunjang")) {
+      return Promise.resolve(jsonResponse(200, { data: [] }));
     }
-    if (url.includes('/klaim/')) return Promise.resolve(jsonResponse(status, badan))
-    return Promise.resolve(jsonResponse(200, listResponse()))
-  })
+    if (url.includes("/klaim/"))
+      return Promise.resolve(jsonResponse(status, badan));
+    return Promise.resolve(jsonResponse(200, listResponse()));
+  });
 }
 
 async function bukaFormLaluKetik(nomor: string) {
-  renderPage()
-  await screen.findByText('OPCN.26.0001')
-  await userEvent.click(screen.getByRole('button', { name: 'Input Open Protection' }))
-  await userEvent.type(screen.getByLabelText('No Klaim'), nomor)
+  renderPage();
+  await screen.findByText("OPCN.26.1");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Input Open Protection" }),
+  );
+  await userEvent.type(screen.getByLabelText("No Klaim"), nomor);
 }
 
-it('menyatakan ketika klaimnya TIDAK DITEMUKAN, bukan membiarkan field blank', async () => {
-  stubKlaimGagal(404, { kode: 'tidak_ditemukan', pesan: 'Klaim tidak ditemukan.' })
-  await bukaFormLaluKetik('PNC-9999')
+it("menyatakan ketika klaimnya TIDAK DITEMUKAN, bukan membiarkan field blank", async () => {
+  stubKlaimGagal(404, {
+    kode: "tidak_ditemukan",
+    pesan: "Klaim tidak ditemukan.",
+  });
+  await bukaFormLaluKetik("PNC-9999");
 
-  expect(await screen.findByText('Klaim tidak ditemukan')).toBeInTheDocument()
+  expect(await screen.findByText("Klaim tidak ditemukan")).toBeInTheDocument();
 
   // Pesannya menyebut Object Name secara eksplisit — itulah field yang ditanyakan, dan
   // menyebutnya menutup dugaan bahwa field itu yang rusak.
-  expect(screen.getByText(/Object Name/)).toBeInTheDocument()
-})
+  expect(screen.getByText(/Object Name/)).toBeInTheDocument();
+});
 
-it('membedakan gangguan pembacaan dari klaim yang tidak ada', async () => {
-  stubKlaimGagal(500, { kode: 'galat_internal', pesan: 'Terjadi kesalahan.' })
-  await bukaFormLaluKetik('PNC-1865')
+it("membedakan gangguan pembacaan dari klaim yang tidak ada", async () => {
+  stubKlaimGagal(500, { kode: "galat_internal", pesan: "Terjadi kesalahan." });
+  await bukaFormLaluKetik("PNC-1865");
 
   // Nomor yang salah ketik dapat diperbaiki pengguna; gangguan pembacaan tidak. Menyamakan
   // pesannya membuat pengguna mengetik ulang nomor yang sebenarnya sudah benar.
-  expect(await screen.findByText('Data klaim gagal dibaca')).toBeInTheDocument()
-  expect(screen.queryByText('Klaim tidak ditemukan')).not.toBeInTheDocument()
-})
+  expect(
+    await screen.findByText("Data klaim gagal dibaca"),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("Klaim tidak ditemukan")).not.toBeInTheDocument();
+});
 
 // Klaim yang DITEMUKAN tetapi memang tanpa objek bukan galat: 547 dari 2.196 baris
 // `T_CLAIM_PNC` tidak punya satu pun baris di `T_CLAIM_OBJECTLIST`. Keadaan itu harus
 // terbedakan dari klaim yang tidak ada.
-it('tidak mengeluh ketika klaim ADA tetapi tanpa Object Name', async () => {
-  vi.stubGlobal('fetch', (url: string) => {
-    if (url.includes('/tipe')) return Promise.resolve(jsonResponse(200, TIPE))
-    if (url.includes('/dokumen-penunjang')) {
-      return Promise.resolve(jsonResponse(200, { data: [] }))
+it("tidak mengeluh ketika klaim ADA tetapi tanpa Object Name", async () => {
+  vi.stubGlobal("fetch", (url: string) => {
+    if (url.includes("/tipe")) return Promise.resolve(jsonResponse(200, TIPE));
+    if (url.includes("/dokumen-penunjang")) {
+      return Promise.resolve(jsonResponse(200, { data: [] }));
     }
-    if (url.includes('/klaim/')) {
-      return Promise.resolve(jsonResponse(200, { ...KLAIM, nama_objek: '' }))
+    if (url.includes("/klaim/")) {
+      return Promise.resolve(jsonResponse(200, { ...KLAIM, nama_objek: "" }));
     }
-    return Promise.resolve(jsonResponse(200, listResponse()))
-  })
-  await bukaFormLaluKetik('PNCN.26.0009')
+    return Promise.resolve(jsonResponse(200, listResponse()));
+  });
+  await bukaFormLaluKetik("PNCN.26.0009");
 
   await waitFor(() =>
-    expect(screen.getByLabelText('No Polis (dari klaim)')).toHaveValue(KLAIM.nomor_polis),
-  )
-  expect(screen.queryByText('Klaim tidak ditemukan')).not.toBeInTheDocument()
-  expect(screen.queryByText('Data klaim gagal dibaca')).not.toBeInTheDocument()
-})
+    expect(screen.getByLabelText("No Polis (dari klaim)")).toHaveValue(
+      KLAIM.nomor_polis,
+    ),
+  );
+  expect(screen.queryByText("Klaim tidak ditemukan")).not.toBeInTheDocument();
+  expect(screen.queryByText("Data klaim gagal dibaca")).not.toBeInTheDocument();
+});
 
 // Panel pemilih adalah inti permintaan perubahan Cause Of Loss.
 //
@@ -472,76 +537,89 @@ it('tidak mengeluh ketika klaim ADA tetapi tanpa Object Name', async () => {
 // tetap dapat dibedakan dan dipilih. Pada klaim nyata `PNC-1452`, `JackHugh / Resiko A`
 // muncul tiga kali — kalau pemilihan bersandar pada nama, dua dari tiga pilihan akan menunjuk
 // baris yang salah, dan tidak ada galat yang memberi tahu.
-it('menampilkan SETIAP baris coverage, termasuk yang namanya berulang', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  await bukaFormLaluKetik('PNCN.26.0007')
+it("menampilkan SETIAP baris coverage, termasuk yang namanya berulang", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  await bukaFormLaluKetik("PNCN.26.0007");
 
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+  await userEvent.selectOptions(screen.getByLabelText("Tipe Proteksi"), "8");
 
   // Keempat baris tampil, dan ketiga `Resiko A` tidak dilebur menjadi satu.
   await waitFor(() => {
-    expect(screen.getAllByText('Resiko A')).toHaveLength(3)
-  })
-  expect(screen.getByText('Katastropi')).toBeInTheDocument()
+    expect(screen.getAllByText("Resiko A")).toHaveLength(3);
+  });
+  expect(screen.getByText("Katastropi")).toBeInTheDocument();
 
   // Kode ditampilkan berdampingan dengan deskripsinya: dua baris dapat bernama sama
   // sementara kodenya berbeda, dan akseptasi mengubah keduanya.
-  expect(screen.getByText('WINDSTORM (12003)')).toBeInTheDocument()
-})
+  expect(screen.getByText("WINDSTORM (12003)")).toBeInTheDocument();
+});
 
 // "Next Cause Of Loss" adalah DROPDOWN, bukan kotak teks (Work Owner, 2026-10-05).
 //
 // Teks bebas membuat salah ketik tersimpan apa adanya sebagai penyebab kerugian klaim —
 // penyimpanan berhasil, layar normal, dan kodenya tidak cocok dengan master mana pun.
-it('menawarkan Next Cause Of Loss sebagai pilihan, bukan isian bebas', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  await bukaFormLaluKetik('PNCN.26.0007')
+it("menawarkan Next Cause Of Loss sebagai pilihan, bukan isian bebas", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  await bukaFormLaluKetik("PNCN.26.0007");
 
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+  await userEvent.selectOptions(screen.getByLabelText("Tipe Proteksi"), "8");
 
-  const dropdown = await screen.findByLabelText('Next Cause Of Loss')
-  expect(dropdown.tagName).toBe('SELECT')
+  const dropdown = await screen.findByLabelText("Next Cause Of Loss");
+  expect(dropdown.tagName).toBe("SELECT");
 
   // Pilihannya datang dari master, beserta LOSS_CODE-nya bila ada.
   await waitFor(() => {
-    expect(screen.getByRole('option', { name: 'FIRE - OPEN FLAME (A)' })).toBeInTheDocument()
-  })
-  expect(screen.getByRole('option', { name: 'WRECK REMOVAL' })).toBeInTheDocument()
-})
+    expect(
+      screen.getByRole("option", { name: "FIRE - OPEN FLAME (A)" }),
+    ).toBeInTheDocument();
+  });
+  expect(
+    screen.getByRole("option", { name: "WRECK REMOVAL" }),
+  ).toBeInTheDocument();
+});
 
 // Menekan Pilih menetapkan SASARAN perubahan, dan sasaran itulah yang dikirim.
 //
 // Tanpa keduanya, permintaan tersimpan tanpa tujuan — dan kegagalannya baru terlihat saat
 // seseorang menyetujuinya lalu klaimnya tidak berubah.
-it('mengirim id_objek dan id_coverage dari baris yang ditekan Pilih', async () => {
-  stubFetch(() => jsonResponse(200, listResponse()))
-  await bukaFormLaluKetik('PNCN.26.0007')
+it("mengirim id_objek dan id_coverage dari baris yang ditekan Pilih", async () => {
+  stubFetch(() => jsonResponse(200, listResponse()));
+  await bukaFormLaluKetik("PNCN.26.0007");
 
-  await userEvent.selectOptions(screen.getByLabelText('Tipe Proteksi'), '8')
+  await userEvent.selectOptions(screen.getByLabelText("Tipe Proteksi"), "8");
   await waitFor(() => {
-    expect(screen.getAllByRole('button', { name: 'Pilih' })).toHaveLength(4)
-  })
+    expect(screen.getAllByRole("button", { name: "Pilih" })).toHaveLength(4);
+  });
 
   // Baris KETIGA — Katastropi / WINDSTORM, id_coverage 3.
-  await userEvent.click(screen.getAllByRole('button', { name: 'Pilih' })[2]!)
+  await userEvent.click(screen.getAllByRole("button", { name: "Pilih" })[2]!);
 
   // Nilai "sebelum" mengikuti baris yang dipilih, bukan coverage pertama klaim.
   await waitFor(() => {
-    expect(screen.getByLabelText('Cause Of Loss Dipilih')).toHaveValue('WINDSTORM (12003)')
-  })
+    expect(screen.getByLabelText("Cause Of Loss Dipilih")).toHaveValue(
+      "WINDSTORM (12003)",
+    );
+  });
 
-  await userEvent.selectOptions(screen.getByLabelText('Next Cause Of Loss'), '11997')
-  await userEvent.type(screen.getByLabelText('Keterangan'), 'ubah penyebab')
-  await userEvent.click(screen.getByRole('button', { name: 'Simpan' }))
+  await userEvent.selectOptions(
+    screen.getByLabelText("Next Cause Of Loss"),
+    "11997",
+  );
+  await userEvent.type(screen.getByLabelText("Keterangan"), "ubah penyebab");
+  await userEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
   await waitFor(() => {
-    const simpan = calls.find((c) => c.init?.method === 'POST')
-    expect(simpan).toBeDefined()
+    const simpan = calls.find((c) => c.init?.method === "POST");
+    expect(simpan).toBeDefined();
     const body = JSON.parse(String(simpan?.init?.body)) as {
-      detail_perubahan: { id_objek: string; id_coverage: string; penyebab_kerugian_baru: string }
-    }
-    expect(body.detail_perubahan.id_objek).toBe('1')
-    expect(body.detail_perubahan.id_coverage).toBe('3')
-    expect(body.detail_perubahan.penyebab_kerugian_baru).toBe('11997')
-  })
-})
+      detail_perubahan: {
+        id_objek: string;
+        id_coverage: string;
+        penyebab_kerugian_baru: string;
+      };
+    };
+    expect(body.detail_perubahan.id_objek).toBe("1");
+    expect(body.detail_perubahan.id_coverage).toBe("3");
+    expect(body.detail_perubahan.penyebab_kerugian_baru).toBe("11997");
+  });
+});

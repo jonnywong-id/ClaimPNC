@@ -1,20 +1,20 @@
-import { Button } from '@/components/Button'
-import { Field } from '@/components/Field'
-import { SearchIcon } from '@/components/Icon'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
+import { SearchIcon } from "@/components/Icon";
+import { SelectField } from "@/components/SelectField";
 
-import type { SearchForm, SearchType } from './types'
+import type { SearchForm, SearchType } from "./types";
 
 type Props = {
-  types: SearchType[]
-  form: SearchForm
-  onChange: (change: Partial<SearchForm>) => void
-  onSubmit: () => void
-  busy: boolean
+  types: SearchType[];
+  form: SearchForm;
+  onChange: (change: Partial<SearchForm>) => void;
+  onSubmit: () => void;
+  busy: boolean;
 
   /** Pesan galat per isian, dikirim server sebagai `detail` pada galat validasi. */
-  fieldError: Record<string, string>
-}
+  fieldError: Record<string, string>;
+};
 
 /**
  * Panel pencarian — tiga isian dan satu tombol, persis formulir layar lama.
@@ -35,15 +35,22 @@ type Props = {
  * Isian mana yang tampak DITENTUKAN SERVER lewat ketiga penanda pada tipe terpilih, bukan
  * ditebak layar. Dengan begitu bentuk formulir punya satu sumber kebenaran.
  */
-export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError }: Props) {
-  const selected = types.find((t) => t.kode === form.tipe)
+export function SearchPanel({
+  types,
+  form,
+  onChange,
+  onSubmit,
+  busy,
+  fieldError,
+}: Props) {
+  const selected = types.find((t) => t.kode === form.tipe);
 
   return (
     <form
       className="mt-4 rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
       onSubmit={(e) => {
-        e.preventDefault()
-        onSubmit()
+        e.preventDefault();
+        onSubmit();
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -52,7 +59,7 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
           label="Tipe Pencarian"
           value={form.tipe}
           onChange={(e) => onChange({ tipe: e.target.value })}
-          error={fieldError['tipe_pencarian']}
+          error={fieldError["tipe_pencarian"]}
           emptyText="----- PILIH -----"
           // Pilihan yang belum tersedia TETAP tampil, ditandai pada labelnya.
           // Menghapusnya akan membuat pengguna melaporkan pilihan yang "hilang";
@@ -74,7 +81,7 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
             label="Nama Pencarian"
             value={form.nilai}
             onChange={(e) => onChange({ nilai: e.target.value })}
-            error={fieldError['nilai_pencarian']}
+            error={fieldError["nilai_pencarian"]}
             placeholder={placeholderFor(selected.kode)}
             autoComplete="off"
             icon={<SearchIcon className="h-4 w-4" />}
@@ -89,7 +96,7 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
             type="date"
             value={form.tanggal_pencarian}
             onChange={(e) => onChange({ tanggal_pencarian: e.target.value })}
-            error={fieldError['tanggal_pencarian']}
+            error={fieldError["tanggal_pencarian"]}
           />
         )}
 
@@ -100,14 +107,18 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
             type="date"
             value={form.tanggal_lahir}
             onChange={(e) => onChange({ tanggal_lahir: e.target.value })}
-            error={fieldError['tanggal_lahir']}
+            error={fieldError["tanggal_lahir"]}
           />
         )}
 
         <div className="flex items-end">
-          <Button type="submit" tone="utama" disabled={busy || !selected?.tersedia}>
+          <Button
+            type="submit"
+            tone="utama"
+            disabled={busy || !selected?.tersedia}
+          >
             <SearchIcon className="mr-1.5 h-4 w-4" />
-            {busy ? 'Mencari…' : 'Cari'}
+            {busy ? "Mencari…" : "Cari"}
           </Button>
         </div>
       </div>
@@ -118,7 +129,7 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
         </p>
       )}
     </form>
-  )
+  );
 }
 
 /**
@@ -130,26 +141,26 @@ export function SearchPanel({ types, form, onChange, onSubmit, busy, fieldError 
  */
 function placeholderFor(code: string): string {
   switch (code) {
-    case '1':
-      return 'POL-0000-0000'
-    case '2':
-      return 'nama tertanggung'
-    case '3':
-      return 'nama objek pertanggungan'
-    case '4':
-      return 'PLA-0000'
-    case '5':
-      return 'DLA-0000'
-    case '7':
-      return 'PNC-0000 atau PNCN.26.0000'
-    case '8':
-      return 'AKS-0000'
-    case '11':
-      return 'SRV-0000'
-    case '13':
-      return 'BL-00'
+    case "1":
+      return "POL-0000-0000";
+    case "2":
+      return "nama tertanggung";
+    case "3":
+      return "nama objek pertanggungan";
+    case "4":
+      return "PLA-0000";
+    case "5":
+      return "DLA-0000";
+    case "7":
+      return "PNC-0000 atau PNCN.26.0000";
+    case "8":
+      return "AKS-0000";
+    case "11":
+      return "SRV-0000";
+    case "13":
+      return "BL-00";
     default:
-      return ''
+      return "";
   }
 }
 
@@ -164,8 +175,8 @@ function placeholderFor(code: string): string {
  * sebagian, sisanya dengan `=`.
  */
 function hintFor(code: string): string {
-  const partial = ['2', '3', '4', '5']
+  const partial = ["2", "3", "4", "5"];
   return partial.includes(code)
-    ? 'Dicocokkan sebagian, tidak membedakan huruf besar-kecil.'
-    : 'Dicocokkan persis, tidak membedakan huruf besar-kecil.'
+    ? "Dicocokkan sebagian, tidak membedakan huruf besar-kecil."
+    : "Dicocokkan persis, tidak membedakan huruf besar-kecil.";
 }

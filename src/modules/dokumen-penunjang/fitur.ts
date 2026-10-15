@@ -44,4 +44,4 @@
  *
  * Mematikannya kembali cukup mengubah baris ini menjadi `false`.
  */
-export const FITUR_DOKUMEN_PENUNJANG_AKTIF = true
+export const FITUR_DOKUMEN_PENUNJANG_AKTIF = true;

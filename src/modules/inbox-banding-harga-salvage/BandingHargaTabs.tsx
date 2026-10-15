@@ -1,10 +1,10 @@
-import type { SummaryRow, Tab } from './types'
+import type { SummaryRow, Tab } from "./types";
 
 type Props = {
-  tabs: Tab[]
+  tabs: Tab[];
   /** Kode tab yang sedang terbuka. */
-  active: string
-  onSelect: (code: string) => void
+  active: string;
+  onSelect: (code: string) => void;
 
   /**
    * Jumlah baris tiap antrean, untuk lencana di sebelah nama tabnya.
@@ -12,8 +12,8 @@ type Props = {
    * Lencananya digambar HANYA bila antreannya berisi. Angka yang belum tiba dan angka nol
    * sama-sama tidak dilencanai — lihat catatan di dalam `map` di bawah.
    */
-  counts?: SummaryRow[]
-}
+  counts?: SummaryRow[];
+};
 
 /**
  * Bilah tab Inbox Banding Harga Salvage.
@@ -46,17 +46,26 @@ type Props = {
  * Angkanya tetap berguna — "berapa yang menunggu saya" adalah hal pertama yang dicari komite —
  * sehingga ia pindah menjadi lencana di sebelah nama tabnya. Satu kendali, dua pekerjaan.
  */
-export function BandingHargaTabs({ tabs, active, onSelect, counts = [] }: Props) {
+export function BandingHargaTabs({
+  tabs,
+  active,
+  onSelect,
+  counts = [],
+}: Props) {
   return (
     /*
       Digulir menyamping pada layar sempit, bukan dilipat menjadi dropdown. Dua tab memang
       muat di hampir setiap layar, tetapi melipatnya menyembunyikan antrean mana saja yang
       tersedia — hal pertama yang ingin dilihat komite saat membuka layar.
     */
-    <div className="overflow-x-auto" role="tablist" aria-label="Antrean banding harga salvage">
+    <div
+      className="overflow-x-auto"
+      role="tablist"
+      aria-label="Antrean banding harga salvage"
+    >
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
         {tabs.map((tab) => {
-          const selected = tab.kode === active
+          const selected = tab.kode === active;
           /*
             Lencana hanya digambar bila antreannya BERISI.
 
@@ -70,8 +79,11 @@ export function BandingHargaTabs({ tabs, active, onSelect, counts = [] }: Props)
 
             Keduanya menghasilkan `undefined`, sehingga tabnya tergambar apa adanya.
           */
-          const terhitung = counts.find((baris) => baris.tab === tab.kode)?.jumlah
-          const jumlah = terhitung !== undefined && terhitung > 0 ? terhitung : undefined
+          const terhitung = counts.find(
+            (baris) => baris.tab === tab.kode,
+          )?.jumlah;
+          const jumlah =
+            terhitung !== undefined && terhitung > 0 ? terhitung : undefined;
           return (
             <button
               key={tab.kode}
@@ -89,14 +101,14 @@ export function BandingHargaTabs({ tabs, active, onSelect, counts = [] }: Props)
               */
               onClick={() => onSelect(tab.kode)}
               className={[
-                'rounded-t-kontrol border-b-2 px-3.5 py-2.5',
-                'text-sm font-medium whitespace-nowrap',
-                'transition-[color,border-color,background-color] duration-150 ease-halus',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
+                "rounded-t-kontrol border-b-2 px-3.5 py-2.5",
+                "text-sm font-medium whitespace-nowrap",
+                "transition-[color,border-color,background-color] duration-150 ease-halus",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                 selected
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
-              ].join(' ')}
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+              ].join(" ")}
             >
               {tab.nama}
               {/*
@@ -105,7 +117,7 @@ export function BandingHargaTabs({ tabs, active, onSelect, counts = [] }: Props)
                 teks apa pun. Pembaca layar lalu menyebut angkanya menempel pada kata
                 terakhir.
               */}
-              {jumlah !== undefined && ' '}
+              {jumlah !== undefined && " "}
               {jumlah !== undefined && (
                 /*
                   Lencana ini TIDAK diberi `aria-hidden`: jumlahnya bagian dari nama
@@ -114,17 +126,19 @@ export function BandingHargaTabs({ tabs, active, onSelect, counts = [] }: Props)
                 */
                 <span
                   className={[
-                    'ml-2 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                    selected ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600',
-                  ].join(' ')}
+                    "ml-2 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                    selected
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-slate-100 text-slate-600",
+                  ].join(" ")}
                 >
                   {jumlah}
                 </span>
               )}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

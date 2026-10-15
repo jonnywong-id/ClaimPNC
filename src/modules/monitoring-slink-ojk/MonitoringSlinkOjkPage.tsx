@@ -1,12 +1,12 @@
-import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { SegmentPanel } from './SegmentPanel'
+import { SegmentPanel } from "./SegmentPanel";
 import {
   useEkspor,
   useFormatFile,
@@ -15,8 +15,8 @@ import {
   useProses,
   useUnggah,
   type HasilTulis,
-} from './api'
-import { penyaringKosong, type KodeSegmen, type Penyaring } from './types'
+} from "./api";
+import { penyaringKosong, type KodeSegmen, type Penyaring } from "./types";
 
 /**
  * Monitoring SLINK OJK — menu `MENU_ID 78`, pengganti harness `MonitoringSLINKOJK`.
@@ -60,7 +60,7 @@ import { penyaringKosong, type KodeSegmen, type Penyaring } from './types'
  * regulator tanpa tahu isinya apa.
  */
 export function MonitoringSlinkOjkPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   if (portal === null) {
     return (
@@ -68,38 +68,38 @@ export function MonitoringSlinkOjkPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Kewajiban lapor SLIK adalah kewajiban satu badan hukum kepada OJK, dan ' +
-            'aplikasi ini melayani empat. Pilih portal di bilah atas untuk membukanya.'
+            "Kewajiban lapor SLIK adalah kewajiban satu badan hukum kepada OJK, dan " +
+            "aplikasi ini melayani empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
     <PageFrame>
       <IsiLayar />
     </PageFrame>
-  )
+  );
 }
 
 function IsiLayar() {
-  const keterangan = useKeterangan()
-  const ekspor = useEkspor()
-  const formatFile = useFormatFile()
-  const proses = useProses()
-  const unggah = useUnggah()
-  const kirimSlik = useKirimSlik()
+  const keterangan = useKeterangan();
+  const ekspor = useEkspor();
+  const formatFile = useFormatFile();
+  const proses = useProses();
+  const unggah = useUnggah();
+  const kirimSlik = useKirimSlik();
 
   // Pemilih berkas disembunyikan dan dipicu tombol, bukan ditampilkan sebagai kotak
   // unggah: layar lama pun hanya punya tombol, dan menambah kotak di tengah bilah tombol
   // mengubah tata letaknya (`D-13`).
-  const berkasRef = useRef<HTMLInputElement>(null)
+  const berkasRef = useRef<HTMLInputElement>(null);
 
-  const [hasilTulis, setHasilTulis] = useState<HasilTulis | null>(null)
-  const [galatTulis, setGalatTulis] = useState<string | null>(null)
-  const [sedangTulis, setSedangTulis] = useState<string | null>(null)
+  const [hasilTulis, setHasilTulis] = useState<HasilTulis | null>(null);
+  const [galatTulis, setGalatTulis] = useState<string | null>(null);
+  const [sedangTulis, setSedangTulis] = useState<string | null>(null);
 
   // Dua keadaan penyaring, dan pemisahannya disengaja:
   //
@@ -108,40 +108,44 @@ function IsiLayar() {
   //
   // Layar lama menuntut "Cari Data" ditekan. Menyatukan keduanya berarti tabel menembak
   // kueri atas puluhan juta baris setiap kali satu huruf diketik.
-  const [form, setForm] = useState<Penyaring>(penyaringKosong)
-  const [terkirim, setTerkirim] = useState<Penyaring>(penyaringKosong)
-  const [halaman, setHalaman] = useState(1)
-  const [sudahDicari, setSudahDicari] = useState(false)
-  const [galatUnduh, setGalatUnduh] = useState<string | null>(null)
+  const [form, setForm] = useState<Penyaring>(penyaringKosong);
+  const [terkirim, setTerkirim] = useState<Penyaring>(penyaringKosong);
+  const [halaman, setHalaman] = useState(1);
+  const [sudahDicari, setSudahDicari] = useState(false);
+  const [galatUnduh, setGalatUnduh] = useState<string | null>(null);
 
-  const segmenAktif = keterangan.data?.segmen.find((item) => item.kode === form.segmen)
+  const segmenAktif = keterangan.data?.segmen.find(
+    (item) => item.kode === form.segmen,
+  );
 
   function ubah<K extends keyof Penyaring>(kunci: K, nilai: Penyaring[K]) {
-    setForm((sekarang) => ({ ...sekarang, [kunci]: nilai }))
+    setForm((sekarang) => ({ ...sekarang, [kunci]: nilai }));
   }
 
   function cari(event: FormEvent) {
-    event.preventDefault()
-    setTerkirim(form)
-    setHalaman(1)
-    setSudahDicari(true)
+    event.preventDefault();
+    setTerkirim(form);
+    setHalaman(1);
+    setSudahDicari(true);
   }
 
   // Berpindah segmen MENGOSONGKAN hasil, tidak membawanya serta. Kedua segmen punya
   // kolom yang berbeda seluruhnya, dan menampilkan baris segmen sebelumnya di bawah
   // kepala kolom segmen baru adalah tabel yang isinya bohong.
   function pindahSegmen(kode: KodeSegmen) {
-    setForm((sekarang) => ({ ...sekarang, segmen: kode }))
-    setSudahDicari(false)
-    setHalaman(1)
+    setForm((sekarang) => ({ ...sekarang, segmen: kode }));
+    setSudahDicari(false);
+    setHalaman(1);
   }
 
   async function unduh(jalankan: () => Promise<void>) {
-    setGalatUnduh(null)
+    setGalatUnduh(null);
     try {
-      await jalankan()
+      await jalankan();
     } catch (error) {
-      setGalatUnduh(error instanceof Error ? error.message : 'Berkas tidak dapat diunduh.')
+      setGalatUnduh(
+        error instanceof Error ? error.message : "Berkas tidak dapat diunduh.",
+      );
     }
   }
 
@@ -153,16 +157,21 @@ function IsiLayar() {
    * identik — dan yang tertinggal di salah satu dari tiga tempat adalah tombol yang
    * tampak menggantung.
    */
-  async function jalankanTulis(nama: string, jalankan: () => Promise<HasilTulis>) {
-    setGalatTulis(null)
-    setHasilTulis(null)
-    setSedangTulis(nama)
+  async function jalankanTulis(
+    nama: string,
+    jalankan: () => Promise<HasilTulis>,
+  ) {
+    setGalatTulis(null);
+    setHasilTulis(null);
+    setSedangTulis(nama);
     try {
-      setHasilTulis(await jalankan())
+      setHasilTulis(await jalankan());
     } catch (error) {
-      setGalatTulis(error instanceof Error ? error.message : 'Aksi tidak dapat dijalankan.')
+      setGalatTulis(
+        error instanceof Error ? error.message : "Aksi tidak dapat dijalankan.",
+      );
     } finally {
-      setSedangTulis(null)
+      setSedangTulis(null);
     }
   }
 
@@ -174,14 +183,14 @@ function IsiLayar() {
    * memakai `form` berarti menyusun sesuatu yang belum pernah dilihat pelapor.
    */
   function prosesDataKlaim() {
-    jalankanTulis('proses', () => proses(terkirim))
+    jalankanTulis("proses", () => proses(terkirim));
   }
 
   async function unggahBerkas(berkas: File) {
-    await jalankanTulis('unggah', () => unggah(berkas))
+    await jalankanTulis("unggah", () => unggah(berkas));
     // Pemilih berkas dikosongkan supaya berkas yang SAMA dapat diunggah ulang. Tanpa
     // ini, memilih berkas yang sama dua kali tidak memicu `change` sama sekali.
-    if (berkasRef.current) berkasRef.current.value = ''
+    if (berkasRef.current) berkasRef.current.value = "";
   }
 
   /**
@@ -192,7 +201,7 @@ function IsiLayar() {
    * `SubmitFiltered` di backend.
    */
   function kirimKeSlik() {
-    jalankanTulis('kirim', () => kirimSlik(terkirim))
+    jalankanTulis("kirim", () => kirimSlik(terkirim));
   }
 
   if (keterangan.isError) {
@@ -202,11 +211,11 @@ function IsiLayar() {
         description={
           keterangan.error instanceof Error
             ? keterangan.error.message
-            : 'Terjadi kesalahan saat membaca susunan kolom.'
+            : "Terjadi kesalahan saat membaca susunan kolom."
         }
         tone="gangguan"
       />
-    )
+    );
   }
 
   return (
@@ -217,13 +226,16 @@ function IsiLayar() {
         onPilih={pindahSegmen}
       />
 
-      <form onSubmit={cari} className="mt-4 rounded-kartu border border-slate-200 bg-white p-4">
+      <form
+        onSubmit={cari}
+        className="mt-4 rounded-kartu border border-slate-200 bg-white p-4"
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SelectField
             id="business_name"
             label="Business Name"
             value={form.business_name}
-            onChange={(event) => ubah('business_name', event.target.value)}
+            onChange={(event) => ubah("business_name", event.target.value)}
             options={(keterangan.data?.business_name ?? []).map((pilihan) => ({
               value: pilihan.nilai,
               label: pilihan.label,
@@ -250,7 +262,7 @@ function IsiLayar() {
             label="Dari"
             type="date"
             value={form.date_of_loss}
-            onChange={(event) => ubah('date_of_loss', event.target.value)}
+            onChange={(event) => ubah("date_of_loss", event.target.value)}
             hint="Tanggal registrasi klaim, batas awal."
           />
           <Field
@@ -258,10 +270,11 @@ function IsiLayar() {
             label="Sampai"
             type="date"
             value={form.date_of_request_document}
-            onChange={(event) => ubah('date_of_request_document', event.target.value)}
+            onChange={(event) =>
+              ubah("date_of_request_document", event.target.value)
+            }
             hint="Tanggal registrasi klaim, batas akhir."
           />
-
         </div>
 
         {/*
@@ -278,7 +291,13 @@ function IsiLayar() {
           <Button type="submit" tone="utama">
             Cari Data
           </Button>
-          <Button type="button" tone="kedua" onClick={() => { unduh(() => ekspor(terkirim)) }}>
+          <Button
+            type="button"
+            tone="kedua"
+            onClick={() => {
+              unduh(() => ekspor(terkirim));
+            }}
+          >
             Export Data
           </Button>
           {/*
@@ -292,8 +311,14 @@ function IsiLayar() {
             `pegadev` dan dibangun atas permintaan Work Owner (2026-09-26), jadi
             dipertahankan — kemungkinan besar kemampuan yang belum naik ke produksi.
           */}
-          {form.segmen === 'F06' && (
-            <Button type="button" tone="halus" onClick={() => { unduh(formatFile) }}>
+          {form.segmen === "F06" && (
+            <Button
+              type="button"
+              tone="halus"
+              onClick={() => {
+                unduh(formatFile);
+              }}
+            >
               Format File
             </Button>
           )}
@@ -315,14 +340,14 @@ function IsiLayar() {
             KOSONG, dan menekan "Proses Data Klaim" saat itu menyusun laporan atas seluruh
             klaim yang memenuhi syarat.
           */}
-          {form.segmen === 'F06' && (
+          {form.segmen === "F06" && (
             <Button
               type="button"
               tone="kedua"
               disabled={sedangTulis !== null}
               onClick={prosesDataKlaim}
             >
-              {sedangTulis === 'proses' ? 'Memproses…' : 'Proses Data Klaim'}
+              {sedangTulis === "proses" ? "Memproses…" : "Proses Data Klaim"}
             </Button>
           )}
 
@@ -335,25 +360,25 @@ function IsiLayar() {
             XML belum tentu dirender, dan layar yang berjalan adalah bukti yang lebih kuat
             daripada berkasnya.
           */}
-          {form.segmen === 'F06' && (
+          {form.segmen === "F06" && (
             <Button
               type="button"
               tone="kedua"
               disabled={sedangTulis !== null}
               onClick={() => berkasRef.current?.click()}
             >
-              {sedangTulis === 'unggah' ? 'Mengunggah…' : 'Upload Data Klaim'}
+              {sedangTulis === "unggah" ? "Mengunggah…" : "Upload Data Klaim"}
             </Button>
           )}
 
-          {form.segmen === 'F06' && (
+          {form.segmen === "F06" && (
             <Button
               type="button"
               tone="kedua"
               disabled={sedangTulis !== null}
               onClick={kirimKeSlik}
             >
-              {sedangTulis === 'kirim' ? 'Mengirim…' : 'SLIK OJK'}
+              {sedangTulis === "kirim" ? "Mengirim…" : "SLIK OJK"}
             </Button>
           )}
         </div>
@@ -370,15 +395,15 @@ function IsiLayar() {
           aria-hidden="true"
           tabIndex={-1}
           onChange={(event) => {
-            const berkas = event.target.files?.[0]
-            if (berkas) unggahBerkas(berkas)
+            const berkas = event.target.files?.[0];
+            if (berkas) unggahBerkas(berkas);
           }}
         />
 
         {!sudahDicari && (
           <p className="mt-3 text-sm text-slate-600">
-            Tekan <strong>Cari Data</strong> lebih dulu — ketiga tombol yang menyusun dan
-            mengirim laporan bekerja atas data yang sedang tampil.
+            Tekan <strong>Cari Data</strong> lebih dulu — ketiga tombol yang
+            menyusun dan mengirim laporan bekerja atas data yang sedang tampil.
           </p>
         )}
 
@@ -402,13 +427,13 @@ function IsiLayar() {
           halaman={halaman}
           onHalamanChange={setHalaman}
           aktif={sudahDicari}
-          kunciBaris={keterangan.data?.kunci_baris ?? 'kunci_baris'}
+          kunciBaris={keterangan.data?.kunci_baris ?? "kunci_baris"}
         />
       )}
 
       <CatatanPengiriman />
     </>
-  )
+  );
 }
 
 /**
@@ -430,14 +455,15 @@ function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
       role="status"
     >
       <p className="text-slate-800">
-        <strong className="font-semibold">{hasil.total} baris</strong> diproses —{' '}
-        {hasil.baru} baru, {hasil.diperbarui} diperbarui.
+        <strong className="font-semibold">{hasil.total} baris</strong> diproses
+        — {hasil.baru} baru, {hasil.diperbarui} diperbarui.
       </p>
 
       {hasil.diperbarui > 0 && (
         <p className="mt-1 text-slate-600">
-          Baris &ldquo;diperbarui&rdquo; adalah klaim yang <strong>sudah pernah</strong>{' '}
-          masuk laporan; periksa lebih dulu sebelum berkasnya dikirim ke OJK.
+          Baris &ldquo;diperbarui&rdquo; adalah klaim yang{" "}
+          <strong>sudah pernah</strong> masuk laporan; periksa lebih dulu
+          sebelum berkasnya dikirim ke OJK.
         </p>
       )}
 
@@ -449,8 +475,8 @@ function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
           <ul className="mt-1 list-disc space-y-0.5 pl-5 text-amber-900">
             {hasil.ditolak.slice(0, 10).map((baris, index) => (
               <li key={`${baris.baris ?? 0}-${baris.no_klaim ?? index}`}>
-                {baris.baris ? `Baris ${baris.baris}: ` : ''}
-                {baris.no_klaim ? `${baris.no_klaim} — ` : ''}
+                {baris.baris ? `Baris ${baris.baris}: ` : ""}
+                {baris.no_klaim ? `${baris.no_klaim} — ` : ""}
                 {baris.alasan}
               </li>
             ))}
@@ -463,7 +489,7 @@ function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -477,14 +503,17 @@ function RingkasanTulis({ hasil }: { hasil: HasilTulis }) {
 function CatatanPengiriman() {
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-semibold text-slate-800">Tentang tombol SLIK OJK</h2>
+      <h2 className="text-sm font-semibold text-slate-800">
+        Tentang tombol SLIK OJK
+      </h2>
       <p className="mt-2 text-sm text-slate-600">
-        Pencatatan pengirimannya sudah berjalan, tetapi <strong>alamat layanan SLIK</strong>{' '}
-        belum diatur di aplikasi ini. Selama itu belum ada, tombolnya menolak dengan
-        keterangan dan tidak meninggalkan catatan pengiriman yang menyesatkan.
+        Pencatatan pengirimannya sudah berjalan, tetapi{" "}
+        <strong>alamat layanan SLIK</strong> belum diatur di aplikasi ini.
+        Selama itu belum ada, tombolnya menolak dengan keterangan dan tidak
+        meninggalkan catatan pengiriman yang menyesatkan.
       </p>
     </section>
-  )
+  );
 }
 
 /** TabSegmen menggantikan dropdown "Pilih Segmen" beserta tautan silang antarsegmen. */
@@ -493,15 +522,19 @@ function TabSegmen({
   daftar,
   onPilih,
 }: {
-  aktif: KodeSegmen
-  daftar: Array<{ kode: KodeSegmen; label: string }>
-  onPilih: (kode: KodeSegmen) => void
+  aktif: KodeSegmen;
+  daftar: Array<{ kode: KodeSegmen; label: string }>;
+  onPilih: (kode: KodeSegmen) => void;
 }) {
   return (
-    <div className="mt-4 overflow-x-auto" role="tablist" aria-label="Segmen SLIK OJK">
+    <div
+      className="mt-4 overflow-x-auto"
+      role="tablist"
+      aria-label="Segmen SLIK OJK"
+    >
       <div className="flex min-w-max items-center gap-1.5 border-b border-slate-200 pb-px">
         {daftar.map((segmen) => {
-          const dipilih = segmen.kode === aktif
+          const dipilih = segmen.kode === aktif;
           return (
             <button
               key={segmen.kode}
@@ -510,31 +543,33 @@ function TabSegmen({
               aria-selected={dipilih}
               onClick={() => onPilih(segmen.kode)}
               className={
-                'rounded-t-kontrol px-4 py-2 text-sm font-medium transition ' +
+                "rounded-t-kontrol px-4 py-2 text-sm font-medium transition " +
                 (dipilih
-                  ? 'border-b-2 border-blue-600 bg-white text-blue-700'
-                  : 'border-b-2 border-transparent text-slate-600 hover:text-slate-900')
+                  ? "border-b-2 border-blue-600 bg-white text-blue-700"
+                  : "border-b-2 border-transparent text-slate-600 hover:text-slate-900")
               }
             >
               {segmen.label}
             </button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Monitoring SLINK OJK</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Monitoring SLINK OJK
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pemantauan laporan klaim ke Sistem Layanan Informasi Keuangan OJK untuk lini
-          Asuransi Kredit dan Surety Bond.
+          Pemantauan laporan klaim ke Sistem Layanan Informasi Keuangan OJK
+          untuk lini Asuransi Kredit dan Surety Bond.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }

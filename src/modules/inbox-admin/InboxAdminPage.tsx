@@ -1,13 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { StatusRegister } from './StatusRegister'
+import { StatusRegister } from "./StatusRegister";
 import {
   useInboxAdminCounts,
   useInboxAdminExport,
@@ -15,17 +15,16 @@ import {
   useInboxAdminMetadata,
   useInboxAdminViewer,
   type ExportKind,
-} from './api'
+} from "./api";
 import {
   EMPTY_FILTER,
-
   type DisabledTab,
   type FilterForm,
   type PageInfo,
   type Tab,
   type TabColumn,
   type WorkItem,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Admin — menu `MENU_ID 63`, pengganti harness `PNCInboxAdmin`.
@@ -53,8 +52,8 @@ import {
  * tabel, bukan dibiarkan sebagai tab yang hilang tanpa keterangan.
  */
 export function InboxAdminPage() {
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
   /**
    * Isi kotak cari yang sedang DIKETIK, terpisah dari kata kunci yang sudah dikirim.
@@ -64,29 +63,33 @@ export function InboxAdminPage() {
    * 2026-09-20). Mengirim satu permintaan per huruf berarti delapan kali penarikan penuh
    * untuk satu kata — terhadap tabel berpuluh juta baris itu bukan sekadar boros.
    */
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("");
 
   // Ketikan menunggu jeda sebelum dikirim. Jedanya cukup panjang untuk menelan satu kata
   // yang diketik cepat, dan cukup pendek untuk tidak terasa seperti layar yang menggantung.
   useEffect(() => {
-    if (draft === filter.cari) return
+    if (draft === filter.cari) return;
 
     const timer = setTimeout(() => {
-      setFilter((previous) => ({ ...previous, cari: draft }))
-      setPage(1)
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [draft, filter.cari])
+      setFilter((previous) => ({ ...previous, cari: draft }));
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft, filter.cari]);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useInboxAdminMetadata()
-  const list = useInboxAdminList(filter, page, meta.isSuccess)
-  const counts = useInboxAdminCounts(filter.bisnis, filter.kanwil, meta.isSuccess)
-  const viewer = useInboxAdminViewer(meta.isSuccess)
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useInboxAdminMetadata();
+  const list = useInboxAdminList(filter, page, meta.isSuccess);
+  const counts = useInboxAdminCounts(
+    filter.bisnis,
+    filter.kanwil,
+    meta.isSuccess,
+  );
+  const viewer = useInboxAdminViewer(meta.isSuccess);
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = filter.tab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = filter.tab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   /**
    * Berpindah tab MEMBERSIHKAN penyaring dan mengembalikan ke halaman pertama.
@@ -98,19 +101,24 @@ export function InboxAdminPage() {
   function selectTab(code: string) {
     // Lini bisnis DIPERTAHANKAN: di Pega dropdown Bisnis adalah penyaring tingkat layar,
     // di atas daftar Status Register, bukan milik satu antrean.
-    setFilter((previous) => ({ ...EMPTY_FILTER, tab: code, bisnis: previous.bisnis, kanwil: previous.kanwil }))
-    setDraft('')
-    setPage(1)
+    setFilter((previous) => ({
+      ...EMPTY_FILTER,
+      tab: code,
+      bisnis: previous.bisnis,
+      kanwil: previous.kanwil,
+    }));
+    setDraft("");
+    setPage(1);
   }
 
   function changeBusiness(code: string) {
-    setFilter((previous) => ({ ...previous, bisnis: code }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, bisnis: code }));
+    setPage(1);
   }
 
   function changeRegion(code: string) {
-    setFilter((previous) => ({ ...previous, kanwil: code }))
-    setPage(1)
+    setFilter((previous) => ({ ...previous, kanwil: code }));
+    setPage(1);
   }
 
   if (portal === null) {
@@ -119,13 +127,13 @@ export function InboxAdminPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean kerja milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Antrean kerja milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -137,7 +145,7 @@ export function InboxAdminPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -161,17 +169,15 @@ export function InboxAdminPage() {
         <>
           <p className="mt-3 text-sm text-slate-600">{tab.keterangan}</p>
 
-          <FilterBar
-            tab={tab}
-            search={draft}
-            onSearch={setDraft}
-          />
+          <FilterBar tab={tab} search={draft} onSearch={setDraft} />
 
           <ExportBar tabCode={tab.kode} filter={filter} />
 
           <div className="mt-4">
             <DataTable<WorkItem>
-              columns={columnsFor(tab, (row) => <DetailButton item={row} />)}
+              columns={columnsFor(tab, (row) => (
+                <DetailButton item={row} />
+              ))}
               rows={list.data?.baris ?? []}
               rowKey={(row) => `${row.referensi}|${row.case_id}`}
               title={tab.nama}
@@ -212,22 +218,22 @@ export function InboxAdminPage() {
         disabled={meta.data?.tab_dinonaktifkan ?? []}
       />
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-xl font-semibold text-slate-900">Inbox Admin</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Antrean kerja admin klaim: klaim berjalan, dokumen yang belum diregistrasi,
-          permintaan survei, dan pengingat RCL/PUCL.
+          Antrean kerja admin klaim: klaim berjalan, dokumen yang belum
+          diregistrasi, permintaan survei, dan pengingat RCL/PUCL.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -242,12 +248,12 @@ function FilterBar({
   search,
   onSearch,
 }: {
-  tab: Tab
-  search: string
-  onSearch: (text: string) => void
+  tab: Tab;
+  search: string;
+  onSearch: (text: string) => void;
 }) {
   if (!tab.pakai_pencarian && !tab.hanya_milik_saya) {
-    return null
+    return null;
   }
 
   return (
@@ -273,9 +279,9 @@ function FilterBar({
             placeholder="Case ID atau No Polis"
             onChange={(event) => onSearch(event.target.value)}
             className={[
-              'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-              'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-            ].join(' ')}
+              "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+              "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+            ].join(" ")}
           />
           {/*
             Jangkauan kotak cari dinyatakan di tempatnya, bukan hanya di catatan bawah.
@@ -294,7 +300,7 @@ function FilterBar({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -312,16 +318,19 @@ function FilterBar({
  *   belum dibangun — dengan `referensi`, kunci teknis Pega yang dipakai
  *   `setDataViewKlaim_Act` di sistem lama.
  */
-export function detailPath(item: Pick<WorkItem, 'case_id' | 'referensi'>): string | null {
-  const number = item.case_id.trim()
-  if (number.startsWith('PNCN.')) return `/registrasi/klaim/${encodeURIComponent(number)}`
-  const key = item.referensi || item.case_id
-  return key ? `/view-claim/${encodeURIComponent(key)}` : null
+export function detailPath(
+  item: Pick<WorkItem, "case_id" | "referensi">,
+): string | null {
+  const number = item.case_id.trim();
+  if (number.startsWith("PNCN."))
+    return `/registrasi/klaim/${encodeURIComponent(number)}`;
+  const key = item.referensi || item.case_id;
+  return key ? `/view-claim/${encodeURIComponent(key)}` : null;
 }
 
 function DetailButton({ item }: { item: WorkItem }) {
-  const navigate = useNavigate()
-  const path = detailPath(item)
+  const navigate = useNavigate();
+  const path = detailPath(item);
 
   return (
     // Nada `utama` dan tidak terlipat: ini satu-satunya tindakan pada baris antrean, dan
@@ -334,7 +343,7 @@ function DetailButton({ item }: { item: WorkItem }) {
     >
       Lihat Detail Klaim
     </Button>
-  )
+  );
 }
 
 /**
@@ -350,13 +359,13 @@ function Pagination({
   onMove,
   loading,
 }: {
-  info: PageInfo
-  visible: number
-  onMove: (page: number) => void
-  loading: boolean
+  info: PageInfo;
+  visible: number;
+  onMove: (page: number) => void;
+  loading: boolean;
 }) {
-  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1
-  const last = (info.halaman - 1) * info.ukuran + visible
+  const first = visible === 0 ? 0 : (info.halaman - 1) * info.ukuran + 1;
+  const last = (info.halaman - 1) * info.ukuran + visible;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -380,7 +389,7 @@ function Pagination({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -394,14 +403,16 @@ function Notes({
   limitations,
   disabled,
 }: {
-  limitations: string[]
-  disabled: DisabledTab[]
+  limitations: string[];
+  disabled: DisabledTab[];
 }) {
-  if (limitations.length === 0 && disabled.length === 0) return null
+  if (limitations.length === 0 && disabled.length === 0) return null;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
+      <h2 className="text-sm font-medium text-slate-800">
+        Yang perlu diketahui
+      </h2>
 
       {limitations.length > 0 && (
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
@@ -413,12 +424,12 @@ function Notes({
 
       {disabled.length > 0 && (
         <p className="mt-2 text-xs text-slate-600">
-          Tab {disabled.map((tab) => `"${tab.nama}"`).join(', ')} tidak dibawa ke sistem
-          baru — {disabled[0]?.alasan ?? 'tidak dipakai'}.
+          Tab {disabled.map((tab) => `"${tab.nama}"`).join(", ")} tidak dibawa
+          ke sistem baru — {disabled[0]?.alasan ?? "tidak dipakai"}.
         </p>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -431,7 +442,10 @@ function Notes({
  * tanpa gulir menyamping, tabelnya memakai mode rapat `DataTable` dan tanggal diringkas —
  * seluruh kolom muat selebar layar meja.
  */
-function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+function columnsFor(
+  tab: Tab,
+  action: (row: WorkItem) => ReactNode,
+): Column<WorkItem>[] {
   const columns: Column<WorkItem>[] = tab.kolom.map((column) => ({
     key: column.kunci,
     title: column.judul,
@@ -439,23 +453,28 @@ function columnsFor(tab: Tab, action: (row: WorkItem) => ReactNode): Column<Work
     // Kolom Aging diratakan ke kanan karena isinya angka, sama seperti kolom nilai uang
     // di layar lain.
     alignRight: isAging(column.kunci),
-  }))
+  }));
 
   columns.push({
-    key: 'aksi',
-    title: 'Aksi',
-    value: () => '',
+    key: "aksi",
+    title: "Aksi",
+    value: () => "",
     render: action,
     noSort: true,
     alignRight: true,
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /** isAging menyatakan sebuah kolom berisi jumlah hari. */
-function isAging(key: TabColumn['kunci']): boolean {
-  return key === 'aging_lapor' || key === 'aging_total' || key === 'aging_lod' || key === 'aging_request'
+function isAging(key: TabColumn["kunci"]): boolean {
+  return (
+    key === "aging_lapor" ||
+    key === "aging_total" ||
+    key === "aging_lod" ||
+    key === "aging_request"
+  );
 }
 
 /**
@@ -466,14 +485,14 @@ function isAging(key: TabColumn['kunci']): boolean {
  * kosong yang tidak dapat dibedakan dari kolom yang gagal dimuat.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  if (isAging(column.kunci)) return `${value} hari`
+  if (isAging(column.kunci)) return `${value} hari`;
 
-  const text = String(value)
-  return isDate(text) ? shortDate(text) : text
+  const text = String(value);
+  return isDate(text) ? shortDate(text) : text;
 }
 
 /**
@@ -482,13 +501,13 @@ function cellText(row: WorkItem, column: TabColumn): string {
  * melebarkan tabel. Nilainya tanggal murni, sehingga tidak ada pergeseran zona waktu.
  */
 function shortDate(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk seluruh kolom tanggal. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -498,32 +517,32 @@ function isDate(text: string): boolean {
  * antrean yang memang tidak punya pekerjaan, dan tindakannya pun berbeda.
  */
 function emptyMessageFor(tab: Tab, filter: FilterForm): string {
-  if (filter.cari.trim() !== '') {
-    return 'Tidak ada baris yang cocok dengan pencarian ini. Kotak cari hanya menelusuri Case ID dan No Polis.'
+  if (filter.cari.trim() !== "") {
+    return "Tidak ada baris yang cocok dengan pencarian ini. Kotak cari hanya menelusuri Case ID dan No Polis.";
   }
-  if (filter.bisnis !== '') {
-    return 'Tidak ada baris pada lini bisnis yang dipilih.'
+  if (filter.bisnis !== "") {
+    return "Tidak ada baris pada lini bisnis yang dipilih.";
   }
   if (tab.hanya_milik_saya) {
-    return 'Tidak ada pekerjaan milik Anda di antrean ini.'
+    return "Tidak ada pekerjaan milik Anda di antrean ini.";
   }
-  return 'Antrean ini sedang kosong.'
+  return "Antrean ini sedang kosong.";
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }
 
 /** Kode tab Branch Claim — satu-satunya tab tempat tombol Export LOD tampil. */
-const TAB_BRANCH_CLAIM = '12'
+const TAB_BRANCH_CLAIM = "12";
 
 const EXPORT_LABEL: Record<ExportKind, string> = {
-  lod: 'Export LOD',
-  'hasil-auto-claim': 'Export Hasil Auto Claim',
-  'klaim-gagal': 'Export Klaim Gagal',
-}
+  lod: "Export LOD",
+  "hasil-auto-claim": "Export Hasil Auto Claim",
+  "klaim-gagal": "Export Klaim Gagal",
+};
 
 /**
  * ExportBar memuat tombol ekspor CSV layar lama.
@@ -532,26 +551,32 @@ const EXPORT_LABEL: Record<ExportKind, string> = {
  * wadahnya di section Pega. Dua tombol Auto Claim tidak punya kondisi tampil pada selnya,
  * sehingga keduanya tampil di setiap tab.
  */
-function ExportBar({ tabCode, filter }: { tabCode: string; filter: FilterForm }) {
-  const download = useInboxAdminExport()
-  const [busy, setBusy] = useState<ExportKind | null>(null)
-  const [error, setError] = useState<string | null>(null)
+function ExportBar({
+  tabCode,
+  filter,
+}: {
+  tabCode: string;
+  filter: FilterForm;
+}) {
+  const download = useInboxAdminExport();
+  const [busy, setBusy] = useState<ExportKind | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const kinds: ExportKind[] = [
-    ...(tabCode === TAB_BRANCH_CLAIM ? (['lod'] as const) : []),
-    'hasil-auto-claim',
-    'klaim-gagal',
-  ]
+    ...(tabCode === TAB_BRANCH_CLAIM ? (["lod"] as const) : []),
+    "hasil-auto-claim",
+    "klaim-gagal",
+  ];
 
   async function run(kind: ExportKind) {
-    setBusy(kind)
-    setError(null)
+    setBusy(kind);
+    setError(null);
     try {
-      await download(kind, filter)
+      await download(kind, filter);
     } catch (e) {
-      setError(messageOf(e))
+      setError(messageOf(e));
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
   }
 
@@ -559,16 +584,25 @@ function ExportBar({ tabCode, filter }: { tabCode: string; filter: FilterForm })
     <div className="mt-3">
       <div className="flex flex-wrap gap-2">
         {kinds.map((kind) => (
-          <Button key={kind} tone="kedua" disabled={busy !== null} onClick={() => run(kind)}>
-            {busy === kind ? 'Menyiapkan berkas…' : EXPORT_LABEL[kind]}
+          <Button
+            key={kind}
+            tone="kedua"
+            disabled={busy !== null}
+            onClick={() => run(kind)}
+          >
+            {busy === kind ? "Menyiapkan berkas…" : EXPORT_LABEL[kind]}
           </Button>
         ))}
       </div>
       {error && (
         <div className="mt-2">
-          <ErrorMessage title="Berkas tidak dapat diunduh" description={error} tone="gangguan" />
+          <ErrorMessage
+            title="Berkas tidak dapat diunduh"
+            description={error}
+            tone="gangguan"
+          />
         </div>
       )}
     </div>
-  )
+  );
 }

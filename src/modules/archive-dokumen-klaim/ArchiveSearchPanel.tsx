@@ -1,20 +1,20 @@
-import { Field } from '@/components/Field'
-import { SearchIcon } from '@/components/Icon'
-import { SelectField } from '@/components/SelectField'
+import { Field } from "@/components/Field";
+import { SearchIcon } from "@/components/Icon";
+import { SelectField } from "@/components/SelectField";
 
-import type { Option, SearchForm } from './types'
+import type { Option, SearchForm } from "./types";
 
 type Props = {
   /** Isi dropdown "Tipe Pencarian Archive", dikirim server. */
-  columns: Option[]
+  columns: Option[];
 
-  form: SearchForm
-  onChange: (change: Partial<SearchForm>) => void
-  onSubmit: () => void
+  form: SearchForm;
+  onChange: (change: Partial<SearchForm>) => void;
+  onSubmit: () => void;
 
   /** Pesan galat per isian, dikirim server sebagai `detail` pada galat validasi. */
-  fieldError: Record<string, string>
-}
+  fieldError: Record<string, string>;
+};
 
 /**
  * ArchiveSearchPanel adalah kedua penyaring grid ARCHIVE FILE KLAIM.
@@ -38,13 +38,19 @@ type Props = {
  * disebutkan Work Owner dari layar Pega (2026-10-03). Panel ini hanya isiannya, dan
  * menekan Enter pada salah satu isian menjalankan pencarian yang sama.
  */
-export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldError }: Props) {
+export function ArchiveSearchPanel({
+  columns,
+  form,
+  onChange,
+  onSubmit,
+  fieldError,
+}: Props) {
   return (
     <form
       className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut"
       onSubmit={(event) => {
-        event.preventDefault()
-        onSubmit()
+        event.preventDefault();
+        onSubmit();
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -53,8 +59,11 @@ export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldErr
           label="Tipe Pencarian Archive"
           value={form.tipe_pencarian}
           onChange={(event) => onChange({ tipe_pencarian: event.target.value })}
-          error={fieldError['tipe_pencarian']}
-          options={columns.map((column) => ({ value: column.kode, label: column.label }))}
+          error={fieldError["tipe_pencarian"]}
+          options={columns.map((column) => ({
+            value: column.kode,
+            label: column.label,
+          }))}
           // Tanpa pilihan kosong: salah satu kolom harus aktif, dan pilihan kosong hanya
           // menciptakan keadaan keempat yang tidak berarti apa-apa.
           emptyText=""
@@ -65,7 +74,7 @@ export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldErr
           label="Keyword"
           value={form.kata_kunci}
           onChange={(event) => onChange({ kata_kunci: event.target.value })}
-          error={fieldError['kata_kunci']}
+          error={fieldError["kata_kunci"]}
           hint="Cocok PERSIS, bukan sebagian."
           icon={<SearchIcon className="h-4 w-4" />}
           placeholder="PNC-100001"
@@ -77,7 +86,7 @@ export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldErr
           type="date"
           value={form.tanggal_dari}
           onChange={(event) => onChange({ tanggal_dari: event.target.value })}
-          error={fieldError['tanggal_dari']}
+          error={fieldError["tanggal_dari"]}
         />
 
         <Field
@@ -86,7 +95,7 @@ export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldErr
           type="date"
           value={form.tanggal_sampai}
           onChange={(event) => onChange({ tanggal_sampai: event.target.value })}
-          error={fieldError['tanggal_sampai']}
+          error={fieldError["tanggal_sampai"]}
           hint="Rentangnya termasuk tanggal ini."
         />
       </div>
@@ -99,9 +108,14 @@ export function ArchiveSearchPanel({ columns, form, onChange, onSubmit, fieldErr
         sesungguhnya ada di toolbar, dan dua tombol bernama sama membuat pembaca layar
         mengumumkan dua pilihan untuk satu tindakan.
       */}
-      <button type="submit" aria-hidden="true" tabIndex={-1} className="sr-only">
+      <button
+        type="submit"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="sr-only"
+      >
         Cari
       </button>
     </form>
-  )
+  );
 }

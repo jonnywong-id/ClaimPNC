@@ -14,90 +14,90 @@ export type WorkItem = {
    *
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom.
    */
-  referensi: string
+  referensi: string;
 
-  case_id: string
-  no_polis: string
-  nama_tertanggung: string
-  nama_bisnis: string
-  sumber_bisnis: string
-  nama_cabang: string
-  cabang_klaim: string
-  pembuat: string
-  tanggal_kejadian: string | null
-  tanggal_lapor: string | null
-  tanggal_input: string | null
-  catatan: string
-  posisi_klaim: string
-  status_klaim: string
-  status_lod: string
+  case_id: string;
+  no_polis: string;
+  nama_tertanggung: string;
+  nama_bisnis: string;
+  sumber_bisnis: string;
+  nama_cabang: string;
+  cabang_klaim: string;
+  pembuat: string;
+  tanggal_kejadian: string | null;
+  tanggal_lapor: string | null;
+  tanggal_input: string | null;
+  catatan: string;
+  posisi_klaim: string;
+  status_klaim: string;
+  status_lod: string;
 
-  tanggal_request: string | null
-  cabang_polis: string
-  cabang_survei: string
-  pic_klaim: string
-  surveyor: string
-  no_survei: string
+  tanggal_request: string | null;
+  cabang_polis: string;
+  cabang_survei: string;
+  pic_klaim: string;
+  surveyor: string;
+  no_survei: string;
 
-  tanggal_masuk_inbox: string | null
-  deskripsi_analis: string
-  status_rcl_pucl: string
-  tanggal_cetak_surat: string | null
-  lama_klaim: string
-  status_kadaluarsa: string
+  tanggal_masuk_inbox: string | null;
+  deskripsi_analis: string;
+  status_rcl_pucl: string;
+  tanggal_cetak_surat: string | null;
+  lama_klaim: string;
+  status_kadaluarsa: string;
 
-  aging_lapor: number | null
-  aging_total: number | null
-  aging_lod: number | null
-  aging_request: number | null
-}
+  aging_lapor: number | null;
+  aging_total: number | null;
+  aging_lod: number | null;
+  aging_request: number | null;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type WorkItemField = keyof WorkItem
+export type WorkItemField = keyof WorkItem;
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: WorkItemField
-  judul: string
-}
+  kunci: WorkItemField;
+  judul: string;
+};
 
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  kolom: TabColumn[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  kolom: TabColumn[];
 
   /** Barisnya hanya milik pemanggil — tiga tab begitu. */
-  hanya_milik_saya: boolean
+  hanya_milik_saya: boolean;
 
   /** Kotak cari berlaku pada tab ini. */
-  pakai_pencarian: boolean
+  pakai_pencarian: boolean;
 
   /** Dropdown lini bisnis berlaku pada tab ini. */
-  pakai_lini_bisnis: boolean
-}
+  pakai_lini_bisnis: boolean;
+};
 
 /** Satu pilihan pada dropdown lini bisnis. */
 export type BusinessLine = {
-  kode: string
-  label: string
-}
+  kode: string;
+  label: string;
+};
 
 /** Satu tab sistem lama yang sengaja tidak dibangun. */
 export type DisabledTab = {
-  kode: string
-  nama: string
-  alasan: string
-}
+  kode: string;
+  nama: string;
+  alasan: string;
+};
 
 /** Jawaban `GET /api/inbox-admin/tab`. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
-  lini_bisnis: BusinessLine[]
-  tab_dinonaktifkan: DisabledTab[]
-  portal: string
+  tab: Tab[];
+  tab_bawaan: string;
+  lini_bisnis: BusinessLine[];
+  tab_dinonaktifkan: DisabledTab[];
+  portal: string;
 
   /**
    * Hal yang belum berjalan penuh beserta alasannya, siap ditampilkan apa adanya.
@@ -105,40 +105,40 @@ export type MetadataResponse = {
    * Ia datang dari server supaya hilang dengan sendirinya begitu penghalangnya hilang —
    * tanpa menyunting layar.
    */
-  keterbatasan: string[]
-}
+  keterbatasan: string[];
+};
 
 /** Keterangan halaman. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /** Penyaring yang BENAR-BENAR dipakai server. */
 export type AppliedFilter = {
-  bisnis: string
-  cari: string
-}
+  bisnis: string;
+  cari: string;
+};
 
 /** Jawaban `GET /api/inbox-admin`. */
 export type ListResponse = {
-  tab: Tab
-  baris: WorkItem[]
-  paginasi: PageInfo
-  penyaring: AppliedFilter
-  portal: string
-}
+  tab: Tab;
+  baris: WorkItem[];
+  paginasi: PageInfo;
+  penyaring: AppliedFilter;
+  portal: string;
+};
 
 /** Keadaan penyaring di layar. */
 export type FilterForm = {
-  tab: string
-  bisnis: string
-  cari: string
+  tab: string;
+  bisnis: string;
+  cari: string;
   /** Kanwil pilihan manajer; kosong = seluruh kanwil. */
-  kanwil: string
-}
+  kanwil: string;
+};
 
 /**
  * Keadaan awal penyaring.
@@ -147,38 +147,43 @@ export type FilterForm = {
  * terbuka pertama (`tab_bawaan`), dan menuliskannya di sini berarti nilai yang sama hidup di
  * dua tempat dan dapat berselisih.
  */
-export const EMPTY_FILTER: FilterForm = { tab: '', bisnis: '', cari: '', kanwil: '' }
+export const EMPTY_FILTER: FilterForm = {
+  tab: "",
+  bisnis: "",
+  cari: "",
+  kanwil: "",
+};
 
 /** Kode galat modul ini, sebagaimana dikirim backend. */
 export const InboxAdminError = {
-  validationFail: 'validasi_gagal',
-  callerUnknown: 'profil_pemanggil_tidak_lengkap',
-} as const
+  validationFail: "validasi_gagal",
+  callerUnknown: "profil_pemanggil_tidak_lengkap",
+} as const;
 
 /** Satu baris daftar Status Register — GET /api/inbox-admin/jumlah. */
 export type TabCount = {
-  kode: string
-  nama: string
-  jumlah: number
+  kode: string;
+  nama: string;
+  jumlah: number;
   /** Kueri tab itu gagal; jumlahnya tidak bermakna. */
-  gagal: boolean
-}
+  gagal: boolean;
+};
 
 export type CountsResponse = {
-  jumlah: TabCount[]
-  portal: string
-}
+  jumlah: TabCount[];
+  portal: string;
+};
 
 /** Satu pilihan dropdown "Pilih Kanwil". */
-export type RegionOption = { kode: string; label: string }
+export type RegionOption = { kode: string; label: string };
 
 /** Batas data pemanggil — GET /api/inbox-admin/batas. */
 export type ViewerResponse = {
   /** Manajer: tidak dibatasi cabang dan boleh memilih kanwil. */
-  manajer: boolean
+  manajer: boolean;
   /** Cabang yang membatasi antrean; kosong bila tidak dibatasi. */
-  cabang: string
+  cabang: string;
   /** Isi dropdown kanwil — hanya terisi bagi manajer. */
-  kanwil: RegionOption[]
-  portal: string
-}
+  kanwil: RegionOption[];
+  portal: string;
+};

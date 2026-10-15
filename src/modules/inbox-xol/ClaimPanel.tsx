@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { SelectField } from '@/components/SelectField'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { SelectField } from "@/components/SelectField";
 
 import {
   exportClaimDetailURL,
@@ -19,9 +19,9 @@ import {
   useRemoveDolCol,
   useClaimList,
   useSummaryBusiness,
-} from './api'
-import { messageOf } from './errors'
-import { InsertDolColDialog } from './InsertDolColDialog'
+} from "./api";
+import { messageOf } from "./errors";
+import { InsertDolColDialog } from "./InsertDolColDialog";
 import type {
   Breakdown,
   ClaimListItem,
@@ -29,7 +29,7 @@ import type {
   MasterXOL,
   SummaryBusiness,
   UploadResult,
-} from './types'
+} from "./types";
 
 /**
  * Dua blok teratas wadah `source=='1'` — tombol INSERT DOL DAN COL dan grid akumulasi.
@@ -65,9 +65,9 @@ import type {
  * yang akan DITULISI — bukan perjanjian mana yang ditampilkan.
  */
 export function ClaimPanel() {
-  const [insertOpen, setInsertOpen] = useState(false)
+  const [insertOpen, setInsertOpen] = useState(false);
 
-  const summary = useClaimSummary()
+  const summary = useClaimSummary();
 
   return (
     <div className="mt-4 space-y-4">
@@ -82,7 +82,9 @@ export function ClaimPanel() {
         </Button>
       </div>
 
-      {insertOpen && <InsertDolColDialog onClose={() => setInsertOpen(false)} />}
+      {insertOpen && (
+        <InsertDolColDialog onClose={() => setInsertOpen(false)} />
+      )}
 
       {/*
         Grid DIGAMBAR walau kosong.
@@ -98,50 +100,50 @@ export function ClaimPanel() {
         error={summary.isError ? messageOf(summary.error) : null}
       />
     </div>
-  )
+  );
 }
 
 type TableProps = {
-  rows: ClaimSummary[]
-  loading: boolean
-  error: string | null
-}
+  rows: ClaimSummary[];
+  loading: boolean;
+  error: string | null;
+};
 
 function ClaimTable({ rows, loading, error }: TableProps) {
   const columns: Column<ClaimSummary>[] = [
     {
-      key: 'tanggal_kejadian',
-      title: 'Date Of Loss',
+      key: "tanggal_kejadian",
+      title: "Date Of Loss",
       value: (row) => row.tanggal_kejadian,
-      width: '9rem',
+      width: "9rem",
     },
     {
-      key: 'sebab_kerugian',
-      title: 'Cause Of Loss',
+      key: "sebab_kerugian",
+      title: "Cause Of Loss",
       value: (row) => row.sebab_kerugian,
     },
     {
-      key: 'group_business',
-      title: 'Group Business',
+      key: "group_business",
+      title: "Group Business",
       value: (row) => row.group_business,
     },
     {
-      key: 'nilai_outstanding',
-      title: 'OS Value',
+      key: "nilai_outstanding",
+      title: "OS Value",
       value: (row) => String(row.nilai_outstanding),
       render: (row) => formatNumber(row.nilai_outstanding),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
     {
-      key: 'nilai_akseptasi',
-      title: 'Accepted Value',
+      key: "nilai_akseptasi",
+      title: "Accepted Value",
       value: (row) => String(row.nilai_akseptasi),
       render: (row) => formatNumber(row.nilai_akseptasi),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
-  ]
+  ];
 
   return (
     <div className="space-y-4">
@@ -183,7 +185,7 @@ function ClaimTable({ rows, loading, error }: TableProps) {
         )}
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -195,30 +197,29 @@ function ClaimTable({ rows, loading, error }: TableProps) {
  * entah group business perjanjiannya belum dilengkapi.
  */
 const EMPTY_MESSAGE =
-  'Belum ada klaim XOL pada satu pun perjanjian. Penambahan Date Of Loss dan Cause Of ' +
-  'Loss masih dilakukan lewat aplikasi Pega selama masa paralel.'
-
+  "Belum ada klaim XOL pada satu pun perjanjian. Penambahan Date Of Loss dan Cause Of " +
+  "Loss masih dilakukan lewat aplikasi Pega selama masa paralel.";
 
 function BreakdownTable({
   masterID,
   lossDate,
   cause,
 }: {
-  masterID: string
-  lossDate: string
-  cause: string
+  masterID: string;
+  lossDate: string;
+  cause: string;
 }) {
-  const breakdown = useBreakdown(masterID, lossDate, cause)
-  const unduh = useUnduhBerkas()
-  const rows = breakdown.data?.baris ?? []
+  const breakdown = useBreakdown(masterID, lossDate, cause);
+  const unduh = useUnduhBerkas();
+  const rows = breakdown.data?.baris ?? [];
 
   const columns: Column<Breakdown>[] = [
     {
-      key: 'group_business',
-      title: 'Group Business',
+      key: "group_business",
+      title: "Group Business",
       value: (row) => row.group_business,
       render: (row) =>
-        row.sumber === 'treaty' ? (
+        row.sumber === "treaty" ? (
           <span>
             {row.group_business}
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
@@ -232,27 +233,27 @@ function BreakdownTable({
     {
       // Judulnya "Number of Claim", bukan "Total Klaim". Keduanya ADA di sistem lama pada
       // grid yang berbeda; yang dipakai di sini adalah judul grid rincian.
-      key: 'jumlah_klaim',
-      title: 'Number of Claim',
+      key: "jumlah_klaim",
+      title: "Number of Claim",
       value: (row) => String(row.jumlah_klaim),
       alignRight: true,
-      width: '9rem',
+      width: "9rem",
     },
     {
-      key: 'nilai_outstanding',
-      title: 'OS Value (USD)',
+      key: "nilai_outstanding",
+      title: "OS Value (USD)",
       value: (row) => String(row.nilai_outstanding),
       render: (row) => valueCell(row, row.nilai_outstanding),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
     {
-      key: 'nilai_akseptasi',
-      title: 'Accept Value (USD)',
+      key: "nilai_akseptasi",
+      title: "Accept Value (USD)",
       value: (row) => String(row.nilai_akseptasi),
       render: (row) => valueCell(row, row.nilai_akseptasi),
       alignRight: true,
-      width: '11rem',
+      width: "11rem",
     },
     {
       /*
@@ -265,10 +266,10 @@ function BreakdownTable({
         `pxConvertResultsToCSV`, bukan di penulis XLSX. Label dipertahankan apa adanya
         (`D-13`); yang berubah hanya cara menyebut isinya di bawah ini.
       */
-      key: 'export',
-      title: 'Export',
-      value: () => '',
-      width: '9rem',
+      key: "export",
+      title: "Export",
+      value: () => "",
+      width: "9rem",
       render: (row) => (
         <button
           type="button"
@@ -277,30 +278,32 @@ function BreakdownTable({
           onClick={(event) => {
             // Klik ini tidak boleh ikut membuka-tutup baris yang sedang terbentang —
             // seluruh baris adalah tombol pembuka rincian.
-            event.stopPropagation()
+            event.stopPropagation();
             unduh.mutate({
               alamat: exportClaimDetailURL(
                 lossDate,
                 cause,
-                row.sumber === 'treaty' ? 'treaty' : row.kode_group_business,
+                row.sumber === "treaty" ? "treaty" : row.kode_group_business,
                 row.group_business,
               ),
               namaBerkas: `Detail Claim XOL ${row.group_business}.csv`,
-            })
+            });
           }}
         >
           Export To Excel
         </button>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-4">
       <DataTable<Breakdown>
         columns={columns}
         rows={rows}
-        rowKey={(row) => `${row.sumber}-${row.kode_group_business || row.group_business}`}
+        rowKey={(row) =>
+          `${row.sumber}-${row.kode_group_business || row.group_business}`
+        }
         /*
           Tanpa judul dan tanpa kotak cari — begitulah grid ini di layar lama: ia langsung
           dimulai dari kepala kolomnya, tepat di bawah baris yang dibuka.
@@ -331,7 +334,7 @@ function BreakdownTable({
       <SummaryPanel lossDate={lossDate} cause={cause} />
       <GenerateBar lossDate={lossDate} cause={cause} />
     </div>
-  )
+  );
 }
 
 /**
@@ -346,17 +349,25 @@ function BreakdownTable({
  * PLA memberitahukan nilai estimasi, DLA memberitahukan nilai akseptasi.
  */
 function GenerateBar({ lossDate, cause }: { lossDate: string; cause: string }) {
-  const pla = useGenerateAdvice('pla')
-  const dla = useGenerateAdvice('dla')
-  const isian = { tanggal_kejadian: lossDate, sebab_kerugian: cause }
+  const pla = useGenerateAdvice("pla");
+  const dla = useGenerateAdvice("dla");
+  const isian = { tanggal_kejadian: lossDate, sebab_kerugian: cause };
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
-        <Button tone="halus" onClick={() => pla.mutate(isian)} disabled={pla.isPending}>
+        <Button
+          tone="halus"
+          onClick={() => pla.mutate(isian)}
+          disabled={pla.isPending}
+        >
           Generate PLA
         </Button>
-        <Button tone="utama" onClick={() => dla.mutate(isian)} disabled={dla.isPending}>
+        <Button
+          tone="utama"
+          onClick={() => dla.mutate(isian)}
+          disabled={dla.isPending}
+        >
           Generate DLA
         </Button>
       </div>
@@ -376,7 +387,7 @@ function GenerateBar({ lossDate, cause }: { lossDate: string; cause: string }) {
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -416,14 +427,18 @@ function UploadBar() {
           label="Format MBU Salvage"
           namaBerkas="Format Upload Salvage MBU.csv"
         />
-        <FormatLink jenis="2" label="Format Inward" namaBerkas="Format Upload Inward.csv" />
+        <FormatLink
+          jenis="2"
+          label="Format Inward"
+          namaBerkas="Format Upload Inward.csv"
+        />
       </div>
 
       <p className="text-xs text-slate-500">
         Berkas berformat CSV. Unduh contohnya lewat tautan Format di atas.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -440,11 +455,11 @@ function FormatLink({
   label,
   namaBerkas,
 }: {
-  jenis: '1' | '2'
-  label: string
-  namaBerkas: string
+  jenis: "1" | "2";
+  label: string;
+  namaBerkas: string;
 }) {
-  const unduh = useUnduhBerkas()
+  const unduh = useUnduhBerkas();
 
   return (
     <>
@@ -452,7 +467,9 @@ function FormatLink({
         type="button"
         className="text-sm font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900 disabled:text-slate-400"
         disabled={unduh.isPending}
-        onClick={() => unduh.mutate({ alamat: uploadTemplateURL(jenis), namaBerkas })}
+        onClick={() =>
+          unduh.mutate({ alamat: uploadTemplateURL(jenis), namaBerkas })
+        }
       >
         {label}
       </button>
@@ -467,7 +484,7 @@ function FormatLink({
         </div>
       )}
     </>
-  )
+  );
 }
 
 /**
@@ -478,14 +495,18 @@ function FormatLink({
  * langkah yang tidak ada di sistem lama.
  */
 function UploadSalvageButton() {
-  const pilih = useRef<HTMLInputElement>(null)
-  const unggah = useUploadSalvageMBU()
-  const klien = useQueryClient()
+  const pilih = useRef<HTMLInputElement>(null);
+  const unggah = useUploadSalvageMBU();
+  const klien = useQueryClient();
 
   return (
     <>
-      <Button tone="kedua" onClick={() => pilih.current?.click()} disabled={unggah.isPending}>
-        {unggah.isPending ? 'Mengunggah…' : 'Upload MBU Salvage'}
+      <Button
+        tone="kedua"
+        onClick={() => pilih.current?.click()}
+        disabled={unggah.isPending}
+      >
+        {unggah.isPending ? "Mengunggah…" : "Upload MBU Salvage"}
       </Button>
 
       <input
@@ -495,19 +516,19 @@ function UploadSalvageButton() {
         className="hidden"
         aria-label="Berkas MBU Salvage"
         onChange={(event) => {
-          const berkas = event.target.files?.[0]
+          const berkas = event.target.files?.[0];
           // Nilai input dikosongkan supaya memilih BERKAS YANG SAMA dua kali tetap
           // memicu onChange — tanpa ini, mengunggah ulang setelah perbaikan diam saja.
-          event.target.value = ''
-          if (!berkas) return
+          event.target.value = "";
+          if (!berkas) return;
           unggah.mutate(berkas, {
             onSuccess: (hasil) => {
               // Grid rincian dan daftar klaim membaca tabel yang barusan ditulis.
               if (hasil.jumlah_tersimpan > 0) {
-                void klien.invalidateQueries({ queryKey: ['inbox-xol'] })
+                void klien.invalidateQueries({ queryKey: ["inbox-xol"] });
               }
             },
-          })
+          });
         }}
       />
 
@@ -523,7 +544,7 @@ function UploadSalvageButton() {
 
       {unggah.isSuccess && <UploadReport hasil={unggah.data} />}
     </>
-  )
+  );
 }
 
 /** UploadReport menyatakan berapa baris tersimpan, dan baris mana yang tidak. */
@@ -543,13 +564,13 @@ function UploadReport({ hasil }: { hasil: UploadResult }) {
           {hasil.ditolak.map((baris) => (
             <li key={baris.baris}>
               Baris {baris.baris}
-              {baris.no_klaim ? ` (${baris.no_klaim})` : ''}: {baris.alasan}
+              {baris.no_klaim ? ` (${baris.no_klaim})` : ""}: {baris.alasan}
             </li>
           ))}
         </ul>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -561,11 +582,15 @@ function UploadReport({ hasil }: { hasil: UploadResult }) {
  * tanpa satu pun kegunaan.
  */
 function UploadInwardButton() {
-  const unggah = useUploadInward()
+  const unggah = useUploadInward();
 
   return (
     <>
-      <Button tone="kedua" onClick={() => unggah.mutate()} disabled={unggah.isPending}>
+      <Button
+        tone="kedua"
+        onClick={() => unggah.mutate()}
+        disabled={unggah.isPending}
+      >
         Upload Inward
       </Button>
 
@@ -579,7 +604,7 @@ function UploadInwardButton() {
         </div>
       )}
     </>
-  )
+  );
 }
 
 /**
@@ -610,15 +635,23 @@ function UploadInwardButton() {
  * daftar yang sudah dimuat: daftarnya pendek — satu baris per perjanjian — dan merangkai
  * SQL dari nilai layar adalah pola `{ASIS:...}` yang justru dilarang dibawa.
  */
-function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string }) {
-  const [year, setYear] = useState('')
-  const [showAll, setShowAll] = useState(false)
+function MasterLayerPanel({
+  lossDate,
+  cause,
+}: {
+  lossDate: string;
+  cause: string;
+}) {
+  const [year, setYear] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
-  const masters = useMasters()
-  const hapus = useRemoveDolCol()
-  const all = masters.data?.perjanjian ?? []
+  const masters = useMasters();
+  const hapus = useRemoveDolCol();
+  const all = masters.data?.perjanjian ?? [];
 
-  const years = [...new Set(all.map((master) => master.tahun).filter(Boolean))].sort()
+  const years = [
+    ...new Set(all.map((master) => master.tahun).filter(Boolean)),
+  ].sort();
 
   /*
     Grid mulai KOSONG, bukan berisi semuanya.
@@ -630,37 +663,41 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
     "Show All Data" tidak berarti apa-apa, dan tombol yang tidak mengubah apa pun
     dilaporkan sebagai rusak.
   */
-  const rows = showAll ? all : year === '' ? [] : all.filter((m) => m.tahun === year)
+  const rows = showAll
+    ? all
+    : year === ""
+      ? []
+      : all.filter((m) => m.tahun === year);
 
   const columns: Column<MasterXOL>[] = [
-    { key: 'id', title: 'ID', value: (row) => row.id, width: '8rem' },
-    { key: 'nama', title: 'Nama Master', value: (row) => row.nama },
-    { key: 'tahun', title: 'Tahun', value: (row) => row.tahun, width: '7rem' },
+    { key: "id", title: "ID", value: (row) => row.id, width: "8rem" },
+    { key: "nama", title: "Nama Master", value: (row) => row.nama },
+    { key: "tahun", title: "Tahun", value: (row) => row.tahun, width: "7rem" },
     {
-      key: 'kurs',
-      title: 'Kurs',
+      key: "kurs",
+      title: "Kurs",
       value: (row) => String(row.kurs),
       render: (row) => formatNumber(row.kurs),
       alignRight: true,
-      width: '8rem',
+      width: "8rem",
     },
     {
-      key: 'min_limit',
-      title: 'Min Limit',
+      key: "min_limit",
+      title: "Min Limit",
       value: (row) => String(row.min_limit),
       render: (row) => limitCell(row.min_limit),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
     {
-      key: 'min_limit_idr',
-      title: 'Min Limit IDR',
+      key: "min_limit_idr",
+      title: "Min Limit IDR",
       value: (row) => String(row.min_limit_idr),
       render: (row) => limitCell(row.min_limit_idr),
       alignRight: true,
-      width: '12rem',
+      width: "12rem",
     },
-  ]
+  ];
 
   return (
     <div className="space-y-3">
@@ -669,13 +706,13 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
           id="xol-master-tahun"
           label="Master tahun XOL"
           options={years.map((value) => ({ value, label: value }))}
-          emptyText={masters.isPending ? '— memuat —' : 'Pilih'}
+          emptyText={masters.isPending ? "— memuat —" : "Pilih"}
           value={year}
           onChange={(event) => {
-            setYear(event.target.value)
+            setYear(event.target.value);
             // Memilih tahun membatalkan "Show All Data" — kalau tidak, gridnya tetap
             // memuat seluruh tahun sementara pemilihnya menunjuk satu tahun saja.
-            setShowAll(false)
+            setShowAll(false);
           }}
         />
       </div>
@@ -700,9 +737,9 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
           ) : undefined
         }
         emptyMessage={
-          showAll || year !== ''
+          showAll || year !== ""
             ? `Tidak ada perjanjian XOL tahun ${year}.`
-            : 'Pilih Master tahun XOL, atau tekan Show All Data.'
+            : "Pilih Master tahun XOL, atau tekan Show All Data."
         }
       />
 
@@ -722,8 +759,8 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
         <Button
           tone="kedua"
           onClick={() => {
-            setShowAll(true)
-            setYear('')
+            setShowAll(true);
+            setYear("");
           }}
         >
           Show All Data
@@ -731,10 +768,12 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
 
         <Button
           tone="kedua"
-          onClick={() => hapus.mutate({ tanggal_kejadian: lossDate, sebab_kerugian: cause })}
+          onClick={() =>
+            hapus.mutate({ tanggal_kejadian: lossDate, sebab_kerugian: cause })
+          }
           disabled={hapus.isPending}
         >
-          {hapus.isPending ? 'Menghapus…' : 'Remove All Data'}
+          {hapus.isPending ? "Menghapus…" : "Remove All Data"}
         </Button>
       </div>
 
@@ -746,13 +785,13 @@ function MasterLayerPanel({ lossDate, cause }: { lossDate: string; cause: string
         />
       )}
     </div>
-  )
+  );
 }
 
 /** limitCell menandai perjanjian yang belum punya satu pun layer. */
 function limitCell(value: number) {
-  if (value === 0) return <span className="text-slate-400">—</span>
-  return formatNumber(value)
+  if (value === 0) return <span className="text-slate-400">—</span>;
+  return formatNumber(value);
 }
 
 /**
@@ -764,19 +803,19 @@ function limitCell(value: number) {
  */
 function valueCell(row: Breakdown, value: number) {
   if (row.kurs_tidak_tersedia) {
-    return <span className="text-slate-400">—</span>
+    return <span className="text-slate-400">—</span>;
   }
-  return formatNumber(value)
+  return formatNumber(value);
 }
 
 function MissingRateNotice() {
   return (
     <p className="mt-2 rounded-kartu border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-      Sebagian baris treaty inward tidak dapat dihitung karena kurs mata uangnya pada
-      tanggal kejadian tidak ada di master kurs. Nilainya sengaja tidak ditampilkan —
-      lengkapi master kurs lebih dulu.
+      Sebagian baris treaty inward tidak dapat dihitung karena kurs mata uangnya
+      pada tanggal kejadian tidak ada di master kurs. Nilainya sengaja tidak
+      ditampilkan — lengkapi master kurs lebih dulu.
     </p>
-  )
+  );
 }
 
 /**
@@ -786,7 +825,7 @@ function MissingRateNotice() {
  * kunci yang sama pada dua baris membuat React menggambar salah satunya saja.
  */
 function rowKey(row: ClaimSummary): string {
-  return `${row.tanggal_kejadian}|${row.sebab_kerugian}`
+  return `${row.tanggal_kejadian}|${row.sebab_kerugian}`;
 }
 
 /**
@@ -797,7 +836,9 @@ function rowKey(row: ClaimSummary): string {
  * Desimalnya dibatasi dua — nilai hasil pembagian kurs nyaris selalu berkoma panjang.
  */
 function formatNumber(value: number): string {
-  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value)
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(
+    value,
+  );
 }
 
 /**
@@ -812,17 +853,23 @@ function formatNumber(value: number): string {
  * Judulnya ada di section lama, tetapi isinya tombol yang menjalankan rule yang belum
  * ter-export. Kolom kosong berjudul "Button" tidak menyampaikan apa pun.
  */
-function ClaimListPanel({ lossDate, cause }: { lossDate: string; cause: string }) {
-  const daftar = useClaimList(lossDate, cause)
-  const rows = daftar.data?.baris ?? []
+function ClaimListPanel({
+  lossDate,
+  cause,
+}: {
+  lossDate: string;
+  cause: string;
+}) {
+  const daftar = useClaimList(lossDate, cause);
+  const rows = daftar.data?.baris ?? [];
 
   const columns: Column<ClaimListItem>[] = [
     {
-      key: 'no_klaim',
-      title: 'No Klaim',
+      key: "no_klaim",
+      title: "No Klaim",
       value: (row) => row.no_klaim,
       render: (row) =>
-        row.sumber === 'treaty' ? (
+        row.sumber === "treaty" ? (
           <span>
             {row.no_klaim}
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
@@ -834,28 +881,28 @@ function ClaimListPanel({ lossDate, cause }: { lossDate: string; cause: string }
         ),
     },
     {
-      key: 'nilai_outstanding',
-      title: 'Os Value',
+      key: "nilai_outstanding",
+      title: "Os Value",
       value: (row) => String(row.nilai_outstanding),
       render: (row) => claimValueCell(row, row.nilai_outstanding),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
     {
-      key: 'nilai_akseptasi',
-      title: 'Accept Value',
+      key: "nilai_akseptasi",
+      title: "Accept Value",
       value: (row) => String(row.nilai_akseptasi),
       render: (row) => claimValueCell(row, row.nilai_akseptasi),
       alignRight: true,
-      width: '10rem',
+      width: "10rem",
     },
     {
-      key: 'mata_uang',
-      title: 'Currency',
+      key: "mata_uang",
+      title: "Currency",
       value: (row) => row.mata_uang,
-      width: '8rem',
+      width: "8rem",
     },
-  ]
+  ];
 
   return (
     <div>
@@ -880,15 +927,15 @@ function ClaimListPanel({ lossDate, cause }: { lossDate: string; cause: string }
 
       {rows.some((row) => row.kurs_tidak_tersedia) && <MissingRateNotice />}
     </div>
-  )
+  );
 }
 
 /** claimValueCell menolak menggambar angka yang kursnya tidak diketahui (`D-48`). */
 function claimValueCell(row: ClaimListItem, value: number) {
   if (row.kurs_tidak_tersedia) {
-    return <span className="text-slate-400">—</span>
+    return <span className="text-slate-400">—</span>;
   }
-  return formatNumber(value)
+  return formatNumber(value);
 }
 
 /**
@@ -901,17 +948,23 @@ function claimValueCell(row: ClaimListItem, value: number) {
  * Di layar lama gridnya berkolom tunggal "Business Name"; kode group business ikut
  * dibawa kuerinya dan dipakai di sini sebagai kunci baris, bukan sebagai kolom.
  */
-function SummaryPanel({ lossDate, cause }: { lossDate: string; cause: string }) {
-  const summary = useSummaryBusiness(lossDate, cause)
-  const rows = summary.data?.baris ?? []
+function SummaryPanel({
+  lossDate,
+  cause,
+}: {
+  lossDate: string;
+  cause: string;
+}) {
+  const summary = useSummaryBusiness(lossDate, cause);
+  const rows = summary.data?.baris ?? [];
 
   const columns: Column<SummaryBusiness>[] = [
     {
-      key: 'group_business',
-      title: 'Business Name',
+      key: "group_business",
+      title: "Business Name",
       value: (row) => row.group_business,
     },
-  ]
+  ];
 
   return (
     <DataTable<SummaryBusiness>
@@ -933,5 +986,5 @@ function SummaryPanel({ lossDate, cause }: { lossDate: string; cause: string }) 
       }
       emptyMessage="Tidak ada group business yang menanggung klaim pada tanggal dan penyebab kerugian ini."
     />
-  )
+  );
 }

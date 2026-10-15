@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, downloadAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, downloadAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   CetakResponse,
   DokumenResponse,
   ListResponse,
   MetadataResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-pla-dla-pre-dla'
+const PATH = "/api/inbox-pla-dla-pre-dla";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -26,7 +26,7 @@ const PATH = '/api/inbox-pla-dla-pre-dla'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-pla-dla-pre-dla', 'daftar', portal, token] as const,
+    ["inbox-pla-dla-pre-dla", "daftar", portal, token] as const,
 
   list: (
     portal: string | null,
@@ -38,8 +38,8 @@ const keys = {
     to: string,
   ) =>
     [
-      'inbox-pla-dla-pre-dla',
-      'baris',
+      "inbox-pla-dla-pre-dla",
+      "baris",
       portal,
       token,
       tab,
@@ -55,11 +55,11 @@ const keys = {
     tab: string,
     claimKey: string,
   ) =>
-    ['inbox-pla-dla-pre-dla', 'rincian', portal, token, tab, claimKey] as const,
+    ["inbox-pla-dla-pre-dla", "rincian", portal, token, tab, claimKey] as const,
 
   cetak: (portal: string | null, token: string | null, claimKey: string) =>
-    ['inbox-pla-dla-pre-dla', 'cetak', portal, token, claimKey] as const,
-}
+    ["inbox-pla-dla-pre-dla", "cetak", portal, token, claimKey] as const,
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana.
@@ -76,29 +76,30 @@ const keys = {
  * tampilan yang boleh diputuskan layar.
  */
 export function usePLADLAMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
-    queryFn: () => callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
+    queryFn: () =>
+      callAPI<MetadataResponse>(`${PATH}/daftar`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan
     // dari data.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /** Isian penyaring yang dikirim ke server. */
 export type ParameterDaftar = {
-  tab: string
-  page: number
-  cari: string
-  dari: string
-  sampai: string
-}
+  tab: string;
+  page: number;
+  cari: string;
+  dari: string;
+  sampai: string;
+};
 
 /**
  * Hook isi satu antrean.
@@ -114,8 +115,8 @@ export type ParameterDaftar = {
  * tidak mungkin menghasilkan jawaban yang sama.
  */
 export function usePLADLAList(parameter: ParameterDaftar, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(
@@ -138,7 +139,7 @@ export function usePLADLAList(parameter: ParameterDaftar, enabled: boolean) {
     // Antrean berubah saat petugas lain mengirim dokumennya, jadi cache-nya pendek —
     // sama dengan modul inbox lain, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -157,22 +158,22 @@ export function usePLADLAList(parameter: ParameterDaftar, enabled: boolean) {
  * sudah terkirim.
  */
 export function usePLADLADokumen(tab: string, claimKey: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Kunci klaim memuat SPASI (`ASM-FW-GCNMFW-WORK PNC-xxxx`). Tanpa pengodean, alamatnya
   // terpotong di spasi itu dan yang sampai ke server hanya awalannya — kunci yang tidak
   // pernah cocok dengan klaim mana pun.
   const path =
     `${PATH}/klaim/${encodeURIComponent(claimKey)}` +
-    `?daftar=${encodeURIComponent(tab)}`
+    `?daftar=${encodeURIComponent(tab)}`;
 
   return useQuery({
     queryKey: keys.documents(portal, token, tab, claimKey),
     queryFn: () => callAPI<DokumenResponse>(path, { token, portal }),
-    enabled: token !== null && portal !== null && claimKey !== '',
+    enabled: token !== null && portal !== null && claimKey !== "",
     staleTime: 0,
-  })
+  });
 }
 
 /**
@@ -191,18 +192,18 @@ export function usePLADLADokumen(tab: string, claimKey: string) {
  * sudah terkirim.
  */
 export function usePLADLACetak(claimKey: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Kunci klaim memuat SPASI, sama seperti pada grid rincian.
-  const path = `${PATH}/cetak/${encodeURIComponent(claimKey)}`
+  const path = `${PATH}/cetak/${encodeURIComponent(claimKey)}`;
 
   return useQuery({
     queryKey: keys.cetak(portal, token, claimKey),
     queryFn: () => callAPI<CetakResponse>(path, { token, portal }),
-    enabled: token !== null && portal !== null && claimKey !== '',
+    enabled: token !== null && portal !== null && claimKey !== "",
     staleTime: 0,
-  })
+  });
 }
 
 /**
@@ -215,17 +216,17 @@ export function usePLADLACetak(claimKey: string) {
  * dan nomor polis.
  */
 export function useEksporPLADLA() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (parameter: ParameterDaftar) =>
       downloadAPI(
         alamatEkspor(parameter),
-        `inbox-${parameter.tab || 'pla'}.csv`,
+        `inbox-${parameter.tab || "pla"}.csv`,
         { token, portal },
       ),
-  })
+  });
 }
 
 /**
@@ -239,11 +240,11 @@ export function useEksporPLADLA() {
  * "Kirim Pre DLA" menandai Pre-DLA terkirim. Keduanya sudah dibangun.
  */
 export const Tindakan = {
-  unggahPenunjang: 'unggah-penunjang',
-  unduhLampiran: 'unduh-lampiran',
-} as const
+  unggahPenunjang: "unggah-penunjang",
+  unduhLampiran: "unduh-lampiran",
+} as const;
 
-export type TindakanValue = (typeof Tindakan)[keyof typeof Tindakan]
+export type TindakanValue = (typeof Tindakan)[keyof typeof Tindakan];
 
 /**
  * Hook tombol yang belum dibangun — "Send", "Upload File Penunjang", dan unduh
@@ -262,21 +263,21 @@ export type TindakanValue = (typeof Tindakan)[keyof typeof Tindakan]
  * lebih dulu.
  */
 export function useTindakanPLADLA() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: (input: { tindakan: TindakanValue; tab: string }) => {
-      const query = new URLSearchParams({ tindakan: input.tindakan })
-      if (input.tab) query.set('daftar', input.tab)
+      const query = new URLSearchParams({ tindakan: input.tindakan });
+      if (input.tab) query.set("daftar", input.tab);
 
       return callAPI<void>(`${PATH}/tindakan?${query.toString()}`, {
         token,
         portal,
-        metode: 'POST',
-      })
+        metode: "POST",
+      });
     },
-  })
+  });
 }
 
 /**
@@ -295,9 +296,9 @@ export function useTindakanPLADLA() {
  * diisi basis data, sehingga layar tidak dapat mengetahuinya sendiri.
  */
 export function useKirimPreDLA(claimKey: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (noAdvice: string) =>
@@ -306,7 +307,7 @@ export function useKirimPreDLA(claimKey: string) {
         {
           token,
           portal,
-          metode: 'POST',
+          metode: "POST",
           body: { no_advice: noAdvice },
         },
       ),
@@ -314,17 +315,17 @@ export function useKirimPreDLA(claimKey: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: keys.cetak(portal, token, claimKey),
-      })
+      });
     },
-  })
+  });
 }
 
 /** Hasil pengiriman surat PLA/DLA. */
 export type HasilKirim = {
-  pesan: string
-  penerima: number
-  lampiran: number
-}
+  pesan: string;
+  penerima: number;
+  lampiran: number;
+};
 
 /**
  * Hook tombol **"Send"** — mengirim surat PLA/DLA ke reasuradur.
@@ -345,9 +346,9 @@ export type HasilKirim = {
  * bila itu dokumen terakhirnya.
  */
 export function useKirimSurat(tab: string, claimKey: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (noAdvice: string) =>
@@ -356,7 +357,7 @@ export function useKirimSurat(tab: string, claimKey: string) {
         {
           token,
           portal,
-          metode: 'POST',
+          metode: "POST",
           body: { no_advice: noAdvice, daftar: tab },
         },
       ),
@@ -364,21 +365,21 @@ export function useKirimSurat(tab: string, claimKey: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: keys.documents(portal, token, tab, claimKey),
-      })
+      });
       queryClient.invalidateQueries({
-        queryKey: ['inbox-pla-dla-pre-dla', 'baris'],
-      })
+        queryKey: ["inbox-pla-dla-pre-dla", "baris"],
+      });
     },
-  })
+  });
 }
 
 /** alamatDaftar menyusun alamat permintaan daftar beserta seluruh penyaringnya. */
 function alamatDaftar(parameter: ParameterDaftar): string {
-  const query = parameterPenyaring(parameter)
-  if (parameter.page > 1) query.set('halaman', String(parameter.page))
+  const query = parameterPenyaring(parameter);
+  if (parameter.page > 1) query.set("halaman", String(parameter.page));
 
-  const teks = query.toString()
-  return teks ? `${PATH}?${teks}` : PATH
+  const teks = query.toString();
+  return teks ? `${PATH}?${teks}` : PATH;
 }
 
 /**
@@ -390,16 +391,16 @@ function alamatDaftar(parameter: ParameterDaftar): string {
  * mencocokkannya.
  */
 function alamatEkspor(parameter: ParameterDaftar): string {
-  const teks = parameterPenyaring(parameter).toString()
-  return teks ? `${PATH}/ekspor?${teks}` : `${PATH}/ekspor`
+  const teks = parameterPenyaring(parameter).toString();
+  return teks ? `${PATH}/ekspor?${teks}` : `${PATH}/ekspor`;
 }
 
 /** parameterPenyaring menyusun bagian alamat yang sama bagi daftar dan ekspor. */
 function parameterPenyaring(parameter: ParameterDaftar): URLSearchParams {
-  const query = new URLSearchParams()
-  if (parameter.tab) query.set('daftar', parameter.tab)
-  if (parameter.cari) query.set('cari', parameter.cari)
-  if (parameter.dari) query.set('dari', parameter.dari)
-  if (parameter.sampai) query.set('sampai', parameter.sampai)
-  return query
+  const query = new URLSearchParams();
+  if (parameter.tab) query.set("daftar", parameter.tab);
+  if (parameter.cari) query.set("cari", parameter.cari);
+  if (parameter.dari) query.set("dari", parameter.dari);
+  if (parameter.sampai) query.set("sampai", parameter.sampai);
+  return query;
 }

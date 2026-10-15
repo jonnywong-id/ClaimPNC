@@ -12,7 +12,7 @@
  * Pembanding ini ada supaya urutannya dinyatakan EKSPLISIT di kode, tanpa mengubahnya.
  */
 export function compareCodeUnits(a: string, b: string): number {
-  if (a < b) return -1
-  if (a > b) return 1
-  return 0
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }

@@ -1,15 +1,20 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { formatDate } from "@/components/format";
 
-import { useExportLaporanHasilAI, useLaporanHasilAI } from './api'
-import { emptyFilter, isComplete, type FilterInput, type ReportRow } from './types'
+import { useExportLaporanHasilAI, useLaporanHasilAI } from "./api";
+import {
+  emptyFilter,
+  isComplete,
+  type FilterInput,
+  type ReportRow,
+} from "./types";
 
 /**
  * Laporan Hasil AI — butir menu `MENU_ID 82`, pengganti harness `Har_LaporanHasilAI`.
@@ -51,47 +56,49 @@ import { emptyFilter, isComplete, type FilterInput, type ReportRow } from './typ
  * terbaca sebagai satu kelompok. Padanan `CASE WHEN B.KOMITEKE = '1' THEN … ELSE '' END`.
  */
 export function LaporanHasilAIPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Penyaring dipegang DUA kali: satu yang sedang diketik, satu yang sudah dikirim.
   //
   // Pemisahan ini mengikuti layar lama, yang punya tombol "Cari Data" — bukan menyaring
   // saat mengetik. Alasannya masih berlaku: tanggal yang setengah diketik hanya
   // menghasilkan penolakan validasi beruntun.
-  const [draft, setDraft] = useState<FilterInput>(emptyFilter)
-  const [applied, setApplied] = useState<FilterInput | null>(null)
-  const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState<FilterInput>(emptyFilter);
+  const [applied, setApplied] = useState<FilterInput | null>(null);
+  const [page, setPage] = useState(1);
 
-  const active = applied ?? emptyFilter
-  const searched = applied !== null
+  const active = applied ?? emptyFilter;
+  const searched = applied !== null;
 
-  const report = useLaporanHasilAI(active, page, searched)
-  const exportFile = useExportLaporanHasilAI()
+  const report = useLaporanHasilAI(active, page, searched);
+  const exportFile = useExportLaporanHasilAI();
 
   // Pelanggaran per isian datang dari server, bukan dihitung ulang di layar.
   //
   // Aturannya hidup di domain (`internal/laporanhasilai/laporanhasilai.go`), dan
   // menyalinnya ke sini berarti dua tempat yang dapat berselisih — dengan yang di layar
   // selalu menang lebih dulu, sehingga selisihnya tidak pernah terlihat.
-  const violations = violationsOf(report.error ?? exportFile.error)
+  const violations = violationsOf(report.error ?? exportFile.error);
 
-  const rows = report.data?.baris ?? []
+  const rows = report.data?.baris ?? [];
 
   return (
     /*
-      Akar halaman mengikuti Report Klaim PERSIS: `mx-auto max-w-6xl space-y-6 p-4 sm:p-6`.
+      Akar halaman mengikuti Report Klaim PERSIS: `space-y-6 p-4 sm:p-6`, selebar `halaman`.
 
       `<main>` pada PageShell ber-`min-w-0 flex-1 pb-16` — TANPA padding horizontal sama
       sekali. Setiap halaman karena itu menyediakan paddingnya sendiri, dan halaman yang
       lupa akan menempelkan judulnya ke sisi sidebar. Itu yang terjadi di sini sebelum
       2026-09-26.
     */
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+    <div className="halaman space-y-6 p-4 sm:p-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-900">Laporan Hasil Data AI</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Laporan Hasil Data AI
+        </h1>
         <p className="text-sm text-slate-600">
           Penilaian AI atas klaim, disandingkan dengan keputusan komitenya
-          {portal ? ` — entitas ${portal}` : ''}.
+          {portal ? ` — entitas ${portal}` : ""}.
         </p>
       </header>
 
@@ -110,9 +117,9 @@ export function LaporanHasilAIPage() {
       <form
         className="space-y-4 rounded-kartu border border-slate-200 bg-white p-4"
         onSubmit={(event) => {
-          event.preventDefault()
-          setApplied(draft)
-          setPage(1)
+          event.preventDefault();
+          setApplied(draft);
+          setPage(1);
         }}
       >
         {/*
@@ -140,8 +147,10 @@ export function LaporanHasilAIPage() {
             type="date"
             className="max-w-xs"
             value={draft.dari}
-            failure={violations['dari']}
-            onChange={(event) => setDraft({ ...draft, dari: event.target.value })}
+            failure={violations["dari"]}
+            onChange={(event) =>
+              setDraft({ ...draft, dari: event.target.value })
+            }
           />
 
           <FormField
@@ -150,8 +159,10 @@ export function LaporanHasilAIPage() {
             type="date"
             className="max-w-xs"
             value={draft.sampai}
-            failure={violations['sampai']}
-            onChange={(event) => setDraft({ ...draft, sampai: event.target.value })}
+            failure={violations["sampai"]}
+            onChange={(event) =>
+              setDraft({ ...draft, sampai: event.target.value })
+            }
           />
         </div>
 
@@ -208,8 +219,8 @@ export function LaporanHasilAIPage() {
         title="Rincian"
         label="Penilaian AI beserta keputusan komitenya"
         description={
-          'Satu baris adalah satu penilaian AI pada satu objek pertanggungan, ' +
-          'sehingga satu klaim dapat muncul beberapa kali.'
+          "Satu baris adalah satu penilaian AI pada satu objek pertanggungan, " +
+          "sehingga satu klaim dapat muncul beberapa kali."
         }
         columns={detailColumns}
         rows={rows}
@@ -237,7 +248,7 @@ export function LaporanHasilAIPage() {
         }}
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -261,7 +272,7 @@ export function LaporanHasilAIPage() {
  * tepat di bawah isiannya. Itu tempat yang lebih berguna daripada paragraf yang dibaca
  * sebelum kesalahannya terjadi.
  */
-const emptyMessage = 'Data Tidak Ada'
+const emptyMessage = "Data Tidak Ada";
 
 /**
  * Kolom grid rincian — kesepuluhnya, pada urutan yang tergambar di layar lama.
@@ -271,31 +282,47 @@ const emptyMessage = 'Data Tidak Ada'
  * — dua hal yang keduanya tidak diinginkan.
  */
 const detailColumns: Column<ReportRow>[] = [
-  { key: 'no_klaim', title: 'No Klaim', value: (row) => row.no_klaim },
-  { key: 'nama_object', title: 'Object Name', value: (row) => row.nama_object },
-  { key: 'komite_status', title: 'Komite Status', value: (row) => row.komite_status },
+  { key: "no_klaim", title: "No Klaim", value: (row) => row.no_klaim },
+  { key: "nama_object", title: "Object Name", value: (row) => row.nama_object },
   {
-    key: 'tanggal_komite',
-    title: 'Tanggal Komite',
-    value: (row) => row.tanggal_komite ?? '',
+    key: "komite_status",
+    title: "Komite Status",
+    value: (row) => row.komite_status,
+  },
+  {
+    key: "tanggal_komite",
+    title: "Tanggal Komite",
+    value: (row) => row.tanggal_komite ?? "",
     render: (row) => dateCell(row.tanggal_komite),
   },
-  { key: 'ai_status', title: 'AI Status', value: (row) => row.ai_status },
+  { key: "ai_status", title: "AI Status", value: (row) => row.ai_status },
   {
-    key: 'tanggal_ai',
-    title: 'Tanggal AI',
-    value: (row) => row.tanggal_ai ?? '',
+    key: "tanggal_ai",
+    title: "Tanggal AI",
+    value: (row) => row.tanggal_ai ?? "",
     render: (row) => dateCell(row.tanggal_ai),
   },
-  { key: 'note_ai_terima', title: 'Note AI Terima', value: (row) => row.note_ai_terima },
-  { key: 'note_ai_tolak', title: 'Note AI Tolak', value: (row) => row.note_ai_tolak },
-  { key: 'coverage_final', title: 'Coverage Final', value: (row) => row.coverage_final },
   {
-    key: 'kategori_kronologi',
-    title: 'Kategori Kronologi',
+    key: "note_ai_terima",
+    title: "Note AI Terima",
+    value: (row) => row.note_ai_terima,
+  },
+  {
+    key: "note_ai_tolak",
+    title: "Note AI Tolak",
+    value: (row) => row.note_ai_tolak,
+  },
+  {
+    key: "coverage_final",
+    title: "Coverage Final",
+    value: (row) => row.coverage_final,
+  },
+  {
+    key: "kategori_kronologi",
+    title: "Kategori Kronologi",
     value: (row) => row.kategori_kronologi,
   },
-]
+];
 
 /**
  * dateCell menggambar tanggal memakai pemformat baku aplikasi.
@@ -311,17 +338,17 @@ const detailColumns: Column<ReportRow>[] = [
  * persis seperti yang ditulis activity lamanya.
  */
 function dateCell(value: string | null) {
-  if (!value) return <span className="text-slate-400">—</span>
-  return formatDate(value)
+  if (!value) return <span className="text-slate-400">—</span>;
+  return formatDate(value);
 }
 
 function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
+  if (error instanceof APIError) return error.violations();
+  return {};
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

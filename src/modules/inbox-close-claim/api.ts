@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   DaftarResponse,
@@ -10,12 +10,12 @@ import type {
   PenyaringKlaimTutup,
   PenyaringResponse,
   PermintaanResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-close-claim'
+const PATH = "/api/inbox-close-claim";
 
 /** Banyaknya baris per halaman. Backend menolak permintaan di atas 100. */
-export const PAGE_SIZE = 25
+export const PAGE_SIZE = 25;
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -26,37 +26,42 @@ export const PAGE_SIZE = 25
  * sebagai layar normal, persis `R-20`.
  */
 const keys = {
-  daftar: (portal: string | null, token: string | null, f: PenyaringKlaimTutup) =>
+  daftar: (
+    portal: string | null,
+    token: string | null,
+    f: PenyaringKlaimTutup,
+  ) =>
     [
-      'inbox-close-claim',
-      'daftar',
+      "inbox-close-claim",
+      "daftar",
       portal,
       token,
-      f.cari ?? '',
-      f.no_polis ?? '',
-      f.no_klaim ?? '',
-      f.pic ?? '',
-      f.lini ?? '',
-      f.status_transfer ?? '',
-      f.status_bayar ?? '',
+      f.cari ?? "",
+      f.no_polis ?? "",
+      f.no_klaim ?? "",
+      f.pic ?? "",
+      f.lini ?? "",
+      f.status_transfer ?? "",
+      f.status_bayar ?? "",
       f.lewati ?? 0,
     ] as const,
 
   penyaring: (portal: string | null, token: string | null) =>
-    ['inbox-close-claim', 'penyaring', portal, token] as const,
-}
+    ["inbox-close-claim", "penyaring", portal, token] as const,
+};
 
 /** Menyusun query string dari penyaring; yang kosong tidak dikirim sama sekali. */
 function buildParams(f: PenyaringKlaimTutup): URLSearchParams {
-  const params = new URLSearchParams()
-  if (f.cari?.trim()) params.set('cari', f.cari.trim())
-  if (f.no_polis?.trim()) params.set('no_polis', f.no_polis.trim())
-  if (f.no_klaim?.trim()) params.set('no_klaim', f.no_klaim.trim())
-  if (f.pic?.trim()) params.set('pic', f.pic.trim())
-  if (f.lini?.trim()) params.set('lini', f.lini.trim())
-  if (f.status_transfer?.trim()) params.set('status_transfer', f.status_transfer.trim())
-  if (f.status_bayar?.trim()) params.set('status_bayar', f.status_bayar.trim())
-  return params
+  const params = new URLSearchParams();
+  if (f.cari?.trim()) params.set("cari", f.cari.trim());
+  if (f.no_polis?.trim()) params.set("no_polis", f.no_polis.trim());
+  if (f.no_klaim?.trim()) params.set("no_klaim", f.no_klaim.trim());
+  if (f.pic?.trim()) params.set("pic", f.pic.trim());
+  if (f.lini?.trim()) params.set("lini", f.lini.trim());
+  if (f.status_transfer?.trim())
+    params.set("status_transfer", f.status_transfer.trim());
+  if (f.status_bayar?.trim()) params.set("status_bayar", f.status_bayar.trim());
+  return params;
 }
 
 /**
@@ -74,12 +79,13 @@ function buildParams(f: PenyaringKlaimTutup): URLSearchParams {
  * satu pun pesan galat.
  */
 export function usePenyaringKlaimTutup() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.penyaring(portal, token),
-    queryFn: () => callAPI<PenyaringResponse>(`${PATH}/penyaring`, { token, portal }),
+    queryFn: () =>
+      callAPI<PenyaringResponse>(`${PATH}/penyaring`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
@@ -87,7 +93,7 @@ export function usePenyaringKlaimTutup() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -110,24 +116,27 @@ export function usePenyaringKlaimTutup() {
  * dulu hanya untuk menerima penolakan adalah perjalanan jaringan yang sia-sia.
  */
 export function useDaftarKlaimTutup(filter: PenyaringKlaimTutup) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const params = buildParams(filter)
-  if (filter.lewati) params.set('lewati', String(filter.lewati))
-  params.set('batas', String(PAGE_SIZE))
+  const params = buildParams(filter);
+  if (filter.lewati) params.set("lewati", String(filter.lewati));
+  params.set("batas", String(PAGE_SIZE));
 
   return useQuery({
     queryKey: keys.daftar(portal, token, filter),
     queryFn: () =>
-      callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, { token, portal }),
+      callAPI<DaftarResponse>(`${PATH}?${params.toString()}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
 
     // Daftar ini berubah setiap kali sebuah klaim ditutup atau dibuka kembali. Data
     // dianggap usang seketika, tetapi tidak ditembak ulang sendiri — pengguna yang menekan
     // Muat ulang.
     staleTime: 0,
-  })
+  });
 }
 
 /**
@@ -145,25 +154,29 @@ export function useDaftarKlaimTutup(filter: PenyaringKlaimTutup) {
  * itu terbaca sebagai kegagalan.
  */
 export function useAjukanPermintaan() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { jenis: JenisPermintaan; klaim_id: string; alasan: string }) =>
+    mutationFn: (input: {
+      jenis: JenisPermintaan;
+      klaim_id: string;
+      alasan: string;
+    }) =>
       callAPI<PermintaanResponse>(`${PATH}/permintaan`, {
         token,
         portal,
-        metode: 'POST',
+        metode: "POST",
         body: input,
       }),
 
     onSuccess: () => {
       // Seluruh halaman daftar diperbarui, bukan hanya yang sedang terbuka: baris yang sama
       // dapat terlihat pada halaman lain dengan penyaring yang berbeda.
-      client.invalidateQueries({ queryKey: ['inbox-close-claim', 'daftar'] })
+      client.invalidateQueries({ queryKey: ["inbox-close-claim", "daftar"] });
     },
-  })
+  });
 }
 
 /**
@@ -184,41 +197,41 @@ export async function unduhKlaimTutupCSV(
   token: string,
   portal: string,
 ): Promise<void> {
-  const query = buildParams(filter).toString()
-  const url = query ? `${PATH}/unduh?${query}` : `${PATH}/unduh`
+  const query = buildParams(filter).toString();
+  const url = query ? `${PATH}/unduh?${query}` : `${PATH}/unduh`;
 
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       [HEADER_PORTAL]: portal,
     },
-  })
+  });
   if (!response.ok) {
-    throw new Error('Berkas tidak dapat diunduh.')
+    throw new Error("Berkas tidak dapat diunduh.");
   }
 
-  const blob = await response.blob()
-  const objectURL = URL.createObjectURL(blob)
+  const blob = await response.blob();
+  const objectURL = URL.createObjectURL(blob);
 
   try {
-    const link = document.createElement('a')
-    link.href = objectURL
-    link.download = fileNameFrom(response) ?? 'inbox-close-claim.csv'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    const link = document.createElement("a");
+    link.href = objectURL;
+    link.download = fileNameFrom(response) ?? "inbox-close-claim.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   } finally {
     // Objek URL menahan blob-nya di memori sampai dicabut. Tanpa ini, setiap unduhan
     // meninggalkan satu salinan berkas yang tidak pernah dilepas.
-    URL.revokeObjectURL(objectURL)
+    URL.revokeObjectURL(objectURL);
   }
 }
 
 /** Membaca nama berkas dari header Content-Disposition; null bila tidak ada. */
 function fileNameFrom(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
 
-  const match = /filename="([^"]+)"/.exec(disposition)
-  return match?.[1] ?? null
+  const match = /filename="([^"]+)"/.exec(disposition);
+  return match?.[1] ?? null;
 }

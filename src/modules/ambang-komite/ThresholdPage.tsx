@@ -1,12 +1,12 @@
-import { APIError, NetworkError } from '@/api/client'
-import type { KomiteThreshold, KomiteFinding } from '@/api/types'
-import { ReloadIcon, WarningIcon } from '@/components/Icon'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { formatRupiah } from '@/lib/money'
+import { APIError, NetworkError } from "@/api/client";
+import type { KomiteThreshold, KomiteFinding } from "@/api/types";
+import { ReloadIcon, WarningIcon } from "@/components/Icon";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { formatRupiah } from "@/lib/money";
 
-import { useThresholdList, useIntegrity } from './api'
+import { useThresholdList, useIntegrity } from "./api";
 
 /**
  * Layar Master Ambang Komite.
@@ -37,76 +37,89 @@ import { useThresholdList, useIntegrity } from './api'
  * modul (`ambang-komite`, `D-81`), nama field JSON pada API, dan komentar seperti ini.
  */
 export function ThresholdPage() {
-  const list = useThresholdList()
-  const integrity = useIntegrity()
+  const list = useThresholdList();
+  const integrity = useIntegrity();
 
-  const bands = list.data?.kebijakan_pita ?? []
+  const bands = list.data?.kebijakan_pita ?? [];
 
   const columns: Column<KomiteThreshold>[] = [
     {
-      key: 'lini',
-      title: 'Lini bisnis',
+      key: "lini",
+      title: "Lini bisnis",
       value: (a) => a.lini,
-      width: '13%',
-      render: (a) => <span className="font-medium text-slate-900">{a.lini}</span>,
+      width: "13%",
+      render: (a) => (
+        <span className="font-medium text-slate-900">{a.lini}</span>
+      ),
     },
     {
-      key: 'jenjang',
-      title: 'Jenjang',
+      key: "jenjang",
+      title: "Jenjang",
       value: (a) => String(a.jenjang),
-      width: '8%',
+      width: "8%",
     },
     {
-      key: 'batas_bawah',
-      title: 'Mulai nilai',
+      key: "batas_bawah",
+      title: "Mulai nilai",
       value: (a) => a.batas_bawah,
-      width: '16%',
+      width: "16%",
       render: (a) => (
         <span className="tabular-nums">{formatRupiah(a.batas_bawah)}</span>
       ),
     },
     {
-      key: 'batas_atas',
-      title: 'Batas atas',
+      key: "batas_atas",
+      title: "Batas atas",
       value: (a) => a.batas_atas,
-      width: '16%',
+      width: "16%",
       render: (a) => (
         <span className="tabular-nums text-slate-600">
-          {a.batas_atas === '0.00' ? 'tanpa batas' : formatRupiah(a.batas_atas)}
+          {a.batas_atas === "0.00" ? "tanpa batas" : formatRupiah(a.batas_atas)}
         </span>
       ),
     },
     {
-      key: 'penyetuju',
-      title: 'Penyetuju',
+      key: "penyetuju",
+      title: "Penyetuju",
       value: (a) => `${a.nama} ${a.operator_id}`,
       render: (a) => (
         <span className="min-w-0">
-          <span className="block truncate font-medium text-slate-900">{a.nama || '—'}</span>
-          <span className="block truncate text-xs text-slate-500">{a.operator_id || '—'}</span>
+          <span className="block truncate font-medium text-slate-900">
+            {a.nama || "—"}
+          </span>
+          <span className="block truncate text-xs text-slate-500">
+            {a.operator_id || "—"}
+          </span>
         </span>
       ),
     },
     {
-      key: 'jenis_komite',
-      title: 'Jenis',
+      key: "jenis_komite",
+      title: "Jenis",
       value: (a) => a.jenis_komite,
-      width: '8%',
-      render: (a) => <span className="tabular-nums text-slate-600">{a.jenis_komite || '—'}</span>,
+      width: "8%",
+      render: (a) => (
+        <span className="tabular-nums text-slate-600">
+          {a.jenis_komite || "—"}
+        </span>
+      ),
     },
     {
-      key: 'status',
-      title: 'Status',
+      key: "status",
+      title: "Status",
       value: (a) => rowNote(a),
-      width: '15%',
+      width: "15%",
       render: (a) => <RowBadges threshold={a} />,
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -119,9 +132,10 @@ export function ThresholdPage() {
           Master Ambang Komite
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Tangga jenjang persetujuan nilai klaim. Aturannya <strong>kumulatif</strong>:
-          setiap jenjang yang ambang bawahnya sudah terlampaui nilai klaim ikut
-          menyetujui — makin besar klaim, makin banyak penyetujunya.
+          Tangga jenjang persetujuan nilai klaim. Aturannya{" "}
+          <strong>kumulatif</strong>: setiap jenjang yang ambang bawahnya sudah
+          terlampaui nilai klaim ikut menyetujui — makin besar klaim, makin
+          banyak penyetujunya.
         </p>
       </header>
 
@@ -141,28 +155,32 @@ export function ThresholdPage() {
         description={
           list.data
             ? `${list.data.total_jenjang} jenjang persetujuan aktif dari ${list.data.total} baris master.`
-            : 'Memuat tangga ambang…'
+            : "Memuat tangga ambang…"
         }
         searchLabel="Cari lini, nama penyetuju, atau Operator ID"
         emptyMessage="Master ambang komite belum berisi satu baris pun."
         isLoading={list.isPending}
-        error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+        error={
+          list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+        }
         actions={
           <Button
             tone="kedua"
             onClick={() => {
-              list.refetch()
-              integrity.refetch()
+              list.refetch();
+              integrity.refetch();
             }}
             disabled={list.isFetching}
           >
-            <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-            {list.isFetching ? 'Memuat…' : 'Muat ulang'}
+            <ReloadIcon
+              className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+            />
+            {list.isFetching ? "Memuat…" : "Muat ulang"}
           </Button>
         }
       />
     </div>
-  )
+  );
 }
 
 /**
@@ -176,13 +194,16 @@ function ReadOnlyNote() {
   return (
     <div className="mb-6 rounded-kartu border border-slate-200 bg-slate-50/80 p-4">
       <p className="text-sm leading-relaxed text-slate-700">
-        <strong className="font-semibold text-slate-900">Layar ini dibaca saja.</strong>{' '}
-        Selama Pega dan aplikasi ini berjalan berdampingan, satu tabel hanya boleh ditulis
-        satu sistem. Master ambang komite masih ditulis Pega dan dibaca 17 kueri di sana,
-        sehingga perubahannya dilakukan di Pega — bukan di sini.
+        <strong className="font-semibold text-slate-900">
+          Layar ini dibaca saja.
+        </strong>{" "}
+        Selama Pega dan aplikasi ini berjalan berdampingan, satu tabel hanya
+        boleh ditulis satu sistem. Master ambang komite masih ditulis Pega dan
+        dibaca 17 kueri di sana, sehingga perubahannya dilakukan di Pega — bukan
+        di sini.
       </p>
     </div>
-  )
+  );
 }
 
 /** Batas pita ditampilkan supaya pengguna dapat melihatnya, bukan menghafalnya. */
@@ -193,19 +214,20 @@ function BandNote({ bands }: { bands: { lini: string; batas: string }[] }) {
       <ul className="mt-2 space-y-1 text-sm leading-relaxed text-blue-900/90">
         {bands.map((b) => (
           <li key={b.lini}>
-            Untuk lini <strong>{b.lini}</strong>, pita dipilih lebih dulu: sampai{' '}
-            <strong className="tabular-nums">{formatRupiah(b.batas)}</strong> masuk pita 1,
-            di atasnya masuk pita 2. Akumulasi jenjang kemudian berjalan di dalam pita itu
-            saja.
+            Untuk lini <strong>{b.lini}</strong>, pita dipilih lebih dulu:
+            sampai{" "}
+            <strong className="tabular-nums">{formatRupiah(b.batas)}</strong>{" "}
+            masuk pita 1, di atasnya masuk pita 2. Akumulasi jenjang kemudian
+            berjalan di dalam pita itu saja.
           </li>
         ))}
       </ul>
       <p className="mt-2 text-sm leading-relaxed text-blue-900/80">
-        Lini lain <strong>tidak</strong> mengenal pita. Memberlakukannya ke semua lini akan
-        membuat sebagian klaim kehilangan seluruh penyetujunya.
+        Lini lain <strong>tidak</strong> mengenal pita. Memberlakukannya ke
+        semua lini akan membuat sebagian klaim kehilangan seluruh penyetujunya.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -216,17 +238,23 @@ function BandNote({ bands }: { bands: { lini: string; batas: string }[] }) {
  * sebelum dipakai memutuskan uang.
  */
 function FindingList({ findings }: { findings: KomiteFinding[] }) {
-  const defects = findings.filter((f) => f.tingkat === 'cacat')
-  const warnings = findings.filter((f) => f.tingkat !== 'cacat')
+  const defects = findings.filter((f) => f.tingkat === "cacat");
+  const warnings = findings.filter((f) => f.tingkat !== "cacat");
 
   return (
     <section className="mb-6 space-y-4">
-      {defects.length > 0 && <FindingCard title="Cacat pada master" findings={defects} severe />}
+      {defects.length > 0 && (
+        <FindingCard title="Cacat pada master" findings={defects} severe />
+      )}
       {warnings.length > 0 && (
-        <FindingCard title="Yang perlu diperhatikan" findings={warnings} severe={false} />
+        <FindingCard
+          title="Yang perlu diperhatikan"
+          findings={warnings}
+          severe={false}
+        />
       )}
     </section>
-  )
+  );
 }
 
 function FindingCard({
@@ -234,45 +262,62 @@ function FindingCard({
   findings,
   severe,
 }: {
-  title: string
-  findings: KomiteFinding[]
-  severe: boolean
+  title: string;
+  findings: KomiteFinding[];
+  severe: boolean;
 }) {
   const style = severe
-    ? { box: 'border-red-200 bg-red-50/80', icon: 'text-red-700', title: 'text-red-900' }
-    : { box: 'border-amber-200 bg-amber-50/70', icon: 'text-amber-700', title: 'text-amber-900' }
+    ? {
+        box: "border-red-200 bg-red-50/80",
+        icon: "text-red-700",
+        title: "text-red-900",
+      }
+    : {
+        box: "border-amber-200 bg-amber-50/70",
+        icon: "text-amber-700",
+        title: "text-amber-900",
+      };
 
   return (
     <div className={`rounded-kartu border p-4 ${style.box}`}>
-      <h2 className={`flex items-center gap-2 text-sm font-semibold ${style.title}`}>
+      <h2
+        className={`flex items-center gap-2 text-sm font-semibold ${style.title}`}
+      >
         <WarningIcon className={`h-4 w-4 ${style.icon}`} />
         {title}
         <span className="font-normal opacity-70">({findings.length})</span>
       </h2>
       <ul className="mt-3 space-y-2.5">
         {findings.map((f, i) => (
-          <li key={`${f.jenis}-${f.lini}-${f.pita ?? ''}-${i}`} className="text-sm leading-relaxed">
+          <li
+            key={`${f.jenis}-${f.lini}-${f.pita ?? ""}-${i}`}
+            className="text-sm leading-relaxed"
+          >
             <span className="font-medium text-slate-900">
               {f.lini}
-              {f.pita ? ` · pita ${f.pita}` : ''}
+              {f.pita ? ` · pita ${f.pita}` : ""}
             </span>
             <span className="text-slate-500"> — </span>
             <span className="text-slate-700">{f.pesan}</span>
             {f.id_ambang.length > 0 && (
-              <span className="text-slate-500"> (baris {f.id_ambang.join(', ')})</span>
+              <span className="text-slate-500">
+                {" "}
+                (baris {f.id_ambang.join(", ")})
+              </span>
             )}
           </li>
         ))}
       </ul>
     </div>
-  )
+  );
 }
 
 function rowNote(a: KomiteThreshold): string {
-  if (a.jenjang_persetujuan) return a.sedang_absen ? 'Jenjang · sedang absen' : 'Jenjang'
-  if (!a.aktif) return 'Tidak aktif'
-  if (a.untuk_registrasi) return 'Pemberitahuan registrasi'
-  return 'Bukan jenjang'
+  if (a.jenjang_persetujuan)
+    return a.sedang_absen ? "Jenjang · sedang absen" : "Jenjang";
+  if (!a.aktif) return "Tidak aktif";
+  if (a.untuk_registrasi) return "Pemberitahuan registrasi";
+  return "Bukan jenjang";
 }
 
 /**
@@ -283,26 +328,26 @@ function rowNote(a: KomiteThreshold): string {
  * terjawab oleh layarnya sendiri.
  */
 function RowBadges({ threshold }: { threshold: KomiteThreshold }) {
-  const label = rowNote(threshold)
+  const label = rowNote(threshold);
 
   const style = threshold.jenjang_persetujuan
     ? threshold.sedang_absen
-      ? 'bg-amber-100 text-amber-900'
-      : 'bg-emerald-100 text-emerald-900'
-    : 'bg-slate-100 text-slate-600'
+      ? "bg-amber-100 text-amber-900"
+      : "bg-emerald-100 text-emerald-900"
+    : "bg-slate-100 text-slate-600";
 
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${style}`}
       title={
         threshold.jenjang_persetujuan
-          ? 'Baris ini ikut menyetujui nilai klaim.'
-          : 'Baris ini tidak ikut menyetujui nilai klaim.'
+          ? "Baris ini ikut menyetujui nilai klaim."
+          : "Baris ini tidak ikut menyetujui nilai klaim."
       }
     >
       {label}
     </span>
-  )
+  );
 }
 
 /**
@@ -317,10 +362,16 @@ function LoadErrorMessage({ error }: { error: unknown }) {
         description="Tangga ambang belum dapat dimuat. Periksa koneksi lalu tekan Muat ulang."
         tone="gangguan"
       />
-    )
+    );
   }
   if (error instanceof APIError) {
-    return <ErrorMessage title="Gagal memuat" description={error.message} tone="gangguan" />
+    return (
+      <ErrorMessage
+        title="Gagal memuat"
+        description={error.message}
+        tone="gangguan"
+      />
+    );
   }
   return (
     <ErrorMessage
@@ -328,5 +379,5 @@ function LoadErrorMessage({ error }: { error: unknown }) {
       description="Tangga ambang belum dapat dimuat. Coba tekan Muat ulang."
       tone="gangguan"
     />
-  )
+  );
 }

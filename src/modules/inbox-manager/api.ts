@@ -1,20 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { blobAPI, callAPI, downloadAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   CountersResponse,
   DashboardFilterInput,
   DecisionRequest,
   DecisionResponse,
+  DetailExportInput,
   ListResponse,
   MetadataResponse,
+  PaymentDetail,
+  PaymentDocument,
+  PaymentSaveRequest,
+  PaymentSaveResponse,
   PeriodInput,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-manager'
+const PATH = "/api/inbox-manager";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -28,10 +33,10 @@ const PATH = '/api/inbox-manager'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-manager', 'tab', portal, token] as const,
+    ["inbox-manager", "tab", portal, token] as const,
 
   counters: (portal: string | null, token: string | null) =>
-    ['inbox-manager', 'ringkasan', portal, token] as const,
+    ["inbox-manager", "ringkasan", portal, token] as const,
 
   list: (
     portal: string | null,
@@ -39,8 +44,11 @@ const keys = {
     tab: string,
     page: number,
     period: string,
-  ) => ['inbox-manager', 'daftar', portal, token, tab, page, period] as const,
-}
+  ) => ["inbox-manager", "daftar", portal, token, tab, page, period] as const,
+
+  payment: (portal: string | null, token: string | null, acceptedNo: string) =>
+    ["inbox-manager", "payment-akseptasi", portal, token, acceptedNo] as const,
+};
 
 /**
  * Hook keterangan layar — tab yang boleh dilihat, kolomnya, aturan keputusannya, dan selisih
@@ -59,8 +67,8 @@ const keys = {
  * menyangkut uang.
  */
 export function useInboxManagerMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -70,7 +78,7 @@ export function useInboxManagerMetadata() {
     // Lima menit: cukup lama untuk tidak diambil ulang setiap perpindahan tab, cukup pendek
     // untuk tidak menahan perubahan lini bisnis sepanjang hari.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -93,17 +101,18 @@ export function useInboxManagerMetadata() {
  * berarti sepuluh kueri pencacah dijalankan ulang pada setiap klik tab.
  */
 export function useInboxManagerCounters() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.counters(portal, token),
-    queryFn: () => callAPI<CountersResponse>(`${PATH}/ringkasan`, { token, portal }),
+    queryFn: () =>
+      callAPI<CountersResponse>(`${PATH}/ringkasan`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Pencacah berubah saat penyelia lain memutuskan, jadi cache-nya pendek.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /** Hook isi satu tab. */
@@ -114,10 +123,10 @@ export function useInboxManagerList(
   filter: DashboardFilterInput | null,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const params = buildParams(tab, page, period, filter)
+  const params = buildParams(tab, page, period, filter);
 
   return useQuery({
     queryKey: keys.list(portal, token, tab, page, params.toString()),
@@ -129,7 +138,7 @@ export function useInboxManagerList(
     placeholderData: (previous) => previous,
 
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -143,24 +152,26 @@ export function useInboxManagerList(
  * cocok adalah hal pertama yang membuat penyelia berhenti mempercayainya.
  */
 export function useInboxManagerDecide() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (body: DecisionRequest) =>
       callAPI<DecisionResponse>(`${PATH}/keputusan`, {
-        metode: 'POST',
+        metode: "POST",
         token,
         portal,
         body,
       }),
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'daftar'] })
-      queryClient.invalidateQueries({ queryKey: ['inbox-manager', 'ringkasan'] })
+      queryClient.invalidateQueries({ queryKey: ["inbox-manager", "daftar"] });
+      queryClient.invalidateQueries({
+        queryKey: ["inbox-manager", "ringkasan"],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -178,33 +189,168 @@ export function useInboxManagerDecide() {
  * antrean persetujuan yang berisi puluhan baris, itu tidak berarti apa-apa.
  */
 export function useExportInboxManager() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (tab: string) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const params = new URLSearchParams()
-      if (tab) params.set('tab', tab)
+      const params = new URLSearchParams();
+      if (tab) params.set("tab", tab);
 
-      const query = params.toString()
-      const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`
+      const query = params.toString();
+      const address = query ? `${PATH}/ekspor?${query}` : `${PATH}/ekspor`;
 
-      const response = await fetch(address, { headers: header })
+      const response = await fetch(address, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
         // lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'inbox-manager.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "inbox-manager.csv");
     },
-  })
+  });
+}
+
+function paymentPath(acceptedNo: string): string {
+  return `${PATH}/payment-akseptasi/${encodeURIComponent(acceptedNo)}`;
+}
+
+/**
+ * Hook panel detail Payment Klaim Akseptasi — tombol DETAILS (`GetDataAkseptasiKlaimKasir`).
+ *
+ * Nomor kosong berarti panelnya tertutup, dan tidak ada yang diambil.
+ */
+export function usePaymentDetail(acceptedNo: string) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+
+  return useQuery({
+    queryKey: keys.payment(portal, token, acceptedNo),
+    queryFn: () =>
+      callAPI<PaymentDetail>(paymentPath(acceptedNo), { token, portal }),
+    enabled: acceptedNo !== "" && token !== null && portal !== null,
+    // Detail selalu diambil segar saat dibuka: barisnya dapat diputuskan orang lain kapan saja.
+    staleTime: 0,
+  });
+}
+
+/**
+ * Hook tombol SIMPAN (`SaveApprovalAkseptasiPaymentLeader_Act`).
+ *
+ * Daftar, pencacah, dan detail dibatalkan cache-nya bersama — alasan yang sama dengan
+ * useInboxManagerDecide.
+ */
+export function useSavePayment(acceptedNo: string) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: PaymentSaveRequest) =>
+      callAPI<PaymentSaveResponse>(`${paymentPath(acceptedNo)}/simpan`, {
+        metode: "POST",
+        token,
+        portal,
+        body,
+      }),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbox-manager", "daftar"] });
+      queryClient.invalidateQueries({
+        queryKey: ["inbox-manager", "ringkasan"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["inbox-manager", "payment-akseptasi"],
+      });
+    },
+  });
+}
+
+/**
+ * Hook tombol Dokumen — membuka satu lampiran.
+ *
+ * Lampiran di layanan penyimpanan dibuka lewat alamat yang DIMINTA ULANG setiap kali: server
+ * memperpanjangnya bila sudah lewat EXPDATE (modul Dokumen Penunjang), sehingga tautan yang
+ * tersimpan di layar tidak pernah basi.
+ *
+ * Lampiran lama diambil sebagai blob; ditampilkan atau diunduh ditentukan SERVER lewat
+ * `Content-Disposition` — pola tombol View Document Master Recovery.
+ */
+export function useOpenPaymentDocument(acceptedNo: string) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+
+  return useMutation({
+    mutationFn: async (document: PaymentDocument) => {
+      const base = `${paymentPath(acceptedNo)}/dokumen/${encodeURIComponent(document.kunci)}`;
+
+      if (document.tertaut) {
+        const link = await callAPI<{ url: string }>(`${base}/tautan`, {
+          token,
+          portal,
+        });
+        window.open(link.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const file = await blobAPI(base, { token, portal });
+      const address = URL.createObjectURL(file.isi);
+      if (file.bolehDitampilkan) {
+        window.open(address, "_blank", "noopener,noreferrer");
+        // Dicabut setelah peramban sempat membacanya; mencabutnya seketika membatalkan tab
+        // yang baru dibuka.
+        window.setTimeout(() => URL.revokeObjectURL(address), 60_000);
+        return;
+      }
+
+      const anchor = window.document.createElement("a");
+      anchor.href = address;
+      anchor.download = file.nama || document.nama || "dokumen";
+      anchor.click();
+      URL.revokeObjectURL(address);
+    },
+  });
+}
+
+/** Nama berkas "Export Data Detail Klaim" — sama dengan `FileName` di Pega. */
+export const DETAIL_EXPORT_FILENAME = "Data Detail Klaim.csv";
+
+/**
+ * Hook tombol "Export to Excel" pada blok "Export Data Detail Klaim" tab Outstanding.
+ *
+ * Ekspor TERSENDIRI, bukan ekspor antrean di kepala layar: berkasnya 90 kolom dan disaring
+ * hanya oleh rentang tanggal — tidak oleh PIC yang diklik, Reinsurer, maupun Kategori OS,
+ * sama seperti `Activity/ExportDataDetailKlaim` di Pega.
+ *
+ * Tanggal kosong tidak dikirim; keduanya kosong berarti seluruh periode.
+ */
+export function useExportDetailKlaim() {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+
+  return useMutation({
+    mutationFn: (range: DetailExportInput) => {
+      const params = new URLSearchParams();
+      if (range.dari) params.set("dari", range.dari);
+      if (range.sampai) params.set("sampai", range.sampai);
+
+      const query = params.toString();
+      const address = query
+        ? `${PATH}/ekspor-detail?${query}`
+        : `${PATH}/ekspor-detail`;
+
+      return downloadAPI(address, DETAIL_EXPORT_FILENAME, { token, portal });
+    },
+  });
 }
 
 /**
@@ -219,40 +365,41 @@ function buildParams(
   period: PeriodInput | null,
   filter: DashboardFilterInput | null,
 ): URLSearchParams {
-  const params = new URLSearchParams()
-  if (tab) params.set('tab', tab)
-  if (page > 1) params.set('halaman', String(page))
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (page > 1) params.set("halaman", String(page));
 
   // Penyaring yang kosong TIDAK dikirim, supaya "All" menghasilkan alamat yang sama dengan
   // membuka tabnya tanpa menyentuh penyaring sama sekali — dan karena itu berbagi satu entri
   // cache.
-  if (filter?.reinsurer) params.set('reinsurer', filter.reinsurer)
-  if (filter?.kategori_os) params.set('kategori_os', filter.kategori_os)
+  if (filter?.reinsurer) params.set("reinsurer", filter.reinsurer);
+  if (filter?.kategori_os) params.set("kategori_os", filter.kategori_os);
+  if (filter?.pic) params.set("pic", filter.pic);
 
   if (period) {
-    params.set('bentuk_periode', period.bentuk)
-    if (period.bentuk === 'bulan') {
-      if (period.bulan) params.set('bulan', period.bulan)
+    params.set("bentuk_periode", period.bentuk);
+    if (period.bentuk === "bulan") {
+      if (period.bulan) params.set("bulan", period.bulan);
     } else {
-      if (period.dari) params.set('dari', period.dari)
-      if (period.sampai) params.set('sampai', period.sampai)
+      if (period.dari) params.set("dari", period.dari);
+      if (period.sampai) params.set("sampai", period.sampai);
     }
   }
 
-  return params
+  return params;
 }
 
 function pathWith(params: URLSearchParams): string {
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -263,12 +410,12 @@ function filenameOf(response: Response): string | null {
  * tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

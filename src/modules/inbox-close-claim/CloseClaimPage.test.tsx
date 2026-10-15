@@ -1,14 +1,14 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { CloseClaimPage } from './CloseClaimPage'
-import type { DaftarResponse, KlaimTutup, PenyaringResponse } from './types'
+import { CloseClaimPage } from "./CloseClaimPage";
+import type { DaftarResponse, KlaimTutup, PenyaringResponse } from "./types";
 
 /**
  * Data uji seluruhnya KARANGAN.
@@ -18,27 +18,27 @@ import type { DaftarResponse, KlaimTutup, PenyaringResponse } from './types'
  */
 function klaim(partial: Partial<KlaimTutup> = {}): KlaimTutup {
   return {
-    klaim_id: 'ASM-FW-GCNMFW-WORK PNCN.26.0001',
-    nomor_klaim: 'PNCN.26.0001',
-    nomor_polis: 'POL-FIRE-0001',
-    nama_tertanggung: 'PT Bumi Contoh Sentosa',
-    nama_bisnis: 'Fire',
-    sumber_bisnis: 'Broker',
-    nama_cabang: 'JKT',
-    pic_teknik: 'BUDISANTOSO',
-    admin_pnc: 'ADMINPNC',
-    tanggal_pendaftaran: '2026-01-12',
-    tanggal_kejadian: '2026-01-07',
-    tanggal_tutup: '2026-02-22',
+    klaim_id: "ASM-FW-GCNMFW-WORK PNCN.26.0001",
+    nomor_klaim: "PNCN.26.0001",
+    nomor_polis: "POL-FIRE-0001",
+    nama_tertanggung: "PT Bumi Contoh Sentosa",
+    nama_bisnis: "Fire",
+    sumber_bisnis: "Broker",
+    nama_cabang: "JKT",
+    pic_teknik: "BUDISANTOSO",
+    admin_pnc: "ADMINPNC",
+    tanggal_pendaftaran: "2026-01-12",
+    tanggal_kejadian: "2026-01-07",
+    tanggal_tutup: "2026-02-22",
     lama_hari: 41,
-    status_proses: 'Resolved-Completed',
-    status_tampil: 'Close',
-    status_klaim_kode: '1163',
-    status_klaim_label: 'Paid',
+    status_proses: "Resolved-Completed",
+    status_tampil: "Close",
+    status_klaim_kode: "1163",
+    status_klaim_label: "Paid",
     sudah_transfer: true,
     permintaan_tertunda: [],
     ...partial,
-  }
+  };
 }
 
 function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
@@ -49,38 +49,38 @@ function daftarResponse(partial: Partial<DaftarResponse> = {}): DaftarResponse {
     boleh_mengajukan: true,
     pelaksana_belum_ada: true,
     ...partial,
-  }
+  };
 }
 
 const penyaringResponse: PenyaringResponse = {
   lini_bisnis: [
-    { nilai: 'ALL', label: 'Semua Lini Bisnis' },
-    { nilai: 'NONMBU', label: 'Non-MBU' },
-    { nilai: 'BONDING', label: 'Bonding' },
-    { nilai: 'PA', label: 'Personal Accident' },
-    { nilai: 'TRAVEL', label: 'Travel' },
+    { nilai: "ALL", label: "Semua Lini Bisnis" },
+    { nilai: "NONMBU", label: "Non-MBU" },
+    { nilai: "BONDING", label: "Bonding" },
+    { nilai: "PA", label: "Personal Accident" },
+    { nilai: "TRAVEL", label: "Travel" },
   ],
   status_transfer: [
-    { nilai: '', label: 'Semua Status Transfer' },
-    { nilai: 'SUDAH TRANSFER', label: 'Sudah Transfer' },
-    { nilai: 'BELUM TRANSFER', label: 'Belum Transfer' },
+    { nilai: "", label: "Semua Status Transfer" },
+    { nilai: "SUDAH TRANSFER", label: "Sudah Transfer" },
+    { nilai: "BELUM TRANSFER", label: "Belum Transfer" },
   ],
   status_bayar: [
-    { nilai: '', label: 'Semua Status Bayar' },
-    { nilai: 'LUNAS', label: 'Lunas' },
-    { nilai: 'BELUM LUNAS', label: 'Belum Lunas' },
+    { nilai: "", label: "Semua Status Bayar" },
+    { nilai: "LUNAS", label: "Lunas" },
+    { nilai: "BELUM LUNAS", label: "Belum Lunas" },
   ],
-}
+};
 
-type Call = { url: string; init: RequestInit | undefined }
+type Call = { url: string; init: RequestInit | undefined };
 
-let calls: Call[] = []
+let calls: Call[] = [];
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
@@ -93,28 +93,35 @@ function stubFetch(
   daftar: DaftarResponse | (() => Response),
   onPost?: (body: unknown) => Response,
 ) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
 
-    if (init?.method === 'POST') {
-      const body: unknown = init.body ? JSON.parse(String(init.body)) : {}
+    if (init?.method === "POST") {
+      const body: unknown = init.body ? JSON.parse(String(init.body)) : {};
       return Promise.resolve(
-        onPost ? onPost(body) : jsonResponse(500, { kode: 'galat_internal', pesan: 'tak diduga' }),
-      )
+        onPost
+          ? onPost(body)
+          : jsonResponse(500, { kode: "galat_internal", pesan: "tak diduga" }),
+      );
     }
-    if (url.includes('/penyaring')) {
-      return Promise.resolve(jsonResponse(200, penyaringResponse))
+    if (url.includes("/penyaring")) {
+      return Promise.resolve(jsonResponse(200, penyaringResponse));
     }
-    return Promise.resolve(typeof daftar === 'function' ? daftar() : jsonResponse(200, daftar))
-  })
+    return Promise.resolve(
+      typeof daftar === "function" ? daftar() : jsonResponse(200, daftar),
+    );
+  });
 }
 
 function renderPage() {
   // Cache dimatikan supaya tiap uji berdiri sendiri; retry dimatikan supaya jalur galat
   // tidak menunggu percobaan ulang.
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
-  })
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
 
   return render(
     <QueryClientProvider client={client}>
@@ -122,22 +129,22 @@ function renderPage() {
         <CloseClaimPage />
       </MemoryRouter>
     </QueryClientProvider>,
-  )
+  );
 }
 
 beforeEach(() => {
-  calls = []
+  calls = [];
   useSession.setState({
-    token: 'token-uji',
+    token: "token-uji",
     user: null,
-    validUntil: '2026-09-24T12:00:00Z',
-  })
-  useSelectedPortal.setState({ alias: 'ASM' })
-})
+    validUntil: "2026-09-24T12:00:00Z",
+  });
+  useSelectedPortal.setState({ alias: "ASM" });
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-})
+  vi.unstubAllGlobals();
+});
 
 /**
  * Judul kolom mengikuti `Section/InboxManagerReopen1_Sec-Section.xml` apa adanya (`D-13`).
@@ -146,27 +153,29 @@ afterEach(() => {
  * yang dikenal pengguna — dan layar ini satu-satunya yang judul kolomnya memang berbahasa
  * Indonesia di Pega.
  */
-it('memakai judul kolom yang sama dengan section rujukan', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("memakai judul kolom yang sama dengan section rujukan", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  await screen.findByText('PNCN.26.0001')
+  await screen.findByText("PNCN.26.0001");
 
   for (const title of [
-    'No Klaim',
-    'No Polis',
-    'Nama Tertanggung',
-    'Nama Bisnis',
-    'Sumber Bisnis',
-    'Nama Cabang',
-    'Tanggal Pendaftaran',
-    'Lama Waktu Klaim',
-    'PIC Teknik',
-    'Admin PNC',
+    "No Klaim",
+    "No Polis",
+    "Nama Tertanggung",
+    "Nama Bisnis",
+    "Sumber Bisnis",
+    "Nama Cabang",
+    "Tanggal Pendaftaran",
+    "Lama Waktu Klaim",
+    "PIC Teknik",
+    "Admin PNC",
   ]) {
-    expect(screen.getByRole('columnheader', { name: new RegExp(title, 'i') })).toBeVisible()
+    expect(
+      screen.getByRole("columnheader", { name: new RegExp(title, "i") }),
+    ).toBeVisible();
   }
-})
+});
 
 /**
  * Kolom "Lama Waktu Klaim" berisi ANGKA HARI, bukan tanggal.
@@ -174,12 +183,12 @@ it('memakai judul kolom yang sama dengan section rujukan', async () => {
  * Inilah selisih terencana yang paling terlihat: di Pega kolom itu menampilkan tanggal
  * pendaftaran untuk kedua kalinya.
  */
-it('menampilkan lama klaim sebagai jumlah hari, bukan tanggal', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("menampilkan lama klaim sebagai jumlah hari, bukan tanggal", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
-  expect(await screen.findByText('41 hari')).toBeVisible()
-})
+  expect(await screen.findByText("41 hari")).toBeVisible();
+});
 
 /**
  * Klaim yang tanggal tutupnya tidak tercatat ditandai BERBEDA.
@@ -187,26 +196,30 @@ it('menampilkan lama klaim sebagai jumlah hari, bukan tanggal', async () => {
  * Angkanya dihitung sampai hari ini, dan itu arti yang berbeda dari lamanya klaim berjalan.
  * Menampilkannya sama persis akan membuat keduanya tidak dapat dibedakan.
  */
-it('menandai lama klaim yang dihitung sampai hari ini', async () => {
-  stubFetch(daftarResponse({ klaim: [klaim({ tanggal_tutup: '', lama_hari: 900 })] }))
-  renderPage()
+it("menandai lama klaim yang dihitung sampai hari ini", async () => {
+  stubFetch(
+    daftarResponse({ klaim: [klaim({ tanggal_tutup: "", lama_hari: 900 })] }),
+  );
+  renderPage();
 
-  expect(await screen.findByText('900 hari*')).toBeVisible()
-})
+  expect(await screen.findByText("900 hari*")).toBeVisible();
+});
 
 // Keputusan Work Owner 2026-10-06: panel selisih terencana DIHAPUS dari seluruh layar.
 //
 // Daftarnya tetap hidup di kode Go untuk uji kesetaraan gerbang 1 (`D-54`); yang berubah
 // adalah ia berhenti menjadi isi layar. Uji ini menjaga agar ia tidak kembali diam-diam.
-it('tidak lagi menggambar panel selisih terencana', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
+it("tidak lagi menggambar panel selisih terencana", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
 
   // Ditunggu sampai daftarnya benar-benar tergambar — tanpa itu, panel yang belum sempat
   // muncul akan lolos uji ini tanpa membuktikan apa pun.
-  await screen.findByRole('table')
-  expect(screen.queryByText(/Tiga hal yang berbeda dari layar lama/)).not.toBeInTheDocument()
-})
+  await screen.findByRole("table");
+  expect(
+    screen.queryByText(/Tiga hal yang berbeda dari layar lama/),
+  ).not.toBeInTheDocument();
+});
 
 /**
  * Penyaring dikirim ke SERVER, bukan disaring di peramban.
@@ -215,17 +228,19 @@ it('tidak lagi menggambar panel selisih terencana', async () => {
  * darinya. Menyaring di peramban membuat hasilnya BOHONG — ia hanya menyentuh halaman yang
  * sedang terbuka.
  */
-it('mengirim penyaring ke server sebagai parameter', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+it("mengirim penyaring ke server sebagai parameter", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.selectOptions(screen.getByLabelText('Status Bayar'), 'LUNAS')
+  await userEvent.selectOptions(screen.getByLabelText("Status Bayar"), "LUNAS");
 
   await waitFor(() => {
-    expect(calls.some((call) => call.url.includes('status_bayar=LUNAS'))).toBe(true)
-  })
-})
+    expect(calls.some((call) => call.url.includes("status_bayar=LUNAS"))).toBe(
+      true,
+    );
+  });
+});
 
 /**
  * Mengubah penyaring mengembalikan halaman ke awal.
@@ -233,23 +248,27 @@ it('mengirim penyaring ke server sebagai parameter', async () => {
  * Tanpa ini, menyaring dari halaman empat menampilkan tabel kosong yang tampak rusak — dan
  * pengguna menyimpulkan penyaringnya tidak menemukan apa pun.
  */
-it('kembali ke halaman pertama setiap kali penyaring berubah', async () => {
-  stubFetch(daftarResponse({ total: 120 }))
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+it("kembali ke halaman pertama setiap kali penyaring berubah", async () => {
+  stubFetch(daftarResponse({ total: 120 }));
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.click(screen.getByRole('button', { name: 'Berikutnya' }))
-  await waitFor(() => expect(calls.some((call) => call.url.includes('lewati=25'))).toBe(true))
+  await userEvent.click(screen.getByRole("button", { name: "Berikutnya" }));
+  await waitFor(() =>
+    expect(calls.some((call) => call.url.includes("lewati=25"))).toBe(true),
+  );
 
-  calls = []
-  await userEvent.selectOptions(screen.getByLabelText('Lini Bisnis'), 'PA')
+  calls = [];
+  await userEvent.selectOptions(screen.getByLabelText("Lini Bisnis"), "PA");
 
   await waitFor(() => {
-    const terakhir = calls.filter((call) => !call.url.includes('/penyaring')).at(-1)
-    expect(terakhir?.url).toContain('lini=PA')
-    expect(terakhir?.url).not.toContain('lewati=')
-  })
-})
+    const terakhir = calls
+      .filter((call) => !call.url.includes("/penyaring"))
+      .at(-1);
+    expect(terakhir?.url).toContain("lini=PA");
+    expect(terakhir?.url).not.toContain("lewati=");
+  });
+});
 
 /**
  * Dialog konfirmasi menyatakan bahwa klaim BELUM berubah.
@@ -258,55 +277,59 @@ it('kembali ke halaman pertama setiap kali penyaring berubah', async () => {
  * tidak berubah. Tanpa kalimat itu, pengguna menutup layar dengan mengira klaimnya sudah
  * terbuka kembali.
  */
-it('menjelaskan bahwa klaim belum berubah sebelum permintaan dikirim', async () => {
-  stubFetch(daftarResponse())
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+it("menjelaskan bahwa klaim belum berubah sebelum permintaan dikirim", async () => {
+  stubFetch(daftarResponse());
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.click(screen.getByRole('button', { name: 'ReOpen' }))
+  await userEvent.click(screen.getByRole("button", { name: "ReOpen" }));
 
-  const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText(/Klaim belum berubah sekarang/)).toBeVisible()
-  expect(within(dialog).getByText(/Reopen Claim/)).toBeVisible()
-})
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    within(dialog).getByText(/Klaim belum berubah sekarang/),
+  ).toBeVisible();
+  expect(within(dialog).getByText(/Reopen Claim/)).toBeVisible();
+});
 
-it('mengirim permintaan reopen beserta kunci klaim dan alasannya', async () => {
-  let dikirim: unknown = null
+it("mengirim permintaan reopen beserta kunci klaim dan alasannya", async () => {
+  let dikirim: unknown = null;
   stubFetch(daftarResponse(), (body) => {
-    dikirim = body
+    dikirim = body;
     return jsonResponse(201, {
       permintaan: {
-        id: 'abc',
-        jenis: 'reopen',
-        status: 'menunggu',
-        alasan: 'dokumen susulan',
-        pemohon: 'BUDI',
-        pemohon_nama: 'Budi',
-        pada: '2026-09-23 11:00',
-        efek_status_kerja: 'New',
-        efek_status_klaim: '1164',
-        lingkup_salin: '',
+        id: "abc",
+        jenis: "reopen",
+        status: "menunggu",
+        alasan: "dokumen susulan",
+        pemohon: "BUDI",
+        pemohon_nama: "Budi",
+        pada: "2026-09-23 11:00",
+        efek_status_kerja: "New",
+        efek_status_klaim: "1164",
+        lingkup_salin: "",
       },
-      pesan: 'Permintaan buka kembali tercatat. Klaim belum berubah.',
-    })
-  })
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+      pesan: "Permintaan buka kembali tercatat. Klaim belum berubah.",
+    });
+  });
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.click(screen.getByRole('button', { name: 'ReOpen' }))
-  await userEvent.type(screen.getByLabelText(/Alasan/), 'dokumen susulan')
-  await userEvent.click(screen.getByRole('button', { name: 'Ajukan buka kembali' }))
+  await userEvent.click(screen.getByRole("button", { name: "ReOpen" }));
+  await userEvent.type(screen.getByLabelText(/Alasan/), "dokumen susulan");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Ajukan buka kembali" }),
+  );
 
   await waitFor(() => {
     expect(dikirim).toEqual({
-      jenis: 'reopen',
-      klaim_id: 'ASM-FW-GCNMFW-WORK PNCN.26.0001',
-      alasan: 'dokumen susulan',
-    })
-  })
+      jenis: "reopen",
+      klaim_id: "ASM-FW-GCNMFW-WORK PNCN.26.0001",
+      alasan: "dokumen susulan",
+    });
+  });
 
-  expect(await screen.findByText(/Klaim belum berubah/)).toBeVisible()
-})
+  expect(await screen.findByText(/Klaim belum berubah/)).toBeVisible();
+});
 
 /**
  * Baris yang permintaannya sudah diajukan TIDAK lagi menampilkan tombolnya.
@@ -314,38 +337,38 @@ it('mengirim permintaan reopen beserta kunci klaim dan alasannya', async () => {
  * Menyisakan tombol yang pasti ditolak server (409) hanya mengundang penekanan yang berakhir
  * sebagai pesan galat.
  */
-it('mengganti tombol dengan penanda saat permintaan masih menunggu', async () => {
+it("mengganti tombol dengan penanda saat permintaan masih menunggu", async () => {
   stubFetch(
     daftarResponse({
       klaim: [
         klaim({
           permintaan_tertunda: [
             {
-              id: 'abc',
-              jenis: 'reopen',
-              status: 'menunggu',
-              alasan: '',
-              pemohon: 'BUDI',
-              pemohon_nama: 'Budi',
-              pada: '2026-09-23 11:00',
-              efek_status_kerja: 'New',
-              efek_status_klaim: '1164',
-              lingkup_salin: '',
+              id: "abc",
+              jenis: "reopen",
+              status: "menunggu",
+              alasan: "",
+              pemohon: "BUDI",
+              pemohon_nama: "Budi",
+              pada: "2026-09-23 11:00",
+              efek_status_kerja: "New",
+              efek_status_klaim: "1164",
+              lingkup_salin: "",
             },
           ],
         }),
       ],
     }),
-  )
-  renderPage()
+  );
+  renderPage();
 
-  expect(await screen.findByText('ReOpen diminta')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'ReOpen' })).toBeNull()
+  expect(await screen.findByText("ReOpen diminta")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "ReOpen" })).toBeNull();
 
   // Jenis yang lain tetap boleh diajukan: yang dibatasi adalah satu permintaan menunggu per
   // (jenis, klaim).
-  expect(screen.getByRole('button', { name: 'Copy Klaim' })).toBeVisible()
-})
+  expect(screen.getByRole("button", { name: "Copy Klaim" })).toBeVisible();
+});
 
 /**
  * Tabel permintaan yang belum ada dinyatakan, bukan didiamkan.
@@ -353,40 +376,44 @@ it('mengganti tombol dengan penanda saat permintaan masih menunggu', async () =>
  * Bila tidak, penanda yang tidak muncul akan terbaca sebagai "belum pernah diminta" — dan
  * pengguna mengajukannya lagi, yang justru keadaan yang hendak dicegah.
  */
-it('menyatakan saat penanda permintaan tidak dapat dibaca', async () => {
-  stubFetch(daftarResponse({ permintaan_terbaca: false }))
-  renderPage()
+it("menyatakan saat penanda permintaan tidak dapat dibaca", async () => {
+  stubFetch(daftarResponse({ permintaan_terbaca: false }));
+  renderPage();
 
-  expect(await screen.findByText(/Penanda permintaan tidak dapat ditampilkan/)).toBeVisible()
+  expect(
+    await screen.findByText(/Penanda permintaan tidak dapat ditampilkan/),
+  ).toBeVisible();
   // Daftarnya TETAP tampil — itulah yang membedakannya dari kegagalan.
-  expect(screen.getByText('PNCN.26.0001')).toBeVisible()
-})
+  expect(screen.getByText("PNCN.26.0001")).toBeVisible();
+});
 
-it('menampilkan galat permintaan di dalam dialog, tanpa menutupnya', async () => {
+it("menampilkan galat permintaan di dalam dialog, tanpa menutupnya", async () => {
   stubFetch(daftarResponse(), () =>
     jsonResponse(409, {
-      kode: 'permintaan_masih_menunggu',
-      pesan: 'Permintaan sejenis atas klaim ini masih menunggu dijalankan.',
+      kode: "permintaan_masih_menunggu",
+      pesan: "Permintaan sejenis atas klaim ini masih menunggu dijalankan.",
     }),
-  )
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+  );
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  await userEvent.click(screen.getByRole('button', { name: 'Copy Klaim' }))
-  await userEvent.click(screen.getByRole('button', { name: 'Ajukan salin klaim' }))
+  await userEvent.click(screen.getByRole("button", { name: "Copy Klaim" }));
+  await userEvent.click(
+    screen.getByRole("button", { name: "Ajukan salin klaim" }),
+  );
 
-  const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText(/masih menunggu dijalankan/)).toBeVisible()
-})
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByText(/masih menunggu dijalankan/)).toBeVisible();
+});
 
-it('menuntun pengguna memilih entitas sebelum menembak server', async () => {
-  useSelectedPortal.setState({ alias: null })
-  stubFetch(daftarResponse())
-  renderPage()
+it("menuntun pengguna memilih entitas sebelum menembak server", async () => {
+  useSelectedPortal.setState({ alias: null });
+  stubFetch(daftarResponse());
+  renderPage();
 
-  expect(await screen.findByText('Pilih entitas lebih dulu')).toBeVisible()
-  expect(calls).toHaveLength(0)
-})
+  expect(await screen.findByText("Pilih entitas lebih dulu")).toBeVisible();
+  expect(calls).toHaveLength(0);
+});
 
 /**
  * Pengajuan yang tertutup dinyatakan DI LAYAR, dan tombolnya dimatikan.
@@ -398,25 +425,28 @@ it('menuntun pengguna memilih entitas sebelum menembak server', async () => {
  * mengetahuinya SEBELUM menekan. Tombol yang tampak aktif lalu selalu gagal terbaca sebagai
  * gangguan sistem, bukan sebagai kewenangan yang memang tidak ada.
  */
-it('menonaktifkan kedua tombol dan menyebutkan alasannya saat pengajuan tertutup', async () => {
+it("menonaktifkan kedua tombol dan menyebutkan alasannya saat pengajuan tertutup", async () => {
   stubFetch(
     daftarResponse({
       boleh_mengajukan: false,
-      alasan_tidak_boleh: 'Pengajuan sedang tidak tersedia untuk semua pengguna.',
+      alasan_tidak_boleh:
+        "Pengajuan sedang tidak tersedia untuk semua pengguna.",
       pelaksana_belum_ada: false,
     }),
-  )
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+  );
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  expect(screen.getByText('Buka kembali dan salin klaim belum tersedia')).toBeVisible()
   expect(
-    screen.getByText('Pengajuan sedang tidak tersedia untuk semua pengguna.'),
-  ).toBeVisible()
+    screen.getByText("Buka kembali dan salin klaim belum tersedia"),
+  ).toBeVisible();
+  expect(
+    screen.getByText("Pengajuan sedang tidak tersedia untuk semua pengguna."),
+  ).toBeVisible();
 
-  expect(screen.getByRole('button', { name: 'ReOpen' })).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'Copy Klaim' })).toBeDisabled()
-})
+  expect(screen.getByRole("button", { name: "ReOpen" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Copy Klaim" })).toBeDisabled();
+});
 
 /**
  * Tombolnya TETAP digambar, bukan disembunyikan.
@@ -424,14 +454,16 @@ it('menonaktifkan kedua tombol dan menyebutkan alasannya saat pengajuan tertutup
  * Kolom "Tindakan" yang kosong tanpa sebab yang terbaca akan dilaporkan sebagai fitur yang
  * hilang. Tombol mati yang menjelaskan dirinya sendiri lebih jujur daripada ruang kosong.
  */
-it('tetap menggambar tombolnya meski tidak dapat ditekan', async () => {
-  stubFetch(daftarResponse({ boleh_mengajukan: false, pelaksana_belum_ada: false }))
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+it("tetap menggambar tombolnya meski tidak dapat ditekan", async () => {
+  stubFetch(
+    daftarResponse({ boleh_mengajukan: false, pelaksana_belum_ada: false }),
+  );
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
-  expect(screen.getByRole('button', { name: 'ReOpen' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Copy Klaim' })).toBeVisible()
-})
+  expect(screen.getByRole("button", { name: "ReOpen" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Copy Klaim" })).toBeVisible();
+});
 
 /**
  * Keterangan pelaksana muncul saat pengajuannya TERBUKA, dan hanya saat itu.
@@ -439,16 +471,22 @@ it('tetap menggambar tombolnya meski tidak dapat ditekan', async () => {
  * Menampilkan keduanya sekaligus akan membuat pengguna mengira tombolnya mati karena
  * pelaksananya belum ada, padahal sebabnya kewenangan.
  */
-it('menyatakan bahwa permintaan belum ada yang menjalankan', async () => {
-  stubFetch(daftarResponse({ boleh_mengajukan: true, pelaksana_belum_ada: true }))
-  renderPage()
-  await screen.findByText('PNCN.26.0001')
+it("menyatakan bahwa permintaan belum ada yang menjalankan", async () => {
+  stubFetch(
+    daftarResponse({ boleh_mengajukan: true, pelaksana_belum_ada: true }),
+  );
+  renderPage();
+  await screen.findByText("PNCN.26.0001");
 
   expect(
-    screen.getByText('Permintaan tercatat, tetapi belum ada yang menjalankannya'),
-  ).toBeVisible()
-  expect(screen.queryByText('Buka kembali dan salin klaim belum tersedia')).toBeNull()
-})
+    screen.getByText(
+      "Permintaan tercatat, tetapi belum ada yang menjalankannya",
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByText("Buka kembali dan salin klaim belum tersedia"),
+  ).toBeNull();
+});
 
 /**
  * Sebelum daftarnya dimuat, kewenangan BELUM DIKETAHUI — dan itu diperlakukan sebagai tidak
@@ -457,17 +495,17 @@ it('menyatakan bahwa permintaan belum ada yang menjalankan', async () => {
  * Menganggapnya boleh akan membuat tombolnya tampak aktif sekejap lalu berubah, dan pengguna
  * yang menekannya tepat pada saat itu menerima galat yang tidak dapat ia jelaskan.
  */
-it('tidak mengaktifkan tombol sebelum kewenangannya diketahui', async () => {
+it("tidak mengaktifkan tombol sebelum kewenangannya diketahui", async () => {
   // Jawaban ditahan supaya layar tetap dalam keadaan memuat.
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    calls.push({ url, init })
-    if (url.includes('/penyaring')) {
-      return Promise.resolve(jsonResponse(200, penyaringResponse))
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    if (url.includes("/penyaring")) {
+      return Promise.resolve(jsonResponse(200, penyaringResponse));
     }
-    return new Promise<Response>(() => {})
-  })
-  renderPage()
+    return new Promise<Response>(() => {});
+  });
+  renderPage();
 
-  await waitFor(() => expect(calls.length).toBeGreaterThan(0))
-  expect(screen.queryByRole('button', { name: 'ReOpen' })).toBeNull()
-})
+  await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+  expect(screen.queryByRole("button", { name: "ReOpen" })).toBeNull();
+});

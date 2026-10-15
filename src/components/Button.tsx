@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes } from "react";
 
 /**
  * Nada menentukan berat sebuah tombol, bukan sekadar warnanya.
@@ -10,11 +10,11 @@ import type { ButtonHTMLAttributes } from 'react'
  * Membedakannya penting pada layar master: Simpan dan Batal berdampingan, dan tombol
  * yang tampak sama berat membuat pengguna menekan yang salah.
  */
-export type ButtonTone = 'utama' | 'kedua' | 'halus'
+export type ButtonTone = "utama" | "kedua" | "halus";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  tone?: ButtonTone
-}
+  tone?: ButtonTone;
+};
 
 /**
  * Tiga keadaan yang WAJIB terlihat pada setiap nada, bukan hanya pada yang utama:
@@ -34,29 +34,29 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 const toneClass: Record<ButtonTone, string> = {
   utama: [
-    'bg-blue-600 text-white shadow-aksen',
-    'hover:bg-blue-700 hover:shadow-angkat hover:-translate-y-px',
-    'active:translate-y-0 active:scale-[0.98] active:bg-blue-800',
-    'focus-visible:ring-blue-500/35',
-    'disabled:hover:translate-y-0 disabled:hover:bg-blue-600 disabled:hover:shadow-aksen',
-  ].join(' '),
+    "bg-blue-600 text-white shadow-aksen",
+    "hover:bg-blue-700 hover:shadow-angkat hover:-translate-y-px",
+    "active:translate-y-0 active:scale-[0.98] active:bg-blue-800",
+    "focus-visible:ring-blue-500/35",
+    "disabled:hover:translate-y-0 disabled:hover:bg-blue-600 disabled:hover:shadow-aksen",
+  ].join(" "),
 
   kedua: [
-    'border border-slate-300 bg-white text-slate-700 shadow-lembut',
-    'hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 hover:shadow-angkat hover:-translate-y-px',
-    'active:translate-y-0 active:scale-[0.98] active:bg-slate-100',
-    'focus-visible:ring-slate-400/35',
-    'disabled:hover:translate-y-0 disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:shadow-lembut',
-  ].join(' '),
+    "border border-slate-300 bg-white text-slate-700 shadow-lembut",
+    "hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 hover:shadow-angkat hover:-translate-y-px",
+    "active:translate-y-0 active:scale-[0.98] active:bg-slate-100",
+    "focus-visible:ring-slate-400/35",
+    "disabled:hover:translate-y-0 disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:shadow-lembut",
+  ].join(" "),
 
   halus: [
-    'text-slate-600',
-    'hover:bg-slate-100 hover:text-slate-900',
-    'active:scale-[0.98] active:bg-slate-200',
-    'focus-visible:ring-slate-400/35',
-    'disabled:hover:bg-transparent',
-  ].join(' '),
-}
+    "text-slate-600",
+    "hover:bg-slate-100 hover:text-slate-900",
+    "active:scale-[0.98] active:bg-slate-200",
+    "focus-visible:ring-slate-400/35",
+    "disabled:hover:bg-transparent",
+  ].join(" "),
+};
 
 /**
  * Button baku.
@@ -69,15 +69,26 @@ const toneClass: Record<ButtonTone, string> = {
  * `type` sengaja berbawaan `button`. Bawaan HTML adalah `submit`, dan tombol Batal yang
  * lupa menyebut tipenya akan diam-diam mengirim form.
  */
-export function Button({ tone = 'kedua', className, type = 'button', ...rest }: Props) {
+export function Button({
+  tone = "kedua",
+  className,
+  type = "button",
+  ...rest
+}: Props) {
   const baseClass = [
-    'inline-flex items-center justify-center gap-2 rounded-kontrol px-3.5 py-2',
-    'text-sm font-medium whitespace-nowrap select-none',
-    'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-halus',
-    'focus:outline-none focus-visible:ring-4',
-    'disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none',
+    "inline-flex items-center justify-center gap-2 rounded-kontrol px-3.5 py-2",
+    "text-sm font-medium whitespace-nowrap select-none",
+    "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-halus",
+    "focus:outline-none focus-visible:ring-4",
+    "disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none",
     toneClass[tone],
-  ].join(' ')
+  ].join(" ");
 
-  return <button type={type} className={className ? `${baseClass} ${className}` : baseClass} {...rest} />
+  return (
+    <button
+      type={type}
+      className={className ? `${baseClass} ${className}` : baseClass}
+      {...rest}
+    />
+  );
 }

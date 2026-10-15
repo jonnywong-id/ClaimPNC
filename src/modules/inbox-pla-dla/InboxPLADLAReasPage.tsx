@@ -1,9 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from "react";
 
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
 
 import {
   useEksporReas,
@@ -11,11 +11,11 @@ import {
   useReasListCounts,
   useReasMetadata,
   type ParameterDaftar,
-} from './api'
-import { DetailKlaimPanel } from './DetailKlaimPanel'
-import { StatusSummary } from './StatusSummary'
-import { bukanReasuradur, formatTanggal, pesanGalat, pesanMuat } from './pesan'
-import type { Baris, Daftar } from './types'
+} from "./api";
+import { DetailKlaimPanel } from "./DetailKlaimPanel";
+import { StatusSummary } from "./StatusSummary";
+import { bukanReasuradur, formatTanggal, pesanGalat, pesanMuat } from "./pesan";
+import type { Baris, Daftar } from "./types";
 
 /**
  * Layar Inbox PLA DLA — milik REASURADUR.
@@ -91,59 +91,59 @@ import type { Baris, Daftar } from './types'
  *	"Detail"  hanya tampil bagi satu Operator ID yang ditulis tetap di dalam rule (`D-15`)
  */
 export function InboxPLADLAReasPage() {
-  const meta = useReasMetadata()
+  const meta = useReasMetadata();
 
-  const [tab, setTab] = useState('')
-  const [page, setPage] = useState(1)
+  const [tab, setTab] = useState("");
+  const [page, setPage] = useState(1);
 
   // Kotak "Claim No" dipegang DUA KALI: yang sedang diketik, dan yang sudah dikirim.
   //
   // Layar lamanya memakai tombol "Search Data", bukan pencarian saat mengetik — dan
   // penyaringnya menyapu tabel klaim yang sama dengan modul lain.
-  const [ketikan, setKetikan] = useState('')
-  const [dicari, setDicari] = useState('')
+  const [ketikan, setKetikan] = useState("");
+  const [dicari, setDicari] = useState("");
 
   // Klaim yang rinciannya sedang terbuka. Null berarti panelnya tertutup.
-  const [rincian, setRincian] = useState<Baris | null>(null)
+  const [rincian, setRincian] = useState<Baris | null>(null);
 
-  const daftar = meta.data?.daftar ?? []
-  const aktif = tab || meta.data?.daftar_bawaan || ''
-  const daftarAktif = daftar.find((item) => item.kode === aktif)
+  const daftar = meta.data?.daftar ?? [];
+  const aktif = tab || meta.data?.daftar_bawaan || "";
+  const daftarAktif = daftar.find((item) => item.kode === aktif);
 
   const parameter: ParameterDaftar = useMemo(
     () => ({ tab: aktif, page, cari: dicari }),
     [aktif, page, dicari],
-  )
+  );
 
-  const siapDaftar = aktif !== ''
-  const list = useReasList(parameter, siapDaftar)
-  const ekspor = useEksporReas()
+  const siapDaftar = aktif !== "";
+  const list = useReasList(parameter, siapDaftar);
+  const ekspor = useEksporReas();
 
   // Tabel "Status / Jumlah" TIDAK menerima daftar yang sedang terbuka.
   //
   // Ia menyebut keenamnya sekaligus — itulah yang membuatnya dapat dipakai berpindah —
   // sehingga berpindah daftar tidak membuatnya dihitung ulang. Yang mengubahnya hanyalah
   // pencarian, karena angkanya memang menyusut bersama tabel di sebelahnya.
-  const ringkas = useReasListCounts(dicari, siapDaftar)
+  const ringkas = useReasListCounts(dicari, siapDaftar);
 
   // Penolakan "bukan mitra terdaftar" dikenali dari galat daftarnya.
-  const ditolak = bukanReasuradur(list.error)
+  const ditolak = bukanReasuradur(list.error);
 
   function pilihDaftar(kode: string) {
-    setTab(kode)
-    setPage(1)
+    setTab(kode);
+    setPage(1);
 
     // Panel rincian DIBUANG saat tampilan berpindah.
     //
     // Tanpa ini, rincian klaim dari tab sebelumnya tetap terbuka di bawah daftar yang
     // sudah berganti — dan pengguna membaca rincian yang tidak ada hubungannya dengan
     // baris mana pun yang sedang ia lihat.
-    setRincian(null)
+    setRincian(null);
   }
 
   function cari() {
-    setDicari(ketikan.trim())
-    setPage(1)
+    setDicari(ketikan.trim());
+    setPage(1);
   }
 
   if (meta.isPending) {
@@ -151,11 +151,11 @@ export function InboxPLADLAReasPage() {
       <Bingkai>
         <p className="text-sm text-slate-600">Memuat keterangan layar…</p>
       </Bingkai>
-    )
+    );
   }
 
   if (meta.isError) {
-    const pesan = pesanMuat(meta.error)
+    const pesan = pesanMuat(meta.error);
     return (
       <Bingkai>
         <ErrorMessage
@@ -164,7 +164,7 @@ export function InboxPLADLAReasPage() {
           tone={pesan.tone}
         />
       </Bingkai>
-    )
+    );
   }
 
   // Penolakan "bukan mitra terdaftar" menggantikan SELURUH isi layar, bukan digambar
@@ -174,7 +174,7 @@ export function InboxPLADLAReasPage() {
   // diubah, jawabannya akan sama. Menggambar tabel, tombol ekspor, dan bilah tab di
   // bawahnya hanya menawarkan hal-hal yang seluruhnya akan ditolak.
   if (ditolak) {
-    const pesan = pesanMuat(list.error)
+    const pesan = pesanMuat(list.error);
     return (
       <Bingkai>
         <ErrorMessage
@@ -183,7 +183,7 @@ export function InboxPLADLAReasPage() {
           tone={pesan.tone}
         />
       </Bingkai>
-    )
+    );
   }
 
   return (
@@ -220,8 +220,8 @@ export function InboxPLADLAReasPage() {
       <form
         className="rounded-kartu border border-slate-200 bg-white px-5 py-4 shadow-lembut"
         onSubmit={(event) => {
-          event.preventDefault()
-          cari()
+          event.preventDefault();
+          cari();
         }}
       >
         <div className="flex flex-wrap items-end gap-2">
@@ -240,24 +240,28 @@ export function InboxPLADLAReasPage() {
               aria-label="Search — Claim No"
               placeholder="Claim No"
               value={ketikan}
-              onChange={(event) => { setKetikan(event.target.value) }}
+              onChange={(event) => {
+                setKetikan(event.target.value);
+              }}
             />
           </div>
 
           <Button type="submit" disabled={list.isFetching}>
-            {list.isFetching ? 'Mencari…' : 'Search Data'}
+            {list.isFetching ? "Mencari…" : "Search Data"}
           </Button>
           <Button
             type="button"
             tone="kedua"
-            onClick={() => { list.refetch() }}
+            onClick={() => {
+              list.refetch();
+            }}
             disabled={list.isFetching}
           >
             Refresh
           </Button>
         </div>
 
-        {dicari !== '' && (
+        {dicari !== "" && (
           <p className="mt-2 text-xs text-slate-600" role="status">
             {list.data?.paginasi.total ?? 0} baris cocok dengan “{dicari}”.
           </p>
@@ -275,7 +279,7 @@ export function InboxPLADLAReasPage() {
           disabled={ekspor.isPending}
           onClick={() => ekspor.mutate(parameter)}
         >
-          {ekspor.isPending ? 'Menyiapkan…' : 'Export To Excel'}
+          {ekspor.isPending ? "Menyiapkan…" : "Export To Excel"}
         </Button>
 
         {ekspor.error != null && (
@@ -297,7 +301,7 @@ export function InboxPLADLAReasPage() {
         columns={kolomDaftar(daftarAktif, rincian, setRincian)}
         rows={list.data?.baris ?? []}
         rowKey={(row) => row.kunci_klaim}
-        label={`Daftar ${daftarAktif?.nama ?? ''}`}
+        label={`Daftar ${daftarAktif?.nama ?? ""}`}
         isLoading={list.isLoading}
         error={
           list.isError ? (
@@ -342,7 +346,7 @@ export function InboxPLADLAReasPage() {
         />
       )}
     </Bingkai>
-  )
+  );
 }
 
 /** Bingkai adalah judul layar beserta ruang isinya. */
@@ -350,16 +354,18 @@ function Bingkai({ children }: { children: ReactNode }) {
   return (
     <div className="space-y-5 p-6">
       <header>
-        <h1 className="text-lg font-semibold text-slate-900">Inbox PLA / DLA</h1>
+        <h1 className="text-lg font-semibold text-slate-900">
+          Inbox PLA / DLA
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim yang pemberitahuan PLA atau DLA-nya sudah dikirimkan kepada Anda sebagai
-          mitra reasuransi.
+          Klaim yang pemberitahuan PLA atau DLA-nya sudah dikirimkan kepada Anda
+          sebagai mitra reasuransi.
         </p>
       </header>
 
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -374,7 +380,7 @@ function kolomDaftar(
   rincian: Baris | null,
   bukaRincian: (row: Baris | null) => void,
 ): Column<Baris>[] {
-  if (!daftar) return []
+  if (!daftar) return [];
 
   const kolom: Column<Baris>[] = [
     /*
@@ -388,12 +394,12 @@ function kolomDaftar(
       nomor urut, dan tidak ada yang hilang dari tampilannya karena satu kata itu.
     */
     {
-      key: 'nomor_urut',
-      title: 'No',
-      width: '3.5rem',
+      key: "nomor_urut",
+      title: "No",
+      width: "3.5rem",
       noSort: true,
       alignCenter: true,
-      value: () => '',
+      value: () => "",
       render: (_row, nomor) => nomor,
     },
     ...daftar.kolom.map((item) => ({
@@ -402,21 +408,21 @@ function kolomDaftar(
       value: (row: Baris) => nilaiSel(row, item.kunci),
       render: (row: Baris) => gambarSel(row, item.kunci, item.tanggal),
     })),
-  ]
+  ];
 
   // Apakah barisnya punya tombol rincian datang dari SERVER, bukan dicocokkan di layar.
-  if (!daftar.punya_rincian) return kolom
+  if (!daftar.punya_rincian) return kolom;
 
   return [
     ...kolom,
     {
-      key: 'rincian',
-      title: 'Aksi',
+      key: "rincian",
+      title: "Aksi",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => {
-        const terbuka = rincian?.kunci_klaim === row.kunci_klaim
+        const terbuka = rincian?.kunci_klaim === row.kunci_klaim;
 
         return (
           <Button
@@ -425,18 +431,18 @@ function kolomDaftar(
             aria-pressed={terbuka}
             onClick={() => bukaRincian(terbuka ? null : row)}
           >
-            {terbuka ? 'Tutup' : 'Detail Claim'}
+            {terbuka ? "Tutup" : "Detail Claim"}
           </Button>
-        )
+        );
       },
     },
-  ]
+  ];
 }
 
 /** nilaiSel mengambil isi satu sel sebagai TEKS — yang dicari dan diurutkan. */
 function nilaiSel(row: Baris, kunci: string): string {
-  const sel = (row as unknown as Record<string, unknown>)[kunci]
-  return typeof sel === 'string' ? sel : ''
+  const sel = (row as unknown as Record<string, unknown>)[kunci];
+  return typeof sel === "string" ? sel : "";
 }
 
 /**
@@ -447,16 +453,16 @@ function nilaiSel(row: Baris, kunci: string): string {
  * itu — dan sel kosong akan membuat barisnya tampak rusak.
  */
 function gambarSel(row: Baris, kunci: string, tanggal: boolean) {
-  if (kunci === 'status') {
-    const isi = row.status || row.kode_status
-    if (isi === '') return <span className="text-slate-400">—</span>
-    return isi
+  if (kunci === "status") {
+    const isi = row.status || row.kode_status;
+    if (isi === "") return <span className="text-slate-400">—</span>;
+    return isi;
   }
 
-  const isi = nilaiSel(row, kunci)
-  if (tanggal) return formatTanggal(isi)
-  if (isi === '') return <span className="text-slate-400">—</span>
-  return isi
+  const isi = nilaiSel(row, kunci);
+  if (tanggal) return formatTanggal(isi);
+  if (isi === "") return <span className="text-slate-400">—</span>;
+  return isi;
 }
 
 /**
@@ -468,17 +474,16 @@ function gambarSel(row: Baris, kunci: string, tanggal: boolean) {
  * yang tidak ada hubungannya dengan tab itu.
  */
 function pesanKosong(dicari: string, daftar: Daftar | undefined): string {
-  if (dicari !== '') {
-    return `Tidak ada klaim yang nomornya mengandung "${dicari}" pada daftar ini.`
+  if (dicari !== "") {
+    return `Tidak ada klaim yang nomornya mengandung "${dicari}" pada daftar ini.`;
   }
 
   // Sumbernya datang dari SERVER. Sebelumnya layar menyimpulkannya dari awalan kode tab,
   // dan kesimpulan itu pecah diam-diam begitu kodenya berubah mengikuti judul sebenarnya
   // — tanpa satu pun galat, hanya kalimat yang salah.
-  if (daftar?.sumber === 'komunikasi') {
-    return 'Belum ada klaim dengan komunikasi pada tahap ini yang menyangkut Anda.'
+  if (daftar?.sumber === "komunikasi") {
+    return "Belum ada klaim dengan komunikasi pada tahap ini yang menyangkut Anda.";
   }
 
-  return 'Belum ada klaim pada tahap ini yang pemberitahuannya dikirimkan kepada Anda.'
+  return "Belum ada klaim pada tahap ini yang pemberitahuannya dikirimkan kepada Anda.";
 }
-

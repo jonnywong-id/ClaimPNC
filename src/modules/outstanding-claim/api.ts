@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { DetailResponse, LayoutResponse } from './types'
+import type { DetailResponse, LayoutResponse } from "./types";
 
-const PATH = '/api/outstanding-claim'
+const PATH = "/api/outstanding-claim";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,11 +17,11 @@ const PATH = '/api/outstanding-claim'
  */
 const keys = {
   layout: (portal: string | null, token: string | null) =>
-    ['outstanding-claim', 'tata-letak', portal, token] as const,
+    ["outstanding-claim", "tata-letak", portal, token] as const,
 
   detail: (portal: string | null, token: string | null, claimID: string) =>
-    ['outstanding-claim', 'rincian', portal, token, claimID] as const,
-}
+    ["outstanding-claim", "rincian", portal, token, claimID] as const,
+};
 
 /**
  * Hook susunan layar — kelompok isian, judulnya, dan susunan setiap grid.
@@ -38,12 +38,13 @@ const keys = {
  * frontend.
  */
 export function useOutstandingClaimLayout() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.layout(portal, token),
-    queryFn: () => callAPI<LayoutResponse>(`${PATH}/tata-letak`, { token, portal }),
+    queryFn: () =>
+      callAPI<LayoutResponse>(`${PATH}/tata-letak`, { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Bentuk layar tidak berubah selama aplikasi berjalan: ia dibaca dari kode, bukan dari
@@ -51,7 +52,7 @@ export function useOutstandingClaimLayout() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -64,14 +65,17 @@ export function useOutstandingClaimLayout() {
  * membaca angka yang berbeda untuk klaim yang sama.
  */
 export function useOutstandingClaimDetail(claimID: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.detail(portal, token, claimID),
     queryFn: () =>
-      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(claimID)}`, { token, portal }),
-    enabled: claimID !== '' && token !== null && portal !== null,
+      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(claimID)}`, {
+        token,
+        portal,
+      }),
+    enabled: claimID !== "" && token !== null && portal !== null,
     staleTime: 15 * 1000,
-  })
+  });
 }

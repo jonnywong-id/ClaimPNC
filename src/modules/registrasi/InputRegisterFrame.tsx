@@ -1,19 +1,24 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { useSession } from '@/app/session'
+import { useSession } from "@/app/session";
 
-import { DocumentTab, ProgressTab } from './EstimateTabs'
-import { QuestionnaireTab } from './Questionnaire'
-import { TabList, ownerNotice } from './SurveyorForm'
-import type { Claim, Task } from './types'
+import { DocumentTab, ProgressTab } from "./EstimateTabs";
+import { QuestionnaireTab } from "./Questionnaire";
+import { TabList, ownerNotice } from "./SurveyorForm";
+import type { Claim, Task } from "./types";
 
 /** Group Panel Travel — When `IsTravel`. */
-const PANEL_TRAVEL = '005'
+const PANEL_TRAVEL = "005";
 
-const NOT_BUILT = 'Proses tombol ini belum dibangun.'
+const NOT_BUILT = "Proses tombol ini belum dibangun.";
 
-const TABS = ['Register', 'Kuisioner', 'Unggah Dokumen', 'Progress Claim & Komunikasi'] as const
-type Tab = (typeof TABS)[number]
+const TABS = [
+  "Register",
+  "Kuisioner",
+  "Unggah Dokumen",
+  "Progress Claim & Komunikasi",
+] as const;
+type Tab = (typeof TABS)[number];
 
 /**
  * Bingkai tahap Input Register — flow action InputRegister, `Section/InputRegister-sect.xml`:
@@ -29,27 +34,48 @@ type Tab = (typeof TABS)[number]
  * Tab Register memuat formulir `InputRegisterDetail` (FormRegister); tab Kuisioner `QuestionnaireClaim`.
  * Keduanya tetap terpasang saat berpindah tab, supaya isian yang belum disimpan tidak hilang.
  */
-export function InputRegisterFrame({ klaim, tugas, register }: { klaim: Claim; tugas: Task; register: ReactNode }) {
-  const identity = useSession((state) => state.user?.identitas ?? '')
-  const notice = ownerNotice(tugas, identity, true)
-  const travel = klaim.polis.lini === PANEL_TRAVEL
-  const tabs = TABS.filter((t) => !travel || (t !== 'Kuisioner' && t !== 'Unggah Dokumen'))
-  const [tab, setTab] = useState<Tab>('Register')
+export function InputRegisterFrame({
+  klaim,
+  tugas,
+  register,
+}: {
+  klaim: Claim;
+  tugas: Task;
+  register: ReactNode;
+}) {
+  const identity = useSession((state) => state.user?.identitas ?? "");
+  const notice = ownerNotice(tugas, identity, true);
+  const travel = klaim.polis.lini === PANEL_TRAVEL;
+  const tabs = TABS.filter(
+    (t) => !travel || (t !== "Kuisioner" && t !== "Unggah Dokumen"),
+  );
+  const [tab, setTab] = useState<Tab>("Register");
 
   return (
-    <section className="mt-6 rounded border border-slate-200 p-4" aria-label="InputRegister">
+    <section
+      className="mt-6 rounded border border-slate-200 p-4"
+      aria-label="InputRegister"
+    >
       <h2 className="text-sm text-slate-700">InputRegister</h2>
       {notice && (
-        <p className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+        <p
+          className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+          role="status"
+        >
           {notice} Layar ini dapat dibaca, tetapi isiannya tidak dapat disimpan.
         </p>
       )}
 
-      <TabList items={tabs} current={tab} onSelect={setTab} label="Tab InputRegister" />
+      <TabList
+        items={tabs}
+        current={tab}
+        onSelect={setTab}
+        label="Tab InputRegister"
+      />
 
-      <div hidden={tab !== 'Register'}>
+      <div hidden={tab !== "Register"}>
         <div className="mt-3 flex flex-wrap justify-end gap-2">
-          {['Detail Premi', 'Detail Polis', 'Riwayat Klaim'].map((label) => (
+          {["Detail Premi", "Detail Polis", "Riwayat Klaim"].map((label) => (
             <button
               key={label}
               type="button"
@@ -64,12 +90,16 @@ export function InputRegisterFrame({ klaim, tugas, register }: { klaim: Claim; t
         {register}
       </div>
       {!travel && (
-        <div hidden={tab !== 'Kuisioner'}>
+        <div hidden={tab !== "Kuisioner"}>
           <QuestionnaireTab />
         </div>
       )}
-      {tab === 'Unggah Dokumen' && <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />}
-      {tab === 'Progress Claim & Komunikasi' && <ProgressTab claimID={klaim.id} />}
+      {tab === "Unggah Dokumen" && (
+        <DocumentTab claimID={klaim.id} line={klaim.polis.lini} />
+      )}
+      {tab === "Progress Claim & Komunikasi" && (
+        <ProgressTab claimID={klaim.id} />
+      )}
     </section>
-  )
+  );
 }

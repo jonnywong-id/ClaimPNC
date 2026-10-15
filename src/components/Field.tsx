@@ -1,15 +1,15 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
-  id: string
-  label: string
+  id: string;
+  label: string;
   /** Pesan kesalahan validasi; bila terisi, kolom ditandai dan pesannya ditampilkan. */
-  error?: string | undefined
+  error?: string | undefined;
   /** Keterangan singkat di bawah isian. Disembunyikan saat ada pesan galat. */
-  hint?: string | undefined
+  hint?: string | undefined;
   /** Ikon kecil di dalam kolom, sisi kiri. Murni hiasan; label tetap yang menjelaskan. */
-  icon?: ReactNode
-}
+  icon?: ReactNode;
+};
 
 /**
  * Field adalah satu baris isian: label, input, dan pesan kesalahannya.
@@ -39,16 +39,16 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
   ref,
 ) {
   const inputClass = [
-    'w-full rounded-kontrol border bg-white py-2.5 text-sm text-slate-900',
-    icon ? 'pl-10 pr-3' : 'px-3',
-    'placeholder:text-slate-400',
-    'transition-[border-color,box-shadow,background-color] duration-150 ease-halus',
-    'focus:outline-none focus:ring-4',
-    'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
+    "w-full rounded-kontrol border bg-white py-2.5 text-sm text-slate-900",
+    icon ? "pl-10 pr-3" : "px-3",
+    "placeholder:text-slate-400",
+    "transition-[border-color,box-shadow,background-color] duration-150 ease-halus",
+    "focus:outline-none focus:ring-4",
+    "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
     error
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-      : 'border-slate-300 hover:border-slate-400 focus:border-blue-500 focus:ring-blue-500/15',
-  ].join(' ')
+      ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
+      : "border-slate-300 hover:border-slate-400 focus:border-blue-500 focus:ring-blue-500/15",
+  ].join(" ");
 
   return (
     <div>
@@ -61,8 +61,8 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
           <span
             aria-hidden="true"
             className={
-              'pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center ' +
-              (error ? 'text-red-400' : 'text-slate-400')
+              "pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center " +
+              (error ? "text-red-400" : "text-slate-400")
             }
           >
             {icon}
@@ -72,15 +72,20 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
           id={id}
           ref={ref}
           disabled={disabled}
-          aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
+          aria-invalid={error ? "true" : "false"}
+          aria-describedby={
+            error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined
+          }
           className={className ? `${inputClass} ${className}` : inputClass}
           {...rest}
         />
       </div>
 
       {error ? (
-        <p id={`${id}-galat`} className="mt-1.5 flex items-start gap-1.5 text-sm text-red-700">
+        <p
+          id={`${id}-galat`}
+          className="mt-1.5 flex items-start gap-1.5 text-sm text-red-700"
+        >
           <svg
             viewBox="0 0 16 16"
             aria-hidden="true"
@@ -98,5 +103,5 @@ export const Field = forwardRef<HTMLInputElement, Props>(function Field(
         )
       )}
     </div>
-  )
-})
+  );
+});

@@ -1,13 +1,13 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DocumentType } from '@/api/types'
-import { Field } from '@/components/Field'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Button } from '@/components/Button'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type DocumentType } from "@/api/types";
+import { Field } from "@/components/Field";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Button } from "@/components/Button";
 
 /**
  * Skema ini SENGAJA tidak memuat satu pun aturan, dan itu bukan kelalaian.
@@ -34,20 +34,20 @@ import { Button } from '@/components/Button'
 const schema = z.object({
   tipe_dokumen: z.string(),
   status_proses: z.string(),
-})
+});
 
-export type DocumentTypeFields = z.infer<typeof schema>
+export type DocumentTypeFields = z.infer<typeof schema>;
 
 type Props = {
   /** Baris yang disunting; null berarti penambahan baru. */
-  edited: DocumentType | null
-  isSaving: boolean
-  error: unknown
-  onSave: (values: DocumentTypeFields) => void
-  onCancel: () => void
-}
+  edited: DocumentType | null;
+  isSaving: boolean;
+  error: unknown;
+  onSave: (values: DocumentTypeFields) => void;
+  onCancel: () => void;
+};
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Mengubah galat penyimpanan menjadi pesan yang dapat ditindaklanjuti.
@@ -58,43 +58,45 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
 function messageFor(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description:
+        "Isian Anda belum tersimpan. Periksa koneksi jaringan, lalu simpan lagi.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.documentTypeNotFound:
         return {
-          title: 'Tipe dokumen ini sudah tidak ada',
+          title: "Tipe dokumen ini sudah tidak ada",
           description:
-            'Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.',
-          tone: 'penolakan',
-        }
+            "Mungkin sudah diubah petugas lain. Tutup form ini dan muat ulang daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih portal entitas di bagian atas halaman, lalu simpan lagi.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih portal entitas di bagian atas halaman, lalu simpan lagi.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-          tone: 'gangguan',
-        }
+            "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Terjadi kesalahan pada sistem',
-          description: 'Isian Anda belum tersimpan. Coba beberapa saat lagi.',
-          tone: 'gangguan',
-        }
+          title: "Terjadi kesalahan pada sistem",
+          description: "Isian Anda belum tersimpan. Coba beberapa saat lagi.",
+          tone: "gangguan",
+        };
     }
   }
-  return null
+  return null;
 }
 
 /**
@@ -109,27 +111,33 @@ function messageFor(error: unknown): MessageContent | null {
  * `pyEditOptions=Read-only`, procedure penyimpannya memakai ID hanya sebagai penyaring
  * `WHERE`, dan dua master turunan beserta dokumen klaim yang sudah terunggah merujuknya.
  */
-export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: Props) {
-  const editMode = edited !== null
+export function DocumentTypeForm({
+  edited,
+  isSaving,
+  error,
+  onSave,
+  onCancel,
+}: Props) {
+  const editMode = edited !== null;
 
   const { register, handleSubmit, reset } = useForm<DocumentTypeFields>({
     resolver: zodResolver(schema),
     defaultValues: {
-      tipe_dokumen: edited?.tipe_dokumen ?? '',
-      status_proses: edited?.status_proses ?? '',
+      tipe_dokumen: edited?.tipe_dokumen ?? "",
+      status_proses: edited?.status_proses ?? "",
     },
-  })
+  });
 
   // Isian disesuaikan ketika baris yang disunting berganti tanpa form ditutup lebih dulu —
   // misalnya pengguna menekan "Update Data" pada baris lain.
   useEffect(() => {
     reset({
-      tipe_dokumen: edited?.tipe_dokumen ?? '',
-      status_proses: edited?.status_proses ?? '',
-    })
-  }, [edited, reset])
+      tipe_dokumen: edited?.tipe_dokumen ?? "",
+      status_proses: edited?.status_proses ?? "",
+    });
+  }, [edited, reset]);
 
-  const message = messageFor(error)
+  const message = messageFor(error);
 
   /**
    * Judulnya SAMA untuk mode tambah maupun ubah, dan itu meniru Pega apa adanya.
@@ -144,7 +152,7 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
    * membaca teks yang sama persis. Perlakuannya sama dengan Master Dokumen Travel, yang
    * layar tambahnya pun berjudul "Memperbaharui Data".
    */
-  const title = 'Update Data'
+  const title = "Update Data";
 
   return (
     <form
@@ -156,7 +164,11 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
 
       {message && (
-        <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+        <ErrorMessage
+          title={message.title}
+          description={message.description}
+          tone={message.tone}
+        />
       )}
 
       {/* ID hanya ditampilkan saat menyunting, dan tidak dapat diubah. Pada penambahan ia
@@ -166,7 +178,9 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
           <span className="block text-sm font-medium text-slate-700">ID</span>
           <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-slate-600">
             {edited.id}
-            <span className="ml-2 font-sans text-xs text-slate-500">(tidak dapat diubah)</span>
+            <span className="ml-2 font-sans text-xs text-slate-500">
+              (tidak dapat diubah)
+            </span>
           </p>
         </div>
       )}
@@ -187,7 +201,7 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
         type="text"
         autoFocus
         autoComplete="off"
-        {...register('tipe_dokumen')}
+        {...register("tipe_dokumen")}
       />
 
       {/*
@@ -208,7 +222,7 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
         type="text"
         autoComplete="off"
         hint="Catatan bebas, bukan status aktif/non-aktif. Boleh dikosongkan."
-        {...register('status_proses')}
+        {...register("status_proses")}
       />
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
@@ -216,9 +230,9 @@ export function DocumentTypeForm({ edited, isSaving, error, onSave, onCancel }: 
           Batal
         </Button>
         <Button type="submit" tone="utama" disabled={isSaving}>
-          {isSaving ? 'Menyimpan…' : 'Simpan'}
+          {isSaving ? "Menyimpan…" : "Simpan"}
         </Button>
       </div>
     </form>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import {
   toSaveRequest,
@@ -16,9 +16,9 @@ import {
   type SearchForm,
   type SearchResponse,
   type SendResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/arsip-dokumen'
+const PATH = "/api/arsip-dokumen";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -29,12 +29,17 @@ const PATH = '/api/arsip-dokumen'
  */
 const keys = {
   open: (portal: string | null, token: string | null) =>
-    ['arsip-dokumen', 'buka', portal, token] as const,
+    ["arsip-dokumen", "buka", portal, token] as const,
 
-  search: (portal: string | null, token: string | null, form: SearchForm, page: number) =>
+  search: (
+    portal: string | null,
+    token: string | null,
+    form: SearchForm,
+    page: number,
+  ) =>
     [
-      'arsip-dokumen',
-      'cari',
+      "arsip-dokumen",
+      "cari",
       portal,
       token,
       form.tipe_pencarian,
@@ -44,18 +49,25 @@ const keys = {
       page,
     ] as const,
 
-  claims: (portal: string | null, token: string | null, form: ClaimSearchForm) =>
-    ['arsip-dokumen', 'klaim', portal, token, form.tipe, form.nilai] as const,
+  claims: (
+    portal: string | null,
+    token: string | null,
+    form: ClaimSearchForm,
+  ) =>
+    ["arsip-dokumen", "klaim", portal, token, form.tipe, form.nilai] as const,
 
-  fillingCodes: (portal: string | null, token: string | null, keyword: string) =>
-    ['arsip-dokumen', 'kode-filling', portal, token, keyword] as const,
+  fillingCodes: (
+    portal: string | null,
+    token: string | null,
+    keyword: string,
+  ) => ["arsip-dokumen", "kode-filling", portal, token, keyword] as const,
 
   pending: (portal: string | null, token: string | null, page: number) =>
-    ['arsip-dokumen', 'kirim-cabang', portal, token, page] as const,
+    ["arsip-dokumen", "kirim-cabang", portal, token, page] as const,
 
   /** Awalan seluruh kunci modul ini, dipakai saat menyegarkan setelah menulis. */
-  all: ['arsip-dokumen'] as const,
-}
+  all: ["arsip-dokumen"] as const,
+};
 
 /**
  * Hook pembukaan layar — menyiapkan isi dropdown dan cakupan lini bisnis pemanggil.
@@ -65,15 +77,15 @@ const keys = {
  * memori.
  */
 export function useOpenArchive() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.open(portal, token),
     queryFn: () => callAPI<OpenResponse>(`${PATH}/buka`, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 10 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -85,13 +97,18 @@ export function useOpenArchive() {
  * ditutup, selamanya. Menyaringnya di peramban berarti mengirim seluruh isinya ke setiap
  * pencarian.
  */
-export function useArchiveSearch(form: SearchForm, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useArchiveSearch(
+  form: SearchForm,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.search(portal, token, form, page),
-    queryFn: () => callAPI<SearchResponse>(searchPath(form, page), { token, portal }),
+    queryFn: () =>
+      callAPI<SearchResponse>(searchPath(form, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel
@@ -100,13 +117,13 @@ export function useArchiveSearch(form: SearchForm, page: number, enabled: boolea
 
     // Berkas arsip berubah saat petugas lain menyimpan, jadi cache-nya pendek.
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /** Hook pencarian klaim pada bagian Input Data Archive. */
 export function useClaimSearch(form: ClaimSearchForm, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.claims(portal, token, form),
@@ -118,13 +135,13 @@ export function useClaimSearch(form: ClaimSearchForm, enabled: boolean) {
       ),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /** Hook isi pemilih "Pilih Kode". */
 export function useFillingCodes(keyword: string, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.fillingCodes(portal, token, keyword),
@@ -135,22 +152,25 @@ export function useFillingCodes(keyword: string, enabled: boolean) {
       ),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Hook daftar berkas yang belum dikirim ke sistem Arsip. */
 export function usePendingBranch(page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.pending(portal, token, page),
     queryFn: () =>
-      callAPI<PendingResponse>(`${PATH}/kirim-cabang?halaman=${page}`, { token, portal }),
+      callAPI<PendingResponse>(`${PATH}/kirim-cabang?halaman=${page}`, {
+        token,
+        portal,
+      }),
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -161,22 +181,22 @@ export function usePendingBranch(page: number, enabled: boolean) {
  * — yang kedua karena kodenya disusun dari pemakaian yang sudah ada.
  */
 export function useSaveArchive() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (form: ArchiveForm) =>
       callAPI<SaveResponse>(PATH, {
-        metode: 'POST',
+        metode: "POST",
         body: toSaveRequest(form),
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all });
     },
-  })
+  });
 }
 
 /**
@@ -187,22 +207,22 @@ export function useSaveArchive() {
  * hanyalah pemeriksaan status, yang baru berlaku setelah pengiriman pertama tercatat.
  */
 export function useSendToBranch() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (id: number) =>
       callAPI<SendResponse>(`${PATH}/${id}/kirim-cabang`, {
-        metode: 'POST',
+        metode: "POST",
         token,
         portal,
       }),
     retry: false,
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: keys.all })
+      client.invalidateQueries({ queryKey: keys.all });
     },
-  })
+  });
 }
 
 /**
@@ -220,29 +240,31 @@ export function useSendToBranch() {
  * langsung, dan alasannya disebut supaya tidak ditiru tanpa sebab.
  */
 export function useExportArchive() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (form: SearchForm) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const response = await fetch(`${PATH}/ekspor?${exportParams(form)}`, { headers: header })
+      const response = await fetch(`${PATH}/ekspor?${exportParams(form)}`, {
+        headers: header,
+      });
 
       if (!response.ok) {
         // Galat dijawab sebagai JSON — header CSV baru dikirim setelah potongan pertama
         // berhasil dibaca. Pesannya dipakai apa adanya supaya penolakan portal dan
         // validasi tetap terbaca pengguna.
-        const body = await response.json().catch(() => null)
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      return { blob: await response.blob(), filename: filenameOf(response) }
+      return { blob: await response.blob(), filename: filenameOf(response) };
     },
     retry: false,
-  })
+  });
 }
 
 /**
@@ -252,14 +274,14 @@ export function useExportArchive() {
  * bukan nama kosong yang membuat peramban menyimpannya sebagai "download".
  */
 function filenameOf(response: Response): string {
-  const header = response.headers.get('Content-Disposition') ?? ''
-  const match = header.match(/filename="([^"]+)"/)
-  return match?.[1] ?? 'archive-dokumen-klaim.csv'
+  const header = response.headers.get("Content-Disposition") ?? "";
+  const match = header.match(/filename="([^"]+)"/);
+  return match?.[1] ?? "archive-dokumen-klaim.csv";
 }
 
 /** exportParams menyusun penyaring ekspor — sama persis dengan daftar yang tampil. */
 function exportParams(form: SearchForm): string {
-  return searchParams(form).toString()
+  return searchParams(form).toString();
 }
 
 /**
@@ -270,9 +292,9 @@ function exportParams(form: SearchForm): string {
  * hasilnya sama — dan satu perjalanan jaringan tambahan setiap kali mode berganti.
  */
 function searchPath(form: SearchForm, page: number): string {
-  const params = searchParams(form)
-  if (page > 1) params.set('halaman', String(page))
-  return `${PATH}?${params.toString()}`
+  const params = searchParams(form);
+  if (page > 1) params.set("halaman", String(page));
+  return `${PATH}?${params.toString()}`;
 }
 
 /**
@@ -283,14 +305,14 @@ function searchPath(form: SearchForm, page: number): string {
  * dipakai" dari "dipakai dengan nilai kosong".
  */
 function searchParams(form: SearchForm): URLSearchParams {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
   if (form.kata_kunci.trim()) {
-    params.set('tipe_pencarian', form.tipe_pencarian)
-    params.set('kata_kunci', form.kata_kunci.trim())
+    params.set("tipe_pencarian", form.tipe_pencarian);
+    params.set("kata_kunci", form.kata_kunci.trim());
   }
-  if (form.tanggal_dari) params.set('tanggal_dari', form.tanggal_dari)
-  if (form.tanggal_sampai) params.set('tanggal_sampai', form.tanggal_sampai)
+  if (form.tanggal_dari) params.set("tanggal_dari", form.tanggal_dari);
+  if (form.tanggal_sampai) params.set("tanggal_sampai", form.tanggal_sampai);
 
-  return params
+  return params;
 }

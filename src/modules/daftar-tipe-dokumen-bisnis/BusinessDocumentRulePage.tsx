@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   ErrorCode,
   type BusinessChoice,
   type BusinessDocumentRuleInput,
   type BusinessDocumentRuleRowInput,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { useSelectedPortal } from '@/app/portal'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useAddBusinessDocumentRuleCoverage,
@@ -23,11 +23,11 @@ import {
   useDocumentTypeChoiceList,
   useObjectDocumentChoiceList,
   useSaveBusinessDocumentRules,
-} from './api'
-import { BusinessDocumentRuleCreateForm } from './BusinessDocumentRuleCreateForm'
-import { BusinessDocumentRuleEditForm } from './BusinessDocumentRuleEditForm'
+} from "./api";
+import { BusinessDocumentRuleCreateForm } from "./BusinessDocumentRuleCreateForm";
+import { BusinessDocumentRuleEditForm } from "./BusinessDocumentRuleEditForm";
 
-const CLOSED = 'closed'
+const CLOSED = "closed";
 
 /**
  * Bentuk layar yang sedang terbuka.
@@ -37,44 +37,49 @@ const CLOSED = 'closed'
  */
 type FormState =
   | typeof CLOSED
-  | { mode: 'tambah' }
-  | { mode: 'ubah'; businessID: string; businessName: string }
-  | { mode: 'copy'; businessID: string }
+  | { mode: "tambah" }
+  | { mode: "ubah"; businessID: string; businessName: string }
+  | { mode: "copy"; businessID: string };
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa sambungan jaringan, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa sambungan jaringan, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
-          description: 'Pilih entitas di bagian atas layar untuk melihat daftarnya.',
-          tone: 'penolakan',
-        }
+          title: "Portal entitas belum dipilih",
+          description:
+            "Pilih entitas di bagian atas layar untuk melihat daftarnya.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
-          description: 'Hubungi tim infrastruktur bila keadaan ini berlanjut.',
-          tone: 'gangguan',
-        }
+          title: "Basis data entitas ini belum tersedia",
+          description: "Hubungi tim infrastruktur bila keadaan ini berlanjut.",
+          tone: "gangguan",
+        };
       default:
-        return { title: 'Daftar tidak dapat dimuat', description: error.message, tone: 'gangguan' }
+        return {
+          title: "Daftar tidak dapat dimuat",
+          description: error.message,
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Muat ulang halaman ini.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tidak dapat dimuat",
+    description: "Muat ulang halaman ini.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -109,79 +114,94 @@ function loadMessage(error: unknown): MessageContent {
  * karena tidak ada satu pun jalur hapus terhadap tabelnya di seluruh sistem lama.
  */
 export function BusinessDocumentRulePage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const [form, setForm] = useState<FormState>(CLOSED)
-  const [coverageRuleID, setCoverageRuleID] = useState<string | null>(null)
-  const [coverageDraft, setCoverageDraft] = useState('')
+  const [form, setForm] = useState<FormState>(CLOSED);
+  const [coverageRuleID, setCoverageRuleID] = useState<string | null>(null);
+  const [coverageDraft, setCoverageDraft] = useState("");
 
-  const businesses = useBusinessList()
+  const businesses = useBusinessList();
 
   // Baris dimuat untuk Ubah maupun Copy — keduanya memerlukan isi bisnis yang sama, dan
   // bedanya hanya pada apa yang dilakukan terhadapnya.
-  const loadedBusiness = form !== CLOSED && 'businessID' in form ? form.businessID : null
-  const rules = useBusinessDocumentRuleList(loadedBusiness)
+  const loadedBusiness =
+    form !== CLOSED && "businessID" in form ? form.businessID : null;
+  const rules = useBusinessDocumentRuleList(loadedBusiness);
 
-  const businessChoices = useBusinessChoiceList()
-  const documentTypes = useDocumentTypeChoiceList()
-  const detailDocuments = useDetailDocumentChoiceList()
-  const objectDocuments = useObjectDocumentChoiceList()
+  const businessChoices = useBusinessChoiceList();
+  const documentTypes = useDocumentTypeChoiceList();
+  const detailDocuments = useDetailDocumentChoiceList();
+  const objectDocuments = useObjectDocumentChoiceList();
 
-  const coverageRule = useBusinessDocumentRule(coverageRuleID)
+  const coverageRule = useBusinessDocumentRule(coverageRuleID);
 
-  const create = useCreateBusinessDocumentRule()
-  const save = useSaveBusinessDocumentRules()
-  const addCoverage = useAddBusinessDocumentRuleCoverage()
+  const create = useCreateBusinessDocumentRule();
+  const save = useSaveBusinessDocumentRules();
+  const addCoverage = useAddBusinessDocumentRuleCoverage();
 
   function closeForm() {
-    create.reset()
-    save.reset()
-    addCoverage.reset()
-    setCoverageDraft('')
-    setCoverageRuleID(null)
-    setForm(CLOSED)
+    create.reset();
+    save.reset();
+    addCoverage.reset();
+    setCoverageDraft("");
+    setCoverageRuleID(null);
+    setForm(CLOSED);
   }
 
   function open(next: FormState) {
-    create.reset()
-    save.reset()
-    addCoverage.reset()
-    setCoverageDraft('')
-    setCoverageRuleID(null)
-    setForm(next)
+    create.reset();
+    save.reset();
+    addCoverage.reset();
+    setCoverageDraft("");
+    setCoverageRuleID(null);
+    setForm(next);
   }
 
-  function saveCreate(businessIDs: string[], draft: BusinessDocumentRuleInput[]) {
-    create.mutate({ bisnis: businessIDs, dokumen: draft }, { onSuccess: closeForm })
+  function saveCreate(
+    businessIDs: string[],
+    draft: BusinessDocumentRuleInput[],
+  ) {
+    create.mutate(
+      { bisnis: businessIDs, dokumen: draft },
+      { onSuccess: closeForm },
+    );
   }
 
   function saveEdit(rows: BusinessDocumentRuleRowInput[]) {
-    if (form === CLOSED || form.mode !== 'ubah') return
-    save.mutate({ businessID: form.businessID, rows }, { onSuccess: closeForm })
+    if (form === CLOSED || form.mode !== "ubah") return;
+    save.mutate(
+      { businessID: form.businessID, rows },
+      { onSuccess: closeForm },
+    );
   }
 
   const businessColumns: Column<BusinessChoice>[] = [
-    { key: 'id', title: 'ID', width: 'w-28', value: (row) => row.id },
+    { key: "id", title: "ID", width: "w-28", value: (row) => row.id },
     {
-      key: 'nama_bisnis',
-      title: 'Nama Bisnis',
+      key: "nama_bisnis",
+      title: "Nama Bisnis",
       value: (row) => row.nama_bisnis,
-      render: (row) => row.nama_bisnis || <span className="text-slate-400">(tanpa nama)</span>,
+      render: (row) =>
+        row.nama_bisnis || <span className="text-slate-400">(tanpa nama)</span>,
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: 'w-44',
+      key: "aksi",
+      title: "Aksi",
+      width: "w-44",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <div className="flex flex-wrap justify-end gap-1">
           <Button
             tone="kedua"
             disabled={form !== CLOSED}
             onClick={() =>
-              open({ mode: 'ubah', businessID: row.id, businessName: row.nama_bisnis })
+              open({
+                mode: "ubah",
+                businessID: row.id,
+                businessName: row.nama_bisnis,
+              })
             }
             aria-label={`Ubah dokumen bisnis ${row.nama_bisnis || row.id}`}
           >
@@ -195,7 +215,7 @@ export function BusinessDocumentRulePage() {
           <Button
             tone="kedua"
             disabled={form !== CLOSED}
-            onClick={() => open({ mode: 'copy', businessID: row.id })}
+            onClick={() => open({ mode: "copy", businessID: row.id })}
             aria-label={`Copy dokumen bisnis ${row.nama_bisnis || row.id}`}
           >
             Copy
@@ -203,18 +223,22 @@ export function BusinessDocumentRulePage() {
         </div>
       ),
     },
-  ]
+  ];
 
   // Baris sedang dimuat untuk Ubah atau Copy — keduanya menunggu data yang sama.
   const waitingForRules =
-    form !== CLOSED && 'businessID' in form && (rules.isPending || rules.isError)
+    form !== CLOSED &&
+    "businessID" in form &&
+    (rules.isPending || rules.isError);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           {/* Judulnya ditiru dari `DetTypeDocumenBisnis_Portal-Section.xml` apa adanya. */}
-          <h1 className="text-xl font-semibold text-slate-900">Detail Tipe Dokumen Bisnis</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Detail Tipe Dokumen Bisnis
+          </h1>
           <p className="text-sm text-slate-600">
             Dokumen yang harus diunggah, per lini bisnis dan per tahap klaim.
           </p>
@@ -223,23 +247,27 @@ export function BusinessDocumentRulePage() {
           <Button
             tone="kedua"
             onClick={() => {
-              businesses.refetch()
-              if (loadedBusiness !== null) rules.refetch()
+              businesses.refetch();
+              if (loadedBusiness !== null) rules.refetch();
             }}
             disabled={businesses.isFetching}
           >
-            {businesses.isFetching ? 'Memuat…' : 'Refresh'}
+            {businesses.isFetching ? "Memuat…" : "Refresh"}
           </Button>
-          <Button tone="utama" onClick={() => open({ mode: 'tambah' })} disabled={form !== CLOSED}>
+          <Button
+            tone="utama"
+            onClick={() => open({ mode: "tambah" })}
+            disabled={form !== CLOSED}
+          >
             Tambah
           </Button>
         </div>
       </header>
 
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
+        Portal entitas:{" "}
         <span className="font-medium text-slate-700">
-          {businesses.data?.portal ?? portal ?? '—'}
+          {businesses.data?.portal ?? portal ?? "—"}
         </span>
       </p>
 
@@ -247,14 +275,14 @@ export function BusinessDocumentRulePage() {
         <section className="mt-5">
           {rules.isError ? (
             (() => {
-              const message = loadMessage(rules.error)
+              const message = loadMessage(rules.error);
               return (
                 <ErrorMessage
                   title={message.title}
                   description={message.description}
                   tone={message.tone}
                 />
-              )
+              );
             })()
           ) : (
             <p className="text-sm text-slate-500">Memuat dokumen…</p>
@@ -262,7 +290,7 @@ export function BusinessDocumentRulePage() {
         </section>
       )}
 
-      {form !== CLOSED && form.mode === 'tambah' && (
+      {form !== CLOSED && form.mode === "tambah" && (
         <section className="mt-5">
           <BusinessDocumentRuleCreateForm
             businesses={businessChoices.data?.bisnis ?? []}
@@ -278,7 +306,7 @@ export function BusinessDocumentRulePage() {
         </section>
       )}
 
-      {form !== CLOSED && form.mode === 'copy' && rules.data !== undefined && (
+      {form !== CLOSED && form.mode === "copy" && rules.data !== undefined && (
         <section className="mt-5">
           {/*
             `key` memaksa form dibentuk ulang saat bisnis asal berganti. Tanpa itu, baris
@@ -308,7 +336,7 @@ export function BusinessDocumentRulePage() {
         </section>
       )}
 
-      {form !== CLOSED && form.mode === 'ubah' && rules.data !== undefined && (
+      {form !== CLOSED && form.mode === "ubah" && rules.data !== undefined && (
         <section className="mt-5 space-y-4">
           <BusinessDocumentRuleEditForm
             key={`ubah-${form.businessID}`}
@@ -323,9 +351,11 @@ export function BusinessDocumentRulePage() {
             onSave={saveEdit}
             onCancel={closeForm}
             onOpenCoverage={(ruleID) => {
-              addCoverage.reset()
-              setCoverageDraft('')
-              setCoverageRuleID((current) => (current === ruleID ? null : ruleID))
+              addCoverage.reset();
+              setCoverageDraft("");
+              setCoverageRuleID((current) =>
+                current === ruleID ? null : ruleID,
+              );
             }}
           />
 
@@ -340,21 +370,24 @@ export function BusinessDocumentRulePage() {
           {coverageRuleID !== null && (
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-slate-900">
-                Jenis Klaim{' '}
+                Jenis Klaim{" "}
                 <span className="font-mono text-sm font-normal text-slate-500">
                   baris {coverageRuleID}
                 </span>
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Jaminan yang membuat dokumen ini benar-benar wajib saat klaim diregistrasi. Selama
-                daftar ini kosong, dokumen tetap terbaca tidak wajib meski ditandai wajib di atas.
+                Jaminan yang membuat dokumen ini benar-benar wajib saat klaim
+                diregistrasi. Selama daftar ini kosong, dokumen tetap terbaca
+                tidak wajib meski ditandai wajib di atas.
               </p>
 
               {coverageRule.isPending ? (
-                <p className="mt-3 text-sm text-slate-500">Memuat jenis klaim…</p>
+                <p className="mt-3 text-sm text-slate-500">
+                  Memuat jenis klaim…
+                </p>
               ) : coverageRule.isError ? (
                 (() => {
-                  const message = loadMessage(coverageRule.error)
+                  const message = loadMessage(coverageRule.error);
                   return (
                     <div className="mt-3">
                       <ErrorMessage
@@ -363,28 +396,35 @@ export function BusinessDocumentRulePage() {
                         tone={message.tone}
                       />
                     </div>
-                  )
+                  );
                 })()
               ) : (
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {coverageRule.data.tipe_dokumen_bisnis.jenis_klaim.length === 0 ? (
-                    <li className="text-sm text-slate-400">Belum ada jenis klaim.</li>
+                  {coverageRule.data.tipe_dokumen_bisnis.jenis_klaim.length ===
+                  0 ? (
+                    <li className="text-sm text-slate-400">
+                      Belum ada jenis klaim.
+                    </li>
                   ) : (
-                    coverageRule.data.tipe_dokumen_bisnis.jenis_klaim.map((coverage) => (
-                      <li
-                        key={coverage}
-                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-sm text-slate-700"
-                      >
-                        {coverage}
-                      </li>
-                    ))
+                    coverageRule.data.tipe_dokumen_bisnis.jenis_klaim.map(
+                      (coverage) => (
+                        <li
+                          key={coverage}
+                          className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-sm text-slate-700"
+                        >
+                          {coverage}
+                        </li>
+                      ),
+                    )
                   )}
                 </ul>
               )}
 
               <div className="mt-4 flex flex-wrap items-end gap-2">
                 <label className="text-sm">
-                  <span className="block font-medium text-slate-700">Kode Jenis Klaim</span>
+                  <span className="block font-medium text-slate-700">
+                    Kode Jenis Klaim
+                  </span>
                   <input
                     type="text"
                     autoComplete="off"
@@ -405,22 +445,22 @@ export function BusinessDocumentRulePage() {
                   onClick={() =>
                     addCoverage.mutate(
                       { id: coverageRuleID, coverageID: coverageDraft },
-                      { onSuccess: () => setCoverageDraft('') },
+                      { onSuccess: () => setCoverageDraft("") },
                     )
                   }
                 >
-                  {addCoverage.isPending ? 'Menambah…' : 'Tambah'}
+                  {addCoverage.isPending ? "Menambah…" : "Tambah"}
                 </Button>
               </div>
 
               <p className="mt-2 text-xs text-slate-500">
-                Jenis klaim hanya dapat ditambahkan, tidak dapat dibuang — sistem lama pun tidak
-                punya jalur menghapusnya.
+                Jenis klaim hanya dapat ditambahkan, tidak dapat dibuang —
+                sistem lama pun tidak punya jalur menghapusnya.
               </p>
 
               {addCoverage.error !== null &&
                 (() => {
-                  const message = loadMessage(addCoverage.error)
+                  const message = loadMessage(addCoverage.error);
                   return (
                     <div className="mt-3">
                       <ErrorMessage
@@ -429,7 +469,7 @@ export function BusinessDocumentRulePage() {
                         tone={message.tone}
                       />
                     </div>
-                  )
+                  );
                 })()}
             </section>
           )}
@@ -447,14 +487,14 @@ export function BusinessDocumentRulePage() {
           <p className="text-sm text-slate-500">Memuat daftar bisnis…</p>
         ) : businesses.isError ? (
           (() => {
-            const message = loadMessage(businesses.error)
+            const message = loadMessage(businesses.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -481,5 +521,5 @@ export function BusinessDocumentRulePage() {
         )}
       </section>
     </main>
-  )
+  );
 }

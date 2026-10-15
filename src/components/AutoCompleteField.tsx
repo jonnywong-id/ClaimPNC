@@ -1,14 +1,14 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from "react";
 
 /** Satu baris pilihan: nama yang dibaca orang, dan penunjuk yang disimpan diam-diam. */
 export type AutoCompleteChoice = {
-  id: string
-  nama: string
-}
+  id: string;
+  nama: string;
+};
 
 type Props = {
-  id: string
-  label: string
+  id: string;
+  label: string;
 
   /**
    * Seluruh pilihan, APA ADANYA — termasuk dua baris yang namanya sama.
@@ -17,10 +17,10 @@ type Props = {
    * "KANTOR" yang penunjuknya berbeda. Membuangnya akan membuat salah satunya tidak
    * pernah dapat dipilih.
    */
-  choices: AutoCompleteChoice[]
+  choices: AutoCompleteChoice[];
 
   /** Nama yang sedang tertulis di kolom. Boleh di luar daftar. */
-  value: string
+  value: string;
 
   /**
    * Dipanggil setiap kali isinya berubah — baik karena dipilih dari daftar maupun
@@ -30,16 +30,16 @@ type Props = {
    * bebas ia `undefined`, dan pemanggil WAJIB mengosongkan penunjuknya: penunjuk lama
    * yang melekat pada nama baru akan menyimpan pasangan yang tidak cocok.
    */
-  onPick: (nama: string, choice: AutoCompleteChoice | undefined) => void
+  onPick: (nama: string, choice: AutoCompleteChoice | undefined) => void;
 
-  error?: string | undefined
-  hint?: string | undefined
-  required?: boolean
-  disabled?: boolean
+  error?: string | undefined;
+  hint?: string | undefined;
+  required?: boolean;
+  disabled?: boolean;
 
   /** Teks saat tidak satu pun pilihan cocok. */
-  emptyText?: string
-}
+  emptyText?: string;
+};
 
 /**
  * AutoCompleteField adalah padanan `pxAutoComplete` Pega: kolom teks yang membuka
@@ -78,112 +78,113 @@ export function AutoCompleteField({
   hint,
   required,
   disabled,
-  emptyText = 'Tidak ada pilihan yang cocok. Nama boleh diketik langsung.',
+  emptyText = "Tidak ada pilihan yang cocok. Nama boleh diketik langsung.",
 }: Props) {
-  const listID = `${useId()}-daftar`
+  const listID = `${useId()}-daftar`;
 
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   // Baris yang sedang disorot papan ketik. `-1` berarti belum ada yang disorot — Enter
   // pada keadaan itu tidak memilih apa pun.
-  const [sorot, setSorot] = useState(-1)
+  const [sorot, setSorot] = useState(-1);
 
   // Menyaring daftar hanya MASUK AKAL setelah orang mengetik.
   //
   // Tanpa pembeda ini, membuka kembali kolom yang sudah terisi akan menyaring daftarnya
   // dengan nama yang sudah dipilih — menyisakan satu baris, dan menutup jalan untuk
   // berpindah ke pilihan lain tanpa menghapus isinya lebih dulu.
-  const [menyaring, setMenyaring] = useState(false)
+  const [menyaring, setMenyaring] = useState(false);
 
-  const kotak = useRef<HTMLDivElement>(null)
-  const daftar = useRef<HTMLUListElement>(null)
+  const kotak = useRef<HTMLDivElement>(null);
+  const daftar = useRef<HTMLUListElement>(null);
 
-  const kueri = value.trim().toLowerCase()
+  const kueri = value.trim().toLowerCase();
   const tampil =
-    menyaring && kueri !== ''
+    menyaring && kueri !== ""
       ? choices.filter((choice) => choice.nama.toLowerCase().includes(kueri))
-      : choices
+      : choices;
 
   // Sorot dikembalikan ke awal setiap kali isi daftarnya berubah: nomor baris ketiga
   // pada daftar lama menunjuk baris yang sama sekali lain pada daftar yang baru disaring.
   useEffect(() => {
-    setSorot(-1)
-  }, [kueri, menyaring, choices])
+    setSorot(-1);
+  }, [kueri, menyaring, choices]);
 
   // Baris yang disorot digulirkan ke dalam pandangan.
   //
   // Daftarnya bergulir sendiri saat pilihannya banyak, dan tanpa ini menekan panah bawah
   // berulang kali menyorot baris yang sudah berada di luar layar.
   useEffect(() => {
-    if (!open || sorot < 0) return
-    const baris = daftar.current?.children[sorot]
-    if (baris instanceof HTMLElement) baris.scrollIntoView({ block: 'nearest' })
-  }, [open, sorot])
+    if (!open || sorot < 0) return;
+    const baris = daftar.current?.children[sorot];
+    if (baris instanceof HTMLElement)
+      baris.scrollIntoView({ block: "nearest" });
+  }, [open, sorot]);
 
   function buka() {
-    if (disabled) return
-    setMenyaring(false)
-    setOpen(true)
+    if (disabled) return;
+    setMenyaring(false);
+    setOpen(true);
   }
 
   function pilih(choice: AutoCompleteChoice) {
-    onPick(choice.nama, choice)
-    setMenyaring(false)
-    setOpen(false)
-    setSorot(-1)
+    onPick(choice.nama, choice);
+    setMenyaring(false);
+    setOpen(false);
+    setSorot(-1);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault()
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
       if (!open) {
-        buka()
-        return
+        buka();
+        return;
       }
-      if (tampil.length === 0) return
+      if (tampil.length === 0) return;
 
-      const arah = event.key === 'ArrowDown' ? 1 : -1
+      const arah = event.key === "ArrowDown" ? 1 : -1;
       setSorot((kini) => {
-        const berikut = kini + arah
-        if (berikut < 0) return tampil.length - 1
-        if (berikut >= tampil.length) return 0
-        return berikut
-      })
-      return
+        const berikut = kini + arah;
+        if (berikut < 0) return tampil.length - 1;
+        if (berikut >= tampil.length) return 0;
+        return berikut;
+      });
+      return;
     }
 
-    if (event.key === 'Enter') {
+    if (event.key === "Enter") {
       // Enter MEMILIH, dan tidak mengirim form.
       //
       // Tanpa `preventDefault`, menekan Enter untuk memilih objek akan sekaligus
       // mengirim pengajuan yang isian lainnya belum terisi.
       if (open && sorot >= 0 && tampil[sorot] !== undefined) {
-        event.preventDefault()
-        pilih(tampil[sorot])
+        event.preventDefault();
+        pilih(tampil[sorot]);
       }
-      return
+      return;
     }
 
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       if (open) {
-        event.preventDefault()
-        setOpen(false)
-        setSorot(-1)
+        event.preventDefault();
+        setOpen(false);
+        setSorot(-1);
       }
-      return
+      return;
     }
 
-    if (event.key === 'Tab') setOpen(false)
+    if (event.key === "Tab") setOpen(false);
   }
 
   const kelasInput =
-    'mt-1 w-full rounded-kontrol border bg-white px-3 py-2 text-slate-900 shadow-lembut ' +
-    'transition-[border-color,box-shadow] duration-150 ease-halus ' +
-    'focus:outline-none focus-visible:ring-4 ' +
-    'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ' +
+    "mt-1 w-full rounded-kontrol border bg-white px-3 py-2 text-slate-900 shadow-lembut " +
+    "transition-[border-color,box-shadow] duration-150 ease-halus " +
+    "focus:outline-none focus-visible:ring-4 " +
+    "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 " +
     (error
-      ? 'border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/25'
-      : 'border-slate-300 focus-visible:border-blue-500 focus-visible:ring-blue-500/25')
+      ? "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/25"
+      : "border-slate-300 focus-visible:border-blue-500 focus-visible:ring-blue-500/25");
 
   return (
     <div
@@ -192,9 +193,9 @@ export function AutoCompleteField({
       // Daftar ditutup ketika fokus benar-benar MENINGGALKAN kotak ini — bukan sekadar
       // berpindah dari input ke salah satu barisnya.
       onBlur={(event) => {
-        if (kotak.current?.contains(event.relatedTarget as Node | null)) return
-        setOpen(false)
-        setSorot(-1)
+        if (kotak.current?.contains(event.relatedTarget as Node | null)) return;
+        setOpen(false);
+        setSorot(-1);
       }}
     >
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
@@ -208,9 +209,13 @@ export function AutoCompleteField({
         aria-expanded={open}
         aria-controls={listID}
         aria-autocomplete="list"
-        aria-activedescendant={open && sorot >= 0 ? `${listID}-${sorot}` : undefined}
+        aria-activedescendant={
+          open && sorot >= 0 ? `${listID}-${sorot}` : undefined
+        }
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined}
+        aria-describedby={
+          error ? `${id}-galat` : hint ? `${id}-petunjuk` : undefined
+        }
         // autoComplete dimatikan supaya saran peramban dari riwayat pengisian tidak
         // bercampur dengan daftar bisnis yang sesungguhnya.
         autoComplete="off"
@@ -218,19 +223,20 @@ export function AutoCompleteField({
         disabled={disabled}
         value={value}
         onChange={(event) => {
-          const diketik = event.target.value
-          setMenyaring(true)
-          setOpen(true)
+          const diketik = event.target.value;
+          setMenyaring(true);
+          setOpen(true);
 
           // Nama yang persis sama dengan sebuah baris tetap membawa penunjuknya, supaya
           // mengetik lengkap tanpa mengklik daftarnya tidak kehilangan penunjuk itu.
           const sama = choices.filter(
-            (choice) => choice.nama.toLowerCase() === diketik.trim().toLowerCase(),
-          )
+            (choice) =>
+              choice.nama.toLowerCase() === diketik.trim().toLowerCase(),
+          );
 
           // Hanya bila JAWABANNYA TUNGGAL. Dua objek bernama sama tidak dapat dibedakan
           // dari ketikan, dan menebak salah satunya akan menyimpan penunjuk yang keliru.
-          onPick(diketik, sama.length === 1 ? sama[0] : undefined)
+          onPick(diketik, sama.length === 1 ? sama[0] : undefined);
         }}
         onFocus={buka}
         onMouseDown={buka}
@@ -264,11 +270,13 @@ export function AutoCompleteField({
                 onClick={() => pilih(choice)}
                 onMouseEnter={() => setSorot(index)}
                 className={
-                  'cursor-pointer px-3 py-2 text-sm ' +
-                  (index === sorot ? 'bg-blue-50 text-blue-900' : 'text-slate-900')
+                  "cursor-pointer px-3 py-2 text-sm " +
+                  (index === sorot
+                    ? "bg-blue-50 text-blue-900"
+                    : "text-slate-900")
                 }
               >
-                {choice.nama === '' ? (
+                {choice.nama === "" ? (
                   <span className="text-slate-400 italic">(tanpa nama)</span>
                 ) : (
                   choice.nama
@@ -281,8 +289,10 @@ export function AutoCompleteField({
                   lama keduanya tergambar serupa, dan petugas tidak punya cara mengetahui
                   mana yang baru saja dipilihnya.
                 */}
-                {choice.id !== '' && (
-                  <span className="ml-2 text-xs text-slate-500">{choice.id}</span>
+                {choice.id !== "" && (
+                  <span className="ml-2 text-xs text-slate-500">
+                    {choice.id}
+                  </span>
                 )}
               </li>
             ))
@@ -291,7 +301,11 @@ export function AutoCompleteField({
       )}
 
       {error ? (
-        <p id={`${id}-galat`} className="mt-1 text-sm text-red-600" role="alert">
+        <p
+          id={`${id}-galat`}
+          className="mt-1 text-sm text-red-600"
+          role="alert"
+        >
           {error}
         </p>
       ) : hint ? (
@@ -300,5 +314,5 @@ export function AutoCompleteField({
         </p>
       ) : null}
     </div>
-  )
+  );
 }

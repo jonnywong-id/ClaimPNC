@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
-import { ReloadIcon } from '@/components/Icon'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
+import { ReloadIcon } from "@/components/Icon";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import {
   PAGE_SIZE,
@@ -15,9 +15,9 @@ import {
   useAjukanPermintaan,
   useDaftarKlaimTutup,
   usePenyaringKlaimTutup,
-} from './api'
-import { RequestDialog } from './RequestDialog'
-import type { JenisPermintaan, KlaimTutup, PenyaringKlaimTutup } from './types'
+} from "./api";
+import { RequestDialog } from "./RequestDialog";
+import type { JenisPermintaan, KlaimTutup, PenyaringKlaimTutup } from "./types";
 
 /**
  * Layar Inbox Close Claim.
@@ -59,19 +59,22 @@ import type { JenisPermintaan, KlaimTutup, PenyaringKlaimTutup } from './types'
  * ke butir `P-5` untuk uji kesetaraan gerbang 1 (`D-54`).
  */
 export function CloseClaimPage() {
-  const [cari, setCari] = useState('')
-  const [noPolis, setNoPolis] = useState('')
-  const [noKlaim, setNoKlaim] = useState('')
-  const [pic, setPIC] = useState('')
-  const [lini, setLini] = useState('')
-  const [statusTransfer, setStatusTransfer] = useState('')
-  const [statusBayar, setStatusBayar] = useState('')
-  const [lewati, setLewati] = useState(0)
+  const [cari, setCari] = useState("");
+  const [noPolis, setNoPolis] = useState("");
+  const [noKlaim, setNoKlaim] = useState("");
+  const [pic, setPIC] = useState("");
+  const [lini, setLini] = useState("");
+  const [statusTransfer, setStatusTransfer] = useState("");
+  const [statusBayar, setStatusBayar] = useState("");
+  const [lewati, setLewati] = useState(0);
 
-  const [dialog, setDialog] = useState<{ jenis: JenisPermintaan; klaim: KlaimTutup } | null>(null)
-  const [kabar, setKabar] = useState<string | null>(null)
-  const [galatUnduh, setGalatUnduh] = useState<string | null>(null)
-  const [sedangUnduh, setSedangUnduh] = useState(false)
+  const [dialog, setDialog] = useState<{
+    jenis: JenisPermintaan;
+    klaim: KlaimTutup;
+  } | null>(null);
+  const [kabar, setKabar] = useState<string | null>(null);
+  const [galatUnduh, setGalatUnduh] = useState<string | null>(null);
+  const [sedangUnduh, setSedangUnduh] = useState(false);
 
   const filter: PenyaringKlaimTutup = {
     cari,
@@ -82,17 +85,17 @@ export function CloseClaimPage() {
     status_transfer: statusTransfer,
     status_bayar: statusBayar,
     lewati,
-  }
+  };
 
-  const daftar = useDaftarKlaimTutup(filter)
-  const penyaring = usePenyaringKlaimTutup()
-  const ajukan = useAjukanPermintaan()
+  const daftar = useDaftarKlaimTutup(filter);
+  const penyaring = usePenyaringKlaimTutup();
+  const ajukan = useAjukanPermintaan();
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const token = useSession((state) => state.token)
+  const portal = useSelectedPortal((state) => state.alias);
+  const token = useSession((state) => state.token);
 
-  const rows = daftar.data?.klaim ?? []
-  const total = daftar.data?.total ?? 0
+  const rows = daftar.data?.klaim ?? [];
+  const total = daftar.data?.total ?? 0;
 
   /**
    * Kewenangan mengajukan datang dari SERVER, tidak pernah disimpulkan di layar.
@@ -102,7 +105,7 @@ export function CloseClaimPage() {
    * lalu berubah, dan pengguna yang menekannya tepat pada saat itu menerima galat yang tidak
    * dapat ia jelaskan.
    */
-  const bolehMengajukan = daftar.data?.boleh_mengajukan === true
+  const bolehMengajukan = daftar.data?.boleh_mengajukan === true;
 
   /**
    * Setiap perubahan penyaring mengembalikan halaman ke awal.
@@ -112,37 +115,37 @@ export function CloseClaimPage() {
    */
   function ubah(setter: (value: string) => void) {
     return (value: string) => {
-      setter(value)
-      setLewati(0)
-    }
+      setter(value);
+      setLewati(0);
+    };
   }
 
   async function unduh() {
-    if (token === null || portal === null) return
+    if (token === null || portal === null) return;
 
-    setSedangUnduh(true)
-    setGalatUnduh(null)
+    setSedangUnduh(true);
+    setGalatUnduh(null);
     try {
-      await unduhKlaimTutupCSV(filter, token, portal)
+      await unduhKlaimTutupCSV(filter, token, portal);
     } catch (failure) {
-      setGalatUnduh(pesanGalat(failure))
+      setGalatUnduh(pesanGalat(failure));
     } finally {
-      setSedangUnduh(false)
+      setSedangUnduh(false);
     }
   }
 
   function kirimPermintaan(alasan: string) {
-    if (dialog === null) return
+    if (dialog === null) return;
 
     ajukan.mutate(
       { jenis: dialog.jenis, klaim_id: dialog.klaim.klaim_id, alasan },
       {
         onSuccess: (response) => {
-          setDialog(null)
-          setKabar(response.pesan)
+          setDialog(null);
+          setKabar(response.pesan);
         },
       },
-    )
+    );
   }
 
   /**
@@ -156,9 +159,9 @@ export function CloseClaimPage() {
    */
   const columns: Column<KlaimTutup>[] = [
     {
-      key: 'no_klaim',
-      title: 'No Klaim',
-      width: '11rem',
+      key: "no_klaim",
+      title: "No Klaim",
+      width: "11rem",
       value: (c) => c.nomor_klaim,
       render: (c) =>
         c.nomor_klaim ? (
@@ -170,112 +173,120 @@ export function CloseClaimPage() {
         ),
     },
     {
-      key: 'no_polis',
-      title: 'No Polis',
-      width: '10rem',
+      key: "no_polis",
+      title: "No Polis",
+      width: "10rem",
       value: (c) => c.nomor_polis,
-      render: (c) => <span className="truncate">{c.nomor_polis || '—'}</span>,
+      render: (c) => <span className="truncate">{c.nomor_polis || "—"}</span>,
     },
     {
-      key: 'tertanggung',
-      title: 'Nama Tertanggung',
-      width: '14rem',
+      key: "tertanggung",
+      title: "Nama Tertanggung",
+      width: "14rem",
       value: (c) => c.nama_tertanggung,
-      render: (c) => <span className="truncate">{c.nama_tertanggung || '—'}</span>,
+      render: (c) => (
+        <span className="truncate">{c.nama_tertanggung || "—"}</span>
+      ),
     },
     {
-      key: 'nama_bisnis',
-      title: 'Nama Bisnis',
-      width: '10rem',
+      key: "nama_bisnis",
+      title: "Nama Bisnis",
+      width: "10rem",
       value: (c) => c.nama_bisnis,
-      render: (c) => <span className="truncate">{c.nama_bisnis || '—'}</span>,
+      render: (c) => <span className="truncate">{c.nama_bisnis || "—"}</span>,
     },
     {
-      key: 'sumber_bisnis',
-      title: 'Sumber Bisnis',
-      width: '9rem',
+      key: "sumber_bisnis",
+      title: "Sumber Bisnis",
+      width: "9rem",
       value: (c) => c.sumber_bisnis,
-      render: (c) => <span className="truncate">{c.sumber_bisnis || '—'}</span>,
+      render: (c) => <span className="truncate">{c.sumber_bisnis || "—"}</span>,
     },
     {
-      key: 'nama_cabang',
-      title: 'Nama Cabang',
-      width: '9rem',
+      key: "nama_cabang",
+      title: "Nama Cabang",
+      width: "9rem",
       value: (c) => c.nama_cabang,
-      render: (c) => <span className="truncate">{c.nama_cabang || '—'}</span>,
+      render: (c) => <span className="truncate">{c.nama_cabang || "—"}</span>,
     },
     {
-      key: 'tanggal_pendaftaran',
-      title: 'Tanggal Pendaftaran',
-      width: '9rem',
+      key: "tanggal_pendaftaran",
+      title: "Tanggal Pendaftaran",
+      width: "9rem",
       value: (c) => c.tanggal_pendaftaran,
       render: (c) => (
         <span className="tabular-nums">
-          {c.tanggal_pendaftaran ? formatDate(c.tanggal_pendaftaran) : '—'}
+          {c.tanggal_pendaftaran ? formatDate(c.tanggal_pendaftaran) : "—"}
         </span>
       ),
     },
     {
-      key: 'lama_waktu',
-      title: 'Lama Waktu Klaim',
-      width: '8rem',
+      key: "lama_waktu",
+      title: "Lama Waktu Klaim",
+      width: "8rem",
       value: (c) => String(c.lama_hari),
-      render: (c) => <LamaKlaim hari={c.lama_hari} tanggalTutup={c.tanggal_tutup} />,
+      render: (c) => (
+        <LamaKlaim hari={c.lama_hari} tanggalTutup={c.tanggal_tutup} />
+      ),
     },
     {
-      key: 'pic_teknik',
-      title: 'PIC Teknik',
-      width: '10rem',
+      key: "pic_teknik",
+      title: "PIC Teknik",
+      width: "10rem",
       value: (c) => c.pic_teknik,
-      render: (c) => <span className="truncate">{c.pic_teknik || '—'}</span>,
+      render: (c) => <span className="truncate">{c.pic_teknik || "—"}</span>,
     },
     {
-      key: 'admin_pnc',
-      title: 'Admin PNC',
-      width: '10rem',
+      key: "admin_pnc",
+      title: "Admin PNC",
+      width: "10rem",
       value: (c) => c.admin_pnc,
-      render: (c) => <span className="truncate">{c.admin_pnc || '—'}</span>,
+      render: (c) => <span className="truncate">{c.admin_pnc || "—"}</span>,
     },
     {
-      key: 'status',
-      title: 'Status',
-      width: '8rem',
+      key: "status",
+      title: "Status",
+      width: "8rem",
       value: (c) => c.status_tampil,
-      render: (c) => <StatusBadge status={c.status_tampil} label={c.status_klaim_label} />,
+      render: (c) => (
+        <StatusBadge status={c.status_tampil} label={c.status_klaim_label} />
+      ),
     },
     {
-      key: 'aksi',
-      title: 'Tindakan',
-      width: '13rem',
+      key: "aksi",
+      title: "Tindakan",
+      width: "13rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (c) => (
         <BarisTindakan
           klaim={c}
           boleh={bolehMengajukan}
-          alasan={daftar.data?.alasan_tidak_boleh ?? ''}
+          alasan={daftar.data?.alasan_tidak_boleh ?? ""}
           nonaktif={portal === null || ajukan.isPending}
           onPilih={(jenis) => {
-            setKabar(null)
-            ajukan.reset()
-            setDialog({ jenis, klaim: c })
+            setKabar(null);
+            ajukan.reset();
+            setDialog({ jenis, klaim: c });
           }}
         />
       ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Close Claim</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Close Claim
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim yang sudah tutup pada entitas yang sedang dibuka, beserta permintaan untuk
-          membukanya kembali atau menyalinnya menjadi klaim baru.
+          Klaim yang sudah tutup pada entitas yang sedang dibuka, beserta
+          permintaan untuk membukanya kembali atau menyalinnya menjadi klaim
+          baru.
         </p>
       </header>
-
 
       {/*
         Dua keterangan yang SALING MENIADAKAN, dan urutannya disengaja.
@@ -289,7 +300,9 @@ export function CloseClaimPage() {
           <p className="text-sm font-medium text-amber-900">
             Buka kembali dan salin klaim belum tersedia
           </p>
-          <p className="mt-1 text-sm text-amber-800">{daftar.data.alasan_tidak_boleh}</p>
+          <p className="mt-1 text-sm text-amber-800">
+            {daftar.data.alasan_tidak_boleh}
+          </p>
         </div>
       )}
 
@@ -299,9 +312,10 @@ export function CloseClaimPage() {
             Permintaan tercatat, tetapi belum ada yang menjalankannya
           </p>
           <p className="mt-1 text-sm text-amber-800">
-            Siapa yang mengeksekusi permintaan buka kembali dan salin klaim belum ditetapkan.
-            Permintaan yang Anda ajukan tersimpan beserta waktunya, tetapi klaimnya belum akan
-            berubah sampai pelaksananya ditentukan.
+            Siapa yang mengeksekusi permintaan buka kembali dan salin klaim
+            belum ditetapkan. Permintaan yang Anda ajukan tersimpan beserta
+            waktunya, tetapi klaimnya belum akan berubah sampai pelaksananya
+            ditentukan.
           </p>
         </div>
       )}
@@ -337,7 +351,11 @@ export function CloseClaimPage() {
 
       {galatUnduh && (
         <div className="mt-6">
-          <ErrorMessage title="Berkas tidak dapat diunduh" description={galatUnduh} tone="gangguan" />
+          <ErrorMessage
+            title="Berkas tidak dapat diunduh"
+            description={galatUnduh}
+            tone="gangguan"
+          />
         </div>
       )}
 
@@ -358,14 +376,14 @@ export function CloseClaimPage() {
         onStatusTransfer={ubah(setStatusTransfer)}
         onStatusBayar={ubah(setStatusBayar)}
         onBersihkan={() => {
-          setNoPolis('')
-          setNoKlaim('')
-          setPIC('')
-          setLini('')
-          setStatusTransfer('')
-          setStatusBayar('')
-          setCari('')
-          setLewati(0)
+          setNoPolis("");
+          setNoKlaim("");
+          setPIC("");
+          setLini("");
+          setStatusTransfer("");
+          setStatusBayar("");
+          setCari("");
+          setLewati(0);
         }}
       />
 
@@ -381,24 +399,36 @@ export function CloseClaimPage() {
           isLoading={daftar.isPending && portal !== null}
           searchLabel="Cari No Klaim / No Polis"
           emptyMessage="Tidak ada klaim tutup yang cocok."
-          serverSearch={{ value: cari, onChange: ubah(setCari), matchCount: total }}
+          serverSearch={{
+            value: cari,
+            onChange: ubah(setCari),
+            matchCount: total,
+          }}
           actions={
             <>
               <Button
                 tone="halus"
-                onClick={() => { daftar.refetch() }}
+                onClick={() => {
+                  daftar.refetch();
+                }}
                 disabled={daftar.isFetching || portal === null}
               >
                 <ReloadIcon className="h-4 w-4" />
-                {daftar.isFetching ? 'Memuat…' : 'Muat ulang'}
+                {daftar.isFetching ? "Memuat…" : "Muat ulang"}
               </Button>
               <Button
                 tone="kedua"
-                onClick={() => { unduh() }}
+                onClick={() => {
+                  unduh();
+                }}
                 disabled={sedangUnduh || portal === null || total === 0}
-                title={total === 0 ? 'Tidak ada baris untuk diunduh.' : 'Unduh seluruh hasil sebagai CSV'}
+                title={
+                  total === 0
+                    ? "Tidak ada baris untuk diunduh."
+                    : "Unduh seluruh hasil sebagai CSV"
+                }
               >
-                {sedangUnduh ? 'Menyiapkan…' : 'Unduh CSV'}
+                {sedangUnduh ? "Menyiapkan…" : "Unduh CSV"}
               </Button>
             </>
           }
@@ -429,14 +459,14 @@ export function CloseClaimPage() {
           sedangMengirim={ajukan.isPending}
           galat={ajukan.isError ? pesanGalat(ajukan.error) : null}
           onBatal={() => {
-            setDialog(null)
-            ajukan.reset()
+            setDialog(null);
+            ajukan.reset();
           }}
           onKirim={kirimPermintaan}
         />
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -446,44 +476,63 @@ export function CloseClaimPage() {
  * penyaring yang dikarang maupun hilang.
  */
 function PanelPenyaring(props: {
-  noPolis: string
-  noKlaim: string
-  pic: string
-  lini: string
-  statusTransfer: string
-  statusBayar: string
-  pilihanLini: { nilai: string; label: string }[]
-  pilihanTransfer: { nilai: string; label: string }[]
-  pilihanBayar: { nilai: string; label: string }[]
-  onNoPolis: (value: string) => void
-  onNoKlaim: (value: string) => void
-  onPIC: (value: string) => void
-  onLini: (value: string) => void
-  onStatusTransfer: (value: string) => void
-  onStatusBayar: (value: string) => void
-  onBersihkan: () => void
+  noPolis: string;
+  noKlaim: string;
+  pic: string;
+  lini: string;
+  statusTransfer: string;
+  statusBayar: string;
+  pilihanLini: { nilai: string; label: string }[];
+  pilihanTransfer: { nilai: string; label: string }[];
+  pilihanBayar: { nilai: string; label: string }[];
+  onNoPolis: (value: string) => void;
+  onNoKlaim: (value: string) => void;
+  onPIC: (value: string) => void;
+  onLini: (value: string) => void;
+  onStatusTransfer: (value: string) => void;
+  onStatusBayar: (value: string) => void;
+  onBersihkan: () => void;
 }) {
   const adaPenyaring =
-    props.noPolis !== '' ||
-    props.noKlaim !== '' ||
-    props.pic !== '' ||
-    props.lini !== '' ||
-    props.statusTransfer !== '' ||
-    props.statusBayar !== ''
+    props.noPolis !== "" ||
+    props.noKlaim !== "" ||
+    props.pic !== "" ||
+    props.lini !== "" ||
+    props.statusTransfer !== "" ||
+    props.statusBayar !== "";
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-white p-4 shadow-lembut">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-slate-800">Penyaring</h2>
-        <Button tone="halus" onClick={props.onBersihkan} disabled={!adaPenyaring}>
+        <Button
+          tone="halus"
+          onClick={props.onBersihkan}
+          disabled={!adaPenyaring}
+        >
           Bersihkan
         </Button>
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <IsianTeks id="f-no-polis" label="No Polis" value={props.noPolis} onChange={props.onNoPolis} />
-        <IsianTeks id="f-no-klaim" label="No Klaim" value={props.noKlaim} onChange={props.onNoKlaim} />
-        <IsianTeks id="f-pic" label="PIC Teknik" value={props.pic} onChange={props.onPIC} />
+        <IsianTeks
+          id="f-no-polis"
+          label="No Polis"
+          value={props.noPolis}
+          onChange={props.onNoPolis}
+        />
+        <IsianTeks
+          id="f-no-klaim"
+          label="No Klaim"
+          value={props.noKlaim}
+          onChange={props.onNoKlaim}
+        />
+        <IsianTeks
+          id="f-pic"
+          label="PIC Teknik"
+          value={props.pic}
+          onChange={props.onPIC}
+        />
 
         <IsianPilihan
           id="f-lini"
@@ -508,7 +557,7 @@ function PanelPenyaring(props: {
         />
       </div>
     </section>
-  )
+  );
 }
 
 function IsianTeks({
@@ -517,10 +566,10 @@ function IsianTeks({
   value,
   onChange,
 }: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <div>
@@ -535,7 +584,7 @@ function IsianTeks({
         className="mt-1 w-full rounded-kontrol border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-lembut transition-[border-color,box-shadow] duration-150 focus:outline-none focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-500/25"
       />
     </div>
-  )
+  );
 }
 
 function IsianPilihan({
@@ -545,11 +594,11 @@ function IsianPilihan({
   options,
   onChange,
 }: {
-  id: string
-  label: string
-  value: string
-  options: { nilai: string; label: string }[]
-  onChange: (value: string) => void
+  id: string;
+  label: string;
+  value: string;
+  options: { nilai: string; label: string }[];
+  onChange: (value: string) => void;
 }) {
   return (
     <div>
@@ -569,7 +618,7 @@ function IsianPilihan({
         ))}
       </select>
     </div>
-  )
+  );
 }
 
 /**
@@ -587,13 +636,13 @@ function BarisTindakan({
   nonaktif,
   onPilih,
 }: {
-  klaim: KlaimTutup
-  boleh: boolean
-  alasan: string
-  nonaktif: boolean
-  onPilih: (jenis: JenisPermintaan) => void
+  klaim: KlaimTutup;
+  boleh: boolean;
+  alasan: string;
+  nonaktif: boolean;
+  onPilih: (jenis: JenisPermintaan) => void;
 }) {
-  const menunggu = new Set(klaim.permintaan_tertunda.map((p) => p.jenis))
+  const menunggu = new Set(klaim.permintaan_tertunda.map((p) => p.jenis));
 
   /*
     Tombolnya TETAP digambar saat pengajuan tertutup, hanya dinonaktifkan beserta alasannya.
@@ -602,27 +651,37 @@ function BarisTindakan({
     terbaca — dan pengguna yang tahu fitur itu ada akan melaporkannya sebagai hilang.
     Tombol mati yang menjelaskan dirinya sendiri lebih jujur daripada ruang kosong.
   */
-  const mati = nonaktif || !boleh
-  const judulMati = boleh ? undefined : alasan
+  const mati = nonaktif || !boleh;
+  const judulMati = boleh ? undefined : alasan;
 
   return (
     <div className="flex flex-wrap justify-end gap-1.5">
-      {menunggu.has('reopen') ? (
+      {menunggu.has("reopen") ? (
         <PenandaMenunggu teks="ReOpen diminta" />
       ) : (
-        <Button tone="halus" disabled={mati} title={judulMati} onClick={() => onPilih('reopen')}>
+        <Button
+          tone="halus"
+          disabled={mati}
+          title={judulMati}
+          onClick={() => onPilih("reopen")}
+        >
           ReOpen
         </Button>
       )}
-      {menunggu.has('salin') ? (
+      {menunggu.has("salin") ? (
         <PenandaMenunggu teks="Salin diminta" />
       ) : (
-        <Button tone="halus" disabled={mati} title={judulMati} onClick={() => onPilih('salin')}>
+        <Button
+          tone="halus"
+          disabled={mati}
+          title={judulMati}
+          onClick={() => onPilih("salin")}
+        >
           Copy Klaim
         </Button>
       )}
     </div>
-  )
+  );
 }
 
 function PenandaMenunggu({ teks }: { teks: string }) {
@@ -633,7 +692,7 @@ function PenandaMenunggu({ teks }: { teks: string }) {
     >
       {teks}
     </span>
-  )
+  );
 }
 
 /**
@@ -645,8 +704,14 @@ function PenandaMenunggu({ teks }: { teks: string }) {
  * Klaim yang tanggal tutupnya tidak diketahui ditandai berbeda: angkanya dihitung sampai
  * HARI INI, dan itu arti yang berbeda dari lamanya klaim berjalan.
  */
-function LamaKlaim({ hari, tanggalTutup }: { hari: number; tanggalTutup: string }) {
-  if (tanggalTutup === '') {
+function LamaKlaim({
+  hari,
+  tanggalTutup,
+}: {
+  hari: number;
+  tanggalTutup: string;
+}) {
+  if (tanggalTutup === "") {
     return (
       <span
         className="tabular-nums text-slate-500"
@@ -654,14 +719,17 @@ function LamaKlaim({ hari, tanggalTutup }: { hari: number; tanggalTutup: string 
       >
         {hari} hari*
       </span>
-    )
+    );
   }
 
   return (
-    <span className="tabular-nums text-slate-700" title={`Ditutup ${formatDate(tanggalTutup)}`}>
+    <span
+      className="tabular-nums text-slate-700"
+      title={`Ditutup ${formatDate(tanggalTutup)}`}
+    >
       {hari} hari
     </span>
-  )
+  );
 }
 
 /**
@@ -672,20 +740,22 @@ function LamaKlaim({ hari, tanggalTutup }: { hari: number; tanggalTutup: string 
  */
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const tone =
-    status === 'Reject'
-      ? 'bg-red-50 text-red-700 ring-red-100'
-      : 'bg-slate-100 text-slate-700 ring-slate-200'
+    status === "Reject"
+      ? "bg-red-50 text-red-700 ring-red-100"
+      : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
     <div className="flex flex-col gap-0.5">
       <span
         className={`inline-flex w-fit items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ${tone}`}
       >
-        {status || '—'}
+        {status || "—"}
       </span>
-      {label && <span className="truncate text-xs text-slate-500">{label}</span>}
+      {label && (
+        <span className="truncate text-xs text-slate-500">{label}</span>
+      )}
     </div>
-  )
+  );
 }
 
 /**
@@ -702,16 +772,16 @@ function Paginasi({
   onChange,
   sibuk,
 }: {
-  lewati: number
-  tampil: number
-  total: number
-  onChange: (next: number) => void
-  sibuk: boolean
+  lewati: number;
+  tampil: number;
+  total: number;
+  onChange: (next: number) => void;
+  sibuk: boolean;
 }) {
-  if (total === 0) return null
+  if (total === 0) return null;
 
-  const pertama = lewati + 1
-  const terakhir = lewati + tampil
+  const pertama = lewati + 1;
+  const terakhir = lewati + tampil;
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -735,11 +805,11 @@ function Paginasi({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 function pesanGalat(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

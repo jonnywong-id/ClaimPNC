@@ -1,16 +1,16 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useRef, useState, type FocusEvent } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Technician } from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField, type SelectOption } from '@/components/SelectField'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Technician } from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField, type SelectOption } from "@/components/SelectField";
 
-import { useLookupEmployee, useSaveTechnician, useTechnicianList } from './api'
+import { useLookupEmployee, useSaveTechnician, useTechnicianList } from "./api";
 
 /**
  * Batas panjang isian; sama dengan konstanta di internal/masterpicteknik.
@@ -19,10 +19,10 @@ import { useLookupEmployee, useSaveTechnician, useTechnicianList } from './api'
  * menjawab pengguna tanpa perjalanan jaringan; yang di server adalah yang menegakkan.
  * Bila salah satu berubah, KEDUANYA wajib ikut berubah.
  */
-const MAX_OPERATOR_ID_LENGTH = 64
-const MAX_EMAIL_LENGTH = 100
-const MAX_SUPERVISOR_LENGTH = 64
-const MAX_CLAIM_COUNTER = 9999
+const MAX_OPERATOR_ID_LENGTH = 64;
+const MAX_EMAIL_LENGTH = 100;
+const MAX_SUPERVISOR_LENGTH = 64;
+const MAX_CLAIM_COUNTER = 9999;
 
 /**
  * Pilihan Kelompok dan Bisnis, DISALIN dari Property rule Pega — bukan diturunkan dari
@@ -37,8 +37,8 @@ const MAX_CLAIM_COUNTER = 9999
  * Daftar yang sama ditegakkan server di `masterpicteknik.GroupCodes` dan `BusinessCodes`.
  * Bila Property rule berubah, KEDUA tempat wajib ikut berubah.
  */
-const GROUP_CODES = ['A', 'B', 'C'] as const
-const BUSINESS_CODES = ['NONMBU', 'TRAVEL', 'PA', 'BONDING'] as const
+const GROUP_CODES = ["A", "B", "C"] as const;
+const BUSINESS_CODES = ["NONMBU", "TRAVEL", "PA", "BONDING"] as const;
 
 /**
  * Aturan yang sama dinyatakan dua kali: di sini dan di domain Go.
@@ -54,8 +54,11 @@ const schema = z.object({
   id_operator: z
     .string()
     .trim()
-    .min(1, 'Username wajib diisi.')
-    .max(MAX_OPERATOR_ID_LENGTH, `Username paling panjang ${MAX_OPERATOR_ID_LENGTH} karakter.`),
+    .min(1, "Username wajib diisi.")
+    .max(
+      MAX_OPERATOR_ID_LENGTH,
+      `Username paling panjang ${MAX_OPERATOR_ID_LENGTH} karakter.`,
+    ),
   // Email TIDAK wajib — Section Pega tidak memuat satu pun `pyRequired=true`, dan
   // kolomnya NULLABLE. Mewajibkannya membuat baris lama yang surelnya kosong tidak dapat
   // disunting sama sekali. Formatnya tetap diperiksa bila diisi.
@@ -67,8 +70,8 @@ const schema = z.object({
     // alamat benar adalah mengirim surel ke sana, dan validasi yang terlalu ketat justru
     // menolak alamat yang sah.
     .refine(
-      (value) => value === '' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value),
-      'Format email tidak benar.',
+      (value) => value === "" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value),
+      "Format email tidak benar.",
     ),
   // Kelompok dan Bisnis adalah PILIHAN, bukan teks bebas. Kosong tetap diterima: layar
   // Pega menyediakan `--Pilih--`, dan kolomnya NULLABLE.
@@ -76,43 +79,56 @@ const schema = z.object({
     .string()
     .trim()
     .refine(
-      (value) => value === '' || GROUP_CODES.some((code) => code === value.toUpperCase()),
-      `Kelompok harus salah satu dari ${GROUP_CODES.join(', ')}.`,
+      (value) =>
+        value === "" ||
+        GROUP_CODES.some((code) => code === value.toUpperCase()),
+      `Kelompok harus salah satu dari ${GROUP_CODES.join(", ")}.`,
     ),
-  aktif: z.enum(['1', '0']),
+  aktif: z.enum(["1", "0"]),
   atasan: z
     .string()
     .trim()
-    .max(MAX_SUPERVISOR_LENGTH, `Atasan paling panjang ${MAX_SUPERVISOR_LENGTH} karakter.`),
+    .max(
+      MAX_SUPERVISOR_LENGTH,
+      `Atasan paling panjang ${MAX_SUPERVISOR_LENGTH} karakter.`,
+    ),
   bisnis: z
     .string()
     .trim()
     .refine(
-      (value) => value === '' || BUSINESS_CODES.some((code) => code === value.toUpperCase()),
-      `Bisnis harus salah satu dari ${BUSINESS_CODES.join(', ')}.`,
+      (value) =>
+        value === "" ||
+        BUSINESS_CODES.some((code) => code === value.toUpperCase()),
+      `Bisnis harus salah satu dari ${BUSINESS_CODES.join(", ")}.`,
     ),
   // Angka diubah React Hook Form lewat `valueAsNumber`, BUKAN oleh `z.coerce`: pada Zod 4
   // tipe masukan `z.coerce.number()` adalah `unknown`, dan itu merusak keterkaitan tipe
   // antara skema dan form. Isian kosong menjadi NaN, dan `z.number()` menolaknya.
   counter_klaim_kurang_1m: z
-    .number({ error: 'Counter Klaim <1M harus berupa angka.' })
-    .int('Counter Klaim <1M harus bilangan bulat.')
-    .min(0, 'Counter Klaim <1M tidak boleh negatif.')
-    .max(MAX_CLAIM_COUNTER, `Counter Klaim <1M paling besar ${MAX_CLAIM_COUNTER}.`),
+    .number({ error: "Counter Klaim <1M harus berupa angka." })
+    .int("Counter Klaim <1M harus bilangan bulat.")
+    .min(0, "Counter Klaim <1M tidak boleh negatif.")
+    .max(
+      MAX_CLAIM_COUNTER,
+      `Counter Klaim <1M paling besar ${MAX_CLAIM_COUNTER}.`,
+    ),
   counter_klaim_lebih_1m: z
-    .number({ error: 'Counter Klaim >1M harus berupa angka.' })
-    .int('Counter Klaim >1M harus bilangan bulat.')
-    .min(0, 'Counter Klaim >1M tidak boleh negatif.')
-    .max(MAX_CLAIM_COUNTER, `Counter Klaim >1M paling besar ${MAX_CLAIM_COUNTER}.`),
-})
+    .number({ error: "Counter Klaim >1M harus berupa angka." })
+    .int("Counter Klaim >1M harus bilangan bulat.")
+    .min(0, "Counter Klaim >1M tidak boleh negatif.")
+    .max(
+      MAX_CLAIM_COUNTER,
+      `Counter Klaim >1M paling besar ${MAX_CLAIM_COUNTER}.`,
+    ),
+});
 
-type FieldValues = z.infer<typeof schema>
+type FieldValues = z.infer<typeof schema>;
 
 type Props = {
   /** Null berarti menambah; terisi berarti mengubah baris itu. */
-  technician: Technician | null
-  onClose: () => void
-}
+  technician: Technician | null;
+  onClose: () => void;
+};
 
 /**
  * Form tambah dan ubah Master PIC Teknik.
@@ -140,18 +156,18 @@ type Props = {
  * `SetMstUserTeknisMstUser_act` yang terpicu tanpa tombol.
  */
 export function TechnicianForm({ technician, onClose }: Props) {
-  const save = useSaveTechnician()
-  const lookup = useLookupEmployee()
-  const list = useTechnicianList()
-  const editing = technician !== null
-  const firstField = useRef<HTMLInputElement | null>(null)
+  const save = useSaveTechnician();
+  const lookup = useLookupEmployee();
+  const list = useTechnicianList();
+  const editing = technician !== null;
+  const firstField = useRef<HTMLInputElement | null>(null);
 
   // Nama dan nama atasan TIDAK ikut di dalam form state: keduanya tidak pernah dikirim ke
   // server. Mereka hanya ditampilkan, dan sumbernya pencarian direktori.
-  const [name, setName] = useState(technician?.nama ?? '')
-  const [supervisorName, setSupervisorName] = useState('')
+  const [name, setName] = useState(technician?.nama ?? "");
+  const [supervisorName, setSupervisorName] = useState("");
 
-  const rows = list.data?.pic_teknik ?? []
+  const rows = list.data?.pic_teknik ?? [];
 
   const {
     register,
@@ -163,34 +179,34 @@ export function TechnicianForm({ technician, onClose }: Props) {
   } = useForm<FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      id_operator: technician?.id_operator ?? '',
-      email: technician?.email ?? '',
-      kelompok: technician?.kelompok ?? '',
-      aktif: technician?.aktif === false ? '0' : '1',
-      atasan: technician?.atasan ?? '',
-      bisnis: technician?.bisnis ?? '',
+      id_operator: technician?.id_operator ?? "",
+      email: technician?.email ?? "",
+      kelompok: technician?.kelompok ?? "",
+      aktif: technician?.aktif === false ? "0" : "1",
+      atasan: technician?.atasan ?? "",
+      bisnis: technician?.bisnis ?? "",
       counter_klaim_kurang_1m: technician?.counter_klaim_kurang_1m ?? 0,
       counter_klaim_lebih_1m: technician?.counter_klaim_lebih_1m ?? 0,
     },
-  })
+  });
 
   // Fokus dipindahkan ke isian pertama saat form terbuka. Tanpa ini, pengguna papan ketik
   // harus menekan Tab berkali-kali dari awal halaman untuk mencapainya.
   useEffect(() => {
-    firstField.current?.focus()
-  }, [])
+    firstField.current?.focus();
+  }, []);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya, bukan hanya diringkas di
   // kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan itu hanya
   // berguna bila layar menyorotnya di tempat isiannya.
   useEffect(() => {
-    if (!(save.error instanceof APIError)) return
+    if (!(save.error instanceof APIError)) return;
     for (const [field, message] of Object.entries(save.error.violations())) {
       if (field in schema.shape) {
-        setError(field as keyof FieldValues, { type: 'server', message })
+        setError(field as keyof FieldValues, { type: "server", message });
       }
     }
-  }, [save.error, setError])
+  }, [save.error, setError]);
 
   // ID yang tidak ketemu TIDAK lagi ditandai sebagai isian salah.
   //
@@ -199,7 +215,8 @@ export function TechnicianForm({ technician, onClose }: Props) {
   // mengisi MCL_NAME apa adanya tanpa memeriksa hasil pencarian. Yang tersisa cukup
   // sebuah keterangan di bawah isian, bukan penolakan.
   const notFound =
-    lookup.error instanceof APIError && lookup.error.violations()['id_operator'] !== undefined
+    lookup.error instanceof APIError &&
+    lookup.error.violations()["id_operator"] !== undefined;
 
   /**
    * Mencari pegawai lalu mengisikan hasilnya ke form.
@@ -209,21 +226,21 @@ export function TechnicianForm({ technician, onClose }: Props) {
    * surel memang DIKETIK di sistem lama, bukan diturunkan. Server memakai aturan yang sama.
    */
   function searchDirectory() {
-    const operatorID = getValues('id_operator').trim()
-    if (operatorID === '') return
+    const operatorID = getValues("id_operator").trim();
+    if (operatorID === "") return;
 
     lookup.mutate(operatorID, {
       onSuccess: (answer) => {
-        setName(answer.pegawai.nama)
-        setSupervisorName(answer.pegawai.nama_atasan)
-        if (getValues('atasan').trim() === '') {
-          setValue('atasan', answer.pegawai.atasan)
+        setName(answer.pegawai.nama);
+        setSupervisorName(answer.pegawai.nama_atasan);
+        if (getValues("atasan").trim() === "") {
+          setValue("atasan", answer.pegawai.atasan);
         }
-        if (getValues('email').trim() === '' && answer.pegawai.email !== '') {
-          setValue('email', answer.pegawai.email)
+        if (getValues("email").trim() === "" && answer.pegawai.email !== "") {
+          setValue("email", answer.pegawai.email);
         }
       },
-    })
+    });
   }
 
   // onBlur ikut dipisahkan, bukan hanya ref: isian Username memicu pencarian saat
@@ -233,20 +250,23 @@ export function TechnicianForm({ technician, onClose }: Props) {
     ref: refOperatorID,
     onBlur: onBlurOperatorID,
     ...remainingOperatorID
-  } = register('id_operator')
+  } = register("id_operator");
 
   function handleOperatorIDBlur(event: FocusEvent<HTMLInputElement>) {
-    void onBlurOperatorID(event)
-    searchDirectory()
+    void onBlurOperatorID(event);
+    searchDirectory();
   }
 
   function send(values: FieldValues) {
     // Form ditutup HANYA setelah server menjawab berhasil. Menutupnya lebih dulu akan
     // membuang isian pengguna saat penyimpanan gagal.
-    save.mutate({ ...values, aktif: values.aktif === '1', ubah: editing }, { onSuccess: onClose })
+    save.mutate(
+      { ...values, aktif: values.aktif === "1", ubah: editing },
+      { onSuccess: onClose },
+    );
   }
 
-  const busy = save.isPending || lookup.isPending
+  const busy = save.isPending || lookup.isPending;
 
   /*
     Kelompok dan Bisnis memakai daftar TETAP dari Property rule Pega.
@@ -259,14 +279,18 @@ export function TechnicianForm({ technician, onClose }: Props) {
     Yang membatasinya di layar Pega adalah autocomplete atas daftar operator, dan di sini
     daftar itu diambil dari isi master yang sedang tampil.
   */
-  const groupOptions = optionsFrom(GROUP_CODES, technician?.kelompok)
-  const businessOptions = optionsFrom(BUSINESS_CODES, technician?.bisnis)
+  const groupOptions = optionsFrom(GROUP_CODES, technician?.kelompok);
+  const businessOptions = optionsFrom(BUSINESS_CODES, technician?.bisnis);
   const supervisorOptions = optionsFrom(
-    [...new Set(rows.map((t) => t.id_operator.trim()).filter((id) => id !== ''))]
+    [
+      ...new Set(
+        rows.map((t) => t.id_operator.trim()).filter((id) => id !== ""),
+      ),
+    ]
       .filter((id) => id !== technician?.id_operator)
       .sort(),
     technician?.atasan,
-  )
+  );
 
   return (
     /*
@@ -278,29 +302,33 @@ export function TechnicianForm({ technician, onClose }: Props) {
       onSubmit={handleSubmit(send)}
       noValidate
       className="overflow-hidden rounded-kartu border border-slate-200 border-l-4 border-l-blue-500 bg-white shadow-angkat"
-      aria-label={editing ? 'Memperbaharui Data' : 'Memperbaharui Data'}
+      aria-label={editing ? "Memperbaharui Data" : "Memperbaharui Data"}
     >
       <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
         {/* Judulnya diambil dari pyTitle layar Pega apa adanya. */}
         <h3 className="text-base font-semibold text-slate-900">
-          {editing ? 'Memperbaharui Data' : 'Memperbaharui Data'}
+          {editing ? "Memperbaharui Data" : "Memperbaharui Data"}
         </h3>
         <p className="mt-1 text-sm text-slate-600">
           {editing
-            ? 'Username tetap, karena data klaim menyimpannya. Input Nama disegarkan dari direktori pegawai setiap kali disimpan.'
-            : 'Isi Username lalu pindah ke isian berikutnya. Input Nama diambil dari direktori pegawai, tidak diketik.'}
+            ? "Username tetap, karena data klaim menyimpannya. Input Nama disegarkan dari direktori pegawai setiap kali disimpan."
+            : "Isi Username lalu pindah ke isian berikutnya. Input Nama diambil dari direktori pegawai, tidak diketik."}
         </p>
       </div>
 
       <div className="space-y-5 p-5">
         {save.isError && <SaveErrorMessage error={save.error} />}
-        {lookup.isError && !notFound && <LookupErrorMessage error={lookup.error} />}
+        {lookup.isError && !notFound && (
+          <LookupErrorMessage error={lookup.error} />
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           {/* 1. Username */}
           {editing ? (
             <div>
-              <span className="block text-sm font-medium text-slate-700">Username</span>
+              <span className="block text-sm font-medium text-slate-700">
+                Username
+              </span>
               {/*
                 Digambar sebagai kotak mati, bukan input ber-`disabled`. Input yang
                 dinonaktifkan tetap terlihat seperti isian dan mengundang pengguna
@@ -312,7 +340,11 @@ export function TechnicianForm({ technician, onClose }: Props) {
               <p className="mt-1.5 text-xs text-slate-500">
                 Tidak dapat diubah — setiap klaim menyimpan Username ini.
               </p>
-              <input type="hidden" {...remainingOperatorID} ref={refOperatorID} />
+              <input
+                type="hidden"
+                {...remainingOperatorID}
+                ref={refOperatorID}
+              />
             </div>
           ) : (
             <Field
@@ -323,15 +355,15 @@ export function TechnicianForm({ technician, onClose }: Props) {
               autoComplete="off"
               hint={
                 notFound
-                  ? 'Namanya tidak ketemu di master maupun direktori pegawai. Tetap dapat disimpan; kolom Input Nama akan kosong.'
-                  : 'Nama petugas dicari setelah isian ini ditinggalkan.'
+                  ? "Namanya tidak ketemu di master maupun direktori pegawai. Tetap dapat disimpan; kolom Input Nama akan kosong."
+                  : "Nama petugas dicari setelah isian ini ditinggalkan."
               }
               error={errors.id_operator?.message}
               disabled={busy}
               {...remainingOperatorID}
               ref={(element) => {
-                refOperatorID(element)
-                firstField.current = element
+                refOperatorID(element);
+                firstField.current = element;
               }}
               onBlur={handleOperatorIDBlur}
             />
@@ -339,11 +371,13 @@ export function TechnicianForm({ technician, onClose }: Props) {
 
           {/* 2. Input Nama — hanya dibaca, hasil pencarian direktori */}
           <div>
-            <span className="block text-sm font-medium text-slate-700">Input Nama</span>
+            <span className="block text-sm font-medium text-slate-700">
+              Input Nama
+            </span>
             <p className="mt-1.5 flex min-h-[2.75rem] items-center rounded-kontrol border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
               {lookup.isPending ? (
                 <span className="text-slate-400">Mencari…</span>
-              ) : name === '' ? (
+              ) : name === "" ? (
                 <span className="text-slate-400">——</span>
               ) : (
                 <span className="font-medium text-slate-900">{name}</span>
@@ -364,7 +398,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
             autoComplete="off"
             error={errors.email?.message}
             disabled={busy}
-            {...register('email')}
+            {...register("email")}
           />
 
           {/* 4. Kelompok */}
@@ -375,7 +409,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
             emptyText="--Pilih--"
             error={errors.kelompok?.message}
             disabled={busy}
-            {...register('kelompok')}
+            {...register("kelompok")}
           />
 
           {/* 5. Status Aktif */}
@@ -383,13 +417,13 @@ export function TechnicianForm({ technician, onClose }: Props) {
             id="aktif"
             label="Status Aktif"
             options={[
-              { value: '1', label: 'Ya' },
-              { value: '0', label: 'Tidak' },
+              { value: "1", label: "Ya" },
+              { value: "0", label: "Tidak" },
             ]}
             emptyText="--Pilih--"
             error={errors.aktif?.message}
             disabled={busy}
-            {...register('aktif')}
+            {...register("aktif")}
           />
 
           {/* 6. Atasan */}
@@ -401,12 +435,14 @@ export function TechnicianForm({ technician, onClose }: Props) {
               emptyText="--Pilih--"
               error={errors.atasan?.message}
               disabled={busy}
-              {...register('atasan')}
+              {...register("atasan")}
             />
-            {supervisorName !== '' && (
+            {supervisorName !== "" && (
               <p className="mt-1.5 text-xs text-slate-500">
-                Menurut direktori:{' '}
-                <span className="font-medium text-slate-700">{supervisorName}</span>
+                Menurut direktori:{" "}
+                <span className="font-medium text-slate-700">
+                  {supervisorName}
+                </span>
               </p>
             )}
           </div>
@@ -419,7 +455,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
             emptyText="--Pilih--"
             error={errors.bisnis?.message}
             disabled={busy}
-            {...register('bisnis')}
+            {...register("bisnis")}
           />
 
           {/* 8. Counter Klaim <1M */}
@@ -432,7 +468,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
             hint="Banyaknya klaim bernilai di bawah Rp 1 Miliar yang sudah ditangani."
             error={errors.counter_klaim_kurang_1m?.message}
             disabled={busy}
-            {...register('counter_klaim_kurang_1m', { valueAsNumber: true })}
+            {...register("counter_klaim_kurang_1m", { valueAsNumber: true })}
           />
 
           {/* 9. Counter Klaim >1M */}
@@ -445,13 +481,13 @@ export function TechnicianForm({ technician, onClose }: Props) {
             hint="Banyaknya klaim bernilai di atas Rp 1 Miliar yang sudah ditangani."
             error={errors.counter_klaim_lebih_1m?.message}
             disabled={busy}
-            {...register('counter_klaim_lebih_1m', { valueAsNumber: true })}
+            {...register("counter_klaim_lebih_1m", { valueAsNumber: true })}
           />
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
           <Button type="submit" tone="utama" disabled={busy}>
-            {save.isPending ? 'Menyimpan…' : 'Simpan'}
+            {save.isPending ? "Menyimpan…" : "Simpan"}
           </Button>
           <Button tone="halus" onClick={onClose} disabled={busy}>
             Batal
@@ -459,7 +495,7 @@ export function TechnicianForm({ technician, onClose }: Props) {
         </div>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -470,17 +506,20 @@ export function TechnicianForm({ technician, onClose }: Props) {
  * `pyStandardValue` di Property rule, dan mengurutkannya ulang membuat dropdown tampil
  * berbeda dari layar lama. Nilai warisan yang di luar daftar ditaruh di belakang.
  */
-function optionsFrom(values: readonly string[], current?: string): SelectOption[] {
-  const option = values.map((value) => ({ value, label: value }))
-  const currentClean = (current ?? '').trim()
+function optionsFrom(
+  values: readonly string[],
+  current?: string,
+): SelectOption[] {
+  const option = values.map((value) => ({ value, label: value }));
+  const currentClean = (current ?? "").trim();
 
-  if (currentClean !== '' && !values.some((value) => value === currentClean)) {
-    option.push({ value: currentClean, label: currentClean })
+  if (currentClean !== "" && !values.some((value) => value === currentClean)) {
+    option.push({ value: currentClean, label: currentClean });
   }
-  return option
+  return option;
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 /**
  * Galat pencarian dipisahkan dari galat simpan.
@@ -489,9 +528,15 @@ type MessageContent = { title: string; description: string; tone: ErrorTone }
  * saat mengisi Username, yang lain saat menekan Simpan.
  */
 function LookupErrorMessage({ error }: { error: unknown }) {
-  const message = parseDirectory(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = parseDirectory(error);
+  if (message === null) return null;
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
 function SaveErrorMessage({ error }: { error: unknown }) {
@@ -502,7 +547,7 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Perubahan belum tersimpan. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (!(error instanceof APIError)) {
@@ -512,12 +557,18 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
-  const message = parseSave(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = parseSave(error);
+  if (message === null) return null;
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
 /**
@@ -528,7 +579,7 @@ function SaveErrorMessage({ error }: { error: unknown }) {
  * yang dijawab "pencarian gagal" akan menyuruh pengguna memperbaiki hal yang salah.
  */
 function parseDirectory(error: unknown): MessageContent | null {
-  return parseShared(error) ?? fallbackFor(error, 'Pencarian gagal')
+  return parseShared(error) ?? fallbackFor(error, "Pencarian gagal");
 }
 
 /**
@@ -540,83 +591,91 @@ function parseDirectory(error: unknown): MessageContent | null {
 function parseShared(error: unknown): MessageContent | null {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Permintaan belum dapat dijalankan. Periksa koneksi lalu coba lagi.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Permintaan belum dapat dijalankan. Periksa koneksi lalu coba lagi.",
+      tone: "gangguan",
+    };
   }
-  if (!(error instanceof APIError)) return null
+  if (!(error instanceof APIError)) return null;
 
   switch (error.kode) {
     case ErrorCode.directoryUnconfigured:
       return {
-        title: 'Layanan pencarian pegawai belum terdaftar',
+        title: "Layanan pencarian pegawai belum terdaftar",
         description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk mendaftarkan alamat layanannya bagi entitas ini.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk mendaftarkan alamat layanannya bagi entitas ini.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.directoryUnreachable:
       return {
-        title: 'Direktori pegawai sedang tidak dapat dihubungi',
-        description: 'Ini gangguan sementara di luar aplikasi. Coba beberapa saat lagi.',
-        tone: 'gangguan',
-      }
+        title: "Direktori pegawai sedang tidak dapat dihubungi",
+        description:
+          "Ini gangguan sementara di luar aplikasi. Coba beberapa saat lagi.",
+        tone: "gangguan",
+      };
 
     case ErrorCode.validationFailed:
       // Bila detailnya ada, isiannya sudah disorot di tempatnya; kotak pesan hanya akan
       // mengulang hal yang sama.
       return Object.keys(error.violations()).length > 0
         ? null
-        : { title: 'Isian belum benar', description: error.message, tone: 'penolakan' }
+        : {
+            title: "Isian belum benar",
+            description: error.message,
+            tone: "penolakan",
+          };
 
     case ErrorCode.portalNotStated:
     case ErrorCode.portalUnknown:
       return {
-        title: 'Portal entitas belum dipilih',
-        description: 'Pilih portal entitas di bilah atas halaman, lalu coba lagi.',
-        tone: 'penolakan',
-      }
+        title: "Portal entitas belum dipilih",
+        description:
+          "Pilih portal entitas di bilah atas halaman, lalu coba lagi.",
+        tone: "penolakan",
+      };
 
     default:
-      return null
+      return null;
   }
 }
 
 /** Pesan penutup bila kode galatnya tidak dikenali sama sekali. */
 function fallbackFor(error: unknown, title: string): MessageContent | null {
-  if (!(error instanceof APIError)) return null
-  return { title, description: error.message, tone: 'gangguan' }
+  if (!(error instanceof APIError)) return null;
+  return { title, description: error.message, tone: "gangguan" };
 }
 
 function parseSave(error: APIError): MessageContent | null {
   switch (error.kode) {
     case ErrorCode.technicianExists:
       return {
-        title: 'Username sudah terdaftar',
+        title: "Username sudah terdaftar",
         description:
-          'Petugas dengan Username itu sudah ada di entitas ini. Buka datanya lalu ubah di sana.',
-        tone: 'penolakan',
-      }
+          "Petugas dengan Username itu sudah ada di entitas ini. Buka datanya lalu ubah di sana.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.technicianNotFound:
       return {
-        title: 'PIC teknik tidak ditemukan',
-        description: 'Baris ini mungkin sudah diubah petugas lain. Muat ulang daftarnya.',
-        tone: 'penolakan',
-      }
+        title: "PIC teknik tidak ditemukan",
+        description:
+          "Baris ini mungkin sudah diubah petugas lain. Muat ulang daftarnya.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotReady:
       return {
-        title: 'Basis data entitas ini belum tersedia',
+        title: "Basis data entitas ini belum tersedia",
         description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+        tone: "gangguan",
+      };
 
     default:
       // Kode bersama — gangguan direktori, portal, validasi — dipetakan sama di kedua
       // jalur; sisanya ditutup pesan SIMPAN, bukan pesan pencarian.
-      return parseShared(error) ?? fallbackFor(error, 'Gagal menyimpan')
+      return parseShared(error) ?? fallbackFor(error, "Gagal menyimpan");
   }
 }

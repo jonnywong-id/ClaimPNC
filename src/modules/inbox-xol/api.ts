@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI, downloadAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, downloadAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   Advice,
@@ -17,9 +17,9 @@ import type {
   MasterXOL,
   SummaryBusiness,
   UploadResult,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-xol'
+const PATH = "/api/inbox-xol";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -30,10 +30,10 @@ const PATH = '/api/inbox-xol'
  */
 const keys = {
   masters: (portal: string | null, token: string | null) =>
-    ['inbox-xol', 'perjanjian', portal, token] as const,
+    ["inbox-xol", "perjanjian", portal, token] as const,
 
   claims: (portal: string | null, token: string | null, masterID: string) =>
-    ['inbox-xol', 'klaim', portal, token, masterID] as const,
+    ["inbox-xol", "klaim", portal, token, masterID] as const,
 
   breakdown: (
     portal: string | null,
@@ -41,17 +41,26 @@ const keys = {
     masterID: string,
     lossDate: string,
     cause: string,
-  ) => ['inbox-xol', 'rincian', portal, token, masterID, lossDate, cause] as const,
+  ) =>
+    ["inbox-xol", "rincian", portal, token, masterID, lossDate, cause] as const,
 
   advices: (portal: string | null, token: string | null, form: AdviceForm) =>
-    ['inbox-xol', 'pla-dla', portal, token, form.tahun, form.sebab_kerugian, form.tipe] as const,
+    [
+      "inbox-xol",
+      "pla-dla",
+      portal,
+      token,
+      form.tahun,
+      form.sebab_kerugian,
+      form.tipe,
+    ] as const,
 
   approvals: (portal: string | null, token: string | null) =>
-    ['inbox-xol', 'persetujuan', portal, token] as const,
+    ["inbox-xol", "persetujuan", portal, token] as const,
 
   causes: (portal: string | null, token: string | null) =>
-    ['inbox-xol', 'sebab-kerugian', portal, token] as const,
-}
+    ["inbox-xol", "sebab-kerugian", portal, token] as const,
+};
 
 /**
  * useSessionPortal menyatukan dua nilai yang SELALU dibutuhkan bersama.
@@ -61,9 +70,9 @@ const keys = {
  * ditambahkan.
  */
 function useSessionPortal() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  return { token, portal, ready: token !== null && portal !== null }
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  return { token, portal, ready: token !== null && portal !== null };
 }
 
 /**
@@ -76,15 +85,18 @@ function useSessionPortal() {
  * berulang setiap kali tab berpindah tanpa membuat perubahan master tertahan lama.
  */
 export function useMasters() {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
     queryKey: keys.masters(portal, token),
     queryFn: () =>
-      callAPI<{ perjanjian: MasterXOL[] }>(`${PATH}/perjanjian`, { token, portal }),
+      callAPI<{ perjanjian: MasterXOL[] }>(`${PATH}/perjanjian`, {
+        token,
+        portal,
+      }),
     enabled: ready,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -102,13 +114,14 @@ export function useMasters() {
  * — pada data nyata, perjanjian yang kebetulan tidak punya klaim.
  */
 export function useClaimSummary() {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
-    queryKey: keys.claims(portal, token, ''),
-    queryFn: () => callAPI<ClaimSummaryResponse>(`${PATH}/klaim`, { token, portal }),
+    queryKey: keys.claims(portal, token, ""),
+    queryFn: () =>
+      callAPI<ClaimSummaryResponse>(`${PATH}/klaim`, { token, portal }),
     enabled: ready,
-  })
+  });
 }
 
 /**
@@ -118,9 +131,13 @@ export function useClaimSummary() {
  * mengirim satu permintaan per baris — pola N+1 yang dipindahkan dari basis data ke
  * jaringan, dan sama mahalnya.
  */
-export function useBreakdown(masterID: string, lossDate: string, cause: string) {
-  const { token, portal, ready } = useSessionPortal()
-  const active = masterID !== '' && lossDate !== '' && cause !== ''
+export function useBreakdown(
+  masterID: string,
+  lossDate: string,
+  cause: string,
+) {
+  const { token, portal, ready } = useSessionPortal();
+  const active = masterID !== "" && lossDate !== "" && cause !== "";
 
   return useQuery({
     queryKey: keys.breakdown(portal, token, masterID, lossDate, cause),
@@ -129,14 +146,14 @@ export function useBreakdown(masterID: string, lossDate: string, cause: string) 
         id_master: masterID,
         tanggal_kejadian: lossDate,
         sebab_kerugian: cause,
-      })
+      });
       return callAPI<{ baris: Breakdown[] }>(`${PATH}/klaim/rincian?${query}`, {
         token,
         portal,
-      })
+      });
     },
     enabled: ready && active,
-  })
+  });
 }
 
 /**
@@ -150,7 +167,7 @@ export function useBreakdown(masterID: string, lossDate: string, cause: string) 
  * satu permintaan per ketikan.
  */
 export function useAdviceSearch(form: AdviceForm, enabled: boolean) {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
     queryKey: keys.advices(portal, token, form),
@@ -159,25 +176,26 @@ export function useAdviceSearch(form: AdviceForm, enabled: boolean) {
         tahun: form.tahun,
         sebab_kerugian: form.sebab_kerugian,
         tipe: form.tipe,
-      })
+      });
       return callAPI<{ pemberitahuan: Advice[] }>(`${PATH}/pla-dla?${query}`, {
         token,
         portal,
-      })
+      });
     },
     enabled: ready && enabled,
-  })
+  });
 }
 
 /** Hook antrean persetujuan — tab "Inbox XOL Komite". */
 export function useApprovals(enabled: boolean) {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
     queryKey: keys.approvals(portal, token),
-    queryFn: () => callAPI<ApprovalResponse>(`${PATH}/persetujuan`, { token, portal }),
+    queryFn: () =>
+      callAPI<ApprovalResponse>(`${PATH}/persetujuan`, { token, portal }),
     enabled: ready && enabled,
-  })
+  });
 }
 
 /**
@@ -187,7 +205,7 @@ export function useApprovals(enabled: boolean) {
  * per kunjungan alih-alih setiap kali modal dibuka.
  */
 export function useCauseOfLoss() {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
     queryKey: keys.causes(portal, token),
@@ -198,7 +216,7 @@ export function useCauseOfLoss() {
       }),
     enabled: ready,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -223,16 +241,23 @@ export function useCauseOfLoss() {
  * karena sisipannya memang tidak memeriksa duplikat.
  */
 export function useInsertDolCol() {
-  const { token, portal } = useSessionPortal()
-  const queryClient = useQueryClient()
+  const { token, portal } = useSessionPortal();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (body: InsertDolColForm) =>
-      callAPI<InsertDolColResult>(`${PATH}/dol-col`, { metode: 'POST', body, token, portal }),
+      callAPI<InsertDolColResult>(`${PATH}/dol-col`, {
+        metode: "POST",
+        body,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: keys.claims(portal, token, '') })
+      void queryClient.invalidateQueries({
+        queryKey: keys.claims(portal, token, ""),
+      });
     },
-  })
+  });
 }
 
 /**
@@ -263,12 +288,17 @@ export function useInsertDolCol() {
  * tanpa tahu aturan aslinya.
  */
 export function useRemoveDolCol() {
-  const { token, portal } = useSessionPortal()
+  const { token, portal } = useSessionPortal();
 
   return useMutation({
     mutationFn: (body: { tanggal_kejadian: string; sebab_kerugian: string }) =>
-      callAPI<void>(`${PATH}/dol-col/hapus`, { metode: 'POST', body, token, portal }),
-  })
+      callAPI<void>(`${PATH}/dol-col/hapus`, {
+        metode: "POST",
+        body,
+        token,
+        portal,
+      }),
+  });
 }
 
 /**
@@ -289,8 +319,8 @@ export function downloadURL(form: AdviceForm): string {
     tahun: form.tahun,
     sebab_kerugian: form.sebab_kerugian,
     tipe: form.tipe,
-  })
-  return `${PATH}/pla-dla/unduh?${query}`
+  });
+  return `${PATH}/pla-dla/unduh?${query}`;
 }
 
 /**
@@ -320,8 +350,8 @@ export function exportClaimDetailURL(
     sebab_kerugian: cause,
     kode_group_business: businessGroupID,
     nama_group_business: businessGroupName,
-  })
-  return `${PATH}/klaim/rincian/unduh?${query}`
+  });
+  return `${PATH}/klaim/rincian/unduh?${query}`;
 }
 
 /**
@@ -330,8 +360,8 @@ export function exportClaimDetailURL(
  * `jenis` persis `Param.jenis` tombol lama: `'1'` untuk MBU Salvage, `'2'` untuk Inward
  * (`Section/DetailValueClaimXOL-Section.xml:7094` dan `:7480`).
  */
-export function uploadTemplateURL(jenis: '1' | '2'): string {
-  return `${PATH}/format-unggah?jenis=${jenis}`
+export function uploadTemplateURL(jenis: "1" | "2"): string {
+  return `${PATH}/format-unggah?jenis=${jenis}`;
 }
 
 /**
@@ -345,20 +375,20 @@ export function uploadTemplateURL(jenis: '1' | '2'): string {
  * membengkak sepertiga hanya untuk melewati jalur yang sama.
  */
 export function useUploadSalvageMBU() {
-  const { token, portal } = useSessionPortal()
+  const { token, portal } = useSessionPortal();
 
   return useMutation({
     mutationFn: (berkas: File) => {
-      const body = new FormData()
-      body.append('berkas', berkas)
+      const body = new FormData();
+      body.append("berkas", berkas);
       return callAPI<UploadResult>(`${PATH}/unggah/mbu-salvage`, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
-      })
+      });
     },
-  })
+  });
 }
 
 /**
@@ -375,12 +405,17 @@ export function useUploadSalvageMBU() {
  * kegunaan.
  */
 export function useUploadInward() {
-  const { token, portal } = useSessionPortal()
+  const { token, portal } = useSessionPortal();
 
   return useMutation({
     mutationFn: () =>
-      callAPI<void>(`${PATH}/unggah/inward`, { metode: 'POST', body: {}, token, portal }),
-  })
+      callAPI<void>(`${PATH}/unggah/inward`, {
+        metode: "POST",
+        body: {},
+        token,
+        portal,
+      }),
+  });
 }
 
 /**
@@ -391,22 +426,25 @@ export function useUploadInward() {
  * memanggilnya sama sekali.
  */
 export function useSummaryBusiness(lossDate: string, cause: string) {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
-    queryKey: ['inbox-xol', 'summary', portal, token, lossDate, cause],
+    queryKey: ["inbox-xol", "summary", portal, token, lossDate, cause],
     queryFn: () => {
       const query = new URLSearchParams({
         tanggal_kejadian: lossDate,
         sebab_kerugian: cause,
-      })
-      return callAPI<{ baris: SummaryBusiness[] }>(`${PATH}/klaim/summary?${query}`, {
-        token,
-        portal,
-      })
+      });
+      return callAPI<{ baris: SummaryBusiness[] }>(
+        `${PATH}/klaim/summary?${query}`,
+        {
+          token,
+          portal,
+        },
+      );
     },
-    enabled: ready && lossDate !== '' && cause !== '',
-  })
+    enabled: ready && lossDate !== "" && cause !== "",
+  });
 }
 
 /**
@@ -421,22 +459,25 @@ export function useSummaryBusiness(lossDate: string, cause: string) {
  * langkah tanpa menambah pilihan.
  */
 export function useClaimList(lossDate: string, cause: string) {
-  const { token, portal, ready } = useSessionPortal()
+  const { token, portal, ready } = useSessionPortal();
 
   return useQuery({
-    queryKey: ['inbox-xol', 'daftar-klaim', portal, token, lossDate, cause],
+    queryKey: ["inbox-xol", "daftar-klaim", portal, token, lossDate, cause],
     queryFn: () => {
       const query = new URLSearchParams({
         tanggal_kejadian: lossDate,
         sebab_kerugian: cause,
-      })
-      return callAPI<{ baris: ClaimListItem[] }>(`${PATH}/klaim/daftar?${query}`, {
-        token,
-        portal,
-      })
+      });
+      return callAPI<{ baris: ClaimListItem[] }>(
+        `${PATH}/klaim/daftar?${query}`,
+        {
+          token,
+          portal,
+        },
+      );
     },
-    enabled: ready && lossDate !== '' && cause !== '',
-  })
+    enabled: ready && lossDate !== "" && cause !== "",
+  });
 }
 
 /**
@@ -455,12 +496,17 @@ export function useClaimList(lossDate: string, cause: string) {
  * yang dikerjakan `downloadAPI` bersama seluruh modul lain.
  */
 export function useUnduhBerkas() {
-  const { token, portal } = useSessionPortal()
+  const { token, portal } = useSessionPortal();
 
   return useMutation({
-    mutationFn: ({ alamat, namaBerkas }: { alamat: string; namaBerkas: string }) =>
-      downloadAPI(alamat, namaBerkas, { token, portal }),
-  })
+    mutationFn: ({
+      alamat,
+      namaBerkas,
+    }: {
+      alamat: string;
+      namaBerkas: string;
+    }) => downloadAPI(alamat, namaBerkas, { token, portal }),
+  });
 }
 
 /**
@@ -474,11 +520,16 @@ export function useUnduhBerkas() {
  * 543 KB dan 524 KB, ditambah delapan rule SQL. Seluruhnya ADA di export — yang belum ada
  * adalah pembacaannya. Sampai itu selesai, server menolak beserta sebabnya.
  */
-export function useGenerateAdvice(tipe: 'pla' | 'dla') {
-  const { token, portal } = useSessionPortal()
+export function useGenerateAdvice(tipe: "pla" | "dla") {
+  const { token, portal } = useSessionPortal();
 
   return useMutation({
     mutationFn: (body: { tanggal_kejadian: string; sebab_kerugian: string }) =>
-      callAPI<void>(`${PATH}/generate/${tipe}`, { metode: 'POST', body, token, portal }),
-  })
+      callAPI<void>(`${PATH}/generate/${tipe}`, {
+        metode: "POST",
+        body,
+        token,
+        portal,
+      }),
+  });
 }

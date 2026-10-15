@@ -1,21 +1,21 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { BandingHargaTabs } from './BandingHargaTabs'
-import { DecisionConfirm } from './DecisionConfirm'
-import { DecisionPanel } from './DecisionPanel'
-import { DocumentPanel } from './DocumentPanel'
+import { BandingHargaTabs } from "./BandingHargaTabs";
+import { DecisionConfirm } from "./DecisionConfirm";
+import { DecisionPanel } from "./DecisionPanel";
+import { DocumentPanel } from "./DocumentPanel";
 import {
   useBandingHargaSalvageList,
   useBandingHargaSalvageMetadata,
   useBandingHargaSalvageSummary,
-} from './api'
+} from "./api";
 import {
   EMPTY_FILTER,
   type AppealRow,
@@ -24,7 +24,7 @@ import {
   type QueueInfo,
   type Tab,
   type TabColumn,
-} from './types'
+} from "./types";
 
 /**
  * Baris yang tombol Approve atau Reject-nya sedang ditekan.
@@ -33,7 +33,7 @@ import {
  * yang sedang dipertentangkan — dan mencarinya kembali di daftar berarti kotak itu ikut
  * kosong ketika halaman berganti di belakangnya.
  */
-type PendingDecision = { row: AppealRow; approve: boolean }
+type PendingDecision = { row: AppealRow; approve: boolean };
 
 /**
  * Inbox Banding Harga Salvage — menu `MENU_ID 72`, pengganti harness `InboxRequestSalvage`.
@@ -81,15 +81,15 @@ type PendingDecision = { row: AppealRow; approve: boolean }
  * bawah — pesan "berhasil disimpan" saja akan menyiratkan lebih daripada yang terjadi.
  */
 export function InboxBandingHargaSalvagePage() {
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
   /** Baris yang sedang ditegaskan keputusannya, dan hasil keputusan terakhir. */
-  const [pending, setPending] = useState<PendingDecision | null>(null)
-  const [hasil, setHasil] = useState('')
+  const [pending, setPending] = useState<PendingDecision | null>(null);
+  const [hasil, setHasil] = useState("");
 
   /** Banding yang dialog dokumennya sedang terbuka. Null berarti tertutup. */
-  const [dokumen, setDokumen] = useState<DocumentScope | null>(null)
+  const [dokumen, setDokumen] = useState<DocumentScope | null>(null);
 
   /**
    * Isi kotak cari yang sedang DIKETIK, terpisah dari kata kunci yang sudah dikirim.
@@ -98,28 +98,28 @@ export function InboxBandingHargaSalvagePage() {
    * setengah-ketik menghasilkan nol baris, dan mengirim satu permintaan per huruf berarti
    * memicu layar kosong berulang kali untuk satu nomor klaim yang sedang diketik.
    */
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("");
 
   // Ketikan menunggu jeda sebelum dikirim. Jedanya cukup panjang untuk menelan satu nomor
   // klaim yang diketik cepat, dan cukup pendek untuk tidak terasa seperti layar menggantung.
   useEffect(() => {
-    if (draft === filter.cari) return
+    if (draft === filter.cari) return;
 
     const timer = setTimeout(() => {
-      setFilter((previous) => ({ ...previous, cari: draft }))
-      setPage(1)
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [draft, filter.cari])
+      setFilter((previous) => ({ ...previous, cari: draft }));
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft, filter.cari]);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useBandingHargaSalvageMetadata()
-  const list = useBandingHargaSalvageList(filter, page, meta.isSuccess)
-  const summary = useBandingHargaSalvageSummary(meta.isSuccess)
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useBandingHargaSalvageMetadata();
+  const list = useBandingHargaSalvageList(filter, page, meta.isSuccess);
+  const summary = useBandingHargaSalvageSummary(meta.isSuccess);
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = filter.tab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = filter.tab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   /**
    * Berpindah tab MEMBERSIHKAN kotak cari dan mengembalikan ke halaman pertama.
@@ -128,15 +128,15 @@ export function InboxBandingHargaSalvagePage() {
    * isinya ada — dan pada pencarian yang cocok persis, kekosongan itu hampir selalu terjadi.
    */
   function selectTab(code: string) {
-    setFilter({ ...EMPTY_FILTER, tab: code })
-    setDraft('')
-    setPage(1)
+    setFilter({ ...EMPTY_FILTER, tab: code });
+    setDraft("");
+    setPage(1);
 
     // Kotak penegasan ikut ditutup, karena barisnya tidak lagi terlihat. Pesan hasil TIDAK
     // ikut dibuang: pengguna yang baru saja menyetujui sesuatu lalu berpindah ke History
     // justru sedang memeriksa hasil itu.
-    setPending(null)
-    setDokumen(null)
+    setPending(null);
+    setDokumen(null);
   }
 
   /**
@@ -147,8 +147,8 @@ export function InboxBandingHargaSalvagePage() {
    * baru saja diperbaiki dari layar lama.
    */
   function refreshAll() {
-    list.refetch()
-    summary.refetch()
+    list.refetch();
+    summary.refetch();
   }
 
   if (portal === null) {
@@ -157,13 +157,13 @@ export function InboxBandingHargaSalvagePage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Banding harga salvage milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Banding harga salvage milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -175,24 +175,24 @@ export function InboxBandingHargaSalvagePage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const info = list.data?.paginasi
-  const queue = list.data?.antrean ?? summary.data?.antrean
+  const info = list.data?.paginasi;
+  const queue = list.data?.antrean ?? summary.data?.antrean;
 
-  const sedangMemuat = list.isFetching || summary.isFetching
+  const sedangMemuat = list.isFetching || summary.isFetching;
 
   return (
     <PageFrame
       actions={
         <Button tone="kedua" onClick={refreshAll} disabled={sedangMemuat}>
-          {sedangMemuat ? 'Memuat…' : 'Refresh'}
+          {sedangMemuat ? "Memuat…" : "Refresh"}
         </Button>
       }
     >
       <QueueNotices queue={queue} />
-      <DecisionResultNotice message={hasil} onDismiss={() => setHasil('')} />
+      <DecisionResultNotice message={hasil} onDismiss={() => setHasil("")} />
 
       {/*
         Tabel ringkas "Status Salvage / Jumlah" TIDAK digambar lagi (Work Owner, 2026-10-05).
@@ -229,8 +229,8 @@ export function InboxBandingHargaSalvagePage() {
             melihatnya, sama seperti kedua blok catatan di bawah tabel.
           */}
           <SearchBar
-            label={meta.data?.label_cari ?? 'Cari No Klaim'}
-            placeholder={meta.data?.petunjuk_cari ?? ''}
+            label={meta.data?.label_cari ?? "Cari No Klaim"}
+            placeholder={meta.data?.petunjuk_cari ?? ""}
             value={draft}
             onChange={setDraft}
           />
@@ -238,12 +238,12 @@ export function InboxBandingHargaSalvagePage() {
           <div className="mt-4">
             <DataTable<AppealRow>
               columns={columnsFor(tab, setDokumen, (row, approve) => {
-                setPending({ row, approve })
+                setPending({ row, approve });
 
                 // Pesan hasil sebelumnya dibuang saat keputusan BARU dimulai. Membiarkannya
                 // berarti pengguna membaca kabar keputusan barang sebelumnya tepat di atas
                 // kotak keputusan barang yang berbeda.
-                setHasil('')
+                setHasil("");
               })}
               rows={list.data?.baris ?? []}
               rowKey={rowKeyFor(tab)}
@@ -326,8 +326,8 @@ export function InboxBandingHargaSalvagePage() {
               approve={pending?.approve ?? false}
               onCancel={() => setPending(null)}
               onDecided={(message) => {
-                setPending(null)
-                setHasil(message)
+                setPending(null);
+                setHasil(message);
               }}
             />
           </div>
@@ -343,7 +343,7 @@ export function InboxBandingHargaSalvagePage() {
         (`D-54`); yang dicabut hanya penggambarannya.
       */}
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -367,22 +367,32 @@ export function InboxBandingHargaSalvagePage() {
  * `pyRefreshWhen`, yakni nama elemen, bukan label tombol. Karena tidak ada literal yang
  * disalin, yang berlaku konvensi aplikasi (lihat label tombol pada kolom Aksi).
  */
-function PageFrame({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
+function PageFrame({
+  actions,
+  children,
+}: {
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Inbox Banding Harga Salvage</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Inbox Banding Harga Salvage
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Banding harga dari balai lelang atas barang salvage: yang menunggu keputusan Anda,
-            dan yang sudah Anda putuskan.
+            Banding harga dari balai lelang atas barang salvage: yang menunggu
+            keputusan Anda, dan yang sudah Anda putuskan.
           </p>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        )}
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -394,12 +404,12 @@ function PageFrame({ actions, children }: { actions?: ReactNode; children: React
  * sebagai kerusakan.
  */
 function QueueNotices({ queue }: { queue: QueueInfo | undefined }) {
-  if (!queue) return null
+  if (!queue) return null;
 
   const lines = [queue.catatan_perwakilan, queue.catatan_giliran].filter(
-    (line) => line !== '',
-  )
-  if (lines.length === 0) return null
+    (line) => line !== "",
+  );
+  if (lines.length === 0) return null;
 
   return (
     <div
@@ -412,7 +422,7 @@ function QueueNotices({ queue }: { queue: QueueInfo | undefined }) {
         ))}
       </ul>
     </div>
-  )
+  );
 }
 
 /**
@@ -438,10 +448,10 @@ function SearchBar({
   value,
   onChange,
 }: {
-  label: string
-  placeholder: string
-  value: string
-  onChange: (text: string) => void
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (text: string) => void;
 }) {
   return (
     <div className="mt-4 w-full sm:w-80">
@@ -464,13 +474,13 @@ function SearchBar({
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         className={[
-          'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-          'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-        ].join(' ')}
+          "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+          "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+        ].join(" ")}
       />
       <p className="mt-1 text-xs text-slate-500">Harus nomor klaim UTUH.</p>
     </div>
-  )
+  );
 }
 
 /**
@@ -495,7 +505,7 @@ function columnsFor(
     value: (row) => valueOf(row, column),
     render: (row) => renderCell(row, column),
     alignRight: column.angka,
-  }))
+  }));
 
   // Grid History TIDAK punya kolom aksi, dan itu mengikuti Pega apa adanya: di
   // `Section/InboxReqSalvageASM` grid itu berkonfigurasi `pyEditingMode = expandPane` dengan
@@ -504,12 +514,12 @@ function columnsFor(
   // Rinciannya digambar lewat `DataTable.expandedRow`, yang menirukan `expandPane` persis
   // beserta jalur papan ketiknya. Lihat DecisionPanel.
   if (isHistoryTab(tab)) {
-    return columns
+    return columns;
   }
 
   columns.push({
-    key: 'aksi',
-    title: 'Aksi',
+    key: "aksi",
+    title: "Aksi",
 
     /*
       TANPA lebar tetap, dan itu disengaja.
@@ -529,7 +539,7 @@ function columnsFor(
     */
     noSort: true,
     alignRight: true,
-    value: () => '',
+    value: () => "",
 
     /*
       Keduanya bernada `kedua`, bukan satu `utama` dan satu `halus`.
@@ -562,9 +572,9 @@ function columnsFor(
         </Button>
       </div>
     ),
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /**
@@ -583,10 +593,10 @@ function DecisionResultNotice({
   message,
   onDismiss,
 }: {
-  message: string
-  onDismiss: () => void
+  message: string;
+  onDismiss: () => void;
 }) {
-  if (message === '') return null
+  if (message === "") return null;
 
   return (
     <div
@@ -598,7 +608,7 @@ function DecisionResultNotice({
         Tutup
       </Button>
     </div>
-  )
+  );
 }
 
 /**
@@ -609,7 +619,7 @@ function DecisionResultNotice({
  * kolom "Detail Object", karena hanya ia yang barisnya satu BARANG.
  */
 function isHistoryTab(tab: Tab): boolean {
-  return !tab.kolom.some((column) => column.kunci === 'detail_object')
+  return !tab.kolom.some((column) => column.kunci === "detail_object");
 }
 
 /**
@@ -625,16 +635,16 @@ function isHistoryTab(tab: Tab): boolean {
  */
 function rowKeyFor(tab: Tab): (row: AppealRow) => string {
   if (isHistoryTab(tab)) {
-    return (row) => `${row.no_klaim}|${row.id_salvage}`
+    return (row) => `${row.no_klaim}|${row.id_salvage}`;
   }
-  return (row) => `${row.no_klaim}|${row.detail_object}`
+  return (row) => `${row.no_klaim}|${row.detail_object}`;
 }
 
 /** valueOf mengambil teks polos satu sel — yang dicari dan diurutkan DataTable. */
 function valueOf(row: AppealRow, column: TabColumn): string {
-  const raw = row[column.kunci]
-  if (raw == null) return ''
-  return String(raw)
+  const raw = row[column.kunci];
+  if (raw == null) return "";
+  return String(raw);
 }
 
 /**
@@ -649,18 +659,18 @@ function valueOf(row: AppealRow, column: TabColumn): string {
  * yang gagal dimuat.
  */
 function renderCell(row: AppealRow, column: TabColumn): ReactNode {
-  const raw = valueOf(row, column)
-  if (raw === '') return <span className="text-slate-400">—</span>
+  const raw = valueOf(row, column);
+  if (raw === "") return <span className="text-slate-400">—</span>;
 
-  if (column.kunci === 'tanggal_request') {
-    return formatDate(raw)
+  if (column.kunci === "tanggal_request") {
+    return formatDate(raw);
   }
 
   if (column.angka) {
-    return <span className="tabular-nums">{formatMoney(raw)}</span>
+    return <span className="tabular-nums">{formatMoney(raw)}</span>;
   }
 
-  return raw
+  return raw;
 }
 
 /**
@@ -675,9 +685,9 @@ function renderCell(row: AppealRow, column: TabColumn): ReactNode {
  * `GETSELISIHJAM` (`D-49` butir 10).
  */
 function formatMoney(raw: string): string {
-  const parsed = Number(raw.replace(',', '.'))
-  if (!Number.isFinite(parsed)) return raw
-  return parsed.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+  const parsed = Number(raw.replace(",", "."));
+  if (!Number.isFinite(parsed)) return raw;
+  return parsed.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 }
 
 /**
@@ -687,18 +697,18 @@ function formatMoney(raw: string): string {
  * separuh nomor klaim — dan tanpa keterangan itu, ia akan menyimpulkan datanya hilang.
  */
 function emptyMessageFor(tab: Tab, filter: FilterForm): string {
-  const keyword = filter.cari.trim()
-  if (keyword !== '') {
+  const keyword = filter.cari.trim();
+  if (keyword !== "") {
     return (
       `Tidak ada yang cocok dengan "${keyword}". Pencarian di layar ini COCOK PERSIS — ` +
-      'ketik nomor klaim utuh, bukan sebagiannya.'
-    )
+      "ketik nomor klaim utuh, bukan sebagiannya."
+    );
   }
-  return `Tidak ada banding harga pada antrean ${tab.nama}.`
+  return `Tidak ada banding harga pada antrean ${tab.nama}.`;
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

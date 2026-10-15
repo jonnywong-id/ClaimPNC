@@ -1,23 +1,23 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { SelectField, type SelectOption } from '@/components/SelectField'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { SelectField, type SelectOption } from "@/components/SelectField";
 
-import { ReportKPIAdmin } from './ReportKPIAdmin'
-import { ReportKPIPICTeknik } from './ReportKPIPICTeknik'
-import { ReportKPITabs } from './ReportKPITabs'
+import { ReportKPIAdmin } from "./ReportKPIAdmin";
+import { ReportKPIPICTeknik } from "./ReportKPIPICTeknik";
+import { ReportKPITabs } from "./ReportKPITabs";
 import {
   useExportReportKPI,
   useReportKPIAdjusters,
   useReportKPIDetail,
   useReportKPIMetadata,
   useReportKPISummary,
-} from './api'
+} from "./api";
 import type {
   Component,
   DetailRow,
@@ -26,7 +26,7 @@ import type {
   MetadataResponse,
   Scores,
   SummaryRow,
-} from './types'
+} from "./types";
 
 /**
  * Report KPI PNC — butir menu `MENU_ID 84`, pengganti harness `ReportKPIHarness`.
@@ -61,9 +61,9 @@ import type {
  * ulang di sini.
  */
 export function ReportKPIPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const metadata = useReportKPIMetadata()
+  const metadata = useReportKPIMetadata();
 
   // Penyaring dipegang DUA kali: satu yang sedang diketik, satu yang sudah dikirim.
   //
@@ -71,19 +71,19 @@ export function ReportKPIPage() {
   // mengetik. Alasannya masih berlaku di sini: mengubah satu isian memicu tiga permintaan
   // sekaligus (ringkasan, rincian, daftar pilihan), dan melakukannya per ketikan pada
   // tanggal yang setengah jadi hanya menghasilkan penolakan validasi beruntun.
-  const [draft, setDraft] = useState<FilterInput>(emptyFilter)
-  const [applied, setApplied] = useState<FilterInput | null>(null)
-  const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState<FilterInput>(emptyFilter);
+  const [applied, setApplied] = useState<FilterInput | null>(null);
+  const [page, setPage] = useState(1);
 
   // Tab yang sedang terbuka. Kosong berarti "ikuti tab bawaan dari server" — layar tidak
   // menebak sendiri kode tabnya, karena kode itu kontrak yang dimiliki server.
-  const [tab, setTab] = useState('')
+  const [tab, setTab] = useState("");
 
-  const active = applied ?? emptyFilter
-  const searched = applied !== null
+  const active = applied ?? emptyFilter;
+  const searched = applied !== null;
 
-  const summary = useReportKPISummary(active, searched)
-  const detail = useReportKPIDetail(active, page, searched)
+  const summary = useReportKPISummary(active, searched);
+  const detail = useReportKPIDetail(active, page, searched);
 
   // Daftar pilihan adjuster memakai penyaring yang SEDANG DIKETIK, bukan yang sudah
   // dikirim — pengguna memilih adjuster SEBELUM menekan Cari, dan daftar yang menunggu
@@ -93,41 +93,41 @@ export function ReportKPIPage() {
   // pasti ditolak validasi, dan penolakan yang tidak diminta pengguna hanya mengisi log.
   // Tanpa argumen, dan itu disengaja: daftarnya master dan terisi sejak layar dibuka —
   // bukan menunggu isian lengkap. Lihat useReportKPIAdjusters.
-  const adjusters = useReportKPIAdjusters()
+  const adjusters = useReportKPIAdjusters();
 
-  const exportFile = useExportReportKPI()
+  const exportFile = useExportReportKPI();
 
-  const components = metadata.data?.komponen ?? []
-  const tabs = metadata.data?.tab ?? []
+  const components = metadata.data?.komponen ?? [];
+  const tabs = metadata.data?.tab ?? [];
 
   // Pelanggaran per isian datang dari server, bukan dihitung ulang di layar.
   //
   // Aturannya hidup di domain (`internal/reportkpi/query.go`), dan menyalinnya ke sini
   // berarti dua tempat yang dapat berselisih — dengan yang di layar selalu menang lebih
   // dulu, sehingga selisihnya tidak pernah terlihat.
-  const violations = violationsOf(summary.error ?? detail.error)
+  const violations = violationsOf(summary.error ?? detail.error);
 
-  const summaryGrid = gridOf(metadata.data, 'ringkasan')
-  const detailGrid = gridOf(metadata.data, 'rincian')
+  const summaryGrid = gridOf(metadata.data, "ringkasan");
+  const detailGrid = gridOf(metadata.data, "rincian");
 
   // Tab yang digambar: pilihan pengguna bila ada, kalau tidak tab bawaan dari server.
-  const activeTab = tab || (metadata.data?.tab_bawaan ?? '')
+  const activeTab = tab || (metadata.data?.tab_bawaan ?? "");
 
   function search() {
-    setApplied(draft)
-    setPage(1)
+    setApplied(draft);
+    setPage(1);
   }
 
   return (
     // Jarak tepi dan lebar maksimum MENGIKUTI modul lain — bandingkan
     // `report-klaim/ReportKlaimPage.tsx`. Sebelumnya hanya `space-y-6`, sehingga isinya
     // menempel ke sidebar dan terbaca berbeda dari layar sebelahnya.
-    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
+    <div className="halaman space-y-5 p-4 sm:p-6">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">Report KPI</h1>
         <p className="text-sm text-slate-600">
           Penilaian kinerja adjuster eksternal dan tim admin registrasi
-          {portal ? ` — entitas ${portal}` : ''}.
+          {portal ? ` — entitas ${portal}` : ""}.
         </p>
       </header>
 
@@ -149,9 +149,9 @@ export function ReportKPIPage() {
         kolomnya berbeda. Menyatukannya menjadi satu komponen bersyarat akan membuat setiap
         perubahan pada salah satu tab menyentuh yang lain.
       */}
-      {activeTab === 'admin' ? (
+      {activeTab === "admin" ? (
         <ReportKPIAdmin metadata={metadata.data} />
-      ) : activeTab === 'pic-teknik' ? (
+      ) : activeTab === "pic-teknik" ? (
         <ReportKPIPICTeknik metadata={metadata.data} />
       ) : (
         <>
@@ -178,8 +178,8 @@ export function ReportKPIPage() {
 
           {!searched ? (
             <p className="rounded-kotak border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              Pilih tipe report dan periode, lalu tekan <strong>Cari</strong>. Layar lama
-              pun menuntut keduanya sebelum menampilkan apa pun.
+              Pilih tipe report dan periode, lalu tekan <strong>Cari</strong>.
+              Layar lama pun menuntut keduanya sebelum menampilkan apa pun.
             </p>
           ) : (
             <>
@@ -189,89 +189,88 @@ export function ReportKPIPage() {
                 tombol ekspor, dan itu yang dulu membuat layar ini berbeda.
               */}
               {active.variant !== VARIANT_DETAIL && (
-              <DataTable<SummaryRow>
-                title={summaryGrid?.judul ?? 'Summary KPI Adjuster'}
-                label="Ringkasan KPI per adjuster"
-                // Tipe report diambil dari penyaring yang DIJAWAB server, bukan dari isian
-                // yang sedang diketik: kolomnya harus cocok dengan baris yang sedang
-                // tampil, bukan dengan penyaring yang belum dikirim.
-                columns={summaryColumns(
-                  summaryGrid,
-                  components,
-                  summary.data?.penyaring.tipe_report ?? active.tipeReport,
-                )}
-                rows={summary.data?.baris ?? []}
-                rowKey={(row) => `${row.adjuster}|${row.tipe}`}
-                isLoading={summary.isPending}
-                error={
-                  summary.isError ? (
-                    <ErrorMessage
-                      title="Ringkasan tidak dapat diambil"
-                      description={messageOf(summary.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
-                emptyMessage={emptyMessage}
-              />
+                <DataTable<SummaryRow>
+                  title={summaryGrid?.judul ?? "Summary KPI Adjuster"}
+                  label="Ringkasan KPI per adjuster"
+                  // Tipe report diambil dari penyaring yang DIJAWAB server, bukan dari isian
+                  // yang sedang diketik: kolomnya harus cocok dengan baris yang sedang
+                  // tampil, bukan dengan penyaring yang belum dikirim.
+                  columns={summaryColumns(
+                    summaryGrid,
+                    components,
+                    summary.data?.penyaring.tipe_report ?? active.tipeReport,
+                  )}
+                  rows={summary.data?.baris ?? []}
+                  rowKey={(row) => `${row.adjuster}|${row.tipe}`}
+                  isLoading={summary.isPending}
+                  error={
+                    summary.isError ? (
+                      <ErrorMessage
+                        title="Ringkasan tidak dapat diambil"
+                        description={messageOf(summary.error)}
+                        tone="gangguan"
+                      />
+                    ) : undefined
+                  }
+                  emptyMessage={emptyMessage}
+                />
               )}
 
               {active.variant === VARIANT_DETAIL && (
-              <DataTable<DetailRow>
-                title={detailGrid?.judul ?? 'Detail KPI Adjuster'}
-                label="Rincian KPI per kasus survei"
-                columns={detailColumns(
-                  detailGrid,
-                  components,
-                  detail.data?.penyaring.tipe_report ?? active.tipeReport,
-                )}
-                rows={detail.data?.baris ?? []}
-                rowKey={(row) => row.no_case}
-                isLoading={detail.isPending}
-                error={
-                  detail.isError ? (
-                    <ErrorMessage
-                      title="Rincian tidak dapat diambil"
-                      description={messageOf(detail.error)}
-                      tone="gangguan"
-                    />
-                  ) : undefined
-                }
-                emptyMessage={emptyMessage}
-                hideSearch
-                pagination={{
-                  page: detail.data?.paginasi.halaman ?? 1,
-                  size: detail.data?.paginasi.ukuran ?? 50,
-                  total: detail.data?.paginasi.total ?? 0,
-                  totalPage: detail.data?.paginasi.total_halaman ?? 0,
-                  onPageChange: setPage,
-                  isLoading: detail.isFetching,
-                }}
-              />
+                <DataTable<DetailRow>
+                  title={detailGrid?.judul ?? "Detail KPI Adjuster"}
+                  label="Rincian KPI per kasus survei"
+                  columns={detailColumns(
+                    detailGrid,
+                    components,
+                    detail.data?.penyaring.tipe_report ?? active.tipeReport,
+                  )}
+                  rows={detail.data?.baris ?? []}
+                  rowKey={(row) => row.no_case}
+                  isLoading={detail.isPending}
+                  error={
+                    detail.isError ? (
+                      <ErrorMessage
+                        title="Rincian tidak dapat diambil"
+                        description={messageOf(detail.error)}
+                        tone="gangguan"
+                      />
+                    ) : undefined
+                  }
+                  emptyMessage={emptyMessage}
+                  hideSearch
+                  pagination={{
+                    page: detail.data?.paginasi.halaman ?? 1,
+                    size: detail.data?.paginasi.ukuran ?? 50,
+                    total: detail.data?.paginasi.total ?? 0,
+                    totalPage: detail.data?.paginasi.total_halaman ?? 0,
+                    onPageChange: setPage,
+                    isLoading: detail.isFetching,
+                  }}
+                />
               )}
             </>
           )}
-
         </>
       )}
     </div>
-  )
+  );
 }
 
 /* ─────────────────────────── Penyaring ─────────────────────────── */
 
 type FilterFormProps = {
-  value: FilterInput
-  onChange: (value: FilterInput) => void
-  reportTypes: MetadataResponse['tipe_report']
-  adjusters: string[]
-  adjustersLoading: boolean
-  violations: Record<string, string>
-  onSearch: () => void
-  onExport: (grid: string) => void
-  exportEnabled: boolean
-  exporting: boolean
-}
+  value: FilterInput;
+  onChange: (value: FilterInput) => void;
+  reportTypes: MetadataResponse["tipe_report"];
+  adjusters: string[];
+  adjustersLoading: boolean;
+  violations: Record<string, string>;
+  onSearch: () => void;
+  onExport: (grid: string) => void;
+  exportEnabled: boolean;
+  exporting: boolean;
+};
 
 /**
  * Penyaring tab KPI Adjuster — keempat isian yang ada di section lama, urutannya sama.
@@ -295,19 +294,19 @@ function FilterForm({
   const typeOptions: SelectOption[] = reportTypes.map((item) => ({
     value: item.kode,
     label: item.judul,
-  }))
+  }));
 
   const adjusterOptions: SelectOption[] = adjusters.map((name) => ({
     value: name,
     label: name,
-  }))
+  }));
 
   return (
     <form
       className="rounded-kotak border border-slate-200 bg-white p-4"
       onSubmit={(event) => {
-        event.preventDefault()
-        onSearch()
+        event.preventDefault();
+        onSearch();
       }}
     >
       {/*
@@ -330,8 +329,10 @@ function FilterForm({
           options={typeOptions}
           emptyText="--Pilih--"
           value={value.tipeReport}
-          error={violations['tipe_report']}
-          onChange={(event) => onChange({ ...value, tipeReport: event.target.value })}
+          error={violations["tipe_report"]}
+          onChange={(event) =>
+            onChange({ ...value, tipeReport: event.target.value })
+          }
         />
 
         <FormField
@@ -340,7 +341,7 @@ function FilterForm({
           type="date"
           className="w-44"
           value={value.dari}
-          failure={violations['dari']}
+          failure={violations["dari"]}
           onChange={(event) => onChange({ ...value, dari: event.target.value })}
         />
 
@@ -350,8 +351,10 @@ function FilterForm({
           type="date"
           className="w-44"
           value={value.sampai}
-          failure={violations['sampai']}
-          onChange={(event) => onChange({ ...value, sampai: event.target.value })}
+          failure={violations["sampai"]}
+          onChange={(event) =>
+            onChange({ ...value, sampai: event.target.value })
+          }
         />
 
         <SelectField
@@ -360,10 +363,12 @@ function FilterForm({
           options={adjusterOptions}
           // "All" apa adanya seperti layar lama (`pyNoSelectionText`), bukan terjemahan
           // "Semua adjuster" — `D-13` menetapkan teks layar mengikuti Pega.
-          emptyText={adjustersLoading ? 'Memuat…' : 'All'}
+          emptyText={adjustersLoading ? "Memuat…" : "All"}
           value={value.adjuster}
-          error={violations['adjuster']}
-          onChange={(event) => onChange({ ...value, adjuster: event.target.value })}
+          error={violations["adjuster"]}
+          onChange={(event) =>
+            onChange({ ...value, adjuster: event.target.value })
+          }
         />
 
         {/*
@@ -377,8 +382,10 @@ function FilterForm({
           options={VARIANT_OPTIONS}
           emptyText="--Pilih--"
           value={value.variant}
-          error={violations['variant']}
-          onChange={(event) => onChange({ ...value, variant: event.target.value })}
+          error={violations["variant"]}
+          onChange={(event) =>
+            onChange({ ...value, variant: event.target.value })
+          }
         />
 
         <Button type="submit" tone="utama">
@@ -390,14 +397,16 @@ function FilterForm({
           Report". Sebelumnya ada dua tombol, dan itu akibat tidak adanya isian tersebut.
         */}
         <Button
-          onClick={() => onExport(value.variant === VARIANT_DETAIL ? 'rincian' : 'ringkasan')}
+          onClick={() =>
+            onExport(value.variant === VARIANT_DETAIL ? "rincian" : "ringkasan")
+          }
           disabled={!exportEnabled || exporting}
         >
           Export Data
         </Button>
       </div>
     </form>
-  )
+  );
 }
 
 /* ─────────────────────────── Penyusun kolom ─────────────────────────── */
@@ -423,22 +432,26 @@ function summaryColumns(
   //
   // Kesembilan kolom nilai TIDAK diperlakukan begitu: di sana tanda hubung justru bermakna,
   // karena ia membedakan komponen yang belum dinilai dari komponen bernilai nol.
-  const fixed: Column<SummaryRow>[] = columnsFor(grid, reportType).map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => summaryCell(row, column.kunci),
-    render: (row) => summaryCell(row, column.kunci),
-  }))
+  const fixed: Column<SummaryRow>[] = columnsFor(grid, reportType).map(
+    (column) => ({
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => summaryCell(row, column.kunci),
+      render: (row) => summaryCell(row, column.kunci),
+    }),
+  );
 
   // KATEGORI digambar SESUDAH kesembilan komponen — itulah tempatnya di grid layar lama.
-  const trailing: Column<SummaryRow>[] = (grid?.kolom_akhir ?? []).map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => summaryCell(row, column.kunci),
-    render: (row) => summaryCell(row, column.kunci),
-  }))
+  const trailing: Column<SummaryRow>[] = (grid?.kolom_akhir ?? []).map(
+    (column) => ({
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => summaryCell(row, column.kunci),
+      render: (row) => summaryCell(row, column.kunci),
+    }),
+  );
 
-  return [...fixed, ...scoreColumns<SummaryRow>(components), ...trailing]
+  return [...fixed, ...scoreColumns<SummaryRow>(components), ...trailing];
 }
 
 /** detailColumns menyusun kolom grid Detail dengan cara yang sama. */
@@ -447,21 +460,25 @@ function detailColumns(
   components: Component[],
   reportType: string,
 ): Column<DetailRow>[] {
-  const fixed: Column<DetailRow>[] = columnsFor(grid, reportType).map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => detailCell(row, column.kunci),
-    render: (row) => detailCell(row, column.kunci),
-  }))
+  const fixed: Column<DetailRow>[] = columnsFor(grid, reportType).map(
+    (column) => ({
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => detailCell(row, column.kunci),
+      render: (row) => detailCell(row, column.kunci),
+    }),
+  );
 
-  const trailing: Column<DetailRow>[] = (grid?.kolom_akhir ?? []).map((column) => ({
-    key: column.kunci,
-    title: column.judul,
-    value: (row) => detailCell(row, column.kunci),
-    render: (row) => detailCell(row, column.kunci),
-  }))
+  const trailing: Column<DetailRow>[] = (grid?.kolom_akhir ?? []).map(
+    (column) => ({
+      key: column.kunci,
+      title: column.judul,
+      value: (row) => detailCell(row, column.kunci),
+      render: (row) => detailCell(row, column.kunci),
+    }),
+  );
 
-  return [...fixed, ...scoreColumns<DetailRow>(components), ...trailing]
+  return [...fixed, ...scoreColumns<DetailRow>(components), ...trailing];
 }
 
 /**
@@ -474,8 +491,8 @@ function detailColumns(
  */
 function columnsFor(grid: Grid | undefined, reportType: string) {
   return (grid?.kolom ?? []).filter(
-    (column) => !column.hanya_tipe_gabungan || reportType === 'ALL',
-  )
+    (column) => !column.hanya_tipe_gabungan || reportType === "ALL",
+  );
 }
 
 /**
@@ -485,7 +502,9 @@ function columnsFor(grid: Grid | undefined, reportType: string) {
  * pada laporan penilaian kinerja: yang pertama berarti komponennya belum dinilai, yang
  * kedua berarti adjuster tidak mendapat poin.
  */
-function scoreColumns<T extends { nilai: Scores }>(components: Component[]): Column<T>[] {
+function scoreColumns<T extends { nilai: Scores }>(
+  components: Component[],
+): Column<T>[] {
   return components.map((component) => ({
     key: component.kode,
     title: component.judul,
@@ -494,20 +513,20 @@ function scoreColumns<T extends { nilai: Scores }>(components: Component[]): Col
     // Angka dirapatkan ke kanan supaya koma desimalnya sejajar antar baris. Pada sembilan
     // kolom angka berdampingan, itu yang membuat kolomnya masih dapat dibaca sekilas.
     alignRight: true,
-  }))
+  }));
 }
 
 /** summaryCell mengambil isi satu sel tetap grid Summary. */
 function summaryCell(row: SummaryRow, key: string): string {
   switch (key) {
-    case 'adjuster':
-      return row.adjuster
-    case 'tipe':
-      return row.tipe
-    case 'kategori':
-      return row.kategori
+    case "adjuster":
+      return row.adjuster;
+    case "tipe":
+      return row.tipe;
+    case "kategori":
+      return row.kategori;
     default:
-      return ''
+      return "";
   }
 }
 
@@ -520,32 +539,32 @@ function summaryCell(row: SummaryRow, key: string): string {
  */
 function detailCell(row: DetailRow, key: string): string {
   switch (key) {
-    case 'adjuster':
-      return row.adjuster
-    case 'no_case':
-      return row.no_case
-    case 'kategori':
-      return row.kategori
+    case "adjuster":
+      return row.adjuster;
+    case "no_case":
+      return row.no_case;
+    case "kategori":
+      return row.kategori;
     default:
-      return ''
+      return "";
   }
 }
 
 /** scoreText menggambar satu nilai komponen. */
 function scoreText(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—'
-  return String(value)
+  if (value === null || value === undefined) return "—";
+  return String(value);
 }
 
 /* ─────────────────────────── Bantuan kecil ─────────────────────────── */
 
 const emptyFilter: FilterInput = {
-  tipeReport: '',
-  variant: '',
-  adjuster: '',
-  dari: '',
-  sampai: '',
-}
+  tipeReport: "",
+  variant: "",
+  adjuster: "",
+  dari: "",
+  sampai: "",
+};
 
 /**
  * Pilihan isian "Pilih Tipe Report" — nilainya diambil APA ADANYA dari Pega.
@@ -554,34 +573,37 @@ const emptyFilter: FilterInput = {
  * dan `=="DATA DETAIL"`. Nilainya ditulis persis begitu — berspasi dan berhuruf besar —
  * karena ia dibandingkan sebagai teks.
  */
-const VARIANT_SUMMARY = 'DATA SUMMARY'
-const VARIANT_DETAIL = 'DATA DETAIL'
+const VARIANT_SUMMARY = "DATA SUMMARY";
+const VARIANT_DETAIL = "DATA DETAIL";
 
 const VARIANT_OPTIONS = [
   { value: VARIANT_SUMMARY, label: VARIANT_SUMMARY },
   { value: VARIANT_DETAIL, label: VARIANT_DETAIL },
-]
+];
 
 const emptyMessage =
-  'Tidak ada penilaian pada penyaring ini. Bila Anda yakin seharusnya ada, ingat bahwa ' +
-  'layar ini hanya MEMBACA: penilaian baru muncul setelah dihitung dari Pega. Periksa ' +
-  'juga periodenya — yang disaring adalah tanggal penilaian, bukan tanggal kejadian.'
+  "Tidak ada penilaian pada penyaring ini. Bila Anda yakin seharusnya ada, ingat bahwa " +
+  "layar ini hanya MEMBACA: penilaian baru muncul setelah dihitung dari Pega. Periksa " +
+  "juga periodenya — yang disaring adalah tanggal penilaian, bukan tanggal kejadian.";
 
 /** gridOf mengambil keterangan satu grid pada tab KPI Adjuster. */
-function gridOf(metadata: MetadataResponse | undefined, code: string): Grid | undefined {
-  const tab = metadata?.tab.find((item) => item.kode === 'adjuster')
-  return tab?.grid.find((item) => item.kode === code)
+function gridOf(
+  metadata: MetadataResponse | undefined,
+  code: string,
+): Grid | undefined {
+  const tab = metadata?.tab.find((item) => item.kode === "adjuster");
+  return tab?.grid.find((item) => item.kode === code);
 }
 
 /** violationsOf mengambil pelanggaran per isian dari sebuah galat, bila ada. */
 function violationsOf(error: unknown): Record<string, string> {
-  if (error instanceof APIError) return error.violations()
-  return {}
+  if (error instanceof APIError) return error.violations();
+  return {};
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI, simpanBerkas, unduhBerkas } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, simpanBerkas, unduhBerkas } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   AdjusterListResponse,
@@ -15,9 +15,9 @@ import type {
   PICTeknikResponse,
   ScorecardResponse,
   SummaryResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/report-kpi'
+const PATH = "/api/report-kpi";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -32,24 +32,24 @@ const PATH = '/api/report-kpi'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['report-kpi', 'tab', portal, token] as const,
+    ["report-kpi", "tab", portal, token] as const,
 
   summary: (portal: string | null, token: string | null, filter: FilterInput) =>
-    ['report-kpi', 'ringkasan', portal, token, filter] as const,
+    ["report-kpi", "ringkasan", portal, token, filter] as const,
 
   detail: (
     portal: string | null,
     token: string | null,
     filter: FilterInput,
     page: number,
-  ) => ['report-kpi', 'rincian', portal, token, filter, page] as const,
+  ) => ["report-kpi", "rincian", portal, token, filter, page] as const,
 
   // Tanpa penyaring sama sekali: daftarnya master, dan isinya sama berapa pun isian yang
   // sedang dipilih. Memasukkan penyaring ke kunci hanya memecah cache menjadi sekian
   // salinan yang isinya persis sama.
   adjusters: (portal: string | null, token: string | null) =>
-    ['report-kpi', 'pilihan-adjuster', portal, token] as const,
-}
+    ["report-kpi", "pilihan-adjuster", portal, token] as const,
+};
 
 /**
  * Hook keterangan layar — daftar tab, grid, komponen, tipe report, dan selisih terencana.
@@ -66,8 +66,8 @@ const keys = {
  * terlihat sebagai kerusakan — ia hanya terlihat sebagai nilai yang berbeda.
  */
 export function useReportKPIMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -79,7 +79,7 @@ export function useReportKPIMetadata() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -92,8 +92,8 @@ export function useReportKPIMetadata() {
  * satu per kasus survei.
  */
 export function useReportKPISummary(filter: FilterInput, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.summary(portal, token, filter),
@@ -109,7 +109,7 @@ export function useReportKPISummary(filter: FilterInput, enabled: boolean) {
     // tidak terjadi setiap menit. Cache-nya karena itu lebih panjang daripada inbox —
     // tetapi tidak tak terbatas, karena perhitungan itu memang bisa terjadi kapan saja.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -118,15 +118,19 @@ export function useReportKPISummary(filter: FilterInput, enabled: boolean) {
  * Paginasinya dikerjakan basis data dengan `OFFSET … FETCH NEXT`, sehingga jumlah "total"
  * tetap tepat tanpa menarik seluruh baris ke peramban (`D-10`).
  */
-export function useReportKPIDetail(filter: FilterInput, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useReportKPIDetail(
+  filter: FilterInput,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.detail(portal, token, filter, page),
     queryFn: () =>
       callAPI<DetailResponse>(
-        `${PATH}/adjuster?${params(filter)}${page > 1 ? `&halaman=${page}` : ''}`,
+        `${PATH}/adjuster?${params(filter)}${page > 1 ? `&halaman=${page}` : ""}`,
         { token, portal },
       ),
     enabled: enabled && token !== null && portal !== null,
@@ -135,7 +139,7 @@ export function useReportKPIDetail(filter: FilterInput, page: number, enabled: b
     // menjadi kosong lalu terisi lagi.
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -155,24 +159,27 @@ export function useReportKPIDetail(filter: FilterInput, page: number, enabled: b
  * cara tahu apakah itu wajar atau rusak.
  */
 export function useReportKPIAdjusters() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.adjusters(portal, token),
     queryFn: () =>
-      callAPI<AdjusterListResponse>(`${PATH}/adjuster/pilihan`, { token, portal }),
+      callAPI<AdjusterListResponse>(`${PATH}/adjuster/pilihan`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Bahan permintaan ekspor: penyaring yang sedang berlaku, dan grid mana yang diunduh. */
 type ExportInput = {
-  filter: FilterInput
-  grid: string
-}
+  filter: FilterInput;
+  grid: string;
+};
 
 /**
  * Hook tombol ekspor.
@@ -192,15 +199,15 @@ type ExportInput = {
  * peladen — memorinya tetap datar — sedangkan memori peramban tumbuh sebesar berkasnya.
  */
 export function useExportReportKPI() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (input: ExportInput) => {
-      const address = `${PATH}/adjuster/ekspor?${params(input.filter)}&grid=${encodeURIComponent(input.grid)}`
-      simpanBerkas(await unduhBerkas(address, { token, portal }))
+      const address = `${PATH}/adjuster/ekspor?${params(input.filter)}&grid=${encodeURIComponent(input.grid)}`;
+      simpanBerkas(await unduhBerkas(address, { token, portal }));
     },
-  })
+  });
 }
 
 /**
@@ -219,16 +226,19 @@ export function useExportReportKPI() {
 /* ─────────────────────────── Tab KPI Admin ─────────────────────────── */
 
 const adminKeys = {
-  scorecard: (portal: string | null, token: string | null, filter: AdminFilterInput) =>
-    ['report-kpi', 'kartu-skor', portal, token, filter] as const,
+  scorecard: (
+    portal: string | null,
+    token: string | null,
+    filter: AdminFilterInput,
+  ) => ["report-kpi", "kartu-skor", portal, token, filter] as const,
 
   detail: (
     portal: string | null,
     token: string | null,
     filter: AdminFilterInput,
     page: number,
-  ) => ['report-kpi', 'rincian-admin', portal, token, filter, page] as const,
-}
+  ) => ["report-kpi", "rincian-admin", portal, token, filter, page] as const,
+};
 
 /**
  * Hook kartu skor tab KPI Admin.
@@ -237,20 +247,23 @@ const adminKeys = {
  * dengan belasan kolom, dan layar menggambarnya sebagai kartu, bukan tabel.
  */
 export function useAdminScorecard(filter: AdminFilterInput, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: adminKeys.scorecard(portal, token, filter),
     queryFn: () =>
-      callAPI<ScorecardResponse>(`${PATH}/admin/kartu-skor?${adminParams(filter)}`, {
-        token,
-        portal,
-      }),
+      callAPI<ScorecardResponse>(
+        `${PATH}/admin/kartu-skor?${adminParams(filter)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Hook grid rincian tab KPI Admin, dipaginasi server. */
@@ -259,33 +272,33 @@ export function useAdminDetail(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: adminKeys.detail(portal, token, filter, page),
     queryFn: () =>
       callAPI<AdminDetailResponse>(
-        `${PATH}/admin?${adminParams(filter)}${page > 1 ? `&halaman=${page}` : ''}`,
+        `${PATH}/admin?${adminParams(filter)}${page > 1 ? `&halaman=${page}` : ""}`,
         { token, portal },
       ),
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Hook tombol ekspor tab KPI Admin — mengunduh grid rinciannya. */
 export function useExportAdmin() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: AdminFilterInput) => {
-      const address = `${PATH}/admin/ekspor?${adminParams(filter)}`
-      simpanBerkas(await unduhBerkas(address, { token, portal }))
+      const address = `${PATH}/admin/ekspor?${adminParams(filter)}`;
+      simpanBerkas(await unduhBerkas(address, { token, portal }));
     },
-  })
+  });
 }
 
 /**
@@ -295,28 +308,31 @@ export function useExportAdmin() {
  * dapat menyaring dengan cara yang berbeda dari yang lain.
  */
 function adminParams(filter: AdminFilterInput): string {
-  const query = new URLSearchParams()
-  query.set('kelompok', filter.kelompok)
-  query.set('dari', filter.dari)
-  query.set('sampai', filter.sampai)
-  return query.toString()
+  const query = new URLSearchParams();
+  query.set("kelompok", filter.kelompok);
+  query.set("dari", filter.dari);
+  query.set("sampai", filter.sampai);
+  return query.toString();
 }
 
 function params(filter: FilterInput): string {
-  const query = new URLSearchParams()
-  query.set('tipe_report', filter.tipeReport)
-  query.set('dari', filter.dari)
-  query.set('sampai', filter.sampai)
-  if (filter.adjuster) query.set('adjuster', filter.adjuster)
-  return query.toString()
+  const query = new URLSearchParams();
+  query.set("tipe_report", filter.tipeReport);
+  query.set("dari", filter.dari);
+  query.set("sampai", filter.sampai);
+  if (filter.adjuster) query.set("adjuster", filter.adjuster);
+  return query.toString();
 }
 
 /* ─────────────────────────── Tab KPI PIC Teknik ─────────────────────────── */
 
 const picKeys = {
-  scorecards: (portal: string | null, token: string | null, filter: PICFilterInput) =>
-    ['report-kpi', 'kartu-skor-pic', portal, token, filter] as const,
-}
+  scorecards: (
+    portal: string | null,
+    token: string | null,
+    filter: PICFilterInput,
+  ) => ["report-kpi", "kartu-skor-pic", portal, token, filter] as const,
+};
 
 /**
  * Hook kartu skor tab KPI PIC Teknik.
@@ -326,8 +342,8 @@ const picKeys = {
  * menghasilkan puluhan permintaan untuk satu tampilan.
  */
 export function usePICTeknik(filter: PICFilterInput, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: picKeys.scorecards(portal, token, filter),
@@ -339,23 +355,22 @@ export function usePICTeknik(filter: PICFilterInput, enabled: boolean) {
     enabled: enabled && token !== null && portal !== null,
     placeholderData: (previous) => previous,
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /** Hook tombol ekspor tab KPI PIC Teknik. */
 export function useExportPICTeknik() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: PICFilterInput) => {
       // data_kpi HANYA dikirim pada ekspor. Ia memilih berkas, bukan isi layar —
       // mengirimkannya pada permintaan kartu skor akan menyarankan sebaliknya.
-      const address =
-        `${PATH}/pic-teknik/ekspor?${picParams(filter)}&data_kpi=${encodeURIComponent(filter.dataKPI)}`
-      simpanBerkas(await unduhBerkas(address, { token, portal }))
+      const address = `${PATH}/pic-teknik/ekspor?${picParams(filter)}&data_kpi=${encodeURIComponent(filter.dataKPI)}`;
+      simpanBerkas(await unduhBerkas(address, { token, portal }));
     },
-  })
+  });
 }
 
 /**
@@ -369,15 +384,15 @@ export function useExportPICTeknik() {
  * letaknya, persis seperti di layar lama.
  */
 export function useExportPICLaporan() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: PICFilterInput) => {
-      const address = `${PATH}/pic-teknik/ekspor-laporan?${picParams(filter)}`
-      simpanBerkas(await unduhBerkas(address, { token, portal }))
+      const address = `${PATH}/pic-teknik/ekspor-laporan?${picParams(filter)}`;
+      simpanBerkas(await unduhBerkas(address, { token, portal }));
     },
-  })
+  });
 }
 
 /**
@@ -387,9 +402,9 @@ export function useExportPICLaporan() {
  * dapat menyaring dengan cara yang berbeda dari yang sedang terlihat di layar.
  */
 function picParams(filter: PICFilterInput): string {
-  const query = new URLSearchParams()
-  query.set('lini_bisnis', filter.lini)
-  query.set('dari', filter.dari)
-  query.set('sampai', filter.sampai)
-  return query.toString()
+  const query = new URLSearchParams();
+  query.set("lini_bisnis", filter.lini);
+  query.set("dari", filter.dari);
+  query.set("sampai", filter.sampai);
+  return query.toString();
 }

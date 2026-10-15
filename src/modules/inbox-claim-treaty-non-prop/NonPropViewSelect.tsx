@@ -1,11 +1,11 @@
-import type { Tab } from './types'
+import type { Tab } from "./types";
 
 type Props = {
-  tabs: Tab[]
+  tabs: Tab[];
   /** Kode antrean yang sedang terbuka. */
-  active: string
-  onSelect: (code: string) => void
-}
+  active: string;
+  onSelect: (code: string) => void;
+};
 
 /**
  * Pemilih antrean pada layar Inbox Claim Treaty Non Prop.
@@ -69,12 +69,12 @@ export function NonPropViewSelect({ tabs, active, onSelect }: Props) {
         value={active}
         onChange={(event) => onSelect(event.target.value)}
         className={[
-          'w-full max-w-xs rounded-kontrol border border-slate-300 bg-white px-3 py-2',
-          'text-sm text-slate-900 shadow-lembut',
-          'transition-[border-color,box-shadow] duration-150 ease-halus',
-          'focus:border-blue-500 focus:outline-none focus-visible:ring-4',
-          'focus-visible:ring-blue-500/20',
-        ].join(' ')}
+          "w-full max-w-xs rounded-kontrol border border-slate-300 bg-white px-3 py-2",
+          "text-sm text-slate-900 shadow-lembut",
+          "transition-[border-color,box-shadow] duration-150 ease-halus",
+          "focus:border-blue-500 focus:outline-none focus-visible:ring-4",
+          "focus-visible:ring-blue-500/20",
+        ].join(" ")}
       >
         {/*
           "Choose" adalah entri kosong bawaan dropdown Pega (`pyHasNoSelection=true`,
@@ -98,5 +98,5 @@ export function NonPropViewSelect({ tabs, active, onSelect }: Props) {
         ))}
       </select>
     </div>
-  )
+  );
 }

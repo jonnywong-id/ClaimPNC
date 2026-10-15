@@ -28,10 +28,10 @@ export type Conversation = {
    * Ia dikirim tetapi TIDAK pernah digambar sebagai kolom. Namanya `komunikasi`, bukan
    * `no_klaim`: tabel ini tidak memuat nomor klaim sama sekali.
    */
-  komunikasi: string
+  komunikasi: string;
 
   /** Kolom "Tanggal" — tanggal pesannya dikirim. */
-  tanggal: string
+  tanggal: string;
 
   /**
    * Kolom "Pengirim(Dari)", SUDAH dirakit server menjadi `asal (operator)`.
@@ -39,16 +39,16 @@ export type Conversation = {
    * Bentuknya ditetapkan `Section/PengirimKomunikasi-Section.xml`, dan perakitannya ada di
    * server supaya polanya tidak hidup di dua tempat.
    */
-  pengirim: string
+  pengirim: string;
 
   /** Asal pesan — "PUSAT" atau kode cabangnya. */
-  asal: string
+  asal: string;
 
   /** Operator ID pengirimnya. */
-  operator_pengirim: string
+  operator_pengirim: string;
 
   /** Kolom "Pesan". */
-  pesan: string
+  pesan: string;
 
   /**
    * Kolom "Jawaban Terakhir".
@@ -56,7 +56,7 @@ export type Conversation = {
    * SELALU kosong pada tab "Belum Dijawab" — penyaring tab itu justru `IS NULL`. Kolomnya
    * memang tidak didaftarkan pada tab tersebut.
    */
-  jawaban_terakhir: string
+  jawaban_terakhir: string;
 
   /**
    * Kolom "Penjawab(Dari)", SUDAH dirakit menjadi `nama (tujuan)`.
@@ -64,7 +64,7 @@ export type Conversation = {
    * Perhatikan susunannya TERBALIK dari kolom pengirim — yang satu menaruh asal di depan,
    * yang satu menaruh nama di depan. Itu bentuk kedua section-nya apa adanya (`D-13`).
    */
-  penjawab: string
+  penjawab: string;
 
   /**
    * Tujuan pesan — "PUSAT" atau "CABANG".
@@ -72,7 +72,7 @@ export type Conversation = {
    * Ia tidak pernah menyebut cabang MANA, berbeda dari `asal` yang menyebut kodenya.
    * Asimetri itu ada di layar lama dan direplikasi (`P-5`).
    */
-  tujuan: string
+  tujuan: string;
 
   /**
    * Status percakapan, MENTAH.
@@ -81,18 +81,18 @@ export type Conversation = {
    * sehingga ia tidak digambar sebagai kolom. Ia ikut ke berkas unduhan, tempat nilai
    * mentah masih berguna bagi yang menelusuri.
    */
-  status_register: string
+  status_register: string;
 
   /**
    * Tanggal balasan.
    *
    * Ia DASAR PENGURUTAN tab "Sudah Dijawab" tetapi tidak digambar sebagai kolom.
    */
-  tanggal_jawaban: string
-}
+  tanggal_jawaban: string;
+};
 
 /** Nama isian pada satu baris — dipakai memilih sel yang digambar sebuah kolom. */
-export type ConversationField = keyof Conversation
+export type ConversationField = keyof Conversation;
 
 /**
  * Nama kolom TOMBOL.
@@ -104,31 +104,31 @@ export type ConversationField = keyof Conversation
  * di atas tabel. Versi pertama modul ini melewatkannya dan menggantinya dengan tautan pada
  * sel "Pesan", yang di Pega tidak ada sama sekali.
  */
-export type ActionField = 'aksi_detail' | 'aksi_selesai'
+export type ActionField = "aksi_detail" | "aksi_selesai";
 
 /** Satu kolom grid, sebagaimana ditetapkan server. */
 export type TabColumn = {
-  kunci: ConversationField | ActionField
-  judul: string
-}
+  kunci: ConversationField | ActionField;
+  judul: string;
+};
 
 /** isActionField menyatakan sebuah kolom menggambar tombol, bukan isian baris. */
 export function isActionField(kunci: string): kunci is ActionField {
-  return kunci === 'aksi_detail' || kunci === 'aksi_selesai'
+  return kunci === "aksi_detail" || kunci === "aksi_selesai";
 }
 
 /** Satu kolom berkas unduhan. */
 export type ExportColumn = {
-  kunci: string
-  judul: string
-}
+  kunci: string;
+  judul: string;
+};
 
 /** Satu tab beserta bentuk gridnya. */
 export type Tab = {
-  kode: string
-  nama: string
-  keterangan: string
-  kolom: TabColumn[]
+  kode: string;
+  nama: string;
+  keterangan: string;
+  kolom: TabColumn[];
 
   /**
    * Keterangan yang berlaku pada tab ini saja, digambar di atas grid.
@@ -136,16 +136,16 @@ export type Tab = {
    * Satu tab memilikinya: "Sudah Dijawab" menjelaskan bahwa yang tampil adalah balasan
    * TERAKHIR, bukan seluruh utasnya.
    */
-  catatan?: string
-}
+  catatan?: string;
+};
 
 /** Keterangan halaman dari server. */
 export type PageInfo = {
-  halaman: number
-  ukuran: number
-  total: number
-  total_halaman: number
-}
+  halaman: number;
+  ukuran: number;
+  total: number;
+  total_halaman: number;
+};
 
 /**
  * Kedua pencacah di atas grid.
@@ -154,8 +154,8 @@ export type PageInfo = {
  * label "Answered" dan "Not Answered".
  */
 export type Summary = {
-  belum_dijawab: number
-  sudah_dijawab: number
+  belum_dijawab: number;
+  sudah_dijawab: number;
 
   /**
    * Jumlah keduanya, DIKIRIM server dan bukan dihitung di sini.
@@ -164,8 +164,8 @@ export type Summary = {
    * sendirian tidak terhitung di mana pun. Menghitungnya di layar akan membuat orang
    * menduga angka itu jumlah seluruh percakapan — dan ia bukan.
    */
-  total: number
-}
+  total: number;
+};
 
 /**
  * Batas data yang sedang berlaku.
@@ -176,10 +176,10 @@ export type Summary = {
  */
 export type BranchScope = {
   /** Kode yang dipakai menyaring. */
-  kode: string
+  kode: string;
 
   /** Penyaringnya jatuh ke jalur kantor pusat. */
-  kantor_pusat: boolean
+  kantor_pusat: boolean;
 
   /**
    * Kode cabang pemanggil benar-benar terbaca.
@@ -189,16 +189,16 @@ export type BranchScope = {
    * itu apa adanya — menyembunyikannya berarti pelebaran batas data yang tidak diketahui
    * siapa pun yang terkena.
    */
-  terbaca: boolean
+  terbaca: boolean;
 
   /** Kalimat siap baca dari server yang menjelaskan batasnya. */
-  keterangan: string
-}
+  keterangan: string;
+};
 
 /** Jawaban GET /api/inbox-komunikasi-cabang/tab. */
 export type MetadataResponse = {
-  tab: Tab[]
-  tab_bawaan: string
+  tab: Tab[];
+  tab_bawaan: string;
 
   /**
    * Kolom berkas unduhan.
@@ -206,19 +206,19 @@ export type MetadataResponse = {
    * Dibaca layar untuk menyebutkan isi berkasnya SEBELUM diunduh — ia memuat tiga kolom
    * yang tidak ada di tabel mana pun.
    */
-  kolom_ekspor: ExportColumn[]
-  portal: string
-}
+  kolom_ekspor: ExportColumn[];
+  portal: string;
+};
 
 /** Jawaban GET /api/inbox-komunikasi-cabang. */
 export type ListResponse = {
-  tab: Tab
-  baris: Conversation[]
-  paginasi: PageInfo
-  ringkasan: Summary
-  batas_cabang: BranchScope
-  portal: string
-}
+  tab: Tab;
+  baris: Conversation[];
+  paginasi: PageInfo;
+  ringkasan: Summary;
+  batas_cabang: BranchScope;
+  portal: string;
+};
 
 /** Satu lampiran pada layar detail. */
 export type Attachment = {
@@ -228,12 +228,12 @@ export type Attachment = {
    * Dikirim tetapi belum dapat dipakai mengunduh apa pun: pengambilan berkasnya menempuh
    * seam DocumentStore (`D-16`) yang belum dibangun di modul ini.
    */
-  id_dokumen: string
+  id_dokumen: string;
 
-  jenis_dokumen: string
-  rincian_dokumen: string
-  catatan: string
-  tanggal_unggah: string
+  jenis_dokumen: string;
+  rincian_dokumen: string;
+  catatan: string;
+  tanggal_unggah: string;
 
   /**
    * Lampirannya sudah benar-benar diunggah.
@@ -242,13 +242,13 @@ export type Attachment = {
    * kesimpulan yang sama di dua tempat dapat menyimpang, dan yang di server-lah yang
    * mengikuti aturan sistem lama.
    */
-  sudah_diunggah: boolean
-}
+  sudah_diunggah: boolean;
+};
 
 /** Satu baris pada utas layar detail. */
 export type ThreadMessage = {
   /** Kolom "Tanggal". */
-  tanggal: string
+  tanggal: string;
 
   /**
    * Kolom "Pengirim" — Operator ID pengirimnya, APA ADANYA.
@@ -256,21 +256,21 @@ export type ThreadMessage = {
    * Ia TIDAK dirakit menjadi `asal (operator)` seperti di grid, dan itu bukan pilihan: tabel
    * riwayat tidak memuat kolom asal sama sekali, sehingga tidak ada yang dapat dirakit.
    */
-  pengirim: string
+  pengirim: string;
 
   /** Kolom "Pesan". */
-  pesan: string
-}
+  pesan: string;
+};
 
 /** Jawaban GET /api/inbox-komunikasi-cabang/komunikasi/{komunikasi}. */
 export type ConversationDetailResponse = {
-  komunikasi: string
+  komunikasi: string;
 
   /** Asal percakapan, dipakai judul layar detail. */
-  asal: string
+  asal: string;
 
-  pesan: ThreadMessage[]
-  lampiran: Attachment[]
+  pesan: ThreadMessage[];
+  lampiran: Attachment[];
 
   /**
    * Kotak balasan dapat dipakai.
@@ -282,11 +282,11 @@ export type ConversationDetailResponse = {
    * bukan dibalik nilainya: nama yang artinya berlawanan dengan isinya adalah cacat yang
    * menunggu giliran.
    */
-  balas_tersedia: boolean
+  balas_tersedia: boolean;
 
-  batas_cabang: BranchScope
-  portal: string
-}
+  batas_cabang: BranchScope;
+  portal: string;
+};
 
 /**
  * Satu pilihan pada pemilih cabang tujuan.
@@ -296,13 +296,13 @@ export type ConversationDetailResponse = {
  * pengembang. Peladen membacanya untuk keperluan notifikasi dan tidak pernah meneruskannya.
  */
 export type BranchOption = {
-  kode: string
-  nama: string
-}
+  kode: string;
+  nama: string;
+};
 
 /** Jawaban `GET /api/inbox-komunikasi-cabang/cabang`. */
 export type BranchListResponse = {
-  cabang: BranchOption[]
+  cabang: BranchOption[];
 
   /**
    * Kedua pilihan dropdown tujuan — "PUSAT" dan "CABANG".
@@ -311,21 +311,21 @@ export type BranchListResponse = {
    * (`CNMShowInsertKomunikasi_dt` mengisinya secara harfiah), dan tempat pembacaan itu
    * tercatat adalah backend.
    */
-  tujuan: string[]
+  tujuan: string[];
 
-  portal: string
-}
+  portal: string;
+};
 
 /** Badan permintaan `POST /api/inbox-komunikasi-cabang/pesan`. */
 export type NewMessageRequest = {
-  tujuan: string
-  cabang: string
-  pesan: string
-}
+  tujuan: string;
+  cabang: string;
+  pesan: string;
+};
 
 /** Jawaban aksi tulis yang berhasil — balas, selesai, dan kirim pesan. */
 export type ActionResponse = {
-  komunikasi: string
-  pesan: string
-  portal: string
-}
+  komunikasi: string;
+  pesan: string;
+  portal: string;
+};

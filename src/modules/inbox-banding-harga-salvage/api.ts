@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   DecisionRequest,
@@ -14,9 +14,9 @@ import type {
   ListResponse,
   MetadataResponse,
   SummaryResponse,
-} from './types'
+} from "./types";
 
-const PATH = '/api/inbox-banding-harga-salvage'
+const PATH = "/api/inbox-banding-harga-salvage";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -32,12 +32,17 @@ const PATH = '/api/inbox-banding-harga-salvage'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-banding-harga-salvage', 'tab', portal, token] as const,
+    ["inbox-banding-harga-salvage", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, filter: FilterForm, page: number) =>
+  list: (
+    portal: string | null,
+    token: string | null,
+    filter: FilterForm,
+    page: number,
+  ) =>
     [
-      'inbox-banding-harga-salvage',
-      'daftar',
+      "inbox-banding-harga-salvage",
+      "daftar",
       portal,
       token,
       filter.tab,
@@ -46,10 +51,10 @@ const keys = {
     ] as const,
 
   summary: (portal: string | null, token: string | null) =>
-    ['inbox-banding-harga-salvage', 'ringkas', portal, token] as const,
+    ["inbox-banding-harga-salvage", "ringkas", portal, token] as const,
 
   decisions: (portal: string | null, token: string | null, claimNo: string) =>
-    ['inbox-banding-harga-salvage', 'riwayat', portal, token, claimNo] as const,
+    ["inbox-banding-harga-salvage", "riwayat", portal, token, claimNo] as const,
 
   documents: (
     portal: string | null,
@@ -57,14 +62,14 @@ const keys = {
     scope: DocumentScope | null,
   ) =>
     [
-      'inbox-banding-harga-salvage',
-      'dokumen',
+      "inbox-banding-harga-salvage",
+      "dokumen",
       portal,
       token,
-      scope?.detail_object ?? '',
-      scope?.id_salvage ?? '',
+      scope?.detail_object ?? "",
+      scope?.id_salvage ?? "",
     ] as const,
-}
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, selisih terencana, dan keterbatasan.
@@ -81,8 +86,8 @@ const keys = {
  * dengan tangan berarti menunggu salah satunya bergeser satu kolom.
  */
 export function useBandingHargaSalvageMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -94,7 +99,7 @@ export function useBandingHargaSalvageMetadata() {
     // tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -112,12 +117,13 @@ export function useBandingHargaSalvageList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -128,7 +134,7 @@ export function useBandingHargaSalvageList(
     // dapat terjadi kapan saja tanpa ada petugas yang menekan apa pun. Cache-nya karena itu
     // pendek.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -142,15 +148,16 @@ export function useBandingHargaSalvageList(
  * daftarnya menghitung populasi yang berbeda; selisihnya dinyatakan di `selisih_terencana`.
  */
 export function useBandingHargaSalvageSummary(enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.summary(portal, token),
-    queryFn: () => callAPI<SummaryResponse>(`${PATH}/ringkas`, { token, portal }),
+    queryFn: () =>
+      callAPI<SummaryResponse>(`${PATH}/ringkas`, { token, portal }),
     enabled: enabled && token !== null && portal !== null,
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -161,14 +168,14 @@ export function useBandingHargaSalvageSummary(enabled: boolean) {
  * sementara yang pertama memang itu yang diinginkan.
  */
 function buildPath(filter: FilterForm, page: number): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  if (filter.tab) params.set('tab', filter.tab)
-  if (filter.cari.trim()) params.set('cari', filter.cari.trim())
-  if (page > 1) params.set('halaman', String(page))
+  if (filter.tab) params.set("tab", filter.tab);
+  if (filter.cari.trim()) params.set("cari", filter.cari.trim());
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /**
@@ -183,8 +190,8 @@ function buildPath(filter: FilterForm, page: number): string {
  * Ia hanya berjalan ketika panelnya benar-benar dibuka (`claimNo` terisi).
  */
 export function useBandingHargaSalvageDecisions(claimNo: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.decisions(portal, token, claimNo),
@@ -193,12 +200,12 @@ export function useBandingHargaSalvageDecisions(claimNo: string) {
         `${PATH}/riwayat/${encodeURIComponent(claimNo)}`,
         { token, portal },
       ),
-    enabled: claimNo !== '' && token !== null && portal !== null,
+    enabled: claimNo !== "" && token !== null && portal !== null,
 
     // Keputusan yang sudah diambil tidak berubah lagi. Cache-nya karena itu lebih panjang
     // daripada daftar, yang justru berubah saat balai lelang mengajukan banding baru.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -223,25 +230,31 @@ export function useBandingHargaSalvageDecisions(claimNo: string) {
  * menampilkan jawabannya apa adanya.
  */
 export function useBandingHargaSalvageDecide() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (body: DecisionRequest) =>
       callAPI<DecisionResultResponse>(`${PATH}/keputusan`, {
         token,
         portal,
-        metode: 'POST',
+        metode: "POST",
         body,
       }),
 
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'daftar'] })
-      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'ringkas'] })
-      client.invalidateQueries({ queryKey: ['inbox-banding-harga-salvage', 'riwayat'] })
+      client.invalidateQueries({
+        queryKey: ["inbox-banding-harga-salvage", "daftar"],
+      });
+      client.invalidateQueries({
+        queryKey: ["inbox-banding-harga-salvage", "ringkas"],
+      });
+      client.invalidateQueries({
+        queryKey: ["inbox-banding-harga-salvage", "riwayat"],
+      });
     },
-  })
+  });
 }
 
 /**
@@ -256,8 +269,8 @@ export function useBandingHargaSalvageDecide() {
  * menjadi dua segmen dan rutenya tidak akan pernah cocok.
  */
 export function useBandingHargaSalvageDocuments(scope: DocumentScope | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.documents(portal, token, scope),
@@ -267,7 +280,7 @@ export function useBandingHargaSalvageDocuments(scope: DocumentScope | null) {
 
     // Dokumen pendukung jarang berubah setelah banding diajukan.
     staleTime: 60 * 1000,
-  })
+  });
 }
 
 /**
@@ -278,12 +291,15 @@ export function useBandingHargaSalvageDocuments(scope: DocumentScope | null) {
  * peramban lewat `fetch` berarti seluruh berkas ditahan di memori JavaScript lebih dulu —
  * tanpa satu pun manfaat, karena yang dibutuhkan hanyalah peramban menyimpannya.
  */
-export function documentDownloadURL(scope: DocumentScope, documentID: string): string {
+export function documentDownloadURL(
+  scope: DocumentScope,
+  documentID: string,
+): string {
   const params = new URLSearchParams({
     detail_object: scope.detail_object,
     id_salvage: scope.id_salvage,
-  })
-  return `${PATH}/dokumen/${encodeURIComponent(documentID)}?${params.toString()}`
+  });
+  return `${PATH}/dokumen/${encodeURIComponent(documentID)}?${params.toString()}`;
 }
 
 /** documentPath menyusun jalur daftar dokumen. */
@@ -291,6 +307,6 @@ function documentPath(scope: DocumentScope): string {
   const params = new URLSearchParams({
     detail_object: scope.detail_object,
     id_salvage: scope.id_salvage,
-  })
-  return `${PATH}/dokumen?${params.toString()}`
+  });
+  return `${PATH}/dokumen?${params.toString()}`;
 }

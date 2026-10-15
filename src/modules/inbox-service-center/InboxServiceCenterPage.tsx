@@ -1,21 +1,24 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { ServiceCenterTabs } from './ServiceCenterTabs'
-import { useInboxServiceCenterList, useInboxServiceCenterMetadata } from './api'
+import { ServiceCenterTabs } from "./ServiceCenterTabs";
+import {
+  useInboxServiceCenterList,
+  useInboxServiceCenterMetadata,
+} from "./api";
 import {
   EMPTY_FILTER,
   type FilterForm,
   type ServiceClaim,
   type Tab,
   type TabColumn,
-} from './types'
+} from "./types";
 
 /**
  * Inbox Service Center — menu `MENU_ID 46`, pengganti harness `InboxServiceCenter`.
@@ -43,8 +46,8 @@ import {
  * halaman yang tidak melakukan apa pun.
  */
 export function InboxServiceCenterPage() {
-  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER)
-  const [page, setPage] = useState(1)
+  const [filter, setFilter] = useState<FilterForm>(EMPTY_FILTER);
+  const [page, setPage] = useState(1);
 
   /**
    * Isi kotak cari yang sedang DIKETIK, terpisah dari kata kunci yang sudah dikirim.
@@ -53,27 +56,27 @@ export function InboxServiceCenterPage() {
    * permintaan dapat menarik seluruh baris yang cocok. Mengirim satu permintaan per huruf
    * berarti melakukannya berulang kali untuk satu kata.
    */
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("");
 
   // Ketikan menunggu jeda sebelum dikirim. Jedanya cukup panjang untuk menelan satu kata yang
   // diketik cepat, dan cukup pendek untuk tidak terasa seperti layar yang menggantung.
   useEffect(() => {
-    if (draft === filter.cari) return
+    if (draft === filter.cari) return;
 
     const timer = setTimeout(() => {
-      setFilter((previous) => ({ ...previous, cari: draft }))
-      setPage(1)
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [draft, filter.cari])
+      setFilter((previous) => ({ ...previous, cari: draft }));
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft, filter.cari]);
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useInboxServiceCenterMetadata()
-  const list = useInboxServiceCenterList(filter, page, meta.isSuccess)
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useInboxServiceCenterMetadata();
+  const list = useInboxServiceCenterList(filter, page, meta.isSuccess);
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = filter.tab || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = filter.tab || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   /**
    * Berpindah tab MEMBERSIHKAN kotak cari dan mengembalikan ke halaman pertama.
@@ -83,9 +86,9 @@ export function InboxServiceCenterPage() {
    * masih terisi dari tab sebelumnya.
    */
   function selectTab(code: string) {
-    setFilter({ ...EMPTY_FILTER, tab: code })
-    setDraft('')
-    setPage(1)
+    setFilter({ ...EMPTY_FILTER, tab: code });
+    setDraft("");
+    setPage(1);
   }
 
   if (portal === null) {
@@ -94,13 +97,13 @@ export function InboxServiceCenterPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Klaim portal rekanan milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Klaim portal rekanan milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -112,10 +115,10 @@ export function InboxServiceCenterPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const info = list.data?.paginasi
+  const info = list.data?.paginasi;
 
   return (
     <PageFrame>
@@ -175,8 +178,8 @@ export function InboxServiceCenterPage() {
 
             {info && !info.aktif && info.total > 0 && (
               <p className="mt-3 text-sm text-slate-600" role="status">
-                Menampilkan seluruh {info.total} baris yang cocok. Saat mencari, hasilnya
-                tidak dibagi per halaman — sama seperti di layar lama.
+                Menampilkan seluruh {info.total} baris yang cocok. Saat mencari,
+                hasilnya tidak dibagi per halaman — sama seperti di layar lama.
               </p>
             )}
           </div>
@@ -185,22 +188,24 @@ export function InboxServiceCenterPage() {
 
       <Notes limitations={meta.data?.keterbatasan ?? []} />
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Service Center</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Service Center
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Klaim portal rekanan yang Anda tangani: registrasi baru, yang menunggu keputusan
-          komite, serta yang sudah disetujui atau ditolak.
+          Klaim portal rekanan yang Anda tangani: registrasi baru, yang menunggu
+          keputusan komite, serta yang sudah disetujui atau ditolak.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -215,8 +220,8 @@ function SearchBar({
   value,
   onChange,
 }: {
-  value: string
-  onChange: (text: string) => void
+  value: string;
+  onChange: (text: string) => void;
 }) {
   return (
     <div className="mt-4 w-full sm:w-80">
@@ -239,16 +244,16 @@ function SearchBar({
         placeholder="No Polis, Nasabah, atau IMEI"
         onChange={(event) => onChange(event.target.value)}
         className={[
-          'mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm',
-          'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30',
-        ].join(' ')}
+          "mt-1 block w-full rounded-kontrol border border-slate-300 px-3 py-2 text-sm",
+          "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30",
+        ].join(" ")}
       />
       <p className="mt-1 text-xs text-slate-500">
-        Menelusuri No Polis, Nasabah, dan IMEI. Mencari dengan ID atau No Klaim saja tidak
-        menghasilkan baris — sama seperti di layar lama.
+        Menelusuri No Polis, Nasabah, dan IMEI. Mencari dengan ID atau No Klaim
+        saja tidak menghasilkan baris — sama seperti di layar lama.
       </p>
     </div>
-  )
+  );
 }
 
 /**
@@ -259,18 +264,20 @@ function SearchBar({
  * tampak setengah bekerja akan dilaporkan berulang kali sebagai kerusakan.
  */
 function Notes({ limitations }: { limitations: string[] }) {
-  if (limitations.length === 0) return null
+  if (limitations.length === 0) return null;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
+      <h2 className="text-sm font-medium text-slate-800">
+        Yang perlu diketahui
+      </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
         {limitations.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 /**
@@ -284,18 +291,18 @@ function columnsFor(tab: Tab): Column<ServiceClaim>[] {
     key: column.kunci,
     title: column.judul,
     value: (row) => cellText(row, column),
-  }))
+  }));
 
   columns.push({
-    key: 'aksi',
-    title: '',
-    value: () => '',
+    key: "aksi",
+    title: "",
+    value: () => "",
     render: (row) => <DetailLink id={row.id} />,
     noSort: true,
     alignRight: true,
-  })
+  });
 
-  return columns
+  return columns;
 }
 
 /**
@@ -306,21 +313,21 @@ function columnsFor(tab: Tab): Column<ServiceClaim>[] {
  * sekaligus memang membukanya berdampingan.
  */
 function DetailLink({ id }: { id: string }) {
-  if (id === '') return <span className="text-sm text-slate-400">—</span>
+  if (id === "") return <span className="text-sm text-slate-400">—</span>;
 
   return (
     <Link
       to={`/inbox-service-center/${encodeURIComponent(id)}`}
       className={[
-        'inline-flex items-center rounded-kontrol border border-slate-300 px-3 py-1.5',
-        'text-sm font-medium text-slate-700',
-        'transition-colors duration-150 ease-halus hover:bg-slate-50 hover:text-slate-900',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "inline-flex items-center rounded-kontrol border border-slate-300 px-3 py-1.5",
+        "text-sm font-medium text-slate-700",
+        "transition-colors duration-150 ease-halus hover:bg-slate-50 hover:text-slate-900",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       Lihat Rincian
     </Link>
-  )
+  );
 }
 
 /**
@@ -330,17 +337,17 @@ function DetailLink({ id }: { id: string }) {
  * tanda pisah — bukan sel kosong yang tidak dapat dibedakan dari kolom yang gagal dimuat.
  */
 function cellText(row: ServiceClaim, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  const text = String(value)
-  return isDate(text) ? formatDate(text) : text
+  const text = String(value);
+  return isDate(text) ? formatDate(text) : text;
 }
 
 /** isDate mengenali bentuk `YYYY-MM-DD` yang dikirim server untuk kolom tanggal. */
 function isDate(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text);
 }
 
 /**
@@ -350,17 +357,17 @@ function isDate(text: string): boolean {
  * antrean yang memang tidak punya pekerjaan, dan tindakannya pun berbeda.
  */
 function emptyMessageFor(tab: Tab, filter: FilterForm): string {
-  if (filter.cari.trim() !== '') {
+  if (filter.cari.trim() !== "") {
     return (
-      'Tidak ada baris yang cocok dengan pencarian ini. Kotak cari menelusuri No Polis, ' +
-      'Nasabah, dan IMEI — bukan ID atau No Klaim.'
-    )
+      "Tidak ada baris yang cocok dengan pencarian ini. Kotak cari menelusuri No Polis, " +
+      "Nasabah, dan IMEI — bukan ID atau No Klaim."
+    );
   }
-  return `Tidak ada klaim milik Anda pada antrean ${tab.nama}.`
+  return `Tidak ada klaim milik Anda pada antrean ${tab.nama}.`;
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import type { CauseOfLossListResponse, CauseOfLossResponse } from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import type { CauseOfLossListResponse, CauseOfLossResponse } from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTES = '/api/master/penyebab-kerugian'
+const ROUTES = "/api/master/penyebab-kerugian";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -16,8 +16,8 @@ const ROUTES = '/api/master/penyebab-kerugian'
  */
 const key = {
   list: (portal: string | null, token: string | null) =>
-    ['master-penyebab-kerugian', portal, token] as const,
-}
+    ["master-penyebab-kerugian", portal, token] as const,
+};
 
 /**
  * Hook daftar Master Penyebab Kerugian.
@@ -31,8 +31,8 @@ const key = {
  * Layar yang datanya besar — inbox dan laporan — tidak boleh mengikuti pola ini.
  */
 export function useCauseOfLossList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: key.list(portal, token),
@@ -45,14 +45,14 @@ export function useCauseOfLossList() {
     // pemuatan ulang yang tidak perlu, sementara tombol Refresh tetap tersedia bagi
     // pengguna yang tahu datanya baru saja diubah orang lain.
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 type SaveFields = {
   /** Kosong berarti menambah; terisi berarti mengubah golongan dengan ID itu. */
-  id?: string
-  deskripsi: string
-}
+  id?: string;
+  deskripsi: string;
+};
 
 /**
  * Hook simpan — menambah maupun mengubah.
@@ -68,23 +68,26 @@ type SaveFields = {
  * dapat dipindahkan ke nomor lain — dan memutus setiap rincian yang bernaung di bawahnya.
  */
 export function useSaveCauseOfLoss() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, deskripsi }: SaveFields) =>
-      callAPI<CauseOfLossResponse>(id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES, {
-        metode: id ? 'PUT' : 'POST',
-        body: { deskripsi },
-        token,
-        portal,
-      }),
+      callAPI<CauseOfLossResponse>(
+        id ? `${ROUTES}/${encodeURIComponent(id)}` : ROUTES,
+        {
+          metode: id ? "PUT" : "POST",
+          body: { deskripsi },
+          token,
+          portal,
+        },
+      ),
     onSuccess: () => {
       // Daftar dimuat ulang dari server, bukan disunting di cache. Pada penambahan, nomor
       // barunya hanya diketahui server — menebaknya di klien akan menampilkan nomor yang
       // salah sampai muat ulang berikutnya.
-      client.invalidateQueries({ queryKey: key.list(portal, token) })
+      client.invalidateQueries({ queryKey: key.list(portal, token) });
     },
-  })
+  });
 }

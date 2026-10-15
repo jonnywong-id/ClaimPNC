@@ -1,29 +1,29 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
-import { formatDate } from '@/components/format'
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
+import { formatDate } from "@/components/format";
 
-import { FillingCodePicker } from './FillingCodePicker'
-import type { ArchiveForm, DocumentKind, Option } from './types'
+import { FillingCodePicker } from "./FillingCodePicker";
+import type { ArchiveForm, DocumentKind, Option } from "./types";
 
 type Props = {
-  form: ArchiveForm
-  onChange: (change: Partial<ArchiveForm>) => void
-  onSubmit: () => void
-  onCancel: () => void
+  form: ArchiveForm;
+  onChange: (change: Partial<ArchiveForm>) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
 
-  documentTypes: Option[]
-  documentKinds: DocumentKind[]
+  documentTypes: Option[];
+  documentKinds: DocumentKind[];
 
-  busy: boolean
-  fieldError: Record<string, string>
+  busy: boolean;
+  fieldError: Record<string, string>;
 
   /** Pesan berhasil dari server; kosong bila belum ada penyimpanan. */
-  successMessage: string
-}
+  successMessage: string;
+};
 
 /**
  * ArchiveFormPanel adalah formulir berkas arsip — bagian bawah "Input Data Archive".
@@ -57,23 +57,24 @@ export function ArchiveFormPanel({
   fieldError,
   successMessage,
 }: Props) {
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const kindsForType = documentKinds.filter(
     (kind) => kind.kode_tipe_dokumen === form.kode_tipe_dokumen,
-  )
+  );
 
-  const editing = form.id !== 0
+  const editing = form.id !== 0;
 
   return (
     <section className="rounded-kartu border border-slate-200 bg-white p-5 shadow-lembut">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
-            {editing ? 'Ubah Berkas Archive' : 'Berkas Archive'}
+            {editing ? "Ubah Berkas Archive" : "Berkas Archive"}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Klaim terpilih: <span className="font-medium">{form.nomor_klaim}</span>
+            Klaim terpilih:{" "}
+            <span className="font-medium">{form.nomor_klaim}</span>
           </p>
         </div>
 
@@ -91,17 +92,19 @@ export function ArchiveFormPanel({
         <ReadOnly label="Nama Tertanggung" value={form.nama_tertanggung} />
         <ReadOnly
           label="Tgl Kejadian"
-          value={form.tanggal_kejadian ? formatDate(form.tanggal_kejadian) : '—'}
+          value={
+            form.tanggal_kejadian ? formatDate(form.tanggal_kejadian) : "—"
+          }
         />
         <ReadOnly label="PIC Teknis" value={form.pic_teknis} />
-        <ReadOnly label="Group Panel" value={form.group_panel || '—'} />
+        <ReadOnly label="Group Panel" value={form.group_panel || "—"} />
       </dl>
 
       <form
         className="mt-5"
         onSubmit={(event) => {
-          event.preventDefault()
-          onSubmit()
+          event.preventDefault();
+          onSubmit();
         }}
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -110,8 +113,10 @@ export function ArchiveFormPanel({
             label="Tgl Terima Dokumen"
             type="date"
             value={form.tanggal_terima_dokumen}
-            onChange={(event) => onChange({ tanggal_terima_dokumen: event.target.value })}
-            error={fieldError['tanggal_terima_dokumen']}
+            onChange={(event) =>
+              onChange({ tanggal_terima_dokumen: event.target.value })
+            }
+            error={fieldError["tanggal_terima_dokumen"]}
           />
 
           <Field
@@ -121,8 +126,10 @@ export function ArchiveFormPanel({
             min={1}
             inputMode="numeric"
             value={form.jumlah_lembar}
-            onChange={(event) => onChange({ jumlah_lembar: event.target.value })}
-            error={fieldError['jumlah_lembar']}
+            onChange={(event) =>
+              onChange({ jumlah_lembar: event.target.value })
+            }
+            error={fieldError["jumlah_lembar"]}
           />
 
           <SelectField
@@ -133,23 +140,33 @@ export function ArchiveFormPanel({
               // Mengganti tipe MENGOSONGKAN jenis. Lihat penjelasan di kepala berkas.
               onChange({
                 kode_tipe_dokumen: event.target.value,
-                kode_jenis_dokumen: '',
+                kode_jenis_dokumen: "",
               })
             }
-            error={fieldError['tipe_dokumen']}
-            options={documentTypes.map((type) => ({ value: type.kode, label: type.label }))}
+            error={fieldError["tipe_dokumen"]}
+            options={documentTypes.map((type) => ({
+              value: type.kode,
+              label: type.label,
+            }))}
           />
 
           <SelectField
             id="kode-jenis-dokumen"
             label="Jenis Dokumen"
             value={form.kode_jenis_dokumen}
-            onChange={(event) => onChange({ kode_jenis_dokumen: event.target.value })}
-            error={fieldError['jenis_dokumen']}
-            options={kindsForType.map((kind) => ({ value: kind.kode, label: kind.label }))}
-            disabled={form.kode_tipe_dokumen === ''}
+            onChange={(event) =>
+              onChange({ kode_jenis_dokumen: event.target.value })
+            }
+            error={fieldError["jenis_dokumen"]}
+            options={kindsForType.map((kind) => ({
+              value: kind.kode,
+              label: kind.label,
+            }))}
+            disabled={form.kode_tipe_dokumen === ""}
             emptyText={
-              form.kode_tipe_dokumen === '' ? '— pilih Tipe Dokumen dulu —' : '— pilih —'
+              form.kode_tipe_dokumen === ""
+                ? "— pilih Tipe Dokumen dulu —"
+                : "— pilih —"
             }
           />
 
@@ -158,7 +175,7 @@ export function ArchiveFormPanel({
             label="Nama BOX"
             value={form.nama_box}
             onChange={(event) => onChange({ nama_box: event.target.value })}
-            error={fieldError['nama_box']}
+            error={fieldError["nama_box"]}
             placeholder="BOX-A-01"
           />
 
@@ -167,12 +184,18 @@ export function ArchiveFormPanel({
               id="kode-filling"
               label="Kode Filling"
               value={form.kode_filling}
-              onChange={(event) => onChange({ kode_filling: event.target.value })}
-              error={fieldError['kode_filling']}
+              onChange={(event) =>
+                onChange({ kode_filling: event.target.value })
+              }
+              error={fieldError["kode_filling"]}
               placeholder="FIL-2024-001"
             />
             <div className="mt-2">
-              <Button type="button" tone="kedua" onClick={() => setPickerOpen(true)}>
+              <Button
+                type="button"
+                tone="kedua"
+                onClick={() => setPickerOpen(true)}
+              >
                 Pilih Kode
               </Button>
             </div>
@@ -188,11 +211,11 @@ export function ArchiveFormPanel({
           </p>
         )}
 
-        {fieldError['__umum'] && (
+        {fieldError["__umum"] && (
           <div className="mt-4">
             <ErrorMessage
               title="Berkas tidak tersimpan"
-              description={fieldError['__umum']}
+              description={fieldError["__umum"]}
               tone="penolakan"
             />
           </div>
@@ -203,7 +226,7 @@ export function ArchiveFormPanel({
             Batal
           </Button>
           <Button type="submit" tone="utama" disabled={busy}>
-            {busy ? 'Menyimpan…' : 'Save To Archive'}
+            {busy ? "Menyimpan…" : "Save To Archive"}
           </Button>
         </div>
       </form>
@@ -214,20 +237,25 @@ export function ArchiveFormPanel({
         onPick={(code) => {
           // Nama boks ikut terisi. Keduanya memang dipakai berpasangan — nomor dokumen
           // yang dikirim ke sistem Arsip merangkai ID, nama boks, dan kode filling.
-          onChange({ kode_filling: code.kode, nama_box: code.nama_box || form.nama_box })
-          setPickerOpen(false)
+          onChange({
+            kode_filling: code.kode,
+            nama_box: code.nama_box || form.nama_box,
+          });
+          setPickerOpen(false);
         }}
       />
     </section>
-  )
+  );
 }
 
 /** ReadOnly menggambar satu keterangan yang ikut dari klaim. */
 function ReadOnly({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-0.5 font-medium text-slate-900">{value || '—'}</dd>
+      <dt className="text-xs uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5 font-medium text-slate-900">{value || "—"}</dd>
     </div>
-  )
+  );
 }

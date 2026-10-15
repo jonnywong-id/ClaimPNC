@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   PanelDocumentResponse,
   PanelImportResponse,
@@ -8,12 +8,12 @@ import type {
   PanelListResponse,
   PanelOptionsResponse,
   PanelResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/panel'
-const ROUTE_OPTIONS = '/api/master/panel/pilihan'
+const ROUTE = "/api/master/panel";
+const ROUTE_OPTIONS = "/api/master/panel/pilihan";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -28,7 +28,7 @@ const ROUTE_OPTIONS = '/api/master/panel/pilihan'
  * sebelumnya sampai permintaan barunya tiba.
  */
 function listKey(portal: string | null, token: string | null, status: string) {
-  return ['master-panel', portal, token, status] as const
+  return ["master-panel", portal, token, status] as const;
 }
 
 /**
@@ -39,7 +39,7 @@ function listKey(portal: string | null, token: string | null, status: string) {
  * kuncinya berarti memuat ulang daftar yang sama setiap kali pengguna berpindah entitas.
  */
 function optionsKey(token: string | null) {
-  return ['master-panel-pilihan', token] as const
+  return ["master-panel-pilihan", token] as const;
 }
 
 /**
@@ -60,18 +60,21 @@ function optionsKey(token: string | null) {
  * (`TKT-U2-001`), bukan sendirian.
  */
 export function usePanelList(status: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token, status),
     queryFn: () =>
-      callAPI<PanelListResponse>(`${ROUTE}?status=${encodeURIComponent(status)}`, {
-        token,
-        portal,
-      }),
+      callAPI<PanelListResponse>(
+        `${ROUTE}?status=${encodeURIComponent(status)}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -82,13 +85,13 @@ export function usePanelList(status: string) {
  * sebelum pengguna memilih entitas.
  */
 export function usePanelOptions() {
-  const token = useSession((state) => state.token)
+  const token = useSession((state) => state.token);
 
   return useQuery({
     queryKey: optionsKey(token),
     queryFn: () => callAPI<PanelOptionsResponse>(ROUTE_OPTIONS, { token }),
     enabled: token !== null,
-  })
+  });
 }
 
 /**
@@ -100,17 +103,22 @@ export function usePanelOptions() {
  * Approve.
  */
 export function useCreatePanel() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: PanelInput) =>
-      callAPI<PanelResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<PanelResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ["master-panel"] });
     },
-  })
+  });
 }
 
 /**
@@ -121,24 +129,23 @@ export function useCreatePanel() {
  * syarat apa pun — sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSavePanel() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: PanelInput }) =>
       callAPI<PanelResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ["master-panel"] });
     },
-  })
+  });
 }
-
 
 /**
  * documentKey menyertakan portal, token, dan ID panelnya.
@@ -148,7 +155,7 @@ export function useSavePanel() {
  * lain tanpa satu pun tanda di layar (R-20).
  */
 function documentKey(portal: string | null, token: string | null, id: string) {
-  return ['master-panel-dokumen', portal, token, id] as const
+  return ["master-panel-dokumen", portal, token, id] as const;
 }
 
 /**
@@ -160,19 +167,22 @@ function documentKey(portal: string | null, token: string | null, id: string) {
  * kali hanya memperlambat panel tanpa mengubah jawabannya.
  */
 export function usePanelDocument(id: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: documentKey(portal, token, id ?? ''),
+    queryKey: documentKey(portal, token, id ?? ""),
     queryFn: () =>
-      callAPI<PanelDocumentResponse>(`${ROUTE}/${encodeURIComponent(id ?? '')}/dokumen`, {
-        token,
-        portal,
-      }),
-    enabled: token !== null && portal !== null && id !== null && id !== '',
+      callAPI<PanelDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id ?? "")}/dokumen`,
+        {
+          token,
+          portal,
+        },
+      ),
+    enabled: token !== null && portal !== null && id !== null && id !== "",
     retry: false,
-  })
+  });
 }
 
 /**
@@ -192,27 +202,38 @@ export function usePanelDocument(id: string | null) {
  * panelnya sendiri.
  */
 export function useUploadPanelDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, file, note }: { id: string; file: File; note: string }) => {
-      const body = new FormData()
-      body.append('berkas', file)
-      if (note.trim() !== '') body.append('catatan', note.trim())
-      return callAPI<PanelDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}/dokumen`, {
-        metode: 'POST',
-        body,
-        token,
-        portal,
-      })
+    mutationFn: ({
+      id,
+      file,
+      note,
+    }: {
+      id: string;
+      file: File;
+      note: string;
+    }) => {
+      const body = new FormData();
+      body.append("berkas", file);
+      if (note.trim() !== "") body.append("catatan", note.trim());
+      return callAPI<PanelDocumentResponse>(
+        `${ROUTE}/${encodeURIComponent(id)}/dokumen`,
+        {
+          metode: "POST",
+          body,
+          token,
+          portal,
+        },
+      );
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-panel-dokumen'] })
-      client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ["master-panel-dokumen"] });
+      client.invalidateQueries({ queryKey: ["master-panel"] });
     },
-  })
+  });
 }
 /**
  * Hook unggah CSV master panel — padanan `Activity/PNCUploadMasterPanel_Act`.
@@ -226,28 +247,28 @@ export function useUploadPanelDocument() {
  * tiga ratus baris diunggah.
  */
 export function useImportPanelCSV() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (file: File) => {
-      const body = new FormData()
-      body.append('berkas', file)
+      const body = new FormData();
+      body.append("berkas", file);
       return callAPI<PanelImportResponse>(`${ROUTE}/unggah-csv`, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
-      })
+      });
     },
     onSuccess: () => {
       // SELURUH daftar dibuang, bukan tab yang sedang dibuka saja: baris hasil unggah masuk
       // antrean persetujuan, sehingga yang berubah justru tab Waiting Approval — tab yang
       // TIDAK sedang dilihat pengguna saat ia mengunggah dari tab Approve.
-      client.invalidateQueries({ queryKey: ['master-panel'] })
+      client.invalidateQueries({ queryKey: ["master-panel"] });
     },
-  })
+  });
 }
 
 /**
@@ -258,26 +279,26 @@ export function useImportPanelCSV() {
  * pun dipertahankan (`CoverID` disalin), berbeda dari jalur master.
  */
 export function useImportLocationCSV() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (file: File) => {
-      const body = new FormData()
-      body.append('berkas', file)
+      const body = new FormData();
+      body.append("berkas", file);
       return callAPI<PanelImportResponse>(`${ROUTE}/unggah-csv-lokasi`, {
-        metode: 'POST',
+        metode: "POST",
         body,
         token,
         portal,
-      })
+      });
     },
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-panel'] })
-      client.invalidateQueries({ queryKey: ['master-panel-dokumen'] })
+      client.invalidateQueries({ queryKey: ["master-panel"] });
+      client.invalidateQueries({ queryKey: ["master-panel-dokumen"] });
     },
-  })
+  });
 }
 /*
   Ketiga unggahan layar Pega kini lengkap di sini: dokumen, master panel, dan lokasi panel.

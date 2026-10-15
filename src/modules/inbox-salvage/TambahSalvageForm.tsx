@@ -1,17 +1,17 @@
-﻿import { useState } from 'react'
+﻿import { useState } from "react";
 
-import { APIError } from '@/api/client'
-import { AutoCompleteField } from '@/components/AutoCompleteField'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { FormField } from '@/components/FormField'
-import { SelectField } from '@/components/SelectField'
-import { TextAreaField } from '@/components/TextAreaField'
+import { APIError } from "@/api/client";
+import { AutoCompleteField } from "@/components/AutoCompleteField";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormField } from "@/components/FormField";
+import { SelectField } from "@/components/SelectField";
+import { TextAreaField } from "@/components/TextAreaField";
 
-import { RiwayatSalvage } from './RiwayatSalvage'
-import { UploadDetailSalvageModal } from './UploadDetailSalvageModal'
-import { UploadDocumentModal } from './UploadDocumentModal'
-import { useCreateSalvage, useSalvageClaimLookup } from './api'
+import { RiwayatSalvage } from "./RiwayatSalvage";
+import { UploadDetailSalvageModal } from "./UploadDetailSalvageModal";
+import { UploadDocumentModal } from "./UploadDocumentModal";
+import { useCreateSalvage, useSalvageClaimLookup } from "./api";
 import type {
   CatatanSimpan,
   CoveragePilihan,
@@ -21,7 +21,7 @@ import type {
   ObjekPilihan,
   StatusOption,
   UploadResponse,
-} from './types'
+} from "./types";
 
 /**
  * Isian yang sudah diketahui saat form dibuka dari sebuah baris klaim.
@@ -38,14 +38,14 @@ import type {
  * keadaan kosong membuat form ini tidak pernah dapat disimpan sama sekali.
  */
 export type Prefill = {
-  nomor_klaim: string
-  nama_object: string
-  nama_coverage: string
+  nomor_klaim: string;
+  nama_object: string;
+  nama_coverage: string;
 
   /** Penunjuk objek dan coverage, bila pengajuan sebelumnya pernah memilihnya. */
-  id_object: string
-  id_coverage: string
-}
+  id_object: string;
+  id_coverage: string;
+};
 
 /**
  * Isi kedua autocomplete, sebagaimana dibaca dari klaimnya.
@@ -56,12 +56,12 @@ export type Prefill = {
  * baru diketahui setelah diketik.
  */
 export type Pilihan = {
-  objek: ObjekPilihan[]
-  coverage: CoveragePilihan[]
-}
+  objek: ObjekPilihan[];
+  coverage: CoveragePilihan[];
+};
 
 type Props = {
-  statusOptions: StatusOption[]
+  statusOptions: StatusOption[];
 
   /**
    * Pilihan **Mata Uang**, dibaca server dari `POOLDATA.CURRENCY`.
@@ -70,8 +70,8 @@ type Props = {
    * tanpa tanda wajib, supaya kegagalan membaca satu master tidak berubah menjadi layar
    * yang tidak dapat dipakai.
    */
-  currencyOptions: StatusOption[]
-  onClose: () => void
+  currencyOptions: StatusOption[];
+  onClose: () => void;
 
   /**
    * Dipanggil sesudah pengajuan tersimpan.
@@ -79,7 +79,7 @@ type Props = {
    * Ia membawa CATATAN, bukan sekadar teks, karena Submit kini punya akibat sampingan yang
    * dapat gagal sendiri-sendiri — lihat CatatanSimpan.
    */
-  onSaved: (catatan: CatatanSimpan) => void
+  onSaved: (catatan: CatatanSimpan) => void;
 
   /**
    * Isian yang sudah diketahui. Tanpa ini form dibuka kosong — jalur tombol "Tambah".
@@ -88,7 +88,7 @@ type Props = {
    * dikunci, supaya pengajuan tidak dapat tersimpan atas klaim yang berbeda dari baris
    * yang diklik.
    */
-  prefill?: Prefill
+  prefill?: Prefill;
 
   /**
    * Pengajuan yang sedang DISUNTING. Tanpa ini, form membuat pengajuan baru.
@@ -106,17 +106,17 @@ type Props = {
    * menyimpan ulang akan menggandakan barisnya.
    */
   editing?: {
-    id_salvage: string
-    isian: Partial<FormState>
-    item: DetailItem[]
-  }
+    id_salvage: string;
+    isian: Partial<FormState>;
+    item: DetailItem[];
+  };
 
   /**
    * Isi kedua autocomplete. Dipakai bersama `prefill` maupun `editing`.
    *
    * Tanpa keduanya, form mencarinya sendiri setelah nomor klaim diketik.
    */
-  pilihan?: Pilihan
+  pilihan?: Pilihan;
 
   /**
    * Isi grid "Detail History Salvage" — seluruh pengajuan milik klaim ini.
@@ -126,34 +126,37 @@ type Props = {
    * berakhir di mana. Tanpa itu, petugas dapat mengajukan salvage kedua atas klaim yang
    * pengajuan pertamanya masih berjalan tanpa pernah melihatnya.
    */
-  history?: HistoryRow[]
-}
+  history?: HistoryRow[];
+};
 
 /** Isian form dalam bentuk yang dipegang komponen ini. */
-type FormState = Omit<CreateRequest, 'mode' | 'id_salvage' | 'detail_item_salvage'>
+type FormState = Omit<
+  CreateRequest,
+  "mode" | "id_salvage" | "detail_item_salvage"
+>;
 
 const emptyForm: FormState = {
-  nomor_klaim: '',
-  id_object: '',
-  nama_object: '',
-  id_coverage: '',
-  nama_coverage: '',
+  nomor_klaim: "",
+  id_object: "",
+  nama_object: "",
+  id_coverage: "",
+  nama_coverage: "",
   tanggal_input: today(),
-  jenis_salvage: '',
-  status_salvage: '',
-  lokasi_salvage: '',
+  jenis_salvage: "",
+  status_salvage: "",
+  lokasi_salvage: "",
   lokasi_salvage_di_jabodetabek: false,
-  mata_uang: '',
-  minimum_salvage: '',
-  quantity_salvage: '',
-  nilai_penawaran: '',
-  share_tertanggung: '',
-  remark: '',
-  email: '',
-  nama_pic_survey: '',
-  no_telp_pic_survey: '',
-  email_pic_survey: '',
-}
+  mata_uang: "",
+  minimum_salvage: "",
+  quantity_salvage: "",
+  nilai_penawaran: "",
+  share_tertanggung: "",
+  remark: "",
+  email: "",
+  nama_pic_survey: "",
+  no_telp_pic_survey: "",
+  email_pic_survey: "",
+};
 
 /**
  * Form **"Menambahkan Data Salvage"** — di balik tombol Tambah.
@@ -203,26 +206,26 @@ export function TambahSalvageForm({
     ...emptyForm,
     ...(prefill ?? {}),
     ...(editing?.isian ?? {}),
-  }))
-  const [items, setItems] = useState<DetailItem[]>(() => editing?.item ?? [])
-  const [uploadNote, setUploadNote] = useState('')
+  }));
+  const [items, setItems] = useState<DetailItem[]>(() => editing?.item ?? []);
+  const [uploadNote, setUploadNote] = useState("");
 
   // Kabar dari unggahan DOKUMEN, dipisahkan dari kabar unggahan CSV di atas.
   //
   // Keduanya tampak serupa tetapi menjawab tindakan yang berbeda: yang satu mengisi grid
   // Detail Item, yang lain melampirkan berkas ke klaim. Menyatukannya membuat "3 dokumen
   // tersimpan" muncul berdampingan dengan galat pembacaan CSV, seolah keduanya satu hal.
-  const [docNote, setDocNote] = useState('')
+  const [docNote, setDocNote] = useState("");
 
   // Modal "UploadDocument_Salvage" sedang terbuka.
   //
   // Ia state komponen, bukan bagian alamat: modal dibuka untuk satu tindakan lalu
   // ditutup, dan menaruhnya di alamat membuat tombol "kembali" peramban menutup modal
   // alih-alih meninggalkan layar.
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState(false);
 
   /** Apakah modal **UploadDetailSalvage** sedang terbuka. */
-  const [unggahDetail, setUnggahDetail] = useState(false)
+  const [unggahDetail, setUnggahDetail] = useState(false);
 
   // Nomor klaim yang SUDAH selesai diketik — bukan yang sedang diketik.
   //
@@ -233,10 +236,9 @@ export function TambahSalvageForm({
   // Pemicunya meniru layar lama apa adanya: di Pega kedua aksi kolom Nomor Klaim —
   // `postValue` lalu `refresh` — terpasang pada event `change`, yang pada kotak teks
   // HTML berarti "selesai diubah", bukan "sedang diubah".
-  const [lookupClaim, setLookupClaim] = useState('')
+  const [lookupClaim, setLookupClaim] = useState("");
 
-
-  const create = useCreateSalvage()
+  const create = useCreateSalvage();
 
   // Pencarian hanya hidup pada jalur tombol "Tambah".
   //
@@ -246,17 +248,17 @@ export function TambahSalvageForm({
   // Klaimnya SUDAH diketahui pada dua jalur: form yang dibuka dari baris klaim, dan form
   // sunting yang dibuka dari baris pengajuan. Pada keduanya nomor klaim tidak diketik dan
   // tidak dicari — halaman sudah membawanya beserta pilihan objek dan coverage-nya.
-  const terikatKlaim = prefill !== undefined || editing !== undefined
+  const terikatKlaim = prefill !== undefined || editing !== undefined;
 
-  const lookup = useSalvageClaimLookup(terikatKlaim ? '' : lookupClaim)
+  const lookup = useSalvageClaimLookup(terikatKlaim ? "" : lookupClaim);
 
   const objectChoices: ObjekPilihan[] = terikatKlaim
     ? (pilihan?.objek ?? [])
-    : (lookup.data?.pilihan_objek ?? [])
+    : (lookup.data?.pilihan_objek ?? []);
 
   const coverageChoices: CoveragePilihan[] = terikatKlaim
     ? (pilihan?.coverage ?? [])
-    : (lookup.data?.pilihan_coverage ?? [])
+    : (lookup.data?.pilihan_coverage ?? []);
 
   // Kedua daftar ditawarkan APA ADANYA, termasuk nama yang berulang.
   //
@@ -271,16 +273,16 @@ export function TambahSalvageForm({
   // coverage milik klaim ditawarkan siapa pun objeknya (`P-5`).
 
   // Riwayat pada jalur Tambah datang dari pencarian; pada jalur prefill dari halaman.
-  const riwayat = terikatKlaim ? history : (lookup.data?.riwayat ?? [])
+  const riwayat = terikatKlaim ? history : (lookup.data?.riwayat ?? []);
 
   // Pelanggaran per isian datang dari server sebagai SENARAI dan dipakai menandai
   // isiannya di tempatnya — bukan sebagai satu pesan di atas form. Pada form berisi tujuh
   // belas isian, satu pesan umum memaksa pengguna menebak isian mana yang dimaksud.
   const violations =
-    create.error instanceof APIError ? create.error.violations() : {}
+    create.error instanceof APIError ? create.error.violations() : {};
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
-    setForm((current) => ({ ...current, [key]: value }))
+    setForm((current) => ({ ...current, [key]: value }));
 
   /**
    * chooseObject mencatat nama objek yang diketik BESERTA penunjuknya.
@@ -296,8 +298,8 @@ export function TambahSalvageForm({
     setForm((current) => ({
       ...current,
       nama_object: name,
-      id_object: choice?.id ?? '',
-    }))
+      id_object: choice?.id ?? "",
+    }));
   }
 
   /**
@@ -312,8 +314,8 @@ export function TambahSalvageForm({
     setForm((current) => ({
       ...current,
       nama_coverage: name,
-      id_coverage: choice?.id ?? '',
-    }))
+      id_coverage: choice?.id ?? "",
+    }));
   }
 
   /**
@@ -324,21 +326,21 @@ export function TambahSalvageForm({
    * pengajuan yang menunjuk objek milik klaim lain.
    */
   function lookupByClaim(typed: string) {
-    const clean = typed.trim()
-    if (clean === lookupClaim) return
+    const clean = typed.trim();
+    if (clean === lookupClaim) return;
 
-    setLookupClaim(clean)
+    setLookupClaim(clean);
     setForm((current) => ({
       ...current,
-      nama_object: '',
-      id_object: '',
-      nama_coverage: '',
-      id_coverage: '',
-    }))
+      nama_object: "",
+      id_object: "",
+      nama_coverage: "",
+      id_coverage: "",
+    }));
   }
 
   function submit(event: React.FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
 
     create.mutate(
       {
@@ -347,8 +349,8 @@ export function TambahSalvageForm({
         // Mode ditentukan ada-tidaknya pengajuan yang sedang disunting — sama seperti di
         // Pega, tempat kedua jalur menempuh activity yang SAMA dan yang membedakannya
         // hanyalah terisi-tidaknya ID salvage.
-        mode: editing === undefined ? 'insert' : 'ubah',
-        id_salvage: editing?.id_salvage ?? '',
+        mode: editing === undefined ? "insert" : "ubah",
+        id_salvage: editing?.id_salvage ?? "",
         detail_item_salvage: items,
       },
       {
@@ -370,11 +372,11 @@ export function TambahSalvageForm({
             perluPerhatian:
               result.balai_lelang?.diterima !== true ||
               result.pemberitahuan?.terkirim !== true,
-          })
-          onClose()
+          });
+          onClose();
         },
       },
-    )
+    );
   }
 
   /**
@@ -387,8 +389,8 @@ export function TambahSalvageForm({
     // Baris yang diunggah DITAMBAHKAN ke yang sudah ada, bukan menggantikannya.
     // `UploadDetailSalvage` memakai `<APPEND>` pada setiap barisnya, sehingga dua
     // berkas yang diunggah berturut-turut menghasilkan gabungan keduanya.
-    setItems((current) => [...current, ...result.detail_item_salvage])
-    setUploadNote(result.pesan)
+    setItems((current) => [...current, ...result.detail_item_salvage]);
+    setUploadNote(result.pesan);
   }
 
   return (
@@ -443,17 +445,21 @@ export function TambahSalvageForm({
           biasa, bukan kotak isian. Nilainya tetap dikirim saat menyimpan.
         */}
         <div>
-          <span className="block text-sm font-medium text-slate-700">Tanggal Input</span>
-          <p className="mt-1 py-2 text-slate-900">{formatDateTime(form.tanggal_input)}</p>
+          <span className="block text-sm font-medium text-slate-700">
+            Tanggal Input
+          </span>
+          <p className="mt-1 py-2 text-slate-900">
+            {formatDateTime(form.tanggal_input)}
+          </p>
         </div>
 
         <FormField
           id="salvage-nomor-klaim"
           label="Nomor Klaim"
           value={form.nomor_klaim}
-          onChange={(event) => set('nomor_klaim', event.target.value)}
+          onChange={(event) => set("nomor_klaim", event.target.value)}
           onBlur={(event) => {
-            if (!terikatKlaim) lookupByClaim(event.target.value)
+            if (!terikatKlaim) lookupByClaim(event.target.value);
           }}
           onKeyDown={(event) => {
             // Enter mencari, bukan menyimpan.
@@ -461,11 +467,11 @@ export function TambahSalvageForm({
             // Tanpa ini, menekan Enter di kolom pertama akan mengirim form yang kedua
             // kolom di bawahnya belum terisi — dan server menolaknya dengan dua pesan
             // yang penyebabnya justru belum dikerjakan pengguna.
-            if (event.key !== 'Enter' || terikatKlaim) return
-            event.preventDefault()
-            lookupByClaim(form.nomor_klaim)
+            if (event.key !== "Enter" || terikatKlaim) return;
+            event.preventDefault();
+            lookupByClaim(form.nomor_klaim);
           }}
-          failure={violations['nomor_klaim']}
+          failure={violations["nomor_klaim"]}
           readOnly={terikatKlaim}
           required
         />
@@ -475,7 +481,7 @@ export function TambahSalvageForm({
             type="checkbox"
             checked={form.lokasi_salvage_di_jabodetabek}
             onChange={(event) =>
-              set('lokasi_salvage_di_jabodetabek', event.target.checked)
+              set("lokasi_salvage_di_jabodetabek", event.target.checked)
             }
             className="size-4 rounded border-slate-300"
           />
@@ -487,8 +493,8 @@ export function TambahSalvageForm({
           label="Email"
           type="email"
           value={form.email}
-          onChange={(event) => set('email', event.target.value)}
-          failure={violations['email']}
+          onChange={(event) => set("email", event.target.value)}
+          failure={violations["email"]}
         />
 
         <AutoCompleteField
@@ -497,7 +503,7 @@ export function TambahSalvageForm({
           choices={objectChoices}
           value={form.nama_object}
           onPick={chooseObject}
-          error={violations['nama_object']}
+          error={violations["nama_object"]}
           required
         />
 
@@ -505,16 +511,16 @@ export function TambahSalvageForm({
           id="salvage-lokasi"
           label="Lokasi Salvage"
           value={form.lokasi_salvage}
-          onChange={(event) => set('lokasi_salvage', event.target.value)}
-          failure={violations['lokasi_salvage']}
+          onChange={(event) => set("lokasi_salvage", event.target.value)}
+          failure={violations["lokasi_salvage"]}
         />
 
         <FormField
           id="salvage-jenis"
           label="Jenis Salvage"
           value={form.jenis_salvage}
-          onChange={(event) => set('jenis_salvage', event.target.value)}
-          failure={violations['jenis_salvage']}
+          onChange={(event) => set("jenis_salvage", event.target.value)}
+          failure={violations["jenis_salvage"]}
           // Layar lama menyetel `pyRequired=false` dan gambar acuannya tidak memberi
           // tanda wajib — tetapi server MENOLAK isian kosong (`form.go:265`). Yang
           // dipertahankan adalah kesepakatan klien-server: tanpa ini, satu-satunya cara
@@ -531,7 +537,7 @@ export function TambahSalvageForm({
           choices={coverageChoices}
           value={form.nama_coverage}
           onPick={chooseCoverage}
-          error={violations['nama_coverage']}
+          error={violations["nama_coverage"]}
           required
         />
 
@@ -540,8 +546,8 @@ export function TambahSalvageForm({
           label="Remark"
           rows={2}
           value={form.remark}
-          onChange={(event) => set('remark', event.target.value)}
-          error={violations['remark']}
+          onChange={(event) => set("remark", event.target.value)}
+          error={violations["remark"]}
         />
 
         {/*
@@ -550,11 +556,11 @@ export function TambahSalvageForm({
         */}
         {!terikatKlaim && (
           <div className="sm:col-span-2 lg:col-span-3">
-            {lookupClaim === '' ? (
+            {lookupClaim === "" ? (
               <p className="text-sm text-slate-600">
-                Isi <strong>Nomor Klaim</strong> lebih dulu, lalu pindah ke kolom
-                berikutnya — daftar objek dan coverage klaim itu dimuat saat kolomnya
-                ditinggalkan.
+                Isi <strong>Nomor Klaim</strong> lebih dulu, lalu pindah ke
+                kolom berikutnya — daftar objek dan coverage klaim itu dimuat
+                saat kolomnya ditinggalkan.
               </p>
             ) : (
               <ClaimLookupState
@@ -600,8 +606,8 @@ export function TambahSalvageForm({
             label: option.label,
           }))}
           value={form.mata_uang}
-          onChange={(event) => set('mata_uang', event.target.value)}
-          error={violations['mata_uang']}
+          onChange={(event) => set("mata_uang", event.target.value)}
+          error={violations["mata_uang"]}
           required={currencyOptions.length > 0}
         />
 
@@ -628,21 +634,21 @@ export function TambahSalvageForm({
           label="Minimum Salvage"
           inputMode="decimal"
           value={form.minimum_salvage}
-          onChange={(event) => set('minimum_salvage', event.target.value)}
-          failure={violations['minimum_salvage']}
+          onChange={(event) => set("minimum_salvage", event.target.value)}
+          failure={violations["minimum_salvage"]}
         />
 
         <FormField
           id="salvage-pic-survey"
           label="Nama PIC Survey"
           value={form.nama_pic_survey}
-          onChange={(event) => set('nama_pic_survey', event.target.value)}
+          onChange={(event) => set("nama_pic_survey", event.target.value)}
         />
         <FormField
           id="salvage-telp-survey"
           label="No Telp PIC Survey"
           value={form.no_telp_pic_survey}
-          onChange={(event) => set('no_telp_pic_survey', event.target.value)}
+          onChange={(event) => set("no_telp_pic_survey", event.target.value)}
         />
 
         {/* "--Pilih--" ada di layar lama apa adanya (`pyCaption --Pilih--`). */}
@@ -655,8 +661,8 @@ export function TambahSalvageForm({
             label: option.label,
           }))}
           value={form.status_salvage}
-          onChange={(event) => set('status_salvage', event.target.value)}
-          error={violations['status_salvage']}
+          onChange={(event) => set("status_salvage", event.target.value)}
+          error={violations["status_salvage"]}
           required={statusOptions.length > 0}
         />
 
@@ -675,8 +681,8 @@ export function TambahSalvageForm({
           label="Nilai Penawaran"
           inputMode="decimal"
           value={form.nilai_penawaran}
-          onChange={(event) => set('nilai_penawaran', event.target.value)}
-          failure={violations['nilai_penawaran']}
+          onChange={(event) => set("nilai_penawaran", event.target.value)}
+          failure={violations["nilai_penawaran"]}
         />
 
         <FormField
@@ -684,15 +690,15 @@ export function TambahSalvageForm({
           label="Email PIC Survey"
           type="email"
           value={form.email_pic_survey}
-          onChange={(event) => set('email_pic_survey', event.target.value)}
+          onChange={(event) => set("email_pic_survey", event.target.value)}
         />
         <FormField
           id="salvage-share"
           label="Share Tertanggung"
           inputMode="decimal"
           value={form.share_tertanggung}
-          onChange={(event) => set('share_tertanggung', event.target.value)}
-          failure={violations['share_tertanggung']}
+          onChange={(event) => set("share_tertanggung", event.target.value)}
+          failure={violations["share_tertanggung"]}
         />
       </fieldset>
 
@@ -709,9 +715,11 @@ export function TambahSalvageForm({
           )
         }
         onRemove={(index) =>
-          setItems((current) => current.filter((_, position) => position !== index))
+          setItems((current) =>
+            current.filter((_, position) => position !== index),
+          )
         }
-        failure={violations['detail_item_salvage']}
+        failure={violations["detail_item_salvage"]}
         actions={
           <>
             {/*
@@ -722,7 +730,11 @@ export function TambahSalvageForm({
               tersendiri berisi kedua batas unggahan sebelum berkasnya dipilih. Judulnya
               "Upload File" apa adanya (`:13230`).
             */}
-            <Button type="button" tone="kedua" onClick={() => setUploading(true)}>
+            <Button
+              type="button"
+              tone="kedua"
+              onClick={() => setUploading(true)}
+            >
               Upload File
             </Button>
 
@@ -736,7 +748,7 @@ export function TambahSalvageForm({
             </Button>
 
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Menyimpan…' : 'Submit'}
+              {create.isPending ? "Menyimpan…" : "Submit"}
             </Button>
           </>
         }
@@ -747,7 +759,7 @@ export function TambahSalvageForm({
         sudah tertutup saat kabar ini datang, dan tanpa jejak di layar pengguna tidak punya
         cara memastikan dokumennya benar-benar tersimpan.
       */}
-      {docNote !== '' && (
+      {docNote !== "" && (
         <p className="rounded-kontrol bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           {docNote}
         </p>
@@ -774,23 +786,23 @@ export function TambahSalvageForm({
       {uploading && (
         <UploadDocumentModal
           claimNo={form.nomor_klaim}
-          salvageID={editing?.id_salvage ?? ''}
+          salvageID={editing?.id_salvage ?? ""}
           onClose={() => setUploading(false)}
           onSaved={setDocNote}
         />
       )}
     </form>
-  )
+  );
 }
 
 type LookupStateProps = {
-  claimNo: string
-  isPending: boolean
-  isError: boolean
-  error: unknown
-  objects: number
-  coverages: number
-}
+  claimNo: string;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+  objects: number;
+  coverages: number;
+};
 
 /**
  * ClaimLookupState melaporkan hasil pencarian klaim pada form Tambah.
@@ -818,21 +830,22 @@ function ClaimLookupState({
       <p className="text-sm text-slate-600" role="status">
         Memuat objek dan coverage klaim <strong>{claimNo}</strong>…
       </p>
-    )
+    );
   }
 
   if (isError) {
-    const notFound = error instanceof APIError && error.status === 404
+    const notFound = error instanceof APIError && error.status === 404;
     if (notFound) {
       return (
         <p
           className="rounded-kontrol bg-amber-50 px-3 py-2 text-sm text-amber-900"
           role="status"
         >
-          Klaim <strong>{claimNo}</strong> tidak ditemukan di portal ini. Periksa
-          nomornya, atau pastikan entitas yang dipilih di bilah atas sudah benar.
+          Klaim <strong>{claimNo}</strong> tidak ditemukan di portal ini.
+          Periksa nomornya, atau pastikan entitas yang dipilih di bilah atas
+          sudah benar.
         </p>
-      )
+      );
     }
 
     return (
@@ -841,7 +854,7 @@ function ClaimLookupState({
         description={messageOf(error)}
         tone="gangguan"
       />
-    )
+    );
   }
 
   if (objects === 0 && coverages === 0) {
@@ -850,29 +863,29 @@ function ClaimLookupState({
         className="rounded-kontrol bg-amber-50 px-3 py-2 text-sm text-amber-900"
         role="status"
       >
-        Klaim <strong>{claimNo}</strong> ditemukan, tetapi objek dan coverage-nya belum
-        terisi. Kedua nama di atas dapat diketik langsung.
+        Klaim <strong>{claimNo}</strong> ditemukan, tetapi objek dan
+        coverage-nya belum terisi. Kedua nama di atas dapat diketik langsung.
       </p>
-    )
+    );
   }
 
   return (
     <p className="text-sm text-emerald-800" role="status">
       Klaim <strong>{claimNo}</strong> ditemukan.
     </p>
-  )
+  );
 }
 
 type DetailProps = {
-  items: DetailItem[]
-  uploadNote: string
+  items: DetailItem[];
+  uploadNote: string;
 
   /** Membuka modal **UploadDetailSalvage**. */
-  onUpload: () => void
-  onAdd: () => void
-  onChange: (index: number, patch: Partial<DetailItem>) => void
-  onRemove: (index: number) => void
-  failure: string | undefined
+  onUpload: () => void;
+  onAdd: () => void;
+  onChange: (index: number, patch: Partial<DetailItem>) => void;
+  onRemove: (index: number) => void;
+  failure: string | undefined;
 
   /**
    * Tombol yang digambar **di samping kanan tabel**, bukan di kaki form.
@@ -884,14 +897,14 @@ type DetailProps = {
    * Tombolnya datang dari luar karena yang dikirimnya adalah SELURUH form, bukan tabel
    * ini — tabel tidak boleh memegang tombol yang menyimpan sesuatu yang bukan miliknya.
    */
-  actions: React.ReactNode
-}
+  actions: React.ReactNode;
+};
 
 /** Kelas isian di dalam sel grid — dibuat sekali supaya kelima kolom sama persis. */
 const SEL_INPUT =
-  'w-full rounded-kontrol border border-slate-300 bg-white px-2 py-1 text-sm ' +
-  'text-slate-900 focus:outline-none focus-visible:border-blue-500 ' +
-  'focus-visible:ring-2 focus-visible:ring-blue-500/25'
+  "w-full rounded-kontrol border border-slate-300 bg-white px-2 py-1 text-sm " +
+  "text-slate-900 focus:outline-none focus-visible:border-blue-500 " +
+  "focus-visible:ring-2 focus-visible:ring-blue-500/25";
 
 /**
  * Grid **"Detail Item Salvage"**.
@@ -928,7 +941,9 @@ function DetailItemTable({
 }: DetailProps) {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-900">Detail Item Salvage</h3>
+      <h3 className="text-sm font-semibold text-slate-900">
+        Detail Item Salvage
+      </h3>
 
       {/* Tautan Tambah dan Hapus berada DI ATAS tabel, sama seperti di layar lama. */}
       <div className="flex flex-wrap items-center gap-4">
@@ -973,7 +988,7 @@ function DetailItemTable({
         </Button>
       </div>
 
-      {uploadNote !== '' && (
+      {uploadNote !== "" && (
         <p className="rounded-kontrol bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {uploadNote}
         </p>
@@ -992,7 +1007,10 @@ function DetailItemTable({
       */}
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1 overflow-x-auto rounded-kartu border border-slate-200">
-          <table className="w-full min-w-max text-sm" aria-label="Detail Item Salvage">
+          <table
+            className="w-full min-w-max text-sm"
+            aria-label="Detail Item Salvage"
+          >
             <thead className="bg-slate-50 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
               <tr>
                 <th scope="col" className="px-3 py-2.5">
@@ -1076,7 +1094,7 @@ function DetailItemTable({
         ada di berkas CSV tetapi tidak digambar di tabel ini — sama seperti layar lama.
       */}
     </section>
-  )
+  );
 }
 
 /**
@@ -1088,14 +1106,14 @@ function DetailItemTable({
  * (`D-49` butir 7).
  */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }
 
 /** emptyItem adalah satu baris Detail Item Salvage yang baru ditambahkan. */
 function emptyItem(): DetailItem {
-  return { nama_item: '', jumlah_item: '', satuan: '', remark: '' }
+  return { nama_item: "", jumlah_item: "", satuan: "", remark: "" };
 }
 
 /**
@@ -1106,21 +1124,21 @@ function emptyItem(): DetailItem {
  * tanggalnya saja, dan jam di sini hanya menyatakan kapan pengisian dimulai.
  */
 function formatDateTime(isoDate: string): string {
-  const now = new Date()
-  const jam = String(now.getHours()).padStart(2, '0')
-  const menit = String(now.getMinutes()).padStart(2, '0')
+  const now = new Date();
+  const jam = String(now.getHours()).padStart(2, "0");
+  const menit = String(now.getMinutes()).padStart(2, "0");
 
-  const bagian = isoDate.split('-')
-  if (bagian.length !== 3) return `${isoDate} ${jam}:${menit}`
+  const bagian = isoDate.split("-");
+  if (bagian.length !== 3) return `${isoDate} ${jam}:${menit}`;
 
-  return `${bagian[2]}/${bagian[1]}/${bagian[0]} ${jam}:${menit}`
+  return `${bagian[2]}/${bagian[1]}/${bagian[0]} ${jam}:${menit}`;
 }
 
 function today(): string {
-  const now = new Date()
-  const bulan = String(now.getMonth() + 1).padStart(2, '0')
-  const tanggal = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${bulan}-${tanggal}`
+  const now = new Date();
+  const bulan = String(now.getMonth() + 1).padStart(2, "0");
+  const tanggal = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${bulan}-${tanggal}`;
 }
 
 // Grid "Detail History Salvage" hidup di `RiwayatSalvage.tsx` — ia dipakai DUA layar,

@@ -1,12 +1,12 @@
-import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { ProgressSection } from './ProgressSection'
-import { useProgressClaimMetadata } from './api'
+import { ProgressSection } from "./ProgressSection";
+import { useProgressClaimMetadata } from "./api";
 
 /**
  * Inbox Progress Claim — menu `MENU_ID 65`, pengganti harness `ProgressClaim_Harness`.
@@ -39,9 +39,9 @@ import { useProgressClaimMetadata } from './api'
  * bagian yang hilang tanpa keterangan.
  */
 export function InboxProgressClaimPage() {
-  const navigate = useNavigate()
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useProgressClaimMetadata()
+  const navigate = useNavigate();
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useProgressClaimMetadata();
 
   /**
    * Tujuan tombol "Lihat Detail Klaim".
@@ -57,7 +57,7 @@ export function InboxProgressClaimPage() {
    * urusan layar ini.
    */
   function openClaim(claimNumber: string) {
-    navigate(`/view-claim/${encodeURIComponent(claimNumber)}`)
+    navigate(`/view-claim/${encodeURIComponent(claimNumber)}`);
   }
 
   if (portal === null) {
@@ -66,13 +66,13 @@ export function InboxProgressClaimPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Progres klaim milik satu badan hukum, dan aplikasi ini melayani empat. ' +
-            'Pilih portal di bilah atas untuk membukanya.'
+            "Progres klaim milik satu badan hukum, dan aplikasi ini melayani empat. " +
+            "Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -84,11 +84,11 @@ export function InboxProgressClaimPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
-  const sections = meta.data?.bagian ?? []
-  const defaultSection = meta.data?.bagian_bawaan ?? ''
+  const sections = meta.data?.bagian ?? [];
+  const defaultSection = meta.data?.bagian_bawaan ?? "";
 
   return (
     <PageFrame>
@@ -105,22 +105,24 @@ export function InboxProgressClaimPage() {
 
       <Notes limitations={meta.data?.keterbatasan ?? []} />
     </PageFrame>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox Progress Claim</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Inbox Progress Claim
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Pemantauan progres klaim yang masih berjalan: posisi, status progres, dan tenggat
-          tindak lanjut berikutnya.
+          Pemantauan progres klaim yang masih berjalan: posisi, status progres,
+          dan tenggat tindak lanjut berikutnya.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -131,22 +133,24 @@ function PageFrame({ children }: { children: ReactNode }) {
  * Approval yang tidak ada akan dilaporkan berulang kali sebagai kerusakan.
  */
 function Notes({ limitations }: { limitations: string[] }) {
-  if (limitations.length === 0) return null
+  if (limitations.length === 0) return null;
 
   return (
     <section className="mt-6 rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3">
-      <h2 className="text-sm font-medium text-slate-800">Yang perlu diketahui</h2>
+      <h2 className="text-sm font-medium text-slate-800">
+        Yang perlu diketahui
+      </h2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-600">
         {limitations.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

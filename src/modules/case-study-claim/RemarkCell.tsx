@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
 
-import { useSaveRemark } from './api'
-import type { CaseStudyRow } from './types'
+import { useSaveRemark } from "./api";
+import type { CaseStudyRow } from "./types";
 
 /**
  * Sel **Remark** beserta tombol **Save**-nya.
@@ -26,8 +26,8 @@ import type { CaseStudyRow } from './types'
  * (`D-13`).
  */
 export function RemarkCell({ row }: { row: CaseStudyRow }) {
-  const [draft, setDraft] = useState(row.remark)
-  const save = useSaveRemark()
+  const [draft, setDraft] = useState(row.remark);
+  const save = useSaveRemark();
 
   // Draf disetel ulang ketika baris yang SAMA datang dengan catatan berbeda — yaitu
   // setelah penyimpanan berhasil dan daftarnya dimuat ulang.
@@ -36,10 +36,10 @@ export function RemarkCell({ row }: { row: CaseStudyRow }) {
   // Keduanya biasanya sama; yang membedakan justru kasus yang penting — server memangkas
   // spasi di ujung, dan kelak dapat menolak isi tertentu.
   useEffect(() => {
-    setDraft(row.remark)
-  }, [row.remark])
+    setDraft(row.remark);
+  }, [row.remark]);
 
-  const changed = draft.trim() !== row.remark.trim()
+  const changed = draft.trim() !== row.remark.trim();
 
   return (
     <div className="flex min-w-[16rem] flex-col gap-1.5">
@@ -54,12 +54,12 @@ export function RemarkCell({ row }: { row: CaseStudyRow }) {
         disabled={save.isPending}
         onChange={(event) => setDraft(event.target.value)}
         className={[
-          'w-full rounded-kontrol border border-slate-300 bg-white px-2 py-1.5 text-sm',
-          'transition-[border-color,box-shadow] duration-150',
-          'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25',
-          'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
-          'resize-y',
-        ].join(' ')}
+          "w-full rounded-kontrol border border-slate-300 bg-white px-2 py-1.5 text-sm",
+          "transition-[border-color,box-shadow] duration-150",
+          "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25",
+          "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
+          "resize-y",
+        ].join(" ")}
       />
 
       <div className="flex items-center gap-2">
@@ -72,13 +72,13 @@ export function RemarkCell({ row }: { row: CaseStudyRow }) {
           sesungguhnya lebih sulit dicari.
         */}
         <Button
-          tone={changed ? 'utama' : 'kedua'}
+          tone={changed ? "utama" : "kedua"}
           disabled={!changed || save.isPending}
           onClick={() =>
             save.mutate({ nomor_klaim: row.nomor_klaim, catatan: draft.trim() })
           }
         >
-          {save.isPending ? 'Menyimpan…' : 'Save'}
+          {save.isPending ? "Menyimpan…" : "Save"}
         </Button>
 
         {save.isSuccess && !changed && (
@@ -94,11 +94,11 @@ export function RemarkCell({ row }: { row: CaseStudyRow }) {
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Catatan gagal disimpan. Coba lagi beberapa saat lagi.'
+  if (error instanceof APIError) return error.message;
+  return "Catatan gagal disimpan. Coba lagi beberapa saat lagi.";
 }

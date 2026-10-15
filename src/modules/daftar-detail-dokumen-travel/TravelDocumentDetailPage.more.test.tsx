@@ -1,12 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import { TravelDocumentDetailPage } from './TravelDocumentDetailPage'
+import { TravelDocumentDetailPage } from "./TravelDocumentDetailPage";
 
 /**
  * Uji tambahan Daftar Detail Dokumen Travel: galat muat dan simpan, jalur tambah, dan
@@ -14,223 +14,332 @@ import { TravelDocumentDetailPage } from './TravelDocumentDetailPage'
  */
 
 const LIST = {
-  portal: 'ASM',
+  portal: "ASM",
   total: 2,
   detail_dokumen_travel: [
-    { id: '00002', id_dokumen: '100009', nama_dokumen: 'Tiket', status_wajib: false, minimal_unggah: 3 },
-    { id: '00001', id_dokumen: '100001', nama_dokumen: '', status_wajib: true, minimal_unggah: 1 },
+    {
+      id: "00002",
+      id_dokumen: "100009",
+      nama_dokumen: "Tiket",
+      status_wajib: false,
+      minimal_unggah: 3,
+    },
+    {
+      id: "00001",
+      id_dokumen: "100001",
+      nama_dokumen: "",
+      status_wajib: true,
+      minimal_unggah: 1,
+    },
   ],
-}
+};
 
-type Call = { url: string; method: string; body: unknown }
-type Reply = { body?: unknown; status?: number; fail?: boolean; hold?: boolean }
-let calls: Call[] = []
+type Call = { url: string; method: string; body: unknown };
+type Reply = {
+  body?: unknown;
+  status?: number;
+  fail?: boolean;
+  hold?: boolean;
+};
+let calls: Call[] = [];
 
 function installFetch(map: (call: Call) => Reply | null) {
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+  vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
     const call: Call = {
       url,
-      method: init?.method ?? 'GET',
+      method: init?.method ?? "GET",
       body: init?.body ? JSON.parse(init.body as string) : undefined,
-    }
-    calls.push(call)
-    const reply = map(call) ?? defaults(call)
-    if (reply.fail) return Promise.reject(new TypeError('Failed to fetch'))
-    if (reply.hold) return new Promise(() => {})
+    };
+    calls.push(call);
+    const reply = map(call) ?? defaults(call);
+    if (reply.fail) return Promise.reject(new TypeError("Failed to fetch"));
+    if (reply.hold) return new Promise(() => {});
     return Promise.resolve(
       new Response(JSON.stringify(reply.body ?? {}), {
         status: reply.status ?? 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       }),
-    )
-  })
+    );
+  });
 }
 
 function defaults(call: Call): Reply {
-  if (call.url.startsWith('/api/master/dokumen-travel-pilihan')) {
-    return { body: { portal: 'ASM', dokumen: [{ id: '100001', nama: 'Paspor' }] } }
+  if (call.url.startsWith("/api/master/dokumen-travel-pilihan")) {
+    return {
+      body: { portal: "ASM", dokumen: [{ id: "100001", nama: "Paspor" }] },
+    };
   }
-  if (call.method === 'GET') return { body: LIST }
-  return { status: 201, body: { portal: 'ASM', detail_dokumen_travel: LIST.detail_dokumen_travel[0] } }
+  if (call.method === "GET") return { body: LIST };
+  return {
+    status: 201,
+    body: {
+      portal: "ASM",
+      detail_dokumen_travel: LIST.detail_dokumen_travel[0],
+    },
+  };
 }
 
 function show() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
+  });
   return render(
     <QueryClientProvider client={client}>
       <TravelDocumentDetailPage />
     </QueryClientProvider>,
-  )
+  );
 }
 
 beforeEach(() => {
-  calls = []
+  calls = [];
   useSession.setState({
-    token: 'token-uji',
+    token: "token-uji",
     user: null,
     validUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-  })
-  useSelectedPortal.getState().select('ASM')
-})
+  });
+  useSelectedPortal.getState().select("ASM");
+});
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-  useSession.getState().clear()
-})
+  vi.unstubAllGlobals();
+  useSession.getState().clear();
+});
 
-describe('galat pemuatan', () => {
+describe("galat pemuatan", () => {
   it.each([
-    [{ fail: true }, 'Server Claim PNC tidak dapat dihubungi'],
-    [{ status: 400, body: { kode: 'portal_tidak_disebut', pesan: 'x' } }, 'Portal entitas belum dipilih'],
-    [{ status: 400, body: { kode: 'portal_tidak_dikenal', pesan: 'x' } }, 'Portal entitas belum dipilih'],
-    [{ status: 503, body: { kode: 'portal_belum_siap', pesan: 'x' } }, 'Basis data entitas ini belum tersedia'],
-    [{ status: 500, body: { kode: 'galat_internal', pesan: 'x' } }, 'Daftar tidak dapat dimuat'],
-  ])('menjelaskan galat daftar %#', async (reply, title) => {
-    installFetch((call) => (call.url === '/api/master/daftar-detail-dokumen-travel' ? reply : null))
-    show()
-    expect(await screen.findByText(title)).toBeInTheDocument()
-  })
-})
-
-describe('galat simpan', () => {
-  it.each([
-    [{ fail: true }, 'Server Claim PNC tidak dapat dihubungi'],
-    [{ status: 404, body: { kode: 'detail_dokumen_travel_tidak_ditemukan', pesan: 'x' } }, 'Baris ini sudah tidak ada'],
-    [{ status: 404, body: { kode: 'tidak_ditemukan', pesan: 'x' } }, 'Baris ini sudah tidak ada'],
-    [{ status: 400, body: { kode: 'portal_tidak_dikenal', pesan: 'x' } }, 'Portal entitas belum dipilih'],
-    [{ status: 503, body: { kode: 'portal_belum_siap', pesan: 'x' } }, 'Basis data entitas ini belum tersedia'],
-    [{ status: 500, body: { kode: 'galat_internal', pesan: 'x' } }, 'Terjadi kesalahan pada sistem'],
-  ])('menjelaskan galat ubah %#', async (reply, title) => {
-    installFetch((call) => (call.method === 'PUT' ? reply : null))
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Ubah Tiket' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-    await waitFor(() => expect(within(form).getByRole('button', { name: 'Ubah' })).not.toBeDisabled())
-    await user.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    expect(await within(form).findByText(title)).toBeInTheDocument()
-  })
-
-  it('menutup form setelah perubahan tersimpan, dan baris tanpa nama memakai ID-nya', async () => {
-    installFetch(() => null)
-    const user = userEvent.setup()
-    show()
-
-    await screen.findByRole('table')
-    expect(screen.getByRole('button', { name: 'Ubah 00001' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Ubah Tiket' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
-    await waitFor(() => expect(within(form).getByRole('button', { name: 'Ubah' })).not.toBeDisabled())
-    await user.click(within(form).getByRole('button', { name: 'Ubah' }))
-
-    await waitFor(() => expect(screen.queryByRole('form', { name: 'Detail Dokumen Travel' })).not.toBeInTheDocument())
-    expect(calls.find((c) => c.method === 'PUT')?.url).toBe('/api/master/daftar-detail-dokumen-travel/00002')
-  })
-
-  it('menyebut daftar dokumen pilihan yang gagal dimuat', async () => {
+    [{ fail: true }, "Server Claim PNC tidak dapat dihubungi"],
+    [
+      { status: 400, body: { kode: "portal_tidak_disebut", pesan: "x" } },
+      "Portal entitas belum dipilih",
+    ],
+    [
+      { status: 400, body: { kode: "portal_tidak_dikenal", pesan: "x" } },
+      "Portal entitas belum dipilih",
+    ],
+    [
+      { status: 503, body: { kode: "portal_belum_siap", pesan: "x" } },
+      "Basis data entitas ini belum tersedia",
+    ],
+    [
+      { status: 500, body: { kode: "galat_internal", pesan: "x" } },
+      "Daftar tidak dapat dimuat",
+    ],
+  ])("menjelaskan galat daftar %#", async (reply, title) => {
     installFetch((call) =>
-      call.url.startsWith('/api/master/dokumen-travel-pilihan') ? { status: 500, body: {} } : null,
-    )
-    const user = userEvent.setup()
-    show()
+      call.url === "/api/master/daftar-detail-dokumen-travel" ? reply : null,
+    );
+    show();
+    expect(await screen.findByText(title)).toBeInTheDocument();
+  });
+});
 
-    await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Tambah' }))
-    expect(await screen.findByText('Daftar dokumen travel tidak dapat dimuat')).toBeInTheDocument()
-  })
-})
+describe("galat simpan", () => {
+  it.each([
+    [{ fail: true }, "Server Claim PNC tidak dapat dihubungi"],
+    [
+      {
+        status: 404,
+        body: { kode: "detail_dokumen_travel_tidak_ditemukan", pesan: "x" },
+      },
+      "Baris ini sudah tidak ada",
+    ],
+    [
+      { status: 404, body: { kode: "tidak_ditemukan", pesan: "x" } },
+      "Baris ini sudah tidak ada",
+    ],
+    [
+      { status: 400, body: { kode: "portal_tidak_dikenal", pesan: "x" } },
+      "Portal entitas belum dipilih",
+    ],
+    [
+      { status: 503, body: { kode: "portal_belum_siap", pesan: "x" } },
+      "Basis data entitas ini belum tersedia",
+    ],
+    [
+      { status: 500, body: { kode: "galat_internal", pesan: "x" } },
+      "Terjadi kesalahan pada sistem",
+    ],
+  ])("menjelaskan galat ubah %#", async (reply, title) => {
+    installFetch((call) => (call.method === "PUT" ? reply : null));
+    const user = userEvent.setup();
+    show();
 
-describe('tambah', () => {
-  it('mengirim keempat isian form, lalu menutup form', async () => {
-    installFetch(() => null)
-    const user = userEvent.setup()
-    show()
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Ubah Tiket" }));
+    const form = await screen.findByRole("form", {
+      name: "Detail Dokumen Travel",
+    });
+    await waitFor(() =>
+      expect(
+        within(form).getByRole("button", { name: "Ubah" }),
+      ).not.toBeDisabled(),
+    );
+    await user.click(within(form).getByRole("button", { name: "Ubah" }));
 
-    await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
+    expect(await within(form).findByText(title)).toBeInTheDocument();
+  });
 
-    await user.type(within(form).getByLabelText('ID Dokumen'), '100001')
-    await user.type(within(form).getByLabelText('Nama Dokumen'), 'Paspor')
-    await user.selectOptions(within(form).getByLabelText('Status Wajib'), 'Ya')
-    await user.click(within(form).getByRole('button', { name: 'Simpan' }))
+  it("menutup form setelah perubahan tersimpan, dan baris tanpa nama memakai ID-nya", async () => {
+    installFetch(() => null);
+    const user = userEvent.setup();
+    show();
 
-    await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true))
-    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
-      id_dokumen: '100001',
-      nama_dokumen: 'Paspor',
+    await screen.findByRole("table");
+    expect(
+      screen.getByRole("button", { name: "Ubah 00001" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ubah Tiket" }));
+    const form = await screen.findByRole("form", {
+      name: "Detail Dokumen Travel",
+    });
+    await waitFor(() =>
+      expect(
+        within(form).getByRole("button", { name: "Ubah" }),
+      ).not.toBeDisabled(),
+    );
+    await user.click(within(form).getByRole("button", { name: "Ubah" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("form", { name: "Detail Dokumen Travel" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(calls.find((c) => c.method === "PUT")?.url).toBe(
+      "/api/master/daftar-detail-dokumen-travel/00002",
+    );
+  });
+
+  it("menyebut daftar dokumen pilihan yang gagal dimuat", async () => {
+    installFetch((call) =>
+      call.url.startsWith("/api/master/dokumen-travel-pilihan")
+        ? { status: 500, body: {} }
+        : null,
+    );
+    const user = userEvent.setup();
+    show();
+
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Tambah" }));
+    expect(
+      await screen.findByText("Daftar dokumen travel tidak dapat dimuat"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("tambah", () => {
+  it("mengirim keempat isian form, lalu menutup form", async () => {
+    installFetch(() => null);
+    const user = userEvent.setup();
+    show();
+
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Tambah" }));
+    const form = await screen.findByRole("form", {
+      name: "Detail Dokumen Travel",
+    });
+
+    await user.type(within(form).getByLabelText("ID Dokumen"), "100001");
+    await user.type(within(form).getByLabelText("Nama Dokumen"), "Paspor");
+    await user.selectOptions(within(form).getByLabelText("Status Wajib"), "Ya");
+    await user.click(within(form).getByRole("button", { name: "Simpan" }));
+
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST")).toBe(true),
+    );
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      id_dokumen: "100001",
+      nama_dokumen: "Paspor",
       status_wajib: true,
       minimal_unggah: 0,
-    })
+    });
     await waitFor(() =>
-      expect(screen.queryByRole('form', { name: 'Detail Dokumen Travel' })).not.toBeInTheDocument(),
-    )
-  })
+      expect(
+        screen.queryByRole("form", { name: "Detail Dokumen Travel" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
 
   // Grid Plan dan Jaminan tidak ada di layar Pega yang berjalan (Work Owner,
   // 2026-10-03). Ia sempat dibangun lalu dicabut; uji ini yang membuat
   // kemunculannya kembali gagal di CI alih-alih lolos diam-diam.
-  it('tidak menampilkan grid Plan dan Jaminan', async () => {
-    installFetch(() => null)
-    const user = userEvent.setup()
-    show()
+  it("tidak menampilkan grid Plan dan Jaminan", async () => {
+    installFetch(() => null);
+    const user = userEvent.setup();
+    show();
 
-    await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Tambah' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Tambah" }));
+    const form = await screen.findByRole("form", {
+      name: "Detail Dokumen Travel",
+    });
 
-    expect(within(form).queryByRole('button', { name: 'Tambah Plan' })).not.toBeInTheDocument()
-    expect(within(form).queryByLabelText('Nama Plan baris 1')).not.toBeInTheDocument()
-    expect(within(form).queryByLabelText('Nama Jaminan baris 1')).not.toBeInTheDocument()
-  })
+    expect(
+      within(form).queryByRole("button", { name: "Tambah Plan" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(form).queryByLabelText("Nama Plan baris 1"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(form).queryByLabelText("Nama Jaminan baris 1"),
+    ).not.toBeInTheDocument();
+  });
 
   // Daftar sudah membawa seluruh isi baris, sehingga form dibuka langsung dari
   // baris itu — tanpa satu permintaan tambahan ke /{id}.
-  it('membuka form ubah tanpa memuat ulang baris dari server', async () => {
-    installFetch(() => null)
-    const user = userEvent.setup()
-    show()
+  it("membuka form ubah tanpa memuat ulang baris dari server", async () => {
+    installFetch(() => null);
+    const user = userEvent.setup();
+    show();
 
-    await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Ubah Tiket' }))
-    const form = await screen.findByRole('form', { name: 'Detail Dokumen Travel' })
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Ubah Tiket" }));
+    const form = await screen.findByRole("form", {
+      name: "Detail Dokumen Travel",
+    });
 
-    expect(within(form).getByLabelText('Nama Dokumen')).toHaveValue('Tiket')
+    expect(within(form).getByLabelText("Nama Dokumen")).toHaveValue("Tiket");
     expect(
-      calls.filter((c) => c.method === 'GET' && c.url.includes('/daftar-detail-dokumen-travel/')),
-    ).toHaveLength(0)
-  })
-})
+      calls.filter(
+        (c) =>
+          c.method === "GET" &&
+          c.url.includes("/daftar-detail-dokumen-travel/"),
+      ),
+    ).toHaveLength(0);
+  });
+});
 
-describe('daftar', () => {
-  it('mengurutkan setiap kolom data dan memuat ulang', async () => {
-    installFetch(() => null)
-    const user = userEvent.setup()
-    show()
+describe("daftar", () => {
+  it("mengurutkan setiap kolom data dan memuat ulang", async () => {
+    installFetch(() => null);
+    const user = userEvent.setup();
+    show();
 
-    const table = await screen.findByRole('table')
-    const first = () => within(table).getAllByRole('row')[1]?.textContent ?? ''
-    await user.click(within(table).getByRole('button', { name: 'ID' }))
-    expect(first()).toContain('00001')
-    await user.click(within(table).getByRole('button', { name: 'ID Dokumen' }))
-    expect(first()).toContain('100001')
-    await user.click(within(table).getByRole('button', { name: 'Nama Dokumen' }))
-    expect(first()).toContain('00001')
-    await user.click(within(table).getByRole('button', { name: 'Status Wajib' }))
-    expect(first()).toContain('Tidak')
-    await user.click(within(table).getByRole('button', { name: 'Minimal Unggah' }))
-    expect(first()).toContain('00001')
+    const table = await screen.findByRole("table");
+    const first = () => within(table).getAllByRole("row")[1]?.textContent ?? "";
+    await user.click(within(table).getByRole("button", { name: "ID" }));
+    expect(first()).toContain("00001");
+    await user.click(within(table).getByRole("button", { name: "ID Dokumen" }));
+    expect(first()).toContain("100001");
+    await user.click(
+      within(table).getByRole("button", { name: "Nama Dokumen" }),
+    );
+    expect(first()).toContain("00001");
+    await user.click(
+      within(table).getByRole("button", { name: "Status Wajib" }),
+    );
+    expect(first()).toContain("Tidak");
+    await user.click(
+      within(table).getByRole("button", { name: "Minimal Unggah" }),
+    );
+    expect(first()).toContain("00001");
 
-    await user.type(screen.getByRole('searchbox'), 'tiket')
-    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2)
+    await user.type(screen.getByRole("searchbox"), "tiket");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(
+      2,
+    );
 
-    const before = calls.length
-    await user.click(screen.getByRole('button', { name: 'Refresh' }))
-    await waitFor(() => expect(calls.length).toBeGreaterThan(before))
-  })
-})
+    const before = calls.length;
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(calls.length).toBeGreaterThan(before));
+  });
+});

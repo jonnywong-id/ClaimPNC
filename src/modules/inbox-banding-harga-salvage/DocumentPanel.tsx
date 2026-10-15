@@ -1,11 +1,11 @@
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatDate } from '@/components/format'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatDate } from "@/components/format";
 
-import { documentDownloadURL, useBandingHargaSalvageDocuments } from './api'
-import type { AppealDocument, DocumentScope } from './types'
+import { documentDownloadURL, useBandingHargaSalvageDocuments } from "./api";
+import type { AppealDocument, DocumentScope } from "./types";
 
 /**
  * Dialog **"Lihat File"** — dokumen pendukung satu banding harga.
@@ -36,14 +36,14 @@ import type { AppealDocument, DocumentScope } from './types'
  */
 type Props = {
   /** Banding yang dokumennya dibuka. `null` berarti dialog ini tertutup. */
-  scope: DocumentScope | null
-  onClose: () => void
-}
+  scope: DocumentScope | null;
+  onClose: () => void;
+};
 
 export function DocumentPanel({ scope, onClose }: Props) {
-  const documents = useBandingHargaSalvageDocuments(scope)
+  const documents = useBandingHargaSalvageDocuments(scope);
 
-  if (scope === null) return null
+  if (scope === null) return null;
 
   return (
     <section
@@ -56,11 +56,15 @@ export function DocumentPanel({ scope, onClose }: Props) {
             Dokumen Banding Harga — {scope.no_klaim}
           </h2>
           <p className="mt-1 text-xs text-slate-600">
-            {scope.nama_barang || 'Barang tanpa nama'} · Detail Object{' '}
+            {scope.nama_barang || "Barang tanpa nama"} · Detail Object{" "}
             {scope.detail_object}
           </p>
         </div>
-        <Button tone="halus" onClick={onClose} aria-label="Tutup dokumen banding">
+        <Button
+          tone="halus"
+          onClick={onClose}
+          aria-label="Tutup dokumen banding"
+        >
           Tutup
         </Button>
       </header>
@@ -85,13 +89,13 @@ export function DocumentPanel({ scope, onClose }: Props) {
             ) : undefined
           }
           emptyMessage={
-            'Banding ini tidak punya dokumen pendukung yang dapat dibuka. Dokumen yang ' +
-            'sudah Anda tolak sebelumnya memang tidak ditampilkan di sini.'
+            "Banding ini tidak punya dokumen pendukung yang dapat dibuka. Dokumen yang " +
+            "sudah Anda tolak sebelumnya memang tidak ditampilkan di sini."
           }
         />
       </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -103,13 +107,13 @@ export function DocumentPanel({ scope, onClose }: Props) {
 function columns(scope: DocumentScope): Column<AppealDocument>[] {
   return [
     {
-      key: 'kategori',
-      title: 'Kategori',
+      key: "kategori",
+      title: "Kategori",
       value: (row) => row.kategori,
     },
     {
-      key: 'nama',
-      title: 'Nama',
+      key: "nama",
+      title: "Nama",
       value: (row) => row.nama,
       render: (row) => (
         <a
@@ -124,19 +128,19 @@ function columns(scope: DocumentScope): Column<AppealDocument>[] {
           */
           download={row.nama || undefined}
           className={[
-            'text-blue-700 underline underline-offset-2',
-            'hover:text-blue-900 focus:outline-none focus-visible:ring-2',
-            'focus-visible:ring-blue-500/40 rounded-sm',
-          ].join(' ')}
+            "text-blue-700 underline underline-offset-2",
+            "hover:text-blue-900 focus:outline-none focus-visible:ring-2",
+            "focus-visible:ring-blue-500/40 rounded-sm",
+          ].join(" ")}
         >
-          {row.nama || 'Berkas tanpa nama'}
+          {row.nama || "Berkas tanpa nama"}
         </a>
       ),
     },
     {
-      key: 'tanggal_unggah',
-      title: 'Tanggal',
-      value: (row) => row.tanggal_unggah ?? '',
+      key: "tanggal_unggah",
+      title: "Tanggal",
+      value: (row) => row.tanggal_unggah ?? "",
       render: (row) =>
         row.tanggal_unggah ? (
           formatDate(row.tanggal_unggah)
@@ -144,11 +148,11 @@ function columns(scope: DocumentScope): Column<AppealDocument>[] {
           <span className="text-slate-400">—</span>
         ),
     },
-  ]
+  ];
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

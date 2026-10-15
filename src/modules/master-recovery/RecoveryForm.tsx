@@ -1,33 +1,33 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
-import { z } from 'zod'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   ErrorCode,
   type Recovery,
   type RecoveryClaimLine,
   type RecoveryPrincipal,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { ComboField } from '@/components/ComboField'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
-import { formatMoney, parseMoney, remainder } from '@/lib/money'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ComboField } from "@/components/ComboField";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
+import { formatMoney, parseMoney, remainder } from "@/lib/money";
 
-import { ClaimLineUpload } from './ClaimLineUpload'
-import { VirtualAccountPanel } from './VirtualAccountPanel'
-import { useSaveRecovery } from './api'
+import { ClaimLineUpload } from "./ClaimLineUpload";
+import { VirtualAccountPanel } from "./VirtualAccountPanel";
+import { useSaveRecovery } from "./api";
 
 /** Batas panjang; sama dengan masterrecovery.Max* di backend. */
-const MAX_PRINCIPAL_NAME = 200
-const MAX_CLIENT_ID = 100
-const MAX_VIRTUAL_ACCOUNT = 1000
-const MAX_REMARK = 2000
-const MAX_CASE_POSITION = 100
-const MAX_POLICY_NO = 200
+const MAX_PRINCIPAL_NAME = 200;
+const MAX_CLIENT_ID = 100;
+const MAX_VIRTUAL_ACCOUNT = 1000;
+const MAX_REMARK = 2000;
+const MAX_CASE_POSITION = 100;
+const MAX_POLICY_NO = 200;
 
 /**
  * money adalah pembaca isian nilai uang.
@@ -41,18 +41,24 @@ function money(label: string) {
     .string()
     .trim()
     .transform((value, ctx) => {
-      if (value === '') return 0
-      const parsed = parseMoney(value)
+      if (value === "") return 0;
+      const parsed = parseMoney(value);
       if (parsed === null) {
-        ctx.addIssue({ code: 'custom', message: `${label} harus berupa angka rupiah utuh.` })
-        return z.NEVER
+        ctx.addIssue({
+          code: "custom",
+          message: `${label} harus berupa angka rupiah utuh.`,
+        });
+        return z.NEVER;
       }
       if (parsed < 0) {
-        ctx.addIssue({ code: 'custom', message: `${label} tidak boleh negatif.` })
-        return z.NEVER
+        ctx.addIssue({
+          code: "custom",
+          message: `${label} tidak boleh negatif.`,
+        });
+        return z.NEVER;
       }
-      return parsed
-    })
+      return parsed;
+    });
 }
 
 /**
@@ -70,43 +76,58 @@ const schema = z.object({
   nama_principal: z
     .string()
     .trim()
-    .min(1, 'Nama principal wajib diisi.')
-    .max(MAX_PRINCIPAL_NAME, `Nama principal paling panjang ${MAX_PRINCIPAL_NAME} karakter.`),
-  client_id: z.string().trim().max(MAX_CLIENT_ID, `Client ID paling panjang ${MAX_CLIENT_ID} karakter.`),
+    .min(1, "Nama principal wajib diisi.")
+    .max(
+      MAX_PRINCIPAL_NAME,
+      `Nama principal paling panjang ${MAX_PRINCIPAL_NAME} karakter.`,
+    ),
+  client_id: z
+    .string()
+    .trim()
+    .max(MAX_CLIENT_ID, `Client ID paling panjang ${MAX_CLIENT_ID} karakter.`),
   nomor_virtual_account: z
     .string()
     .trim()
-    .max(MAX_VIRTUAL_ACCOUNT, `Nomor virtual account paling panjang ${MAX_VIRTUAL_ACCOUNT} karakter.`),
-  tahun: z.string().trim().min(1, 'Tahun wajib dipilih.'),
-  nilai_klaim: money('Nilai klaim'),
-  pembayaran_sebelumnya: money('Nilai pembayaran sebelumnya'),
-  pembayaran: money('Pembayaran'),
+    .max(
+      MAX_VIRTUAL_ACCOUNT,
+      `Nomor virtual account paling panjang ${MAX_VIRTUAL_ACCOUNT} karakter.`,
+    ),
+  tahun: z.string().trim().min(1, "Tahun wajib dipilih."),
+  nilai_klaim: money("Nilai klaim"),
+  pembayaran_sebelumnya: money("Nilai pembayaran sebelumnya"),
+  pembayaran: money("Pembayaran"),
   keterangan: z
     .string()
     .trim()
-    .min(1, 'Keterangan wajib diisi.')
+    .min(1, "Keterangan wajib diisi.")
     .max(MAX_REMARK, `Keterangan paling panjang ${MAX_REMARK} karakter.`),
   posisi_kasus: z
     .string()
     .trim()
-    .min(1, 'Posisi kasus wajib diisi.')
-    .max(MAX_CASE_POSITION, `Posisi kasus paling panjang ${MAX_CASE_POSITION} karakter.`),
+    .min(1, "Posisi kasus wajib diisi.")
+    .max(
+      MAX_CASE_POSITION,
+      `Posisi kasus paling panjang ${MAX_CASE_POSITION} karakter.`,
+    ),
   nomor_polis: z
     .string()
     .trim()
-    .max(MAX_POLICY_NO, `Nomor polis paling panjang ${MAX_POLICY_NO} karakter.`),
-})
+    .max(
+      MAX_POLICY_NO,
+      `Nomor polis paling panjang ${MAX_POLICY_NO} karakter.`,
+    ),
+});
 
-type FieldValues = z.input<typeof schema>
-type ParsedValues = z.output<typeof schema>
+type FieldValues = z.input<typeof schema>;
+type ParsedValues = z.output<typeof schema>;
 
 type Props = {
   /** Nomor batch PERKIRAAN, untuk ditampilkan saja. */
-  nextBatch: number | undefined
-  year: string[]
-  principal: RecoveryPrincipal[]
-  onSaved: (saved: Recovery, policyResolved: boolean) => void
-}
+  nextBatch: number | undefined;
+  year: string[];
+  principal: RecoveryPrincipal[];
+  onSaved: (saved: Recovery, policyResolved: boolean) => void;
+};
 
 /**
  * Form entri batch recovery.
@@ -126,12 +147,15 @@ type Props = {
  * | Layar sempit | digulir menyamping | tersusun satu kolom (`D-12`) |
  */
 export function RecoveryForm({ year, principal, onSaved }: Props) {
-  const save = useSaveRecovery()
+  const save = useSaveRecovery();
 
-  const [claimLine, setClaimLine] = useState<RecoveryClaimLine[]>([])
+  const [claimLine, setClaimLine] = useState<RecoveryClaimLine[]>([]);
 
-  const [vaIssued, setVAIssued] = useState(false)
-  const [paymentProof, setPaymentProof] = useState<{ id: string; nama: string } | null>(null)
+  const [vaIssued, setVAIssued] = useState(false);
+  const [paymentProof, setPaymentProof] = useState<{
+    id: string;
+    nama: string;
+  } | null>(null);
 
   const {
     register,
@@ -144,34 +168,34 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
   } = useForm<FieldValues, unknown, ParsedValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nama_principal: '',
-      client_id: '',
-      nomor_virtual_account: '',
-      tahun: year[0] ?? '',
-      nilai_klaim: '',
-      pembayaran_sebelumnya: '',
-      pembayaran: '',
-      keterangan: '',
-      posisi_kasus: '',
-      nomor_polis: '',
+      nama_principal: "",
+      client_id: "",
+      nomor_virtual_account: "",
+      tahun: year[0] ?? "",
+      nilai_klaim: "",
+      pembayaran_sebelumnya: "",
+      pembayaran: "",
+      keterangan: "",
+      posisi_kasus: "",
+      nomor_polis: "",
     },
-  })
+  });
 
   // Sisa dihitung ulang pada setiap ketikan, meniru aksi `HitungSisaKlaimRecovery` yang di
   // layar lama dijalankan pada perubahan ketiga isian nilai.
   const watched = useWatch({
     control,
-    name: ['nilai_klaim', 'pembayaran_sebelumnya', 'pembayaran'],
-  })
+    name: ["nilai_klaim", "pembayaran_sebelumnya", "pembayaran"],
+  });
   const sisa = useMemo(() => {
-    const claimAmount = parseMoney(watched[0] ?? '') ?? 0
-    const previousPayment = parseMoney(watched[1] ?? '') ?? 0
-    const payment = parseMoney(watched[2] ?? '') ?? 0
-    return remainder(claimAmount, previousPayment, payment)
-  }, [watched])
+    const claimAmount = parseMoney(watched[0] ?? "") ?? 0;
+    const previousPayment = parseMoney(watched[1] ?? "") ?? 0;
+    const payment = parseMoney(watched[2] ?? "") ?? 0;
+    return remainder(claimAmount, previousPayment, payment);
+  }, [watched]);
 
-  const year0 = year[0]
-  const chosenYear = useWatch({ control, name: 'tahun' })
+  const year0 = year[0];
+  const chosenYear = useWatch({ control, name: "tahun" });
 
   // Tahun terbaru dipilih lebih dulu — SETELAH daftarnya tiba.
   //
@@ -184,31 +208,31 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
   // Hanya mengisi yang MASIH KOSONG, sehingga pilihan yang sudah diubah petugas tidak
   // ditimpa ketika daftarnya dimuat ulang.
   useEffect(() => {
-    if (year0 && !chosenYear) setValue('tahun', year0)
-  }, [year0, chosenYear, setValue])
+    if (year0 && !chosenYear) setValue("tahun", year0);
+  }, [year0, chosenYear, setValue]);
 
   // Pelanggaran yang dilaporkan server disorot pada isiannya, bukan hanya diringkas di
   // kotak pesan. Server mengirim SELURUH pelanggaran sekaligus (P-5), dan itu hanya
   // berguna bila layar menyorotnya di tempat isiannya.
   useEffect(() => {
-    if (!(save.error instanceof APIError)) return
-    const violation = save.error.violations()
+    if (!(save.error instanceof APIError)) return;
+    const violation = save.error.violations();
     for (const name of [
-      'nama_principal',
-      'client_id',
-      'nomor_virtual_account',
-      'tahun',
-      'nilai_klaim',
-      'pembayaran_sebelumnya',
-      'pembayaran',
-      'keterangan',
-      'posisi_kasus',
-      'nomor_polis',
+      "nama_principal",
+      "client_id",
+      "nomor_virtual_account",
+      "tahun",
+      "nilai_klaim",
+      "pembayaran_sebelumnya",
+      "pembayaran",
+      "keterangan",
+      "posisi_kasus",
+      "nomor_polis",
     ] as const) {
-      const message = violation[name]
-      if (message) setError(name, { type: 'server', message })
+      const message = violation[name];
+      if (message) setError(name, { type: "server", message });
     }
-  }, [save.error, setError])
+  }, [save.error, setError]);
 
   /**
    * Nomor yang baru terbit langsung mengisi ketiga isian principal.
@@ -216,42 +240,51 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
    * Itu yang membuat blok "Generated New VA" berguna di dalam alur Tambah: petugas tidak
    * perlu menyalin nomornya sendiri ke isian di bawah.
    */
-  function onVAIssued(value: { client_id: string; nama_principal: string; nomor: string }) {
+  function onVAIssued(value: {
+    client_id: string;
+    nama_principal: string;
+    nomor: string;
+  }) {
     // Padanan Property-Set `TempRecovery.IBNR := "1"` pada activity Get VA.
-    setVAIssued(true)
-    setValue('nama_principal', value.nama_principal, { shouldValidate: true })
-    setValue('client_id', value.client_id, { shouldValidate: true })
-    setValue('nomor_virtual_account', value.nomor, { shouldValidate: true })
+    setVAIssued(true);
+    setValue("nama_principal", value.nama_principal, { shouldValidate: true });
+    setValue("client_id", value.client_id, { shouldValidate: true });
+    setValue("nomor_virtual_account", value.nomor, { shouldValidate: true });
   }
 
   function send(values: ParsedValues) {
     save.mutate(
       {
         ...values,
-        id_dokumen: paymentProof?.id ?? '',
+        id_dokumen: paymentProof?.id ?? "",
         // Kolom NOHPLL. Namanya menyiratkan nomor telepon; isinya di sistem lama adalah
         // nomor catatan log layanan, dan layar ini tidak punya nomor semacam itu —
         // dikirim kosong, bukan diisi nilai karangan.
-        id_log_layanan: '',
+        id_log_layanan: "",
         baris_klaim: claimLine,
       },
       {
         onSuccess: (answer) => {
-          onSaved(answer.recovery, answer.identitas_polis_terisi)
+          onSaved(answer.recovery, answer.identitas_polis_terisi);
           // Form dikosongkan HANYA setelah server menjawab berhasil. Mengosongkannya lebih
           // dulu akan membuang isian petugas saat penyimpanan gagal.
-          reset()
-          setClaimLine([])
-          setPaymentProof(null)
+          reset();
+          setClaimLine([]);
+          setPaymentProof(null);
         },
       },
-    )
+    );
   }
 
-  const busy = save.isPending
+  const busy = save.isPending;
 
   return (
-    <form onSubmit={handleSubmit(send)} noValidate className="space-y-6" aria-label="Catat batch recovery">
+    <form
+      onSubmit={handleSubmit(send)}
+      noValidate
+      className="space-y-6"
+      aria-label="Catat batch recovery"
+    >
       {save.isError && <SaveErrorMessage error={save.error} />}
 
       {/*
@@ -261,7 +294,11 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
         isinya tombol **Upload Data Klaim** beserta grid "No Polis | Nilai Klaims" —
         isian lainnya menyusul di bawahnya (`D-13`).
       */}
-      <ClaimLineUpload claimLine={claimLine} onChange={setClaimLine} disabled={busy} />
+      <ClaimLineUpload
+        claimLine={claimLine}
+        onChange={setClaimLine}
+        disabled={busy}
+      />
 
       {/*
         SISA FORM BARU MUNCUL SETELAH DATA KLAIM DIUNGGAH.
@@ -281,7 +318,6 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
             lama — bukan sebagai tombol terpisah di kepala halaman.
           */}
           <VirtualAccountPanel onIssued={onVAIssued} />
-
 
           {/*
             KESEPULUH ISIAN DI BAWAH BARU MUNCUL SETELAH VA TERBIT.
@@ -331,7 +367,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                   autoComplete="off"
                   error={errors.nama_principal?.message}
                   disabled={busy}
-                  {...register('nama_principal')}
+                  {...register("nama_principal")}
                 />
 
                 <SelectField
@@ -340,7 +376,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                   options={year.map((y) => ({ value: y, label: y }))}
                   error={errors.tahun?.message}
                   disabled={busy}
-                  {...register('tahun')}
+                  {...register("tahun")}
                 />
 
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -351,7 +387,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                     autoComplete="off"
                     error={errors.client_id?.message}
                     disabled={busy}
-                    {...register('client_id')}
+                    {...register("client_id")}
                   />
                   <Field
                     id="nomor-virtual-account"
@@ -360,7 +396,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                     autoComplete="off"
                     error={errors.nomor_virtual_account?.message}
                     disabled={busy}
-                    {...register('nomor_virtual_account')}
+                    {...register("nomor_virtual_account")}
                   />
                 </div>
 
@@ -372,7 +408,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                     autoComplete="off"
                     error={errors.nilai_klaim?.message}
                     disabled={busy}
-                    {...register('nilai_klaim')}
+                    {...register("nilai_klaim")}
                   />
                   <Field
                     id="pembayaran-sebelumnya"
@@ -381,7 +417,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                     autoComplete="off"
                     error={errors.pembayaran_sebelumnya?.message}
                     disabled={busy}
-                    {...register('pembayaran_sebelumnya')}
+                    {...register("pembayaran_sebelumnya")}
                   />
                 </div>
 
@@ -393,7 +429,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                     autoComplete="off"
                     error={errors.pembayaran?.message}
                     disabled={busy}
-                    {...register('pembayaran')}
+                    {...register("pembayaran")}
                   />
 
                   {/*
@@ -418,7 +454,7 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                   autoComplete="off"
                   error={errors.keterangan?.message}
                   disabled={busy}
-                  {...register('keterangan')}
+                  {...register("keterangan")}
                 />
 
                 <Field
@@ -428,34 +464,33 @@ export function RecoveryForm({ year, principal, onSaved }: Props) {
                   autoComplete="off"
                   error={errors.posisi_kasus?.message}
                   disabled={busy}
-                  {...register('posisi_kasus')}
+                  {...register("posisi_kasus")}
                 />
               </div>
             </section>
           )}
 
-
-      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-5">
-        <Button type="submit" tone="utama" disabled={busy}>
-          {busy ? 'Menyimpan…' : 'Transfer Recovery'}
-        </Button>
-        <Button
-          tone="halus"
-          disabled={busy}
-          onClick={() => {
-            reset()
-            setClaimLine([])
-            setPaymentProof(null)
-              save.reset()
-          }}
-        >
-          Kosongkan isian
-        </Button>
+          <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-5">
+            <Button type="submit" tone="utama" disabled={busy}>
+              {busy ? "Menyimpan…" : "Transfer Recovery"}
+            </Button>
+            <Button
+              tone="halus"
+              disabled={busy}
+              onClick={() => {
+                reset();
+                setClaimLine([]);
+                setPaymentProof(null);
+                save.reset();
+              }}
+            >
+              Kosongkan isian
+            </Button>
           </div>
         </>
       )}
     </form>
-  )
+  );
 }
 
 // ── Pesan galat ───────────────────────────────────────────────────────────────────
@@ -468,7 +503,7 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Batch belum tersimpan. Isian Anda masih ada — periksa koneksi lalu simpan lagi."
         tone="gangguan"
       />
-    )
+    );
   }
   if (!(error instanceof APIError)) {
     return (
@@ -477,50 +512,63 @@ function SaveErrorMessage({ error }: { error: unknown }) {
         description="Terjadi kesalahan yang tidak terduga. Coba beberapa saat lagi."
         tone="gangguan"
       />
-    )
+    );
   }
 
-  const message = parseSave(error)
-  if (message === null) return null
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = parseSave(error);
+  if (message === null) return null;
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function parseSave(error: APIError): MessageContent | null {
   switch (error.kode) {
     case ErrorCode.validationFailed:
       return Object.keys(error.violations()).length > 0
         ? null
-        : { title: 'Isian belum benar', description: error.message, tone: 'penolakan' }
+        : {
+            title: "Isian belum benar",
+            description: error.message,
+            tone: "penolakan",
+          };
 
     case ErrorCode.recoveryBatchTaken:
       return {
-        title: 'Nomor batch baru saja dipakai',
+        title: "Nomor batch baru saja dipakai",
         description:
-          'Petugas lain menyimpan lebih dulu. Tekan Transfer Recovery sekali lagi — isian Anda tidak hilang.',
-        tone: 'penolakan',
-      }
+          "Petugas lain menyimpan lebih dulu. Tekan Transfer Recovery sekali lagi — isian Anda tidak hilang.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotStated:
     case ErrorCode.portalUnknown:
       return {
-        title: 'Portal entitas belum dipilih',
-        description: 'Pilih portal entitas di bilah atas halaman, lalu simpan lagi.',
-        tone: 'penolakan',
-      }
+        title: "Portal entitas belum dipilih",
+        description:
+          "Pilih portal entitas di bilah atas halaman, lalu simpan lagi.",
+        tone: "penolakan",
+      };
 
     case ErrorCode.portalNotReady:
       return {
-        title: 'Basis data entitas ini belum tersedia',
+        title: "Basis data entitas ini belum tersedia",
         description:
-          'Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.',
-        tone: 'gangguan',
-      }
+          "Mengulang tidak akan menolong. Hubungi administrator Claim PNC untuk melengkapi kredensial basis datanya.",
+        tone: "gangguan",
+      };
 
     default:
-      return { title: 'Gagal menyimpan', description: error.message, tone: 'gangguan' }
+      return {
+        title: "Gagal menyimpan",
+        description: error.message,
+        tone: "gangguan",
+      };
   }
 }
-
-

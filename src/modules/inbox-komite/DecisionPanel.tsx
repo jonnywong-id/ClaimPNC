@@ -1,44 +1,44 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
+import { APIError, NetworkError } from "@/api/client";
 import {
   KomiteDecisionKind,
   KomiteInboxErrorCode,
   type KomiteCase,
   type KomiteDecisionKind as Kind,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { TextAreaField } from '@/components/TextAreaField'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { TextAreaField } from "@/components/TextAreaField";
 
 type Props = {
-  item: KomiteCase
-  working: boolean
-  error: unknown
-  onClose: () => void
-  onSubmit: (decision: Kind, note: string) => void
-}
+  item: KomiteCase;
+  working: boolean;
+  error: unknown;
+  onClose: () => void;
+  onSubmit: (decision: Kind, note: string) => void;
+};
 
 /** Batas panjang catatan; sama dengan `komite.MaxNoteLength` di server. */
-const MAX_NOTE = 1000
+const MAX_NOTE = 1000;
 
 const CHOICES: { kind: Kind; label: string; hint: string }[] = [
   {
     kind: KomiteDecisionKind.approve,
-    label: 'Setuju',
-    hint: 'Meneruskan ke jenjang berikutnya, atau menyelesaikan bila ini jenjang terakhir.',
+    label: "Setuju",
+    hint: "Meneruskan ke jenjang berikutnya, atau menyelesaikan bila ini jenjang terakhir.",
   },
   {
     kind: KomiteDecisionKind.reject,
-    label: 'Tolak',
-    hint: 'Menghentikan SELURUH komite, bukan hanya jenjang ini.',
+    label: "Tolak",
+    hint: "Menghentikan SELURUH komite, bukan hanya jenjang ini.",
   },
   {
     kind: KomiteDecisionKind.return,
-    label: 'Kembalikan',
-    hint: 'Mengembalikan kepada pengaju untuk diperbaiki. Komite berhenti.',
+    label: "Kembalikan",
+    hint: "Mengembalikan kepada pengaju untuk diperbaiki. Komite berhenti.",
   },
-]
+];
 
 /**
  * Panel keputusan komite.
@@ -90,51 +90,59 @@ const CHOICES: { kind: Kind; label: string; hint: string }[] = [
  * peramban, dan tidak dapat diuji sama sekali — sementara yang dikonfirmasi di sini
  * adalah penghentian klaim yang tidak dapat ditarik kembali.
  */
-export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props) {
-  const [decision, setDecision] = useState<Kind | null>(null)
-  const [note, setNote] = useState('')
-  const [touched, setTouched] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const headingRef = useRef<HTMLHeadingElement>(null)
+export function DecisionPanel({
+  item,
+  working,
+  error,
+  onClose,
+  onSubmit,
+}: Props) {
+  const [decision, setDecision] = useState<Kind | null>(null);
+  const [note, setNote] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Fokus dipindahkan ke panel saat ia terbuka, supaya pengguna papan ketik dan pembaca
   // layar tidak tertinggal di tabel — panelnya muncul di luar urutan baca mereka.
   useEffect(() => {
-    headingRef.current?.focus()
-  }, [item.nomor_case])
+    headingRef.current?.focus();
+  }, [item.nomor_case]);
 
   // Isian dikosongkan saat berpindah kasus. Tanpa ini, catatan penolakan untuk satu kasus
   // akan terbawa ke kasus berikutnya yang dibuka — dan tercatat permanen di sana.
   useEffect(() => {
-    setDecision(null)
-    setNote('')
-    setTouched(false)
-    setConfirming(false)
-  }, [item.nomor_case])
+    setDecision(null);
+    setNote("");
+    setTouched(false);
+    setConfirming(false);
+  }, [item.nomor_case]);
 
-  const terminal = decision === KomiteDecisionKind.reject || decision === KomiteDecisionKind.return
-  const noteMissing = terminal && note.trim() === ''
-  const noteTooLong = note.length > MAX_NOTE
+  const terminal =
+    decision === KomiteDecisionKind.reject ||
+    decision === KomiteDecisionKind.return;
+  const noteMissing = terminal && note.trim() === "";
+  const noteTooLong = note.length > MAX_NOTE;
 
   // Mengganti pilihan MEMBATALKAN konfirmasi yang sedang berjalan. Tanpa ini, seseorang
   // yang menekan "Simpan" pada Tolak lalu berpindah ke Setuju akan menemukan tombol
   // konfirmasi penghentian masih menunggu — dan menekannya mengira ia menyetujui.
   function choose(kind: Kind) {
-    setDecision(kind)
-    setConfirming(false)
+    setDecision(kind);
+    setConfirming(false);
   }
 
   function submit() {
-    setTouched(true)
-    if (decision === null || noteMissing || noteTooLong) return
+    setTouched(true);
+    if (decision === null || noteMissing || noteTooLong) return;
 
     // Keputusan yang menghentikan komite menempuh satu langkah tambahan, dan langkah itu
     // menyebutkan nomor kasusnya — supaya yang dihentikan bukan kasus yang salah.
     if (terminal && !confirming) {
-      setConfirming(true)
-      return
+      setConfirming(true);
+      return;
     }
-    onSubmit(decision, note.trim())
+    onSubmit(decision, note.trim());
   }
 
   return (
@@ -153,7 +161,8 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
             Keputusan komite — {item.nomor_case}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Klaim {item.nomor_klaim || '—'} · {item.nama_tertanggung || 'tanpa nama tertanggung'}
+            Klaim {item.nomor_klaim || "—"} ·{" "}
+            {item.nama_tertanggung || "tanpa nama tertanggung"}
           </p>
         </div>
         <Button tone="halus" onClick={onClose}>
@@ -162,9 +171,9 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
       </header>
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-        <Figure label="Nomor polis" value={item.nomor_polis || '—'} />
-        <Figure label="Nama bisnis" value={item.nama_bisnis || '—'} />
-        <Figure label="Cabang" value={item.cabang || '—'} />
+        <Figure label="Nomor polis" value={item.nomor_polis || "—"} />
+        <Figure label="Nama bisnis" value={item.nama_bisnis || "—"} />
+        <Figure label="Cabang" value={item.cabang || "—"} />
       </dl>
 
       {/*
@@ -187,17 +196,17 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
         </legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           {CHOICES.map((choice) => {
-            const selected = decision === choice.kind
+            const selected = decision === choice.kind;
             return (
               <label
                 key={choice.kind}
                 className={[
-                  'cursor-pointer rounded-kartu border p-3 text-left',
-                  'transition-[border-color,background-color] duration-150 ease-halus',
+                  "cursor-pointer rounded-kartu border p-3 text-left",
+                  "transition-[border-color,background-color] duration-150 ease-halus",
                   selected
-                    ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
-                ].join(' ')}
+                    ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600"
+                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+                ].join(" ")}
               >
                 <span className="flex items-center gap-2">
                   <input
@@ -208,38 +217,42 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
                     onChange={() => choose(choice.kind)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm font-medium text-slate-900">{choice.label}</span>
+                  <span className="text-sm font-medium text-slate-900">
+                    {choice.label}
+                  </span>
                 </span>
                 <span className="mt-1 block text-xs leading-relaxed text-slate-600">
                   {choice.hint}
                 </span>
               </label>
-            )
+            );
           })}
         </div>
         {touched && decision === null && (
-          <p className="mt-2 text-sm text-red-700">Pilih salah satu keputusan lebih dulu.</p>
+          <p className="mt-2 text-sm text-red-700">
+            Pilih salah satu keputusan lebih dulu.
+          </p>
         )}
       </fieldset>
 
       <div className="mt-4">
         <TextAreaField
           id="catatan-komite"
-          label={terminal ? 'Catatan (wajib)' : 'Catatan'}
+          label={terminal ? "Catatan (wajib)" : "Catatan"}
           value={note}
           rows={3}
           onChange={(e) => setNote(e.target.value)}
           error={
             touched && noteMissing
-              ? 'Catatan wajib diisi supaya alasannya dapat ditindaklanjuti.'
+              ? "Catatan wajib diisi supaya alasannya dapat ditindaklanjuti."
               : noteTooLong
                 ? `Catatan paling panjang ${MAX_NOTE} karakter.`
                 : undefined
           }
           hint={
             terminal
-              ? 'Pengaju membaca catatan ini untuk tahu apa yang harus diperbaiki.'
-              : 'Boleh dikosongkan pada persetujuan.'
+              ? "Pengaju membaca catatan ini untuk tahu apa yang harus diperbaiki."
+              : "Boleh dikosongkan pada persetujuan."
           }
         />
       </div>
@@ -255,20 +268,21 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
           role="alert"
           className="mt-4 rounded-kartu border border-amber-300 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900"
         >
-          Kasus <strong>{item.nomor_case}</strong> akan{' '}
-          {decision === KomiteDecisionKind.reject ? 'ditolak' : 'dikembalikan'}. Komite
-          berhenti seluruhnya dan keputusan ini <strong>tidak dapat ditarik kembali</strong>.
-          Tekan sekali lagi untuk melanjutkan.
+          Kasus <strong>{item.nomor_case}</strong> akan{" "}
+          {decision === KomiteDecisionKind.reject ? "ditolak" : "dikembalikan"}.
+          Komite berhenti seluruhnya dan keputusan ini{" "}
+          <strong>tidak dapat ditarik kembali</strong>. Tekan sekali lagi untuk
+          melanjutkan.
         </div>
       )}
 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button tone="utama" onClick={submit} disabled={working}>
           {working
-            ? 'Menyimpan…'
+            ? "Menyimpan…"
             : confirming
-              ? 'Ya, lanjutkan'
-              : 'Simpan keputusan'}
+              ? "Ya, lanjutkan"
+              : "Simpan keputusan"}
         </Button>
         <Button
           tone="kedua"
@@ -280,20 +294,25 @@ export function DecisionPanel({ item, working, error, onClose, onSubmit }: Props
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-slate-500">
-        Keputusan tercatat permanen beserta nama dan waktunya, dan tidak dapat diubah
-        maupun dihapus. Perubahan pikiran dinyatakan dengan keputusan baru.
+        Keputusan tercatat permanen beserta nama dan waktunya, dan tidak dapat
+        diubah maupun dihapus. Perubahan pikiran dinyatakan dengan keputusan
+        baru.
       </p>
     </section>
-  )
+  );
 }
 
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-kartu border border-slate-200 p-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-semibold tabular-nums text-slate-900">{value}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
+        {value}
+      </dd>
     </div>
-  )
+  );
 }
 
 /**
@@ -312,7 +331,7 @@ function DecisionError({ error }: { error: unknown }) {
         description="Keputusan belum tersimpan. Periksa koneksi lalu coba lagi."
         tone="gangguan"
       />
-    )
+    );
   }
   // Jejak keputusan belum dapat dipakai.
   //
@@ -320,14 +339,17 @@ function DecisionError({ error }: { error: unknown }) {
   // hanya tercapai bila keadaannya berubah SETELAH halaman dimuat. Ia tetap ditangani:
   // yang paling berbahaya di sini bukan kegagalannya, melainkan pengguna yang mengira
   // keputusannya sudah tercatat padahal tidak tersimpan di mana pun.
-  if (error instanceof APIError && error.kode === KomiteInboxErrorCode.decisionStoreDown) {
+  if (
+    error instanceof APIError &&
+    error.kode === KomiteInboxErrorCode.decisionStoreDown
+  ) {
     return (
       <ErrorMessage
         title="Keputusan belum dapat dicatat"
         description={error.message}
         tone="gangguan"
       />
-    )
+    );
   }
   if (error instanceof APIError && error.status === 409) {
     return (
@@ -336,13 +358,17 @@ function DecisionError({ error }: { error: unknown }) {
         description={error.message}
         tone="penolakan"
       />
-    )
+    );
   }
   return (
     <ErrorMessage
       title="Keputusan gagal disimpan"
-      description={error instanceof Error ? error.message : 'Terjadi kesalahan pada sistem.'}
+      description={
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan pada sistem."
+      }
       tone="penolakan"
     />
-  )
+  );
 }

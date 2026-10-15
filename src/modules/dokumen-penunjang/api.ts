@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
 import type {
   DokumenPenunjangItemResponse,
   DokumenPenunjangListResponse,
-} from './types'
+} from "./types";
 
 /**
  * Jalurnya bersarang di bawah KLAIM, bukan di bawah salah satu layar proteksi.
@@ -17,7 +17,7 @@ import type {
  * klaim yang sama — dan dokumen yang diunggah dari satu layar terlihat dari layar lainnya.
  */
 function path(nomorKlaim: string): string {
-  return `/api/klaim/${encodeURIComponent(nomorKlaim)}/dokumen-penunjang`
+  return `/api/klaim/${encodeURIComponent(nomorKlaim)}/dokumen-penunjang`;
 }
 
 /**
@@ -30,14 +30,14 @@ function path(nomorKlaim: string): string {
  */
 const keys = {
   list: (portal: string | null, token: string | null, nomorKlaim: string) =>
-    ['dokumen-penunjang', portal, token, nomorKlaim] as const,
-}
+    ["dokumen-penunjang", portal, token, nomorKlaim] as const,
+};
 
 /** Hook daftar dokumen penunjang sebuah klaim. */
 export function useDokumenPenunjang(nomorKlaim: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const nomor = nomorKlaim?.trim() ?? ''
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const nomor = nomorKlaim?.trim() ?? "";
 
   return useQuery({
     queryKey: keys.list(portal, token, nomor),
@@ -47,15 +47,15 @@ export function useDokumenPenunjang(nomorKlaim: string | null) {
     // Tidak ditembak tanpa nomor klaim. Klaim kosong akan dijawab daftar kosong oleh
     // server, tetapi menembaknya tetap sia-sia — dan pada form yang klaimnya belum
     // dipilih, itu satu permintaan per ketikan.
-    enabled: token !== null && portal !== null && nomor !== '',
-  })
+    enabled: token !== null && portal !== null && nomor !== "",
+  });
 }
 
 /** Bahan satu unggahan. */
 export interface UnggahDokumenInput {
-  nomorKlaim: string
-  berkas: File
-  jenisDokumen?: string
+  nomorKlaim: string;
+  berkas: File;
+  jenisDokumen?: string;
 }
 
 /**
@@ -72,28 +72,28 @@ export interface UnggahDokumenInput {
  * penyimpanan, karena di sanalah ia memang dituntut.
  */
 export function useUnggahDokumen(nomorKlaim: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const queryClient = useQueryClient()
-  const nomor = nomorKlaim?.trim() ?? ''
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const queryClient = useQueryClient();
+  const nomor = nomorKlaim?.trim() ?? "";
 
   return useMutation({
     mutationFn: (input: UnggahDokumenInput) => {
-      const form = new FormData()
+      const form = new FormData();
       // Nama bagian `berkas` HARUS sama dengan yang dibaca handler
       // (`r.FormFile("berkas")`). Bila berbeda, server menjawab "berkas tidak ditemukan"
       // meski berkasnya jelas terkirim.
-      form.append('berkas', input.berkas, input.berkas.name)
+      form.append("berkas", input.berkas, input.berkas.name);
       if (input.jenisDokumen?.trim()) {
-        form.append('jenis_dokumen', input.jenisDokumen.trim())
+        form.append("jenis_dokumen", input.jenisDokumen.trim());
       }
 
       return callAPI<DokumenPenunjangItemResponse>(path(input.nomorKlaim), {
-        metode: 'POST',
+        metode: "POST",
         body: form,
         token,
         portal,
-      })
+      });
     },
 
     onSuccess: () => {
@@ -105,7 +105,7 @@ export function useUnggahDokumen(nomorKlaim: string | null) {
       // ulang.
       queryClient.invalidateQueries({
         queryKey: keys.list(portal, token, nomor),
-      })
+      });
     },
-  })
+  });
 }

@@ -1,12 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { APIError, callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { APIError, callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { DetailResponse, FilterForm, ListResponse, MetadataResponse } from './types'
+import type {
+  DetailResponse,
+  FilterForm,
+  ListResponse,
+  MetadataResponse,
+} from "./types";
 
-const PATH = '/api/inbox-service-center'
+const PATH = "/api/inbox-service-center";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,19 +22,24 @@ const PATH = '/api/inbox-service-center'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-service-center', 'tab', portal, token] as const,
+    ["inbox-service-center", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, filter: FilterForm, page: number) =>
+  list: (
+    portal: string | null,
+    token: string | null,
+    filter: FilterForm,
+    page: number,
+  ) =>
     [
-      'inbox-service-center',
-      'daftar',
+      "inbox-service-center",
+      "daftar",
       portal,
       token,
       filter.tab,
       filter.cari,
       page,
     ] as const,
-}
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, dan keterbatasan yang berlaku.
@@ -41,8 +51,8 @@ const keys = {
  * yang sama hidup di dua tempat, dan yang satu akan tertinggal saat yang lain diperbaiki.
  */
 export function useInboxServiceCenterMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -54,7 +64,7 @@ export function useInboxServiceCenterMetadata() {
     // tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -75,12 +85,13 @@ export function useInboxServiceCenterList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -89,7 +100,7 @@ export function useInboxServiceCenterList(
 
     // Antrean berubah saat petugas lain memutuskan komite, jadi cache-nya pendek.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -100,14 +111,14 @@ export function useInboxServiceCenterList(
  * sementara yang pertama memang itu yang diinginkan.
  */
 function buildPath(filter: FilterForm, page: number): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  if (filter.tab) params.set('tab', filter.tab)
-  if (filter.cari.trim()) params.set('cari', filter.cari.trim())
-  if (page > 1) params.set('halaman', String(page))
+  if (filter.tab) params.set("tab", filter.tab);
+  if (filter.cari.trim()) params.set("cari", filter.cari.trim());
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /**
@@ -122,13 +133,17 @@ function buildPath(filter: FilterForm, page: number): string {
  * rincian badan hukum lain (`R-20`).
  */
 export function useInboxServiceCenterDetail(id: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
-    queryKey: ['inbox-service-center', 'rincian', portal, token, id] as const,
-    queryFn: () => callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(id)}`, { token, portal }),
-    enabled: id !== '' && token !== null && portal !== null,
+    queryKey: ["inbox-service-center", "rincian", portal, token, id] as const,
+    queryFn: () =>
+      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(id)}`, {
+        token,
+        portal,
+      }),
+    enabled: id !== "" && token !== null && portal !== null,
 
     // Rincian berubah saat petugas lain menyuntingnya di Pega — selama masa paralel, itu
     // memang masih mungkin. Cache-nya karena itu sependek daftar.
@@ -136,6 +151,7 @@ export function useInboxServiceCenterDetail(id: string) {
 
     // Klaim yang tidak ditemukan TIDAK dicoba ulang: jawabannya tidak akan berubah, dan
     // mengulangnya hanya menunda pesan yang perlu dibaca pengguna.
-    retry: (count, error) => !(error instanceof APIError && error.status === 404) && count < 2,
-  })
+    retry: (count, error) =>
+      !(error instanceof APIError && error.status === 404) && count < 2,
+  });
 }

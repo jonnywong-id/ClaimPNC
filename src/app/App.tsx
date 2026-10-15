@@ -1,107 +1,112 @@
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import { ThresholdPage } from '@/modules/ambang-komite/ThresholdPage'
-import { TieringPage } from '@/modules/ambang-komite/TieringPage'
-import { HomePage } from '@/modules/home/HomePage'
-import { InboxAdminPage } from '@/modules/inbox-admin/InboxAdminPage'
-import { ComplianceCheckerPage } from '@/modules/inbox-compliance/ComplianceCheckerPage'
-import { InboxCompliancePage } from '@/modules/inbox-compliance/InboxCompliancePage'
-import { InboxServiceCenterPage } from '@/modules/inbox-service-center/InboxServiceCenterPage'
-import { ServiceCenterDetailPage } from '@/modules/inbox-service-center/ServiceCenterDetailPage'
-import { AutoClaimPage } from '@/modules/master-auto-claim/AutoClaimPage'
-import { WorkshopPage } from '@/modules/master-bengkel/WorkshopPage'
-import { PanelPage } from '@/modules/master-panel/PanelPage'
-import { ClausePage } from '@/modules/master-pasal-kerugian/ClausePage'
-import { ClauseAIPage } from '@/modules/master-pasal-ai/ClauseAIPage'
-import { RejectionPage } from '@/modules/master-penolakan-klaim/RejectionPage'
-import { SparepartPage } from '@/modules/master-sparepart/SparepartPage'
-import { GroupingPage } from '@/modules/master-grouping-sparepart/GroupingPage'
-import { PartCategoryPage } from '@/modules/master-kategori-sparepart/PartCategoryPage'
-import { PartTypePage } from '@/modules/master-tipe-sparepart/PartTypePage'
-import { ProgressStatus2Page } from '@/modules/master-status-progres/ProgressStatus2Page'
-import { SupplierPage } from '@/modules/master-supplier/SupplierPage'
-import { SurveyorLoginPage } from '@/modules/master-login/SurveyorLoginPage'
-import { DetailPage as CauseOfLossDetailPage } from '@/modules/detail-penyebab-kerugian/DetailPage'
-import { ReasMemberPage } from '@/modules/master-reas/ReasMemberPage'
-import { InvestigatorInboxPage } from '@/modules/inbox-investigator/InvestigatorInboxPage'
-import { ReceiveTKAInboxPage } from '@/modules/inbox-receive-tka/ReceiveTKAInboxPage'
-import { ArchiveDocumentPage } from '@/modules/archive-dokumen-klaim/ArchiveDocumentPage'
-import { ClaimHistoryPage } from '@/modules/riwayat-klaim/ClaimHistoryPage'
+import { ThresholdPage } from "@/modules/ambang-komite/ThresholdPage";
+import { TieringPage } from "@/modules/ambang-komite/TieringPage";
+import { HomePage } from "@/modules/home/HomePage";
+import { InboxAdminPage } from "@/modules/inbox-admin/InboxAdminPage";
+import { ComplianceCheckerPage } from "@/modules/inbox-compliance/ComplianceCheckerPage";
+import { InboxCompliancePage } from "@/modules/inbox-compliance/InboxCompliancePage";
+import { InboxServiceCenterPage } from "@/modules/inbox-service-center/InboxServiceCenterPage";
+import { ServiceCenterDetailPage } from "@/modules/inbox-service-center/ServiceCenterDetailPage";
+import { AutoClaimPage } from "@/modules/master-auto-claim/AutoClaimPage";
+import { WorkshopPage } from "@/modules/master-bengkel/WorkshopPage";
+import { PanelPage } from "@/modules/master-panel/PanelPage";
+import { ClausePage } from "@/modules/master-pasal-kerugian/ClausePage";
+import { ClauseAIPage } from "@/modules/master-pasal-ai/ClauseAIPage";
+import { RejectionPage } from "@/modules/master-penolakan-klaim/RejectionPage";
+import { SparepartPage } from "@/modules/master-sparepart/SparepartPage";
+import { GroupingPage } from "@/modules/master-grouping-sparepart/GroupingPage";
+import { PartCategoryPage } from "@/modules/master-kategori-sparepart/PartCategoryPage";
+import { PartTypePage } from "@/modules/master-tipe-sparepart/PartTypePage";
+import { ProgressStatus2Page } from "@/modules/master-status-progres/ProgressStatus2Page";
+import { SupplierPage } from "@/modules/master-supplier/SupplierPage";
+import { SurveyorLoginPage } from "@/modules/master-login/SurveyorLoginPage";
+import { DetailPage as CauseOfLossDetailPage } from "@/modules/detail-penyebab-kerugian/DetailPage";
+import { ReasMemberPage } from "@/modules/master-reas/ReasMemberPage";
+import { InvestigatorInboxPage } from "@/modules/inbox-investigator/InvestigatorInboxPage";
+import { ReceiveTKAInboxPage } from "@/modules/inbox-receive-tka/ReceiveTKAInboxPage";
+import { ArchiveDocumentPage } from "@/modules/archive-dokumen-klaim/ArchiveDocumentPage";
+import { ClaimHistoryPage } from "@/modules/riwayat-klaim/ClaimHistoryPage";
 // Dua modul mengekspor komponen bernama sama, dan keduanya memang layar "penyebab
 // kerugian" — yang satu varian Simas Online (MENU_ID 21), yang satu tingkat golongan
 // (MENU_ID 20). Aliasnya di sini, bukan penggantian nama di modulnya, supaya nama di
 // dalam tiap modul tetap sesuai layarnya sendiri.
-import { CauseOfLossPage as SimasOnlineCauseOfLossPage } from '@/modules/master-col-simas-online/CauseOfLossPage'
-import { DocumentTypePage } from '@/modules/daftar-tipe-dokumen/DocumentTypePage'
-import { BusinessDocumentRulePage } from '@/modules/daftar-tipe-dokumen-bisnis/BusinessDocumentRulePage'
-import { DetailDocumentTypePage } from '@/modules/daftar-detail-tipe-dokumen/DetailDocumentTypePage'
-import { DocumentObjectPage } from '@/modules/daftar-objek-dokumen/DocumentObjectPage'
-import { TravelDocumentDetailPage } from '@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage'
-import { TravelDocumentPage } from '@/modules/master-dokumen-travel/TravelDocumentPage'
-import { AnalystDoctorPage } from '@/modules/inbox-analyst-doctor/AnalystDoctorPage'
-import { SurveyInboxPage } from '@/modules/inbox-survey/SurveyInboxPage'
-import { InboxRCLPage } from '@/modules/inbox-rcl/InboxRCLPage'
-import { RCLDokterPage } from '@/modules/inbox-rcl/RCLDokterPage'
-import { DashboardClaimPage } from '@/modules/dashboard-claim/DashboardClaimPage'
-import { CloseClaimPage } from '@/modules/inbox-close-claim/CloseClaimPage'
-import { AcceptQueuePage } from '@/modules/inbox-accept-open-protection/AcceptQueuePage'
-import { ProtectionListPage } from '@/modules/input-req-protection/ProtectionListPage'
-import { OutstandingPage } from '@/modules/inbox-outstanding/OutstandingPage'
-import { AutoClaimInboxPage } from '@/modules/inbox-auto-claim/AutoClaimInboxPage'
-import { ClaimReportFormPage } from '@/modules/inbox-laporan-klaim/ClaimReportFormPage'
-import { InboxKomitePage } from '@/modules/inbox-komite/InboxKomitePage'
-import { KomiteCasePage } from '@/modules/inbox-komite/KomiteCasePage'
-import { ClaimReportInboxPage } from '@/modules/inbox-laporan-klaim/ClaimReportInboxPage'
-import { ClaimPage as RegistrationClaimPage } from '@/modules/registrasi/ClaimPage'
-import { InboxPage as RegistrationInboxPage } from '@/modules/registrasi/InboxPage'
-import { AccountPage } from '@/modules/master-rekening/AccountPage'
-import { DominantFactorPage } from '@/modules/master-dominan-factor/DominantFactorPage'
-import { CauseOfLossPage } from '@/modules/master-penyebab-kerugian/CauseOfLossPage'
-import { MaskingPage } from '@/modules/master-masking/MaskingPage'
-import { ClaimStatusPage } from '@/modules/master-status-klaim/ClaimStatusPage'
-import { ProgressStatusPage } from '@/modules/master-status-progres/ProgressStatusPage'
-import { TechnicianPage } from '@/modules/master-pic-teknik/TechnicianPage'
-import { RecoveryPage } from '@/modules/master-recovery/RecoveryPage'
-import { SurveyorPage } from '@/modules/master-surveyors/SurveyorPage'
-import { SurveyorTypePage } from '@/modules/master-tipe-surveyors/SurveyorTypePage'
-import { XOLPage } from '@/modules/master-xol/XOLPage'
-import { LoginPage } from '@/modules/login/LoginPage'
-import { ClaimTreatyNonPropPage } from '@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage'
-import { OSClaimPerCabangPage } from '@/modules/inbox-os-claim-per-cabang/OSClaimPerCabangPage'
-import { InboxManagerPage } from '@/modules/inbox-manager/InboxManagerPage'
-import { InboxManagerAdminPage } from '@/modules/inbox-manager-admin/InboxManagerAdminPage'
-import { InputReceiveDocumentPage } from '@/modules/inbox-manager-receive-pucl/InputReceiveDocumentPage'
-import { ManagerReceivePUCLPage } from '@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage'
-import { KomunikasiCabangPage } from '@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage'
-import { CaseStudyClaimPage } from '@/modules/case-study-claim/CaseStudyClaimPage'
-import { InboxBandingHargaSalvagePage } from '@/modules/inbox-banding-harga-salvage/InboxBandingHargaSalvagePage'
-import { SalvageInboxPage } from '@/modules/inbox-salvage/SalvageInboxPage'
-import { InboxPLADLAPreDLAPage } from '@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage'
-import { InboxPLADLAReasPage } from '@/modules/inbox-pla-dla/InboxPLADLAReasPage'
-import { RCLPUCLPage } from '@/modules/inbox-rcl-pucl/RCLPUCLPage'
-import { LaporanHasilAIPage } from '@/modules/laporan-hasil-ai/LaporanHasilAIPage'
-import { ReportKPIPage } from '@/modules/report-kpi/ReportKPIPage'
-import { ReportKlaimPage } from '@/modules/report-klaim/ReportKlaimPage'
-import { SendtoRCLPUCLPage } from '@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage'
-import { ClaimTreatyPropPage } from '@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage'
-import { InputAcceptationPage } from '@/modules/input-acceptation/InputAcceptationPage'
-import { OutstandingClaimPage } from '@/modules/outstanding-claim/OutstandingClaimPage'
-import { InboxXOLPage } from '@/modules/inbox-xol/InboxXOLPage'
-import { MonitoringSlinkOjkPage } from '@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage'
-import { CoverageConversionPage } from '@/modules/konversi-coverage/CoverageConversionPage'
-import { CoinsConversionPage } from '@/modules/konversi-coins/CoinsConversionPage'
-import { ObjectItemConversionPage } from '@/modules/konversi-object-item-fire/ObjectItemConversionPage'
-import { InboxProgressClaimPage } from '@/modules/inbox-progress-claim/InboxProgressClaimPage'
-import { APIError } from '@/api/client'
-import { ErrorCode } from '@/api/types'
-import { useSession } from '@/app/session'
+import { CauseOfLossPage as SimasOnlineCauseOfLossPage } from "@/modules/master-col-simas-online/CauseOfLossPage";
+import { DocumentTypePage } from "@/modules/daftar-tipe-dokumen/DocumentTypePage";
+import { BusinessDocumentRulePage } from "@/modules/daftar-tipe-dokumen-bisnis/BusinessDocumentRulePage";
+import { DetailDocumentTypePage } from "@/modules/daftar-detail-tipe-dokumen/DetailDocumentTypePage";
+import { DocumentObjectPage } from "@/modules/daftar-objek-dokumen/DocumentObjectPage";
+import { TravelDocumentDetailPage } from "@/modules/daftar-detail-dokumen-travel/TravelDocumentDetailPage";
+import { TravelDocumentPage } from "@/modules/master-dokumen-travel/TravelDocumentPage";
+import { AnalystDoctorPage } from "@/modules/inbox-analyst-doctor/AnalystDoctorPage";
+import { SurveyInboxPage } from "@/modules/inbox-survey/SurveyInboxPage";
+import { InboxRCLPage } from "@/modules/inbox-rcl/InboxRCLPage";
+import { RCLDokterPage } from "@/modules/inbox-rcl/RCLDokterPage";
+import { DashboardClaimPage } from "@/modules/dashboard-claim/DashboardClaimPage";
+import { CloseClaimPage } from "@/modules/inbox-close-claim/CloseClaimPage";
+import { AcceptQueuePage } from "@/modules/inbox-accept-open-protection/AcceptQueuePage";
+import { ProtectionListPage } from "@/modules/input-req-protection/ProtectionListPage";
+import { OutstandingPage } from "@/modules/inbox-outstanding/OutstandingPage";
+import { AutoClaimInboxPage } from "@/modules/inbox-auto-claim/AutoClaimInboxPage";
+import { ClaimReportFormPage } from "@/modules/inbox-laporan-klaim/ClaimReportFormPage";
+import { InboxKomitePage } from "@/modules/inbox-komite/InboxKomitePage";
+import { KomiteCasePage } from "@/modules/inbox-komite/KomiteCasePage";
+import { ClaimReportInboxPage } from "@/modules/inbox-laporan-klaim/ClaimReportInboxPage";
+import { ClaimPage as RegistrationClaimPage } from "@/modules/registrasi/ClaimPage";
+import { InboxPage as RegistrationInboxPage } from "@/modules/registrasi/InboxPage";
+import { AccountPage } from "@/modules/master-rekening/AccountPage";
+import { DominantFactorPage } from "@/modules/master-dominan-factor/DominantFactorPage";
+import { CauseOfLossPage } from "@/modules/master-penyebab-kerugian/CauseOfLossPage";
+import { MaskingPage } from "@/modules/master-masking/MaskingPage";
+import { ClaimStatusPage } from "@/modules/master-status-klaim/ClaimStatusPage";
+import { ProgressStatusPage } from "@/modules/master-status-progres/ProgressStatusPage";
+import { TechnicianPage } from "@/modules/master-pic-teknik/TechnicianPage";
+import { RecoveryPage } from "@/modules/master-recovery/RecoveryPage";
+import { SurveyorPage } from "@/modules/master-surveyors/SurveyorPage";
+import { SurveyorTypePage } from "@/modules/master-tipe-surveyors/SurveyorTypePage";
+import { XOLPage } from "@/modules/master-xol/XOLPage";
+import { LoginPage } from "@/modules/login/LoginPage";
+import { ClaimTreatyNonPropPage } from "@/modules/inbox-claim-treaty-non-prop/ClaimTreatyNonPropPage";
+import { OSClaimPerCabangPage } from "@/modules/inbox-os-claim-per-cabang/OSClaimPerCabangPage";
+import { InboxManagerPage } from "@/modules/inbox-manager/InboxManagerPage";
+import { InboxManagerAdminPage } from "@/modules/inbox-manager-admin/InboxManagerAdminPage";
+import { InputReceiveDocumentPage } from "@/modules/inbox-manager-receive-pucl/InputReceiveDocumentPage";
+import { ManagerReceivePUCLPage } from "@/modules/inbox-manager-receive-pucl/ManagerReceivePUCLPage";
+import { KomunikasiCabangPage } from "@/modules/inbox-komunikasi-cabang/KomunikasiCabangPage";
+import { CaseStudyClaimPage } from "@/modules/case-study-claim/CaseStudyClaimPage";
+import { InboxBandingHargaSalvagePage } from "@/modules/inbox-banding-harga-salvage/InboxBandingHargaSalvagePage";
+import { SalvageInboxPage } from "@/modules/inbox-salvage/SalvageInboxPage";
+import { InboxPLADLAPreDLAPage } from "@/modules/inbox-pla-dla-pre-dla/InboxPLADLAPreDLAPage";
+import { InboxPLADLAReasPage } from "@/modules/inbox-pla-dla/InboxPLADLAReasPage";
+import { RCLPUCLPage } from "@/modules/inbox-rcl-pucl/RCLPUCLPage";
+import { LaporanHasilAIPage } from "@/modules/laporan-hasil-ai/LaporanHasilAIPage";
+import { ReportKPIPage } from "@/modules/report-kpi/ReportKPIPage";
+import { ReportKlaimPage } from "@/modules/report-klaim/ReportKlaimPage";
+import { SendtoRCLPUCLPage } from "@/modules/inbox-rcl-pucl/SendtoRCLPUCLPage";
+import { ClaimTreatyPropPage } from "@/modules/inbox-claim-treaty-prop/ClaimTreatyPropPage";
+import { InputAcceptationPage } from "@/modules/input-acceptation/InputAcceptationPage";
+import { OutstandingClaimPage } from "@/modules/outstanding-claim/OutstandingClaimPage";
+import { InboxXOLPage } from "@/modules/inbox-xol/InboxXOLPage";
+import { MonitoringSlinkOjkPage } from "@/modules/monitoring-slink-ojk/MonitoringSlinkOjkPage";
+import { CoverageConversionPage } from "@/modules/konversi-coverage/CoverageConversionPage";
+import { CoinsConversionPage } from "@/modules/konversi-coins/CoinsConversionPage";
+import { ObjectItemConversionPage } from "@/modules/konversi-object-item-fire/ObjectItemConversionPage";
+import { InboxProgressClaimPage } from "@/modules/inbox-progress-claim/InboxProgressClaimPage";
+import { APIError } from "@/api/client";
+import { ErrorCode } from "@/api/types";
+import { useSession } from "@/app/session";
 
-import { PageShell } from './PageShell'
-import { SessionGuard } from './SessionGuard'
-import { ViewClaimPlaceholder } from './ViewClaimPlaceholder'
-import { SessionWarning } from './SessionWarning'
+import { PageShell } from "./PageShell";
+import { SessionGuard } from "./SessionGuard";
+import { ViewClaimPlaceholder } from "./ViewClaimPlaceholder";
+import { SessionWarning } from "./SessionWarning";
 
 /**
  * Sesi yang ditolak server di tengah pekerjaan dibersihkan di satu tempat ini.
@@ -111,9 +116,12 @@ import { SessionWarning } from './SessionWarning'
  * ke layar masuk.
  */
 function handleSessionError(error: unknown): void {
-  if (!(error instanceof APIError)) return
-  if (error.kode === ErrorCode.invalidSession || error.kode === ErrorCode.sessionExpired) {
-    useSession.getState().clear()
+  if (!(error instanceof APIError)) return;
+  if (
+    error.kode === ErrorCode.invalidSession ||
+    error.kode === ErrorCode.sessionExpired
+  ) {
+    useSession.getState().clear();
   }
 }
 
@@ -128,7 +136,7 @@ export function createQueryClient(): QueryClient {
       },
       mutations: { retry: false },
     },
-  })
+  });
 }
 
 export function AppRoute() {
@@ -760,12 +768,12 @@ export function AppRoute() {
           <SessionGuard>
             <Protected>
               <AutoClaimInboxPage />
-              </Protected>
+            </Protected>
           </SessionGuard>
         }
       />
 
-             {/*  
+      {/*  
         Master Dominan Factor juga membaca basis data ENTITAS yang sedang dipilih.
         Akibat salah entitas di sini halus tetapi luas: keterangan faktor ikut terbaca
         laporan Outstanding per Cabang lewat LISTAGG, sehingga yang keliru bukan satu
@@ -1494,12 +1502,13 @@ export function AppRoute() {
         element={
           <SessionGuard>
             <Protected>
-              <ReportKlaimPage /></Protected>
+              <ReportKlaimPage />
+            </Protected>
           </SessionGuard>
         }
       />
 
-        {/* 
+      {/* 
         Inbox Komunikasi Cabang (`MENU_ID 70`), pengganti harness `InboxKomunikasiCabang`.
 
         Ia SATU rute, bukan dua seperti RCL/PUCL: layar "Detail Komunikasi" di Pega bukan
@@ -1815,10 +1824,13 @@ export function AppRoute() {
         Ia sudah dipakai dan sudah tersimpan di riwayat peramban; membiarkannya mati
         akan menjawab tautan yang pernah sah dengan halaman beranda tanpa penjelasan.
       */}
-      <Route path="/master-rekening" element={<Navigate to="/master/rekening" replace />} />
+      <Route
+        path="/master-rekening"
+        element={<Navigate to="/master/rekening" replace />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  )
+  );
 }
 
 /**
@@ -1835,13 +1847,13 @@ function Protected({ children }: { children: ReactNode }) {
       <SessionWarning />
       {children}
     </PageShell>
-  )
+  );
 }
 
 export function App() {
   // Klien dibuat sekali seumur hidup aplikasi; membuatnya ulang tiap render akan
   // membuang seluruh cache pada setiap perubahan state.
-  const [client] = useState(createQueryClient)
+  const [client] = useState(createQueryClient);
 
   return (
     <QueryClientProvider client={client}>
@@ -1849,5 +1861,5 @@ export function App() {
         <AppRoute />
       </BrowserRouter>
     </QueryClientProvider>
-  )
+  );
 }

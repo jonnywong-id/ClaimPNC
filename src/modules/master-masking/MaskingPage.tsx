@@ -1,14 +1,20 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type Masking } from '@/api/types'
-import { ReloadIcon, AddIcon, EditIcon, ShieldIcon, CloseIcon } from '@/components/Icon'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { SelectField } from '@/components/SelectField'
-import { Field } from '@/components/Field'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type Masking } from "@/api/types";
+import {
+  ReloadIcon,
+  AddIcon,
+  EditIcon,
+  ShieldIcon,
+  CloseIcon,
+} from "@/components/Icon";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { SelectField } from "@/components/SelectField";
+import { Field } from "@/components/Field";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   MaskingStatus,
@@ -18,9 +24,9 @@ import {
   useSetMaskingStatus,
   type MaskingFilter,
   type SearchBy,
-} from './api'
-import { MaskingAddForm } from './MaskingAddForm'
-import { MaskingEditForm } from './MaskingEditForm'
+} from "./api";
+import { MaskingAddForm } from "./MaskingAddForm";
+import { MaskingEditForm } from "./MaskingEditForm";
 
 /**
  * Layar Master Masking.
@@ -71,44 +77,47 @@ import { MaskingEditForm } from './MaskingEditForm'
  * | Pencarian | dirangkai ke teks SQL (`{ASIS:…}`) | parameter binding |
  */
 export function MaskingPage() {
-  const portal = useSelectedPortal((state) => state.alias)
+  const portal = useSelectedPortal((state) => state.alias);
 
   // Baku TIDAK menyaring — `SearchData.Type == "1"` di layar lama. Sepuluh dari 25 baris
   // produksi berstatus tidak aktif; menyembunyikannya secara baku akan membuat 40% isinya
   // lenyap dari layar tanpa penjelasan.
-  const [filter, setFilter] = useState<MaskingFilter>({ cariDi: 'login', kataKunci: '' })
+  const [filter, setFilter] = useState<MaskingFilter>({
+    cariDi: "login",
+    kataKunci: "",
+  });
 
   // Isian pencarian punya keadaannya sendiri supaya permintaan hanya dikirim saat pengguna
   // menekan Cari — bukan pada setiap ketukan papan ketik.
-  const [typeDraft, setTypeDraft] = useState<SearchBy>('login')
-  const [keywordDraft, setKeywordDraft] = useState('')
+  const [typeDraft, setTypeDraft] = useState<SearchBy>("login");
+  const [keywordDraft, setKeywordDraft] = useState("");
   // Kosong berarti belum dipilih, sama seperti layar lama — bukan diam-diam terisi AKTIF.
-  const [statusDraft, setStatusDraft] = useState('')
-  const [searchWarning, setSearchWarning] = useState('')
+  const [statusDraft, setStatusDraft] = useState("");
+  const [searchWarning, setSearchWarning] = useState("");
 
-  const list = useMaskingList(filter)
-  const setStatus = useSetMaskingStatus()
+  const list = useMaskingList(filter);
+  const setStatus = useSetMaskingStatus();
 
-  const [beingEdited, setBeingEdited] = useState<Masking | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
+  const [beingEdited, setBeingEdited] = useState<Masking | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   // Baris yang sedang dilihat modulnya lewat tombol VIEW.
-  const [viewing, setViewing] = useState<Masking | null>(null)
+  const [viewing, setViewing] = useState<Masking | null>(null);
 
   function openAdd() {
-    setBeingEdited(null)
-    setFormOpen(true)
-    setViewing(null)
+    setBeingEdited(null);
+    setFormOpen(true);
+    setViewing(null);
   }
 
   function openEdit(row: Masking) {
-    setBeingEdited(row)
-    setFormOpen(true)
-    setViewing(null)
+    setBeingEdited(row);
+    setFormOpen(true);
+    setViewing(null);
   }
 
   function closeForm() {
-    setFormOpen(false)
-    setBeingEdited(null)
+    setFormOpen(false);
+    setBeingEdited(null);
   }
 
   /**
@@ -119,32 +128,32 @@ export function MaskingPage() {
    * (`SearchData.STS_AKTF`), dan tipe "semua" tidak mengirim nilai apa pun.
    */
   function search() {
-    setSearchWarning('')
+    setSearchWarning("");
 
-    if (typeDraft === '') {
-      setFilter({ cariDi: '', kataKunci: '' })
-      return
+    if (typeDraft === "") {
+      setFilter({ cariDi: "", kataKunci: "" });
+      return;
     }
-    if (typeDraft === 'status' && statusDraft === '') {
+    if (typeDraft === "status" && statusDraft === "") {
       // Pesan yang sama dengan layar lama, yang menyiapkannya untuk keadaan ini persis
       // (`Activity/SearchDataMasking-Act.xml:727`). Menyaring dengan status kosong akan
       // menampilkan seluruh baris kepada pengguna yang mengira ia sedang menyaring.
-      setSearchWarning('Pilih Status Aktif lebih dulu.')
-      return
+      setSearchWarning("Pilih Status Aktif lebih dulu.");
+      return;
     }
     setFilter({
       cariDi: typeDraft,
-      kataKunci: typeDraft === 'status' ? statusDraft : keywordDraft,
-    })
+      kataKunci: typeDraft === "status" ? statusDraft : keywordDraft,
+    });
   }
 
-  const rows = list.data?.masking ?? []
+  const rows = list.data?.masking ?? [];
 
   const columns: Column<Masking>[] = [
     {
-      key: 'cabang',
-      title: 'Cabang',
-      width: '13rem',
+      key: "cabang",
+      title: "Cabang",
+      width: "13rem",
       value: (m) => `${m.nama_cabang} ${m.cabang}`,
       render: (m) => (
         <div>
@@ -152,24 +161,28 @@ export function MaskingPage() {
             {/* Cabang yang tidak dikenal TIDAK disembunyikan. Tidak ada yang menggantung
                 hari ini, tetapi menyembunyikannya bila kelak terjadi berarti sebuah
                 kewenangan hidup tanpa pernah terbaca benar di layar mana pun. */}
-            {m.nama_cabang || <span className="text-amber-700">Cabang tidak dikenal</span>}
+            {m.nama_cabang || (
+              <span className="text-amber-700">Cabang tidak dikenal</span>
+            )}
           </span>
           <span className="font-mono text-xs text-slate-500">{m.cabang}</span>
         </div>
       ),
     },
     {
-      key: 'login',
-      title: 'Login',
-      width: '11rem',
+      key: "login",
+      title: "Login",
+      width: "11rem",
       value: (m) => m.login,
-      render: (m) => <span className="font-medium text-slate-900">{m.login}</span>,
+      render: (m) => (
+        <span className="font-medium text-slate-900">{m.login}</span>
+      ),
     },
     {
-      key: 'aktif',
-      title: 'Status Aktif',
-      width: '8rem',
-      value: (m) => (m.aktif ? 'AKTIF' : 'TIDAK AKTIF'),
+      key: "aktif",
+      title: "Status Aktif",
+      width: "8rem",
+      value: (m) => (m.aktif ? "AKTIF" : "TIDAK AKTIF"),
       render: (m) =>
         m.aktif ? (
           <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
@@ -188,25 +201,31 @@ export function MaskingPage() {
     // Lencana berwarna sempat dipakai di sini dan dicabut: ia bacaan yang berbeda dari
     // yang dikenal petugas, dan `D-13` menetapkan tampilan mengikuti Pega.
     {
-      key: 'lihat_ktp',
-      title: 'KTP',
-      width: '6rem',
+      key: "lihat_ktp",
+      title: "KTP",
+      width: "6rem",
       value: (m) => yesNo(m.lihat_ktp),
-      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_ktp)}</span>,
+      render: (m) => (
+        <span className="text-slate-700">{yesNo(m.lihat_ktp)}</span>
+      ),
     },
     {
-      key: 'lihat_email',
-      title: 'Email',
-      width: '6rem',
+      key: "lihat_email",
+      title: "Email",
+      width: "6rem",
       value: (m) => yesNo(m.lihat_email),
-      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_email)}</span>,
+      render: (m) => (
+        <span className="text-slate-700">{yesNo(m.lihat_email)}</span>
+      ),
     },
     {
-      key: 'lihat_notelp',
-      title: 'Notelp',
-      width: '6rem',
+      key: "lihat_notelp",
+      title: "Notelp",
+      width: "6rem",
       value: (m) => yesNo(m.lihat_notelp),
-      render: (m) => <span className="text-slate-700">{yesNo(m.lihat_notelp)}</span>,
+      render: (m) => (
+        <span className="text-slate-700">{yesNo(m.lihat_notelp)}</span>
+      ),
     },
     // MAX LIHAT mendahului MAX CARI — urutan layar lama.
     //
@@ -214,39 +233,43 @@ export function MaskingPage() {
     // dicabut: layar lama menulis `10000`, dan `10.000` adalah angka yang berbeda bentuk
     // dari yang dihafal petugas.
     {
-      key: 'maks_lihat',
-      title: 'Max Lihat',
-      width: '7rem',
+      key: "maks_lihat",
+      title: "Max Lihat",
+      width: "7rem",
       value: (m) => String(m.maks_lihat),
       render: (m) => <span className="text-slate-700">{m.maks_lihat}</span>,
     },
     {
-      key: 'maks_cari',
-      title: 'Max Cari',
-      width: '7rem',
+      key: "maks_cari",
+      title: "Max Cari",
+      width: "7rem",
       value: (m) => String(m.maks_cari),
       render: (m) => <span className="text-slate-700">{m.maks_cari}</span>,
     },
     {
       // Kolom LIHAT MODUL layar lama berisi TOMBOL VIEW, bukan teks modulnya.
-      key: 'lihat_modul',
-      title: 'Lihat Modul',
-      width: '8rem',
+      key: "lihat_modul",
+      title: "Lihat Modul",
+      width: "8rem",
       noSort: true,
-      value: () => '',
+      value: () => "",
       render: (m) => (
-        <Button tone="halus" onClick={() => setViewing(m)} aria-label={`Lihat modul ${m.login}`}>
+        <Button
+          tone="halus"
+          onClick={() => setViewing(m)}
+          aria-label={`Lihat modul ${m.login}`}
+        >
           VIEW
         </Button>
       ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: '13rem',
+      key: "aksi",
+      title: "Aksi",
+      width: "13rem",
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (m) =>
         // Kedua tombol hanya muncul pada baris AKTIF, meniru `ActionMaskingData_Sec` yang
         // keduanya bersyarat `.STS_AKTF=='AKTIF'`. Baris nonaktif karena itu tidak dapat
@@ -254,7 +277,11 @@ export function MaskingPage() {
         m.aktif ? (
           <div className="flex justify-end gap-2">
             {/* Nama tombolnya mengikuti layar lama: Edit dan Delete. */}
-            <Button tone="halus" onClick={() => openEdit(m)} aria-label={`Edit masking ${m.login}`}>
+            <Button
+              tone="halus"
+              onClick={() => openEdit(m)}
+              aria-label={`Edit masking ${m.login}`}
+            >
               <EditIcon className="h-3.5 w-3.5" />
               Edit
             </Button>
@@ -271,12 +298,15 @@ export function MaskingPage() {
           <span className="text-xs text-slate-400">—</span>
         ),
     },
-  ]
+  ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="halaman px-4 py-8 sm:px-6">
       <header className="mb-6">
-        <nav aria-label="Jejak lokasi" className="mb-2 text-xs font-medium text-slate-500">
+        <nav
+          aria-label="Jejak lokasi"
+          className="mb-2 text-xs font-medium text-slate-500"
+        >
           <ol className="flex items-center gap-1.5">
             <li>Master Data</li>
             <li aria-hidden="true" className="text-slate-300">
@@ -285,11 +315,13 @@ export function MaskingPage() {
             <li className="text-slate-700">Masking</li>
           </ol>
         </nav>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Master Masking</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Master Masking
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Kewenangan melihat data pribadi nasabah tanpa disamarkan — nomor KTP, alamat
-          surel, dan nomor telepon — beserta batas berapa banyak data yang boleh dicari dan
-          dilihat setiap pengguna.
+          Kewenangan melihat data pribadi nasabah tanpa disamarkan — nomor KTP,
+          alamat surel, dan nomor telepon — beserta batas berapa banyak data
+          yang boleh dicari dan dilihat setiap pengguna.
         </p>
 
         {/*
@@ -300,9 +332,9 @@ export function MaskingPage() {
         <div className="mt-4 flex gap-3 rounded-kartu border border-amber-200 bg-amber-50/70 px-4 py-3">
           <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <p className="text-xs leading-relaxed text-amber-900">
-            Setiap perubahan di layar ini mengubah siapa yang dapat membuka data pribadi
-            nasabah, dan tercatat lengkap dengan nama pelakunya. Berikan kewenangan
-            seperlunya saja.
+            Setiap perubahan di layar ini mengubah siapa yang dapat membuka data
+            pribadi nasabah, dan tercatat lengkap dengan nama pelakunya. Berikan
+            kewenangan seperlunya saja.
           </p>
         </div>
 
@@ -310,8 +342,10 @@ export function MaskingPage() {
             empat badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh
             hanya diandaikan pengguna (ADR-0030, R-20). */}
         <p className="mt-3 text-xs text-slate-500">
-          Portal entitas:{' '}
-          <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+          Portal entitas:{" "}
+          <span className="font-medium text-slate-700">
+            {list.data?.portal ?? portal ?? "—"}
+          </span>
         </p>
       </header>
 
@@ -326,7 +360,9 @@ export function MaskingPage() {
           </div>
         ))}
 
-      {viewing !== null && <ModuleView masking={viewing} onClose={() => setViewing(null)} />}
+      {viewing !== null && (
+        <ModuleView masking={viewing} onClose={() => setViewing(null)} />
+      )}
 
       {portal === null ? (
         <ErrorMessage
@@ -344,8 +380,8 @@ export function MaskingPage() {
           <form
             className="mb-4 rounded-kartu border border-slate-200 bg-white p-4 shadow-sm"
             onSubmit={(event) => {
-              event.preventDefault()
-              search()
+              event.preventDefault();
+              search();
             }}
             aria-label="Cari data masking"
           >
@@ -360,14 +396,14 @@ export function MaskingPage() {
                 label="Tipe Pencarian"
                 emptyText="Semua data"
                 options={[
-                  { value: 'cabang', label: 'Nama cabang' },
-                  { value: 'login', label: 'Nama pengguna' },
-                  { value: 'status', label: 'Status aktif' },
+                  { value: "cabang", label: "Nama cabang" },
+                  { value: "login", label: "Nama pengguna" },
+                  { value: "status", label: "Status aktif" },
                 ]}
                 value={typeDraft}
                 onChange={(event) => {
-                  setTypeDraft(event.target.value as SearchBy)
-                  setSearchWarning('')
+                  setTypeDraft(event.target.value as SearchBy);
+                  setSearchWarning("");
                 }}
               />
 
@@ -376,7 +412,7 @@ export function MaskingPage() {
                 `SearchData.Type=='2'||SearchData.Type=='3'` menampilkan kotak teks, dan
                 `SearchData.Type=='4'` menampilkan dropdown status.
               */}
-              {typeDraft === 'status' ? (
+              {typeDraft === "status" ? (
                 <SelectField
                   id="statusPencarian"
                   label="Status Aktif"
@@ -384,14 +420,14 @@ export function MaskingPage() {
                   // yang sama sebagai pesan bila status belum dipilih.
                   emptyText="Pilih Status Aktif"
                   options={[
-                    { value: MaskingStatus.aktif, label: 'AKTIF' },
-                    { value: MaskingStatus.tidakAktif, label: 'TIDAK AKTIF' },
+                    { value: MaskingStatus.aktif, label: "AKTIF" },
+                    { value: MaskingStatus.tidakAktif, label: "TIDAK AKTIF" },
                   ]}
                   error={searchWarning || undefined}
                   value={statusDraft}
                   onChange={(event) => {
-                    setStatusDraft(event.target.value)
-                    setSearchWarning('')
+                    setStatusDraft(event.target.value);
+                    setSearchWarning("");
                   }}
                 />
               ) : (
@@ -399,11 +435,11 @@ export function MaskingPage() {
                   id="kataKunci"
                   label="Nama Pencarian"
                   placeholder={
-                    typeDraft === ''
-                      ? 'Tidak dipakai untuk pencarian semua data'
-                      : 'Ketik sebagian nama, lalu tekan Cari'
+                    typeDraft === ""
+                      ? "Tidak dipakai untuk pencarian semua data"
+                      : "Ketik sebagian nama, lalu tekan Cari"
                   }
-                  disabled={typeDraft === ''}
+                  disabled={typeDraft === ""}
                   value={keywordDraft}
                   onChange={(event) => setKeywordDraft(event.target.value)}
                 />
@@ -422,7 +458,7 @@ export function MaskingPage() {
                 description={
                   setStatus.error instanceof APIError
                     ? setStatus.error.message
-                    : 'Periksa koneksi lalu coba lagi.'
+                    : "Periksa koneksi lalu coba lagi."
                 }
                 tone="gangguan"
               />
@@ -437,19 +473,33 @@ export function MaskingPage() {
             description={
               list.data
                 ? `${list.data.total} data masking pada entitas ini.`
-                : 'Memuat data masking…'
+                : "Memuat data masking…"
             }
             searchLabel="Saring daftar yang sedang tampil"
             emptyMessage="Tidak ada data masking yang cocok."
             isLoading={list.isPending}
-            error={list.isError ? <LoadErrorMessage error={list.error} /> : undefined}
+            error={
+              list.isError ? <LoadErrorMessage error={list.error} /> : undefined
+            }
             actions={
               <>
-                <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-                  <ReloadIcon className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />
-                  {list.isFetching ? 'Memuat…' : 'Refresh'}
+                <Button
+                  tone="kedua"
+                  onClick={() => {
+                    list.refetch();
+                  }}
+                  disabled={list.isFetching}
+                >
+                  <ReloadIcon
+                    className={`h-4 w-4 ${list.isFetching ? "animate-spin" : ""}`}
+                  />
+                  {list.isFetching ? "Memuat…" : "Refresh"}
                 </Button>
-                <Button tone="utama" onClick={openAdd} disabled={formOpen && !beingEdited}>
+                <Button
+                  tone="utama"
+                  onClick={openAdd}
+                  disabled={formOpen && !beingEdited}
+                >
                   <AddIcon className="h-4 w-4" />
                   Tambah
                 </Button>
@@ -459,12 +509,12 @@ export function MaskingPage() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 /** Teks kewenangan, sama persis dengan yang tersimpan di kolom: "Ya" atau "Tidak". */
 function yesNo(allowed: boolean) {
-  return allowed ? 'Ya' : 'Tidak'
+  return allowed ? "Ya" : "Tidak";
 }
 
 /**
@@ -482,13 +532,19 @@ function yesNo(allowed: boolean) {
  * menghilangkan sub modul yang TIDAK dicentang — padahal justru daftar lengkap beserta
  * keadaan centangnya yang membuat dialog ini berguna.
  */
-function ModuleView({ masking, onClose }: { masking: Masking; onClose: () => void }) {
+function ModuleView({
+  masking,
+  onClose,
+}: {
+  masking: Masking;
+  onClose: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 sm:p-8"
       role="presentation"
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
@@ -498,7 +554,9 @@ function ModuleView({ masking, onClose }: { masking: Masking; onClose: () => voi
         className="mt-10 w-full max-w-sm overflow-hidden rounded-kartu border border-slate-200 bg-white shadow-angkat"
       >
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
-          <h3 className="text-base font-medium text-slate-900">ViewDataModul</h3>
+          <h3 className="text-base font-medium text-slate-900">
+            ViewDataModul
+          </h3>
           <button
             type="button"
             onClick={onClose}
@@ -511,11 +569,14 @@ function ModuleView({ masking, onClose }: { masking: Masking; onClose: () => voi
 
         <div className="space-y-5 px-5 py-4">
           <ChecklistGroup title="MODUL" item={moduleChecklist(masking.modul)} />
-          <ChecklistGroup title="SUB MODUL" item={subModuleChecklist(masking.sub_modul)} />
+          <ChecklistGroup
+            title="SUB MODUL"
+            item={subModuleChecklist(masking.sub_modul)}
+          />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /** Satu kelompok kotak centang mati pada dialog ViewDataModul. */
@@ -523,8 +584,8 @@ function ChecklistGroup({
   title,
   item,
 }: {
-  title: string
-  item: { label: string; checked: boolean; dikenal: boolean }[]
+  title: string;
+  item: { label: string; checked: boolean; dikenal: boolean }[];
 }) {
   return (
     <section>
@@ -534,13 +595,16 @@ function ChecklistGroup({
       ) : (
         <ul className="mt-2 space-y-2">
           {item.map((row) => (
-            <li key={row.label} className="flex items-center gap-2 text-sm text-slate-700">
+            <li
+              key={row.label}
+              className="flex items-center gap-2 text-sm text-slate-700"
+            >
               <input
                 type="checkbox"
                 checked={row.checked}
                 readOnly
                 disabled
-                aria-label={`${row.label}: ${row.checked ? 'berlaku' : 'tidak berlaku'}`}
+                aria-label={`${row.label}: ${row.checked ? "berlaku" : "tidak berlaku"}`}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600"
               />
               <span>{row.label}</span>
@@ -556,7 +620,7 @@ function ChecklistGroup({
         </ul>
       )}
     </section>
-  )
+  );
 }
 
 /**
@@ -566,17 +630,28 @@ function ChecklistGroup({
  * — ia baru membuka layarnya. Kecuali soal portal, yang justru dapat ia perbaiki sendiri.
  */
 function LoadErrorMessage({ error }: { error: unknown }) {
-  const message = loadMessage(error)
-  return <ErrorMessage title={message.title} description={message.description} tone={message.tone} />
+  const message = loadMessage(error);
+  return (
+    <ErrorMessage
+      title={message.title}
+      description={message.description}
+      tone={message.tone}
+    />
+  );
 }
 
-function loadMessage(error: unknown): { title: string; description: string; tone: ErrorTone } {
+function loadMessage(error: unknown): {
+  title: string;
+  description: string;
+  tone: ErrorTone;
+} {
   if (error instanceof NetworkError) {
     return {
-      title: 'Tidak dapat menghubungi server',
-      description: 'Data masking belum dapat dimuat. Periksa koneksi lalu tekan Refresh.',
-      tone: 'gangguan',
-    }
+      title: "Tidak dapat menghubungi server",
+      description:
+        "Data masking belum dapat dimuat. Periksa koneksi lalu tekan Refresh.",
+      tone: "gangguan",
+    };
   }
 
   if (error instanceof APIError) {
@@ -584,36 +659,37 @@ function loadMessage(error: unknown): { title: string; description: string; tone
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bilah atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       case ErrorCode.malformedRequest:
         return {
-          title: 'Pencarian tidak dapat dijalankan',
-          description: 'Pilih tipe pencarian berdasarkan nama cabang atau nama pengguna.',
-          tone: 'penolakan',
-        }
+          title: "Pencarian tidak dapat dijalankan",
+          description:
+            "Pilih tipe pencarian berdasarkan nama cabang atau nama pengguna.",
+          tone: "penolakan",
+        };
       default:
         return {
-          title: 'Data masking gagal dimuat',
+          title: "Data masking gagal dimuat",
           description: error.message,
-          tone: 'gangguan',
-        }
+          tone: "gangguan",
+        };
     }
   }
 
   return {
-    title: 'Data masking gagal dimuat',
-    description: 'Terjadi kesalahan pada sistem. Coba muat ulang.',
-    tone: 'gangguan',
-  }
+    title: "Data masking gagal dimuat",
+    description: "Terjadi kesalahan pada sistem. Coba muat ulang.",
+    tone: "gangguan",
+  };
 }

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   AutoClaimBankListResponse,
   AutoClaimClientListResponse,
@@ -9,14 +9,14 @@ import type {
   AutoClaimResponse,
   AutoClaimSaveInput,
   BusinessSourceListResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/auto-claim'
-const ROUTE_SOURCE = '/api/master/auto-claim/sumber-bisnis'
-const ROUTE_CLIENT = '/api/master/auto-claim/client'
-const ROUTE_BANK = '/api/master/auto-claim/bank'
+const ROUTE = "/api/master/auto-claim";
+const ROUTE_SOURCE = "/api/master/auto-claim/sumber-bisnis";
+const ROUTE_CLIENT = "/api/master/auto-claim/client";
+const ROUTE_BANK = "/api/master/auto-claim/bank";
 
 /**
  * Panjang minimum kata kunci lookup.
@@ -25,7 +25,7 @@ const ROUTE_BANK = '/api/master/auto-claim/bank'
  * berwenang — ia menjawab daftar kosong untuk kata kunci yang lebih pendek — dan angka
  * di sini hanya mencegah perjalanan jaringan yang sudah pasti kosong.
  */
-export const MIN_LOOKUP_KEYWORD = 2
+export const MIN_LOOKUP_KEYWORD = 2;
 
 /**
  * listKey menyertakan portal DAN token.
@@ -39,21 +39,26 @@ export const MIN_LOOKUP_KEYWORD = 2
  * endpoint, dan tanpa keduanya di kunci cache, berpindah tab akan menampilkan isi tab
  * sebelumnya sampai permintaan barunya tiba.
  */
-function listKey(portal: string | null, token: string | null, status: string, committeeOnly: boolean) {
-  return ['master-auto-claim', portal, token, status, committeeOnly] as const
+function listKey(
+  portal: string | null,
+  token: string | null,
+  status: string,
+  committeeOnly: boolean,
+) {
+  return ["master-auto-claim", portal, token, status, committeeOnly] as const;
 }
 
 function lookupKey(
-  kind: 'sumber-bisnis' | 'client',
+  kind: "sumber-bisnis" | "client",
   portal: string | null,
   token: string | null,
   keyword: string,
 ) {
-  return ['master-auto-claim-lookup', kind, portal, token, keyword] as const
+  return ["master-auto-claim-lookup", kind, portal, token, keyword] as const;
 }
 
 function bankKey(portal: string | null, token: string | null) {
-  return ['master-auto-claim-bank', portal, token] as const
+  return ["master-auto-claim-bank", portal, token] as const;
 }
 
 /**
@@ -64,17 +69,21 @@ function bankKey(portal: string | null, token: string | null) {
  * akan menampilkan pesan galat pada layar yang sebenarnya belum siap dibuka.
  */
 export function useAutoClaimList(status: string, committeeOnly: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const query = new URLSearchParams({ status })
-  if (committeeOnly) query.set('komite_saya', 'true')
+  const query = new URLSearchParams({ status });
+  if (committeeOnly) query.set("komite_saya", "true");
 
   return useQuery({
     queryKey: listKey(portal, token, status, committeeOnly),
-    queryFn: () => callAPI<AutoClaimListResponse>(`${ROUTE}?${query.toString()}`, { token, portal }),
+    queryFn: () =>
+      callAPI<AutoClaimListResponse>(`${ROUTE}?${query.toString()}`, {
+        token,
+        portal,
+      }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -84,14 +93,15 @@ export function useAutoClaimList(status: string, committeeOnly: boolean) {
  * basis data entitas yang sedang dipilih, bukan dari satu tempat bersama.
  */
 export function useAutoClaimBankList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: bankKey(portal, token),
-    queryFn: () => callAPI<AutoClaimBankListResponse>(ROUTE_BANK, { token, portal }),
+    queryFn: () =>
+      callAPI<AutoClaimBankListResponse>(ROUTE_BANK, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /**
@@ -102,36 +112,38 @@ export function useAutoClaimBankList() {
  * huruf yang diketik pada dua huruf pertama.
  */
 export function useBusinessSourceLookup(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
-    queryKey: lookupKey('sumber-bisnis', portal, token, clean),
+    queryKey: lookupKey("sumber-bisnis", portal, token, clean),
     queryFn: () =>
       callAPI<BusinessSourceListResponse>(
         `${ROUTE_SOURCE}?cari=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
-    enabled: token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
-  })
+    enabled:
+      token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
+  });
 }
 
 /** Hook lookup Client. Perilakunya sama dengan lookup Sumber Bisnis. */
 export function useClientLookup(keyword: string) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const clean = keyword.trim()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const clean = keyword.trim();
 
   return useQuery({
-    queryKey: lookupKey('client', portal, token, clean),
+    queryKey: lookupKey("client", portal, token, clean),
     queryFn: () =>
       callAPI<AutoClaimClientListResponse>(
         `${ROUTE_CLIENT}?cari=${encodeURIComponent(clean)}`,
         { token, portal },
       ),
-    enabled: token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
-  })
+    enabled:
+      token !== null && portal !== null && clean.length >= MIN_LOOKUP_KEYWORD,
+  });
 }
 
 /**
@@ -143,17 +155,22 @@ export function useClientLookup(keyword: string) {
  * pengguna saat ia menambah.
  */
 export function useCreateAutoClaim() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: AutoClaimInput) =>
-      callAPI<AutoClaimResponse>(ROUTE, { metode: 'POST', body: input, token, portal }),
+      callAPI<AutoClaimResponse>(ROUTE, {
+        metode: "POST",
+        body: input,
+        token,
+        portal,
+      }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-auto-claim'] })
+      client.invalidateQueries({ queryKey: ["master-auto-claim"] });
     },
-  })
+  });
 }
 
 /**
@@ -166,20 +183,26 @@ export function useCreateAutoClaim() {
  * satu tab ke tab lain, sehingga daftar yang tidak sedang dilihat pun sudah basi.
  */
 export function useSaveAutoClaim() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ inisial, input }: { inisial: string; input: AutoClaimSaveInput }) =>
+    mutationFn: ({
+      inisial,
+      input,
+    }: {
+      inisial: string;
+      input: AutoClaimSaveInput;
+    }) =>
       callAPI<AutoClaimResponse>(`${ROUTE}/${encodeURIComponent(inisial)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: ['master-auto-claim'] })
+      client.invalidateQueries({ queryKey: ["master-auto-claim"] });
     },
-  })
+  });
 }

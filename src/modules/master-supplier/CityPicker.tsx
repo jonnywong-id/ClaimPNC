@@ -1,22 +1,22 @@
-import { useId, useState } from 'react'
+import { useId, useState } from "react";
 
-import type { SupplierCity } from '@/api/types'
-import { Button } from '@/components/Button'
-import { Field } from '@/components/Field'
+import type { SupplierCity } from "@/api/types";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
 
-import { MIN_LOOKUP_KEYWORD, useSupplierCityLookup } from './api'
+import { MIN_LOOKUP_KEYWORD, useSupplierCityLookup } from "./api";
 
 type Props = {
   /** Nama kota yang sudah tersimpan, atau kosong bila belum ada. */
-  value: string
-  onPick: (city: SupplierCity) => void
-  onClear: () => void
+  value: string;
+  onPick: (city: SupplierCity) => void;
+  onClear: () => void;
 
   /** Pesan galat dari server yang menempel pada isian ini. */
-  error?: string | undefined
+  error?: string | undefined;
 
-  disabled?: boolean
-}
+  disabled?: boolean;
+};
 
 /**
  * CityPicker adalah kotak cari–pilih untuk isian "Kota".
@@ -62,23 +62,30 @@ type Props = {
  * layak dijadwalkan Work Owner sebagai satu pekerjaan tersendiri, bukan diselipkan ke
  * dalam penambahan modul ini.
  */
-export function CityPicker({ value, onPick, onClear, error, disabled = false }: Props) {
-  const fieldId = useId()
-  const [keyword, setKeyword] = useState('')
-  const [isOpen, setOpen] = useState(false)
+export function CityPicker({
+  value,
+  onPick,
+  onClear,
+  error,
+  disabled = false,
+}: Props) {
+  const fieldId = useId();
+  const [keyword, setKeyword] = useState("");
+  const [isOpen, setOpen] = useState(false);
 
-  const lookup = useSupplierCityLookup(keyword)
-  const rows = lookup.data?.kota ?? []
+  const lookup = useSupplierCityLookup(keyword);
+  const rows = lookup.data?.kota ?? [];
 
-  const shortKeyword = keyword.trim().length > 0 && keyword.trim().length < MIN_LOOKUP_KEYWORD
+  const shortKeyword =
+    keyword.trim().length > 0 && keyword.trim().length < MIN_LOOKUP_KEYWORD;
 
   function pick(city: SupplierCity) {
-    onPick(city)
-    setKeyword('')
-    setOpen(false)
+    onPick(city);
+    setKeyword("");
+    setOpen(false);
   }
 
-  if (value !== '') {
+  if (value !== "") {
     return (
       <div>
         <span className="block text-sm font-medium text-slate-700">Kota</span>
@@ -100,7 +107,7 @@ export function CityPicker({ value, onPick, onClear, error, disabled = false }: 
           </p>
         )}
       </div>
-    )
+    );
   }
 
   return (
@@ -116,13 +123,13 @@ export function CityPicker({ value, onPick, onClear, error, disabled = false }: 
         error={error}
         hint={`Ketik minimal ${MIN_LOOKUP_KEYWORD} huruf, lalu pilih dari daftar.`}
         onChange={(e) => {
-          setKeyword(e.target.value)
-          setOpen(true)
+          setKeyword(e.target.value);
+          setOpen(true);
         }}
         onFocus={() => setOpen(true)}
       />
 
-      {isOpen && !shortKeyword && keyword.trim() !== '' && (
+      {isOpen && !shortKeyword && keyword.trim() !== "" && (
         <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
           {lookup.isError ? (
             <p className="px-3 py-3 text-sm text-red-700" role="alert">
@@ -142,13 +149,17 @@ export function CityPicker({ value, onPick, onClear, error, disabled = false }: 
                     type="button"
                     onClick={() => pick(city)}
                     className={[
-                      'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                      'transition-colors duration-150 ease-halus',
-                      'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                    ].join(' ')}
+                      "flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm",
+                      "transition-colors duration-150 ease-halus",
+                      "hover:bg-blue-50 focus:bg-blue-50 focus:outline-none",
+                    ].join(" ")}
                   >
-                    <span className="min-w-0 flex-1 text-slate-900">{city.nama}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{city.id}</span>
+                    <span className="min-w-0 flex-1 text-slate-900">
+                      {city.nama}
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {city.id}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -157,5 +168,5 @@ export function CityPicker({ value, onPick, onClear, error, disabled = false }: 
         </div>
       )}
     </div>
-  )
+  );
 }

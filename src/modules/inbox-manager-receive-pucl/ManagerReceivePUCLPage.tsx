@@ -1,16 +1,19 @@
-import { type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { APIError } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
 
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { formatPegaDateTime } from '@/components/format'
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { formatPegaDateTime } from "@/components/format";
 
-import { ReceivePUCLTabs } from './ReceivePUCLTabs'
-import { useManagerReceivePUCLList, useManagerReceivePUCLMetadata } from './api'
-import type { Tab, TabColumn, WorkItem } from './types'
+import { ReceivePUCLTabs } from "./ReceivePUCLTabs";
+import {
+  useManagerReceivePUCLList,
+  useManagerReceivePUCLMetadata,
+} from "./api";
+import type { Tab, TabColumn, WorkItem } from "./types";
 
 /**
  * Inbox Manager Receive / PUCL — menu `MENU_ID 56`, pengganti harness
@@ -50,25 +53,29 @@ export function ManagerReceivePUCLPage() {
   // kembali dari sebuah berkas mendarat di tab pertama halaman pertama — padahal ia sedang
   // mengerjakan halaman ketiga. Pada antrean yang dibuka berpuluh kali sehari, itu bukan
   // ketidaknyamanan kecil.
-  const [params, setParams] = useSearchParams()
+  const [params, setParams] = useSearchParams();
 
-  const tabCode = params.get('tab') ?? ''
-  const page = Math.max(1, Number(params.get('halaman') ?? '1') || 1)
+  const tabCode = params.get("tab") ?? "";
+  const page = Math.max(1, Number(params.get("halaman") ?? "1") || 1);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const portal = useSelectedPortal((state) => state.alias)
-  const meta = useManagerReceivePUCLMetadata()
+  const portal = useSelectedPortal((state) => state.alias);
+  const meta = useManagerReceivePUCLMetadata();
 
-  const tabs: Tab[] = meta.data?.tab ?? []
-  const active = tabCode || meta.data?.tab_bawaan || ''
-  const tab = tabs.find((candidate) => candidate.kode === active)
+  const tabs: Tab[] = meta.data?.tab ?? [];
+  const active = tabCode || meta.data?.tab_bawaan || "";
+  const tab = tabs.find((candidate) => candidate.kode === active);
 
   // Tab terhalang TIDAK meminta isinya. Permintaannya pasti ditolak server dengan 422, dan
   // galat yang sudah diketahui pasti terjadi bukan galat yang layak ditampilkan — yang
   // layak ditampilkan adalah alasan terhalangnya.
-  const blocked = tab?.terhalang === true
-  const list = useManagerReceivePUCLList(active, page, meta.isSuccess && !blocked)
+  const blocked = tab?.terhalang === true;
+  const list = useManagerReceivePUCLList(
+    active,
+    page,
+    meta.isSuccess && !blocked,
+  );
 
   /**
    * Berpindah tab mengembalikan ke halaman pertama.
@@ -77,12 +84,12 @@ export function ManagerReceivePUCLPage() {
    * menampilkan tabel kosong yang terbaca seperti antrean yang memang kosong.
    */
   function selectTab(code: string) {
-    setParams({ tab: code, halaman: '1' }, { replace: true })
+    setParams({ tab: code, halaman: "1" }, { replace: true });
   }
 
   /** Berpindah halaman, menjaga tab yang sedang terbuka. */
   function setPage(next: number) {
-    setParams({ tab: active, halaman: String(next) }, { replace: true })
+    setParams({ tab: active, halaman: String(next) }, { replace: true });
   }
 
   /**
@@ -94,10 +101,10 @@ export function ManagerReceivePUCLPage() {
    * sah.
    */
   function openDocument(row: WorkItem) {
-    const back = new URLSearchParams({ tab: active, halaman: String(page) })
+    const back = new URLSearchParams({ tab: active, halaman: String(page) });
     navigate(
       `/inbox-manager-receive-pucl/dokumen/${encodeURIComponent(row.referensi)}?${back}`,
-    )
+    );
   }
 
   /**
@@ -109,7 +116,7 @@ export function ManagerReceivePUCLPage() {
    * Mengirim yang kedua menghasilkan "tidak ditemukan" untuk klaim yang sebenarnya ada.
    */
   function openClaim(row: WorkItem) {
-    navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.no_case)}`)
+    navigate(`/inbox-rcl-pucl/klaim/${encodeURIComponent(row.no_case)}`);
   }
 
   if (portal === null) {
@@ -118,13 +125,13 @@ export function ManagerReceivePUCLPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Antrean penerimaan dokumen dan RCL/PUCL milik satu badan hukum, dan aplikasi ' +
-            'ini melayani empat. Pilih portal di bilah atas untuk membukanya.'
+            "Antrean penerimaan dokumen dan RCL/PUCL milik satu badan hukum, dan aplikasi " +
+            "ini melayani empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   if (meta.isError) {
@@ -136,7 +143,7 @@ export function ManagerReceivePUCLPage() {
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -195,9 +202,8 @@ export function ManagerReceivePUCLPage() {
           )}
         </>
       )}
-
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -209,15 +215,16 @@ export function ManagerReceivePUCLPage() {
  */
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">
             Inbox Manager Receive / PUCL
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Pandangan penyelia atas dua antrean: berkas penerimaan dokumen klaim yang masih
-            punya penugasan terbuka, dan klaim yang ditolak atau diproses ulang.
+            Pandangan penyelia atas dua antrean: berkas penerimaan dokumen klaim
+            yang masih punya penugasan terbuka, dan klaim yang ditolak atau
+            diproses ulang.
           </p>
           {/*
             Sifat "pandangan penyelia" dinyatakan di layar, bukan hanya di kode.
@@ -228,15 +235,16 @@ function PageFrame({ children }: { children: ReactNode }) {
             daftarnya keliru karena memuat pekerjaan orang lain.
           */}
           <p className="mt-2 text-xs text-slate-500">
-            Layar ini menampilkan pekerjaan <span className="font-medium">seluruh
-            petugas</span> pada portal yang sedang dipilih, bukan hanya milik Anda. Setiap
-            pembukaannya tercatat.
+            Layar ini menampilkan pekerjaan{" "}
+            <span className="font-medium">seluruh petugas</span> pada portal
+            yang sedang dipilih, bukan hanya milik Anda. Setiap pembukaannya
+            tercatat.
           </p>
         </div>
       </header>
       {children}
     </div>
-  )
+  );
 }
 
 /**
@@ -249,15 +257,18 @@ function PageFrame({ children }: { children: ReactNode }) {
 function BlockedNotice({ tab }: { tab: Tab }) {
   return (
     <div className="mt-4 rounded-kartu border border-amber-200 bg-amber-50 px-4 py-4">
-      <h2 className="text-sm font-semibold text-amber-900">{tab.nama} belum tersedia</h2>
+      <h2 className="text-sm font-semibold text-amber-900">
+        {tab.nama} belum tersedia
+      </h2>
       <p className="mt-2 text-sm text-slate-700">{tab.alasan_terhalang}</p>
       {tab.pemilik_penghalang && (
         <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium">Menunggu:</span> {tab.pemilik_penghalang}
+          <span className="font-medium">Menunggu:</span>{" "}
+          {tab.pemilik_penghalang}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -301,14 +312,14 @@ function CaseLink({
   item,
   onOpen,
 }: {
-  item: WorkItem
-  onOpen: (row: WorkItem) => void
+  item: WorkItem;
+  onOpen: (row: WorkItem) => void;
 }) {
-  if (item.no_case === '') return <span className="text-slate-400">—</span>
+  if (item.no_case === "") return <span className="text-slate-400">—</span>;
 
   // Tanpa kunci teknis, Open Assignment tidak punya apa pun untuk dibuka. Nomornya tetap
   // digambar sebagai teks alih-alih sebagai tautan yang pasti gagal.
-  if (item.referensi === '') return <span>{item.no_case}</span>
+  if (item.referensi === "") return <span>{item.no_case}</span>;
 
   // Layar tujuannya belum punya data untuk baris ini.
   //
@@ -326,13 +337,13 @@ function CaseLink({
         className="cursor-help text-slate-500"
         title={
           `Layar kerja klaim ${item.no_case} belum dapat dibuka: klaim ini ada di antrean ` +
-          'Pega tetapi belum punya baris di tabel datar RCL/PUCL milik aplikasi. ' +
-          'Kerjakan lewat Pega, dan laporkan ke tim teknis bila seharusnya sudah ada.'
+          "Pega tetapi belum punya baris di tabel datar RCL/PUCL milik aplikasi. " +
+          "Kerjakan lewat Pega, dan laporkan ke tim teknis bila seharusnya sudah ada."
         }
       >
         {item.no_case}
       </span>
-    )
+    );
   }
 
   return (
@@ -341,14 +352,14 @@ function CaseLink({
       onClick={() => onOpen(item)}
       title={`Buka berkas ${item.no_case}`}
       className={[
-        'rounded-kontrol text-left font-medium text-blue-700 underline-offset-2',
-        'transition-colors duration-150 ease-halus hover:underline',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50',
-      ].join(' ')}
+        "rounded-kontrol text-left font-medium text-blue-700 underline-offset-2",
+        "transition-colors duration-150 ease-halus hover:underline",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
+      ].join(" ")}
     >
       {item.no_case}
     </button>
-  )
+  );
 }
 
 /**
@@ -365,21 +376,27 @@ function CaseLink({
  * dilihat pengguna adalah gambarnya. Menyatukannya akan membuat pengurutan menelusuri markup
  * alih-alih nomor case.
  */
-function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<WorkItem>[] {
+function columnsFor(
+  tab: Tab,
+  openCase: (row: WorkItem) => ReactNode,
+): Column<WorkItem>[] {
   return tab.kolom.map((column) => {
     const base: Column<WorkItem> = {
       key: column.kunci,
       title: column.judul,
       value: (row) => cellText(row, column),
-    }
+    };
 
     // Kedua tab nomor case-nya membuka layar kerja — hanya layarnya yang berbeda. Penandanya
     // datang dari server, bukan disimpulkan dari kode tab di sini.
-    if (column.kunci === 'no_case' && (tab.buka_layar_kerja || tab.buka_layar_klaim)) {
-      return { ...base, render: openCase }
+    if (
+      column.kunci === "no_case" &&
+      (tab.buka_layar_kerja || tab.buka_layar_klaim)
+    ) {
+      return { ...base, render: openCase };
     }
-    return base
-  })
+    return base;
+  });
 }
 
 /**
@@ -405,11 +422,11 @@ function columnsFor(tab: Tab, openCase: (row: WorkItem) => ReactNode): Column<Wo
  * yang gagal dimuat. Di layar ini itu penting khusus: satu kolom memang SELALU kosong.
  */
 function cellText(row: WorkItem, column: TabColumn): string {
-  const value = row[column.kunci]
+  const value = row[column.kunci];
 
-  if (value == null || value === '') return '—'
+  if (value == null || value === "") return "—";
 
-  return formatPegaDateTime(String(value))
+  return formatPegaDateTime(String(value));
 }
 
 /**
@@ -424,22 +441,22 @@ function cellText(row: WorkItem, column: TabColumn): string {
 function emptyMessageFor(tab: Tab): string {
   if (tab.antrean_bersama) {
     return (
-      'Tidak ada klaim RCL/PUCL yang menunggu. Bila Anda yakin seharusnya ada, laporkan ' +
-      'ke tim teknis — antrean ini disaring menurut akun antrean bersama, dan perubahan ' +
-      'nama akun itu membuat daftarnya kosong tanpa pesan galat.'
-    )
+      "Tidak ada klaim RCL/PUCL yang menunggu. Bila Anda yakin seharusnya ada, laporkan " +
+      "ke tim teknis — antrean ini disaring menurut akun antrean bersama, dan perubahan " +
+      "nama akun itu membuat daftarnya kosong tanpa pesan galat."
+    );
   }
 
   return (
-    'Tidak ada berkas penerimaan dokumen pada lini bisnis ini. Bila Anda yakin seharusnya ' +
-    'ada, periksa tab sebelahnya lebih dulu: kedua tab Receive dipisahkan Group Panel, ' +
-    'dan berkas yang Group Panel-nya berbeda akan muncul di tab yang satunya.'
-  )
+    "Tidak ada berkas penerimaan dokumen pada lini bisnis ini. Bila Anda yakin seharusnya " +
+    "ada, periksa tab sebelahnya lebih dulu: kedua tab Receive dipisahkan Group Panel, " +
+    "dan berkas yang Group Panel-nya berbeda akan muncul di tab yang satunya."
+  );
 }
 
 /** messageOf mengambil pesan yang layak dibaca pengguna dari sebuah galat. */
 function messageOf(error: unknown): string {
-  if (error instanceof APIError) return error.message
-  if (error instanceof Error && error.message !== '') return error.message
-  return 'Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.'
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error && error.message !== "") return error.message;
+  return "Coba lagi beberapa saat lagi. Bila terus berulang, hubungi tim teknis.";
 }

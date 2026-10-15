@@ -1,66 +1,67 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type DocumentType } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type DocumentType } from "@/api/types";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useCreateDocumentType,
   useDocumentTypeList,
   useUpdateDocumentType,
-} from './api'
-import { DocumentTypeForm, type DocumentTypeFields } from './DocumentTypeForm'
+} from "./api";
+import { DocumentTypeForm, type DocumentTypeFields } from "./DocumentTypeForm";
 
 /** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
+const CLOSED = "closed";
 /** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
+const CREATE = "create";
 
-type FormState = typeof CLOSED | typeof CREATE | DocumentType
+type FormState = typeof CLOSED | typeof CREATE | DocumentType;
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Daftar tipe dokumen dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Daftar tipe dokumen dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -112,33 +113,33 @@ function loadMessage(error: unknown): MessageContent {
  * terunggah (`ADR-0012`, `D-66`).
  */
 export function DocumentTypePage() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
+  const portal = useSelectedPortal((state) => state.alias);
+  const [form, setForm] = useState<FormState>(CLOSED);
 
-  const list = useDocumentTypeList()
-  const create = useCreateDocumentType()
-  const update = useUpdateDocumentType()
+  const list = useDocumentTypeList();
+  const create = useCreateDocumentType();
+  const update = useUpdateDocumentType();
 
-  const edited = typeof form === 'string' ? null : form
-  const isSaving = create.isPending || update.isPending
-  const saveError = edited ? update.error : create.error
+  const edited = typeof form === "string" ? null : form;
+  const isSaving = create.isPending || update.isPending;
+  const saveError = edited ? update.error : create.error;
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
+    create.reset();
+    update.reset();
+    setForm(CREATE);
   }
 
   function openEdit(row: DocumentType) {
-    create.reset()
-    update.reset()
-    setForm(row)
+    create.reset();
+    update.reset();
+    setForm(row);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
+    create.reset();
+    update.reset();
+    setForm(CLOSED);
   }
 
   function save(values: DocumentTypeFields) {
@@ -146,29 +147,31 @@ export function DocumentTypePage() {
     // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
     // diketik, itu berarti mengetik ulang dari awal.
     if (edited) {
-      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-      return
+      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm });
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
 
   // `value` dipisah dari `render` mengikuti kontrak Column: yang diurutkan adalah teks
   // polos, yang dilihat pengguna boleh berisi markup.
   const columns: Column<DocumentType>[] = [
     {
-      key: 'id',
-      title: 'ID',
-      width: 'w-28',
+      key: "id",
+      title: "ID",
+      width: "w-28",
       value: (row) => row.id,
-      render: (row) => <span className="font-mono text-sm text-slate-700">{row.id}</span>,
+      render: (row) => (
+        <span className="font-mono text-sm text-slate-700">{row.id}</span>
+      ),
     },
     {
       // "Tipe Dokumen" — header kolom pada grid Pega
       // (`Section/BrowseListDocumentType-Section.xml`, pyCaption "Tipe Dokumen"). Ia
       // sengaja BERBEDA dari label isian di form, yang berbunyi "Jenis Dokumen"; kedua teks
       // itu memang tidak sama di layar lama, dan keduanya ditiru apa adanya (`D-13`).
-      key: 'tipe_dokumen',
-      title: 'Tipe Dokumen',
+      key: "tipe_dokumen",
+      title: "Tipe Dokumen",
       value: (row) => row.tipe_dokumen,
       render: (row) =>
         row.tipe_dokumen ? (
@@ -176,15 +179,18 @@ export function DocumentTypePage() {
         ) : (
           // Nama kosong memang dapat tersimpan — layar lama pun menerimanya. Ia ditandai
           // supaya barisnya tidak tampak seperti baris rusak atau sel yang gagal dimuat.
-          <span className="text-slate-400" title="Baris ini tersimpan tanpa nama">
+          <span
+            className="text-slate-400"
+            title="Baris ini tersimpan tanpa nama"
+          >
             (tanpa nama)
           </span>
         ),
     },
     {
-      key: 'status_proses',
-      title: 'Status Proses',
-      width: 'w-56',
+      key: "status_proses",
+      title: "Status Proses",
+      width: "w-56",
       value: (row) => row.status_proses,
       // Dirender sebagai TEKS BIASA, bukan lencana berwarna. Ia catatan bebas, bukan
       // status — merendernya sebagai lencana akan menyiratkan domain tertutup yang tidak
@@ -197,14 +203,14 @@ export function DocumentTypePage() {
         ),
     },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: 'w-32',
+      key: "aksi",
+      title: "Aksi",
+      width: "w-32",
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya tombol,
       // bukan data.
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
         <Button
           tone="kedua"
@@ -215,17 +221,25 @@ export function DocumentTypePage() {
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Daftar Tipe Dokumen</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Daftar Tipe Dokumen
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
           <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
             Tambah
@@ -237,8 +251,10 @@ export function DocumentTypePage() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (`ADR-0030`, `R-20`). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">
+          {list.data?.portal ?? portal ?? "—"}
+        </span>
       </p>
 
       {form !== CLOSED && (
@@ -264,14 +280,14 @@ export function DocumentTypePage() {
           <p className="text-sm text-slate-500">Memuat daftar tipe dokumen…</p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -291,5 +307,5 @@ export function DocumentTypePage() {
         )}
       </section>
     </main>
-  )
+  );
 }

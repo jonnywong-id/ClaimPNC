@@ -1,9 +1,9 @@
-import { DataTable, type Column } from '@/components/DataTable'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { DataTable, type Column } from "@/components/DataTable";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { useApprovals } from './api'
-import { messageOf } from './errors'
-import type { ApprovalItem, MasterXOL } from './types'
+import { useApprovals } from "./api";
+import { messageOf } from "./errors";
+import type { ApprovalItem, MasterXOL } from "./types";
 
 /**
  * Dua grid terbawah wadah `source=='1'` — "DATA XOL KLAIM" dan "DATA MASTER XOL".
@@ -35,10 +35,10 @@ import type { ApprovalItem, MasterXOL } from './types'
  * antrean yang dapat disetujui.
  */
 export function ApprovalPanel({ active }: { active: boolean }) {
-  const approvals = useApprovals(active)
+  const approvals = useApprovals(active);
 
-  const advices = approvals.data?.pemberitahuan ?? []
-  const masters = approvals.data?.perjanjian ?? []
+  const advices = approvals.data?.pemberitahuan ?? [];
+  const masters = approvals.data?.perjanjian ?? [];
 
   const error = approvals.isError ? (
     <ErrorMessage
@@ -46,7 +46,7 @@ export function ApprovalPanel({ active }: { active: boolean }) {
       description={messageOf(approvals.error)}
       tone="gangguan"
     />
-  ) : undefined
+  ) : undefined;
 
   return (
     <div className="mt-4 space-y-6">
@@ -62,8 +62,9 @@ export function ApprovalPanel({ active }: { active: boolean }) {
           emptyMessage="Tidak ada pemberitahuan yang menunggu persetujuan."
         />
         <p className="mt-2 text-xs text-slate-500">
-          Kolom <span className="font-medium">Date Of Loss</span> berisi tahun perjanjian,
-          bukan tanggal kejadian. Judulnya dipertahankan seperti di aplikasi lama.
+          Kolom <span className="font-medium">Date Of Loss</span> berisi tahun
+          perjanjian, bukan tanggal kejadian. Judulnya dipertahankan seperti di
+          aplikasi lama.
         </p>
       </div>
 
@@ -80,7 +81,7 @@ export function ApprovalPanel({ active }: { active: boolean }) {
 
       <WriteNotice />
     </div>
-  )
+  );
 }
 
 /**
@@ -93,63 +94,63 @@ export function ApprovalPanel({ active }: { active: boolean }) {
 function WriteNotice() {
   return (
     <p className="rounded-kartu border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      Menyetujui atau menolak belum tersedia di aplikasi baru. Selama masa paralel,
-      perubahan data XOL masih dilakukan lewat aplikasi Pega — daftar di atas hanya
-      menampilkan keadaannya.
+      Menyetujui atau menolak belum tersedia di aplikasi baru. Selama masa
+      paralel, perubahan data XOL masih dilakukan lewat aplikasi Pega — daftar
+      di atas hanya menampilkan keadaannya.
     </p>
-  )
+  );
 }
 
 const adviceColumns: Column<ApprovalItem>[] = [
   {
-    key: 'tahun',
-    title: 'Date Of Loss',
+    key: "tahun",
+    title: "Date Of Loss",
     value: (row) => row.tahun,
-    width: '9rem',
+    width: "9rem",
   },
   {
-    key: 'sebab_kerugian',
-    title: 'Cause Of Loss',
+    key: "sebab_kerugian",
+    title: "Cause Of Loss",
     value: (row) => row.sebab_kerugian,
   },
   {
-    key: 'tipe',
-    title: 'TIPE',
+    key: "tipe",
+    title: "TIPE",
     value: (row) => row.tipe,
-    width: '6rem',
+    width: "6rem",
   },
   {
-    key: 'tanggal_insert',
-    title: 'Tanggal Insert',
+    key: "tanggal_insert",
+    title: "Tanggal Insert",
     value: (row) => row.tanggal_insert,
-    width: '10rem',
+    width: "10rem",
   },
-]
+];
 
 const masterColumns: Column<MasterXOL>[] = [
   {
-    key: 'id',
-    title: 'ID XOL',
+    key: "id",
+    title: "ID XOL",
     value: (row) => row.id,
-    width: '9rem',
+    width: "9rem",
   },
   {
-    key: 'nama',
-    title: 'Nama XOL',
+    key: "nama",
+    title: "Nama XOL",
     value: (row) => row.nama,
   },
   {
-    key: 'tahun',
-    title: 'Tahun XOL',
+    key: "tahun",
+    title: "Tahun XOL",
     value: (row) => row.tahun,
-    width: '8rem',
+    width: "8rem",
   },
   {
-    key: 'kurs',
-    title: 'Kurs Value',
+    key: "kurs",
+    title: "Kurs Value",
     value: (row) => String(row.kurs),
-    render: (row) => new Intl.NumberFormat('id-ID').format(row.kurs),
+    render: (row) => new Intl.NumberFormat("id-ID").format(row.kurs),
     alignRight: true,
-    width: '9rem',
+    width: "9rem",
   },
-]
+];

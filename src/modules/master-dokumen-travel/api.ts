@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
+import { callAPI } from "@/api/client";
 import type {
   TravelDocumentInput,
   TravelDocumentListResponse,
   TravelDocumentResponse,
-} from '@/api/types'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+} from "@/api/types";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-const ROUTE = '/api/master/dokumen-travel'
+const ROUTE = "/api/master/dokumen-travel";
 
 /**
  * listKey menyertakan portal DAN token.
@@ -23,7 +23,7 @@ const ROUTE = '/api/master/dokumen-travel'
  * peramban yang sama, mengikuti pola modul master lainnya.
  */
 function listKey(portal: string | null, token: string | null) {
-  return ['master-dokumen-travel', portal, token] as const
+  return ["master-dokumen-travel", portal, token] as const;
 }
 
 /**
@@ -43,26 +43,27 @@ function listKey(portal: string | null, token: string | null) {
  * boleh mengikuti pola ini.
  */
 export function useTravelDocumentList() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: listKey(portal, token),
-    queryFn: () => callAPI<TravelDocumentListResponse>(ROUTE, { token, portal }),
+    queryFn: () =>
+      callAPI<TravelDocumentListResponse>(ROUTE, { token, portal }),
     enabled: token !== null && portal !== null,
-  })
+  });
 }
 
 /** Hook penambahan dokumen travel. */
 export function useCreateTravelDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: (input: TravelDocumentInput) =>
       callAPI<TravelDocumentResponse>(ROUTE, {
-        metode: 'POST',
+        metode: "POST",
         body: input,
         token,
         portal,
@@ -72,27 +73,27 @@ export function useCreateTravelDocument() {
     // baris pada saat yang sama — daftar yang disusun sendiri di peramban akan berbeda
     // dari isi tabel yang sebenarnya.
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }
 
 /** Hook penyuntingan dokumen travel. */
 export function useUpdateTravelDocument() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
-  const client = useQueryClient()
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: TravelDocumentInput }) =>
       callAPI<TravelDocumentResponse>(`${ROUTE}/${encodeURIComponent(id)}`, {
-        metode: 'PUT',
+        metode: "PUT",
         body: input,
         token,
         portal,
       }),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: listKey(portal, token) })
+      client.invalidateQueries({ queryKey: listKey(portal, token) });
     },
-  })
+  });
 }

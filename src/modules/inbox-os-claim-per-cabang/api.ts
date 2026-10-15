@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { DetailResponse, ListResponse, SummaryResponse } from './types'
+import type { DetailResponse, ListResponse, SummaryResponse } from "./types";
 
-const PATH = '/api/inbox-os-claim-per-cabang'
+const PATH = "/api/inbox-os-claim-per-cabang";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -21,13 +21,25 @@ const PATH = '/api/inbox-os-claim-per-cabang'
  * sisa daftar milik yang pertama.
  */
 const keys = {
-  list: (portal: string | null, token: string | null, page: number, search: string) =>
-    ['inbox-os-claim-per-cabang', 'daftar', portal, token, page, search] as const,
+  list: (
+    portal: string | null,
+    token: string | null,
+    page: number,
+    search: string,
+  ) =>
+    [
+      "inbox-os-claim-per-cabang",
+      "daftar",
+      portal,
+      token,
+      page,
+      search,
+    ] as const,
   detail: (portal: string | null, token: string | null, nomor: string | null) =>
-    ['inbox-os-claim-per-cabang', 'detail', portal, token, nomor] as const,
+    ["inbox-os-claim-per-cabang", "detail", portal, token, nomor] as const,
   summary: (portal: string | null, token: string | null) =>
-    ['inbox-os-claim-per-cabang', 'ringkasan', portal, token] as const,
-}
+    ["inbox-os-claim-per-cabang", "ringkasan", portal, token] as const,
+};
 
 /**
  * Hook isi layar.
@@ -46,15 +58,16 @@ const keys = {
  * puluhan juta baris (`D-10`) itu bukan pola yang dibawa; halaman di sini benar-benar
  * dipotong basis data dengan `OFFSET … FETCH NEXT`.
  */
-export function useOSClaimPerCabangList(page: number, search = '') {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useOSClaimPerCabangList(page: number, search = "") {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
-  const cari = search.trim()
+  const cari = search.trim();
 
   return useQuery({
     queryKey: keys.list(portal, token, page, cari),
-    queryFn: () => callAPI<ListResponse>(buildPath(page, cari), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(page, cari), { token, portal }),
     enabled: token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -64,7 +77,7 @@ export function useOSClaimPerCabangList(page: number, search = '') {
     // Daftar berubah saat petugas lain memperbarui progres klaim, jadi cache-nya pendek —
     // layar ini dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -86,28 +99,30 @@ export function useOSClaimPerCabangList(page: number, search = '') {
  * 50.000 baris dengan 48 kolom itu beberapa megabita, dan dapat diterima.
  */
 export function useExportOSClaimPerCabang() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async () => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const response = await fetch(`${PATH}/ekspor`, { headers: header })
+      const response = await fetch(`${PATH}/ekspor`, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak bisa
         // lagi. Yang dibaca di sini adalah kasus pertama, dan cabang yang tidak diketahui
         // termasuk di dalamnya — pesannya diteruskan apa adanya ke pengguna.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'SummaryOS.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "SummaryOS.csv");
     },
-  })
+  });
 }
 
 /**
@@ -121,20 +136,20 @@ export function useExportOSClaimPerCabang() {
  * seperti sebelumnya — cache peladen dan pembacaan log tidak berubah karenanya.
  */
 function buildPath(page: number, search: string): string {
-  const params = new URLSearchParams()
-  if (page > 1) params.set('halaman', String(page))
-  if (search) params.set('cari', search)
+  const params = new URLSearchParams();
+  if (page > 1) params.set("halaman", String(page));
+  if (search) params.set("cari", search);
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -145,14 +160,14 @@ function filenameOf(response: Response): string | null {
  * yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -174,22 +189,25 @@ function downloadBlob(blob: Blob, filename: string): void {
  * pernah dilihat siapa pun tetapi tetap mengisi log peladen.
  */
 export function useOSClaimPerCabangDetail(nomorKlaim: string | null) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.detail(portal, token, nomorKlaim),
     queryFn: () =>
-      callAPI<DetailResponse>(`${PATH}/${encodeURIComponent(nomorKlaim ?? '')}`, {
-        token,
-        portal,
-      }),
+      callAPI<DetailResponse>(
+        `${PATH}/${encodeURIComponent(nomorKlaim ?? "")}`,
+        {
+          token,
+          portal,
+        },
+      ),
     enabled: token !== null && portal !== null && nomorKlaim !== null,
 
     // Isi popup jarang berubah selama satu sesi membaca, dan popup yang sama sering dibuka
     // ulang bolak-balik dari daftar.
     staleTime: 30 * 1000,
-  })
+  });
 }
 
 /**
@@ -201,13 +219,14 @@ export function useOSClaimPerCabangDetail(nomorKlaim: string | null) {
  * tidak mengosongkan grid di bawahnya.
  */
 export function useOSClaimPerCabangSummary() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.summary(portal, token),
-    queryFn: () => callAPI<SummaryResponse>(`${PATH}/ringkasan`, { token, portal }),
+    queryFn: () =>
+      callAPI<SummaryResponse>(`${PATH}/ringkasan`, { token, portal }),
     enabled: token !== null && portal !== null,
     staleTime: 15 * 1000,
-  })
+  });
 }

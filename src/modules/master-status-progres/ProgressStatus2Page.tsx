@@ -1,60 +1,64 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { APIError, NetworkError } from '@/api/client'
-import { ErrorCode, type ProgressStatus2 } from '@/api/types'
-import { ErrorMessage, type ErrorTone } from '@/components/ErrorMessage'
-import { DataTable, type Column } from '@/components/DataTable'
-import { Button } from '@/components/Button'
-import { useSelectedPortal } from '@/app/portal'
+import { APIError, NetworkError } from "@/api/client";
+import { ErrorCode, type ProgressStatus2 } from "@/api/types";
+import { ErrorMessage, type ErrorTone } from "@/components/ErrorMessage";
+import { DataTable, type Column } from "@/components/DataTable";
+import { Button } from "@/components/Button";
+import { useSelectedPortal } from "@/app/portal";
 
 import {
   useCreateProgressStatus2,
   useProgressStatus2List,
   useProgressStatus2ParentList,
   useUpdateProgressStatus2,
-} from './api2'
-import { ProgressStatus2Form, type ProgressStatus2Fields } from './ProgressStatus2Form'
+} from "./api2";
+import {
+  ProgressStatus2Form,
+  type ProgressStatus2Fields,
+} from "./ProgressStatus2Form";
 
-type MessageContent = { title: string; description: string; tone: ErrorTone }
+type MessageContent = { title: string; description: string; tone: ErrorTone };
 
 function loadMessage(error: unknown): MessageContent {
   if (error instanceof NetworkError) {
     return {
-      title: 'Server Claim PNC tidak dapat dihubungi',
-      description: 'Periksa koneksi jaringan Anda, lalu muat ulang.',
-      tone: 'gangguan',
-    }
+      title: "Server Claim PNC tidak dapat dihubungi",
+      description: "Periksa koneksi jaringan Anda, lalu muat ulang.",
+      tone: "gangguan",
+    };
   }
   if (error instanceof APIError) {
     switch (error.kode) {
       case ErrorCode.portalNotStated:
       case ErrorCode.portalUnknown:
         return {
-          title: 'Portal entitas belum dipilih',
+          title: "Portal entitas belum dipilih",
           description:
-            'Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.',
-          tone: 'penolakan',
-        }
+            "Data master dimiliki masing-masing entitas. Pilih portal entitas di bagian atas halaman ini lebih dulu.",
+          tone: "penolakan",
+        };
       case ErrorCode.portalNotReady:
         return {
-          title: 'Basis data entitas ini belum tersedia',
+          title: "Basis data entitas ini belum tersedia",
           description:
-            'Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+            "Entitasnya sudah direncanakan, tetapi kredensial basis datanya belum diisi. Hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
       default:
         return {
-          title: 'Daftar tidak dapat dimuat',
-          description: 'Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.',
-          tone: 'gangguan',
-        }
+          title: "Daftar tidak dapat dimuat",
+          description:
+            "Coba beberapa saat lagi. Bila berulang, hubungi administrator Claim PNC.",
+          tone: "gangguan",
+        };
     }
   }
   return {
-    title: 'Daftar tidak dapat dimuat',
-    description: 'Coba beberapa saat lagi.',
-    tone: 'gangguan',
-  }
+    title: "Daftar tidak dapat dimuat",
+    description: "Coba beberapa saat lagi.",
+    tone: "gangguan",
+  };
 }
 
 /**
@@ -103,44 +107,44 @@ function loadMessage(error: unknown): MessageContent {
  * API; yang dihapus hanyalah kolomnya.
  */
 /** Tidak ada form yang terbuka. */
-const CLOSED = 'closed'
+const CLOSED = "closed";
 /** Form terbuka dalam mode tambah. */
-const CREATE = 'create'
+const CREATE = "create";
 
-type FormState = typeof CLOSED | typeof CREATE | ProgressStatus2
+type FormState = typeof CLOSED | typeof CREATE | ProgressStatus2;
 
 export function ProgressStatus2Page() {
-  const portal = useSelectedPortal((state) => state.alias)
-  const [form, setForm] = useState<FormState>(CLOSED)
+  const portal = useSelectedPortal((state) => state.alias);
+  const [form, setForm] = useState<FormState>(CLOSED);
 
-  const list = useProgressStatus2List()
-  const parents = useProgressStatus2ParentList()
-  const create = useCreateProgressStatus2()
-  const update = useUpdateProgressStatus2()
+  const list = useProgressStatus2List();
+  const parents = useProgressStatus2ParentList();
+  const create = useCreateProgressStatus2();
+  const update = useUpdateProgressStatus2();
 
   // Keadaan form memikul tiga hal sekaligus — tertutup, tambah, atau baris yang sedang
   // disunting — mengikuti pola tingkat 1. Menyimpannya sebagai dua state terpisah
   // (`isOpen` + `edited`) membuka keadaan yang tidak masuk akal: terbuka tanpa mode.
-  const edited = typeof form === 'string' ? null : form
-  const isSaving = create.isPending || update.isPending
-  const saveError = edited ? update.error : create.error
+  const edited = typeof form === "string" ? null : form;
+  const isSaving = create.isPending || update.isPending;
+  const saveError = edited ? update.error : create.error;
 
   function openCreate() {
-    create.reset()
-    update.reset()
-    setForm(CREATE)
+    create.reset();
+    update.reset();
+    setForm(CREATE);
   }
 
   function openEdit(row: ProgressStatus2) {
-    create.reset()
-    update.reset()
-    setForm(row)
+    create.reset();
+    update.reset();
+    setForm(row);
   }
 
   function closeForm() {
-    create.reset()
-    update.reset()
-    setForm(CLOSED)
+    create.reset();
+    update.reset();
+    setForm(CLOSED);
   }
 
   function save(values: ProgressStatus2Fields) {
@@ -148,10 +152,10 @@ export function ProgressStatus2Page() {
     // membuang isian pengguna saat penyimpanan gagal — dan pada form yang isinya baru
     // diketik, itu berarti mengetik ulang dari awal.
     if (edited) {
-      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm })
-      return
+      update.mutate({ id: edited.id, input: values }, { onSuccess: closeForm });
+      return;
     }
-    create.mutate(values, { onSuccess: closeForm })
+    create.mutate(values, { onSuccess: closeForm });
   }
 
   // Susunan kolom mengikuti grid Pega APA ADANYA, terbaca dari header
@@ -176,10 +180,10 @@ export function ProgressStatus2Page() {
     // Isinya TETAP `ID_MST` — bukan nomor urut baris. Menomori ulang per halaman akan
     // menyesatkan: yang dirujuk `GCNM_PROGRESS_CLAIM.STATUS_PROGRESS2` adalah `ID_MST`,
     // dan itulah nomor yang dicari petugas.
-    { key: 'id', title: 'No', width: 'w-20', value: (row) => row.id },
+    { key: "id", title: "No", width: "w-20", value: (row) => row.id },
     {
-      key: 'induk',
-      title: 'Status Progres 1',
+      key: "induk",
+      title: "Status Progres 1",
       // Yang DITAMPILKAN hanya namanya, persis seperti Pega: kolom `Status Progress 1`
       // terikat ke `.City` saja, yaitu `STS_PROGRESS1`. `ID_PROGRESS` memang ikut
       // di-SELECT `BrowseStatusProgress2-SQL`, tetapi tidak pernah digambar di grid — ia
@@ -195,37 +199,49 @@ export function ProgressStatus2Page() {
       value: (row) => `${row.nama_induk} ${row.id_induk}`,
       render: (row) => <span>{row.nama_induk}</span>,
     },
-    { key: 'nama', title: 'Status Progres 2', value: (row) => row.nama },
+    { key: "nama", title: "Status Progres 2", value: (row) => row.nama },
     {
-      key: 'aksi',
-      title: 'Aksi',
-      width: 'w-24',
+      key: "aksi",
+      title: "Aksi",
+      width: "w-24",
       // Kolom aksi tidak layak diurutkan dan tidak punya teks untuk dicari — isinya
       // tombol, bukan data. Posisinya paling kanan, sama seperti kolom tanpa judul yang
       // memuat tombol Update pada grid Pega.
       noSort: true,
       alignRight: true,
-      value: () => '',
+      value: () => "",
       render: (row) => (
-        <Button tone="kedua" onClick={() => openEdit(row)} aria-label={`Ubah ${row.nama}`}>
+        <Button
+          tone="kedua"
+          onClick={() => openEdit(row)}
+          aria-label={`Ubah ${row.nama}`}
+        >
           Ubah
         </Button>
       ),
     },
-  ]
+  ];
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    <main className="halaman px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Master Status Progres 2</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            Master Status Progres 2
+          </h1>
           <p className="text-sm text-slate-600">
             Rincian status progres di bawah setiap Status Progres 1.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button tone="kedua" onClick={() => { list.refetch() }} disabled={list.isFetching}>
-            {list.isFetching ? 'Memuat…' : 'Refresh'}
+          <Button
+            tone="kedua"
+            onClick={() => {
+              list.refetch();
+            }}
+            disabled={list.isFetching}
+          >
+            {list.isFetching ? "Memuat…" : "Refresh"}
           </Button>
           <Button tone="utama" onClick={openCreate} disabled={form !== CLOSED}>
             Tambah
@@ -237,8 +253,10 @@ export function ProgressStatus2Page() {
           badan hukum dengan basis data terpisah, dan "data siapa ini" tidak boleh hanya
           diandaikan pengguna (ADR-0030, R-20). */}
       <p className="mt-3 text-xs text-slate-500">
-        Portal entitas:{' '}
-        <span className="font-medium text-slate-700">{list.data?.portal ?? portal ?? '—'}</span>
+        Portal entitas:{" "}
+        <span className="font-medium text-slate-700">
+          {list.data?.portal ?? portal ?? "—"}
+        </span>
       </p>
 
       {form !== CLOSED && (
@@ -262,17 +280,19 @@ export function ProgressStatus2Page() {
             tone="penolakan"
           />
         ) : list.isPending ? (
-          <p className="text-sm text-slate-500">Memuat daftar status progres 2…</p>
+          <p className="text-sm text-slate-500">
+            Memuat daftar status progres 2…
+          </p>
         ) : list.isError ? (
           (() => {
-            const message = loadMessage(list.error)
+            const message = loadMessage(list.error);
             return (
               <ErrorMessage
                 title={message.title}
                 description={message.description}
                 tone={message.tone}
               />
-            )
+            );
           })()
         ) : (
           <DataTable
@@ -291,5 +311,5 @@ export function ProgressStatus2Page() {
         )}
       </section>
     </main>
-  )
+  );
 }

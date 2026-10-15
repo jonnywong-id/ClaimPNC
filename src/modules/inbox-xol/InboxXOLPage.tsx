@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from "react";
 
-import { useSelectedPortal } from '@/app/portal'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
+import { useSelectedPortal } from "@/app/portal";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-import { AdvicePanel } from './AdvicePanel'
-import { ApprovalPanel } from './ApprovalPanel'
-import { ClaimPanel } from './ClaimPanel'
+import { AdvicePanel } from "./AdvicePanel";
+import { ApprovalPanel } from "./ApprovalPanel";
+import { ClaimPanel } from "./ClaimPanel";
 
 /**
  * Inbox XOL — menu `MENU_ID 53`, pengganti harness `Inbox_XOL_Harness`.
@@ -60,8 +60,8 @@ import { ClaimPanel } from './ClaimPanel'
  * tempatnya, bukan disembunyikan.
  */
 export function InboxXOLPage() {
-  const [view, setView] = useState<ViewKey | null>(null)
-  const portal = useSelectedPortal((state) => state.alias)
+  const [view, setView] = useState<ViewKey | null>(null);
+  const portal = useSelectedPortal((state) => state.alias);
 
   if (portal === null) {
     return (
@@ -69,13 +69,13 @@ export function InboxXOLPage() {
         <ErrorMessage
           title="Pilih entitas lebih dulu"
           description={
-            'Perjanjian XOL dan nilai klaimnya milik satu badan hukum, dan aplikasi ini ' +
-            'melayani empat. Pilih portal di bilah atas untuk membukanya.'
+            "Perjanjian XOL dan nilai klaimnya milik satu badan hukum, dan aplikasi ini " +
+            "melayani empat. Pilih portal di bilah atas untuk membukanya."
           }
           tone="gangguan"
         />
       </PageFrame>
-    )
+    );
   }
 
   return (
@@ -96,7 +96,7 @@ export function InboxXOLPage() {
 
       <ContentBand view={view} />
     </PageFrame>
-  )
+  );
 }
 
 /**
@@ -108,14 +108,14 @@ export function InboxXOLPage() {
  * `null` adalah keadaan awal — padanan `source` yang masih kosong, yakni layar yang baru
  * dibuka dan belum menampilkan apa pun.
  */
-type ViewKey = 'data' | 'cari'
+type ViewKey = "data" | "cari";
 
 type BandProps = {
-  label: string
-  leadLabel: string
-  active: ViewKey | null
-  onSelect: (key: ViewKey) => void
-}
+  label: string;
+  leadLabel: string;
+  active: ViewKey | null;
+  onSelect: (key: ViewKey) => void;
+};
 
 /**
  * ActionBand menggambar satu deret tombol, meniru satu baris di layar lama.
@@ -137,20 +137,24 @@ function ActionBand({ label, leadLabel, active, onSelect }: BandProps) {
       className="mt-4 rounded-kartu border border-slate-200 bg-white p-3 shadow-lembut"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <BandButton tone="utama" pressed={active === 'data'} onClick={() => onSelect('data')}>
+        <BandButton
+          tone="utama"
+          pressed={active === "data"}
+          onClick={() => onSelect("data")}
+        >
           {leadLabel}
         </BandButton>
 
         <BandButton
           tone="kedua"
-          pressed={active === 'cari'}
-          onClick={() => onSelect('cari')}
+          pressed={active === "cari"}
+          onClick={() => onSelect("cari")}
         >
           Cari Data DLA PLA XOL
         </BandButton>
       </div>
     </section>
-  )
+  );
 }
 
 /**
@@ -171,21 +175,21 @@ function BandButton({
   onClick,
   children,
 }: {
-  tone: 'utama' | 'kedua'
-  pressed: boolean
-  onClick: () => void
-  children: ReactNode
+  tone: "utama" | "kedua";
+  pressed: boolean;
+  onClick: () => void;
+  children: ReactNode;
 }) {
   return (
     <Button
       tone={tone}
       aria-pressed={pressed}
       onClick={onClick}
-      className={pressed ? 'ring-2 ring-blue-500/40 ring-offset-1' : undefined}
+      className={pressed ? "ring-2 ring-blue-500/40 ring-offset-1" : undefined}
     >
       {children}
     </Button>
-  )
+  );
 }
 
 /**
@@ -204,12 +208,12 @@ function ContentBand({ view }: { view: ViewKey | null }) {
       >
         Pilih salah satu tombol di atas untuk menampilkan datanya.
       </section>
-    )
+    );
   }
 
   return (
     <section aria-label="Isi Inbox XOL">
-      {view === 'data' ? (
+      {view === "data" ? (
         <>
           {/*
             Urutannya mengikuti urutan wadahnya di section lama, bukan selera:
@@ -223,20 +227,20 @@ function ContentBand({ view }: { view: ViewKey | null }) {
         <AdvicePanel />
       )}
     </section>
-  )
+  );
 }
 
 function PageFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[96rem] px-4 py-8">
+    <div className="halaman px-4 py-8">
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-xl font-semibold text-slate-900">Inbox XOL</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Akumulasi klaim per perjanjian Excess of Loss, beserta pemberitahuan PLA/DLA
-          kepada reasuradur dan antrean persetujuannya.
+          Akumulasi klaim per perjanjian Excess of Loss, beserta pemberitahuan
+          PLA/DLA kepada reasuradur dan antrean persetujuannya.
         </p>
       </header>
       {children}
     </div>
-  )
+  );
 }

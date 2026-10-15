@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect } from "react";
 
-import { useSelectedPortal } from '@/app/portal'
+import { useSelectedPortal } from "@/app/portal";
 
-import { usePortalList } from './api'
+import { usePortalList } from "./api";
 
 /**
  * PortalPicker menampilkan daftar entitas dan portal yang sedang aktif.
@@ -13,64 +13,78 @@ import { usePortalList } from './api'
  *
  * Portal yang basis datanya belum siap tetap terlihat tetapi tidak dapat dipilih,
  * supaya pengguna tahu entitas itu direncanakan — bukan mengira ia tidak ada.
+ *
+ * `id` dapat diganti karena pemilih ini digambar di DUA tempat: bilah atas, dan laci menu
+ * pada layar ponsel (tempat bilah atas tidak muat menampungnya). Dua elemen ber-id sama
+ * membuat label di laci memfokuskan pemilih bilah atas yang tersembunyi.
  */
-export function PortalPicker() {
-  const { data, isPending, isError } = usePortalList()
-  const selected = useSelectedPortal((state) => state.alias)
-  const select = useSelectedPortal((state) => state.select)
+export function PortalPicker({ id = "portal" }: { id?: string } = {}) {
+  const { data, isPending, isError } = usePortalList();
+  const selected = useSelectedPortal((state) => state.alias);
+  const select = useSelectedPortal((state) => state.select);
 
   // Portal awal mengikuti portal utama yang disebut server, bukan tebakan di frontend.
   useEffect(() => {
-    if (!selected && data?.utama) select(data.utama)
-  }, [selected, data?.utama, select])
+    if (!selected && data?.utama) select(data.utama);
+  }, [selected, data?.utama, select]);
 
   if (isPending) {
     return (
       <span className="flex items-center gap-2 text-sm text-slate-500">
-        <span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-slate-300" />
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 animate-pulse rounded-full bg-slate-300"
+        />
         Memuat portal…
       </span>
-    )
+    );
   }
   if (isError || !data) {
-    return <span className="text-sm text-red-700">Daftar portal tidak dapat dimuat.</span>
+    return (
+      <span className="text-sm text-red-700">
+        Daftar portal tidak dapat dimuat.
+      </span>
+    );
   }
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="portal" className="text-sm font-medium text-slate-600">
+      <label htmlFor={id} className="text-sm font-medium text-slate-600">
         Portal
       </label>
       <select
-        id="portal"
+        id={id}
         value={selected ?? data.utama}
         onChange={(peristiwa) => select(peristiwa.target.value)}
         className={[
-          'max-w-[12rem] truncate rounded-kontrol border border-slate-300 bg-white py-2 pl-3 pr-8',
-          'text-sm font-medium text-slate-900',
-          'transition-[border-color,box-shadow] duration-150 ease-halus',
-          'hover:border-slate-400',
-          'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15',
-        ].join(' ')}
+          "max-w-[12rem] truncate rounded-kontrol border border-slate-300 bg-white py-2 pl-3 pr-8",
+          "text-sm font-medium text-slate-900",
+          "transition-[border-color,box-shadow] duration-150 ease-halus",
+          "hover:border-slate-400",
+          "focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15",
+        ].join(" ")}
       >
         {data.portal.map((p) => (
           <option key={p.alias} value={p.alias} disabled={!p.siap}>
             {p.nama}
-            {p.siap ? '' : ' — belum tersedia'}
+            {p.siap ? "" : " — belum tersedia"}
           </option>
         ))}
       </select>
     </div>
-  )
+  );
 }
 
 /** DaftarPortal menampilkan seluruh entitas beserta kesiapannya sebagai tabel ringkas. */
 export function PortalList() {
-  const { data, isPending, isError } = usePortalList()
+  const { data, isPending, isError } = usePortalList();
 
-  if (isPending) return <p className="text-sm text-slate-500">Memuat daftar portal…</p>
+  if (isPending)
+    return <p className="text-sm text-slate-500">Memuat daftar portal…</p>;
   if (isError || !data) {
-    return <p className="text-sm text-red-700">Daftar portal tidak dapat dimuat.</p>
+    return (
+      <p className="text-sm text-red-700">Daftar portal tidak dapat dimuat.</p>
+    );
   }
 
   return (
@@ -81,13 +95,22 @@ export function PortalList() {
         </caption>
         <thead>
           <tr className="border-b border-slate-200 text-left">
-            <th scope="col" className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th
+              scope="col"
+              className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-wide text-slate-600"
+            >
               Nama portal
             </th>
-            <th scope="col" className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th
+              scope="col"
+              className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-wide text-slate-600"
+            >
               Alias
             </th>
-            <th scope="col" className="py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th
+              scope="col"
+              className="py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600"
+            >
               Status
             </th>
           </tr>
@@ -108,12 +131,18 @@ export function PortalList() {
                 */}
                 {p.siap ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                    />
                     Tersedia
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 rounded-full bg-slate-400"
+                    />
                     Menunggu kredensial basis data
                   </span>
                 )}
@@ -123,5 +152,5 @@ export function PortalList() {
         </tbody>
       </table>
     </div>
-  )
+  );
 }

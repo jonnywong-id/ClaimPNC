@@ -1,5 +1,5 @@
-import type { MasterChoice } from '@/api/types'
-import { Button } from '@/components/Button'
+import type { MasterChoice } from "@/api/types";
+import { Button } from "@/components/Button";
 
 /**
  * RowDraft menyimpan TEKS yang diketik petugas berdampingan dengan kode hasil
@@ -17,41 +17,41 @@ import { Button } from '@/components/Button'
  * ditambahkan — campuran itu memang bentuk penyimpanan sistem lama.
  */
 export type RowDraft = {
-  id: string
-  id_tipe_dokumen: string
-  id_object_dokumen: string
-  id_detail_dokumen: string
-  detail_dokumen: string
-  status_wajib: boolean
-  minimum_dokumen: number
-  tipe_dokumen_teks: string
-  object_dokumen_teks: string
-  detail_dokumen_teks: string
-}
+  id: string;
+  id_tipe_dokumen: string;
+  id_object_dokumen: string;
+  id_detail_dokumen: string;
+  detail_dokumen: string;
+  status_wajib: boolean;
+  minimum_dokumen: number;
+  tipe_dokumen_teks: string;
+  object_dokumen_teks: string;
+  detail_dokumen_teks: string;
+};
 
 /** emptyRow adalah baris dokumen yang baru ditambahkan dan belum diisi. */
 export function emptyRow(): RowDraft {
   return {
-    id: '',
-    id_tipe_dokumen: '',
-    id_object_dokumen: '',
-    id_detail_dokumen: '',
-    detail_dokumen: '',
+    id: "",
+    id_tipe_dokumen: "",
+    id_object_dokumen: "",
+    id_detail_dokumen: "",
+    detail_dokumen: "",
     status_wajib: false,
     minimum_dokumen: 0,
-    tipe_dokumen_teks: '',
-    object_dokumen_teks: '',
-    detail_dokumen_teks: '',
-  }
+    tipe_dokumen_teks: "",
+    object_dokumen_teks: "",
+    detail_dokumen_teks: "",
+  };
 }
 
 /** labelFor menyusun teks isian dari kode yang sudah tersimpan. */
 export function labelFor(list: MasterChoice[], id: string): string {
-  if (id === '') return ''
-  const matched = list.find((item) => item.id === id)
+  if (id === "") return "";
+  const matched = list.find((item) => item.id === id);
   // Kode yang tidak ada di master ditampilkan APA ADANYA, bukan dikosongkan —
   // mengosongkannya akan membuat baris diam-diam kehilangan rujukannya saat disimpan ulang.
-  return matched ? `${matched.nama} (${matched.id})` : id
+  return matched ? `${matched.nama} (${matched.id})` : id;
 }
 
 /**
@@ -62,20 +62,23 @@ export function labelFor(list: MasterChoice[], id: string): string {
  * terjadi hanyalah kodenya tidak terisi.
  */
 export function idFromLabel(list: MasterChoice[], typed: string): string {
-  const clean = typed.trim()
-  if (clean === '') return ''
+  const clean = typed.trim();
+  if (clean === "") return "";
   const matched = list.find(
-    (item) => `${item.nama} (${item.id})` === clean || item.nama === clean || item.id === clean,
-  )
-  return matched?.id ?? ''
+    (item) =>
+      `${item.nama} (${item.id})` === clean ||
+      item.nama === clean ||
+      item.id === clean,
+  );
+  return matched?.id ?? "";
 }
 
 const CELL_INPUT =
-  'w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500'
+  "w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500";
 
 /** Isian yang teksnya terisi tetapi kodenya tidak ditemukan — ditandai, bukan ditolak. */
 const CELL_INPUT_UNRESOLVED =
-  'w-full rounded border border-amber-400 bg-amber-50 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500'
+  "w-full rounded border border-amber-400 bg-amber-50 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500";
 
 /**
  * cellClass memilih gaya isian menurut apakah teksnya sudah mengenali kodenya.
@@ -92,23 +95,23 @@ const CELL_INPUT_UNRESOLVED =
  * menyadarinya sebelum menekan Simpan.
  */
 function cellClass(text: string, code: string): string {
-  return text.trim() !== '' && code === '' ? CELL_INPUT_UNRESOLVED : CELL_INPUT
+  return text.trim() !== "" && code === "" ? CELL_INPUT_UNRESOLVED : CELL_INPUT;
 }
 
 type Props = {
-  rows: RowDraft[]
-  documentTypes: MasterChoice[]
-  detailDocuments: MasterChoice[]
-  objectDocuments: MasterChoice[]
-  onChange: (index: number, patch: Partial<RowDraft>) => void
-  onAdd: () => void
-  onRemove: (index: number) => void
+  rows: RowDraft[];
+  documentTypes: MasterChoice[];
+  detailDocuments: MasterChoice[];
+  objectDocuments: MasterChoice[];
+  onChange: (index: number, patch: Partial<RowDraft>) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
   /**
    * Tindakan tambahan di ujung kanan setiap baris — dipakai layar Ubah untuk tombol Jenis
    * Klaim. Mengembalikan null berarti baris itu tidak punya tindakan apa pun.
    */
-  rowAction?: ((row: RowDraft, index: number) => React.ReactNode) | undefined
-}
+  rowAction?: ((row: RowDraft, index: number) => React.ReactNode) | undefined;
+};
 
 /**
  * Tabel baris dokumen, dipakai BERSAMA oleh layar Tambah, Copy, dan Ubah.
@@ -193,8 +196,10 @@ export function DocumentRowsTable({
               // SAMA — penyempitan yang di Pega dikerjakan server lewat parameter
               // `idDocument` pada autocomplete `BrowseVLstDetTypeDoc_RD`.
               const narrowedDetails = row.id_tipe_dokumen
-                ? detailDocuments.filter((item) => item.id_induk === row.id_tipe_dokumen)
-                : detailDocuments
+                ? detailDocuments.filter(
+                    (item) => item.id_induk === row.id_tipe_dokumen,
+                  )
+                : detailDocuments;
 
               return (
                 <tr key={index} className="align-top">
@@ -210,7 +215,10 @@ export function DocumentRowsTable({
                       list={`tipe-dokumen-${index}`}
                       autoComplete="off"
                       aria-label={`Tipe Dokumen baris ${index + 1}`}
-                      className={cellClass(row.tipe_dokumen_teks, row.id_tipe_dokumen)}
+                      className={cellClass(
+                        row.tipe_dokumen_teks,
+                        row.id_tipe_dokumen,
+                      )}
                       value={row.tipe_dokumen_teks}
                       onChange={(event) =>
                         // Detail Dokumen ikut dikosongkan saat tahapnya berganti. Tanpa itu,
@@ -219,15 +227,21 @@ export function DocumentRowsTable({
                         // muncul di layar unggah mana pun.
                         onChange(index, {
                           tipe_dokumen_teks: event.target.value,
-                          id_tipe_dokumen: idFromLabel(documentTypes, event.target.value),
-                          id_detail_dokumen: '',
-                          detail_dokumen_teks: '',
+                          id_tipe_dokumen: idFromLabel(
+                            documentTypes,
+                            event.target.value,
+                          ),
+                          id_detail_dokumen: "",
+                          detail_dokumen_teks: "",
                         })
                       }
                     />
                     <datalist id={`tipe-dokumen-${index}`}>
                       {documentTypes.map((item) => (
-                        <option key={item.id} value={`${item.nama} (${item.id})`} />
+                        <option
+                          key={item.id}
+                          value={`${item.nama} (${item.id})`}
+                        />
                       ))}
                     </datalist>
                   </td>
@@ -238,18 +252,27 @@ export function DocumentRowsTable({
                       list={`detail-dokumen-${index}`}
                       autoComplete="off"
                       aria-label={`Detail Dokumen baris ${index + 1}`}
-                      className={cellClass(row.detail_dokumen_teks, row.id_detail_dokumen)}
+                      className={cellClass(
+                        row.detail_dokumen_teks,
+                        row.id_detail_dokumen,
+                      )}
                       value={row.detail_dokumen_teks}
                       onChange={(event) =>
                         onChange(index, {
                           detail_dokumen_teks: event.target.value,
-                          id_detail_dokumen: idFromLabel(detailDocuments, event.target.value),
+                          id_detail_dokumen: idFromLabel(
+                            detailDocuments,
+                            event.target.value,
+                          ),
                         })
                       }
                     />
                     <datalist id={`detail-dokumen-${index}`}>
                       {narrowedDetails.map((item) => (
-                        <option key={item.id} value={`${item.nama} (${item.id})`} />
+                        <option
+                          key={item.id}
+                          value={`${item.nama} (${item.id})`}
+                        />
                       ))}
                     </datalist>
                   </td>
@@ -260,18 +283,27 @@ export function DocumentRowsTable({
                       list={`objek-dokumen-${index}`}
                       autoComplete="off"
                       aria-label={`Object Dokumen baris ${index + 1}`}
-                      className={cellClass(row.object_dokumen_teks, row.id_object_dokumen)}
+                      className={cellClass(
+                        row.object_dokumen_teks,
+                        row.id_object_dokumen,
+                      )}
                       value={row.object_dokumen_teks}
                       onChange={(event) =>
                         onChange(index, {
                           object_dokumen_teks: event.target.value,
-                          id_object_dokumen: idFromLabel(objectDocuments, event.target.value),
+                          id_object_dokumen: idFromLabel(
+                            objectDocuments,
+                            event.target.value,
+                          ),
                         })
                       }
                     />
                     <datalist id={`objek-dokumen-${index}`}>
                       {objectDocuments.map((item) => (
-                        <option key={item.id} value={`${item.nama} (${item.id})`} />
+                        <option
+                          key={item.id}
+                          value={`${item.nama} (${item.id})`}
+                        />
                       ))}
                     </datalist>
                   </td>
@@ -283,7 +315,9 @@ export function DocumentRowsTable({
                       aria-label={`Nama File baris ${index + 1}`}
                       className={CELL_INPUT}
                       value={row.detail_dokumen}
-                      onChange={(event) => onChange(index, { detail_dokumen: event.target.value })}
+                      onChange={(event) =>
+                        onChange(index, { detail_dokumen: event.target.value })
+                      }
                     />
                   </td>
 
@@ -298,9 +332,11 @@ export function DocumentRowsTable({
                     <select
                       aria-label={`Status Wajib baris ${index + 1}`}
                       className={CELL_INPUT}
-                      value={row.status_wajib ? 'YA' : 'TIDAK'}
+                      value={row.status_wajib ? "YA" : "TIDAK"}
                       onChange={(event) =>
-                        onChange(index, { status_wajib: event.target.value === 'YA' })
+                        onChange(index, {
+                          status_wajib: event.target.value === "YA",
+                        })
                       }
                     >
                       <option value="YA">YA</option>
@@ -319,7 +355,9 @@ export function DocumentRowsTable({
                       onChange={(event) =>
                         onChange(index, {
                           minimum_dokumen:
-                            Number(event.target.value.replaceAll(/[^0-9]/g, '')) || 0,
+                            Number(
+                              event.target.value.replaceAll(/[^0-9]/g, ""),
+                            ) || 0,
                         })
                       }
                     />
@@ -340,7 +378,7 @@ export function DocumentRowsTable({
                     </div>
                   </td>
                 </tr>
-              )
+              );
             })}
           </tbody>
         </table>
@@ -359,21 +397,23 @@ export function DocumentRowsTable({
       */}
       {rows.some(
         (row) =>
-          (row.tipe_dokumen_teks.trim() !== '' && row.id_tipe_dokumen === '') ||
-          (row.detail_dokumen_teks.trim() !== '' && row.id_detail_dokumen === '') ||
-          (row.object_dokumen_teks.trim() !== '' && row.id_object_dokumen === ''),
+          (row.tipe_dokumen_teks.trim() !== "" && row.id_tipe_dokumen === "") ||
+          (row.detail_dokumen_teks.trim() !== "" &&
+            row.id_detail_dokumen === "") ||
+          (row.object_dokumen_teks.trim() !== "" &&
+            row.id_object_dokumen === ""),
       ) && (
         <p className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Isian bertanda kuning belum cocok dengan daftarnya, sehingga kodenya{' '}
-          <span className="font-medium">tidak akan tersimpan</span>. Pilih dari daftar yang
-          muncul saat mengetik.
+          Isian bertanda kuning belum cocok dengan daftarnya, sehingga kodenya{" "}
+          <span className="font-medium">tidak akan tersimpan</span>. Pilih dari
+          daftar yang muncul saat mengetik.
         </p>
       )}
 
       <p className="mt-2 text-xs text-slate-500">
-        Buang hanya mengeluarkan baris dari layar ini. Baris yang sudah tersimpan tidak dapat
-        dihapus.
+        Buang hanya mengeluarkan baris dari layar ini. Baris yang sudah
+        tersimpan tidak dapat dihapus.
       </p>
     </section>
-  )
+  );
 }

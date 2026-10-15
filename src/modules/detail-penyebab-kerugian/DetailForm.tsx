@@ -1,58 +1,58 @@
-import { useId, useState } from 'react'
+import { useId, useState } from "react";
 
 import type {
   CauseOfLossActiveOption,
   CauseOfLossBusiness,
   CauseOfLossDetail,
-} from '@/api/types'
-import { Button } from '@/components/Button'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+} from "@/api/types";
+import { Button } from "@/components/Button";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useCauseOfLossMasterSearch } from './api'
-import { BusinessPicker } from './BusinessPicker'
+import { useCauseOfLossMasterSearch } from "./api";
+import { BusinessPicker } from "./BusinessPicker";
 
 /** Sama dengan `detailpenyebab.MinLookupKeyword` di backend. */
-const MIN_KEYWORD = 2
+const MIN_KEYWORD = 2;
 
 export type DetailFormValues = {
-  id_lama: string
-  id_master: string
-  nama_master: string
-  deskripsi_kerugian: string
-  kode_kehilangan: string
-  status_aktif: string
-  bisnis: CauseOfLossBusiness[]
-}
+  id_lama: string;
+  id_master: string;
+  nama_master: string;
+  deskripsi_kerugian: string;
+  kode_kehilangan: string;
+  status_aktif: string;
+  bisnis: CauseOfLossBusiness[];
+};
 
 type Props = {
   /** Baris yang sedang disunting; null berarti menambah baris baru. */
-  existing: CauseOfLossDetail | null
-  options: CauseOfLossActiveOption[]
+  existing: CauseOfLossDetail | null;
+  options: CauseOfLossActiveOption[];
   /** Pesan galat per isian, dari jawaban 422. */
-  fieldError: Record<string, string>
-  busy: boolean
-  onSubmit: (values: DetailFormValues) => void
-  onCancel: () => void
-}
+  fieldError: Record<string, string>;
+  busy: boolean;
+  onSubmit: (values: DetailFormValues) => void;
+  onCancel: () => void;
+};
 
 /** Nilai awal form — dari baris yang disunting, atau kosong untuk baris baru. */
 function initialValues(existing: CauseOfLossDetail | null): DetailFormValues {
   if (existing === null) {
     return {
-      id_lama: '',
-      id_master: '',
-      nama_master: '',
-      deskripsi_kerugian: '',
-      kode_kehilangan: '',
+      id_lama: "",
+      id_master: "",
+      nama_master: "",
+      deskripsi_kerugian: "",
+      kode_kehilangan: "",
       // Baris baru diawali Aktif. Layar lama tidak menentukan nilai awal apa pun —
       // isiannya lahir kosong — tetapi baris yang baru dibuat memang dimaksudkan berlaku,
       // dan membiarkannya kosong membuat setiap baris baru lahir "Belum diisi".
       //
       // Ini SELISIH TERENCANA, dan satu-satunya yang diambil atas nilai awal.
-      status_aktif: '1',
+      status_aktif: "1",
       bisnis: [],
-    }
+    };
   }
   return {
     id_lama: existing.id_lama,
@@ -62,7 +62,7 @@ function initialValues(existing: CauseOfLossDetail | null): DetailFormValues {
     kode_kehilangan: existing.kode_kehilangan,
     status_aktif: existing.status_aktif,
     bisnis: existing.bisnis,
-  }
+  };
 }
 
 /**
@@ -107,27 +107,32 @@ export function DetailForm({
   onSubmit,
   onCancel,
 }: Props) {
-  const idField = useId()
-  const [values, setValues] = useState<DetailFormValues>(() => initialValues(existing))
+  const idField = useId();
+  const [values, setValues] = useState<DetailFormValues>(() =>
+    initialValues(existing),
+  );
 
-  const [masterKeyword, setMasterKeyword] = useState('')
-  const [masterOpen, setMasterOpen] = useState(false)
-  const masterLookup = useCauseOfLossMasterSearch(masterKeyword)
+  const [masterKeyword, setMasterKeyword] = useState("");
+  const [masterOpen, setMasterOpen] = useState(false);
+  const masterLookup = useCauseOfLossMasterSearch(masterKeyword);
 
-  const cleanMasterKeyword = masterKeyword.trim()
+  const cleanMasterKeyword = masterKeyword.trim();
   const shortMasterKeyword =
-    cleanMasterKeyword.length > 0 && cleanMasterKeyword.length < MIN_KEYWORD
+    cleanMasterKeyword.length > 0 && cleanMasterKeyword.length < MIN_KEYWORD;
 
-  function change<K extends keyof DetailFormValues>(key: K, value: DetailFormValues[K]) {
-    setValues((current) => ({ ...current, [key]: value }))
+  function change<K extends keyof DetailFormValues>(
+    key: K,
+    value: DetailFormValues[K],
+  ) {
+    setValues((current) => ({ ...current, [key]: value }));
   }
 
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
-        e.preventDefault()
-        onSubmit(values)
+        e.preventDefault();
+        onSubmit(values);
       }}
     >
       {/*
@@ -160,25 +165,27 @@ export function DetailForm({
           autoComplete="off"
           placeholder="Cari master penyebab kerugian…"
           value={masterKeyword}
-          error={fieldError['id_master']}
+          error={fieldError["id_master"]}
           hint={
-            values.id_master === ''
+            values.id_master === ""
               ? `Ketik minimal ${MIN_KEYWORD} huruf, lalu pilih dari daftar. Boleh dikosongkan.`
               : undefined
           }
           onChange={(e) => {
-            setMasterKeyword(e.target.value)
-            setMasterOpen(true)
+            setMasterKeyword(e.target.value);
+            setMasterOpen(true);
           }}
           onFocus={() => setMasterOpen(true)}
         />
 
-        {values.id_master !== '' && (
+        {values.id_master !== "" && (
           <p className="mt-1.5 flex flex-wrap items-center gap-2 rounded-kontrol border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
             <span className="min-w-0 flex-1 text-slate-900">
-              {values.nama_master === '' ? (
+              {values.nama_master === "" ? (
                 <>
-                  <span className="text-slate-400">(sebutan tidak ditemukan)</span>
+                  <span className="text-slate-400">
+                    (sebutan tidak ditemukan)
+                  </span>
                   <span
                     className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800 ring-1 ring-amber-200"
                     title="Kode induk ini tidak ada di master penyebab kerugian portal ini."
@@ -189,13 +196,15 @@ export function DetailForm({
               ) : (
                 values.nama_master
               )}
-              <span className="ml-2 text-xs text-slate-500">{values.id_master}</span>
+              <span className="ml-2 text-xs text-slate-500">
+                {values.id_master}
+              </span>
             </span>
             <Button
               tone="halus"
               onClick={() => {
-                change('id_master', '')
-                change('nama_master', '')
+                change("id_master", "");
+                change("nama_master", "");
               }}
             >
               Kosongkan
@@ -203,7 +212,7 @@ export function DetailForm({
           </p>
         )}
 
-        {masterOpen && !shortMasterKeyword && cleanMasterKeyword !== '' && (
+        {masterOpen && !shortMasterKeyword && cleanMasterKeyword !== "" && (
           <div className="mt-2 max-h-56 overflow-y-auto rounded-kontrol border border-slate-200 bg-white shadow-lembut">
             {masterLookup.isError ? (
               <p className="px-3 py-3 text-sm text-red-700" role="alert">
@@ -226,18 +235,22 @@ export function DetailForm({
                           ...current,
                           id_master: option.id,
                           nama_master: option.nama,
-                        }))
-                        setMasterKeyword('')
-                        setMasterOpen(false)
+                        }));
+                        setMasterKeyword("");
+                        setMasterOpen(false);
                       }}
                       className={[
-                        'flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm',
-                        'transition-colors duration-150 ease-halus',
-                        'hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
-                      ].join(' ')}
+                        "flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm",
+                        "transition-colors duration-150 ease-halus",
+                        "hover:bg-blue-50 focus:bg-blue-50 focus:outline-none",
+                      ].join(" ")}
                     >
-                      <span className="min-w-0 flex-1 text-slate-900">{option.nama}</span>
-                      <span className="shrink-0 text-xs text-slate-500">{option.id}</span>
+                      <span className="min-w-0 flex-1 text-slate-900">
+                        {option.nama}
+                      </span>
+                      <span className="shrink-0 text-xs text-slate-500">
+                        {option.id}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -251,8 +264,8 @@ export function DetailForm({
         id={`${idField}-deskripsi`}
         label="Deskripsi Kerugian"
         value={values.deskripsi_kerugian}
-        error={fieldError['deskripsi_kerugian']}
-        onChange={(e) => change('deskripsi_kerugian', e.target.value)}
+        error={fieldError["deskripsi_kerugian"]}
+        onChange={(e) => change("deskripsi_kerugian", e.target.value)}
       />
 
       {/*
@@ -273,8 +286,11 @@ export function DetailForm({
         id={`${idField}-status`}
         label="Status Aktif"
         value={values.status_aktif}
-        options={options.map((option) => ({ value: option.kode, label: option.label }))}
-        error={fieldError['status_aktif']}
+        options={options.map((option) => ({
+          value: option.kode,
+          label: option.label,
+        }))}
+        error={fieldError["status_aktif"]}
         // TEPAT DUA pilihan — Aktif dan Tidak Aktif — persis seperti Pega.
         //
         // Work Owner mengirimkan tangkapan layar Pega yang berjalan pada 2026-10-05:
@@ -298,33 +314,33 @@ export function DetailForm({
         // Jadi: dua pilihan untuk setiap baris yang punya nilai — yaitu seluruh baris yang
         // akan ditemui petugas sehari-hari — dan pilihan kosong HANYA muncul pada baris
         // warisan yang memang belum pernah diisi.
-        includeEmpty={values.status_aktif === ''}
+        includeEmpty={values.status_aktif === ""}
         emptyText="— belum diisi —"
-        onChange={(e) => change('status_aktif', e.target.value)}
+        onChange={(e) => change("status_aktif", e.target.value)}
       />
 
       <Field
         id={`${idField}-kode`}
         label="Kode Kehilangan"
         value={values.kode_kehilangan}
-        error={fieldError['kode_kehilangan']}
-        onChange={(e) => change('kode_kehilangan', e.target.value)}
+        error={fieldError["kode_kehilangan"]}
+        onChange={(e) => change("kode_kehilangan", e.target.value)}
       />
 
       <BusinessPicker
         value={values.bisnis}
-        onChange={(bisnis) => change('bisnis', bisnis)}
+        onChange={(bisnis) => change("bisnis", bisnis)}
         disabled={busy}
       />
 
       <div className="flex flex-wrap gap-2 pt-2">
         <Button type="submit" tone="utama" disabled={busy}>
-          {busy ? 'Menyimpan…' : 'Simpan'}
+          {busy ? "Menyimpan…" : "Simpan"}
         </Button>
         <Button onClick={onCancel} disabled={busy}>
           Batal
         </Button>
       </div>
     </form>
-  )
+  );
 }

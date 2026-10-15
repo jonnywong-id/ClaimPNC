@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-import { APIError } from '@/api/client'
-import { Button } from '@/components/Button'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Field } from '@/components/Field'
-import { SelectField } from '@/components/SelectField'
+import { APIError } from "@/api/client";
+import { Button } from "@/components/Button";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Field } from "@/components/Field";
+import { SelectField } from "@/components/SelectField";
 
-import { useAjukanTransfer, useDaftarPIC, usePenyaringDashboard } from './api'
+import { useAjukanTransfer, useDaftarPIC, usePenyaringDashboard } from "./api";
 import type {
   BarisKlaim,
   BarisPIC,
   LingkupTransfer,
   PenyaringDashboard,
   PermintaanTransfer,
-} from './types'
+} from "./types";
 
 /**
  * Dialog Transfer — **memilih PIC Teknik dari daftar**, bukan mengetik User ID.
@@ -78,9 +78,9 @@ export function DialogTransfer({
   penyaringAktif,
   onTutup,
 }: {
-  lingkup: LingkupTransfer
-  nomorKlaim?: string
-  klaimID?: string
+  lingkup: LingkupTransfer;
+  nomorKlaim?: string;
+  klaimID?: string;
   /**
    * Baris yang tercentang saat "Transfer All Case By UserID" ditekan.
    *
@@ -92,7 +92,7 @@ export function DialogTransfer({
    * seseorang dan memindahkan tiga klaim adalah dua hal yang tidak dapat dibatalkan dengan
    * mudah bila tertukar.
    */
-  baris?: BarisKlaim[]
+  baris?: BarisKlaim[];
 
   /**
    * Benar bila yang dipindahkan SELURUH hasil penyaring — "Select All" lintas halaman.
@@ -101,7 +101,7 @@ export function DialogTransfer({
    * satu, yang lain memindahkan himpunan yang hanya diketahui server. Keduanya tidak dapat
    * diwakili satu bentuk tanpa salah satunya berbohong tentang jumlahnya.
    */
-  semuaCocok?: boolean
+  semuaCocok?: boolean;
 
   /**
    * Penyaring yang sedang berlaku, dikirim bersama permintaan pada lingkup `saring`.
@@ -109,36 +109,37 @@ export function DialogTransfer({
    * Dinamai `penyaringAktif` supaya tidak bertabrakan dengan `penyaring` di dalam komponen
    * ini, yang menampung PILIHAN penyaring dari server — dua hal berbeda yang namanya mirip.
    */
-  penyaringAktif?: PenyaringDashboard
+  penyaringAktif?: PenyaringDashboard;
 
-  onTutup: () => void
+  onTutup: () => void;
 }) {
-  const [cari, setCari] = useState('')
-  const [userLama, setUserLama] = useState('')
-  const [tipePengguna, setTipePengguna] = useState('')
-  const [halaman, setHalaman] = useState(1)
+  const [cari, setCari] = useState("");
+  const [userLama, setUserLama] = useState("");
+  const [tipePengguna, setTipePengguna] = useState("");
+  const [halaman, setHalaman] = useState(1);
 
-  const penyaring = usePenyaringDashboard()
+  const penyaring = usePenyaringDashboard();
   const pilihanTipe = (penyaring.data?.tipe_pengguna ?? [])
-    .filter((p) => p.nilai !== '')
-    .map((p) => ({ value: p.nilai, label: p.label }))
+    .filter((p) => p.nilai !== "")
+    .map((p) => ({ value: p.nilai, label: p.label }));
 
-  const daftar = useDaftarPIC(true, cari, halaman)
-  const ajukan = useAjukanTransfer()
-  const tutupRef = useRef<HTMLButtonElement>(null)
+  const daftar = useDaftarPIC(true, cari, halaman);
+  const ajukan = useAjukanTransfer();
+  const tutupRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    tutupRef.current?.focus()
+    tutupRef.current?.focus();
 
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onTutup()
+      if (event.key === "Escape") onTutup();
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onTutup])
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onTutup]);
 
-  const pelanggaran = ajukan.error instanceof APIError ? ajukan.error.violations() : {}
-  const berhasil = ajukan.isSuccess
+  const pelanggaran =
+    ajukan.error instanceof APIError ? ajukan.error.violations() : {};
+  const berhasil = ajukan.isSuccess;
 
   /**
    * Berapa klaim yang berpindah.
@@ -151,10 +152,10 @@ export function DialogTransfer({
    * Yang per-centang mengirim satu permintaan per klaim, sehingga `jumlah_pindah` jawaban
    * terakhir selalu 1 — memakainya di sana akan melaporkan "1 klaim" untuk tiga centang.
    */
-  const massalSeluruhnya = lingkup === 'massal' && baris.length === 0
+  const massalSeluruhnya = lingkup === "massal" && baris.length === 0;
   const jumlahPindah = massalSeluruhnya
     ? (ajukan.data?.permintaan.jumlah_pindah ?? 0)
-    : Math.max(baris.length, 1)
+    : Math.max(baris.length, 1);
 
   /**
    * Memindahkan klaim ke petugas yang dipilih.
@@ -174,38 +175,38 @@ export function DialogTransfer({
     // "Select All" — SATU permintaan membawa penyaringnya, bukan 1.639 permintaan per klaim.
     if (semuaCocok) {
       ajukan.mutate({
-        body: { lingkup: 'saring', user_id_baru: pic.operator_id },
+        body: { lingkup: "saring", user_id_baru: pic.operator_id },
         ...(penyaringAktif ? { penyaring: penyaringAktif } : {}),
-      })
-      return
+      });
+      return;
     }
 
-    if (lingkup === 'massal' && baris.length > 0) {
+    if (lingkup === "massal" && baris.length > 0) {
       for (const klaim of baris) {
         ajukan.mutate({
           body: {
-            lingkup: 'baris',
+            lingkup: "baris",
             user_id_baru: pic.operator_id,
             ...(klaim.klaim_id ? { klaim_id: klaim.klaim_id } : {}),
             ...(klaim.nomor_klaim ? { nomor_klaim: klaim.nomor_klaim } : {}),
           },
-        })
+        });
       }
-      return
+      return;
     }
 
     const body: PermintaanTransfer = {
       lingkup,
       user_id_baru: pic.operator_id,
-      ...(lingkup === 'baris'
+      ...(lingkup === "baris"
         ? {
             ...(klaimID ? { klaim_id: klaimID } : {}),
             ...(nomorKlaim ? { nomor_klaim: nomorKlaim } : {}),
           }
         : { user_id_lama: userLama, tipe_pengguna: tipePengguna }),
-    }
+    };
 
-    ajukan.mutate({ body })
+    ajukan.mutate({ body });
   }
 
   return (
@@ -225,8 +226,10 @@ export function DialogTransfer({
             <h2 className="text-lg font-semibold text-slate-900">
               {judul(lingkup)}
             </h2>
-            {lingkup === 'baris' && nomorKlaim ? (
-              <p className="mt-1 text-sm text-slate-600">No Klaim {nomorKlaim}</p>
+            {lingkup === "baris" && nomorKlaim ? (
+              <p className="mt-1 text-sm text-slate-600">
+                No Klaim {nomorKlaim}
+              </p>
             ) : null}
           </div>
           {/* Tombol polos, bukan Button: ia perlu `ref` untuk menerima fokus saat dibuka. */}
@@ -236,11 +239,11 @@ export function DialogTransfer({
             onClick={onTutup}
             aria-label="Tutup"
             className={[
-              'rounded-kontrol px-3 py-1.5 text-sm text-slate-500',
-              'transition ease-halus hover:bg-slate-100 hover:text-slate-700',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-              'focus-visible:outline-blue-600',
-            ].join(' ')}
+              "rounded-kontrol px-3 py-1.5 text-sm text-slate-500",
+              "transition ease-halus hover:bg-slate-100 hover:text-slate-700",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "focus-visible:outline-blue-600",
+            ].join(" ")}
           >
             ✕
           </button>
@@ -258,20 +261,21 @@ export function DialogTransfer({
               <div className="rounded-kontrol border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 <p className="font-medium">Tidak ada klaim yang berpindah.</p>
                 <p className="mt-1 leading-relaxed">
-                  Petugas itu tidak memegang klaim yang masih berjalan. Periksa kembali{' '}
-                  <strong>User ID Lama</strong>-nya.
+                  Petugas itu tidak memegang klaim yang masih berjalan. Periksa
+                  kembali <strong>User ID Lama</strong>-nya.
                 </p>
               </div>
             ) : (
               <div className="rounded-kontrol border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 <p className="font-medium">
                   {jumlahPindah === 1
-                    ? 'PIC Teknik berpindah.'
+                    ? "PIC Teknik berpindah."
                     : `${jumlahPindah} klaim berpindah.`}
                 </p>
                 <p className="mt-1 leading-relaxed">
-                  {jumlahPindah === 1 ? 'Klaim ini' : 'Klaim tersebut'} sekarang dipegang
-                  petugas yang dipilih. Muat ulang daftarnya untuk melihat perubahannya.
+                  {jumlahPindah === 1 ? "Klaim ini" : "Klaim tersebut"} sekarang
+                  dipegang petugas yang dipilih. Muat ulang daftarnya untuk
+                  melihat perubahannya.
                 </p>
               </div>
             )}
@@ -283,21 +287,21 @@ export function DialogTransfer({
           </>
         ) : (
           <div className="space-y-4">
-            {lingkup === 'massal' && baris.length > 0 ? (
+            {lingkup === "massal" && baris.length > 0 ? (
               <p className="rounded-kontrol border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                <strong>{baris.length}</strong> klaim tercentang akan dipindahkan ke petugas
-                yang dipilih di bawah.
+                <strong>{baris.length}</strong> klaim tercentang akan
+                dipindahkan ke petugas yang dipilih di bawah.
               </p>
             ) : null}
 
-            {lingkup === 'massal' && baris.length === 0 ? (
+            {lingkup === "massal" && baris.length === 0 ? (
               <>
                 <Field
                   id="transfer-user-lama"
                   label="User ID Lama"
                   value={userLama}
                   onChange={(event) => setUserLama(event.target.value)}
-                  error={pelanggaran['user_id_lama']}
+                  error={pelanggaran["user_id_lama"]}
                   hint="Seluruh pekerjaan operator ini akan dipindahkan ke petugas yang dipilih di bawah."
                 />
 
@@ -313,7 +317,7 @@ export function DialogTransfer({
                   value={tipePengguna}
                   options={pilihanTipe}
                   emptyText="Pilih Type User"
-                  error={pelanggaran['tipe_pengguna']}
+                  error={pelanggaran["tipe_pengguna"]}
                   onChange={(event) => setTipePengguna(event.target.value)}
                 />
               </>
@@ -337,7 +341,9 @@ export function DialogTransfer({
 
             {ajukan.isError ? (
               <ErrorMessage
-                tone={Object.keys(pelanggaran).length > 0 ? 'penolakan' : 'gangguan'}
+                tone={
+                  Object.keys(pelanggaran).length > 0 ? "penolakan" : "gangguan"
+                }
                 title="PIC Teknik tidak dapat dipindahkan"
                 description={pesanGalat(ajukan.error)}
               />
@@ -352,7 +358,7 @@ export function DialogTransfer({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -383,14 +389,18 @@ function DaftarPIC({
   onAssign,
   mengirim,
 }: {
-  state: ReturnType<typeof useDaftarPIC>
-  halaman: number
-  onHalaman: (nilai: number) => void
-  onAssign: (pic: BarisPIC) => void
-  mengirim: boolean
+  state: ReturnType<typeof useDaftarPIC>;
+  halaman: number;
+  onHalaman: (nilai: number) => void;
+  onAssign: (pic: BarisPIC) => void;
+  mengirim: boolean;
 }) {
   if (state.isPending) {
-    return <p className="px-1 py-6 text-center text-sm text-slate-500">Memuat daftar PIC…</p>
+    return (
+      <p className="px-1 py-6 text-center text-sm text-slate-500">
+        Memuat daftar PIC…
+      </p>
+    );
   }
 
   if (state.isError) {
@@ -400,20 +410,20 @@ function DaftarPIC({
         title="Daftar PIC tidak dapat dibaca"
         description={pesanGalat(state.error)}
       />
-    )
+    );
   }
 
-  const baris = state.data?.pic ?? []
-  const total = state.data?.halaman?.total ?? 0
-  const ukuran = state.data?.halaman?.ukuran ?? 0
-  const jumlahHalaman = ukuran > 0 ? Math.max(1, Math.ceil(total / ukuran)) : 1
+  const baris = state.data?.pic ?? [];
+  const total = state.data?.halaman?.total ?? 0;
+  const ukuran = state.data?.halaman?.ukuran ?? 0;
+  const jumlahHalaman = ukuran > 0 ? Math.max(1, Math.ceil(total / ukuran)) : 1;
 
   if (baris.length === 0) {
     return (
       <p className="rounded-kontrol border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-600">
         Tidak ada PIC Teknik aktif yang cocok.
       </p>
-    )
+    );
   }
 
   return (
@@ -426,7 +436,9 @@ function DaftarPIC({
               <th scope="col" className="w-10 px-3 py-2 text-right">
                 <span className="sr-only">Nomor</span>
               </th>
-              <th scope="col" className="px-3 py-2">Nama</th>
+              <th scope="col" className="px-3 py-2">
+                Nama
+              </th>
               <th scope="col" className="px-3 py-2" />
             </tr>
           </thead>
@@ -436,9 +448,15 @@ function DaftarPIC({
                 <td className="px-3 py-2 text-right tabular-nums text-slate-500">
                   {(halaman - 1) * ukuran + urutan + 1}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-900">{pic.operator_id}</td>
+                <td className="px-3 py-2 font-medium text-slate-900">
+                  {pic.operator_id}
+                </td>
                 <td className="px-3 py-2 text-right">
-                  <Button tone="kedua" disabled={mengirim} onClick={() => onAssign(pic)}>
+                  <Button
+                    tone="kedua"
+                    disabled={mengirim}
+                    onClick={() => onAssign(pic)}
+                  >
                     Assign
                   </Button>
                 </td>
@@ -480,7 +498,7 @@ function DaftarPIC({
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 /**
@@ -493,12 +511,14 @@ function DaftarPIC({
  * tombolnya untuk yang massal.
  */
 function judul(lingkup: LingkupTransfer): string {
-  return lingkup === 'baris' ? 'Transfer Assignment' : 'Transfer All Case By UserID'
+  return lingkup === "baris"
+    ? "Transfer Assignment"
+    : "Transfer All Case By UserID";
 }
 
 /** Membaca pesan galat yang layak dibaca pengguna. */
 function pesanGalat(failure: unknown): string {
-  if (failure instanceof APIError) return failure.message
-  if (failure instanceof Error) return failure.message
-  return 'Terjadi kesalahan pada sistem.'
+  if (failure instanceof APIError) return failure.message;
+  if (failure instanceof Error) return failure.message;
+  return "Terjadi kesalahan pada sistem.";
 }

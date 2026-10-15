@@ -1,12 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { callAPI, HEADER_PORTAL } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI, HEADER_PORTAL } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { FilterForm, ListResponse, MetadataResponse } from './types'
+import type { FilterForm, ListResponse, MetadataResponse } from "./types";
 
-const PATH = '/api/inbox-claim-treaty-non-prop'
+const PATH = "/api/inbox-claim-treaty-non-prop";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -21,12 +21,17 @@ const PATH = '/api/inbox-claim-treaty-non-prop'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-claim-treaty-non-prop', 'tab', portal, token] as const,
+    ["inbox-claim-treaty-non-prop", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, filter: FilterForm, page: number) =>
+  list: (
+    portal: string | null,
+    token: string | null,
+    filter: FilterForm,
+    page: number,
+  ) =>
     [
-      'inbox-claim-treaty-non-prop',
-      'daftar',
+      "inbox-claim-treaty-non-prop",
+      "daftar",
       portal,
       token,
       filter.tab,
@@ -34,7 +39,7 @@ const keys = {
       filter.lihatTBA,
       page,
     ] as const,
-}
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana yang berlaku.
@@ -50,8 +55,8 @@ const keys = {
  * mengirim kueri komite yang hilang, penghalangnya hilang tanpa menyunting frontend.
  */
 export function useClaimTreatyNonPropMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -63,7 +68,7 @@ export function useClaimTreatyNonPropMetadata() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -83,12 +88,13 @@ export function useClaimTreatyNonPropList(
   page: number,
   enabled: boolean,
 ) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -98,7 +104,7 @@ export function useClaimTreatyNonPropList(
     // Antrean kerja berubah saat petugas lain mengambil pekerjaannya, jadi cache-nya
     // pendek — sama dengan layar Treaty Prop, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -127,30 +133,32 @@ export function useClaimTreatyNonPropList(
  * Pada batas 50.000 baris itu beberapa megabita, dan dapat diterima.
  */
 export function useExportClaimTreatyNonProp() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useMutation({
     mutationFn: async (filter: FilterForm) => {
-      const header: Record<string, string> = {}
-      if (token) header['Authorization'] = `Bearer ${token}`
-      if (portal) header[HEADER_PORTAL] = portal
+      const header: Record<string, string> = {};
+      if (token) header["Authorization"] = `Bearer ${token}`;
+      if (portal) header[HEADER_PORTAL] = portal;
 
-      const params = filterParams(filter).toString()
-      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`
+      const params = filterParams(filter).toString();
+      const address = params ? `${PATH}/ekspor?${params}` : `${PATH}/ekspor`;
 
-      const response = await fetch(address, { headers: header })
+      const response = await fetch(address, { headers: header });
       if (!response.ok) {
         // Galat dijawab sebagai JSON selama header belum terkirim; setelah itu tidak
         // bisa lagi. Yang dibaca di sini adalah kasus pertama.
-        const body = (await response.json().catch(() => null)) as { pesan?: string } | null
-        throw new Error(body?.pesan ?? 'Berkas ekspor tidak dapat diambil.')
+        const body = (await response.json().catch(() => null)) as {
+          pesan?: string;
+        } | null;
+        throw new Error(body?.pesan ?? "Berkas ekspor tidak dapat diambil.");
       }
 
-      const blob = await response.blob()
-      downloadBlob(blob, filenameOf(response) ?? 'klaim-treaty-non-prop.csv')
+      const blob = await response.blob();
+      downloadBlob(blob, filenameOf(response) ?? "klaim-treaty-non-prop.csv");
     },
-  })
+  });
 }
 
 /**
@@ -168,30 +176,30 @@ export function useExportClaimTreatyNonProp() {
  * cache terpisah untuk hasil yang sama.
  */
 function filterParams(filter: FilterForm): URLSearchParams {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  if (filter.tab) params.set('tab', filter.tab)
-  if (filter.lihatSemua) params.set('lihat_semua', '1')
-  if (filter.lihatTBA) params.set('lihat_tba', '1')
+  if (filter.tab) params.set("tab", filter.tab);
+  if (filter.lihatSemua) params.set("lihat_semua", "1");
+  if (filter.lihatTBA) params.set("lihat_tba", "1");
 
-  return params
+  return params;
 }
 
 /** buildPath menyusun alamat permintaan daftar beserta halamannya. */
 function buildPath(filter: FilterForm, page: number): string {
-  const params = filterParams(filter)
-  if (page > 1) params.set('halaman', String(page))
+  const params = filterParams(filter);
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
 
 /** filenameOf membaca nama berkas dari header Content-Disposition. */
 function filenameOf(response: Response): string | null {
-  const disposition = response.headers.get('Content-Disposition')
-  if (!disposition) return null
-  const found = /filename="([^"]+)"/.exec(disposition)
-  return found?.[1] ?? null
+  const disposition = response.headers.get("Content-Disposition");
+  if (!disposition) return null;
+  const found = /filename="([^"]+)"/.exec(disposition);
+  return found?.[1] ?? null;
 }
 
 /**
@@ -202,12 +210,12 @@ function filenameOf(response: Response): string | null {
  * menumpuk memori yang tidak pernah dilepas.
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

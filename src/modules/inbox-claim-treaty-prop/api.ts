@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { callAPI } from '@/api/client'
-import { useSelectedPortal } from '@/app/portal'
-import { useSession } from '@/app/session'
+import { callAPI } from "@/api/client";
+import { useSelectedPortal } from "@/app/portal";
+import { useSession } from "@/app/session";
 
-import type { FilterForm, ListResponse, MetadataResponse } from './types'
+import type { FilterForm, ListResponse, MetadataResponse } from "./types";
 
-const PATH = '/api/inbox-claim-treaty-prop'
+const PATH = "/api/inbox-claim-treaty-prop";
 
 /**
  * Kunci cache dikumpulkan di satu tempat supaya invalidasi tidak salah sasaran.
@@ -17,19 +17,24 @@ const PATH = '/api/inbox-claim-treaty-prop'
  */
 const keys = {
   metadata: (portal: string | null, token: string | null) =>
-    ['inbox-claim-treaty-prop', 'tab', portal, token] as const,
+    ["inbox-claim-treaty-prop", "tab", portal, token] as const,
 
-  list: (portal: string | null, token: string | null, filter: FilterForm, page: number) =>
+  list: (
+    portal: string | null,
+    token: string | null,
+    filter: FilterForm,
+    page: number,
+  ) =>
     [
-      'inbox-claim-treaty-prop',
-      'daftar',
+      "inbox-claim-treaty-prop",
+      "daftar",
       portal,
       token,
       filter.tab,
       filter.lihatSemua,
       page,
     ] as const,
-}
+};
 
 /**
  * Hook keterangan layar — daftar tab, kolomnya, dan selisih terencana yang berlaku.
@@ -45,8 +50,8 @@ const keys = {
  * mengirim DDL yang dibutuhkan tab Komite, penghalangnya hilang tanpa menyunting frontend.
  */
 export function useClaimTreatyPropMetadata() {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.metadata(portal, token),
@@ -58,7 +63,7 @@ export function useClaimTreatyPropMetadata() {
     // jaringan tanpa satu pun manfaat.
     staleTime: Infinity,
     gcTime: Infinity,
-  })
+  });
 }
 
 /**
@@ -73,13 +78,18 @@ export function useClaimTreatyPropMetadata() {
  * Berbeda dengan Inbox Admin, halaman di sini benar-benar dipotong basis data dengan
  * `OFFSET … FETCH NEXT`, sehingga jumlah "total" tetap tepat tanpa menarik seluruh baris.
  */
-export function useClaimTreatyPropList(filter: FilterForm, page: number, enabled: boolean) {
-  const token = useSession((state) => state.token)
-  const portal = useSelectedPortal((state) => state.alias)
+export function useClaimTreatyPropList(
+  filter: FilterForm,
+  page: number,
+  enabled: boolean,
+) {
+  const token = useSession((state) => state.token);
+  const portal = useSelectedPortal((state) => state.alias);
 
   return useQuery({
     queryKey: keys.list(portal, token, filter, page),
-    queryFn: () => callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
+    queryFn: () =>
+      callAPI<ListResponse>(buildPath(filter, page), { token, portal }),
     enabled: enabled && token !== null && portal !== null,
 
     // Hasil sebelumnya ditahan selama halaman berikutnya dimuat, alih-alih tabel berkedip
@@ -89,7 +99,7 @@ export function useClaimTreatyPropList(filter: FilterForm, page: number, enabled
     // Antrean kerja berubah saat petugas lain mengambil pekerjaannya, jadi cache-nya
     // pendek — sama dengan Inbox Admin, yang dibuka berulang kali sepanjang hari.
     staleTime: 15 * 1000,
-  })
+  });
 }
 
 /**
@@ -104,12 +114,12 @@ export function useClaimTreatyPropList(filter: FilterForm, page: number, enabled
  * cache terpisah untuk hasil yang sama.
  */
 function buildPath(filter: FilterForm, page: number): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
 
-  if (filter.tab) params.set('tab', filter.tab)
-  if (filter.lihatSemua) params.set('lihat_semua', '1')
-  if (page > 1) params.set('halaman', String(page))
+  if (filter.tab) params.set("tab", filter.tab);
+  if (filter.lihatSemua) params.set("lihat_semua", "1");
+  if (page > 1) params.set("halaman", String(page));
 
-  const query = params.toString()
-  return query ? `${PATH}?${query}` : PATH
+  const query = params.toString();
+  return query ? `${PATH}?${query}` : PATH;
 }
